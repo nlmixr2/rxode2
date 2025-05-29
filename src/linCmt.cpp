@@ -345,7 +345,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 
       fx = lc(theta);
     }
-    return lc.adjustF(fx, theta);
+    return lc.adjustF(fx, theta, ind->linCmtHV);
   } else if (which >= 0 && which < nAlast) {
     // Return the amount in the linear compartment model
     // which can be depot, central, peripheral, second peripheral
@@ -683,7 +683,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     }
   }
   lc.getJacCp(__linCmtBJ, fx, theta, Jg);
-  return lc.adjustF(fx, theta);
+  return lc.adjustF(fx, theta, ind->linCmtHV);
 #undef fx
 #undef J
 #undef Jg

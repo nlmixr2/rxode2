@@ -4911,6 +4911,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->stateTrimL = stateTrimL;
     rx->matrix = matrix;
     rx->linB = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linB];
+    rx->linCmtOral0 = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ka];
 
     rx->linCmtGillFtol = asDouble(rxControl[Rxc_linCmtGillFtol], "linCmtGillFtol");
     rx->linCmtGillK = asInt(rxControl[Rxc_linCmtGillK], "linCmtGillK");

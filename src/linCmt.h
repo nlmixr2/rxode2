@@ -2872,7 +2872,6 @@ namespace stan {
         // return gm/n;
       }
 
-
       // Gill 1983 Chat
       static inline double Chat(double phi, double h, double epsA){
         if (phi == 0) return 2*epsA/(h*h);
@@ -3706,10 +3705,17 @@ namespace stan {
         return Jf;
       }
 
+      double adjustF(const Eigen::VectorXd ret0,
+                     const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+                     double &vc) {
+        vc = getVc(theta);
+        return ret0(oral0_, 0) / vc;
+      }
 
       double adjustF(const Eigen::VectorXd ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
-        return ret0(oral0_, 0) / getVc(theta);
+        double vc=0;
+        return adjustF(ret0, theta, vc);
       }
 
     };

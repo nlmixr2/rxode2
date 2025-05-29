@@ -3138,7 +3138,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         }
         xp = xout;
       }
-      cur = yp[op->numLin]/ind->linCmtHV;
+      cur = yp[op->numLin+rx->linCmtOral0]/ind->linCmtHV;
       if (cur == 0) {
         nzero++;
       } else {

@@ -283,6 +283,10 @@ typedef struct {
   double sensH;
   int linB;
 
+  // flag to determine if the linear compartment model has first order
+  // absorption as in oral models
+  int linCmtOral0;
+
   double linCmtGillFtol;
   int linCmtGillK;
   double linCmtGillStep;
