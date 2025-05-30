@@ -23,7 +23,6 @@ extern "C" {
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
-    ind->linCmtHparIndex = -2; // -2 means no optimization of H value
     ind->linSS=0;
     ind->linSScmt=0;
     ind->linSSvar=0.0;

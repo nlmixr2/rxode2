@@ -126,15 +126,14 @@ RObject linCmtModelDouble(double dt,
 
     // double d = lc.fdoubleh(thetaSens);
 
-    Eigen::Matrix<double, Eigen::Dynamic, 1> h(thetaSens.size());
+    Eigen::Matrix<double, Eigen::Dynamic, 1> h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), 1, 0.001);
     h.setZero();
+
     switch (sensType) {
     case 1: // forward
-      lc.shi21ForwardH(thetaSens, h.data(), 7e-7, 20);
       lc.fForwardJac(thetaSens, h.data(), fx, Js);
       break;
     case 2:  // central
-      lc.shi21CentralH(thetaSens, h.data(), 7e-7, 20);
       lc.fCentralJac(thetaSens, h.data(), fx, Js);
       break;
     case 3:
@@ -475,14 +474,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define Js        __linCmtBJs
 #define yp        __linCmtByp
 #define g         __linCmtBg
-  if (rx->sensType == 100) {
-    if (ncmt == 1) {
-      rx->sensType = 3;
-    } else {
-      // gill83 = 6
-      rx->sensType = 6;
-    }
-  }
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -616,69 +607,37 @@ extern "C" double linCmtB(rx_solve *rx, int id,
           thetaSens(ind->linCmtHparIndex, 0) += ind->linCmtH;
         }
         lc.linAcalcAlast(yp, g, theta);
+        lc.calcFx(thetaSens);
         lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
       } else {
         switch (rx->sensType) {
 
         case 1: // forward
-          lc.linAcalcAlast(yp, g, theta);
-          lc.fForwardJac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 2:  // central
-          lc.linAcalcAlast(yp, g, theta);
-          lc.shi21CentralH(thetaSens, ind->linH,
-                           rx->linCmtShiErr,
-                           rx->linCmtShiMax);
-          lc.fCentralJac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 4:  // 3-point forward difference
-          lc.linAcalcAlast(yp, g, theta);
-          lc.shi21fF3H(thetaSens, ind->linH,
-                       rx->linCmtShiErr,
-                       rx->linCmtShiMax);
-          lc.fF3Jac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 5: // 5-point endpoint difference
-          lc.linAcalcAlast(yp, g, theta);
-          lc.shi21fEndpoint5H(thetaSens, ind->linH,
-                              rx->linCmtShiErr,
-                              rx->linCmtShiMax);
-          lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
-          break;
-
+        case 10:
         case 6: // forward difference with gill H est
           lc.linAcalcAlast(yp, g, theta);
-          lc.gillForwardH(thetaSens, ind->linH,
-                          rx->linCmtGillRtol,
-                          rx->linCmtGillK, rx->linCmtGillStep,
-                          rx->linCmtGillFtol);
-          lc.fForwardJac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 10:
-          lc.linAcalcAlast(yp, g, theta);
-          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.calcFx(thetaSens);
           lc.fForwardJac(thetaSens, ind->linH, fx, Js);
           break;
 
         case 20:
+        case 2:  // central
           lc.linAcalcAlast(yp, g, theta);
-          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.calcFx(thetaSens);
           lc.fCentralJac(thetaSens, ind->linH, fx, Js);
           break;
 
         case 40: // 3-point forward difference
+        case 4:  // 3-point forward difference
           lc.linAcalcAlast(yp, g, theta);
-          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.calcFx(thetaSens);
           lc.fF3Jac(thetaSens, ind->linH, fx, Js);
           break;
 
         case 50: // 5-point endpoint difference
+        case 5: // 5-point endpoint difference
           lc.linAcalcAlast(yp, g, theta);
-          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.calcFx(thetaSens);
           lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
           break;
 
@@ -690,7 +649,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.updateJfromJs(J, Js);
         lc.saveJac(J);
       }
-
     }
   }
   lc.getJacCp(__linCmtBJ, fx, theta, Jg);

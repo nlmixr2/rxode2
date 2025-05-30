@@ -3967,11 +3967,20 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
 
 void setupLinH(rx_solve *rx, int solveid,
                t_dydt dydt, t_update_inis u_inis) {
+  if (rx->sensType == 100) {
+    if (rx->linCmtNcmt == 1) {
+      rx->sensType = 3;
+    } else {
+      // gill83 = 6
+      rx->sensType = 6;
+    }
+  }
   rx_solving_options *op = &op_global;
   int neq[2];
   neq[0] = op->neq;
   neq[1] = solveid;
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+  double *hh = ind->linH;
   if (ind->linCmtHparIndex == -3) return; // already setup
   switch (rx->sensType) {
   case 1: // forward; shi difference
@@ -3981,8 +3990,13 @@ void setupLinH(rx_solve *rx, int solveid,
     shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 3: // 3pt forward; shi
+    shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 4: // 5-point endpoint difference; shi
+    shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
+    for (int i = 0; i < 7; i++) {
+      hh[i] /= 4;
+    }
     break;
   case 6: // forward difference with gill H est
     gillForwardH(rx, op, solveid, neq, dydt, u_inis);
@@ -4000,7 +4014,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
                           t_dydt_liblsoda dydt_lls,
                           t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
                           t_dydt c_dydt, t_update_inis u_inis,
-                          int jt){
+                          int jt) {
   par_progress_1=0;
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);
@@ -4041,7 +4055,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   par_progress_0=0;
 }
 
-extern "C" void par_solve(rx_solve *rx){
+extern "C" void par_solve(rx_solve *rx) {
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);
   par_progress_1=0;

@@ -287,6 +287,9 @@ typedef struct {
   // absorption as in oral models
   int linCmtOral0;
 
+  // number of linear compartments in model
+  int linCmtNcmt;
+
   double linCmtGillFtol;
   int linCmtGillK;
   double linCmtGillStep;
