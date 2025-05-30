@@ -3036,14 +3036,38 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         }
         xp = xout;
       }
+      // Geometric mean of all compartments
+      double cur0;
+      int n0=0;
+      for (int i = 0; i < rx->linCmtOral0 + rx->linCmtNcmt; ++i) {
+        cur = yp[op->numLin + i];
+        if (cur == 0) {
+        } else {
+          n0++;
+          // delta = 1.0/cur - cur0; // harmonic mean
+          delta = log(cur) - cur0; // geometric mean
+          cur0 += delta/n0;
+        }
+      }
       cur = yp[op->numLin+rx->linCmtOral0]/ind->linCmtHV;
+      if (cur == 0) {
+        // nzero++;
+      } else {
+        n0++;
+        // delta = 1.0/cur - cur0; // harmonic mean
+        delta = log(cur) - cur0; // geometric mean
+        cur0 += delta/n0;
+      }
+      cur = cur0;
       if (cur == 0) {
         nzero++;
       } else {
         n++;
-        delta = 1.0/cur - ret;
-        ret += delta/n; // harmonic mean
+        delta = 1.0/cur - ret; // harmonic mean
+        // delta = log(cur) - ret; // geometric mean
+        ret += delta/n0;
       }
+
       updateSolve(ind, op, neq, xout, i, nx);
 
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
@@ -3051,9 +3075,14 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
     }
     ind->solvedIdx = i;
   }
+  // harmonic mean
   double correction = (double)(n-nzero)/((double)n);
   if (correction <= 0) correction=1;
   return (double)(n)/ret * correction;
+  // Geometric mean
+  // double correction = (double)(n)/((double)(n-nzero));
+  // if (correction <= 0) correction=1;
+  // return exp(ret)*correction;
 }
 
 extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
@@ -3972,7 +4001,8 @@ void setupLinH(rx_solve *rx, int solveid,
       rx->sensType = 3;
     } else {
       // gill83 = 6
-      rx->sensType = 6;
+      // shi21  = 1
+      rx->sensType = 1;
     }
   }
   rx_solving_options *op = &op_global;

@@ -682,8 +682,13 @@
 #' @param linCmtGillFtol The gillFtol is the gradient error tolerance that
 #'     is acceptable before issuing a warning/error about the gradient estimates.
 #'
-#' @param linCmtScale The scale of the linear compartment model.  This is
-#'    applied to sensitivity approximation using numeric differences.
+#' @param linCmtScale The scale of the linear compartment model.  This
+#'   is applied to sensitivity approximation using numeric
+#'   differences.  When `TRUE` or `NULL` use default scaling, when
+#'   `FALSE` use no scaling.  If it is one elment numeric, the value
+#'   is duplicated 7 times and applies to all the parameters.
+#'   Otherwise this is a seven element numeric vector implying the
+#'   scaling for each of the linear compartmental model parameters.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -953,11 +958,22 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                            "forwardH"=10L, "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
-    checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7,
-                             null.ok=TRUE)
+    if (is.logical(linCmtScale)) {
+      checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
+      if (linCmtScale) {
+        linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
+      } else {
+        linCmtScale <- c(0, 0, 0, 0, 0, 0, 0) # only first needs to be zero
+      }
+    }
     if (is.null(linCmtScale)) {
       linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
     }
+    if (checkmate::testNumeric(linCmtScale, lower=0, finite=TRUE,
+                               any.missing=FALSE, len=1)) {
+      linCmtScale <- rep(linCmtScale, 7L)
+    }
+    checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7)
     checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)

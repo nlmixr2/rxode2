@@ -686,7 +686,8 @@ namespace stan {
                         const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                         Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
                         int nd, int& i, int& j,
-                        double &mn, double &mx, double *scale) {
+                        double &mn, double &mx, double *scale,
+                        bool &unscaled) {
         if ((nd & d) != 0) {
           // mn = min2(scale->initPar[k],mn);
           // mx = max2(scale->initPar[k],mx);
@@ -700,93 +701,122 @@ namespace stan {
             } else {
               initPar_(i, 0) = theta(j, 0);
               scaleC_(i, 0) = 1.0;
-              int sw = ncmt_ + 10*trans_;
-              switch (sw) {
-              case 11: // cl v
-                if (d == diffP1) {
-                  // exp(-cl/v)/v
-                  // > D(S("log(exp(-cl/v)/v)"), "cl")
-                  // (Mul) -1/v
-                  scaleC_(i, 0) = 1.0/trueTheta_(1, 0);
-                } else if (d == diffV1) {
-                  // > D(S("log(exp(-cl/v)/v)"), "v")
-                  //   (Mul)   v*exp(cl/v)*(-exp(-cl/v)/v^2 + exp(-cl/v)*cl/v^3)
-#define v trueTheta_(1, 0)
-#define cl trueTheta_(0, 0)
-                  scaleC_(i, 0) = fabs(v*exp(cl/v)*(-exp(-cl/v)/(v*v) + exp(-cl/v)*cl/(v*v*v)));
-#undef v
-#undef cl
+//               int sw = ncmt_ + 10*trans_;
+//               switch (sw) {
+//               case 11: // cl v
+// //                 if (d == diffP1) {
+// //                   // exp(-cl/v)/v
+// //                   // > D(S("log(exp(-cl/v)/v)"), "cl")
+// //                   // (Mul) -1/v
+// //                   scaleC_(i, 0) = 1.0/trueTheta_(1, 0);
+// //                 } else if (d == diffV1) {
+// //                   // > D(S("log(exp(-cl/v)/v)"), "v")
+// //                   //   (Mul)   v*exp(cl/v)*(-exp(-cl/v)/v^2 + exp(-cl/v)*cl/v^3)
+// // #define v trueTheta_(1, 0)
+// // #define cl trueTheta_(0, 0)
+// //                   scaleC_(i, 0) = fabs(v*exp(cl/v)*(-exp(-cl/v)/(v*v) + exp(-cl/v)*cl/(v*v*v)));
+// // #undef v
+// // #undef cl
 
-                }
-                break;
-              case 21: // Kel v
-                // if (d == diffP1) {
-                  // > D(S("log(exp(-kel)/v)"), "kel")
-                  // (Integer)  -1
-                  // already 1
-                // } else
-                if (d == diffV1) {
-                  // D(S("log(exp(-kel)/v)"), "v")
-                  // (Mul)-1/v
-                  scaleC_(i,0) = 1.0/trueTheta_(1, 0);
-                }
-                break;
-              case 101: // alpha a
-                // > D(S("log(exp(-alpha)*a)"), "a")
-                // (Pow)   a^(-1)
-                if (d == diffV1) {
-                  scaleC_(i,0) = 1.0/trueTheta_(1, 0);
-                }
-                break;
+// //                 }
+//                 break;
+//               case 21: // Kel v
+//                 // if (d == diffP1) {
+//                   // > D(S("log(exp(-kel)/v)"), "kel")
+//                   // (Integer)  -1
+//                   // already 1
+//                 // } else
+//                 // if (d == diffV1) {
+//                 //   // D(S("log(exp(-kel)/v)"), "v")
+//                 //   // (Mul)-1/v
+//                 //   scaleC_(i,0) = 1.0/trueTheta_(1, 0);
+//                 // }
+//                 break;
+//               case 101: // alpha a
+//                 // > D(S("log(exp(-alpha)*a)"), "a")
+//                 // (Pow)   a^(-1)
+//                 // if (d == diffV1) {
+//                 //   scaleC_(i,0) = 1.0/trueTheta_(1, 0);
+//                 // }
+//                 break;
 
-              case 12: //cl v q vp
-                scaleC_(i, 0) = scaleC_tran1_2(d);
-                break;
-              case 22:// k=(*p1) v=(*v1) k12=(*p2) k21=(*p3)
-                break;
-              case 32: // cl=(*p1) v=(*v1) q=(*p2) vss=(*p3)
-                break;
-              case 42: // alpha=(*p1) beta=(*p2) k21=(*p3)
-                break;
-              case 52:// alpha=(*p1) beta=(*p2) aob=(*p3)
-                break;
-              case 112: // A2 V, alpha=(*p1), beta=(*p2), k21
-                break;
-              case 102: // A=(*v1), alpha=(*p1), beta=(*p2), B=(*p3)
-                break;
+//               case 12: //cl v q vp
+//                 // scaleC_(i, 0) = scaleC_tran1_2(d);
+//                 break;
+//               case 22:// k=(*p1) v=(*v1) k12=(*p2) k21=(*p3)
+//                 break;
+//               case 32: // cl=(*p1) v=(*v1) q=(*p2) vss=(*p3)
+//                 break;
+//               case 42: // alpha=(*p1) beta=(*p2) k21=(*p3)
+//                 break;
+//               case 52:// alpha=(*p1) beta=(*p2) aob=(*p3)
+//                 break;
+//               case 112: // A2 V, alpha=(*p1), beta=(*p2), k21
+//                 break;
+//               case 102: // A=(*v1), alpha=(*p1), beta=(*p2), B=(*p3)
+//                 break;
 
-                //
-              case 13: // cl v q vp q2 vp2
-                break;
-              case 23: // k=(*p1) v=(*v1) k12=(*p2) k21=(*p3) k13=(*p4) k31=(*p5)
-                break;
-              case 113: //A B and C, alpha, beta, gamma, 3 compartment model
-                break;
-              case 103: // vc B and C, alpha, beta, gamma, 3 compartment model
-                break;
-              }
+//                 //
+//               case 13: // cl v q vp q2 vp2
+//                 break;
+//               case 23: // k=(*p1) v=(*v1) k12=(*p2) k21=(*p3) k13=(*p4) k31=(*p5)
+//                 break;
+//               case 113: //A B and C, alpha, beta, gamma, 3 compartment model
+//                 break;
+//               case 103: // vc B and C, alpha, beta, gamma, 3 compartment model
+//                 break;
+//               }
 
 
               switch (d) {
               case diffP1:
-                if (scale[0] > 0) scaleC_(i, 0) *= scale[0];
+                if (scale[0] > 0) {
+                  scaleC_(i, 0) *= scale[0];
+                } else {
+                  unscaled = true;
+                }
                 break;
               case diffV1:
-                if (scale[1] > 0) scaleC_(i, 0) *= scale[1];
+                if (scale[1] > 0) {
+                  scaleC_(i, 0) *= scale[1];
+                } else {
+                  unscaled = true;
+                }
                 break;
               case diffP2:
-                if (scale[2] > 0) scaleC_(i, 0) *= scale[2];
+                if (scale[2] > 0) {
+                  scaleC_(i, 0) *= scale[2];
+                } else {
+                  unscaled = true;
+                }
+                break;
               case diffP3:
-                if (scale[3] > 0) scaleC_(i, 0) *= scale[3];
+                if (scale[3] > 0) {
+                  scaleC_(i, 0) *= scale[3];
+                } else {
+                  unscaled = true;
+                }
                 break;
               case diffP4:
-                if (scale[4] > 0) scaleC_(i, 0) *= scale[4];
+                if (scale[4] > 0) {
+                  scaleC_(i, 0) *= scale[4];
+                } else {
+                  unscaled = true;
+                }
                 break;
               case diffP5:
-                if (scale[5] > 0) scaleC_(i, 0) *= scale[5];
+                if (scale[5] > 0) {
+                  scaleC_(i, 0) *= scale[5];
+                } else {
+                  unscaled = true;
+                }
                 break;
               case diffKa:
-                if (scale[6] > 0) scaleC_(i, 0) *= scale[6];
+                if (scale[6] > 0) {
+                  scaleC_(i, 0) *= scale[6];
+                } else {
+                  unscaled = true;
+                }
                 break;
               }
               mn = min2(theta(j, 0), mn);
@@ -817,7 +847,10 @@ namespace stan {
         trueTheta_ = theta;
         isAD_ = isAD;
         int nd = numDiff_;
-        if (nd == 0) nd = 127; // all terms
+        if (nd == 0) {
+          Rcpp::stop("Sorry number of diffs incorrectly setup");
+          nd = 127; // all terms
+        }
         int i = 0, j=0;
 
         if (!isAD && !scaleSetup_) {
@@ -828,35 +861,37 @@ namespace stan {
 
         double mx=R_NegInf, mn = R_PosInf;
 
+        bool unscaled = false;
+
         switch (ncmt_) {
         case 1: {
-          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
         }
           break;
         case 2: {
-          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx, scale);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
         }
           break;
         case 3: {
-          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffP4, theta, sensTheta, nd, i, j, mn, mx, scale);
-          sensThetaElt(diffP5, theta, sensTheta, nd, i, j, mn, mx, scale);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffP4, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          sensThetaElt(diffP5, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
           }
           break;
         }
         // This finishes the scaling setup
         if (!isAD_ && !scaleSetup_) {
-          if (fabs(mx-mn) < DBL_EPSILON) {
+          if (unscaled || fabs(mx-mn) < DBL_EPSILON) {
             c1_ = 0.0;
             c2_ = 1.0;
           } else {
@@ -865,7 +900,12 @@ namespace stan {
           }
           for (int i = 0; i < initPar_.size(); i++) {
             sensTheta(i, 0) = (initPar_(i, 0) - c1_)/c2_;
+            if (unscaled) {
+              scaleC_(i, 0) = 1.0; // No scaling
+            }
           }
+          // REprintf("scaleC_: nd: %d\n", nd);
+          // Rcpp::print(Rcpp::wrap(scaleC_));
           scaleSetup_ = true;
         }
       }
@@ -2782,7 +2822,7 @@ namespace stan {
       bool anySuspect(Eigen::Matrix<double, Eigen::Dynamic, 1>& fx) {
         for (int i = oral0_; i < fx.size(); i++) {
           double afx = std::abs(fx(i, 0));
-          if (afx < 1e-4) {
+          if (afx < 1e-6) {
             return true;
           }
         }
@@ -2834,9 +2874,6 @@ namespace stan {
               } else {
                 Js.col(i)       =  fcur;
               }
-              // thetaCur(i, 0) -= 2*hhh;
-              // fnext          = fdoubles(thetaCur);
-              // Js.col(i) = (fup - fnext).array()/(2*hhh)*scaleC_(i);
             } else {
               Js.col(i)       = fcur;
             }
