@@ -622,9 +622,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
         case 1: // forward
           lc.linAcalcAlast(yp, g, theta);
-          lc.shi21ForwardH(thetaSens, ind->linH,
-                           rx->linCmtShiErr,
-                           rx->linCmtShiMax);
           lc.fForwardJac(thetaSens, ind->linH, fx, Js);
           break;
 
