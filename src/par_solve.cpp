@@ -2942,7 +2942,6 @@ extern "C" void par_lsoda(rx_solve *rx) {
 
 extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                                t_dydt c_dydt, t_update_inis u_inis) {
-  clock_t t0 = clock();
   int i;
   double xout;
   double *yp;
@@ -3682,10 +3681,8 @@ extern "C" int linCmtZeroJac(int i);
 
 void gillForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
  t_dydt c_dydt, t_update_inis u_inis) {
-  double h = 0.0;
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
   double hf=0, hphif=0, df=0, df2=0, ef=0;
-  int ret=0;
   int N = linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
@@ -3695,11 +3692,129 @@ void gillForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
       hh[i] = 0.0;
       continue;
     }
-    h = 0.0;
     gill83linCmt(&hf, &hphif, &df, &df2, &ef,
                  i, rx->linCmtGillRtol, rx->linCmtGillK, rx->linCmtGillStep,
                  rx->linCmtGillFtol, f0, rx, op, solveid, _neq, c_dydt, u_inis);
     hh[i] = hf;
+  }
+}
+
+double shiRF(double &h,
+             double ef,
+             int &idx,
+             double &f0, double &f1, double &l, double &u,
+             bool &finiteF1, bool &finiteF4,
+             rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+             t_dydt c_dydt, t_update_inis u_inis) {
+  // Eigen::Matrix<double, Eigen::Dynamic, 1> tp4 = thetaIn;
+  // Eigen::Matrix<double, Eigen::Dynamic, 1> tp1 = thetaIn;
+  // tp4[idx] += 4*h;
+  // tp1[idx] += h;
+  // f1 = fdoubleh(tp1);
+  f1 = ind_linCmtFH(h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteF1 = std::isfinite(f1);
+  if (!finiteF1) {
+    finiteF4 = true;
+    return -1.0;
+  }
+  double f4 = ind_linCmtFH(4*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteF4 = std::isfinite(f4);
+  if (!finiteF4) {
+    return -1.0;
+  }
+  // REprintf("f0 = %f f1 = %f f4 = %f\n", f0, f1, f4);
+  return abs(f4-4*f1+3*f0)/(8.0*ef);
+}
+
+double shi21Forward(double &h,
+                    double &f0,
+                    // arma::vec &gr,
+                    int idx,
+                    double ef,
+                    double rl,
+                    double ru,
+                    int maxiter,
+                    rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                    t_dydt c_dydt, t_update_inis u_inis) {
+  // Algorithm 2.1 in paper
+  // q=2, alpha=4, r=3
+  // s = 0, 1
+  // w = -1, 1
+  if (h == 0) {
+    // 2/sqrt(3) = 1.154700538379251684162
+    h = 1.154700538379251684162 * sqrt(ef);
+  } else {
+    h = fabs(h);
+  }
+  double l = 0, u = R_PosInf, rcur = NA_REAL;
+  double f1;
+  double lasth = h;
+  int iter=0;
+  bool finiteF1 = true, finiteF4 = true, calcGrad = false;
+  while(true) {
+    iter++;
+    if (iter > maxiter) {
+      h = lasth;
+      break;
+    }
+    rcur = shiRF(h, ef, idx, f0, f1, l, u,
+                 finiteF1, finiteF4, rx, op, solveid, _neq,
+                 c_dydt, u_inis);
+    if (rcur == -1) {
+      if (!finiteF1) {
+        // hnew = t + 2.5*hold
+        h = 0.5*h;
+        continue;
+      }
+      h = 3.5*h;
+
+      if (!calcGrad) {
+        lasth = h;
+        // gr = (f1-f0)/h;
+      }
+      continue;
+    } else {
+      lasth = h;
+      // gr = (f1-f0)/h;
+    }
+    if (rcur < rl) {
+      l = h;
+    } else if (rcur > ru) {
+      u = h;
+    } else {
+      break;
+    }
+    if (!R_finite(u)) {
+      h = 4.0*h;
+    } else if (l == 0) {
+      h = h/4.0;
+    } else {
+      h = (l + u)/2.0;
+    }
+  }
+  return h;
+}
+
+void shi21ForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                   t_dydt c_dydt, t_update_inis u_inis) {
+  double h = 0.0;
+  double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
+  int N = linCmtScaleInitN();
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  double *hh = ind->linH;
+  for (int i = 0; i < N; i++) {
+    if (linCmtZeroJac(i)) {
+      hh[i] = 0.0;
+      continue;
+    }
+    h = 0.0;
+    hh[i] = shi21Forward(h, f0, i,
+                         rx->linCmtShiErr,
+                         1.5,
+                         6.0,
+                         rx->linCmtShiMax,
+                         rx, op, solveid, _neq,
+                         c_dydt, u_inis);
   }
 }
 
@@ -3715,6 +3830,7 @@ void setupLinH(rx_solve *rx, int solveid,
   if (ind->linCmtHparIndex == -3) return; // already setup
   switch (rx->sensType) {
   case 1: // forward; shi difference
+    shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 2: // central; shi
     break;
