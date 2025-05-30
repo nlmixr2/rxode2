@@ -5,7 +5,9 @@ extern sbuf sbExtra;
 extern D_Parser *curP;
 
 static inline void addLinCmtBdiff(int var) {
-  if ((tb.ndiff & var) == 0) tb.ndiff |= var;
+  if ((tb.ndiff & var) == 0) {
+    tb.ndiff |= var;
+  }
 }
 
 static inline int handleFunctionLinCmt(transFunctions *tf) {
@@ -38,9 +40,10 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
       v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       int which1 = toInt(v2+1);
 
-      xpn2 = d_get_child(xpn1, 2);
+      xpn2 = d_get_child(xpn1, 5);
       v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       int which2 = toInt(v2+1);
+
 
       if (which2 == -2) {
         // amounts in function are returned
@@ -50,7 +53,7 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         // is requested, we need to capture what parameter is calculated
         // to save time when requesting AD.
         int sw = tb.ncmt*10 + tb.hasKa + which1*100;
-        switch (tb.ncmt) {
+        switch (sw) {
         case 1530: // 3 compartment, iv, which1=15
         case 930: // 3 compartment, iv, which1=9
         case 330: // 3 compartment, iv, which1=3
@@ -136,13 +139,17 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 411: // 1 compartmental oral, which1=4
           addLinCmtBdiff(diffKa);
           break;
+        default:
+          REprintf("Unknown linCmtB which2=-2: %d\n", sw);
+          return 0;
+
         }
       } else if (which1 == -2) {
         // This means that we are only calculating the Jacobian
         // and not the function value.
         //
         int sw = tb.ncmt*10 + tb.hasKa + which2*100;
-        switch (tb.ncmt) {
+        switch (sw) {
         case 30: // 3 compartment, iv, which2=0
         case 31: // 3 compartment, oral, which2=0
         case 20: // 2 compartment, iv, which2=0
@@ -190,6 +197,9 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 621: // 2 compartment, oral, which2=6
           addLinCmtBdiff(diffKa);
           break;
+        default:
+          REprintf("Unknown linCmtB which1=-2: %d\n", sw);
+          return 0;
         }
       }
 
