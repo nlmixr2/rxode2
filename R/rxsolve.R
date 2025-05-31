@@ -194,33 +194,6 @@
 #' @param maxwhile represents the maximum times a while loop is
 #'   evaluated before exiting.  By default this is 100000
 #'
-#' @param sensType Sensitivity type for `linCmt()` model:
-#'
-#' `advan` Use the direct advan solutions
-#'
-#' `autodiff` Use the autodiff advan solutions
-#'
-#' `forward` Use forward difference solutions
-#'
-#' `central` Use central differences
-#'
-#' @param linDiff This gives the linear difference amount for all the
-#'   types of linear compartment model parameters where sensitivities
-#'   are not calculated. The named components of this numeric vector are:
-#'
-#' * `"lag"` Central compartment lag
-#' * `"f"` Central compartment bioavailability
-#' * `"rate"` Central compartment modeled rate
-#' * `"dur"` Central compartment modeled duration
-#' * `"lag2"` Depot compartment lag
-#' * `"f2"` Depot compartment bioavailability
-#' * `"rate2"` Depot compartment modeled rate
-#' * `"dur2"` Depot compartment modeled duration
-#'
-#' @param linDiffCentral This gives the which parameters use central
-#'   differences for the linear compartment model parameters.  The
-#'   are the same components as `linDiff`
-#'
 #' @param iCov A data frame of individual non-time varying covariates
 #'   to combine with the `events` dataset.  The `iCov` dataset has one
 #'   covariate per ID and should match the event table
@@ -652,6 +625,71 @@
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
 #'
+#' @param ssSolved When `TRUE` this will return the solved steady
+#'   state solutions for the linear compartment model.  When `FALSE`
+#'   this will solve to steady state using the linear solutions
+#'   instead.  This is only used when the method only has `linCmt()`
+#'   and does not mix ODEs with the solution.  The default is `TRUE`.
+#'
+#' @param linCmtSensType The type of linear compartment
+#'   sensitivity/gradients to use.  The current options are:
+#'
+#' - `auto` -- for one compartment models this will use the `AD`
+#'   method, for 2 and 3 compartment model this will use `forwardG`.
+#'
+#' - `AD` -- automatic differentiation (using stan math)
+#'
+#' - `forward` -- forward sensitivity where the step size is
+#'    determined by shi 2021 optimization (only once per problem)
+#'
+#' - `forwardG` -- forward sensitivity where the step size is determined by the
+#'    Gill 1983 optimization for forward differences (only once per problem).
+#'
+#' - `central` -- central sensitivity where the step size is
+#'    determined by shi 2021 optimization (only once per problem)
+#'
+#' - `forward3` -- three point central difference where step size is
+#'   determined by shi 2021 optimization for central differences (only
+#'   once per problem)
+#'
+#' - `endpoint5` -- five point endpoint difference where step size is
+#'   determined by the shi 2021 optimization for central differences
+#'   (only once per problem)
+#'
+#' - `fowardH` -- forward sensitivity where the step size is fixed
+#'
+#' - `centralH` -- central sensitivity where the step size is fixed
+#'
+#' - `forward3H` -- three point central difference where step size is fixed
+#'
+#' - `endpoint5H` -- five point endpoint difference where step size is fixed
+#'
+#' @param linCmtSensH The step size for the forward and central
+#'   differences when using the option `centralH`, `forwardH`,
+#'   `foward3H` or `endpoint5H` options.
+#'#'
+#' @param linCmtGillK The total number of possible steps to determine the
+#'     optimal forward/central difference step size per parameter (by
+#'     the Gill 1983 method).  If 0, no optimal step size is
+#'     determined.  Otherwise this is the optimal step size
+#'     determined.
+#'
+#' @param linCmtGillStep When looking for the optimal forward difference
+#'     step size, this is This is the step size to increase the
+#'     initial estimate by.  So each iteration the new step size =
+#'     (prior step size)*gillStep
+#'
+#' @param linCmtGillFtol The gillFtol is the gradient error tolerance that
+#'     is acceptable before issuing a warning/error about the gradient estimates.
+#'
+#' @param linCmtScale The scale of the linear compartment model.  This
+#'   is applied to sensitivity approximation using numeric
+#'   differences.  When `TRUE` or `NULL` use default scaling, when
+#'   `FALSE` use no scaling.  If it is one elment numeric, the value
+#'   is duplicated 7 times and applies to all the parameters.
+#'   Otherwise this is a seven element numeric vector implying the
+#'   scaling for each of the linear compartmental model parameters.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -725,7 +763,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     nStud = 1L, dfSub = 0.0, dfObs = 0.0,
                     returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
                     seed = NULL, nsim = NULL,
-                    minSS = 10L, maxSS = 1000L,
+                    minSS = 10L, maxSS = 10000L,
                     infSSstep = 12,
                     strictSS = TRUE,
                     istateReset = TRUE,
@@ -754,9 +792,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     safePow = TRUE,
                     sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
                     prodType = c("long double", "double", "logify"),
-                    sensType = c("advan", "autodiff", "forward", "central"),
-                    linDiff = c(tlag = 1.5e-5, f = 1.5e-5, rate = 1.5e-5, dur = 1.5e-5, tlag2 = 1.5e-5, f2 = 1.5e-5, rate2 = 1.5e-5, dur2 = 1.5e-5),
-                    linDiffCentral = c(tlag = TRUE, f = TRUE, rate = TRUE, dur = TRUE, tlag2 = TRUE, f2 = TRUE, rate2 = TRUE, dur2 = TRUE),
                     resample = NULL,
                     resampleID = TRUE,
                     maxwhile = 100000,
@@ -772,6 +807,19 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addlDropSs=TRUE,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
+                    ssSolved=TRUE,
+                    linCmtSensType=c("auto", "endpoint5",
+                                     "forward3", "AD", "central", "forward",
+                                     "forwardH", "centralH", "forward3H",
+                                     "endpointH5", "forwardG"),
+                    linCmtSensH=0.0001,
+                    linCmtGillFtol=0,
+                    linCmtGillK=20L,
+                    linCmtGillStep=4,
+                    linCmtGillRtol=sqrt(.Machine$double.eps),
+                    linCmtShiErr=sqrt(.Machine$double.eps),
+                    linCmtShiMax=20L,
+                    linCmtScale=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -900,17 +948,47 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)[match.arg(sumType)]
     }
+    if (checkmate::testIntegerish(linCmtSensType)) {
+      .linCmtSensType <- as.integer(linCmtSensType)
+    } else {
+      .linCmtSensType <- c("AD"=3L, "forward"=1L, "central"=2L,
+                           "forward3"=4L, "endpoint5"=5L,
+                           "forwardG"=6L,
+                           "forward3H"=40L, "endpoint5H"=50L,
+                           "forwardH"=10L, "centralH"=20L,
+                           "auto"=100L)[match.arg(linCmtSensType)]
+    }
+    if (is.logical(linCmtScale)) {
+      checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
+      if (linCmtScale) {
+        linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
+      } else {
+        linCmtScale <- c(0, 0, 0, 0, 0, 0, 0) # only first needs to be zero
+      }
+    }
+    if (is.null(linCmtScale)) {
+      linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
+    }
+    if (checkmate::testNumeric(linCmtScale, lower=0, finite=TRUE,
+                               any.missing=FALSE, len=1)) {
+      linCmtScale <- rep(linCmtScale, 7L)
+    }
+    checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7)
+    checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+
+    checkmate::assertNumeric(linCmtShiErr, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(linCmtShiMax, lower=0, any.missing=FALSE, len=1)
+
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .prod <- as.integer(prodType)
     } else {
       .prod <- c("long double"=1L, "double"=1L, "logify"=1L)[match.arg(prodType)]
     }
 
-    if (checkmate::testIntegerish(sensType, len=1, lower=1, upper=4, any.missing=FALSE)) {
-      .sensType <- as.integer(sensType)
-    } else {
-      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)[match.arg(sensType)]
-    }
     if (checkmate::testIntegerish(strictSS, len=1, lower=0, upper=1, any.missing=FALSE)) {
       strictSS <- as.integer(strictSS)
     } else {
@@ -1052,8 +1130,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(thetaUpper, any.missing=FALSE, null.ok=TRUE)
     checkmate::assertLogical(idFactor, any.missing=FALSE)
     checkmate::assertLogical(warnIdSort, any.missing=FALSE)
-    checkmate::assertNumeric(linDiff, names="strict", len=8)
-    checkmate::assertLogical(linDiffCentral, names="strict", len=8, any.missing=FALSE)
     if (is.null(resample)) {
     } else if (checkmate::testLogical(resample)) {
       checkmate::assertLogical(resample, any.missing=FALSE, len=1)
@@ -1074,6 +1150,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ss2cancelAllPending, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ssSolved, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1190,9 +1267,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       safeZero = safeZero,
       sumType = .sum,
       prodType = .prod,
-      sensType = .sensType,
-      linDiff = linDiff, #
-      linDiffCentral = linDiffCentral,#
       resample = resample, #
       resampleID = resampleID,#
       maxwhile = maxwhile,
@@ -1213,6 +1287,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       keepInterpolation=keepInterpolation,
       safeLog=safeLog,
       safePow=safePow,
+      ssSolved=ssSolved,
+      linCmtSensType=.linCmtSensType,
+      linCmtSensH=linCmtSensH,
+      linCmtGillFtol=linCmtGillFtol,
+      linCmtGillK=linCmtGillK,
+      linCmtGillStep=linCmtGillStep,
+      linCmtGillRtol=linCmtGillRtol,
+      linCmtShiErr=linCmtShiErr,
+      linCmtShiMax=linCmtShiMax,
+      linCmtScale=linCmtScale,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1939,7 +2023,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
             # reset
             gc()
             .minfo("try resetting cache and unloading all rxode2 models")
-            try(rxode2::rxUnloadAll())
+            try(rxode2::rxUnloadAll(), silent=TRUE)
             rxode2::rxClean()
             .envReset$unload <- TRUE
             .envReset$reset <- TRUE
@@ -2333,8 +2417,8 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 
 #' rxUiDeparse.rxControl(rxControl(covsInterpolation="linear", method="dop853",
 #'  naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
-#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
-#'  sensType="central"), "ctl")
+#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify"),
+#' "ctl")
 
 #' @rdname rxUiDeparse
 #' @export
@@ -2379,9 +2463,6 @@ rxUiDeparse.rxControl <- function(object, var) {
     } else if (x == "prodType") {
       .prod <- c("long double"=1L, "double"=1L, "logify"=1L)
       paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
-    } else if (x == "sensType") {
-      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)
-      paste0(x, " = ", deparse1(names(.sensType)[which(object[[x]] == .sensType)]))
     } else if (x == "naTimeHandle") {
       .naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)
       paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))

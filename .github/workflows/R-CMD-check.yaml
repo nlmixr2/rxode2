@@ -38,7 +38,7 @@ jobs:
           brew install udunits
         shell: bash
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
 

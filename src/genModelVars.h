@@ -12,20 +12,14 @@
 #include <Rmath.h>
 #include <unistd.h>
 #include <errno.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2parseSbuf.h"
 #include "tran.h"
 #include "../inst/include/rxode2parseVer.h"
 
 static inline SEXP calcSLinCmt(void) {
-  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,12));
+  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,13));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -37,20 +31,22 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[9] = tb.simflg;
   INTEGER(sLinCmt)[10]= tb.thread;
   INTEGER(sLinCmt)[11]= tb.nLlik;
+  INTEGER(sLinCmt)[12] = tb.ndiff;
 
-  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 12));
-  SET_STRING_ELT(sLinCmtN, 0, mkChar("ncmt"));
-  SET_STRING_ELT(sLinCmtN, 1, mkChar("ka"));
-  SET_STRING_ELT(sLinCmtN, 2, mkChar("linB"));
-  SET_STRING_ELT(sLinCmtN, 3, mkChar("maxeta"));
-  SET_STRING_ELT(sLinCmtN, 4, mkChar("maxtheta"));
-  SET_STRING_ELT(sLinCmtN, 5, mkChar("hasCmt"));
-  SET_STRING_ELT(sLinCmtN, 6, mkChar("linCmt"));
-  SET_STRING_ELT(sLinCmtN, 7, mkChar("linCmtFlg"));
-  SET_STRING_ELT(sLinCmtN, 8, mkChar("nIndSim"));
-  SET_STRING_ELT(sLinCmtN, 9, mkChar("simflg"));
-  SET_STRING_ELT(sLinCmtN, 10, mkChar("thread"));
-  SET_STRING_ELT(sLinCmtN, 11, mkChar("nLlik"));
+  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 13));
+  SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
+  SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
+  SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
+  SET_STRING_ELT(sLinCmtN, 3, Rf_mkChar("maxeta"));
+  SET_STRING_ELT(sLinCmtN, 4, Rf_mkChar("maxtheta"));
+  SET_STRING_ELT(sLinCmtN, 5, Rf_mkChar("hasCmt"));
+  SET_STRING_ELT(sLinCmtN, 6, Rf_mkChar("linCmt"));
+  SET_STRING_ELT(sLinCmtN, 7, Rf_mkChar("linCmtFlg"));
+  SET_STRING_ELT(sLinCmtN, 8, Rf_mkChar("nIndSim"));
+  SET_STRING_ELT(sLinCmtN, 9, Rf_mkChar("simflg"));
+  SET_STRING_ELT(sLinCmtN, 10, Rf_mkChar("thread"));
+  SET_STRING_ELT(sLinCmtN, 11, Rf_mkChar("nLlik"));
+  SET_STRING_ELT(sLinCmtN, 12, Rf_mkChar("ndiff"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   UNPROTECT(2);
   return(sLinCmt);
@@ -60,13 +56,13 @@ static inline SEXP calcVersionInfo(void) {
   SEXP version  = PROTECT(Rf_allocVector(STRSXP, 3));
   SEXP versionn = PROTECT(Rf_allocVector(STRSXP, 3));
 
-  SET_STRING_ELT(versionn,0,mkChar("version"));
-  SET_STRING_ELT(versionn,1,mkChar("repo"));
-  SET_STRING_ELT(versionn,2,mkChar("md5"));
+  SET_STRING_ELT(versionn,0,Rf_mkChar("version"));
+  SET_STRING_ELT(versionn,1,Rf_mkChar("repo"));
+  SET_STRING_ELT(versionn,2,Rf_mkChar("md5"));
 
-  SET_STRING_ELT(version,0,mkChar(__VER_ver__));
-  SET_STRING_ELT(version,1,mkChar(__VER_repo__));
-  SET_STRING_ELT(version,2,mkChar(__VER_md5__));
+  SET_STRING_ELT(version,0,Rf_mkChar(__VER_ver__));
+  SET_STRING_ELT(version,1,Rf_mkChar(__VER_repo__));
+  SET_STRING_ELT(version,2,Rf_mkChar(__VER_md5__));
   Rf_setAttrib(version,   R_NamesSymbol, versionn);
   UNPROTECT(2);
   return version;
@@ -106,7 +102,7 @@ static inline void calcNparamsNlhsNslhs(void) {
 static inline void calcNextra(void) {
   int offCmt=0,nExtra = 0;
   char *buf=NULL, buf2[200];
-  for (int i = 0; i < tb.statei; i++){
+  for (int i = 0; i < tb.statei; i++) {
     if (offCmt == 0 && tb.idu[i] == 0){
       buf=tb.ss.line[tb.di[i]];
       offCmt = 1;
@@ -118,12 +114,46 @@ static inline void calcNextra(void) {
         snprintf(buf2, 200, "compartment '%s' needs differential equations defined", v);
         updateSyntaxCol();
         trans_syntax_error_report_fn0(buf2);
-      } else if (!strcmp("depot", buf) || !strcmp("central", buf)) {
       } else {
-        char *v = rc_dup_str(buf, 0);
-        snprintf(buf2, 200, _("compartment '%s' needs differential equations defined"), v);
-        updateSyntaxCol();
-        trans_syntax_error_report_fn0(buf2);
+        char *b2=tb.ss.line[tb.di[i]];
+        if (strcmp(b2, "depot") == 0 ||
+            strcmp(b2, "central") == 0 ||
+            strcmp(b2, "peripheral1") == 0 ||
+            strcmp(b2, "peripheral2") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p1") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_v1") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p2") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p3") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p4") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_ka") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_v1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p2") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p3") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p4") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_ka") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_v1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p2") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p3") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p4") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_ka") == 0 ||
+            strcmp(b2, "rx__sens_depot_BY_ka") == 0) {
+          continue;
+        }
+        // If there is only a linear compartment model AND this is a cmt() item, then
+        // this should be an extra compartment.
+        if (tb.linCmtCmt == 1 && tb.didx[i] < 0) {
+          buf=tb.ss.line[tb.di[i]];
+          offCmt = 1;
+          nExtra++;
+        } else if (tb.linCmtCmt == 1) {
+        } else {
+          char *v = rc_dup_str(buf, 0);
+          snprintf(buf2, 200, _("compartment '%s' needs differential equations defined"), v);
+          updateSyntaxCol();
+          trans_syntax_error_report_fn0(buf2);
+        }
       }
     } else if (offCmt == 1 && tb.idu[i] == 0){
       nExtra++;
@@ -132,14 +162,9 @@ static inline void calcNextra(void) {
   tb.nExtra=nExtra;
 }
 
-static inline void calcExtracmt(void) {
+static inline void assertNoLinCmtDepotCentral(void) {
   extraCmt = 0;
   if (tb.linCmt){
-    if (tb.hasKa){
-      extraCmt=2;
-    } else {
-      extraCmt=1;
-    }
     if (tb.hasDepotCmt == -1){
       trans_syntax_error_report_fn0(_("'cmt(depot)' does not work with 'linCmt()'"));
     }
@@ -165,12 +190,12 @@ static inline SEXP calcIniVals(void) {
         tb.isPi=0;
         break;
       }
-      SET_STRING_ELT(inin,ini_i,mkChar(buf));
+      SET_STRING_ELT(inin,ini_i,Rf_mkChar(buf));
       REAL(ini)[ini_i++] = tb.iniv[i];
     }
   }
   if (tb.isPi){
-    SET_STRING_ELT(inin,ini_i,mkChar("pi"));
+    SET_STRING_ELT(inin,ini_i,Rf_mkChar("pi"));
     REAL(ini)[ini_i++] = M_PI;
   } else if (redo){
     inin  = PROTECT(Rf_allocVector(STRSXP, tb.ini_i));pro++;
@@ -185,7 +210,7 @@ static inline SEXP calcIniVals(void) {
           tb.isPi=0;
           break;
         }
-        SET_STRING_ELT(inin,ini_i,mkChar(buf));
+        SET_STRING_ELT(inin,ini_i,Rf_mkChar(buf));
         REAL(ini)[ini_i++] = tb.iniv[i];
       }
     }
@@ -199,8 +224,8 @@ static inline SEXP calcIniVals(void) {
 
 SEXP orderForderS1(SEXP ordIn);
 
-static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
-  if (prop == 0 || pass == 1 || tb.dummyLhs == 1) {
+static inline int sortStateVectorsErrHandle(int prop, int i) {
+  if (prop == 0 || tb.dummyLhs == 1) {
     return 1;
   }
   char *buf = NULL;
@@ -270,26 +295,18 @@ static inline SEXP sortStateVectors(SEXP ordS) {
   }
   sbt.o = 0; // we can use sbt.o since all the code has already been output
   sbt.s[0] = 0;
+
   for (int i = 0; i < tb.de.n; i++) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
-    int pass = 0;
-    if (tb.linCmt) {
-      if (tb.hasDepotCmt == 1 && !strcmp("depot", tb.ss.line[tb.di[i]])){
-        pass = 1;
-      } else if ((tb.hasCentralCmt == 1 || tb.hasDepotCmt == 1)  &&
-                 !strcmp("central", tb.ss.line[tb.di[i]])) {
-        pass = 1;
-      }
-    }
     if (cur == 0) {
       // This has a property without an ODE or cmt() statement; should error here.
-      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
+      if (sortStateVectorsErrHandle(prop, i)) continue;
     } else if (cur < 0) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
       ord[i] = -cur;
-      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
+      if (sortStateVectorsErrHandle(prop, i)) continue;
     } else {
       ord[i] = cur;
     }
@@ -310,23 +327,24 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
   int *sensPropI = INTEGER(sensProp);
   int *normPropI = INTEGER(normProp);
   for (int i=0; i<tb.de.n; i++) {                     /* name state vars */
-    buf=tb.ss.line[tb.di[ordFp[i]-1]] ;
-    if (tb.idu[i] == 1){
+    buf=tb.ss.line[tb.di[ordFp[i]-1]];
+    /* REprintf("%s...idu[] %d\n", buf, tb.idu[ordFp[i]-1]); */
+    if (tb.idu[ordFp[i]-1] == 1) {
       if (strncmp(buf,"rx__sens_", 9) == 0){
         statePropI[k] = tb.dprop[ordFp[i]-1];
         sensPropI[j] = tb.dprop[ordFp[i]-1];
-        SET_STRING_ELT(sens,j++,mkChar(buf));
-        SET_STRING_ELT(state,k++,mkChar(buf));
+        SET_STRING_ELT(sens,j++,Rf_mkChar(buf));
+        SET_STRING_ELT(state,k++,Rf_mkChar(buf));
         stateRm[k-1]=tb.idi[ordFp[i]-1];
       } else {
         statePropI[k] = tb.dprop[ordFp[i]-1];
         normPropI[m] = tb.dprop[ordFp[i]-1];
-        SET_STRING_ELT(normState,m++,mkChar(buf));
-        SET_STRING_ELT(state,k++,mkChar(buf));
+        SET_STRING_ELT(normState,m++,Rf_mkChar(buf));
+        SET_STRING_ELT(state,k++,Rf_mkChar(buf));
         stateRm[k-1]=tb.idi[ordFp[i]-1];
       }
     } else {
-      SET_STRING_ELT(extraState, p++, mkChar(buf));
+      SET_STRING_ELT(extraState, p++, Rf_mkChar(buf));
     }
   }
 }
@@ -358,7 +376,7 @@ static inline void populateDfdy(SEXP dfdy) {
       sPrint(&_bufw,"%s",dy);
     }
     sPrint(&_bufw2,"df(%s)/dy(%s)",df,_bufw.s);
-    SET_STRING_ELT(dfdy,i,mkChar(_bufw2.s));
+    SET_STRING_ELT(dfdy,i,Rf_mkChar(_bufw2.s));
   }
 }
 
@@ -384,14 +402,14 @@ static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *
                                         int *li, int *pi, SEXP lhsStr) {
   if (islhs == isLHS || islhs == isLHSstr ||
       islhs == isLhsStateExtra || islhs == isLHSparam) {
-    SET_STRING_ELT(lhs, li[0], mkChar(buf));
+    SET_STRING_ELT(lhs, li[0], Rf_mkChar(buf));
     INTEGER(lhsStr)[li[0]] = islhs == isLHSstr;
     li[0] = li[0]+1;
     if (islhs == isLHSparam) {
       if (!strcmp("CMT", buf)) {
         tb.hasCmt = 1;
       }
-      SET_STRING_ELT(params, pi[0], mkChar(buf));
+      SET_STRING_ELT(params, pi[0], Rf_mkChar(buf));
       pi[0] = pi[0]+1;
     }
     return 1;
@@ -445,7 +463,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
   for (int i=0; i<NV; i++) {
     int islhs = tb.lh[i];
     if (islhs == isSuppressedLHS || islhs == isSuppressedLHSstr){
-      SET_STRING_ELT(slhs, sli++, mkChar(tb.ss.line[i]));
+      SET_STRING_ELT(slhs, sli++, Rf_mkChar(tb.ss.line[i]));
     }
     buf=tb.ss.line[i];
 
@@ -455,7 +473,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
-      SET_STRING_ELT(params, pi++, mkChar(_bufw.s));
+      SET_STRING_ELT(params, pi++, Rf_mkChar(_bufw.s));
     }
   }
 }

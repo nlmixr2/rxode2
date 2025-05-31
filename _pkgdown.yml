@@ -158,6 +158,7 @@ reference:
   - rxParams
   - rxProgress
   - rxState
+  - rxStateOde
   - rxSymInvChol
   - swapMatListWithCube
   - uppergamma

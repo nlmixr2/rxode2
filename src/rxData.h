@@ -30,6 +30,7 @@ extern "C" {
   void rxAssignPtrC(SEXP obj);
   SEXP rxModelVarsC(char *ptr);
   SEXP rxStateNames(char *ptr);
+  SEXP rxStateIgnore(char *ptr);
   SEXP rxLhsNames(char *ptr);
   SEXP rxParamNames(char *ptr);
   int rxIsCurrentC(SEXP obj);

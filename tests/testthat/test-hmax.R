@@ -1,4 +1,5 @@
 rxTest({
+
   evi <- structure(list(time = c(
     0,
     0, 0.5, 0.5, 0.969, 0.9833, 1, 1.5, 1.77253, 1.9333, 2, 2.5,
@@ -952,23 +953,30 @@ rxTest({
   m1 <- rxode2({
     C2 <- centr / V1
     C3 <- peri / V2
-    d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3 + R * doInf
-    d / dt(peri) <- Q * C2 - Q * C3
-    d / dt(auc) <- C2
+    d/dt(centr) <- -CL * C2 - Q * C2 + Q * C3 + R * doInf
+    d/dt(peri) <- Q * C2 - Q * C3
+    d/dt(auc) <- C2
   })
 
   test_that("Solving can make sense", {
+
     x <- rxSolve(m1, params = theta, events = evi)
     expect_false(all(x$centr == 0))
+
     x <- rxSolve(m1, params = theta, events = evi, method = "lsoda")
     expect_false(all(x$centr == 0))
+
     x <- rxSolve(m1, params = theta, events = evi, hmax = 0.5)
     expect_false(all(x$centr == 0))
+
     x <- rxSolve(m1, params = theta, events = evi, method = "lsoda", hmax = 0.5)
     expect_false(all(x$centr == 0))
+
     x <- rxSolve(m1, params = theta, events = evi, hmax = 0)
     expect_false(all(x$centr == 0))
+
     x <- rxSolve(m1, params = theta, events = evi, method = "lsoda", hmax = 0)
     expect_false(all(x$centr == 0))
+
   })
 })

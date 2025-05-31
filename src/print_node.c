@@ -24,8 +24,7 @@ void wprint_node(int depth, char *name, char *value, void *client_data) {
       nodeFunAbs(value) ||
       nodeFunLinCmt(value) ||
       nodeFunLinCmtA(value) ||
-      nodeFunLinCmtB(value) ||
-      nodeFunLinCmtC(value);
+      nodeFunLinCmtB(value);
   }
   if (!tmp) {
     // See if this variable is a function too
