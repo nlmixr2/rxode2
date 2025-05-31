@@ -602,7 +602,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      if (ind->linCmtHparIndex >= -1) {
+      if (rx->ndiff == 0) {
+        lc.linAcalcAlast(yp, g, theta);
+        lc.calcFx(thetaSens);
+        lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
+      } else if (ind->linCmtHparIndex >= -1) {
         if (ind->linCmtHparIndex >= 0) {
           thetaSens(ind->linCmtHparIndex, 0) += ind->linCmtH;
         }

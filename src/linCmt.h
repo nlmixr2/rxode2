@@ -848,8 +848,29 @@ namespace stan {
         isAD_ = isAD;
         int nd = numDiff_;
         if (nd == 0) {
-          Rcpp::stop("Sorry number of diffs incorrectly setup");
-          nd = 127; // all terms
+          int sw = ncmt_*10+oral0_;
+          switch (sw) {
+          case 11: // cl v ka
+            nd = diffP1 + diffV1 + diffKa;
+            break;
+          case 10: // cl v
+            nd = diffP1 + diffV1;
+            break;
+          case 21: // cl v q v2 ka
+            nd = diffP1 + diffV1 + diffP2 + diffP3 + diffKa;
+            break;
+          case 20: // cl v q v2
+            nd = diffP1 + diffV1 + diffP2 + diffP3;
+            break;
+          case 31: // cl v q v2 q2 v3 ka
+            nd = diffP1 + diffV1 + diffP2 + diffP3 + diffP4 + diffP5 + diffKa;
+            break;
+          case 30: // cl v q v2 q2 v3
+            nd = diffP1 + diffV1 + diffP2 + diffP3 + diffP4 + diffP5;
+            break;
+          default:
+            Rcpp::stop("Unknown linear compartment model: %d %d", ncmt_, oral0_);
+          }
         }
         int i = 0, j=0;
 
