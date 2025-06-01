@@ -87,6 +87,8 @@ namespace stan {
 
       bool isAD_ = false;
       bool scaleSetup_ = false;
+      double suspect_ = 1e-6;
+      int forwardMax_ = 3;
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
@@ -152,6 +154,12 @@ namespace stan {
 
       void setId(const int id) {
         id_ = id;
+      }
+
+      void setForwardOpts(double suspect, int forwardMax) {
+        double suspect_ = suspect;
+        int forwardMax_ = forwardMax;
+
       }
 
       // This will get the initial parameter value
@@ -2843,7 +2851,7 @@ namespace stan {
       bool anySuspect(Eigen::Matrix<double, Eigen::Dynamic, 1>& fx) {
         for (int i = oral0_; i < fx.size(); i++) {
           double afx = std::abs(fx(i, 0));
-          if (afx < 1e-6) {
+          if (afx <= suspect_) {
             return true;
           }
         }
@@ -2882,11 +2890,13 @@ namespace stan {
             thetaCur(i, 0) += hhh;
             fup = fdoubles(thetaCur);
             fcur = (fup - fx).array()/(hhh)*scaleC_(i, 0);
-            if (anySuspect(fcur)) {
+            if (forwardMax_ >= 2 &&
+                anySuspect(fcur)) {
               thetaCur(i, 0) += hhh;
               fnext           = fdoubles(thetaCur);
               fcur = (-3.0*fx + 4.0*fup - fnext).array()/(2.0*hhh)*scaleC_(i, 0);
-              if (anySuspect(fcur)) {
+              if (forwardMax_ >= 3 &&
+                  anySuspect(fcur)) {
                 thetaCur(i, 0) += hhh;
                 fnext2          = fdoubles(thetaCur);
                 fcur = (-11.0*fx + 18*fup -

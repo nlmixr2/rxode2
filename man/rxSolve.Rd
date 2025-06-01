@@ -146,6 +146,9 @@ rxSolve(
   linCmtScale = NULL,
   linCmtHcmt = NULL,
   linCmtHmeanI = c("geometric", "arithmetic", "harmonic"),
+  linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
+  linCmtSuspect = 1e-06,
+  linCmtForwardMax = 3L,
   envir = parent.frame()
 )
 
@@ -917,6 +920,26 @@ time-point of the linear solved systems (as defined by \code{"linCmtHcmt"}).
 \item \code{"geometric"} -- gives the geometric mean
 \item \code{"harmonic"} -- gives the harmonic mean
 }}
+
+\item{linCmtHmeanO}{This represents the type of sum done for the
+overall problem of the linear solved systems (first each time
+point mean is calculated with \code{linCmtHmeanI}).
+\itemize{
+\item \code{"arithmetic"} -- gives the arithmetic mean
+\item \code{"geometric"} -- gives the geometric mean
+\item \code{"harmonic"} -- gives the harmonic mean
+}}
+
+\item{linCmtSuspect}{The tolerance for gradients in linear
+compartment solutions to re-compute when gradients seem to be
+zero.}
+
+\item{linCmtForwardMax}{The maximum number of points in a forward
+difference to take while calculating the gradients.  This is an
+integer from 1 to 3.  There is at least 1 extra point taken for
+gradient calculation, if the gradient is suspect another is taken
+(if this value is 2), and finally a third is calculated if the
+gradient is still suspect.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

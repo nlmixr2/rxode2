@@ -3108,7 +3108,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         }
       }
       // Finalize the current mean
-      double correction = 1.0;
+      double correction0 = 1.0;
       switch (rx->linCmtHmeanI) {
       case 1:
         // arithmetic mean, already finalized
@@ -3120,16 +3120,26 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         break;
       case 3:
         // harmonic mean
-        correction = (double)(n0-nzero0)/((double)n);
-        if (correction <= 0) correction=1;
-        cur =  (double)(n0)/cur0 * correction;
+        correction0 = (double)(n0-nzero0)/((double)n);
+        if (correction0 <= 0) correction0=1;
+        cur =  (double)(n0)/cur0 * correction0;
         break;
       }
       if (cur == 0) {
         nzero++;
       } else {
         n++;
-        delta = 1.0/cur - ret; // harmonic mean
+        switch (rx->linCmtHmeanO) {
+        case 1: // arithmetic mean
+          delta = cur - ret;
+          break;
+        case 2: // geometric mean
+          delta = log(cur) - ret;
+          break;
+        case 3: // harmonic mean
+          delta = 1.0/cur - ret;
+          break;
+        }
         // delta = log(cur) - ret; // geometric mean
         ret += delta/n0;
       }
@@ -3141,14 +3151,20 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
     }
     ind->solvedIdx = i;
   }
-  // harmonic mean
-  double correction = (double)(n-nzero)/((double)n);
-  if (correction <= 0) correction=1;
-  return (double)(n)/ret * correction;
-  // Geometric mean
-  // double correction = (double)(n)/((double)(n-nzero));
-  // if (correction <= 0) correction=1;
-  // return exp(ret)*correction;
+  double correction;
+  switch (rx->linCmtHmeanO) {
+  case 1: // arithmetic mean
+    return ret;
+    break;
+  case 2: // geometric mean
+    return exp(ret);
+    break;
+  case 3: // harmonic mean
+    correction =  (double)(n-nzero)/((double)n);
+    if (correction <= 0) correction=1;
+    return (double)(n)/ret * correction;
+  }
+  return ret;
 }
 
 extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,

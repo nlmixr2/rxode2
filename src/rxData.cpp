@@ -4923,6 +4923,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtShiMax = asInt(rxControl[Rxc_linCmtShiMax], "linCmtShiMax");
     rx->linCmtHcmt = asInt(rxControl[Rxc_linCmtHcmt], "linCmtHcmt");
     rx->linCmtHmeanI = asInt(rxControl[Rxc_linCmtHmeanI], "linCmtHmeanI");
+    rx->linCmtHmeanO = asInt(rxControl[Rxc_linCmtHmeanO], "linCmtHmeanO");
+    rx->linCmtSuspect = asDouble(rxControl[Rxc_linCmtSuspect], "linCmtSuspect");
+    rx->linCmtForwardMax = asInt(rxControl[Rxc_linCmtForwardMax], "linCmtForwardMax");
 
     // since linCmtB is not parallel, no need to copy into
     // a different solving memory space

@@ -519,6 +519,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
     yp.resize(ncmt + oral0);
     g.resize(ncmt, 2);
+    lc.setForwardOpts(rx->linCmtSuspect, rx->linCmtForwardMax);
   } else {
     lc.setSsType(ind->linSS);
   }

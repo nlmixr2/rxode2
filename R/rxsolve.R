@@ -712,8 +712,28 @@
 #'
 #'  - `"geometric"` -- gives the geometric mean
 #'
+#'  - `"harmonic"` -- gives the harmonic mean
+#'
+#' @param linCmtHmeanO This represents the type of sum done for the
+#'   overall problem of the linear solved systems (first each time
+#'   point mean is calculated with `linCmtHmeanI`).
+#'
+#' - `"arithmetic"` -- gives the arithmetic mean
+#'
+#' - `"geometric"` -- gives the geometric mean
+#'
 #' - `"harmonic"` -- gives the harmonic mean
 #'
+#' @param linCmtSuspect The tolerance for gradients in linear
+#'   compartment solutions to re-compute when gradients seem to be
+#'   zero.
+#'
+#' @param linCmtForwardMax The maximum number of points in a forward
+#'   difference to take while calculating the gradients.  This is an
+#'   integer from 1 to 3.  There is at least 1 extra point taken for
+#'   gradient calculation, if the gradient is suspect another is taken
+#'   (if this value is 2), and finally a third is calculated if the
+#'   gradient is still suspect.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -847,6 +867,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtScale=NULL,
                     linCmtHcmt=NULL,
                     linCmtHmeanI=c("geometric", "arithmetic", "harmonic"),
+                    linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
+                    linCmtSuspect=1e-6,
+                    linCmtForwardMax=3L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -881,9 +904,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       )[match.arg(sigmaXform)]
     }
 
-    if (is.null(linCmtHmeanI)) {
-      linCmtHmeanI <- 2L
-    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(linCmtHmeanI, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
     } else if (checkmate::testCharacter(linCmtHmeanI, any.missing=FALSE)) {
       linCmtHmeanI <- c("arithmetic"=1L,
                          "geometric"=2L,
@@ -892,6 +913,19 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       stop("linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
            call.=FALSE)
     }
+
+    if (checkmate::testIntegerish(linCmtHmeanO, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    } else if (checkmate::testCharacter(linCmtHmeanO, any.missing=FALSE)) {
+      linCmtHmeanO <- c("arithmetic"=1L,
+                        "geometric"=2L,
+                        "harmonic"=3L)[match.arg(linCmtHmeanO)]
+    } else {
+      stop("linCmtHmeanO must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
+           call.=FALSE)
+    }
+
+    checkmate::assertNumeric(linCmtSuspect, lower=0, finite=TRUE, len=1)
+    checkmate::assertIntegerish(linCmtForwardMax, lower=1, upper=3, any.missing=FALSE)
 
     if (is.null(linCmtHcmt)) {
       linCmtHcmt <- 1L
@@ -1360,6 +1394,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtScale=linCmtScale,
       linCmtHcmt = linCmtHcmt,
       linCmtHmeanI=linCmtHmeanI,
+      linCmtHmeanO=linCmtHmeanO,
+      linCmtSuspect=linCmtSuspect,
+      linCmtForwardMax=linCmtForwardMax,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

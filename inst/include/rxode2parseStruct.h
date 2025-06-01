@@ -301,6 +301,10 @@ typedef struct {
 
   int linCmtHcmt; // linear compartments used for H optimization
   int linCmtHmeanI; // Type of sum for each individual time point
+  int linCmtHmeanO; // Type of sum for overall H optimization
+
+  double linCmtSuspect; // What value is close enough to zero to request more der accuracy.
+  int linCmtForwardMax; // Maximum number of forward steps to take with forward differences
 } rx_solve;
 
 
