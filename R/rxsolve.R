@@ -705,6 +705,16 @@
 #'   - `"concentration"` -- concentration value (i.e. central
 #'      compartment/volume)
 #'
+#' @param linCmtHmeanI This represents the type of sum done for each
+#'   time-point of the linear solved systems (as defined by `"linCmtHcmt"`).
+#'
+#'  - `"arithmetic"` -- gives the arithmetic mean
+#'
+#'  - `"geometric"` -- gives the geometric mean
+#'
+#' - `"harmonic"` -- gives the harmonic mean
+#'
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -836,6 +846,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtShiMax=20L,
                     linCmtScale=NULL,
                     linCmtHcmt=NULL,
+                    linCmtHmeanI=c("geometric", "arithmetic", "harmonic"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -870,6 +881,18 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       )[match.arg(sigmaXform)]
     }
 
+    if (is.null(linCmtHmeanI)) {
+      linCmtHmeanI <- 2L
+    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    } else if (checkmate::testCharacter(linCmtHmeanI, any.missing=FALSE)) {
+      linCmtHmeanI <- c("arithmetic"=1L,
+                         "geometric"=2L,
+                         "harmonic"=3L)[match.arg(linCmtHmeanI)]
+    } else {
+      stop("linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
+           call.=FALSE)
+    }
+
     if (is.null(linCmtHcmt)) {
       linCmtHcmt <- 1L
     } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L, upper=31L, any.missing=FALSE)) {
@@ -886,6 +909,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                peripheral2   = 4L,
                concentration = 16L)
       }, integer(1)))
+    } else {
+      stop("linCmtHcmt must be a character vector of 'depot', 'central', 'peripheral1', 'peripheral2', or 'concentration' or an integer between 1 and 31",
+           call.=FALSE)
     }
 
     if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
@@ -1333,6 +1359,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtShiMax=linCmtShiMax,
       linCmtScale=linCmtScale,
       linCmtHcmt = linCmtHcmt,
+      linCmtHmeanI=linCmtHmeanI,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

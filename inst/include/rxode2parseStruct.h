@@ -300,6 +300,7 @@ typedef struct {
   double *linCmtScale;
 
   int linCmtHcmt; // linear compartments used for H optimization
+  int linCmtHmeanI; // Type of sum for each individual time point
 } rx_solve;
 
 

@@ -145,6 +145,7 @@ rxSolve(
   linCmtShiMax = 20L,
   linCmtScale = NULL,
   linCmtHcmt = NULL,
+  linCmtHmeanI = c("geometric", "arithmetic", "harmonic"),
   envir = parent.frame()
 )
 
@@ -907,6 +908,14 @@ vector it can be any of the following (multiple allowed):
 \item \code{"peripheral2"} -- second peripheral compartment
 \item \code{"concentration"} -- concentration value (i.e. central
 compartment/volume)
+}}
+
+\item{linCmtHmeanI}{This represents the type of sum done for each
+time-point of the linear solved systems (as defined by \code{"linCmtHcmt"}).
+\itemize{
+\item \code{"arithmetic"} -- gives the arithmetic mean
+\item \code{"geometric"} -- gives the geometric mean
+\item \code{"harmonic"} -- gives the harmonic mean
 }}
 
 \item{envir}{is the environment to look for R user functions

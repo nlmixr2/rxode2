@@ -3040,15 +3040,26 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       // Geometric mean of all compartments
       double cur0;
       int n0=0;
+      int nzero0 = 0;
       int cmtId = 1;
       for (int i = 0; i < rx->linCmtNcmt; ++i) {
         if ((rx->linCmtHcmt & cmtId) != 0) {
           cur = yp[op->numLin + rx->linCmtOral0 + i];
           if (cur == 0) {
+            nzero0++;
           } else {
             n0++;
-            // delta = 1.0/cur - cur0; // harmonic mean
-            delta = log(cur) - cur0; // geometric mean
+            switch (rx->linCmtHmeanI) {
+            case 1:
+              delta = cur - cur0; // arithmetic mean
+              break;
+            case 2:
+              delta = log(cur) - cur0; // geometric mean
+              break;
+            case 3:
+              delta = 1.0/cur - cur0; // harmonic mean
+              break;
+            }
             cur0 += delta/n0;
           }
         }
@@ -3058,10 +3069,20 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         if ((rx->linCmtHcmt & linCmtDepot) != 0) {
           cur = yp[op->numLin + rx->linCmtOral0 + i];
           if (cur == 0) {
+            nzero0++;
           } else {
             n0++;
-            // delta = 1.0/cur - cur0; // harmonic mean
-            delta = log(cur) - cur0; // geometric mean
+            switch (rx->linCmtHmeanI) {
+            case 1:
+              delta = cur - cur0; // arithmetic mean
+              break;
+            case 2:
+              delta = log(cur) - cur0; // geometric mean
+              break;
+            case 3:
+              delta = 1.0/cur - cur0; // harmonic mean
+              break;
+            }
             cur0 += delta/n0;
           }
         }
@@ -3069,15 +3090,41 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       if ((rx->linCmtHcmt & linCmtConc) != 0) {
         cur = yp[op->numLin+rx->linCmtOral0]/ind->linCmtHV;
         if (cur == 0) {
-          // nzero++;
+          nzero0++;
         } else {
           n0++;
-          // delta = 1.0/cur - cur0; // harmonic mean
-          delta = log(cur) - cur0; // geometric mean
+          switch (rx->linCmtHmeanI) {
+          case 1:
+            delta = cur - cur0; // arithmetic mean
+            break;
+          case 2:
+            delta = log(cur) - cur0; // geometric mean
+            break;
+          case 3:
+            delta = 1.0/cur - cur0; // harmonic mean
+            break;
+          }
           cur0 += delta/n0;
         }
       }
-      cur = cur0;
+      // Finalize the current mean
+      double correction = 1.0;
+      switch (rx->linCmtHmeanI) {
+      case 1:
+        // arithmetic mean, already finalized
+        cur = cur0;
+        break;
+      case 2:
+        // geometric mean
+        cur = exp(cur0);
+        break;
+      case 3:
+        // harmonic mean
+        correction = (double)(n0-nzero0)/((double)n);
+        if (correction <= 0) correction=1;
+        cur =  (double)(n0)/cur0 * correction;
+        break;
+      }
       if (cur == 0) {
         nzero++;
       } else {
