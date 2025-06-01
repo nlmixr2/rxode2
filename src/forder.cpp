@@ -12,13 +12,7 @@
 #include <cerrno>
 #include <ctype.h>     // isspace
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 
 // Much of this comes from data.table, with references to where it came from

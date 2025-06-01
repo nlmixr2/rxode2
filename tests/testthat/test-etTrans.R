@@ -230,15 +230,14 @@ d/dt(blood)     = a*intestine - b*blood
       expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
     })
 
-    et <- structure(list(time = 0.24, amt = 3, evid = 4L), class = "data.frame", row.names = c(NA, -1L))
+    et <- structure(list(time = c(0, 0.24), amt = c(NA_real_, 3),
+                         evid = c(0L, 4L)), class = "data.frame", row.names = c(NA, -2L))
 
     test_that("EVID=4 makes sense", {
-      expect_warning(
         expect_equal(
           etTrans(et, mod, keepDosingOnly = TRUE)$EVID,
-          c(3L, 101L)
+          c(0L, 3L, 101L)
         )
-      )
     })
 
 
@@ -1139,11 +1138,16 @@ d/dt(blood)     = a*intestine - b*blood
     expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 7")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(4, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1)
+      data.frame(ID = 1,
+                 EVID = c(0, 4, 0),
+                 cmt = c("central", "depot", "central"),
+                 DV = c(1, NA, 1),
+                 TIME = c(0, 0, 1))
+
     expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "EVID=4")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(4, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt=NA)
+      data.frame(ID = 1, EVID = c(0, 4, 0), cmt = c("central", "depot", "central"), DV = c(1, NA, 1), TIME = c(0, 0:1), amt=NA)
     expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 4")
 
 

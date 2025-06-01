@@ -1,67 +1,122 @@
-rxTest({
+if (tolower(Sys.info()[["sysname"]]) == "linux") {
+  rxTest({
 
-  test_that("mixed ode/linCmt() zero observation issue(s)", {
+    test_that("table step for linCmtB", {
 
-    rxWithSeed(1, {
+      pars <- test_path("lincmt-solve-focei-sol.qs")
+      skip_if_not(file.exists(pars))
+      pars <- qs::qread(pars)
 
-      pk <- c(cl=0.2,v2=3.5,q=.4,v3=3.5,ka=.2,f=.7)
-      nn <- 100
-      rands <- matrix(runif(4*nn),nn)
-      pdpars <- dplyr::tibble(ec50=(300/28*pk["f"]/pk["cl"])*(0.1+0.9*rands[,1]),emax=-0.9+10.9*rands[,2],
-                              gamma=1+3*rands[,3],ke0=log(2)/(5+45*rands[,4]))
-      rxmod1 <- RxODE({
-        Cp       <- linCmt(ka,cl,v2,v3,q)
-        d/dt(Ce) <- (Cp-Ce)*ke0
-        eff      <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
+      rx <- rxode2({
+        param(THETA[1], THETA[2], THETA[3], THETA[4], ETA[1], ETA[2],
+              ETA[3])
+        rx_yj_ ~ 2
+        rx_lambda_ ~ 1
+        rx_hi_ ~ 1
+        rx_low_ ~ 0
+        rx_expr_0 ~ ETA[2] + THETA[2]
+        rx_expr_1 ~ ETA[3] + THETA[3]
+        rx_expr_2 ~ ETA[1] + THETA[1]
+        rx_expr_3 ~ exp(rx_expr_0)
+        rx_expr_4 ~ exp(rx_expr_1)
+        rx_expr_5 ~ exp(rx_expr_2)
+        rx_pred_ = linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, rx_expr_3,
+                           rx_expr_4, 0, 0, 0, 0, rx_expr_5)
+        rx__sens_rx_pred__BY_ETA_1___ = rx_expr_5 *
+          linCmtB(rx__PTR__,
+                  t, 2, 1, 1, -2, 2, 1, rx_expr_3, rx_expr_4, 0, 0, 0,
+                  0, rx_expr_5)
+        rx__sens_rx_pred__BY_ETA_2___ = rx_expr_3 *
+          linCmtB(rx__PTR__,
+                  t, 2, 1, 1, -2, 0, 1, rx_expr_3, rx_expr_4, 0, 0, 0,
+                  0, rx_expr_5)
+        rx__sens_rx_pred__BY_ETA_3___ = rx_expr_4 *
+          linCmtB(rx__PTR__,
+                  t, 2, 1, 1, -2, 1, 1, rx_expr_3, rx_expr_4, 0, 0, 0,
+                  0, rx_expr_5)
+        rx_r_ = Rx_pow_di(THETA[4], 2)
+        rx__sens_rx_r__BY_ETA_1___ = 0
+        rx__sens_rx_r__BY_ETA_2___ = 0
+        rx__sens_rx_r__BY_ETA_3___ = 0
+        cmt(rxLinCmt)
+        dvid(3)
       })
 
-      et1 <- et() %>%
-        et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) %>% ## sampling
-        add.dosing(dose=300*pk["f"],dosing.to=1,nbr.dose=13,dosing.interval=28,start.time=0)  ## dosing
 
-        res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
-
-        ### Note 1: bug occurs when including several sets of parameters
-        res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
-
-        expect_length(res1 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),0)
-
-        ### Note 2: Bug also occurs when simulating one set of parameters at a time
-        res2 <- do.call("rbind", lapply(1:nn, function(x) {
-          rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[x,]))),et1)
-        }))
-
-        expect_length(res2 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time), 0)
+      expect_error(rxSolve(rx, pars,
+                           nlmixr2data::theo_sd),
+                   NA)
 
     })
+
+    test_that("mixed ode/linCmt() zero observation issue(s)", {
+
+      rxWithSeed(1, {
+
+        pk <- c(cl=0.2,v2=3.5,q=.4,v3=3.5,ka=.2,f=.7)
+        nn <- 100
+        rands <- matrix(runif(4*nn),nn)
+        pdpars <- dplyr::tibble(ec50=(300/28*pk["f"]/pk["cl"])*(0.1+0.9*rands[,1]),emax=-0.9+10.9*rands[,2],
+                                gamma=1+3*rands[,3],ke0=log(2)/(5+45*rands[,4]))
+        rxmod1 <- RxODE({
+          Cp       <- linCmt(ka,cl,v2,v3,q)
+          d/dt(Ce) <- (Cp-Ce)*ke0
+          eff      <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
+        })
+
+        et1 <- et() %>%
+          et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) %>% ## sampling
+          add.dosing(dose=300*pk["f"],dosing.to=1,nbr.dose=13,dosing.interval=28,start.time=0)  ## dosing
+
+          res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
+
+          ### Note 1: bug occurs when including several sets of parameters
+          res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
+
+          expect_length(res1 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),0)
+
+          ### Note 2: Bug also occurs when simulating one set of parameters at a time
+          res2 <- do.call("rbind", lapply(1:nn, function(x) {
+            rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[x,]))),et1)
+          }))
+
+          expect_length(res2 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time), 0)
+
+      })
+    })
+
   })
 
-})
-
-if (rxode2::.linCmtSensB()) {
   rxTest({
+
     tol <- 5e-5 ## Current difference for all equations
-    types <- 1:4
+    types <- 1:6
 
     for (type in types) {
+
       .txt <- switch(type,
-                     "linear",
-                     "sensitivity",
-                     "linear [no save]",
-                     "advanSens"
-                     )
+                     "linear", #1
+                     "sensitivity AD", #2
+                     "sensitivity forward", #3
+                     "sensitivity central", #4
+                     "sensitivity forward3", #5
+                     "sensitivity endpoint5") #6
+
       sens <- switch(type,
-                     "linCmtA",
-                     "linCmtB",
-                     "linCmtC",
-                     "linCmtB"
-                     )
-      sensType <- switch(type,
-                         "autodiff",
-                         "autodiff",
-                         "autodiff",
-                         "advan"
-                         )
+                     "linCmtA", # 1
+                     "linCmtB", # 2
+                     "linCmtB", # 3
+                     "linCmtB", # 4
+                     "linCmtB", # 5
+                     "linCmtB") # 6
+
+      linCmtSensType <- switch(type,
+                               "AD", #1
+                               "AD", #2
+                               "forward", #3
+                               "central", #4
+                               "forward3", #5
+                               "endpoint5") #6
 
       etSsB <- et() %>%
         et(amt = 3) %>%
@@ -77,25 +132,22 @@ if (rxode2::.linCmtSensB()) {
 
       etSsR <- et(amt = 0, ss = 1, rate = 10000 / 8)
 
-      ode.1c <- rxode2(
-      {
+      ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
       },
-      linCmtSens = sens
-      )
+      linCmtSens = sens, linCmtSensType = linCmtSensType)
 
-      sol.1c <- rxode2(
-      {
+      sol.1c <- rxode2({
         C2 <- linCmt(CL, V)
       },
-      linCmtSens = sens
-      )
+      linCmtSens = sens, linCmtSensType = linCmtSensType)
 
       # context(sprintf("Test steady state solutions 1 cmt (%s)", .txt))
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsB)
-      s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsB, sensType = sensType)
+      s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsB)
+
       test_that(sprintf("one compartment bolus steady state (%s)", .txt), {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
@@ -105,7 +157,7 @@ if (rxode2::.linCmtSensB()) {
       expect_true("rate" %in% names(o1))
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI)
-      s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsI, sensType = sensType)
+      s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsI)
       test_that(sprintf("one compartment infusion tau steady state (%s)", .txt), {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
@@ -118,7 +170,7 @@ if (rxode2::.linCmtSensB()) {
       expect_true("ii" %in% names(o1))
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR)
-      s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsR, sensType = sensType)
+      s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsR)
       test_that(sprintf("one compartment infusion steady state (%s)", .txt), {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
@@ -132,30 +184,29 @@ if (rxode2::.linCmtSensB()) {
         d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
         d / dt(peri) <- Q * C2 - Q * C3
       },
-      linCmtSens = sens
-      )
+      linCmtSens = sens, linCmtSensType = linCmtSensType)
 
       sol.2c <- rxode2(
       {
         C2 <- linCmt(V, CL, V2, Q1)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsB)
-      s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsB, sensType = sensType)
+      s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsB)
       test_that("two compartment bolus steady state", {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsI)
-      s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsI, sensType = sensType)
+      s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsI)
       test_that("two compartment infusion steady state, tau", {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsR)
-      s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsR, sensType = sensType)
+      s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsR)
       test_that("two compartment infusion steady state", {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
@@ -171,30 +222,30 @@ if (rxode2::.linCmtSensB()) {
         d / dt(peri) <- Q * C2 - Q * C3
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.3c <- rxode2(
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsB)
-      s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsB, sensType = sensType)
+      s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsB)
       test_that("three compartment bolus steady state", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsI)
-      s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsI, sensType = sensType)
+      s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsI)
       test_that("three compartment bolus steady state", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsR)
-      s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsR, sensType = sensType)
+      s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsR)
       test_that("three compartment bolus steady state", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
@@ -207,31 +258,32 @@ if (rxode2::.linCmtSensB()) {
         d / dt(depot) <- -KA * depot
         d / dt(center) <- KA * depot - CL * C2
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.1c.ka <- rxode2(
       {
         C2 <- linCmt(V, CL, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
-      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB, sensType = sensType)
-      test_that("one compartment bolus steady state to depot compartment", {
-        expect_equal(o1$C2, s1$C2, tolerance = tol)
-      })
+      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
+      test_that(sprintf("one compartment bolus steady state to depot compartment (%s)",
+                        .txt), {
+                          expect_equal(o1$C2, s1$C2, tolerance = tol)
+                        })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
-      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI, sensType = sensType)
-      test_that("one compartment infusion steady state to depot compartment, tau", {
+      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
+      test_that(sprintf("one compartment infusion steady state to depot compartment, tau (%s)", .txt), {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR)
-      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR, sensType = sensType)
-      test_that("one compartment infusion steady state to depot compartment", {
+      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR)
+      test_that(sprintf("one compartment infusion steady state to depot compartment (%s)", .txt), {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
@@ -250,19 +302,19 @@ if (rxode2::.linCmtSensB()) {
       etSsR2 <- et(amt = 0, ss = 1, rate = 10000 / 8, cmt = 2)
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB2)
-      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB2, sensType = sensType)
+      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB2)
       test_that("one compartment bolus steady state to central compartment", {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI2)
-      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI2, sensType = sensType)
+      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI2)
       test_that("one compartment infusion steady state to central compartment, tau", {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR2)
-      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR2, sensType = sensType)
+      s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR2)
       test_that("one compartment infusion steady state to central compartment", {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
@@ -277,49 +329,49 @@ if (rxode2::.linCmtSensB()) {
         d / dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
         d / dt(peri) <- Q * C2 - Q * C3
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.2c.ka <- rxode2(
       {
         C2 <- linCmt(V, CL, V2, Q, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB)
-      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB, sensType = sensType)
-      test_that("two compartment bolus steady state to depot compartment", {
+      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB)
+      test_that(sprintf("two compartment bolus steady state to depot compartment (%s)", .txt), {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI)
-      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI, sensType = sensType)
-      test_that("two compartment infusion steady state to depot compartment, tau", {
+      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI)
+      test_that(sprintf("two compartment infusion steady state to depot compartment, tau (%s)", .txt), {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
-      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR, sensType = sensType)
-      test_that("two compartment infusion steady state to depot compartment, tau", {
+      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
+      test_that(sprintf("two compartment infusion steady state to depot compartment, tau (%s)", .txt), {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB2)
-      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB2, sensType = sensType)
+      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB2)
       test_that("two compartment bolus steady state to central compartment", {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI2)
-      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI2, sensType = sensType)
+      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI2)
       test_that("two compartment infusion steady state to central compartment, tau", {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2)
-      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2, sensType = sensType)
+      s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2)
       test_that("two compartment infusion steady state to central compartment", {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
@@ -340,42 +392,43 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
-      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB, sensType = sensType)
-      test_that("three compartment bolus steady state to depot compartment", {
-        expect_equal(o3$C2, s3$C2, tolerance = tol)
-      })
+      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
+      test_that(sprintf("three compartment bolus steady state to depot compartment (%s)",
+                        .txt), {
+                          expect_equal(o3$C2, s3$C2, tolerance = tol)
+                        })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
-      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI, sensType = sensType)
-      test_that("three compartment infusion steady state to depot compartment, tau", {
+      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
+      test_that(sprintf("three compartment infusion steady state to depot compartment, tau (%s)", .txt), {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
-      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR, sensType = sensType)
+      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
       test_that("three compartment infusion steady state to depot compartment", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       ## B2
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
-      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2, sensType = sensType)
+      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
       test_that("three compartment bolus steady state to central compartment", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
-      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2, sensType = sensType)
+      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
       test_that("three compartment infusion steady state to central compartment, tau", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
-      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2, sensType = sensType)
+      s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
       test_that("three compartment infusion steady state to central compartment", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
@@ -389,10 +442,6 @@ if (rxode2::.linCmtSensB()) {
       ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
-      })
-
-      test_that("ode model gives extraCmt=0", {
-        expect_equal(rxModelVars(ode.1c)$extraCmt, 0L)
       })
 
       goodP <- function(model, cmt = 1L, ka = 0L) {
@@ -411,7 +460,7 @@ if (rxode2::.linCmtSensB()) {
         CL <- theta[2]
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs)
@@ -425,7 +474,7 @@ if (rxode2::.linCmtSensB()) {
         K <- CLx / V
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.2cK)
@@ -437,7 +486,7 @@ if (rxode2::.linCmtSensB()) {
         alpha <- CLx / V
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.2cA1)
@@ -449,7 +498,7 @@ if (rxode2::.linCmtSensB()) {
         alpha <- CLx * A
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.2cA2)
@@ -460,27 +509,23 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(CL, V)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs2)
 
-      test_that("linear compartment model gives extraCmt=1", {
-        expect_equal(rxModelVars(ode.1cs2)$extraCmt, 1L)
-      })
-
       ## The solved systems can be mixed with ODE solving routines (to
       ## speed them up a bit...?)
 
-      o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25), events = et, sensType = sensType)
+      o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25), events = et)
 
-      s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 25), events = et, sensType = sensType)
+      s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 25), events = et)
 
-      s.2c <- ode.1cs %>% solve(theta = c(20, 25), events = et, sensType = sensType)
+      s.2c <- ode.1cs %>% solve(theta = c(20, 25), events = et)
 
-      s.2cK <- ode.2cK %>% solve(theta = c(20, 25), events = et, sensType = sensType)
-      s.2cA1 <- ode.2cA1 %>% solve(theta = c(20, 25), events = et, sensType = sensType)
-      s.2cA2 <- ode.2cA2 %>% solve(theta = c(20, 25), events = et, sensType = sensType)
+      s.2cK <- ode.2cK %>% solve(theta = c(20, 25), events = et)
+      s.2cA1 <- ode.2cA1 %>% solve(theta = c(20, 25), events = et)
+      s.2cA2 <- ode.2cA2 %>% solve(theta = c(20, 25), events = et)
 
       test_that("Gives the correct parameters for THETAs", {
         expect_equal(
@@ -507,11 +552,11 @@ if (rxode2::.linCmtSensB()) {
         et(amt = 3, ss = 2, ii = 24, time = 8) %>%
         et(seq(0, 24, length.out = 200))
 
-      o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 1), events = etSs, sensType = sensType)
+      o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 1), events = etSs)
 
-      s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 1), events = etSs, sensType = sensType)
+      s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 1), events = etSs)
 
-      s.2c <- ode.1cs %>% solve(theta = c(20, 1), events = etSs, sensType = sensType)
+      s.2c <- ode.1cs %>% solve(theta = c(20, 1), events = etSs)
 
       test_that("1 compartment steady-state solved models and ODEs same.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -528,7 +573,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.1c.ka, ka = 1L)
@@ -541,7 +586,7 @@ if (rxode2::.linCmtSensB()) {
         K <- CLx / V
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.2cK, ka = 1L)
@@ -554,7 +599,7 @@ if (rxode2::.linCmtSensB()) {
         alpha <- CLx / V
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.2cA1, ka = 1L)
@@ -567,22 +612,18 @@ if (rxode2::.linCmtSensB()) {
         alpha <- CLx * A
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.2cA2, ka = 1L)
 
-      test_that("linear oral model gives extraCmt=2", {
-        expect_equal(rxModelVars(sol.1c.ka)$extraCmt, 2L)
-      })
+      o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et)
 
-      o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et, sensType = sensType)
+      s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et)
 
-      s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et, sensType = sensType)
-
-      s.2cK <- ode.2cK %>% solve(theta = unname(c(20, 25, KA = 2)), events = et, sensType = sensType)
-      s.2cA1 <- ode.2cA1 %>% solve(theta = unname(c(20, 25, KA = 2)), events = et, sensType = sensType)
-      s.2cA2 <- ode.2cA2 %>% solve(theta = unname(c(20, 25, KA = 2)), events = et, sensType = sensType)
+      s.2cK <- ode.2cK %>% solve(theta = unname(c(20, 25, KA = 2)), events = et)
+      s.2cA1 <- ode.2cA1 %>% solve(theta = unname(c(20, 25, KA = 2)), events = et)
+      s.2cA2 <- ode.2cA2 %>% solve(theta = unname(c(20, 25, KA = 2)), events = et)
 
       test_that("1 compartment oral solved models and ODEs same.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -592,9 +633,9 @@ if (rxode2::.linCmtSensB()) {
       })
 
       ## Note the strange-looking dip at 4 hours.  This is because ss=1 resets the system first.
-      o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 2, KA = 2), events = etSs, sensType = sensType)
+      o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 2, KA = 2), events = etSs)
 
-      s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 2, KA = 2), events = etSs, sensType = sensType)
+      s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 2, KA = 2), events = etSs)
 
       test_that("1 compartment oral solved models steady state ODEs same.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -611,7 +652,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q1)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c, cmt = 2L)
@@ -627,7 +668,7 @@ if (rxode2::.linCmtSensB()) {
         K21 <- Qx / V2x
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cK, cmt = 2L)
@@ -652,7 +693,7 @@ if (rxode2::.linCmtSensB()) {
         B <- (beta - K21x) / (beta - alpha) / Vx
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cA1, cmt = 2L)
@@ -674,7 +715,7 @@ if (rxode2::.linCmtSensB()) {
         alpha <- K21 * Kx / beta
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cA2, cmt = 2L)
@@ -699,21 +740,21 @@ if (rxode2::.linCmtSensB()) {
         aob <- Ax / Bx
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cA3, cmt = 2L)
 
-      o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+      o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et)
 
-      s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = et, sensType = sensType)
+      s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = et)
 
-      s.2cK <- sol.2cK %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
+      s.2cK <- sol.2cK %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et)
 
-      s.2cA1 <- sol.2cA1 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
+      s.2cA1 <- sol.2cA1 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et)
 
-      s.2cA2 <- sol.2cA2 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
-      s.2cA3 <- sol.2cA3 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
+      s.2cA2 <- sol.2cA2 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et)
+      s.2cA3 <- sol.2cA3 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et)
 
       test_that("2 compartment solved models and ODEs same.", {
         expect_equal(s.2cK$C2, s.2c$C2, tolerance = tol)
@@ -736,7 +777,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c.ka, cmt = 2, ka = 1)
@@ -753,7 +794,7 @@ if (rxode2::.linCmtSensB()) {
         K21 <- Qx / V2x
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cK, cmt = 2, ka = 1)
@@ -779,7 +820,7 @@ if (rxode2::.linCmtSensB()) {
         B <- (beta - K21x) / (beta - alpha) / Vx
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cA1, cmt = 2, ka = 1)
@@ -802,7 +843,7 @@ if (rxode2::.linCmtSensB()) {
         alpha <- K21 * Kx / beta
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cA2, cmt = 2, ka = 1)
@@ -828,7 +869,7 @@ if (rxode2::.linCmtSensB()) {
         aob <- Ax / Bx
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cA3, cmt = 2, ka = 1)
@@ -843,7 +884,7 @@ if (rxode2::.linCmtSensB()) {
         Vss <- V + V2x
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cSS, cmt = 2, ka = 1)
@@ -857,19 +898,19 @@ if (rxode2::.linCmtSensB()) {
         Ka <- theta[5]
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2cT, cmt = 2, ka = 1)
 
-      o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et, sensType = sensType)
-      s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et, sensType = sensType)
-      s.2cK <- sol.2cK %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
-      s.2cA1 <- sol.2cA1 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
-      s.2cA2 <- sol.2cA2 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
-      s.2cA3 <- sol.2cA3 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
-      s.2cSS <- sol.2cSS %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
-      s.2cT <- sol.2cT %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
+      o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et)
+      s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et)
+      s.2cK <- sol.2cK %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et)
+      s.2cA1 <- sol.2cA1 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et)
+      s.2cA2 <- sol.2cA2 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et)
+      s.2cA3 <- sol.2cA3 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et)
+      s.2cSS <- sol.2cSS %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et)
+      s.2cT <- sol.2cT %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et)
 
       test_that("2 compartment oral solved models and ODEs same.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
@@ -881,9 +922,9 @@ if (rxode2::.linCmtSensB()) {
         expect_equal(o.2c$C2, s.2cT$C2, tolerance = tol)
       })
 
-      o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 1, V2 = 297, Q = 10, KA = 0.3), events = etSs, sensType = sensType)
+      o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 1, V2 = 297, Q = 10, KA = 0.3), events = etSs)
 
-      s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 1, V2 = 297, Q = 10, KA = 0.3), events = etSs, sensType = sensType)
+      s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 1, V2 = 297, Q = 10, KA = 0.3), events = etSs)
 
       test_that("2 compartment oral steady-state solved models and ODEs same.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
@@ -904,7 +945,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c, 3)
@@ -924,7 +965,7 @@ if (rxode2::.linCmtSensB()) {
         k31 <- Q2x / V3x
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3cK, 3)
@@ -959,7 +1000,7 @@ if (rxode2::.linCmtSensB()) {
         C <- (K21x - gamma) * (K31x - gamma) / (gamma - alpha) / (gamma - beta) / Vx
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3cA1, 3)
@@ -974,7 +1015,7 @@ if (rxode2::.linCmtSensB()) {
         Vp2 <- theta[6]
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3cVp, 3)
@@ -989,25 +1030,25 @@ if (rxode2::.linCmtSensB()) {
         Vt2 <- theta[6]
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3cVt, 3)
 
       o.3c <- ode.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et)
 
       s.3c <- sol.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et)
 
       s.3cK <- sol.3cK %>%
-        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et)
       s.3cA1 <- sol.3cA1 %>%
-        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et)
       s.3cVp <- sol.3cVp %>%
-        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et)
       s.3cVt <- sol.3cVt %>%
-        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et)
 
       test_that("3 compartment solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1018,10 +1059,10 @@ if (rxode2::.linCmtSensB()) {
       })
 
       o.3c <- ode.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs)
 
       s.3c <- sol.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs)
 
       test_that("3 compartment solved models and ODEs same with steady state.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1041,7 +1082,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c.ka, 3, 1)
@@ -1062,7 +1103,7 @@ if (rxode2::.linCmtSensB()) {
         k31 <- Q2x / V3x
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3cK, 3, 1)
@@ -1098,19 +1139,19 @@ if (rxode2::.linCmtSensB()) {
         C <- (K21x - gamma) * (K31x - gamma) / (gamma - alpha) / (gamma - beta) / Vx
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3cA1, 3, 1)
 
       o.3c <- ode.3c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et)
       s.3c <- sol.3c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et)
       s.3cK <- sol.3cK %>%
-        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3)), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3)), events = et)
       s.3cA1 <- sol.3cA1 %>%
-        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3)), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3)), events = et)
 
       test_that("3 compartment oral solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1119,9 +1160,9 @@ if (rxode2::.linCmtSensB()) {
       })
 
       o.3c <- ode.3c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSs)
       s.3c <- sol.3c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSs)
 
       ## Again the 4 hour strange discontinuity because ss=1
       test_that("3 compartment oral solved models and ODEs same for steady state.", {
@@ -1153,7 +1194,7 @@ if (rxode2::.linCmtSensB()) {
         CL <- theta[2]
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs, 1)
@@ -1164,7 +1205,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(CL, V)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs2, 1)
@@ -1173,11 +1214,11 @@ if (rxode2::.linCmtSensB()) {
       ## speed them up a bit...?)
 
       o.1c <- ode.1c %>%
-        solve(params = c(V = 20, CL = 25), events = et, sensType = sensType)
+        solve(params = c(V = 20, CL = 25), events = et)
       s.1c <- ode.1cs2 %>%
-        solve(params = c(V = 20, CL = 25), events = et, sensType = sensType)
+        solve(params = c(V = 20, CL = 25), events = et)
       s.2c <- ode.1cs %>%
-        solve(theta = c(20, 25), events = et, sensType = sensType)
+        solve(theta = c(20, 25), events = et)
 
       test_that("1 compartment solved models and ODEs same.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -1185,11 +1226,11 @@ if (rxode2::.linCmtSensB()) {
       })
 
       o.1c <- ode.1c %>%
-        solve(params = c(V = 20, CL = 10), events = etSs, sensType = sensType)
+        solve(params = c(V = 20, CL = 10), events = etSs)
       s.1c <- ode.1cs2 %>%
-        solve(params = c(V = 20, CL = 10), events = etSs, sensType = sensType)
+        solve(params = c(V = 20, CL = 10), events = etSs)
       s.2c <- ode.1cs %>%
-        solve(theta = c(20, 10), events = etSs, sensType = sensType)
+        solve(theta = c(20, 10), events = etSs)
 
       test_that("1 compartment solved models and ODEs same; Steady State", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -1209,24 +1250,24 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c, 2)
 
       o.2c <- ode.2c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et)
       s.2c <- sol.2c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et)
 
       test_that("2 compartment solved models and ODEs same.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
       })
 
       o.2c <- ode.2c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSs)
       s.2c <- sol.2c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSs)
 
       test_that("2 compartment steady state solved models and ODEs same.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
@@ -1247,24 +1288,24 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c, 3)
 
       o.3c <- ode.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et)
       s.3c <- sol.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et)
 
       test_that("3 compartment solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
       o.3c <- ode.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs)
       s.3c <- sol.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSs)
 
       test_that("3 compartment steady state solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1290,7 +1331,7 @@ if (rxode2::.linCmtSensB()) {
         CL <- theta[2]
         C2 <- linCmt()
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs, 1)
@@ -1301,7 +1342,7 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(CL, V)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs2, 1)
@@ -1309,11 +1350,11 @@ if (rxode2::.linCmtSensB()) {
       ## The solved systems can be mixed with ODE solving routines (to
       ## speed them up a bit...?)
 
-      o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25), events = et, sensType = sensType)
+      o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25), events = et)
 
-      s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 25), events = et, sensType = sensType)
+      s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 25), events = et)
 
-      s.2c <- ode.1cs %>% solve(theta = c(20, 25), events = et, sensType = sensType)
+      s.2c <- ode.1cs %>% solve(theta = c(20, 25), events = et)
 
       test_that("1 compartment solved models and ODEs same.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -1333,15 +1374,15 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c, 2)
 
       o.2c <- ode.2c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et)
       s.2c <- sol.2c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et)
 
       test_that("2 compartment solved models and ODEs same.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
@@ -1362,15 +1403,15 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c, 3)
 
       o.3c <- ode.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et)
       s.3c <- sol.3c %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et)
 
       test_that("3 compartment solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1394,13 +1435,13 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.1c.ka, 1, 1)
 
-      o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et, sensType = sensType)
-      s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et, sensType = sensType)
+      o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et)
+      s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et)
 
       test_that("1 compartment solved models and ODEs same for mixed oral, iv and infusion.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -1420,15 +1461,15 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c.ka, 2, 1)
 
       o.2c <- ode.2c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et)
       s.2c <- sol.2c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et)
 
       test_that("2 compartment solved models and ODEs same for mixed oral, iv and infusion.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
@@ -1450,15 +1491,15 @@ if (rxode2::.linCmtSensB()) {
       {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c.ka, 3, 1)
 
       o.3c <- ode.3c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et)
       s.3c <- sol.3c.ka %>%
-        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et)
 
       test_that("3 compartment solved models and ODEs same for mixed oral, iv and infusion.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1486,7 +1527,7 @@ if (rxode2::.linCmtSensB()) {
         f(depot) <- fDepot
         f(central) <- fCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.1c.ka, 1, 1)
@@ -1494,9 +1535,9 @@ if (rxode2::.linCmtSensB()) {
       for (fd in c(0.5, 1, 2)) {
         for (fc in c(0.5, 1, 2)) {
           o.1c <- ode.1c.ka %>%
-            solve(params = c(V = 20, CL = 25, KA = 2, fDepot = fd, fCenter = fc), events = et, sensType = sensType)
+            solve(params = c(V = 20, CL = 25, KA = 2, fDepot = fd, fCenter = fc), events = et)
           s.1c <- sol.1c.ka %>%
-            solve(params = c(V = 20, CL = 25, KA = 2, fDepot = fd, fCenter = fc), events = et, sensType = sensType)
+            solve(params = c(V = 20, CL = 25, KA = 2, fDepot = fd, fCenter = fc), events = et)
           test_that(sprintf("1 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
             expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
           })
@@ -1517,7 +1558,7 @@ if (rxode2::.linCmtSensB()) {
         ## FIXME:
         ## f(central) should throw an error
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.2c.ka <- rxode2(
@@ -1526,15 +1567,15 @@ if (rxode2::.linCmtSensB()) {
         f(depot) <- fDepot
         f(central) <- fCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c.ka, 2, 1)
 
       for (fd in c(0.5, 1, 2)) {
         for (fc in c(0.5, 1, 2)) {
-          o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et, sensType = sensType)
-          s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et, sensType = sensType)
+          o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et)
+          s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et)
           test_that(sprintf("2 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
             expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
           })
@@ -1561,7 +1602,7 @@ if (rxode2::.linCmtSensB()) {
         f(depot) <- fDepot
         f(central) <- fCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c.ka, 3, 1)
@@ -1572,12 +1613,12 @@ if (rxode2::.linCmtSensB()) {
             solve(params = c(
               V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7,
               V3 = 400, KA = 0.3, fDepot = fd, fCenter = fc
-            ), events = et, sensType = sensType)
+            ), events = et)
           s.3c <- sol.3c.ka %>%
             solve(params = c(
               V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3,
               fDepot = fd, fCenter = fc
-            ), events = et, sensType = sensType)
+            ), events = et)
           test_that(sprintf("3 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
             expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
           })
@@ -1600,7 +1641,7 @@ if (rxode2::.linCmtSensB()) {
         alag(depot) <- lagDepot
         alag(center) <- lagCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.1c.ka <- rxode2(
@@ -1609,15 +1650,15 @@ if (rxode2::.linCmtSensB()) {
         alag(depot) <- lagDepot
         alag(central) <- lagCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.1c.ka, 1, 1)
 
       for (fd in c(1, 2, 10)) {
         for (fc in c(1, 2, 10)) {
-          o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2, lagDepot = fd, lagCenter = fc), events = et, sensType = sensType)
-          s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2, lagDepot = fd, lagCenter = fc), events = et, sensType = sensType)
+          o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2, lagDepot = fd, lagCenter = fc), events = et)
+          s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2, lagDepot = fd, lagCenter = fc), events = et)
           test_that(sprintf("1 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
             expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
           })
@@ -1642,7 +1683,7 @@ if (rxode2::.linCmtSensB()) {
         alag(depot) <- lagDepot
         alag(central) <- lagCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c.ka, 2, 1)
@@ -1650,9 +1691,9 @@ if (rxode2::.linCmtSensB()) {
       for (fd in c(1, 2, 10)) {
         for (fc in c(1, 2, 10)) {
           o.2c <- ode.2c.ka %>%
-            solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, lagDepot = fd, lagCenter = fc), events = et, sensType = sensType)
+            solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, lagDepot = fd, lagCenter = fc), events = et)
           s.2c <- sol.2c.ka %>%
-            solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, lagDepot = fd, lagCenter = fc), events = et, sensType = sensType)
+            solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, lagDepot = fd, lagCenter = fc), events = et)
           test_that(sprintf("2 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
             expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
           })
@@ -1673,7 +1714,7 @@ if (rxode2::.linCmtSensB()) {
         alag(depot) <- lagDepot
         alag(centr) <- lagCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.3c.ka <- rxode2(
@@ -1682,7 +1723,7 @@ if (rxode2::.linCmtSensB()) {
         alag(depot) <- lagDepot
         alag(central) <- lagCenter
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c.ka, 3, 1)
@@ -1692,11 +1733,11 @@ if (rxode2::.linCmtSensB()) {
           o.3c <- ode.3c.ka %>% solve(params = c(
             V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7,
             V3 = 400, KA = 0.3, lagDepot = fd, lagCenter = fc
-          ), events = et, sensType = sensType)
+          ), events = et)
           s.3c <- sol.3c.ka %>% solve(params = c(
             V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3,
             lagDepot = fd, lagCenter = fc
-          ), events = et, sensType = sensType)
+          ), events = et)
           test_that(sprintf("3 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
             expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
           })
@@ -1716,7 +1757,7 @@ if (rxode2::.linCmtSensB()) {
         C2 <- linCmt(CL, V)
         rate(central) <- rt
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.1c, 1)
@@ -1726,8 +1767,8 @@ if (rxode2::.linCmtSensB()) {
         add.sampling(seq(0, 36, length.out = 200))
 
       for (rt in c(0.5, 1, 1.5)) {
-        o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25, rt = rt), events = et, sensType = sensType)
-        s.1c <- sol.1c %>% solve(params = c(V = 20, CL = 25, rt = rt), events = et, sensType = sensType)
+        o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25, rt = rt), events = et)
+        s.1c <- sol.1c %>% solve(params = c(V = 20, CL = 25, rt = rt), events = et)
         test_that(sprintf("1 compartment solved models and ODEs same for rate-modeled infusion: %s", rt), {
           expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
         })
@@ -1743,7 +1784,7 @@ if (rxode2::.linCmtSensB()) {
         d / dt(peri) <- Q * C2 - Q * C3
         rate(centr) <- rt
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.2c <- rxode2(
@@ -1751,14 +1792,14 @@ if (rxode2::.linCmtSensB()) {
         C2 <- linCmt(V, CL, V2, Q)
         rate(central) <- rt
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c, 2)
 
       for (rt in c(0.5, 1, 1.5)) {
-        o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, rt = rt), events = et, sensType = sensType)
-        s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, rt = rt), events = et, sensType = sensType)
+        o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, rt = rt), events = et)
+        s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, rt = rt), events = et)
         test_that(sprintf("2 compartment solved models and ODEs same for rate-modeled infusion: %s", rt), {
           expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
         })
@@ -1781,16 +1822,16 @@ if (rxode2::.linCmtSensB()) {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         rate(central) <- rt
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c, 3)
 
       for (rt in c(0.5, 1, 1.5)) {
         s.3c <- sol.3c %>%
-          solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, rt = rt), events = et, sensType = sensType)
+          solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, rt = rt), events = et)
         o.3c <- ode.3c %>%
-          solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, rt = rt), events = et, sensType = sensType)
+          solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, rt = rt), events = et)
         test_that(sprintf("3 compartment solved models and ODEs same for rate-modeled infusion: %s", rt), {
           expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
         })
@@ -1809,7 +1850,7 @@ if (rxode2::.linCmtSensB()) {
         C2 <- linCmt(CL, V)
         dur(central) <- dr
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.1c, 1)
@@ -1819,8 +1860,8 @@ if (rxode2::.linCmtSensB()) {
         add.sampling(seq(0, 36, length.out = 200))
 
       for (dur in c(0.5, 1, 1.5)) {
-        o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25, dr = dur), events = et, sensType = sensType)
-        s.1c <- sol.1c %>% solve(params = c(V = 20, CL = 25, dr = dur), events = et, sensType = sensType)
+        o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25, dr = dur), events = et)
+        s.1c <- sol.1c %>% solve(params = c(V = 20, CL = 25, dr = dur), events = et)
         test_that(sprintf("1 compartment solved models and ODEs same for dur-modeled infusion: %s", dur), {
           expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
         })
@@ -1841,14 +1882,14 @@ if (rxode2::.linCmtSensB()) {
         C2 <- linCmt(V, CL, V2, Q)
         dur(central) <- dr
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.2c, 2)
 
       for (dur in c(0.5, 1, 1.5)) {
-        o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, dr = dur), events = et, sensType = sensType)
-        s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, dr = dur), events = et, sensType = sensType)
+        o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, dr = dur), events = et)
+        s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, dr = dur), events = et)
         test_that(sprintf("2 compartment solved models and ODEs same for dur-modeled infusion: %s", dur), {
           expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
         })
@@ -1871,14 +1912,14 @@ if (rxode2::.linCmtSensB()) {
         C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         dur(central) <- dr
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(sol.3c, 3)
 
       for (dur in c(0.5, 1, 1.5)) {
-        o.3c <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, dr = dur), events = et, sensType = sensType)
-        s.3c <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, dr = dur), events = et, sensType = sensType)
+        o.3c <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, dr = dur), events = et)
+        s.3c <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, dr = dur), events = et)
         test_that(sprintf("3 compartment solved models and ODEs same for dur-modeled infusion: %s", dur), {
           expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
         })
@@ -1916,7 +1957,7 @@ if (rxode2::.linCmtSensB()) {
         mtime(t1) <- mt1
         mtime(t2) <- mt2
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       goodP(ode.1cs2, 1)
@@ -1927,7 +1968,7 @@ if (rxode2::.linCmtSensB()) {
 
       s.1c <- ode.1cs2 %>% solve(
         params = c(V = 20, CL = 25, mt1 = 0.5, mt2 = 1.75),
-        events = et, sensType = sensType
+        events = et
       )
 
       test_that("mtime with solved systems work", {
@@ -1942,14 +1983,14 @@ if (rxode2::.linCmtSensB()) {
           C2 <- center / V
           d / dt(center) <- -CL * C2
         },
-        linCmtSens = sens
+        linCmtSens = sens, linCmtSensType = linCmtSensType
         )
 
         sol.1c <- rxode2(
         {
           C2 <- linCmt(CL, V)
         },
-        linCmtSens = sens
+        linCmtSens = sens, linCmtSensType = linCmtSensType
         )
 
         et <- eventTable() %>%
@@ -1958,7 +1999,7 @@ if (rxode2::.linCmtSensB()) {
           add.sampling(seq(0, 48, length.out = 200))
 
         o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = et)
-        s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = et, sensType = sensType)
+        s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = et)
 
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
@@ -1987,9 +2028,9 @@ if (rxode2::.linCmtSensB()) {
 
         goodP(ode.1cs2, 1)
 
-        o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25), events = ev, sensType = sensType)
+        o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25), events = ev)
 
-        s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 25), events = ev, sensType = sensType)
+        s.1c <- ode.1cs2 %>% solve(params = c(V = 20, CL = 25), events = ev)
 
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
 
@@ -2006,9 +2047,9 @@ if (rxode2::.linCmtSensB()) {
 
         goodP(sol.2c, 2)
 
-        o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = ev, sensType = sensType)
+        o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = ev)
 
-        s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = ev, sensType = sensType)
+        s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = ev)
 
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
 
@@ -2027,14 +2068,14 @@ if (rxode2::.linCmtSensB()) {
 
         goodP(sol.3c, 3)
 
-        o.3c <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = ev, sensType = sensType)
+        o.3c <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = ev)
 
-        s.3c <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = ev, sensType = sensType)
+        s.3c <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = ev)
 
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      test_that(paste("Issue RxODE#258, sens:", sens, "sensType:", sensType), {
+      test_that(paste("Issue RxODE#258, sens:", sens), {
         m258 <- rxode2(
         {
           ka <- 1
@@ -2043,7 +2084,7 @@ if (rxode2::.linCmtSensB()) {
           Conc <- linCmt()
           alag(depot) <- 1
         },
-        linCmtSens = sens
+        linCmtSens = sens, linCmtSensType = linCmtSensType
         )
 
         m258o <- rxode2({
@@ -2059,7 +2100,7 @@ if (rxode2::.linCmtSensB()) {
         s1 <- m258 %>%
           et(dose = 100, time = 0, addl = 6, ii = 24) %>%
           et(0, 250, by = 0.1) %>%
-          rxSolve(sensType = sensType)
+          rxSolve()
 
         s2 <- m258o %>%
           et(dose = 100, time = 0, addl = 6, ii = 24) %>%
@@ -2073,4 +2114,127 @@ if (rxode2::.linCmtSensB()) {
       type <- 1
     }
   })
+
+  test_that("zero clearance solve #261", {
+
+    rx <- rxode2({
+      param(tlag, tka, tv, tcl, cl_crcl, cl_hep, cl_cyp2d6, cl_cyp3a_inh,
+            cl_cyp3a_ind, cl_sexf, cl_japanese, prop_err, add_err,
+            iiv_v, iiv_cl, iiv_ka, crcl, hepatic_impair, cyp2d6,
+            cyp3a_inh, cyp3a_ind, sex, japanese)
+      rxerr.rxLinCmt = 1
+      tlag = 0.447
+      tka = 0.0935
+      tv = 144
+      tcl = 93.8
+      cl_crcl = 0.303
+      cl_hep = 0.422
+      cl_cyp2d6 = 0.626
+      cl_cyp3a_inh = 0.504
+      cl_cyp3a_ind = 3.9
+      cl_sexf = 0.903
+      cl_japanese = 1.12
+      prop_err = 0.0951
+      add_err = 0.00123
+      iiv_v = 0
+      iiv_cl = 0
+      iiv_ka = 0
+      cl_crcl_i = (crcl/80)^cl_crcl
+      cl_hep_i = cl_hep * hepatic_impair + (1 - hepatic_impair)
+      cl_cyp2d6_i = cl_cyp2d6 * cyp2d6 + (1 - cyp2d6)
+      cl_cyp3a_inh_i = cl_cyp3a_inh * cyp3a_inh + (1 - cyp3a_inh)
+      cl_cyp3a_ind_i = cl_cyp3a_ind * cyp3a_ind + (1 - cyp3a_ind)
+      cl_sexf_i = cl_sexf * (sex == "Female") + (sex == "Male")
+      cl_japanese_i = cl_japanese * japanese + (1 - japanese)
+      cl = tcl * exp(iiv_cl) * cl_crcl_i * cl_hep_i * cl_cyp2d6_i *
+        cl_cyp3a_inh_i * cl_cyp3a_ind_i * cl_sexf_i * cl_japanese_i
+      v = tv * exp(iiv_v)
+      ka = tka * exp(iiv_ka)
+      alag(depot) = tlag
+      rx_yj_ ~ 2
+      rx_lambda_ ~ 1
+      rx_low_ ~ 0
+      rx_hi_ ~ 1
+      rx_pred_f_ ~ linCmt()
+      rx_pred_ ~ rx_pred_f_
+      rx_r_ ~ (add_err)^2 + (rx_pred_f_)^2 * (prop_err)^2
+      ipredSim = rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_,
+                        rx_hi_)
+      sim = rxTBSi(rx_pred_ + sqrt(rx_r_) * rxerr.rxLinCmt, rx_lambda_,
+                   rx_yj_, rx_low_, rx_hi_)
+      cmt(rxLinCmt)
+      dvid(3)
+    })
+
+    d_sim <-
+      et(amt=4) %>%
+      et(time=0:24) %>%
+      as.data.frame() %>%
+      dplyr::mutate(
+        japanese=0,
+        sex=0,
+        cyp3a_ind=0,
+        cyp3a_inh=0,
+        cyp2d6=0,
+        hepatic_impair=0,
+        crcl=80
+      )
+
+    f <- rxSolve(rx, d_sim)
+
+    expect_false(any(is.na(f$sim) | is.nan(f$sim)))
+    expect_false(any(is.na(f$ipredSim) | is.nan(f$ipredSim)))
+
+  })
+
+
+  # test mixed ODE and solved models
+
+  test_that("mixed ode and solved models", {
+
+    ode <- rxode2({
+      lka <- 0.45
+      lcl <- 1
+      lvc  <- 3.45
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      Cc <- central / vc
+      d/dt(accum) <- Cc
+    })
+
+    lin <- rxode2({
+      lka <- 0.45
+      lcl <- 1
+      lvc  <- 3.45
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      Cc <- linCmt(vc, cl, ka)
+      d/dt(accum) <- Cc
+    })
+
+    d <-
+      rbind(
+        data.frame(AMT = 500, EVID = 1, CMT = "depot", TIME = 0),
+        data.frame(AMT = 0, EVID = 0, CMT = "central", TIME = 0:5)
+      )
+
+    d$ID <- 1
+
+    for (meth in c("liblsoda", "lsoda", "dop853")) {
+      dOde <- rxSolve(ode, d, meth=meth)
+
+      dLin <- rxSolve(lin, d, meth=meth)
+
+      expect_equal(dOde$Cc, dLin$Cc, tolerance = 1e-4)
+
+      expect_equal(dOde$accum, dLin$accum, tolerance = 1e-4)
+
+    }
+  })
+
 }

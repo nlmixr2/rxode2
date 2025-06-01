@@ -76,27 +76,12 @@ typedef struct {
   double infSSstep;
   int mxhnil;
   double hmxi;
-  int nlin;
-  int nlin2;
-  int nlinR;
-  int linBflag;
-  bool cTlag;
-  double hTlag;
-  bool cF;
-  double hF;
-  bool cRate;
-  double hRate;
-  bool cDur;
-  double hDur;
-  bool cTlag2;
-  double hTlag2;
-  bool cF2;
-  double hF2;
-  bool cRate2;
-  double hRate2;
-  bool cDur2;
-  double hDur2;
   int nLlik;
+  int numLinSens;
+  int numLin;
+  int depotLin;
+  int linOffset;
+  int ssSolved;
 } rx_solving_options;
 
 
@@ -151,6 +136,7 @@ typedef struct {
   int idReal;
   int sim;
   int idx;
+  int solvedIdx;
   double ylow;
   double yhigh;
   double logitHi;
@@ -170,20 +156,12 @@ typedef struct {
   int _rxFlag;
   int err;
   int solved;
-  double *linCmtAdvan;
-  double *linCmtRate;
+  double *linCmtSave;
+  double *linCmtAlast;
+  double *linCmtDummy;
   int linCmt;
-  int linCmtAdvanSetup;
   int cacheME;
   int inLhs;
-  // Cache alag
-  double *alag;
-  // Cache F
-  double *cF;
-  // Cache rate;
-  double *cRate;
-  // Cache duration
-  double *cDur;
   double solveTime;
   double curShift;
   double *simIni;
@@ -218,6 +196,37 @@ typedef struct {
   double *timeThread;
   int idxLow;
   int idxHi;
+  double tprior;
+  double tout;
+  // This *DDtStateVar pointer is for the dydt solution
+  // This is made so that `linCmtA` and `linCmtB` can
+  // insert the solution when needed.
+  // This is the state values for the current solve. These can also be
+  // updated by the `linCmtA` and `linCmtB` functions.
+  int linSS;
+  int linSScmt;
+  int linSSbolusCmt;
+  double linSStau;
+  double linSSvar;
+  double ssTime;
+  double* linH;
+  // This indicates what the linear compartment is being calculated when calculating
+  // the optimized H value.
+  //
+  // -1: Indicates this is the function value, not a parameter to optimize H for
+  // -2: Indicates there is no optimization of the H value
+  //
+  // Otherwise this represents the index of the sensitivity parameter
+  // that is being optimized for; This is related to the number of
+  // parameters that request derivatives.
+  //
+  //
+  int linCmtHparIndex;
+  // When optimizing the H value, this is the value of H that is being optimized.
+  double linCmtH;
+  // When optimizing the H value, the function value of the linear
+  // compartment volume is stored in the `linCmtHV` variable:
+  double linCmtHV;
 } rx_solving_options_ind;
 
 typedef struct {
@@ -240,7 +249,6 @@ typedef struct {
   int nMtime;
   double stateTrimU;
   double stateTrimL;
-  int *stateIgnore;
   int nCov0;
   int *cov0;
   int nKeepF;
@@ -252,7 +260,6 @@ typedef struct {
   int safePow;
   int sumType;
   int prodType;
-  int sensType;
   vLines factors;
   vLines factorNames;
   int factorNs[500];
@@ -263,8 +270,6 @@ typedef struct {
   bool sample;
   int *par_sample;
   double maxShift;
-  int linKa;
-  int linNcmt;
   int maxwhile;
   int whileexit;
   int *svar;
@@ -273,6 +278,33 @@ typedef struct {
   int useStdPow;
   bool ss2cancelAllPending;
   int npars;
+  int ndiff;
+  int sensType;
+  double sensH;
+  int linB;
+
+  // flag to determine if the linear compartment model has first order
+  // absorption as in oral models
+  int linCmtOral0;
+
+  // number of linear compartments in model
+  int linCmtNcmt;
+
+  double linCmtGillFtol;
+  int linCmtGillK;
+  double linCmtGillStep;
+  double linCmtGillRtol;
+
+  double linCmtShiErr;
+  int linCmtShiMax;
+  double *linCmtScale;
+
+  int linCmtHcmt; // linear compartments used for H optimization
+  int linCmtHmeanI; // Type of sum for each individual time point
+  int linCmtHmeanO; // Type of sum for overall H optimization
+
+  double linCmtSuspect; // What value is close enough to zero to request more der accuracy.
+  int linCmtForwardMax; // Maximum number of forward steps to take with forward differences
 } rx_solve;
 
 

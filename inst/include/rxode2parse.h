@@ -5,8 +5,6 @@
 #define rxLlikSaveSize 9
 
 #ifndef __RXODE2PTR_H__ // these refer to abi and should not be used.
-#define getAdvan(idx) ind->solve + (op->neq + op->nlin)*(idx) + op->neq
-#define getSolve(idx) ind->solve + (op->neq + op->nlin)*(idx)
 #endif // __RXODE2PTR_H__
 
 

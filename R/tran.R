@@ -25,7 +25,7 @@
 #' @importFrom utils assignInMyNamespace
 #' @examples
 #' rxode2parse("a=3")
-rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB", "linCmtC"), verbose=FALSE,
+rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"), verbose=FALSE,
                         code=NULL, envir=parent.frame()) {
   rxParseSuppressMsg()
   .udfEnvSet(envir)
@@ -49,8 +49,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
     .ret <- .Call(`_rxode2_linCmtGen`,length(.ret$state), .vars,
                   setNames(
                     c(
-                      "linCmtA" = 1L, "linCmtB" = 2L,
-                      "linCmtC" = 3L
+                      "linCmtA" = 1L, "linCmtB" = 2L
                     )[match.arg(linCmtSens)],
                     NULL
                   ), verbose)
@@ -95,7 +94,7 @@ rxode2parseFuns <- function() {
     stop("this requires devtools", call.=FALSE)
   }
   message("rebuild parseFuns.R from rxode2")
-  try(source(devtools::package_file("build/refresh.R")))
+  try(source(devtools::package_file("build/refresh.R")), silent=TRUE)
   message("done")
   ""
 }
