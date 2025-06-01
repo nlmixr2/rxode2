@@ -298,6 +298,8 @@ typedef struct {
   double linCmtShiErr;
   int linCmtShiMax;
   double *linCmtScale;
+
+  int linCmtHcmt; // linear compartments used for H optimization
 } rx_solve;
 
 

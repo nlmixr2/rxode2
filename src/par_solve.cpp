@@ -13,6 +13,7 @@
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "linCmtDiffConstant.h"
 
 #define SORT gfx::timsort
 
@@ -3039,24 +3040,42 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       // Geometric mean of all compartments
       double cur0;
       int n0=0;
-      for (int i = 0; i < rx->linCmtOral0 + rx->linCmtNcmt; ++i) {
-        cur = yp[op->numLin + i];
+      int cmtId = 1;
+      for (int i = 0; i < rx->linCmtNcmt; ++i) {
+        if ((rx->linCmtHcmt & cmtId) != 0) {
+          cur = yp[op->numLin + rx->linCmtOral0 + i];
+          if (cur == 0) {
+          } else {
+            n0++;
+            // delta = 1.0/cur - cur0; // harmonic mean
+            delta = log(cur) - cur0; // geometric mean
+            cur0 += delta/n0;
+          }
+        }
+        cmtId <<= 1;
+      }
+      if (rx->linCmtOral0 == 1) {
+        if ((rx->linCmtHcmt & linCmtDepot) != 0) {
+          cur = yp[op->numLin + rx->linCmtOral0 + i];
+          if (cur == 0) {
+          } else {
+            n0++;
+            // delta = 1.0/cur - cur0; // harmonic mean
+            delta = log(cur) - cur0; // geometric mean
+            cur0 += delta/n0;
+          }
+        }
+      }
+      if ((rx->linCmtHcmt & linCmtConc) != 0) {
+        cur = yp[op->numLin+rx->linCmtOral0]/ind->linCmtHV;
         if (cur == 0) {
+          // nzero++;
         } else {
           n0++;
           // delta = 1.0/cur - cur0; // harmonic mean
           delta = log(cur) - cur0; // geometric mean
           cur0 += delta/n0;
         }
-      }
-      cur = yp[op->numLin+rx->linCmtOral0]/ind->linCmtHV;
-      if (cur == 0) {
-        // nzero++;
-      } else {
-        n0++;
-        // delta = 1.0/cur - cur0; // harmonic mean
-        delta = log(cur) - cur0; // geometric mean
-        cur0 += delta/n0;
       }
       cur = cur0;
       if (cur == 0) {

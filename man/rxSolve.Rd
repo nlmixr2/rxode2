@@ -144,6 +144,7 @@ rxSolve(
   linCmtShiErr = sqrt(.Machine$double.eps),
   linCmtShiMax = 20L,
   linCmtScale = NULL,
+  linCmtHcmt = NULL,
   envir = parent.frame()
 )
 
@@ -888,8 +889,25 @@ step size, this is This is the step size to increase the
 initial estimate by.  So each iteration the new step size =
 (prior step size)*gillStep}
 
-\item{linCmtScale}{The scale of the linear compartment model.  This is
-applied to sensitivity approximation using numeric differences.}
+\item{linCmtScale}{The scale of the linear compartment model.  This
+is applied to sensitivity approximation using numeric
+differences.  When \code{TRUE} or \code{NULL} use default scaling, when
+\code{FALSE} use no scaling.  If it is one elment numeric, the value
+is duplicated 7 times and applies to all the parameters.
+Otherwise this is a seven element numeric vector implying the
+scaling for each of the linear compartmental model parameters.}
+
+\item{linCmtHcmt}{This represents the compartments considered when
+optimizing the forward difference step size.  When a character
+vector it can be any of the following (multiple allowed):
+\itemize{
+\item \code{"depot"} -- depot compartment
+\item \code{"central"} -- central compartment
+\item \code{"peripheral1"} -- peripheral compartment
+\item \code{"peripheral2"} -- second peripheral compartment
+\item \code{"concentration"} -- concentration value (i.e. central
+compartment/volume)
+}}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

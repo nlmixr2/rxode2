@@ -9,6 +9,12 @@
 #define diffP4 32
 #define diffP5 64
 
+#define linCmtCentral 1
+#define linCmtPeripheral1 2
+#define linCmtPeripheral2 4
+#define linCmtDepot 8
+#define linCmtConc 16
+
 #define linCmtNormal 0
 #define linCmtSsInf8 1
 #define linCmtSsInf 2

@@ -690,6 +690,21 @@
 #'   Otherwise this is a seven element numeric vector implying the
 #'   scaling for each of the linear compartmental model parameters.
 #'
+#' @param linCmtHcmt This represents the compartments considered when
+#'   optimizing the forward difference step size.  When a character
+#'   vector it can be any of the following (multiple allowed):
+#'
+#'   - `"depot"` -- depot compartment
+#'
+#'   - `"central"` -- central compartment
+#'
+#'   - `"peripheral1"` -- peripheral compartment
+#'
+#'   - `"peripheral2"` -- second peripheral compartment
+#'
+#'   - `"concentration"` -- concentration value (i.e. central
+#'      compartment/volume)
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -820,6 +835,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtShiErr=sqrt(.Machine$double.eps),
                     linCmtShiMax=20L,
                     linCmtScale=NULL,
+                    linCmtHcmt=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -853,6 +869,25 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         "nlmixrIdentity" = 3L
       )[match.arg(sigmaXform)]
     }
+
+    if (is.null(linCmtHcmt)) {
+      linCmtHcmt <- 1L
+    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L, upper=31L, any.missing=FALSE)) {
+      # ok value
+    } else if (checkmate::testCharacter(linCmtHcmt, any.missing=FALSE)) {
+      .vars <- match.arg(linCmtHcmt,
+                         c("depot", "central", "peripheral1", "peripheral2",
+                           "concentration"), several.ok = TRUE)
+      linCmtHcmt <- sum(vapply(.vars, function(x) {
+        switch(x,
+               depot         = 8L,
+               central       = 1L,
+               peripheral1   = 2L,
+               peripheral2   = 4L,
+               concentration = 16L)
+      }, integer(1)))
+    }
+
     if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
       .omegaXform <- as.integer(omegaXform)
     } else {
@@ -1297,6 +1332,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtShiErr=linCmtShiErr,
       linCmtShiMax=linCmtShiMax,
       linCmtScale=linCmtScale,
+      linCmtHcmt = linCmtHcmt,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
