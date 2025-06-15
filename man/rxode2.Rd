@@ -732,7 +732,12 @@ y=f+(a+b* f^c)*err
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-y=f+$$sqrt(a^2+b^2 *f^(2c))$$*err
+y=f+
+
+\if{html}{\out{<div class="sourceCode math">}}\preformatted{sqrt(a^2+b^2 *f^(2c))
+}\if{html}{\out{</div>}}
+
+*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in
