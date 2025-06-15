@@ -76,5 +76,5 @@ The default method \code{\link[base]{print.default}}, and help for the
   For more customizable (but cumbersome) printing, see
   \code{\link[base]{cat}}, \code{\link[base]{format}} or also \code{\link[base]{write}}.
   For a simple prototypical print method, see
-  \code{\link[tools:print.via.format]{.print.via.format}} in package \pkg{tools}.
+  \code{\link[tools]{.print.via.format}} in package \pkg{tools}.
 }
