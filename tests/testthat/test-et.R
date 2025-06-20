@@ -894,4 +894,13 @@ rxTest({
 
   })
 
+  test_that("adding an ID in the improper order will not cause an issue", {
+
+    e <- et(1:10) %>%
+      et(id=rev(1:10))
+
+    expect_equal(unique(e$id), 1:10)
+
+  })
+
 })

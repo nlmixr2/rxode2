@@ -2117,7 +2117,7 @@ List etResizeId(List curEt, IntegerVector IDs){
   if (!showId && oldIDs.size() == 1 && IDs.size() >= 1) {
     // There is a sort later in the function, so this needs
     // to be the smallest ID, not ID[0].
-    // This assumption causes duplicate IDs
+    // This assumption causes duplicate IDs (see Issue #868, #869, #870)
     int minId = INT_MAX;
     for (int j = 0; j < IDs.size(); ++j) {
       if (IDs[j] < minId) minId = IDs[j];
@@ -2139,19 +2139,6 @@ List etResizeId(List curEt, IntegerVector IDs){
       }
     }
   }
-
-  REprintf("IDs:\n");
-  Rcpp::print(IDs);
-
-  REprintf("rmIds:\n");
-  Rcpp::print(Rcpp::wrap(rmIds));
-
-  REprintf("newIds:\n");
-  Rcpp::print(Rcpp::wrap(newIds));
-
-  REprintf("oldIDs\n");
-  Rcpp::print(Rcpp::wrap(oldIDs));
-
 
   if (rmIds.size() == 0 && newIds.size() == 0){
     return curEt;
