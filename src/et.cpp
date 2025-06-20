@@ -2103,106 +2103,228 @@ RObject etSetUnit(List curEt, CharacterVector units){
 }
 
 List etResizeId(List curEt, IntegerVector IDs){
-  // Step 1: Gather old IDs and map from ID to row indices
+  // Calculate size
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
   List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
   LogicalVector show = asLv(e["show"], "e[\"show\"]");
+  bool showId = asBool(show["id"], "show[\"id\"]");
   std::vector<int> oldIDs = as<std::vector<int>>(e["IDs"]);
-  IntegerVector idVec = asIv(curEt["id"]);
-  int nRows = idVec.size();
-
-  // Build id -> row index mapping for old data
-  std::map<int, std::vector<int>> idToRows;
-  for (int i = 0; i < nRows; ++i) {
-    idToRows[idVec[i]].push_back(i);
+  if (!showId && oldIDs.size() == 1 && IDs.size() >= 1){
+    oldIDs[0] = IDs[0];
+    IntegerVector tmpI = asIv(curEt[0],"curEt[0]");
+    std::fill(tmpI.begin(), tmpI.end(),IDs[0]);
   }
-
-  // Step 2: For each new ID, assemble rows in order
-  std::vector<int> newIDs = as<std::vector<int>>(IDs);
-  std::vector<int> outRows; // row indices for new event table
-  std::vector<int> outIDs;  // output IDs (should match newIDs, may be repeated for multiple rows per ID)
-
-  // If we need to duplicate a template for new IDs, pick the first unique old ID as template
-  int templateId = oldIDs.empty() ? NA_INTEGER : oldIDs.front();
-  std::vector<int> templateRows = idToRows[templateId];
-
-  for (auto newId : newIDs) {
-    if (idToRows.count(newId)) {
-      for (int idx : idToRows[newId]) {
-        outRows.push_back(idx);
-        outIDs.push_back(newId);
+  // Check IDs to remove
+  int i;
+  std::vector<int> rmIds;
+  std::vector<int> newIds;
+  for (i = IDs.size(); i--;){
+    if (std::find(oldIDs.begin(), oldIDs.end(), IDs[i]) == oldIDs.end()){
+      if (IDs[i] < 0){
+        rmIds.push_back(-IDs[i]);
+      } else {
+        newIds.push_back(IDs[i]);
       }
-    } else {
-      // New ID requested; check if allowed
-      if (!asBool(e["canResize"], "e[\"canResize\"]")) {
+    }
+  }
+  if (rmIds.size() == 0 && newIds.size() == 0){
+    return curEt;
+  }
+  if (rmIds.size() > 0){
+    List newEt(curEt.size());
+    // Remove ids
+    std::vector<int> finalIds;
+    for (i = oldIDs.size(); i--;){
+      if (std::find(rmIds.begin(), rmIds.end(), oldIDs[i]) == rmIds.end()){
+        finalIds.push_back(oldIDs[i]);
+      }
+    }
+    int rmId = NA_INTEGER, newId = NA_INTEGER;
+    if (finalIds.size() == 0 && newIds.size() == 0){
+      return etEmpty(e["units"]);
+    } else if (finalIds.size() == 0 && newIds.size() > 0){
+      if (asBool(e["canResize"], "e[\"canResize\"]")){
+        newId = newIds.back();
+        newIds.pop_back();
+        finalIds.push_back(newId);
+        rmId = rmIds.back();
+        rmIds.pop_back();
+      } else {
         stop(_("cannot add more 'ID's to this event table"));
       }
-      // Duplicate template rows for this new ID
-      for (int idx : templateRows) {
-        outRows.push_back(idx);
-        outIDs.push_back(newId);
+    }
+    int nobs = 0;
+    int ndose = 0;
+    std::vector<int> id = as<std::vector<int>>(curEt["id"]);
+    std::vector<int> evid = as<std::vector<int>>(curEt["evid"]);
+    std::vector<bool> isIn;
+    for (i = 0; i < (int)id.size(); i++){
+      if (std::find(rmIds.begin(), rmIds.end(), id[i]) == rmIds.end()){
+        if (evid[i] == 0){
+          nobs++;
+        } else {
+          ndose++;
+        }
+        isIn.push_back(true);
+      } else {
+        isIn.push_back(false);
       }
     }
-  }
-
-  // Step 3: Build new event table, copying or duplicating rows as needed
-  int nOut = outRows.size();
-  List newEt(curEt.size());
-  newEt.attr("names") = curEt.attr("names");
-  IntegerVector tmpI, tmpI2;
-  NumericVector tmpN, tmpN2;
-  CharacterVector tmpC, tmpC2;
-
-  for (int j = 0; j < curEt.size(); ++j) {
-    if (rxIsNum(curEt[j])) {
-      NumericVector col(nOut);
-      NumericVector orig = asNv(curEt[j], "curEt[j]");
-      for (int i = 0; i < nOut; ++i) {
-        col[i] = orig[outRows[i]];
-      }
-      newEt[j] = col;
-    } else if (rxIsInt(curEt[j])) {
-      IntegerVector col(nOut);
-      IntegerVector orig = asIv(curEt[j], "curEt[j]");
-      for (int i = 0; i < nOut; ++i) {
-        // For the ID column, use the new ID (to handle duplicating)
-        if (j == 0) {
-          col[i] = outIDs[i];
-        } else {
-          col[i] = orig[outRows[i]];
+    int j, newSize = nobs+ndose, k=0;
+    IntegerVector tmpI, tmpI2;
+    CharacterVector tmpC, tmpC2;
+    NumericVector tmpN, tmpN2;
+    for (j = newEt.size(); j--;){
+      k=newSize-1;
+      for (i = (int)id.size();i--;){
+        if (rxIsNum(curEt[j])) {
+          if (i == (int)id.size()-1) newEt[j] = NumericVector(newSize);
+          if (isIn[i]){
+            tmpN=newEt[j];
+            tmpN2   = curEt[j];
+            tmpN[k] = tmpN2[i];
+          }
+        } else if (rxIsInt(curEt[j])) {
+          if (i == (int)id.size()-1) newEt[j] = IntegerVector(newSize);
+          if (isIn[i]){
+            tmpI  = newEt[j];
+            tmpI2 = curEt[j];
+            // Replace ID if needed
+            if (j == 0 && tmpI2[i] == rmId){
+              tmpI[k] = newId;
+            } else {
+              tmpI[k] = tmpI2[i];
+            }
+          }
+        } else if (rxIsChar(curEt[j])){
+          if (i == (int)id.size()-1) newEt[j] = CharacterVector(newSize);
+          if (isIn[i]){
+            tmpC=newEt[j];
+            tmpC2 = curEt[j];
+            tmpC[k] = tmpC2[i];
+          }
+        }
+        if (isIn[i]){
+          k--;
         }
       }
-      newEt[j] = col;
-    } else if (rxIsChar(curEt[j])) {
-      CharacterVector col(nOut);
-      CharacterVector orig = asCv(curEt[j], "curEt[j]");
-      for (int i = 0; i < nOut; ++i) {
-        col[i] = orig[outRows[i]];
+    }
+    CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
+    List e = asList(cls.attr(".rxode2.lst"), ".rxode2.lst");
+    e["nobs"] = nobs;
+    e["ndose"] = ndose;
+    e["IDs"] = wrap(finalIds);
+    cls.attr(".rxode2.lst") = e;
+    newEt.attr("class") = cls;
+    newEt.attr("names") = curEt.attr("names");
+    newEt.attr("row.names") = IntegerVector::create(NA_INTEGER,-(nobs+ndose));
+    if (newIds.size() > 0){
+      // Need to add ids, call recursively.
+      return etResizeId(newEt, wrap(newIds));
+    } else {
+      // Note that if newId is NA and no more are added, then it is a
+      // simple ID replacement.  Otherwise the event table is sorted;
+      // Overall there is no need to sort here.
+      return newEt;
+    }
+  } else {
+    // Add ids?
+    if (asBool(eOld["canResize"],"eOld[\"canResize\"]")){
+      // Enlarge data-set
+      int oldMaxId = oldIDs.size();
+      int maxId = oldMaxId + newIds.size();
+      double c = (double)(maxId)/(double)(oldMaxId);
+      int oldSize = asInt(e["nobs"], "e[\"nobs\"]") +
+        asInt(e["ndose"], "e[\"ndose\"]");
+      int newSize = (int)(oldSize*c);
+      int idSize = (int)((double)(oldSize)/(double)(oldMaxId));
+      // Add new ids.
+      for (i = newIds.size(); i--;){
+        oldIDs.push_back(newIds[i]);
       }
-      newEt[j] = col;
+      SORT(oldIDs.begin(),oldIDs.end()); // Less expensive, then whole table doesn't need to be sorted.
+      int j;
+      IntegerVector tmpI, tmpI2;
+      NumericVector tmpN, tmpN2;
+      CharacterVector tmpC, tmpC2;
+      List newEt(curEt.size());
+      for (j = newEt.size(); j--;){
+        if (rxIsInt(curEt[j])) {
+          tmpI = IntegerVector(newSize);
+          tmpI2 = asIv(curEt[j], "curEt[j]");
+          std::copy(tmpI2.begin(), tmpI2.end(), tmpI.begin());
+          if (j == 0){
+            for (i = oldMaxId+1; i <= maxId; i++){
+              std::fill_n(tmpI.begin() + oldSize + (i-oldMaxId-1)*idSize, idSize, oldIDs[i-1]);
+            }
+          } else {
+            for (i = newSize - oldSize; i--;){
+              tmpI[oldSize+i] = tmpI2[i % oldSize];
+            }
+          }
+          newEt[j] = tmpI;
+        } else if (rxIsChar(curEt[j])){
+          // Char
+          tmpC = CharacterVector(newSize);
+          tmpC2 = asCv(curEt[j], "curEt[j]");
+          std::copy(tmpC2.begin(), tmpC2.end(), tmpC.begin());
+          for (i = newSize - oldSize; i--;){
+            tmpC[oldSize+i] = tmpC2[i % oldSize];
+          }
+          newEt[j] = tmpC;
+        } else {
+          tmpN = NumericVector(newSize);
+          tmpN2 = asNv(curEt[j], "curEt[j]");
+          std::copy(tmpN2.begin(), tmpN2.end(), tmpN.begin());
+          for (i = newSize - oldSize; i--;){
+            tmpN[oldSize+i] = tmpN2[i % oldSize];
+          }
+          newEt[j] = tmpN;
+        }
+      }
+      newEt.attr("names")     = curEt.attr("names");
+      bool recalcTime = false;
+      tmpN = asNv(newEt["time"], "newEt[\"time\"]");
+      NumericVector tmpN1 = asNv(newEt["low"], "newEt[\"low\"]");
+      tmpN2 = asNv(newEt["high"], "newEt[\"high\"]");
+      // Update new observations with recalculated windows
+      if (INTEGER(e["randomType"])[0] == 2) {
+        for (i = newSize - oldSize; i--;){
+          if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
+            tmpN[oldSize+i] = Rf_runif(tmpN1[oldSize+i], tmpN2[oldSize+i]);
+            recalcTime=true;
+          }
+        }
+      } else if (INTEGER(e["randomType"])[0] == 3) {
+        for (i = newSize - oldSize; i--;){
+          if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
+            tmpN[oldSize+i] = Rf_rnorm(tmpN1[oldSize+i], tmpN2[oldSize+i]);
+            recalcTime=true;
+          }
+        }
+      }
+      e["nobs"]   = (int)((double)(asInt(e["nobs"], "e[\"nobs\"]"))*c);
+      e["ndose"]  = (int)((double)(asInt(e["ndose"], "e[\"ndose\"]"))*c);
+      LogicalVector show = e["show"];
+      show["id"] = true;
+      e["show"] = show;
+      e["IDs"] = wrap(oldIDs);
+      e.attr("class")         = "rxHidden";
+      cls.attr(".rxode2.lst")  = e;
+      newEt.attr("class")     = cls;
+      int len = asInt(e["nobs"], "e[\"nobs\"]") +
+        asInt(e["ndose"], "e[\"ndose\"]");
+      newEt.attr("row.names") = IntegerVector::create(NA_INTEGER, -len);
+      if (recalcTime){
+        // Will have to sort with new times.
+        newEt = etSort(newEt);
+      }
+      return newEt;
+    } else {
+      stop(_("cannot add more 'ID's to this event table"));
     }
   }
-
-  // Step 4: Update metadata
-  int nobs = 0, ndose = 0;
-  IntegerVector evidCol = asIv(newEt["evid"]);
-  for (int i = 0; i < evidCol.size(); ++i) {
-    if (evidCol[i] == 0) nobs++;
-    else ndose++;
-  }
-  CharacterVector newCls = clone(asCv(curEt.attr("class"), "class"));
-  List newE = asList(newCls.attr(".rxode2.lst"), ".rxode2.lst");
-  newE["nobs"] = nobs;
-  newE["ndose"] = ndose;
-  newE["IDs"] = wrap(newIDs);
-  LogicalVector newShow = newE["show"];
-  newShow["id"] = (newIDs.size() > 1);
-  newE["show"] = newShow;
-  newCls.attr(".rxode2.lst") = newE;
-  newEt.attr("class") = newCls;
-  newEt.attr("row.names") = IntegerVector::create(NA_INTEGER, -(nobs+ndose));
-  return newEt;
 }
 
 List getEtRxsolve(Environment e);
