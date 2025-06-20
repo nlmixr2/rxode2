@@ -2109,7 +2109,7 @@ List etResizeId(List curEt, IntegerVector IDs){
   List e = clone(eOld);
   LogicalVector show = asLv(e["show"], "e[\"show\"]");
   std::vector<int> oldIDs = as<std::vector<int>>(e["IDs"]);
-  IntegerVector idVec = asIv(curEt["id"], "id");
+  IntegerVector idVec = asIv(curEt["id"]);
   int nRows = idVec.size();
 
   // Build id -> row index mapping for old data
@@ -2186,7 +2186,7 @@ List etResizeId(List curEt, IntegerVector IDs){
 
   // Step 4: Update metadata
   int nobs = 0, ndose = 0;
-  IntegerVector evidCol = asIv(newEt["evid"], "evid");
+  IntegerVector evidCol = asIv(newEt["evid"]);
   for (int i = 0; i < evidCol.size(); ++i) {
     if (evidCol[i] == 0) nobs++;
     else ndose++;
