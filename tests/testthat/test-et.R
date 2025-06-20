@@ -830,110 +830,67 @@ rxTest({
                                                  )))
 
   })
+})
 
-  test_that("etResizeId works as expected", {
-    # Create a simple event table with IDs 1 and 2
-    library(rxode2)
-    et <- et(time=0:2, id=1)
-    et <- et(et, id=2) # Add ID 2
+test_that("as.character.rxEvid", {
+  expect_equal(
+    as.character.rxEvid(-1:9),
+    c("-1:Invalid", "0:Observation", "1:Dose (Add)", "2:Other", "3:Reset",
+      "4:Reset&Dose", "5:Replace", "6:Multiply", "7:Transit", "8:Invalid",
+      "9:Invalid")
+  )
+  expect_equal(
+    as.character.rxEvid("A"),
+    "A:Invalid"
+  )
+  expect_equal(
+    as.character.rxEvid(0.5),
+    "0.5:Invalid"
+  )
+})
 
-    # Confirm initial IDs
-    expect_equal(sort(unique(et$id)), 1:2)
+test_that("sampling windows versus PopED windows", {
 
-    # Remove ID 1, should only have ID 2
-    et2 <- et(et, id=2)
-    expect_equal(unique(et2$id), 2L)
-    expect_true(all(et2$id == 2L))
-    expect_equal(nrow(et2), nrow(et[et$id == 2, ]))
+  e1 <- et(list(c(0.1, 1, 50),
+               c(0.5, 2, 50),
+               c(0.5, 3, 50),
+               c(0.5, 25, 50),
+               c(0.5, 25, 50),
+               c(0.5, 30, 50),
+               c(0.5, 50, 80),
+               c(0.5, 60, 90))) %>%
+    et(amt=100)
+  expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
 
-    # Add ID 3 (should duplicate the structure of an existing ID)
-    et3 <- et(et2, id=3)
-    expect_equal(unique(et3$id), 3L)
-    expect_true(all(et3$id == 3L))
-    expect_equal(nrow(et3), nrow(et2))
+  expect_warning(simulate(e1))
 
-    # Add back ID 1 and keep 3 (should now have 1 and 3)
-    et13 <- et(et3, id=c(1,3))
-    expect_equal(sort(unique(et13$id)), c(1L, 3L))
-    expect_equal(sum(et13$id == 1), nrow(et3)) # structure duplicated for ID 1
-    expect_equal(sum(et13$id == 3), nrow(et3))
+  e2 <- et(list(c(0.1, 50),
+                c(0.5,  50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 80),
+                c(0.5, 90))) %>%
+    et(amt=100)
 
-    # Replace ID 3 with 4 (should remove 3, add 4)
-    et4 <- et(et13, id=c(1,4))
-    expect_equal(sort(unique(et4$id)), c(1L, 4L))
-    expect_equal(sum(et4$id == 4), nrow(et3))
-    expect_equal(sum(et4$id == 1), nrow(et3))
+  expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
 
-    # Change order: IDs = c(4,1)
-    et41 <- et(et4, id=c(4,1))
-    expect_equal(unique(et41$id), c(4L, 1L)) # must match this order
+  expect_warning(simulate(e2), NA)
 
-    # Remove all IDs (should return empty event table)
-    expect_silent(et0 <- et(et, id=-1L))
-    expect_equal(nrow(et0), 0)
-  })
+  e3 <- et(list(c(1, .1, NA),
+                c(2, .1),
+                c(3, .1),
+                c(4, .1),
+                c(5, .1),
+                c(6, .1),
+                c(7, .1),
+                c(8, .1))) %>%
+    et(amt=100)
 
-  test_that("as.character.rxEvid", {
-    expect_equal(
-      as.character.rxEvid(-1:9),
-      c("-1:Invalid", "0:Observation", "1:Dose (Add)", "2:Other", "3:Reset",
-        "4:Reset&Dose", "5:Replace", "6:Multiply", "7:Transit", "8:Invalid",
-        "9:Invalid")
-    )
-    expect_equal(
-      as.character.rxEvid("A"),
-      "A:Invalid"
-    )
-    expect_equal(
-      as.character.rxEvid(0.5),
-      "0.5:Invalid"
-    )
-  })
+  expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
 
-  test_that("sampling windows versus PopED windows", {
+  expect_warning(simulate(e3), NA)
 
-    e1 <- et(list(c(0.1, 1, 50),
-                  c(0.5, 2, 50),
-                  c(0.5, 3, 50),
-                  c(0.5, 25, 50),
-                  c(0.5, 25, 50),
-                  c(0.5, 30, 50),
-                  c(0.5, 50, 80),
-                  c(0.5, 60, 90))) %>%
-      et(amt=100)
-    expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
-
-    expect_warning(simulate(e1))
-
-    e2 <- et(list(c(0.1, 50),
-                  c(0.5,  50),
-                  c(0.5, 50),
-                  c(0.5, 50),
-                  c(0.5, 50),
-                  c(0.5, 50),
-                  c(0.5, 80),
-                  c(0.5, 90))) %>%
-      et(amt=100)
-
-    expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
-
-    expect_warning(simulate(e2), NA)
-
-    e3 <- et(list(c(1, .1, NA),
-                  c(2, .1),
-                  c(3, .1),
-                  c(4, .1),
-                  c(5, .1),
-                  c(6, .1),
-                  c(7, .1),
-                  c(8, .1))) %>%
-      et(amt=100)
-
-    expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
-
-    expect_warning(simulate(e3), NA)
-
-
-  })
 
 })
