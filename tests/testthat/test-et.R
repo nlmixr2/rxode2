@@ -830,67 +830,68 @@ rxTest({
                                                  )))
 
   })
-})
 
-test_that("as.character.rxEvid", {
-  expect_equal(
-    as.character.rxEvid(-1:9),
-    c("-1:Invalid", "0:Observation", "1:Dose (Add)", "2:Other", "3:Reset",
-      "4:Reset&Dose", "5:Replace", "6:Multiply", "7:Transit", "8:Invalid",
-      "9:Invalid")
-  )
-  expect_equal(
-    as.character.rxEvid("A"),
-    "A:Invalid"
-  )
-  expect_equal(
-    as.character.rxEvid(0.5),
-    "0.5:Invalid"
-  )
-})
+  test_that("as.character.rxEvid", {
+    expect_equal(
+      as.character.rxEvid(-1:9),
+      c("-1:Invalid", "0:Observation", "1:Dose (Add)", "2:Other", "3:Reset",
+        "4:Reset&Dose", "5:Replace", "6:Multiply", "7:Transit", "8:Invalid",
+        "9:Invalid")
+    )
+    expect_equal(
+      as.character.rxEvid("A"),
+      "A:Invalid"
+    )
+    expect_equal(
+      as.character.rxEvid(0.5),
+      "0.5:Invalid"
+    )
+  })
 
-test_that("sampling windows versus PopED windows", {
+  test_that("sampling windows versus PopED windows", {
 
-  e1 <- et(list(c(0.1, 1, 50),
-               c(0.5, 2, 50),
-               c(0.5, 3, 50),
-               c(0.5, 25, 50),
-               c(0.5, 25, 50),
-               c(0.5, 30, 50),
-               c(0.5, 50, 80),
-               c(0.5, 60, 90))) %>%
-    et(amt=100)
-  expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
+    e1 <- et(list(c(0.1, 1, 50),
+                  c(0.5, 2, 50),
+                  c(0.5, 3, 50),
+                  c(0.5, 25, 50),
+                  c(0.5, 25, 50),
+                  c(0.5, 30, 50),
+                  c(0.5, 50, 80),
+                  c(0.5, 60, 90))) %>%
+      et(amt=100)
+    expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
 
-  expect_warning(simulate(e1))
+    expect_warning(simulate(e1))
 
-  e2 <- et(list(c(0.1, 50),
-                c(0.5,  50),
-                c(0.5, 50),
-                c(0.5, 50),
-                c(0.5, 50),
-                c(0.5, 50),
-                c(0.5, 80),
-                c(0.5, 90))) %>%
-    et(amt=100)
+    e2 <- et(list(c(0.1, 50),
+                  c(0.5,  50),
+                  c(0.5, 50),
+                  c(0.5, 50),
+                  c(0.5, 50),
+                  c(0.5, 50),
+                  c(0.5, 80),
+                  c(0.5, 90))) %>%
+      et(amt=100)
 
-  expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
+    expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
 
-  expect_warning(simulate(e2), NA)
+    expect_warning(simulate(e2), NA)
 
-  e3 <- et(list(c(1, .1, NA),
-                c(2, .1),
-                c(3, .1),
-                c(4, .1),
-                c(5, .1),
-                c(6, .1),
-                c(7, .1),
-                c(8, .1))) %>%
-    et(amt=100)
+    e3 <- et(list(c(1, .1, NA),
+                  c(2, .1),
+                  c(3, .1),
+                  c(4, .1),
+                  c(5, .1),
+                  c(6, .1),
+                  c(7, .1),
+                  c(8, .1))) %>%
+      et(amt=100)
 
-  expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
+    expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
 
-  expect_warning(simulate(e3), NA)
+    expect_warning(simulate(e3), NA)
 
+
+  })
 
 })
