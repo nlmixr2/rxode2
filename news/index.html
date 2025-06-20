@@ -88,6 +88,7 @@
 <li><p>Currently these different types of windows cannot be mixed.</p></li>
 </ul></li>
 <li><p>Add ability to pipe a list or named numeric as an eta with <code>%&gt;% ini(~pipeList)</code></p></li>
+<li><p>Added a fix for event tables where expanding IDs in non-sequential order. In particular if the first ID is not the minimum ID when expanding the first event table, the smallest ID was not in the output table. Now the smallest ID is in the event table. (Fixes <a href="https://github.com/nlmixr2/rxode2/issues/878" class="external-link">#878</a>, <a href="https://github.com/nlmixr2/rxode2/issues/869" class="external-link">#869</a>, <a href="https://github.com/nlmixr2/rxode2/issues/870" class="external-link">#870</a>)</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="3.0.4" id="rxode2-304">rxode2 3.0.4<a class="anchor" aria-label="anchor" href="#rxode2-304"></a></h2><p class="text-muted">CRAN release: 2025-02-14</p>
