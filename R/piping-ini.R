@@ -182,8 +182,10 @@
     .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
     # assign is called again to handle the fixing of the variable
   }
-  assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
-           envir=rxui)
+  .ini <- rxui$ini
+  if (is.null(.ini)) .ini <- rxui$iniDf
+  assign("iniDf", .iniModifyThetaOrSingleEtaDf(.ini, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
+         envir=rxui)
   invisible()
 }
 
@@ -861,14 +863,15 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
   if (length(.iniLines) == 0L) {
     if (.hasUi) {
-      return(x)
-    } else {
       return(.ret$iniFun)
+    } else {
+      return(x)
     }
   }
   if (!.hasUi) {
     .ret <- new.env(parent=emptyenv())
     .ret$iniDf <- .iniDf
+
   }
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
@@ -877,8 +880,8 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
     rxUiCompress(.ret)
   } else {
     .ret <- as.ini(.ret$iniDf)
-    if (inherits(.ret, "lotriFix") ||
-          inherits(.ret, "matrix")) {
+    if (inherits(x, "lotriFix") ||
+          inherits(x, "matrix")) {
       .ret[[1]] <- quote(`lotri`)
       .ret <- try(eval(.ret), silent = TRUE)
     }
