@@ -295,10 +295,8 @@
       .thetas <- try(.muRefExtractTheta(y, env), silent=TRUE)
       if (inherits(.thetas, "try-error")) .thetas <- NULL
       if (length(.thetas) == 1L) {
-        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas),
-                  silent=TRUE)
-        .extra <- try(str2lang(rxFromSE(.d)),
-                      silent=TRUE)
+        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas), silent=TRUE)
+        .extra <- try(str2lang(rxFromSE(.d)), silent=TRUE)
         .thetaD <- try(.muRefExtractTheta(.extra, env), silent=TRUE)
         if (inherits(.thetaD, "try-error")) .thetaD <- NULL
         if (is.null(.thetaD)) {

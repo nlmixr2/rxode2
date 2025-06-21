@@ -163,7 +163,7 @@ d/dt(blood)     = a*intestine - b*blood
               devtools::package_file("inst/include/rxode2_types.h"),
               overwrite=TRUE)
     .createRxUiBlessedList()
-  })
+  },silent=TRUE)
   message("generate rxResidualError and update documentation")
   rxResidualError <- utils::read.csv(devtools::package_file("inst/residualErrors.csv"),
                               check.names=FALSE)

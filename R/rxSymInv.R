@@ -252,7 +252,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
   mat2 <- rxInv(mat2)
   mat2 <- try({
     chol(mat2)
-  })
+  }, silent = TRUE)
   if (inherits(mat2, "try-error")) {
     stop("initial 'omega' matrix inverse is non-positive definite", call. = FALSE)
   }

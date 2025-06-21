@@ -34,6 +34,8 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "timsort.h"
+#define SORT gfx::timsort
 #include "par_solve.h"
 #include <Rcpp.h>
 #include "strncmp.h"
@@ -43,13 +45,7 @@ void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 #include "rxData.h"
 
@@ -139,7 +135,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int nall = rx->nall - rx->nevid9;
   int errNcol = rxGetErrsNcol();
   int errNrow = rxGetErrsNrow();
-  if (op->nsvar != errNcol){
+  if (op->nsvar != errNcol) {
     rxSolveFreeC();
     Rf_errorcall(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);
   }
@@ -176,7 +172,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     dullSS=1, dullIi=1;
   int csub = 0, evid = 0;
   int nsub = rx->nsub;
-  int *rmState = rx->stateIgnore;
+  IntegerVector rmState = rxStateIgnore(op->modNamePtr);
   int nPrnState =0;
   int i, j;
   int neq[2];
@@ -215,7 +211,33 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   if (op->badSolve){
     if (op->naTime){
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
+      int cmt = op->naTime/10;
+      int errNo = op->naTime - 10*cmt;
+      CharacterVector stateNames = rxStateNames(op->modNamePtr);
+      if (errNo == rxErrNaTimeLag) {
+        Rf_errorcall(R_NilValue,
+                     _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeRate) {
+        Rf_errorcall(R_NilValue,
+                     _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeDur) {
+        Rf_errorcall(R_NilValue,
+                     _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeAmtI) {
+        Rf_errorcall(R_NilValue,
+                     _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeAmt) {
+        Rf_errorcall(R_NilValue,
+                     _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else {
+        Rf_errorcall(R_NilValue, _("NA time error %d"), errNo);
+      }
+      // Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
       for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
@@ -461,7 +483,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
                 dfi = INTEGER(VECTOR_ELT(df, jj++));
                 double curAmt = getDoseNumber(ind, di);
-                if (whI == EVIDF_MODEL_RATE_OFF){
+                if (evid == 3) {
+                  dfi[ii] = 3;
+                } else if (whI == EVIDF_MODEL_RATE_OFF){
                   dullRate=0;
                   dfi[ii] = -1;
                 } else if (whI == EVIDF_MODEL_DUR_OFF){
@@ -705,7 +729,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           }
           // time
           dfp = REAL(VECTOR_ELT(df, jj++));
-          dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+          if (evid == 3) {
+            dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
+            if (fabs(dfp[ii]) < sqrt(DBL_EPSILON)) {
+              dfp[ii] = 0.0;
+            }
+          } else {
+            dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+          }
           // LHS
           if (nlhs){
             for (j = 0; j < nlhs; j++){

@@ -5,7 +5,7 @@
 #include "../inst/include/rxode2.h"
 #include <R.h>
 #include <threefry.h>
-#include <libintl.h>
+// #include <libintl.h>
 #include "checkmate.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include "../inst/include/rxode2parse.h"
