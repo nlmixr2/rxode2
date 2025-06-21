@@ -37,6 +37,12 @@
 - Add ability to pipe a list or named numeric as an eta with
   `%>% ini(~eta)`
 
+- Added a fix for event tables where expanding IDs in non-sequential
+  order.  In particular if the first ID is not the minimum ID when expanding
+  the first event table, the smallest ID was not in the output table. Now
+  the smallest ID is in the event table. (Fixes #878, #869, #870)
+
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)

@@ -4,6 +4,7 @@
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
 #include <R.h>
+#include <limits.h>
 #include "timsort.h"
 #include "../inst/include/rxode2parse.h"
 extern "C" rx_solve rx_global;
@@ -2103,17 +2104,27 @@ List etResizeId(List curEt, IntegerVector IDs){
   List e = clone(eOld);
   LogicalVector show = asLv(e["show"], "e[\"show\"]");
   bool showId = asBool(show["id"], "show[\"id\"]");
+  // These are the saved IDs in the event table:
   std::vector<int> oldIDs = as<std::vector<int>>(e["IDs"]);
-  if (!showId && oldIDs.size() == 1 && IDs.size() >= 1){
-    oldIDs[0] = IDs[0];
+
+  // If there is more than 1 ID, turn on the id show property
+  if (!showId && oldIDs.size() == 1 && IDs.size() >= 1) {
+    // There is a sort later in the function, so this needs
+    // to be the smallest ID, not ID[0].
+    // This assumption causes duplicate IDs (see Issue #868, #869, #870)
+    int minId = INT_MAX;
+    for (int j = 0; j < IDs.size(); ++j) {
+      if (IDs[j] < minId) minId = IDs[j];
+    }
+    oldIDs[0] = minId;
     IntegerVector tmpI = asIv(curEt[0],"curEt[0]");
-    std::fill(tmpI.begin(), tmpI.end(),IDs[0]);
+    std::fill(tmpI.begin(), tmpI.end(), minId);
   }
   // Check IDs to remove
   int i;
   std::vector<int> rmIds;
   std::vector<int> newIds;
-  for (i = IDs.size(); i--;){
+  for (i = IDs.size(); i--;) {
     if (std::find(oldIDs.begin(), oldIDs.end(), IDs[i]) == oldIDs.end()){
       if (IDs[i] < 0){
         rmIds.push_back(-IDs[i]);
@@ -2122,10 +2133,11 @@ List etResizeId(List curEt, IntegerVector IDs){
       }
     }
   }
+
   if (rmIds.size() == 0 && newIds.size() == 0){
     return curEt;
   }
-  if (rmIds.size() > 0){
+  if (rmIds.size() > 0) {
     List newEt(curEt.size());
     // Remove ids
     std::vector<int> finalIds;
