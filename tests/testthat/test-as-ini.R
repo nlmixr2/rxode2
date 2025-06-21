@@ -90,6 +90,9 @@ rxTest({
 
       suppressMessages(expect_error(ini %>% ini(tka=3), NA))
 
+      suppressMessages(expect_true(inherits(ini %>% ini(tka=3) %>% lotri::as.lotri(.),
+                                            "lotriFix")))
+
       ini <- paste(ini, collapse="\n")
 
       is.ini(as.ini(ini))
