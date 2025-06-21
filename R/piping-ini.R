@@ -182,7 +182,7 @@
     .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
     # assign is called again to handle the fixing of the variable
   }
-  assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$ini, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
+  assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
            envir=rxui)
   invisible()
 }
@@ -831,17 +831,72 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
   .f <- try(force(append), silent=TRUE)
   append <- .iniGetAppendArg(.f, .s)
   .ret <- try(as.rxUi(x), silent = TRUE)
+  .hasUi <- TRUE
+  .err <- FALSE
   if (inherits(.ret, "try-error")) {
+    .ret <- as.ini(x)
+    if (is.call(.ret) && identical(.ret[[1]], quote(`ini`))) {
+      lotri <- lotri::lotri
+      .ret[[1]] <- quote(`lotri`)
+      .lotri <- try(eval(.ret), silent = TRUE)
+      if (inherits(.lotri, "try-error")) {
+        .err <- TRUE
+      } else if (!inherits(.lotri, "lotriFix")) {
+        class(.lotri) <- c("lotriFix", class(.lotri))
+      }
+      if (!.err) {
+        .iniDf <- as.data.frame(.lotri)
+        .hasUi <- FALSE
+      }
+    } else {
+      .err <- TRUE
+    }
+  } else {
+    .ret <- rxUiDecompress(.ret)
+    .iniDf <- .ret$iniDf
+  }
+  if (.err) {
     stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
   }
-  .ret <- rxUiDecompress(.ret)
-  .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
-  if (length(.iniLines) == 0L) return(.ret$iniFun)
+  if (length(.iniLines) == 0L) {
+    if (.hasUi) {
+      return(x)
+    } else {
+      return(.ret$iniFun)
+    }
+  }
+  if (!.hasUi) {
+    .ret <- new.env(parent=emptyenv())
+    .ret$iniDf <- .iniDf
+  }
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })
-  rxUiCompress(.ret)
+  if (.hasUi) {
+    rxUiCompress(.ret)
+  } else {
+    .ret <- as.ini(.ret$iniDf)
+    if (inherits(.ret, "lotriFix") ||
+          inherits(.ret, "matrix")) {
+      .ret[[1]] <- quote(`lotri`)
+      .ret <- try(eval(.ret), silent = TRUE)
+    }
+    .ret
+  }
+}
+
+as.lotri.call <- function(x, ..., default = "") {
+  lotri <- lotri::lotri
+  .ret <- x
+  if (identical(.ret[[1]], quote(`ini`))) {
+    .ret[[1]] <- quote(`lotri`)
+  }
+  if (identical(.ret[[1]], quote(`lotri`))) {
+    return(eval(.ret))
+  } else {
+    stop("unsupported object of class 'call' used with `as.lotri`")
+  }
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model

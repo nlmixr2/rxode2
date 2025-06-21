@@ -23,6 +23,7 @@
   the first event table, the smallest ID was not in the output table. Now
   the smallest ID is in the event table. (Fixes #878, #869, #870)
 
+- Added ability to pipe `ini()` or `lotri()` expressions. Fixes #871
 
 # rxode2 3.0.4
 
