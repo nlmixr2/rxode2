@@ -67,6 +67,7 @@
   if (requireNamespace("digest", quietly = TRUE)) {
     .s3register("digest::sha1", "rxUi")
   }
+  .s3register("lotri::as.lotri", "call")
   backports::import(pkgname)
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
