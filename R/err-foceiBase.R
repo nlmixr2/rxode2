@@ -125,9 +125,9 @@
     }
   }
   if (pred1$variance) {
-    bquote((.(.p1)) ^ 2)
-  } else {
     bquote(.(.p1))
+  } else {
+    bquote((.(.p1)) ^ 2)
   }
 
 }
