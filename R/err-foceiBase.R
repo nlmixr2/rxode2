@@ -104,28 +104,6 @@
   }
 }
 
-#' Get the variance transformation
-#' @param env Environment for the parsed model
-#' @param pred1 The `data.frame` of the current error
-#' @return The quoted symbolic name of the additive variance
-#' @author Matthew Fidler
-#' @noRd
-.rxGetVarianceForErrorVar <- function(env, pred1) {
-  if (!is.na(pred1$a)) {
-    .p1 <- str2lang(pred1$a)
-  } else {
-    .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("var") & env$iniDf$condition == .cnd)
-    if (length(.w) == 1L) {
-      .p1 <- str2lang(env$iniDf$name[.w])
-    } else {
-      stop("cannot find additive variance deviation for '", .cnd, "'",
-           ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
-    }
-  }
-  bquote(.(.p1))
-}
-
 #' Get the additive transformation
 #'
 #' @param env Environment for the parsed model
@@ -338,8 +316,7 @@
          "prop"=.rxGetVarianceForErrorProp(env, pred1), # 2
          "pow"=.rxGetVarianceForErrorPow(env, pred1), # 3
          "add + prop"=.rxGetVarianceForErrorAddProp(env, pred1),# 4
-         "add + pow"=.rxGetVarianceForErrorAddPow(env, pred1), # 5
-         "var"=.rxGetVarianceForErrorVar(env, pred1) # 7
+         "add + pow"=.rxGetVarianceForErrorAddPow(env, pred1) # 5
          )
 }
 

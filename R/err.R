@@ -17,7 +17,6 @@
   ## Available as external package http://ugrad.stat.ubc.ca/R/library/rmutil/html/BetaBinom.html
   ## "dbetabinomial", ## not in base R (but in glnmm2)
   "add" = 1,
-  "var" = 1,
   "norm" = 0,
   "dnorm" = 0,
   "prop" = 1,
@@ -254,8 +253,7 @@ rxPreferredDistributionName <- function(dist) {
   "pow", # 3
   "add + prop", # 4
   "add + pow", # 5
-  "none", # 6
-  "var" #7
+  "none" # 6
 )
 
 .rxDistributionType <- c(
