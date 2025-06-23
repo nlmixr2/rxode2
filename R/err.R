@@ -974,7 +974,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                      f=env$f,
                                      lambda=env$lambda,
                                      linCmt=env$linCmt,
-                                     var=env$var))
+                                     variance=env$var))
       env$curDvid <- env$curDvid + 1L
 
     }
@@ -1002,7 +1002,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          f=env$f,
                          lambda=env$lambda,
                          linCmt=env$linCmt,
-                         var=env$var)
+                         variance=env$var)
       env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
