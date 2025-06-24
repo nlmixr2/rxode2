@@ -37,6 +37,7 @@
   "probitNorm" = 1:3,
   "combined1"=0,
   "combined2"=0,
+  "var"=0,
   "comb1"=0,
   "comb2"=0,
   "dchisq"=1,
@@ -61,12 +62,15 @@
   "dnbinomMu"=2
 )
 
-.errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
+.errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm",
+                       "dlnorm", "logitNorm", "probitNorm")
 
 .errUnsupportedDists <- "nlmixrDist"
 
-.errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
-                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy", "norm")
+.errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF",
+                  "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
+                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2",
+                  "comb1", "comb2", "t", "cauchy", "norm", "var")
 
 .errIdenticalDists <- list(
   "lnorm"=c("logn", "dlogn", "dlnorm"),
@@ -509,10 +513,14 @@ rxDemoteAddErr <- function(errType) {
             class="factor")
 }
 
-#' This is a wrapper to make sure that the transformation combination returns the correct value
+#' This is a wrapper to make sure that the transformation combination
+#' returns the correct value
 #'
 #' @param inputList This is either an input list or character vector of length one
-#' @return Either a complete list, or a character vector which represents the parsed error that was encountered
+#'
+#' @return Either a complete list, or a character vector which
+#'   represents the parsed error that was encountered
+#'
 #' @author Matthew Fidler
 #' @noRd
 .rxTransformCombineListOrChar <- function(inputList) {
@@ -779,6 +787,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   } else if (env$isAnAdditiveExpression) {
     .currErr <- rxPreferredDistributionName(deparse1(expression[[1]]))
     if (.currErr %in% .errAddDists) {
+      if (.currErr == "var") {
+        env$var <- TRUE
+        return(invisible())
+      }
       if (.currErr == "t") {
         if (env$distribution == "cauchy") {
           stop("you cannot combine 't' and 'cauchy' distributions")
@@ -918,6 +930,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$ll <- FALSE
   env$estNotAllowed <- TRUE
   env$linCmt <- FALSE
+  env$var <- FALSE
   .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
   env$a <- env$b <- env$c <- env$d <- env$e <- env$f <- env$lambda <- NA_character_
@@ -943,8 +956,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     if (env$ll) {
       env$distribution <- "LL"
       env$predDf <- rbind(env$predDf,
-                          data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
-                                     trLow=env$trLimit[1], trHi=env$trLimit[2],
+                          data.frame(cond=env$curCondition,
+                                     var=env$curVar, dvid=env$curDvid,
+                                     trLow=env$trLimit[1],
+                                     trHi=env$trLimit[2],
                                      transform=env$errTypeInfo$transform,
                                      errType=env$errTypeInfo$errType,
                                      errTypeF=env$errTypeInfo$errTypeF,
@@ -958,7 +973,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                      e=env$e,
                                      f=env$f,
                                      lambda=env$lambda,
-                                     linCmt=env$linCmt))
+                                     linCmt=env$linCmt,
+                                     variance=env$var))
       env$curDvid <- env$curDvid + 1L
 
     }
@@ -985,7 +1001,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          e=env$e,
                          f=env$f,
                          lambda=env$lambda,
-                         linCmt=env$linCmt)
+                         linCmt=env$linCmt,
+                         variance=env$var)
       env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
