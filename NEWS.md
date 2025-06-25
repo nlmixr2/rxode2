@@ -46,6 +46,10 @@
   that can be converted to an ini with `as.ini()`. Also allows `ini()`
   expressions to be converted to lotri with `as.lotri()`. Fixes #871
 
+- Added new type of variability expression for simulation and
+  estimation with focei and likelihood related methods: `+var()`. This
+  changes standard deviation parameters to variance parameters.
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)
