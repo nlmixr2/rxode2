@@ -869,7 +869,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtHmeanI=c("geometric", "arithmetic", "harmonic"),
                     linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
                     linCmtSuspect=1e-6,
-                    linCmtForwardMax=3L,
+                    linCmtForwardMax=1L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {

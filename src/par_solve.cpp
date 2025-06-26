@@ -4084,7 +4084,7 @@ void setupLinH(rx_solve *rx, int solveid,
     } else {
       // gill83 = 6
       // shi21  = 1
-      rx->sensType = 1;
+      rx->sensType = 6;
     }
   }
   rx_solving_options *op = &op_global;

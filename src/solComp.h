@@ -49,11 +49,13 @@ namespace stan {
     solComp2struct<T> computeSolComp2(T k10, T k12, T k21) {
       solComp2struct<T> out;
       T sum = k10 + k12 + k21;
-      T disc = sqrt(sum*sum - 4*k10*k21);
+      T disc = sqrt((sum - 2*sqrt(k10*k21)) * (sum + 2*sqrt(k10*k21)));
+      // T disc = sqrt(sum*sum - 4*k10*k21);
       T L0 = 0.5*(sum + disc); // this cannot be zero
       T L1 = 0.5*(sum - disc); // this can possibly be zero
 
-      T invD0 = 1.0/(L1 - L0);
+      T epsilon = std::numeric_limits<T>::epsilon();
+      T invD0 = 1.0/(L1 - L0 + epsilon);
       T invD1 = -invD0;
 
       T tmpSum = k10 + k12;
