@@ -2955,39 +2955,55 @@ namespace stan {
         return NA_REAL;
       }
 
-      Eigen::Matrix<double, -1, -1> getJacCp(const Eigen::Matrix<double, -1, -1>& J0,
-                                             const Eigen::VectorXd& ret0,
-                                             const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
-                                             Eigen::Matrix<double, Eigen::Dynamic, 1>& Jf) {
+      Eigen::Matrix<double, -1, -1>
+      getJacCp(const Eigen::Matrix<double, -1, -1>& J0,
+               const Eigen::VectorXd& ret0,
+               const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+               Eigen::Matrix<double, Eigen::Dynamic, 1>& Jf) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> J = J0.row(oral0_);
         Jf = J;
 
         double v = getVc(theta);
 
-        for (int i = 0; i < getNpars(); i++) {
-          if (((ncmt_ == 1 && i == 1) ||
-               (ncmt_ == 2 && (i == 1 || i ==3)) ||
-               (ncmt_ == 3 && (i == 1 || i ==3 || i == 5)))) {
-            if (trans_ == 11 && ncmt_ >= 2 && i == 1) {
-              // > D(S("f(v1)/(1/v1+v2+v3)"), "v1")
-              //   (Add) Derivative(f(v1), v1)/(v2 + v3 + v1^(-1)) + f(v1)/(v1^2*(v2 + v3 + v1^(-1))^2)
-              // Noting that (v2 + v3 + v1^(-1)) = v
-              //   (Add) Derivative(f(v1), v1)/v + f(v1)/(v1^2*v^2)
+        // Cp = central/v
 
-              // > D(S("f(v1)/(1/v1+v2)"), "v1")
-              //   (Add)Derivative(f(v1), v1)/(v2 + v1^(-1)) + f(v1)/(v1^2*(v2 + v1^(-1))^2)
-              // Noting that (v2 + v1^(-1)) = v
-              //   (Add) Derivative(f(v1), v1)/v + f(v1)/(v1^2*v^2)
-              Jf(i, 0) = J(i, 0) / v +
-                ret0(oral0_, 0)/(theta(1, 0)*theta(1, 0)*v*v);
-            } else {
-              Jf(i, 0) = -ret0(oral0_, 0)/(v*v) +
-                J(i, 0) / v;
-            }
+        for (int i = 0; i < getNpars(); i++) {
+          if (i == 1) {
+            //> D(S("central(v)/v"), "v")
+            //  (Add) -central(v)/v^2 + Derivative(central(v), v)/v
+            Jf(i, 0) = -ret0(oral0_, 0)/(v*v) +
+              J(i, 0) / v;
           } else {
+            // > D(S("central(x)/v"), "x")
+            //   (Mul)Derivative(central(x), x)/v
             Jf(i, 0) = J(i, 0)  / v;
           }
         }
+
+        // for (int i = 0; i < getNpars(); i++) {
+        //   if (((ncmt_ == 1 && i == 1) ||
+        //        (ncmt_ == 2 && (i == 1 || i ==3)) ||
+        //        (ncmt_ == 3 && (i == 1 || i ==3 || i == 5)))) {
+        //     if (trans_ == 11 && ncmt_ >= 2 && i == 1) {
+        //       // > D(S("f(v1)/(1/v1+v2+v3)"), "v1")
+        //       //   (Add) Derivative(f(v1), v1)/(v2 + v3 + v1^(-1)) + f(v1)/(v1^2*(v2 + v3 + v1^(-1))^2)
+        //       // Noting that (v2 + v3 + v1^(-1)) = v
+        //       //   (Add) Derivative(f(v1), v1)/v + f(v1)/(v1^2*v^2)
+
+        //       // > D(S("f(v1)/(1/v1+v2)"), "v1")
+        //       //   (Add)Derivative(f(v1), v1)/(v2 + v1^(-1)) + f(v1)/(v1^2*(v2 + v1^(-1))^2)
+        //       // Noting that (v2 + v1^(-1)) = v
+        //       //   (Add) Derivative(f(v1), v1)/v + f(v1)/(v1^2*v^2)
+        //       Jf(i, 0) = J(i, 0) / v +
+        //         ret0(oral0_, 0)/(theta(1, 0)*theta(1, 0)*v*v);
+        //     } else {
+        //       Jf(i, 0) = -ret0(oral0_, 0)/(v*v) +
+        //         J(i, 0) / v;
+        //     }
+        //   } else {
+        //     Jf(i, 0) = J(i, 0)  / v;
+        //   }
+        // }
         return Jf;
       }
 
