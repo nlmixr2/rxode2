@@ -4079,13 +4079,14 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
 void setupLinH(rx_solve *rx, int solveid,
                t_dydt dydt, t_update_inis u_inis) {
   if (rx->sensType == 100) {
-    if (rx->linCmtNcmt == 1) {
-      rx->sensType = 3;
-    } else {
-      // gill83 = 6
-      // shi21  = 1
-      rx->sensType = 6;
-    }
+    Rf_error("need to choose sensType");
+    // if (rx->linCmtNcmt == 1) {
+    rx->sensType = 3;
+    // } else {
+    //   // gill83 = 6
+    //   // shi21  = 1
+    //   rx->sensType = 6;
+    // }
   }
   rx_solving_options *op = &op_global;
   int neq[2];
@@ -4110,8 +4111,15 @@ void setupLinH(rx_solve *rx, int solveid,
       hh[i] /= 4;
     }
     break;
+  case 7: // 3 pt forward, gill
   case 6: // forward difference with gill H est
     gillForwardH(rx, op, solveid, neq, dydt, u_inis);
+    break;
+  case 8: // 5-point endpoint; Gill
+    gillForwardH(rx, op, solveid, neq, dydt, u_inis);
+    for (int i = 0; i < 7; i++) {
+      hh[i] /= 4;
+    }
     break;
   default: // all the rest are constant
     std::fill_n(ind->linH, 7, rx->sensH);

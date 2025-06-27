@@ -853,8 +853,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
                     ssSolved=TRUE,
-                    linCmtSensType=c("auto", "endpoint5",
-                                     "forward3", "AD", "central", "forward",
+                    linCmtSensType=c("auto",
+                                     "endpoint5", "endpoint5G",
+                                     "forward3", "forward3G",
+                                     "AD", "central",
+                                     "forward", "forwardG",
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
@@ -869,7 +872,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtHmeanI=c("geometric", "arithmetic", "harmonic"),
                     linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
                     linCmtSuspect=1e-6,
-                    linCmtForwardMax=1L,
+                    linCmtForwardMax=2L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1046,11 +1049,20 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (checkmate::testIntegerish(linCmtSensType)) {
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
-      .linCmtSensType <- c("AD"=3L, "forward"=1L, "central"=2L,
-                           "forward3"=4L, "endpoint5"=5L,
+      .linCmtSensType <- c("AD"=3L,
+                           "forward"=1L,
+                           "central"=2L,
+                           "forward3"=4L,
+                           "endpoint5"=5L,
+                           # Gill differences
                            "forwardG"=6L,
-                           "forward3H"=40L, "endpoint5H"=50L,
-                           "forwardH"=10L, "centralH"=20L,
+                           "forward3G"=7L,
+                           "endpoint5G"=8L,
+                           # Fixed step sizes
+                           "forward3H"=40L,
+                           "endpoint5H"=50L,
+                           "forwardH"=10L,
+                           "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
     if (is.logical(linCmtScale)) {

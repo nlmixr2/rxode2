@@ -634,6 +634,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
         case 40: // 3-point forward difference
         case 4:  // 3-point forward difference
+        case 7:  // 3-point forward difference with gill H est
           lc.linAcalcAlast(yp, g, theta);
           lc.calcFx(thetaSens);
           lc.fF3Jac(thetaSens, ind->linH, fx, Js);
