@@ -2501,19 +2501,110 @@ namespace stan {
         Jf = J;
 
         double v = getVc(theta);
-
-        for (int i = 0; i < getNpars(); i++) {
-          if (i == 1) {
-            //> D(S("central(v)/v"), "v")
-            //  (Add) -central(v)/v^2 + Derivative(central(v), v)/v
-            Jf(i, 0) = -ret0(oral0_, 0)/(v*v) +
-              J(i, 0) / v;
-          } else {
-            // > D(S("central(x)/v"), "x")
-            //   (Mul)Derivative(central(x), x)/v
-            Jf(i, 0) = J(i, 0)  / v;
+        int sw = ncmt_*100 + trans_;
+        switch (sw) {
+        case 311:
+          // v = 1.0/(1.0/theta(1, 0) + theta(3, 0) + theta(5, 0));
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1) {
+              //> D(S("central(a)*(1/a+b+c)"), "a")
+              //(Add)   -central(a)/a^2 + (b + c + a^(-1))*Derivative(central(a), a)
+              Jf(i, 0) = -ret0(oral0_, 0)/(theta(1, 0)*theta(1, 0))  +
+                J(i, 0)*(1.0/theta(1, 0) + theta(3, 0) + theta(5, 0));
+            } else if (i == 3 || i == 5)  {
+              Jf(i, 0) = ret0(oral0_, 0)  +
+                J(i, 0)*(1.0/theta(1, 0) + theta(3, 0) + theta(5, 0));
+            } else {
+              // > D(S("central(x)*(1/a+b+c)"), "x")
+              Jf(i, 0) = J(i, 0)  * (1.0/theta(1, 0) + theta(3, 0) + theta(5, 0));
+            }
           }
+          break;
+        case 211:
+          // v =  1.0/(1.0/theta(1, 0) + theta(3, 0));
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1) {
+              //> D(S("central(a)*(1/a+b+c)"), "a")
+              //(Add)   -central(a)/a^2 + (b + c + a^(-1))*Derivative(central(a), a)
+              Jf(i, 0) = -ret0(oral0_, 0)/(theta(1, 0)*theta(1, 0))  +
+                J(i, 0)*(1.0/theta(1, 0) + theta(3, 0));
+            } else if (i == 3)  {
+              Jf(i, 0) = ret0(oral0_, 0)  +
+                J(i, 0)*(1.0/theta(1, 0) + theta(3, 0));
+            } else {
+              // > D(S("central(x)*(1/a+b+c)"), "x")
+              Jf(i, 0) = J(i, 0)  * (1.0/theta(1, 0) + theta(3, 0));
+            }
+          }
+          break;
+          // Note 111 is the as simply using volume (included below)
+        case 310:
+          // v = 1.0/(theta(1, 0) + theta(3, 0) + theta(5, 0));
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1 || i == 3 || i == 5) {
+              //> D(S("central(a)*(a+b+c)"), "a")
+              Jf(i, 0) = ret0(oral0_, 0)  +
+                J(i, 0)*(theta(1, 0) + theta(3, 0) + theta(5, 0));
+            } else {
+              // > D(S("central(x)*(a+b)"), "x")
+              Jf(i, 0) = J(i, 0)  * (theta(1, 0) + theta(3, 0) + theta(5, 0));
+            }
+          }
+          break;
+        case 210:
+          // v = 1.0/(theta(1, 0) + theta(3, 0));
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1 || i == 3) {
+              //  (Add) (a+b)*Derivative(central(a), a) + central(a)
+              Jf(i, 0) = ret0(oral0_, 0)  +
+                J(i, 0)*(theta(1, 0) + theta(3, 0));
+            } else {
+              // > D(S("central(x)*(a+b)"), "x")
+              Jf(i, 0) = J(i, 0)  * (theta(1, 0) + theta(3, 0));
+            }
+          }
+          break;
+        case 110:
+          // v = 1.0/(theta(1, 0));
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1) {
+              //> D(S("central(a)*a"), "a")
+              //  (Add) a*Derivative(central(a), a) + central(a)
+              Jf(i, 0) = ret0(oral0_, 0)  +
+                J(i, 0)*theta(1, 0);
+            } else {
+              // > D(S("central(x)*a"), "x")
+              Jf(i, 0) = J(i, 0)  * theta(1, 0);
+            }
+          }
+          break;
+        case 101:
+        case 102:
+        case 111:
+        case 201:
+        case 202:
+        case 203:
+        case 204:
+        case 205:
+        case 301:
+        case 302:
+        default:
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1) {
+              //> D(S("central(v)/v"), "v")
+              //  (Add) -central(v)/v^2 + Derivative(central(v), v)/v
+              Jf(i, 0) = -ret0(oral0_, 0)/(v*v) +
+                J(i, 0) / v;
+            } else {
+              // > D(S("central(x)/v"), "x")
+              //   (Mul)Derivative(central(x), x)/v
+              Jf(i, 0) = J(i, 0)  / v;
+            }
+          }
+          // v = theta(1, 0);
+          break;
         }
+
         return Jf;
       }
 

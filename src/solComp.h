@@ -54,7 +54,7 @@ namespace stan {
       T L0 = 0.5*(sum + disc); // this cannot be zero
       T L1 = 0.5*(sum - disc); // this can possibly be zero
 
-      T epsilon = std::numeric_limits<T>::epsilon();
+      double epsilon = std::numeric_limits<double>::epsilon();
       T invD0 = 1.0/(L1 - L0 + epsilon);
       T invD1 = -invD0;
 
