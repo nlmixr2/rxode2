@@ -9,6 +9,7 @@
 #ifndef NDEBUG
 #define NDEBUG // just in case
 #endif
+#define R_NO_REMAP
 #include <Rinternals.h>
 #include <RcppEigen.h>
 
