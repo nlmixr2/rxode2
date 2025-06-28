@@ -176,7 +176,6 @@ namespace stan {
 
       out.success = true;
       return out;
-
     }
   }
 }

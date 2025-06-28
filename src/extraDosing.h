@@ -94,7 +94,6 @@ static inline void freeExtraDosing() {
   _globals.nIgnoredDoses = NULL;
 
   _globals.extraDoseCores = 0;
-
 }
 
 static inline void allocExtraDosing(int ncores) {
@@ -247,7 +246,6 @@ static inline void allocExtraDosing(int ncores) {
   _globals.extraDoseTime[ncores]    = NULL;
   _globals.extraDoseDose[ncores]    = NULL;
   _globals.extraDoseCores            = ncores;
-
 }
 
 static inline void resetExtraDosing() {

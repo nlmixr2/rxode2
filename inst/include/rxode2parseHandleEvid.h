@@ -482,9 +482,7 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
               ind->extraDoseAllocN[0] = (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE);
             }
           }
-
         }
-
       }
     }
     if (op->badSolve == 1) {

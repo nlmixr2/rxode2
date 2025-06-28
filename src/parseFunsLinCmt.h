@@ -44,7 +44,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
       v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       int which2 = toInt(v2+1);
 
-
       if (which2 == -2) {
         // amounts in function are returned
 
@@ -68,7 +67,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 211: // 1 compartment oral which1=2
           addLinCmtBdiff(diffP1);
           break;
-
         case 1630: // 3 compartment, iv, which1=16
         case 1030: // 3 compartment, iv, which1=10
         case 430: // 3 compartment, iv, which1=4
@@ -83,7 +81,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 311: // 1 compartmental oral, which1=3
           addLinCmtBdiff(diffV1);
           break;
-
         case 1730: // 3 compartment, iv, which1=17
         case 1130: // 3 compartment, iv, which1=11
         case 530: // 3 compartment, iv, which1=5
@@ -96,7 +93,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 521: // 2 compartment oral, which1=5
           addLinCmtBdiff(diffP2);
           break;
-
         case 1830: // 3 compartment, iv, which1=18
         case 1230:// 3 compartment, iv, which1=12
         case 630: // 3 compartment, iv, which1=6
@@ -109,7 +105,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 621: // 2 compartment oral, which1=6
           addLinCmtBdiff(diffP3);
           break;
-
         case 1930: // 3 compartment, iv, which1=19
         case 1330: // 3 compartment, iv, which1=13
         case 730: // 3 compartment, iv, which1=7
@@ -118,7 +113,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 831: // 3 compartment oral, which1=8
           addLinCmtBdiff(diffP4);
           break;
-
         case 2030: // 3 compartment, iv, which1=20
         case 1430: // 3 compartment, iv, which1=14
         case 830: // 3 compartment, iv, which1=8
@@ -127,7 +121,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 931: // 3 compartment oral, which1=9
           addLinCmtBdiff(diffP5);
           break;
-
         case 2531:// 3 compartment oral, which1=25
         case 2431:// 3 compartment oral, which1=24
         case 1731:// 3 compartment oral, which1=17
@@ -158,7 +151,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 11: // 1 compartment, oral, which2=0
           addLinCmtBdiff(diffP1);
           break;
-
         case 130: // 3 compartment, iv, which2=1
         case 131: // 3 compartment, oral, which2=1
         case 120: // 3 compartment, iv, which2=1
@@ -167,31 +159,26 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         case 111: // 1 compartment, oral, which2=1
           addLinCmtBdiff(diffV1);
           break;
-
         case 230: // 3 compartment, iv, which2=2
         case 231: // 3 compartment, oral, which2=2
         case 220: // 2 compartment, iv, which2=2
         case 221: // 2 compartment, oral, which2=2
           addLinCmtBdiff(diffP2);
           break;
-
         case 330: // 3 compartment, iv, which2=3
         case 331: // 3 compartment, oral, which2=3
         case 320: // 2 compartment, iv, which2=3
         case 321: // 2 compartment, oral, which2=3
           addLinCmtBdiff(diffP3);
           break;
-
         case 430: // 3 compartment, iv, which2=4
         case 431: // 3 compartment, oral, which2=4
           addLinCmtBdiff(diffP4);
           break;
-
         case 530: // 3 compartment, iv, which2=5
         case 531: // 3 compartment, oral, which2=5
           addLinCmtBdiff(diffP5);
           break;
-
         case 211: // 1 compartment, oral, which2=2
         case 421: // 2 compartment, oral, which2=4
         case 621: // 2 compartment, oral, which2=6
@@ -202,7 +189,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
           return 0;
         }
       }
-
     }
     return 1;
   }
