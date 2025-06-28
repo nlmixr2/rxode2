@@ -3038,7 +3038,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         xp = xout;
       }
       // Geometric mean of all compartments
-      double cur0;
+      double cur0 = 0.0;
       int n0=0;
       int nzero0 = 0;
       int cmtId = 1;
