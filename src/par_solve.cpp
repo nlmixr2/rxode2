@@ -4079,14 +4079,7 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
 void setupLinH(rx_solve *rx, int solveid,
                t_dydt dydt, t_update_inis u_inis) {
   if (rx->sensType == 100) {
-    Rf_error("need to choose sensType");
-    // if (rx->linCmtNcmt == 1) {
-    rx->sensType = 3;
-    // } else {
-    //   // gill83 = 6
-    //   // shi21  = 1
-    //   rx->sensType = 6;
-    // }
+    rx->sensType = 3; // AD
   }
   rx_solving_options *op = &op_global;
   int neq[2];
