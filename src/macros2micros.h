@@ -9,7 +9,6 @@
 #ifndef NDEBUG
 #define NDEBUG // just in case
 #endif
-#include <Rcpp.h>
 #include <RcppEigen.h>
 
 #include "../inst/include/rxode2parse.h"
