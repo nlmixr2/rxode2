@@ -10,8 +10,31 @@
 #define NDEBUG // just in case
 #endif
 #define R_NO_REMAP
+
+// See https://github.com/RcppCore/Rcpp/issues/1148#issuecomment-812290293
+
+#ifdef TRUE
+#define BEFORE_RCPP_TRUE TRUE
+#undef TRUE
+#endif
+
+#ifdef FALSE
+#define BEFORE_RCPP_FALSE FALSE
+#undef FALSE
+#endif
+
 #include <Rinternals.h>
 #include <RcppEigen.h>
+
+#ifdef BEFORE_RCPP_TRUE
+#define TRUE BEFORE_RCPP_TRUE
+#undef BEFORE_RCPP_TRUE
+#endif
+
+#ifdef BEFORE_RCPP_FALSE
+#define FALSE BEFORE_RCPP_FALSE
+#undef BEFORE_RCPP_FALSE
+#endif
 
 #include "../inst/include/rxode2parse.h"
 
