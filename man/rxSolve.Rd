@@ -134,8 +134,9 @@ rxSolve(
   ssAtDoseTime = TRUE,
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
-  linCmtSensType = c("auto", "endpoint5", "forward3", "AD", "central", "forward",
-    "forwardH", "centralH", "forward3H", "endpointH5", "forwardG"),
+  linCmtSensType = c("auto", "endpoint5", "endpoint5G", "forward3", "forward3G", "AD",
+    "central", "forward", "forwardG", "forwardH", "centralH", "forward3H", "endpointH5",
+    "forwardG"),
   linCmtSensH = 1e-04,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -143,12 +144,12 @@ rxSolve(
   linCmtGillRtol = sqrt(.Machine$double.eps),
   linCmtShiErr = sqrt(.Machine$double.eps),
   linCmtShiMax = 20L,
-  linCmtScale = NULL,
+  linCmtScale = FALSE,
   linCmtHcmt = NULL,
   linCmtHmeanI = c("geometric", "arithmetic", "harmonic"),
   linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
   linCmtSuspect = 1e-06,
-  linCmtForwardMax = 3L,
+  linCmtForwardMax = 2L,
   envir = parent.frame()
 )
 
@@ -892,6 +893,15 @@ determined.}
 step size, this is This is the step size to increase the
 initial estimate by.  So each iteration the new step size =
 (prior step size)*gillStep}
+
+\item{linCmtGillRtol}{The relative tolerance used for Gill 1983
+optimal step size determination.}
+
+\item{linCmtShiErr}{Shi difference error}
+
+\item{linCmtShiMax}{The maximum number of steps for the
+optimization of the forward-difference step size in linear
+compartment numeric difference.}
 
 \item{linCmtScale}{The scale of the linear compartment model.  This
 is applied to sensitivity approximation using numeric

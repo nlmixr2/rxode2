@@ -728,6 +728,15 @@
 #'   compartment solutions to re-compute when gradients seem to be
 #'   zero.
 #'
+#' @param linCmtGillRtol The relative tolerance used for Gill 1983
+#'   optimal step size determination.
+#'
+#' @param linCmtShiErr Shi difference error
+#'
+#' @param linCmtShiMax The maximum number of steps for the
+#'   optimization of the forward-difference step size in linear
+#'   compartment numeric difference.
+#'
 #' @param linCmtForwardMax The maximum number of points in a forward
 #'   difference to take while calculating the gradients.  This is an
 #'   integer from 1 to 3.  There is at least 1 extra point taken for
