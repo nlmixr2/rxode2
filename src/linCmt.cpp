@@ -69,7 +69,6 @@ RObject linCmtModelDouble(double dt,
                           int ndiff,
                           int sensType=3,
                           double sensH=0.001) {
-
   stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type, ndiff);
   if (type == linCmtSsInf) {
     lc.setSsInf(tinf, tau);

@@ -871,7 +871,6 @@ static inline void solveWith1Pt(int *neq,
 //' - Only linCmt() is defined (no mixed ODE/solved)
 //' - The dose is to the depot or central compartment
 static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_ind *ind, int idx) {
-
   if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin) {
     int evid = getEvid(ind, idx);
     int wh, cmt, wh100, whI, wh0;
@@ -1022,7 +1021,6 @@ extern "C" void solveSSinf(int *neq,
                            double *dur,
                            double *dur2,
                            int *canBreak) {
-
   double ssStart = *xp2;
   double ssStop = *xp2 + *dur;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
