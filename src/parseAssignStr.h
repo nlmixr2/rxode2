@@ -86,6 +86,9 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
       aType(TASSIGN);
       if (tb.lh[tb.ix] == 0 && tb.ini[tb.ix] == 0) {
         tb.lh[tb.ix] = isLHSstr;
+        if (tb.lho[tb.ix] == 0) {
+          tb.lho[tb.ix] = tb.lhi++;
+        }
       } else if (tb.lh[tb.ix] == isLHSstr ||
                  tb.lh[tb.ix] == isSuppressedLHSstr) {
       } else {
@@ -134,6 +137,9 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
       } else {
         // not ignored
         tb.lh[tb.ix] = isLHSstr;
+        if (tb.lho[tb.ix] == 0) {
+          tb.lho[tb.ix] = tb.lhi++;
+        }
       }
       return 1;
     }

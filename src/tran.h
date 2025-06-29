@@ -20,6 +20,8 @@ typedef struct symtab {
   vLines strVal; /* symbol string for rxode2 assigned strings */
   int *strValI; /* which variable is assigned a string */
   int *strValII; /* The number that the string is assigned (what C sees) */
+  int lhi; // ith for lhs
+  int *lho; /* lhs order */
   int *lh;        /*
 lhs symbols?
 =0 not LHS
