@@ -169,6 +169,9 @@ static inline void handleRemainingAssignmentsRestProp(nodeInfo ni, char *name, i
 
 static inline int handleRemainingAssignmentsCalcPropMtime(nodeInfo ni, char *name){
   if (nodeHas(mtime)){
+    if (tb.lho[tb.ix] == 0) {
+      tb.lho[tb.ix] = tb.lhi++;
+    }
     tb.lh[tb.ix] = isLHS;
     tb.mtime[tb.ix] = 1;
     return 1;
@@ -185,6 +188,8 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
       tb.lh[tb.ix] = isLHS;
       if (!strcmp(v, "rxdummyLhs")) {
         tb.dummyLhs = 1;
+      } else if (tb.lho[tb.ix] == 0) {
+        tb.lho[tb.ix] = tb.lhi++;
       }
     } else if (tb.ix < 0){
       if (!strcmp("rxlin___", v)) {
@@ -217,10 +222,13 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
         }
       } else if (tb.lh[tb.ix] == notLHS){
         tb.lh[tb.ix] = isLHSparam;
+        if (tb.lho[tb.ix] == 0) tb.lho[tb.ix] = tb.lhi++;
       } else {
         tb.lh[tb.ix] = isLHS;
         if (!strcmp(v, "rxdummyLhs")) {
           tb.dummyLhs = 1;
+        } else if (tb.lho[tb.ix] == 0) {
+          tb.lho[tb.ix] = tb.lhi++;
         }
       }
       tb.ixL=-1;
@@ -288,6 +296,9 @@ static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name,
           tb.ini0[tb.ix] = 0;
           if (strncmp(v,"rx_",3)==0){
             tb.lh[tb.ix] = isLHS;
+            if (tb.lho[tb.ix] == 0) {
+              tb.lho[tb.ix] = tb.lhi++;
+            }
           } else {
             xpn = d_get_child(pn, 2);
             /* Free(v); */
@@ -305,8 +316,11 @@ static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name,
         /* Rprintf("Duplicate %s; %d %d\n", v, tb.lh[tb.ix], tb.ini0[tb.ix]); */
         if (tb.lh[tb.ix] != isLHS){
           tb.lh[tb.ix] = isLHS;
+
           if (!strcmp(v, "rxdummyLhs")) {
             tb.dummyLhs = 1;
+          } else if (tb.lho[tb.ix] == 0) {
+            tb.lho[tb.ix] = tb.lhi++;
           }
           if (nodeHas(ini0) && tb.ini0[tb.ix] == 1){
             sPrint(&_gbuf,"cannot have conditional initial conditions for '%s'",v);

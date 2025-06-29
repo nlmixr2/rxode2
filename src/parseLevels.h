@@ -19,6 +19,9 @@ static inline int handleLevelsStr(nodeInfo ni, char *name, int i, D_ParseNode *p
       aProp(tb.ix);
       aType(TNONE);
       tb.lh[tb.ix] = isLHSstr;
+      if (tb.lho[tb.ix] == 0) {
+        tb.lho[tb.ix] = tb.lhi++;
+      }
       if (new_assign_str(v)){
         add_assign_str(v);
       }
@@ -70,6 +73,9 @@ static inline int handleLevelsStr1(nodeInfo ni, char *name, int i, D_ParseNode *
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       new_or_ith(v); // update tb.ix for the right value
       tb.lh[tb.ix] = isLHSstr;
+      if (tb.lho[tb.ix] == 0) {
+        tb.lho[tb.ix] = tb.lhi++;
+      }
       if (new_assign_str(v)){
         add_assign_str(v);
       }

@@ -147,6 +147,7 @@ static inline int new_or_ith(const char *s) {
   if (NV+1 > tb.allocS){
     tb.allocS += MXSYM;
     tb.lh = R_Realloc(tb.lh, tb.allocS, int);
+    tb.lho = R_Realloc(tb.lho, tb.allocS, int);
     tb.interp = R_Realloc(tb.interp, tb.allocS, int);
     tb.lag = R_Realloc(tb.lag, tb.allocS, int);
     tb.alag = R_Realloc(tb.alag, tb.allocS, int);

@@ -351,8 +351,10 @@ void reset(void) {
   lineIni(&(tb.str));
 
   tb.lh		= R_Calloc(MXSYM, int);
+  tb.lho    = R_Calloc(MXSYM, int);
   tb.interp	= R_Calloc(MXSYM, int);
   tb.interpC= 0;
+  tb.lhi    = 1;
   tb.ini	= R_Calloc(MXSYM, int);
   tb.mtime	= R_Calloc(MXSYM, int);
   tb.iniv	= R_Calloc(MXSYM, double);
