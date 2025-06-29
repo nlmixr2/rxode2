@@ -49,8 +49,11 @@ SEXP generateModelVars(void) {
   populateDfdy(dfdy);
 
   SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
+  SEXP lhsIn  = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
   SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
-  SEXP lhsStr    = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
+  SEXP lhsStrIn = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
+  SEXP lhsStr = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
+  SEXP lhsOrd = PROTECT(Rf_allocVector(INTSXP, tb.li)); pro++;
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
   SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
 
@@ -62,8 +65,17 @@ SEXP generateModelVars(void) {
   SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
   SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
 
-  populateParamsLhsSlhs(params, lhs, slhs, INTEGER(interp), lhsStr);
+  populateParamsLhsSlhs(params, lhsIn, slhs, INTEGER(interp), lhsStrIn,
+                        INTEGER(lhsOrd));
 
+  SEXP lhsOrdFS = PROTECT(orderForderS1(lhsOrd)); pro++;
+  int *lhsOrdF = INTEGER(lhsOrdFS);
+  int *lhsStrInI = INTEGER(lhsStrIn);
+  int *lhsStrI = INTEGER(lhsStr);
+  for (int i = 0; i < Rf_length(lhsOrdFS); ++i) {
+    SET_STRING_ELT(lhs, i, STRING_ELT(lhsIn, lhsOrdF[i]-1));
+    lhsStrI[i] = lhsStrInI[lhsOrdF[i]-1];
+  }
 
   INTEGER(sLinCmt)[5] = tb.hasCmt;
   tb.ini_i = Rf_length(ini);
