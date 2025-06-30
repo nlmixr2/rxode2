@@ -136,7 +136,7 @@ rxTest({
 
   test_that("dual order lhs mixed with non dual-order gives right order", {
 
-    m <- rxModelVars({
+    m <- rxode2({
       param(THETA[1], THETA[2], THETA[3], THETA[4], Nominal)
       rx_yj_ ~ 2
       rx_lambda_ ~ 1
@@ -164,6 +164,16 @@ rxTest({
 
     expect_equal(m$lhs,
                  c("rx_pred_", "rx_r_", "tka", "tcl", "tv", "add.sd", "ka", "cl", "v", "Nominal", "tad", "dosenum"))
+
+    theo_sd2 <- nlmixr2data::theo_sd
+    theo_sd2$Nominal <- 300
+
+    s <- rxSolve(m, theo_sd2, c(`THETA[1]` = 0.440455057067531, `THETA[2]` = 0.962169566880609,
+                                `THETA[3]` = 3.49144561224211, `THETA[4]` = 1.39422305101919),
+                 addCov=FALSE)
+
+    expect_true(all(s$Nominal == 300))
+    expect_false(any(s$rx_pred_ == 300))
 
   })
 })
