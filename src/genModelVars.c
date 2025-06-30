@@ -3,10 +3,13 @@
 #include "genModelVars.h"
 
 SEXP _rxode2parse_getUdf(void);
+extern void calcLinCmt(void);
 SEXP generateModelVars(void) {
-  calcExtracmt();
+  calcLinCmt();
+  assertNoLinCmtDepotCentral();
   calcNparamsNlhsNslhs();
   calcNextra();
+
 
   int pro = 0;
   SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 29));pro++;
@@ -25,12 +28,15 @@ SEXP generateModelVars(void) {
   SEXP tran  = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
   SEXP trann = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
 
+  // These are the normal states
   SEXP state      = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
   SEXP stateProp  = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
 
   SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
   int *stateRm    = INTEGER(stateRmS);
+
   SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
+
   SEXP sens       = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
   SEXP sensProp   = PROTECT(Rf_allocVector(INTSXP,tb.sensi));pro++;
 
@@ -57,10 +63,8 @@ SEXP generateModelVars(void) {
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
   SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
 
-
   SEXP version = PROTECT(calcVersionInfo());pro++;
   SEXP ini = PROTECT(calcIniVals()); pro++;
-
 
   SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
   SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
@@ -122,7 +126,7 @@ SEXP generateModelVars(void) {
 
   SET_STRING_ELT(names, 13, Rf_mkChar("extraCmt"));
   SEXP sExtraCmt = PROTECT(Rf_allocVector(INTSXP,1));pro++;
-  INTEGER(sExtraCmt)[0] = extraCmt;
+  INTEGER(sExtraCmt)[0] = 0;
   SET_VECTOR_ELT(lst, 13, sExtraCmt);
 
   SET_STRING_ELT(names, 14, Rf_mkChar("stateExtra"));
@@ -145,8 +149,10 @@ SEXP generateModelVars(void) {
 
   SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
   int *alagVar = INTEGER(alagVarSexp);
+  int *ordFI = INTEGER(ordF);
+
   for (int i = 0; i < tb.alagn; ++i) {
-    alagVar[i] = tb.alag[i];
+    alagVar[i] = ordFI[tb.alag[i]-1];
   }
   SET_STRING_ELT(names, 19, Rf_mkChar("alag"));
   SET_VECTOR_ELT(lst,   19, alagVarSexp);
@@ -255,7 +261,7 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(interp, R_NamesSymbol, params);
   SEXP clsInterp = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
   SET_STRING_ELT(clsInterp, 0, Rf_mkChar("factor"));
-  classgets(interp, clsInterp);
+  Rf_classgets(interp, clsInterp);
 
   SEXP lvlInterp = PROTECT(Rf_allocVector(STRSXP, 5));pro++;
   SET_STRING_ELT(lvlInterp, 0, Rf_mkChar("default"));
@@ -319,7 +325,7 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(model, R_NamesSymbol, modeln);
   SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
   SET_STRING_ELT(cls, 0, Rf_mkChar("rxModelVars"));
-  classgets(lst, cls);
+  Rf_classgets(lst, cls);
 
   UNPROTECT(pro);
   return lst;

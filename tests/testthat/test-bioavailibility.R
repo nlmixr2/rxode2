@@ -2,33 +2,33 @@ rxTest({
   mod <- rxode2({
     a <- 6
     b <- 0.6
-    d / dt(intestine) <- -a * intestine
-    d / dt(blood) <- a * intestine - b * blood
+    d/dt(intestine) <- -a * intestine
+    d/dt(blood) <- a * intestine - b * blood
   })
 
   mod2 <- rxode2({
     a <- 6
     b <- 0.6
-    d / dt(intestine) <- -a * intestine
+    d/dt(intestine) <- -a * intestine
     f(intestine) <- 2
-    d / dt(blood) <- a * intestine - b * blood
+    d/dt(blood) <- a * intestine - b * blood
   })
 
   mod4 <- rxode2({
     a <- 6
     b <- 0.6
-    d / dt(intestine) <- -a * intestine
+    d/dt(intestine) <- -a * intestine
     f(intestine) <- 0.5
-    d / dt(blood) <- a * intestine - b * blood
+    d/dt(blood) <- a * intestine - b * blood
   })
 
   mod5 <- rxode2({
     a <- 6
     b <- 0.6
     f <- 1
-    d / dt(intestine) <- -a * intestine
+    d/dt(intestine) <- -a * intestine
     f(intestine) <- f
-    d / dt(blood) <- a * intestine - b * blood
+    d/dt(blood) <- a * intestine - b * blood
   })
 
   ms <- c("liblsoda", "lsoda", "dop853")

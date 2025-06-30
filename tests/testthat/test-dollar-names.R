@@ -53,15 +53,16 @@ rxTest({
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")), dfSub = 100, dfObs = 100,
         nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
       ))
-    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
-      "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
-      "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
-      "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-      "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
-      "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-      "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
-      "sigmaList", "omegaList"
-    )))
+
+    expect_equal(sort(.DollarNames(pk4, "")),
+                 sort(c("add.dosing", "add.sampling", "central", "central0", "clear.dosing",
+                        "clear.sampling", "counts", "depot", "depot0", "dll", "EC50",
+                        "eff0", "env", "eta.Cl", "get.dosing", "get.EventTable", "get.nobs",
+                        "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
+                        "inits", "KA", "Kin", "Kout", "model", "nobs", "omegaList", "params",
+                        "peripheral1", "peripheral10", "pk", "Q", "resp", "rxode2", "sigmaList",
+                        "sim.id", "sim.id", "t", "TCL", "thetaMat", "time", "units",
+                        "V2", "V3")))
 
 
     pk4 <-
@@ -75,15 +76,14 @@ rxTest({
         nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
       ))
 
-    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
-      "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
-      "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
-      "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-      "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
-      "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-      "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
-      "omegaList")
-    ))
+    expect_equal(sort(.DollarNames(pk4, "")),
+                 sort(c("add.dosing", "add.sampling", "central", "central0", "clear.dosing",
+                        "clear.sampling", "counts", "depot", "depot0", "dll", "EC50",
+                        "eff0", "env", "eta.Cl", "get.dosing", "get.EventTable", "get.nobs",
+                        "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
+                        "inits", "KA", "Kin", "Kout", "model", "nobs", "omegaList", "params",
+                        "peripheral1", "peripheral10", "pk", "Q", "resp", "rxode2", "sim.id",
+                        "sim.id", "t", "TCL", "thetaMat", "time", "units", "V2", "V3")))
 
     pk4 <-
       suppressWarnings(rxSolve(
@@ -96,14 +96,14 @@ rxTest({
         nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
       ))
 
-    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
-      "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
-      "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
-      "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-      "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
-      "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-      "env", "model", "params", "inits", "t", "rxode2", "thetaMat"
-    )))
+    expect_equal(sort(.DollarNames(pk4, "")),
+                 sort(c("add.dosing", "add.sampling", "central", "central0", "clear.dosing",
+                        "clear.sampling", "counts", "depot", "depot0", "dll", "EC50",
+                        "eff0", "env", "eta.Cl", "get.dosing", "get.EventTable", "get.nobs",
+                        "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
+                        "inits", "KA", "Kin", "Kout", "model", "nobs", "params", "peripheral1",
+                        "peripheral10", "pk", "Q", "resp", "rxode2", "sim.id", "sim.id",
+                        "t", "TCL", "thetaMat", "time", "units", "V2", "V3")))
 
     pk4 <-
       suppressWarnings(rxSolve(
@@ -113,16 +113,15 @@ rxTest({
           Kin = 1, Kout = 1, EC50 = 200
         ),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, nStud = 8, sigma = sigma, ev, cores = 1
-      ))
+        nSub = 4, nStud = 8, sigma = sigma, ev, cores = 1))
 
-    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
-      "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
-      "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
-      "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-      "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
-      "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-      "env", "model", "params", "inits", "t", "rxode2"
-    )))
+    expect_equal(sort(.DollarNames(pk4, "")),
+                 sort(c("add.dosing", "add.sampling", "central", "central0", "clear.dosing",
+                   "clear.sampling", "counts", "depot", "depot0", "dll", "EC50",
+                   "eff0", "env", "eta.Cl", "get.dosing", "get.EventTable", "get.nobs",
+                   "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
+                   "inits", "KA", "Kin", "Kout", "model", "nobs", "params", "peripheral1",
+                   "peripheral10", "pk", "Q", "resp", "rxode2", "sim.id", "sim.id",
+                   "t", "TCL", "time", "units", "V2", "V3")))
   })
 })

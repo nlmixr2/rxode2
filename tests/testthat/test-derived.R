@@ -1,6 +1,10 @@
 rxTest({
   test_that("v1 rate constants", {
 
+    p1 <- rxDerived(v1 = 8, kel = 0.5*1:3, digits = 3)
+
+    expect_false(any(is.infinite(p1$A)))
+
     p1 <- rxDerived(v1 = 8, k = 0.5, digits = 3)
     expect_equal(
       p1,

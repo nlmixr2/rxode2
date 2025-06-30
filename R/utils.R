@@ -1392,10 +1392,11 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
     if (verbose) {
       message("parameters: ", paste(names(.lst)[.w], collapse = ","))
     }
+    .lst <- as.data.frame(.lst)
     .linCmt <- .Call(
       `_linCmtParse`, names(.lst)[.w],
       c(
-        "with(.lst,.Call(`_calcDerived`, ", "list(", "0, 0, 0, 0, ",
+        "with(.lst,.Call(`_rxode2_calcDerived`, ", "list(", "0, 0, 0, 0, ",
         ", 0, 0, 0, 0),digits))"
       ),
       verbose
@@ -1473,16 +1474,101 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   .r <- rex::rex(start, end)
   .d <- data.table::data.table(a=1)
 }
-#' Is the linear systems with gradients built-in
+## nocov end
+
+
+#' Get the number of linear compartments
 #'
-#' @return logical (TRUE) if the solved systems with gradients are
-#'   built-in. (FALSE) if the solves systems with gradients are absent
+#' @param obj rxode2 object
+#' @return A named integer vector with the number of linear compartments (numLin, numLinSens and depotLin)
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+.rxLinNcmt <- function(obj) {
+  .mv <- rxModelVars(obj)
+  .flag <- setNames(.mv$flags["linCmtFlg"], NULL)
+  if (.flag <= 0) {
+    c(numLin=0L, numLinSens=0L, depotLin=0L)
+  } else {
+    .numLinSens <- floor(.flag/100)
+    .numLin <- floor((.flag - .numLinSens*100)/10)
+    .depotLin <- floor((.flag - .numLinSens*100- .numLin*10))
+    c(numLin=.numLin, numLinSens=.numLinSens, depotLin=.depotLin)
+  }
+}
+
+#' Get the linear compartment model states
+#'
+#' @param obj rxode2 type of object
+#' @return compartment names
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+.rxLinCmt <- function(obj) {
+  .ncmt <- .rxLinNcmt(obj)
+  .ret <- character(0)
+  if (.ncmt["numLin"] <= 0) {
+    return(.ret)
+  }
+  .vars <- c("p1", "v1","p2", "p3", "p4", "p5")
+  .vars <- .vars[seq(1, 2*.ncmt["numLin"])]
+  if (.ncmt["depotLin"] > 0) {
+    .ret <- c(.ret, "depot")
+    .vars <- c(.vars, "ka")
+  }
+  if (.ncmt["numLin"] > 0L) {
+    .ret <- c(.ret, "central")
+    if (.ncmt["numLin"] > 1L) {
+        .ret <- c(.ret, paste0("peripheral", seq_len(.ncmt["numLin"] - 1L)))
+    }
+  }
+  if (.ncmt["numLinSens"] > 0L) {
+    .ret <- c(.ret,
+              paste0("rx__sens_central_BY_", .vars))
+    if (.ncmt["numLin"] > 1L) {
+      .ret <- c(.ret,
+                do.call(`c`,
+                        lapply(paste0("peripheral", seq_len(.ncmt["numLin"] - 1L)),
+                               function(x) {
+                                 paste0("rx__sens_", x, "_BY_", .vars)
+                               })))
+    }
+    if (.ncmt["depotLin"] > 0) {
+      .ret <- c(.ret,
+                "rx__sens_depot_BY_ka")
+    }
+  }
+  .ret
+}
+
+#' Get the ODE states only
+#'
+#' @param obj rxode2 object
+#' @return ODE states only
 #' @export
 #' @author Matthew L. Fidler
-#' @keywords internal
 #' @examples
-#' .linCmtSensB()
-.linCmtSensB <- function() {
-  as.logical(.Call(`_rxode2parse_linCmtB`))
+#'
+#' mod <- rxode2({
+#'   Cp <- linCmt(Cl, V, Q2, V2, Q3, V3)
+#'   ke0 <- log(2)/(50)
+#'   d/dt(Ce) <- (Cp-Ce)*ke0
+#' })
+#'
+#' rxStateOde(mod)
+#'
+#' rxState(mod)
+#'
+#' mod <- rxode2({
+#'   Cp <- linCmt(Cl, V, Q2, V2, Q3, V3, ka)
+#'   ke0 <- log(2)/(50)
+#'   d/dt(Ce) <- (Cp-Ce)*ke0
+#' }, linCmtSens="linCmtB")
+#'
+#' rxStateOde(mod)
+#'
+#' rxState(mod)
+#'
+rxStateOde <- function(obj) {
+  setdiff(rxState(obj), .rxLinCmt(obj))
 }
-## nocov end

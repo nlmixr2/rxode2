@@ -12,7 +12,7 @@
 R_xlen_t find_missing_string(SEXP x) {
     if (STRING_NO_NA(x))
         return 0;
-    const R_xlen_t nx = xlength(x);
+    const R_xlen_t nx = Rf_xlength(x);
     for (R_xlen_t i = 0; i < nx; i++) {
         if (STRING_ELT(x, i) == NA_STRING)
             return i + 1;
@@ -20,7 +20,7 @@ R_xlen_t find_missing_string(SEXP x) {
     return 0;
 }
 R_xlen_t check_strict_names(SEXP x) {
-    const R_xlen_t nx = xlength(x);
+    const R_xlen_t nx = Rf_xlength(x);
     const char *str;
     for (R_xlen_t i = 0; i < nx; i++) {
         str = CHAR(STRING_ELT(x, i));
@@ -43,18 +43,18 @@ void qstrict0(SEXP nn, const char *what){
     UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have %s, but is NA at position %i", what, (int)(pos));
   }
-  pos = any_duplicated(nn, FALSE);
+  pos = Rf_any_duplicated(nn, FALSE);
 
   if (pos > 0) {
     UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have unique %s, but element %i is duplicated", what, (int)(pos));
   }
 
-  if (isNull(nn)) {
+  if (Rf_isNull(nn)) {
     UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have %s", what);
   }
-  pos = any_duplicated(nn, FALSE);
+  pos = Rf_any_duplicated(nn, FALSE);
   if (pos > 0){
     UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have unique %s, but element %i is duplicated", what, (int)(pos));
@@ -69,7 +69,7 @@ void qstrict0(SEXP nn, const char *what){
 
 // By Matt
 void qstrict(SEXP x, const char *what) {
-  SEXP nn = PROTECT(getAttrib(x, R_NamesSymbol));
+  SEXP nn = PROTECT(Rf_getAttrib(x, R_NamesSymbol));
   qstrict0(nn, what);
   UNPROTECT(1);
 }

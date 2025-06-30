@@ -189,11 +189,11 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppend(&sbOut, "SEXP %smodel_vars(void);\n", prefix);
       sAppendN(&sbOut,"\n", 1);
       sAppendN(&sbOut, "\n// prj-specific differential eqns\nvoid ", 40);
-      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=1;\n  ", prefix);
+                                                 sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=1;\n", prefix);
     } else if (show_ode == ode_jac){
-      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=2;\n  ", prefix);
+      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=2;\n", prefix);
     } else if (show_ode == ode_ini){
-      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  (&_solveData->subjects[_cSub])->_rxFlag=3;\n  ", prefix);
+      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n _ind->_rxFlag=3;\n", prefix);
       if (foundF0){
         sAppendN(&sbOut, "  double t=0;\n", 14);
       }
@@ -207,7 +207,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double *_f=_solveData->subjects[_cSub].cF;\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=4;\n  ",
+        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=4;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _f[%d]=1.0;\n",jjj);
@@ -217,7 +217,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
                 prefix);
       }
     } else if (show_ode == ode_lag){
-      if (foundLag){
+      if (foundLag) {
         int nnn = tb.de.n;
         if (tb.linCmt){
           if (tb.hasKa){
@@ -226,7 +226,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double *restrict _alag = _solveData->subjects[_cSub].alag;\n  (void)_alag; \n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=5;\n  ",
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=5;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
@@ -245,7 +245,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double *restrict _rate= _solveData->subjects[_cSub].cRate;\n  (void)_rate;\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=6;\n  ",
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=6;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
@@ -264,7 +264,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n double *restrict _dur = _solveData->subjects[_cSub].cDur;\n  (void)_dur;\n    double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=7;\n  ",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=7;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
@@ -275,19 +275,19 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       }
     } else if (show_ode == ode_mtime){
       if (nmtime){
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  (&_solveData->subjects[_cSub])->_rxFlag=8;\n  ",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=8;\n",
                 prefix);
       } else {
         sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n",
                 prefix);
       }
     } else if (show_ode == ode_mexp){
-      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=9;\n  ",
+      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=9;\n",
               tb.matn, prefix);
     } else if (show_ode == ode_indLinVec) {
-      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=10;\n  ", prefix);
+      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=10;\n", prefix);
     } else {
-      sAppend(&sbOut,  "// prj-specific derived vars\nvoid %scalc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=11;\n  ", prefix);
+      sAppend(&sbOut,  "// prj-specific derived vars\nvoid %scalc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=11;\n", prefix);
     }
     if ((show_ode == ode_jac && found_jac == 1 && good_jac == 1) ||
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
@@ -322,6 +322,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           sAppendN(&sbOut,  "  (void)_pld;\n", 14);
         }
       }
+
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
       if (show_ode == ode_ini){
         sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
@@ -338,20 +339,18 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (show_ode != ode_mtime && show_ode != ode_indLinVec){
         for (i=0; i<tb.de.n; i++) {                   /* name state vars */
           buf = tb.ss.line[tb.di[i]];
-          if(tb.idu[i] != 0){
-            if (show_ode == ode_lag || show_ode == ode_dur || show_ode == ode_rate){
-              sAppendN(&sbOut, "  ", 2);
-              int assignOne = 0;
-              doDot(&sbOut, buf);
-              sAppend(&sbOut, " = NA_REAL;\n", i, i);
-            } else {
-              // stateExtra
-              sAppendN(&sbOut, "  ", 2);
-              doDot(&sbOut, buf);
-              sAppend(&sbOut, " = __zzStateVar__[__DDT%d__]*((double)(_ON[__DDT%d__]));\n", i, i);
-            }
+          if (tb.idu[i] == 0) {
+          } else if (show_ode == ode_lag ||
+              show_ode == ode_dur ||
+              show_ode == ode_rate) {
+            sAppendN(&sbOut, "  ", 2);
+            doDot(&sbOut, buf);
+            sAppendN(&sbOut, " = NA_REAL;\n", 12);
           } else {
-            break;
+            // stateExtra
+            sAppendN(&sbOut, "  ", 2);
+            doDot(&sbOut, buf);
+            sAppend(&sbOut, " = __zzStateVar__[__DDT%d__]*((double)(_ON[__DDT%d__]));\n", i, i);
           }
         }
         sAppendN(&sbOut, "\n", 1);
@@ -483,12 +482,10 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
     } else if (show_ode == ode_ini){
       if (foundF0){
         for (i = 0; i < tb.de.n; i++) {
-          if (tb.idu[i]) {
-            buf=tb.ss.line[tb.di[i]];
-            sAppend(&sbOut, "  __zzStateVar__[__DDT%d__]=((double)(_ON[__DDT%d__]))*(",i,i);
-            doDot(&sbOut, buf);
-            sAppendN(&sbOut,  ");\n", 3);
-          }
+          buf=tb.ss.line[tb.di[i]];
+          sAppend(&sbOut, "  __zzStateVar__[__DDT%d__]=((double)(_ON[__DDT%d__]))*(",i,i);
+          doDot(&sbOut, buf);
+          sAppendN(&sbOut,  ");\n", 3);
         }
       }
       sAppendN(&sbOut,  "}\n", 2);
@@ -558,7 +555,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     _rxode2parse_unprotect();
     err_trans("nothing in output queue to write");
   }
-  if (!isString(c_file) || Rf_length(c_file) != 1){
+  if (!Rf_isString(c_file) || Rf_length(c_file) != 1){
     _rxode2parse_unprotect();
     err_trans("c_file should only be 1 file");
   }
@@ -570,11 +567,11 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   err_msg((intptr_t) fpIO, "error opening output c file\n", -2);
 
   if (badMd5){
-    SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, mkChar(""));
+    SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(""));
   } else {
-    SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, mkChar(md5));
+    SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(md5));
   }
-  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, mkChar(me_code));
+  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code));
   int pro = 0;
   SEXP trans = PROTECT(VECTOR_ELT(mvLast, RxMv_trans)); pro++;
   sbuf buf; sNull(&buf);
@@ -634,9 +631,16 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
-    for (int i = 0; i < nOrd; i++){
+    for (int i = 0; i < nOrd; i++) {
       sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
               CHAR(STRING_ELT(stateOrdNames, i)));
+      if (!strcmp("depot", CHAR(STRING_ELT(stateOrdNames, i)))) {
+        sAppend(&sbOut, "#define _DEPOT_ %d // %s\n", i,
+                CHAR(STRING_ELT(stateOrdNames, i)));
+      } else if (!strcmp("central", CHAR(STRING_ELT(stateOrdNames, i)))) {
+        sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
+                CHAR(STRING_ELT(stateOrdNames, i)));
+      }
     }
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
@@ -661,46 +665,6 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   // show_ode = 0 LHS
   // show_ode = 5 functional bioavailibility
   // show_ode = 6 functional rate
-  if (tb.linCmt != 0) {
-    char *buf;
-    int badCentral=false, badDepot=false;
-    for (int i=tb.de.n; i--;) {                     /* name state vars */
-      buf=tb.ss.line[tb.di[i]];
-      if (tb.hasKa == 1 && !strcmp(buf,"depot")){
-        badDepot=true;
-      } else if (!strcmp(buf, "central")) {
-        badCentral=true;
-      }
-    }
-    if (badCentral && badDepot){
-      fclose(fpIO);
-      _rxode2parse_unprotect();
-      err_trans("linCmt() and ode have 'central' and 'depot' compartments, rename ODE 'central'/'depot'");
-    } else if (badCentral) {
-      fclose(fpIO);
-      _rxode2parse_unprotect();
-      err_trans("linCmt() and ode has a 'central' compartment, rename ODE 'central'");
-    } else if (badDepot) {
-      fclose(fpIO);
-      _rxode2parse_unprotect();
-      err_trans("linCmt() and ode has a 'depot' compartment, rename ODE 'depot'");
-    }
-    (&sbOut)->s[0]='\0';
-    if (tb.hasKa == 1) {
-      sAppend(&sbOut, "#define _DEPOT_ %d\n", tb.statei);
-      sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei+1);
-    } else if (tb.hasCentralCmt == 1) {
-      if (tb.hasDepotCmt){
-        fclose(fpIO);
-        _rxode2parse_unprotect();
-        err_trans("linCmt() does not have 'depot' compartment without a 'ka'");
-        return R_NilValue;
-      }
-      sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei);
-    }
-    writeSb(&sbOut, fpIO);
-    sbOut.o = 0;
-  }
   gCode(1); // d/dt()
   gCode(2); // jac
   gCode(3); // ini()

@@ -9,14 +9,9 @@
 #include <threefry.h>
 #include <R.h>
 #include "checkmate.h"
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
 #include "rxomp.h"
 /* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 using namespace Rcpp;
 using namespace arma;
 #include "../inst/include/rxode2_as.h"

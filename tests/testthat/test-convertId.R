@@ -30,9 +30,9 @@ rxTest({
         WT = c(70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70)
       )
 
-    f <- rxSolve(f, dMod)
+    f <- suppressWarnings(rxSolve(f, dMod))
 
-    expect_error(print(f), NA)
+    expect_snapshot(print(f))
 
   })
 })
