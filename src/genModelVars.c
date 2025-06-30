@@ -77,6 +77,7 @@ SEXP generateModelVars(void) {
   int *lhsStrInI = INTEGER(lhsStrIn);
   int *lhsStrI = INTEGER(lhsStr);
   for (int i = 0; i < Rf_length(lhsOrdFS); ++i) {
+    // change from 1 indexed to 0 indexed (will be saved 0 indexed)
     lhsOrdF[i] = lhsOrdF[i]-1;
     SET_STRING_ELT(lhs, i, STRING_ELT(lhsIn, lhsOrdF[i]));
     lhsStrI[i] = lhsStrInI[lhsOrdF[i]];
