@@ -658,6 +658,19 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
+  SEXP lhsOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_lhsOrd)); pro++;
+  int  nLhs  =  Rf_length(lhsOrd);
+  if (nLhs > 0) {
+    SEXP lhsOrdNames = PROTECT(Rf_getAttrib(lhsOrd, R_NamesSymbol)); pro++;
+    int *lhsOrdInt = INTEGER(lhsOrd);
+    sAppend(&sbOut, "// Define %d LHS values\n", nLhs);
+    for (int i = 0; i < nLhs; i++){
+      sAppend(&sbOut, "#define _LHS_%d_ %d // %s\n", lhsOrdInt[i], i,
+              CHAR(STRING_ELT(lhsOrdNames, i)));
+    }
+    writeSb(&sbOut, fpIO);
+    sbOut.o = 0;
+  }
   UNPROTECT(pro);
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
