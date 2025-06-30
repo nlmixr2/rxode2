@@ -61,7 +61,7 @@ static inline void handleOperatorsOrPrintingIdentifiers(int depth, print_node_fn
     tb.lh[tb.ix] = isSuppressedLHS; // Suppress LHS printout.
     if (tb.lho[tb.ix] != 0) {
       tb.lho[tb.ix] = 0;
-      tb.lhi--;
+      if (tb.lhi > 1) tb.lhi--; //lho must be 0 for missing and 1, 2, 3 etc
     }
     tb.didEq=1;
   } else if (!strcmp("=", name)){
