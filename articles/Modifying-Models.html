@@ -242,8 +242,6 @@ modify the model and add it back:</p>
 <code class="sourceCode R"><span><span class="va">mod2</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">ka</span> <span class="op">&lt;-</span> <span class="va">tka</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add between subject variability `eta.ka` and set estimate to 1</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -314,8 +312,6 @@ which you can add a type of initial estimate to later:</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `eta.ka` (as requested by cov option)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `WT`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add population parameter `covWt` and set estimate to 1</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -390,8 +386,6 @@ assumed to be covariates.</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `eta.ka`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `WT`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `covWt`</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -530,8 +524,6 @@ starting with <code>t</code> will be added to the model</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkin` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod8</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -612,8 +604,6 @@ change them as well with <code><a href="../reference/rxSetPipingAuto.html">rxSet
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `te0` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `eta.e0` to between subject variability with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod9</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -689,9 +679,7 @@ change them as well with <code><a href="../reference/rxSetPipingAuto.html">rxSet
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `eta.e0` to between subject variability with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkin` to population parameter with initial estimate 1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="adding-model-lines">Adding model lines<a class="anchor" aria-label="anchor" href="#adding-model-lines"></a>
@@ -712,8 +700,6 @@ model by using <code>append=TRUE</code>:</p>
 <span>    <span class="va">cp2</span> <span class="op">~</span> <span class="fu">lnorm</span><span class="op">(</span><span class="va">lnorm.sd</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>, append<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add residual parameter `lnorm.sd` and set estimate to 1</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -780,9 +766,7 @@ variable above where you want to insert the new lines:</p>
 <span>    <span class="fu">effect</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">e0</span></span>
 <span>    <span class="va">kin</span> <span class="op">&lt;-</span> <span class="va">e0</span><span class="op">*</span><span class="va">kout</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">effect</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">kin</span><span class="op">*</span><span class="va">PD</span> <span class="op">-</span><span class="va">kout</span><span class="op">*</span><span class="va">effect</span></span>
-<span>  <span class="op">}</span>, append<span class="op">=</span><span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span></code></pre></div>
+<span>  <span class="op">}</span>, append<span class="op">=</span><span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>The last type of insertion you may wish to do is to add lines to the
 beginning of the model by using <code>append=FALSE</code>:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -874,8 +858,6 @@ piping:</p>
 <code class="sourceCode R"><span><span class="va">mod7</span> <span class="op">&lt;-</span> <span class="va">mod6</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">-</span><span class="va">emax</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove population parameter `temax`</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod7</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -943,8 +925,6 @@ piping:</p>
 <span><span class="va">mod8</span> <span class="op">&lt;-</span> <span class="va">mod6</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">emax</span> <span class="op">&lt;-</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove population parameter `temax`</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod8</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -1272,8 +1252,6 @@ variables in common, you can use <code>common=FALSE</code>:</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span>                              <span class="co"># ic50 line to make it reasonable</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod2</span><span class="op">)</span></span>
@@ -1406,7 +1384,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x560321282ad8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x560922a736c0&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>
@@ -1728,8 +1706,6 @@ a fully worked example is:</p>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">unfix</span><span class="op">(</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> unfix `tka` keeping initial estimate `0.1`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `10`</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2534,8 +2510,6 @@ parameters.</p>
 <span><span class="va">f6</span> <span class="op">&lt;-</span> <span class="va">f4</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">-</span><span class="va">tcl</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> changing between subject variability parameter 'tcl' to covariate parameter</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f6</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2584,8 +2558,6 @@ parameters.</p>
 <span><span class="va">f6</span> <span class="op">&lt;-</span> <span class="va">f4</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">&lt;-</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> changing between subject variability parameter 'tcl' to covariate parameter</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f6</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -3201,8 +3173,6 @@ will simply change the initial estimate of the first parameter
 <span><span class="va">ini</span><span class="op">$</span><span class="va">est</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">7</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ini</span></span>
-<span><span class="co">#&gt; → significant model change detected</span></span>
-<span><span class="co">#&gt; → removed from model: '$var'</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
