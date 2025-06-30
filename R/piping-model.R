@@ -478,6 +478,12 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   if (!is.null(.getModelLineEquivalentLhsExpressionDropEndpoint(line))) {
     return(TRUE)
   }
+  # Any NULL assignment should be a drop line
+  if (.matchesLangTemplate(x = line, template = str2lang(". <- NULL")) ||
+      .matchesLangTemplate(x = line, template = str2lang(". = NULL"))) {
+    return(TRUE)
+  }
+
   if (length(line) == 2L) {
     if (identical(line[[1]], quote(`-`))) {
       if (is.name(line[[2]])) {
@@ -485,8 +491,10 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       } else if (is.call(line[[2]]) && length(line[[2]]) == 2L) {
         if (is.name(line[[2]][[2]]) &&
               as.character(line[[2]][[1]]) %in% c("F", "f", "alag", "lag", "dur", "rate")) {
+          # special assignments like -lag(cmt)
           return(TRUE)
         } else if (identical(line[[2]][[2]], 0)) {
+          # initial conditions
           return(TRUE)
         }
       }

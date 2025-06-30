@@ -1,12 +1,22 @@
 test_that(".isDropExpression", {
-  # Testing .getModelLineEquivalentLhsExpressionDropDdt
+  # Test .getModelLineEquivalentLhsExpressionDropDdt
   expect_true(.isDropExpression(str2lang("-d/dt(a)")))
   expect_true(.isDropExpression(str2lang("d/dt(a) <- NULL")))
+  expect_true(.isDropExpression(str2lang("d/dt(a) = NULL")))
   expect_false(.isDropExpression(str2lang("d/dt(a)")))
-  # Testing .getModelLineEquivalentLhsExpressionDropEndpoint
+  # Test .getModelLineEquivalentLhsExpressionDropEndpoint
   expect_true(.isDropExpression(str2lang("-a ~ .")))
   expect_true(.isDropExpression(str2lang("-a ~ NULL")))
   expect_false(.isDropExpression(str2lang("a ~ .")))
 
-  # expect_true(.isDropExpression(str2lang("a <- NULL")))
+  # Test assignment dropping
+  expect_true(.isDropExpression(str2lang("-a")))
+  expect_true(.isDropExpression(str2lang("a <- NULL")))
+  expect_true(.isDropExpression(str2lang("a = NULL")))
+  expect_false(.isDropExpression(str2lang("a <- .")))
+
+  # Test special assignment dropping
+  expect_true(.isDropExpression(str2lang("-lag(a)")))
+  expect_true(.isDropExpression(str2lang("lag(a) <- NULL")))
+  expect_false(.isDropExpression(str2lang("lag(a) <- b")))
 })

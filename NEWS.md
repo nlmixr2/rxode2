@@ -37,8 +37,8 @@
   
 - `if()` blocks may be removed by model piping (#878)
 
-- Bug fix where model piping would not remove an endpoint by `NULL` assignment.
-  `fit |> model(-a ~ NULL)` now works.
+- Model piping now removes endpoint and assignments using `NULL` assignment. For
+  example, `fit |> model(a ~ NULL)` and `fit |> model(a <- NULL)` now work.
 
 # rxode2 3.0.4
 
