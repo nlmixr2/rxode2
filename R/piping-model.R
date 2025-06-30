@@ -237,7 +237,7 @@ model.rxModelVars <- model.rxode2
   if (.isEndpoint(expr)) {
     lhs <- .getLhs(expr)
     if (.matchesLangTemplate(lhs, str2lang("-.")) ||
-          .matchesLangTemplate(lhs, str2lang(". <- NULL"))) {
+          .matchesLangTemplate(lhs, str2lang(". ~ NULL"))) {
       # If it is a drop expression with a minus sign, grab the non-minus part
       ret <- lhs[[2]]
     }

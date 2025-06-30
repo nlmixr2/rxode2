@@ -34,6 +34,11 @@
 - Bug fix for parameters that are in both input (`$params`) and output
   (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
   #876)
+  
+- `if()` blocks may be removed by model piping (#878)
+
+- Bug fix where model piping would not remove an endpoint by `NULL` assignment.
+  `fit |> model(-a ~ NULL)` now works.
 
 # rxode2 3.0.4
 
