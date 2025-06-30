@@ -12,8 +12,8 @@ SEXP generateModelVars(void) {
 
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 28));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 28));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 29));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 29));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -77,10 +77,10 @@ SEXP generateModelVars(void) {
   int *lhsStrInI = INTEGER(lhsStrIn);
   int *lhsStrI = INTEGER(lhsStr);
   for (int i = 0; i < Rf_length(lhsOrdFS); ++i) {
-    SET_STRING_ELT(lhs, i, STRING_ELT(lhsIn, lhsOrdF[i]-1));
-    lhsStrI[i] = lhsStrInI[lhsOrdF[i]-1];
+    lhsOrdF[i] = lhsOrdF[i]-1;
+    SET_STRING_ELT(lhs, i, STRING_ELT(lhsIn, lhsOrdF[i]));
+    lhsStrI[i] = lhsStrInI[lhsOrdF[i]];
   }
-
   INTEGER(sLinCmt)[5] = tb.hasCmt;
   tb.ini_i = Rf_length(ini);
 
@@ -312,6 +312,12 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(ordF, R_NamesSymbol, state);
   SET_VECTOR_ELT(lst, 27, ordF);
   SET_STRING_ELT(names, 27, Rf_mkChar("stateOrd"));
+
+  Rf_setAttrib(lhsOrdFS, R_NamesSymbol, lhs);
+
+  SET_VECTOR_ELT(lst, 28, lhsOrdFS);
+  SET_STRING_ELT(names, 28, mkChar("lhsOrd"));
+
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);

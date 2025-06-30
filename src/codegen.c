@@ -498,7 +498,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra &&
             tb.lh[i] != isLHSparam && tb.lh[i] != isLHSstr) continue;
         buf = tb.ss.line[i];
-        sAppend(&sbOut,  "  _lhs[%d]=", j);
+        sAppend(&sbOut,  "  _lhs[_LHS_%d_]=", j);
         doDot(&sbOut, buf);
         sAppendN(&sbOut,  ";\n", 2);
         j++;
@@ -641,6 +641,19 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
         sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
                 CHAR(STRING_ELT(stateOrdNames, i)));
       }
+    }
+    writeSb(&sbOut, fpIO);
+    sbOut.o = 0;
+  }
+  SEXP lhsOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_lhsOrd)); pro++;
+  int  nLhs  =  Rf_length(lhsOrd);
+  if (nLhs > 0) {
+    SEXP lhsOrdNames = PROTECT(Rf_getAttrib(lhsOrd, R_NamesSymbol)); pro++;
+    int *lhsOrdInt = INTEGER(lhsOrd);
+    sAppend(&sbOut, "// Define %d LHS values\n", nLhs);
+    for (int i = 0; i < nLhs; i++){
+      sAppend(&sbOut, "#define _LHS_%d_ %d // %s\n", lhsOrdInt[i], i,
+              CHAR(STRING_ELT(lhsOrdNames, i)));
     }
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
