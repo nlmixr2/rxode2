@@ -403,7 +403,7 @@ static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *
                                         int *i) {
   if (islhs == isLHS || islhs == isLHSstr ||
       islhs == isLhsStateExtra || islhs == isLHSparam) {
-    SET_STRING_ELT(lhs, li[0], mkChar(buf));
+    SET_STRING_ELT(lhs, li[0], Rf_mkChar(buf));
     lhsOrd[li[0]] = tb.lho[i[0]];
     INTEGER(lhsStr)[li[0]] = islhs == isLHSstr;
     li[0] = li[0]+1;

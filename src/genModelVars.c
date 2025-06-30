@@ -317,7 +317,7 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(lhsOrdFS, R_NamesSymbol, lhs);
 
   SET_VECTOR_ELT(lst, 28, lhsOrdFS);
-  SET_STRING_ELT(names, 28, mkChar("lhsOrd"));
+  SET_STRING_ELT(names, 28, Rf_mkChar("lhsOrd"));
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
