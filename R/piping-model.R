@@ -441,7 +441,16 @@ model.rxModelVars <- model.rxode2
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
-  .ret <- .getModelineFromExpressionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
+  .ret <-
+    .getModelineFromExpressionsAndOriginalLines(
+      expr = lhsExpr,
+      altExpr = .expr3,
+      useErrorLine = errorLine,
+      errLines = .errLines,
+      origLines = .origLines,
+      rxui = rxui,
+      returnAllLines = returnAllLines
+    )
   if (is.null(.ret)) {
     return(NULL)
   } else if (length(.ret) > 1) {
