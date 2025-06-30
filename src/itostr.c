@@ -23,7 +23,7 @@ SEXP _rxode2_itostr(SEXP x, SEXP base) {
       buffer[--offset] = base36[xi % b];
     } while (xi /= b);
 
-    SET_STRING_ELT(res, i, mkChar(&buffer[offset]));
+    SET_STRING_ELT(res, i, Rf_mkChar(&buffer[offset]));
   }
 
   UNPROTECT(1);
@@ -48,7 +48,7 @@ SEXP _rxode2_itoletter(SEXP x, SEXP base) {
       buffer[--offset] = base26[xi % b];
     } while (xi /= b);
 
-    SET_STRING_ELT(res, i, mkChar(&buffer[offset]));
+    SET_STRING_ELT(res, i, Rf_mkChar(&buffer[offset]));
   }
 
   UNPROTECT(1);

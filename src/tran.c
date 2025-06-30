@@ -668,14 +668,14 @@ SEXP _rxode2_parseModel(SEXP type){
   case 1:
     pm = PROTECT(Rf_allocVector(STRSXP, sbPmDt.n));
     for (int i = 0; i < sbPmDt.n; i++){
-      SET_STRING_ELT(pm, i, mkChar(sbPmDt.line[i]));
+      SET_STRING_ELT(pm, i, Rf_mkChar(sbPmDt.line[i]));
     }
     break;
 
   default:
     pm = PROTECT(Rf_allocVector(STRSXP, sbPm.n));
     for (int i = 0; i < sbPm.n; i++){
-      SET_STRING_ELT(pm, i, mkChar(sbPm.line[i]));
+      SET_STRING_ELT(pm, i, Rf_mkChar(sbPm.line[i]));
     }
     break;
   }

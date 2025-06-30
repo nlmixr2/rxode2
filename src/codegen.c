@@ -584,47 +584,47 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(trans, 2, STRING_ELT(prefix, 0)); // prefix
     const char *curPrefix = CHAR(STRING_ELT(prefix,0));
     sPrint(&buf, "%sdydt", curPrefix);
-    SET_STRING_ELT(trans, 3, mkChar(buf.s)); // dydt
+    SET_STRING_ELT(trans, 3, Rf_mkChar(buf.s)); // dydt
     sPrint(&buf, "%scalc_jac", curPrefix);
-    SET_STRING_ELT(trans, 4, mkChar(buf.s)); // calc_jac
+    SET_STRING_ELT(trans, 4, Rf_mkChar(buf.s)); // calc_jac
     sPrint(&buf, "%scalc_lhs", curPrefix);
-    SET_STRING_ELT(trans, 5, mkChar(buf.s)); // calc_lhs
+    SET_STRING_ELT(trans, 5, Rf_mkChar(buf.s)); // calc_lhs
     sPrint(&buf, "%smodel_vars", curPrefix);
-    SET_STRING_ELT(trans, 6, mkChar(buf.s)); // model_vars
+    SET_STRING_ELT(trans, 6, Rf_mkChar(buf.s)); // model_vars
     sPrint(&buf, "%stheta", curPrefix);
-    SET_STRING_ELT(trans, 7, mkChar(buf.s)); // theta
+    SET_STRING_ELT(trans, 7, Rf_mkChar(buf.s)); // theta
     sPrint(&buf, "%sinis", curPrefix);
-    SET_STRING_ELT(trans, 8, mkChar(buf.s)); // inis
+    SET_STRING_ELT(trans, 8, Rf_mkChar(buf.s)); // inis
     sPrint(&buf, "%sdydt_lsoda", curPrefix);
-    SET_STRING_ELT(trans, 9, mkChar(buf.s)); // dydt_lsoda
+    SET_STRING_ELT(trans, 9, Rf_mkChar(buf.s)); // dydt_lsoda
     sPrint(&buf, "%scalc_jac_lsoda", curPrefix);
-    SET_STRING_ELT(trans, 10, mkChar(buf.s)); // calc_jac_lsoda
+    SET_STRING_ELT(trans, 10, Rf_mkChar(buf.s)); // calc_jac_lsoda
     sPrint(&buf, "%sode_solver_solvedata", curPrefix);
-    SET_STRING_ELT(trans, 11, mkChar(buf.s)); // ode_solver_solvedata
+    SET_STRING_ELT(trans, 11, Rf_mkChar(buf.s)); // ode_solver_solvedata
     sPrint(&buf, "%sode_solver_get_solvedata", curPrefix);
-    SET_STRING_ELT(trans, 12, mkChar(buf.s)); // ode_solver_get_solvedata
+    SET_STRING_ELT(trans, 12, Rf_mkChar(buf.s)); // ode_solver_get_solvedata
     sPrint(&buf, "%sdydt_liblsoda", curPrefix);
-    SET_STRING_ELT(trans, 13, mkChar(buf.s)); // dydt_liblsoda
+    SET_STRING_ELT(trans, 13, Rf_mkChar(buf.s)); // dydt_liblsoda
     sPrint(&buf, "%sF", curPrefix);
-    SET_STRING_ELT(trans, 14, mkChar(buf.s)); // F
+    SET_STRING_ELT(trans, 14, Rf_mkChar(buf.s)); // F
     sPrint(&buf, "%sLag", curPrefix);
-    SET_STRING_ELT(trans, 15, mkChar(buf.s)); // Lag
+    SET_STRING_ELT(trans, 15, Rf_mkChar(buf.s)); // Lag
     sPrint(&buf, "%sRate", curPrefix);
-    SET_STRING_ELT(trans, 16, mkChar(buf.s)); // Rate
+    SET_STRING_ELT(trans, 16, Rf_mkChar(buf.s)); // Rate
     sPrint(&buf, "%sDur", curPrefix);
-    SET_STRING_ELT(trans, 17, mkChar(buf.s)); // Dur
+    SET_STRING_ELT(trans, 17, Rf_mkChar(buf.s)); // Dur
     sPrint(&buf, "%smtime", curPrefix);
-    SET_STRING_ELT(trans, 18, mkChar(buf.s)); // mtime
+    SET_STRING_ELT(trans, 18, Rf_mkChar(buf.s)); // mtime
     sPrint(&buf, "%sassignFuns", curPrefix);
-    SET_STRING_ELT(trans, 19, mkChar(buf.s)); // assignFuns
+    SET_STRING_ELT(trans, 19, Rf_mkChar(buf.s)); // assignFuns
     sPrint(&buf, "%sME", curPrefix);
-    SET_STRING_ELT(trans, 20, mkChar(buf.s)); // ME
+    SET_STRING_ELT(trans, 20, Rf_mkChar(buf.s)); // ME
     sPrint(&buf, "%sIndF", curPrefix);
-    SET_STRING_ELT(trans, 21, mkChar(buf.s)); // IndF
+    SET_STRING_ELT(trans, 21, Rf_mkChar(buf.s)); // IndF
   }
   sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
   sFree(&buf);
-  //SET_STRING_ELT(tran, 0, mkChar());
+  //SET_STRING_ELT(tran, 0, Rf_mkChar());
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
 
