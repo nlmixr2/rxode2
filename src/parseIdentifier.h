@@ -19,6 +19,9 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
         tb.lh[tb.ix] = notLHS;
       } else {
         tb.lh[tb.ix] = isLHSparam;
+        if (tb.lho[tb.ix] == 0) {
+          tb.lho[tb.ix] = tb.lhi++;
+        }
       }
     }
   } else if (nodeHas(relational_op)) {
@@ -56,6 +59,10 @@ static inline void handleOperatorsOrPrintingIdentifiers(int depth, print_node_fn
     aAppendN(" =", 2);
     sAppendN(&sbt, "~", 1);
     tb.lh[tb.ix] = isSuppressedLHS; // Suppress LHS printout.
+    if (tb.lho[tb.ix] != 0) {
+      tb.lho[tb.ix] = 0;
+      if (tb.lhi > 1) tb.lhi--; //lho must be 0 for missing and 1, 2, 3 etc
+    }
     tb.didEq=1;
   } else if (!strcmp("=", name)){
     tb.didEq=1;

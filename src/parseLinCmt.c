@@ -55,14 +55,14 @@ static inline SEXP linCmtParseSEXP(linCmtStruct *lin) {
   SEXP ncmtSXP = PROTECT(Rf_allocVector(INTSXP, 1)); pro++;
   INTEGER(ncmtSXP)[0] = lin->ncmt;
 
-  SET_STRING_ELT(strV, 0, mkChar(lin->ret.s));
+  SET_STRING_ELT(strV, 0, Rf_mkChar(lin->ret.s));
   SET_VECTOR_ELT(lst,  0, strV);
-  SET_STRING_ELT(lstN, 0, mkChar("str"));
+  SET_STRING_ELT(lstN, 0, Rf_mkChar("str"));
 
-  SET_STRING_ELT(lstN, 1, mkChar("ncmt"));
+  SET_STRING_ELT(lstN, 1, Rf_mkChar("ncmt"));
   SET_VECTOR_ELT(lst,  1, ncmtSXP);
 
-  SET_STRING_ELT(lstN, 2, mkChar("trans"));
+  SET_STRING_ELT(lstN, 2, Rf_mkChar("trans"));
   SET_VECTOR_ELT(lst,  2, transSXP);
 
   Rf_setAttrib(lst, R_NamesSymbol, lstN);
@@ -254,23 +254,23 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
     doSens = INTEGER(linCmtSens)[0];
   }
   sAppend(&(linG->last), "%s%s%s%s", linG->d_tlag.s, linG->d_F.s, linG->d_rate1.s, linG->d_dur1.s);
-  SET_STRING_ELT(inStr, 2, mkChar(linG->last.s));
+  SET_STRING_ELT(inStr, 2, Rf_mkChar(linG->last.s));
   sClear(&(linG->last));
   sAppend(&(linG->last), "%s%s%s%s",linG->d_tlag2.s, linG->d_F2.s,  linG->d_rate2.s, linG->d_dur2.s);
-  SET_STRING_ELT(inStr, 3, mkChar(linG->last.s));
+  SET_STRING_ELT(inStr, 3, Rf_mkChar(linG->last.s));
   sClear(&(linG->last));
   if (doSens == 2){
     sAppend(&(linG->last), "linCmtB(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
-    SET_STRING_ELT(inStr, 0, mkChar(linG->last.s));
-    SET_STRING_ELT(inStr, 1, mkChar("0, "));
+    SET_STRING_ELT(inStr, 0, Rf_mkChar(linG->last.s));
+    SET_STRING_ELT(inStr, 1, Rf_mkChar("0, "));
   } else {
     if (doSens == 1){
       sAppend(&(linG->last), "linCmtA(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
     } else if (doSens == 3) {
       sAppend(&(linG->last), "linCmtC(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
     }
-    SET_STRING_ELT(inStr, 0, mkChar(linG->last.s));
-    SET_STRING_ELT(inStr, 1, mkChar(""));
+    SET_STRING_ELT(inStr, 0, Rf_mkChar(linG->last.s));
+    SET_STRING_ELT(inStr, 1, Rf_mkChar(""));
   }
   _linCmtParsePro=pro;
   SEXP linCmtP = PROTECT(_linCmtParse(vars, inStr, verbose)); pro++;
@@ -288,7 +288,7 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
     break;
   }
   SEXP ret = PROTECT(Rf_allocVector(STRSXP,1)); pro++;
-  SET_STRING_ELT(ret, 0, mkChar(linG->last2.s));
+  SET_STRING_ELT(ret, 0, Rf_mkChar(linG->last2.s));
   UNPROTECT(pro);
   return ret;
 }

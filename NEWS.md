@@ -31,6 +31,10 @@
   estimation with focei and likelihood related methods: `+var()`. This
   changes standard deviation parameters to variance parameters.
 
+- Bug fix for parameters that are in both input (`$params`) and output
+  (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
+  #876)
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)
