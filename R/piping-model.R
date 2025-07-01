@@ -300,7 +300,7 @@ model.rxModelVars <- model.rxode2
 #'   error is defined in the model.
 #' @param origLines This is a list of lines in the `model({})` block
 #'   of the equation.
-#' @param rxui the UI model
+#' @param modelVars The model variables from the UI model (`c(rxui$mv0$lhs, rxui$mv0$state)`)
 #' @param returnAllLines Return all line numbers for the lhs, even
 #'   when there are duplicates. (default `FALSE`)
 #' @return For duplicated lines: `NULL` for duplicated lines (when
@@ -313,7 +313,7 @@ model.rxModelVars <- model.rxode2
 #' @author Matthew L. Fidler
 #' @noRd
 .getModelineFromExpressionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
-                                                        errLines, origLines, rxui,
+                                                        errLines, origLines, modelVars,
                                                         returnAllLines=FALSE) {
   .ret <- NA_integer_
   .multipleEndpointModel <- length(errLines) != 1L
@@ -346,9 +346,8 @@ model.rxModelVars <- model.rxode2
           if (.isNormOrTErrorExpression(.expr)) {
             # Make sure the lhs is included in the model prediction
             .var <- deparse1(expr)
-            .modelVars <- c(rxui$mv0$lhs, rxui$mv0$state)
-            if (!(.var %in% .modelVars)) {
-              stop("the variable '", .var, "' must be in the defined the model for piping this: '",deparse(.expr), "'",
+            if (!(.var %in% modelVars)) {
+              stop("the variable '", .var, "' must be in the defined the model for piping this: '", deparse(.expr), "'",
                    call.=FALSE)
             }
           }
@@ -448,7 +447,7 @@ model.rxModelVars <- model.rxode2
       useErrorLine = errorLine,
       errLines = .errLines,
       origLines = .origLines,
-      rxui = rxui,
+      modelVars = c(rxui$mv0$lhs, rxui$mv0$state),
       returnAllLines = returnAllLines
     )
   if (is.null(.ret)) {
