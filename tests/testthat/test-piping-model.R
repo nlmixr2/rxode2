@@ -121,18 +121,18 @@ test_that(".getModelineFromExpressionsAndOriginalLines", {
   )
 
   # `useErrorLine = TRUE` and `returnAllLines = FALSE`; variable is the LHS of the error expression but not part of the modelVars
-  # TODO: Unclear why this does not return 3
+  # Returns 3
   expect_equal(
     .getModelineFromExpressionsAndOriginalLines(
       expr = as.name("a"),
       altExpr = NULL,
       useErrorLine = TRUE,
-      errLines = 4,
+      errLines = 3,
       origLines = origLines[2:4],
       modelVars = c(),
       returnAllLines = FALSE
     ),
-    NA_real_
+    3
   )
 })
 
