@@ -491,11 +491,16 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       .matchesLangTemplate(x = line, template = str2lang(". = NULL"))) {
     return(TRUE)
   }
-  # Any line with `-something`
-  if (length(line) == 2L) {
-    if (.matchesLangTemplate(line, template = str2lang("-."))) {
-      return(TRUE)
-    }
+  # `-something` for specific values of `something` can be dropped
+  if (.matchesLangTemplate(line, template = str2lang("-.name")) ||
+      .matchesLangTemplate(line, template = str2lang("-.name(0)")) ||
+      .matchesLangTemplate(line, template = str2lang("-F(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-f(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-alag(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-lag(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-dur(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-rate(.name)"))) {
+    return(TRUE)
   }
   FALSE
 }
