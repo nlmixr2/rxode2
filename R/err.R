@@ -38,6 +38,7 @@
   "combined1"=0,
   "combined2"=0,
   "var"=0,
+  "dv"=0,
   "comb1"=0,
   "comb2"=0,
   "dchisq"=1,
@@ -70,7 +71,7 @@
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF",
                   "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
                   "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2",
-                  "comb1", "comb2", "t", "cauchy", "norm", "var")
+                  "comb1", "comb2", "t", "cauchy", "norm", "var", "dv")
 
 .errIdenticalDists <- list(
   "lnorm"=c("logn", "dlogn", "dlnorm"),
@@ -791,6 +792,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         env$var <- TRUE
         return(invisible())
       }
+      if (.currErr == "dv") {
+        env$dv <- TRUE
+        return(invisible())
+      }
       if (.currErr == "t") {
         if (env$distribution == "cauchy") {
           stop("you cannot combine 't' and 'cauchy' distributions")
@@ -931,6 +936,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$estNotAllowed <- TRUE
   env$linCmt <- FALSE
   env$var <- FALSE
+  env$dv <- FALSE
   .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
   env$a <- env$b <- env$c <- env$d <- env$e <- env$f <- env$lambda <- NA_character_
@@ -974,7 +980,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                      f=env$f,
                                      lambda=env$lambda,
                                      linCmt=env$linCmt,
-                                     variance=env$var))
+                                     variance=env$var,
+                                     dv=env$dv))
       env$curDvid <- env$curDvid + 1L
 
     }
@@ -1002,7 +1009,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          f=env$f,
                          lambda=env$lambda,
                          linCmt=env$linCmt,
-                         variance=env$var)
+                         variance=env$var,
+                         dv=env$dv)
       env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
