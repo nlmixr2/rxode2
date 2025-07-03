@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -129,7 +129,7 @@ example, with the Mavoglurant PBPK model the following model may be
 used:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; rxode2 3.0.4.9000 using 2 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">#&gt; rxode2 4.0.0 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
@@ -336,8 +336,8 @@ use the <code><a href="https://rdrr.io/r/base/summary.html" class="external-link
 <pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span></code></pre>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_9be9e72608becabfa4db8c4d0825d9a2</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpPLKL0I/rxode2/rx_9be9e72608becabfa4db8c4d0825d9a2__.rxd/rx_9be9e72608becabfa4db8c4d0825d9a2_.so</span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>4.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_7c7c6ce8cc540509217f640124f7b5c3</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmprleMEi/rxode2/rx_7c7c6ce8cc540509217f640124f7b5c3__.rxd/rx_7c7c6ce8cc540509217f640124f7b5c3_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -687,7 +687,7 @@ after all the differential equations are defined.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ode.1c.ka</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_5e50615b82a26da53de7dcb819675308</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>4.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_8a7593846a1430cff6e6c59067df0a20</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span></span>

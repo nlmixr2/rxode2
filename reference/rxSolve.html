@@ -13,7 +13,7 @@ some-times optional params and inits."><meta property="og:image" content="https:
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -156,7 +156,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nsim <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  minSS <span class="op">=</span> <span class="fl">10L</span>,</span>
-<span>  maxSS <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  maxSS <span class="op">=</span> <span class="fl">10000L</span>,</span>
 <span>  infSSstep <span class="op">=</span> <span class="fl">12</span>,</span>
 <span>  strictSS <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  istateReset <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -185,11 +185,6 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  safePow <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  sumType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pairwise"</span>, <span class="st">"fsum"</span>, <span class="st">"kahan"</span>, <span class="st">"neumaier"</span>, <span class="st">"c"</span><span class="op">)</span>,</span>
 <span>  prodType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"long double"</span>, <span class="st">"double"</span>, <span class="st">"logify"</span><span class="op">)</span>,</span>
-<span>  sensType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"advan"</span>, <span class="st">"autodiff"</span>, <span class="st">"forward"</span>, <span class="st">"central"</span><span class="op">)</span>,</span>
-<span>  linDiff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tlag <span class="op">=</span> <span class="fl">1.5e-05</span>, f <span class="op">=</span> <span class="fl">1.5e-05</span>, rate <span class="op">=</span> <span class="fl">1.5e-05</span>, dur <span class="op">=</span> <span class="fl">1.5e-05</span>, tlag2 <span class="op">=</span></span>
-<span>    <span class="fl">1.5e-05</span>, f2 <span class="op">=</span> <span class="fl">1.5e-05</span>, rate2 <span class="op">=</span> <span class="fl">1.5e-05</span>, dur2 <span class="op">=</span> <span class="fl">1.5e-05</span><span class="op">)</span>,</span>
-<span>  linDiffCentral <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tlag <span class="op">=</span> <span class="cn">TRUE</span>, f <span class="op">=</span> <span class="cn">TRUE</span>, rate <span class="op">=</span> <span class="cn">TRUE</span>, dur <span class="op">=</span> <span class="cn">TRUE</span>, tlag2 <span class="op">=</span> <span class="cn">TRUE</span>, f2 <span class="op">=</span></span>
-<span>    <span class="cn">TRUE</span>, rate2 <span class="op">=</span> <span class="cn">TRUE</span>, dur2 <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  resample <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resampleID <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  maxwhile <span class="op">=</span> <span class="fl">1e+05</span>,</span>
@@ -205,6 +200,23 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  addlDropSs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssAtDoseTime <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ss2cancelAllPending <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  ssSolved <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  linCmtSensType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"endpoint5"</span>, <span class="st">"endpoint5G"</span>, <span class="st">"forward3"</span>, <span class="st">"forward3G"</span>, <span class="st">"AD"</span>,</span>
+<span>    <span class="st">"central"</span>, <span class="st">"forward"</span>, <span class="st">"forwardG"</span>, <span class="st">"forwardH"</span>, <span class="st">"centralH"</span>, <span class="st">"forward3H"</span>, <span class="st">"endpointH5"</span>,</span>
+<span>    <span class="st">"forwardG"</span><span class="op">)</span>,</span>
+<span>  linCmtSensH <span class="op">=</span> <span class="fl">1e-04</span>,</span>
+<span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
+<span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>  linCmtGillRtol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span>,</span>
+<span>  linCmtShiErr <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span>,</span>
+<span>  linCmtShiMax <span class="op">=</span> <span class="fl">20L</span>,</span>
+<span>  linCmtScale <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  linCmtHcmt <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  linCmtHmeanI <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"geometric"</span>, <span class="st">"arithmetic"</span>, <span class="st">"harmonic"</span><span class="op">)</span>,</span>
+<span>  linCmtHmeanO <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"geometric"</span>, <span class="st">"arithmetic"</span>, <span class="st">"harmonic"</span><span class="op">)</span>,</span>
+<span>  linCmtSuspect <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  linCmtForwardMax <span class="op">=</span> <span class="fl">2L</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -997,34 +1009,6 @@ multiplication and then converts back.</p>
 <p><code>double</code> uses the standard double scale for multiplication.</p></dd>
 
 
-<dt id="arg-senstype">sensType<a class="anchor" aria-label="anchor" href="#arg-senstype"></a></dt>
-<dd><p>Sensitivity type for <code>linCmt()</code> model:</p>
-<p><code>advan</code> Use the direct advan solutions</p>
-<p><code>autodiff</code> Use the autodiff advan solutions</p>
-<p><code>forward</code> Use forward difference solutions</p>
-<p><code>central</code> Use central differences</p></dd>
-
-
-<dt id="arg-lindiff">linDiff<a class="anchor" aria-label="anchor" href="#arg-lindiff"></a></dt>
-<dd><p>This gives the linear difference amount for all the
-types of linear compartment model parameters where sensitivities
-are not calculated. The named components of this numeric vector are:</p><ul><li><p><code>"lag"</code> Central compartment lag</p></li>
-<li><p><code>"f"</code> Central compartment bioavailability</p></li>
-<li><p><code>"rate"</code> Central compartment modeled rate</p></li>
-<li><p><code>"dur"</code> Central compartment modeled duration</p></li>
-<li><p><code>"lag2"</code> Depot compartment lag</p></li>
-<li><p><code>"f2"</code> Depot compartment bioavailability</p></li>
-<li><p><code>"rate2"</code> Depot compartment modeled rate</p></li>
-<li><p><code>"dur2"</code> Depot compartment modeled duration</p></li>
-</ul></dd>
-
-
-<dt id="arg-lindiffcentral">linDiffCentral<a class="anchor" aria-label="anchor" href="#arg-lindiffcentral"></a></dt>
-<dd><p>This gives the which parameters use central
-differences for the linear compartment model parameters.  The
-are the same components as <code>linDiff</code></p></dd>
-
-
 <dt id="arg-resample">resample<a class="anchor" aria-label="anchor" href="#arg-resample"></a></dt>
 <dd><p>A character vector of model variables to resample
 from the input dataset; This sampling is done with replacement.
@@ -1119,6 +1103,134 @@ steady concentration at the actual time of dose, otherwise when
 cancels all pending doses like <code>SS=1</code>.  When <code>FALSE</code> the pending
 doses not canceled with <code>SS=2</code> (the infusions started before
 <code>SS=2</code> occurred are canceled, though).</p></dd>
+
+
+<dt id="arg-sssolved">ssSolved<a class="anchor" aria-label="anchor" href="#arg-sssolved"></a></dt>
+<dd><p>When <code>TRUE</code> this will return the solved steady
+state solutions for the linear compartment model.  When <code>FALSE</code>
+this will solve to steady state using the linear solutions
+instead.  This is only used when the method only has <code>linCmt()</code>
+and does not mix ODEs with the solution.  The default is <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-lincmtsenstype">linCmtSensType<a class="anchor" aria-label="anchor" href="#arg-lincmtsenstype"></a></dt>
+<dd><p>The type of linear compartment
+sensitivity/gradients to use.  The current options are:</p><ul><li><p><code>auto</code> – for one compartment models this will use the <code>AD</code>
+method, for 2 and 3 compartment model this will use <code>forwardG</code>.</p></li>
+<li><p><code>AD</code> – automatic differentiation (using stan math)</p></li>
+<li><p><code>forward</code> – forward sensitivity where the step size is
+determined by shi 2021 optimization (only once per problem)</p></li>
+<li><p><code>forwardG</code> – forward sensitivity where the step size is determined by the
+Gill 1983 optimization for forward differences (only once per problem).</p></li>
+<li><p><code>central</code> – central sensitivity where the step size is
+determined by shi 2021 optimization (only once per problem)</p></li>
+<li><p><code>forward3</code> – three point central difference where step size is
+determined by shi 2021 optimization for central differences (only
+once per problem)</p></li>
+<li><p><code>endpoint5</code> – five point endpoint difference where step size is
+determined by the shi 2021 optimization for central differences
+(only once per problem)</p></li>
+<li><p><code>fowardH</code> – forward sensitivity where the step size is fixed</p></li>
+<li><p><code>centralH</code> – central sensitivity where the step size is fixed</p></li>
+<li><p><code>forward3H</code> – three point central difference where step size is fixed</p></li>
+<li><p><code>endpoint5H</code> – five point endpoint difference where step size is fixed</p></li>
+</ul></dd>
+
+
+<dt id="arg-lincmtsensh">linCmtSensH<a class="anchor" aria-label="anchor" href="#arg-lincmtsensh"></a></dt>
+<dd><p>The step size for the forward and central
+differences when using the option <code>centralH</code>, <code>forwardH</code>,
+<code>foward3H</code> or <code>endpoint5H</code> options.
+#'</p></dd>
+
+
+<dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>
+<dd><p>The gillFtol is the gradient error tolerance that
+is acceptable before issuing a warning/error about the gradient estimates.</p></dd>
+
+
+<dt id="arg-lincmtgillk">linCmtGillK<a class="anchor" aria-label="anchor" href="#arg-lincmtgillk"></a></dt>
+<dd><p>The total number of possible steps to determine the
+optimal forward/central difference step size per parameter (by
+the Gill 1983 method).  If 0, no optimal step size is
+determined.  Otherwise this is the optimal step size
+determined.</p></dd>
+
+
+<dt id="arg-lincmtgillstep">linCmtGillStep<a class="anchor" aria-label="anchor" href="#arg-lincmtgillstep"></a></dt>
+<dd><p>When looking for the optimal forward difference
+step size, this is This is the step size to increase the
+initial estimate by.  So each iteration the new step size =
+(prior step size)*gillStep</p></dd>
+
+
+<dt id="arg-lincmtgillrtol">linCmtGillRtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillrtol"></a></dt>
+<dd><p>The relative tolerance used for Gill 1983
+optimal step size determination.</p></dd>
+
+
+<dt id="arg-lincmtshierr">linCmtShiErr<a class="anchor" aria-label="anchor" href="#arg-lincmtshierr"></a></dt>
+<dd><p>Shi difference error</p></dd>
+
+
+<dt id="arg-lincmtshimax">linCmtShiMax<a class="anchor" aria-label="anchor" href="#arg-lincmtshimax"></a></dt>
+<dd><p>The maximum number of steps for the
+optimization of the forward-difference step size in linear
+compartment numeric difference.</p></dd>
+
+
+<dt id="arg-lincmtscale">linCmtScale<a class="anchor" aria-label="anchor" href="#arg-lincmtscale"></a></dt>
+<dd><p>The scale of the linear compartment model.  This
+is applied to sensitivity approximation using numeric
+differences.  When <code>TRUE</code> or <code>NULL</code> use default scaling, when
+<code>FALSE</code> use no scaling.  If it is one elment numeric, the value
+is duplicated 7 times and applies to all the parameters.
+Otherwise this is a seven element numeric vector implying the
+scaling for each of the linear compartmental model parameters.</p></dd>
+
+
+<dt id="arg-lincmthcmt">linCmtHcmt<a class="anchor" aria-label="anchor" href="#arg-lincmthcmt"></a></dt>
+<dd><p>This represents the compartments considered when
+optimizing the forward difference step size.  When a character
+vector it can be any of the following (multiple allowed):</p><ul><li><p><code>"depot"</code> – depot compartment</p></li>
+<li><p><code>"central"</code> – central compartment</p></li>
+<li><p><code>"peripheral1"</code> – peripheral compartment</p></li>
+<li><p><code>"peripheral2"</code> – second peripheral compartment</p></li>
+<li><p><code>"concentration"</code> – concentration value (i.e. central
+compartment/volume)</p></li>
+</ul></dd>
+
+
+<dt id="arg-lincmthmeani">linCmtHmeanI<a class="anchor" aria-label="anchor" href="#arg-lincmthmeani"></a></dt>
+<dd><p>This represents the type of sum done for each
+time-point of the linear solved systems (as defined by <code>"linCmtHcmt"</code>).</p><ul><li><p><code>"arithmetic"</code> – gives the arithmetic mean</p></li>
+<li><p><code>"geometric"</code> – gives the geometric mean</p></li>
+<li><p><code>"harmonic"</code> – gives the harmonic mean</p></li>
+</ul></dd>
+
+
+<dt id="arg-lincmthmeano">linCmtHmeanO<a class="anchor" aria-label="anchor" href="#arg-lincmthmeano"></a></dt>
+<dd><p>This represents the type of sum done for the
+overall problem of the linear solved systems (first each time
+point mean is calculated with <code>linCmtHmeanI</code>).</p><ul><li><p><code>"arithmetic"</code> – gives the arithmetic mean</p></li>
+<li><p><code>"geometric"</code> – gives the geometric mean</p></li>
+<li><p><code>"harmonic"</code> – gives the harmonic mean</p></li>
+</ul></dd>
+
+
+<dt id="arg-lincmtsuspect">linCmtSuspect<a class="anchor" aria-label="anchor" href="#arg-lincmtsuspect"></a></dt>
+<dd><p>The tolerance for gradients in linear
+compartment solutions to re-compute when gradients seem to be
+zero.</p></dd>
+
+
+<dt id="arg-lincmtforwardmax">linCmtForwardMax<a class="anchor" aria-label="anchor" href="#arg-lincmtforwardmax"></a></dt>
+<dd><p>The maximum number of points in a forward
+difference to take while calculating the gradients.  This is an
+integer from 1 to 3.  There is at least 1 extra point taken for
+gradient calculation, if the gradient is suspect another is taken
+(if this value is 2), and finally a third is calculated if the
+gradient is still suspect.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>

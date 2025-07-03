@@ -75,7 +75,6 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-iniGetAppendArg.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleAppend.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleLine.html</loc></url>
-<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-linCmtSensB.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-matchesLangTemplate.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-minfo.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-modelHandleModelLines.html</loc></url>
@@ -93,7 +92,9 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetVarianceForErrorType.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxIsLinCmt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxJacobian.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxLinCmt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxLinCmtGen.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxLinNcmt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxPrune.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxSEeqUsr.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxSens.html</loc></url>
@@ -104,6 +105,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxWithWd.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxode2ptrs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-s3register.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-solComp2.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-solComp3.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-symengineFs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-toClassicEvid.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-udfCallFunArg.html</loc></url>
@@ -280,6 +283,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSplitPlusQ.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxStack.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxState.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxStateOde.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSumProdModel.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSupportedFuns.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSuppressMsg.html</loc></url>

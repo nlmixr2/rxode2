@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">4.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,15 +79,21 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li>
+<h2 class="pkg-version" data-toc-text="4.0.0" id="rxode2-400">rxode2 4.0.0<a class="anchor" aria-label="anchor" href="#rxode2-400"></a></h2>
+<ul><li><p>Add more information errors about NAs during solving.</p></li>
+<li><p>Fix <code><a href="../reference/rxDerived.html">rxDerived()</a></code> for mixed vector and non-vector input.</p></li>
+<li><p>Fix model variables for <code>alag(cmt)</code> when they are defined before <code>d/dt()</code> or <code>linCmt()</code></p></li>
+<li><p>Just in time use of <code>state.ignore</code> in the model variables, fixes negative length error observed in <a href="https://github.com/nlmixr2/rxode2/issues/857" class="external-link">#857</a>.</p></li>
+<li><p>Fix steady state bug with time-varying covariates. Now the covariates are inferred at the time of the steady state (instead of searching through the subject based on the projected time).</p></li>
+<li><p>Rework the linear solved systems to use the wnl solutions, and threaded linear systems solve (for non-gradient solutions). This new method closes a variety of linear compartment model bugs (<a href="https://github.com/nlmixr2/rxode2/issues/261" class="external-link">#261</a>, <a href="https://github.com/nlmixr2/rxode2/issues/272" class="external-link">#272</a>, <a href="https://github.com/nlmixr2/rxode2/issues/441" class="external-link">#441</a>, <a href="https://github.com/nlmixr2/rxode2/issues/504" class="external-link">#504</a>, <a href="https://github.com/nlmixr2/rxode2/issues/564" class="external-link">#564</a>, <a href="https://github.com/nlmixr2/rxode2/issues/717" class="external-link">#717</a>, <a href="https://github.com/nlmixr2/rxode2/issues/728" class="external-link">#728</a>, <a href="https://github.com/nlmixr2/rxode2/issues/827" class="external-link">#827</a>, and <a href="https://github.com/nlmixr2/rxode2/issues/855" class="external-link">#855</a>)</p></li>
+<li>
 <p>Added new types of bounds for event tables:</p>
 <ul><li><p>3 point bounds <code>et(list(c(low, mid, high)))</code> when specified this way, they will not change. Perfect for use with <code>babelmixr2</code>’s <code>PopED</code> (<a href="https://github.com/nlmixr2/rxode2/issues/862" class="external-link">#862</a>, <a href="https://github.com/nlmixr2/rxode2/issues/863" class="external-link">#863</a>, <a href="https://github.com/nlmixr2/rxode2/issues/854" class="external-link">#854</a>)</p></li>
 <li><p>Intervals simulated by normal values instead of uniform. In this case the first seen interval will be 3 elements with NA at the end <code>et(list(c(mean, sd, NA), c(mean, sd)))</code>, and the other elements can simply be 2 declaring the <code>c(mean, sd)</code></p></li>
 <li><p>Of course the uniform windows of <code>et(list(c(low, high)))</code> still work</p></li>
 <li><p>Currently these different types of windows cannot be mixed.</p></li>
 </ul></li>
-<li><p>Add ability to pipe a list or named numeric as an eta with <code>%&gt;% ini(~pipeList)</code></p></li>
+<li><p>Add ability to pipe a list or named numeric as an eta with <code>%&gt;% ini(~eta)</code></p></li>
 <li><p>Added a fix for event tables where expanding IDs in non-sequential order. In particular if the first ID is not the minimum ID when expanding the first event table, the smallest ID was not in the output table. Now the smallest ID is in the event table. (Fixes <a href="https://github.com/nlmixr2/rxode2/issues/878" class="external-link">#878</a>, <a href="https://github.com/nlmixr2/rxode2/issues/869" class="external-link">#869</a>, <a href="https://github.com/nlmixr2/rxode2/issues/870" class="external-link">#870</a>)</p></li>
 <li><p>Added ability to pipe <code><a href="../reference/ini.html">ini()</a></code> or <code><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri()</a></code>, or any other expression that can be converted to an ini with <code><a href="../reference/as.ini.html">as.ini()</a></code>. Also allows <code><a href="../reference/ini.html">ini()</a></code> expressions to be converted to lotri with <code><a href="https://nlmixr2.github.io/lotri/reference/as.lotri.html" class="external-link">as.lotri()</a></code>. Fixes <a href="https://github.com/nlmixr2/rxode2/issues/871" class="external-link">#871</a></p></li>
 <li><p>Added new type of variability expression for simulation and estimation with focei and likelihood related methods: <code>+var()</code>. This changes standard deviation parameters to variance parameters. This was added to support model linearization.</p></li>
