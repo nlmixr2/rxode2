@@ -76,7 +76,7 @@
 #' @keywords internal
 #' @export
 .rxGetPredictionFTransform <- function(env, pred1, yj) {
-  if (yj == 2) {
+  if (yj == 2 || pred1$dv) {
     return(quote(rx_pred_f_))
   } else if (yj == 3) {
     return(quote(log(rx_pred_f_)))
