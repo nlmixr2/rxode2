@@ -29,7 +29,12 @@
 
 - Added new type of variability expression for simulation and
   estimation with focei and likelihood related methods: `+var()`. This
-  changes standard deviation parameters to variance parameters.
+  changes standard deviation parameters to variance parameters. This
+  was added to support model linearization.
+
+- Added new type of endpoint expression for focei estimation
+  `+dv()`. This only transforms the data and not the predictions. I
+  can only see it being useful in model linearization.
 
 - Bug fix for parameters that are in both input (`$params`) and output
   (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
