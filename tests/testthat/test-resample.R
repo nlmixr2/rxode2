@@ -53,6 +53,7 @@ rxTest({
 
       test_that("test resampleID behavior", {
         for (nStud in c(1, 2)) {
+
           f1 <- rxSolve(m1, e,
                         ## Lotri uses lower-triangular matrix rep. for named matrix
                         omega = lotri(

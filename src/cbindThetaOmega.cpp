@@ -5,13 +5,7 @@
 #include "../inst/include/rxode2parse.h"
 
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 using namespace Rcpp;
 
 static inline CharacterVector cbindThetaOmegaNames(CharacterVector& inputN, CharacterVector& individualN) {

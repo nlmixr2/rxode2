@@ -12,13 +12,7 @@
 #include "common.h"
 #include "lsoda_internal.h"
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 void RSprintf(const char *format, ...);
 

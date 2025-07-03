@@ -461,21 +461,6 @@ rxTest({
     V <- exp(THETA[3] + ETA[2])
   }
 
-  test_that("linCmt promotion and derivatives", {
-    expect_equal(
-      rxToSE("linCmtA(rx__PTR__, t, 0, 3, 1, CL, V, Q, V2, Q2, V3, 0, 1, 0, 0, KA, 0, 1, 0, 0)", promoteLinSens = TRUE),
-      "linCmtB(rx__PTR__,t,0,3,1,0,CL,V,Q,V2,Q2,V3,0,1,0,0,KA,0,1,0,0)"
-    )
-    expect_equal(
-      rxToSE("linCmtA(rx__PTR__, t, 0, 3, 1, CL, V, Q, V2, Q2, V3, 0, 1, 0, 0, KA, 0, 1, 0, 0)", promoteLinSens = FALSE),
-      "linCmtA(rx__PTR__,t,0,3,1,CL,V,Q,V2,Q2,V3,0,1,0,0,KA,0,1,0,0)"
-    )
-    for (i in 1:15) {
-      .tmp <- paste0("Derivative(linCmtB(rx__PTR__,t,0,3,1,0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15), p", i, ")")
-      expect_equal(rxFromSE(.tmp), paste0("linCmtB(rx__PTR__,t,0,3,1,", i, ",p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15)"))
-    }
-  })
-
   test_that("sum/prod testing", {
     expect_equal(rxToSE("sum(a,b,c)"), "((a)+(b)+(c))")
     expect_equal(rxToSE("prod(a,b,c)"), "((a)*(b)*(c))")
@@ -648,4 +633,781 @@ rxTest({
     expect_error(rxS(test), NA)
 
   })
+
+  test_that("Promote linear solution linCmtA to linear solution linCmtB -- linCmt() sol", {
+    expect_equal(str2lang(rxToSE("linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                    promoteLinSens = TRUE)),
+                 str2lang("linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, q, v2, q2, v3, ka)"))
+  })
+
+  test_that("Promote linear solution linCmtA to linear solution linCmtB -- amts", {
+    for (i in 0:7) {
+      str <- paste0("linCmtA(rx__PTR__,t,2,1,1,",i,",1,cl,v,q,v2,q2,v3,ka)")
+      expect_equal(str2lang(rxToSE(str, promoteLinSens = TRUE)),
+                   str2lang(paste0("linCmtB(rx__PTR__, t, 2, 1, 1, ", i, ", -2, 1, cl, v, q, v2, q2, v3, ka)")))
+    }
+  })
+
+  testVars <- c("b=depot",
+                "c=central",
+                "d=peripheral1",
+                "ee=peripheral2",
+                "f=rx__sens_central_BY_p1",
+                "g=rx__sens_central_BY_v1",
+                "h=rx__sens_central_BY_p2",
+                "i=rx__sens_central_BY_p3",
+                "j=rx__sens_central_BY_p4",
+                "k=rx__sens_central_BY_p5",
+                "l=rx__sens_central_BY_ka",
+                "m=rx__sens_peripheral1_BY_p1",
+                "n=rx__sens_peripheral1_BY_v1",
+                "o=rx__sens_peripheral1_BY_p2",
+                "p=rx__sens_peripheral1_BY_p3",
+                "q=rx__sens_peripheral1_BY_p4",
+                "r=rx__sens_peripheral1_BY_p5",
+                "s=rx__sens_peripheral1_BY_ka",
+                "tt=rx__sens_peripheral2_BY_p1",
+                "u=rx__sens_peripheral2_BY_v1",
+                "v=rx__sens_peripheral2_BY_p2",
+                "w=rx__sens_peripheral2_BY_p3",
+                "x=rx__sens_peripheral2_BY_p4",
+                "y=rx__sens_peripheral2_BY_p5",
+                "z=rx__sens_peripheral2_BY_ka",
+                "aa=rx__sens_depot_BY_ka")
+
+  # Testing function for translation
+  f <- function(w, num=NULL, s=s) {
+    w <- get(w, envir=s)
+    v <- rxFromSE(w)
+    l <- str2lang(v)
+    if (is.symbol(l)) {
+      if (is.null(num)) {
+        return(TRUE)
+      } else {
+        return(FALSE)
+      }
+    }
+    if (is.call(l) && (identical(l[[1]], quote(`linCmtA`)) ||
+                         identical(l[[1]], quote(`linCmtB`)))) {
+      return(l[[7]] == num)
+    }
+    FALSE
+  }
+
+  test_that("3 compartment oral states translated in symengine", {
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", 3, s=s)) # peripheral2
+    expect_true(f("f", s=s))
+    expect_true(f("g", s=s))
+    expect_true(f("h", s=s))
+    expect_true(f("i", s=s))
+    expect_true(f("j", s=s))
+    expect_true(f("k", s=s))
+    expect_true(f("l", s=s))
+    expect_true(f("m", s=s))
+    expect_true(f("n", s=s))
+    expect_true(f("o", s=s))
+    expect_true(f("p", s=s))
+    expect_true(f("q", s=s))
+    expect_true(f("r", s=s))
+    expect_true(f("s", s=s))
+    expect_true(f("tt", s=s))
+    expect_true(f("u", s=s))
+    expect_true(f("v", s=s))
+    expect_true(f("w", s=s))
+    expect_true(f("x", s=s))
+    expect_true(f("y", s=s))
+    expect_true(f("z", s=s))
+    expect_true(f("aa", s=s))
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", 3, s=s)) # peripheral2
+    expect_true(f("f", 4, s=s))
+    expect_true(f("g", 5, s=s))
+    expect_true(f("h", 6, s=s))
+    expect_true(f("i", 7, s=s))
+    expect_true(f("j", 8, s=s))
+    expect_true(f("k", 9, s=s))
+    expect_true(f("l", 10, s=s))
+    expect_true(f("m", 11, s=s))
+    expect_true(f("n", 12, s=s))
+    expect_true(f("o", 13, s=s))
+    expect_true(f("p", 14, s=s))
+    expect_true(f("q", 15, s=s))
+    expect_true(f("r", 16, s=s))
+    expect_true(f("s", 17, s=s))
+    expect_true(f("tt", 18, s=s))
+    expect_true(f("u", 19, s=s))
+    expect_true(f("v", 20, s=s))
+    expect_true(f("w", 21, s=s))
+    expect_true(f("x", 22, s=s))
+    expect_true(f("y", 23, s=s))
+    expect_true(f("z", 24, s=s))
+    expect_true(f("aa", 25, s=s))
+  })
+
+  test_that("3 compartment states translated in symengine", {
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,0,-1,1,cl,v,q,v2,q2,v3,0)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", 2, s=s)) # peripheral2
+    expect_true(f("f", s=s))
+    expect_true(f("g", s=s))
+    expect_true(f("h", s=s))
+    expect_true(f("i", s=s))
+    expect_true(f("j", s=s))
+    expect_true(f("k", s=s))
+    expect_true(f("l", s=s))
+    expect_true(f("m", s=s))
+    expect_true(f("n", s=s))
+    expect_true(f("o", s=s))
+    expect_true(f("p", s=s))
+    expect_true(f("q", s=s))
+    expect_true(f("r", s=s))
+    expect_true(f("s", s=s))
+    expect_true(f("tt", s=s))
+    expect_true(f("u", s=s))
+    expect_true(f("v", s=s))
+    expect_true(f("w", s=s))
+    expect_true(f("x", s=s))
+    expect_true(f("y", s=s))
+    expect_true(f("z", s=s))
+    expect_true(f("aa", s=s))
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,0,-1,1,cl,v,q,v2,q2,v3,0)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", 2, s=s)) # peripheral2
+    expect_true(f("f", 3, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 4, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", 5, s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", 6, s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", 7, s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", 8, s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s))    # rx__sens_central_BY_ka
+    expect_true(f("m", 9, s=s)) # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", 10, s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", 11, s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", 12, s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", 13, s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", 14, s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", 15, s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", 16, s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", 17, s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", 18, s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", 19, s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", 20, s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
+
+  })
+
+  test_that("2 compartment oral states translated in symengine", {
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,2,1,-1,1,cl,v,q,v2,0,0,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,2,1,-1,1,cl,v,q,v2,0,0,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 3, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 4, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", 5, s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", 6, s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", 7, s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", 8, s=s)) # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", 9, s=s)) # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", 10, s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", 11, s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", 12, s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", 13, s=s))#rx__sens_depot_BY_ka
+  })
+
+  test_that("2 compartment states translated in symengine", {
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,2,0,-1,1,cl,v,q,v2,0,0,0)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,2,0,-1,1,cl,v,q,v2,0,0,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 2, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 3, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", 4, s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", 5, s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", s=s))    # rx__sens_central_BY_ka
+    expect_true(f("m", 6, s=s)) # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", 7, s=s)) # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", 8, s=s)) # rx__sens_peripheral1_BY_p2
+    expect_true(f("p", 9, s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+  })
+
+  test_that("1 compartment oral states translated in symengine", {
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0,0,0,0,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", s=s))  # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0,0,0,0,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 2, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 3, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s))    # rx__sens_central_BY_p2
+    expect_true(f("i", s=s))    # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", 4, s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))    # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))    # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))    # rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))    # rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", 5, s=s))#rx__sens_depot_BY_ka
+  })
+
+  test_that("1 compartment states translated in symengine", {
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,1,0,-1,1,cl,v,0,0,0,0,0)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", s=s))  # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,1,0,-1,1,cl,v,0,0,0,0,0)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 1, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 2, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s))    # rx__sens_central_BY_p2
+    expect_true(f("i", s=s))    # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", s=s))    # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))    # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))    # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))    # rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))    # rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))   #rx__sens_depot_BY_ka
+
+  })
+
+  f <- function(txt, var, w1, w2) {
+    .txt <- paste0("Derivative(", txt, ",", var, ")")
+    .txt <- str2lang(rxFromSE(.txt))
+    if (is.null(w1)) {
+      expect_equal(0, .txt)
+    } else {
+      expect_equal(eval(.txt[[7]]), w1)
+      expect_equal(eval(.txt[[8]]), w2)
+    }
+  }
+
+  test_that("test linCmtB 3 compartment oral derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q",  -2, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v2", -2, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q2", -2, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v3", -2, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", -2, 6)
+
+    # state values
+
+    # depot:
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  0, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 0, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 0, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 0, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 0, 6)
+
+    # central:
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 1, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  1, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  1, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 1, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 1, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 1, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 1, 6)
+
+    # peripharal1
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 2, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  2, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  2, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 2, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 2, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 2, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 2, 6)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 3, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  3, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  3, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 3, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 3, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 3, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 3, 6)
+
+  })
+
+  test_that("test linCmtB 3 compartment derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,0)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,0)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,0)", "q",  -2, 2)
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,0)", "v2", -2, 3)
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,0)", "q2", -2, 4)
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,0)", "v3", -2, 5)
+    f("linCmtB(rx__PTR__,t,2,3,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # state values
+
+    # central:
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,0)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,0)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,0)", "q",  0, 2)
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,0)", "v2", 0, 3)
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,0)", "q2", 0, 4)
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,0)", "v3", 0, 5)
+    f("linCmtB(rx__PTR__,t,2,3,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal1:
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 1, 0)
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  1, 1)
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  1, 2)
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 1, 3)
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 1, 4)
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 1, 5)
+    f("linCmtB(rx__PTR__,t,2,3,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 2, 0)
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  2, 1)
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  2, 2)
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 2, 3)
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 2, 4)
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 2, 5)
+    f("linCmtB(rx__PTR__,t,2,3,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+  })
+
+
+  test_that("test linCmtB 2 compartment oral derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q",  -2, 2)
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v2", -2, 3)
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", -2, 4)
+
+    # state values
+
+    # depot:
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  0, 2)
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 0, 3)
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 0, 4)
+
+    # central:
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 1, 0)
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  1, 1)
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  1, 2)
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 1, 3)
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 1, 4)
+
+    # peripharal1
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 2, 0)
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  2, 1)
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  2, 2)
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 2, 3)
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 2, 4)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+  })
+
+  test_that("test linCmtB 2 compartment derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q",  -2, 2)
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v2", -2, 3)
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # state values
+
+    # central:
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  0, 2)
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 0, 3)
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal1
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 1, 0)
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  1, 1)
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  1, 2)
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 1, 3)
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,1,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,2,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+  })
+
+  test_that("test linCmtB 1 compartment oral derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", -2, 2)
+
+    # state values
+
+    # depot:
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 0, 2)
+
+    # central:
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 1, 0)
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  1, 1)
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 1, 2)
+
+    # peripharal1
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+  })
+
+  test_that("test linCmtB 1 compartment derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # state values
+
+    # central
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal1
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", NULL)
+    f("linCmtB(rx__PTR__,t,2,1,0,3,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", NULL)
+
+  })
+
+
+  for (prop in c("dur", "rate", "lag", "alag", "f", "F", "0")) {
+    for (cmt in c("depot", "central", "peripheral1", "peripheral2")) {
+      val <- ifelse(prop=="0",
+                    sprintf("%s(0)",cmt),
+                    sprintf("%s(%s)", prop, cmt))
+      test <- c("cl=exp(tvcl)",
+                "v=exp(tvv)",
+                "q=exp(tvq)",
+                "v2=exp(tvv2)",
+                "q2=exp(tvq2)",
+                "v3=exp(tvv3)",
+                "mat=exp(tvmat)",
+                "D1=mat*(1-expit(tvfrd1,0,1))",
+                "ka=1/(mat*expit(tvfrd1,0,1))",
+                "cp=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                sprintf("%s=D1", val),
+                "rx_pred_=cp")
+
+      m <- paste(test, collapse = "\n")
+      shouldError <- prop == "0" || (cmt %in% c("peripheral1", "peripheral2") &&
+                                       prop %in% c("dur", "rate"))
+
+      if (shouldError) {
+        test_that(sprintf("rxS errors in %s parameter in linCmtA()", val), {
+          expect_error(rxS(m))
+        })
+      } else {
+        test_that(sprintf("rxS processes %s parameter in linCmtA()", val), {
+          expect_error(rxS(m), NA)
+        })
+      }
+    }
+  }
+
+
 })

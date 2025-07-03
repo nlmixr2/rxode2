@@ -251,6 +251,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// getLinInfo_
+IntegerVector getLinInfo_(List mv);
+RcppExport SEXP _rxode2_getLinInfo_(SEXP mvSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
+    rcpp_result_gen = Rcpp::wrap(getLinInfo_(mv));
+    return rcpp_result_gen;
+END_RCPP
+}
+// getCmtNum_
+IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens);
+RcppExport SEXP _rxode2_getCmtNum_(SEXP cmtSEXP, SEXP mvSEXP, SEXP sensSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
+    Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
+    Rcpp::traits::input_parameter< bool >::type sens(sensSEXP);
+    rcpp_result_gen = Rcpp::wrap(getCmtNum_(cmt, mv, sens));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxSetIni0
 bool rxSetIni0(bool ini0);
 RcppExport SEXP _rxode2_rxSetIni0(SEXP ini0SEXP) {
@@ -270,6 +294,30 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type isObsSexp(isObsSexpSEXP);
     rcpp_result_gen = Rcpp::wrap(etTransEvidIsObs(isObsSexp));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cmtSupportsInfusion_
+LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv);
+RcppExport SEXP _rxode2_cmtSupportsInfusion_(SEXP cmtSEXP, SEXP mvSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
+    Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
+    rcpp_result_gen = Rcpp::wrap(cmtSupportsInfusion_(cmt, mv));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cmtSupportsOff_
+LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv);
+RcppExport SEXP _rxode2_cmtSupportsOff_(SEXP cmtSEXP, SEXP mvSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
+    Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
+    rcpp_result_gen = Rcpp::wrap(cmtSupportsOff_(cmt, mv));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -539,6 +587,38 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
     rcpp_result_gen = Rcpp::wrap(convertId_(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtModelDouble
+RObject linCmtModelDouble(double dt, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector alastNV, NumericVector rateNV, const int ncmt, const int oral0, const int trans, bool deriv, int type, double tau, double tinf, double amt, int bolusCmt, int ndiff, int sensType, double sensH);
+RcppExport SEXP _rxode2_linCmtModelDouble(SEXP dtSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP alastNVSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP derivSEXP, SEXP typeSEXP, SEXP tauSEXP, SEXP tinfSEXP, SEXP amtSEXP, SEXP bolusCmtSEXP, SEXP ndiffSEXP, SEXP sensTypeSEXP, SEXP sensHSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type dt(dtSEXP);
+    Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
+    Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
+    Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
+    Rcpp::traits::input_parameter< double >::type p3(p3SEXP);
+    Rcpp::traits::input_parameter< double >::type p4(p4SEXP);
+    Rcpp::traits::input_parameter< double >::type p5(p5SEXP);
+    Rcpp::traits::input_parameter< double >::type ka(kaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type alastNV(alastNVSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rateNV(rateNVSEXP);
+    Rcpp::traits::input_parameter< const int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< const int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< const int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< bool >::type deriv(derivSEXP);
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< double >::type tinf(tinfSEXP);
+    Rcpp::traits::input_parameter< double >::type amt(amtSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    Rcpp::traits::input_parameter< int >::type ndiff(ndiffSEXP);
+    Rcpp::traits::input_parameter< int >::type sensType(sensTypeSEXP);
+    Rcpp::traits::input_parameter< double >::type sensH(sensHSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH));
     return rcpp_result_gen;
 END_RCPP
 }

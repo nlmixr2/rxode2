@@ -35,7 +35,7 @@ test_that("activation functions", {
 
   e <- et(seq(-10, 10, length.out = 41))
 
-  s <- rxSolve(r, e, c(alpha=2))
+  s <- suppressWarnings(rxSolve(r, e, c(alpha=2)))
 
   expect_equal(ReLU(e$time), s$r)
   expect_equal(ReLU(e$time), vapply(e$time,

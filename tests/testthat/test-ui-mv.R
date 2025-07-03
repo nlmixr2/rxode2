@@ -1,4 +1,5 @@
 rxTest({
+
   one.cmt <- function() {
     ini({
       tka <- 0.45
@@ -61,8 +62,8 @@ rxTest({
   })
 
   test_that("rxode2 rxState works with ui objects", {
-    expect_equal(rxState(one.cmt), character(0))
-    expect_equal(rxState(f), character(0))
+    expect_equal(rxState(one.cmt), c("depot", "central"))
+    expect_equal(rxState(f), c("depot", "central"))
     expect_equal(rxState(cov), c("depot", "center"))
     expect_equal(rxState(f2), c("depot", "center"))
   })

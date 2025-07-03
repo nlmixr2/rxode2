@@ -14,13 +14,7 @@
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 using namespace Rcpp;
 #define rxIsNumIntLgl rx2parseIsNumIntLgl
@@ -58,7 +52,6 @@ static inline CharacterVector asCv(SEXP in, const char *what) {
   }
   return as<CharacterVector>(in);
 }
-
 
 static inline bool rxIsNumIntLgl(RObject obj) {
   int type = obj.sexp_type();
@@ -131,13 +124,184 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
-IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
+/*
+ * Get the linear compartment information from the model variables
+ *
+ * @param mv The model variables list
+ *
+ * @param numLinSens The number of linear sensitivity compartments in
+ * the model, will be assigned
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @return None, but the values are assigned to the input variables
+ */
+void getLinInfo(List mv, int &numLinSens,
+                int &numLin, int &depotLin) {
+  IntegerVector flags = mv[RxMv_flags];
+  int linCmtFlg = flags[RxMvFlag_linCmtFlg];
+  // numSens*100+nLin*10 + depot
+  numLinSens = std::floor(linCmtFlg/100);
+  numLin = std::floor((linCmtFlg - numLinSens*100)/10);
+  depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
+}
+
+//' Get the Linear Compartment Information based on the model variables
+//'
+//' @param obj The model variables object
+//'
+//' @return A named integer vector with the linear sensitivity compartments.
+//'
+//' @noRd
+//[[Rcpp::export]]
+IntegerVector getLinInfo_(List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  return IntegerVector::create(_["numLinSens"] = numLinSens,
+                               _["numLin"] = numLin,
+                               _["depotLin"] = depotLin);
+}
+
+/*
+ * Get the compartment number, adjusting for linear solved systems
+ *
+ * This will swap cmt 1 with the depot and cmt 2 with the central when
+ * an oral linear compartment is present in the model.
+ *
+ * This will also swap cmt 1 with the central compartment when a
+ * linear compartment is present in the model
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt The number of compartments in the model (including linear and sensitivity)
+ *
+ * @param numSens The number of sensitivity compartments in the model
+ *
+ * @return The compartment number adjusted for linear solved systems
+ */
+int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+              int numSens, int sens) {
+  if (cmt == NA_INTEGER) return NA_INTEGER;
+  if (cmt == 0) return 0;
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return -getCmtNum(-cmt, numLin, numLinSens, depotLin, numCmt,
+                      numSens, sens);
+  }
+  // With no linear compartments, the compartment number is the same
+  int nODE = numCmt - numLin - numSens;
+  if (numLin == 0 && depotLin == 0) {
+    if (cmt > nODE) {
+      // This is a DVID, so return it as is
+      return cmt + numSens;
+    } else {
+      return cmt;
+    }
+  }
+  // With a oral linear compartment:
+  // 1. The depot is always the first compartment
+  // 2. The central compartment is always the second compartment
+  // 3. The non-senstivity ODE compartments are next, and shifted by 2.
+  // 4. The peripheral compartments are next, and shifted by 2+the number of ODEs
+  // 5. The ODE and linear sensitivites are the very last values
+  //
+  // But the actual ODEs/linCmt parameters are defined by:
+  // 1. The ODE compartments
+  // 2. The Senstivitiy ODE compartments
+  // 3. The linear compartments
+  // 4. The linear sensitivity compartments
+
+  // This is similar to the linear compartment, but there is no depot.
+  int numOff = 1 + depotLin;
+
+  int nODEsens = numSens - numLinSens;
+
+
+  // REprintf("cmt: %d, numLin: %d, numLinSens: %d, depotLin: %d, numCmt: %d, numSens: %d\n", cmt, numLin, numLinSens, depotLin, numCmt, numSens);
+
+  // REprintf("\tnumOff: %d, nODEsens: %d, nODE: %d\n", numOff, nODEsens, nODE);
+
+  if (cmt <= numOff) {
+    // This pushes the 1 (and 2) compartment to true compartment in the middle
+    // REprintf("\tcmt <= numOff\n");
+    // REprintf("\treturn: %d\n", cmt+nODE+nODEsens);
+    return cmt+nODE+nODEsens;
+  }
+  if (cmt <= numOff+nODE) {
+    // This removes the offset for the ODE compartments
+    return cmt-numOff;
+  }
+  // This is the peripharal compartments
+  if (cmt <= nODE+numLin) {
+    // This is the peripharal compartments
+    // The input offset is cmt-nODE-numOff
+    // The output is nODE+nODEsens+(cmt-nODE-numOff), which reduces to
+    //return nODE+nODEsens+numOff+cmt-nODE-numOff;//numOff;
+    return nODEsens+cmt;
+  }
+  if (sens) {
+    // ODE sensitivities
+    if (cmt <= nODE+numLin+nODEsens) {
+      // This is the ODE sensitivities
+      // The input offset is cmt-nODE-numLin
+      // The output is nODE+(cmt-nODE-numLin)
+      // which reduces to
+      return cmt-numLin;
+    }
+    // Linear sensitivities, these should be the same compartments
+    return cmt;
+  }
+  // Sensitivities are ignored, these are DVIDs instead
+  int extra = cmt - nODE - numLin;
+  return numCmt + extra;
+}
+
+//' Get the real compartment number based on NONMEM-style compartment
+//' adjusting for linear solved systems.
+//'
+//' This export is mostly for testing purposes.
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens=true) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  IntegerVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sensCV = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
+                       state.size(), sensCV.size(), sens);
+  }
+  return ret;
+}
+
+IntegerVector toCmt(RObject inCmt, CharacterVector& state,
+                    const bool isDvid,
                     const int stateSize, const int sensSize, IntegerVector& curDvid,
-                    const IntegerVector& inId, const CharacterVector& idLvl){
+                    const IntegerVector& inId, const CharacterVector& idLvl,
+                    int &numLin, int &numLinSens, int &depotLin, int &numCmt,
+                    int &numSens, int &cmt1){
   RObject cmtInfo = R_NilValue;
   List extraCmt;
-  if (rxIsNumIntLgl(inCmt)){
-    if (rxIsFactor(inCmt)){
+  if (rxIsNumIntLgl(inCmt)) {
+    if (rxIsFactor(inCmt)) {
       CharacterVector lvl = Rf_getAttrib(as<SEXP>(inCmt), R_LevelsSymbol);
       IntegerVector lvlI(lvl.size());
       int i, j, k=0;
@@ -200,7 +364,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
       ret.attr("cmtNames") = newCmt;
       return ret;
     } else {
-      if (isDvid){
+      if (isDvid) {
         // This converts DVID to cmt; Things that don't match become -9999
         Environment rx = rxode2env();
         IntegerVector in = convertDvid_(inCmt, curDvid.length());
@@ -246,26 +410,13 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
         }
         return out;
       } else {
-        IntegerVector in = as<IntegerVector>(inCmt);
+        IntegerVector in = asIv(inCmt, "inCmt");
         IntegerVector out(in.size());
-        int baseSize = stateSize - sensSize;
-        // Sensitivity equations are ignored in CMT data items.
         for (int i = in.size(); i--;){
-          if (in[i] == NA_INTEGER) {
-            out[i] = in[i];
-          } else if (in[i] > 0 && in[i] <= baseSize){
-            out[i] = in[i];
-          } else if (in[i] > 0) {
-            out[i] = in[i]+sensSize;
-          } else if (in[i] < 0 && in[i] >= -baseSize){
-            out[i] = in[i];
-          } else if (in[i] < 0){
-            out[i] = in[i] - sensSize;
-          } else {
-            out[i] = 0;
-          }
+          out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
+                             numSens, false);
         }
-        return out;
+        return as<IntegerVector>(out);
       }
     }
   } else if (rxIsChar(inCmt)) {
@@ -288,7 +439,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
       foundState=false;
       if (strCmt == "(default)" || strCmt == "(obs)" || CharacterVector::is_na(iCmt[i])){
         foundState=true;
-        newCmt.push_back(1);
+        newCmt.push_back(cmt1);
       } else {
         for (j = state.size(); j--;){
           if (as<std::string>(state[j]) == strCmt){
@@ -456,6 +607,160 @@ RObject etTranGetAttrKeep(SEXP in) {
   return as<RObject>(ret);
 }
 
+
+/*
+ * Determine if actual compartment number supports infusions
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt represents the number of compartments in the model
+ *
+ * @param numSens represents the number of sensitivity compartments in the model
+ *
+ * @return an integer that tells if this compartment supports infusion
+ *
+ */
+int cmtSupportsInfusion(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+                        int numSens) {
+  if (cmt == 0) return 0;
+  // For ODEs, all compartments support infusion
+  if (numLin == 0 && depotLin == 0) {
+    return 1;
+  }
+  // Negative values give same values as positive values
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return cmtSupportsInfusion(-cmt, numLin, numLinSens, depotLin, numCmt,
+                               numSens);
+  }
+  int numOff = 1 + depotLin;
+  int nODEsens = numSens - numLinSens;
+  int nODE = numCmt - numLin - numSens;
+
+  if (cmt <= numOff) { // infusion for central/depot
+    return 1;
+  }
+  if (cmt <= numOff+nODE) {
+    // This removes the offset for the ODE compartments
+    // Infusions for ODEs
+    return 1;
+  }
+  // This is the peripharal compartments
+  if (cmt <= nODE+numLin) {
+    // No infusion for peripharal compartments
+    return 0;
+  }
+  // ODE sensitivities
+  if (cmt <= nODE+numLin+nODEsens) {
+    return 1;
+  }
+  // No infusions in linear sensitivites
+  return 0;
+}
+
+//' See if the NONMEM compartment number supports infusion
+//'
+//' This export is mostly for testing purposes.
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  LogicalVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sens = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = cmtSupportsInfusion(cmt[i], numLin, numLinSens, depotLin,
+                                 state.size(), sens.size());
+  }
+  return ret;
+}
+
+/*
+ * Determine if actual compartment can be turned off (linear cannot)
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt represents the number of compartments in the model
+ *
+ * @param numSens represents the number of sensitivity compartments in the model
+ *
+ * @return an integer that tells if this compartment supports infusion
+ *
+ */
+int cmtSupportsOff(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+                   int numSens) {
+  if (cmt == 0) return 0;
+  // For ODEs, all compartments support off
+  if (numLin == 0 && depotLin == 0) {
+    return 1;
+  }
+  // Negative values give same values as positive values
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return cmtSupportsInfusion(-cmt, numLin, numLinSens, depotLin, numCmt,
+                               numSens);
+  }
+  int numOff = 1 + depotLin;
+  int nODEsens = numSens - numLinSens;
+  int nODE = numCmt - numLin - numSens;
+
+  if (cmt <= nODE + nODEsens) {
+    // ODEs and ODE sensitivities can be turned off
+    return 1;
+  }
+  // All other compartments are linear compartments at this time, and
+  // cannot be turned off
+  return 0;
+}
+
+
+//' See if the NONMEM compartment number supports infusion
+//'
+//' This export is mostly for testing purposes.
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  LogicalVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sens = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = cmtSupportsOff(cmt[i], numLin, numLinSens, depotLin,
+                            state.size(), sens.size());
+  }
+  return ret;
+}
+
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
@@ -512,6 +817,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   clock_t _lastT0 = clock();
 #endif
   List mv = rxModelVars_(obj);
+  IntegerVector flags = mv[RxMv_flags];
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  int numCmt = Rf_length(mv[RxMv_state]);
+  int numSens = Rf_length(mv[RxMv_sens]);
+  int cmt1 = getCmtNum(1, numLin, numLinSens, depotLin, numCmt,
+                       numSens, false);
   bool hasIcov = false;
   List iCov_;
   if (!iCov.isNull()){
@@ -849,24 +1162,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector state0 = as<CharacterVector>(mv[RxMv_state]);
   CharacterVector stateE = as<CharacterVector>(mv[RxMv_stateExtra]);
   CharacterVector stateS = as<CharacterVector>(mv[RxMv_sens]);
-  int extraCmt  = as<int>(mv[RxMv_extraCmt]);
-  // Enlarge compartments
-  if (extraCmt == 2){
-    CharacterVector newState(state0.size()+2);
-    newState[0] = "depot";
-    newState[1] = "central";
-    for (int j = state0.size();j--;) newState[j+2] = state0[j];
-    // for (int j = state0.size();j--;) newState[j] = state0[j];
-    // newState[state0.size()] = "depot";
-    // newState[state0.size()+1] = "central";
-    state0 = newState;
-  } else if (extraCmt==1){
-    CharacterVector newState(state0.size()+1);
-    newState[0] = "central";
-    for (int j = state0.size();j--;) newState[j+1] = state0[j];
-    // newState[state0.size()] = "central";
-    state0 = newState;
-  }
   CharacterVector state(state0.size() + stateE.size());
   for (int i = 0; i < state0.size(); i++){
     state[i] = state0[i];
@@ -930,7 +1225,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   cens.reserve(resSize);
   std::vector<int> nObsId;
 
-
 #ifdef rxSolveT
   REprintf("  Time3: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -943,7 +1237,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     addTimeUnits=true;
     timeUnits=inTime.attr("units");
   }
-  int tmpCmt = 1;
+  int tmpCmt = cmt1;
   IntegerVector inId;
   CharacterVector idLvl;
   IntegerVector inIdCov;
@@ -985,7 +1279,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (cmtCol != -1){
     inCmt = as<IntegerVector>(toCmt(inData[cmtCol], state, false,
                                     state0.size(), stateS.size(), curDvid,
-                                    inId, idLvl));//as<IntegerVector>();
+                                    inId, idLvl,
+                                    numLin, numLinSens, depotLin, numCmt,
+                                    numSens, cmt1));//as<IntegerVector>();
     cmtInfo = inCmt.attr("cmtNames");
     inCmt.attr("cmtNames") = R_NilValue;
   }
@@ -993,7 +1289,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (dvidCol != -1){
     inDvid = as<IntegerVector>(toCmt(inData[dvidCol], state, true,
                                      state0.size(), stateS.size(),
-                                     curDvid, inId, idLvl));//as<IntegerVector>();
+                                     curDvid, inId, idLvl,
+                                     numLin, numLinSens, depotLin, numCmt,
+                                     numSens, cmt1));//as<IntegerVector>();
     inDvid.attr("cmtNames") = R_NilValue;
   }
   IntegerVector inSs;
@@ -1241,26 +1539,30 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       tmpCmt = inCmt[i];
       if (inCmt[i] == 0 || IntegerVector::is_na(inCmt[i])){
         if (evidCol == -1){
-          tmpCmt=1;
+          tmpCmt=cmt1;
         } else if (inEvid[i] == 0){
-          tmpCmt=1;
+          tmpCmt=cmt1;
         } else {
-          tmpCmt=1;
+          tmpCmt=cmt1;
         }
       }
       if (IntegerVector::is_na(inCmt[i])){
-        tmpCmt = 1;
+        tmpCmt = cmt1;
       } else if (inCmt[i] < 0){
         if (flg != 1) stop(_("steady state records cannot be on negative compartments (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
-        flg = 30;
-        tmpCmt = -tmpCmt;
+        if (cmtSupportsOff(cmt, numLin, numLinSens, depotLin, numCmt, numSens)) {
+          flg = 30;
+          tmpCmt = -tmpCmt;
+        } else {
+          stop(_("compartment cannot be turned off (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       }
       cmt = tmpCmt;
     } else if (cmtCol == -1) {
-      cmt = 1;
+      cmt = cmt1;
+    } else {
+      cmt = tmpCmt;
     }
-    // CMT flag
-    else cmt = tmpCmt;
     // see if you need to adjust for lagged
     if (ssAtDoseTime) {
       if (flg == 10 || flg == 20) {
@@ -1292,25 +1594,33 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       else rate = inRate[i];
       if (rate == -1.0){
         // rate is modeled
-        rateI = 9;
-        // if (!(needSort & needSortRate)) {
-        //   warning(_("data specified modeled rate (=-1) but no rate() in the model (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
-        // }
-        //rateModeled = true;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 9;
+        } else  {
+          stop(_("specifying a modeled rate with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       } else if (rate == -2.0){
         // duration is modeled
         if (flg == 40){
           stop(_("when using steady state constant infusion modeling duration does not make sense (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        // if (!(needSort & needSortDur)) {
-        //   warning(_("data specified modeled duration (=-2) but no dur() in the model (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
-        // }
-        rateI = 8;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 8;
+        }  else {
+          stop(_("specifying a modeled duration with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
         //durModeled = true;
       } else if (rate > 0){
         // Rate is fixed
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
-          rateI = 1;
+        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
+          if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                  depotLin, numCmt, numSens)) {
+            rateI = 1;
+          } else {
+            stop(_("specifying a fixed rate with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          }
         } else {
           rateI = 0;
           rate = 0.0;
@@ -1325,20 +1635,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        rateI = 9;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 9;
+        } else {
+          stop(_("specifying a modeled rate with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       } else if (inDur[i] == -2.0){
         // duration is modeled
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        rateI = 8;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 8;
+        } else {
+          stop(_("specifying a modeled duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       } else if (inDur[i] > 0){
         // Duration is fixed
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
-          rateI = 2;
+          if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                  depotLin, numCmt, numSens)) {
+            rateI = 2;
+          } else {
+            stop(_("specifying a fixed duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          }
           rate = camt/inDur[i];
         } else if (inEvid[i] > 4){
           rateI=0;
@@ -1384,6 +1709,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cevid=0;
       }
     }
+    if (cevid == 4 && nobs ==0 && ndose == 0){
+      // No reset here
+      cevid = 1;
+    }
+    if (cevid == 3 && nobs == 0 && ndose == 0) {
+      continue;
+    }
     switch(cevid) {
     case 0:
       // Observation
@@ -1412,10 +1744,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       {
         bool goodCmt = false;
         int cmpCmt;
-        if ((curDvid.size()) > 1){
-          for (j=curDvid.size();j--;){
-            if (curDvid[j] > 0){
-              if (curDvid[j] == cmt || curDvid[j] == -cmt){
+        if ((curDvid.size()) > 1) {
+          for (j=curDvid.size();j--;) {
+            if (curDvid[j] > 0) {
+              if (curDvid[j] == cmt || curDvid[j] == -cmt) {
                 goodCmt=true;
                 break;
               }
@@ -1443,12 +1775,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             cmt = inDvid[i];
           }
         }
-        if (!goodCmt){
+        if (!goodCmt) {
           IntegerVector dvidDF(curDvid.size());
           for (i = dvidDF.size(); i--;){
             dvidDF[i] = i+1;
           }
-          List dvidTrans = List::create(_["dvid"]=dvidDF, _["modeled cmt"]=curDvid);
+          List dvidTrans = List::create(_["dvid"]=dvidDF, _["modeledCmt"]=curDvid);
           Rf_setAttrib(dvidTrans, R_ClassSymbol, wrap("data.frame"));
           Rf_setAttrib(dvidTrans, R_RowNamesSymbol,
                        IntegerVector::create(NA_INTEGER, -dvidDF.size()));
@@ -1458,7 +1790,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             Rprintf("'DVID': %d\t", inDvid[i]);
           }
           Rprintf("'CMT': %d\n", cmt);
-          stop(_("'dvid'->'cmt' or 'cmt' on observation record on a undefined compartment (use 'cmt()' 'dvid()') id: %s row: %d"),
+          stop(_("'dvid'->'cmt' or 'cmt' on observation record or on a undefined compartment (use 'cmt()' 'dvid()') id: %s row: %d"),
                CHAR(idLvl[cid-1]), i+1);
         }
         id.push_back(cid);
@@ -1602,7 +1934,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (amtCol == -1) {
         stop(_("'amt' column missing with dosing event (EVID=%d, id: %s row: %d)"), cevid, CHAR(idLvl[cid-1]), i+1);
       }
-
       id.push_back(cid);
       evid.push_back(3);
       cmtF.push_back(cmt);

@@ -11,13 +11,7 @@
 #include <Rmath.h>
 #include <unistd.h>
 #include <errno.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2_control.h"
 #include "tran.h"
@@ -71,9 +65,9 @@ static inline void printDdtDefine(int show_ode, int scenario) {
     // These will be defined and used in Jacobian or LHS functions
     for (int i = 0; i < tb.de.n; i++){
       if (scenario == print_double){
-	sAppend(&sbOut,"  double  __DDtStateVar_%d__;\n",i);
+        sAppend(&sbOut,"  double  __DDtStateVar_%d__;\n",i);
       } else {
-	sAppend(&sbOut,"  (void)__DDtStateVar_%d__;\n",i);
+        sAppend(&sbOut,"  (void)__DDtStateVar_%d__;\n",i);
       }
     }
   }
@@ -98,22 +92,25 @@ static inline void printPDStateVar(int show_ode, int scenario) {
   }
 }
 
-static inline int isStateLhsI(int i) {
-  if (tb.lh[i] == isState){
-    int doCont=0;
-    for (int j = 0; j < tb.de.n; j++) {
-      if (tb.di[j] == i) {
-        if (!tb.idu[j]) doCont = 1;
-        break;
-      }
-    }
-    if (doCont) return 1;
-  }
-  return 0;
-}
 
+/*
+ * This determines if the variable should skip printing
+ *
+ * This is used when declaring variables based on different types of functions.
+ *
+ * @param scenario is an integer representing the types of printing scenarios handled.
+ *
+ *  - print_paramLags -- used for defining lags using #define lag_var(x)
+ *
+ *  - print_lhsLags -- also used for using #define lag_var(x) but for lhs
+ *        variables instead of params
+ *
+ *  - print_lastLhsValue -- this is used for setting the last value of the lhs
+ *
+ *    This is used for all other scenarios
+ *
+ */
 static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
-  if (isStateLhsI(i)) return 1;
   switch(scenario){
   case print_paramLags:
     return (tb.lag[i] == notLHS || tb.lh[i] == isState);

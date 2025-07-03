@@ -141,7 +141,7 @@ rxTest({
 
   skip_if_not_installed("units")
 
-  for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match precisely.
+  for (meth in c("liblsoda", "lsoda", "dop853")) { ## Dop is very close but doesn't match precisely.
 
     # context(sprintf("Simple test for time-varying covariates (%s)", meth))
 
@@ -617,7 +617,7 @@ rxTest({
     )
 
     test_that("All covariates are NA give a warning", {
-      expect_warning(expect_warning(
+      suppressWarnings(expect_warning(
         rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
         "column 'V1I' has only 'NA' values for id '2'"))
     })

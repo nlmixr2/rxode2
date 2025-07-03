@@ -31,6 +31,6 @@
   .Call(`_rxode2_parseFreeSexp`, last)
 }
 
-.calcDerived <- function(ncmtSXP, transSXP, inp, sigdigSXP) {
-  .Call(`_calcDerived`, ncmtSXP, transSXP, inp, sigdigSXP)
-}
+## .calcDerived <- function(ncmtSXP, transSXP, inp, sigdigSXP) {
+##   .Call(`_calcDerived`, ncmtSXP, transSXP, inp, sigdigSXP)
+## }

@@ -267,7 +267,6 @@
   }
 )
 
-
 .rxD$llikUnif <- list(
   NULL,
   function(x, alpha, beta) {
@@ -581,48 +580,6 @@
   return("0")
 })
 
-
-## Approx a>=b by
-## 1/2-1/2*tanh(k*x+delta)=1-tol
-## 1/2-1+tol=1/2*tanh(k*x+delta)
-## atanh(2*tol-1)= delta
-## 1/2-1/2*tanh(k*(a-b)+delta)
-
-.linCmtBgen <- function(i) {
-  .fun <- function(...) {}
-  body(.fun) <- bquote({
-    .args <- unlist(list(...))
-    if (.args[6] != "0") stop("cannot take a second derivative", call. = FALSE)
-    .args[6] <- .(i)
-    return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
-  })
-  return(.fun)
-}
-
-.rxD$linCmtB <- c(
-  list(
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    }
-  ),
-  lapply(1:15, .linCmtBgen)
-)
-
 .rxD$gammap <- list(
   NULL,
   function(a, z) {
@@ -791,6 +748,131 @@
     paste0("dSwish(", x, ")")
   }
 )
+.linCmtBgen <- function(i) {
+  # Ka isn't handled
+  if (i == 9) {
+    .which <- 0
+  } else if (i == 10) {
+    .which <- 1
+  } else if (i == 11) {
+    .which <- 2
+  } else if (i == 12) {
+    .which <- 3
+  } else if (i == 13) {
+    .which <- 4
+  } else if (i == 14) {
+    .which <- 5
+  }
+  .fun <- function(...) {}
+  body(.fun) <- bquote({
+    .args <- unlist(list(...))
+    .ncmt <- .args[4] # ncmt
+    .args5 <- .args[5] # oral0
+    .oral0 <- as.numeric(.args5)
+    .args6 <- .args[6] # which1
+    .args7 <- .args[7] # which2
+    .w <- .(paste(.which))
+    .wn <- .(.which)
+    .nc <- as.numeric(.ncmt)
+    if (.wn + 1 > .nc * 2) {
+      return("0")
+    }
+    if (.args6 == "-1" && .args7 == "-1") {
+      ## This is the derivative of the linear compartment solution
+      # Return the gradent with respect to the parameter
+      .args[6] <- "-2"
+      .args[7] <- .w
+    } else if (.args7 == "-2") {
+      ## This is the amount in each of the saved compartments
+      ## and which1 represents the amount in the compartment (zero indexed)
+      if (as.numeric(.args6) >= .oral0 + .nc) {
+        return("0")
+      }
+      .args[7] <- .w
+    } else {
+      stop("bad 'linCmtB' derivative", call. = FALSE)
+    }
+    return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
+  })
+  return(.fun)
+}
+
+.rxD$linCmtB <- list(
+  function(...) { # rx__PTR__
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # t
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # linCmt
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # ncmt
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # oral0
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # which1
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # which2
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  function(...) { # trans
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
+  .linCmtBgen(9),  # p1
+  .linCmtBgen(10), # v1
+  .linCmtBgen(11), # p2
+  .linCmtBgen(12), # p3
+  .linCmtBgen(13), # p4
+  .linCmtBgen(14), # p5
+  function(...) {  # ka
+    .args <- unlist(list(...))
+    .ncmt <- .args[4] # ncmt
+    .nc <- as.numeric(.ncmt)
+    .args5 <- .args[5] # oral0
+    .oral0 <- as.numeric(.args5)
+    if (.args5 != "1") return("0")
+    .args6 <- .args[6]
+    .args7 <- .args[7]
+    .which <- "2"
+    if (.ncmt == 3) {
+      .which <- "6"
+    } else if (.ncmt == 2) {
+      .which <- "4"
+    }
+    if (.args6 == "-1" && .args7 == "-1") {
+      ## This is the derivative of the linear compartment solution
+      # Return the gradent with respect to the parameter
+      .args[6] <- "-2"
+      .args[7] <- .which
+    } else if (.args7 == "-2") {
+      ## This is the amount in each of the saved compartments
+      ## and which1 represents the amount in the compartment (zero indexed)
+      if (as.numeric(.args6) >= .oral0 + .nc) {
+        return("0")
+      }
+      .args[7] <- .which
+    } else {
+      stop("bad 'linCmtB' derivative", call. = FALSE)
+    }
+    return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
+  }
+  # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2 ,trans,
+  #         p1, v1, p2, p3, p4, p5, ka)
+)
+
+
+# When which1 & which2 are -1 then the function is the linear compartment solution
+#
+# When which2 = -2, the function is the amount in each of the saved compartments and which1
+# represents the amount in the compartment (zero indexed)
+#
+# When which1 = -2, the function returns the gradient of the linear compartment model
+#
+# Otherwise which1 & which2 are returns the Jacobain of the system
 
 #' This gives the derivative table for rxode2
 #'

@@ -7,7 +7,7 @@
 rxode2parse(
   model,
   linear = FALSE,
-  linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+  linCmtSens = c("linCmtA", "linCmtB"),
   verbose = FALSE,
   code = NULL,
   envir = parent.frame()

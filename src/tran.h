@@ -75,8 +75,9 @@ lhs symbols?
   int isPi; // # pi?
   int isNA; // # pi?
   int linCmt; // Unparsed linear compartment
+  int linCmtCmt; // Are all non linear-system compartments derived from cmt()
   int linCmtN; // Unparsed linear compartment
-  int linCmtFlg; // Linear compartment flag
+  int linCmtFlg;
   // Save Jacobian information
   int *df;
   int *dy;
@@ -96,12 +97,12 @@ lhs symbols?
   int matnf;
   int ncmt;
   int linB;
+  int ndiff; // flag of the linCmtB derivatives requested
   // curPropN
   int curPropN;
   int depotN;
   int centralN;
   // linCmt extras
-  bool linExtra;
   int nwhile;
   int nInd;
   int simflg;

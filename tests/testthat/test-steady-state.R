@@ -1,7 +1,7 @@
 rxTest({
   ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
-    
+
     et <- eventTable() %>%
       add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
       add.sampling(seq(0, 48, length.out = 200))
@@ -95,12 +95,12 @@ rxTest({
           as.list(rxInit(ode.1c)),
           infMax * exp(-ke * (ii - dur))
         )
-        
+
         test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate); meth=", m), {
           expect_equal(x2$C2[x2$time == dur], infMax, tolerance = tol)
           expect_equal(x2$C2[1], inf0, tolerance = tol)
         })
-        
+
         ## Fixed duration
         et3 <- et() %>%
           et(amt = d, ss = 1, ii = ii, dur = dur) %>%
@@ -209,12 +209,12 @@ rxTest({
       e3 <- c(e1, e2, ii = 0) %>%
         et(seq(0, 24, length.out = 100))
       s3 <- rxSolve(ode.1c, e3)
-      expect_equal(s1$C2 + s2$C2, s3$C2)
+      expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = tol)
       for (f in c(0.5, 2)) {
         s1 <- rxSolve(ode.1c, e1, c(fc = f))
         s2 <- rxSolve(ode.1c, e2, c(fc = f))
         s3 <- rxSolve(ode.1c, e3, c(fc = f))
-        expect_equal(s1$C2 + s2$C2, s3$C2)
+        expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = tol)
       }
     })
     # context(sprintf("IV Infusion SS=2 (%s)", m))

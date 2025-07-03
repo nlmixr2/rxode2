@@ -2,10 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // rxode2 parsing function routines
 
-#define threadSafe 1
-#define threadSafeRepNumThread 2
-#define notThreadSafe 0
-
+#include "threadSafeConstants.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
 

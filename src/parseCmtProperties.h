@@ -17,7 +17,7 @@ static inline int handleCmtPropertyFbio(nodeInfo ni, char *name, char *v) {
 }
 
 static inline int handleCmtPropertyAlag(nodeInfo ni, char *name, char *v) {
-  if (nodeHas(alag)){
+  if (nodeHas(alag)) {
     sb.o=0;sbDt.o=0; sbt.o=0;
     if ((tb.dprop[tb.id] & propAlag) == 0) {
       tb.dprop[tb.id] += propAlag;

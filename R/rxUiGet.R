@@ -75,9 +75,21 @@ attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
 #' @export
 rxUiGet.stateDf <- function(x, ...) {
   .ui <- x[[1]]
-  .state <- rxModelVars(.ui)$state
-  data.frame("Compartment Number"=seq_along(.state), "Compartment Name"=.state,
-             check.names=FALSE)
+  .mv <- rxModelVars(.ui)
+  .state <- .mv$state
+  .cmt <- .getCmtNum(.mv)
+  if (.mv$flags["linCmtFlg"] != 0) {
+    data.frame("Compartment Number"=seq_along(.cmt),
+               "Compartment Name"=names(.cmt),
+               "Rate"=cmtSupportsInfusion_(.cmt, .mv),
+               "Off"=cmtSupportsOff_(.cmt, .mv),
+               "Internal #"=setNames(.cmt,NULL),
+               check.names=FALSE)
+  } else {
+    data.frame("Compartment Number"=seq_along(.cmt),
+               "Compartment Name"=names(.cmt),
+               check.names=FALSE)
+  }
 }
 attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
@@ -320,7 +332,7 @@ rxUiDeparse.default <- function(object, var) {
       return(rxUiDeparse.lotriFix(object, var))
     }
   }
-  .ret <- try(str2lang(paste0(var, "<-", deparse1(object))))
+  .ret <- try(str2lang(paste0(var, "<-", deparse1(object))), silent=TRUE)
   if (inherits(.ret, "try-error")) {
     .ret <- str2lang("NULL")
   }

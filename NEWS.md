@@ -1,4 +1,23 @@
-# rxode2 (development version)
+# rxode2 4.0.0
+
+- Add more information errors about NAs during solving.
+
+- Fix `rxDerived()` for mixed vector and non-vector input.
+
+- Fix model variables for `alag(cmt)` when they are defined before
+  `d/dt()` or `linCmt()`
+
+- Just in time use of `state.ignore` in the model variables, fixes
+  negative length error observed in #857.
+
+- Fix steady state bug with time-varying covariates.  Now the
+  covariates are inferred at the time of the steady state (instead of
+  searching through the subject based on the projected time).
+
+- Rework the linear solved systems to use the wnl solutions, and
+  threaded linear systems solve (for non-gradient solutions). This new
+  method closes a variety of linear compartment model bugs (#261,
+  #272, #441, #504, #564, #717, #728, #827, and #855)
 
 - Added new types of bounds for event tables:
 
@@ -16,7 +35,7 @@
   - Currently these different types of windows cannot be mixed.
 
 - Add ability to pipe a list or named numeric as an eta with
-  `%>% ini(~pipeList)`
+  `%>% ini(~eta)`
 
 - Added a fix for event tables where expanding IDs in non-sequential
   order.  In particular if the first ID is not the minimum ID when expanding

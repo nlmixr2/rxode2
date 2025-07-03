@@ -12,16 +12,12 @@
 #include <Rmath.h>
 #include <unistd.h>
 #include <errno.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2parseSbuf.h"
 #include "tran.h"
+
+#include "threadSafeConstants.h"
 
 int rxstrcmpi(const char * str1, const char * str2);
 static inline int nodeTime(char *value) {
@@ -50,7 +46,7 @@ static inline int nodeAmt(char *value) {
   }
   return 0;
 }
- 
+
 static inline int nodeTlast(char *value) {
   if (!rxstrcmpi("tlast",value)){
     aAppendN("_solveData->subjects[_cSub].tlast", 33);
@@ -168,16 +164,12 @@ static inline int nodeFunLinCmtB(char *value) {
     aAppendN("linCmtB", 7);
     sAppendN(&sbt,"linCmtB", 7);
     tb.linCmt=2;
-    return 1;
-  }
-  return 0;
-}
 
-static inline int nodeFunLinCmtC(char *value){
-  if (!strcmp("linCmtC",value)){
-    aAppendN("linCmtC", 7);
-    sAppendN(&sbt,"linCmtC", 7);
-    tb.linCmt=2;
+    // right now linCmtB isn't thread safe,
+    // the Jacobian can cause a null free in stan math currently.
+    if (tb.thread == threadSafe) {
+      tb.thread = notThreadLinCmtB;
+    }
     return 1;
   }
   return 0;

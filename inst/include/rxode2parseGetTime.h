@@ -37,7 +37,9 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
   double ret = LAG(id, cmt, time);
   if (ISNA(ret)) {
     op->badSolve=1;
-    op->naTime = 1;
+    if (op->naTime == 0) {
+      op->naTime = 1 + 10*cmt;
+    }
   }
   return ret;
 }
@@ -48,7 +50,9 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
   double ret = RATE(id, cmt, dose, t);
   if (ISNA(ret)){
     op->badSolve=1;
-    op->naTime = 1;
+    if (op->naTime == 0) {
+      op->naTime = 2 + 10*cmt;
+    }
   }
   return ret;
 }
@@ -60,7 +64,9 @@ static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double
   double ret = DUR(id, cmt, dose, t);
   if (ISNA(ret)){
     op->badSolve=1;
-    op->naTime = 1;
+    if (op->naTime == 0) {
+      op->naTime = 3 + 10*cmt;
+    }
   }
   return ret;
 }
@@ -220,7 +226,7 @@ static inline int handleInfusionStartRm(int *startIdx, int *endIdx,
                                         rx_solving_options_ind *ind) {
   if (ind->wh0 == EVID0_INFRM) {
     // This is a possible removal event.  Look at the next duration
-    int curEvid = getEvid(ind, ind->idose[*endIdx+1]);
+    // int curEvid = getEvid(ind, ind->idose[*endIdx+1]);
     *startIdx = *endIdx+1;
     for (*endIdx = *startIdx; *endIdx < ind->ndoses; ++(*endIdx)) {
       if (getEvid(ind, ind->idose[*startIdx]) == getEvid(ind, ind->idose[*endIdx])) break;
@@ -313,11 +319,17 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &idx, rx, op, ind);
     if (infBidx == -1) return 0.0;
     rx_solve *rx = &rx_global;
-    double f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBidx]), rx->ypNA);
+    int oIdx = ind->idx;
+    ind->idx = ind->idose[infBidx];
+    double f = getAmt(ind, ind->id, ind->cmt, 1.0,
+                      getAllTimes(ind, ind->idose[infBidx]), rx->ypNA);
+    ind->idx = oIdx;
     if (ISNA(f)){
       rx_solving_options *op = &op_global;
       op->badSolve=1;
-      op->naTime = 1;
+      if (op->naTime == 0) {
+        op->naTime = 4 + 10*ind->cmt;
+      }
     }
     double durOld = (getAllTimes(ind, ind->idose[infEidx]) -
                      getAllTimes(ind, ind->idose[infBidx]));
@@ -364,6 +376,7 @@ static inline double getTime__(int idx, rx_solving_options_ind *ind, int update)
   rx_solve *rx = &rx_global;
   int evid = getEvid(ind, idx);
   if (evid == 9) return 0.0;
+  if (evid == 3) return getAllTimes(ind, idx);
   if (evid >= 10 && evid <= 99) return ind->mtime[evid-10];
   if (isObs(evid)) return getAllTimes(ind, idx);
   getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));

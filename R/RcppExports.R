@@ -116,6 +116,33 @@ etRep_ <- function(curEt, times, wait, ids, handleSamples, waitType, ii) {
     .Call(`_rxode2_etRep_`, curEt, times, wait, ids, handleSamples, waitType, ii)
 }
 
+#' Get the Linear Compartment Information based on the model variables
+#'
+#' @param obj The model variables object
+#'
+#' @return A named integer vector with the linear sensitivity compartments.
+#'
+#' @noRd
+getLinInfo_ <- function(mv) {
+    .Call(`_rxode2_getLinInfo_`, mv)
+}
+
+#' Get the real compartment number based on NONMEM-style compartment
+#' adjusting for linear solved systems.
+#'
+#' This export is mostly for testing purposes.
+#'
+#' @param cmt The compartment number provided with traditional NONMEM numbering
+#'
+#' @param mv The model variables list
+#'
+#' @return An integer vector with the real compartment numbers
+#'
+#' @noRd
+getCmtNum_ <- function(cmt, mv, sens = TRUE) {
+    .Call(`_rxode2_getCmtNum_`, cmt, mv, sens)
+}
+
 #' Set Initial conditions to time zero instead of the first observed/dosed time
 #'
 #' @param ini0 When `TRUE` (default), set initial conditions to time
@@ -131,6 +158,36 @@ rxSetIni0 <- function(ini0 = TRUE) {
 
 etTransEvidIsObs <- function(isObsSexp) {
     .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
+}
+
+#' See if the NONMEM compartment number supports infusion
+#'
+#' This export is mostly for testing purposes.
+#'
+#' @param cmt The compartment number provided with traditional NONMEM numbering
+#'
+#' @param mv The model variables list
+#'
+#' @return An integer vector with the real compartment numbers
+#'
+#' @noRd
+cmtSupportsInfusion_ <- function(cmt, mv) {
+    .Call(`_rxode2_cmtSupportsInfusion_`, cmt, mv)
+}
+
+#' See if the NONMEM compartment number supports infusion
+#'
+#' This export is mostly for testing purposes.
+#'
+#' @param cmt The compartment number provided with traditional NONMEM numbering
+#'
+#' @param mv The model variables list
+#'
+#' @return An integer vector with the real compartment numbers
+#'
+#' @noRd
+cmtSupportsOff_ <- function(cmt, mv) {
+    .Call(`_rxode2_cmtSupportsOff_`, cmt, mv)
 }
 
 #' Event translation for rxode2
@@ -279,6 +336,10 @@ rxIndLin_ <- function(states) {
 
 convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
+}
+
+linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType = 3L, sensH = 0.001) {
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH)
 }
 
 rxQs <- function(x) {

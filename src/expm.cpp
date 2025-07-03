@@ -12,13 +12,7 @@
 #define ARMA_DONT_PRINT_ERRORS
 #define ARMA_DONT_USE_OPENMP // Known to cause speed problems
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 using namespace Rcpp;
 

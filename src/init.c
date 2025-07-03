@@ -261,7 +261,8 @@ const char *rxGetId(int id);
 
 double phi(double q);
 SEXP _rxode2_phi(SEXP q);
-SEXP _calcDerived(SEXP transSXP, SEXP ncmt, SEXP inp, SEXP dig);
+SEXP _rxode2_calcDerived(SEXP transSXP, SEXP ncmt, SEXP o0, SEXP w1, SEXP w2,
+                         SEXP inp, SEXP dig);
 
 double gamma_p(double, double z);
 double gamma_q(double, double z);
@@ -331,33 +332,6 @@ SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
 double _rxode2_evalUdf(const char *fun, int n, const double *args);
 
-double linCmtA(rx_solve *rx, unsigned int id, double t, int linCmt,
-               int ncmt, int trans, double d_ka,
-               double p1, double v1,
-               double p2, double p3,
-               double p4, double p5,
-               double d_tlag, double d_tlag2, double d_F, double d_F2,
-               double d_rate, double d_dur, double d_rate2, double d_dur2);
-
-double linCmtC(rx_solve *rx, unsigned int id, double t, int linCmt,
-               int ncmt, int trans, double d_ka,
-               double p1, double v1,
-               double p2, double p3,
-               double p4, double p5,
-               double d_tlag, double d_tlag2, double d_F, double d_F2,
-               double d_rate, double d_dur, double d_rate2, double d_dur2);
-
-double linCmtB(rx_solve *rx, unsigned int id, double t, int linCmt,
-               int i_cmt, int trans, int val,
-               double dd_p1, double dd_v1,
-               double dd_p2, double dd_p3,
-               double dd_p4, double dd_p5,
-               double dd_ka,
-               double dd_tlag, double dd_tlag2,
-               double dd_F, double dd_F2,
-               double dd_rate, double dd_dur,
-               double dd_rate2, double dd_dur2);
-
 SEXP _rxode2_rxode2parseSetRstudio(SEXP isRstudioSEXP);
 SEXP _rxode2_rxQr(SEXP);
 
@@ -373,8 +347,6 @@ SEXP _rxode2_rxCbindStudyIndividual(SEXP inputParameters, SEXP individualParamet
 SEXP _rxode2_rxModelVarsStack(SEXP xSEXP);
 SEXP _rxode2_rxStack_(SEXP DataSEXP, SEXP varsSEXP);
 
-SEXP _rxode2parse_linCmtB(void);
-
 SEXP _rxode2_getWh(SEXP in);
 
 SEXP _rxode2_parseFreeSexp(SEXP last);
@@ -386,6 +358,14 @@ SEXP iniLotriPtr(SEXP ptr);
 SEXP iniPreciseSumsPtr(SEXP ptr);
 
 SEXP _rxode2_iniDparserPtr(SEXP ptr);
+
+SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
+                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                               SEXP, SEXP);
+
+void allocExtraDosingC(void);
 
 SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
@@ -571,8 +551,40 @@ SEXP _rxode2_powerD(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP);
 SEXP _rxode2_activationF(SEXP xS, SEXP typeS);
 SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS);
+SEXP _rxode2_macros2micros(SEXP p1, SEXP v1,
+                           SEXP p2, SEXP p3,
+                           SEXP p4, SEXP p5,
+                           SEXP trans, SEXP ncmtS);
+
+SEXP _rxode2_solComp2(SEXP k10S, SEXP k12S, SEXP k21S);
+SEXP _rxode2_solComp3(SEXP k10S, SEXP k12S, SEXP k21S,
+                      SEXP k13S, SEXP k31S);
+
+double linCmtA(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
+               int oral0, int which, int trans, double p1, double v1,
+               double p2, double p3, double p4, double p5, double ka);
+
+double linCmtB(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
+               int oral0, int which1, int which2, int trans,  double p1,
+               double v1, double p2, double p3, double p4, double p5,
+               double ka);
+
+SEXP _rxode2_getLinInfo_(SEXP);
+SEXP _rxode2_getCmtNum_(SEXP, SEXP, SEXP);
+SEXP _rxode2_cmtSupportsInfusion_(SEXP, SEXP);
+SEXP _rxode2_cmtSupportsOff_(SEXP, SEXP);
+
 void R_init_rxode2(DllInfo *info){
+  allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_cmtSupportsOff_", (DL_FUNC) &_rxode2_cmtSupportsOff_, 2},
+    {"_rxode2_cmtSupportsInfusion_", (DL_FUNC) &_rxode2_cmtSupportsInfusion_, 2},
+    {"_rxode2_getCmtNum_", (DL_FUNC) &_rxode2_getCmtNum_, 3},
+    {"_rxode2_getLinInfo_", (DL_FUNC) &_rxode2_getLinInfo_, 1},
+    {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 22},
+    {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
+    {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
+    {"_rxode2_macros2micros", (DL_FUNC) &_rxode2_macros2micros, 8},
     {"_rxode2_activationF2", (DL_FUNC) &_rxode2_activationF2, 3},
     {"_rxode2_activationF", (DL_FUNC) &_rxode2_activationF, 2},
     {"_rxode2_itoletter", (DL_FUNC) &_rxode2_itoletter, 2},
@@ -588,7 +600,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_getClassicEvid", (DL_FUNC) &_rxode2_getClassicEvid, 7},
     {"_rxode2_parseFreeSexp", (DL_FUNC) &_rxode2_parseFreeSexp, 1},
     {"_rxode2_getWh", (DL_FUNC) &_rxode2_getWh, 1},
-    {"_rxode2parse_linCmtB", (DL_FUNC) &_rxode2parse_linCmtB, 0},
     {"_rxode2_rxStack_", (DL_FUNC) &_rxode2_rxStack_, 2},
     {"_rxode2_rxCbindStudyIndividual", (DL_FUNC) &_rxode2_rxCbindStudyIndividual, 2},
     {"_rxode2_rxModelVarsStack", (DL_FUNC) &_rxode2_rxModelVarsStack, 1},
@@ -718,7 +729,7 @@ void R_init_rxode2(DllInfo *info){
     {"_gammaqInv", (DL_FUNC) _gammaqInv, 2},
     {"_gammapInva", (DL_FUNC) _gammapInv, 2},
     {"_gammaqInva", (DL_FUNC) _gammaqInv, 2},
-    {"_calcDerived", (DL_FUNC) _calcDerived, 4},
+    {"_rxode2_calcDerived", (DL_FUNC) _rxode2_calcDerived, 6},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
     {"_rxode2_rpp_", (DL_FUNC) _rxode2_rpp_, 7},
@@ -735,15 +746,12 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
+  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
+  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
   R_RegisterCCallable("rxode2", "_rxode2_rxRmvnSEXP",
                       (DL_FUNC) &_rxode2_rxRmvnSEXP);
   R_RegisterCCallable("rxode2", "_rxode2_evalUdf", (DL_FUNC) &_rxode2_evalUdf);
   R_RegisterCCallable("rxode2", "_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr);
-
-  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
-  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
-  R_RegisterCCallable("rxode2", "linCmtC", (DL_FUNC) &linCmtC);
-
 
   R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", (DL_FUNC) &_rxode2_rxModelVars_);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);

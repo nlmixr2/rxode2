@@ -3,6 +3,7 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#include "rxomp.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include "../inst/include/rxode2.h"
@@ -15,27 +16,21 @@
 
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 //#include "lincmtB2.h"
 //#include "lincmtB3d.h"
 
-void handleTlast(double *time, rx_solving_options_ind *ind);
+extern "C" void handleTlast(double *time, rx_solving_options_ind *ind);
 
-double rxunif(rx_solving_options_ind* ind, double low, double hi);
+extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi);
 
 // From https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
-double log1mex(double a){
+extern "C" double log1mex(double a){
   if (a < M_LN2) return log(-expm1(-a));
   return(log1p(-exp(-a)));
 }
 
-extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
+extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   // Uses bisection for slightly faster lookup of dose index.
   int i, j, ij;
   i = 0;
@@ -132,8 +127,8 @@ static inline double getValue(int idx, double *y, int is_locf,
 }
 #define T(i) getTime(id->ix[i], id)
 #define V(i, lh) getValue(i, y, is_locf, id, Meth, lh)
-double rx_approxP(double v, double *y, int is_locf, int n,
-                  rx_solving_options *Meth, rx_solving_options_ind *id){
+extern "C" double rx_approxP(double v, double *y, int is_locf, int n,
+                             rx_solving_options *Meth, rx_solving_options_ind *id){
   /* Approximate  y(v),  given (x,y)[i], i = 0,..,n-1 */
   int i, j, ij;
 
@@ -192,7 +187,7 @@ double rx_approxP(double v, double *y, int is_locf, int n,
 /* End approx from R */
 
 // getParCov first(parNo, idx=0) last(parNo, idx=ind->n_all_times-1)
-double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
+extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   rx_solving_options_ind *ind;
   ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
@@ -217,10 +212,16 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   return ind->par_ptr[parNo];
 }
 
-void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
+extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
+  double t = 0.0;
+  if (!ISNA(ind->ssTime)) {
+    t = ind->ssTime;
+  } else {
+    t = tt;
+  }
   if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
   rx_solving_options *op = rx->op;
@@ -287,7 +288,11 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = round(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
+              // Set inLhs to 1 to make sure uniform is going to be used
+              int inLhs = ind->inLhs;
+              ind->inLhs = 1;
+              ind->cov_sample[k] = floor(rxunif(ind, 0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->inLhs = inLhs;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -314,14 +319,18 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
     int k, idxSample;
     int ncov = op->ncov;
     if (op->do_par_cov) {
-      for (k = ncov; k--;){
+      for (k = ncov; k--;) {
         if (op->par_cov[k]) {
           int is_locf = op->par_cov_interp[k];
           if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)(rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1)));
+              // Set inLhs to 1 to make sure uniform is going to be used
+              int inLhs = ind->inLhs;
+              ind->inLhs = 1;
+              ind->cov_sample[k] = floor(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->inLhs = inLhs;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -365,4 +374,4 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
 }
 
 /* void doSort(rx_solving_options_ind *ind); */
-void sortInd(rx_solving_options_ind *ind);
+extern "C" void sortInd(rx_solving_options_ind *ind);

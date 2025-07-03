@@ -138,15 +138,15 @@ rxTest({
 
     m <- rxode2({
       param(THETA[1], THETA[2], THETA[3], THETA[4], Nominal)
-      rx_yj_ ~ 2
+      rx_yj_ ~ 162
       rx_lambda_ ~ 1
       rx_hi_ ~ 1
       rx_low_ ~ 0
       rx_expr_0 ~ exp(THETA[2])
       rx_expr_1 ~ exp(THETA[3])
       rx_expr_2 ~ exp(THETA[1])
-      rx_pred_ = linCmtA(rx__PTR__, t, 0, 1, 1, rx_expr_0, rx_expr_1,
-                         0, 0, 0, 0, 0, 1, 0, 0, rx_expr_2, 0, 1, 0, 0)
+      rx_pred_ = linCmtA(rx__PTR__, t, 2, 1, 1, -1, 1, rx_expr_0,
+                         rx_expr_1, 0, 0, 0, 0, rx_expr_2)
       rx_r_ = Rx_pow_di(THETA[4], 2)
       tka = THETA[1]
       tcl = THETA[2]
@@ -159,7 +159,7 @@ rxTest({
       tad = tad()
       dosenum = dosenum()
       cmt(rxLinCmt)
-      dvid(1)
+      dvid(3)
     })
 
     expect_equal(m$lhs,

@@ -2,13 +2,7 @@
 #define rxode2_as
 //#define asError
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 using namespace Rcpp;
 
@@ -75,7 +69,7 @@ static inline List asList(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be a list"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be a list"), what);
 #endif
   }
@@ -89,7 +83,7 @@ static inline int asInt(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be an integer"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be an integer"), what);
 #endif
   }
@@ -103,7 +97,7 @@ static inline unsigned int asUnsignedInt(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be an integer greater than 0"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be an integer greater than 0"), what);
 #endif
   }
@@ -119,7 +113,7 @@ static inline double asDouble(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be an double"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be an double"), what);
 #endif
   }
@@ -167,10 +161,10 @@ static inline CharacterVector asCv(SEXP in, const char *what) {
 #ifdef asError
     REprintf(_("'%s' needs to be a vector of strings"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be a vector of strings"), what);
 #endif
-  } 
+  }
   return as<CharacterVector>(in);
 }
 
@@ -197,7 +191,7 @@ static inline LogicalVector asLv(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be an logical vector or NULL"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be an logical vector or NULL"), what);
 #endif
   }
@@ -211,7 +205,7 @@ static inline NumericVector asNv(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be a numeric vector"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be a numeric vector"), what);
 #endif
   }
@@ -226,7 +220,7 @@ static inline Nullable<NumericVector> asNNv(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be a numeric vector"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be an numeric vector or NULL"), what);
 #endif
   }
@@ -240,7 +234,7 @@ static inline Environment asEnv(SEXP in, const char* what) {
 #ifdef asError
     REprintf(_("'%s' needs to be an environment"), what);
     abort();
-#else 
+#else
     Rcpp::stop(_("'%s' needs to be an environment"), what);
 #endif
   }
