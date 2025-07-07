@@ -295,7 +295,7 @@ namespace stan {
       //'
       void sensThetaElt(int d,
                         const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
-                        Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
+                        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>& sensTheta,
                         int nd, int& i, int& j,
                         double &mn, double &mx, double *scale,
                         bool &unscaled) {
@@ -373,6 +373,16 @@ namespace stan {
         j++;
       }
 
+      void sensThetaElt(int d,
+                        const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                        Eigen::Matrix<double, Eigen::Dynamic, 1>& sensThetaIn,
+                        int nd, int& i, int& j,
+                        double &mn, double &mx, double *scale,
+                        bool &unscaled) {
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> sensTheta(sensThetaIn.data(), sensThetaIn.size());
+        sensThetaElt(d, theta, sensTheta, nd, i, j, mn, mx, scale, unscaled);
+      }
+
       //' Get the sensitivity theta parameters
       //'
       //' This is used for the Jacobian using stan math; this allows the
@@ -386,8 +396,8 @@ namespace stan {
       //' @param isAD -- A boolean saying if this is an Automatic Differentiation (AD)
       //'         calculation
       //'
-      void sensTheta(const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
-                     Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
+      void sensTheta(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> theta,
+                     Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>& sensTheta,
                      bool isAD, double *scale) {
         trueTheta_ = theta;
         isAD_ = isAD;
@@ -475,6 +485,7 @@ namespace stan {
           scaleSetup_ = true;
         }
       }
+
 
       //' This function changes the sensitivity theta (possibly scaled) to the full theta
       //'
@@ -2281,12 +2292,17 @@ namespace stan {
         return fdouble(theta, g, yp);
       }
 
-      void calcFx(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
+      void calcFx(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> thetaIn) {
         fx_ = fdoubles(thetaIn);
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           Asave_[i] = fx_(i, 0);
         }
         fxIsZero_ = fx_.isZero();
+      }
+      void calcFx(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn0) {
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> thetaIn(thetaIn0.data(),
+                                                                     thetaIn0.size());
+        calcFx(thetaIn);
       }
 
       void fCentralJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
