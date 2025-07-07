@@ -29,12 +29,12 @@
       }
       .x[["dur"]] <- .tmp
       class(.x) <- .cls
-      return(.x)
+      .x
     } else {
-      return(x)
+      x
     }
   } else {
-    return(x)
+    x
   }
 }
 #' Event Table Function
@@ -1203,7 +1203,7 @@ as.et <- function(x, ...) {
 as.et.default <- function(x, ...) {
   .e <- et()
   .e$import.EventTable(as.data.frame(x))
-  return(.e)
+  .e
 }
 
 #' @export
@@ -1212,9 +1212,9 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
     .x <- x
     .tmp <- .x[, .x$show, drop = FALSE]
     class(.tmp) <- c("rxEt2", "data.frame")
-    return(as.data.frame(.tmp, row.names = NULL, optional = FALSE, ...))
+    as.data.frame(.tmp, row.names = NULL, optional = FALSE, ...)
   } else {
-    return(as.data.frame(x, row.names = NULL, optional = FALSE, ...))
+    as.data.frame(x, row.names = NULL, optional = FALSE, ...)
   }
 }
 
@@ -1228,7 +1228,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' @noRd
 as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
   rxReq("data.table")
-  return(data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames, ...))
+  data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames, ...)
 }
 
 #' Convert to tbl
@@ -1247,9 +1247,9 @@ as_tibble.rxEt <- function(x, ...) {
     .show <- .x$show
     class(.x) <- "data.frame"
     .tmp <- .x[, .show, drop = FALSE]
-    return(tibble::as_tibble(.tmp, ...))
+    tibble::as_tibble(.tmp, ...)
   } else {
-    return(tibble::as_tibble(x, ...))
+    tibble::as_tibble(x, ...)
   }
 }
 
@@ -1304,7 +1304,7 @@ etExpand <- function(et) {
 #' rxEvid(1:7)
 #' @export
 rxEvid <- function(x) {
-  return(structure(x, class = "rxEvid"))
+  structure(x, class = "rxEvid")
 }
 
 #' @rdname rxEvid
@@ -1314,13 +1314,13 @@ as.rxEvid <- rxEvid
 #' @rdname rxEvid
 #' @export
 c.rxEvid <- function(x, ...) {
-  return(as.rxEvid(NextMethod()))
+  as.rxEvid(NextMethod())
 }
 
 #' @rdname rxEvid
 #' @export
 `[.rxEvid` <- function(x, ...) {
-  return(as.rxEvid(NextMethod()))
+  as.rxEvid(NextMethod())
 }
 .colorFmt.rxEvid <- function(x, ...) {
   .x <- unclass(x)
@@ -1411,22 +1411,22 @@ as.data.frame.rxEvid <- base::as.data.frame.difftime
 #'
 #' @export
 rxRateDur <- function(x) {
-  return(structure(x, class = "rxRateDur"))
+  structure(x, class = "rxRateDur")
 }
 
 #' @rdname rxRateDur
 #' @export
 `[.rxRateDur` <- function(x, ...) {
-  return(as.rxRateDur(NextMethod()))
+  as.rxRateDur(NextMethod())
 }
-
+f
 #' @rdname rxRateDur
 #' @export
 as.rxRateDur <- rxRateDur
 #' @rdname rxEvid
 #' @export
 c.rxRateDur <- function(x, ...) {
-  return(as.rxRateDur(NextMethod()))
+  as.rxRateDur(NextMethod())
 }
 
 #' @rdname rxRateDur
@@ -1441,7 +1441,7 @@ as.character.rxRateDur <- function(x, ...) {
         )
       )
     )
-  return(.x)
+  .x
 }
 
 .fmt <- function(x, width = 9) {
@@ -1452,7 +1452,7 @@ as.character.rxRateDur <- function(x, ...) {
   .ret <- ifelse(.ncg == width, .g,
     ifelse(.ncf == width, .f, .g)
   )
-  return(.ret)
+  .ret
 }
 
 
@@ -1466,7 +1466,7 @@ as.character.rxRateDur <- function(x, ...) {
         )
       )
     )
-  return(.x)
+  .x
 }
 
 #' @rdname rxRateDur
@@ -1486,9 +1486,9 @@ type_sum.rxRateDur <- function(x) {
   if (!is.null(.unit)) {
     .tmp <- x
     class(.tmp) <- "units"
-    return(pillar::type_sum(.tmp))
+    pillar::type_sum(.tmp)
   } else {
-    return("rate/dur")
+    "rate/dur"
   }
 }
 
@@ -1517,12 +1517,12 @@ set_units.rxRateDur <- function(x, value, ..., mode = .setUnitsMode()) {
     if (length(.w1) > 0) .ret[.w1] <- -1
     if (length(.w2) > 0) .ret[.w2] <- -2
     class(.ret) <- c("rxRateDur", "units")
-    return(.ret)
+    .ret
   } else {
     .lst <- as.list(match.call())[-1]
     .lst[[1]] <- unclass(x)
     .ret <- do.call(units::set_units, .lst)
     class(.ret) <- c("rxRateDur", "units")
-    return(.ret)
+    .ret
   }
 }

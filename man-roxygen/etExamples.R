@@ -1,7 +1,5 @@
 #' @examples
 #'
-#' \dontrun{
-#'
 #' library(rxode2)
 #' library(units)
 #'
@@ -89,7 +87,6 @@
 #'
 #' plot(repCycle4, C2)
 #'
-#' }
 #' @author Matthew L Fidler, Wenping Wang
 #'
 #' @seealso \code{\link{eventTable}}, \code{\link{add.sampling}},

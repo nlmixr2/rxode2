@@ -68,6 +68,15 @@
     .s3register("digest::sha1", "rxUi")
   }
   .s3register("lotri::as.lotri", "call")
+  .s3register("base::seq", "rxEt")
+  .s3register("base::rep", "rxEt")
+  .s3register("base::as.data.frame", "rxEt")
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    .s3register("data.table::as.data.table", "rxEt")
+  }
+  if (requireNamespace("tibble", quietly = TRUE)) {
+    .s3register("tibble::as_tibble", "rxEt")
+  }
   backports::import(pkgname)
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")

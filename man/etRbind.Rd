@@ -59,8 +59,6 @@ Combining event tables
 }
 \examples{
 
-\dontrun{
-
 library(rxode2)
 library(units)
 
@@ -148,7 +146,6 @@ repCycle4 <- rxSolve(mod1, et)
 
 plot(repCycle4, C2)
 
-}
 }
 \references{
 Wang W, Hallow K, James D (2015). "A Tutorial on rxode2: Simulating
