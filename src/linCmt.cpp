@@ -52,11 +52,11 @@ int __linCmtBnumSens=0;
 #define linCmtBaddrThetaSens 1
 static inline double * getLinCmtDoubleAddr(int type) {
   switch (type) {
-  case linCmtBaddrTheta:
+  case linCmtBaddrTheta: // max 7
     return __linCmtBdata;
-  case linCmtBaddrThetaSens:
+  case linCmtBaddrThetaSens:  // max 7
     return &__linCmtBdata[7];
-
+  // note fx needs cannot be a Map for use in stan :(
   }
   return NULL;
 }
@@ -274,10 +274,10 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
-    theta.resize(lc.getNpars());
-    fx.resize(ncmt + oral0);
-    yp.resize(ncmt + oral0, 1);
-    lca.gg.resize(ncmt, 2);
+    theta = Eigen::Matrix<double, Eigen::Dynamic, 1>(lc.getNpars());
+    fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
+    yp = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0, 1);
+    lca.gg = Eigen::Matrix<double, Eigen::Dynamic, 2>(ncmt, 2);
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -518,21 +518,20 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
-    fx.resize(ncmt + oral0);
+    fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
     int npars = lc.getNpars();
     // NA fill and resize
-    J.resize(ncmt + oral0, npars);
     J = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Constant(ncmt + oral0, npars, NA_REAL);
 
     __linCmtBnumSens = lc.numSens();
-    Js.resize(ncmt+oral0, __linCmtBnumSens);//(ncmt + oral0, 2*ncmt + oral0);
+    Js = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(ncmt+oral0, __linCmtBnumSens);//(ncmt + oral0, 2*ncmt + oral0);
     // thetaSens.resize(numSens);
 
     // AlastA.resize(ncmt + oral0);
-    Jg.resize(lc.getNpars());
+    Jg = Eigen::Matrix<double, Eigen::Dynamic, 1>(lc.getNpars());
 
-    yp.resize(ncmt + oral0);
-    g.resize(ncmt, 2);
+    yp = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
+    g = Eigen::Matrix<double, Eigen::Dynamic, 2>(ncmt, 2);
     lc.setForwardOpts(rx->linCmtSuspect, rx->linCmtForwardMax);
   } else {
     lc.setSsType(ind->linSS);
@@ -636,7 +635,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
       } else {
         switch (rx->sensType) {
-
         case 1: // forward
         case 10:
         case 6: // forward difference with gill H est
