@@ -44,8 +44,23 @@ extern "C" void ensureLinCmtA(int nCores) {
 // object.  This is created once to reduce memory allocation
 // and deallocation time.
 stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBtheta;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaSens;
+// Maximum size can be 2*ncmt + 1;
+double __linCmtBdata[14];
+int __linCmtBnumSens=0;
+
+#define linCmtBaddrTheta 0
+#define linCmtBaddrThetaSens 1
+static inline double * getLinCmtDoubleAddr(int type) {
+  switch (type) {
+  case linCmtBaddrTheta: // max 7
+    return __linCmtBdata;
+  case linCmtBaddrThetaSens:  // max 7
+    return &__linCmtBdata[7];
+  // note fx needs cannot be a Map for use in stan :(
+  }
+  return NULL;
+}
+
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtByp;
@@ -75,7 +90,7 @@ RObject linCmtModelDouble(double dt,
   } else if (type == linCmtSsBolus) {
     lc.setSsBolus(amt, tau, bolusCmt);
   }
-  Eigen::Matrix<double, -1, 1> theta;
+  Eigen::Matrix<double, -1, 1> theta0;
   Eigen::Matrix<double, -1, 1> alast0 = as<Eigen::Matrix<double, -1, 1> >(alastNV);
   Eigen::Matrix<double, -1, 1> rate = as<Eigen::Matrix<double, -1, 1> >(rateNV);
   int nAlast = lc.getNalast();
@@ -83,7 +98,8 @@ RObject linCmtModelDouble(double dt,
   if (alast0.size() != nAlast) {
     Rcpp::stop("Alast0 size needs to be %d", nAlast);
   }
-  theta.resize(lc.getNpars());
+  theta0.resize(lc.getNpars());
+  Eigen::Map<Eigen::Matrix<double, -1, 1>> theta(theta0.data(), theta0.size());
 
   int sw = ncmt + 10*oral0;
   switch (sw) {
@@ -96,7 +112,8 @@ RObject linCmtModelDouble(double dt,
   }
 
   int numSens = lc.numSens();
-  Eigen::Matrix<double, Eigen::Dynamic, 1> thetaSens(numSens);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> thetaSens0(numSens);
+  Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> thetaSens(thetaSens0.data(), thetaSens0.size());
 
   Eigen::Matrix<double, 7, 1> scale;
   scale.setZero();
@@ -257,10 +274,10 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
-    theta.resize(lc.getNpars());
-    fx.resize(ncmt + oral0);
-    yp.resize(ncmt + oral0, 1);
-    lca.gg.resize(ncmt, 2);
+    theta = Eigen::Matrix<double, Eigen::Dynamic, 1>(lc.getNpars());
+    fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
+    yp = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0, 1);
+    lca.gg = Eigen::Matrix<double, Eigen::Dynamic, 2>(ncmt, 2);
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -379,6 +396,7 @@ extern "C" int linCmtZeroJac(int i) {
 }
 
 
+
 /*
  *  linCmtB
  *
@@ -466,8 +484,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define fx        __linCmtBfx
 #define Jg        __linCmtBJg
 #define lc        __linCmtB
-#define theta     __linCmtBtheta
-#define thetaSens __linCmtBthetaSens
 #define AlastA    __linCmtBAlastA
 #define J         __linCmtBJ
 #define Js        __linCmtBJs
@@ -502,22 +518,20 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
-    theta.resize(lc.getNpars());
-    fx.resize(ncmt + oral0);
+    fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
     int npars = lc.getNpars();
     // NA fill and resize
-    J.resize(ncmt + oral0, npars);
     J = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Constant(ncmt + oral0, npars, NA_REAL);
 
-    int numSens = lc.numSens();
-    Js.resize(ncmt+oral0, numSens);//(ncmt + oral0, 2*ncmt + oral0);
-    thetaSens.resize(numSens);
+    __linCmtBnumSens = lc.numSens();
+    Js = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(ncmt+oral0, __linCmtBnumSens);//(ncmt + oral0, 2*ncmt + oral0);
+    // thetaSens.resize(numSens);
 
     // AlastA.resize(ncmt + oral0);
-    Jg.resize(lc.getNpars());
+    Jg = Eigen::Matrix<double, Eigen::Dynamic, 1>(lc.getNpars());
 
-    yp.resize(ncmt + oral0);
-    g.resize(ncmt, 2);
+    yp = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
+    g = Eigen::Matrix<double, Eigen::Dynamic, 2>(ncmt, 2);
     lc.setForwardOpts(rx->linCmtSuspect, rx->linCmtForwardMax);
   } else {
     lc.setSsType(ind->linSS);
@@ -526,6 +540,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     lc.resetFlags();
   }
   lc.setId(id);
+
+  Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
+    theta(getLinCmtDoubleAddr(linCmtBaddrTheta), lc.getNpars());
 
   int sw = ncmt + 10*oral0;
   switch (sw) {
@@ -536,6 +553,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   case 3:  theta << p1, v1, p2, p3, p4, p5; break;
   case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
   }
+
+  Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
+    thetaSens(getLinCmtDoubleAddr(linCmtBaddrThetaSens), __linCmtBnumSens);
 
   lc.sensTheta(theta, thetaSens, rx->sensType == 3, rx->linCmtScale);
   if (ind->linSS == linCmtSsInf) {
@@ -615,7 +635,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
       } else {
         switch (rx->sensType) {
-
         case 1: // forward
         case 10:
         case 6: // forward difference with gill H est
