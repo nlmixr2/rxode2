@@ -44,7 +44,9 @@ extern "C" void ensureLinCmtA(int nCores) {
 // object.  This is created once to reduce memory allocation
 // and deallocation time.
 stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBtheta;
+// Maximum size can be 2*ncmt + 1;
+double __linCmtBdata[14];
+
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaSens;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 
@@ -378,6 +380,16 @@ extern "C" int linCmtZeroJac(int i) {
   return __linCmtB.parDepV1(i);
 }
 
+#define linCmtBaddrTheta 0
+static inline double * getLinCmtDoubleAddr(int type) {
+  switch (type) {
+  case linCmtBaddrTheta:
+    return __linCmtBdata;
+  }
+
+  return NULL;
+}
+
 
 /*
  *  linCmtB
@@ -466,7 +478,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define fx        __linCmtBfx
 #define Jg        __linCmtBJg
 #define lc        __linCmtB
-#define theta     __linCmtBtheta
 #define thetaSens __linCmtBthetaSens
 #define AlastA    __linCmtBAlastA
 #define J         __linCmtBJ
@@ -502,7 +513,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
-    theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
     int npars = lc.getNpars();
     // NA fill and resize
@@ -526,6 +536,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     lc.resetFlags();
   }
   lc.setId(id);
+
+  Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
+    theta(getLinCmtDoubleAddr(linCmtBaddrTheta), lc.getNpars());
 
   int sw = ncmt + 10*oral0;
   switch (sw) {
