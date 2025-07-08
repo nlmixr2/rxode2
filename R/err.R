@@ -872,6 +872,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   if (is.name(expression) || is.atomic(expression)) return(expression)
   if (identical(expression[[1]], quote(`|`))) {
     env$needsToBeAnErrorExpression  <- TRUE
+    if (length(expression[[3]]) != 1 &&
+          !is.symbol(expression[[3]])) {
+      env$err <- c(env$err,
+                   paste0("the condition '", deparse1(expression[[3]]), "' must be a simple name"))
+      env$earlyErr <- TRUE
+    }
     env$curCondition <- deparse1(expression[[3]])
     return(expression[[2]])
   }
@@ -1127,6 +1133,33 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                stringsAsFactors=FALSE)
   }
 }
+#' UI errors detected. Called in multiple places.
+#'
+#' @param env environment where error information is located
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.handleErrs <- function(env) {
+  if (env$hasErrors) {
+    .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
+                      paste(vapply(seq_along(env$lstExpr),
+                                   function(i) {
+                                     sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
+                                             ifelse(is.null(env$lstErr[[i]]), "",
+                                                    sprintf(paste0(crayon::bold("%s"), "\n"), env$lstErr[[i]])),
+                                             i, deparse1(env$lstExpr[[i]]))
+                                   }, character(1), USE.NAMES=FALSE), collapse="\n"))
+    message(.errMsg)
+  }
+  if (length(env$err) > 0) {
+    stop(paste0(ifelse(env$hasErrors, "syntax/parsing errors (see above) and additionally:\n", "syntax/parsing errors:\n"),
+                paste(env$err, collapse="\n")),
+         call.=FALSE)
+  } else if (env$hasErrors) {
+    stop("syntax/parsing errors, see above", call.=FALSE)
+  }
+  invisible(NULL)
+}
 
 #' Process the errors in the quoted expression
 #'
@@ -1207,6 +1240,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$curDvid <- 1L
   # Pred df needs to be finalized with compartment information from parsing the raw rxode2 model
   .env$predDf  <- NULL
+  .env$earlyErr <- FALSE
   .env$lastDistAssign <- ""
   if (is.call(x)) {
     if (.env$top && identical(x[[1]], quote(`{`))) {
@@ -1222,7 +1256,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       })
       while(.i <= length(.y)) {
         .env$line <- .i
-        if (identical(.y[[.i]][[1]], quote(`~`))) {
+        if (length(.y[[.i]]) == 1 &&
+              is.name(.y[[.i]])) {
+          .env$err <- c(.env$err,
+                        paste0("the symbol '", deparse1(.y[[.i]]), "' cannot be by itself"))
+          .env$earlyErr <- TRUE
+        } else if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
         } else {
           .env$redo <- FALSE
@@ -1306,12 +1345,18 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
                call.=FALSE)
         }
+        if (.env$earlyErr) {
+          .handleErrs(.env)
+        }
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
         } else {
           .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
+        if (.env$earlyErr) {
+          .handleErrs(.env)
+        }
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
       }
       if (isTRUE(.env$uiUseMv) && is.null(mv)) {
@@ -1365,7 +1410,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
                          "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
-                         "lhs"),
+                         "lhs", "earlyErr", "var", "dv"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)

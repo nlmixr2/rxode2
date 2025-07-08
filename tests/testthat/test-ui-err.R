@@ -1613,4 +1613,46 @@ rxTest({
     expect_true(.isErrorExpression(quote(linCmt() ~ add(add.err) + prop(prop.err))))
 
   })
+
+  test_that("symbol alone", {
+
+    whoops <- function() {
+      ini({
+        paramAlone <- 1
+        paramUsed <- 2
+      })
+      model({
+        x <- paramUsed
+        paramAlone
+      })
+    }
+
+    expect_message(expect_error(rxode2(whoops)),
+                  "the symbol 'paramAlone' cannot be by itself")
+
+  })
+
+  test_that("complex error condition", {
+
+    f <- function() {
+      ini({
+        paramUsed <- 1
+        add.sd <- 0.1
+        add.sd2 <- 0.2
+      })
+      model({
+        x <- paramUsed
+        x1 <- x
+        x2 <- x
+        x1 ~ add(add.sd) | cmt(1)
+        x2 ~ add(add.sd2) | cmt(2)
+      })
+    }
+
+    expect_message(expect_error(rxode2(f)),
+                   "the condition 'cmt\\(2\\)' must be a simple name")
+
+  })
+
+
 })
