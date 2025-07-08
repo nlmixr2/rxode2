@@ -1613,4 +1613,5 @@ rxTest({
     expect_true(.isErrorExpression(quote(linCmt() ~ add(add.err) + prop(prop.err))))
 
   })
+
 })
