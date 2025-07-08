@@ -1650,7 +1650,8 @@ rxTest({
     }
 
     expect_message(expect_error(rxode2(f)),
-                   "the condition 'cmt(1)' must be a simple name")
+                   "the condition 'cmt\\(2\\)' must be a simple name")
+
   })
 
 
