@@ -872,6 +872,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   if (is.name(expression) || is.atomic(expression)) return(expression)
   if (identical(expression[[1]], quote(`|`))) {
     env$needsToBeAnErrorExpression  <- TRUE
+    if (length(expression[[3]]) != 1 &&
+          !is.symbol(expression[[3]])) {
+      env$err <- c(env$err,
+                   paste0("the condition '", deparse1(expression[[3]]), "' must be a simple name"))
+      env$earlyErr <- TRUE
+    }
     env$curCondition <- deparse1(expression[[3]])
     return(expression[[2]])
   }
@@ -1234,6 +1240,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$curDvid <- 1L
   # Pred df needs to be finalized with compartment information from parsing the raw rxode2 model
   .env$predDf  <- NULL
+  .env$earlyErr <- FALSE
   .env$lastDistAssign <- ""
   if (is.call(x)) {
     if (.env$top && identical(x[[1]], quote(`{`))) {
@@ -1253,6 +1260,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
               is.name(.y[[.i]])) {
           .env$err <- c(.env$err,
                         paste0("the symbol '", deparse1(.y[[.i]]), "' cannot be by itself"))
+          .env$earlyErr <- TRUE
         } else if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
         } else {
@@ -1337,14 +1345,18 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
                call.=FALSE)
         }
-        .handleErrs(.env)
+        if (.env$earlyErr) {
+          .handleErrs(.env)
+        }
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
         } else {
           .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
-        .handleErrs(.env)
+        if (.env$earlyErr) {
+          .handleErrs(.env)
+        }
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
       }
       if (isTRUE(.env$uiUseMv) && is.null(mv)) {
@@ -1398,7 +1410,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
                          "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
-                         "lhs"),
+                         "lhs", "earlyErr", "var", "dv"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
