@@ -135,3 +135,109 @@ rxFixPop <- function(ui, returnNull=FALSE) {
     .model
   })
 }
+.lineHasFixedResEnv <- new.env(parent=emptyenv())
+.lineHasFixedResEnv$err <- NULL
+#' Does this line have a fixed residual expression?
+#'
+#' @param line parsed line to check
+#' @param errs errors to check against
+#' @return FALSE
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+.lineHasFixedRes <- function(line, errs) {
+  if (is.call(line)) {
+    return(any(sapply(line, .lineHasFixedRes, errs=errs)))
+  } else if (is.name(line)) {
+    .cline <- as.character(line)
+    if (.cline %in% errs) {
+      .lineHasFixedResEnv$err <- .cline
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  } else if (is.atomic(line)) {
+    return(FALSE)
+  } else {
+    stop("unknown expression", call.=FALSE)
+  }
+}
+
+#' Literally fix residual parameters
+#'
+#' @inheritParams rxFixPop
+#' @return model with residual parameters literally fixed in the model
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' One.comp.transit.allo <- function() {
+#'  ini({
+#'    # Where initial conditions/variables are specified
+#'    lktr <- log(1.15)  #log k transit (/h)
+#'    lcl  <- log(0.15)  #log Cl (L/hr)
+#'    lv   <- log(7)     #log V (L)
+#'    ALLC <- 0.75  #allometric exponent cl
+#'    ALLV <- 1.00  #allometric exponent v
+#'    prop.err <- fix(0.15)   #proportional error (SD/mean)
+#'    add.err <- fix(0.6)     #additive error (mg/L)
+#'    eta.ktr ~ 0.5
+#'    eta.cl ~ 0.1
+#'    eta.v ~ 0.1
+#'  })
+#'  model({
+#'    #Allometric scaling on weight
+#'    cl <- exp(lcl + eta.cl + ALLC * logWT70)
+#'    v  <- exp(lv + eta.v + ALLV * logWT70)
+#'    ktr <- exp(lktr + eta.ktr)
+#'    # RxODE-style differential equations are supported
+#'    d/dt(depot)   = -ktr * depot
+#'    d/dt(central) =  ktr * trans - (cl/v) * central
+#'    d/dt(trans)   =  ktr * depot - ktr * trans
+#'    ## Concentration is calculated
+#'    cp = central/v
+#'    # And is assumed to follow proportional and additive error
+#'    cp ~ prop(prop.err) + add(add.err)
+#'  })
+#' }
+#'
+#' m <- rxFixRes(One.comp.transit.allo)
+rxFixRes <- function(ui, returnNull=FALSE) {
+  checkmate::assertLogical(returnNull, any.missing = FALSE, len=1, null.ok=FALSE)
+  .model <- rxUiDecompress(assertRxUi(ui))
+  .model <- .copyUi(.model)
+  .iniDf <- .model$iniDf
+  .w <- which(!is.na(.iniDf$ntheta) & !is.na(.iniDf$err) & .iniDf$fix)
+  if (length(.w) == 0L) {
+    if (returnNull) return(NULL)
+    return(.model)
+  }
+  .v <- setNames(.iniDf$est[.w], .iniDf$name[.w])
+
+  .lstExpr0 <- .model$lstExpr
+  .env <- new.env(parent=emptyenv())
+  .env$i <- 1
+  .env$fix <- .iniDf$name[.w]
+  .lst <- lapply(seq_len(length(.lstExpr0)+length(.w)),
+                 function(i) {
+                   .item <- .lstExpr0[[.env$i]]
+                   if (is.call(.item) &&
+                         identical(.item[[1]], quote(`~`)) &&
+                         .lineHasFixedRes(.item, .env$fix)) {
+                     .cerr <- .lineHasFixedResEnv$err
+                     .env$fix <- .env$fix[.env$fix != .cerr]
+                     str2lang(paste0(.cerr, " <- ", .v[.cerr]))
+                   } else {
+                     .env$i <- .env$i + 1L
+                     .item
+                   }
+                 })
+
+  .iniDf <- .iniDf[-.w, ]
+  .iniDf$ntheta <- ifelse(is.na(.iniDf$ntheta), NA_integer_, seq_along(.iniDf$ntheta))
+  assign("iniDf", .iniDf, envir=.model)
+  suppressMessages({
+    model(.model) <- .lst
+    .model
+  })
+}
