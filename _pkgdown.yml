@@ -49,6 +49,7 @@ reference:
   - modelExtract
   - rxAppendModel
   - rxFixPop
+  - rxFixRes
   - rxRename
   - rxSetCovariateNamesForPiping
   - rxSetPipingAuto
