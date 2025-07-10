@@ -142,9 +142,8 @@ rxFixPop <- function(ui, returnNull=FALSE) {
 #' @param line parsed line to check
 #' @param errs errors to check against
 #' @return FALSE
-#' @export
+#' @noRd
 #' @author Matthew L. Fidler
-#' @examples
 .lineHasFixedRes <- function(line, errs) {
   if (is.call(line)) {
     return(any(sapply(line, .lineHasFixedRes, errs=errs)))
