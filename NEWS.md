@@ -1,6 +1,6 @@
 # rxode2 4.0.0
 
-- Add more information errors about NAs during solving.
+- Add more information errors about `NA`s during solving.
 
 - Fix `rxDerived()` for mixed vector and non-vector input.
 
@@ -48,8 +48,7 @@
 
 - Added new type of variability expression for simulation and
   estimation with focei and likelihood related methods: `+var()`. This
-  changes standard deviation parameters to variance parameters. This
-  was added to support model linearization.
+  changes standard deviation parameters to variance parameters.
 
 - Added new type of endpoint expression for focei estimation
   `+dv()`. This only transforms the data and not the predictions. I
@@ -58,6 +57,8 @@
 - Bug fix for parameters that are in both input (`$params`) and output
   (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
   #876)
+
+- Add `rxFixRes` to literally fix the residual estimates in a model (#889)
 
 # rxode2 3.0.4
 
