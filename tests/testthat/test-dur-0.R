@@ -10,14 +10,10 @@ rxTest({
       cp <- central/(v/1000)
     })
 
-    e <- et(rate=-2, amt=100) %>%
-      seq(0, 10)
-
+    e <- et(rate=-2, amt=100)
     s <- rxSolve(f, e, c(dur2=0))
 
-    e <- et(amt=100) %>%
-      seq(0, 10)
-
+    e <- et(amt=100)
     s2 <- rxSolve(f, e, c(dur2=100))
 
     expect_equal(s$central, s2$central)
@@ -36,15 +32,11 @@ rxTest({
       cp <- central/(v/1000)
     })
 
-    e <- et(rate=-2, amt=100) %>%
-      seq(0, 10)
-
+    e <- et(rate=-2, amt=100)
     s <- rxSolve(f, e, c(dur2=0, fcentral=2))
     sb <- rxSolve(f, e, c(dur2=0, fcentral=0.5))
 
-    e <- et(amt=100) %>%
-      seq(0, 10)
-
+    e <- et(amt=100)
     s2 <- rxSolve(f, e, c(dur2=100, fcentral=2))
     s2b <- rxSolve(f, e, c(dur2=100, fcentral=0.5))
 
@@ -63,14 +55,10 @@ rxTest({
       cp <- central/(v/1000)
     })
 
-    e <- et(rate=-2, amt=100, ss=1, ii=12) %>%
-      seq(0, 10)
-
+    e <- et(rate=-2, amt=100, ss=1, ii=12)
     s <- rxSolve(f, e, c(dur2=0))
 
-    e <- et(amt=100, ss=1, ii=12) %>%
-      seq(0, 10)
-
+    e <- et(amt=100, ss=1, ii=12)
     s2 <- rxSolve(f, e, c(dur2=100))
 
     expect_equal(s$central, s2$central)
@@ -85,15 +73,14 @@ rxTest({
       cp <- central/(v/1000)
     })
 
-    e <- et(rate=-2, amt=100, ss=1, ii=12) %>%
-      seq(0, 10)
-
+    e <- et(rate=-2, amt=100, ss=1, ii=12)
     s <- rxSolve(f, e, c(dur2=0, lag2=2))
 
-    e <- et(amt=100, ss=1, ii=12) %>%
-      seq(0, 10)
+    e <- et(amt=100, ss=1, ii=12)
+    s2 <- rxSolve(f, e, c(dur2=100, lag2=2))
 
-    s <- rxSolve(f, e, c(dur2=100, lag2=2))
+    expect_equal(s$central, s2$central)
+    expect_equal(s$cp, s2$cp)
 
   })
 

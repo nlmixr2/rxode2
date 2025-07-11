@@ -1420,6 +1420,18 @@ void handleSS(int *neq,
   bool skipDosingEvent = false, isRateDose = false;
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
+  int adjustEvidBolusLag = 0;
+  if (isModeled &&
+      ind->whI == EVIDF_MODEL_DUR_ON &&
+      ((isSsLag && getDoseP1(ind, ind->ixds) == 0.0) ||
+       (!isSsLag && getDose(ind, ind->ixds) == 0.0))
+      ) {
+    // This is a modeled duration dose with duration = 0.
+    // Handle like a bolus dose.
+    isModeled = false;
+    ind->whI = EVIDF_NORMAL;
+    adjustEvidBolusLag = EVIDF_MODEL_DUR_ON*10000;
+  }
   double curIi = ind->ixds == 0 ? 0.0 : getIiNumber(ind, ind->ixds-1);
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
@@ -1829,7 +1841,7 @@ void handleSS(int *neq,
         xout2 = xp2 + curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
         *istate=1;
-        handle_evid(getEvid(ind, ind->ix[bi]), neq[0],
+        handle_evid(getEvid(ind, ind->ix[bi])-adjustEvidBolusLag, neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
         // yp is last solve or y0
