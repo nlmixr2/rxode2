@@ -1,6 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 #ifndef __RXODE2PARSEGETTTIME_H__
 #define __RXODE2PARSEGETTTIME_H__
+#include "needSortDefines.h"
 #if defined(__cplusplus)
 
 #include "rxode2parse.h"
@@ -102,7 +103,7 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
     rx_solve *rx = &rx_global;
     rx_solving_options *op = &op_global;
     if (ind->cmt < op->neq){
-      if (rx->needSort & 4){
+      if (rx->needSort & needSortDur) {
         if (!(ind->err & 16)){
           ind->err += 16;
         }
@@ -134,7 +135,7 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
     rx = &rx_global;
     rx_solving_options *op = &op_global;
     if (ind->cmt < op->neq){
-      if (rx->needSort & 8){
+      if (rx->needSort & needSortRate) {
         if (!(ind->err & 2)){
           ind->err += 2;
         }

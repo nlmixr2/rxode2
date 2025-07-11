@@ -7,7 +7,7 @@
 #include <algorithm>
 #include "../inst/include/rxode2parse.h"
 #include "timsort.h"
-#include "needSortDefines.h"
+#include "../inst/include/needSortDefines.h"
 #define SORT gfx::timsort
 
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
