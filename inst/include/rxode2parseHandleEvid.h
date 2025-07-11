@@ -4,37 +4,7 @@
 
 #include "rxode2parse.h"
 //#include "rxThreadData.h"
-#define rxErrCorruptETSort    1
-#define rxErrRate0            2
-#define rxErrModelRateAbsent  4
-#define rxErrCorruptETSort2   8
-#define rxErrDurNeg0          16
-#define rxErrModelDurAbsent   32
-#define rxErrModelData686     64
-#define rxErrModelDataNeg6    128
-#define rxErrModelDataErr8    256
-#define rxErrModelDataErr886  512
-#define rxErrModelDataErr797  1024
-#define rxErrModelDataNeg7    2048
-#define rxErrModelDataErr9    4096
-#define rxErrModelDataErr997  8192
-#define rxErrCorruptETSort3   16384
-#define rxErrCorruptET        32768
-#define rxErrNegCmt           65536
-#define rxErrCorruptET2       131072
-#define rxErrSync             262144
-#define rxErrSync2            524288
-#define rxErrModeledFss2      1048576
-#define rxErrModeledFss2n2    2097152
-#define rxErrModeledFss2n3    4194304
-#define rxErrRate02           8388608
-
-#define rxErrNaTimeLag   1
-#define rxErrNaTimeRate  2
-#define rxErrNaTimeDur   3
-// during infusion amt
-#define rxErrNaTimeAmtI  4
-#define rxErrNaTimeAmt   5
+#include "rxode2dataErr.h"
 
 #if defined(__cplusplus)
 #define FLOOR(x) std::floor(x)
@@ -584,7 +554,12 @@ static inline int handle_evid(int evid, int neq,
           ind->wh0 != EVID0_SS20) {
         ind->on[cmt] = 1;
         ind->cacheME = 0;
-        InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
+        tmp = getDoseIndexPlus1(ind, ind->idx);
+        if (ind->whI == EVIDF_MODEL_DUR_ON && tmp == 0.0) {
+          yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+          break;
+        }
+        InfusionRate[cmt] -= tmp;
         if (ind->wh0 == EVID0_SS2 &&
             getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
             getDoseIndex(ind, ind->idx)) {
@@ -601,13 +576,15 @@ static inline int handle_evid(int evid, int neq,
       // If cmt is off, don't remove rate....
       // Probably should throw an error if the infusion rate is on still.
       // ind->curDose and ind->curDoseS[cmt] are handled when the modeled item is turned on.
-      InfusionRate[cmt] += getDoseIndex(ind, ind->idx);
+      tmp = getDoseIndex(ind, ind->idx);
+      if (tmp == 0.0) break;
+      InfusionRate[cmt] += tmp;
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 &&
           getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
           getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & 2097152)){
-          ind->err += 2097152;
+        if (!(ind->err & rxErrModeledFss2n2)){
+          ind->err += rxErrModeledFss2n2;
         }
         return 0;
       }
@@ -625,8 +602,8 @@ static inline int handle_evid(int evid, int neq,
       InfusionRate[cmt] += tmp;
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & 4194304)){
-          ind->err += 4194304;
+        if (!(ind->err & rxErrModeledFss2n3)){
+          ind->err += rxErrModeledFss2n3;
         }
         return 0;
       }
@@ -649,8 +626,8 @@ static inline int handle_evid(int evid, int neq,
       if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&
           getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
           getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & 4194304)){
-          ind->err += 4194304;
+        if (!(ind->err & rxErrModeledFss2n3)){
+          ind->err += rxErrModeledFss2n3;
         }
       }
       break;

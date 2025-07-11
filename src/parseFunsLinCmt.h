@@ -1,4 +1,4 @@
-#include "needSortDefines.h"
+#include "../inst/include/needSortDefines.h"
 #include "linCmtDiffConstant.h"
 
 extern sbuf sbExtra;
