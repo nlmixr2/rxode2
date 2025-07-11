@@ -98,12 +98,21 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
     setDoseP1(ind, idx, -amt/dur);
     setAllTimesP1(ind, idx, t+dur);
   } else if (dur == 0 && ind->whI == EVIDF_MODEL_DUR_ON) {
-    setDoseP1(ind, idx, 0.0);
-    setAllTimesP1(ind, idx, t);
+    rx_solve *rx = &rx_global;
+    rx_solving_options *op = &op_global;
+    if (rx->needSort & needSortDur) {
+      setDoseP1(ind, idx, 0.0);
+      setAllTimesP1(ind, idx, t);
+    } else {
+      if (!(ind->err & rxErrModelDurAbsent)){
+        ind->err += rxErrModelDurAbsent;
+      }
+      return;
+    }
   } else {
     rx_solve *rx = &rx_global;
     rx_solving_options *op = &op_global;
-    if (ind->cmt < op->neq){
+    if (ind->cmt < op->neq) {
       if (rx->needSort & needSortDur) {
         if (!(ind->err & rxErrDurNeg0)){
           ind->err += rxErrDurNeg0;
