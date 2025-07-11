@@ -606,7 +606,9 @@ static inline int handle_evid(int evid, int neq,
       // If cmt is off, don't remove rate....
       // Probably should throw an error if the infusion rate is on still.
       // ind->curDose and ind->curDoseS[cmt] are handled when the modeled item is turned on.
-      InfusionRate[cmt] += getDoseIndex(ind, ind->idx);
+      tmp = getDoseIndex(ind, ind->idx);
+      if (tmp == 0.0) break;
+      InfusionRate[cmt] += tmp;
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 &&
           getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=

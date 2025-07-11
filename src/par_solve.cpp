@@ -900,7 +900,8 @@ extern "C" void handleSSbolus(int *neq,
                               double *xout2,
                               double *xp2,
                               double *curIi,
-                              int *canBreak) {
+                              int *canBreak,
+                              int adjustEvidBolusLag) {
   ind->ssTime = *xp2;
   if (canHandleSSLinear(op, ind, ind->ix[*i])) {
 
@@ -919,12 +920,12 @@ extern "C" void handleSSbolus(int *neq,
     // here dose can be to the depot or central compartment
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
-    int evid = getEvid(ind, ind->ix[*i]);
+    int evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
     int wh, cmt, wh100, whI, wh0;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
     ind->linSSbolusCmt = cmt;
     // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+    handle_evid(getEvid(ind, ind->ix[*i])-adjustEvidBolusLag, neq[0],
                 BadDose, InfusionRate, dose, ydum,
                 *xout, neq[1], ind);
     ind->ixds--; // This dose stays in place
@@ -952,11 +953,13 @@ extern "C" void handleSSbolus(int *neq,
   solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
+  int evid=0;
   for (int j = 0; j < op->maxSS; j++) {
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
     // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+    evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
+    handle_evid(evid, neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
     // yp is last solve or y0
@@ -1834,7 +1837,8 @@ void handleSS(int *neq,
                     &xout2,
                     &xp2,
                     &curIi,
-                    &canBreak);
+                    &canBreak,
+                    adjustEvidBolusLag);
       if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
@@ -1853,6 +1857,9 @@ void handleSS(int *neq,
         }
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
+        }
+        if (adjustEvidBolusLag != 0) {
+          pushIgnoredDose(ind->ixds+1, ind);
         }
         ind->ixds--; // This dose stays in place
         // REprintf("ixds-- #3\n");

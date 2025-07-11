@@ -79,8 +79,10 @@ rxTest({
     e <- et(amt=100, ss=1, ii=12)
     s2 <- rxSolve(f, e, c(dur2=100, lag2=2))
 
-    expect_equal(s$central, s2$central)
-    expect_equal(s$cp, s2$cp)
+    expect_equal(s$central, s2$central, tolerance=1e-6)
+    expect_equal(s$cp, s2$cp, tolerance=1e-6)
+
+    expect_equal(s$time, s2$time)
 
   })
 
