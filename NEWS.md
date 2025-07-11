@@ -60,6 +60,8 @@
 
 - Add `rxFixRes` to literally fix the residual estimates in a model (#889)
 
+- Now modeled duration of 0 is treated as a bolus dose (#892)
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)
