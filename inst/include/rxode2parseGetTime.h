@@ -95,6 +95,9 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
   if (dur > 0) {
     setDoseP1(ind, idx, -amt/dur);
     setAllTimesP1(ind, idx, t+dur);
+  } else if (dur == 0 && ind->whI == EVIDF_MODEL_DUR_ON) {
+    setDoseP1(ind, idx, 0.0);
+    setAllTimesP1(ind, idx, t);
   } else {
     rx_solve *rx = &rx_global;
     rx_solving_options *op = &op_global;

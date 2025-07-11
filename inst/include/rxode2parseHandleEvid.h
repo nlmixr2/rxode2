@@ -584,7 +584,12 @@ static inline int handle_evid(int evid, int neq,
           ind->wh0 != EVID0_SS20) {
         ind->on[cmt] = 1;
         ind->cacheME = 0;
-        InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
+        tmp = getDoseIndexPlus1(ind, ind->idx);
+        if (ind->whI == EVIDF_MODEL_DUR_ON && tmp == 0.0) {
+          yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+          break;
+        }
+        InfusionRate[cmt] -= tmp;
         if (ind->wh0 == EVID0_SS2 &&
             getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
             getDoseIndex(ind, ind->idx)) {

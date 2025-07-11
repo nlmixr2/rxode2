@@ -1443,7 +1443,7 @@ void handleSS(int *neq,
       infSixds = 0,
       ei=0, wh, cmt, wh100, whI, wh0, oldI,
       bi = *i, fi = *i;
-    if (doSSinf){
+    if (doSSinf) {
     } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR) {
       if (getDose(ind, ind->idose[ind->ixds]) < 0) return;
       oldI = ind->whI;
