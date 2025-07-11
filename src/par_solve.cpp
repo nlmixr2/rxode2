@@ -11,6 +11,7 @@
 #include "strncmp.h"
 #include "timsort.h"
 #include "../inst/include/rxode2.h"
+#include "../inst/include/rxode2dataErr.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
 #include "linCmtDiffConstant.h"
@@ -1734,8 +1735,8 @@ void handleSS(int *neq,
       }
       if (ind->ix[ei] != ind->idose[infEixds]){
         /* Rf_errorcall(R_NilValue, "Cannot figure out infusion end time."); */
-        if (!(ind->err & 8388608)){
-          ind->err += 8388608;
+        if (!(ind->err & rxErrRate02)){
+          ind->err += rxErrRate02;
           /* Rf_errorcall(R_NilValue, "Rate is zero/negative"); */
         }
         return;

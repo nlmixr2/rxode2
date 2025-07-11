@@ -2,6 +2,7 @@
 #ifndef __RXODE2PARSEGETTTIME_H__
 #define __RXODE2PARSEGETTTIME_H__
 #include "needSortDefines.h"
+#include "rxode2dataErr.h"
 #if defined(__cplusplus)
 
 #include "rxode2parse.h"
@@ -104,13 +105,13 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
     rx_solving_options *op = &op_global;
     if (ind->cmt < op->neq){
       if (rx->needSort & needSortDur) {
-        if (!(ind->err & 16)){
-          ind->err += 16;
+        if (!(ind->err & rxErrDurNeg0)){
+          ind->err += rxErrDurNeg0;
         }
         return;
       } else {
-        if (!(ind->err & 32)){
-          ind->err += 32;
+        if (!(ind->err & rxErrModelDurAbsent)){
+          ind->err += rxErrModelDurAbsent;
         }
         return;
       }
@@ -136,14 +137,14 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
     rx_solving_options *op = &op_global;
     if (ind->cmt < op->neq){
       if (rx->needSort & needSortRate) {
-        if (!(ind->err & 2)){
-          ind->err += 2;
+        if (!(ind->err & rxErrRate0)){
+          ind->err += rxErrRate0;
         }
         return;
       } else {
         // FIXME don't error out with linear compartmental model
-        if (!(ind->err & 4)){
-          ind->err += 4;
+        if (!(ind->err & rxErrModelRateAbsent)){
+          ind->err += rxErrModelRateAbsent;
         }
         return;
       }
@@ -155,14 +156,14 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
 static inline void handleTurnOffModeledDuration(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   if (idx > 0){
     if (!isEvidModeledDurationStart(getEvidM1(ind, idx))) {
-      if (!(ind->err & 64)){
-        ind->err += 64;
+      if (!(ind->err & rxErrModelData686)){
+        ind->err += rxErrModelData686;
       }
       return;
     }
   } else {
-    if (!(ind->err & 128)){
-      ind->err += 128;
+    if (!(ind->err & rxErrModelDataNeg6)) {
+      ind->err += rxErrModelDataNeg6;
     }
     return;
   }
@@ -172,14 +173,14 @@ static inline void handleTurnOnModeledDuration(int idx, rx_solve *rx, rx_solving
   // This calculates the rate and the duration and then assigns it to the next record
   if (idx >= ind->n_all_times){
     // error: Last record, can't be used.
-    if (!(ind->err & 256)){
-      ind->err += 256;
+    if (!(ind->err & rxErrModelDataErr8)){
+      ind->err += rxErrModelDataErr8;
     }
     return;
   } else {
     if (!isEvidModeledDurationStop(getEvidP1(ind, idx))) {
-      if (!(ind->err & 512)){
-        ind->err += 512;
+      if (!(ind->err & rxErrModelDataErr886)){
+        ind->err += rxErrModelDataErr886;
       }
       return;
     }
@@ -190,14 +191,14 @@ static inline void handleTurnOnModeledDuration(int idx, rx_solve *rx, rx_solving
 static inline void handleTurnOffModeledRate(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   if (idx > 0){
     if (!isEvidModeledRateStart(getEvidM1(ind, idx))) {
-      if (!(ind->err & 1024)){
-        ind->err += 1024;
+      if (!(ind->err & rxErrModelDataErr797)){
+        ind->err += rxErrModelDataErr797;
       }
       return;
     }
   } else {
-    if (!(ind->err & 2048)){
-      ind->err += 2048;
+    if (!(ind->err & rxErrModelDataNeg7)){
+      ind->err += rxErrModelDataNeg7;
     }
     return;
   }
@@ -207,15 +208,15 @@ static inline void handleTurnOnModeledRate(int idx, rx_solve *rx, rx_solving_opt
   // This calculates the rate and the duration and then assigns it to the next record
   if (idx >= ind->n_all_times){
     // error: Last record, can't be used.
-    if (!(ind->err & 4096)){
-      ind->err += 4096;
+    if (!(ind->err & rxErrModelDataErr9)){
+      ind->err += rxErrModelDataErr9;
     }
     /* Rf_errorcall(R_NilValue, "Data Error 9\n"); */
     return;
   } else {
     if (!isEvidModeledRateStop(getEvidP1(ind, idx))) {
-      if (!(ind->err & 8192)){
-        ind->err += 8192;
+      if (!(ind->err & rxErrModelDataErr997)){
+        ind->err += rxErrModelDataErr997;
       }
       return;
     }
@@ -236,8 +237,8 @@ static inline int handleInfusionStartRm(int *startIdx, int *endIdx,
       if (getEvid(ind, ind->idose[*startIdx]) == getEvid(ind, ind->idose[*endIdx])) break;
       if (*endIdx == ind->ndoses-1) {
         //REprintf("curEvid@infrm: %d\n", curEvid);
-        if (!(ind->err & 32768)){
-          ind->err += 32768;
+        if (!(ind->err & rxErrCorruptET)){
+          ind->err += rxErrCorruptET;
         }
         return 1;
       }
@@ -274,8 +275,8 @@ static inline int handleInfusionStartDefault(int *startIdx, int *endIdx,
   }
   if (*startIdx == ind->ndoses) {
     //REprintf("cant match: %d\n", curEvid);
-    if (!(ind->err & 32768)){
-      ind->err += 32768;
+    if (!(ind->err & rxErrCorruptET)){
+      ind->err += rxErrCorruptET;
     }
     return 1;
   }
@@ -293,8 +294,8 @@ static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *end
   }
   *endIdx = getDoseNumberFromIndex(ind, *idx);
   if (*endIdx == -1){
-    if (!(ind->err & 16384)){
-      ind->err += 16384;
+    if (!(ind->err & rxErrCorruptETSort3)){
+      ind->err += rxErrCorruptETSort3;
     }
     return;
     /* Rf_errorcall(R_NilValue, "Corrupted event table during sort (1)."); */
@@ -313,8 +314,8 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
   } else if (amt < 0) {
     int infEidx = getDoseNumberFromIndex(ind, idx);
     if (infEidx == -1){
-      if (!(ind->err & 16384)){
-        ind->err += 16384;
+      if (!(ind->err & rxErrCorruptETSort3)){
+        ind->err += rxErrCorruptETSort3;
       }
       return 0.0;
       /* Rf_errorcall(R_NilValue, "Corrupted event table during sort (1)."); */
@@ -347,8 +348,8 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     return tB + dur;
   } else {
     /* Rf_errorcall(R_NilValue, "Corrupted events."); */
-    if (!(ind->err & 131072)){
-      ind->err += 131072;
+    if (!(ind->err & rxErrCorruptET2)){
+      ind->err += rxErrCorruptET2;
     }
     return 0.0;
   }
