@@ -150,7 +150,7 @@ rxode2 event table by `add.sampling` or `et`
 ```{r}
 ev <- eventTable(amount.units="mg", time.units="hr")
 
-## The methods ar attached to the event table, so you can use them
+## The methods are attached to the event table, so you can use them
 ## directly
 ev$add.dosing(dose=10000, nbr.doses = 3)# loading doses
 
