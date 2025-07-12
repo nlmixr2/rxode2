@@ -95,7 +95,7 @@ Using the `add.dosing()` function you have:
 ```{r}
 ev <- eventTable(amount.units="mg", time.units="hr")
 
-## The methods ar attached to the event table, so you can use 
+## The methods are attached to the event table, so you can use 
 ## them directly
 ev$add.dosing(dose=10000, nbr.doses = 3)# loading doses
 ## Starts at time 0; Default dosing interval is 24
