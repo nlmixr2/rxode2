@@ -76,7 +76,7 @@
 #' @keywords internal
 #' @export
 .rxGetPredictionFTransform <- function(env, pred1, yj) {
-  if (yj == 2) {
+  if (yj == 2 || pred1$dv) {
     return(quote(rx_pred_f_))
   } else if (yj == 3) {
     return(quote(log(rx_pred_f_)))
@@ -124,7 +124,12 @@
            ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
     }
   }
-  bquote((.(.p1)) ^ 2)
+  if (pred1$variance) {
+    bquote(.(.p1))
+  } else {
+    bquote((.(.p1)) ^ 2)
+  }
+
 }
 
 #' Based on current error get the F that is used for prop or pow expressions
@@ -170,7 +175,11 @@
       stop("cannot find proportional standard deviation", call.=FALSE)
     }
   }
-  return(bquote((.(.f) * .(.p1))^2))
+  if (pred1$variance) {
+    bquote(.(.f)^2 * .(.p1))
+  } else {
+    bquote((.(.f) * .(.p1))^2)
+  }
 }
 
 #' Get the Variance for pow error model
@@ -203,7 +212,11 @@
       stop("cannot find exponent of power expression", call.=FALSE)
     }
   }
-  bquote(((.(.f))^(.(.p2)) * .(.p1))^2)
+  if (pred1$variance) {
+    bquote((.(.f))^(2*.(.p2)) * .(.p1))
+  } else {
+    bquote(((.(.f))^(.(.p2)) * .(.p1))^2)
+  }
 }
 
 #' Get Variance for proportional error
@@ -242,11 +255,20 @@
   } else {
     .addProp <- pred1$addProp
   }
-  if (.addProp == "combined2") {
-    return(bquote((.(.p1))^2+ (.(.f))^2*(.(.p2))^2))
+  if (pred1$variance) {
+    if (.addProp == "combined2") {
+      bquote((.(.p1))+ (.(.f))^2*.(.p2))
+    } else {
+      bquote( ( (sqrt(.(.p1))) + (.(.f)) * (sqrt(.(.p2))) ) ^ 2)
+    }
   } else {
-    return(bquote( ( (.(.p1)) + (.(.f)) * (.(.p2)) ) ^ 2))
+    if (.addProp == "combined2") {
+      bquote((.(.p1))^2+ (.(.f))^2*(.(.p2))^2)
+    } else {
+      bquote( ( (.(.p1)) + (.(.f)) * (.(.p2)) ) ^ 2)
+    }
   }
+
 }
 
 #' Additive + Power
@@ -296,10 +318,18 @@
   } else {
     .addProp <- pred1$addProp
   }
-  if (.addProp == "combined2") {
-    return(bquote( (.(.p1))^2 + ( (.(.f))^(.(.p3)) )^2 * (.(.p2))^2))
+  if (pred1$variance) {
+    if (.addProp == "combined2") {
+      return(bquote( (.(.p1)) + ( (.(.f))^(.(.p3)) )^2 * .(.p2)))
+    } else {
+      return(bquote( ( sqrt(.(.p1)) + (.(.f)) ^ (.(.p3))* sqrt(.(.p2)) ) ^ 2))
+    }
   } else {
-    return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
+    if (.addProp == "combined2") {
+      return(bquote( (.(.p1))^2 + ( (.(.f))^(.(.p3)) )^2 * (.(.p2))^2))
+    } else {
+      return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
+    }
   }
 }
 #' Get Variance for error type
@@ -323,14 +353,14 @@
 #' Handle the single error for normal or t distributions
 #'
 #' @param env Environment for the parsed model
-#' 
+#'
 #' @param pred1 The `data.frame` of the current error
 #'
 #' @param errNum The number of the error specification in the nlmixr2 model
-#' 
+#'
 #' @param rxPredLlik A boolean indicating if the log likelihood should
 #'   be calculated for non-normal distributions.  By default `TRUE`.
-#' 
+#'
 #' @return A list of the lines added.  The lines will contain
 #'
 #' - `rx_yj_` which is an integer that corresponds to the
@@ -347,7 +377,7 @@
 #' - `rx_pred_` The transformed prediction function
 #'
 #' - `rx_r_` The transformed variance
-#' 
+#'
 #' @author Matthew Fidler
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
@@ -474,7 +504,7 @@
     .first <- vapply(seq(2, length(.c)), function(i) {
       paste0("(DV==",(i-1),")*(",
              deparse1(.c[[i]]),")")
-      
+
     }, character(1), USE.NAMES=FALSE)
     .last <- vapply(seq(2, length(.c)), function(i) {
       paste0("(", deparse1(.c[[i]]), ")")

@@ -135,9 +135,9 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
     .ret[[1]] <- quote(ipredSim <- NA)
     .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", paste(.n, collapse=", "), ")"))
     .ce <- setNames(.ce, NULL)
-    
+
     .ret[[3]] <- str2lang(paste0("sim<-", paste(vapply(seq_along(.ce), function(i) {
-      paste("(rx_sim_ == ", i, ")*", .ce[i]) 
+      paste("(rx_sim_ == ", i, ")*", .ce[i])
    }, character(1), USE.NAMES=FALSE), collapse="+")))
     return(.ret)
   }
@@ -202,6 +202,56 @@ attr(rxUiGet.paramsLine, "desc") <- "params() line for model"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.interpLines <- function(x, ...){
+  .ui <- x[[1]]
+  .interp <- rxModelVars(.ui)$interp
+  if (!is.factor(.interp) ||
+        length(.interp) == 0) {
+    return(NULL)
+  }
+  .lvl <- levels(.interp)
+  if (length(.lvl) != 5L ||
+        !identical(.lvl, c("default", "linear", "locf", "nocb", "midpoint"))) {
+    return(NULL)
+  }
+  if (any(is.na(.interp))) {
+    return(NULL)
+  }
+  .try <- try(all(.interp == "default"), silent=TRUE)
+  if (inherits(.try, "try-error") ||
+        !checkmate::testLogical(.try, any.missing=FALSE, len=1)) {
+    return(NULL)
+  }
+  if (.try) {
+    # use default
+    return(NULL)
+  }
+  .ret <- list()
+  .w <- which(.interp=="linear")
+  if (length(.w) > 0) {
+    .ret <- list(str2lang(paste("linear(",paste(names(.interp)[.w], collapse=", "), ")")))
+  }
+  .w <- which(.interp=="locf")
+  if (length(.w) > 0) {
+    .ret <- c(.ret, list(str2lang(paste("locf(",paste(names(.interp)[.w], collapse=", "), ")"))))
+  }
+  .w <- which(.interp=="nocb")
+  if (length(.w) > 0) {
+    .ret <- c(.ret, list(str2lang(paste("nocb(",paste(names(.interp)[.w], collapse=", "), ")"))))
+  }
+  .w <- which(.interp=="midpoint")
+  if (length(.w) > 0) {
+    .ret <- c(.ret, list(str2lang(paste("midpoint(",paste(names(.interp)[.w], collapse=", "), ")"))))
+  }
+  if (length(.ret) == 0) {
+    return(NULL) #nocov
+  }
+  .ret
+}
+attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for model"
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.simulationSigma <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
@@ -255,7 +305,7 @@ rxUiGet.symengineModelPrune <- function(x, ...) {
   .tmp[[1]] <- quote(`rxModelVars`)
   .tmp <- eval(.tmp)
   .tmp <- rxode2(rxPrune(.tmp))
-  .simulationModelAssignTOS(.x, .tmp) 
+  .simulationModelAssignTOS(.x, .tmp)
 }
 attr(rxUiGet.symengineModelPrune, "desc") <- "symengine model with pruning if/else from UI"
 
@@ -318,6 +368,51 @@ attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini value
     as.call(list(quote(`rxode2`), as.call(.ret)))
   }
 }
+#' Filter out properties and adjust predDf
+#'
+#' @param predDf predDf from the ui model
+#' @param lstExpr list of expressions for model or NULL, if NULL
+#'   defaults to the model expressions accessible by ui$lstExpr
+#' @param ui original ui model or NULL
+#' @return a list containing the adjusted predDf and lstExpr, or if
+#'   predDf is null simply the lstExpr
+#' @noRd
+#' @author Matthew L. Fidler
+.rxFilterOutPropsAndAdjustPredDf <- function(ui, lstExpr, predDf=NULL) {
+  if (is.null(lstExpr)) {
+    .expr <- ui$lstExpr
+  } else {
+    .expr <- lstExpr
+  }
+  ## remove interpolation lines from .expr
+  .f <- vapply(seq_along(.expr), function(i) {
+    .e <- .expr[[i]]
+    if (is.call(.e)) {
+      identical(.e[[1]], quote(`linear`)) ||
+        identical(.e[[1]], quote(`locf`)) ||
+        identical(.e[[1]], quote(`nocb`)) ||
+        identical(.e[[1]], quote(`midpoint`))
+    } else {
+      FALSE
+    }
+  }, logical(1))
+  .df <- data.frame(filter =.f, origLine=seq_along(.f))
+  .predDf <- predDf
+  if (any(.df$filter)) {
+    .expr <- lapply(seq_along(.expr)[!.df$filter], function(i) {
+      .expr[[i]]
+    })
+    .df <- .df[!.df$filter, , drop=FALSE]
+    .df$newLine <- seq_along(.df$filter)
+    if (!is.null(.predDf)) {
+      .predDf$line <- vapply(.predDf$line, function(i) {
+        .df$newLine[.df$origLine == i]
+      }, integer(1))
+    }
+  }
+  if (is.null(.predDf)) return(.expr)
+  list(predDf=.predDf, lstExpr=.expr)
+}
 
 #' Combine Error Lines and create rxode2 expression
 #'
@@ -333,6 +428,9 @@ attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini value
 #'   defaults to the model expressions accessible by
 #'   `uiModel$lstExpr`.
 #' @param useIf Use an `if (CMT == X)` for endpoints
+#' @param interpLines Interpolation lines, if not present
+#' @param levelLines Levels lines for assigned strings.  If not
+#'   present, use the interpolation lines from the current model.
 #' @return quoted expression that can be evaluated to compiled rxode2
 #'   model
 #' @export
@@ -444,7 +542,8 @@ attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini value
 rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
                                 modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
                                 lstExpr=NULL,
-                                useIf=TRUE) {
+                                useIf=TRUE,
+                                interpLines=NULL, levelLines=NULL) {
   if(!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
@@ -468,22 +567,45 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
       length(errLines[[i]])
     }, integer(1)))
   }
-  if (is.null(lstExpr)) {
-    .expr <- uiModel$lstExpr
-  } else {
-    .expr <- lstExpr
-  }
   .cmtLines <- NULL
   if (cmtLines) {
     .cmtLines <- uiModel$cmtLines
   }
-  .lenLines <- .lenLines + length(uiModel$lstExpr) - length(.predDf$line) + length(.cmtLines) + length(prefixLines)
+  .predDf <- uiModel$predDf
+  .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf=.predDf, lstExpr=lstExpr)
+  .predDf <- .tmp$predDf
+  .expr <- .tmp$lstExpr
+
+  .lenLines <- .lenLines + length(.expr) -
+    length(.predDf$line) + length(.cmtLines) + length(prefixLines)
   .k <- 2 + dvidLine * 1
 
   if (is.null(paramsLine)) {
   } else if (is.na(paramsLine)) {
     .lenLines <- .lenLines - 1
     .k <- 1 + dvidLine * 1
+  }
+  if (is.null(levelLines)) {
+    .levelLines <- rxUiGet.levels(list(uiModel))
+    .lenLines <- .lenLines - length(.levelLines)
+    .k <- .k + length(.levelLines)
+  } else if (is.na(levelLines)) {
+    .levelLines <- list()
+  } else {
+    .levelLines <- levelLines
+    .lenLines <- .lenLines - length(.levelLines)
+    .k <- .k + length(.levelLines)
+  }
+  if (is.null(interpLines)) {
+    .interpLines <- rxUiGet.interpLines(list(uiModel))
+    .lenLines <- .lenLines - length(.interpLines)
+    .k <- .k + length(.interpLines)
+  } else if (is.na(interpLines)) {
+    .interpLines <- list()
+  } else {
+    .interpLines <- interpLines
+    .lenLines <- .lenLines - length(.interpLines)
+    .k <- .k + length(.interpLines)
   }
   .ret <- vector("list", .lenLines + .k)
   .curErrLine <- 1
@@ -495,6 +617,18 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .k <- 2
   } else {
     .ret[[2]] <- paramsLine
+  }
+  if (length(.levelLines) > 0) {
+    for (.i in seq_along(.levelLines)) {
+      .ret[[.k]] <- .levelLines[[.i]]
+      .k <- .k + 1
+    }
+  }
+  if (length(.interpLines) > 0) {
+    for (.i in seq_along(.interpLines)) {
+      .ret[[.k]] <- .interpLines[[.i]]
+      .k <- .k + 1
+    }
   }
   for (.i in seq_along(prefixLines)) {
     .ret[[.k]] <- prefixLines[[.i]]

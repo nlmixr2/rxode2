@@ -1,4 +1,578 @@
-# rxode2 (development version)
+# rxode2 4.0.0
+
+- Add more information errors about `NA`s during solving.
+
+- Fix `rxDerived()` for mixed vector and non-vector input.
+
+- Fix model variables for `alag(cmt)` when they are defined before
+  `d/dt()` or `linCmt()`
+
+- Just in time use of `state.ignore` in the model variables, fixes
+  negative length error observed in #857.
+
+- Fix steady state bug with time-varying covariates.  Now the
+  covariates are inferred at the time of the steady state (instead of
+  searching through the subject based on the projected time).
+
+- Rework the linear solved systems to use the wnl solutions, and
+  threaded linear systems solve (for non-gradient solutions). This new
+  method closes a variety of linear compartment model bugs (#261,
+  #272, #441, #504, #564, #717, #728, #827, and #855)
+
+- Added new types of bounds for event tables:
+
+  - 3 point bounds `et(list(c(low, mid, high)))` when specified this way,
+    they will not change. Perfect for use with `babelmixr2`'s `PopED` (#862,
+    #863, #854)
+
+  - Intervals simulated by normal values instead of uniform.  In this
+    case the first seen interval will be 3 elements with NA at the end
+    `et(list(c(mean, sd, NA), c(mean, sd)))`, and the other elements
+    can simply be 2 declaring the `c(mean, sd)`
+
+  - Of course the uniform windows of `et(list(c(low, high)))` still work
+
+  - Currently these different types of windows cannot be mixed.
+
+- Add ability to pipe a list or named numeric as an eta with
+  `%>% ini(~eta)`
+
+- Added a fix for event tables where expanding IDs in non-sequential
+  order.  In particular if the first ID is not the minimum ID when expanding
+  the first event table, the smallest ID was not in the output table. Now
+  the smallest ID is in the event table. (Fixes #878, #869, #870)
+
+- Added ability to pipe `ini()` or `lotri()`, or any other expression
+  that can be converted to an ini with `as.ini()`. Also allows `ini()`
+  expressions to be converted to lotri with `as.lotri()`. Fixes #871
+
+- Added new type of variability expression for simulation and
+  estimation with focei and likelihood related methods: `+var()`. This
+  changes standard deviation parameters to variance parameters.
+
+- Added new type of endpoint expression for focei estimation
+  `+dv()`. This only transforms the data and not the predictions. I
+  can only see it being useful in model linearization.
+
+- Bug fix for parameters that are in both input (`$params`) and output
+  (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
+  #876)
+
+- Add `rxFixRes` to literally fix the residual estimates in a model (#889)
+
+- Now modeled duration of 0 is treated as a bolus dose (#892)
+
+# rxode2 3.0.4
+
+- Add stable hashes for rxUi objects (#838, #689)
+
+- Fix for iov simulation (#842)
+
+- Fix for `rxnbinom()` called directly from R (#847) and expand it to
+  match more close with R's `rnbinom()` including allowing named `mu=`
+  calls.  In rxode2 ui, these are also now allowed.
+
+# rxode2 3.0.3
+
+- Add `logit`/`expit` named expressions, that is `logit(x, high=20)`
+  becomes `logit(x, 0, 20)` in ui models.
+
+- Updated random ui models like `rxnorm(sd=10)` to accept complex
+  numeric expressions like `rxnorm(sd=10+1)`.
+
+- Updated random ui models to accept complex non-numeric expressions
+  like `rxnorm(sd=a+b)`
+
+- Rework the `tad()` and related functions so they use the same
+  interface as compartments (this way they do not depend on the order
+  of compartments); See #815.  For mu-referencing, Also allow dummy
+  variables to ignore state requirements (ie `podo(depot)` in a single
+  line will not error when parsing mu-referenced equations).
+
+- Add `getRxNpars` to api.  This allows the development version of
+  `babelmixr2` to better check what model is loaded and unload/reload
+  as necessary.
+
+- Add `rxUdfUiControl()` to rxode2 user function to get control
+  information from something like `nlmixr2`
+
+- Bug fix for tracking time after dose when dosing to 2 compartments
+  occur at the exact same time (#804, #819)
+
+- Change `transit()` model so that it uses `tad0()`, `podo0()` and
+  related functions for a bit more stable simulation and estimation
+
+- Fix compile flags to work with BH 1.87 (#826)
+
+# rxode2 3.0.2
+
+- Bug fix for `api`, the censoring function pointer has been updated
+  (#801).
+
+- Query `rxode2.verbose.pipe` at run time instead of requiring it to
+  be set before loading `rxode2`.
+
+- Have correct values at boundaries for `logit`, `expit`, `probit`,
+  and `probitInv` (instead of `NA`). For most cases this does not
+  break anything.
+
+- Add a new style of user function that modifies the `ui` while
+  parsing or just before using the function (in the presence of
+  `data`).
+
+- Used the new user function interface to allow all random functions
+  in `rxode2` ui functions to be named.  For example, you can use
+  `rxnorm(sd=3)` instead of having to use `rxnorm(0, 3)`, although
+  `rxnorm()` still works.
+
+# rxode2 3.0.1
+
+- Explicitly initialize the order vector to stop valgrind warning
+  (requested from CRAN)
+
+# rxode2 3.0.0
+
+## Breaking Changes
+
+- The model properties was moved from `$params` to `$props` so it does
+  not conflict with the low level `rxode2` model `$params`
+
+- Error when specifying `wd` without `modName`
+
+- With Linear and midpoint of a time between two points, how `rxode2`
+  handles missing values has changed.  When the missing value is lower
+  than the requested time, it will look backward until it finds the
+  first non-missing value (or if all are missing start looking
+  forward).  When the missing value is higher than the requested time,
+  the algorithm will look forward until it finds the first non-missing
+  value (or if all are missing, start looking backward).
+
+- The order of ODEs is now only determined by the order of `cmt()` and
+  `d/dt()`. Compartment properties, `tad()` and other compartment
+  related variables no no longer affect compartment sorting.  The
+  option `rxode2.syntax.require.ode.first` no longer does anything.
+
+- The handling of zeros "safely" has changed (see #775)
+
+  - when `safeZero=TRUE` and the denominator of a division expression
+    is zero, use the Machine's small number/`eps` (you can see this
+    value with `.Machine$double.eps`)
+
+  - when `saveLog=TRUE` and the x in the `log(x)` is less than or
+    equal to zero, change this to `log(eps)`
+
+  - when `safePow=TRUE` and the expression `x^y` has a zero for `x`
+    and a negative number for `y` replace `x` with `eps`.
+
+  Since the protection for divide by zero has changed, the results
+  will also change. This is a more conservative protection mechanism
+  than was applied previously.
+
+- Random numbers from `rxode2` are different when using `dop853`,
+  `lsoda` or `indLin` methods.  These now seed the random numbers in
+  the same way as `liblsoda`, so the random number provided will be
+  the same with different solving methods.
+
+- The arguments saved in the `rxSolve` for items like `thetaMat` will
+  be the reduced matrices used in solving, not the full matrices (this
+  will likely not break very many items)
+
+## Possible breaking changes (though unlikely)
+
+- `iCov` is no longer merged to the event dataset.  This makes solving
+  with `iCov` slightly faster (#743)
+
+
+## New features
+
+- You can remove covariances for every omega by piping with `%>%
+  ini(diag())` you can be a bit more granular by removing all
+  covariances that have either `eta.ka` or `eta.cl` by: `%>%
+  ini(diag(eta.ka, eta.cl))` or anything with correlations with
+  `eta.cl` with `%>% ini(diag(eta.cl))`
+
+- You can also remove individual covariances by `%>% ini(-cov(a, b))`
+  or `%>% ini(-cor(a,b))`.
+
+- You can specify the type of interpolation applied for added dosing
+  records (or other added records) for columns that are kept with the
+  `keep=` option in `rxSolve()`. This new option is
+  `keepInterpolation` and can be `locf` for last observation carried
+  forward, `nocb` which is the next observation carried backward, as
+  well as `NA` which puts a `NA` in all imputed data rows. See #756.
+
+   - Note: when interpolation is linear/midpoint for
+     factors/characters it changes to locf with a warning (#759)
+
+   - Also note, that the default keep interpolation is `na`
+
+- Now you can specify the interpolation method per covariate in the model:
+
+  - `linear(var1, var2)` says both `var1` and `var2` would use linear
+    interpolation when they are a time-varying covariate. You could
+    also use `linear(var1)`
+
+  - `locf()` declares variables using last observation carried forward
+
+  - `nocb()` declares variables using next observation carried backward
+
+  - `midpoint()` declares variables using midpoint interpolation
+
+- `linear()`, `locf()`, `locb()`, `midpoint()`, `params()`, `cmt()`
+  and `dvid()` declarations are now ignored when loading a `rxode2`
+  model with `rxS()`
+
+- Strings can be assigned to variables in `rxode2`.
+
+- Strings can now be enclosed with a single quote as well as a double
+  quote.  This limitation was only in the rxode2 using string since
+  the R-parser changes single quotes to double quotes. (This has no
+  impact with `rxode2({})` and ui/function form).
+
+- More robust string encoding for symengine (adapted from
+  `utils::URLencode()` and `utils::URLdecode()`)
+
+- Empty arguments to `rxRename()` give a warning (#688)
+
+- Promoting from covariates to parameters with model piping (via `ini()`) now
+  allows setting bounds (#692)
+
+ - Added `assertCompartmentName()`, `assertCompartmentExists()`,
+  `assertCompartmentNew()`, `testCompartmentExists()`,
+  `assertVariableExists()` `testVariableExists()`,
+  `assertVariableNew()`, `assertVariableName()`, and
+  `assertParameterValue()` to verify that a value is a valid nlmixr2
+  compartment name, nlmixr2 compartment/variable exists in the model,
+  variable name, or parameter value (#726; #733)
+
+- Added `assertRxUnbounded()`, `testRxUnbounded()`, `warnRxBounded()`
+  to allow `nlmixr2` warn about methods that ignore boundaries #760
+
+- Added functions `tad0()`, `tafd0()`, `tlast0()` and `tfirst0()` that
+  will give `0` instead of `NA` when the dose has not been
+  administered yet.  This is useful for use in ODEs since `NA`s will
+  break the solving (so can be used a bit more robustly with models
+  like Weibull absorption).
+
+- `rxode2` is has no more binary link to `lotri`, which means that
+  changes in the `lotri` package will not require `rxode2` to be
+  recompiled (in most cases) and will not crash the system.
+
+- `rxode2` also has no more binary linkage to `PreciseSums`
+
+- The binary linkage for `dparser` is reduced to C structures only,
+  making changes in dparser less likely to cause segmentation faults
+  in `rxode2` if it wasn't recompiled.
+
+- A new model property has been added to `$props$cmtProp` and
+  `$statePropDf`.  Both are data-frames showing which compartment has
+  properties (currently `ini`, `f`, `alag`, `rate` and `dur`)
+  in the `rxode2` ui model.  This comes from the lower
+  level model variable `$stateProp` which has this information
+  encoded in integers for each state.
+
+- A new generic method `rxUiDeparse` can be used to deparse meta
+  information into more readable expressions; This currently by
+  default supports lower triangular matrices by lotri, but can be
+  extended to support other types of objects like 'nlmixr2's
+  `foceiControl()` for instance.
+
+## Bug fixes
+
+- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of
+  the ode instead of lhs. See #754
+
+- Fix `ui$props` when the ui is a linear compartment model without `ka` defined.
+
+- Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
+
+- When assigning reserved variables, the parser will error. See #744
+
+- Linear interpolation will now adjust the times as well as the values
+  when `NA` values are observed.
+
+- Fix when keeping data has `NA` values that it will not crash R; Also
+  fixed some incorrect `NA` interpolations. See #756
+
+- When using `cmt()` sometimes the next statement would be corrupted
+  in the normalized syntax (like for instance `locf`); This bug was
+  fixed (#763)
+
+- `keep` will now error when trying to keep items that are in the
+  rxode2 output data-frame and will be calculated (#764)
+
+## Big change
+
+- At the request of CRAN, combine `rxode2parse`, `rxode2random`, and
+ `rxode2et` into this package; The changes in each of the packages are
+ now placed here:
+
+### rxode2et (no changes before merge)
+
+#### rxode2et 2.0.13
+
+* Fix import of data where there are NA times
+
+#### rxode2et 2.0.12
+
+* Fix formatting issues identified by m1mac, as requested by CRAN
+
+#### rxode2et 2.0.11
+
+* Make the stacking more flexible to help rxode2 have more types of plots
+
+* Add `toTrialDuration` by Omar Elashkar to convert event data to trial duration data
+
+* Fix Issue #23 and prefer variable values over NSE values
+
+#### rxode2et 2.0.10
+
+* Fix dollar sign accessing of objects (like data frames), as pointed
+  out by @frbrz (issue #16)
+
+* Use `rxode2parse` functions for internal event table creation (where
+  they were moved to).
+
+* Dropped C++14 and let the system decide.
+
+#### rxode2et 2.0.9
+
+* Split off `et()`, `eventTable()` and related functions.
+
+* Also split off `rxStack()` and `rxCbindStudyIndividual()` in this
+  package.
+
+* Added a `NEWS.md` file to track changes to the package.
+
+### rxode2random (before merge)
+
+- Fix a bug when simulating nested variables (#25)
+
+#### rxode2random 2.1.0
+
+- **Breaking Change** changed distributions from the standard C++
+  `<random>` to `boost::random`.  Since this is not dependent on the
+  compiler, it makes the random numbers generated from Mac, Windows
+  and Linux the same for every distribution.  Unfortunately with a new
+  random number transformation, the simulation results will likely be
+  different than they were before.  The exception to this is the
+  uniform number, which was always the same between platforms.
+
+#### rxode2random 2.0.13
+
+- Fixed formatting issues (as requested by CRAN and identified on `m1mac`)
+
+#### rxode2random 2.0.12
+
+- Added function `dfWishart` which gives (by simulation) an
+  approximation of the degrees of freedom of a Wishart to match a
+  `rse` value.
+
+- Added function `swapMatListWithCube` which swaps omegaList with
+  omegaCube values
+
+- Ensure that the outputs are integers (instead of long integers) as
+  requested by CRAN for some checking functions.
+
+#### rxode2random 2.0.11
+
+- Fix qassert LTO
+
+#### rxode2random 2.0.10
+
+- Moved fast factor to `rxode2parse` to allow `etTrans` to be moved there
+
+#### rxode2random 2.0.9
+
+* Initial release of `rxode2random`, which separates the parallel
+  safe, random number generation from 'rxode2' into a separate package to
+  reduce 'rxode2' compilation time. This should make CRAN maintenance
+  a bit easier.
+
+* Added a `NEWS.md` file to track changes to the package.
+
+
+### rxode2parse (fixed before merging)
+
+* As requested by CRAN remove the C code `SET_TYPEOF` which is no
+  longer part of the C R API.
+
+#### rxode2parse 2.0.19
+
+* Added a evid suffix of 60 for cases where evid=2 adds an on event
+  (fixes tad() calculation in certain edge cases)
+
+* Initialize all variables to `NA`
+
+#### rxode2parse 2.0.18
+
+* Removed linear compartment solutions with gradients from rxode2parse
+  (and rxode2) when compiled with intel c++ compiler (since it crashes
+  while compiling).
+
+* Fixed `m1mac` string issues as requested by CRAN
+
+#### rxode2parse 2.0.17
+
+* Added ability to query R user functions in a rxode2 model (will
+  force single threaded solve)
+
+* Moved core `rxFunParse` and `rxRmFunParse` here so that C and R user
+  function clashes can be handled
+
+* Model variables now tracks which compartments have a lag-time
+  defined
+
+* For compartment with steady state doses (NONMEM equivalent SS=1,
+  SS=2), an additional tracking time-point is added at to track the
+  time when the lagged dose is given.  As an upshot, the lagged dose
+  will start at the steady state concentration shifted by + ii - lag
+  in `rxode2` (currently for ode systems only)
+
+* This release calculates non bio-availability adjusted duration for
+  all rates instead of trying to figure the rate duration during
+  solving.
+
+* Make double assignment an error, ie  `a <- b <-`
+
+* `NA` times are ignored (with warning)
+
+* Steady state bolus doses with `addl` are treated as non steady state
+  events (like what is observed in `NONMEM`)
+
+* Timsort was upgraded; drop radix support in rxode2 structure
+
+* `etTrans` now supports keeping logical vectors (with the appropriate
+  version of `rxode2`).
+
+* Security fixes were applied as requested by CRAN
+
+#### rxode2parse 2.0.16
+
+* Import `data.table` explicitly in the R code (before was imported only in C/C++ code)
+
+#### rxode2parse 2.0.15
+
+* Updates the make flags to support CXX17.
+
+#### rxode2parse 2.0.14
+
+* 'linCmt()' translations of 'alpha', 'beta', 'gamma', 'k21', 'k31',
+  'vc' now error instead of ignoring 'gamma' and 'k31' to give 2 cmt
+  solution
+
+* transit compartment internal code now changes dose to 0.0 when no
+  dose has been administered to the depot compartment. This way dosing
+  to the central compartment (without dosing to the transit
+  compartment) will not give a `NA` for the depot compartment (and
+  consequently for the central compartment)
+
+* Moved `rxDerived` here and added tests for it here as well.
+
+* Moved `etTransParse` here and added tests for it here as well (makes
+  up most of `etTrans`). In addition the following changes were made
+  to `etTransParse()`/`etTrans()`:
+
+  * The internal translation (`etTrans()`) will not drop times when
+    infusions stop. Before, if the infusion stopped after the last
+    observation the time when the infusion stopped would be dropped.
+    This interferes with `linCmt()` models.
+
+  * Breaking change/bug fix `evid=2` are considered observations when
+    translating data to internal `rxode2` event structure
+
+  * Fix edge case to find infusion duration when it is the first item
+    of the dosing record at time 0.
+
+ * Fixed a bug for certain infusions where the `rate`, `ii` and/or
+   `ss` data items were dropped from the output when `addDosing=TRUE`
+
+
+* Also have internal functions to convert between classic NONMEM
+  events and rxode2 events
+
+* Have an internal function that gives information on the linear
+  compartmental model translation type, which could be useful for
+  babelmixr2
+
+* 'time' in model is now case insensitive
+
+* Use function declaration in `rxode2parseGetTranslation()` to
+  determine thread safety of functions available to rxode2
+
+* Add check for correct number of function arguments to parser.
+
+* Like R, known functions can be assigned as a variable and the
+  function can still be called (while not changing the variable
+  value).  For example you can have a variable `gamma` as well as a
+  function `gamma()`.
+
+* Fix garbled error messages that occur with certain messages.
+
+* Fixed errors that occurred when using capitalized AMT variables in
+  the model.
+
+#### rxode2parse 2.0.13
+
+* Version bump for dparser (so binaries will be built correctly)
+
+#### rxode2parse 2.0.12
+
+* Bug fix for strict prototypes
+
+* Removed `sprintf` as noted by CRAN
+
+* Made `rxode2parse` dll binary independent of `rxode2()`
+
+#### rxode2parse 2.0.11
+
+* Bug fix for strict aliasing as requested by CRAN
+
+#### rxode2parse 2.0.10
+
+* Use strict aliasing as requested by CRAN
+
+#### rxode2parse 2.0.9
+
+* Initial release to split of rxode2parse from rxode2 to reduce
+  compilation time of 'rxode2'
+
+
+# rxode2 2.1.3
+
+## Bug fixes
+
+- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+
+- Fix #670 by using the last simulated observation residual when there
+  are trailing doses.
+
+## New features
+
+- Create a function to see if a rxode2 solve is loaded in memory
+  (`rxode2::rxSolveSetup()`)
+
+- Create a new function that fixes the rxode2 population values in the
+  model (and drops them in the initial estimates); `rxFixPop()`
+
+## Other changes
+
+- Pendantic no-remap (as requested by CRAN)
+
+- gcc USBAN fix (as requested by CRAN)
+
+# rxode2 2.1.2
+
+## Other changes
+
+- `rxUi` compression now defaults to fast compression
+
+- Fixes String literal formatting issues as identified by CRAN (#643)
+
+- Removes linear compartment solutions with gradients for intel c++
+  compiler (since they crash the compiler).
+
+# rxode2 2.1.0
 
 ## Breaking changes
 
@@ -11,7 +585,14 @@
 - "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
   `rxSolve()`.  This may change some ODE solving using "dop853"
 
+- When not specified (and xgxr is available), the x axis is no longer
+  assumed to be in hours
+
 ## New features
+
+- User defined functions can now be R functions.  For many of these R
+  functions they can be converted to C with `rxFun()` (you can see the
+  C code afterwards with `rxC("funName")`)
 
 - Parallel solving of models that require sorting (like modeled lag
   times, modeled duration etc) now solve in parallel instead of downgrading
@@ -90,17 +671,79 @@ mu-referencing style to run the optimization.
   your own `ci=0.99` for instance
 
 - A new function was introduced `meanProbs()` which calculates the
-  mean and expected quantiles under either the normal or t
+  mean and expected confidence bands under either the normal or t
   distribution
+
+- A related new function was introduced that calculates the mean and
+  confidence bands under the Bernoulli/Binomial distribution
+  (`binomProbs()`)
 
 - When calculating the intervals for `rxode2` simulated objects you
   can also use `mean=TRUE` to use the mean for the first level of
-  confidence using `meanProbs()`
+  confidence using `meanProbs()`. For this confidence interval you can
+  override the `n` used in the confidence interval by using `n=#`. You
+  can also change this to a prediction interval instead using
+  `pred=TRUE`.
+
+- Also when calculating the intervals for `rxode2` simulated object
+  you can also use `mean="binom"` to use the binomial distributional
+  information (and ci) for the first level of confidence using
+  `binomProbs()`.  For this confidence interval you can override the
+  `n` used in the confidence interval by using `n=#`. You can also
+  change this to a prediction interval instead using `pred=TRUE`. With
+  `pred=TRUE` you can override the number of predicted samples with
+  `m=#`
 
 - When plotting the `confint` derived intervals from an `rxode2`
   simulation, you can now subset based on a simulated value like
   `plot(ci, Cc)` which will only plot the variable `Cc` that you
   summarized even if you also summarized `eff` (for instance).
+
+- When the rxode2 ui is a compressed ui object, you can modify the ini
+  block with `$ini <-` or modify the model block with `$model <-`.
+  These are equivalent to `ini(model) <-` and `model(model) <-`,
+  respectively. Otherwise, the object is added to the user defined
+  components in the function (ie `$meta`).  When the object is
+  uncompressed, it simply assigns it to the environment instead (just
+  like before).
+
+- When printing meta information that happens to be a `lotri`
+  compatible matrix, use `lotri` to express it instead of the default
+  R expression.
+
+- Allow character vectors to be converted to expressions for piping
+  (#552)
+
+- `rxAppendModel()` will now take an arbitrary number of models and
+  append them together; It also has better handling of models with
+  duplicate parameters and models without `ini()` blocks (#617 / #573
+  / #575).
+
+- `keep` will now also keep attributes of the input data (with special
+  handling for `levels`); This means a broader variety of classes will
+  be kept carrying more information with it (for example ordered
+  factors, data frame columns with unit information, etc)
+
+- Piping arguments `append` for `ini()` and `model()` have been
+  aligned to perform similarly.  Therefore `ini(append=)` now can take
+  expressions instead of simply strings and `model(append=)` can also
+  take strings.  Also model piping now can specify the integer line
+  number to be modified just like the `ini()` could.  Also
+  `model(append=FALSE)` has been changed to `model(append=NULL)`.
+  While the behavior is the same when you don't specify the argument,
+  the behavior has changed to align with `ini()` when piping.  Hence
+  `model(append=TRUE)` will append and `model(append=FALSE)` will now
+  pre-pend to the model.  `model(append=NULL)` will modify lines like
+  the behavior of `ini(append=NULL)`.  The default of `model(line)`
+  modifying a line in-place still applies.  While this is a breaking
+  change, most code will perform the same.
+
+- Labels can now be dropped by `ini(param=label(NULL))`. Also
+  parameters can be dropped with the idiom `model(param=NULL)` or
+  `ini(param=NULL)` changes the parameter to a covariate to align with
+  this idiom of dropping parameters
+
+- `rxRename` has been refactored to run faster
 
 ## Internal new features
 
@@ -121,6 +764,9 @@ mu-referencing style to run the optimization.
 
 ## Bug fixes
 
+- Simulating/solving from functions/ui now prefers params over `omega`
+  and `sigma` in the model (#632)
+
 - Piping does not add constants to the initial estimates
 
 - When constants are specified in the `model({})` block (like `k <- 1`), they will not
@@ -130,6 +776,19 @@ mu-referencing style to run the optimization.
 
 - Bug fix for some covariate updates that may affect multiple compartment
   models (like issue #581)
+
+## Maintenance fixes
+
+- Modify plot code to work with development `xgxr`
+
+# rxode2 2.0.14
+
+- CRAN requested that FORTRAN `kind` be changed as it was not portable;
+  This was commented code, and simply removed the comment.
+
+- Bug-fix for `geom_amt()`; also now uses `linewidth` and at least `ggplot2 3.4.0`
+
+- Some documentation was cleaned up from `rxode2` 2.0.13
 
 # rxode2 2.0.13
 
@@ -523,7 +1182,8 @@ mu-referencing style to run the optimization.
 * Added function `rxSetSeed()` to set the internal RxODE seed instead
   of grabbing it from a uniform random number tied to the original R
   seed.  This will avoid the possibility of [duplicate
-  seeds](https://tinyurl.com/m62v3kv9) and is the best practice.
+  seeds](https://www.johndcook.com/blog/2016/01/29/random-number-generator-seed-mistakes/)
+  and is the best practice.
 
 * Updating parameter pointers is done once per ID and locked based on
   ID to remove the recursion in #399, but still have the correct

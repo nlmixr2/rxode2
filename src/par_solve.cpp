@@ -1,23 +1,30 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <R.h>
-#include <Rinternals.h>
 #include <string>
-#include <Rmath.h> //Rmath includes math.
-#include <R_ext/Rdynload.h>
-#include "../inst/include/rxode2.h"
 #include "strncmp.h"
-#include <rxode2parseHandleEvid.h>
-#include <rxode2parseGetTime.h>
-//#include "seed.h"
-#include <timsort.h>
+#include "timsort.h"
+#include "../inst/include/rxode2.h"
+#include "../inst/include/rxode2dataErr.h"
+#include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h"
+#include "linCmtDiffConstant.h"
+
 #define SORT gfx::timsort
+
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+
 // dop853 is same time
+
+extern "C" uint32_t getRxSeed1(int ncores);
+extern "C" void setSeedEng1(uint32_t seed);
+extern "C" void setRxSeedFinal(uint32_t seed);
 
 extern "C" {
 #include "dop853.h"
@@ -28,7 +35,7 @@ extern "C" {
 #include "par_solve.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
-    ind->solve[j] = NA_REAL;                                            \
+    ind->solve[j] = NA_REAL;                                           \
   }                                                                     \
   op->badSolve = 1;                                                     \
   i = ind->n_all_times-1; // Get out of here!
@@ -41,13 +48,7 @@ extern "C" {
 // OpenMP is used by part of the R core, therefore support will come for all platforms at some time in the future.
 // Since these are independent, we will just use Open MP.
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 int _isRstudio = 0;
 
 #include "rxData.h"
@@ -56,12 +57,11 @@ extern "C" void setRstudioPrint(int rstudio);
 extern "C" void RSprintf(const char *format, ...);
 
 extern "C" SEXP _rxHasOpenMp(){
-  SEXP ret = PROTECT(allocVector(LGLSXP,1));
+  SEXP ret = PROTECT(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
   INTEGER(ret)[0] = 1;
 #else
   INTEGER(ret)[0] = 0;
-
 #endif
   UNPROTECT(1);
   return ret;
@@ -188,6 +188,7 @@ extern "C" int isProgSupported();
 int par_progress_0=0;
 int par_progress_1=0;
 double par_progress__=1.0;
+
 extern "C" SEXP _rxParProgress(SEXP num){
   par_progress__=REAL(num)[0];
   return R_NilValue;
@@ -323,7 +324,7 @@ rx_tick rxt;
 
 extern "C" SEXP _rxTick(){
   rxt.cur++;
-  SEXP ret = PROTECT(allocVector(INTSXP, 1));
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
   rxt.d =par_progress(rxt.cur, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   INTEGER(ret)[0]=rxt.d;
   UNPROTECT(1);
@@ -368,7 +369,7 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, CHAR(STRING_ELT(str,0)));
+    Rf_errorcall(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
   }
   return R_NilValue;
 }
@@ -446,14 +447,6 @@ t_calc_lhs calc_lhs = NULL;
 
 t_update_inis update_inis = NULL;
 
-extern "C" t_calc_lhs getRxLhs() {
-  return calc_lhs;
-}
-
-extern "C" t_update_inis getUpdateInis() {
-  return update_inis;
-}
-
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;
 
 t_dydt_liblsoda dydt_liblsoda = NULL;
@@ -474,17 +467,37 @@ t_ME ME = NULL;
 t_IndF IndF = NULL;
 
 
-static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
+static inline void copyLinCmt(int *neq,
+                              rx_solving_options_ind *ind, rx_solving_options *op,
+                              double *yp) {
+  if (op->numLin > 0) {
+    // Here we are doing ODE solving OR only linear solving
+    // save the values here
+    std::copy(yp,
+              yp + op->neq,
+              ind->linCmtDummy);
+    dydt(neq, ind->tout, ind->linCmtDummy, ind->linCmtDummy);
+    std::copy(ind->linCmtSave,
+              ind->linCmtSave + op->numLin + op->numLinSens,
+              yp + op->linOffset);
+  }
+}
+
+static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;
-      if (cid > 0 && cid < nerr) RSprintf("IDID=%d, %s\n", *idid, err_msg[-*idid-1]);
-      else RSprintf("IDID=%d, unhandled exception\n", *idid);
+      if (cid > 0 && cid < nerr){
+        RSprintf("IDID=%d, %s\n", *idid, err_msg[-*idid-1]);
+      }
+      else {
+        RSprintf("IDID=%d, unhandled exception\n", *idid);
+      }
     }
     *rc = *idid;
     badSolveExit(*i);
-  } else if (ind->err){
+  } else if (ind->err) {
     if (doPrint) printErr(ind->err, ind->id);
     /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
     *rc = -2019;
@@ -493,11 +506,15 @@ static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char*
   } else {
     if (R_FINITE(rx->stateTrimU)){
       double top=fabs(rx->stateTrimU);
-      for (int j = op->neq; j--;) yp[j]= min(top,yp[j]);
+      for (int j = op->neq; j--;) {
+        yp[j]= min(top,yp[j]);
+      }
     }
     if (R_FINITE(rx->stateTrimL)){
       double bottom=rx->stateTrimL;
-      for (int j = op->neq; j--;) yp[j]= max(bottom,yp[j]);
+      for (int j = op->neq; j--;) {
+        yp[j]= max(bottom,yp[j]);
+      }
     }
   }
   ind->slvr_counter[0]++;
@@ -523,34 +540,6 @@ double *global_rwork(unsigned int mx){
   }
   return global_rworkp;
 }
-
-extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx,
-                                               rx_solving_options op) {
-  static void (*fun)(rx_solve,
-                     rx_solving_options)=NULL;
-  if (fun == NULL) {
-    fun = (void (*)(rx_solve,
-                    rx_solving_options))  R_GetCCallable("rxode2random","_rxode2random_assignSolveOnly");
-  }
-  fun(rx, op);
-}
-
-extern "C" {
-  typedef void (*_rxode__assignFuns2_t)(rx_solve rx,
-                                        rx_solving_options op,
-                                        t_F f,
-                                        t_LAG lag,
-                                        t_RATE rate,
-                                        t_DUR dur,
-                                        t_calc_mtime mtime,
-                                        t_ME me,
-                                        t_IndF indf,
-                                        t_getTime gettime,
-                                        t_locateTimeIndex timeindex,
-                                        t_handle_evidL handleEvid,
-                                        t_getDur getdur);
-}
-
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
@@ -610,21 +599,6 @@ void rxUpdateFuns(SEXP trans){
   rx->op = op;
   char s_assignFuns2[300];
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
-  _rxode__assignFuns2_t f2 = (_rxode__assignFuns2_t) R_GetCCallable(lib, s_assignFuns2);
-  f2(rx_global,
-     op_global,
-     AMT,
-     LAG,
-     RATE,
-     DUR,
-     calc_mtime,
-     ME,
-     IndF,
-     getTime,
-     _locateTimeIndex,
-     handle_evidL,
-     _getDur);
-  _rxode2random_assignSolveOnly2(rx_global, op_global);
 }
 
 extern "C" void rxClearFuns(){
@@ -646,9 +620,31 @@ extern "C" void F77_NAME(dlsoda)(
                                  void (*)(int *, double *, double *, int *, int *, double *, int *),
                                  int *);
 
+static inline void linSolve(int *neq, rx_solving_options_ind *ind,
+                            double *yp, double *xp, double xout) {
+  // there is no ODEs when using linSolve
+  rx_solve *rx = &rx_global;
+  rx_solving_options *op = &op_global;
+
+  // The assumption here is that the linear solver does not depend on
+  // state values.
+  //
+  // This means that the clearances do not depend on
+  // depot values.  To ensure this, the values while solving are set to NA
+  //
+  dydt(neq, xout, rx->ypNA, ind->linCmtDummy);
+  std::copy(ind->linCmtSave,
+            ind->linCmtSave + op->numLin + op->numLinSens,
+            yp + op->linOffset);
+  // The values **could** depend on state, though it would require a
+  // recursive solve and currently isn't implemented.  It also would
+  // no longer be a linear compartment model :)
+}
+
 extern "C" rx_solve *getRxSolve2_(){
   return &rx_global;
 }
+
 extern "C" rx_solve *getRxSolve_(){
   rx_solve *rx = &rx_global;
   rx->subjects = inds_global;
@@ -686,7 +682,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
       }
       time[i] = getTime__(ind->ix[i], ind, 1);
     }
-    if (op->naTime == 1){
+    if (op->naTime != 0) {
       doSort=0;
       break;
     }
@@ -748,207 +744,143 @@ static inline void solveWith1Pt(int *neq,
                                 t_update_inis u_inis,
                                 void *ctx){
   int idid, itol=0;
-  switch(op->stiff){
-  case 3:
+  int neqOde = op->neq - op->numLin - op->numLinSens;
+  if (neqOde == 0 && op->neq > 0) {
     if (!isSameTime(xout, xp)) {
-      idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
-                    ME, IndF);
+      preSolve(op, ind, xp, xout, yp);
+      linSolve(neq, ind, yp, &xp, xout);
     }
-    if (idid <= 0) {
-      /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
-      ind->rc[0] = idid;
-      // Bad Solve => NA
-      badSolveExit(*i);
-    } else if (ind->err){
-      /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
-      ind->rc[0] = idid;
-      // Bad Solve => NA
-      badSolveExit(*i);
-    }
-    break;
-  case 2:
-    if (!isSameTime(xout, xp)) {
-      lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
-    }
-    if (*istate <= 0) {
-      RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
-      /* ind->rc[0] = *istate; */
-      ind->rc[0] = -2019;
-      // Bad Solve => NA
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; */ // Get out of here!
-      /* j=op->maxSS; */
+  } else {
+    switch(op->stiff) {
+    case 3:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
+                      ME, IndF);
+      }
+      if (idid <= 0) {
+        /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
+        ind->rc[0] = idid;
+        // Bad Solve => NA
+        badSolveExit(*i);
+      } else if (ind->err){
+        /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
+        ind->rc[0] = idid;
+        // Bad Solve => NA
+        badSolveExit(*i);
+      }
       break;
-    } else if (ind->err){
-      printErr(ind->err, ind->id);
-      ind->rc[0] = -2019;
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      *i = ind->n_all_times-1; // Get out of here!
-      /* j=op->maxSS; */
+    case 2:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err){
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        *i = ind->n_all_times-1; // Get out of here!
+        break;
+      }
       break;
-    }
-    break;
-  case 1:
-    if (!isSameTime(xout, xp)) {
-      F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
-                       &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                       istate, &giopt, global_rworkp,
-                       &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
-    }
-    if (*istate <= 0) {
-      RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
-      ind->rc[0] = -2019;/* *istate; */
-      // Bad Solve => NA
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; // Get out of here! */
-      /* j=op->maxSS; */
+    case 1:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        neq[0] = op->neq - op->numLin - op->numLinSens;
+        F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
+                         &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                         istate, &giopt, global_rworkp,
+                         &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+        neq[0] = op->neq;
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        ind->rc[0] = -2019;/* *istate; */
+        break;
+      } else if (ind->err){
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
       break;
-    } else if (ind->err){
-      printErr(ind->err, ind->id);
-      ind->rc[0] = -2019;
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; // Get out of here! */
-      /* j=op->maxSS; */
-      break;
-    }
-    break;
-  case 0:
-    if (!isSameTimeDop(xout, xp)) {
-      idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                    dydt,       /* function computing the value of f(x,y) */
-                    xp,           /* initial x-value */
-                    yp,           /* initial values for y */
-                    xout,         /* final x-value (xend-x may be positive or negative) */
-                    &(op->RTOL),          /* relative error tolerance */
-                    &(op->ATOL),          /* absolute error tolerance */
-                    itol,         /* switch for rtoler and atoler */
-                    solout,         /* function providing the numerical solution during integration */
-                    0,         /* switch for calling solout */
-                    NULL,           /* messages stream */
-                    DBL_EPSILON,    /* rounding unit */
-                    0,              /* safety factor */
-                    0,              /* parameters for step size selection */
-                    0,
-                    0,              /* for stabilized step size control */
-                    ind->HMAX,              /* maximal step size */
-                    op->H0,            /* initial step size */
-                    op->mxstep,            /* maximal number of allowed steps */
-                    1,            /* switch for the choice of the coefficients */
-                    -1,                     /* test for stiffness */
-                    0,                      /* number of components for which dense outpout is required */
-                    NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                    0                       /* declared length of icon */
-                    );
-    }
-    if (idid < 0) {
-      ind->rc[0] = -2019;
-      // Bad Solve => NA
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; // Get out of here! */
-      /* j=op->maxSS; */
-      break;
-    } else if (ind->err){
-      printErr(ind->err, ind->id);
-      /* ind->rc[0] = -1000; */
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      *i = ind->n_all_times-1; // Get out of here!
-      /* j=op->maxSS; */
+    case 0:
+      if (!isSameTimeDop(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        // change to real ODE num
+        neq[0] = op->neq - op->numLin - op->numLinSens;
+        idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+                      dydt,         /* function computing the value of f(x,y) */
+                      xp,           /* initial x-value */
+                      yp,           /* initial values for y */
+                      xout,         /* final x-value (xend-x may be positive or negative) */
+                      &(op->RTOL),          /* relative error tolerance */
+                      &(op->ATOL),          /* absolute error tolerance */
+                      itol,         /* switch for rtoler and atoler */
+                      solout,         /* function providing the numerical solution during integration */
+                      0,         /* switch for calling solout */
+                      NULL,           /* messages stream */
+                      DBL_EPSILON,    /* rounding unit */
+                      0,              /* safety factor */
+                      0,              /* parameters for step size selection */
+                      0,
+                      0,              /* for stabilized step size control */
+                      ind->HMAX,              /* maximal step size */
+                      op->H0,            /* initial step size */
+                      op->mxstep,            /* maximal number of allowed steps */
+                      1,            /* switch for the choice of the coefficients */
+                      -1,                     /* test for stiffness */
+                      0,                      /* number of components for which dense outpout is required */
+                      NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                      0                       /* declared length of icon */
+                      );
+        // switch to overall states
+        neq[0] = op->neq;
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (idid < 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err){
+        printErr(ind->err, ind->id);
+        *i = ind->n_all_times-1; // Get out of here!
+        break;
+      }
       break;
     }
-    break;
   }
 }
 
-static inline int handleExtraDose(int *neq,
-                                  int *BadDose,
-                                  double *InfusionRate,
-                                  double *dose,
-                                  double *yp,
-                                  double xout, double xp, int id,
-                                  int *i, int nx,
-                                  int *istate,
-                                  rx_solving_options *op,
-                                  rx_solving_options_ind *ind,
-                                  t_update_inis u_inis,
-                                  void *ctx) {
-  if (ind->extraDoseN[0] > ind->idxExtra) {
-    if (ind->extraSorted == 0) {
-      // do sort
-      SORT(ind->extraDoseTimeIdx + ind->idxExtra, ind->extraDoseTimeIdx + ind->extraDoseN[0],
-           [ind](int a, int b){
-             double timea = ind->extraDoseTime[a],
-               timeb = ind->extraDoseTime[b];
-             if (timea == timeb) {
-               int evida = ind->extraDoseEvid[a],
-                 evidb = ind->extraDoseEvid[b];
-               if (evida == evidb){
-                 return a < b;
-               }
-               return evida < evidb;
-             }
-             return timea < timeb;
-           });
-      ind->extraSorted=1;
-      ind->idxExtra=0;
+
+//' This function is used to check if the steady state can be handled
+//' by the pre-solved linear solutions
+//'
+//' @param op The rx solving options
+//'
+//' @param ind The rx solving individual options
+//'
+//' @param idx The index of the current dose
+//'
+//' @return 1 if the steady state can be handled, 0 otherwise
+//'
+//' Currently this requires:
+//'
+//' - Only linCmt() is defined (no mixed ODE/solved)
+//' - The dose is to the depot or central compartment
+static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_ind *ind, int idx) {
+  if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin) {
+    int evid = getEvid(ind, idx);
+    int wh, cmt, wh100, whI, wh0;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    if (op->depotLin) {
+      return (cmt == 0 || cmt == 1);
+    } else {
+      return (cmt == 0);
     }
-    // Use "real" xout for handle_evid functions.
-    int idx = ind->idx;
-    int ixds = ind->ixds;
-    int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-    ind->idx = -1-trueIdx;
-    double time = getAllTimes(ind, ind->idx);
-    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
-      ind->idxExtra++;
-      trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-      ind->idx = -1-trueIdx;
-      time = getAllTimes(ind, ind->idx);
-    }
-    if ((isSameTimeOp(time, xp) || time > xp) && (isSameTimeOp(time, xout) || time <= xout)) {
-      bool ignore = true;
-      while (ignore && time <= xout) {
-        ignore=false;
-        for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
-          int curIdx = ind->ignoredDoses[i];
-          if (curIdx < 0 && -1-curIdx == trueIdx) {
-            ignore = true;
-            break;
-          }
-        }
-        if (ignore) {
-          ind->idxExtra++;
-          if (ind->idxExtra < ind->extraDoseN[0]) {
-            trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-            ind->idx = -1-trueIdx;
-            time = getAllTimes(ind, ind->idx);
-          } else {
-            ind->idxExtra--;
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-      if (ignore) {
-        ind->idx = idx;
-        ind->ixds = ixds;
-        return 0;
-      } else {
-        ind->extraDoseNewXout = time;
-        ind->idx = idx;
-        ind->ixds = ixds;
-        // REprintf("time: %f; xp: %f; xout: %f; handleExtra\n", time, xp, xout);
-        return 1;
-      }
-    }
-    ind->idx = idx;
-    ind->ixds = ixds;
-    return 0;
   }
   return 0;
 }
@@ -969,12 +901,66 @@ extern "C" void handleSSbolus(int *neq,
                               double *xout2,
                               double *xp2,
                               double *curIi,
-                              int *canBreak) {
+                              int *canBreak,
+                              int adjustEvidBolusLag) {
+  ind->ssTime = *xp2;
+  if (canHandleSSLinear(op, ind, ind->ix[*i])) {
+
+    // only a linear solved, use calculated steady state instead of
+    // solved steady state.
+    //
+    // First set the steady state options for linCmtA or linCmtB
+    ind->linSS = 3;
+    ind->linSStau = *curIi;
+
+    // use handle evid to figure out what dose is applied
+
+    double ydum[2];
+    ydum[0] = ydum[1] = 0;
+
+    // here dose can be to the depot or central compartment
+    ind->idx=*i;
+    *xout2 = *xp2 + *curIi;
+    int evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
+    int wh, cmt, wh100, whI, wh0;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    ind->linSSbolusCmt = cmt;
+    // Use "real" xout for handle_evid functions.
+    handle_evid(getEvid(ind, ind->ix[*i])-adjustEvidBolusLag, neq[0],
+                BadDose, InfusionRate, dose, ydum,
+                *xout, neq[1], ind);
+    ind->ixds--; // This dose stays in place
+
+    ind->linSSvar = ydum[cmt];
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    ind->linSS = 0; // reset to normal solve
+
+    if (yp[cmt] > 0) {
+      // now advance system by the bolus time to get the right derivatives
+      // and use the trough concentrations (as expected in this function)
+      *xp2 = *xout2;
+      *xout2 = *xp2 + *curIi;
+      solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+      ind->ssTime = NA_REAL;
+      return;
+    }
+  }
+  // advance to trough
+  ind->idx=*i;
+  *xout2 = *xp2 + *curIi;
+  // yp is last solve or y0
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  *xp2 = *xout2;
+  int evid=0;
   for (int j = 0; j < op->maxSS; j++) {
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
     // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+    evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
+    handle_evid(evid, neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
     // yp is last solve or y0
@@ -1013,6 +999,7 @@ extern "C" void handleSSbolus(int *neq,
     *istate=1;
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void solveSSinf(int *neq,
@@ -1038,12 +1025,54 @@ extern "C" void solveSSinf(int *neq,
                            double *dur,
                            double *dur2,
                            int *canBreak) {
+  double ssStart = *xp2;
+  double ssStop = *xp2 + *dur;
+  if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+    // only a linear solved, use calculated steady state instead of
+    // solved steady state.
+    //
+    // First set the steady state options for linCmtA or linCmtB
+    ind->linSS = 2;
+    ind->linSSvar = *dur; // tinf or dur
+    ind->linSStau = *curIi;
+    ind->ssTime = ssStart;
+
+    // Next, turn on the infusion in the appropriate compartment
+    *canBreak=1;
+    *xout2 = *xp2+*dur;
+    ind->idx=*bi;
+    ind->ixds = *infBixds;
+    handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
+                BadDose, InfusionRate, dose, yp,
+                *xout, neq[1], ind);
+    // yp is last solve or y0
+    *istate=1;
+    // yp is last solve or y0
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    *xp2 = *xout2;
+    // Turn off Infusion; no need to solve anything afterward
+    *xout2 = *xp2 + *dur2;
+    ind->ixds = *infEixds;
+    ind->idx=*ei;
+    handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
+                BadDose, InfusionRate, dose, yp,
+                *xout+*dur, neq[1], ind);
+    ind->linSS = 0; // switch back to normal solve
+    if (yp[ind->cmt] > 0) {
+      // solved successfully, return
+      ind->ssTime = NA_REAL;
+      return;
+    }
+  }
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak=1;
     *xout2 = *xp2+*dur;
     ind->idx=*bi;
     ind->ixds = *infBixds;
+    ind->ssTime = ssStart;
+
     handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
@@ -1089,6 +1118,7 @@ extern "C" void solveSSinf(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
+    ind->ssTime = ssStop;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
@@ -1124,6 +1154,7 @@ extern "C" void solveSSinf(int *neq,
     }
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void solveSSinfLargeDur(int *neq,
@@ -1156,6 +1187,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
   *addTime = *curIi - *offTime;
   ind->ixds = *infBixds;
   ind->idx = *bi;
+  double timeStart = *xp2;
+  ind->ssTime = timeStart;
   for (int j = 0; j < *numDoseInf; j++) {
     ind->ixds = *infBixds;
     ind->idx = *bi;
@@ -1168,6 +1201,9 @@ extern "C" void solveSSinfLargeDur(int *neq,
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
+  int nDup = 0;
+  double time2 = *xp2;
+  double time3 = *xp2 + *addTime;
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak =1;
@@ -1180,6 +1216,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
+    ind->ssTime = time2;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
@@ -1219,6 +1256,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
+    ind->ssTime = time3;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
@@ -1249,11 +1287,15 @@ extern "C" void solveSSinfLargeDur(int *neq,
         ind->solveLast2[k] = yp[k];
       }
       if (canBreak){
-        break;
+        nDup++;
+        if (nDup >= 7) {
+          break;
+        }
       }
     }
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void handleSSinf8(int *neq,
@@ -1275,6 +1317,40 @@ extern "C" void handleSSinf8(int *neq,
                              double *xout2,
                              double *xp2,
                              int *canBreak) {
+  ind->ssTime = *xp2;
+  if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+    // only a linear solved, use calculated steady state instead of
+    // solved steady state.
+    //
+    // First set the steady state options for linCmtA or linCmtB
+    ind->linSS = 1; // infinite infusin
+
+    // Next, turn on the infusion in the appropriate compartment
+    ind->ixds= *infBixds;
+    ind->idx= *bi;
+    // REprintf("Assign ind->ixds to %d (idx: %d) #0\n", ind->ixds, ind->idx);
+    // Rate is fixed, so modifying bio-availability doesn't change duration.
+    ind->InfusionRate[ind->cmt] = *rateOn;
+    ind->on[ind->cmt] = 1;
+    *xp2 = 0.0;
+
+    // next solve
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+
+    // turn off infusion
+    ind->InfusionRate[ind->cmt] = 0.0;
+    *xp2=*xout;
+    *istate=1;
+
+    ind->linSS = 0; // switch back to normal solve
+    if (yp[ind->cmt] > 0.0) {
+      // successful solve; for some reason the mac doesn't update here
+      // :(
+      ind->ssTime = NA_REAL;
+      return;
+    }
+  }
   ind->ixds= *infBixds;
   ind->idx= *bi;
   // REprintf("Assign ind->ixds to %d (idx: %d) #0\n", ind->ixds, ind->idx);
@@ -1284,7 +1360,7 @@ extern "C" void handleSSinf8(int *neq,
   *xp2 = 0.0;
   double infStep = op->infSSstep, a1=1.0, t1=*xp2+1.0;
   // Based on http://www.rxkinetics.com/theo.html -- Chiou method
-  for (int j = 0; j < op->maxSS; j++){
+  for (int j = 0; j < op->maxSS; j++) {
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
@@ -1299,7 +1375,12 @@ extern "C" void handleSSinf8(int *neq,
       }
       *canBreak=0;
     } else {
-      for (int k = neq[0]; k--;){
+      for (int k = 0; k < neq[0]; k++){
+        // if (k == 0) REprintf("\n");
+        // REprintf("j: %d rtol[k:%d]: %f  Atol: %f xout: %f:  y: %f diff: %f\n", j, k,
+        //          op->ssRtol[k], op->ssAtol[k], *xout2,
+        //          yp[k],
+        //          fabs(yp[k]-ind->solveLast[k]));
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
@@ -1317,6 +1398,7 @@ extern "C" void handleSSinf8(int *neq,
     *xp2=*xout;
     *istate=1;
   }
+  ind->ssTime = NA_REAL;
 }
 
 
@@ -1342,6 +1424,18 @@ void handleSS(int *neq,
   bool skipDosingEvent = false, isRateDose = false;
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
+  int adjustEvidBolusLag = 0;
+  if (isModeled &&
+      ind->whI == EVIDF_MODEL_DUR_ON &&
+      ((isSsLag && getDoseP1(ind, ind->ixds) == 0.0) ||
+       (!isSsLag && getDose(ind, ind->ixds) == 0.0))
+      ) {
+    // This is a modeled duration dose with duration = 0.
+    // Handle like a bolus dose.
+    isModeled = false;
+    ind->whI = EVIDF_NORMAL;
+    adjustEvidBolusLag = EVIDF_MODEL_DUR_ON*10000;
+  }
   double curIi = ind->ixds == 0 ? 0.0 : getIiNumber(ind, ind->ixds-1);
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
@@ -1365,7 +1459,7 @@ void handleSS(int *neq,
       infSixds = 0,
       ei=0, wh, cmt, wh100, whI, wh0, oldI,
       bi = *i, fi = *i;
-    if (doSSinf){
+    if (doSSinf) {
     } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR) {
       if (getDose(ind, ind->idose[ind->ixds]) < 0) return;
       oldI = ind->whI;
@@ -1641,8 +1735,8 @@ void handleSS(int *neq,
       }
       if (ind->ix[ei] != ind->idose[infEixds]){
         /* Rf_errorcall(R_NilValue, "Cannot figure out infusion end time."); */
-        if (!(ind->err & 8388608)){
-          ind->err += 8388608;
+        if (!(ind->err & rxErrRate02)){
+          ind->err += rxErrRate02;
           /* Rf_errorcall(R_NilValue, "Rate is zero/negative"); */
         }
         return;
@@ -1682,7 +1776,6 @@ void handleSS(int *neq,
     // Reset LHS to NA
     ind->inLhs = 0;
     for (j = op->nlhs; j--;) ind->lhs[j] = NA_REAL;
-    memcpy(yp,op->inits, neq[0]*sizeof(double));
     u_inis(neq[1], yp); // Update initial conditions @ current time
     if (rx->istateReset) *istate = 1;
     int k;
@@ -1745,14 +1838,15 @@ void handleSS(int *neq,
                     &xout2,
                     &xp2,
                     &curIi,
-                    &canBreak);
+                    &canBreak,
+                    adjustEvidBolusLag);
       if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
         xout2 = xp2 + curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
         *istate=1;
-        handle_evid(getEvid(ind, ind->ix[bi]), neq[0],
+        handle_evid(getEvid(ind, ind->ix[bi])-adjustEvidBolusLag, neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
         // yp is last solve or y0
@@ -1764,6 +1858,9 @@ void handleSS(int *neq,
         }
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
+        }
+        if (adjustEvidBolusLag != 0) {
+          pushIgnoredDose(ind->ixds+1, ind);
         }
         ind->ixds--; // This dose stays in place
         // REprintf("ixds-- #3\n");
@@ -2095,9 +2192,18 @@ void handleSS(int *neq,
   updateExtraDoseGlobals(ind);
 }
 
+static inline void
+updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
+            double &xout,
+            int &i, int &nx) {
+  if (i+1 != nx) {
+    std::copy(getSolve(i), getSolve(i+1), getSolve(i+1));
+  }
+  calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+}
+
 //================================================================================
 // Inductive linearization routines
-
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                             t_update_inis u_inis, t_ME ME, t_IndF IndF) {
   clock_t t0 = clock();
@@ -2127,9 +2233,10 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   rc= ind->rc;
   double xp = x[0];
   xoutp=xp;
-  unsigned int j;
-  for(i=0; i<nx; i++) {
+  ind->solvedIdx = 0;
+  for (i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     xout = getTime_(ind->ix[i], ind);
     yp = getSolve(i);
     if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2138,29 +2245,18 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         // Bad Solve => NA
         badSolveExit(i);
       } else {
+        preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
         xoutp=xout;
-        postSolve(&idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
+        postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
       }
     }
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp,inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        if (rx->istateReset) idid = 1;
-        xp=xout;
-        ind->ixds++;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &idid, u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &idid, op, ind, u_inis, NULL);
@@ -2170,10 +2266,11 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (rx->istateReset) idid = 1;
         xp = xout;
       }
-      if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+
+      updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
@@ -2184,6 +2281,7 @@ extern "C" void ind_indLin(rx_solve *rx,
   rx_solving_options *op = &op_global;
   ind_indLin0(rx, op, solveid, u_inis, ME, IndF);
 }
+
 
 extern "C" void par_indLin(rx_solve *rx){
   assignFuns();
@@ -2200,14 +2298,17 @@ extern "C" void par_indLin(rx_solve *rx){
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
   int abort = 0;
   // FIXME parallel
+  uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     if (abort == 0){
+      setSeedEng1(seed0 + solveid - 1 );
       ind_indLin(rx, solveid, update_inis, ME, IndF);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
       }
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
@@ -2216,6 +2317,10 @@ extern "C" void par_indLin(rx_solve *rx){
     if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, cores, t0, 0);
   }
 }
+
+
+
+
 // ================================================================================
 // liblsoda
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
@@ -2244,11 +2349,12 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double xout;
   int *rc;
   double *yp;
+  int neqOde = *neq - op->numLin - op->numLinSens;
   inits = op->inits;
   struct lsoda_context_t * ctx = lsoda_create_ctx();
   ctx->function = (_lsoda_f)dydt_liblsoda;
   ctx->data = neq;
-  ctx->neq = neq[0];
+  ctx->neq = neqOde;
   ctx->state = 1;
   ctx->error=NULL;
   ind = &(rx->subjects[neq[1]]);
@@ -2263,10 +2369,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   x = ind->all_times;
   rc= ind->rc;
   double xp = x[0];
-  unsigned int j;
   lsoda_prepare(ctx, &opt);
+  ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3) {
@@ -2279,8 +2386,10 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
-            lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
-            postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
           int idx = ind->idx;
           int ixds= ind->ixds;
@@ -2293,14 +2402,18 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
-            postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
-          postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
         }
         xp = xout;
       }
@@ -2309,19 +2422,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     if (!op->badSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp,inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        if (rx->istateReset) ctx->state = 1;
-        xp=xout;
-        ind->ixds++;
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(ctx->state), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx);
@@ -2331,26 +2432,17 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (rx->istateReset) ctx->state = 1;
         xp = xout;
       }
-      if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
+    ind->solvedIdx = i;
   }
   // Reset LHS to NA
   lsoda_free(ctx);
   free(ctx);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
-
-typedef uint32_t (*getRxSeed1_t)(int ncores);
-extern getRxSeed1_t getRxSeed1;
-
-typedef void (*setSeedEng1_t)(uint32_t seed);
-extern setSeedEng1_t setSeedEng1;
-
-typedef void (*setRxSeedFinal_t)(uint32_t seed);
-extern setRxSeedFinal_t setRxSeedFinal;
 
 extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
                              t_dydt_liblsoda dydt, t_update_inis u_inis){
@@ -2372,7 +2464,77 @@ extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
   ind_liblsoda0(rx, op, opt, solveid, dydt, u_inis);
 }
 
+
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
+
+extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
+                            t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_linCmt(rx_solve *rx) {
+  rx_solving_options *op = &op_global;
+#ifdef _OPENMP
+  int cores = op->cores;
+#else
+  int cores = 1;
+#endif
+  int nsub = rx->nsub, nsim = rx->nsim;
+  int displayProgress = (op->nDisplayProgress <= nsim*nsub);
+  clock_t t0 = clock();
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = 0;
+  /* double *yp0=(double*) malloc((op->neq)*nsim*nsub*sizeof(double)); */
+  int curTick=0;
+  int cur=0;
+  // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
+  // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
+  // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
+  int abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(cores)
+#endif
+  for (int thread=0; thread < cores; thread++) {
+    for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
+      if (abort == 0){
+        setSeedEng1(seed0 + rx->ordId[solveid] - 1);
+
+        ind_linCmt0(rx, op, solveid, neq, dydt, update_inis);
+
+        if (displayProgress && thread == 0) {
+#pragma omp critical
+          cur++;
+#ifdef _OPENMP
+          if (omp_get_thread_num() == 0) // only in master thread!
+#endif
+            {
+              curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
+              if (abort == 0){
+                if (checkInterrupt()) abort =1;
+              }
+            }
+        }
+      }
+    }
+  }
+  setRxSeedFinal(seed0 + nsim*nsub);
+  if (abort == 1){
+    op->abort = 1;
+    /* yp0 = NULL; */
+    par_progress(cur, nsim*nsub, curTick, cores, t0, 1);
+  } else {
+    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, cores, t0, 0);
+  }
+  if (displayProgress) {
+    int doIt = isProgSupported();
+    if (doIt == -1){
+    } else if (isRstudio() || doIt == 0){
+      RSprintf("\n");
+    } else {
+      RSprintf("\r                                                                                \r");
+    }
+  }
+}
 
 extern "C" void par_liblsodaR(rx_solve *rx) {
   rx_solving_options *op = &op_global;
@@ -2480,11 +2642,13 @@ extern "C" void par_liblsoda(rx_solve *rx){
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
   int abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores)
 #endif
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     if (abort == 0){
+      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
       ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
       if (displayProgress){
 #pragma omp critical
@@ -2501,6 +2665,7 @@ extern "C" void par_liblsoda(rx_solve *rx){
       }
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
@@ -2603,7 +2768,9 @@ extern "C" void rxOptionsFree(){
   global_scalei = 0;
 }
 
+extern "C" void freeExtraDosingC();
 extern "C" void rxFreeLast(){
+  freeExtraDosingC();
   R_Free(inds_global);
   inds_global=NULL;
 }
@@ -2623,9 +2790,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   gliw = liw;
   glrw = lrw;
 
-  /* memset(rwork,0.0,lrw+1); */ // Does not work since it is a double
-  for (i = lrw+1; i--;) rwork[i]=0;
-  memset(iwork,0,liw+1); // Works because it is a integer
+  std::fill(rwork, rwork + lrw + 1, 0.0); // Works because it is a double
+  std::fill(iwork, iwork + liw + 1, 0); // Works because it is a integer
 
   neq[1] = solveid;
 
@@ -2645,9 +2811,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   double xout;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
-  unsigned int j;
+  ind->solvedIdx = 0;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2659,9 +2826,13 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -2674,16 +2845,28 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ind->idx = idx;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
-          F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+          preSolve(op, ind, xp, xout, yp);
+          neq[0] = op->neq - op->numLin - op->numLinSens;
+          F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
+                           &xp, &xout, &gitol,
+                           &(op->RTOL),
+                           &(op->ATOL),
+                           &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-          postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          neq[0] = op->neq;
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
         xp = xout;
         //dadt_counter = 0;
@@ -2692,19 +2875,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp, op->inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        if (rx->istateReset) istate = 1;
-        ind->ixds++;
-        xp = xout;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(istate), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
@@ -2714,17 +2886,18 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (rx->istateReset) istate = 1;
         xp = xout;
       }
-      // Copy to next solve so when assigned to yp=ind->solve[neq[0]*i]; it will be the prior values
-      if (i+1 != ind->n_all_times) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      // Copy to next solve so when assigned to
+      // yp=ind->solve[neq[0]*i]; it will be the prior values
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
 extern "C" void ind_lsoda(rx_solve *rx, int solveid,
                           t_dydt_lsoda_dum dydt_ls, t_update_inis u_inis, t_jdum_lsoda jdum,
-                          int cjt){
+                          int cjt) {
   int neq[2];
   neq[0] = op_global.neq;
   neq[1] = 0;
@@ -2741,7 +2914,7 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
              dydt_ls, u_inis, jdum);
 }
 
-extern "C" void par_lsoda(rx_solve *rx){
+extern "C" void par_lsoda(rx_solve *rx) {
   int nsub = rx->nsub, nsim = rx->nsim;
   int displayProgress = (op_global.nDisplayProgress <= nsim*nsub);
   clock_t t0 = clock();
@@ -2763,22 +2936,365 @@ extern "C" void par_lsoda(rx_solve *rx){
 
   int curTick = 0;
   int abort = 0;
+  uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
-    ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
-               dydt_lsoda_dum, update_inis, jdum_lsoda);
-    if (displayProgress){ // Can only abort if it is long enough to display progress.
-      curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
-      if (checkInterrupt()){
-        abort =1;
-        break;
+    if (abort == 0){
+      setSeedEng1(seed0 + solveid - 1 );
+      ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
+                 dydt_lsoda_dum, update_inis, jdum_lsoda);
+      if (displayProgress){ // Can only abort if it is long enough to display progress.
+        curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
+        if (checkInterrupt()){
+          abort =1;
+          break;
+        }
       }
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op_global.abort = 1;
   } else {
     if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, 1, t0, 0);
   }
+}
+
+extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                               t_dydt c_dydt, t_update_inis u_inis) {
+  int i;
+  double xout;
+  double *yp;
+  int istate = 0;
+  rx_solving_options_ind *ind;
+  double *x;
+  int *BadDose;
+  double *InfusionRate;
+  double *inits;
+  int *rc;
+  void *ctx = NULL;
+  int idid=1;
+  const char **err_msg = NULL;
+  int nx;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = rx->ordId[solveid]-1;
+  ind = &(rx->subjects[neq[1]]);
+
+  double ret = 0.0;
+  double cur = 0.0;
+  double delta = 0.0;
+  int n =0, nzero = 0;
+
+  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return NA_REAL;
+
+  nx = ind->n_all_times;
+  inits = op->inits;
+  BadDose = ind->BadDose;
+  InfusionRate = ind->InfusionRate;
+  x = ind->all_times;
+  rc= ind->rc;
+  double xp = x[0];
+  ind->solvedIdx = 0;
+  for(i=0; i<nx; i++) {
+    ind->idx=i;
+    ind->linSS=0;
+    yp = getSolve(i);
+    xout = getTime_(ind->ix[i], ind);
+    if (global_debug) {
+      RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
+    }
+    if (getEvid(ind, ind->ix[i]) != 3) {
+      if (ind->err) {
+        printErr(ind->err, ind->id);
+        *rc = idid;
+        // Bad Solve => NA
+        badSolveExit(i);
+      } else {
+        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+          int idx = ind->idx;
+          int ixds = ind->ixds;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          ind->idx = idx;
+          ind->ixds = ixds;
+          ind->idxExtra++;
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+        }
+        if (!isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          linSolve(neq, ind, yp, &xp, xout);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
+        }
+      }
+    }
+    ind->_newind = 2;
+    if (!op->badSolve){
+      ind->idx = i;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == EVID0_OFF){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        xp = xout;
+      }
+      // Geometric mean of all compartments
+      double cur0 = 0.0;
+      int n0=0;
+      int nzero0 = 0;
+      int cmtId = 1;
+      for (int i = 0; i < rx->linCmtNcmt; ++i) {
+        if ((rx->linCmtHcmt & cmtId) != 0) {
+          cur = yp[op->numLin + rx->linCmtOral0 + i];
+          if (cur == 0) {
+            nzero0++;
+          } else {
+            n0++;
+            switch (rx->linCmtHmeanI) {
+            case 1:
+              delta = cur - cur0; // arithmetic mean
+              break;
+            case 2:
+              delta = log(cur) - cur0; // geometric mean
+              break;
+            case 3:
+              delta = 1.0/cur - cur0; // harmonic mean
+              break;
+            }
+            cur0 += delta/n0;
+          }
+        }
+        cmtId <<= 1;
+      }
+      if (rx->linCmtOral0 == 1) {
+        if ((rx->linCmtHcmt & linCmtDepot) != 0) {
+          cur = yp[op->numLin + rx->linCmtOral0 + i];
+          if (cur == 0) {
+            nzero0++;
+          } else {
+            n0++;
+            switch (rx->linCmtHmeanI) {
+            case 1:
+              delta = cur - cur0; // arithmetic mean
+              break;
+            case 2:
+              delta = log(cur) - cur0; // geometric mean
+              break;
+            case 3:
+              delta = 1.0/cur - cur0; // harmonic mean
+              break;
+            }
+            cur0 += delta/n0;
+          }
+        }
+      }
+      if ((rx->linCmtHcmt & linCmtConc) != 0) {
+        cur = yp[op->numLin+rx->linCmtOral0]/ind->linCmtHV;
+        if (cur == 0) {
+          nzero0++;
+        } else {
+          n0++;
+          switch (rx->linCmtHmeanI) {
+          case 1:
+            delta = cur - cur0; // arithmetic mean
+            break;
+          case 2:
+            delta = log(cur) - cur0; // geometric mean
+            break;
+          case 3:
+            delta = 1.0/cur - cur0; // harmonic mean
+            break;
+          }
+          cur0 += delta/n0;
+        }
+      }
+      // Finalize the current mean
+      double correction0 = 1.0;
+      switch (rx->linCmtHmeanI) {
+      case 1:
+        // arithmetic mean, already finalized
+        cur = cur0;
+        break;
+      case 2:
+        // geometric mean
+        cur = exp(cur0);
+        break;
+      case 3:
+        // harmonic mean
+        correction0 = (double)(n0-nzero0)/((double)n);
+        if (correction0 <= 0) correction0=1;
+        cur =  (double)(n0)/cur0 * correction0;
+        break;
+      }
+      if (cur == 0) {
+        nzero++;
+      } else {
+        n++;
+        switch (rx->linCmtHmeanO) {
+        case 1: // arithmetic mean
+          delta = cur - ret;
+          break;
+        case 2: // geometric mean
+          delta = log(cur) - ret;
+          break;
+        case 3: // harmonic mean
+          delta = 1.0/cur - ret;
+          break;
+        }
+        // delta = log(cur) - ret; // geometric mean
+        ret += delta/n0;
+      }
+
+      updateSolve(ind, op, neq, xout, i, nx);
+
+      ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
+    }
+    ind->solvedIdx = i;
+  }
+  double correction;
+  switch (rx->linCmtHmeanO) {
+  case 1: // arithmetic mean
+    return ret;
+    break;
+  case 2: // geometric mean
+    return exp(ret);
+    break;
+  case 3: // harmonic mean
+    correction =  (double)(n-nzero)/((double)n);
+    if (correction <= 0) correction=1;
+    return (double)(n)/ret * correction;
+  }
+  return ret;
+}
+
+extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                            t_dydt c_dydt, t_update_inis u_inis) {
+  clock_t t0 = clock();
+  int i;
+  double xout;
+  double *yp;
+  int istate = 0;
+  rx_solving_options_ind *ind;
+  double *x;
+  int *BadDose;
+  double *InfusionRate;
+  double *inits;
+  int *rc;
+  void *ctx = NULL;
+  int idid=1;
+  const char **err_msg = NULL;
+  int nx;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = rx->ordId[solveid]-1;
+  ind = &(rx->subjects[neq[1]]);
+
+  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+
+  nx = ind->n_all_times;
+  inits = op->inits;
+  BadDose = ind->BadDose;
+  InfusionRate = ind->InfusionRate;
+  x = ind->all_times;
+  rc= ind->rc;
+  double xp = x[0];
+  ind->solvedIdx = 0;
+  for(i=0; i<nx; i++) {
+    ind->idx=i;
+    ind->linSS=0;
+    yp = getSolve(i);
+    xout = getTime_(ind->ix[i], ind);
+    if (global_debug) {
+      RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
+    }
+    if (getEvid(ind, ind->ix[i]) != 3) {
+      if (ind->err) {
+        printErr(ind->err, ind->id);
+        *rc = idid;
+        // Bad Solve => NA
+        badSolveExit(i);
+      } else {
+        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+          int idx = ind->idx;
+          int ixds = ind->ixds;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          ind->idx = idx;
+          ind->ixds = ixds;
+          ind->idxExtra++;
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+        }
+        if (!isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          linSolve(neq, ind, yp, &xp, xout);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
+        }
+      }
+    }
+    ind->_newind = 2;
+    if (!op->badSolve){
+      ind->idx = i;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == EVID0_OFF){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        xp = xout;
+      }
+      updateSolve(ind, op, neq, xout, i, nx);
+      ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
+    }
+    ind->solvedIdx = i;
+  }
+  ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
+}
+
+
+
+extern "C" void ind_linCmt(rx_solve *rx, int solveid,
+                           t_dydt dydt, t_update_inis u_inis){
+  rx_solving_options *op = &op_global;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = solveid;
+  ind_linCmt0(rx, op, solveid, neq, dydt, u_inis);
 }
 
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -2818,9 +3334,10 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   x = ind->all_times;
   rc= ind->rc;
   double xp = x[0];
-  unsigned int j;
+  ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug){
@@ -2836,6 +3353,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           xp,           /* initial x-value */
@@ -2861,7 +3380,10 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
-            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -2874,6 +3396,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           ind->extraDoseNewXout,           /* initial x-value */
@@ -2899,11 +3423,15 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
-            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
           }
-          xp = ind->extraDoseNewXout;
         }
         if (!isSameTimeDop(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          neq[0] = op->neq - op->numLin - op->numLinSens;
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
@@ -2929,27 +3457,18 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
                         0                       /* declared length of icon */
                         );
-          postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          neq[0] = op->neq;
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
         //dadt_counter = 0;
       }
     }
-    if (!op->badSolve){
+    if (!op->badSolve) {
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp, op->inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->ixds++;
-        xp=xout;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
@@ -2959,9 +3478,9 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         xp = xout;
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
-      if (i+1 != nx) memcpy(getSolve(i+1), getSolve(i), neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, nx);
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
@@ -2990,8 +3509,10 @@ void par_dop(rx_solve *rx){
 
   int curTick = 0;
   int abort = 0;
+  uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     if (abort == 0){
+      setSeedEng1(seed0 + solveid - 1 );
       ind_dop0(rx, &op_global, solveid, neq, dydt, update_inis);
       if (displayProgress && abort == 0){
         if (checkInterrupt()) abort =1;
@@ -2999,6 +3520,7 @@ void par_dop(rx_solve *rx){
       if (displayProgress) curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op->abort = 1;
   } else {
@@ -3015,11 +3537,615 @@ void par_dop(rx_solve *rx){
   }
 }
 
+double ind_linCmtFH(double h, int i,
+                    rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                    t_dydt c_dydt, t_update_inis u_inis) {
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  ind->linCmtH = h;
+  ind->linCmtHparIndex = i;
+  return ind_linCmt0H(rx, op, solveid, _neq, c_dydt, u_inis);
+}
+
+// Gill 1983 Chat
+static inline double Chat(double phi, double h, double epsA){
+  if (phi == 0) return 2*epsA/(h*h);
+  return 2*epsA/(h*fabs(phi));
+}
+
+static inline double ChatP(double phi, double h, double epsA){
+  if (phi == 0) return 4*epsA/(h*h*h);
+  return 4*epsA/(h*h*fabs(phi));
+}
+
+static inline double Phi(double fp, double f, double fn, double h){
+  return (fp-2*f+fn)/(h*h);
+}
+static inline double phiC(double fp, double fn, double h){
+  return (fp-fn)/(2*h);
+}
+static inline double phiF(double f, double fp, double h){
+  return (fp-f)/h;
+}
+static inline double phiB(double f, double fn, double h){
+  return (f-fn)/h;
+}
+
+extern "C" double linCmtScaleInitPar(int which);
+
+//' @param *hf is the forward difference final estimate
+//' @param *hphif is central difference final estimate (when switching from forward to central differences)
+//' @param *df is the derivative estimate
+//' @param *df2 is the 2nd derivative estimate, useful for pre-conditioning.
+//' @param *ef is the err of the final estimate.
+//' @param thetaSens is the sensitivity vector
+//' @param cpar (integer) is the parameter we are considering
+//'
+//' @param epsR (err) is the relative error for the problem
+//'
+//' @param K is the maximum number of iterations before giving up on searching for the best interval.
+
+//' @param fTol gradient error tolerance that
+//'     is acceptable before issuing a warning/error about the gradient estimates.
+//'
+//' @param gillStep When looking for the optimal forward difference
+//'     step size, this is This is the step size to increase the
+//'     initial estimate by.  So each iteration the new step size =
+//'     (prior step size)*gillStep
+//'
+//' @param gillF This is the f value at the current estimate
+//'
+//' Returns 1 -- Success
+//'         2 -- Large error; Derivative estimate error 50% or more of the derivative
+//'         3 -- Function constant or nearly constant for this parameter
+//'         4 -- Function odd or nearly linear, df = K, df2 ~ 0
+//'         5 -- df2 increases rapidly as h decreases
+int gill83linCmt(double *hf, double *hphif, double *df, double *df2, double *ef,
+                 int cpar, double epsR, int K, double gillStep,
+                 double fTol, double gillF,
+                 rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                 t_dydt c_dydt, t_update_inis u_inis) {
+  double f , hbar, h0, fp, fn=NA_REAL,
+    phif, phib, phic, phicc = 0, phi, Chf, Chb,
+    Ch, hs, hphi, hk, tmp, ehat, lasth,
+    lastht=NA_REAL, lastfpt=NA_REAL, phict=NA_REAL;
+  f = gillF;
+  int k = 0;
+  double x = linCmtScaleInitPar(cpar);
+  // Relative error should be given by the tolerances, I believe.
+  double epsA=std::fabs(f)*epsR;
+  // FD1: // Initialization
+  hbar = 2*(1+std::fabs(x))*sqrt(epsA/(1+std::fabs(f)));
+  h0 = gillStep*hbar;
+  lasth=h0;
+  // theta(cpar, 0) = x + h0;
+  fp = ind_linCmtFH(h0, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // theta(cpar, 0) = x - h0;
+  fn = ind_linCmtFH(-h0, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  phif = phiF(f, fp, h0);
+  phib = phiB(f, fn, h0);
+  phic = phiC(fp, fn, h0);
+  phi = Phi(fp, f, fn, h0);
+
+  Chf = Chat(phif, h0, epsA);
+  Chb = Chat(phib, h0, epsA);
+  Ch  = ChatP(phi, h0, epsA);
+  hs  = -1;
+  hphi=hbar; // Not defined in Gill, but used for central difference switch if there are problems
+  // FD2:  // Decide if to accept the interval
+  hk = h0;
+  if (max2(Chf, Chb) <= 0.1){
+    hs=h0;
+  }
+  if (0.001 <= Ch && Ch <= 0.1){
+    phicc=phic;
+    hphi=h0;
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      phict=phic;
+      lastht  = lasth;
+    }
+    goto FD5;
+  }
+  if (fTol != 0 && fabs(phif) < fTol){
+    lastfpt = fp;
+    lastht  = lasth;
+    phict=phic;
+  }
+  if (Ch < 0.001){
+    goto FD4;
+  }
+ FD3: // Increase h
+  k++;
+  hk=hk*gillStep;
+  lasth=hk;
+  // Compute the associated finite difference estimates and their
+  // relative condition errors.
+  // theta(cpar, 0) = x + hk;
+  fp = ind_linCmtFH(hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // theta(cpar, 0) = x-hk;
+  fn = ind_linCmtFH(-hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  phif = phiF(f, fp, hk);
+  phib = phiB(f, fn, hk);
+  phic = phiC(fp, fn, hk);
+  phi = Phi(fp, f, fn, hk);
+  Chf = Chat(phif, hk, epsA);
+  Chb = Chat(phib, hk, epsA);
+  Ch = ChatP(phi, hk, epsA);
+  if (hs < 0 && max2(Chf, Chb) <= 0.1){
+    hs = hk;
+  }
+  if (Ch <= 0.1){
+    phicc=phic;
+    hphi = hk;
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      lastht  = lasth;
+      phict=phic;
+    }
+    goto FD5;
+  }
+  if (fTol != 0 && fabs(phif) < fTol){
+    lastfpt = fp;
+    lastht  = lasth;
+    phict=phic;
+  }
+  if (k == K) goto FD6;
+  goto FD3;
+ FD4: // Decrease h
+  k++;
+  hk=hk/gillStep;
+  lasth=hk;
+  // Compute the associated finite difference estimates and their
+  // relative condition errors.
+  // theta(cpar, 0) = x + hk;
+  fp = ind_linCmtFH(hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // theta(cpar, 0) = x-hk;
+  fn = ind_linCmtFH(-hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  phif = phiF(f, fp, hk);
+  phib = phiB(f, fn, hk);
+  tmp=phic;
+  phic = phiC(fp, fn, hk);
+  phi = Phi(fp, f, fn, hk);
+  Chf = Chat(phif, hk, epsA);
+  Chb = Chat(phib, hk, epsA);
+  Ch = ChatP(phi, hk, epsA);
+  if (Ch > .1){
+    phicc=tmp;
+    hphi=hk*gillStep; // hphi = h_k-1
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      lastht  = lasth;
+      phict=phic;
+    }
+    goto FD5;
+  }
+  if (max2(Chf, Chb) <= 0.1){
+    hs = hk;
+  }
+  if (0.001 <= Ch && Ch <= 1){
+    hphi = hk;
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      lastht  = lasth;
+      phict=phic;
+    }
+    goto FD5;
+  }
+  if (fTol != 0 && fabs(phif) < fTol){
+    lastfpt = fp;
+    lastht  = lasth;
+    phict=phic;
+  }
+  if (k == K) goto FD6;
+  goto FD4;
+ FD5: // Compute the estimate of the optimal interval
+  *df2 = phi;
+  *hf = 2*sqrt(epsA/fabs(phi));
+  fp = ind_linCmtFH(*hf, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // Restore theta
+  // theta(cpar, 0) = x;
+  *df = phiF(f, fp, *hf);
+  *ef = (*hf)*fabs(phi)/2+2*epsA/(*hf);
+  *hphif=hphi;
+  ehat = fabs(*df-phicc);
+  if (max2(*ef, ehat) <= 0.5*(*df)){
+    return 1;
+  } else {
+    // warning("The finite difference derivative err more than 50%% of the slope; Consider a different starting point.");
+    if (!ISNA(lastht)){
+      // Could be used;  Stick with the last below Ftol
+      // *hf = lasth;
+      // fp = lastfp;
+      // *df = phiF(f, fp, *hf);
+      // *df2=0;
+      // // *df = 0.0; // Doesn't move.
+      // *hphif=2*(*hf);
+      // } else {
+      *hf = lastht;
+      fp = lastfpt;
+      *df = phiF(f, fp, *hf);
+      *df2=phic;
+      // *df = 0.0; // Doesn't move.
+      *hphif=phict;
+    }
+    return 2;
+  }
+  //
+ FD6: // Check unsatisfactory cases
+  if (hs < 0){
+    // F nearly constant.
+    // Use sqrt(h0) as a last ditch effort.
+    *hf = pow(DBL_EPSILON, 0.25);//hbar;
+    // *df=phic;
+    // theta(cpar, 0) = x + *hf;
+    fp = ind_linCmtFH(*hf, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+    *df = phiF(f, fp, *hf);
+    *df2=0;
+    // *df = 0.0; // Doesn't move.
+    *hphif= sqrt(h0);
+    // warning("The surface around the initial estimate is nearly constant in one parameter grad=0.  Consider a different starting point.");
+    return 3;
+  }
+  if (Ch > 0.1){ // Odd or nearly linear.
+    *hf = h0;
+    *df = phic;
+    *df2 = 0;
+    *ef = 2*epsA/(*hf);
+    *hphif=hphi;
+    // warning("The surface odd or nearly linear for one parameter; Check your function.");
+    return 4;
+  }
+  // f'' is increasing rapidly as h decreases
+  *hf = h0;
+  *df = phic;
+  *df2 = phi;
+  *hphif=hphi;
+  *ef = (*hf)*fabs(phi)/2+2*epsA/(*hf);
+  // warning("The surface around the initial estimate is highly irregular in at least one parameter.  Consider a different starting point.");
+  return 5;
+}
+
+extern "C" double linCmtScaleInitN();
+extern "C" int linCmtZeroJac(int i);
+
+void gillForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+ t_dydt c_dydt, t_update_inis u_inis) {
+  double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
+  double hf=0, hphif=0, df=0, df2=0, ef=0;
+  int N = linCmtScaleInitN();
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  double *hh = ind->linH;
+
+  for (int i = 0; i < N; i++) {
+    if (linCmtZeroJac(i)) {
+      hh[i] = 0.0;
+      continue;
+    }
+    gill83linCmt(&hf, &hphif, &df, &df2, &ef,
+                 i, rx->linCmtGillRtol, rx->linCmtGillK, rx->linCmtGillStep,
+                 rx->linCmtGillFtol, f0, rx, op, solveid, _neq, c_dydt, u_inis);
+    hh[i] = hf;
+  }
+}
+
+double shiRF(double &h,
+             double ef,
+             int &idx,
+             double &f0, double &f1, double &l, double &u,
+             bool &finiteF1, bool &finiteF4,
+             rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+             t_dydt c_dydt, t_update_inis u_inis) {
+  // Eigen::Matrix<double, Eigen::Dynamic, 1> tp4 = thetaIn;
+  // Eigen::Matrix<double, Eigen::Dynamic, 1> tp1 = thetaIn;
+  // tp4[idx] += 4*h;
+  // tp1[idx] += h;
+  // f1 = fdoubleh(tp1);
+  f1 = ind_linCmtFH(h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteF1 = std::isfinite(f1);
+  if (!finiteF1) {
+    finiteF4 = true;
+    return -1.0;
+  }
+  double f4 = ind_linCmtFH(4*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteF4 = std::isfinite(f4);
+  if (!finiteF4) {
+    return -1.0;
+  }
+  // REprintf("f0 = %f f1 = %f f4 = %f\n", f0, f1, f4);
+  return abs(f4-4*f1+3*f0)/(8.0*ef);
+}
+
+double shi21Forward(double &h,
+                    double &f0,
+                    // arma::vec &gr,
+                    int idx,
+                    double ef,
+                    double rl,
+                    double ru,
+                    int maxiter,
+                    rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                    t_dydt c_dydt, t_update_inis u_inis) {
+  // Algorithm 2.1 in paper
+  // q=2, alpha=4, r=3
+  // s = 0, 1
+  // w = -1, 1
+  if (h == 0) {
+    // 2/sqrt(3) = 1.154700538379251684162
+    h = 1.154700538379251684162 * sqrt(ef);
+  } else {
+    h = fabs(h);
+  }
+  double l = 0, u = R_PosInf, rcur = NA_REAL;
+  double f1;
+  double lasth = h;
+  int iter=0;
+  bool finiteF1 = true, finiteF4 = true, calcGrad = false;
+  while(true) {
+    iter++;
+    if (iter > maxiter) {
+      h = lasth;
+      break;
+    }
+    rcur = shiRF(h, ef, idx, f0, f1, l, u,
+                 finiteF1, finiteF4, rx, op, solveid, _neq,
+                 c_dydt, u_inis);
+    if (rcur == -1) {
+      if (!finiteF1) {
+        // hnew = t + 2.5*hold
+        h = 0.5*h;
+        continue;
+      }
+      h = 3.5*h;
+
+      if (!calcGrad) {
+        lasth = h;
+        // gr = (f1-f0)/h;
+      }
+      continue;
+    } else {
+      lasth = h;
+      // gr = (f1-f0)/h;
+    }
+    if (rcur < rl) {
+      l = h;
+    } else if (rcur > ru) {
+      u = h;
+    } else {
+      break;
+    }
+    if (!R_finite(u)) {
+      h = 4.0*h;
+    } else if (l == 0) {
+      h = h/4.0;
+    } else {
+      h = (l + u)/2.0;
+    }
+  }
+  return h;
+}
+
+void shi21ForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                   t_dydt c_dydt, t_update_inis u_inis) {
+  double h = 0.0;
+  double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
+  int N = linCmtScaleInitN();
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  double *hh = ind->linH;
+  for (int i = 0; i < N; i++) {
+    if (linCmtZeroJac(i)) {
+      hh[i] = 0.0;
+      continue;
+    }
+    h = 0.0;
+    hh[i] = shi21Forward(h, f0, i,
+                         rx->linCmtShiErr,
+                         1.5,
+                         6.0,
+                         rx->linCmtShiMax,
+                         rx, op, solveid, _neq,
+                         c_dydt, u_inis);
+  }
+}
+
+double shiRC(double &h, double ef,
+             int &idx,
+             double &fp1, double &fm1,
+             double &l, double &u,
+             bool &finiteFp1, bool &finiteFp3,
+             bool &finiteFm1, bool &finiteFm3,
+             rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+             t_dydt c_dydt, t_update_inis u_inis) {
+  // tp3(idx)  += 3*h;
+  // tp1(idx)  += h;
+  // tm3(idx)  -= 3*h;
+  // tm1(idx)  -= h;
+  fp1 = ind_linCmtFH(h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteFp1 = std::isfinite(fp1);
+  if (!finiteFp1) {
+    finiteFm1 = true;
+    finiteFp3 = true;
+    finiteFm3 = true;
+    return -1.0;
+  }
+  fm1 = ind_linCmtFH(-h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteFm1 = std::isfinite(fp1);
+  if (!finiteFm1) {
+    finiteFp3 = true;
+    finiteFm3 = true;
+    return -1.0;
+  }
+  double fp3 = ind_linCmtFH(3*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteFp3 = std::isfinite(fp3);
+  if (!finiteFp3) {
+    finiteFp3 = true;
+    return -1.0;
+  }
+  double fm3 = ind_linCmtFH(-3*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
+  finiteFm3 = std::isfinite(fp3);
+  if (!finiteFm3) {
+    return -1.0;
+  }
+  return abs(fp3-3*fp1+3*fm1-fm3)/(8.0*ef);
+}
+
+double shi21Central(double &h,
+                    double &f0, int idx,
+                    double ef, double rl, double ru, double nu,
+                    int maxiter,
+                    rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                    t_dydt c_dydt, t_update_inis u_inis) {
+  // Algorithm 3.1
+  // weights = -0.5, 0.5
+  // s = -1, 1
+  // Equation 3.3
+  //
+  if (h == 0.0) {
+    h = pow(3.0*ef, 0.3333333333333333333333);
+  } else {
+    h = fabs(h);
+  }
+  double l = 0, u = R_PosInf, rcur = NA_REAL;
+  double hlast = h;
+
+  double fp1;
+  double fm1;
+
+  int iter=0;
+  bool finiteFp1 = true, finiteFp3 = true,
+    finiteFm1=true, finiteFm3=true, calcGrad=false;
+  while(true) {
+    iter++;
+    if (iter > maxiter) {
+      h=hlast;
+      break;
+    }
+    rcur = shiRC(h, ef, idx, fp1, fm1, l, u,
+                 finiteFp1, finiteFp3, finiteFm1, finiteFm3,
+                 rx, op, solveid, _neq, c_dydt, u_inis);
+    // Need f1 from shiRF to compute forward difference
+    if (rcur == -1.0) {
+      if (!finiteFp1) {
+        // hnew*3 = hold*0.5
+        h = h*0.5/3.0;
+        continue;
+      } else if (!finiteFm1) {
+        if (!calcGrad) {
+          // forward difference
+          calcGrad = true;
+          // gr = (fp1-f0)/h;
+        }
+        h = h*0.5/3.0;
+        continue;
+      }
+      // hnew*3 = hold*2
+      h = h*2.0/3.0;
+      if (!calcGrad) {
+        // central difference
+        calcGrad = true;
+        // gr = (fp1-fm1)/(2*h);
+        hlast = h;
+      }
+      continue;
+    } else {
+      calcGrad = true;
+      // gr = (fp1-fm1)/(2*h);
+      hlast = h;
+    }
+    if (rcur < rl) {
+      l = h;
+    } else if (rcur > ru) {
+      u = h;
+    } else {
+      break;
+    }
+    if (!R_finite(u)) {
+      h = nu*h;
+    } else if (l == 0) {
+      h = h/nu;
+    } else {
+      h = (l + u)/2.0;
+    }
+  }
+  return h;
+}
+
+void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                   t_dydt c_dydt, t_update_inis u_inis) {
+  double h = 0.0;
+  double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
+  int N = linCmtScaleInitN();
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  double *hh = ind->linH;
+  for (int i = 0; i < N; i++) {
+    if (linCmtZeroJac(i)) {
+      hh[i] = 0.0;
+      continue;
+    }
+    h = 0.0;
+    hh[i] = shi21Central(h, f0, i,
+                         rx->linCmtShiErr,
+                         1.5,
+                         4.5,
+                         3.0,
+                         rx->linCmtShiMax,
+                         rx, op, solveid, _neq,
+                         c_dydt, u_inis);
+  }
+}
+
+
+void setupLinH(rx_solve *rx, int solveid,
+               t_dydt dydt, t_update_inis u_inis) {
+  if (rx->sensType == 100) {
+    rx->sensType = 3; // AD
+  }
+  rx_solving_options *op = &op_global;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = solveid;
+  rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+  double *hh = ind->linH;
+  if (ind->linCmtHparIndex == -3) return; // already setup
+  switch (rx->sensType) {
+  case 1: // forward; shi difference
+    shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
+    break;
+  case 2: // central; shi
+    shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
+    break;
+  case 3: // 3pt forward; shi
+    shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
+    break;
+  case 4: // 5-point endpoint difference; shi
+    shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
+    for (int i = 0; i < 7; i++) {
+      hh[i] /= 4;
+    }
+    break;
+  case 7: // 3 pt forward, gill
+  case 6: // forward difference with gill H est
+    gillForwardH(rx, op, solveid, neq, dydt, u_inis);
+    break;
+  case 8: // 5-point endpoint; Gill
+    gillForwardH(rx, op, solveid, neq, dydt, u_inis);
+    for (int i = 0; i < 7; i++) {
+      hh[i] /= 4;
+    }
+    break;
+  default: // all the rest are constant
+    std::fill_n(ind->linH, 7, rx->sensH);
+    break;
+  }
+  ind->linCmtH = NA_REAL;
+  ind->linCmtHparIndex = -3;
+}
+
+// This is used by focei to optimize per individual
 extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
                           t_dydt_liblsoda dydt_lls,
                           t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
                           t_dydt c_dydt, t_update_inis u_inis,
-                          int jt){
+                          int jt) {
   par_progress_1=0;
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);
@@ -3030,27 +4156,37 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   rxt.cur = 0;
   assignFuns();
   rx_solving_options *op = &op_global;
-  if (op->neq !=  0){
-    switch (op->stiff){
-    case 3:
-      ind_indLin(rx, cid, u_inis, ME, IndF);
-      break;
-    case 2:
-      ind_liblsoda(rx, cid, dydt_lls, u_inis);
-      break;
-    case 1:
-      ind_lsoda(rx,cid, dydt_lsoda, u_inis, jdum, jt);
-      break;
-    case 0:
-      ind_dop(rx, cid, c_dydt, u_inis);
-      break;
+  if (op->neq !=  0) {
+    if (rx->linB == 1) {
+      // Setup H
+      setupLinH(rx, cid, c_dydt, u_inis);
+    }
+    if (op->neq == op->numLinSens + op->numLin) {
+      // This only is linear compartment solving
+      ind_linCmt(rx, cid, c_dydt, u_inis);
+      return;
+    } else {
+      switch (op->stiff){
+      case 3:
+        ind_indLin(rx, cid, u_inis, ME, IndF);
+        break;
+      case 2:
+        ind_liblsoda(rx, cid, dydt_lls, u_inis);
+        break;
+      case 1:
+        ind_lsoda(rx,cid, dydt_lsoda, u_inis, jdum, jt);
+        break;
+      case 0:
+        ind_dop(rx, cid, c_dydt, u_inis);
+        break;
+      }
     }
   }
   iniSubject(cid, 1, &(rx->subjects[cid]), op, rx, u_inis);
   par_progress_0=0;
 }
 
-extern "C" void par_solve(rx_solve *rx){
+extern "C" void par_solve(rx_solve *rx) {
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);
   par_progress_1=0;
@@ -3061,25 +4197,34 @@ extern "C" void par_solve(rx_solve *rx){
   rxt.cur = 0;
   assignFuns();
   rx_solving_options *op = &op_global;
-  if (op->neq != 0){
-    switch(op->stiff){
-    case 3:
-      par_indLin(rx);
-      break;
-    case 2:
-      par_liblsoda(rx);
-      break;
-    case 4:
-      par_liblsodaR(rx);
-      break;
-    case 1:
-      // lsoda
-      par_lsoda(rx);
-      break;
-    case 0:
-      // dop
-      par_dop(rx);
-      break;
+  if (op->neq != 0) {
+    if (rx->linB == 1) {
+      // Setup H
+    }
+    if (op->neq == op->numLinSens + op->numLin) {
+      // This only is linear compartment solving
+      par_linCmt(rx);
+      return;
+    } else {
+      switch(op->stiff){
+      case 3:
+        par_indLin(rx);
+        break;
+      case 2:
+        par_liblsoda(rx);
+        break;
+      case 4:
+        par_liblsodaR(rx);
+        break;
+      case 1:
+        // lsoda
+        par_lsoda(rx);
+        break;
+      case 0:
+        // dop
+        par_dop(rx);
+        break;
+      }
     }
   }
   par_progress_0=0;

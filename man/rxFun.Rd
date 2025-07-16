@@ -3,53 +3,53 @@
 \name{rxFun}
 \alias{rxFun}
 \alias{rxRmFun}
-\title{Add user function to rxode2}
+\title{Add/Create C functions for use in rxode2}
 \usage{
 rxFun(name, args, cCode)
 
 rxRmFun(name)
 }
 \arguments{
-\item{name}{This gives the name of the user function}
+\item{name}{This can either give the name of the user function or
+be a simple R function that you wish to convert to C.  If you
+have rxode2 convert the R function to C, the name of the function
+will match the function name provided and the number of arguments
+will match the R function provided.  Hence, if you are providing
+an R function for conversion to C, the rest of the arguments are
+implied.}
 
 \item{args}{This gives the arguments of the user function}
 
 \item{cCode}{This is the C-code for the new function}
 }
-\value{
-nothing
-}
 \description{
-This adds a user function to rxode2 that can be called.  If needed,
-these functions can be differentiated by numerical differences or
-by adding the derivatives to rxode2's internal derivative table
-with \code{\link[=rxD]{rxD()}}
+Add/Create C functions for use in rxode2
 }
 \examples{
 \donttest{
-## Right now rxode2 is not aware of the function f
-## Therefore it cannot translate it to symengine or
-## Compile a model with it.
+# Right now rxode2 is not aware of the function fun
+# Therefore it cannot translate it to symengine or
+# Compile a model with it.
 
 try(rxode2("a=fun(a,b,c)"))
 
-## Note for this approach to work, it cannot interfere with C
-## function names or reserved rxode2 specical terms.  Therefore
-## f(x) would not work since f is an alias for bioaviability.
+# Note for this approach to work, it cannot interfere with C
+# function names or reserved rxode2 special terms.  Therefore
+# f(x) would not work since f is an alias for bioavailability.
 
 fun <- "
 double fun(double a, double b, double c) {
   return a*a+b*a+c;
 }
-" ## C-code for function
+" # C-code for function
 
 rxFun("fun", c("a", "b", "c"), fun) ## Added function
 
-## Now rxode2 knows how to translate this function to symengine
+# Now rxode2 knows how to translate this function to symengine
 
 rxToSE("fun(a,b,c)")
 
-## And will take a central difference when calculating derivatives
+# And will take a central difference when calculating derivatives
 
 rxFromSE("Derivative(fun(a,b,c),a)")
 
@@ -71,8 +71,67 @@ rxFromSE("Derivative(fun(a,b,c),a)")
 # You can also remove the functions by `rxRmFun`
 
 rxRmFun("fun")
+
+# you can also use R functions directly in rxode2
+
+
+gg <- function(x, y) {
+  x + y
 }
+
+f <- rxode2({
+ z = gg(x, y)
+})
+
+
+e <- et(1:10) \%>\% as.data.frame()
+
+e$x <- 1:10
+e$y <- 21:30
+
+rxSolve(f, e)
+
+# Note that since it touches R, it can only run single-threaded.
+# There are also requirements for the function:
+#
+# 1. It accepts one value per argument (numeric)
+#
+# 2. It returns one numeric value
+
+# If it is a simple function (like gg) you can also convert it to C
+# using rxFun and load it into rxode2
+
+rxFun(gg)
+
+rxSolve(f, e)
+
+# to stop the recompile simply reassign the function
+f <- rxode2(f)
+
+rxSolve(f, e)
+
+rxRmFun("gg")
+rm(gg)
+rm(f)
+
+
+# You can also automatically convert a R function to R code (and
+# calculate first derivatives)
+
+fun <- function(a, b, c) {
+  a^2+b*a+c
 }
-\author{
-Matthew L. Fidler
+
+rxFun(fun)
+
+# You can see the R code if you want with rxC
+
+message(rxC("fun"))
+
+# you can also remove both the function and the
+# derivatives with rxRmFun("fun")
+
+rxRmFun("fun")
+
+}
 }

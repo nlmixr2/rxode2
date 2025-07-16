@@ -1,14 +1,12 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#define _(String) (String)
+
 #include <R.h>
 #include <Rinternals.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
-#define _(String) (String)
-#endif
 
 void RSprintf(const char *format, ...);
 
@@ -127,7 +125,7 @@ tam@wri.com
     ctx->state = -3 ;                           \
     return ctx->state;				\
   }
-  
+
 
 /* Terminate lsoda due to various error conditions. */
 #define softfailure(code, fmt,...) \

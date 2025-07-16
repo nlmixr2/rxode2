@@ -1,9 +1,9 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
-#include <R.h>
-#include <Rversion.h>
-#include <Rinternals.h>
 #include <algorithm>
 #include "../inst/include/rxode2.h"
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -12,13 +12,7 @@
 #include <cerrno>
 #include <ctype.h>     // isspace
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 
 // Much of this comes from data.table, with references to where it came from
@@ -93,7 +87,7 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle) {
   // this is the main getter used by all parallel regions; they specify num_threads(n, true|false).
   // Keep this light, simple and robust. rxSetThreads() ensures 1 <= rxThreads <= omp_get_num_proc()
   // throttle introduced in 1.12.10 (see NEWS item); #4484
-  // throttle==true  : a number of iterations per thread (rxThrottle) is applied before a second thread is utilized 
+  // throttle==true  : a number of iterations per thread (rxThrottle) is applied before a second thread is utilized
   // throttle==false : parallel region is already pre-chunked such as in fread; e.g. two batches intended for two threads
   if (n<1) return 1; // 0 or negative could be deliberate in calling code for edge cases where loop is not intended to run at all
   int64_t ans = throttle ? 1+(n-1)/rxThrottle :  // 1 thread for n<=2, 2 thread for n<=4, etc
@@ -102,11 +96,11 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle) {
 }
 
 extern "C" SEXP getRxThreads_R(SEXP verbose) {
-  if (!isLogical(verbose) || LENGTH(verbose)!=1 || INTEGER(verbose)[0]==NA_LOGICAL)
-    Rf_errorcall(R_NilValue, _("'verbose' must be TRUE or FALSE"));
+  if (!Rf_isLogical(verbose) || LENGTH(verbose)!=1 || INTEGER(verbose)[0]==NA_LOGICAL)
+    Rf_errorcall(R_NilValue, "%s", _("'verbose' must be TRUE or FALSE"));
   if (LOGICAL(verbose)[0]) {
 #ifndef _OPENMP
-    Rprintf(_("This installation of data.table has not been compiled with OpenMP support.\n"));
+    Rprintf("%s", _("This installation of data.table has not been compiled with OpenMP support.\n"));
 #endif
     // this output is captured, paste0(collapse="; ")'d, and placed at the end of test.data.table() for display in the last 13 lines of CRAN check logs
     // it is also printed at the start of test.data.table() so that we can trace any Killed events on CRAN before the end is reached
@@ -122,34 +116,34 @@ extern "C" SEXP getRxThreads_R(SEXP verbose) {
     /* Rprintf(_("  RestoreAfterFork               %s\n"), RestoreAfterFork ? "true" : "false"); */
     Rprintf(_("  rxode2 is using %d threads with throttle==%d. See ?setRxthreads.\n"), getRxThreads(INT_MAX, false), rxThrottle);
   }
-  return ScalarInteger(getRxThreads(INT_MAX, false));
+  return Rf_ScalarInteger(getRxThreads(INT_MAX, false));
 }
 
 extern "C" SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle) {
-  if (length(throttle)) {
-    if (!isInteger(throttle) || LENGTH(throttle)!=1 || INTEGER(throttle)[0]<1)
-      error(_("'throttle' must be a single number, non-NA, and >=1"));
+  if (Rf_length(throttle)) {
+    if (!Rf_isInteger(throttle) || LENGTH(throttle)!=1 || INTEGER(throttle)[0]<1)
+      Rf_error("%s", _("'throttle' must be a single number, non-NA, and >=1"));
     rxThrottle = INTEGER(throttle)[0];
   }
   int old = rxThreads;
-  if (!length(threads) && !length(throttle)) {
+  if (!Rf_length(threads) && !Rf_length(throttle)) {
     initRxThreads();
     // Rerun exactly the same function used on startup (re-reads env variables); this is now default setDTthreads() behavior from 1.12.2
     // Allows robust testing of environment variables using Sys.setenv() to experiment.
     // Default  is now (as from 1.12.2) threads=NULL which re-reads environment variables.
     // If a CPU has been unplugged (high end servers allow live hardware replacement) then omp_get_num_procs() will
     // reflect that and a call to setDTthreads(threads=NULL) will update DTthreads.
-  } else if (length(threads)) {
+  } else if (Rf_length(threads)) {
     int n=0;
-    if (length(threads)!=1 || !isInteger(threads) || (n=INTEGER(threads)[0]) < 0) {  // <0 catches NA too since NA is negative (INT_MIN)
-      Rf_errorcall(R_NilValue, _("threads= must be either NULL or a single number >= 0 See ?setRxthreads"));
+    if (Rf_length(threads)!=1 || !Rf_isInteger(threads) || (n=INTEGER(threads)[0]) < 0) {  // <0 catches NA too since NA is negative (INT_MIN)
+      Rf_errorcall(R_NilValue, "%s", _("threads= must be either NULL or a single number >= 0 See ?setRxthreads"));
     }
     int num_procs = imax(omp_get_num_procs(), 1); // max just in case omp_get_num_procs() returns <= 0 (perhaps error, or unsupported)
-    if (!isLogical(percent) || length(percent)!=1 || LOGICAL(percent)[0]==NA_LOGICAL) {
-      Rf_errorcall(R_NilValue, _("internal error: percent= must be TRUE or FALSE at C level"));  // # nocov
+    if (!Rf_isLogical(percent) || Rf_length(percent)!=1 || LOGICAL(percent)[0]==NA_LOGICAL) {
+      Rf_errorcall(R_NilValue, "%s", _("internal error: percent= must be TRUE or FALSE at C level"));  // # nocov
     }
     if (LOGICAL(percent)[0]) {
-      if (n<2 || n>100) error(_("internal error: threads==%d should be between 2 and 100 (percent=TRUE at C level)"), n);  // # nocov
+      if (n<2 || n>100) Rf_error(_("internal error: threads==%d should be between 2 and 100 (percent=TRUE at C level)"), n);  // # nocov
       n = num_procs*n/100;  // if 0 it will be reset to 1 in the imax() below
     } else {
       if (n==0 || n>num_procs) n = num_procs; // setRxThreads(0) == setRxThreads(percent=100); i.e. use all logical CPUs (the default in 1.12.0 and before, from 1.12.2 it's 50%)
@@ -163,7 +157,7 @@ extern "C" SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle) {
     // All parallel regions should include num_threads(getDTthreads(n, true|false)) and this is ensured via
     // a grep in CRAN_Release.cmd.
   }
-  return ScalarInteger(old);
+  return Rf_ScalarInteger(old);
 }
 
 

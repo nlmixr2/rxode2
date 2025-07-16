@@ -1,8 +1,6 @@
 rxTest({
   test_that("occasions", {
 
-    .rxr <- loadNamespace("rxode2random")
-
     # Nesting tests
 
     mod <- rxode2({
@@ -87,7 +85,7 @@ rxTest({
         ) | inv(nu = 10)
       )
 
-      .ni <- .rxr$nestingInfo_(omega, ev)
+      .ni <- nestingInfo_(omega, ev)
 
       expect_equal(.ni$below, c(eye = 2L, occ = 2L))
       expect_equal(.ni$above, c(inv = 2L))
@@ -125,9 +123,7 @@ rxTest({
       .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = thetaMat, omega = omega,
-                               nSub = 40, nStud = 3
-                             )
-                             )
+                               nSub = 40, nStud = 3))
 
       expect_equal(length(.ep$KA), 120L)
       expect_equal(length(unique(.ep$KA)), 3L)
@@ -276,7 +272,7 @@ rxTest({
 
       ## Test edge case -- no between or above occasion variability
 
-      .ni <- .rxr$nestingInfo_(
+      .ni <- nestingInfo_(
         lotri(lotri(eta.Cl ~ 0.1, eta.Ka ~ 0.1) | id(nu = 100)),
         ev
       )
@@ -288,5 +284,70 @@ rxTest({
       expect_equal(names(.ni$omega), "id")
 
       .en <- rxExpandNesting(mod, .ni)
+  })
+
+  test_that("nesting test from https://github.com/nlmixr2/rxode2random/issues/25", {
+
+    mod <- rxode2({
+      TABS = TV_TABS * exp(eta.TABS + iov.TABS)
+      TR_Fbio = TV_TR_Fbio + eta.TR_Fbio + iov.TR_Fbio
+      CL = TV_CL * exp(eta.CL)
+      V1 = TV_V1 * exp(eta.V1)
+      V2 = TV_V2 * exp(eta.V2)
+      CLD = TV_CLD * exp(eta.CLD)
+      KA = log(2) / (TABS/60)
+      FBIO = 1 / (exp(-TR_Fbio) + 1)
+      DC1 = AMT1/V1
+      DC2 = AMT2/V2
+      d/dt(AMTa) =       -KA * AMTa
+      d/dt(AMT1) = FBIO * KA * AMTa - CLD * DC1 + CLD * DC2 - CL * DC1
+      d/dt(AMT2) =                  + CLD * DC1 - CLD * DC2
+      d/dt(AUC) = DC1
+    })
+
+    n <- 10
+
+    theta <- c("TV_TABS" = 45,
+              "TV_TR_Fbio" = logit(x = 0.85),
+              "TV_CL" = 10,
+              "TV_V1" = 10,
+              "TV_V2" = 65,
+              "TV_CLD" = 25)
+
+
+    omega <- lotri::lotri(
+      lotri::lotri(eta.TABS~0.25,
+                   eta.TR_Fbio~0.20,
+                   eta.CL~0.30,
+                   eta.V1~0.30,
+                   eta.V2~0.45,
+                   eta.CLD~0.15) | id(nu=n),
+      lotri::lotri(iov.TABS~0.15,
+                   iov.TR_Fbio~0.15) | occ(nu=n*2))
+
+    dosing <- et(amt=1000,
+                addl=6,
+                ii=24,
+                evid=1,
+                cmt="AMTa",
+                time=0) %>%
+      et(amt=1000,
+         addl=6,
+         ii=24,
+         evid=4,
+         cmt="AMTa",
+         time = 336) %>%
+      et(seq(0,168,0.5)) %>%
+      et(seq(336,672,0.5)) %>%
+      et(id=seq(1,n))
+
+    dosing <- dplyr::mutate(dosing, occ = 1) %>%
+      dplyr::mutate(occ = ifelse(time>=336,2,occ))
+
+    expect_error(rxSolve(object = mod,
+                             theta,
+                             omega=omega,
+                             ev=dosing,
+                             nDisplayProgress=100L), NA)
   })
 })

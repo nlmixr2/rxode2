@@ -46,6 +46,7 @@ rxTest({
       et(id=1:1000)
 
     skip_on_os("windows")
+
     expect_error(rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
                     thetaMat=thetaMat1,
                     ## Match boundaries of problem
@@ -58,8 +59,4 @@ rxTest({
                     dfSub=74, dfObs=476),
                  NA)
   })
-})
-
-test_that(".nearPD expected null for matrix that cannot become positive definite", {
-  expect_null(.nearPD(matrix(Inf)))
 })

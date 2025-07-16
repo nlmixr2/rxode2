@@ -4,12 +4,18 @@
 \alias{rxUiGet.cmtLines}
 \alias{rxUiGet.dvidLine}
 \alias{rxUiGet.paramsLine}
+\alias{rxUiGet.interpLines}
 \alias{rxUiGet.simulationSigma}
 \alias{rxUiGet.simulationModel}
 \alias{rxUiGet.symengineModelNoPrune}
 \alias{rxUiGet.symengineModelPrune}
 \alias{rxUiGet.simulationIniModel}
 \alias{rxUiGet}
+\alias{rxUiGet.levels}
+\alias{rxUiGet.state}
+\alias{rxUiGet.stateDf}
+\alias{rxUiGet.statePropDf}
+\alias{rxUiGet.props}
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
 \alias{rxUiGet.omega}
@@ -19,10 +25,13 @@
 \alias{rxUiGet.multipleEndpoint}
 \alias{rxUiGet.funPrint}
 \alias{rxUiGet.fun}
+\alias{rxUiGet.funPartsDigest}
 \alias{rxUiGet.md5}
+\alias{rxUiGet.sha1}
 \alias{rxUiGet.ini}
 \alias{rxUiGet.iniFun}
 \alias{rxUiGet.modelFun}
+\alias{rxUiGet.model}
 \alias{rxUiGet.modelDesc}
 \alias{rxUiGet.thetaLower}
 \alias{rxUiGet.thetaUpper}
@@ -43,6 +52,8 @@
 
 \method{rxUiGet}{paramsLine}(x, ...)
 
+\method{rxUiGet}{interpLines}(x, ...)
+
 \method{rxUiGet}{simulationSigma}(x, ...)
 
 \method{rxUiGet}{simulationModel}(x, ...)
@@ -54,6 +65,16 @@
 \method{rxUiGet}{simulationIniModel}(x, ...)
 
 rxUiGet(x, ...)
+
+\method{rxUiGet}{levels}(x, ...)
+
+\method{rxUiGet}{state}(x, ...)
+
+\method{rxUiGet}{stateDf}(x, ...)
+
+\method{rxUiGet}{statePropDf}(x, ...)
+
+\method{rxUiGet}{props}(x, ...)
 
 \method{rxUiGet}{theta}(x, ...)
 
@@ -73,13 +94,19 @@ rxUiGet(x, ...)
 
 \method{rxUiGet}{fun}(x, ...)
 
+\method{rxUiGet}{funPartsDigest}(x, ...)
+
 \method{rxUiGet}{md5}(x, ...)
+
+\method{rxUiGet}{sha1}(x, ...)
 
 \method{rxUiGet}{ini}(x, ...)
 
 \method{rxUiGet}{iniFun}(x, ...)
 
 \method{rxUiGet}{modelFun}(x, ...)
+
+\method{rxUiGet}{model}(x, ...)
 
 \method{rxUiGet}{modelDesc}(x, ...)
 

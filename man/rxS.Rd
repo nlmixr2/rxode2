@@ -4,7 +4,7 @@
 \alias{rxS}
 \title{Load a model into a symengine environment}
 \usage{
-rxS(x, doConst = TRUE, promoteLinSens = FALSE)
+rxS(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame())
 }
 \arguments{
 \item{x}{rxode2 object}
@@ -13,6 +13,9 @@ rxS(x, doConst = TRUE, promoteLinSens = FALSE)
 
 \item{promoteLinSens}{Promote solved linear compartment systems to
 sensitivity-based solutions.}
+
+\item{envir}{default is \code{NULL}; Environment to put symengine
+variables in.}
 }
 \value{
 rxode2/symengine environment

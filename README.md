@@ -9,7 +9,7 @@
 status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
-coverage](https://codecov.io/gh/nlmixr2/rxode2/branch/main/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2?branch=main)
+coverage](https://codecov.io/gh/nlmixr2/rxode2/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2)
 [![CRAN
 version](http://www.r-pkg.org/badges/version/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CRAN total
@@ -18,7 +18,7 @@ downloads](https://cranlogs.r-pkg.org/badges/grand-total/rxode2)](https://cran.r
 downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CodeFactor](https://www.codefactor.io/repository/github/nlmixr2/rxode2/badge)](https://www.codefactor.io/repository/github/nlmixr2/rxode2)
 ![r-universe](https://nlmixr2.r-universe.dev/badges/rxode2)
-<!-- badges: end  -->
+<!-- badges: end -->
 
 ## Overview
 
@@ -67,8 +67,7 @@ development version for MacOS and for Windows so you don’t have to wait
 for package compilation:
 
 ``` r
-install.packages(c("dparser", "rxode2ll", "rxode2parse",
-                   "rxode2random", "rxode2et", "rxode2"),
+install.packages(c("dparser", "rxode2ll", "rxode2"),
                  repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
                          CRAN="https://cloud.r-project.org"))
 ```
@@ -76,9 +75,6 @@ install.packages(c("dparser", "rxode2ll", "rxode2parse",
 If this doesn’t work you install the development version of rxode2 with
 
 ``` r
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -152,6 +148,14 @@ library(symengine)
 To install on linux make sure you install `gcc` (with openmp support)
 and `gfortran` using your distribution’s package manager.
 
+You will also have to install system dependencies like `udunits` and the
+[symengine
+dependencies](https://github.com/symengine/symengine.R?tab=readme-ov-file#installation)
+for the complete installation to work in linux. You could also have this
+done by system packages in your package manager if you add the
+appropriate repositories. This is the point of the
+[r2u](https://github.com/eddelbuettel/r2u) project.
+
 ### R versions 4.0 and 4.1
 
 For installation on R versions 4.0.x and 4.1.x, please see the
@@ -174,9 +178,6 @@ with:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -192,8 +193,7 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 2.0.13.9000 using 8 threads (see ?getRxThreads)
-#>   no cache: create with `rxCreateCache()`
+#> rxode2 3.0.4.9000 using 8 threads (see ?getRxThreads)
 
 mod1 <- function() {
   ini({
@@ -271,6 +271,13 @@ The ODE can now be solved using `rxSolve`:
 
 ``` r
 x <- mod1 %>% rxSolve(ev)
+#> ℹ parameter labels from comments are typically ignored in non-interactive mode
+#> ℹ Need to run with the source intact to parse comments
+#> → creating rxode2 include directory
+#> → getting R compile options
+#> → precompiling headers
+#> ✔ done
+#> using C compiler: 'gcc.exe (GCC) 14.2.0'
 x
 #> ── Solved rxode2 object ──
 #> ── Parameters (x$params): ──

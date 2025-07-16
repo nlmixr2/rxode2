@@ -1,13 +1,16 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-#include <R.h>
-#include <Rinternals.h>
 #include "lsoda.h"
 #include "lsoda_internal.h"
 #include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "blas.h"
+#include <R.h>
+#include <Rinternals.h>
 
 int solsy(struct lsoda_context_t * ctx, double *y)
 
@@ -32,4 +35,3 @@ int solsy(struct lsoda_context_t * ctx, double *y)
 	return 1;
 
 }
-

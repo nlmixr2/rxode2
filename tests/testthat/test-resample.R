@@ -2,6 +2,7 @@ rxTest({
   rxWithSeed(
     42,
     {
+
       m1 <- rxode2({
         CL ~ (1 - 0.2 * SEX) * (0.807 + 0.00514 * (CRCL - 91.2)) * exp(eta.cl)
         V1 ~ 4.8 * exp(eta.v1)
@@ -52,6 +53,7 @@ rxTest({
 
       test_that("test resampleID behavior", {
         for (nStud in c(1, 2)) {
+
           f1 <- rxSolve(m1, e,
                         ## Lotri uses lower-triangular matrix rep. for named matrix
                         omega = lotri(
@@ -318,7 +320,6 @@ rxTest({
           ## Now try icov option
 
           f1 <-
-            expect_warning(
               rxSolve(m1, e2,
                       iCov = cov.df,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
@@ -330,33 +331,27 @@ rxTest({
                       ),
                       sigma = lotri(err.sd ~ 0.5), addCov = TRUE
                       )
-            )
 
           expect_equal(f1$mWT, f1$WT)
           expect_equal(f1$mCRCL, f1$CRCL)
 
-          f2 <-
-            expect_warning(
-              rxSolve(m1, e2,
-                      iCov = cov.df,
-                      ## Lotri uses lower-triangular matrix rep. for named matrix
-                      omega = lotri(
-                        eta.cl ~ .306,
-                        eta.q ~ 0.0652,
-                        eta.v1 ~ .567,
-                        eta.v2 ~ .191
-                      ),
-                      sigma = lotri(err.sd ~ 0.5), addCov = TRUE,
-                      resample = c("SEX", "WT", "CRCL"),
-                      resampleID = resampleID
-                      )
-            )
+          f2 <- rxSolve(m1, e2,
+                    iCov = cov.df,
+                    ## Lotri uses lower-triangular matrix rep. for named matrix
+                    omega = lotri(
+                      eta.cl ~ .306,
+                      eta.q ~ 0.0652,
+                      eta.v1 ~ .567,
+                      eta.v2 ~ .191
+                    ),
+                    sigma = lotri(err.sd ~ 0.5), addCov = TRUE,
+                    resample = c("SEX", "WT", "CRCL"),
+                    resampleID = resampleID)
 
           expect_equal(f2$mWT, f2$WT)
           expect_equal(f2$mCRCL, f2$CRCL)
 
           f3 <-
-            expect_warning(
               rxSolve(m1, e2,
                       iCov = cov.df,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
@@ -371,7 +366,6 @@ rxTest({
                       resample = c("SEX", "WT", "CRCL"),
                       resampleID = resampleID
                       )
-            )
 
           expect_equal(f3$mWT, f3$WT)
           expect_equal(f3$mCRCL, f3$CRCL)

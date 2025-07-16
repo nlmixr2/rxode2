@@ -16,48 +16,58 @@
   }
 }
 .hasUnits <- FALSE
-.PreciseSumsVersion <- utils::packageVersion("PreciseSums")
-.rxode2parseMd5 <- rxode2parse::rxode2parseMd5()
+#' Get the rxode2 function pointers
+#'
+#' This function is used to get the function pointers for rxode2.  This is
+#' used to allow rxode2 to have binary linkage to nlmixr2est.
+#'
+#' @return a list of function pointers
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' .rxode2ptrs()
+.rxode2ptrs <- function() {
+  .Call(`_rxode2_rxode2Ptr`, PACKAGE = "rxode2")
+}
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
-  if (!identical(.PreciseSumsVersion, utils::packageVersion("PreciseSums"))) {
-    stop("rxode2 compiled with PreciseSums '", as.character(.PreciseSumsVersion),
-      "' but PreciseSums '", as.character(utils::packageVersion("PreciseSums")),
-      "' is loaded\nRecompile rxode2 with the this version of PreciseSums",
-      call. = FALSE
-    )
-  } else {
-    requireNamespace("PreciseSums", quietly=TRUE)
+  requireNamespace("data.table", quietly=TRUE)
+  if (requireNamespace("pillar", quietly = TRUE)) {
+    .s3register("pillar::type_sum", "rxEvid")
+    .s3register("pillar::type_sum", "rxRateDur")
+    .s3register("pillar::pillar_shaft", "rxEvid")
+    .s3register("pillar::pillar_shaft", "rxRateDur")
   }
-
-  if (!identical(.rxode2parseMd5, rxode2parse::rxode2parseMd5())) {
-    stop("rxode2 compiled with rxode2parse with a different solving structure",
-         "\ncan try: install.packages('rxode2', type='source')",
-         call. = FALSE)
-  } else {
-    requireNamespace("rxode2parse", quietly=TRUE)
+  if (requireNamespace("tibble", quietly = TRUE)) {
+    .s3register("tibble::as_tibble", "rxEt")
   }
-
-  requireNamespace("rxode2random", quietly=TRUE)
-  .Call(`_rxode2_assignSeedInfo`)
-  
-  rxode2et::.setRxode2()
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    .s3register("data.table::as.data.table", "rxEt")
+  }
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
   }
-
   if (requireNamespace("nlme", quietly=TRUE)) {
     .s3register("nlme::fixef", "rxUi")
     .s3register("nlme::fixef", "function")
   }
   if (requireNamespace("units", quietly = TRUE)) {
+    .s3register("units::set_units", "rxEt")
+    .s3register("units::set_units", "rxRateDur")
+    .s3register("units::drop_units", "rxEt")
+    .s3register("units::units<-", "rxEvid")
     .s3register("units::drop_units", "rxSolve")
     assignInMyNamespace(".hasUnits", TRUE)
   } else {
     assignInMyNamespace(".hasUnits", FALSE)
   }
+  if (requireNamespace("digest", quietly = TRUE)) {
+    .s3register("digest::sha1", "rxUi")
+  }
+  .s3register("lotri::as.lotri", "call")
   backports::import(pkgname)
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
@@ -67,7 +77,28 @@
     setProgSupported(0)
   }
   .ggplot2Fix()
+  .linkAll()
+  forderForceBase(FALSE)
 } ## nocov end
+
+.iniLotriPtrs <- function() {
+  .Call(`_iniLotriPtr`, lotri::.lotriPointers())
+}
+
+.iniPreciseSumsPtr <- function() {
+  .Call(`_iniPreciseSumsPtr`, PreciseSums::.preciseSumsPtr())
+}
+
+.iniDparserPtr <- function() {
+  .Call(`_rxode2_iniDparserPtr`, dparser::.dparsePtr())
+}
+
+.linkAll <- function() {
+  .iniLotriPtrs()
+  .iniPreciseSumsPtr()
+  .iniDparserPtr()
+}
+
 
 .onAttach <- function(libname, pkgname) {
   ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
@@ -76,6 +107,8 @@
   if (!interactive()) {
     setProgSupported(0)
   }
+  .linkAll()
+
   rxTempDir()
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")
@@ -96,6 +129,7 @@
       "\n========================================\n"
     )
   }
+  forderForceBase(FALSE)
 }
 
 .onUnload <- function(libpath) {
@@ -199,14 +233,13 @@ rxOpt <- list(
   rxode2.calculate.jacobian = c(FALSE, FALSE),
   rxode2.calculate.sensitivity = c(FALSE, FALSE),
   rxode2.verbose = c(TRUE, TRUE),
-  rxode2.verbose.pipe = c(TRUE, TRUE),
   rxode2.suppress.syntax.info = c(FALSE, FALSE),
   rxode2.sympy.engine = c("", ""),
   rxode2.cache.directory = c(.cacheDefault, .cacheDefault),
   rxode2.tempfiles = c(TRUE, TRUE),
   rxode2.sympy.run.internal = c(FALSE, FALSE),
-  rxode2.syntax.require.ode.first = c(TRUE, TRUE),
-  rxode2.compile.O = c("3", "3"),
+  rxode2.syntax.require.ode.first = c(FALSE, FALSE),
+  rxode2.compile.O = c("2", "2"),
   rxode2.unload.unused = c(FALSE, FALSE),
   rxode2.debug=c(FALSE, FALSE)
 )
@@ -227,7 +260,6 @@ rxode2.syntax.require.ode.first <- NULL
 rxode2.compile.O <- NULL
 rxode2.unload.unused <- NULL
 rxode2.debug <- NULL
-rxode2.verbose.pipe <- NULL
 
 .isTestthat <- function() {
   return(regexpr("/tests/testthat/", getwd(), fixed = TRUE) != -1) # nolint

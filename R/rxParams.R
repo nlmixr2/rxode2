@@ -62,18 +62,18 @@ rxParams.rxode2 <- function(obj, constants = TRUE, ...,
     }
     ## Most likely
     ## rxode2() %>% rxParams() %>%
-    rxode2et::.pipeRx(obj)
-    rxode2et::.pipeInits(NULL)
-    rxode2et::.pipeEvents(NULL)
-    rxode2et::.pipeParams(NULL)
-    rxode2et::.pipeKeep(NULL)
-    rxode2et::.pipeThetaMat(NULL)
-    rxode2et::.pipeOmega(NULL)
-    rxode2et::.pipeSigma(NULL)
-    rxode2et::.pipeDfObs(NULL)
-    rxode2et::.pipeDfSub(NULL)
-    rxode2et::.pipeNSub(NULL)
-    rxode2et::.pipeNStud(NULL)
+    rxode2::.pipeRx(obj)
+    rxode2::.pipeInits(NULL)
+    rxode2::.pipeEvents(NULL)
+    rxode2::.pipeParams(NULL)
+    rxode2::.pipeKeep(NULL)
+    rxode2::.pipeThetaMat(NULL)
+    rxode2::.pipeOmega(NULL)
+    rxode2::.pipeSigma(NULL)
+    rxode2::.pipeDfObs(NULL)
+    rxode2::.pipeDfSub(NULL)
+    rxode2::.pipeNSub(NULL)
+    rxode2::.pipeNStud(NULL)
     class(.ret) <- "rxParams"
     return(.ret)
   }
@@ -125,23 +125,23 @@ rxParams.rxSolve <- function(obj, constants = TRUE, ...,
     ## Assign prior information
     ## Need to extract:
     ## 1. rxode2 model
-    rxode2et::.pipeRx(.x$.args.object)
+    rxode2::.pipeRx(.x$.args.object)
     ## Events
-    rxode2et::.pipeEvents(.x$.args.events)
+    rxode2::.pipeEvents(.x$.args.events)
     ## 2. rxode2 parameters
-    rxode2et::.pipeParams(.x$.args.par0)
+    rxode2::.pipeParams(.x$.args.par0)
     ## 3. rxode2 inits
-    rxode2et::.pipeInits(.x$.args.inits)
+    rxode2::.pipeInits(.x$.args.inits)
     ## 4. rxode2 thetaMat
-    rxode2et::.pipeThetaMat(.x$.args$thetaMat)
+    rxode2::.pipeThetaMat(.x$.args$thetaMat)
     ## 5. rxode2 omega
-    rxode2et::.pipeOmega(.x$.args$omega)
+    rxode2::.pipeOmega(.x$.args$omega)
     ## 6. rxode2 sigma
-    rxode2et::.pipeSigma(.x$.args$sigma)
+    rxode2::.pipeSigma(.x$.args$sigma)
     ## 7. rxode2 dfObs
-    rxode2et::.pipeDfObs(.x$env$.args$dfObs)
+    rxode2::.pipeDfObs(.x$env$.args$dfObs)
     ## 8. rxode2 dfSub
-    rxode2et::.pipeDfSub(.x$env$.args$dfSub)
+    rxode2::.pipeDfSub(.x$env$.args$dfSub)
     class(.ret) <- "rxParams"
     return(.ret)
   }
@@ -160,7 +160,7 @@ rxParams.rxEt <- function(obj, ...,
     stop("'iCov' in a pipline is no longer supported", call. = FALSE)
   }
   # et() %>% rxParams() %>%
-  rxode2et::.pipeEvents(obj)
+  rxode2::.pipeEvents(obj)
   .lst <- list(...)
   if (length(.lst) > 0) {
     .clearPipe()

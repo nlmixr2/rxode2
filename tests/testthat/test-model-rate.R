@@ -10,11 +10,11 @@ rxTest({
       f <- 1
       ri <- 10
       li <- 0
-      d / dt(intestine) <- -a * intestine
+      d/dt(intestine) <- -a * intestine
       f(intestine) <- f
       rate(intestine) <- ri
       alag(intestine) <- li
-      d / dt(blood) <- a * intestine - b * blood
+      d/dt(blood) <- a * intestine - b * blood
     })
 
     et <- et() %>%
@@ -124,7 +124,7 @@ rxTest({
       f(intestine) <- f
       dur(intestine) <- di
       alag(intestine) <- li
-      d / dt(blood) <- a * intestine - b * blood
+      d/dt(blood) <- a * intestine - b * blood
     })
 
     test_that("Error when rate is requested but not in table", {

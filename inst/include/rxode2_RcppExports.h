@@ -6,6 +6,7 @@
 #ifndef RCPP_rxode2_RCPPEXPORTS_H_GEN_
 #define RCPP_rxode2_RCPPEXPORTS_H_GEN_
 
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 namespace rxode2 {
@@ -89,17 +90,17 @@ namespace rxode2 {
         return Rcpp::as<List >(rcpp_result_gen);
     }
 
-    inline List rxExpandFEta_(CharacterVector state, int neta, int pred) {
-        typedef SEXP(*Ptr_rxExpandFEta_)(SEXP,SEXP,SEXP);
+    inline List rxExpandFEta_(CharacterVector state, int neta, int pred, bool isTheta = false) {
+        typedef SEXP(*Ptr_rxExpandFEta_)(SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxExpandFEta_ p_rxExpandFEta_ = NULL;
         if (p_rxExpandFEta_ == NULL) {
-            validateSignature("List(*rxExpandFEta_)(CharacterVector,int,int)");
+            validateSignature("List(*rxExpandFEta_)(CharacterVector,int,int,bool)");
             p_rxExpandFEta_ = (Ptr_rxExpandFEta_)R_GetCCallable("rxode2", "_rxode2_rxExpandFEta_");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_rxExpandFEta_(Shield<SEXP>(Rcpp::wrap(state)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(pred)));
+            rcpp_result_gen = p_rxExpandFEta_(Shield<SEXP>(Rcpp::wrap(state)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(pred)), Shield<SEXP>(Rcpp::wrap(isTheta)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();
@@ -171,27 +172,6 @@ namespace rxode2 {
         if (rcpp_result_gen.inherits("try-error"))
             throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
         return Rcpp::as<bool >(rcpp_result_gen);
-    }
-
-    inline Function getRxFn(std::string name) {
-        typedef SEXP(*Ptr_getRxFn)(SEXP);
-        static Ptr_getRxFn p_getRxFn = NULL;
-        if (p_getRxFn == NULL) {
-            validateSignature("Function(*getRxFn)(std::string)");
-            p_getRxFn = (Ptr_getRxFn)R_GetCCallable("rxode2", "_rxode2_getRxFn");
-        }
-        RObject rcpp_result_gen;
-        {
-            RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_getRxFn(Shield<SEXP>(Rcpp::wrap(name)));
-        }
-        if (rcpp_result_gen.inherits("interrupted-error"))
-            throw Rcpp::internal::InterruptedException();
-        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
-            throw Rcpp::LongjumpException(rcpp_result_gen);
-        if (rcpp_result_gen.inherits("try-error"))
-            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
-        return Rcpp::as<Function >(rcpp_result_gen);
     }
 
     inline SEXP dynLoad(std::string dll) {
@@ -435,6 +415,27 @@ namespace rxode2 {
         {
             RNGScope RCPP_rngScope_gen;
             rcpp_result_gen = p_rxSolveFree();
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<LogicalVector >(rcpp_result_gen);
+    }
+
+    inline LogicalVector rxSolveSetup() {
+        typedef SEXP(*Ptr_rxSolveSetup)();
+        static Ptr_rxSolveSetup p_rxSolveSetup = NULL;
+        if (p_rxSolveSetup == NULL) {
+            validateSignature("LogicalVector(*rxSolveSetup)()");
+            p_rxSolveSetup = (Ptr_rxSolveSetup)R_GetCCallable("rxode2", "_rxode2_rxSolveSetup");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxSolveSetup();
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();
@@ -1073,17 +1074,59 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
-    inline NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT) {
-        typedef SEXP(*Ptr_meanProbs_)(SEXP,SEXP,SEXP,SEXP);
+    inline NumericVector binomProbsPredVec_(int n, int m, int Y, int M, bool doP = true, double tol = 1e-7) {
+        typedef SEXP(*Ptr_binomProbsPredVec_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_binomProbsPredVec_ p_binomProbsPredVec_ = NULL;
+        if (p_binomProbsPredVec_ == NULL) {
+            validateSignature("NumericVector(*binomProbsPredVec_)(int,int,int,int,bool,double)");
+            p_binomProbsPredVec_ = (Ptr_binomProbsPredVec_)R_GetCCallable("rxode2", "_rxode2_binomProbsPredVec_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_binomProbsPredVec_(Shield<SEXP>(Rcpp::wrap(n)), Shield<SEXP>(Rcpp::wrap(m)), Shield<SEXP>(Rcpp::wrap(Y)), Shield<SEXP>(Rcpp::wrap(M)), Shield<SEXP>(Rcpp::wrap(doP)), Shield<SEXP>(Rcpp::wrap(tol)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<NumericVector >(rcpp_result_gen);
+    }
+
+    inline NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, int nIn, int cont) {
+        typedef SEXP(*Ptr_binomProbs_)(SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_binomProbs_ p_binomProbs_ = NULL;
+        if (p_binomProbs_ == NULL) {
+            validateSignature("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool,int,int)");
+            p_binomProbs_ = (Ptr_binomProbs_)R_GetCCallable("rxode2", "_rxode2_binomProbs_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_binomProbs_(Shield<SEXP>(Rcpp::wrap(x)), Shield<SEXP>(Rcpp::wrap(probs)), Shield<SEXP>(Rcpp::wrap(naRm)), Shield<SEXP>(Rcpp::wrap(nIn)), Shield<SEXP>(Rcpp::wrap(cont)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<NumericVector >(rcpp_result_gen);
+    }
+
+    inline NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT, bool pred, int nIn) {
+        typedef SEXP(*Ptr_meanProbs_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_meanProbs_ p_meanProbs_ = NULL;
         if (p_meanProbs_ == NULL) {
-            validateSignature("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool)");
+            validateSignature("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool,bool,int)");
             p_meanProbs_ = (Ptr_meanProbs_)R_GetCCallable("rxode2", "_rxode2_meanProbs_");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_meanProbs_(Shield<SEXP>(Rcpp::wrap(x)), Shield<SEXP>(Rcpp::wrap(probs)), Shield<SEXP>(Rcpp::wrap(naRm)), Shield<SEXP>(Rcpp::wrap(useT)));
+            rcpp_result_gen = p_meanProbs_(Shield<SEXP>(Rcpp::wrap(x)), Shield<SEXP>(Rcpp::wrap(probs)), Shield<SEXP>(Rcpp::wrap(naRm)), Shield<SEXP>(Rcpp::wrap(useT)), Shield<SEXP>(Rcpp::wrap(pred)), Shield<SEXP>(Rcpp::wrap(nIn)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

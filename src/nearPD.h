@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifndef __NEARPD_H__
 #define __NEARPD_H__
 #if defined(__cplusplus)

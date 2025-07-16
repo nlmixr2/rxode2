@@ -1,4 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 // [[Rcpp::interfaces(r,cpp)]]
@@ -6,13 +9,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 bool rxIs(const RObject &obj, std::string cls);
 Function getRxFn(std::string name);
 
@@ -22,7 +19,7 @@ std::string symengineRes(std::string val);
 //' @param c1 character vector of items to be expanded
 //' @param c2 second character vector of items to be expanded
 //' @param type 0 for a typical data frame, 1 for symengine sensitivity expansion
-//' @return data frame (when type = 0) or symengine string (when type=1) 
+//' @return data frame (when type = 0) or symengine string (when type=1)
 //' @export
 //' @keywords internal
 //[[Rcpp::export]]
@@ -39,10 +36,10 @@ List rxExpandGrid_(RObject &c1, RObject &c2, RObject &type){
     int iType = as<int>(type);
     if (iType == 0){
       for (int i = lenF; i--;){
-				i1 = i % len1;
-				i2 = std::floor(i / len1);
-				out1[i] = in1[i1];
-				out2[i] = in2[i2];
+        i1 = i % len1;
+        i2 = std::floor(i / len1);
+        out1[i] = in1[i1];
+        out2[i] = in2[i2];
       }
       List out(2);
       out[0] = out1;
@@ -56,17 +53,17 @@ List rxExpandGrid_(RObject &c1, RObject &c2, RObject &type){
       CharacterVector out4(lenF);
       CharacterVector out5(lenF);
       for (int i = lenF; i--;){
-				i1 = i % len1;
-				i2 = std::floor(i / len1);
-				std::string s1 = as<std::string>(in1[i1]);
-				std::string s2 = as<std::string>(in2[i2]);
-				out1[i] = s1;
-				out2[i] = s2;
-				out3[i] = "df(" + s1 + ")/dy(" + s2 + ")";
-				std::string sDf = "rx__df_" + s1 + "_dy_" + s2 + "__";
-				out4[i] = sDf;
-				out5[i] = "assign(\"" + sDf + "\",with(model,D(rx__d_dt_" +
-					s1 + "__, \"" + symengineRes(s2) + "\")), envir=model)";
+        i1 = i % len1;
+        i2 = std::floor(i / len1);
+        std::string s1 = as<std::string>(in1[i1]);
+        std::string s2 = as<std::string>(in2[i2]);
+        out1[i] = s1;
+        out2[i] = s2;
+        out3[i] = "df(" + s1 + ")/dy(" + s2 + ")";
+        std::string sDf = "rx__df_" + s1 + "_dy_" + s2 + "__";
+        out4[i] = sDf;
+        out5[i] = "assign(\"" + sDf + "\",with(model,D(rx__d_dt_" +
+          s1 + "__, \"" + symengineRes(s2) + "\")), envir=model)";
       }
       List out(5);
       out[0] = out1;
@@ -131,7 +128,7 @@ List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
       std::string curState2=as<std::string>(state[j]);
       // sprintf("df(%s)/dy(%s)*rx__sens_%s_BY_%s__", s1, rxToSymPy(s2), s2, rxToSymPy(sns))
       curLine += "rx__df_"+curState+"_dy_"+curState2+
-				"__*rx__sens_"+curState2+"_BY_"+curSens+"__+";
+        "__*rx__sens_"+curState2+"_BY_"+curSens+"__+";
     }
     curLine += "rx__df_"+curState+ "_dy_"+curSens+"__),envir=model)";
     line[i] = curLine;
@@ -166,8 +163,8 @@ List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
   out[13] = FS;
   out[14] = FR;
   out.attr("names") = CharacterVector::create("ddt","ddtS","line","s0", "s0D","s0r", "ddS2",
-																							"rateS","rateR", "durS","durR","lagS", "lagR",
-																							"fS","fR");
+                                              "rateS","rateR", "durS","durR","lagS", "lagR",
+                                              "fS","fR");
   out.attr("class") = "data.frame";
   out.attr("row.names") = IntegerVector::create(NA_INTEGER, -lenF);
   return out;
@@ -217,9 +214,9 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
     for (int j = len1; j--;){
       std::string s2 = as<std::string>(state[j]);
       curLine += "+D("+v1+",\""+symengineRes(s2)+"\")*rx__sens_"+s2+"_BY_"+cS1+
-				"__+rx__sens_"+s2+"_BY_"+cS1+"_BY_"+cS2+
-				"__*rx__df_"+
-				cS + "_dy_"+s2+"__";
+        "__+rx__sens_"+s2+"_BY_"+cS1+"_BY_"+cS2+
+        "__*rx__df_"+
+        cS + "_dy_"+s2+"__";
     }
     curLine += "),envir=model)";
     line[i] = curLine;
@@ -240,22 +237,25 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
   out.attr("names") = CharacterVector::create("ddt","ddtS","ddS2","line","s0r","s0D","s0");
   out.attr("class") = "data.frame";
   out.attr("row.names") = IntegerVector::create(NA_INTEGER, -lenF);
-  return out;  
+  return out;
 }
 
 //' Expand d(f)/d(eta)
 //'
 //' @param state is the state to expand
 //' @param neta is the number of etas
-//' @param pred type of prediction 
+//' @param pred type of prediction
+//' @param isTheta logical, is the expansion actually for thetas instead of etas
 //' @keywords internal
 //' @return String of symengine expressions to evaluate to calculate df/deta
 //' @export
 //[[Rcpp::export]]
-List rxExpandFEta_(CharacterVector state, int neta, int pred){
+List rxExpandFEta_(CharacterVector state, int neta, int pred, bool isTheta=false){
   CharacterVector fe(neta);
   CharacterVector calcS(neta);
   int nstate = state.size();
+	std::string th = "";
+	if (isTheta) th = "TH";
   for (int i = 0; i < neta; i++){
     std::string etaN = std::to_string(i+1);
     std::string feta;
@@ -263,35 +263,35 @@ List rxExpandFEta_(CharacterVector state, int neta, int pred){
 
     switch(pred){
     case 2:
-      feta = "rx__sens_rx_pred__BY_ETA_" +
-				etaN + "___";
-      calc = "assign(\"" + feta + "\",with(.s,-D(rx_pred_, ETA_" +
-				etaN + "_)";
+      feta = "rx__sens_rx_pred__BY_" + th + "ETA_" +
+        etaN + "___";
+      calc = "assign(\"" + feta + "\",with(.s,-D(rx_pred_, " + th + "ETA_" +
+        etaN + "_)";
       for (int j = nstate; j--;){
-				calc += "-rx__sens_" + as<std::string>(state[j]) + "_BY_ETA_" + etaN +
-					"___*D(rx_pred_,\""+ symengineRes(as<std::string>(state[j])) + "\")";
+        calc += "-rx__sens_" + as<std::string>(state[j]) + "_BY_" + th + "ETA_" + etaN +
+          "___*D(rx_pred_,\""+ symengineRes(as<std::string>(state[j])) + "\")";
       }
       calc += "), envir=.s)";
       break;
     case 1:
-      feta = "rx__sens_rx_pred__BY_ETA_" +
-				etaN + "___";
-      calc = "assign(\"" + feta + "\",with(.s,D(rx_pred_, ETA_" +
-				etaN + "_)";
+      feta = "rx__sens_rx_pred__BY_" + th + "ETA_" +
+        etaN + "___";
+      calc = "assign(\"" + feta + "\",with(.s,D(rx_pred_, " + th + "ETA_" +
+        etaN + "_)";
       for (int j = nstate; j--;){
-				calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_ETA_" + etaN +
-					"___*D(rx_pred_,"+ symengineRes(as<std::string>(state[j])) + ")";
+        calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_" + th + "ETA_" + etaN +
+          "___*D(rx_pred_,"+ symengineRes(as<std::string>(state[j])) + ")";
       }
       calc += "), envir=.s)";
       break;
     case 0:
-      feta = "rx__sens_rx_r__BY_ETA_" +
-				etaN + "___";
-      calc = "assign(\"" + feta + "\",with(.s,D(rx_r_,ETA_" +
-				etaN + "_)";
+      feta = "rx__sens_rx_r__BY_" + th + "ETA_" +
+        etaN + "___";
+      calc = "assign(\"" + feta + "\",with(.s,D(rx_r_," + th +"ETA_" +
+        etaN + "_)";
       for (int j = nstate; j--;){
-				calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_ETA_" + etaN +
-					"___*D(rx_r_,"+ symengineRes(as<std::string>(state[j])) + ")";
+        calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_" + th + "ETA_" + etaN +
+          "___*D(rx_r_,"+ symengineRes(as<std::string>(state[j])) + ")";
       }
       calc += "), envir=.s)";
       break;
@@ -310,7 +310,7 @@ List rxExpandFEta_(CharacterVector state, int neta, int pred){
 
 //' Rep R0 for foce
 //'
-//' @param number ETA to substitute
+//' @param neta ETA to substitute
 //'
 //' @return Returns a string of R code to substitute the rx_r expression in the symengine environment .s
 //'
@@ -332,15 +332,15 @@ List rxModelVars_(const RObject &obj);
 // Expands nesting for theta/eta;
 //
 // @param thetaNest
-// 
+//
 // @noRd
 void rxExpandNestingRep(CharacterVector &thetaNest,
-												CharacterVector &thetaNestTran,
-												CharacterVector &thetaNestFull,
-												int &thCnt, int &curtheta,
-												List &aboveVars, NumericVector& above,
-												std::string &retS, 
-												List &data, std::string thetaVar = "THETA[") {
+                        CharacterVector &thetaNestTran,
+                        CharacterVector &thetaNestFull,
+                        int &thCnt, int &curtheta,
+                        List &aboveVars, NumericVector& above,
+                        std::string &retS,
+                        List &data, std::string thetaVar = "THETA[") {
   std::string theta;
   int lastTheta;
   int firstTheta = curtheta;
@@ -356,14 +356,14 @@ void rxExpandNestingRep(CharacterVector &thetaNest,
       std::string curPar = as<std::string>(nestVars[i]);
       retS += curPar + "=";
       for (int k = 0; k < nnest; ++k) {
-				theta = thetaVar + std::to_string(lastTheta+i+k*nnest+firstTheta) + "]";
-				retS += "(" + curNest + "==" + std::to_string(k+1)+")*" + theta;
-				thetaNestTran[thCnt] = curPar + "(" + curNest + "==" +
-					as<std::string>(curNestLvl[k])+")";
-				thetaNestFull[thCnt] = theta;
-				curtheta++; thCnt++;
-				if (k != nnest-1) retS += "+";
-				else retS += ";\n";
+        theta = thetaVar + std::to_string(lastTheta+k+i*nnest+firstTheta) + "]";
+        retS += "(" + curNest + "==" + std::to_string(k+1)+")*" + theta;
+        thetaNestTran[thCnt] = curPar + "(" + curNest + "==" +
+          as<std::string>(curNestLvl[k])+")";
+        thetaNestFull[thCnt] = theta;
+        curtheta++; thCnt++;
+        if (k != nnest-1) retS += "+";
+        else retS += ";\n";
       }
     }
   }
@@ -373,7 +373,7 @@ void rxExpandNestingRep(CharacterVector &thetaNest,
 
 //[[Rcpp::export]]
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
-										 bool compile=false){
+                     bool compile=false){
   std::string retS="";
   List mv = rxModelVars_(obj);
   IntegerVector flags = as<IntegerVector>(mv["flags"]);
@@ -414,23 +414,23 @@ List rxExpandNesting(const RObject& obj, List& nestingInfo,
 
   if (thetaNest.size() > 0) {
     rxExpandNestingRep(thetaNest, thetaNestTran, thetaNestFull,
-											 thCnt, curtheta, aboveVars, above, retS,  data,
-											 "THETA[");
+                       thCnt, curtheta, aboveVars, above, retS,  data,
+                       "THETA[");
   } else if (etaNest.size() == 0) {
     // const RObject& obj, List& nestingInfo,
-    // 		     bool compile=false
+    //         bool compile=false
     CharacterVector blank;
     blank.attr("names") = CharacterVector::create();
     return List::create(_["mod"] = obj,
-												_["theta"] = blank,
-												_["eta"] = blank);
+                        _["theta"] = blank,
+                        _["eta"] = blank);
   }
-  
+
   int etCnt = 0;
   rxExpandNestingRep(etaNest, etaNestTran, etaNestFull,
-										 etCnt, cureta,
-										 belowVars, below, retS, data,
-										 "ETA[");
+                     etCnt, cureta,
+                     belowVars, below, retS, data,
+                     "ETA[");
   CharacterVector mod = mv["model"];
   List ret(3);
   retS += as<std::string>(mod[0]);

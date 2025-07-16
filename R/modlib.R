@@ -347,8 +347,6 @@ rxPkg <- function(..., package,
   )
   setwd(.dir2)
   usethis::use_package("rxode2", "LinkingTo")
-  usethis::use_package("rxode2random", "LinkingTo")
-  usethis::use_package("rxode2parse", "LinkingTo")
   usethis::use_package("rxode2", "Depends")
   if (license == "gpl3") {
     usethis::use_gpl3_license()

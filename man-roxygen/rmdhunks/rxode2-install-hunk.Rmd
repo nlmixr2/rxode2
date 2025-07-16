@@ -1,6 +1,6 @@
 ---
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: 72
 ---
 
@@ -9,7 +9,7 @@ You can install the released version of rxode2 from
 
 ``` {.r}
 install.packages("rxode2")
-``` 
+```
 
 The fastest way to install the development version of `rxode2` is to
 use the `r-universe` service.  This service compiles binaries of the
@@ -17,8 +17,7 @@ development version for MacOS and for Windows so you don't have to
 wait for package compilation:
 
 ``` {.r}
-install.packages(c("dparser", "rxode2ll", "rxode2parse",
-                   "rxode2random", "rxode2et", "rxode2"),
+install.packages(c("dparser", "rxode2ll", "rxode2"),
                  repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
                          CRAN="https://cloud.r-project.org"))
 ```
@@ -26,9 +25,6 @@ install.packages(c("dparser", "rxode2ll", "rxode2parse",
 If this doesn't work you install the development version of rxode2 with
 
 ``` {.r}
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -102,6 +98,15 @@ library(symengine)
 To install on linux make sure you install `gcc` (with openmp support)
 and `gfortran` using your distribution's package manager.
 
+You will also have to install system dependencies like `udunits` and
+the [symengine
+dependencies](https://github.com/symengine/symengine.R?tab=readme-ov-file#installation)
+for the complete installation to work in linux.  You could also have
+this done by system packages in your package manager if you add the
+appropriate repositories.  This is the point of the
+[r2u](https://github.com/eddelbuettel/r2u) project.
+
+
 ### R versions 4.0 and 4.1
 
 For installation on R versions 4.0.x and 4.1.x, please see the instructions on
@@ -123,9 +128,6 @@ development version from
 
 ``` {.r}
 # install.packages("devtools")
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```

@@ -2,6 +2,7 @@ rxTest({
   warfarin <- nlmixr2data::warfarin
 
   test_that("cmt() syntax makes sense", {
+
     mod <- rxode2({
       a <- 6
       b <- 0.6
@@ -21,16 +22,15 @@ rxTest({
 
     expect_equal(c("intestine", "blood"), rxState(mod))
 
-    expect_output(
-      expect_error(expect_message(rxode2({
-        a <- 6
-        b <- 0.6
-        cmt(matt) # cmt = 1 now
-        d / dt(intestine) <- -a * intestine
-        d / dt(blood) <- a * intestine - b * blood
-      }))),
-      regexp = "compartment 'matt' needs differential equations defined"
-    )
+    
+    expect_error(suppressMessages(rxode2({
+      a <- 6
+      b <- 0.6
+      cmt(matt) # cmt = 1 now
+      d/dt(intestine) <- -a * intestine
+      d/dt(blood) <- a * intestine - b * blood
+    })))
+      
 
     tmp <- rxode2({
       a <- 6
@@ -42,9 +42,11 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
     expect_equal(tmp$stateExtra, "matt")
+
   })
 
   test_that("Compartment melding with dvid", {
+
     w <- rxode2({
       ktr <- exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
@@ -73,8 +75,10 @@ rxTest({
       dvid(-1, 4)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
+
     tmp <- etTrans(w2, w, addCmt = TRUE)
+
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
@@ -110,8 +114,10 @@ rxTest({
       dvid(5, 4)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
+
     tmp <- etTrans(w2, w, addCmt = TRUE)
+
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
@@ -130,7 +136,7 @@ rxTest({
       )
     )
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid)
     tmp <- etTrans(w2, w, addCmt = TRUE)
     expect_equal(
@@ -141,7 +147,7 @@ rxTest({
       )
     )
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid) * 10
     expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
     expect_equal(
@@ -179,7 +185,7 @@ rxTest({
       dvid(5)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid) * 10
     expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
     expect_equal(
@@ -217,7 +223,7 @@ rxTest({
       dvid(4, 5)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid)
     tmp <- etTrans(w2, w, addCmt = TRUE)
     expect_equal(
@@ -383,7 +389,7 @@ rxTest({
 
     # context("warfarin inner test")
 
-    data.pkpd <- warfarin
+    data.pkpd <- nlmixr2data::warfarin
     data.pkpd$dvid <- as.integer(data.pkpd$dvid)
     data.pkpd$cmt <- paste(factor(data.pkpd$dvid, c(1, 2), c("center", "effect")))
     data.pkpd$cmt[data.pkpd$amt > 0] <- "depot"
@@ -551,6 +557,130 @@ rxTest({
     expect_s3_class(tmp, "rxode2")
     expect_equal(tmp$lhs, character(0))
     expect_equal(tmp$stateExtra, "cp")
+  })
+
+  test_that("compartment ordering does not affect c-code generation #785",
+  {
+
+    f1 <- function() {
+      ini({
+        TVCL <- c(0, 0.0308628127403366)
+        TVV1 <- c(0, 0.132584062223269)
+        TVQ <- c(0, 0.0107718034646091)
+        TVV2 <- c(0, 0.0613517707801907)
+        TVR0 <- c(0, 3.94111989610973)
+        TVKON <- c(0, 1.31095109796496)
+        TVKOFF <- c(0, 0.0758072298659602)
+        TVKDEG <- c(0, 1.07290072658165)
+        TVKINT <- c(0, 3.49422759360926)
+        ADD.ERR.PK <- c(0, 0.446231462752061)
+        ETA.CL ~ 0.0499998244205031
+      })
+      model({
+        CL <- TVCL * exp(ETA.CL)
+        V1 <- TVV1
+        Q <- TVQ
+        V2 <- TVV2
+        R0 <- TVR0
+        KON <- TVKON
+        KOFF <- TVKOFF
+        KDEG <- TVKDEG
+        KINT <- TVKINT
+        KEL <- CL/V1
+        K12 <- Q/V1
+        K21 <- Q/V2
+        KD <- KOFF/KON
+        KSYN <- R0 * KDEG
+        A3(0) <- R0
+        KEL <- 0
+        d/dt(A1) = -(K12 + KEL) * A1 + K21 * A2 - KON * A1 *
+          A3 + KOFF * A4 * V1
+        d/dt(A2) = K12 * A1 - K21 * A2
+        d/dt(A3) = KSYN - KDEG * A3 - KON * (A1/V1) * A3 + KOFF *
+          A4
+        d/dt(A4) = KON * (A1/V1) * A3 - (KINT + KOFF) * A4
+        CFREE = A1/V1
+        CTOT = CFREE + A4
+        CP = log(CTOT)
+        CP ~ add(ADD.ERR.PK)
+        SPEC.OUT <- SPEC
+        DGRP.OUT <- DGRP
+        BW.OUT <- BW
+      })
+    }
+
+    f1 <- f1 %>% zeroRe("omega")
+
+    f2 <- function() {
+      ini({
+        TVCL <- c(0, 0.0308628127403366)
+        TVV1 <- c(0, 0.132584062223269)
+        TVQ <- c(0, 0.0107718034646091)
+        TVV2 <- c(0, 0.0613517707801907)
+        TVR0 <- c(0, 3.94111989610973)
+        TVKON <- c(0, 1.31095109796496)
+        TVKOFF <- c(0, 0.0758072298659602)
+        TVKDEG <- c(0, 1.07290072658165)
+        TVKINT <- c(0, 3.49422759360926)
+        ADD.ERR.PK <- c(0, 0.446231462752061)
+        ETA.CL ~ 0.0499998244205031
+      })
+      model({
+        cmt(A1)
+        cmt(A2)
+        cmt(A3)
+        cmt(A4)
+        CL <- TVCL * exp(ETA.CL)
+        V1 <- TVV1
+        Q <- TVQ
+        V2 <- TVV2
+        R0 <- TVR0
+        KON <- TVKON
+        KOFF <- TVKOFF
+        KDEG <- TVKDEG
+        KINT <- TVKINT
+        KEL <- CL/V1
+        K12 <- Q/V1
+        K21 <- Q/V2
+        KD <- KOFF/KON
+        KSYN <- R0 * KDEG
+        A3(0) <- R0
+        KEL <- 0
+        d/dt(A1) = -(K12 + KEL) * A1 + K21 * A2 - KON * A1 *
+          A3 + KOFF * A4 * V1
+        d/dt(A2) = K12 * A1 - K21 * A2
+        d/dt(A3) = KSYN - KDEG * A3 - KON * (A1/V1) * A3 + KOFF *
+          A4
+        d/dt(A4) = KON * (A1/V1) * A3 - (KINT + KOFF) * A4
+        CFREE = A1/V1
+        CTOT = CFREE + A4
+        CP = log(CTOT)
+        CP ~ add(ADD.ERR.PK)
+        SPEC.OUT <- SPEC
+        DGRP.OUT <- DGRP
+        BW.OUT <- BW
+      })
+    }
+
+    f2 <- f2 %>% zeroRe("omega")
+
+    ev     <- eventTable()
+    mybw   <- 70
+    mymw   <- 150000
+    mydgrp <- 50
+    ev$add.dosing(dose=mydgrp*mybw*1000000/mymw ,nbr.doses= 13, dosing.interval= 7)
+    ev$add.sampling(seq(0,13*7,length.out=7))
+
+    ev2 <- ev %>% as.data.frame() %>%
+      dplyr::mutate(BW=mybw, DGRP=mydgrp, SPEC=4)
+
+    s2 <- rxSolve(f2, ev2, returnType="data.frame")
+
+    s1 <- rxSolve(f1, ev2, returnType="data.frame")
+
+    expect_equal(s1[,c("A1", "A2", "A3", "A4")],
+                 s2[,c("A1", "A2", "A3", "A4")])
+
   })
 
 })

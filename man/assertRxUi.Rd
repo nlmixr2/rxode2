@@ -13,28 +13,28 @@
 \alias{assertRxUiRandomOnIdOnly}
 \title{Assert properties of the rxUi models}
 \usage{
-assertRxUi(model, extra = "", .var.name = .vname(model))
+assertRxUi(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiPrediction(model, extra = "", .var.name = .vname(model))
+assertRxUiPrediction(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiSingleEndpoint(model, extra = "", .var.name = .vname(model))
+assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiTransformNormal(model, extra = "", .var.name = .vname(model))
+assertRxUiTransformNormal(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiNormal(model, extra = "", .var.name = .vname(model))
+assertRxUiNormal(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiMuRefOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiEstimatedResiduals(model, extra = "", .var.name = .vname(model))
+assertRxUiEstimatedResiduals(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiPopulationOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiPopulationOnly(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiMixedOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiMixedOnly(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiRandomOnIdOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiRandomOnIdOnly(ui, extra = "", .var.name = .vname(ui))
 }
 \arguments{
-\item{model}{Model to check}
+\item{ui}{Model to check}
 
 \item{extra}{Extra text to append to the error message (like
 "for focei")}
@@ -96,6 +96,17 @@ assertRxUi(one.cmt)
 assertRxUiSingleEndpoint(one.cmt)
 }
 }
+\seealso{
+Other Assertions: 
+\code{\link{assertCompartmentExists}()},
+\code{\link{assertCompartmentName}()},
+\code{\link{assertCompartmentNew}()},
+\code{\link{assertVariableExists}()},
+\code{\link{assertVariableNew}()},
+\code{\link{testIniDf}()},
+\code{\link{testRxUnbounded}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Assertions}

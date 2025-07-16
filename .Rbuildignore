@@ -9,6 +9,7 @@
 ^Meta$
 ^doc$
 .Rdata
+.projectile
 ^\.travis.yml$
 ^\.lintr$
 ^.git.*$
@@ -138,3 +139,4 @@ tests/testthat/test-lincmt-parse.R
 ^/?build/sensitivites.R$
 ^CRAN-SUBMISSION$
 ^revdep$
+^vignettes/articles$

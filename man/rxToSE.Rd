@@ -7,11 +7,21 @@
 \alias{.rxFromSE}
 \title{rxode2 to symengine environment}
 \usage{
-rxToSE(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE)
+rxToSE(
+  x,
+  envir = NULL,
+  progress = FALSE,
+  promoteLinSens = TRUE,
+  parent = parent.frame()
+)
 
 .rxToSE(x, envir = NULL, progress = FALSE)
 
-rxFromSE(x, unknownDerivatives = c("forward", "central", "error"))
+rxFromSE(
+  x,
+  unknownDerivatives = c("forward", "central", "error"),
+  parent = parent.frame()
+)
 
 .rxFromSE(x)
 }
@@ -25,6 +35,8 @@ variables in.}
 
 \item{promoteLinSens}{Promote solved linear compartment systems to
 sensitivity-based solutions.}
+
+\item{parent}{is the parent environment to look for R-based user functions}
 
 \item{unknownDerivatives}{When handling derivatives from unknown
 functions, the translator will translate into different types

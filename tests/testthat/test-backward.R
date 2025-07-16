@@ -1,4 +1,11 @@
 rxTest({
+
+  test_that("error with wd specified but modName not specified", {
+
+expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q/vc*cent+q/vp*pericp-((vmax*cp)/vc)/(km+cp);d/dt(pericp)<-cent*q/vc-q/vp*pericp;f(gutcp)=bio;alag(gutcp)<-lag;gutcp(0)<-0;cent(0)<-0;pericp(0)<-0;", wd=getwd()))
+
+  })
+
   ## Dynmodel routines
   ode <- "
    dose=200;
@@ -166,10 +173,9 @@ rxTest({
       expect_equal(as.numeric(tmp$time[2]), 0.5)
       expect_equal(as.numeric(x$time[2]), 1)
       ## $ access updates object.
-      x$add.sampling(0.5)
+      expect_warning(x$add.sampling(0.5), NA) # from issue #750
       expect_equal(as.numeric(x$time[2]), 0.5)
     })
-
     x <- solve(mod1, theta, ev, inits)
 
     test_that("Add dosing makes sense", {

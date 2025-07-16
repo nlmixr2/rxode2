@@ -47,6 +47,8 @@ rxSolve(
   ...,
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+  naInterpolation = c("locf", "nocb"),
+  keepInterpolation = c("na", "locf", "nocb"),
   addCov = TRUE,
   sigma = NULL,
   sigmaDf = NULL,
@@ -87,7 +89,7 @@ rxSolve(
   seed = NULL,
   nsim = NULL,
   minSS = 10L,
-  maxSS = 1000L,
+  maxSS = 10000L,
   infSSstep = 12,
   strictSS = TRUE,
   istateReset = TRUE,
@@ -112,13 +114,10 @@ rxSolve(
   ssAtol = 1e-08,
   ssRtol = 1e-06,
   safeZero = TRUE,
+  safeLog = TRUE,
+  safePow = TRUE,
   sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
   prodType = c("long double", "double", "logify"),
-  sensType = c("advan", "autodiff", "forward", "central"),
-  linDiff = c(tlag = 1.5e-05, f = 1.5e-05, rate = 1.5e-05, dur = 1.5e-05, tlag2 =
-    1.5e-05, f2 = 1.5e-05, rate2 = 1.5e-05, dur2 = 1.5e-05),
-  linDiffCentral = c(tlag = TRUE, f = TRUE, rate = TRUE, dur = TRUE, tlag2 = TRUE, f2 =
-    TRUE, rate2 = TRUE, dur2 = TRUE),
   resample = NULL,
   resampleID = TRUE,
   maxwhile = 1e+05,
@@ -133,7 +132,25 @@ rxSolve(
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
-  ss2cancelAllPending = FALSE
+  ss2cancelAllPending = FALSE,
+  ssSolved = TRUE,
+  linCmtSensType = c("auto", "endpoint5", "endpoint5G", "forward3", "forward3G", "AD",
+    "central", "forward", "forwardG", "forwardH", "centralH", "forward3H", "endpointH5",
+    "forwardG"),
+  linCmtSensH = 1e-04,
+  linCmtGillFtol = 0,
+  linCmtGillK = 20L,
+  linCmtGillStep = 4,
+  linCmtGillRtol = sqrt(.Machine$double.eps),
+  linCmtShiErr = sqrt(.Machine$double.eps),
+  linCmtShiMax = 20L,
+  linCmtScale = FALSE,
+  linCmtHcmt = NULL,
+  linCmtHmeanI = c("geometric", "arithmetic", "harmonic"),
+  linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
+  linCmtSuspect = 1e-06,
+  linCmtForwardMax = 2L,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{`function`}(
@@ -143,7 +160,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{rxUi}(
@@ -153,7 +171,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{rxode2tos}(
@@ -163,7 +182,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{nlmixr2FitData}(
@@ -173,7 +193,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{nlmixr2FitCore}(
@@ -183,7 +204,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{default}(
@@ -193,7 +215,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{update}{rxSolve}(object, ...)
@@ -228,7 +251,13 @@ rxSolve(
 
 \method{solve}{rxEt}(a, b, ...)
 
-rxControl(..., params = NULL, events = NULL, inits = NULL)
+rxControl(
+  ...,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  envir = parent.frame()
+)
 }
 \arguments{
 \item{object}{is a either a rxode2 family of objects, or a file-name
@@ -332,11 +361,46 @@ interpolated.  Currently this can be:
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
 covariate value.
-\item \code{"constant"} -- Last observation carried forward (the default).
-\item \code{"NOCB"} -- Next Observation Carried Backward.  This is the same method
+\item \code{"locf"} -- Last observation carried forward (the default).
+\item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
 \item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
 carried backward to midpoint.
+
+For time-varying covariates where a missing value is present, the
+interpolation method will use either "locf" or "nocb" throughout
+if they are the type of covariate interpolation that is selected.
+
+When using the linear or midpoint interpolation, the lower point
+in the interpolation will use locf to interpolate missing
+covariates and the upper point will use the nocb to interpolate
+missing covariates.
+}}
+
+\item{naInterpolation}{specifies the interpolation method for
+time-varying covariates when the instantaneous value is \code{NA} (not
+during an explicit interpolation) and the \code{covsInterpolation} is
+either \code{"midpoint"} or \code{"linear"}. This can be:
+\itemize{
+\item \code{"locf"} -- last observation carried forward (default)
+\item \code{"nocb"} -- next observation carried backward.
+}
+
+This will look for the prior value (backwards/locf) when
+instantaneously missing, or the next value when instantaneously
+missing.  If all the covariates are missing and you find the
+end/beginning of the individual record, switch direction.  If all
+are really missing, then return missing.}
+
+\item{keepInterpolation}{specifies the interpolation method for
+variables in the \code{keep} column.  When \code{nlmixr2} creates \code{mtime},
+\code{addl} doses etc, these items were not originally in the dataset.
+The interpolation methods you can choose are:
+\itemize{
+\item \code{"locf"} -- last observation carried forward (default)
+\item \code{"nocb"} -- next observation carried backward.
+\item \code{"na"} -- no interpolation, simply put \code{NA} for the
+interpolated \code{keep} covariates.
 }}
 
 \item{addCov}{A boolean indicating if covariates should be added
@@ -630,7 +694,8 @@ and \code{to}.}
 isn't any observations in the event table. By default this is 200.}
 
 \item{iCov}{A data frame of individual non-time varying covariates
-to combine with the \code{events} dataset by merge.}
+to combine with the \code{events} dataset.  The \code{iCov} dataset has one
+covariate per ID and should match the event table}
 
 \item{keep}{Columns to keep from either the input dataset or the
 \code{iCov} dataset.  With the \code{iCov} dataset, the column
@@ -684,8 +749,13 @@ a vector based on each state.}
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
 
-\item{safeZero}{Use safe zero divide and log routines.  By default
+\item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
+
+\item{safeLog}{Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  By default this is turned on.}
+
+\item{safePow}{Use safe powers.  When enabled if your power is
+negative and your base is zero, this will return the \verb{machine epsilon^(negative power)}.  By default this is turned on.}
 
 \item{sumType}{Sum type to use for \code{sum()} in
 rxode2 code blocks.
@@ -706,34 +776,6 @@ rxode2 code blocks.
 multiplication and then converts back.
 
 \code{double} uses the standard double scale for multiplication.}
-
-\item{sensType}{Sensitivity type for \code{linCmt()} model:
-
-\code{advan} Use the direct advan solutions
-
-\code{autodiff} Use the autodiff advan solutions
-
-\code{forward} Use forward difference solutions
-
-\code{central} Use central differences}
-
-\item{linDiff}{This gives the linear difference amount for all the
-types of linear compartment model parameters where sensitivities
-are not calculated. The named components of this numeric vector are:
-\itemize{
-\item \code{"lag"} Central compartment lag
-\item \code{"f"} Central compartment bioavailability
-\item \code{"rate"} Central compartment modeled rate
-\item \code{"dur"} Central compartment modeled duration
-\item \code{"lag2"} Depot compartment lag
-\item \code{"f2"} Depot compartment bioavailability
-\item \code{"rate2"} Depot compartment modeled rate
-\item \code{"dur2"} Depot compartment modeled duration
-}}
-
-\item{linDiffCentral}{This gives the which parameters use central
-differences for the linear compartment model parameters.  The
-are the same components as \code{linDiff}}
 
 \item{resample}{A character vector of model variables to resample
 from the input dataset; This sampling is done with replacement.
@@ -802,6 +844,115 @@ steady concentration at the actual time of dose, otherwise when
 cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
 doses not canceled with \code{SS=2} (the infusions started before
 \code{SS=2} occurred are canceled, though).}
+
+\item{ssSolved}{When \code{TRUE} this will return the solved steady
+state solutions for the linear compartment model.  When \code{FALSE}
+this will solve to steady state using the linear solutions
+instead.  This is only used when the method only has \code{linCmt()}
+and does not mix ODEs with the solution.  The default is \code{TRUE}.}
+
+\item{linCmtSensType}{The type of linear compartment
+sensitivity/gradients to use.  The current options are:
+\itemize{
+\item \code{auto} -- for one compartment models this will use the \code{AD}
+method, for 2 and 3 compartment model this will use \code{forwardG}.
+\item \code{AD} -- automatic differentiation (using stan math)
+\item \code{forward} -- forward sensitivity where the step size is
+determined by shi 2021 optimization (only once per problem)
+\item \code{forwardG} -- forward sensitivity where the step size is determined by the
+Gill 1983 optimization for forward differences (only once per problem).
+\item \code{central} -- central sensitivity where the step size is
+determined by shi 2021 optimization (only once per problem)
+\item \code{forward3} -- three point central difference where step size is
+determined by shi 2021 optimization for central differences (only
+once per problem)
+\item \code{endpoint5} -- five point endpoint difference where step size is
+determined by the shi 2021 optimization for central differences
+(only once per problem)
+\item \code{fowardH} -- forward sensitivity where the step size is fixed
+\item \code{centralH} -- central sensitivity where the step size is fixed
+\item \code{forward3H} -- three point central difference where step size is fixed
+\item \code{endpoint5H} -- five point endpoint difference where step size is fixed
+}}
+
+\item{linCmtSensH}{The step size for the forward and central
+differences when using the option \code{centralH}, \code{forwardH},
+\code{foward3H} or \code{endpoint5H} options.
+#'}
+
+\item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
+is acceptable before issuing a warning/error about the gradient estimates.}
+
+\item{linCmtGillK}{The total number of possible steps to determine the
+optimal forward/central difference step size per parameter (by
+the Gill 1983 method).  If 0, no optimal step size is
+determined.  Otherwise this is the optimal step size
+determined.}
+
+\item{linCmtGillStep}{When looking for the optimal forward difference
+step size, this is This is the step size to increase the
+initial estimate by.  So each iteration the new step size =
+(prior step size)*gillStep}
+
+\item{linCmtGillRtol}{The relative tolerance used for Gill 1983
+optimal step size determination.}
+
+\item{linCmtShiErr}{Shi difference error}
+
+\item{linCmtShiMax}{The maximum number of steps for the
+optimization of the forward-difference step size in linear
+compartment numeric difference.}
+
+\item{linCmtScale}{The scale of the linear compartment model.  This
+is applied to sensitivity approximation using numeric
+differences.  When \code{TRUE} or \code{NULL} use default scaling, when
+\code{FALSE} use no scaling.  If it is one elment numeric, the value
+is duplicated 7 times and applies to all the parameters.
+Otherwise this is a seven element numeric vector implying the
+scaling for each of the linear compartmental model parameters.}
+
+\item{linCmtHcmt}{This represents the compartments considered when
+optimizing the forward difference step size.  When a character
+vector it can be any of the following (multiple allowed):
+\itemize{
+\item \code{"depot"} -- depot compartment
+\item \code{"central"} -- central compartment
+\item \code{"peripheral1"} -- peripheral compartment
+\item \code{"peripheral2"} -- second peripheral compartment
+\item \code{"concentration"} -- concentration value (i.e. central
+compartment/volume)
+}}
+
+\item{linCmtHmeanI}{This represents the type of sum done for each
+time-point of the linear solved systems (as defined by \code{"linCmtHcmt"}).
+\itemize{
+\item \code{"arithmetic"} -- gives the arithmetic mean
+\item \code{"geometric"} -- gives the geometric mean
+\item \code{"harmonic"} -- gives the harmonic mean
+}}
+
+\item{linCmtHmeanO}{This represents the type of sum done for the
+overall problem of the linear solved systems (first each time
+point mean is calculated with \code{linCmtHmeanI}).
+\itemize{
+\item \code{"arithmetic"} -- gives the arithmetic mean
+\item \code{"geometric"} -- gives the geometric mean
+\item \code{"harmonic"} -- gives the harmonic mean
+}}
+
+\item{linCmtSuspect}{The tolerance for gradients in linear
+compartment solutions to re-compute when gradients seem to be
+zero.}
+
+\item{linCmtForwardMax}{The maximum number of points in a forward
+difference to take while calculating the gradients.  This is an
+integer from 1 to 3.  There is at least 1 extra point taken for
+gradient calculation, if the gradient is suspect another is taken
+(if this value is 2), and finally a third is calculated if the
+gradient is still suspect.}
+
+\item{envir}{is the environment to look for R user functions
+(defaults to parent environment)}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

@@ -1,4 +1,5 @@
 rxTest({
+
   expectSimWithout <- function(x) {
     expect_null(x$thetaMat)
     expect_null(x$omegaList)
@@ -27,8 +28,8 @@ rxTest({
     # context(sprintf("Test Parallel/Multi-subject Solve (%s)", meth))
 
     mod <- rxode2({
-      d / dt(intestine) <- -a * intestine
-      d / dt(blood) <- a * intestine - b * blood
+      d/dt(intestine) <- -a * intestine
+      d/dt(blood) <- a * intestine - b * blood
     })
 
     et <- eventTable(time.units = "days")
@@ -118,10 +119,10 @@ rxTest({
       C2 <- prod(centr, 1 / V2)
       C3 ~ prod(peri, 1 / V3)
       CL ~ prod(TCL, exp(eta.Cl))
-      d / dt(depot) ~ prod(-KA, depot)
-      d / dt(centr) ~ sum(prod(KA, depot), -prod(CL, C2), -prod(Q, C2), prod(Q, C3))
-      d / dt(peri) ~ sum(prod(Q, C2), -prod(Q, C3))
-      d / dt(eff) <- sum(Kin, -prod(Kout, sum(1, -prod(C2, 1 / sum(EC50, C2))), eff))
+      d/dt(depot) ~ prod(-KA, depot)
+      d/dt(centr) ~ sum(prod(KA, depot), -prod(CL, C2), -prod(Q, C2), prod(Q, C3))
+      d/dt(peri) ~ sum(prod(Q, C2), -prod(Q, C3))
+      d/dt(eff) <- sum(Kin, -prod(Kout, sum(1, -prod(C2, 1 / sum(EC50, C2))), eff))
       e1 <- err1
       e2 <- err2
       resp <- sum(eff, e1)
@@ -159,10 +160,10 @@ rxTest({
       C2 <- centr / V2
       C3 ~ peri / V3
       CL ~ TCL * exp(eta.Cl)
-      d / dt(depot) ~ -KA * depot
-      d / dt(centr) ~ KA * depot - CL * C2 - Q * C2 + Q * C3
-      d / dt(peri) ~ Q * C2 - Q * C3
-      d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
+      d/dt(depot) ~ -KA * depot
+      d/dt(centr) ~ KA * depot - CL * C2 - Q * C2 + Q * C3
+      d/dt(peri) ~ Q * C2 - Q * C3
+      d/dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
       eff(0) <- 1000
       e1 <- err1
       e2 <- err2

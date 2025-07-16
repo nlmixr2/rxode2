@@ -1,20 +1,19 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-#include <R.h>
-#include <Rinternals.h>
 #include <stdio.h>
 #include <math.h>
 #include "lsoda.h"
 #include "common.h"
 #include "lsoda_internal.h"
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
+
+#include <R.h>
+#include <Rinternals.h>
+
 
 void RSprintf(const char *format, ...);
 
@@ -80,4 +79,3 @@ int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 		dky[i] *= r;
 	return 0;
 }				/* end intdy   */
-

@@ -9,9 +9,9 @@ rxSetupScale(obj, scale = NULL, extraArgs = NULL)
 \arguments{
 \item{obj}{rxode2 object}
 
-\item{extraArgs}{A list of extra args to parse for initial conditions.}
+\item{scale}{A numeric vector scales}
 
-\item{inits}{A numeric vector of initial conditions.}
+\item{extraArgs}{A list of extra args to parse for initial conditions.}
 }
 \value{
 setup scale for changing compartment values

@@ -83,6 +83,8 @@ NA_LOGICAL <- NA # nolint
 #'   print on every step (except ME/indLin), otherwise when `FALSE`
 #'   print only when calculating the `d/dt`
 #'
+#' @inheritParams rxode2parse
+#'
 #' @details
 #'
 #' The `Rx` in the name `rxode2` is meant to suggest the
@@ -96,7 +98,7 @@ NA_LOGICAL <- NA # nolint
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
 #' @includeRmd man/rmdhunks/rxode2-syntax-hunk.Rmd
-#' 
+#'
 #' @return An object (environment) of class `rxode2` (see Chambers and Temple Lang (2001))
 #'      consisting of the following list of strings and functions:
 #'
@@ -142,7 +144,7 @@ NA_LOGICAL <- NA # nolint
 #'
 #'           `atol`: a numeric absolute tolerance (1e-08 by default);
 #'
-#'           `rtol`: a numeric relative tolerance (1e-06 by default).e
+#'           `rtol`: a numeric relative tolerance (1e-06 by default).
 #'
 #'           The output of \dQuote{solve} is a matrix with as many rows as there
 #'           are sampled time points and as many columns as system variables
@@ -252,8 +254,8 @@ NA_LOGICAL <- NA # nolint
 #' @concept Pharmacokinetics (PK)
 #' @concept Pharmacodynamics (PD)
 #' @useDynLib rxode2, .registration=TRUE
+#' @eval .rxodeBuildCode()
 #' @importFrom PreciseSums fsum
-#' @importFrom rxode2parse rxode2parse
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
@@ -270,13 +272,19 @@ rxode2 <- # nolint
            wd = getwd(),
            filename = NULL, extraC = NULL, debug = FALSE, calcJac = NULL, calcSens = NULL,
            collapseModel = FALSE, package = NULL, ...,
-           linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+           linCmtSens = c("linCmtA", "linCmtB"),
            indLin = FALSE,
            verbose = FALSE,
-           fullPrint=getOption("rxode2.fullPrint", FALSE)) {
+           fullPrint=getOption("rxode2.fullPrint", FALSE),
+           envir=parent.frame()) {
+    if (!missing(wd) && missing(modName)) {
+      stop("working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`",
+              call.=FALSE)
+    }
+    .udfEnvSet(envir)
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
-    rxode2parse::rxParseSuppressMsg()
+    rxParseSuppressMsg()
     .modelName <- try(as.character(substitute(model)), silent=TRUE)
     if (inherits(.modelName, "try-error")) .modelName <- NULL
     if (!missing(modName)) {
@@ -362,8 +370,7 @@ rxode2 <- # nolint
         .vars,
         setNames(
           c(
-            "linCmtA" = 1L, "linCmtB" = 2L,
-            "linCmtC" = 3L
+            "linCmtA" = 1L, "linCmtB" = 2L
           )[match.arg(linCmtSens)],
           NULL
         ), verbose
@@ -411,7 +418,7 @@ rxode2 <- # nolint
           .rx$.clearME()
         })
         .rx$.rxWithWd(wd, {
-          .rx$.extraC(extraC)
+          rxode2::.extraC(extraC)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
@@ -432,7 +439,7 @@ rxode2 <- # nolint
         })
       })
     }))
-    .extraC(extraC)
+    rxode2::.extraC(extraC)
     .env$compile()
     .env$get.modelVars <- eval(bquote(function() {
       with(.(.env), {
@@ -633,23 +640,28 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       model <- model[-length(model)]
     }
     model <- paste(model, collapse = "\n")
-  } else if (is(model, "function") || is(model, "call")) {
+  } else if (inherits(model, "function") || inherits(model, "call")) {
     model <- deparse(body(model))
     if (model[1] == "{") {
       model <- model[-1]
       model <- model[-length(model)]
     }
     model <- paste(model, collapse = "\n")
-  } else if (is(model, "name")) {
+  } else if (inherits(model, "name")) {
     model <- eval(model)
-  } else if (is(model, "character") || is(model, "rxModelText")) {
+  } else if (inherits(model, "character") || inherits(model, "rxModelText")) {
     model <- as.vector(model)
-  } else if (is(model, "rxode2")) {
+  } else if (inherits(model, "rxode2")) {
     model <- rxModelVars(model)
     ## class(model) <- NULL;
-  } else if (is(model, "rxModelVars")) {
+  } else if (inherits(model, "rxModelVars")) {
+  } else if (inherits(model, "rxDll")) {
+    model <- model$args$model
   } else {
-    stop("cannot figure out how to handle the model argument", call. = FALSE)
+    model <- rxModelVars(model)
+    if (!inherits(model, "rxModelVars")) {
+      stop("cannot figure out how to handle the model argument", call. = FALSE)
+    }
   }
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
@@ -1039,7 +1051,7 @@ rxMd5 <- function(model, # Model File
       rxode2.calculate.sensitivity)
     .ret <- c(
       .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
-      .linCmtSens, ls(.symengineFs), .rxFullPrint
+      .linCmtSens, .udfMd5Info(), .rxFullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1235,13 +1247,13 @@ rxDllLoaded <- rxIsLoaded
 #'
 #' @return An rxDll object that has the following components
 #'
-#' * `dll`{DLL path}
-#' * `model`{model specification}
-#' * `.c`{A function to call C code in the correct context from the DLL
-#'          using the [.C()] function.}
-#' * `.call`{A function to call C code in the correct context from the DLL
-#'          using the [.Call()] function.}
-#' * `args`{A list of the arguments used to create the rxDll object.}
+#' * `dll` DLL path
+#' * `model` model specification
+#' * `.c` A function to call C code in the correct context from the DLL
+#'          using the [.C()] function.
+#' * `.call` A function to call C code in the correct context from the DLL
+#'          using the [.Call()] function.
+#' * `args` A list of the arguments used to create the rxDll object.
 #' @inheritParams rxode2
 #' @seealso [rxode2()]
 #' @author Matthew L.Fidler
@@ -1255,7 +1267,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 
 .getIncludeDir <- function() {
   .cache <- R_user_dir("rxode2", "cache")
-  .parseInclude <- system.file("include", package = "rxode2parse")
+  .parseInclude <- system.file("include", package = "rxode2")
   if (dir.exists(.cache)) {
     .include <- .normalizePath(file.path(.cache, "include"))
     if (!dir.exists(.include)) {
@@ -1275,6 +1287,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .cc <- gsub("\n", "", .cc)
       .cflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout)
       .cflags <- gsub("\n", "", .cflags)
+      .cflags <- paste0(.cflags, " -O", getOption("rxode2.compile.O", "2"))
       .shlibCflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "SHLIB_CFLAGS"))$stdout)
       .shlibCflags <- gsub("\n", "", .shlibCflags)
       .cpicflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "CPICFLAGS"))$stdout)
@@ -1454,14 +1467,14 @@ rxCompile.rxModelVars <- function(model, # Model
           "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "2"),
           .defs, .getIncludeDir(),
-          system.file("include", package = "rxode2parse")
+          system.file("include", package = "rxode2")
         )
         ## .ret <- paste(.ret, "-g")
         sink(.Makevars)
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(.extraCnow)
+        cat(rxode2::.extraCnow())
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))
@@ -1766,17 +1779,17 @@ rxModels_ <- # nolint
 #'
 #' @return A list of rxode2 model properties including:
 #'
-#' * `params`{ a character vector of names of the model parameters}
-#' * `lhs`{ a character vector of the names of the model calculated parameters}
-#' * `state`{ a character vector of the compartments in rxode2 object}
-#' * `trans`{ a named vector of translated model properties
+#' * `params`  a character vector of names of the model parameters
+#' * `lhs` a character vector of the names of the model calculated parameters
+#' * `state` a character vector of the compartments in rxode2 object
+#' * `trans` a named vector of translated model properties
 #'       including what type of jacobian is specified, the `C` function prefixes,
-#'       as well as the `C` functions names to be called through the compiled model.}
-#' * `md5`{a named vector that gives the digest of the model (`file_md5`) and the parsed model
-#'      (`parsed_md5`)}
-#' * `model`{ a named vector giving the input model (`model`),
+#'       as well as the `C` functions names to be called through the compiled model.
+#' * `md5` a named vector that gives the digest of the model (`file_md5`) and the parsed model
+#'      (`parsed_md5`)
+#' * `model`  a named vector giving the input model (`model`),
 #'    normalized model (no comments and standard syntax for parsing, `normModel`),
-#'    and interim code that is used to generate the final C file `parseModel`}
+#'    and interim code that is used to generate the final C file `parseModel`
 #'
 #' @keywords internal
 #' @family Query model information

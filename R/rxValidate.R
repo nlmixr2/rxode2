@@ -16,7 +16,9 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
         return(invisible())
       }
     }
-    rxUnloadAll()
+    if (!.Call(`_rxode2_isIntel`)) {
+      rxUnloadAll()
+    }
     return(force(type))
   }
   pt <- proc.time()
@@ -43,9 +45,9 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
     path <- file.path(system.file("tests", package = "rxode2"), "testthat")
     .rxWithWd(path, {
       try(devtools::test(path, filter = .filter))
-      message("================================================================================")
+      message("=================================================================================")
       print(proc.time() - pt)
-      message("================================================================================")
+      message("=================================================================================")
     })
   })
 }
@@ -53,5 +55,3 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
 #' @rdname rxValidate
 #' @export
 rxTest <- rxValidate
-
-

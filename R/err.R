@@ -37,6 +37,8 @@
   "probitNorm" = 1:3,
   "combined1"=0,
   "combined2"=0,
+  "var"=0,
+  "dv"=0,
   "comb1"=0,
   "comb2"=0,
   "dchisq"=1,
@@ -46,8 +48,8 @@
   "f"=2:3,
   "dgeom"=1,
   "geom"=1,
-#  "dhyper"=3,
-#  "hyper"=3,
+  #  "dhyper"=3,
+  #  "hyper"=3,
   "dunif"=0:2,
   "unif"=0:2,
   "dweibull"=1:2,
@@ -61,12 +63,15 @@
   "dnbinomMu"=2
 )
 
-.errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
+.errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm",
+                       "dlnorm", "logitNorm", "probitNorm")
 
 .errUnsupportedDists <- "nlmixrDist"
 
-.errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
-                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy", "norm")
+.errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF",
+                  "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
+                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2",
+                  "comb1", "comb2", "t", "cauchy", "norm", "var", "dv")
 
 .errIdenticalDists <- list(
   "lnorm"=c("logn", "dlogn", "dlnorm"),
@@ -233,7 +238,7 @@ rxPreferredDistributionName <- function(dist) {
 }
 
 .rxTransformHasBounds <- function(distribution) {
-    (as.integer(distribution) %in% 5:14)
+  (as.integer(distribution) %in% 5:14)
 }
 
 .rxAddPropLevels <- c(
@@ -294,7 +299,7 @@ rxPreferredDistributionName <- function(dist) {
 #'   rxDemoteAddErr()
 #'
 #' # This is used for logitNorm(NA), the additive portion is stripped
-#' 
+#'
 #' @keywords internal
 rxDemoteAddErr <- function(errType) {
   if (inherits(errType, "factor")) {
@@ -336,7 +341,7 @@ rxDemoteAddErr <- function(errType) {
 
 .incompatibleErr <- function(err1, err2) {
   .errs <- sort(c(err1, err2))
-   paste0("`", .errs[1], "` and `", .errs[2], "` are incompatible")
+  paste0("`", .errs[1], "` and `", .errs[2], "` are incompatible")
 }
 #' Combine error types to get the model F type
 #'
@@ -509,10 +514,14 @@ rxDemoteAddErr <- function(errType) {
             class="factor")
 }
 
-#' This is a wrapper to make sure that the transformation combination returns the correct value
+#' This is a wrapper to make sure that the transformation combination
+#' returns the correct value
 #'
 #' @param inputList This is either an input list or character vector of length one
-#' @return Either a complete list, or a character vector which represents the parsed error that was encountered
+#'
+#' @return Either a complete list, or a character vector which
+#'   represents the parsed error that was encountered
+#'
 #' @author Matthew Fidler
 #' @noRd
 .rxTransformCombineListOrChar <- function(inputList) {
@@ -545,11 +554,10 @@ rxDemoteAddErr <- function(errType) {
 #'   `oldErrType` to zero assuming that there is no prior
 #'   distribution.
 #'
-#' @param newTransform This is the new distribution that is being
+#' @param newErrType This is the new distribution that is being
 #'   "added" to the current transformation.  These assumes the inputs
 #'   are in the preferred distribution name, as determined by
 #'   `rxPreferredDistributionName()`
-#'
 #'
 #' @return The new transformation as a factor
 #'
@@ -598,7 +606,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       env$.numeric <- -(expression[[2]])
       return(TRUE)
     } else if (identical(expression[[1]], quote(`+`)) &&
-          is.numeric(expression[[2]])) {
+                 is.numeric(expression[[2]])) {
       env$.numeric <- expression[[2]]
       return(TRUE)
     }
@@ -627,7 +635,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   dexp=c("a"), #7
   f=c("a", "b", "c"), #8
   geom=c("a"), #9
-#  hyper=c("a", "b", "c"), #10
+  #  hyper=c("a", "b", "c"), #10
   unif=c("a", "b"), #11
   weibull=c("a", "b"), #12
   cauchy=c("a", "b"),
@@ -780,6 +788,14 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   } else if (env$isAnAdditiveExpression) {
     .currErr <- rxPreferredDistributionName(deparse1(expression[[1]]))
     if (.currErr %in% .errAddDists) {
+      if (.currErr == "var") {
+        env$var <- TRUE
+        return(invisible())
+      }
+      if (.currErr == "dv") {
+        env$dv <- TRUE
+        return(invisible())
+      }
       if (.currErr == "t") {
         if (env$distribution == "cauchy") {
           stop("you cannot combine 't' and 'cauchy' distributions")
@@ -856,6 +872,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   if (is.name(expression) || is.atomic(expression)) return(expression)
   if (identical(expression[[1]], quote(`|`))) {
     env$needsToBeAnErrorExpression  <- TRUE
+    if (length(expression[[3]]) != 1 &&
+          !is.symbol(expression[[3]])) {
+      env$err <- c(env$err,
+                   paste0("the condition '", deparse1(expression[[3]]), "' must be a simple name"))
+      env$earlyErr <- TRUE
+    }
     env$curCondition <- deparse1(expression[[3]])
     return(expression[[2]])
   }
@@ -919,6 +941,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$ll <- FALSE
   env$estNotAllowed <- TRUE
   env$linCmt <- FALSE
+  env$var <- FALSE
+  env$dv <- FALSE
   .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
   env$a <- env$b <- env$c <- env$d <- env$e <- env$f <- env$lambda <- NA_character_
@@ -944,8 +968,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     if (env$ll) {
       env$distribution <- "LL"
       env$predDf <- rbind(env$predDf,
-                          data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
-                                     trLow=env$trLimit[1], trHi=env$trLimit[2],
+                          data.frame(cond=env$curCondition,
+                                     var=env$curVar, dvid=env$curDvid,
+                                     trLow=env$trLimit[1],
+                                     trHi=env$trLimit[2],
                                      transform=env$errTypeInfo$transform,
                                      errType=env$errTypeInfo$errType,
                                      errTypeF=env$errTypeInfo$errTypeF,
@@ -959,7 +985,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                      e=env$e,
                                      f=env$f,
                                      lambda=env$lambda,
-                                     linCmt=env$linCmt))
+                                     linCmt=env$linCmt,
+                                     variance=env$var,
+                                     dv=env$dv))
       env$curDvid <- env$curDvid + 1L
 
     }
@@ -986,7 +1014,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          e=env$e,
                          f=env$f,
                          lambda=env$lambda,
-                         linCmt=env$linCmt)
+                         linCmt=env$linCmt,
+                         variance=env$var,
+                         dv=env$dv)
       env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
@@ -1036,6 +1066,101 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }
 }
 
+#' Get a blank, theta1, or eta1 initialization block for iniDf
+#'
+#' @param type type of initialization block to return
+#' @return A data.frame with the appropriate number/type of columns.
+#'
+#' For type="empty", the data.frame will have 0 rows but all the correct types.
+#'
+#' For type="theta", the data.frame will have 1 row with the correct
+#' types and default values.  The "name" and "est" will likely need to
+#' be updated.
+#'
+#' For type="eta", the data.frame will have 1 row with the correct
+#' types and default values for the a single eta being added.  The
+#' "name" and "est" will likely need to be updated.
+#'
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#'
+#' .rxBlankIni("empty")
+#'
+#' .rxBlankIni("theta")
+#'
+#' .rxBlankIni("eta")
+#'
+.rxBlankIni <- function(type=c("empty", "theta", "eta")) {
+  type <- match.arg(type)
+  if (type == "empty") {
+    data.frame(ntheta=integer(0),
+               neta1=integer(0),
+               neta2=integer(0),
+               name=character(0),
+               lower=numeric(0),
+               est=numeric(0),
+               upper=numeric(0),
+               fix=logical(0),
+               err=character(0),
+               label=character(0),
+               stringsAsFactors=FALSE)
+  } else if (type == "theta") {
+    data.frame(ntheta=1L,
+               neta1=NA_integer_,
+               neta2=NA_integer_,
+               name=NA_character_,
+               lower=-Inf,
+               est=0,
+               upper=Inf,
+               fix=FALSE,
+               err=NA_character_,
+               label=NA_character_,
+               stringsAsFactors=FALSE)
+  } else {
+    data.frame(ntheta=NA_integer_,
+               neta1=1L,
+               neta2=1L,
+               name=NA_character_,
+               lower=0,
+               est=0.1,
+               upper=Inf,
+               fix=FALSE,
+               err=NA_character_,
+               label=NA_character_,
+               stringsAsFactors=FALSE)
+  }
+}
+#' UI errors detected. Called in multiple places.
+#'
+#' @param env environment where error information is located
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.handleErrs <- function(env) {
+  if (env$hasErrors) {
+    .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
+                      paste(vapply(seq_along(env$lstExpr),
+                                   function(i) {
+                                     sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
+                                             ifelse(is.null(env$lstErr[[i]]), "",
+                                                    sprintf(paste0(crayon::bold("%s"), "\n"), env$lstErr[[i]])),
+                                             i, deparse1(env$lstExpr[[i]]))
+                                   }, character(1), USE.NAMES=FALSE), collapse="\n"))
+    message(.errMsg)
+  }
+  if (length(env$err) > 0) {
+    stop(paste0(ifelse(env$hasErrors, "syntax/parsing errors (see above) and additionally:\n", "syntax/parsing errors:\n"),
+                paste(env$err, collapse="\n")),
+         call.=FALSE)
+  } else if (env$hasErrors) {
+    stop("syntax/parsing errors, see above", call.=FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Process the errors in the quoted expression
 #'
 #' @param x Quoted expression for parsing
@@ -1078,10 +1203,24 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errProcessExpression <- function(x, ini,
                                   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
-                                  verbose=FALSE, checkMissing=TRUE) {
+                                  verbose=FALSE, checkMissing=TRUE, mv=rxUdfUiMv()) {
+  on.exit({
+    .udfUiEnv$num <- 1L
+    .udfUiEnv$iniDf <- NULL
+    .udfUiEnv$lhs <- NULL
+    .udfUiEnv$parsing <- FALSE
+  })
+  .udfUiEnv$parsing <- TRUE
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
+  .env$uiUseData <- FALSE
+  .env$uiUseMv <- FALSE
+  rxUdfUiEst(NULL)
+  rxUdfUiMv(mv)
+  .env$rxUdfUiCount <- new.env(parent=emptyenv())
+  .env$before <- list()
+  .env$after <- list()
   .env$eta <- dimnames(ini)[[1]]
   .env$top <- TRUE
   if (!inherits(ini, "lotriFix") && inherits(ini, "matrix")) {
@@ -1101,6 +1240,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$curDvid <- 1L
   # Pred df needs to be finalized with compartment information from parsing the raw rxode2 model
   .env$predDf  <- NULL
+  .env$earlyErr <- FALSE
   .env$lastDistAssign <- ""
   if (is.call(x)) {
     if (.env$top && identical(x[[1]], quote(`{`))) {
@@ -1110,10 +1250,52 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$lstErr <- vector(length(.y), mode="list")
       .env$lstExpr <- vector(length(.y), mode="list")
       .env$hasErrors <- FALSE
-      for (.i in seq_along(.y)) {
+      .i <- 1L
+      .y <- lapply(seq_along(.y), function(i) {
+        .y[[i]]
+      })
+      while(.i <= length(.y)) {
         .env$line <- .i
-        if (identical(.y[[.i]][[1]], quote(`~`))) {
+        if (length(.y[[.i]]) == 1 &&
+              is.name(.y[[.i]])) {
+          .env$err <- c(.env$err,
+                        paste0("the symbol '", deparse1(.y[[.i]]), "' cannot be by itself"))
+          .env$earlyErr <- TRUE
+        } else if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
+        } else {
+          .env$redo <- FALSE
+          .cur <- .y[[.i]]
+          if (length(.cur) >= 3 && identical(.cur[[1]], quote(`<-`))) {
+            .env$lhs <- .cur[[2]]
+          } else if (length(.cur)>= 3 && identical(.cur[[1]], quote(`=`))) {
+            .env$lhs <- .cur[[2]]
+          } else {
+            .env$lhs <- NULL
+          }
+          .cur <- .handleUdfUi(.cur, .env)
+          .len <- length(.y)
+          .y <- c(lapply(seq_len(.i - 1),
+                         function(i) {
+                           .y[[i]]
+                         }), .env$before, .cur, .env$after,
+                  lapply(seq_len(.len - .i),
+                         function(i) {
+                           .y[[i + .i]]
+                         }))
+          if (length(.y) != .len) {
+            # Update the lengths of lstChr, lstErr, lstExpr
+            .len <- length(.env$before) + length(.env$after)
+            .env$lstChr <- c(.env$lstChr, character(.len))
+            .env$lstErr <- c(.env$lstErr, vector(.len, mode="list"))
+            .env$lstExpr <- c(.env$lstExpr, vector(.len, mode="list"))
+            .env$before <- list()
+            .env$after <- list()
+            # redo the parsing since the length of the expression has changed
+            next
+          } else if (.env$redo) {
+            next
+          }
         }
         .env$lstChr[[.i]] <- deparse1(.y[[.i]])
         .env$lstExpr[[.i]] <- .y[[.i]]
@@ -1122,6 +1304,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .env$err <- NULL
           .env$hasErrors <- TRUE
         }
+        .i <- .i + 1L
       }
       .env$iniDf <- .env$df
       if (is.null(.env$predDf)) {
@@ -1162,13 +1345,29 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
                call.=FALSE)
         }
+        if (.env$earlyErr) {
+          .handleErrs(.env)
+        }
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
         } else {
           .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
+        if (.env$earlyErr) {
+          .handleErrs(.env)
+        }
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
+      }
+      if (isTRUE(.env$uiUseMv) && is.null(mv)) {
+        # ui function requests model variables, so re-process
+        on.exit({
+          rxUdfUiMv(NULL)
+        })
+        return(.errProcessExpression(x=x, ini=ini,
+                                     linCmtSens = linCmtSens,
+                                     verbose=verbose, checkMissing=checkMissing,
+                                     mv=.env$mv0))
       }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
       if (.Call(`_rxode2_isLinCmt`) == 1L) {
@@ -1181,9 +1380,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           length(.env$mv0$state),
           .vars,
           setNames(
-            c("linCmtA" = 1L, "linCmtB" = 2L,
-              "linCmtC" = 3L
-            )[match.arg(linCmtSens)],
+            c("linCmtA" = 1L, "linCmtB" = 2L)[match.arg(linCmtSens)],
             NULL
           ), verbose
         ))
@@ -1212,7 +1409,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "lastDistAssign", "line", "needsToBeAnErrorExpression",
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
-                         "curCmt", "errGlobal", "linCmt", "ll", "distribution"),
+                         "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
+                         "lhs", "earlyErr", "var", "dv"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1257,8 +1455,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }
   .mod <- eval(parse(text=paste0("quote({", .var, "=1+2\n", deparse1(expr), "})")))
   .ini <- as.data.frame(eval(parse(text=paste0("lotri({\n",
-                             paste(paste(allNames(expr[[3]]), "<- 1"), collapse="\n"),
-                             "\n})"))))
+                                               paste(paste(allNames(expr[[3]]), "<- 1"), collapse="\n"),
+                                               "\n})"))))
   .env <- try(.errProcessExpression(.mod, .ini, checkMissing=FALSE), silent=TRUE)
   if (inherits(.env, "try-error")) return(FALSE)
   if (uiEnv) return(.env)
@@ -1267,7 +1465,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'  Is Normal, Cauchy or t distribution model specification?
 #'
 #' @param expr Expression
-#' 
+#'
 #' @return TRUE if this is a normal/t/cauchy model, FALSE otherwise
 #' @author Matthew L. Fidler
 #' @noRd
@@ -1304,4 +1502,3 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     stop(paste(.env$err, collapse="\n"), call.=FALSE)
   }
 }
-

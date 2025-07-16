@@ -1,4 +1,7 @@
 // Ignore error so that boost doesn't abort
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define BOOST_MATH_DOMAIN_ERROR_POLICY ignore_error
 #define BOOST_MATH_POLE_ERROR_POLICY ignore_error
@@ -14,13 +17,7 @@
 #include <stdarg.h>
 #include <RcppArmadillo.h>
 #include <R.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 extern "C" double gamma_p(double a, double z) {
   return boost::math::gamma_p<double, double>(a, z);

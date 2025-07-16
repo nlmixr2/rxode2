@@ -9,15 +9,16 @@ template:
 reference:
 - title: Creating/Deleting/Loading rxode2 compiled objects
   contents:
-  - rxode2
   - rxClean
   - rxCompile
   - rxCreateCache
   - rxDelete
   - rxUnloadAll
+  - rxode2
 - title: Creating rxode2 event tables/data frames
   contents:
   - et
+  - toTrialDuration
   - etRbind
   - etRep
   - etSeq
@@ -32,24 +33,34 @@ reference:
   - rxCbindStudyIndividual
 - title: Functions for working with nlmixr2/rxode2 functions
   contents:
-  - model
-  - modelExtract
-  - ini
-  - zeroRe
-  - assertRxUi
-  - rxAppendModel
-  - rxRename
-  - update.rxUi
-  - as.rxUi
-  - ini<-
-  - model<-
-  - rxode2<-
-  - rxSetCovariateNamesForPiping
-  - rxSetPipingAuto
-  - rxUiDecompress
-  - rxUiCompress
   - as.ini
   - as.model
+  - as.rxUi
+  - assertCompartmentExists
+  - assertCompartmentName
+  - assertCompartmentNew
+  - assertRxUi
+  - assertVariableExists
+  - assertVariableNew
+  - ini
+  - ini<-
+  - model
+  - model<-
+  - modelExtract
+  - rxAppendModel
+  - rxFixPop
+  - rxFixRes
+  - rxRename
+  - rxSetCovariateNamesForPiping
+  - rxSetPipingAuto
+  - rxUiCompress
+  - rxUiDecompress
+  - rxode2<-
+  - testIniDf
+  - testRxLinCmt
+  - testRxUnbounded
+  - update.rxUi
+  - zeroRe
 - title: ggplot2/plot support functions
   contents:
   - stat_cens
@@ -65,7 +76,10 @@ reference:
   - rxPkg
 - title: Specialized Simulation functions
   contents:
+  - binomProbs
   - cvPost
+  - dfWishart
+  - meanProbs
   - rinvchisq
   - rxGetSeed
   - rxPp
@@ -101,18 +115,19 @@ reference:
   - rxValidate
 - title: Special Functions for rxode2
   contents:
+    - boxCox
+    - erf
+    - forderForceBase
     - gammap
     - gammapDer
     - gammapInv
     - gammaq
     - gammaqInv
-    - forderForceBase
     - logit
     - lowergamma
     - phi
     - probit
     - rxRmvn
-    - erf
 - title: log likelihood functions supporting generalized likelihoods for focei methods
   contents:
     - llikBeta
@@ -144,10 +159,27 @@ reference:
   - rxParams
   - rxProgress
   - rxState
+  - rxStateOde
   - rxSymInvChol
+  - swapMatListWithCube
   - uppergamma
+- title: User functions
+  contents:
+  - linMod
+  - rxIntToBase
+  - rxIntToLetter
+  - rxUdfUiControl
+  - rxUdfUiData
+  - rxUdfUiEst
+  - rxUdfUiIniDf
+  - rxUdfUiIniLhs
+  - rxUdfUiMv
+  - rxUdfUiNum
+  - rxUdfUiParsing
 - title: Internal Functions
   contents:
+  - .cbindOme
+  - .collectWarnings
   - .copyUi
   - .handleSingleErrTypeNormOrTFoceiBase
   - .matchesLangTemplate
@@ -156,8 +188,13 @@ reference:
   - .rxLinCmtGen
   - .rxWithOptions
   - .rxWithWd
+  - .rxode2ptrs
+  - .toClassicEvid
+  - .vecDf
   - invWR1d
+  - is.rxStackData
   - odeMethodToInt
+  - print.rxModelVars
   - rLKJ1
   - rxAllowUnload
   - rxAssignControlValue
@@ -165,6 +202,7 @@ reference:
   - rxChain
   - rxControlUpdateSens
   - rxDfdy
+  - rxEtDispatchSolve
   - rxEvid
   - rxFun
   - rxGetControl
@@ -173,7 +211,7 @@ reference:
   - rxHtml
   - rxIndLinState
   - rxIndLinStrategy
-  - rxIndLin_
+  - rxParseSuppressMsg
   - rxPreferredDistributionName
   - rxRateDur
   - rxRemoveControl
@@ -192,7 +230,32 @@ reference:
   - rxToSE
   - rxTrans
   - rxUiGet
+  - rxode2parse
+  - rxode2parseAssignTranslation
+  - rxode2parseD
+  - rxode2parseGetPackagesToLoad
+  - rxode2parseGetPointerAssignment
+  - rxode2parseGetTranslation
   - summary.rxode2
+  - rxUiDeparse
+- title: Neural Network Activation functions
+  contents:
+  - ELU
+  - GELU
+  - PReLU
+  - ReLU
+  - SELU
+  - Swish
+  - dELU
+  - dGELU
+  - dPReLU
+  - dReLU
+  - dSELU
+  - dSwish
+  - dlReLU
+  - dsoftplus
+  - lReLU
+  - softplus
 - title: Rxode2 data sets
   contents:
   - rxResidualError
@@ -205,7 +268,9 @@ navbar:
         - text: "Getting started"
         - text: "rxode2 mini language syntax"
           href: articles/rxode2-syntax.html
-        - text: "rxode2 with piping ie %>%"
+        - text: "rxode2 model modification %>%"
+          href: articles/Modifying-Models.html
+        - text: "rxode2 pipeline ie %>%"
           href: articles/rxode2-pipeline.html
         - text: "Speeding up rxode2 ODE solving"
           href: articles/rxode2-speed.html

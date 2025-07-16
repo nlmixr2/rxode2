@@ -34,7 +34,8 @@ findLhs <- function(x) {
 #' @return model with linCmt() replaced with linCmtA()
 #' @author Matthew Fidler
 #' @export
-rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB", "linCmtC"), verbose = FALSE) {
+rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
+                     verbose = FALSE) {
   .mv <- rxGetModel(model)
   if (.Call(`_rxode2_isLinCmt`) == 1L) {
     .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
@@ -44,8 +45,7 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB", "linCmtC"), ver
       .vars,
       setNames(
         c(
-          "linCmtA" = 1L, "linCmtB" = 2L,
-          "linCmtC" = 3L
+          "linCmtA" = 1L, "linCmtB" = 2L
         )[match.arg(linCmtSens)],
         NULL
       ), verbose

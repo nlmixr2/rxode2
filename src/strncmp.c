@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #include "strncmp.h"
 
@@ -38,7 +41,7 @@ int strncmpci(const char * s1, const char * s2, size_t num)
 
   const char* str1 = s1;
   const char* str2 = s2;
-  
+
   int ret_code = 0;
   size_t chars_compared = 0;
 

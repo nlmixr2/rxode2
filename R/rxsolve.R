@@ -162,8 +162,14 @@
 #'     upper range to make sure all state values are in the
 #'     reasonable range.
 #'
-#' @param safeZero Use safe zero divide and log routines.  By default
+#' @param safeZero Use safe zero divide. By default
 #'     this is turned on but you may turn it off if you wish.
+#'
+#' @param safePow Use safe powers.  When enabled if your power is
+#'   negative and your base is zero, this will return the `machine
+#'   epsilon^(negative power)`.  By default this is turned on.
+#'
+#' @param safeLog Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  By default this is turned on.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -188,35 +194,9 @@
 #' @param maxwhile represents the maximum times a while loop is
 #'   evaluated before exiting.  By default this is 100000
 #'
-#' @param sensType Sensitivity type for `linCmt()` model:
-#'
-#' `advan` Use the direct advan solutions
-#'
-#' `autodiff` Use the autodiff advan solutions
-#'
-#' `forward` Use forward difference solutions
-#'
-#' `central` Use central differences
-#'
-#' @param linDiff This gives the linear difference amount for all the
-#'   types of linear compartment model parameters where sensitivities
-#'   are not calculated. The named components of this numeric vector are:
-#'
-#' * `"lag"` Central compartment lag
-#' * `"f"` Central compartment bioavailability
-#' * `"rate"` Central compartment modeled rate
-#' * `"dur"` Central compartment modeled duration
-#' * `"lag2"` Depot compartment lag
-#' * `"f2"` Depot compartment bioavailability
-#' * `"rate2"` Depot compartment modeled rate
-#' * `"dur2"` Depot compartment modeled duration
-#'
-#' @param linDiffCentral This gives the which parameters use central
-#'   differences for the linear compartment model parameters.  The
-#'   are the same components as `linDiff`
-#'
 #' @param iCov A data frame of individual non-time varying covariates
-#'     to combine with the `events` dataset by merge.
+#'   to combine with the `events` dataset.  The `iCov` dataset has one
+#'   covariate per ID and should match the event table
 #'
 #' @param covsInterpolation specifies the interpolation method for
 #'     time-varying covariates. When solving ODEs it often samples
@@ -228,13 +208,50 @@
 #'     by solving the line between the observed covariates and extrapolating the new
 #'     covariate value.
 #'
-#' * `"constant"` -- Last observation carried forward (the default).
+#' * `"locf"` -- Last observation carried forward (the default).
 #'
-#' * `"NOCB"` -- Next Observation Carried Backward.  This is the same method
+#' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
 #'       that NONMEM uses.
 #'
 #' * `"midpoint"` Last observation carried forward to midpoint; Next observation
 #'   carried backward to midpoint.
+#'
+#'   For time-varying covariates where a missing value is present, the
+#'   interpolation method will use either "locf" or "nocb" throughout
+#'   if they are the type of covariate interpolation that is selected.
+#'
+#'   When using the linear or midpoint interpolation, the lower point
+#'   in the interpolation will use locf to interpolate missing
+#'   covariates and the upper point will use the nocb to interpolate
+#'   missing covariates.
+#'
+#' @param naInterpolation specifies the interpolation method for
+#'   time-varying covariates when the instantaneous value is `NA` (not
+#'   during an explicit interpolation) and the `covsInterpolation` is
+#'   either `"midpoint"` or `"linear"`. This can be:
+#'
+#'   * `"locf"` -- last observation carried forward (default)
+#'
+#'   * `"nocb"` -- next observation carried backward.
+#'
+#'   This will look for the prior value (backwards/locf) when
+#'   instantaneously missing, or the next value when instantaneously
+#'   missing.  If all the covariates are missing and you find the
+#'   end/beginning of the individual record, switch direction.  If all
+#'   are really missing, then return missing.
+#'
+#' @param keepInterpolation specifies the interpolation method for
+#'   variables in the `keep` column.  When `nlmixr2` creates `mtime`,
+#'   `addl` doses etc, these items were not originally in the dataset.
+#'   The interpolation methods you can choose are:
+#'
+#'   * `"locf"` -- last observation carried forward (default)
+#'
+#'   * `"nocb"` -- next observation carried backward.
+#'
+#'   * `"na"` -- no interpolation, simply put `NA` for the
+#'   interpolated `keep` covariates.
+#'
 #'
 #' @param addCov A boolean indicating if covariates should be added
 #'     to the output matrix or data frame. By default this is
@@ -575,6 +592,8 @@
 #'
 #' @inheritParams odeMethodToInt
 #'
+#' @inheritParams rxode2parse
+#'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
@@ -605,6 +624,125 @@
 #'
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
+#'
+#' @param ssSolved When `TRUE` this will return the solved steady
+#'   state solutions for the linear compartment model.  When `FALSE`
+#'   this will solve to steady state using the linear solutions
+#'   instead.  This is only used when the method only has `linCmt()`
+#'   and does not mix ODEs with the solution.  The default is `TRUE`.
+#'
+#' @param linCmtSensType The type of linear compartment
+#'   sensitivity/gradients to use.  The current options are:
+#'
+#' - `auto` -- for one compartment models this will use the `AD`
+#'   method, for 2 and 3 compartment model this will use `forwardG`.
+#'
+#' - `AD` -- automatic differentiation (using stan math)
+#'
+#' - `forward` -- forward sensitivity where the step size is
+#'    determined by shi 2021 optimization (only once per problem)
+#'
+#' - `forwardG` -- forward sensitivity where the step size is determined by the
+#'    Gill 1983 optimization for forward differences (only once per problem).
+#'
+#' - `central` -- central sensitivity where the step size is
+#'    determined by shi 2021 optimization (only once per problem)
+#'
+#' - `forward3` -- three point central difference where step size is
+#'   determined by shi 2021 optimization for central differences (only
+#'   once per problem)
+#'
+#' - `endpoint5` -- five point endpoint difference where step size is
+#'   determined by the shi 2021 optimization for central differences
+#'   (only once per problem)
+#'
+#' - `fowardH` -- forward sensitivity where the step size is fixed
+#'
+#' - `centralH` -- central sensitivity where the step size is fixed
+#'
+#' - `forward3H` -- three point central difference where step size is fixed
+#'
+#' - `endpoint5H` -- five point endpoint difference where step size is fixed
+#'
+#' @param linCmtSensH The step size for the forward and central
+#'   differences when using the option `centralH`, `forwardH`,
+#'   `foward3H` or `endpoint5H` options.
+#'#'
+#' @param linCmtGillK The total number of possible steps to determine the
+#'     optimal forward/central difference step size per parameter (by
+#'     the Gill 1983 method).  If 0, no optimal step size is
+#'     determined.  Otherwise this is the optimal step size
+#'     determined.
+#'
+#' @param linCmtGillStep When looking for the optimal forward difference
+#'     step size, this is This is the step size to increase the
+#'     initial estimate by.  So each iteration the new step size =
+#'     (prior step size)*gillStep
+#'
+#' @param linCmtGillFtol The gillFtol is the gradient error tolerance that
+#'     is acceptable before issuing a warning/error about the gradient estimates.
+#'
+#' @param linCmtScale The scale of the linear compartment model.  This
+#'   is applied to sensitivity approximation using numeric
+#'   differences.  When `TRUE` or `NULL` use default scaling, when
+#'   `FALSE` use no scaling.  If it is one elment numeric, the value
+#'   is duplicated 7 times and applies to all the parameters.
+#'   Otherwise this is a seven element numeric vector implying the
+#'   scaling for each of the linear compartmental model parameters.
+#'
+#' @param linCmtHcmt This represents the compartments considered when
+#'   optimizing the forward difference step size.  When a character
+#'   vector it can be any of the following (multiple allowed):
+#'
+#'   - `"depot"` -- depot compartment
+#'
+#'   - `"central"` -- central compartment
+#'
+#'   - `"peripheral1"` -- peripheral compartment
+#'
+#'   - `"peripheral2"` -- second peripheral compartment
+#'
+#'   - `"concentration"` -- concentration value (i.e. central
+#'      compartment/volume)
+#'
+#' @param linCmtHmeanI This represents the type of sum done for each
+#'   time-point of the linear solved systems (as defined by `"linCmtHcmt"`).
+#'
+#'  - `"arithmetic"` -- gives the arithmetic mean
+#'
+#'  - `"geometric"` -- gives the geometric mean
+#'
+#'  - `"harmonic"` -- gives the harmonic mean
+#'
+#' @param linCmtHmeanO This represents the type of sum done for the
+#'   overall problem of the linear solved systems (first each time
+#'   point mean is calculated with `linCmtHmeanI`).
+#'
+#' - `"arithmetic"` -- gives the arithmetic mean
+#'
+#' - `"geometric"` -- gives the geometric mean
+#'
+#' - `"harmonic"` -- gives the harmonic mean
+#'
+#' @param linCmtSuspect The tolerance for gradients in linear
+#'   compartment solutions to re-compute when gradients seem to be
+#'   zero.
+#'
+#' @param linCmtGillRtol The relative tolerance used for Gill 1983
+#'   optimal step size determination.
+#'
+#' @param linCmtShiErr Shi difference error
+#'
+#' @param linCmtShiMax The maximum number of steps for the
+#'   optimization of the forward-difference step size in linear
+#'   compartment numeric difference.
+#'
+#' @param linCmtForwardMax The maximum number of points in a forward
+#'   difference to take while calculating the gradients.  This is an
+#'   integer from 1 to 3.  There is at least 1 extra point taken for
+#'   gradient calculation, if the gradient is suspect another is taken
+#'   (if this value is 2), and finally a third is calculated if the
+#'   gradient is still suspect.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -658,6 +796,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, ...,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+                    naInterpolation = c("locf", "nocb"),
+                    keepInterpolation=c("na", "locf", "nocb"),
                     addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
@@ -674,9 +814,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     omegaLower = -Inf, omegaUpper = Inf,
                     nSub = 1L, thetaMat = NULL, thetaDf = NULL, thetaIsChol = FALSE,
-                    nStud = 1L, dfSub = 0.0, dfObs = 0.0, returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
+                    nStud = 1L, dfSub = 0.0, dfObs = 0.0,
+                    returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
                     seed = NULL, nsim = NULL,
-                    minSS = 10L, maxSS = 1000L,
+                    minSS = 10L, maxSS = 10000L,
                     infSSstep = 12,
                     strictSS = TRUE,
                     istateReset = TRUE,
@@ -701,11 +842,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtol = 1.0e-8,
                     ssRtol = 1.0e-6,
                     safeZero = TRUE,
+                    safeLog = TRUE,
+                    safePow = TRUE,
                     sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
                     prodType = c("long double", "double", "logify"),
-                    sensType = c("advan", "autodiff", "forward", "central"),
-                    linDiff = c(tlag = 1.5e-5, f = 1.5e-5, rate = 1.5e-5, dur = 1.5e-5, tlag2 = 1.5e-5, f2 = 1.5e-5, rate2 = 1.5e-5, dur2 = 1.5e-5),
-                    linDiffCentral = c(tlag = TRUE, f = TRUE, rate = TRUE, dur = TRUE, tlag2 = TRUE, f2 = TRUE, rate2 = TRUE, dur2 = TRUE),
                     resample = NULL,
                     resampleID = TRUE,
                     maxwhile = 100000,
@@ -720,7 +860,30 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addlKeepsCov=FALSE,
                     addlDropSs=TRUE,
                     ssAtDoseTime=TRUE,
-                    ss2cancelAllPending=FALSE) {
+                    ss2cancelAllPending=FALSE,
+                    ssSolved=TRUE,
+                    linCmtSensType=c("auto",
+                                     "endpoint5", "endpoint5G",
+                                     "forward3", "forward3G",
+                                     "AD", "central",
+                                     "forward", "forwardG",
+                                     "forwardH", "centralH", "forward3H",
+                                     "endpointH5", "forwardG"),
+                    linCmtSensH=0.0001,
+                    linCmtGillFtol=0,
+                    linCmtGillK=20L,
+                    linCmtGillStep=4,
+                    linCmtGillRtol=sqrt(.Machine$double.eps),
+                    linCmtShiErr=sqrt(.Machine$double.eps),
+                    linCmtShiMax=20L,
+                    linCmtScale=FALSE,
+                    linCmtHcmt=NULL,
+                    linCmtHmeanI=c("geometric", "arithmetic", "harmonic"),
+                    linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
+                    linCmtSuspect=1e-6,
+                    linCmtForwardMax=2L,
+                    envir=parent.frame()) {
+  .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -752,6 +915,51 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         "nlmixrIdentity" = 3L
       )[match.arg(sigmaXform)]
     }
+
+    if (checkmate::testIntegerish(linCmtHmeanI, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    } else if (checkmate::testCharacter(linCmtHmeanI, any.missing=FALSE)) {
+      linCmtHmeanI <- c("arithmetic"=1L,
+                         "geometric"=2L,
+                         "harmonic"=3L)[match.arg(linCmtHmeanI)]
+    } else {
+      stop("linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
+           call.=FALSE)
+    }
+
+    if (checkmate::testIntegerish(linCmtHmeanO, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    } else if (checkmate::testCharacter(linCmtHmeanO, any.missing=FALSE)) {
+      linCmtHmeanO <- c("arithmetic"=1L,
+                        "geometric"=2L,
+                        "harmonic"=3L)[match.arg(linCmtHmeanO)]
+    } else {
+      stop("linCmtHmeanO must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
+           call.=FALSE)
+    }
+
+    checkmate::assertNumeric(linCmtSuspect, lower=0, finite=TRUE, len=1)
+    checkmate::assertIntegerish(linCmtForwardMax, lower=1, upper=3, any.missing=FALSE)
+
+    if (is.null(linCmtHcmt)) {
+      linCmtHcmt <- 1L
+    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L, upper=31L, any.missing=FALSE)) {
+      # ok value
+    } else if (checkmate::testCharacter(linCmtHcmt, any.missing=FALSE)) {
+      .vars <- match.arg(linCmtHcmt,
+                         c("depot", "central", "peripheral1", "peripheral2",
+                           "concentration"), several.ok = TRUE)
+      linCmtHcmt <- sum(vapply(.vars, function(x) {
+        switch(x,
+               depot         = 8L,
+               central       = 1L,
+               peripheral1   = 2L,
+               peripheral2   = 4L,
+               concentration = 16L)
+      }, integer(1)))
+    } else {
+      stop("linCmtHcmt must be a character vector of 'depot', 'central', 'peripheral1', 'peripheral2', or 'concentration' or an integer between 1 and 31",
+           call.=FALSE)
+    }
+
     if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
       .omegaXform <- as.integer(omegaXform)
     } else {
@@ -788,6 +996,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       covsInterpolation <- as.integer(covsInterpolation)
     } else {
       covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
+    }
+    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=1, any.missing=FALSE)) {
+      naInterpolation <- as.integer(naInterpolation)
+    } else {
+      naInterpolation <- c("locf"=1L, "nocb"=0L)[match.arg(naInterpolation)]
+    }
+    if (checkmate::testIntegerish(keepInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+      keepInterpolation <- as.integer(keepInterpolation)
+    } else {
+      keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)[match.arg(keepInterpolation)]
     }
     if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
       naTimeHandle <- getOption("rxode2.naTimeHandle")
@@ -837,17 +1055,56 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)[match.arg(sumType)]
     }
+    if (checkmate::testIntegerish(linCmtSensType)) {
+      .linCmtSensType <- as.integer(linCmtSensType)
+    } else {
+      .linCmtSensType <- c("AD"=3L,
+                           "forward"=1L,
+                           "central"=2L,
+                           "forward3"=4L,
+                           "endpoint5"=5L,
+                           # Gill differences
+                           "forwardG"=6L,
+                           "forward3G"=7L,
+                           "endpoint5G"=8L,
+                           # Fixed step sizes
+                           "forward3H"=40L,
+                           "endpoint5H"=50L,
+                           "forwardH"=10L,
+                           "centralH"=20L,
+                           "auto"=100L)[match.arg(linCmtSensType)]
+    }
+    if (is.logical(linCmtScale)) {
+      checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
+      if (linCmtScale) {
+        linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
+      } else {
+        linCmtScale <- c(0, 0, 0, 0, 0, 0, 0) # only first needs to be zero
+      }
+    }
+    if (is.null(linCmtScale)) {
+      linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
+    }
+    if (checkmate::testNumeric(linCmtScale, lower=0, finite=TRUE,
+                               any.missing=FALSE, len=1)) {
+      linCmtScale <- rep(linCmtScale, 7L)
+    }
+    checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7)
+    checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+
+    checkmate::assertNumeric(linCmtShiErr, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(linCmtShiMax, lower=0, any.missing=FALSE, len=1)
+
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .prod <- as.integer(prodType)
     } else {
       .prod <- c("long double"=1L, "double"=1L, "logify"=1L)[match.arg(prodType)]
     }
 
-    if (checkmate::testIntegerish(sensType, len=1, lower=1, upper=4, any.missing=FALSE)) {
-      .sensType <- as.integer(sensType)
-    } else {
-      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)[match.arg(sensType)]
-    }
     if (checkmate::testIntegerish(strictSS, len=1, lower=0, upper=1, any.missing=FALSE)) {
       strictSS <- as.integer(strictSS)
     } else {
@@ -860,6 +1117,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
+    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
+    }
+    safeLog <- as.integer(safeLog)
+    if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
+    }
+    safePow <- as.integer(safePow)
     if (is.null(scale)) {
     } else if (is.list(scale)) {
       checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
@@ -954,7 +1219,23 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(dfObs, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
     # iCov = data.frame
     checkmate::assertDataFrame(iCov, null.ok=TRUE)
-    checkmate::assertCharacter(keep, any.missing=FALSE, null.ok=TRUE)
+    .invalidKeep <- c("id", "sim.id", "resetno", "time")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      .w <- which(tolower(keep) %in% .invalidKeep)
+      keep <- keep[-.w]
+      warning("'keep' contains ", paste(.invalidKeep, collapse=", "), "\nwhich are output when needed, ignoring these items", call.=FALSE)
+    }
+    .invalidKeep <- c("evid",  "ss", "amt", "rate", "dur", "ii")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using addDosing=TRUE or merging to original dataset", call.=FALSE)
+    }
+    .invalidKeep <- c ("rxLambda", "rxYj", "rxLow", "rxHi")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using returnType=\"data.frame.TBS\"", call.=FALSE)
+    }
     checkmate::assertCharacter(drop, any.missing=FALSE, null.ok=TRUE)
     checkmate::assertLogical(warnDrop, len=1, any.missing=FALSE)
     checkmate::assertNumeric(omegaLower, any.missing=FALSE, null.ok=TRUE)
@@ -965,8 +1246,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(thetaUpper, any.missing=FALSE, null.ok=TRUE)
     checkmate::assertLogical(idFactor, any.missing=FALSE)
     checkmate::assertLogical(warnIdSort, any.missing=FALSE)
-    checkmate::assertNumeric(linDiff, names="strict", len=8)
-    checkmate::assertLogical(linDiffCentral, names="strict", len=8, any.missing=FALSE)
     if (is.null(resample)) {
     } else if (checkmate::testLogical(resample)) {
       checkmate::assertLogical(resample, any.missing=FALSE, len=1)
@@ -987,6 +1266,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ss2cancelAllPending, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ssSolved, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1103,9 +1383,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       safeZero = safeZero,
       sumType = .sum,
       prodType = .prod,
-      sensType = .sensType,
-      linDiff = linDiff, #
-      linDiffCentral = linDiffCentral,#
       resample = resample, #
       resampleID = resampleID,#
       maxwhile = maxwhile,
@@ -1122,6 +1399,25 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       addlDropSs=addlDropSs,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
+      naInterpolation=naInterpolation,
+      keepInterpolation=keepInterpolation,
+      safeLog=safeLog,
+      safePow=safePow,
+      ssSolved=ssSolved,
+      linCmtSensType=.linCmtSensType,
+      linCmtSensH=linCmtSensH,
+      linCmtGillFtol=linCmtGillFtol,
+      linCmtGillK=linCmtGillK,
+      linCmtGillStep=linCmtGillStep,
+      linCmtGillRtol=linCmtGillRtol,
+      linCmtShiErr=linCmtShiErr,
+      linCmtShiMax=linCmtShiMax,
+      linCmtScale=linCmtScale,
+      linCmtHcmt = linCmtHcmt,
+      linCmtHmeanI=linCmtHmeanI,
+      linCmtHmeanO=linCmtHmeanO,
+      linCmtSuspect=linCmtSuspect,
+      linCmtForwardMax=linCmtForwardMax,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1133,17 +1429,58 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                             theta = NULL, eta = NULL) {
+                             theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
+  if (rxIs(events, "event.data.frame")) {
+    rxUdfUiData(events)
+  } else if (rxIs(params, "event.data.frame")) {
+    rxUdfUiData(params)
+  } else {
+    stop("Cannot detect an event data frame to use while re-parsing the model",
+         call.=FALSE)
+  }
+  rxUdfUiEst("rxSolve")
+  on.exit({
+    rxUdfUiReset()
+  })
+  .udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
-                       list(theta = theta, eta = eta)))
+                       list(theta = theta, eta = eta, envir=envir)))
+}
+
+.uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
+                         theta = NULL, eta = NULL) {
+  .ctl <- rxControl()
+  .meta <- try(ui$meta, silent=TRUE)
+  if (!is.environment(.meta))  {
+    .meta <- new.env(parent=emptyenv())
+  }
+  .lst <- list(...)
+  .nlst <- names(.lst)
+  .w <- which(vapply(names(.ctl), function(x) {
+    !(x %in% .nlst) && exists(x, envir=.meta)
+  }, logical(1), USE.NAMES=FALSE))
+  .extra <- NULL
+  if (length(.w) > 0) {
+    .v <- names(.ctl)[.w]
+    .minfo(paste0("rxControl items read from fun: '",
+                  paste(.v, collapse="', '"), "'"))
+    .extra <- setNames(lapply(.v, function(x) {
+      get(x, envir=.meta)
+    }), .v)
+
+  }
+  do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
+                     .lst, .extra,
+                     list(theta=theta, eta=eta)))
 }
 
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
-  .rxControl <- rxSolve(NULL, params = params, events = events, inits = inits, ...,
-                        theta = theta, eta = eta)
+  .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
+                             theta = theta, eta=eta)
   if (rxIs(params, "rx.event")) {
     if (!is.null(events)) {
       .tmp <- events
@@ -1187,6 +1524,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxControl$omega <- NULL
     }
   }
+  if (inherits(.rxControl$omega, "matrix")) {
+    .omega <- .rxControl$omega
+    .v <- vapply(dimnames(.omega)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    if (length(.v) == 1L) {
+      if (!.v) .rxControl$omega <- NULL
+    } else {
+      .omega <- .omega[.v, .v]
+      if (all(dim(.omega) == c(0L, 0L))) {
+        .rxControl$omega <- NULL
+      } else {
+        .rxControl$omega <- .omega
+      }
+    }
+
+  }
   if (inherits(.rxControl$omega, "matrix") &&
         all(dim(.rxControl$omega) == c(0,0))) {
     .rxControl$omega <- NULL
@@ -1201,6 +1556,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
       .rxControl$sigma <- NULL
     }
+  }
+  if (inherits(.rxControl$sigma, "matrix")) {
+    .sigma <- .rxControl$sigma
+    .v <- vapply(dimnames(.sigma)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    if (length(.v) == 1L) {
+      if (!.v) .rxControl$sigma <- NULL
+    } else {
+      .sigma <- .sigma[.v, .v, drop = FALSE]
+      if (all(dim(.sigma) == c(0L, 0L))) {
+        .rxControl$sigma <- NULL
+      } else {
+        .rxControl$sigma <- .sigma
+      }
+    }
+
   }
   if (inherits(.rxControl$sigma, "matrix") &&
         all(dim(.rxControl$sigma) == c(0,0))) {
@@ -1219,7 +1592,29 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                         theta = NULL, eta = NULL) {
+                         theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
+  if (isTRUE(object$uiUseData)) {
+    # this needs to be re-parsed
+    if (rxIs(events, "event.data.frame")) {
+      rxUdfUiData(events)
+      rxUdfUiMv(rxModelVars(object))
+    } else if (rxIs(params, "event.data.frame")) {
+      rxUdfUiData(params)
+      rxUdfUiMv(rxModelVars(object))
+    } else {
+      stop("Cannot detect an event data frame to use while re-parsing the model",
+           call.=FALSE)
+    }
+    rxUdfUiEst("rxSolve")
+    on.exit({
+      rxUdfUiReset()
+    })
+    # Now re-parse
+    object <- as.function(object)
+    object <- suppressMessages(rxode2(object))
+  }
+  .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
@@ -1266,7 +1661,9 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @rdname rxSolve
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                                   theta = NULL, eta = NULL) {
+                                   theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
+  .udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
@@ -1275,11 +1672,13 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
     .oldControl <- get("control", envir=.env)
     assign("control", .rxControl, envir=.env)
     on.exit({
+      rxUdfUiReset()
       assign("control", .oldControl, envir=.env)
     })
   } else {
     assign("control", .rxControl, envir=.env)
     on.exit({
+      rxUdfUiReset()
       rm(list="control", envir=.env)
     })
   }
@@ -1300,11 +1699,11 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                            theta = NULL, eta = NULL) {
-  if (inherits(object, "rxSolve") && is.null(.v$env$.ev)) {
-    stop("cannot solve from more than one rxSolve object bound together", call.=FALSE)
-  }
+                            theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
+  .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
+    rxUdfUiReset()
     .clearPipe()
     .asFunctionEnv$rx <- NULL
   })
@@ -1316,39 +1715,39 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
            call. = FALSE
            )
     }
-    if (is.null(rxode2et::.pipeRx(NA))) {
+    if (is.null(rxode2::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
            call. = FALSE
            )
     } else {
       events <- object
-      object <- rxode2et::.pipeRx(NA)
+      object <- rxode2::.pipeRx(NA)
     }
   } else if (rxIs(object, "rxParams")) {
     .applyParams <- TRUE
     if (is.null(params) && !is.null(object$params)) {
       params <- object$params
     }
-    if (is.null(rxode2et::.pipeRx(NA))) {
+    if (is.null(rxode2::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
            call. = FALSE
            )
     } else {
       .rxParams <- object
-      object <- rxode2et::.pipeRx(NA)
+      object <- rxode2::.pipeRx(NA)
     }
-    if (is.null(rxode2et::.pipeEvents(NA))) {
+    if (is.null(rxode2::.pipeEvents(NA))) {
       stop("need an rxode2 events as a part of the pipeline",
            call. = FALSE
            )
     } else {
-      events <- rxode2et::.pipeEvents(NA)
-      rxode2et::.pipeEvents(NULL)
+      events <- rxode2::.pipeEvents(NA)
+      rxode2::.pipeEvents(NULL)
     }
   }
-  if (!is.null(rxode2et::.pipeEvents(NA)) && is.null(events) && is.null(params)) {
-    events <- rxode2et::.pipeEvents(NA)
-  } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(events)) {
+  if (!is.null(rxode2::.pipeEvents(NA)) && is.null(events) && is.null(params)) {
+    events <- rxode2::.pipeEvents(NA)
+  } else if (!is.null(rxode2::.pipeEvents(NA)) && !is.null(events)) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
          call. = FALSE
          )
@@ -1359,17 +1758,17 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
          )
   }
 
-  if (!is.null(rxode2et::.pipeParams(NA)) && is.null(params)) {
-    params <- rxode2et::.pipeParams(NA)
-  } else if (!is.null(rxode2et::.pipeParams(NA)) && !is.null(params)) {
+  if (!is.null(rxode2::.pipeParams(NA)) && is.null(params)) {
+    params <- rxode2::.pipeParams(NA)
+  } else if (!is.null(rxode2::.pipeParams(NA)) && !is.null(params)) {
     stop("'params' in pipeline AND in solving arguments, please provide just one",
          call. = FALSE
          )
   }
 
-  if (!is.null(rxode2et::.pipeInits(NA)) && is.null(inits)) {
-    inits <- rxode2et::.pipeInits(NA)
-  } else if (!is.null(rxode2et::.pipeInits(NA)) && !is.null(inits)) {
+  if (!is.null(rxode2::.pipeInits(NA)) && is.null(inits)) {
+    inits <- rxode2::.pipeInits(NA)
+  } else if (!is.null(rxode2::.pipeInits(NA)) && !is.null(inits)) {
     stop("'inits' in pipeline AND in solving arguments, please provide just one",
          call. = FALSE
          )
@@ -1422,32 +1821,32 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       paste(.n1, collapse = "', '")
     ), call. = FALSE)
   }
-  if (!is.null(rxode2et::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
-    .ctl$thetaMat <- rxode2et::.pipeThetaMat(NA)
+  if (!is.null(rxode2::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
+    .ctl$thetaMat <- rxode2::.pipeThetaMat(NA)
   }
-  if (!is.null(rxode2et::.pipeOmega(NA)) && is.null(.ctl$omega)) {
-    .ctl$omega <- rxode2et::.pipeOmega(NA)
+  if (!is.null(rxode2::.pipeOmega(NA)) && is.null(.ctl$omega)) {
+    .ctl$omega <- rxode2::.pipeOmega(NA)
   }
-  if (!is.null(rxode2et::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
-    .ctl$sigma <- rxode2et::.pipeSigma(NA)
+  if (!is.null(rxode2::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    .ctl$sigma <- rxode2::.pipeSigma(NA)
   }
-  if (!is.null(rxode2et::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
-    .ctl$sigma <- rxode2et::.pipeSigma(NA)
+  if (!is.null(rxode2::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    .ctl$sigma <- rxode2::.pipeSigma(NA)
   }
-  if (!is.null(rxode2et::.pipeDfObs(NA)) && .ctl$dfObs == 0) {
-    .ctl$dfObs <- rxode2et::.pipeDfObs(NA)
+  if (!is.null(rxode2::.pipeDfObs(NA)) && .ctl$dfObs == 0) {
+    .ctl$dfObs <- rxode2::.pipeDfObs(NA)
   }
-  if (!is.null(rxode2et::.pipeDfSub(NA)) && .ctl$dfSub == 0) {
-    .ctl$dfSub <- rxode2et::.pipeDfSub(NA)
+  if (!is.null(rxode2::.pipeDfSub(NA)) && .ctl$dfSub == 0) {
+    .ctl$dfSub <- rxode2::.pipeDfSub(NA)
   }
-  if (!is.null(rxode2et::.pipeNSub(NA)) && .ctl$nSub == 1) {
-    .ctl$nSub <- rxode2et::.pipeNSub(NA)
+  if (!is.null(rxode2::.pipeNSub(NA)) && .ctl$nSub == 1) {
+    .ctl$nSub <- rxode2::.pipeNSub(NA)
   }
-  if (!is.null(rxode2et::.pipeNStud(NA)) && .ctl$nStud == 1) {
-    .ctl$nStud <- rxode2et::.pipeNStud(NA)
+  if (!is.null(rxode2::.pipeNStud(NA)) && .ctl$nStud == 1) {
+    .ctl$nStud <- rxode2::.pipeNStud(NA)
   }
-  if (!is.null(rxode2et::.pipeKeep(NA)) && is.null(.ctl$keep)) {
-    .ctl$keep <- rxode2et::.pipeKeep(NA)
+  if (!is.null(rxode2::.pipeKeep(NA)) && is.null(.ctl$keep)) {
+    .ctl$keep <- rxode2::.pipeKeep(NA)
   }
   if (.applyParams) {
     if (!is.null(.rxParams$thetaMat) && is.null(.ctl$thetaMat)) {
@@ -1571,14 +1970,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         stop("iCov has duplicate IDs, cannot continue")
       }
       names(.ctl$iCov)[.icovId] <- .by
-      .lEvents <- length(.events[, 1])
-      .events <- merge(.events, .ctl$iCov, by = .by)
-      if (.lEvents != length(.events[, 1])) {
-        warning("combining iCov and events dropped some event information")
-      }
-      if (length(unique(.events[[.by]])) != length(.ctl$iCov[, 1])) {
-        warning("combining iCov and events dropped some iCov information")
-      }
+      ## .lEvents <- length(.events[, 1])
+      ## .events <- merge(.events, .ctl$iCov, by = .by)
+      ## if (.lEvents != length(.events[, 1])) {
+      ##   warning("combining iCov and events dropped some event information")
+      ## }
+      ## if (length(unique(.events[[.by]])) != length(.ctl$iCov[, 1])) {
+      ##   warning("combining iCov and events dropped some iCov information")
+      ## }
       if (.useEvents) {
         events <- .events
       } else {
@@ -1609,16 +2008,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
   .names <- NULL
-  if (inherits(.ctl$thetaMat, "matrix")) {
-    .mv <- rxModelVars(object)
-    .col <- colnames(.ctl$thetaMat)
-    .w <- .col %in% .mv$params
-    .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
-    }
-    .names <- c(.names, .col[.w])
-  }
+
+  .extraNames <- character(0)
+
   if (inherits(.ctl$omega, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$omega)
@@ -1627,8 +2019,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
+    .ctl$omega <-.ctl$omega[.w, .w, drop=FALSE]
+    if (dim(.ctl$omega)[1] == 0) {
+      .ctl$omega <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$omega, "character")) {
+    .extraNames <- c(.extraNames, .ctl$omega)
     .mv <- rxModelVars(object)
     .col <- .ctl$omega
     .w <- .col %in% .mv$params
@@ -1646,8 +2044,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
+    .ctl$sigma <-.ctl$sigma[.w, .w, drop=FALSE]
+    if (dim(.ctl$sigma)[1] == 0) {
+      .ctl$sigma <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$sigma, "character")) {
+    .extraNames <- c(.extraNames, .ctl$sigma)
     .mv <- rxModelVars(object)
     .col <- .ctl$sigma
     .w <- .col %in% .mv$params
@@ -1656,6 +2060,36 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
     .names <- c(.names, .col[.w])
+  }
+
+  if (inherits(.ctl$thetaMat, "matrix")) {
+    .mv <- rxModelVars(object)
+    .col <- colnames(.ctl$thetaMat)
+    .w <- .col %in% c(.mv$params, .extraNames)
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
+    if (dim(.ctl$thetaMat)[1] == 0) {
+      .ctl$thetaMat <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
+    .names <- c(.names, .col[.w])
+
+    # now look for zero diagonals
+    .col <- colnames(.ctl$thetaMat)
+    .d <- diag(.ctl$thetaMat)
+    .w <- which(.d == 0)
+    if (length(.w) > 0) {
+      .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
+      .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
+      if (dim(.ctl$thetaMat)[1] == 0) {
+        .ctl$thetaMat <- NULL
+        .ctl <- do.call(rxControl, .ctl)
+      }
+      .names <- c(.names, .col[-.w])
+    }
   }
   rxSetCovariateNamesForPiping(NULL)
   if (length(.ctl$.zeros) > 0) {
@@ -1710,7 +2144,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
             # reset
             gc()
             .minfo("try resetting cache and unloading all rxode2 models")
-            try(rxode2::rxUnloadAll())
+            try(rxode2::rxUnloadAll(), silent=TRUE)
             rxode2::rxClean()
             .envReset$unload <- TRUE
             .envReset$reset <- TRUE
@@ -1757,6 +2191,7 @@ predict.function <- function(object, ...) {
 #' @rdname rxSolve
 #' @export
 predict.rxUi <- function(object, ...) {
+  .udfEnvSet(list(object$meta, parent.frame(1)))
   rxSolve(object, ...)
 }
 
@@ -2007,8 +2442,9 @@ drop_units.rxSolve <- function(x) {
 
 #' @rdname rxSolve
 #' @export
-rxControl <- function(..., params = NULL, events = NULL, inits = NULL) {
-  rxSolve(object = NULL, params = params, events = events, inits = inits, ...)
+rxControl <- function(..., params = NULL, events = NULL, inits = NULL, envir=parent.frame()) {
+  rxSolve(object = NULL, params = params, events = events, inits = inits, ...,
+          envir=envir)
 }
 
 #' @export
@@ -2016,10 +2452,6 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
   .lst <- x
   class(.lst) <- NULL
   do.call(rxSolve, .lst)
-}
-
-.getEtRxSolve <- function(x) {
-  .Call(`_rxode2_getEtRxsolve`, x)
 }
 
 #' Conversion between character and integer ODE integration methods for rxode2
@@ -2054,6 +2486,7 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) 
   }
   method
 }
+
 
 
 #' This updates the tolerances based on the sensitivity equations
@@ -2100,4 +2533,63 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
   rxControl$ssAtol <- c(rep(rxControl$ssAtol[1], ncmt - sensCmt), rep(rxControl$ssAtolSens, sensCmt))
   rxControl$ssRtol <- c(rep(rxControl$ssRtol[1], ncmt - sensCmt), rep(rxControl$ssRtolSens, sensCmt))
   rxControl
+}
+
+
+#' rxUiDeparse.rxControl(rxControl(covsInterpolation="linear", method="dop853",
+#'  naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
+#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify"),
+#' "ctl")
+
+#' @rdname rxUiDeparse
+#' @export
+rxUiDeparse.rxControl <- function(object, var) {
+  .ret <- rxControl()
+
+  .w <- which(vapply(names(.ret), function(x) {
+    if (is.integer(.ret[[x]]) && is.integer(object[[x]])) {
+      .ret[[x]] != object[[x]]
+    } else {
+      !identical(.ret[[x]], object[[x]])
+    }
+  }, logical(1)))
+
+  .retD <- vapply(names(.ret)[.w], function(x) {
+    if (x == "covsInterpolation") {
+      .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
+      paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
+    } else if (x == "method")  {
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+      paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
+    } else if (x == "naInterpolation") {
+      .naInterpolation <- c("locf"=1L, "nocb"=0L)
+      paste0(x, " =", deparse1(names(.naInterpolation)[which(object[[x]] == .naInterpolation)]))
+    } else if (x == "keepInterpolation") {
+      .keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)
+      paste0(x, " =", deparse1(names(.keepInterpolation)[which(object[[x]] == .keepInterpolation)]))
+    } else if (x %in% c("sigmaXform", "omegaXform")) {
+      .sigmaXform <- c(
+        "variance" = 6L, "log" = 5L, "identity" = 4L,
+        "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
+        "nlmixrIdentity" = 3L)
+      paste0(x, " =", deparse1(names(.sigmaXform)[which(object[[x]] == .sigmaXform)]))
+    } else if (x == "returnType") {
+      .matrixIdx <- c(
+        "rxSolve" = 0L, "matrix" = 1L, "data.frame" = 2L, "data.frame.TBS" = 3L, "data.table" = 4L,
+        "tbl" = 5L, "tibble" = 5L)
+      paste0(x, " =", deparse1(names(.matrixIdx)[which(object[[x]] == .matrixIdx)]))
+    } else if (x == "sumType") {
+      .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)
+      paste0(x, " = ", deparse1(names(.sum)[which(object[[x]] == .sum)]))
+    } else if (x == "prodType") {
+      .prod <- c("long double"=1L, "double"=1L, "logify"=1L)
+      paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
+    } else if (x == "naTimeHandle") {
+      .naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)
+      paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))
+    }  else {
+      paste0(x, "=", deparse1(object[[x]]))
+    }
+  }, character(1), USE.NAMES=FALSE)
+  str2lang(paste(var, " <- rxControl(", paste(.retD, collapse=","),")"))
 }

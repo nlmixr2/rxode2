@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifndef __RXTHREADDATA_H__
 #define __RXTHREADDATA_H__
 
@@ -5,8 +8,7 @@
 extern "C" {
 #endif
 
-  void setIndPointersByThread(rx_solving_options_ind *ind);
-  
+
 #if defined(__cplusplus)
 }
 #endif

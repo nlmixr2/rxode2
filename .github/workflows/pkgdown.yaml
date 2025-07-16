@@ -4,14 +4,15 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
   release:
     types: [published]
   workflow_dispatch:
   schedule:
     - cron: '30 5 * * 2'
 
-name: pkgdown
+name: pkgdown.yaml
+
+permissions: read-all
 
 jobs:
   pkgdown:
@@ -20,15 +21,11 @@ jobs:
     concurrency:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
     env:
-      R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
-      RSPM: ${{ matrix.config.rspm }}
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      _R_CHECK_FORCE_SUGGESTS_: false
     permissions:
       contents: write
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -38,15 +35,13 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 4
+          cache-version: 9
           extra-packages: |
             any::pkgdown
             nlmixr2/dparser-R
             nlmixr2/lotri
             nlmixr2/rxode2ll
-            nlmixr2/rxode2parse
-            nlmixr2/rxode2random
-            nlmixr2/rxode2et
+            nlmixr2/PreciseSums
             local::.
           needs: website
 
@@ -56,7 +51,7 @@ jobs:
 
       - name: Deploy to GitHub pages 🚀
         if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@v4.4.1
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false
           branch: gh-pages

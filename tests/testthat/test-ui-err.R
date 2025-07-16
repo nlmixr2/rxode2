@@ -1,4 +1,5 @@
 rxTest({
+
   lmat <- lotri({
     ## You may label each parameter with a comment
     tka <- 0.45 # Log Ka
@@ -459,7 +460,29 @@ rxTest({
       cp ~ probitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) | cond
     }), lmat) -> mod
 
+    expect_err2(.errProcessExpression(quote({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
+      v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
+      vp <- exp(tvp + wt * vp.wt + sex * vp.sex + age * vp.age)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl/v * center
+      cp = center/v
+      cp ~ probitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) + var() | cond
+    }), lmat), NA)
+
     expect_equal(mod$predDf$errType, testCombine(c("add", "pow"))$errType)
+
+    expect_err2(.errProcessExpression(quote({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
+      v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
+      vp <- exp(tvp + wt * vp.wt + sex * vp.sex + age * vp.age)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl/v * center
+      cp = center/v
+      cp ~ probitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) + var() | cond
+    }), lmat), NA)
 
   })
 
@@ -1590,4 +1613,46 @@ rxTest({
     expect_true(.isErrorExpression(quote(linCmt() ~ add(add.err) + prop(prop.err))))
 
   })
+
+  test_that("symbol alone", {
+
+    whoops <- function() {
+      ini({
+        paramAlone <- 1
+        paramUsed <- 2
+      })
+      model({
+        x <- paramUsed
+        paramAlone
+      })
+    }
+
+    expect_message(expect_error(rxode2(whoops)),
+                  "the symbol 'paramAlone' cannot be by itself")
+
+  })
+
+  test_that("complex error condition", {
+
+    f <- function() {
+      ini({
+        paramUsed <- 1
+        add.sd <- 0.1
+        add.sd2 <- 0.2
+      })
+      model({
+        x <- paramUsed
+        x1 <- x
+        x2 <- x
+        x1 ~ add(add.sd) | cmt(1)
+        x2 ~ add(add.sd2) | cmt(2)
+      })
+    }
+
+    expect_message(expect_error(rxode2(f)),
+                   "the condition 'cmt\\(2\\)' must be a simple name")
+
+  })
+
+
 })

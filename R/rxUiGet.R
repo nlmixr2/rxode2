@@ -24,6 +24,12 @@
 
 #' @export
 `$.rxUi` <- function(obj, arg, exact = TRUE) {
+  # need to assign environment correctly for UDF
+  #
+  # The model() and rxode2() assign the parent environments for UDF
+  # parsing, if the object is in that environment lock it and then
+  # unlock on exit
+  .udfEnvSet(list(parent.frame(1), parent.frame(2)))
   rxUiGet(.uiToRxUiGet(obj=obj, arg=arg, exact=exact))
 }
 
@@ -43,6 +49,21 @@ rxUiGet <- function(x, ...) {
   UseMethod("rxUiGet")
 }
 
+#' @rdname rxUiGet
+#' @export
+rxUiGet.levels <- function(x, ...) {
+  .x <- x[[1]]
+  .mv <- rxModelVars(.x)
+  .str <- .mv$strAssign
+  .names <- names(.str)
+  lapply(vapply(seq_along(.str), function(i) {
+    paste0("levels(", .names[i], ") <- ",
+           deparse1(.str[[i]]))
+  }, character(1), USE.NAMES=FALSE),
+  str2lang)
+}
+
+#' @rdname rxUiGet
 #' @export
 rxUiGet.state <- function(x, ...) {
   .ui <- x[[1]]
@@ -50,14 +71,119 @@ rxUiGet.state <- function(x, ...) {
 }
 attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
 
+#' @rdname rxUiGet
 #' @export
 rxUiGet.stateDf <- function(x, ...) {
   .ui <- x[[1]]
-  .state <- rxModelVars(.ui)$state
-  data.frame("Compartment Number"=seq_along(.state), "Compartment Name"=.state,
-             check.names=FALSE)
+  .mv <- rxModelVars(.ui)
+  .state <- .mv$state
+  .cmt <- .getCmtNum(.mv)
+  if (.mv$flags["linCmtFlg"] != 0) {
+    data.frame("Compartment Number"=seq_along(.cmt),
+               "Compartment Name"=names(.cmt),
+               "Rate"=cmtSupportsInfusion_(.cmt, .mv),
+               "Off"=cmtSupportsOff_(.cmt, .mv),
+               "Internal #"=setNames(.cmt,NULL),
+               check.names=FALSE)
+  } else {
+    data.frame("Compartment Number"=seq_along(.cmt),
+               "Compartment Name"=names(.cmt),
+               check.names=FALSE)
+  }
 }
 attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.statePropDf <- function(x,...) {
+  .ui <- x[[1]]
+  .mv <- rxModelVars(.ui)
+  do.call(rbind, lapply(seq_along(.mv$stateProp),
+                 function(i) {
+                   .prop <- .mv$stateProp[i]
+                   if (.prop == 0) return(NULL)
+                   .name <- names(.mv$stateProp)[i]
+                   .props <- character(0)
+                   if (bitwAnd(.prop, 1)) {
+                     .props <- c(.props, "ini")
+                   }
+                   if (bitwAnd(.prop, 2)) {
+                     .props <- c(.props, "f")
+                   }
+                   if (bitwAnd(.prop, 4)) {
+                     .props <- c(.props, "alag")
+                   }
+                   if (bitwAnd(.prop, 8)) {
+                     .props <- c(.props, "rate")
+                   }
+                   if (bitwAnd(.prop, 16)) {
+                     .props <- c(.props, "dur")
+                   }
+                   data.frame("Compartment"=.name,
+                              "Property"=.props)
+                 }))
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.props <- function(x, ...) {
+  .x <- x[[1]]
+  .ini <- .x$iniDf
+  .w <- !is.na(.ini$ntheta) & is.na(.ini$err)
+  .pop <- .ini$name[.w]
+  .w <- !is.na(.ini$ntheta) & !is.na(.ini$err)
+  .resid <- .ini$name[.w]
+  .w <- !is.na(.ini$neta1)
+  .cnds <- unique(.ini$condition[.w])
+  .var <- lapply(.cnds,
+                 function(cnd) {
+                   .w <- which(.ini$condition == cnd &
+                                 .ini$neta1 == .ini$neta2)
+                   .ini$name[.w]
+                 })
+  .mv <- rxGetModel(.x)
+  .lin <- FALSE
+  .doseExtra <- character(0)
+  .mv <- rxModelVars(.x)
+  if (!is.null(.x$.linCmtM)) {
+    .lin <- TRUE
+    if (.mv$extraCmt == 2L) {
+      .doseExtra <- c("depot", "central")
+    } else if (.mv$extraCmt == 1L) {
+      .doseExtra <- "central"
+    }
+  }
+  .predDf <- .x$predDf
+  if (!.lin && any(.predDf$linCmt)) {
+    .lin <- TRUE
+    if (.mv$flags["ka"] == 1L) {
+      .doseExtra <- c("depot", "central")
+    } else {
+      .doseExtra <- "central"
+    }
+  }
+  .dose <- c(.doseExtra, .x$state)
+  names(.var) <- .cnds
+  .lhs <- .mv$lhs
+  .state <- .mv$state
+  .end <- .x$predDf$var
+  .end <- .end[.end %in% c(.lhs, .state)]
+  .lhs <- .lhs[!(.lhs %in% .end)]
+  .varLhs <- .x$varLhs
+  .primary <- .lhs[.lhs %in% .varLhs]
+  .secondary <- .lhs[!(.lhs %in% .primary)]
+  list(pop=.pop,
+       resid=.resid,
+       group=.var,
+       linCmt=.lin,
+       cmt=.dose,
+       output=list(primary=.primary,
+                   secondary=.secondary,
+                   endpoint=.end,
+                   state=.x$state),
+       cmtProp=rxUiGet.statePropDf(x,...))
+}
+attr(rxUiGet.props, "desc") <- "rxode2 model properties"
 
 #' @export
 #' @rdname rxUiGet
@@ -170,6 +296,49 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
 }
 attr(rxUiGet.multipleEndpoint, "desc") <- "table of multiple endpoint translations"
 
+#' This is a generic function for deparsing certain objects when
+#' printing out a rxode2 object.  Currently it is used for any meta-information
+#'
+#' @param object object to be deparsed
+#' @param var variable name to be assigned
+#' @return parsed R expression that can be used for printing and
+#'   `as.function()` calls.
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' mat <- matrix(c(1, 0.1, 0.1, 1), 2, 2, dimnames=list(c("a", "b"), c("a", "b")))
+#'
+#' rxUiDeparse(matrix(c(1, 0.1, 0.1, 1), 2, 2, dimnames=list(c("a", "b"), c("a", "b"))), "x")
+rxUiDeparse <- function(object, var) {
+ UseMethod("rxUiDeparse")
+}
+
+#' @rdname rxUiDeparse
+#' @export
+rxUiDeparse.lotriFix <- function(object, var) {
+  .val <- lotri::lotriAsExpression(object)
+  bquote(.(str2lang(var)) <- .(.val))
+}
+
+#' @rdname rxUiDeparse
+#' @export
+rxUiDeparse.default <- function(object, var) {
+  # This is a default method for deparsing objects
+  if (checkmate::testMatrix(object, any.missing=FALSE,
+                            row.names="strict", col.names="strict")) {
+    .dn <- dimnames(object)
+    if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(object)) {
+      return(rxUiDeparse.lotriFix(object, var))
+    }
+  }
+  .ret <- try(str2lang(paste0(var, "<-", deparse1(object))), silent=TRUE)
+  if (inherits(.ret, "try-error")) {
+    .ret <- str2lang("NULL")
+  }
+  .ret
+}
+
 #' @rdname rxUiGet
 #' @export
 rxUiGet.funPrint <- function(x, ...) {
@@ -179,7 +348,9 @@ rxUiGet.funPrint <- function(x, ...) {
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .ls[.i], "<-", deparse1(.x$meta[[.ls[.i]]]), ")")))
+    .var <- .ls[.i]
+    .val <- .x$meta[[.ls[.i]]]
+    .ret[[.i + 1]] <- rxUiDeparse(.val, .var)
   }
   .theta <- x$theta
   .omega <- x$omega
@@ -200,7 +371,7 @@ attr(rxUiGet.funPrint, "desc") <- "Normalized, quoted model function (for printi
 rxUiGet.fun <- function(x, ...) {
   .ret <- rxUiGet.funPrint(x, ...)
   .ret2 <- function() {
-    
+
   }
   body(.ret2) <- as.call(.ret)
   .ret2
@@ -209,8 +380,45 @@ attr(rxUiGet.fun, "desc") <- "Normalized model function"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.funPartsDigest <- function(x, ...) {
+  .ui <- x[[1]]
+  rxSyncOptions()
+  list(
+    normModel = .ui$mv0$model["normModel"],
+    iniDf = .ui$iniDf,
+    errLinesI = .ui$predDf$line,
+    errLines = vapply(.ui$predDf$line, function(l) {
+      deparse1(.ui$lstExpr[[l]])
+    }, character(1), USE.NAMES=FALSE),
+    # Now get environment specific differences in the model
+    # This changes how models can be expressed (and their output)
+    allow.ini=rxode2.syntax.allow.ini,
+    # Defined lower level functions and udf functions
+    definedFuns=  ls(.udfEnv$symengineFs, all.names=TRUE),
+    # Defined rxUdfUi methods
+    uiFuns=as.character(utils::methods("rxUdfUi")),
+    # Add version of rxode2
+    rxVersion=rxode2::rxVersion()
+  )
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.md5 <- function(x, ...) {
-  digest::digest(rxUiGet.funPrint(x, ...))
+  digest::digest(rxUiGet.funPartsDigest(x, ...), algo="md5")
+}
+attr(rxUiGet.md5, "desc") <- "MD5 hash of the UI model"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.sha1 <- function(x, ...) {
+  digest::digest(rxUiGet.funPartsDigest(x, ...), algo="sha1")
+}
+attr(rxUiGet.sha1, "desc") <- "SHA1 hash of the UI model"
+
+sha1.rxUi <- function(x, digits = 14L, zapsmall = 7L, ..., algo = "sha1")  {
+  digest::sha1(rxUiGet.funPartsDigest(list(x)),
+               digits=digits, zapsmall=zapsmall, ..., algo=algo)
 }
 
 #' @export
@@ -229,6 +437,7 @@ rxUiGet.iniFun <- function(x, ...) {
 }
 attr(rxUiGet.iniFun, "desc") <- "normalized, quoted `ini()` block"
 
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.modelFun <- function(x, ...) {
@@ -236,6 +445,11 @@ rxUiGet.modelFun <- function(x, ...) {
   bquote(model(.(as.call(c(quote(`{`),.x$lstExpr)))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.model <- rxUiGet.modelFun
+
 
 #' @export
 #' @rdname rxUiGet
@@ -359,8 +573,15 @@ attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.default <- function(x, ...) {
   .arg <- class(x)[1]
-  if (!exists(.arg, envir=x[[1]])) return(NULL)
-  get(.arg, x[[1]])
+  .ui <- x[[1]]
+  if (!exists(.arg, envir=.ui)) {
+    .meta <- get("meta", envir=.ui)
+    if (exists(.arg, envir=.meta)) {
+      return(get(.arg, envir=.meta))
+    }
+    return(NULL)
+  }
+  get(.arg, .ui)
 }
 
 .rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",

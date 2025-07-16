@@ -1,15 +1,18 @@
 //loop
 statement_list : (statement)+ ;
 
-statement 
+statement
   : assignment end_statement
+  | assign_str end_statement
+  | levels_str end_statement
+  | levels_str1 end_statement
   | ini        end_statement
   | ini0       end_statement
   | ini0f      end_statement
   | fbio       end_statement
   | alag       end_statement
   | rate       end_statement
-  | dur        end_statement 
+  | dur        end_statement
   | derivative end_statement
   | dfdy       end_statement
   | mtime      end_statement
@@ -17,6 +20,7 @@ statement
   | matF       end_statement
   | printf_statement end_statement
   | param_statement end_statement
+  | interp_statement end_statement
   | cmt_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
@@ -45,6 +49,8 @@ cmt_statement
 
 param_statement
     : "params?" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )*  ')';
+
+interp_statement: ('locf' | 'linear' | 'nocb' | 'midpoint') '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )* ')';
 
 printf_statement
   : printf_command '(' string (',' logical_or_expression )* ')';
@@ -80,16 +86,24 @@ end_statement : (';')* ;
 
 assignment : identifier_r  ('=' | '<-' | '~' ) logical_or_expression;
 
+assign_str : identifier_r_no_output ('=' | '<-' | '~' ) string;
+
+levels_str : 'levels' '(' identifier_r_no_output ')' ('=' | '<-' | '~' )
+            'c' '(' string ( ',' string)* ')';
+
+levels_str1 : 'levels' '(' identifier_r_no_output ')' ('=' | '<-' | '~' )
+                string ;
+
 mat0: '_rxM' '=' logical_or_expression;
 
 matF: '_rxF' '=' logical_or_expression;
 
 mtime     : 'mtime' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 
-logical_or_expression : logical_and_expression 
+logical_or_expression : logical_and_expression
     (('||' | '|')  logical_and_expression)* ;
 
-logical_and_expression : equality_expression0 
+logical_and_expression : equality_expression0
     (('&&' | '&') equality_expression0)* ;
 
 equality_expression0 : equality_expression |
@@ -99,23 +113,25 @@ equality_expression0 : equality_expression |
     '(' equality_str ')' |
     '!' '(' equality_str ')' |
     '(' '!' identifier_r ')' |
-    '!' identifier_r | 
+    '!' identifier_r |
     '!' function ;
 
 equality_str : equality_str1 | equality_str2;
 equality_str1 : string ('!=' | '==' ) identifier_r;
 equality_str2 : identifier_r ('!=' | '==' ) string;
 
-equality_expression : relational_expression 
+equality_expression : relational_expression
     (('!=' | '==' ) relational_expression)* ;
 
+relational_op: '<' | '>' | '<=' | '>=' | '<-' | '->';
+
 relational_expression : additive_expression
-    (('<' | '>' | '<=' | '>=') additive_expression)* ;
+    (relational_op additive_expression)* ;
 
 additive_expression : multiplicative_expression
     (('+' | '-') multiplicative_expression)* ;
 
-multiplicative_expression : unary_expression 
+multiplicative_expression : unary_expression
     (mult_part)* ;
 
 mult_part : ('*' | '/') unary_expression ;
@@ -128,7 +144,7 @@ power_expression : primary_expression power_operator exponent_expression;
 
 power_operator   : ('^' | '**');
 
-primary_expression 
+primary_expression
   : constant
   | identifier_r
   | theta0
@@ -169,7 +185,9 @@ theta0_noout: ('THETA' | 'theta' | 'ETA' | 'eta');
 
 decimalintNo0: "([1-9][0-9]*)" $term -1;
 decimalint: "0|([1-9][0-9]*)" $term -1;
-string: "\"([^\"\\]|\\[^])*\"";
+string: string1 | string2;
+string1: "\"([^\"\\]|\\[^])*\"";
+string2: "'([^'\\]|\\[^])*'";
 float1: "([0-9]+.[0-9]*|[0-9]*.[0-9]+)([eE][\-\+]?[0-9]+)?" $term -2;
 float2: "[0-9]+[eE][\-\+]?[0-9]+" $term -3;
 identifier_r_1: "[a-zA-Z][a-zA-Z0-9_.]*" $term -4;
@@ -179,4 +197,3 @@ identifier_r_no_output_2: "[.]+[a-zA-Z_][a-zA-Z0-9_.]*" $term -4;
 identifier: "[a-zA-Z][a-zA-Z0-9_.]*" $term -4;
 whitespace: ( "[ \t\r\n]+" | singleLineComment )*;
 singleLineComment: '#' "[^\n]*";
-
