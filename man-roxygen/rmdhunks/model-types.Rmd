@@ -24,7 +24,7 @@ cmt1
 ## Solved compartment models
 
 Solved models are also simple to create. You simply place the
-`linCmt()` psuedo-function into your code.  The `linCmt()` function
+`linCmt()` pseudo-function into your code.  The `linCmt()` function
 figures out the type of model to use based on the parameter names
 specified.
 
