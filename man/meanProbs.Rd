@@ -3,7 +3,7 @@
 \name{meanProbs}
 \alias{meanProbs}
 \alias{meanProbs.default}
-\title{Calculate expected quantiles with normal or t sampling distribution}
+\title{Calculate expected confidence bands or prediction intreval with normal or t sampling distribution}
 \usage{
 meanProbs(x, ...)
 
@@ -13,7 +13,10 @@ meanProbs(x, ...)
   na.rm = FALSE,
   names = TRUE,
   useT = TRUE,
-  onlyProbs = TRUE
+  onlyProbs = TRUE,
+  pred = FALSE,
+  n = 0L,
+  ...
 )
 }
 \arguments{
@@ -21,7 +24,11 @@ meanProbs(x, ...)
 values are wanted, NA and NaN values are not allowed in numeric
 vectors unless ‘na.rm’ is ‘TRUE’.}
 
-\item{probs}{numeric vector of probabilities with values in \link{0,1}.}
+\item{...}{Arguments passed to default method, allows many
+different methods to be applied.}
+
+\item{probs}{numeric vector of probabilities with values in the
+interval from 0 to 1 .}
 
 \item{na.rm}{logical; if true, any NA and NaN's are removed from
 \code{x} before the quantiles are computed.}
@@ -32,8 +39,15 @@ vectors unless ‘na.rm’ is ‘TRUE’.}
 the confidence-based estimates. If false use the normal
 distribution to calculate the confidence based estimates.}
 
-\item{onlyProbs}{logical; if true, only return the probability based
-confidence interval estimates, otherwise return}
+\item{onlyProbs}{logical; if true, only return the probability
+based confidence interval estimates, otherwise return}
+
+\item{pred}{logical; if true use the prediction interval instead of
+the confidence interval}
+
+\item{n}{integer/integerish; this is the n used to calculate the
+prediction or confidence interval.  When \code{n=0} (default) use the
+number of non-\code{NA} observations.}
 }
 \value{
 By default the return has the probabilities as names (if
@@ -43,9 +57,10 @@ located given the sampling mean and standard deviation. If
 deviation, minimum, maximum and number of non-NA observations.
 }
 \description{
-The generic function \code{meanProbs} produces expected quantiles under
-either the t distribution or the normal sampling distribution. This
-uses \code{qnorm()} or \code{qt()} with the mean and standard deviation.
+The generic function \code{meanProbs} produces expected confidence bands
+under either the t distribution or the normal sampling
+distribution. This uses \code{qnorm()} or \code{qt()} with the mean and
+standard deviation.
 }
 \details{
 For a single probability, p, it uses either:
