@@ -261,8 +261,8 @@ const char *rxGetId(int id);
 
 double phi(double q);
 SEXP _rxode2_phi(SEXP q);
-SEXP _rxode2_calcDerived(SEXP transSXP, SEXP ncmt, SEXP o0, SEXP w1, SEXP w2,
-                         SEXP inp, SEXP dig);
+SEXP _rxode2_calcDerived(SEXP ncmtSXP, SEXP oralSXP, SEXP w2SXP, SEXP transSXP,
+                         SEXP inp, SEXP sigdigSXP);
 
 double gamma_p(double, double z);
 double gamma_q(double, double z);
