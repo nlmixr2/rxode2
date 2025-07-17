@@ -12,7 +12,7 @@
   ##   stop("cannot rbind single solve environments", call.=FALSE)
   ## }
   .cloneEnv <- new.env(parent=emptyenv())
-  for (.v in ls(.env1, all=TRUE)) {
+  for (.v in ls(.env1, all.names=TRUE)) {
     assign(.v, get(.v, envir=.env1), envir=.cloneEnv)
   }
   .nStud1 <- .cloneEnv$.args$nStud
