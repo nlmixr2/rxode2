@@ -1,3 +1,9 @@
+# rxode2 4.0.1
+
+- Add the ability to use `rbind` for solved `rxode2` frames.
+
+- Fix `LTO` issue for `_rxode2_calcDerived`
+
 # rxode2 4.0.0
 
 - Add more information errors about `NA`s during solving.
