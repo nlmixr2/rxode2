@@ -2,6 +2,16 @@
 #define STRICT_R_HEADERS
 #include "codegen.h"
 
+/**
+ * Generates a random string of 4 alphanumeric characters.
+ * 
+ * The returned string is null-terminated and consists of characters
+ * from the set [0-9, A-Z, a-z]. The pointer returned by this function
+ * points to a global buffer, `_gbuf.s`, whose contents may be overwritten
+ * by subsequent calls to this function or other functions that use `_gbuf`.
+ * 
+ * @return A pointer to the global buffer containing the random string.
+ */
 char * genRandomChar(void) {
   const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   // 62 digits
