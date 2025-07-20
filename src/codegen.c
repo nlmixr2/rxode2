@@ -2,6 +2,16 @@
 #define STRICT_R_HEADERS
 #include "codegen.h"
 
+char * genRandomChar(void) {
+  const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  // 62 digits
+  for (int j = 0; j < 4; j++) {
+    _gbuf.s[j] = digits[(int)floor(Rf_runif(0, 63))];
+  }
+  _gbuf.s[4] = 0;
+  return _gbuf.s;
+}
+
 SEXP _rxode2parse_rxFunctionName;
 SEXP _rxode2parse_functionName;
 SEXP _rxode2parse_functionType;
@@ -137,10 +147,11 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
       writeHeader(md5, extra);
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
-        sAppend(&sbOut, "#define %s _rx%s%s%ld%s\n",
+        sAppend(&sbOut, "#define %s _rx%s%s%ld_%s_%s\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
                 extra, md5, __timeId++,
-                R_CHAR(STRING_ELT(_rxode2parse_functionName, i)));
+                R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
+                genRandomChar());
       }
       sAppendN(&sbOut,"#include <rxode2_model_shared.h>\n",33);
       int mx = maxSumProdN;
