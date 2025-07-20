@@ -6,7 +6,7 @@ char * genRandomChar(void) {
   const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   // 62 digits
   for (int j = 0; j < 4; j++) {
-    _gbuf.s[j] = digits[(int)floor(Rf_runif(0, 63))];
+    _gbuf.s[j] = digits[(int)floor(Rf_runif(0, 62))];
   }
   _gbuf.s[4] = 0;
   return _gbuf.s;
