@@ -1,3 +1,10 @@
+# rxode2 4.0.2
+
+- At the request of CRAN, be a bit more careful so that names are not
+  duplicated.  Now include the md5 hash, a global counter and random 4
+  digit and number combination. In addition add the name of the
+  original function so it will be easier to debug in the future
+
 # rxode2 4.0.1
 
 - Add the ability to use `rbind` for solved `rxode2` frames.
