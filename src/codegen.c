@@ -45,7 +45,6 @@ void _rxode2parse_unprotect(void) {
   _rxode2parse_protected = 0;
 }
 
-
 #include "codegen2.h"
 
 SEXP _rxode2_rxQs(SEXP);
@@ -138,9 +137,10 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
       writeHeader(md5, extra);
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
-        sAppend(&sbOut, "#define %s _rx%s%s%ld\n",
+        sAppend(&sbOut, "#define %s _rx%s%s%ld%s\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
-                extra, md5, __timeId++);
+                extra, md5, __timeId++,
+                R_CHAR(STRING_ELT(_rxode2parse_functionName, i)));
       }
       sAppendN(&sbOut,"#include <rxode2_model_shared.h>\n",33);
       int mx = maxSumProdN;
