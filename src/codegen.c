@@ -2,6 +2,26 @@
 #define STRICT_R_HEADERS
 #include "codegen.h"
 
+/**
+ * Generates a random string of 4 alphanumeric characters.
+ * 
+ * The returned string is null-terminated and consists of characters
+ * from the set [0-9, A-Z, a-z]. The pointer returned by this function
+ * points to a global buffer, `_gbuf.s`, whose contents may be overwritten
+ * by subsequent calls to this function or other functions that use `_gbuf`.
+ * 
+ * @return A pointer to the global buffer containing the random string.
+ */
+char * genRandomChar(void) {
+  const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  // 62 digits
+  for (int j = 0; j < 4; j++) {
+    _gbuf.s[j] = digits[(int)floor(Rf_runif(0, 62))];
+  }
+  _gbuf.s[4] = 0;
+  return _gbuf.s;
+}
+
 SEXP _rxode2parse_rxFunctionName;
 SEXP _rxode2parse_functionName;
 SEXP _rxode2parse_functionType;
@@ -44,7 +64,6 @@ void _rxode2parse_unprotect(void) {
   if (_rxode2parse_protected) UNPROTECT(_rxode2parse_protected);
   _rxode2parse_protected = 0;
 }
-
 
 #include "codegen2.h"
 
@@ -138,9 +157,11 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
       writeHeader(md5, extra);
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
-        sAppend(&sbOut, "#define %s _rx%s%s%ld\n",
+        sAppend(&sbOut, "#define %s _rx%s%s%ld_%s_%s\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
-                extra, md5, __timeId++);
+                extra, md5, __timeId++,
+                R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
+                genRandomChar());
       }
       sAppendN(&sbOut,"#include <rxode2_model_shared.h>\n",33);
       int mx = maxSumProdN;

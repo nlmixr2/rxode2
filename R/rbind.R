@@ -89,7 +89,11 @@
 rbind.rxSolve <- function(..., deparse.level = 1) {
   .lst <- list(...)
   if (length(.lst) >= 2) {
-    .ret <- .rbind2rxSove(.lst[[1]], .lst[[2]])
+    .ret <- try(.rbind2rxSove(.lst[[1]], .lst[[2]]),
+                silent=TRUE)
+    if (inherits(.ret, "try-error")) {
+      return(do.call(rbind.data.frame, .lst))
+    }
     if (length(.lst) == 2) {
       return(.ret)
     }
