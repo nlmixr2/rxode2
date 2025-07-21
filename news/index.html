@@ -75,11 +75,16 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/v4.0.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="4.0.1" id="rxode2-401">rxode2 4.0.1<a class="anchor" aria-label="anchor" href="#rxode2-401"></a></h2>
+<h2 class="pkg-version" data-toc-text="4.0.2" id="rxode2-402">rxode2 4.0.2<a class="anchor" aria-label="anchor" href="#rxode2-402"></a></h2>
+<ul><li><p>At the request of CRAN, be a bit more careful so that names are not duplicated. Now include the md5 hash, a global counter and random 4 digit and number combination. In addition add the name of the original function so it will be easier to debug in the future.</p></li>
+<li><p>Fall back to data.frame <code>rbind</code> when <code>rbind.rxSolve()</code> fails</p></li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="4.0.1" id="rxode2-401">rxode2 4.0.1<a class="anchor" aria-label="anchor" href="#rxode2-401"></a></h2><p class="text-muted">CRAN release: 2025-07-17</p>
 <ul><li><p>Add the ability to use <code>rbind</code> for solved <code>rxode2</code> frames.</p></li>
 <li><p>Fix <code>LTO</code> issue for <code>_rxode2_calcDerived</code></p></li>
 </ul></div>
