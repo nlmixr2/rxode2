@@ -1486,6 +1486,9 @@ rxCompile.rxModelVars <- function(model, # Model
           Sys.setenv("BINPREF" = .rxBinpref)
           on.exit(Sys.setenv("BINPREF" = .oldBinpref), add = TRUE)
         }
+        cat("C model:\n")
+        cat(paste(readLines(.cFile), collapse = "\n"))
+        cat("\n\n")
         rxode2::rxReq("sys")
         .rxWithWd(.dir, {
           .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
