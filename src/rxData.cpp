@@ -649,7 +649,6 @@ SEXP dynLoad(std::string dll){
   Function ns = getRxFn(".nsToLoad");
   ns();
   Function dl("dyn.load", R_BaseNamespace);
-  REprintf(_("Loading %s\n"), dll.c_str());
   SEXP ret = dl(dll, _["local"]=false, _["now"]=true);
   return ret;
 }
@@ -6146,7 +6145,6 @@ bool rxDynLoad(RObject obj){
   if (!rxIsLoaded(obj)){
     std::string file = rxDll(obj);
     if (fileExists(file)){
-      REprintf("dynLoad (@1) %s\n", file.c_str());
       dynLoad(file);
     } else {
       Nullable<Environment> e1 = rxrxode2env(obj);
@@ -6258,7 +6256,7 @@ bool rxAllowUnload(bool allow){
 }
 
 //[[Rcpp::export]]
-RObject rxUnloadAll_() {
+RObject rxUnloadAll_(){
   getRxModels();
   Function dynUnload("dyn.unload", R_BaseNamespace);
   Function shouldUnloadDll = getRxFn(".rxShouldUnload");
@@ -6276,7 +6274,6 @@ RObject rxUnloadAll_() {
         if (val > 1){
         } else if (val == 0 && rxUnload_){
           if (shouldUnloadDll(varC)){
-            REprintf("dynUnload (@2) %s\n", varC.c_str());
             dynUnload(varC);
             rmRxModelsFromDll(varC);
           }
@@ -6319,7 +6316,6 @@ bool rxDynUnload(RObject obj){
     std::string file = rxDll(obj);
     rxUnlock(obj);
     if (rxCanUnload(obj)){
-      REprintf("dynUnload (@1) %s\n", file.c_str());
       dynUnload(file);
     } else {
       rxLock(obj);
