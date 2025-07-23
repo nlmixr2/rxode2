@@ -143,6 +143,768 @@ to each element of <code>x</code>.</p>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> C model:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Define 1 LHS values</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _LHS_0_ 0 // r</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _getRxSolve_ _rxc9b7d4b5325bb8c123cb7d10c4d558b6286__getRxSolve__sA2J</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _evalUdf _rxc9b7d4b5325bb8c123cb7d10c4d558b6287__evalUdf_OCP3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _solveData _rxc9b7d4b5325bb8c123cb7d10c4d558b6288__solveData_OyHg</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _assign_ptr _rxc9b7d4b5325bb8c123cb7d10c4d558b6289__assign_ptr_jCyj</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _rxRmModelLib _rxc9b7d4b5325bb8c123cb7d10c4d558b6290__rxRmModelLib_3Whg</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _rxGetModelLib _rxc9b7d4b5325bb8c123cb7d10c4d558b6291__rxGetModelLib_1DId</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _old_c _rxc9b7d4b5325bb8c123cb7d10c4d558b6292__old_c_TQhw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _ptrid _rxc9b7d4b5325bb8c123cb7d10c4d558b6293__ptrid_BDgU</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _rxIsCurrentC _rxc9b7d4b5325bb8c123cb7d10c4d558b6294__rxIsCurrentC_de5l</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _sumPS _rxc9b7d4b5325bb8c123cb7d10c4d558b6295__sumPS_lzyO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _prodPS _rxc9b7d4b5325bb8c123cb7d10c4d558b6296__prodPS_SJAW</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _prodType _rxc9b7d4b5325bb8c123cb7d10c4d558b6297__prodType_UmCi</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _sumType _rxc9b7d4b5325bb8c123cb7d10c4d558b6298__sumType_4LpG</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _update_par_ptr _rxc9b7d4b5325bb8c123cb7d10c4d558b6299__update_par_ptr_ZKaB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _getParCov _rxc9b7d4b5325bb8c123cb7d10c4d558b6300__getParCov_wXXH</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _rxode2_rxAssignPtr _rxc9b7d4b5325bb8c123cb7d10c4d558b6301__rxode2_rxAssignPtr_RN1S</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _rxQr _rxc9b7d4b5325bb8c123cb7d10c4d558b6302__rxQr_O1NY</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _compareFactorVal _rxc9b7d4b5325bb8c123cb7d10c4d558b6303__compareFactorVal_rNWb</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _sum _rxc9b7d4b5325bb8c123cb7d10c4d558b6304__sum_GHTv</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _udf _rxc9b7d4b5325bb8c123cb7d10c4d558b6305__udf_ODf3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _sign _rxc9b7d4b5325bb8c123cb7d10c4d558b6306__sign_z9Wq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _prod _rxc9b7d4b5325bb8c123cb7d10c4d558b6307__prod_iEXp</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _max _rxc9b7d4b5325bb8c123cb7d10c4d558b6308__max_1Tno</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _min _rxc9b7d4b5325bb8c123cb7d10c4d558b6309__min_PDPf</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _transit4P _rxc9b7d4b5325bb8c123cb7d10c4d558b6310__transit4P_VeVp</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _transit3P _rxc9b7d4b5325bb8c123cb7d10c4d558b6311__transit3P_hs0t</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _assignFuns0 _rxc9b7d4b5325bb8c123cb7d10c4d558b6312__assignFuns0_zVMm</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _assignFuns _rxc9b7d4b5325bb8c123cb7d10c4d558b6313__assignFuns_adrZ</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _rxord _rxc9b7d4b5325bb8c123cb7d10c4d558b6314__rxord_FurF</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define __assignFuns2 _rxc9b7d4b5325bb8c123cb7d10c4d558b6315___assignFuns2_Ol7C</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikCauchyDscale _rxc9b7d4b5325bb8c123cb7d10c4d558b6316__llikCauchyDscale_Afrv</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikCauchyDlocation _rxc9b7d4b5325bb8c123cb7d10c4d558b6317__llikCauchyDlocation_YZgF</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikCauchy _rxc9b7d4b5325bb8c123cb7d10c4d558b6318__llikCauchy_2u4z</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikGammaDrate _rxc9b7d4b5325bb8c123cb7d10c4d558b6319__llikGammaDrate_bAu2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikGammaDshape _rxc9b7d4b5325bb8c123cb7d10c4d558b6320__llikGammaDshape_aEuo</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikGamma _rxc9b7d4b5325bb8c123cb7d10c4d558b6321__llikGamma_hDjD</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikWeibullDscale _rxc9b7d4b5325bb8c123cb7d10c4d558b6322__llikWeibullDscale_SKZF</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikWeibullDshape _rxc9b7d4b5325bb8c123cb7d10c4d558b6323__llikWeibullDshape_Suyo</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikWeibull _rxc9b7d4b5325bb8c123cb7d10c4d558b6324__llikWeibull_talz</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikUnifDbeta _rxc9b7d4b5325bb8c123cb7d10c4d558b6325__llikUnifDbeta_iDIi</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikUnifDalpha _rxc9b7d4b5325bb8c123cb7d10c4d558b6326__llikUnifDalpha_rE0w</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikUnif _rxc9b7d4b5325bb8c123cb7d10c4d558b6327__llikUnif_RkfP</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikGeomDp _rxc9b7d4b5325bb8c123cb7d10c4d558b6328__llikGeomDp_Ljf5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikGeom _rxc9b7d4b5325bb8c123cb7d10c4d558b6329__llikGeom_r4q6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikFDdf2 _rxc9b7d4b5325bb8c123cb7d10c4d558b6330__llikFDdf2_UFgA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikFDdf1 _rxc9b7d4b5325bb8c123cb7d10c4d558b6331__llikFDdf1_xJMt</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikF _rxc9b7d4b5325bb8c123cb7d10c4d558b6332__llikF_p6ul</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikExpDrate _rxc9b7d4b5325bb8c123cb7d10c4d558b6333__llikExpDrate_NzLw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikExp _rxc9b7d4b5325bb8c123cb7d10c4d558b6334__llikExp_D19q</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikChisqDdf _rxc9b7d4b5325bb8c123cb7d10c4d558b6335__llikChisqDdf_DD2w</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikChisq _rxc9b7d4b5325bb8c123cb7d10c4d558b6336__llikChisq_FmHs</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikTDsd _rxc9b7d4b5325bb8c123cb7d10c4d558b6337__llikTDsd_Iyal</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikTDmean _rxc9b7d4b5325bb8c123cb7d10c4d558b6338__llikTDmean_plP8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikTDdf _rxc9b7d4b5325bb8c123cb7d10c4d558b6339__llikTDdf_5ebe</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikT _rxc9b7d4b5325bb8c123cb7d10c4d558b6340__llikT_Kyis</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikBetaDshape2 _rxc9b7d4b5325bb8c123cb7d10c4d558b6341__llikBetaDshape2_yDfO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikBetaDshape1 _rxc9b7d4b5325bb8c123cb7d10c4d558b6342__llikBetaDshape1_2cbP</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikBeta _rxc9b7d4b5325bb8c123cb7d10c4d558b6343__llikBeta_rWy1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNbinomMuDmu _rxc9b7d4b5325bb8c123cb7d10c4d558b6344__llikNbinomMuDmu_fNug</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNbinomMu _rxc9b7d4b5325bb8c123cb7d10c4d558b6345__llikNbinomMu_fkXE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNbinomDprob _rxc9b7d4b5325bb8c123cb7d10c4d558b6346__llikNbinomDprob_VPjd</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNbinom _rxc9b7d4b5325bb8c123cb7d10c4d558b6347__llikNbinom_OxI3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikBinomDprob _rxc9b7d4b5325bb8c123cb7d10c4d558b6348__llikBinomDprob_ZD7w</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikBinom _rxc9b7d4b5325bb8c123cb7d10c4d558b6349__llikBinom_nkXX</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikPoisDlambda _rxc9b7d4b5325bb8c123cb7d10c4d558b6350__llikPoisDlambda_5OAg</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikPois _rxc9b7d4b5325bb8c123cb7d10c4d558b6351__llikPois_fwCy</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNormDsd _rxc9b7d4b5325bb8c123cb7d10c4d558b6352__llikNormDsd_Neo4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNormDmean _rxc9b7d4b5325bb8c123cb7d10c4d558b6353__llikNormDmean_WlQY</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _llikNorm _rxc9b7d4b5325bb8c123cb7d10c4d558b6354__llikNorm_C1yB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define simeps _rxc9b7d4b5325bb8c123cb7d10c4d558b6355_simeps_mspb</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define simeta _rxc9b7d4b5325bb8c123cb7d10c4d558b6356_simeta_u285</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define expit _rxc9b7d4b5325bb8c123cb7d10c4d558b6357_expit_hP47</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define logit _rxc9b7d4b5325bb8c123cb7d10c4d558b6358_logit_wDfC</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammapDer _rxc9b7d4b5325bb8c123cb7d10c4d558b6359_gammapDer_Yp7G</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define lowergamma _rxc9b7d4b5325bb8c123cb7d10c4d558b6360_lowergamma_H0qP</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define uppergamma _rxc9b7d4b5325bb8c123cb7d10c4d558b6361_uppergamma_kiVy</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammaqInva _rxc9b7d4b5325bb8c123cb7d10c4d558b6362_gammaqInva_MAm1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammaqInv _rxc9b7d4b5325bb8c123cb7d10c4d558b6363_gammaqInv_mA1m</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammapInva _rxc9b7d4b5325bb8c123cb7d10c4d558b6364_gammapInva_pxNA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammapInv _rxc9b7d4b5325bb8c123cb7d10c4d558b6365_gammapInv_bn2j</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammaq _rxc9b7d4b5325bb8c123cb7d10c4d558b6366_gammaq_D07g</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define gammap _rxc9b7d4b5325bb8c123cb7d10c4d558b6367_gammap_dKOh</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define phi _rxc9b7d4b5325bb8c123cb7d10c4d558b6368_phi_hvSa</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d2ELUa _rxc9b7d4b5325bb8c123cb7d10c4d558b6369_d2ELUa_AZta</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dELUa _rxc9b7d4b5325bb8c123cb7d10c4d558b6370_dELUa_pamO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d2aELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6371_d2aELU_qjJ6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d2ELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6372_d2ELU_6nN3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6373_dELU_zb9X</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define ELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6374_ELU_7x2A</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dPReLUa1 _rxc9b7d4b5325bb8c123cb7d10c4d558b6375_dPReLUa1_wyis</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dPReLUa _rxc9b7d4b5325bb8c123cb7d10c4d558b6376_dPReLUa_y2Rd</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dPReLU _rxc9b7d4b5325bb8c123cb7d10c4d558b6377_dPReLU_zJrX</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define PReLU _rxc9b7d4b5325bb8c123cb7d10c4d558b6378_PReLU_sVrr</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dSwish _rxc9b7d4b5325bb8c123cb7d10c4d558b6379_dSwish_L0Cw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define Swish _rxc9b7d4b5325bb8c123cb7d10c4d558b6380_Swish_Hsx0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dlReLU _rxc9b7d4b5325bb8c123cb7d10c4d558b6381_dlReLU_YDej</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define lReLU _rxc9b7d4b5325bb8c123cb7d10c4d558b6382_lReLU_sNtq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dSELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6383_dSELU_j2Kk</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define SELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6384_SELU_uCTN</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d4softplus _rxc9b7d4b5325bb8c123cb7d10c4d558b6385_d4softplus_OD0M</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d3softplus _rxc9b7d4b5325bb8c123cb7d10c4d558b6386_d3softplus_Wq8N</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d2softplus _rxc9b7d4b5325bb8c123cb7d10c4d558b6387_d2softplus_GU15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dsoftplus _rxc9b7d4b5325bb8c123cb7d10c4d558b6388_dsoftplus_zw77</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define softplus _rxc9b7d4b5325bb8c123cb7d10c4d558b6389_softplus_MTmU</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d4GELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6390_d4GELU_6whV</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d3GELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6391_d3GELU_WGiy</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define d2GELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6392_d2GELU_en4s</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dGELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6393_dGELU_piMW</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define GELU _rxc9b7d4b5325bb8c123cb7d10c4d558b6394_GELU_T6VR</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define dReLU _rxc9b7d4b5325bb8c123cb7d10c4d558b6395_dReLU_Ye9I</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define ReLU _rxc9b7d4b5325bb8c123cb7d10c4d558b6396_ReLU_tadG</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define riweibull _rxc9b7d4b5325bb8c123cb7d10c4d558b6397_riweibull_JLl0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define riunif _rxc9b7d4b5325bb8c123cb7d10c4d558b6398_riunif_3GaI</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rit_ _rxc9b7d4b5325bb8c123cb7d10c4d558b6399_rit__5llO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define ripois _rxc9b7d4b5325bb8c123cb7d10c4d558b6400_ripois_3kWH</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define ribeta _rxc9b7d4b5325bb8c123cb7d10c4d558b6401_ribeta_GXCd</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rigamma _rxc9b7d4b5325bb8c123cb7d10c4d558b6402_rigamma_kGsq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rigeom _rxc9b7d4b5325bb8c123cb7d10c4d558b6403_rigeom_2NBv</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rif _rxc9b7d4b5325bb8c123cb7d10c4d558b6404_rif_uBr0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define riexp _rxc9b7d4b5325bb8c123cb7d10c4d558b6405_riexp_sO4e</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define richisq _rxc9b7d4b5325bb8c123cb7d10c4d558b6406_richisq_upVb</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define ricauchy _rxc9b7d4b5325bb8c123cb7d10c4d558b6407_ricauchy_TsfO</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rinbinomMu _rxc9b7d4b5325bb8c123cb7d10c4d558b6408_rinbinomMu_YFC4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rinbinom _rxc9b7d4b5325bb8c123cb7d10c4d558b6409_rinbinom_Jz7i</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define ribinom _rxc9b7d4b5325bb8c123cb7d10c4d558b6410_ribinom_E8vt</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rinorm _rxc9b7d4b5325bb8c123cb7d10c4d558b6411_rinorm_CFcR</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxweibull _rxc9b7d4b5325bb8c123cb7d10c4d558b6412_rxweibull_J6Ge</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxunif _rxc9b7d4b5325bb8c123cb7d10c4d558b6413_rxunif_v1Yq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxt_ _rxc9b7d4b5325bb8c123cb7d10c4d558b6414_rxt__4CUG</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxpois _rxc9b7d4b5325bb8c123cb7d10c4d558b6415_rxpois_PRB4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxbeta _rxc9b7d4b5325bb8c123cb7d10c4d558b6416_rxbeta_1jyX</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxgamma _rxc9b7d4b5325bb8c123cb7d10c4d558b6417_rxgamma_A3Sc</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxgeom _rxc9b7d4b5325bb8c123cb7d10c4d558b6418_rxgeom_akWU</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxf _rxc9b7d4b5325bb8c123cb7d10c4d558b6419_rxf_0xSy</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxexp _rxc9b7d4b5325bb8c123cb7d10c4d558b6420_rxexp_XMV4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxchisq _rxc9b7d4b5325bb8c123cb7d10c4d558b6421_rxchisq_yezX</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxcauchy _rxc9b7d4b5325bb8c123cb7d10c4d558b6422_rxcauchy_lYmd</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxnbinomMu _rxc9b7d4b5325bb8c123cb7d10c4d558b6423_rxnbinomMu_NMqS</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxnbinom _rxc9b7d4b5325bb8c123cb7d10c4d558b6424_rxnbinom_Bxi1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxbinom _rxc9b7d4b5325bb8c123cb7d10c4d558b6425_rxbinom_cpdh</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define rxnorm _rxc9b7d4b5325bb8c123cb7d10c4d558b6426_rxnorm_rHA6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define linCmtB _rxc9b7d4b5325bb8c123cb7d10c4d558b6427_linCmtB_aqvf</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define linCmtA _rxc9b7d4b5325bb8c123cb7d10c4d558b6428_linCmtA_L0Qi</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #include &lt;rxode2_model_shared.h&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define __MAX_PROD__ 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _CMT CMT</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _SYNC_simeps_ for (int _svari=_solveData-&gt;neps; _svari--;){}</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define _SYNC_simeta_ for (int _ovari=_solveData-&gt;neta; _ovari--;){}</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _getRxSolve_t _getRxSolve_;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _simfun simeps;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _simfun simeta;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _udf_type _evalUdf=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rx_solve *_solveData=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_assign_ptr _assign_ptr=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rxRmModelLibType _rxRmModelLib=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rxGetModelLibType _rxGetModelLib=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_ode_solver_old_c _old_c=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn0i _ptrid=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rxIsCurrentC_type _rxIsCurrentC=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rxSumType _sumPS=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rxProdType _prodPS=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn0i _prodType=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn0i _sumType=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _update_par_ptr_p _update_par_ptr=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _getParCov_p _getParCov=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> linCmtA_p linCmtA;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> linCmtB_p linCmtB;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rx_asgn _rxode2_rxAssignPtr=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> _rx_asgn _rxQr=NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn phi;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn ReLU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn dReLU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn GELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn dGELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn d2GELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn d3GELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn d4GELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn softplus;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn dsoftplus;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn d2softplus;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn d3softplus;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn d4softplus;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn SELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn dSELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn lReLU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn dlReLU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn Swish;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn dSwish;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 PReLU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 dPReLU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 dPReLUa;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 dPReLUa1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 ELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 dELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 d2ELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 d2aELU;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 dELUa;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 d2ELUa;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn3 logit;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn3 expit;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammap;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammaq;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 lowergamma;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 uppergamma;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammapInv;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammapDer;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammapInva;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammaqInv;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_fn2 gammaqInva;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxnorm;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_rxbinom rxbinom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_rxbinom rxnbinom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_rxbinom rxnbinomMu;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxcauchy;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn rxchisq;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn rxexp;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxf;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_ifn rxgeom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxgamma;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxbeta;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_ifn rxpois;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn rxt_;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxunif;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i_fn2 rxweibull;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 rinorm;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_ribinom ribinom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_ribinom rinbinom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_ribinom rinbinomMu;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 ricauchy;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn richisq;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn riexp;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 rif;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_ifn rigeom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 rigamma;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 ribeta;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_ifn ripois;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn rit_;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 riunif;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2i2_fn2 riweibull;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikNormFun _llikNorm;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikNormFun _llikNormDmean;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikNormFun _llikNormDsd;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikPoisFun _llikPois;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikPoisFun _llikPoisDlambda;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBinomFun _llikBinom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBinomFun _llikBinomDprob;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBinomFun _llikNbinom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBinomFun _llikNbinomDprob;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBinomFun _llikNbinomMu;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBinomFun _llikNbinomMuDmu;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBetaFun _llikBeta;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBetaFun _llikBetaDshape1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikBetaFun _llikBetaDshape2;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikTFun _llikT;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikTFun _llikTDdf;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikTFun _llikTDmean;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikTFun _llikTDsd;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikChisqFun _llikChisq;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikChisqFun _llikChisqDdf;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikExpFun _llikExp;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikExpFun _llikExpDrate;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikFFun _llikF;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikFFun _llikFDdf1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikFFun _llikFDdf2;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikGeomFun _llikGeom;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikGeomFun _llikGeomDp;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikUnifFun _llikUnif;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikUnifFun _llikUnifDalpha;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikUnifFun _llikUnifDbeta;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikWeibullFun _llikWeibull;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikWeibullFun _llikWeibullDshape;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikWeibullFun _llikWeibullDscale;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikGammaFun _llikGamma;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikGammaFun _llikGammaDshape;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikGammaFun _llikGammaDrate;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikCauchyFun _llikCauchy;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikCauchyFun _llikCauchyDlocation;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_llikCauchyFun _llikCauchyDscale;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> rxode2_compareFactorVal_fn _compareFactorVal;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #include "extraC.h"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _prod(double *input, double *p, int type, int n, ...){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   for (unsigned int i = 0; i &lt; n; i++){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     input[i] = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return _prodPS(input, p, n, type);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _udf(const char *funName, double *input, int n, ...) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (n == -42) Rf_error("%s", "this has a ui user function that cannot be called directly");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   for (unsigned int i = 0; i &lt; n; i++){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     input[i] = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return _evalUdf(funName, n, input);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _sum(double *input, double *pld, int m, int type, int n, ...){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   for (unsigned int i = 0; i &lt; n; i++){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     input[i] = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double ret = _sumPS(input, n, pld, m, type);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (type == 2 &amp;&amp; m &lt; 0){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     for (int i = -m; i--;){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       pld[i] = 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return ret;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _sign(unsigned int n, ...) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double s = 1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   for (unsigned int i = 0; i &lt; n; i++) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     s = sign(va_arg(valist, double))*s;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     if (s == 0){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       break;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return s;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _rxord(int _cSub, unsigned int n,  ...) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind* ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (!ind-&gt;inLhs) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     return 1.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double ret = 1.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double p = 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double u = rxunif(ind, 0.0, 1.0);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int found = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   for (unsigned int i = 0; i &lt; n; i++) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     p += va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     if (!found) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       if (u &lt; p) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         ret = (double)(i+1);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         found = 1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (!found) ret =(double)(n+1);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return ret;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _max(unsigned int n, ...) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double mx = NA_REAL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double tmp = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (n &gt;= 1){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     mx = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     for (unsigned int i = 1; i &lt; n; i++) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       tmp = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       if (tmp&gt;mx) mx=tmp;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return mx;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _min(unsigned int n, ...){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_list valist;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   va_start(valist, n);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double mn = NA_REAL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double tmp = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (n &gt;= 1){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     mn = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     for (unsigned int i = 1; i &lt; n; i++){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       tmp = va_arg(valist, double);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       if (tmp&lt;mn) mn=tmp;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     va_end(valist);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return mn;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, double bio){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double nd = (double) n;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double ktr = (nd+1)/mtt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double lktr = _safe_log(nd+1)-_safe_log(mtt);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double tlast = _solveData-&gt;subjects[id].tlastS[cmt];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double dose = _solveData-&gt;subjects[id].curDoseS[cmt];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (ISNA(dose)) dose = 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (ISNA(tlast)) tlast = 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double tad = (t-tlast);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return exp(_safe_log(bio*dose)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double nd = (double) n;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double ktr = (nd+1)/mtt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double lktr = _safe_log(nd+1)-_safe_log(mtt);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double tlast = _solveData-&gt;subjects[id].tlastS[cmt];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (ISNA(tlast)) tlast = 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double tad = t-tlast;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double podo = _solveData-&gt;subjects[id].curDoseS[cmt];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (ISNA(podo)) podo = 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void _assignFuns0(void) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _evalUdf = (_udf_type) R_GetCCallable("rxode2", "_rxode2_evalUdf");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _getRxSolve_ = (_getRxSolve_t) R_GetCCallable("rxode2","getRxSolve_");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _assign_ptr=(rxode2_assign_ptr) R_GetCCallable("rxode2","rxode2_assign_fn_pointers");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _rxRmModelLib=(_rxRmModelLibType) R_GetCCallable("rxode2","rxRmModelLib");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _rxGetModelLib=(_rxGetModelLibType) R_GetCCallable("rxode2","rxGetModelLib");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _rxode2_rxAssignPtr=(_rx_asgn)R_GetCCallable("rxode2","_rxode2_rxAssignPtr");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _rxQr=(_rx_asgn)R_GetCCallable("rxode2","_rxode2_rxQr");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _rxIsCurrentC = (_rxIsCurrentC_type)R_GetCCallable("rxode2","rxIsCurrentC");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _sumPS  = (_rxSumType) R_GetCCallable("PreciseSums","PreciseSums_sum_r");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _prodPS = (_rxProdType) R_GetCCallable("PreciseSums","PreciseSums_prod_r");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _prodType=(rxode2_fn0i)R_GetCCallable("PreciseSums", "PreciseSums_prod_get");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _sumType=(rxode2_fn0i)R_GetCCallable("PreciseSums", "PreciseSums_sum_get");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _ptrid=(rxode2_fn0i)R_GetCCallable("rxode2", "rxode2_current_fn_pointer_id");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // dynamic start</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikCauchyDscale = (rxode2_llikCauchyFun) R_GetCCallable("rxode2ll", "rxLlikCauchyDscale");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikCauchyDlocation = (rxode2_llikCauchyFun) R_GetCCallable("rxode2ll", "rxLlikCauchyDlocation");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikCauchy = (rxode2_llikCauchyFun) R_GetCCallable("rxode2ll", "rxLlikCauchy");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikGammaDrate = (rxode2_llikGammaFun) R_GetCCallable("rxode2ll", "rxLlikGammaDrate");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikGammaDshape = (rxode2_llikGammaFun) R_GetCCallable("rxode2ll", "rxLlikGammaDshape");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikGamma = (rxode2_llikGammaFun) R_GetCCallable("rxode2ll", "rxLlikGamma");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikWeibullDscale = (rxode2_llikWeibullFun) R_GetCCallable("rxode2ll", "rxLlikWeibullDscale");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikWeibullDshape = (rxode2_llikWeibullFun) R_GetCCallable("rxode2ll", "rxLlikWeibullDshape");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikWeibull = (rxode2_llikWeibullFun) R_GetCCallable("rxode2ll", "rxLlikWeibull");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikUnifDbeta = (rxode2_llikUnifFun) R_GetCCallable("rxode2ll", "rxLlikUnifDbeta");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikUnifDalpha = (rxode2_llikUnifFun) R_GetCCallable("rxode2ll", "rxLlikUnifDalpha");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikUnif = (rxode2_llikUnifFun) R_GetCCallable("rxode2ll", "rxLlikUnif");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikGeomDp = (rxode2_llikGeomFun) R_GetCCallable("rxode2ll", "rxLlikGeomDp");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikGeom = (rxode2_llikGeomFun) R_GetCCallable("rxode2ll", "rxLlikGeom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikFDdf2 = (rxode2_llikFFun) R_GetCCallable("rxode2ll", "rxLlikFDdf2");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikFDdf1 = (rxode2_llikFFun) R_GetCCallable("rxode2ll", "rxLlikFDdf1");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikF = (rxode2_llikFFun) R_GetCCallable("rxode2ll", "rxLlikF");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikExpDrate = (rxode2_llikExpFun) R_GetCCallable("rxode2ll", "rxLlikExpDrate");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikExp = (rxode2_llikExpFun) R_GetCCallable("rxode2ll", "rxLlikExp");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikChisqDdf = (rxode2_llikChisqFun) R_GetCCallable("rxode2ll", "rxLlikChisqDdf");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikChisq = (rxode2_llikChisqFun) R_GetCCallable("rxode2ll", "rxLlikChisq");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikTDsd = (rxode2_llikTFun) R_GetCCallable("rxode2ll", "rxLlikTDsd");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikTDmean = (rxode2_llikTFun) R_GetCCallable("rxode2ll", "rxLlikTDmean");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikTDdf = (rxode2_llikTFun) R_GetCCallable("rxode2ll", "rxLlikTDdf");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikT = (rxode2_llikTFun) R_GetCCallable("rxode2ll", "rxLlikT");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikBetaDshape2 = (rxode2_llikBetaFun) R_GetCCallable("rxode2ll", "rxLlikBetaDshape2");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikBetaDshape1 = (rxode2_llikBetaFun) R_GetCCallable("rxode2ll", "rxLlikBetaDshape1");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikBeta = (rxode2_llikBetaFun) R_GetCCallable("rxode2ll", "rxLlikBeta");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNbinomMuDmu = (rxode2_llikBinomFun) R_GetCCallable("rxode2ll", "rxLlikNbinomMuDmu");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNbinomMu = (rxode2_llikBinomFun) R_GetCCallable("rxode2ll", "rxLlikNbinomMu");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNbinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2ll", "rxLlikNbinomDprob");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNbinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2ll", "rxLlikNbinom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikBinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2ll", "rxLlikBinomDprob");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikBinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2ll", "rxLlikBinom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikPoisDlambda = (rxode2_llikPoisFun) R_GetCCallable("rxode2ll", "rxLlikPoisDlambda");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikPois = (rxode2_llikPoisFun) R_GetCCallable("rxode2ll", "rxLlikPois");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNormDsd = (rxode2_llikNormFun) R_GetCCallable("rxode2ll", "rxLlikNormDsd");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNormDmean = (rxode2_llikNormFun) R_GetCCallable("rxode2ll", "rxLlikNormDmean");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _llikNorm = (rxode2_llikNormFun) R_GetCCallable("rxode2ll", "rxLlikNorm");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   simeps = (_simfun) R_GetCCallable("rxode2", "simeps");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   simeta = (_simfun) R_GetCCallable("rxode2", "simeta");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammapDer = (rxode2_fn2) R_GetCCallable("rxode2", "gammapDer");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lowergamma = (rxode2_fn2) R_GetCCallable("rxode2", "lowergamma");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   uppergamma = (rxode2_fn2) R_GetCCallable("rxode2", "uppergamma");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammaqInva = (rxode2_fn2) R_GetCCallable("rxode2", "gammaqInva");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammaqInv = (rxode2_fn2) R_GetCCallable("rxode2", "gammaqInv");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammapInva = (rxode2_fn2) R_GetCCallable("rxode2", "gammapInva");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammapInv = (rxode2_fn2) R_GetCCallable("rxode2", "gammapInv");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammaq = (rxode2_fn2) R_GetCCallable("rxode2", "gammaq");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gammap = (rxode2_fn2) R_GetCCallable("rxode2", "gammap");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   phi = (rxode2_fn) R_GetCCallable("rxode2", "phi");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d2ELUa = (rxode2_fn2) R_GetCCallable("rxode2", "d2ELUa");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dELUa = (rxode2_fn2) R_GetCCallable("rxode2", "dELUa");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d2aELU = (rxode2_fn2) R_GetCCallable("rxode2", "d2aELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d2ELU = (rxode2_fn2) R_GetCCallable("rxode2", "d2ELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dELU = (rxode2_fn2) R_GetCCallable("rxode2", "dELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ELU = (rxode2_fn2) R_GetCCallable("rxode2", "ELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dPReLUa1 = (rxode2_fn2) R_GetCCallable("rxode2", "dPReLUa1");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dPReLUa = (rxode2_fn2) R_GetCCallable("rxode2", "dPReLUa");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dPReLU = (rxode2_fn2) R_GetCCallable("rxode2", "dPReLU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   PReLU = (rxode2_fn2) R_GetCCallable("rxode2", "PReLU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dSwish = (rxode2_fn) R_GetCCallable("rxode2", "dSwish");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Swish = (rxode2_fn) R_GetCCallable("rxode2", "Swish");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dlReLU = (rxode2_fn) R_GetCCallable("rxode2", "dlReLU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lReLU = (rxode2_fn) R_GetCCallable("rxode2", "lReLU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dSELU = (rxode2_fn) R_GetCCallable("rxode2", "dSELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   SELU = (rxode2_fn) R_GetCCallable("rxode2", "SELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d4softplus = (rxode2_fn) R_GetCCallable("rxode2", "d4softplus");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d3softplus = (rxode2_fn) R_GetCCallable("rxode2", "d3softplus");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d2softplus = (rxode2_fn) R_GetCCallable("rxode2", "d2softplus");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dsoftplus = (rxode2_fn) R_GetCCallable("rxode2", "dsoftplus");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   softplus = (rxode2_fn) R_GetCCallable("rxode2", "softplus");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d4GELU = (rxode2_fn) R_GetCCallable("rxode2", "d4GELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d3GELU = (rxode2_fn) R_GetCCallable("rxode2", "d3GELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   d2GELU = (rxode2_fn) R_GetCCallable("rxode2", "d2GELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dGELU = (rxode2_fn) R_GetCCallable("rxode2", "dGELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   GELU = (rxode2_fn) R_GetCCallable("rxode2", "GELU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   dReLU = (rxode2_fn) R_GetCCallable("rxode2", "dReLU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ReLU = (rxode2_fn) R_GetCCallable("rxode2", "ReLU");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   riweibull = (rxode2i2_fn2) R_GetCCallable("rxode2", "riweibull");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   riunif = (rxode2i2_fn2) R_GetCCallable("rxode2", "riunif");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rit_ = (rxode2i2_fn) R_GetCCallable("rxode2", "rit_");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ripois = (rxode2i2_ifn) R_GetCCallable("rxode2", "ripois");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ribeta = (rxode2i2_fn2) R_GetCCallable("rxode2", "ribeta");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rigamma = (rxode2i2_fn2) R_GetCCallable("rxode2", "rigamma");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rigeom = (rxode2i2_ifn) R_GetCCallable("rxode2", "rigeom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rif = (rxode2i2_fn2) R_GetCCallable("rxode2", "rif");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   riexp = (rxode2i2_fn) R_GetCCallable("rxode2", "riexp");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   richisq = (rxode2i2_fn) R_GetCCallable("rxode2", "richisq");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ricauchy = (rxode2i2_fn2) R_GetCCallable("rxode2", "ricauchy");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rinbinomMu = (rxode2i2_ribinom) R_GetCCallable("rxode2", "rinbinomMu");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rinbinom = (rxode2i2_ribinom) R_GetCCallable("rxode2", "rinbinom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ribinom = (rxode2i2_ribinom) R_GetCCallable("rxode2", "ribinom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rinorm = (rxode2i2_fn2) R_GetCCallable("rxode2", "rinorm");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxweibull = (rxode2i_fn2) R_GetCCallable("rxode2", "rxweibull");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxunif = (rxode2i_fn2) R_GetCCallable("rxode2", "rxunif");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxt_ = (rxode2i_fn) R_GetCCallable("rxode2", "rxt_");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxpois = (rxode2i_ifn) R_GetCCallable("rxode2", "rxpois");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxbeta = (rxode2i_fn2) R_GetCCallable("rxode2", "rxbeta");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxgamma = (rxode2i_fn2) R_GetCCallable("rxode2", "rxgamma");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxgeom = (rxode2i_ifn) R_GetCCallable("rxode2", "rxgeom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxf = (rxode2i_fn2) R_GetCCallable("rxode2", "rxf");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxexp = (rxode2i_fn) R_GetCCallable("rxode2", "rxexp");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxchisq = (rxode2i_fn) R_GetCCallable("rxode2", "rxchisq");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxcauchy = (rxode2i_fn2) R_GetCCallable("rxode2", "rxcauchy");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxnbinomMu = (rxode2i_rxbinom) R_GetCCallable("rxode2", "rxnbinomMu");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxnbinom = (rxode2i_rxbinom) R_GetCCallable("rxode2", "rxnbinom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxbinom = (rxode2i_rxbinom) R_GetCCallable("rxode2", "rxbinom");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rxnorm = (rxode2i_fn2) R_GetCCallable("rxode2", "rxnorm");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   linCmtB = (linCmtB_p) R_GetCCallable("rxode2", "linCmtB");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   linCmtA = (linCmtA_p) R_GetCCallable("rxode2", "linCmtA");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // dynamic stop</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _solveData = _getRxSolve_();</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void _assignFuns(void) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (_assign_ptr == NULL){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     _assignFuns0();</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void __assignFuns2(rx_solve rx,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    rx_solving_options op,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_F f,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_LAG lag,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_RATE rate,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_DUR dur,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_calc_mtime mtime,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_ME me,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_IndF indf,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_getTime gettime,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_locateTimeIndex timeindex,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_handle_evidL handleEvid,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    t_getDur getdur) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // assign start</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     static rxode2_assignFuns2_t rxode2_assignFuns2 = NULL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     if (rxode2_assignFuns2 == NULL) rxode2_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rxode2_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // assign stop</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern void  rx_cd0af269d6c39e55c39293e7debf7ee2__ode_solver_solvedata (rx_solve *solve){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _solveData = solve;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern rx_solve *rx_cd0af269d6c39e55c39293e7debf7ee2__ode_solver_get_solvedata(void){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return _solveData;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> SEXP rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars(void);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // prj-specific differential eqns</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__dydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int _itwhile = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)_itwhile;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int _cSub = _neq[1];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double t = __t + _solveData-&gt;subjects[_neq[1]].curShift;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind *_ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _ind-&gt;_rxFlag=1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double r = NA_REAL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)r;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   r = _PL[0];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _update_par_ptr(__t, _cSub, _solveData, _idx);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   r=PReLU(t,2);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (&amp;_solveData-&gt;subjects[_cSub])-&gt;dadt_counter[0]++;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Jacobian derived vars</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int _itwhile = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)_itwhile;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     int _cSub=_neq[1];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double t = __t + _solveData-&gt;subjects[_neq[1]].curShift;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind *_ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _ind-&gt;_rxFlag=2;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (&amp;_solveData-&gt;subjects[_cSub])-&gt;jac_counter[0]++;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Functional based initial conditions.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__inis(int _cSub, double *__zzStateVar__){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int _itwhile = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)_itwhile;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind *_ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  _ind-&gt;_rxFlag=3;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // prj-specific derived vars</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__calc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     int _itwhile = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)_itwhile;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double t = __t + _solveData-&gt;subjects[_cSub].curShift;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind *_ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _ind-&gt;_rxFlag=11;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double r = NA_REAL;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)r;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   r = _PL[0];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _update_par_ptr(__t, _cSub, _solveData, _idx);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   r=PReLU(t,2);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _lhs[_LHS_0_]=r;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Functional based bioavailability</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double rx_cd0af269d6c39e55c39293e7debf7ee2__F(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  return _amt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Functional based absorption lag</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double rx_cd0af269d6c39e55c39293e7debf7ee2__Lag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  return __t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Modeled zero-order rate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double rx_cd0af269d6c39e55c39293e7debf7ee2__Rate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  return 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Modeled zero-order duration</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> double rx_cd0af269d6c39e55c39293e7debf7ee2__Dur(int _cSub,  int _cmt, double _amt, double __t){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  return 0.0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Model Times</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__mtime(int _cSub, double *_mtime){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Matrix Exponential (0)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__ME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int _itwhile = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)_itwhile;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double t = __t + _solveData-&gt;subjects[_cSub].curShift;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind *_ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _ind-&gt;_rxFlag=9;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // Inductive linearization Matf</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void rx_cd0af269d6c39e55c39293e7debf7ee2__IndF(int _cSub, double _t, double __t, double *_matf){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  int _itwhile = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)_itwhile;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   double t = __t + _solveData-&gt;subjects[_cSub].curShift;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   (void)t;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_solving_options_ind *_ind = &amp;(_solveData-&gt;subjects[_cSub]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _ind-&gt;_rxFlag=10;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern SEXP rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars(void){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int pro=0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   SEXP _mv = PROTECT(_rxGetModelLib("rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars"));pro++;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (!_rxIsCurrentC(_mv)){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     SEXP hash    = PROTECT(Rf_allocVector(STRSXP, 1));pro++;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAAN/zAAAv7#aT)im4.MAl*$+&lt;WGlaB~1u%%RS@ZeShROGD%%Ab=8)iON{ZX01X`/OM/qbxgi\"yaB1DjNl]A\"cnu&lt;vuhr$aN]B2zou#+CIY:C,h}5TT8sNg[Iq31B3KG!+NE=3i5~I27Q{Dj%%34)l{WAb96=}xEa]:{f_ss_&lt;q(UI&amp;{4142R#5&gt;FyU)}=/Y8~XaKi$dXN,zEQHA/U)T!yVDK$X0+)`4R}Kv/{%%,i,7j^MF^^g`HDkq*{N17P&amp;p41IL&gt;xP2Kzvq:XRcphB!TP~:_Pq=(EUaNKzjju#NoKTUvO[y,E6qftf~a8qdLP_z)bw&amp;JkeVPG~Q8\"J%%q`zbXoI0.rJ88/ztHxI)m0wAGn#gJq3ZOO_{DDCDAH\"~tq6&gt;W\?sqCpn;ghx]WT\"*5z.%%TPp&amp;x&lt;1QCRdsH*M+t/c2c{+=Q`ZXN)c.,FvZ8.Q@RTCJxWh`QwYZ&amp;Ifs);nM$KLA4,:5|[Ys@UJ;{bo7=SLatY(`6]^&amp;P8=^Dt=Fd^*CTLwB%%p$zN}c58I_t{_6S0e3pd/8R=F&lt;rUuEJ%%a)A:O%%.\"h&gt;K!y7r~@gtOj3$ciXQ@Dl|k%%`O/o[Ev&gt;b7+@Y*`rD:&amp;MDy9T|8}4\"V|%%UQ@8eXrldj=gETq7&lt;1bP3AZ56MD45WG*;H3|3vqUwQoFYU[|bl)R,8h9}I1iY_F3}+p2H`9N@LHP3V2o:QD/{[0j%%p!D^1U/leTow7}UnYxp`p^:N3wf++EXE/e*Nn|z2;jNMt&lt;uYicm,Ko;,1x&lt;AT2]t\"kOA3W{aU,PtG\"t]`cjL%%(HDlGLDzBaX%%mnU^FV::,7\?6y{/e$\?9Z\?\"H&lt;FVn,WH\?%%_FN!BYOHpO63&gt;J.s{sDERc!3EHVv;:(m*QyMl3\"QEf;obx:;/G|EL8)9K&lt;&amp;W2)IgZLS!\"HwH[(:E\"gS{0D;HD*YDg&lt;Z$&gt;vBsK5VA_&amp;Qts6:E*3!;h=Meg`[|dkLQ#0nGq[JD3%%_;pvH]~(D%%UFlwj0!CSnHj.fWa1`CT0aPV96SU.6Sg6O&gt;e7&gt;/$P0is8]5H+pQ{a!+~I9S&lt;s*RuB");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     char buf[1070];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #define __doBufN__ 1070</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     __doBuf__</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #undef __doBuf__</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #undef __doBufN__</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     SET_STRING_ELT(hash, 0, Rf_mkChar(buf));</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     SEXP lst      = PROTECT(_rxQr(hash));pro++;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     _assign_ptr(lst);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     UNPROTECT(pro);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     return lst;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   } else {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     UNPROTECT(pro);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     return _mv;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern void rx_cd0af269d6c39e55c39293e7debf7ee2__dydt_lsoda(int *neq, double *t, double *A, double *DADT)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_cd0af269d6c39e55c39293e7debf7ee2__dydt(neq, *t, A, DADT);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern int rx_cd0af269d6c39e55c39293e7debf7ee2__dydt_liblsoda(double __t, double *y, double *ydot, void *data)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int *neq = (int*)(data);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_cd0af269d6c39e55c39293e7debf7ee2__dydt(neq, __t, y, ydot);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return(0);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern void rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac_lsoda(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // Update all covariate parameters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac(neq, *t, A, JAC, *nrowpd);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> //Create function to call from R's main thread that assigns the required functions. Sometimes they don't get assigned.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> extern void rx_cd0af269d6c39e55c39293e7debf7ee2__assignFuns(void){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _assignFuns();</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> //Initialize the dll to match rxode2's calls</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void R_init0_rx_cd0af269d6c39e55c39293e7debf7ee2_(void){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // Get C callables on load; Otherwise it isn't thread safe</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__assignFuns2", (DL_FUNC) __assignFuns2);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__assignFuns", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__assignFuns);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__inis",(DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__inis);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__dydt",(DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__dydt);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__calc_lhs",(DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__calc_lhs);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac",(DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__dydt_lsoda", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__dydt_lsoda);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac_lsoda", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__calc_jac_lsoda);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__ode_solver_solvedata", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__ode_solver_solvedata);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__ode_solver_get_solvedata", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__ode_solver_get_solvedata);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__F", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__F);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__Lag", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__Lag);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__Rate", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__Rate);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__Dur", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__Dur);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__mtime", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__mtime);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__ME", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__ME);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__IndF", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__IndF);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_RegisterCCallable("rx_cd0af269d6c39e55c39293e7debf7ee2_","rx_cd0af269d6c39e55c39293e7debf7ee2__dydt_liblsoda", (DL_FUNC) rx_cd0af269d6c39e55c39293e7debf7ee2__dydt_liblsoda);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> //Initialize the dll to match rxode2's calls</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void R_init_rx_cd0af269d6c39e55c39293e7debf7ee2_(DllInfo *info){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // Get C callables on load; Otherwise it isn't thread safe</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_init0_rx_cd0af269d6c39e55c39293e7debf7ee2_();</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   static const R_CallMethodDef callMethods[]  = {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     {"rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars", (DL_FUNC) &amp;rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars, 0},</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     {NULL, NULL, 0}</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   };</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_registerRoutines(info, NULL, callMethods, NULL, NULL);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   R_useDynamicSymbols(info,FALSE);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   _assignFuns0();</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> void R_unload_rx_cd0af269d6c39e55c39293e7debf7ee2_ (DllInfo *info){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // Free resources required for single subject solve.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   SEXP _mv = PROTECT(_rxGetModelLib("rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars"));</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (!Rf_isNull(_mv)){</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     _rxRmModelLib("rx_cd0af269d6c39e55c39293e7debf7ee2__model_vars");</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   UNPROTECT(1);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
