@@ -680,7 +680,14 @@ setRxThreads <- function(threads = NULL, percent = NULL, throttle = NULL) {
 #' @export
 rxCores <- getRxThreads
 
+.rxUnloadAllEnv <- new.env(parent=emptyenv())
+.rxUnloadAllEnv$reallyUnload <- TRUE
+
 #' Unloads all rxode2 compiled DLLs
+#'
+#' @param set If specified and `TRUE`, unloads all rxode2 dlls.  If
+#'   specified and `FALSE`, block a simple `rxUnloadAll()` will not
+#'   actually unload all dlls (helps with CRAN ASAN check)
 #'
 #' @return List of rxode2 dlls still loaded
 #'
@@ -690,7 +697,19 @@ rxCores <- getRxThreads
 #'
 #' print(rxUnloadAll())
 #' @export
+#'
 rxUnloadAll <- function() {
+  if (!missing(set) && isTRUE(set)) {
+    .rxUnloadAllEnv$reallyUnload <- TRUE
+  }
+  if (.rxUnloadAllEnv$reallyUnload  && isTRUE(set)) {
+    try(rxUnloadAll_(), silent = TRUE)
+  } else if (isTRUE(set)) {
+    return(invisible(FALSE))
+  } else if (isFALSE(set)) {
+    .rxUnloadAllEnv$reallyUnload <- FALSE
+    return(invisible(FALSE))
+  }
   try(rxUnloadAll_(), silent = TRUE)
 }
 #' With one sink, then release

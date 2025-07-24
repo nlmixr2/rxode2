@@ -1,3 +1,12 @@
+# rxode2 4.0.3
+
+- For CRAN's m1 ASAN checks of nlmixr2est, loading and unloading the
+  same dll or by deleting the dll and recreating the exact same code,
+  and then loading the dll will cause the ASAN check to flag an odr
+  violation.  Because of this, a mechanism to not unload dlls has been
+  added.  This allows the next version of `nlmixr2est` to not have
+  issues with Mac m1 san checks.
+
 # rxode2 4.0.2
 
 - At the request of CRAN, be a bit more careful so that names are not

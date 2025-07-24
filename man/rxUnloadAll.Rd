@@ -6,6 +6,11 @@
 \usage{
 rxUnloadAll()
 }
+\arguments{
+\item{set}{If specified and \code{TRUE}, unloads all rxode2 dlls.  If
+specified and \code{FALSE}, block a simple \code{rxUnloadAll()} will not
+actually unload all dlls (helps with CRAN ASAN check)}
+}
 \value{
 List of rxode2 dlls still loaded
 
