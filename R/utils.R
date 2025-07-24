@@ -698,7 +698,7 @@ rxCores <- getRxThreads
 #' print(rxUnloadAll())
 #' @export
 #'
-rxUnloadAll <- function(set) {
+rxUnloadAll <- function(set=TRUE) {
   if (!missing(set) && isTRUE(set)) {
     .rxUnloadAllEnv$reallyUnload <- TRUE
   }
