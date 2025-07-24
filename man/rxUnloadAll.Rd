@@ -4,7 +4,7 @@
 \alias{rxUnloadAll}
 \title{Unloads all rxode2 compiled DLLs}
 \usage{
-rxUnloadAll()
+rxUnloadAll(set = TRUE)
 }
 \arguments{
 \item{set}{If specified and \code{TRUE}, unloads all rxode2 dlls.  If
