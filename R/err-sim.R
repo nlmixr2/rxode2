@@ -307,6 +307,9 @@ attr(rxUiGet.symengineModelNoPrune, "desc") <- "symengine model without pruning 
 #' @export
 #' @rdname rxUiGet
 rxUiGet.symengineModelPrune <- function(x, ...) {
+  if (.rstudioComplete()) {
+    return(list("calculated rxode2 object"))
+  }
   .x <- x[[1]]
   .tmp <- getBaseSymengineModel(.x)
   .tmp[[1]] <- quote(`rxModelVars`)
