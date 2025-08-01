@@ -30,7 +30,28 @@
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
   .udfEnvSet(list(parent.frame(1), parent.frame(2)))
-  rxUiGet(.uiToRxUiGet(obj=obj, arg=arg, exact=exact))
+  .obj <- .uiToRxUiGet(obj=obj, arg=arg, exact=exact)
+  if (.rstudioComplete()){
+    # If Rstudio is running completion, then we need to simply
+    # return a dummy object so it doesn't calculate the value.
+    #
+    # However, if the object actually exists, then use the rxUiGet.default method
+    # to get the value.
+    .v <- as.character(utils::methods("rxUiGet"))
+    .cls <- class(.obj)[1]
+    .method <- paste0("rxUiGet.", .cls)
+    if (.method %in% .v) {
+      # If there is a rstudio value in the method, assume that is what you
+      # wish to return for the rstudio auto-completion method
+      .rstudio <- attr(utils::getS3method("rxUiGet", .cls), "rstudio")
+      if (is.null(.rstudio)) {
+        return(list("calculated value"))
+      } else {
+        return(.rstudio)
+      }
+    }
+  }
+  rxUiGet(.obj)
 }
 
 #' S3 for getting information from UI model
