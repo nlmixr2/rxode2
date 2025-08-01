@@ -46,6 +46,9 @@
       .rstudio <- attr(utils::getS3method("rxUiGet", .cls), "rstudio")
       if (is.null(.rstudio)) {
         return(list("calculated value"))
+      } else if (is.na(.rstudio)) {
+        # If it is NA, then return the value
+        return(rxUiGet(.obj))
       } else {
         return(.rstudio)
       }
