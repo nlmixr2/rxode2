@@ -614,7 +614,13 @@ rxUiDevelop <- function(enable=TRUE) {
   }, character(1), USE.NAMES=FALSE)
   .v <- vapply(.cls, function(cls) {
     .desc <- attr(utils::getS3method("rxUiGet", cls), "desc")
-    if (!.rxUiDevelop$enable && is.null(.desc)) .desc <- ""
+    if (is.null(.desc)) {
+      if (.rxUiDevelop$enable) {
+        .desc <- " "
+      } else {
+        .desc <- ""
+      }
+    }
     .desc
   }, character(1), USE.NAMES=TRUE)
   # Take out any "hidden methods"
