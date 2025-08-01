@@ -86,6 +86,7 @@ rxUiGet.levels <- function(x, ...) {
   }, character(1), USE.NAMES=FALSE),
   str2lang)
 }
+attr(rxUiGet.levels, "rstudio") <- quote(levels(a))
 
 #' @rdname rxUiGet
 #' @export
@@ -94,6 +95,7 @@ rxUiGet.state <- function(x, ...) {
   rxModelVars(.ui)$state
 }
 attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
+attr(rxUiGet.state, "rstudio") <- "state" # character
 
 #' @rdname rxUiGet
 #' @export
@@ -116,6 +118,7 @@ rxUiGet.stateDf <- function(x, ...) {
   }
 }
 attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
+attr(rxUiGet.stateDf, "rstudio") <- NA # passthrough
 
 #' @export
 #' @rdname rxUiGet
@@ -147,6 +150,7 @@ rxUiGet.statePropDf <- function(x,...) {
                               "Property"=.props)
                  }))
 }
+attr(rxUiGet.statePropDf, "rstudio") <- NA
 
 #' @export
 #' @rdname rxUiGet
@@ -218,6 +222,7 @@ rxUiGet.theta <- function(x, ...) {
   setNames(.ini$est[.w], .ini$name[.w])
 }
 attr(rxUiGet.theta, "desc") <- "Initial Population/Fixed Effects estimates, theta"
+attr(rxUiGet.theta, "rstudio") <- c("theta"=1.0) # named vector
 
 #' @export
 #' @rdname rxUiGet
@@ -247,6 +252,7 @@ rxUiGet.omega <- function(x, ...) {
   .lotri
 }
 attr(rxUiGet.omega, "desc") <- "Initial Random Effects variability matrix, omega"
+attr(rxUiGet.omega, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
 
 #' @export
 #' @rdname rxUiGet
@@ -254,6 +260,7 @@ rxUiGet.funTxt <- function(x, ...) {
   paste(rxUiGet.lstChr(x, ...), collapse="\n")
 }
 attr(rxUiGet.funTxt, "desc") <- "Get function text for the model({}) block"
+attr(rxUiGet.funTxt, "rstudio") <- "model text" # character
 
 #' @export
 #' @rdname rxUiGet
@@ -293,6 +300,9 @@ rxUiGet.muRefTable <- function(x, ...) {
   .muRef
 }
 attr(rxUiGet.muRefTable, "desc") <- "table of mu-referenced items in a model"
+attr(rxUiGet.muRefTable, "rstudio") <- data.frame(theta="thetas (calculated)",
+                                                  eta="etas",
+                                                  levels="levels")
 
 #' @rdname rxUiGet
 #' @export
@@ -320,7 +330,7 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
   .info
 }
 attr(rxUiGet.multipleEndpoint, "desc") <- "table of multiple endpoint translations"
-
+attr(rxUiGet.multipleEndpoint, "rstudio") <- NA
 #' This is a generic function for deparsing certain objects when
 #' printing out a rxode2 object.  Currently it is used for any meta-information
 #'
@@ -434,6 +444,7 @@ rxUiGet.md5 <- function(x, ...) {
   digest::digest(rxUiGet.funPartsDigest(x, ...), algo="md5")
 }
 attr(rxUiGet.md5, "desc") <- "MD5 hash of the UI model"
+attr(rxUiGet.md5, "rstudio") <- "md5 hash of the model"
 
 #' @export
 #' @rdname rxUiGet
@@ -441,6 +452,7 @@ rxUiGet.sha1 <- function(x, ...) {
   digest::digest(rxUiGet.funPartsDigest(x, ...), algo="sha1")
 }
 attr(rxUiGet.sha1, "desc") <- "SHA1 hash of the UI model"
+attr(rxUiGet.sha1, "rstudio") <- "sha1 hash of the model"
 
 sha1.rxUi <- function(x, digits = 14L, zapsmall = 7L, ..., algo = "sha1")  {
   digest::sha1(rxUiGet.funPartsDigest(list(x)),
@@ -453,6 +465,7 @@ rxUiGet.ini <- function(x, ...) {
   get("iniDf", x[[1]])
 }
 attr(rxUiGet.ini, "desc") <- "Model initilizations/bounds object"
+attr(rxUiGet.ini,"rstudio") <- NA
 
 #'@export
 #' @rdname rxUiGet
@@ -462,7 +475,7 @@ rxUiGet.iniFun <- function(x, ...) {
   lotri::lotriDataFrameToLotriExpression(.x$iniDf, useIni=TRUE)
 }
 attr(rxUiGet.iniFun, "desc") <- "normalized, quoted `ini()` block"
-
+attr(rxUiGet.iniFun, "rstudio") <- quote(ini({}))
 
 #' @export
 #' @rdname rxUiGet
@@ -471,6 +484,7 @@ rxUiGet.modelFun <- function(x, ...) {
   bquote(model(.(as.call(c(quote(`{`),.x$lstExpr)))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
+attr(rxUiGet.modelFun, "rstudio") <- quote(model({}))
 
 #' @export
 #' @rdname rxUiGet
@@ -508,6 +522,7 @@ rxUiGet.thetaLower <- function(x, ...) {
   setNames(.ini$lower[.w], .ini$name[.w])
 }
 attr(rxUiGet.thetaLower, "desc") <- "thetaLower"
+attr(rxUiGet.thetaLower, "rstudio") <- c("thetaLower"=1.0) # named vector
 
 #' @export
 #' @rdname rxUiGet
@@ -518,6 +533,7 @@ rxUiGet.thetaUpper <- function(x, ...) {
   setNames(.ini$upper[.w], .ini$name[.w])
 }
 attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
+attr(rxUiGet.thetaUpper, "rstudio") <- c("thetaUpper"=1.0) # named vector
 
 #' @export
 #' @rdname rxUiGet
@@ -541,6 +557,7 @@ rxUiGet.varLhs <- function(x, ...) {
            c(.eta$eta, .theta$theta, .cov$cov))
 }
 attr(rxUiGet.varLhs, "desc") <- "var->lhs translation"
+attr(rxUiGet.varLhs, "rstudio") <- c("varLhs"="lhs") # character
 
 #' @export
 #' @rdname rxUiGet
@@ -550,6 +567,7 @@ rxUiGet.lhsEta <- function(x, ...) {
   setNames(.eta$eta,.eta$lhs)
 }
 attr(rxUiGet.lhsEta, "desc") <- "lhs->eta translation"
+attr(rxUiGet.lhsEta, "rstudio") <- c("lhsEta"="eta") # character
 
 #' @export
 #' @rdname rxUiGet
@@ -559,6 +577,7 @@ rxUiGet.lhsTheta <- function(x, ...) {
   setNames(.eta$theta, .eta$lhs)
 }
 attr(rxUiGet.lhsTheta, "desc") <- "lhs->theta translation"
+attr(rxUiGet.lhsTheta, "rstudio") <- c("lhsTheta"="theta") # character
 
 #' @export
 #' @rdname rxUiGet
@@ -568,6 +587,7 @@ rxUiGet.lhsCov <- function(x, ...) {
   setNames(.cov$cov, .cov$lhs)
 }
 attr(rxUiGet.lhsCov, "desc") <- "lhs->cov translation"
+attr(rxUiGet.lhsCov, "rstudio") <- c("lhsCov"="cov") # character
 
 #' @export
 #' @rdname rxUiGet

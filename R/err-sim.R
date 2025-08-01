@@ -200,6 +200,7 @@ rxUiGet.paramsLine <- function(x, ...) {
   eval(parse(text=paste0("quote(params(", paste(.params, collapse=", "), "))")))
 }
 attr(rxUiGet.paramsLine, "desc") <- "params() line for model"
+attr(rxUiGet.paramsLine, "rstudio") <- quote(params(ID, CL, V, KA)) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet
@@ -250,6 +251,7 @@ rxUiGet.interpLines <- function(x, ...){
   .ret
 }
 attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for model"
+attr(rxUiGet.interpLines, "rstudio") <- quote(linear(CP)) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet
@@ -270,6 +272,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .sigma
 }
 attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
+attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
 
 .simulationModelAssignTOS <- function(ui, ret) {
   assign("theta", ui$theta, envir=ret)
@@ -288,6 +291,7 @@ rxUiGet.simulationModel <- function(x, ...) {
   .simulationModelAssignTOS(.x, eval(getBaseSimModel(.x)))
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
+attr(rxUiGet.simulationModel, "rstudio") <- quote(rxode2()) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet
@@ -298,6 +302,7 @@ rxUiGet.symengineModelNoPrune <- function(x, ...) {
   .simulationModelAssignTOS(.x, eval(getBaseSymengineModel(.x)))
 }
 attr(rxUiGet.symengineModelNoPrune, "desc") <- "symengine model without pruning if/else from UI"
+attr(rxUiGet.symengineModelNoPrune, "rstudio") <- quote(rxode2()) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet
@@ -310,6 +315,7 @@ rxUiGet.symengineModelPrune <- function(x, ...) {
   .simulationModelAssignTOS(.x, .tmp)
 }
 attr(rxUiGet.symengineModelPrune, "desc") <- "symengine model with pruning if/else from UI"
+attr(rxUiGet.symengineModelPrune, "rstudio") <- quote(rxode2()) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet
@@ -319,6 +325,7 @@ rxUiGet.simulationIniModel <- function(x, ...) {
   .simulationModelAssignTOS(.x, eval(getBaseIniSimModel(.x)))
 }
 attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini values prepended (from UI)"
+attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio completion
 
 .rxModelNoErrorLines <- function(uiModel, prefixLines=NULL, paramsLine=NULL,
                                  modelVars=FALSE, cmtLines=TRUE,
