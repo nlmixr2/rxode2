@@ -588,6 +588,24 @@ rxUiGet.default <- function(x, ...) {
                      "meta"="Model meta information",
                      "iniDf"="Initialization data frame for UI")
 
+.rxUiDevelop <- new.env(parent=emptyenv())
+.rxUiDevelop$enable <- FALSE
+
+#' rxUiDevelop - Enable/Disable rxUi development.  Here all $ completions are given
+#'
+#'
+#' @param enable boolean to enable/disable rxUi development mode.
+#' @return nothing, called for side effects
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUiDevelop(TRUE)
+#' rxUiDevelop(FALSE)
+rxUiDevelop <- function(enable=TRUE) {
+  .rxUiDevelop$enable <- enable
+}
+
 .rxUiGetSupportedDollars <- function() {
   .v <- as.character(utils::methods("rxUiGet"))
   .v <- .v[.v != "rxUiGet.default"]
@@ -596,7 +614,7 @@ rxUiGet.default <- function(x, ...) {
   }, character(1), USE.NAMES=FALSE)
   .v <- vapply(.cls, function(cls) {
     .desc <- attr(utils::getS3method("rxUiGet", cls), "desc")
-    if (is.null(.desc)) .desc <- ""
+    if (!.rxUiDevelop$enable && is.null(.desc)) .desc <- ""
     .desc
   }, character(1), USE.NAMES=TRUE)
   # Take out any "hidden methods"

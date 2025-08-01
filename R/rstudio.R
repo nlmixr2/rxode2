@@ -42,7 +42,7 @@
   .sc <- try(.sc[[1]], silent=TRUE)
   if (inherits(.sc, "try-error")) {
     return(FALSE)
-  }
+   }
   .sc <- try(.sc[[1]], silent=TRUE)
   identical(quote(`.rs.rpc.get_completions`), .sc)
 }
