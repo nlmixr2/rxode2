@@ -13,7 +13,7 @@ boolean, is Rstudio completion 2025+ running
 Determine if Rstudio completion 2025+ is running
 }
 \examples{
-# Determines if rstudio is running
+# Determines if rstudio is running completion
 .rstudioComplete()
 }
 \author{

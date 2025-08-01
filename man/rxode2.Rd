@@ -218,10 +218,7 @@ drug-disease modeling, etc.
 The ODE-based model specification may be coded inside four places:
 \itemize{
 \item Inside a \code{rxode2({})} block statements:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{library(rxode2)
 mod <- rxode2(\{
@@ -234,10 +231,7 @@ mod <- rxode2(\{
 }\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2("
   # simple assignment
@@ -249,10 +243,7 @@ mod <- rxode2(\{
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{writeLines("
   # simple assignment
@@ -266,10 +257,7 @@ unlink("modelFile.rxode2")
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a model function which can be parsed by \code{rxode2}:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- function() \{
   model(\{
@@ -347,9 +335,9 @@ Assignment statements can be:
 \itemize{
 \item \strong{simple} assignments, where the left hand is an identifier (i.e.,
 variable). This includes string assignments
-\item special \strong{time-derivative} assignments, where the left hand
-specifies the change of the amount in the corresponding state
-variable (compartment) with respect to time e.g., \code{d/dt(depot)}:
+\item special \strong{time-derivative} assignments, where the left hand specifies
+the change of the amount in the corresponding state variable
+(compartment) with respect to time e.g., \code{d/dt(depot)}:
 \item special \strong{initial-condition} assignments where the left hand
 specifies the compartment of the initial condition being specified,
 e.g. \code{depot(0) = 0}
@@ -358,20 +346,20 @@ e.g. \code{depot(0) = 0}
 (\code{rate(depot)=2}) and \strong{modeled duration} (\code{dur(depot)=2}). An
 example of these model features and the event specification for the
 modeled infusions the rxode2 data specification is found in \href{https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html}{rxode2 events vignette}.
-\item special \strong{change point syntax, or model times}. These model times
-are specified by \code{mtime(var)=time}
+\item special \strong{change point syntax, or model times}. These model times are
+specified by \code{mtime(var)=time}
 \item special \strong{Jacobian-derivative} assignments, where the left hand
 specifies the change in the compartment ode with respect to a
 variable. For example, if \code{d/dt(y) = dy}, then a Jacobian for this
-compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be
-some advantage to obtaining the solution or specifying the Jacobian
-for very stiff ODE systems. However, for the few stiff systems we
-tried with LSODA, this actually slightly slowed down the solving.
-\item Special \strong{string value declarations} which tell what values a
-string variable will take within a \code{rxode2} solving structure. These
-values will then cause a factor to be created for this variable on
-solving the \code{rxode2} model. As such, they are declared in much the
-same way as \code{R}, that is: \code{labels(a) <- c("a1", "a2")}.
+compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be some
+advantage to obtaining the solution or specifying the Jacobian for
+very stiff ODE systems. However, for the few stiff systems we tried
+with LSODA, this actually slightly slowed down the solving.
+\item Special \strong{string value declarations} which tell what values a string
+variable will take within a \code{rxode2} solving structure. These values
+will then cause a factor to be created for this variable on solving
+the \code{rxode2} model. As such, they are declared in much the same way as
+\code{R}, that is: \code{labels(a) <- c("a1", "a2")}.
 }
 
 Note that assignment can be done by \code{=}, \verb{<-} or \code{~}.
@@ -389,14 +377,14 @@ add extra compartment names at the end (useful for multiple-endpoint
 nlmixr models); These are specified by \code{cmt(compartmentName)}
 \item \strong{Parameter declaration statements}, which can make sure the input
 parameters are in a certain order instead of ordering the parameters
-by the order they are parsed. This is useful for keeping the
-parameter order the same when using 2 different ODE models. These
-are specified by \code{param(par1, par2,...)}
+by the order they are parsed. This is useful for keeping the parameter
+order the same when using 2 different ODE models. These are specified
+by \code{param(par1, par2,...)}
 \item \strong{Variable interpolation statements}, which tells the interpolation
-for specific covariates. These include \code{locf(cov1, cov2, ...)} for
-last observation carried forward, \code{nocb(cov1, cov2, ...)} for next
-observation carried backward, \code{linear(cov1, cov2, ...)} for linear
-interpolation and \code{midpoint(cov1, cov2, ...)} for midpoint
+for specific covariates. These include \code{locf(cov1,     cov2, ...)} for
+last observation carried forward, \code{nocb(cov1,     cov2, ...)} for next
+observation carried backward, \code{linear(cov1,     cov2, ...)} for linear
+interpolation and \code{midpoint(cov1, cov2,     ...)} for midpoint
 interpolation.
 }
 
@@ -411,8 +399,9 @@ An example model is shown below:
 
 Expressions in assignment and \code{if} statements can be numeric or logical.
 
-Numeric expressions can include the following numeric operators \verb{+, -, *, /, ^} and those mathematical functions defined in the C or the R math
-libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
+Numeric expressions can include the following numeric operators
+\verb{+, -, *, /, ^} and those mathematical functions defined in the C or the
+R math libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
 
 You may also access the R’s functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
 like \code{lgammafn} for the log gamma function.
@@ -433,11 +422,9 @@ pharmacokinetics model).
 \code{podo} (oral dose, in the undocumented case of absorption transit
 models).
 \item Special constants like \code{pi} or \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants}{R’s predefined constants}.
-\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance,
-etc.)
-\item Others, as created by assignments as part of the model
-specification; these are referred as \emph{LHS} (left-hand side)
-variable.
+\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance, etc.)
+\item Others, as created by assignments as part of the model specification;
+these are referred as \emph{LHS} (left-hand side) variable.
 }
 
 Currently, the \code{rxode2} modeling language only recognizes system state
@@ -745,7 +732,12 @@ y=f+(a+b* f^c)*err
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-y=f+[sqrt(a^2+b^2 *f^(2c))]*err
+y=f+
+
+\if{html}{\out{<div class="sourceCode math">}}\preformatted{sqrt(a^2+b^2 *f^(2c))
+}\if{html}{\out{</div>}}
+
+*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in

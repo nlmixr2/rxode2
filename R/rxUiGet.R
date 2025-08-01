@@ -602,9 +602,6 @@ rxUiGet.default <- function(x, ...) {
   # Take out any "hidden methods"
   .w <- which(.v != "")
   .v <- c(.v[.w], .rxUiGetEnvInfo)
-  if (.rstudio() >= numeric_version("2025")) {
-    c("000rstudio", .v, "zzzzrstudio")
-  }
   .v
 }
 
