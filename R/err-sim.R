@@ -282,6 +282,9 @@ attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
 #' @export
 #' @rdname rxUiGet
 rxUiGet.simulationModel <- function(x, ...) {
+  if (.rstudioComplete()) {
+    return(list("calculated rxode2 object"))
+  }
   .x <- x[[1]]
   .exact <- x[[2]]
   .simulationModelAssignTOS(.x, eval(getBaseSimModel(.x)))
@@ -291,6 +294,10 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' @export
 #' @rdname rxUiGet
 rxUiGet.symengineModelNoPrune <- function(x, ...) {
+  # For rstudio completion we need to do something else here
+  if (.rstudioComplete()) {
+    return(list("calculated rxode2 object"))
+  }
   .x <- x[[1]]
   .exact <- x[[2]]
   .simulationModelAssignTOS(.x, eval(getBaseSymengineModel(.x)))
@@ -312,6 +319,9 @@ attr(rxUiGet.symengineModelPrune, "desc") <- "symengine model with pruning if/el
 #' @export
 #' @rdname rxUiGet
 rxUiGet.simulationIniModel <- function(x, ...) {
+  if (.rstudioComplete()) {
+    return(list("calculated rxode2 object"))
+  }
   .x <- x[[1]]
   .exact <- x[[2]]
   .simulationModelAssignTOS(.x, eval(getBaseIniSimModel(.x)))
