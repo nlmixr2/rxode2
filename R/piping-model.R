@@ -464,7 +464,6 @@ rxUiGet.mvFromExpression <- function(x, ...) {
   }
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"
-attr(rxUiGet.mvFromExpression, "rstudio") <- rxModelVars("")
 
 #' Describe if the piping expression is a drop expression
 #'
