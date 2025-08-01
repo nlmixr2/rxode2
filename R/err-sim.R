@@ -188,6 +188,7 @@ rxUiGet.dvidLine <- function(x, ...) {
   as.call(c(list(quote(`dvid`)), as.numeric(.x$predDf$cmt)))
 }
 attr(rxUiGet.dvidLine, "desc") <- "dvid() line for model"
+attr(rxUiGet.dvidLine, "rstudio") <- quote(dvid(1, 2, 3)) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet

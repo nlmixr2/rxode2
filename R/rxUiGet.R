@@ -261,6 +261,7 @@ rxUiGet.allCovs <- function(x, ...) {
   get("covariates", envir=x[[1]])
 }
 attr(rxUiGet.allCovs, "desc") <- "Get all covariates defined in the model"
+attr(rxUiGet.allCovs, "rstudio") <- "covariates" # character
 
 #' @export
 #' @rdname rxUiGet
@@ -401,6 +402,7 @@ rxUiGet.fun <- function(x, ...) {
   .ret2
 }
 attr(rxUiGet.fun, "desc") <- "Normalized model function"
+attr(rxUiGet.fun, "rstudio") <- function() {}
 
 #' @export
 #' @rdname rxUiGet
@@ -495,6 +497,7 @@ rxUiGet.modelDesc <- function(x, ...) {
   }
 }
 attr(rxUiGet.modelDesc, "desc") <- "Model description (ie linear compartment, pred, ode etc)"
+attr(rxUiGet.modelDesc, "rstudio") <- "model description"
 
 #' @export
 #' @rdname rxUiGet
@@ -574,6 +577,7 @@ rxUiGet.etaLhs <- function(x, ...) {
   setNames(.eta$lhs, .eta$eta)
 }
 attr(rxUiGet.etaLhs, "desc") <- "eta->lhs translation"
+attr(rxUiGet.etaLhs, "rstudio") <- c("etaLhs"="etaLhs") # character
 
 #' @export
 #' @rdname rxUiGet
@@ -583,6 +587,7 @@ rxUiGet.thetaLhs <- function(x, ...) {
   setNames(.theta$lhs, .theta$theta)
 }
 attr(rxUiGet.thetaLhs, "desc") <- "theta->lhs translation"
+attr(rxUiGet.thetaLhs, "rstudio") <- c("theta"="lhs")
 
 #' @export
 #' @rdname rxUiGet
@@ -592,6 +597,7 @@ rxUiGet.covLhs <- function(x, ...) {
   setNames(.cov$lhs, .cov$cov)
 }
 attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
+attr(rxUiGet.covLhs, "rstudio") <- "covLhs" # character
 
 #' @export
 #' @rdname rxUiGet
