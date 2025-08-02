@@ -229,6 +229,8 @@ reference:
   - rxTheme
   - rxToSE
   - rxTrans
+  - rxUiDeparse
+  - rxUiDevelop
   - rxUiGet
   - rxode2parse
   - rxode2parseAssignTranslation
@@ -237,7 +239,6 @@ reference:
   - rxode2parseGetPointerAssignment
   - rxode2parseGetTranslation
   - summary.rxode2
-  - rxUiDeparse
 - title: Neural Network Activation functions
   contents:
   - ELU

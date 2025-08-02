@@ -696,6 +696,7 @@ rxUiGet.errParams <- function(x, ...) {
   }))
 }
 attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
+attr(rxUiGet.errParams, "rstudio") <- "character"
 
 #' Get the added or removed variables
 #'
