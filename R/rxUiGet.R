@@ -300,9 +300,7 @@ rxUiGet.muRefTable <- function(x, ...) {
   .muRef
 }
 attr(rxUiGet.muRefTable, "desc") <- "table of mu-referenced items in a model"
-attr(rxUiGet.muRefTable, "rstudio") <- data.frame(theta="thetas (calculated)",
-                                                  eta="etas",
-                                                  levels="levels")
+attr(rxUiGet.muRefTable, "rstudio") <- NA # passthrough
 
 #' @rdname rxUiGet
 #' @export
