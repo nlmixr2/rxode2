@@ -671,7 +671,13 @@ rxUiDevelop <- function(enable=TRUE) {
         .desc <- ""
       }
     }
-    .desc
+    if (is.character(.desc)) {
+      .desc
+    } else {
+      message("Bad description for rxUiGet method: ", cls,
+              " - should be character or NULL, got: ", class(.desc))
+      ""
+    }
   }, character(1), USE.NAMES=TRUE)
   # Take out any "hidden methods"
   .w <- which(.v != "")
