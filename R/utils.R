@@ -689,9 +689,7 @@ rxCores <- getRxThreads
 #'   specified and `FALSE`, block a simple `rxUnloadAll()` will not
 #'   actually unload all dlls (helps with CRAN ASAN check)
 #'
-#' @return List of rxode2 dlls still loaded
-#'
-#' @return boolean of if all rxode2 dlls have been unloaded
+#' @return boolean telling if `rxUnloadAll()` completed the unloading procedure
 #'
 #' @examples
 #'
@@ -770,8 +768,7 @@ rxUnloadAll <- function(set=TRUE) {
       }
     }
   }
-
-  .ret
+  invisible(TRUE)
 }
 #' With one sink, then release
 #'

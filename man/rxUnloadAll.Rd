@@ -12,9 +12,7 @@ specified and \code{FALSE}, block a simple \code{rxUnloadAll()} will not
 actually unload all dlls (helps with CRAN ASAN check)}
 }
 \value{
-List of rxode2 dlls still loaded
-
-boolean of if all rxode2 dlls have been unloaded
+boolean telling if \code{rxUnloadAll()} completed the unloading procedure
 }
 \description{
 Unloads all rxode2 compiled DLLs
