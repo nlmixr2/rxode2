@@ -6131,11 +6131,6 @@ bool rxIsLoaded(RObject obj) {
   return ret;
 }
 
-bool rxIsLoaded(std::string obj) {
-  CharacterVector objC = obj;
-  return rxIsLoaded(objC);
-}
-
 //' Load rxode2 object
 //'
 //' @param obj A rxode2 family of objects
@@ -6280,9 +6275,6 @@ RObject rxUnloadAll_(){
         } else if (val == 0 && rxUnload_){
           if (shouldUnloadDll(varC)){
             dynUnload(varC);
-            if (!rxIsLoaded(varC)) {
-              rmRxModelsFromDll(varC);
-            }
           }
         }
       }
@@ -6324,9 +6316,6 @@ bool rxDynUnload(RObject obj){
     rxUnlock(obj);
     if (rxCanUnload(obj)){
       dynUnload(file);
-      if (!rxIsLoaded(file)) {
-        rmRxModelsFromDll(file);
-      }
     } else {
       rxLock(obj);
       return false;
