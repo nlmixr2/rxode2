@@ -1,4 +1,4 @@
-# rxode2 (deveolpment version)
+# rxode2 (development version)
 
 - Change rxui `$` evaluation when completing in rstudio, fixes strange
   calculations popping up in `rstudio` (#909)
