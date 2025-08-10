@@ -6121,7 +6121,7 @@ CharacterVector rxC(RObject obj){
 //' @author Matthew L.Fidler
 //' @export
 //[[Rcpp::export]]
-bool rxIsLoaded(RObject obj){
+bool rxIsLoaded(RObject obj) {
   if (obj.isNULL()) return false;
   Function isLoaded("is.loaded", R_BaseNamespace);
   List mv = rxModelVars(obj);
@@ -6221,7 +6221,7 @@ bool rxCanUnload(RObject obj){
   return true;
 }
 
-void rmRxModelsFromDll(std::string str){
+void rmRxModelsFromDll(std::string str) {
   Function getInfo = getRxFn(".rxGetModelInfoFromDll");
   CharacterVector extra = getInfo(str);
   for (int j = extra.size(); j--;){
@@ -6275,7 +6275,6 @@ RObject rxUnloadAll_(){
         } else if (val == 0 && rxUnload_){
           if (shouldUnloadDll(varC)){
             dynUnload(varC);
-            rmRxModelsFromDll(varC);
           }
         }
       }
@@ -6311,7 +6310,7 @@ bool rxDynUnload(RObject obj){
   List mv = rxModelVars(obj);
   CharacterVector trans = mv[RxMv_trans];
   std::string ptr = asStr(trans[RxMvTrans_model_vars], "trans[\"model_vars\"]");
-  if (rxIsLoaded(obj)){
+  if (rxIsLoaded(obj)) {
     Function dynUnload("dyn.unload", R_BaseNamespace);
     std::string file = rxDll(obj);
     rxUnlock(obj);

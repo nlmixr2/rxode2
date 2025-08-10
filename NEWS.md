@@ -1,3 +1,11 @@
+# rxode2 (development version)
+
+- Change rxui `$` evaluation when completing in rstudio, fixes strange
+  calculations popping up in `rstudio` (#909)
+
+- Add orphan `rxode2` model unloading when using `rxUnloadAll()`, and
+  change the return type to always be a boolean.
+
 # rxode2 4.0.3
 
 - For CRAN's m1 ASAN checks of nlmixr2est, loading and unloading the
