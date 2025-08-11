@@ -721,49 +721,53 @@ rxUnloadAll <- function(set=TRUE) {
   .ret <- try(rxUnloadAll_(), silent = TRUE)
   # Now Look for orphan rxode2 DLLs
   .loadedDLLs <- getLoadedDLLs()
-  .orphans <- character(0)
-  .n <- 0L
-  for (i in seq_along(.loadedDLLs)) {
-    .dll <- .loadedDLLs[[i]]
-    .name <- .dll[["name"]]
-    .path <- .dll[["path"]]
-    .mv <- paste0(.name, "_model_vars")
-    .mv <- try(eval(bquote(.Call(.(.mv))), envir=globalenv()), silent=TRUE)
-    if (!inherits(.mv, "try-error")) {
-      # This is a rxode2 DLL
-      .md5 <- .mv$md5["parsed_md5"]
-      if (.rxShouldUnload(.md5)) {
-        .n <- .n + 1L
-        # These are orphan models that should be unloaded
-        # unload
-        dyn.unload(.path)
+  .checkOrphans <- getOption("rxode2.checkOrphans", 75)
+  if (length(.loadedDLLs) >= .checkOrphans) {
+    .orphans <- character(0)
+    .n <- 0L
+    for (i in seq_along(.loadedDLLs)) {
+      .dll <- .loadedDLLs[[i]]
+      .name <- .dll[["name"]]
+      .path <- .dll[["path"]]
+      .mv <- paste0(.name, "_model_vars")
+      .mv <- try(eval(bquote(.Call(.(.mv))), envir=globalenv()), silent=TRUE)
+      if (!inherits(.mv, "try-error")) {
+        # This is a rxode2 DLL
+        .md5 <- .mv$md5["parsed_md5"]
+        if (.rxShouldUnload(.md5)) {
+          .n <- .n + 1L
+          # These are orphan models that should be unloaded
+          # unload
+          dyn.unload(.path)
+          # and remove information
+          .info <- .rxGetModelInfoFromDll(.path)
+          for (i in .info) {
+            .t <- try(exists(i, envir = .rxModels), silent=TRUE)
+            if (isTRUE(.t)) {
+              rm(list = i, envir = .rxModels)
+            }
+          }
+        } else {
+          # This is a model for consideration later
+          .orphans <- c(.orphans, .path)
+        }
+      }
+    }
+    .nKeep <- .nKeep - .n
+    if (length(.orphans) > .nKeep){
+      # If there are more orphans than the number of models to keep,
+      # then we will remove the last nKeep orphans
+      .orphans <- .orphans[-seq_len(.nKeep)]
+
+      for (o in .orphans) {
+        # Remove the orphan DLLs
+        dyn.unload(o)
         # and remove information
         .info <- .rxGetModelInfoFromDll(.path)
         for (i in .info) {
           if (exists(i, envir = .rxModels)) {
             rm(list = i, envir = .rxModels)
           }
-        }
-      } else {
-        # This is a model for consideration later
-        .orphans <- c(.orphans, .path)
-      }
-    }
-  }
-  .nKeep <- .nKeep - .n
-  if (length(.orphans) > .nKeep){
-    # If there are more orphans than the number of models to keep,
-    # then we will remove the last nKeep orphans
-    .orphans <- .orphans[-seq_len(.nKeep)]
-
-    for (o in .orphans) {
-      # Remove the orphan DLLs
-      dyn.unload(o)
-      # and remove information
-      .info <- .rxGetModelInfoFromDll(.path)
-      for (i in .info) {
-        if (exists(i, envir = .rxModels)) {
-          rm(list = i, envir = .rxModels)
         }
       }
     }
