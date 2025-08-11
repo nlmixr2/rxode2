@@ -745,6 +745,8 @@ rxUnloadAll <- function(set=TRUE) {
             .t <- try(exists(i, envir = .rxModels), silent=TRUE)
             if (isTRUE(.t)) {
               rm(list = i, envir = .rxModels)
+            } else if (inherits(.t, "try-error")) {
+              try(rm(list = i, envir = .rxModels), silent = TRUE)
             }
           }
         } else {
@@ -765,8 +767,11 @@ rxUnloadAll <- function(set=TRUE) {
         # and remove information
         .info <- .rxGetModelInfoFromDll(.path)
         for (i in .info) {
-          if (exists(i, envir = .rxModels)) {
+          .t <- try(exists(i, envir = .rxModels), silent=TRUE)
+          if (isTRUE(.t)) {
             rm(list = i, envir = .rxModels)
+          } else if (inherits(.t, "try-error")) {
+            try(rm(list = i, envir = .rxModels), silent = TRUE)
           }
         }
       }
