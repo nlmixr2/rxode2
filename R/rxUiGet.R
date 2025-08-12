@@ -540,8 +540,11 @@ rxUiGet.lhsVar <- function(x, ...) {
   .eta <- get("etaLhsDf", .x)
   .theta <- get("thetaLhsDf", .x)
   .cov <- get("covLhsDf", .x)
-  setNames(c(.eta$eta, .theta$theta, .cov$cov),
-           c(.eta$lhs, .theta$lhs, .cov$lhs))
+  .level <- get("levelLhsDf", .x)
+  setNames(c(.eta$eta, .theta$theta, .cov$cov,
+             .level$level),
+           c(.eta$lhs, .theta$lhs, .cov$lhs,
+             .level$lhs))
 }
 
 #' @export
@@ -551,8 +554,11 @@ rxUiGet.varLhs <- function(x, ...) {
   .eta <- get("etaLhsDf", .x)
   .theta <- get("thetaLhsDf", .x)
   .cov <- get("covLhsDf", .x)
-  setNames(c(.eta$lhs, .theta$lhs, .cov$lhs),
-           c(.eta$eta, .theta$theta, .cov$cov))
+  .level <- get("levelLhsDf", .x)
+  setNames(c(.eta$lhs, .theta$lhs, .cov$lhs,
+             .level$lhs),
+           c(.eta$eta, .theta$theta, .cov$cov,
+             .level$level))
 }
 attr(rxUiGet.varLhs, "desc") <- "var->lhs translation"
 attr(rxUiGet.varLhs, "rstudio") <- c("varLhs"="lhs") # character
@@ -616,6 +622,16 @@ rxUiGet.covLhs <- function(x, ...) {
 }
 attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 attr(rxUiGet.covLhs, "rstudio") <- "covLhs" # character
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.levelLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .level <- get("levelLhsDf", .x)
+  setNames(.level$lhs, .level$level)
+}
+attr(rxUiGet.levelLhs, "desc") <- "level->lhs translation"
+attr(rxUiGet.levelLhs, "rstudio") <- "levelLhs" # character
 
 #' @export
 #' @rdname rxUiGet

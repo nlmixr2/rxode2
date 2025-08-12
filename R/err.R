@@ -1221,7 +1221,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$rxUdfUiCount <- new.env(parent=emptyenv())
   .env$before <- list()
   .env$after <- list()
-  .env$eta <- dimnames(ini)[[1]]
+  .env$level <- NULL
+  if (is.matrix(ini)) {
+    .env$eta <- dimnames(ini)[[1]]
+  } else {
+    .env$eta <- dimnames(ini$id)[[1]]
+    ## Get the levels of the ini block
+    for (v in names(ini)) {
+      if (v == "id") next
+      .env$level <- c(.env$level, dimnames(ini[[v]])[[1]])
+    }
+  }
   .env$top <- TRUE
   if (!inherits(ini, "lotriFix") && inherits(ini, "matrix")) {
     class(ini) <- c("lotriFix", class(ini))

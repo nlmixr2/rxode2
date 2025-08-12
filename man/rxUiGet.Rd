@@ -43,6 +43,7 @@
 \alias{rxUiGet.etaLhs}
 \alias{rxUiGet.thetaLhs}
 \alias{rxUiGet.covLhs}
+\alias{rxUiGet.levelLhs}
 \alias{rxUiGet.default}
 \title{S3 for getting information from UI model}
 \usage{
@@ -129,6 +130,8 @@ rxUiGet(x, ...)
 \method{rxUiGet}{thetaLhs}(x, ...)
 
 \method{rxUiGet}{covLhs}(x, ...)
+
+\method{rxUiGet}{levelLhs}(x, ...)
 
 \method{rxUiGet}{default}(x, ...)
 }
