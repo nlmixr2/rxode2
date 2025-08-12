@@ -8,6 +8,8 @@
 
 - Add `assertRxUiIovNoCor` to assert IOVs have no correlations in them.
 
+- Handle the levels for inter-occasion variability in the ui better (#614)
+
 # rxode2 4.0.3
 
 - For CRAN's m1 ASAN checks of nlmixr2est, loading and unloading the
