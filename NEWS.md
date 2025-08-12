@@ -6,6 +6,8 @@
 - Add orphan `rxode2` model unloading when using `rxUnloadAll()`, and
   change the return type to always be a boolean.
 
+- Add `assertRxUiIovNoCor` to assert IOVs have no correlations in them.
+
 # rxode2 4.0.3
 
 - For CRAN's m1 ASAN checks of nlmixr2est, loading and unloading the
