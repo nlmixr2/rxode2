@@ -3,6 +3,7 @@
 \name{assertRxUi}
 \alias{assertRxUi}
 \alias{assertRxUiPrediction}
+\alias{assertRxUiIovNoCor}
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
@@ -16,6 +17,8 @@
 assertRxUi(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiPrediction(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiIovNoCor(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 
@@ -67,6 +70,7 @@ population effect, only)
 \item \code{assertRxUiPrediction} -- Make sure the model has predictions
 \item \code{assertRxUiMuRefOnly} -- Make sure that all the parameters are mu-referenced
 \item \code{assertRxUiRandomOnIdOnly} -- Make sure there are only random effects at the ID level
+\item \code{assertRxUiIovNoCor} -- Make sure that the IOV model does not have any correlations
 }
 }
 \examples{
