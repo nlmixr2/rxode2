@@ -82,6 +82,14 @@
                                 data.frame(lhs=.lhs, cov=.n))
       }
       return(TRUE)
+    } else if (any(.n == env$info$level)) {
+      .w <- which(env$levelLhsDf$lhs == .lhs &
+                    env$levelLhsDf$level == .n)
+      if (length(.w) == 0) {
+        env$levelLhsDf <- rbind(env$levelLhsDf,
+                              data.frame(lhs=.lhs, level=.n))
+      }
+      return(TRUE)
     }
     return(FALSE)
   } else if (is.call(x)) {
@@ -829,8 +837,19 @@
     .iniDf <- mod$iniDf
     .mv <- mod$mv0
     .env <- mod
+    .level <- mod$level
   } else {
-    .eta <- dimnames(ini)[[1]]
+    .level <- NULL
+    if (is.list(ini) && any(names(ini) == "id")) {
+      .eta <- dimnames(ini$id)[[1]]
+      for (v in names(ini)) {
+        if (v != "id") {
+          .level <- c(.level, dimnames(ini[[v]])[[1]])
+        }
+      }
+    } else {
+      .eta <- dimnames(ini)[[1]]
+    }
     .iniDf <- as.data.frame(ini)
     .mv  <- rxModelVars(mod)
     .env <- new.env(parent=emptyenv())
@@ -848,8 +867,8 @@
                 lhs=NULL,
                 theta=.theta,
                 eta=.eta,
-                cov=setdiff(.params, c(.theta, .eta, names(rxInits(.mv)))))
-
+                level=.level,
+                cov=setdiff(.params, c(.theta, .eta, .level, names(rxInits(.mv)))))
   .env$param <- list()
   .env$singleTheta <- NULL
   .env$body <- list()
@@ -899,6 +918,7 @@
   .env$etaLhsDf <- data.frame(lhs=character(0), eta=character(0))
   .env$thetaLhsDf <- data.frame(lhs=character(0), theta=character(0))
   .env$covLhsDf <- data.frame(lhs=character(0), cov=character(0))
+  .env$levelLhsDf <- data.frame(lhs=character(0), level=character(0))
   .env$curLhs <- NULL
   return(.env)
 }
