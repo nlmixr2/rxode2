@@ -844,7 +844,7 @@
       .eta <- dimnames(ini$id)[[1]]
       for (v in names(ini)) {
         if (v != "id") {
-          .level <- c(.level, dinmanes(ini[[v]])[[1]])
+          .level <- c(.level, dimnames(ini[[v]])[[1]])
         }
       }
     } else {
