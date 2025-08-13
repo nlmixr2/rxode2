@@ -540,7 +540,12 @@ rxUiGet.lhsVar <- function(x, ...) {
   .eta <- get("etaLhsDf", .x)
   .theta <- get("thetaLhsDf", .x)
   .cov <- get("covLhsDf", .x)
-  .level <- get("levelLhsDf", .x)
+  if (exists("levelLhsDf", .x)) {
+    .level <- get("levelLhsDf", .x)
+  } else {
+    .level <- list(level=character(0),
+                  lhs=character(0))
+  }
   setNames(c(.eta$eta, .theta$theta, .cov$cov,
              .level$level),
            c(.eta$lhs, .theta$lhs, .cov$lhs,
@@ -554,7 +559,12 @@ rxUiGet.varLhs <- function(x, ...) {
   .eta <- get("etaLhsDf", .x)
   .theta <- get("thetaLhsDf", .x)
   .cov <- get("covLhsDf", .x)
-  .level <- get("levelLhsDf", .x)
+  if (exists("levelLhsDf", .x)) {
+    .level <- get("levelLhsDf", .x)
+  } else {
+    .level <- list(level=character(0),
+                   lhs=character(0))
+  }
   setNames(c(.eta$lhs, .theta$lhs, .cov$lhs,
              .level$lhs),
            c(.eta$eta, .theta$theta, .cov$cov,
@@ -627,7 +637,12 @@ attr(rxUiGet.covLhs, "rstudio") <- "covLhs" # character
 #' @rdname rxUiGet
 rxUiGet.levelLhs <- function(x, ...) {
   .x <- x[[1]]
-  .level <- get("levelLhsDf", .x)
+  if (exists("levelLhsDf", .x)) {
+    .level <- get("levelLhsDf", .x)
+  } else {
+    .level <- list(level=character(0),
+                  lhs=character(0))
+  }
   setNames(.level$lhs, .level$level)
 }
 attr(rxUiGet.levelLhs, "desc") <- "level->lhs translation"
