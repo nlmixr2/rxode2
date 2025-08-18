@@ -496,31 +496,12 @@ rxUiGet.modelDesc <- function(x, ...) {
   .mvL <- get("mvL", x[[1]])
   if (!is.null(.mvL)) {
     # With the new linear models, need to remove anything from them
-    .state <- .mvL$state[!(.mvL$state %in%
-                             c("depot",
-                               "central",
-                               "peripheral1",
-                               "peripheral2",
-                               "rx__sens_central_BY_p1",
-                               "rx__sens_central_BY_v1",
-                               "rx__sens_central_BY_p2",
-                               "rx__sens_central_BY_p3",
-                               "rx__sens_central_BY_p4",
-                               "rx__sens_central_BY_ka",
-                               "rx__sens_peripheral1_BY_p1",
-                               "rx__sens_peripheral1_BY_v1",
-                               "rx__sens_peripheral1_BY_p2",
-                               "rx__sens_peripheral1_BY_p3",
-                               "rx__sens_peripheral1_BY_p4",
-                               "rx__sens_peripheral1_BY_ka",
-                               "rx__sens_peripheral2_BY_p1",
-                               "rx__sens_peripheral2_BY_v1",
-                               "rx__sens_peripheral2_BY_p2",
-                               "rx__sens_peripheral2_BY_p3",
-                               "rx__sens_peripheral2_BY_p4",
-                               "rx__sens_peripheral2_BY_ka",
+    .rxUiLinCompartmentNames <-   c("depot",
+                                    "central",
+                                    "peripheral1",
+                                    "peripheral2")
     .state <- .mvL$state[!(
-      (.mvL$state %in% .rxUiCompartmentNames) |
+      (.mvL$state %in% .rxUiLinCompartmentNames) |
       startsWith(.mvL$state, "rx__sens_")
     )]
     return(sprintf(

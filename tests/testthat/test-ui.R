@@ -481,7 +481,6 @@ rxTest({
         linCmt() ~ add(add.sd)
       })
     }
-
     m <- one.cmt()
     expect_equal(m$modelDesc, "rxode2-based solved PK 1-compartment model")
   })
