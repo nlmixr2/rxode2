@@ -519,7 +519,10 @@ rxUiGet.modelDesc <- function(x, ...) {
                                "rx__sens_peripheral2_BY_p3",
                                "rx__sens_peripheral2_BY_p4",
                                "rx__sens_peripheral2_BY_ka",
-                               "rx__sens_depot_BY_ka"))]
+    .state <- .mvL$state[!(
+      (.mvL$state %in% .rxUiCompartmentNames) |
+      startsWith(.mvL$state, "rx__sens_")
+    )]
     return(sprintf(
       "rxode2-based solved PK %s-compartment model%s%s", .mvL$flags["ncmt"],
       ifelse(.mv$extraCmt == 2, " with first-order absorption", ""),
