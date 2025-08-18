@@ -495,12 +495,37 @@ rxUiGet.modelDesc <- function(x, ...) {
   .mv <- get("mv0", x[[1]])
   .mvL <- get("mvL", x[[1]])
   if (!is.null(.mvL)) {
+    # With the new linear models, need to remove anything from them
+    .state <- .mvL$state[!(.mvL$state %in%
+                             c("depot",
+                               "central",
+                               "peripheral1",
+                               "peripheral2",
+                               "rx__sens_central_BY_p1",
+                               "rx__sens_central_BY_v1",
+                               "rx__sens_central_BY_p2",
+                               "rx__sens_central_BY_p3",
+                               "rx__sens_central_BY_p4",
+                               "rx__sens_central_BY_ka",
+                               "rx__sens_peripheral1_BY_p1",
+                               "rx__sens_peripheral1_BY_v1",
+                               "rx__sens_peripheral1_BY_p2",
+                               "rx__sens_peripheral1_BY_p3",
+                               "rx__sens_peripheral1_BY_p4",
+                               "rx__sens_peripheral1_BY_ka",
+                               "rx__sens_peripheral2_BY_p1",
+                               "rx__sens_peripheral2_BY_v1",
+                               "rx__sens_peripheral2_BY_p2",
+                               "rx__sens_peripheral2_BY_p3",
+                               "rx__sens_peripheral2_BY_p4",
+                               "rx__sens_peripheral2_BY_ka",
+                               "rx__sens_depot_BY_ka"))]
     return(sprintf(
       "rxode2-based solved PK %s-compartment model%s%s", .mvL$flags["ncmt"],
       ifelse(.mv$extraCmt == 2, " with first-order absorption", ""),
-      ifelse(length(.mvL$state) == 0L, "",
+      ifelse(length(.state) == 0L, "",
              sprintf(" mixed with free from %d-cmt ODE model",
-                     length(.mvL$state)))
+                     length(.state)))
     ))
   } else if (length(.mv$state) > 0) {
     return(sprintf("rxode2-based free-form %d-cmt ODE model", length(.mv$state)))
