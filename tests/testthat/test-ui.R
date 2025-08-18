@@ -483,6 +483,6 @@ rxTest({
     }
 
     m <- one.cmt()
-    expect_equal(f$modelDesc, "rxode2-based solved PK 1-compartment model")
+    expect_equal(m$modelDesc, "rxode2-based solved PK 1-compartment model")
   })
 })
