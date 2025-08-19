@@ -32,7 +32,7 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[10]= tb.thread;
   INTEGER(sLinCmt)[11]= tb.nLlik;
   INTEGER(sLinCmt)[12] = tb.ndiff;
-  INTEGER(sLinCmt)[13] = hasMix;
+  INTEGER(sLinCmt)[13] = tb.hasMix;
 
   SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 14));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));

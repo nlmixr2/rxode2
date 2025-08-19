@@ -66,7 +66,7 @@ extern D_ParserTables parser_tables_rxode2parse;
 unsigned int found_jac = 0, nmtime=0;
 int rx_syntax_allow_ini = 1,
   maxSumProdN = 0, SumProdLD = 0, good_jac=1, extraCmt=0,
-  maxUdf=0, hasMix=0;
+  maxUdf=0;
 
 sbuf s_inits;
 
@@ -425,12 +425,13 @@ void reset(void) {
   tb.nInd       = 0;
   tb.simflg     = 0;
   tb.nLlik      = 0;
+  tb.hasMix     = 0;
+
   // Reset Arrays
   // Reset integers
   NV		= 0;
 
   // reset globals
-  hasMix = 0;
   good_jac = 1;
   found_jac = 0;
   rx_syntax_error = 0;

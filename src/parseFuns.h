@@ -224,7 +224,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
         trans_syntax_error_report_fn(_gbuf.s);
         return 1;
       }
-      hasMix = 1;
+      tb.hasMix = 1;
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);

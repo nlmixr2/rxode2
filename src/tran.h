@@ -111,6 +111,7 @@ lhs symbols?
   int nLlik;
   int lvlStr;
   int dummyLhs;
+  int hasMix; // Has mixture function
 } symtab;
 
 extern symtab tb;
