@@ -618,7 +618,8 @@
       }
     }
   } else if (length(.we) != 0) {
-    stop("currently do not support IOV etc")
+    # Mu reference can only occur on id-referenced items currently
+    stop("currently do not theta + eta1 + eta2")
   }
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
