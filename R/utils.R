@@ -730,7 +730,8 @@ rxUnloadAll <- function(set=TRUE) {
       .name <- .dll[["name"]]
       .path <- .dll[["path"]]
       .mv <- paste0(.name, "_model_vars")
-      .mv <- try(eval(bquote(.Call(.(.mv))), envir=globalenv()), silent=TRUE)
+
+      .mv <- try(eval(str2lang(paste0(".", "Call(", deparse1(.mv), ")")), envir=globalenv()), silent=TRUE)
       if (!inherits(.mv, "try-error")) {
         # This is a rxode2 DLL
         .md5 <- .mv$md5["parsed_md5"]
