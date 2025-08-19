@@ -67,6 +67,17 @@ int getIndIx(rx_solving_options_ind* ind, int j) {
   return ind->ix[j];
 }
 
+int getIndMixnum(rx_solving_options_ind* ind) {
+  return ind->mixnum;
+}
+
+void setIndMixnum(rx_solving_options_ind* ind, int mixnum) {
+  if (mixnum < 0) {
+    Rf_error("[setIndMixnum]: mixnum (%d) should be >= 0", mixnum);
+  }
+  ind->mixnum = mixnum;
+}
+
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);

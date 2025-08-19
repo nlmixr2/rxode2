@@ -167,6 +167,9 @@ extern "C" {
   typedef int (*getRxNpars_t)(rx_solve *rx);
   extern getRxNpars_t getRxNpars;
 
+  typedef int (*getIndMixnum_t)(rx_solving_options_ind* ind);
+  extern getIndMixnum_t getIndMixnum;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -218,6 +221,7 @@ extern "C" {
       getRxNobs2 = (getRxNobs2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 46));
       getOpIndSolve = (getOpIndSolve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 47));
       getRxNpars = (getRxNpars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 48));
+      getIndMixnum = (getIndMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 49));
     }
     return R_NilValue;
   }
@@ -272,6 +276,7 @@ extern "C" {
   getRxNobs2_t getRxNobs2 = NULL;                       \
   getOpIndSolve_t getOpIndSolve = NULL;                 \
   getRxNpars_t getRxNpars = NULL;                       \
+  getIndMixnum_t getIndMixnum = NULL;                   \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
