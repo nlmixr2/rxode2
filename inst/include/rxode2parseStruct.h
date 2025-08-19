@@ -311,6 +311,7 @@ typedef struct {
 
   double linCmtSuspect; // What value is close enough to zero to request more der accuracy.
   int linCmtForwardMax; // Maximum number of forward steps to take with forward differences
+  int hasMix; // does the model have a mix() in it?
 } rx_solve;
 
 

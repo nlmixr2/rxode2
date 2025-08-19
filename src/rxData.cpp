@@ -780,7 +780,8 @@ List rxModelVars_blank() {
                                   _["nIndSim"] = 0,
                                   _["simflg"] = 0,
                                   _["thread"] = 0,
-                                  _["nLlik"] = 0); // flags
+                                  _["nLlik"] = 0,
+                                  _["mix"] = 0); // flags
   retN[17] = "flags";
 
   ret[18] = CharacterVector::create();
@@ -4882,6 +4883,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx_solve* rx = getRxSolve_();
     iniRx(rx);
     rx->nIndSim = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nIndSim];
+    rx->hasMix  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_mix];
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");

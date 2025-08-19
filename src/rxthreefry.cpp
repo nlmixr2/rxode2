@@ -1383,6 +1383,11 @@ NumericVector rxt__(double df, int n, int ncores){
   return ret;
 }
 
+extern "C" double rxunifmix(rx_solving_options_ind* ind) {
+  std::uniform_real_distribution<double> d(0.0, 1.0);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
 extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi){
   if (!ind->inLhs) return 0.0;
   if (low >= hi) return std::numeric_limits<double>::quiet_NaN();

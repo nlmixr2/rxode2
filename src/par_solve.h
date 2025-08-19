@@ -12,13 +12,15 @@
 extern "C" {
 #endif
 
-
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
 	void sortInd(rx_solving_options_ind *ind);
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);
+
+  double rxunifmix(rx_solving_options_ind* ind);
+
 
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
@@ -52,6 +54,10 @@ extern "C" {
 		}
 		ind->inLhs = inLhs;
 		if (rx->nMtime) calc_mtime(solveid, ind->mtime);
+    if (rx->hasMix) {
+      ind->mixnum = 0;
+      ind->mixunif = rxunifmix(ind);
+    }
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {
         ind->lhs[j] = 1.0; // default is first string defined
@@ -103,7 +109,6 @@ extern "C" {
     ind->linCmtAlast = yp ;
     ind->ixds++;
   }
-
 
 #if defined(__cplusplus)
 }
