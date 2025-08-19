@@ -227,6 +227,12 @@ typedef struct {
   // When optimizing the H value, the function value of the linear
   // compartment volume is stored in the `linCmtHV` variable:
   double linCmtHV;
+
+  // Add mixture number flag
+  int mixnum;
+  // Add mixture uniform variable
+  double mixunif;
+
 } rx_solving_options_ind;
 
 typedef struct {

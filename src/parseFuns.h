@@ -222,7 +222,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
                ii);
         /* Free(v2); */
         trans_syntax_error_report_fn(_gbuf.s);
-        return 0;
+        return 1;
       }
       hasMix = 1;
     } else {
