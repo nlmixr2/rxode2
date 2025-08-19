@@ -207,6 +207,33 @@ double _sign(unsigned int n, ...) {
   return s;
 }
 
+double _mix(int _cSub, unsigned int n,  ...) {
+  rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
+  va_list valist;
+  va_start(valist, n);
+  double ret = 1.0;
+  double p = 0.0;
+  double u = ind->mixunif; // sampled once per patient
+  int found = 0;
+  double v = 0.0;
+  for (unsigned int i = 0; i < n; i+= 2) {
+    p += va_arg(valist, double);
+    v = va_arg(valist, double);
+    if (!found) {
+      if (u < p) {
+        ret = v;
+        ind->mixnum = i/2 + 1; // 1-based index
+        found = 1;
+      }
+    }
+  }
+  v = va_arg(valist, double); // other possibility
+  if (!found) ret = v;
+  va_end(valist);
+  return ret;
+}
+
+
 double _rxord(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
   if (!ind->inLhs) {
