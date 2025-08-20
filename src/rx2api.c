@@ -67,15 +67,15 @@ int getIndIx(rx_solving_options_ind* ind, int j) {
   return ind->ix[j];
 }
 
-int getIndMixnum(rx_solving_options_ind* ind) {
-  return ind->mixnum;
+int getIndMixest(rx_solving_options_ind* ind) {
+  return ind->mixest;
 }
 
-void setIndMixnum(rx_solving_options_ind* ind, int mixnum) {
-  if (mixnum < 0) {
-    Rf_error("[setIndMixnum]: mixnum (%d) should be >= 0", mixnum);
+void setIndMixest(rx_solving_options_ind* ind, int mixest) {
+  if (mixest < 0) {
+    Rf_error("[setIndMixest]: mixest (%d) should be >= 0", mixest);
   }
-  ind->mixnum = mixnum;
+  ind->mixest = mixest;
 }
 
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
