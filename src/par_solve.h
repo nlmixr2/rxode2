@@ -54,8 +54,8 @@ extern "C" {
 		}
 		ind->inLhs = inLhs;
 		if (rx->nMtime) calc_mtime(solveid, ind->mtime);
-    if (rx->hasMix) {
-      ind->mixnum = 0;
+    if (rx->mixnum) {
+      ind->mixest = 0;
       ind->mixunif = rxunifmix(ind);
     }
 		for (int j = op->nlhs; j--;) {

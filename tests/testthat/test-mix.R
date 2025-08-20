@@ -10,18 +10,18 @@ rxTest({
 
   test_that("mix() in ui model", {
 
+    f <- function() {
+      ini({
+        p1 <- 0.1
+        p2 <- 0.2
+        eta.a ~ 0.1
+      })
+      model({
+        a <- mix(a1, p1, a2, p2, a3) + eta.a
+        b <- mix(b1, b2, b3)
+      })
+    }
 
-
-    ## f <- function() {
-    ##   ini({
-    ##     p1 <- 0.1
-    ##     p2 <- 0.2
-    ##     p3 <- 0.1
-    ##   })
-    ##   model({
-    ##     a <- mix(a1, p1,a2, p2, a3)
-    ##   })
-    ## }
 
   })
 

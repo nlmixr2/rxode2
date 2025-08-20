@@ -431,7 +431,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getRxNpars = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNpars,
  R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndMixest = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndMixest, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2setIndMixnum = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndMixnum, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndMixest = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndMixest, R_NilValue, R_NilValue)); pro++;
 
 #define nVec 51
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
@@ -485,7 +485,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 47, rxode2getOpIndSolve);
   SET_VECTOR_ELT(ret, 48, rxode2getRxNpars);
   SET_VECTOR_ELT(ret, 49, rxode2getIndMixest);
-  SET_VECTOR_ELT(ret, 50, rxode2setIndMixnum);
+  SET_VECTOR_ELT(ret, 50, rxode2setIndMixest);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -538,7 +538,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 47, Rf_mkChar("rxode2getOpIndSolve"));
   SET_STRING_ELT(retN, 48, Rf_mkChar("rxode2getRxNpars"));
   SET_STRING_ELT(retN, 49, Rf_mkChar("rxode2getIndMixest"));
-  SET_STRING_ELT(retN, 50, Rf_mkChar("rxode2setIndMixnum"));
+  SET_STRING_ELT(retN, 50, Rf_mkChar("rxode2setIndMixest"));
 
 #undef nVec
 

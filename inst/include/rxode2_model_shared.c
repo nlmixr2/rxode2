@@ -222,7 +222,7 @@ double _mix(int _cSub, unsigned int n,  ...) {
     if (!found) {
       if (u < p) {
         ret = v;
-        ind->mixnum = i/2 + 1; // 1-based index
+        ind->mixest = i/2 + 1; // 1-based index
         found = 1;
       }
     }
