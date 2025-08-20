@@ -4,6 +4,8 @@ rxTest({
     expect_error(rxModelVars("a = mix(a, b)"))
     expect_error(rxModelVars("a = mix(a, b, c)"), NA)
     expect_error(rxModelVars("a = mix(a, b, c, d)"))
+    expect_error(rxModelVars("a = mix(a, p1, c); c = mix(a, p1, c, p2, e)"))
+    expect_error(rxModelVars("a = mix(a, p1, c); c = mix(a, p1, d)"), NA)
   })
 
   test_that("mix() in ui model", {

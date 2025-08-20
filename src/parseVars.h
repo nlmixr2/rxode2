@@ -58,6 +58,8 @@ static inline int assertForbiddenVariables(const char *s) {
 static inline int isReservedVariable(const char *s) {
   return !rxstrcmpi("amt", s) ||
     !rxstrcmpi("time", s) ||
+    !rxstrcmpi("mixnum", s) ||
+    !rxstrcmpi("mixest", s) ||
     !strcmp("rx__PTR__", s) ||
     !strcmp("tlast", s) ||
     // Ignore M_ constants

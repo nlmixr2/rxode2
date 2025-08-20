@@ -224,7 +224,17 @@ static inline int handleFunctionSum(transFunctions *tf) {
         trans_syntax_error_report_fn(_gbuf.s);
         return 1;
       }
-      tb.hasMix = 1;
+      if (tb.hasMix == 0) {
+        tb.hasMix = (ii + 1)/2; // number of mixtures
+      } else if (tb.hasMix != (ii + 1)/2) {
+        sPrint(&_gbuf,
+               _("'mix' cannot change the number of arguments (%d) in a model (ie mixnum from %d to %d)"),
+               ii, tb.hasMix, (ii + 1)/2);
+        /* Free(v2); */
+        trans_syntax_error_report_fn(_gbuf.s);
+        return 1;
+      }
+      return 1;
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);

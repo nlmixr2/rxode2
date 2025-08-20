@@ -4883,7 +4883,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx_solve* rx = getRxSolve_();
     iniRx(rx);
     rx->nIndSim = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nIndSim];
-    rx->hasMix  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_mix];
+    rx->mixnum  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_mix];
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
