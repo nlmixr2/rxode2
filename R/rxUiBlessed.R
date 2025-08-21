@@ -2,7 +2,7 @@
 .rxUiBlessed <- c("covLhsDf", "covariates", "curHi", "curLow", 
     "errParams0", "estNotAllowed", "eta", "etaLhsDf", "extraCmt", 
     "extraDvid", "hasErrors", "iniDf", "level", "levelLhsDf", 
-    "lstExpr", "meta", "model", "modelName", "mu2RefCovariateReplaceDataFrame", 
+    "lstExpr", "meta", "mixProbs", "model", "modelName", "mu2RefCovariateReplaceDataFrame", 
     "muRefCovariateDataFrame", "muRefCovariateEmpty", "muRefCurEval", 
     "muRefDataFrame", "muRefDropParameters", "muRefExtra", "muRefExtraEmpty", 
     "mv0", "mvL", "nonMuEtas", "oneTheta", "predDf", "redo", 
