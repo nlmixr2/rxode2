@@ -49,7 +49,12 @@ mix <- function(...) {
                   function(i) { .call[[i]] })
   .df <- rxUdfUiIniDf()
   if (is.null(.df)) {
-    stop("mix() in a ui model must have an ini block")
+    stop("mix() in a ui model must have an ini block",
+         call.= FALSE)
+  }
+  if (all(is.na(.df$neta1))) {
+    stop("mix() in a ui model must have an ini block with eta variables",
+         call.= FALSE)
   }
   .ret <- list(replace=.call)
   if (is.null(rxUdfUiMv())) {
@@ -86,7 +91,7 @@ mix <- function(...) {
       }
     }
   }
-  if (length(.args) == length(.mixenv$probs)+1L) {
+  if (length(.args) == length(.mixenv$probs) + 1L) {
     .mixenv$na <- 1L
     .mixenv$np <- 1L
     .ret <- list(replace=str2lang(paste0("mix(",
