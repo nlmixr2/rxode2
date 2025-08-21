@@ -111,5 +111,13 @@ rxTest({
 
   })
 
+  test_that("test dsl to change mix()", {
+    expect_equal(rxToSE("mix(a1, p1, b)"),
+                 "(rxEq(mixest, 1)*(a1)+rxEq(mixest, 2)*(b))")
+
+    expect_equal(rxToSE("mix(a1, p1, b, p2, c)"),
+                 "(rxEq(mixest, 1)*(a1)+rxEq(mixest, 2)*(b)+rxEq(mixest, 3)*(c))")
+  })
+
 
 })
