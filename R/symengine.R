@@ -1520,6 +1520,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 
 }
 
+
+# Convert the mix() expression to a if clause with mixest for symengine
 .rxToSEMix <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .expr <- vapply(seq_along(x), function(i) {
     if (i %% 2 == 0)  {
