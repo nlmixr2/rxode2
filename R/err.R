@@ -1210,6 +1210,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     .udfUiEnv$lhs <- NULL
     .udfUiEnv$parsing <- FALSE
   })
+  .udfUiEnv$probs <- NULL
   .udfUiEnv$parsing <- TRUE
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
@@ -1413,6 +1414,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                   }, integer(1))
       }
       .env$extraDvid <- paste0("dvid(", paste(.env$predDf$cmt, collapse = ","), ")")
+      .env$mixProbs <- .udfUiEnv$probs
       # Cleanup the environment
       .rm <- intersect(c("curCondition", "curDvid", "curVar", "df",
                          "errTypeInfo", "err", "hasNonErrorTerm", "isAnAdditiveExpression",

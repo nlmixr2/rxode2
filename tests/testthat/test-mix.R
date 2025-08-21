@@ -22,6 +22,9 @@ rxTest({
     }
 
     expect_error(rxModelVars(f()), NA)
+
+    f <- f()
+    expect_equal(f$mixProbs, c("p1", "p2"))
   })
 
   test_that("mix() requires between subject variability", {
@@ -100,6 +103,11 @@ rxTest({
     }
 
     expect_error(f(), NA)
+
+    f <- f()
+
+    # Gets the probabilities
+    expect_equal(f$mixProbs, c("p1", "p2"))
 
   })
 
