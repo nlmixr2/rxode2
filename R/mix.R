@@ -65,7 +65,8 @@ mix <- function(...) {
       .mixenv$probs <- NULL
       .probs <- vapply(seq_along(.args),
                        function(i) {
-                         if (i %% 2 == 0) {                           as.character(.args[[i]])
+                         if (i %% 2 == 0) {
+                           as.character(.args[[i]])
                          } else {
                            ""
                          }
@@ -89,6 +90,23 @@ mix <- function(...) {
         stop("the probabilities in a mixture must sum to a number between 0 and 1, they sum to: ",
              .mp)
       }
+    }
+  }
+  if (length(.args) == length(.mixenv$probs)*2 + 1L) {
+    .mixenv$np <- 1L
+    .matchProbs <- all(vapply(seq_along(.args),
+                              function(i) {
+                                if (i %% 2 == 0) {
+                                  .ret <- identical(.mixenv$probs[.mixenv$np], as.character(.args[[i]]))
+                                  .mixenv$np <- .mixenv$np + 1L
+                                  .ret
+                                } else {
+                                  TRUE
+                                }
+                              }, logical(1)))
+    if (!.matchProbs) {
+      stop("the probabilities in a mixture must match throughout the problem",
+           call.= FALSE)
     }
   }
   if (length(.args) == length(.mixenv$probs) + 1L) {

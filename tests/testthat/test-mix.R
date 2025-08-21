@@ -71,5 +71,37 @@ rxTest({
     expect_error(f())
   })
 
+  test_that("mix() requires the same probabilities in each proportion", {
+
+    f <- function() {
+      ini({
+        p1 <- 0.1
+        p2 <- 0.2
+        eta.a1 ~ 0.1
+      })
+      model({
+        a <- mix(a1, p1, a2, p2, a3) + eta.a1
+        b <- mix(b1, p2, b2, p1, b3)
+      })
+    }
+
+    expect_error(f())
+
+    f <- function() {
+      ini({
+        p1 <- 0.1
+        p2 <- 0.2
+        eta.a1 ~ 0.1
+      })
+      model({
+        a <- mix(a1, p1, a2, p2, a3) + eta.a1
+        b <- mix(b1, p1, b2, p2, b3)
+      })
+    }
+
+    expect_error(f(), NA)
+
+  })
+
 
 })
