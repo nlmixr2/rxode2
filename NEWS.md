@@ -27,6 +27,8 @@
 - Added new assertion `assertRxUiNoMix` which throws an error when a
   mixture model is present (ie `mix()`)
 
+- Fix for label processing when calling `rxode2(uiModel)`
+
 # rxode2 4.0.3
 
 - For CRAN's m1 ASAN checks of nlmixr2est, loading and unloading the
