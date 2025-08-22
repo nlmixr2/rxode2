@@ -5,7 +5,7 @@
 #' @author Matthew Fidler
 #' @noRd
 .rxReplaceCommentWithLabel <- function(src) {
-  .env <- match.call(expand.dots = TRUE)[-(1:2)]
+  .env <- new.env(parent=emptyenv())#match.call(expand.dots = TRUE)[-(1:2)]
   .env$inIni <- FALSE
   .env$convertLabel <- FALSE
   .regIni <- rex::rex(boundary, or("ini", "lotri"), "(", any_spaces, "{", any_spaces)
