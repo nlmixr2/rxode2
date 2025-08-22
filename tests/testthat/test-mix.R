@@ -1,4 +1,5 @@
 rxTest({
+
   test_that("mix() in normal rxode2 model", {
     expect_error(rxModelVars("a = mix(a)"))
     expect_error(rxModelVars("a = mix(a, b)"))
@@ -146,5 +147,40 @@ rxTest({
                  "(rxEq(mixest, 1)*(a1)+rxEq(mixest, 2)*(b)+rxEq(mixest, 3)*(c))")
   })
 
+  test_that("mix() simulation", {
+
+    one.cmt <- function() {
+      ini({
+        ## You may label each parameter with a comment
+        tka <- 0.45 # Log Ka
+        tcl1 <- log(c(0, 2.7, 100)) # Log Cl
+        tcl2 <- log(c(0, 0.1, 120)) # Log Cl
+        ## This works with interactive models
+        ## You may also label the preceding line with label("label text")
+        tv <- 3.45; label("log V")
+        p1 <- 0.3
+        ## the label("Label name") works with all models
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- mix(exp(tcl1 + eta.cl), p1, exp(tcl2 + eta.cl))
+        v <- exp(tv + eta.v)
+        me <- mixest
+        mn <- mixnum
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+                            et(seq(0, 72)) %>%
+                            et(id=1:20))
+
+    plot(s, ipredSim)
+
+  })
 
 })

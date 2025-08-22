@@ -24,7 +24,7 @@ int rxstrcmpi(const char * str1, const char * str2);
 static inline int nodeMixnum(char *value) {
   if (!rxstrcmpi("mixnum",value)){
     aAppendN("_solveData->mixnum", 18);
-    sAppendN(&sbt, "_mixnum", 7);
+    sAppendN(&sbt, "mixnum", 6);
     return 1;
   }
   return 0;
@@ -33,7 +33,7 @@ static inline int nodeMixnum(char *value) {
 static inline int nodeMixest(char *value) {
   if (!rxstrcmpi("mixest",value)){
     aAppendN("_solveData->subjects[_cSub].mixest", 34);
-    sAppendN(&sbt, "_mixest", 7);
+    sAppendN(&sbt, "mixest", 6);
     return 1;
   }
   return 0;
