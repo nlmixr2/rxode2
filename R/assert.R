@@ -44,6 +44,8 @@
 #'
 #' - `assertRxUiIovNoCor` -- Make sure that the IOV model does not have any correlations
 #'
+#' - `assertRxUiNoMix` -- Make sure that the model does not have a mixture model inside it
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -165,6 +167,17 @@ assertRxUiIovNoCor <- function(ui, extra="", .var.name=.vname(ui)) {
                  .iniDf$neta1 != .iniDf$neta2)
   if (length(.w) > 0) {
     stop("'", .var.name, "' cannot have covariance/correlation for IOV related components", extra, call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoMix <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  if (!is.null(ui$mixProbs)) {
+    stop("'", .var.name, "' cannot have a mixture model (ie `mix()`)", extra, call.=FALSE)
   }
   invisible(ui)
 }
