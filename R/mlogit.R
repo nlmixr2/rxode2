@@ -45,9 +45,9 @@
 #'
 #' mlogit(0.1, 0.2, 0.3, returnRoot = TRUE)
 #'
-mlogit <- function(..., maxiter = 10000, rtol = 1e-08, atol = 1e-10,
-                   ctol = 1e-10, returnRoot=FALSE) {
-  rxRequ("rootSolve")
+mlogit <- function(..., maxiter = 10000, rtol = 1e-10, atol = 1e-12,
+                   ctol = 1e-12, returnRoot=FALSE) {
+  rxReq("rootSolve")
   checkmate::assertLogical(returnRoot, len = 1, any.missing = FALSE,
                           null.ok = FALSE)
   .n <- as.numeric(unlist(list(...)))
