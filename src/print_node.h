@@ -39,6 +39,15 @@ static inline int nodeMixest(char *value) {
   return 0;
 }
 
+static inline int nodeMixunif(char *value) {
+  if (!rxstrcmpi("mixunif",value)){
+    aAppendN("_solveData->subjects[_cSub].mixunif", 35);
+    sAppendN(&sbt, "mixunif", 7);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int nodeTime(char *value) {
   if (!rxstrcmpi("time",value)){
     aAppendN("t", 1);
