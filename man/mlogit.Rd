@@ -7,9 +7,9 @@
 mlogit(
   ...,
   maxiter = 10000,
-  rtol = 1e-08,
-  atol = 1e-10,
-  ctol = 1e-10,
+  rtol = 1e-10,
+  atol = 1e-12,
+  ctol = 1e-12,
   returnRoot = FALSE
 )
 }

@@ -211,15 +211,15 @@ double _mix(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
   va_list valist;
   va_start(valist, n);
-  double ret = 1.0;
+  double ret = NA_REAL;
   double p = 0.0;
   double u = ind->mixunif; // sampled once per patient
   int found = 0;
   double v = 0.0;
-  for (unsigned int i = 0; i < n; i+= 2) {
-    p += va_arg(valist, double);
+  for (unsigned int i = 0; i < n-1; i+= 2) {
     v = va_arg(valist, double);
-    if (!found) {
+    p += va_arg(valist, double);
+    if (found == 0) {
       if (u < p) {
         ret = v;
         ind->mixest = i/2 + 1; // 1-based index
@@ -228,7 +228,10 @@ double _mix(int _cSub, unsigned int n,  ...) {
     }
   }
   v = va_arg(valist, double); // other possibility
-  if (!found) ret = v;
+  if (found == 0) {
+    ind->mixest = _solveData->mixnum;
+    ret = v;
+  }
   va_end(valist);
   return ret;
 }
