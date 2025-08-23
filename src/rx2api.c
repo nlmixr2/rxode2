@@ -78,6 +78,18 @@ void setIndMixest(rx_solving_options_ind* ind, int mixest) {
   ind->mixest = mixest;
 }
 
+int getRxMixnum(rx_solve *rx) {
+  // This is the number of mixtures
+  return rx->mixnum;
+}
+
+void setRxMixnum(rx_solve *rx, int mixnum) {
+  if (mixnum < 0) {
+    Rf_error("[setRxMixnum]: mixnum (%d) should be >= 0", mixnum);
+  }
+  rx->mixnum = mixnum;
+}
+
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
