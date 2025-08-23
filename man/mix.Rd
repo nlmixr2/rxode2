@@ -67,7 +67,9 @@ one.cmt <- function() {
     cl <- mix(exp(tcl1 + eta.cl), p1, exp(tcl2 + eta.cl))
     v <- exp(tv + eta.v)
     me <- mixest # This is the assigned mixture estimate
-    mn <- mixnum
+    mn <- mixnum # This is the number of mixture estimate in the model
+    # This is the uniform mixture estimate used in simualtion to
+    # determine the population
     mu <- mixunif
     linCmt() ~ add(add.sd)
   })

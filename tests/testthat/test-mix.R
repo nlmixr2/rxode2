@@ -7,6 +7,9 @@ rxTest({
     expect_error(rxModelVars("a = mix(a, b, c, d)"))
     expect_error(rxModelVars("a = mix(a, p1, c); c = mix(a, p1, c, p2, e)"))
     expect_error(rxModelVars("a = mix(a, p1, c); c = mix(a, p1, d)"), NA)
+    expect_error(rxModelVars("mixest <- 1"))
+    expect_error(rxModelVars("mixnum <- 1"))
+    expect_error(rxModelVars("mixunif <- 1"))
   })
 
   test_that("good mix() in ui model", {
