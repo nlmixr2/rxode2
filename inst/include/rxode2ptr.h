@@ -173,6 +173,9 @@ extern "C" {
   typedef void (*setIndMixest_t)(rx_solving_options_ind* ind, int mixest);
   extern setIndMixest_t setIndMixest;
 
+  typedef void (*mexpit_t)(double *x, double *p, int n);
+  extern mexpit_t mexpit;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -226,6 +229,7 @@ extern "C" {
       getRxNpars = (getRxNpars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 48));
       getIndMixest = (getIndMixest_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 49));
       setIndMixest = (setIndMixest_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 50));
+      mexpit = (mexpit_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 51));
     }
     return R_NilValue;
   }
@@ -282,6 +286,7 @@ extern "C" {
   getRxNpars_t getRxNpars = NULL;                       \
   getIndMixest_t getIndMixest = NULL;                   \
   setIndMixest_t setIndMixest = NULL;                   \
+  mexpit_t mexpit = NULL;                               \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

@@ -3,6 +3,7 @@
 #endif
 #define USE_FC_LEN_T
 #include "../inst/include/rxode2.h"
+#include "mlogit.h"
 
 // This is close to softmax, but adapted for multinomial logistic regression
 void mexpit(double *x, double *p, int n) {

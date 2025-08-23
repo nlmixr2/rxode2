@@ -13,6 +13,7 @@
 #include "../inst/include/rxode2parseGetTime.h"
 #include "rxthreefry.h"
 #include "rx2api.h"
+#include "mlogit.h"
 
 SEXP _rxHasOpenMp(void);
 
@@ -432,8 +433,9 @@ SEXP _rxode2_rxode2Ptr(void) {
  R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndMixest = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndMixest, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndMixest = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndMixest, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2mexpit = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&mexpit, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 51
+#define nVec 52
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -486,6 +488,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 48, rxode2getRxNpars);
   SET_VECTOR_ELT(ret, 49, rxode2getIndMixest);
   SET_VECTOR_ELT(ret, 50, rxode2setIndMixest);
+  SET_VECTOR_ELT(ret, 51, rxode2mexpit);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -539,6 +542,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 48, Rf_mkChar("rxode2getRxNpars"));
   SET_STRING_ELT(retN, 49, Rf_mkChar("rxode2getIndMixest"));
   SET_STRING_ELT(retN, 50, Rf_mkChar("rxode2setIndMixest"));
+  SET_STRING_ELT(retN, 51, Rf_mkChar("rxode2mexpit"));
 
 #undef nVec
 
