@@ -233,7 +233,6 @@ typedef struct {
 
   // Add mixture uniform variable
   double mixunif;
-
 } rx_solving_options_ind;
 
 typedef struct {
