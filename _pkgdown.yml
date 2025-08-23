@@ -126,6 +126,8 @@ reference:
     - gammaqInv
     - logit
     - lowergamma
+    - mexpit
+    - mlogit
     - phi
     - probit
     - rxRmvn
@@ -167,6 +169,7 @@ reference:
 - title: User functions
   contents:
   - linMod
+  - mix
   - rxIntToBase
   - rxIntToLetter
   - rxUdfUiControl
