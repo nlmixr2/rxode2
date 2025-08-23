@@ -315,9 +315,7 @@ typedef struct {
 
   // Add mixture number flag
   int mixnum;
-
 } rx_solve;
-
 
 static inline void sNull(sbuf *sbb) {
   sbb->s = NULL;
