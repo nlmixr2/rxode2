@@ -41,6 +41,43 @@ rxUdfUi.mix <- function(fun) {
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
+#'
+#' # This is an example of a mixture model
+#' # Where there are 2 different clearance populations
+#'
+#' one.cmt <- function() {
+#'   ini({
+#'     tka <- 0.45 # Log Ka
+#'     tcl1 <- log(c(0, 2.7, 100)) # Log Cl
+#'     tcl2 <- log(c(0, 0.1, 120)) # Log Cl
+#'     tv <- 3.45; label("log V")
+#'     p1 <- 0.3
+#'     eta.ka ~ 0.6
+#'     eta.cl ~ 0.3
+#'     eta.v ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     # This is the example mixture model
+#'     cl <- mix(exp(tcl1 + eta.cl), p1, exp(tcl2 + eta.cl))
+#'     v <- exp(tv + eta.v)
+#'     me <- mixest # This is the assigned mixture estimate
+#'     mn <- mixnum
+#'     mu <- mixunif
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#'
+#' \donttest{
+#'
+#' s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+#'                       et(seq(0, 72)) %>%
+#'                       et(id=1:20))
+#'
+#' plot(s, ipredSim)
+#'
+#' }
 mix <- function(...) {
   .call <- match.call(expand.dots = TRUE)
   .args <- lapply(seq_along(.call)[-1L],
