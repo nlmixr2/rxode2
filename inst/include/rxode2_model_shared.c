@@ -57,6 +57,8 @@ rxode2_fn2 d2ELUa;
 
 rxode2_fn3 logit;
 rxode2_fn3 expit;
+rxode2_fn3 probitInv;
+rxode2_fn3 probit;
 rxode2_fn2 gammap;
 rxode2_fn2 gammaq;
 rxode2_fn2 lowergamma;
@@ -408,7 +410,9 @@ void _assignFuns0(void) {
   lowergamma = (rxode2_fn2) R_GetCCallable("rxode2","lowergamma");
   gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
+  probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");
+  probitInv = (rxode2_fn3) R_GetCCallable("rxode2", "probitInv");
   simeta =(_simfun) R_GetCCallable("rxode2", "simeta");
   simeps =(_simfun) R_GetCCallable("rxode2", "simeps");
 

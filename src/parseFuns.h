@@ -156,7 +156,8 @@ transFunctions _tf;
 
 static inline int handleFunctionLogit(transFunctions *tf) {
   if (!strcmp("logit", tf->v) || !strcmp("expit", tf->v) ||
-      !strcmp("invLogit", tf->v) || !strcmp("logitInv", tf->v)){
+      !strcmp("invLogit", tf->v) || !strcmp("logitInv", tf->v) ||
+      !strcmp("probit", tf->v) || !strcmp("probitInv", tf->v)){
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii == 1){
       D_ParseNode *xpn = d_get_child(tf->pn, 2);

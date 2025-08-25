@@ -211,6 +211,13 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define norminv(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define probitt(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define _logit1(x) logit(x, 0.0, 1.0)
+
+#define _probit1(x) probit(x, 0.0, 1.0)
+#define _probit2(x, y) probit(x, y, 1.0)
+
+#define _probitInv1(x) probitInv(x, 0.0, 1.0)
+#define _probitInv2(x, y) probitInv(x, y, 1.0)
+
 #define _logit2(x, y) logit(x, y, 1.0)
 #define _expit1(x) expit(x, 0.0, 1.0)
 #define _expit2(x, y) expit(x, y, 1.0)

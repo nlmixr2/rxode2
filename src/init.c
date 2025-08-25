@@ -113,6 +113,10 @@ SEXP _gammaqInva(SEXP, SEXP);
 
 double expit(double, double, double);
 double logit(double, double, double);
+
+double probit(double, double, double);
+double probitInv(double, double, double);
+
 double ReLU(double x);
 double dReLU(double x);
 double GELU(double x);
@@ -778,6 +782,10 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
+
+  R_RegisterCCallable("rxode2", "probit", (DL_FUNC) &probit);
+  R_RegisterCCallable("rxode2", "probitInv", (DL_FUNC) &probitInv);
+
   R_RegisterCCallable("rxode2", "ReLU", (DL_FUNC) &ReLU);
   R_RegisterCCallable("rxode2", "dReLU", (DL_FUNC) &dReLU);
   R_RegisterCCallable("rxode2", "GELU", (DL_FUNC) &GELU);
