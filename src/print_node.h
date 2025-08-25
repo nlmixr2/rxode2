@@ -20,6 +20,34 @@
 #include "threadSafeConstants.h"
 
 int rxstrcmpi(const char * str1, const char * str2);
+
+static inline int nodeMixnum(char *value) {
+  if (!rxstrcmpi("mixnum",value)){
+    aAppendN("_solveData->mixnum", 18);
+    sAppendN(&sbt, "mixnum", 6);
+    return 1;
+  }
+  return 0;
+}
+
+static inline int nodeMixest(char *value) {
+  if (!rxstrcmpi("mixest",value)){
+    aAppendN("_solveData->subjects[_cSub].mixest", 34);
+    sAppendN(&sbt, "mixest", 6);
+    return 1;
+  }
+  return 0;
+}
+
+static inline int nodeMixunif(char *value) {
+  if (!rxstrcmpi("mixunif",value)){
+    aAppendN("_solveData->subjects[_cSub].mixunif", 35);
+    sAppendN(&sbt, "mixunif", 7);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int nodeTime(char *value) {
   if (!rxstrcmpi("time",value)){
     aAppendN("t", 1);

@@ -227,6 +227,12 @@ typedef struct {
   // When optimizing the H value, the function value of the linear
   // compartment volume is stored in the `linCmtHV` variable:
   double linCmtHV;
+
+  // Add mixture estimate flag
+  int mixest;
+
+  // Add mixture uniform variable
+  double mixunif;
 } rx_solving_options_ind;
 
 typedef struct {
@@ -305,8 +311,10 @@ typedef struct {
 
   double linCmtSuspect; // What value is close enough to zero to request more der accuracy.
   int linCmtForwardMax; // Maximum number of forward steps to take with forward differences
-} rx_solve;
 
+  // Add mixture number flag
+  int mixnum;
+} rx_solve;
 
 static inline void sNull(sbuf *sbb) {
   sbb->s = NULL;

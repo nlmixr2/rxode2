@@ -73,6 +73,18 @@ extern "C" {
   // Get the index of the current solve
   int getIndIdx(rx_solving_options_ind* ind);
 
+  // Get the mixest of the current solve
+  int getIndMixest(rx_solving_options_ind* ind);
+
+  // Set the individual mixest
+  void setIndMixest(rx_solving_options_ind* ind, int mixest);
+
+  // Get the number of mixtures in the rxode2 problem
+  int getRxMixnum(rx_solve *rx);
+
+  // Set the number of mixtures in the rxode2 problem
+  void setRxMixnum(rx_solve *rx, int mixnum);
+
   // Get the problems number of ode equatons
   int getOpNeq(rx_solving_options* op);
 

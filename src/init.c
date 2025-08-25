@@ -13,6 +13,7 @@
 #include "../inst/include/rxode2parseGetTime.h"
 #include "rxthreefry.h"
 #include "rx2api.h"
+#include "mlogit.h"
 
 SEXP _rxHasOpenMp(void);
 
@@ -429,11 +430,14 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getRxNobs2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNobs2, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getOpIndSolve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getOpIndSolve, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxNpars = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNpars,
-                                                      R_NilValue, R_NilValue)); pro++;
+ R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getIndMixest = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndMixest, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndMixest = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndMixest, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2mexpit = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&mexpit, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getRxMixnum = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxMixnum, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setRxMixnum = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setRxMixnum, R_NilValue, R_NilValue)); pro++;
 
-
-#define nVec 49
-
+#define nVec 54
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -484,6 +488,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 46, rxode2getRxNobs2);
   SET_VECTOR_ELT(ret, 47, rxode2getOpIndSolve);
   SET_VECTOR_ELT(ret, 48, rxode2getRxNpars);
+  SET_VECTOR_ELT(ret, 49, rxode2getIndMixest);
+  SET_VECTOR_ELT(ret, 50, rxode2setIndMixest);
+  SET_VECTOR_ELT(ret, 51, rxode2mexpit);
+  SET_VECTOR_ELT(ret, 52, rxode2getRxMixnum);
+  SET_VECTOR_ELT(ret, 53, rxode2setRxMixnum);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -535,6 +544,12 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 46, Rf_mkChar("rxode2getRxNobs2"));
   SET_STRING_ELT(retN, 47, Rf_mkChar("rxode2getOpIndSolve"));
   SET_STRING_ELT(retN, 48, Rf_mkChar("rxode2getRxNpars"));
+  SET_STRING_ELT(retN, 49, Rf_mkChar("rxode2getIndMixest"));
+  SET_STRING_ELT(retN, 50, Rf_mkChar("rxode2setIndMixest"));
+  SET_STRING_ELT(retN, 51, Rf_mkChar("rxode2mexpit"));
+  SET_STRING_ELT(retN, 52, Rf_mkChar("rxode2getRxMixnum"));
+  SET_STRING_ELT(retN, 53, Rf_mkChar("rxode2setRxMixnum"));
+
 #undef nVec
 
   // Set the names attribute of the list
@@ -573,10 +588,16 @@ SEXP _rxode2_getLinInfo_(SEXP);
 SEXP _rxode2_getCmtNum_(SEXP, SEXP, SEXP);
 SEXP _rxode2_cmtSupportsInfusion_(SEXP, SEXP);
 SEXP _rxode2_cmtSupportsOff_(SEXP, SEXP);
+SEXP _rxode2_mexpit(SEXP p);
+SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
+SEXP _rxode2_mlogit_j(SEXP x);
 
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
+    {"_rxode2_mlogit_j", (DL_FUNC) &_rxode2_mlogit_j, 1},
+    {"_rxode2_mexpit", (DL_FUNC) &_rxode2_mexpit, 1},
     {"_rxode2_cmtSupportsOff_", (DL_FUNC) &_rxode2_cmtSupportsOff_, 2},
     {"_rxode2_cmtSupportsInfusion_", (DL_FUNC) &_rxode2_cmtSupportsInfusion_, 2},
     {"_rxode2_getCmtNum_", (DL_FUNC) &_rxode2_getCmtNum_, 3},

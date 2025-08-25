@@ -167,6 +167,21 @@ extern "C" {
   typedef int (*getRxNpars_t)(rx_solve *rx);
   extern getRxNpars_t getRxNpars;
 
+  typedef int (*getIndMixest_t)(rx_solving_options_ind* ind);
+  extern getIndMixest_t getIndMixest;
+
+  typedef void (*setIndMixest_t)(rx_solving_options_ind* ind, int mixest);
+  extern setIndMixest_t setIndMixest;
+
+  typedef void (*mexpit_t)(double *x, double *p, int n);
+  extern mexpit_t mexpit;
+
+  typedef int (*getRxMixnum_t)(rx_solve *rx);
+  extern getRxMixnum_t getRxMixnum;
+
+  typedef void (*setRxMixnum_t)(rx_solve *rx, int mixnum);
+  extern setRxMixnum_t setRxMixnum;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -218,6 +233,11 @@ extern "C" {
       getRxNobs2 = (getRxNobs2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 46));
       getOpIndSolve = (getOpIndSolve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 47));
       getRxNpars = (getRxNpars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 48));
+      getIndMixest = (getIndMixest_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 49));
+      setIndMixest = (setIndMixest_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 50));
+      mexpit = (mexpit_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 51));
+      getRxMixnum = (getRxMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 52));
+      setRxMixnum = (setRxMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 53));
     }
     return R_NilValue;
   }
@@ -272,6 +292,11 @@ extern "C" {
   getRxNobs2_t getRxNobs2 = NULL;                       \
   getOpIndSolve_t getOpIndSolve = NULL;                 \
   getRxNpars_t getRxNpars = NULL;                       \
+  getIndMixest_t getIndMixest = NULL;                   \
+  setIndMixest_t setIndMixest = NULL;                   \
+  mexpit_t mexpit = NULL;                               \
+  getRxMixnum_t getRxMixnum = NULL;                     \
+  setRxMixnum_t setRxMixnum = NULL;                     \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

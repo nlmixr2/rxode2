@@ -195,7 +195,8 @@ static inline int handleFunctionLogit(transFunctions *tf) {
 static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
-      !strcmp("rxord", tf->v)) {
+      !strcmp("rxord", tf->v) ||
+      !strcmp("mix", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -212,6 +213,25 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("rxord", tf->v)) {
       sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_rxord(_cSub, %d, (double) ", ii);
+    } else if (!strcmp("mix", tf->v)) {
+      sAppend(&sb, "_mix(_cSub, %d, (double) ", ii);
+      sAppend(&sbDt, "_mix(_cSub, %d, (double) ", ii);
+      if (ii % 2 == 0 || ii < 3) {
+        sPrint(&_gbuf,
+               _("'mix' takes an odd number of arguments (and at least 3) supplied %d"),
+               ii);
+        /* Free(v2); */
+        trans_syntax_error_report_fn(_gbuf.s);
+      }
+      if (tb.hasMix == 0) {
+        tb.hasMix = (ii + 1)/2; // number of mixtures
+      } else if (tb.hasMix != (ii + 1)/2) {
+        sPrint(&_gbuf,
+               _("'mix' cannot change the number of arguments (%d) in a model (ie mixnum from %d to %d)"),
+               ii, tb.hasMix, (ii + 1)/2);
+        /* Free(v2); */
+        trans_syntax_error_report_fn(_gbuf.s);
+      }
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);

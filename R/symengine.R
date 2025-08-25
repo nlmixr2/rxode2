@@ -1520,6 +1520,21 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 
 }
 
+
+# Convert the mix() expression to a if clause with mixest for symengine
+.rxToSEMix <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .expr <- vapply(seq_along(x), function(i) {
+    if (i %% 2 == 0)  {
+      # Noting that argument 1 is the function name,
+      # The even arguments are the mixture values
+      paste0("rxEq(mixest, ", i/2, ")*(", deparse1(x[[i]]), ")")
+    } else {
+      ""
+    }
+  }, character(1L), USE.NAMES = FALSE)
+  paste0("(", paste(.expr[nzchar(.expr)], collapse="+"), ")")
+}
+
 .rxToSETransit <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x) == 4) {
     ## transit(n, mtt, bio)
@@ -1801,6 +1816,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`mix`))) {
+    return(.rxToSEMix(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`abs`)) ||
                identical(x[[1]], quote(`fabs`)) ||
                identical(x[[1]], quote(`abs0`))) {

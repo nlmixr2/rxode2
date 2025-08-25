@@ -4,6 +4,7 @@
 \alias{assertRxUi}
 \alias{assertRxUiPrediction}
 \alias{assertRxUiIovNoCor}
+\alias{assertRxUiNoMix}
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
@@ -19,6 +20,8 @@ assertRxUi(ui, extra = "", .var.name = .vname(ui))
 assertRxUiPrediction(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiIovNoCor(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoMix(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 
@@ -71,6 +74,7 @@ population effect, only)
 \item \code{assertRxUiMuRefOnly} -- Make sure that all the parameters are mu-referenced
 \item \code{assertRxUiRandomOnIdOnly} -- Make sure there are only random effects at the ID level
 \item \code{assertRxUiIovNoCor} -- Make sure that the IOV model does not have any correlations
+\item \code{assertRxUiNoMix} -- Make sure that the model does not have a mixture model inside it
 }
 }
 \examples{

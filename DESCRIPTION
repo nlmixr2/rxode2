@@ -75,7 +75,8 @@ Suggests:
     nlmixr2data,
     lifecycle,
     kableExtra,
-    pmxTools
+    pmxTools,
+    rootSolve
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),

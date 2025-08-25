@@ -18,6 +18,7 @@ rxUdfUiReset <- function() {
   .udfUiEnv$control <- NULL
   .udfUiEnv$parsing <- FALSE
   .udfUiEnv$mv <- NULL
+  .udfUiEnv$probs <- NULL
   invisible(NULL)
 }
 
