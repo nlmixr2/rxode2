@@ -129,7 +129,6 @@
   } else {
     bquote((.(.p1)) ^ 2)
   }
-
 }
 
 #' Based on current error get the F that is used for prop or pow expressions

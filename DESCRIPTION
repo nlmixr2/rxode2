@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 4.0.3.9000
+Version: 4.1.0
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
@@ -85,7 +85,7 @@ Imports:
     checkmate,
     ggplot2 (>= 3.4.0),
     inline,
-    lotri (>= 1.0.0),
+    lotri (>= 1.0.2),
     magrittr,
     memoise,
     methods,
