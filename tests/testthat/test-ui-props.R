@@ -258,5 +258,48 @@ rxTest({
 
       expect_equal(rx_obj$props$output$endpoint, "tumorVol")
     })
+
+    test_that("bad ui props", {
+
+      f <- function() {
+        dosing <- c("central", "depot")
+        ini({
+          lcl <- 1
+          label("Clearance (CL)")
+          lvc <- 3.45
+          label("Central volume of distribution (V)")
+          propSd <- c(0, 0.5)
+          label("Proportional residual error (fraction)")
+          lwa <- 0.1
+          label("Weibull absorption alpha (wa)")
+          lwb <- 0.1
+          label("Weibull absorption beta (wa)")
+          uEk <- 0.1
+          label("untransformed slope (Ek)")
+          effectSd <- c(0, 0.1)
+          label("additive error for effect")
+        })
+        model({
+          Ek <- uEk
+          wa <- exp(lwa)
+          wb <- exp(lwb)
+          cl <- exp(lcl)
+          vc <- exp(lvc)
+          kel <- cl/vc
+          d/dt(depot) <- (wb/wa) * (tad0(depot)/wa)^(wb - 1) *
+            depot
+          d/dt(central) <- (wb/wa) * (tad0(depot)/wa)^(wb - 1) *
+            depot - kel * central
+          Cc <- central/vc
+          Cc ~ prop(propSd)
+          effect <- Ek * log(Cc)
+          effect ~ add(effectSd)
+        })
+      }
+
+      f <- f()
+
+      expect_error(f$props, NA)
+    })
   }
 })
