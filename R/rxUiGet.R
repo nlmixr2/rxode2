@@ -128,6 +128,7 @@ rxUiGet.statePropDf <- function(x,...) {
   do.call(rbind, lapply(seq_along(.mv$stateProp),
                  function(i) {
                    .prop <- .mv$stateProp[i]
+                   if (length(.prop) != 1) return(NULL)
                    if (.prop == 0) return(NULL)
                    .name <- names(.mv$stateProp)[i]
                    .props <- character(0)
@@ -146,6 +147,7 @@ rxUiGet.statePropDf <- function(x,...) {
                    if (bitwAnd(.prop, 16)) {
                      .props <- c(.props, "dur")
                    }
+                   if (length(.props) == 0) return(NULL)
                    data.frame("Compartment"=.name,
                               "Property"=.props)
                  }))
