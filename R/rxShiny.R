@@ -155,7 +155,7 @@ $(document).on("keyup", function(e) {
     values$res <- NULL
     values$msg <- "NULL"
     values$logy <- TRUE
-    tmp <- tempfile()
+    ## tmp <- tempfile()
     shiny::observeEvent(input$goButton, {
       values$m1 <- NULL
       values$res <- NULL
@@ -163,7 +163,7 @@ $(document).on("keyup", function(e) {
       values$msg <- capture.output(
         tryCatch(
           {
-            values$m1 <- rxode2(model = input$ode, wd = tmp)
+            values$m1 <- rxode2(model = input$ode)
             values$cmts <- rxState(values$m1)
             values$pars <- .rxParams(values$m1)
           },
