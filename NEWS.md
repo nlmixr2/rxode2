@@ -1,5 +1,8 @@
 # rxode2 (development version)
 
+- Fix occasional `$props` that threw an error with empty properties
+  (when using properties like `tad0()`); Issue #924
+
 # rxode2 4.1.0
 
 - Change rxui `$` evaluation when completing in rstudio, fixes strange
