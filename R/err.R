@@ -1514,3 +1514,18 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     stop(paste(.env$err, collapse="\n"), call.=FALSE)
   }
 }
+
+#' Get defined residual information for parsing elsewhere
+#'
+#' @return A list of error distribution information
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.getErrDist <- function() {
+  .errDist
+}
+#' @export
+#' @rdname dot-getErrDist
+.getNamedArgumentsToPredDf <- function() {
+  .namedArgumentsToPredDf
+}
