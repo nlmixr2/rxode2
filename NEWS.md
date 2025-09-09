@@ -1,6 +1,6 @@
 # rxode2 (development version)
 
-- Stacking for multiple-endpoint `ipredSim` mow matches
+- Stacking for multiple-endpoint `ipredSim` now matches
   multiple-endpoint `sim`; Issue #929
 
 - Fix occasional `$props` that threw an error with empty properties
