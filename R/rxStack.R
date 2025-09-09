@@ -74,9 +74,15 @@ rxStack <- function(data, vars = NULL, doSim=TRUE, doIpredSim=TRUE) {
   if (length(vars) == 1L && (.doSim || .doIpredSim) &&
         any(.nd == "CMT")) {
     .vars <- vapply(vars, function(x) {
-      if (.doSim && x == "sim") return(NA_character_)
-      if (.doIpredSim && x == "ipredSim") return(NA_character_)
-      substr(x, 5, nchar(x))
+      if (.doSim) {
+        if (x == "sim") return(NA_character_)
+        if (substr(x, 0, 4) == "sim.") return(substr(x, 5, nchar(x)))
+      }
+      if (.doIpredSim) {
+        if (x == "ipredSim") return(NA_character_)
+        if (substr(x, 0, 9) == "ipredSim.") return(substr(x, 10, nchar(x)))
+      }
+      x
     }, character(1), USE.NAMES=FALSE)
     .vars <- .vars[!is.na(.vars)]
     .mv <- data$rxModelVars
