@@ -40,12 +40,16 @@ is.rxStackData <- function(object) {
 #'   `rxSolve` dataset is actually "stacking" based on the endpoint
 #'   (`TRUE`) or simply treating `sim` as a variable.
 #'
+#' @param doIpredSim boolean that determines if the "ipredSim" variable in a
+#'  `rxSolve` dataset is actually "stacking" based on the endpoint
+#'  (`TRUE`) or simply treating `ipredSim` as a variable.
+#'
 #' @return Stacked data with \code{value} and \code{trt}, where value is the values
 #'   and \code{trt} is the state and \code{lhs} variables.
 #'
 #' @author Matthew Fidler
 #' @export
-rxStack <- function(data, vars = NULL, doSim=TRUE) {
+rxStack <- function(data, vars = NULL, doSim=TRUE, doIpredSim=TRUE) {
   if (!is.rxStackData(data)) stop("this data cannot be used with `rxStack`", call.=FALSE)
   .nd <- names(data)
   checkmate::assertCharacter(vars, pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", null.ok=TRUE)
@@ -58,11 +62,27 @@ rxStack <- function(data, vars = NULL, doSim=TRUE) {
   } else {
     .doSim <- FALSE
   }
-  if (length(vars) == 1L && .doSim &&
+  if (doIpredSim){
+    .doIpredSim <- all(vapply(vars, function(x) {
+      if (x == "ipredSim") return(TRUE)
+      if (substr(x, 0, 9) == "ipredSim.") return(TRUE)
+      FALSE
+    }, logical(1), USE.NAMES=FALSE))
+  } else {
+    .doIpredSim <- FALSE
+  }
+  if (length(vars) == 1L && (.doSim || .doIpredSim) &&
         any(.nd == "CMT")) {
     .vars <- vapply(vars, function(x) {
-      if (x == "sim") return(NA_character_)
-      substr(x, 5, nchar(x))
+      if (.doSim) {
+        if (x == "sim") return(NA_character_)
+        if (substr(x, 0, 4) == "sim.") return(substr(x, 5, nchar(x)))
+      }
+      if (.doIpredSim) {
+        if (x == "ipredSim") return(NA_character_)
+        if (substr(x, 0, 9) == "ipredSim.") return(substr(x, 10, nchar(x)))
+      }
+      x
     }, character(1), USE.NAMES=FALSE)
     .vars <- .vars[!is.na(.vars)]
     .mv <- data$rxModelVars
@@ -86,7 +106,13 @@ rxStack <- function(data, vars = NULL, doSim=TRUE) {
       .cmt <- as.integer(data[["CMT"]])
       attr(.cmt, "levels") <- c(.mv$state, .mv$stateExtra)
       attr(.cmt, "class") <- "factor"
-      .ret <- c(.ret, list(time=data[["time"]], value=data[["sim"]], trt=.cmt))
+      if (.doSim) {
+        .ret <- c(.ret, list(time=data[["time"]], value=data[["sim"]], trt=.cmt))
+      }
+      if (.doIpredSim) {
+        .ret <- c(.ret,
+                  list(time=data[["time"]], value=data[["ipredSim"]], trt=.cmt))
+      }
       attr(.ret, "row.names") <- c(NA_integer_, length(.cmt))
       attr(.ret, "class") <- "data.frame"
       if (length(.vars) > 0L) {

@@ -4,7 +4,7 @@
 \alias{rxStack}
 \title{Stack a solved object for things like default ggplot2 plot}
 \usage{
-rxStack(data, vars = NULL, doSim = TRUE)
+rxStack(data, vars = NULL, doSim = TRUE, doIpredSim = TRUE)
 }
 \arguments{
 \item{data}{is a rxode2 object to be stacked.}
@@ -28,6 +28,10 @@ differently.}
 \item{doSim}{boolean that determines if the "sim" variable in a
 \code{rxSolve} dataset is actually "stacking" based on the endpoint
 (\code{TRUE}) or simply treating \code{sim} as a variable.}
+
+\item{doIpredSim}{boolean that determines if the "ipredSim" variable in a
+\code{rxSolve} dataset is actually "stacking" based on the endpoint
+(\code{TRUE}) or simply treating \code{ipredSim} as a variable.}
 }
 \value{
 Stacked data with \code{value} and \code{trt}, where value is the values

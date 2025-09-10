@@ -115,7 +115,7 @@ VignetteBuilder: knitr
 License: GPL (>= 3)
 URL: https://nlmixr2.github.io/rxode2/,
     https://github.com/nlmixr2/rxode2/
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Biarch: true
 LinkingTo:
     sitmo,
