@@ -6,6 +6,9 @@
 - Fix occasional `$props` that threw an error with empty properties
   (when using properties like `tad0()`); Issue #924
 
+- Allow mixture models `mix()` to be loaded with `rxS()` as a step to
+  support mixtures in nlmixr2's focei; Issue #933.
+
 # rxode2 4.1.0
 
 - Change rxui `$` evaluation when completing in rstudio, fixes strange
