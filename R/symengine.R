@@ -1178,6 +1178,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         }
       }
     } else {
+
       .expr <- eval(parse(text = .expr))
       if (envir$..doConst || !is.numeric(.expr)) {
         assign(.var, .expr, envir = envir)
@@ -2955,8 +2956,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   # "tlast"
   .pars <- c(
     rxParams(x), rxState(x),
-    "t", "time",  "rx1c", "rx__PTR__"
-  )
+    "t", "time",  "rx1c", "rx__PTR__",
+    "mixnum", "mixest", "mixunif")
+
   ## default lambda/yj values
   .env$rx_lambda_ <- symengine::S("1")
   .env$rx_yj_ <- symengine::S("2")
