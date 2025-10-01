@@ -673,7 +673,7 @@
   }
   .wt <- which(.names %in% env$info$theta)
   .we <- which(.names %in% env$info$eta)
-  .wl <- which(.names %in% env$info$level)
+  .wl <- if (!is.null(env$info$level)) which(.names %in% env$info$level) else integer(0)
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
