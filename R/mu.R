@@ -542,7 +542,7 @@
 #' @author Matthew Fidler
 #' @noRd
 .muRefSetNonMuEta <- function(.curEta, env) {
-  if (any(env$levels == .curEta)) return(invisible())
+  if (!is.null(env$levels) && any(env$levels == .curEta)) return(invisible())
   if (!any(env$nonMuEtas == .curEta)) {
     env$nonMuEtas <- c(env$nonMuEtas, .curEta)
     .wEtaInDf <- which(env$muRefDataFrame$eta == .curEta)
