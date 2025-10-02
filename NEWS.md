@@ -9,6 +9,8 @@
 - Allow mixture models `mix()` to be loaded with `rxS()` as a step to
   support mixtures in nlmixr2's focei; Issue #933.
 
+- Identify the correct transformation type for `iov` variables (#936)
+
 # rxode2 4.1.0
 
 - Change rxui `$` evaluation when completing in rstudio, fixes strange
