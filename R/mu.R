@@ -542,6 +542,7 @@
 #' @author Matthew Fidler
 #' @noRd
 .muRefSetNonMuEta <- function(.curEta, env) {
+  if (!is.null(env$levels) && any(env$levels == .curEta)) return(invisible())
   if (!any(env$nonMuEtas == .curEta)) {
     env$nonMuEtas <- c(env$nonMuEtas, .curEta)
     .wEtaInDf <- which(env$muRefDataFrame$eta == .curEta)
@@ -672,6 +673,7 @@
   }
   .wt <- which(.names %in% env$info$theta)
   .we <- which(.names %in% env$info$eta)
+  .wl <- if (!is.null(env$info$level)) which(.names %in% env$info$level) else integer(0)
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
@@ -688,6 +690,12 @@
     .muRefSetCurEval(.curEta, env)
     .muRefSetNonMuEta(.curEta, env)
     .muRefHandleSingleThetaExtraOnly(.we, .wt, .names, .doubleNames, .extraItems, env, eta=TRUE)
+  }
+  if (length(.wl) > 0) {
+    .iovs <- .names[.wl]
+    lapply(.iovs, function(iov) {
+      .muRefSetCurEval(iov, env)
+    })
   }
   invisible()
 }
