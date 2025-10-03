@@ -912,6 +912,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int mxCmt = 0;
   std::vector<int> keepI(keep.size(), 0);
   bool needCmt = false;
+  const char* cmtName = "CMT";
   // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
     tmpS0= as<std::string>(lName[i]);
@@ -944,6 +945,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       for (j = pars.size(); j--;) {
         // Check lower case
         if (tmpS == "cmt") {
+          cmtName = CHAR(lName[i]);
           needCmt = true;
           continue;
         }
@@ -2519,7 +2521,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int cmtAdd = 0;
   if (baseSize == 7){
     lst[6] = IntegerVector(idxOutput.size()-rmAmt);
-    nme[6] = "CMT";
+    nme[6] = cmtName;
     cmtAdd=1;
   }
 
