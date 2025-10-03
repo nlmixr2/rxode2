@@ -11,6 +11,9 @@
 
 - Identify the correct transformation type for `iov` variables (#936)
 
+- Fix multiple compartment simulation edge cases where simulations
+  were not being performed (#939)
+
 # rxode2 4.1.0
 
 - Change rxui `$` evaluation when completing in rstudio, fixes strange
