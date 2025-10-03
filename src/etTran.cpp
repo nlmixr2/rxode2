@@ -817,6 +817,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   clock_t _lastT0 = clock();
 #endif
   List mv = rxModelVars_(obj);
+  CharacterVector pars = as<CharacterVector>(mv[RxMv_params]);
   IntegerVector flags = mv[RxMv_flags];
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
@@ -902,7 +903,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     idIcovCol = -1;
   std::string tmpS;
 
-  CharacterVector pars = as<CharacterVector>(mv[RxMv_params]);
   std::vector<int> covCol;
   std::vector<int> covParPos;
   std::vector<int> keepCol;
@@ -911,6 +911,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool allInf = true;
   int mxCmt = 0;
   std::vector<int> keepI(keep.size(), 0);
+  bool needCmt = false;
+  // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
     tmpS0= as<std::string>(lName[i]);
     tmpS = as<std::string>(lName[i]);
@@ -939,8 +941,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else if (tmpS == "limit") limitCol=i;
     else if (tmpS == "method") methodCol=i;
     if (tmpS != "dv") {
-      for (j = pars.size(); j--;){
+      for (j = pars.size(); j--;) {
         // Check lower case
+        if (tmpS == "cmt") {
+          needCmt = true;
+          continue;
+        }
         if (tmpS == as<std::string>(pars[j])){
           // Covariate found; dv not considered covariate
           covCol.push_back(i);
@@ -965,7 +971,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     for (j = keep.size(); j--;){
       if (as<std::string>(dName[i]) == as<std::string>(keep[j])){
-        if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing'"));
+        if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing=TRUE'"));
         keepCol.push_back(i);
         keepI[j] = 1;
         break;
@@ -1023,8 +1029,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else if (tmpS == "method") {
         stop(_("cannot specify 'method' in 'iCov'"));
       }
-      for (j = pars.size(); j--;){
-        // Check lower case
+      for (j = pars.size(); j--;) {
         if (tmpS == as<std::string>(pars[j])){
           // Covariate found; dv not considered covariate
           covCol.push_back(-i-1);
@@ -1436,6 +1441,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool swapDvLimit=false;
   // cens = NA_INTEGER with LIMIT is M2
   bool doWarnNeg=false;
+
 #ifdef rxSolveT
   REprintf("  Time4: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -2467,7 +2473,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   NumericVector fPars = NumericVector(pars.size()*nid, NA_REAL);
   // sorted create the vectors/list
-  if (addCmt && !hasCmt){
+  if (needCmt || addCmt && !hasCmt){
     baseSize = 7;
   } else {
     baseSize = 6;
