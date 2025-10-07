@@ -121,6 +121,9 @@ static inline int new_or_ith(const char *s) {
   tb.ix=-2;
   if (tb.fn) {tb.ix=-2; return 0;}
   if (!strcmp("lhs", s)){tb.ix=-1; return 0;}
+  if (strcmp("CMT", s) && !rxstrcmpi("CMT", s)) {
+    return new_or_ith("CMT");
+  }
   if (assertForbiddenVariables(s) == 0) return 0;
   if (skipReservedVariables(s) == 0) return 0;
   // Ignore THETA[] and ETA

@@ -14,6 +14,9 @@
 - Fix multiple compartment simulation edge cases where simulations
   were not being performed (#939)
 
+- When referencing `cmt` in models, the variable is forced to be `CMT`
+  (related to #939)
+
 # rxode2 4.1.0
 
 - Change rxui `$` evaluation when completing in rstudio, fixes strange
