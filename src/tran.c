@@ -73,6 +73,10 @@ sbuf s_inits;
 symtab tb;
 
 static inline void addSymbolStr(char *value) {
+  if (strcmp("CMT", value) && !rxstrcmpi("CMT", value)) {
+    addSymbolStr("CMT");
+    return;
+  }
   addLine(&(tb.ss),"%s",value);
   if (tb.depotN == -1 && !strcmp("depot", value)) {
     tb.depotN = NV-1;

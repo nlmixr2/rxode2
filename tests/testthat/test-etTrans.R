@@ -598,7 +598,10 @@ d/dt(blood)     = a*intestine - b*blood
     dat4 <- etTrans(RawData5, mod)
 
     test_that("dat2=dat4", {
-      expect_equal(as.data.frame(dat2), as.data.frame(dat4))
+      dat2 <- as.data.frame(dat2)
+      dat4 <- as.data.frame(dat4)
+      dat4 <- dat4[, names(dat2)]
+      expect_equal(dat2, dat4)
     })
 
     test_that("dat3 has evid w/amt 0", {
@@ -1381,6 +1384,168 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(tmp$EVID, c(90109L, 90101L, 70101L, 0L))
     expect_equal(tmp$AMT, c(100, 100, 100, NA))
     expect_equal(tmp$II, c(24, 0, 0, 0))
+  })
+
+  test_that("cmt translation gives appropriate results #938", {
+    rxWithSeed(5447, {
+      withr::with_seed(5447, {
+
+        my_model <- function() {
+          ini({
+            # Typical Value of System Parameters
+            TV_F1           = fixed(c(.Machine$double.eps, 0.744, .Machine$double.xmax))
+            TV_ka           = c(.Machine$double.eps, 0.282, .Machine$double.xmax)
+            TV_CL           =   log(c(.Machine$double.eps, 0.200, .Machine$double.xmax))
+            TV_Vc           =   log(c(.Machine$double.eps, 3.61, .Machine$double.xmax))
+            TV_Vp           =   log(c(.Machine$double.eps, 2.75, .Machine$double.xmax))
+            TV_Q            =   log(c(.Machine$double.eps, 0.747, .Machine$double.xmax))
+            TV_MW           = fixed(c(.Machine$double.eps, 140, .Machine$double.xmax))
+            TV_BM_IC        = fixed(c(.Machine$double.eps, 1000, .Machine$double.xmax))
+            TV_kdeg_BM      = fixed(c(.Machine$double.eps, 0.1, .Machine$double.xmax))
+            TV_Emax         = fixed(c(.Machine$double.eps, 100.0, .Machine$double.xmax))
+            TV_EC50         = fixed(c(.Machine$double.eps, 300, .Machine$double.xmax))
+
+            # Between-subject variability:
+            ETAka +     ETACL +     ETAVc +     ETAVp +     ETAQ +      ETABM_IC +  ETAEmax ~
+              c(0.416,
+                0,          0.09875,
+                0,          0.0786,     0.116,
+                0,          0.0619,     0.0377,     0.0789,
+                0,          0,          0,          0,          0.699,
+                0,          0,          0,          0,          0,          0.05,
+                0,          0,          0,          0,          0,          0,          0.10)
+
+            # Error model parameters
+            prop_err_pk  =  c(.Machine$double.eps, 0.1, .Machine$double.xmax)
+            add_err_pk   =  c(.Machine$double.eps, 0.1, .Machine$double.xmax)
+
+            prop_err_pd  =  c(.Machine$double.eps, 0.1, .Machine$double.xmax)
+            add_err_pd   =  c(.Machine$double.eps, 0.1, .Machine$double.xmax)
+          })
+          model({
+            # System Parameters
+            F1          = TV_F1
+            ka          = TV_ka*exp(ETAka)
+            CL          = exp(TV_CL + ETACL)
+            Vc          = exp(TV_Vc + ETAVc)
+            # AMTIFY:Cc
+            Cc          = Ac/(Vc)
+            Vp          = exp(TV_Vp + ETAVp)
+            Q           = exp(TV_Q + ETAQ)
+            MW          = TV_MW
+            BM_IC       = TV_BM_IC*exp(ETABM_IC)
+            kdeg_BM     = TV_kdeg_BM
+            Emax        = TV_Emax*exp(ETAEmax)
+            EC50        = TV_EC50
+
+            # Static Secondary Parameters
+            WTTV        = 70
+            CL_IND      = CL*(1.0+sex*.1)*(1.0+subtype*.1)
+            kel         = CL_IND/Vc*((wt/WTTV))^(-0.35)
+            kcp         = Q/Vc*((wt/WTTV))^(-0.35)
+            kpc         = Q/Vp*((wt/WTTV))^(-0.35)
+            ksyn_BM     = kdeg_BM*BM_IC
+
+            # Dynamic Secondary Parameters
+            STIM        = 1.0+ Emax*Cc/(EC50+Cc)
+
+            # non-zero initial conditions
+            BM(0)           = BM_IC
+
+            # Defining ODEs
+            d/dt(At)    = (-ka*At)
+            d/dt(Ac)    = ((ka*At*F1/Vc  -kel*Cc - kcp*Cc  + kpc*Cp*Vp/Vc))*Vc
+            d/dt(Cp)    = (kcp*Cc*Vc/Vp - kpc*Cp)
+            d/dt(BM)    = ksyn_BM*STIM-(kdeg_BM*BM)
+
+            # Outputs and error models
+            C_ng_ml     = Cc*MW
+            C_ng_ml ~ add(add_err_pk) + prop(prop_err_pk)
+
+            BM_obs      = BM
+            BM_obs  ~ add(add_err_pd) + prop(prop_err_pd)
+
+          })
+        }
+
+
+        sd_sam <- c(c(15, 30)/60/24,
+                   c(1, 3, 6, 12)/24,
+                   c(1, 3, 7, 14, 21))
+
+
+
+        ev <- et()
+
+        # Converting mg to ng
+        conv <- 1e6
+
+        nsub <- 10
+        scens <- list(
+          sd3iv = list(
+            desc    = "SD 3 mg IV",
+            cmt     = "Ac",
+            dtimes  = 0,
+            tsam    = sd_sam,
+            damts   = 3),
+          sd3sc = list(
+            desc = "SD 3 mg SC",
+            cmt  = "At",
+            dtimes  = 0,
+            tsam = sd_sam,
+            damts= 30),
+          sd10iv = list(
+            desc    = "SD 30 mg IV",
+            cmt     = "Ac",
+            dtimes  = 0,
+            tsam    = sd_sam,
+            damts   = 30)
+        )
+
+        max_sub <- 0
+        set.seed(5447)
+        rxSetSeed(5447)
+        ev   <- et()
+        iCov <- NULL
+        for(scen in names(scens)){
+          # Generating subject IDs
+          scen_subs      <- c(1:nsub)+max_sub
+
+          # Generating covariates
+          scen_sex       <- sample(c(0,1),nsub,replace=TRUE)
+          scen_subtype   <- sample(c(0,1),nsub,replace=TRUE)
+          scen_wt        <- exp(rnorm(nsub, 0, sd=.1))*70
+          for(tmp_sub_idx in 1:length(scen_subs)){
+            tmp_ev <-
+              et(id   = scen_subs[tmp_sub_idx],
+                 amt  = scens[[scen]][["damts"]]*conv,
+                 time = scens[[scen]][["dtimes"]],
+                 cmt  = scens[[scen]][["cmt"]]
+                 ) %>%
+              et(id   = scen_subs[tmp_sub_idx],
+                 time = unique(c(scens[[scen]][["tsam"]])),
+                 cmt   = "C_ng_ml"
+                 ) %>%
+              et(id   = scen_subs[tmp_sub_idx],
+                 time = unique(c(scens[[scen]][["tsam"]])),
+                 cmt   = "BM_obs"
+                 )
+            ev <- etRbind(ev, tmp_ev)
+            iCov <- rbind(iCov,
+                         data.frame(
+                           id      = scen_subs[tmp_sub_idx],
+                           sex     = scen_sex[[tmp_sub_idx]],
+                           wt      = scen_wt[[tmp_sub_idx]],
+                           subtype = scen_subtype[[tmp_sub_idx]]))
+          }
+          max_sub <- max(scen_subs)
+        }
+        sim <- rxSolve(my_model, events=ev, iCov=iCov)
+
+        expect_true(!any(is.na(sim$ipredSim)))
+
+      })
+    })
   })
 })
 
