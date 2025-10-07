@@ -384,6 +384,8 @@ extern "C" void rxOptionsIniEnsure(int mx){
   rx->ordId = NULL;
 }
 
+extern "C" int rxstrcmpi(const char * str1, const char * str2);
+
 extern "C" int compareFactorVal(int val,
                                 const char *valStr,
                                 const char *cmpValue){
@@ -405,9 +407,7 @@ extern "C" int compareFactorVal(int val,
   }
   base += curLen;
   curLen = rx->factorNs[++curG];
-  if (!strcmp(valStr, "cmt") ||
-      !strcmp(valStr, "CMT") ||
-      !strcmp(valStr, "Cmt")) {
+  if (!rxstrcmpi(valStr, "cmt")) {
     if (val-1 < curLen){
       if (base+val-1 >= rx->factors.n) {
         return 0;

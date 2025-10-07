@@ -262,6 +262,15 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define rf(ind, x, y) rxf(ind, x, y)
 // int compareFactorVal(int val, const char *valStr, const char *cmpValue)
 // equality_str2 : identifier_r ('!=' | '==' ) string;
+#define cmt CMT
+// one cap
+#define Cmt CMT
+#define cMt CMT
+#define cmT CMT
+// two cap
+#define CMt CMT
+#define CmT CMT
+#define cMT CMT
 #define _cmp2(val, valStr, type, cmpStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
 // equality_str1 : string ('!=' | '==' ) identifier_r; //type=1 is equal, type=0 not equal
 #define _cmp1(cmpStr, type, val, valStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
