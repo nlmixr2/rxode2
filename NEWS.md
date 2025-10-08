@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 4.1.1
 
 - Stacking for multiple-endpoint `ipredSim` now matches
   multiple-endpoint `sim`; Issue #929
