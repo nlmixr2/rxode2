@@ -2982,7 +2982,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(lst1F, R_ClassSymbol, wrap("data.frame"));
   Rf_setAttrib(lst1F, R_RowNamesSymbol,
                IntegerVector::create(NA_INTEGER, -nid));
-  List e(30);
+  List e(31);
   RxTransNames;
   e[RxTrans_ndose] = IntegerVector::create(ndose);
   e[RxTrans_nobs]  = IntegerVector::create(nobs);
@@ -3045,6 +3045,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(keepL, Rf_install("keepCov"), wrap(keepLc));
   e[RxTrans_keepL] = List::create(_["keepL"]=keepL, _["keepLtype"]=inDataFKL);
   e[RxTrans_maxItemsPerId] = maxItemsPerId;
+  e[RxTrans_mixUnif] = R_NilValue;
   Rf_setAttrib(e, R_ClassSymbol, wrap("rxHidden"));
   cls.attr(".rxode2.lst") = e;
   tmp = lstF[0];
