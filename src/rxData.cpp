@@ -68,7 +68,7 @@ extern "C" SEXP _rxode2_assignUdf(SEXP in);
 extern "C" SEXP _rxode2_udfEnvSet(SEXP udf);
 extern "C" SEXP _rxode2_udfReset();
 extern "C" SEXP _rxode2_rxC(SEXP in);
-
+extern "C" double rxunifmix(rx_solving_options_ind* ind);
 
 #include "../inst/include/rxode2_as.h"
 
@@ -3611,6 +3611,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         if (nall != 0) {
           // Finalize last solve.
           ind->n_all_times    = ndoses+nobs;
+          if (rx->mixnum) {
+            ind->mixest = 0;
+            ind->mixunif = rxunifmix(ind);
+          }
           if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
           ind->cov_ptr = &(_globals.gcov[curcovi]);
           for (ii = 0; ii < ncov; ii++){
@@ -3709,6 +3713,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     rx->nevid9 = nevid9;
     // Finalize the prior individual
     ind->n_all_times    = ndoses+nobs;
+    if (rx->mixnum) {
+      ind->mixest = 0;
+      ind->mixunif = rxunifmix(ind);
+    }
     if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
     ind->cov_ptr = &(_globals.gcov[curcovi]);
     for (ii = 0; ii < ncov; ii++){
@@ -4089,6 +4097,10 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->cov_ptr = indS.cov_ptr;
             }
             ind->n_all_times =indS.n_all_times;
+            if (rx->mixnum) {
+              ind->mixest = 0;
+              ind->mixunif = rxunifmix(ind);
+            }
             if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
             ind->HMAX = indS.HMAX;
             ind->idose = &(indS.idose[0]);

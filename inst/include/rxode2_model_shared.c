@@ -224,7 +224,7 @@ double _mix(int _cSub, unsigned int n,  ...) {
     if (found == 0) {
       if (u < p) {
         ret = v;
-        ind->mixest = i/2 + 1; // 1-based index
+        ind->mixest = i*0.5 + 1; // 1-based index
         found = 1;
       }
     }
