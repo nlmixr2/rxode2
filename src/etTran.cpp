@@ -3009,14 +3009,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
     // Remove mixest from $pars
 
-    // Rf_setAttrib(fPars, R_DimSymbol,
-    //              IntegerVector::create(pars.size(), nid));
-
-    // Rf_setAttrib(fPars, R_DimNamesSymbol,
-    //              List::create(pars, R_NilValue));
-
-    // Rcpp::print(fPars);
-
     NumericVector fPars2 = NumericVector((pars.size()-1)*nid, NA_REAL);
     for (i = 0; i < nid; i++){
       // copy, removing the last row
@@ -3032,6 +3024,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
     fPars = fPars2;
 
+    // Remove mixest from levelInfo
+    List inDataLvlN2(covCol.size()+strAssign.size()-1);
+    List inDataLvl2(covCol.size()+strAssign.size()-1);
+    int j = 0;
+    for (i = 0; i < inDataLvl.size(); ++i) {
+      if (rxstrcmpi(CHAR(inDataLvlN[i]), "mixest")) {
+        inDataLvlN2[j] = inDataLvlN[i];
+        inDataLvl2[j] = inDataLvl[i];
+        j++;
+      }
+    }
+    Rf_setAttrib(inDataLvl2, R_NamesSymbol, inDataLvlN2);
+    inDataLvl = inDataLvl2;
   } else {
     Rf_setAttrib(fPars, R_DimSymbol,
                  IntegerVector::create(pars.size(), nid));
