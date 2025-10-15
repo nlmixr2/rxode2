@@ -3412,7 +3412,6 @@ static inline NumericVector getMixUnif(const RObject &ev1)  {
     RObject tmpO = e[RxTrans_mixUnif];
     if (!Rf_isNull(tmpO)){
       mixUnif = as<NumericVector>(tmpO);
-      Rcpp::print(mixUnif);
     }
   }
   return mixUnif;

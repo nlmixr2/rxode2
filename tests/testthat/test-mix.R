@@ -237,7 +237,17 @@ rxTest({
     expect_length(lst$covParPos, 0)
     expect_length(lst$covParPos0, 0)
 
+    s2 <- s
+    s2$mixest <- NULL
 
+    trn <- etTrans(s2, one.cmt)
+    lst2 <- attr(class(trn), ".rxode2.lst")
+    class(lst2) <- NULL
+
+    for (n in names(lst)) {
+      if (n %in% c("mixUnif", "lib_name")) next
+      expect_equal(lst[[n]], lst2[[n]], info=n)
+    }
 
 
     # Now error with mixtures above nmix in the model
@@ -256,6 +266,8 @@ rxTest({
     s$mixest <- seq_along(s$mixest) %% 2 + 1
 
     expect_error(etTrans(s, one.cmt))
+
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE)
 
   })
 
