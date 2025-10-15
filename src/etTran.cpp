@@ -2988,13 +2988,60 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       mixUnifNV[i] = (mixEst[i]-0.5)/nmix;
     }
     mixUnif = wrap(mixUnifNV);
-    // erase "mixnum" from the coParPos
+    // erase "mixest" from the covParPos
     covParPos.erase(std::remove(covParPos.begin(), covParPos.end(), parn),
-                    covParPos.end()
-                    );
+                    covParPos.end());
+
+    // Remove mixest from the covUnits
+    List covUnits2(covCol.size()-1);
+    CharacterVector covUnitsN2(covCol.size()-1);
+    j = 0;
+    for (i = 0; i < covCol.size(); i++){
+      if (rxstrcmpi(CHAR(covUnitsN[i]), "mixest")) {
+        covUnits2[j] = covUnits[i];
+        covUnitsN2[j] = covUnitsN[i];
+        j++;
+      }
+    }
+    Rf_setAttrib(covUnits2, R_NamesSymbol, covUnitsN2);
+    covUnits = covUnits2;
+    covUnitsN = covUnitsN2;
+
+    // Remove mixest from $pars
+
+    // Rf_setAttrib(fPars, R_DimSymbol,
+    //              IntegerVector::create(pars.size(), nid));
+
+    // Rf_setAttrib(fPars, R_DimNamesSymbol,
+    //              List::create(pars, R_NilValue));
+
+    // Rcpp::print(fPars);
+
+    NumericVector fPars2 = NumericVector((pars.size()-1)*nid, NA_REAL);
+    for (i = 0; i < nid; i++){
+      // copy, removing the last row
+      std::copy(fPars.begin() + i*pars.size(),
+                fPars.begin() + i*pars.size() + pars.size() - 1,
+                fPars2.begin()+ i*(pars.size()-1));
+    }
+
+    Rf_setAttrib(fPars2, R_DimSymbol,
+                 IntegerVector::create(pars.size()-1, nid));
+    Rf_setAttrib(fPars2, R_DimNamesSymbol,
+                 List::create(as<CharacterVector>(mv[RxMv_params]), R_NilValue));
+
+    fPars = fPars2;
+
+  } else {
+    Rf_setAttrib(fPars, R_DimSymbol,
+                 IntegerVector::create(pars.size(), nid));
+
+    Rf_setAttrib(fPars, R_DimNamesSymbol,
+                 List::create(pars, R_NilValue));
+
   }
-  List lst1F(1+covCol.size()-nTv-hasMixest);
-  CharacterVector nme1F(1+covCol.size()-nTv-hasMixest);
+  List lst1F(1+covCol.size()-nTv-rmExtra);
+  CharacterVector nme1F(1+covCol.size()-nTv-rmExtra);
   for (i = 0; i < lst1.size()-rmExtra;i++){
     if (sub1[i]) {
       lst1F[j]=lst1[i];
@@ -3064,10 +3111,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   e[RxTrans_covParPos0] = wrap(covParPos0);
   e[RxTrans_covUnits] = covUnits;
-  Rf_setAttrib(fPars, R_DimSymbol,
-               IntegerVector::create(pars.size(), nid));
-  Rf_setAttrib(fPars, R_DimNamesSymbol,
-               List::create(pars, R_NilValue));
   e[RxTrans_pars] = fPars;
   e[RxTrans_allBolus] = allBolus;
   e[RxTrans_allInf] = allInf;
