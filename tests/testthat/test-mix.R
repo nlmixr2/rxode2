@@ -220,7 +220,7 @@ rxTest({
       })
     }
 
-    s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+    s0 <- s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
                             et(seq(0, 72)) %>%
                             et(id=1:20), addDosing=TRUE) %>%
       dplyr::rename(mixest=me, dv=sim) %>%
@@ -238,14 +238,22 @@ rxTest({
     expect_length(lst$covParPos0, 0)
 
 
+
+
     # Now error with mixtures above nmix in the model
     s$mixest[s$id == 1] <- 3
     expect_error(etTrans(s, one.cmt))
 
+    ## mixest below 1
     s$mixest[s$id == 1] <- 0
     expect_error(etTrans(s, one.cmt))
 
+    # non integer mixest
     s$mixest[s$id == 1] <- 0.5
+    expect_error(etTrans(s, one.cmt))
+
+    # Time varying mixest
+    s$mixest <- seq_along(s$mixest) %% 2 + 1
 
     expect_error(etTrans(s, one.cmt))
 

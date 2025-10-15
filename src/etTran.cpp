@@ -2968,7 +2968,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   j=0;
-  if (hasMixest && rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixest") != 0) {
+  if (hasMixest && (rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixest") != 0 ||
+                    !sub1[lst1.size()-1])) {
     stop(_("mixest is time-varying but must be constant within an individual"));
   }
   int rmExtra = 0;
