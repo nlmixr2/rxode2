@@ -3404,6 +3404,20 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   }
 }
 
+static inline NumericVector getMixUnif(const RObject &ev1)  {
+  NumericVector mixUnif;
+  if (rxIs(ev1, "rxEtTran")){
+    CharacterVector tmpCls = ev1.attr("class");
+    List e = tmpCls.attr(".rxode2.lst");
+    RObject tmpO = e[RxTrans_mixUnif];
+    if (!Rf_isNull(tmpO)){
+      mixUnif = as<NumericVector>(tmpO);
+      Rcpp::print(mixUnif);
+    }
+  }
+  return mixUnif;
+}
+
 // This loops through the data to put each individual into the
 // approiate data structure.
 // At the same time calculate hmax per individual as well
@@ -3428,6 +3442,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
   unsigned int nobs = 0, ndoses = 0;
 
   int ncov =0, curcovi = 0;
+
+  NumericVector mixUnif = getMixUnif(ev1);
 
   if (rxIs(ev1,"event.data.frame")||
       rxIs(ev1,"event.matrix")){
@@ -3613,7 +3629,11 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->n_all_times    = ndoses+nobs;
           if (rx->mixnum) {
             ind->mixest = 0;
-            ind->mixunif = rxunifmix(ind);
+            if (nsub >= mixUnif.size()) {
+              ind->mixunif = rxunifmix(ind);
+            } else {
+              ind->mixunif = mixUnif[nsub];
+            }
           }
           if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
           ind->cov_ptr = &(_globals.gcov[curcovi]);
@@ -3715,7 +3735,11 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     ind->n_all_times    = ndoses+nobs;
     if (rx->mixnum) {
       ind->mixest = 0;
-      ind->mixunif = rxunifmix(ind);
+      if (nsub >= mixUnif.size()) {
+        ind->mixunif = rxunifmix(ind);
+      } else {
+        ind->mixunif = mixUnif[nsub];
+      }
     }
     if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
     ind->cov_ptr = &(_globals.gcov[curcovi]);
@@ -4089,6 +4113,12 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             }
             ind->n_all_times =indS.n_all_times;
             if (rx->mixnum) {
+              // In this case, it is a new individual so rxunifmix is
+              // always selected.
+              //
+              // In the case where simulating, the input dataset should not
+              // contain mixest
+              //
               ind->mixest = 0;
               ind->mixunif = rxunifmix(ind);
             }
@@ -6343,7 +6373,6 @@ SEXP setRstudio(bool isRstudio=false){
 extern "C" int isRstudio(){
   return isRstudioI;
 }
-
 
 int isProgSupportedI = 1;
 
