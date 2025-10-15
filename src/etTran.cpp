@@ -819,6 +819,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #endif
   List mv = rxModelVars_(obj);
   CharacterVector pars = as<CharacterVector>(mv[RxMv_params]);
+  int parn = pars.size();
   IntegerVector flags = mv[RxMv_flags];
   int nmix = flags[RxMvFlag_mix];
   int numLinSens, numLin, depotLin;
@@ -2967,7 +2968,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   j=0;
-  if (hasMixest && rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixest") == 0) {
+  if (hasMixest && rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixest") != 0) {
     stop(_("mixest is time-varying but must be constant within an individual"));
   }
   int rmExtra = 0;
@@ -2980,12 +2981,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (mixEst[i] <= 0 || mixEst[i] > nmix) {
         stop(_("mixest must be between 1 and %d for this model"), nmix);
       }
+      if (std::trunc(mixEst[i]) != mixEst[i]) {
+        stop(_("mixest must be an integer value, one non-integer value is %f"), mixEst[i]);
+      }
       mixUnifNV[i] = (mixEst[i]-0.5)/nmix;
     }
     mixUnif = wrap(mixUnifNV);
+    // erase "mixnum" from the coParPos
+    covParPos.erase(std::remove(covParPos.begin(), covParPos.end(), parn),
+                    covParPos.end()
+                    );
   }
   List lst1F(1+covCol.size()-nTv-hasMixest);
-  CharacterVector nme1F(1+covCol.size()-nTv);
+  CharacterVector nme1F(1+covCol.size()-nTv-hasMixest);
   for (i = 0; i < lst1.size()-rmExtra;i++){
     if (sub1[i]) {
       lst1F[j]=lst1[i];
