@@ -2985,7 +2985,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (std::trunc(mixEst[i]) != mixEst[i]) {
         stop(_("mixest must be an integer value, one non-integer value is %f"), mixEst[i]);
       }
-      mixUnifNV[i] = (mixEst[i]-0.5)/nmix;
+      // These are determined by the mixture probabilities, and cannot
+      // be determined without the parameter estimates
+      mixUnifNV[i] = mixEst[i];
     }
     mixUnif = wrap(mixUnifNV);
     // erase "mixest" from the covParPos

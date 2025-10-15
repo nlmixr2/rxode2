@@ -192,7 +192,7 @@ rxTest({
     })
   })
 
-  test_that("mix() simulation", {
+  test_that("mix() simulation, and the re-estimate with same mixest", {
 
     one.cmt <- function() {
       ini({
@@ -215,25 +215,23 @@ rxTest({
         cl <- mix(exp(tcl1 + eta.cl), p1, exp(tcl2 + eta.cl))
         v <- exp(tv + eta.v)
         me <- mixest
+        mu <- mixunif
         mn <- mixnum
         linCmt() ~ add(add.sd)
       })
     }
 
     s0 <- s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
-                            et(seq(0, 72)) %>%
-                            et(id=1:20), addDosing=TRUE) %>%
+                                  et(seq(0, 72)) %>%
+                                  et(id=1:20), addDosing=TRUE) %>%
       dplyr::rename(mixest=me, dv=sim) %>%
-      dplyr::select(id, mixest, evid, cmt, amt, time, dv)
+      dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
 
     trn <- etTrans(s, one.cmt)
     lst <- attr(class(trn), ".rxode2.lst")
     class(lst) <- NULL
-    expect_true(all(lst$mixUnif < 1.0))
-    expect_true(all(lst$mixUnif > 0.0))
+    expect_true(all(lst$mixUnif >= 1))
     expect_true(length(lst$mixUnif) == length(lst$idLvl))
-    mixnum <- lst$mixUnif*2+0.5
-    expect_true(all(mixnum %in% 1:2))
     expect_length(lst$covParPos, 0)
     expect_length(lst$covParPos0, 0)
 
@@ -267,7 +265,15 @@ rxTest({
 
     expect_error(etTrans(s, one.cmt))
 
-    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE)
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
+      dplyr::rename(mixest=me, dv=sim) %>%
+      dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
+
+    # keeps all the mixest
+    expect_true(all(s2$mixest == s0$mixest))
+
+    # mixunif is not simulated, so the values are not the same
+    expect_false(all(s2$mu == s0$mu))
 
   })
 

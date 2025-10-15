@@ -212,30 +212,60 @@ double _sign(unsigned int n, ...) {
 double _mix(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
   va_list valist;
-  va_start(valist, n);
   double ret = NA_REAL;
   double p = 0.0;
-  double u = ind->mixunif; // sampled once per patient
-  int found = 0;
-  double v = 0.0;
-  for (unsigned int i = 0; i < n-1; i+= 2) {
-    v = va_arg(valist, double);
-    p += va_arg(valist, double);
-    if (found == 0) {
-      if (u < p) {
-        ret = v;
-        ind->mixest = i*0.5 + 1; // 1-based index
-        found = 1;
+  // In the case of simulating, mixunif is sampled once per patient
+  double u = ind->mixunif;
+  if (u >= 1.0) {
+    // In this case, the mixest is assigned
+    ind->mixest = u;
+    u = 0;
+    int found = 0;
+    double v = 0.0;
+    va_start(valist, n);
+    for (unsigned int i = 0; i < n-1; i+= 2) {
+      v = va_arg(valist, double);
+      p += va_arg(valist, double);
+      if (found == 0) {
+        if (trunc(i*0.5 + 1) == trunc(ind->mixest)) {
+          // This is the mixture selected
+          ret = v;
+          found = 1;
+          ind->mixunif = u + (p - u)*0.5;
+        }
+        u = p;
       }
     }
+    v = va_arg(valist, double); // other possibility
+    if (found == 0) {
+      ind->mixunif = u + (1.0 - u)*0.5;
+      ret = v;
+    }
+    va_end(valist);
+    return ret;
+  } else {
+    int found = 0;
+    double v = 0.0;
+    va_start(valist, n);
+    for (unsigned int i = 0; i < n-1; i+= 2) {
+      v = va_arg(valist, double);
+      p += va_arg(valist, double);
+      if (found == 0) {
+        if (u < p) {
+          ret = v;
+          ind->mixest = i*0.5 + 1; // 1-based index
+          found = 1;
+        }
+      }
+    }
+    v = va_arg(valist, double); // other possibility
+    if (found == 0) {
+      ind->mixest = _solveData->mixnum;
+      ret = v;
+    }
+    va_end(valist);
+    return ret;
   }
-  v = va_arg(valist, double); // other possibility
-  if (found == 0) {
-    ind->mixest = _solveData->mixnum;
-    ret = v;
-  }
-  va_end(valist);
-  return ret;
 }
 
 
