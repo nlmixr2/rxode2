@@ -115,6 +115,8 @@ call. = FALSE)
 #'
 #' \deqn{p_N = \frac{1}{1+\sum_{j=1}^{N-1} e^{x_j}}}
 #'
+#' For the function `dmexpit()`, the derivatives are calculated.
+#'
 #'
 #' @param ...  numeric log-scale numbers to convert to probabilities.
 #' @return Probabilities that add up to a number less than 1.
@@ -125,8 +127,12 @@ call. = FALSE)
 #' m <- mlogit(0.1, 0.2, 0.3)
 #' mexpit(m)
 #'
+#' # derivatives
+#' dmexpit(m)
+#'
 #' p <- mexpit(-3, 0.5, 3)
 #' mlogit(p)
+#'
 #'
 mexpit <- function(...) {
   .n <- as.numeric(unlist(list(...)))
@@ -134,4 +140,10 @@ mexpit <- function(...) {
     return(expit(.n))
   }
   .Call(`_rxode2_mexpit`, .n)
+}
+
+#' @rdname mexpit
+dmexpit <- function(...) {
+  .n <- as.numeric(unlist(list(...)))
+  .Call(`_rxode2_dmexpit`, .n)
 }

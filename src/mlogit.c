@@ -31,6 +31,32 @@ SEXP _rxode2_mexpit(SEXP x) {
 }/* _rxode2_mexpit() */
 
 
+// Calculate the Gradient of the mexpit
+void dmexpit(double *x, double *p, int n) {
+  double sum = 1.0;
+  for (int i = 0; i < n; i++) {
+    sum += x[i] = exp(p[i]);
+  }
+  for (int i = 0; i < n; i++) {
+    x[i] = x[i]/sum - (x[i]*x[i])/(sum*sum);
+  }
+}
+
+// Now write the R interface for mexpit
+SEXP _rxode2_dmexpit(SEXP x) {
+  SEXP p;
+  int n = LENGTH(x);
+  PROTECT(p = Rf_allocVector(REALSXP, n));
+  double *px = REAL(x);
+  double *pp = REAL(p);
+
+  dmexpit(pp, px, n);
+
+  UNPROTECT(1);
+  return p;
+}/* _rxode2_mexpit() */
+
+
 // First calculate the root for the mutiroot finding algorithm
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p) {
   SEXP r;
