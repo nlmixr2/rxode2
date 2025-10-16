@@ -31,7 +31,7 @@ SEXP _rxode2_mexpit(SEXP x) {
 }/* _rxode2_mexpit() */
 
 
-// Calculate the Gradient of the mexpit
+// Calculate element-wise derivatives (diagonal of the Jacobian) of mexpit
 void dmexpit(double *x, double *p, int n) {
   double sum = 1.0;
   for (int i = 0; i < n; i++) {
