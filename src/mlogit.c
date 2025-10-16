@@ -42,7 +42,7 @@ void dmexpit(double *x, double *p, int n) {
   }
 }
 
-// Now write the R interface for mexpit
+// Now write the R interface for dmexpit
 SEXP _rxode2_dmexpit(SEXP x) {
   SEXP p;
   int n = LENGTH(x);
