@@ -54,7 +54,7 @@ SEXP _rxode2_dmexpit(SEXP x) {
 
   UNPROTECT(1);
   return p;
-}/* _rxode2_mexpit() */
+}/* _rxode2_dmexpit() */
 
 
 // First calculate the root for the mutiroot finding algorithm
