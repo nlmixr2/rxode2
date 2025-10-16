@@ -247,7 +247,6 @@ rxTest({
       expect_equal(lst[[n]], lst2[[n]], info=n)
     }
 
-
     # Now error with mixtures above nmix in the model
     s$mixest[s$id == 1] <- 3
     expect_error(etTrans(s, one.cmt))
@@ -265,6 +264,8 @@ rxTest({
 
     expect_error(etTrans(s, one.cmt))
 
+    expect_error(rxSolve(one.cmt, s0, addDosing=TRUE, nStud=100))
+
     s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
       dplyr::rename(mixest=me, dv=sim) %>%
       dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
@@ -274,6 +275,32 @@ rxTest({
 
     # mixunif is not simulated, so the values are not the same
     expect_false(all(s2$mu == s0$mu))
+
+
+    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+                             et(seq(0, 72)) %>%
+                             et(id=1:20), addDosing=TRUE) %>%
+      dplyr::rename(mixunif=mu, dv=sim) %>%
+      dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
+
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
+      dplyr::rename(mixunif=mu, dv=sim) %>%
+      dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
+
+    # keeps all the mixest
+    expect_true(all(s2$me == s0$me))
+
+    # mixunif is not simulated, so the values are not the same
+    expect_true(all(s2$mixunif == s0$mixunif))
+
+
+    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+                             et(seq(0, 72)) %>%
+                             et(id=1:20), addDosing=TRUE) %>%
+      dplyr::rename(mixunif=mu, mixest=me, dv=sim) %>%
+      dplyr::select(id, mixunif, evid, cmt, amt, time, dv, mixest)
+
+    expect_error(rxSolve(one.cmt, s0, addDosing=TRUE))
 
   })
 

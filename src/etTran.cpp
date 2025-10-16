@@ -905,6 +905,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     mdvCol=-1, dvidCol=-1, censCol=-1, limitCol=-1, methodCol = -1,
     idIcovCol = -1;
   bool hasMixest = false;
+  bool hasMixUnif = false;
   std::string tmpS;
 
   std::vector<int> covCol;
@@ -946,6 +947,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else if (tmpS == "method") methodCol=i;
     else if (nmix > 0 && tmpS == "mixest") {
       // add it to the parameters
+      if (hasMixUnif) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
       CharacterVector parsNew = CharacterVector(pars.size()+1);
       for (j = pars.size(); j--;) parsNew[j] = pars[j];
       parsNew[pars.size()] = lName[i];
@@ -953,7 +955,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       hasMixest = true;
     }
     else if (nmix > 0 && tmpS == "mixunif") {
-      stop(_("cannot specify 'mixunif'; use 'mixest'"));
+      if (hasMixest) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
+      CharacterVector parsNew = CharacterVector(pars.size()+1);
+      for (j = pars.size(); j--;) parsNew[j] = pars[j];
+      parsNew[pars.size()] = lName[i];
+      pars = parsNew;
+      hasMixUnif = true;
     }
     if (tmpS != "dv") {
       for (j = pars.size(); j--;) {
@@ -1045,13 +1052,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         stop(_("cannot specify 'method' in 'iCov'"));
       } else if (nmix > 0 && tmpS == "mixest") {
         // add it to the parameters
+        if (hasMixUnif) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
         CharacterVector parsNew = CharacterVector(pars.size()+1);
         for (j = pars.size(); j--;) parsNew[j] = pars[j];
         parsNew[pars.size()] = lName[i];
         pars = parsNew;
         hasMixest = true;
       } else if (nmix > 0 && tmpS == "mixunif") {
-        stop(_("cannot specify 'mixunif'"));
+        if (hasMixUnif) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
+        CharacterVector parsNew = CharacterVector(pars.size()+1);
+        for (j = pars.size(); j--;) parsNew[j] = pars[j];
+        parsNew[pars.size()] = lName[i];
+        pars = parsNew;
+        hasMixUnif = true;
       }
       for (j = pars.size(); j--;) {
         if (tmpS == as<std::string>(pars[j])) {
@@ -2972,25 +2985,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                     !sub1[lst1.size()-1])) {
     stop(_("mixest is time-varying but must be constant within an individual"));
   }
+  if (hasMixUnif && (rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixunif") != 0 ||
+                    !sub1[lst1.size()-1])) {
+    stop(_("mixunif is time-varying but must be constant within an individual"));
+  }
   int rmExtra = 0;
   RObject mixUnif = R_NilValue;
-  if (hasMixest) {
+  if (hasMixest || hasMixUnif) {
     rmExtra = 1;
     NumericVector mixEst = as<NumericVector>(lst1[lst1.size()-1]);
     NumericVector mixUnifNV(nid);
     for (i = 0; i < nid; i++) {
-      if (mixEst[i] <= 0 || mixEst[i] > nmix) {
-        stop(_("mixest must be between 1 and %d for this model"), nmix);
-      }
-      if (std::trunc(mixEst[i]) != mixEst[i]) {
-        stop(_("mixest must be an integer value, one non-integer value is %f"), mixEst[i]);
+      if (hasMixest) {
+        if (mixEst[i] <= 0 || mixEst[i] > nmix) {
+          stop(_("mixest must be between 1 and %d for this model"), nmix);
+        }
+        if (std::trunc(mixEst[i]) != mixEst[i]) {
+          stop(_("mixest must be an integer value, one non-integer value is %f"), mixEst[i]);
+        }
+      } else {
+        if (mixEst[i] < 0 || mixEst[i] > 1) {
+          stop(_("mixunif must be between 0 and 1"));
+        }
       }
       // These are determined by the mixture probabilities, and cannot
       // be determined without the parameter estimates
       mixUnifNV[i] = mixEst[i];
     }
     mixUnif = wrap(mixUnifNV);
-    // erase "mixest" from the covParPos
+    // erase "mixest" or "mixunif" from the covParPos
     covParPos.erase(std::remove(covParPos.begin(), covParPos.end(), parn),
                     covParPos.end());
 
@@ -2998,18 +3021,28 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     List covUnits2(covCol.size()-1);
     CharacterVector covUnitsN2(covCol.size()-1);
     j = 0;
-    for (i = 0; i < covCol.size(); i++){
-      if (rxstrcmpi(CHAR(covUnitsN[i]), "mixest")) {
-        covUnits2[j] = covUnits[i];
-        covUnitsN2[j] = covUnitsN[i];
-        j++;
+    if (hasMixest) {
+      for (i = 0; i < covCol.size(); i++){
+        if (rxstrcmpi(CHAR(covUnitsN[i]), "mixest")) {
+          covUnits2[j] = covUnits[i];
+          covUnitsN2[j] = covUnitsN[i];
+          j++;
+        }
+      }
+    } else {
+      for (i = 0; i < covCol.size(); i++){
+        if (rxstrcmpi(CHAR(covUnitsN[i]), "mixunif")) {
+          covUnits2[j] = covUnits[i];
+          covUnitsN2[j] = covUnitsN[i];
+          j++;
+        }
       }
     }
     Rf_setAttrib(covUnits2, R_NamesSymbol, covUnitsN2);
     covUnits = covUnits2;
     covUnitsN = covUnitsN2;
 
-    // Remove mixest from $pars
+    // Remove mixest or mixunif from $pars
 
     NumericVector fPars2 = NumericVector((pars.size()-1)*nid, NA_REAL);
     for (i = 0; i < nid; i++){
@@ -3018,7 +3051,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                 fPars.begin() + i*pars.size() + pars.size() - 1,
                 fPars2.begin()+ i*(pars.size()-1));
     }
-
     Rf_setAttrib(fPars2, R_DimSymbol,
                  IntegerVector::create(pars.size()-1, nid));
     Rf_setAttrib(fPars2, R_DimNamesSymbol,
@@ -3026,15 +3058,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
     fPars = fPars2;
 
-    // Remove mixest from levelInfo
+    // Remove mixest or mixunif from levelInfo
     List inDataLvlN2(covCol.size()+strAssign.size()-1);
     List inDataLvl2(covCol.size()+strAssign.size()-1);
     int j = 0;
-    for (i = 0; i < inDataLvl.size(); ++i) {
-      if (rxstrcmpi(CHAR(inDataLvlN[i]), "mixest")) {
-        inDataLvlN2[j] = inDataLvlN[i];
-        inDataLvl2[j] = inDataLvl[i];
-        j++;
+    if (hasMixest) {
+      for (i = 0; i < inDataLvl.size(); ++i) {
+        if (rxstrcmpi(CHAR(inDataLvlN[i]), "mixest")) {
+          inDataLvlN2[j] = inDataLvlN[i];
+          inDataLvl2[j] = inDataLvl[i];
+          j++;
+        }
+      }
+    } else {
+      for (i = 0; i < inDataLvl.size(); ++i) {
+        if (rxstrcmpi(CHAR(inDataLvlN[i]), "mixunif")) {
+          inDataLvlN2[j] = inDataLvlN[i];
+          inDataLvl2[j] = inDataLvl[i];
+          j++;
+        }
       }
     }
     Rf_setAttrib(inDataLvl2, R_NamesSymbol, inDataLvlN2);

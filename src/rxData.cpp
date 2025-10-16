@@ -1656,7 +1656,7 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
     List envCls = tmpCls.attr(".rxode2.lst");
     NumericMatrix iniPars = envCls[RxTrans_pars];
     // Copy the pre-filled covariates into the parameter values.
-    for (int j = rx->nsim;j--;){
+    for (int j = rx->nsim; j--; ){
       std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+rx->nsub*npars*j);
     }
     IntegerVector parPos = envCls["covParPos0"];
@@ -3406,13 +3406,17 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
 
 static inline NumericVector getMixUnif(const RObject &ev1)  {
   NumericVector mixUnif;
+  rx_solve* rx = getRxSolve_();
+  rx->input_mixnum = 0;
   if (rxIs(ev1, "rxEtTran")){
     CharacterVector tmpCls = ev1.attr("class");
     List e = tmpCls.attr(".rxode2.lst");
     RObject tmpO = e[RxTrans_mixUnif];
     if (!Rf_isNull(tmpO)){
       mixUnif = as<NumericVector>(tmpO);
+      rx->input_mixnum = 1;
     }
+  } else {
   }
   return mixUnif;
 }
@@ -5195,6 +5199,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->nSize = rxSolveDat->nPopPar*rx->nsub;
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
+    if (rx->input_mixnum && rx->nsim > 1) {
+      stop(_("with mixnum or mixunif specified, cannot simulate %d simulations"),
+           rx->nsim);
+    }
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
     int n0 = rx->nall*state.size()*rx->nsim;
     int nsave = op->neq*op->cores;
