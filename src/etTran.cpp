@@ -3087,7 +3087,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
     Rf_setAttrib(fPars, R_DimNamesSymbol,
                  List::create(pars, R_NilValue));
-
   }
   List lst1F(1+covCol.size()-nTv-rmExtra);
   CharacterVector nme1F(1+covCol.size()-nTv-rmExtra);
