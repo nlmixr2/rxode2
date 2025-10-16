@@ -20,7 +20,7 @@
   (related to #939)
 
 - Added ability to use `mixest` or `mixunif` to preserve the selected
-  mixture estimates when performing at able step for a nlmixr2 mixture
+  mixture estimates when performing a table step for a nlmixr2 mixture
   model (#942)
 
 # rxode2 4.1.0
