@@ -143,6 +143,7 @@ mexpit <- function(...) {
 }
 
 #' @rdname mexpit
+#' @export
 dmexpit <- function(...) {
   .n <- as.numeric(unlist(list(...)))
   .Call(`_rxode2_dmexpit`, .n)
