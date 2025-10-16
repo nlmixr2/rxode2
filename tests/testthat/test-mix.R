@@ -152,6 +152,7 @@ rxTest({
 
   test_that("mix() simulation", {
     rxWithSeed(42, {
+
       one.cmt <- function() {
         ini({
           ## You may label each parameter with a comment
@@ -189,6 +190,117 @@ rxTest({
       expect_true(any(s$me == 1))
       expect_true(any(s$me == 2))
     })
+  })
+
+  test_that("mix() simulation, and the re-estimate with same mixest", {
+
+    one.cmt <- function() {
+      ini({
+        ## You may label each parameter with a comment
+        tka <- 0.45 # Log Ka
+        tcl1 <- log(c(0, 2.7, 100)) # Log Cl
+        tcl2 <- log(c(0, 0.1, 120)) # Log Cl
+        ## This works with interactive models
+        ## You may also label the preceding line with label("label text")
+        tv <- 3.45; label("log V")
+        p1 <- 0.3
+        ## the label("Label name") works with all models
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- mix(exp(tcl1 + eta.cl), p1, exp(tcl2 + eta.cl))
+        v <- exp(tv + eta.v)
+        me <- mixest
+        mu <- mixunif
+        mn <- mixnum
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    s0 <- s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+                                  et(seq(0, 72)) %>%
+                                  et(id=1:20), addDosing=TRUE) %>%
+      dplyr::rename(mixest=me, dv=sim) %>%
+      dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
+
+    trn <- etTrans(s, one.cmt)
+    lst <- attr(class(trn), ".rxode2.lst")
+    class(lst) <- NULL
+    expect_true(all(lst$mixUnif >= 1))
+    expect_true(length(lst$mixUnif) == length(lst$idLvl))
+    expect_length(lst$covParPos, 0)
+    expect_length(lst$covParPos0, 0)
+
+    s2 <- s
+    s2$mixest <- NULL
+
+    trn <- etTrans(s2, one.cmt)
+    lst2 <- attr(class(trn), ".rxode2.lst")
+    class(lst2) <- NULL
+
+    for (n in names(lst)) {
+      if (n %in% c("mixUnif", "lib_name")) next
+      expect_equal(lst[[n]], lst2[[n]], info=n)
+    }
+
+    # Now error with mixtures above nmix in the model
+    s$mixest[s$id == 1] <- 3
+    expect_error(etTrans(s, one.cmt))
+
+    ## mixest below 1
+    s$mixest[s$id == 1] <- 0
+    expect_error(etTrans(s, one.cmt))
+
+    # non integer mixest
+    s$mixest[s$id == 1] <- 0.5
+    expect_error(etTrans(s, one.cmt))
+
+    # Time varying mixest
+    s$mixest <- seq_along(s$mixest) %% 2 + 1
+
+    expect_error(etTrans(s, one.cmt))
+
+    expect_error(rxSolve(one.cmt, s0, addDosing=TRUE, nStud=100))
+
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
+      dplyr::rename(mixest=me, dv=sim) %>%
+      dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
+
+    # keeps all the mixest
+    expect_true(all(s2$mixest == s0$mixest))
+
+    # mixunif is not simulated, so the values are not the same
+    expect_false(all(s2$mu == s0$mu))
+
+
+    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+                             et(seq(0, 72)) %>%
+                             et(id=1:20), addDosing=TRUE) %>%
+      dplyr::rename(mixunif=mu, dv=sim) %>%
+      dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
+
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
+      dplyr::rename(mixunif=mu, dv=sim) %>%
+      dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
+
+    # keeps all the mixest
+    expect_true(all(s2$me == s0$me))
+
+    # mixunif is not simulated, so the values are not the same
+    expect_true(all(s2$mixunif == s0$mixunif))
+
+
+    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
+                             et(seq(0, 72)) %>%
+                             et(id=1:20), addDosing=TRUE) %>%
+      dplyr::rename(mixunif=mu, mixest=me, dv=sim) %>%
+      dplyr::select(id, mixunif, evid, cmt, amt, time, dv, mixest)
+
+    expect_error(rxSolve(one.cmt, s0, addDosing=TRUE))
 
   })
 

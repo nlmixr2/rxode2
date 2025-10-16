@@ -22,7 +22,7 @@
 int rxstrcmpi(const char * str1, const char * str2);
 
 static inline int nodeMixnum(char *value) {
-  if (!rxstrcmpi("mixnum",value)){
+  if (!rxstrcmpi("mixnum", value)) {
     aAppendN("_solveData->mixnum", 18);
     sAppendN(&sbt, "mixnum", 6);
     return 1;

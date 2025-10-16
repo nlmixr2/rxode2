@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "../inst/include/rxode2parse.h"
 #include "timsort.h"
+#include "strncmpi.h"
 #include "../inst/include/needSortDefines.h"
 #define SORT gfx::timsort
 
@@ -818,7 +819,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #endif
   List mv = rxModelVars_(obj);
   CharacterVector pars = as<CharacterVector>(mv[RxMv_params]);
+  int parn = pars.size();
   IntegerVector flags = mv[RxMv_flags];
+  int nmix = flags[RxMvFlag_mix];
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
@@ -901,6 +904,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     dvCol=-1, ssCol=-1, rateCol=-1, addlCol=-1, iiCol=-1, durCol=-1, j,
     mdvCol=-1, dvidCol=-1, censCol=-1, limitCol=-1, methodCol = -1,
     idIcovCol = -1;
+  bool hasMixest = false;
+  bool hasMixUnif = false;
   std::string tmpS;
 
   std::vector<int> covCol;
@@ -940,6 +945,23 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else if (tmpS == "cens") censCol=i;
     else if (tmpS == "limit") limitCol=i;
     else if (tmpS == "method") methodCol=i;
+    else if (nmix > 0 && tmpS == "mixest") {
+      // add it to the parameters
+      if (hasMixUnif) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
+      CharacterVector parsNew = CharacterVector(pars.size()+1);
+      for (j = pars.size(); j--;) parsNew[j] = pars[j];
+      parsNew[pars.size()] = lName[i];
+      pars = parsNew;
+      hasMixest = true;
+    }
+    else if (nmix > 0 && tmpS == "mixunif") {
+      if (hasMixest) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
+      CharacterVector parsNew = CharacterVector(pars.size()+1);
+      for (j = pars.size(); j--;) parsNew[j] = pars[j];
+      parsNew[pars.size()] = lName[i];
+      pars = parsNew;
+      hasMixUnif = true;
+    }
     if (tmpS != "dv") {
       for (j = pars.size(); j--;) {
         // Check lower case
@@ -969,7 +991,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     }
-    for (j = keep.size(); j--;){
+    for (j = keep.size(); j--;) {
       if (as<std::string>(dName[i]) == as<std::string>(keep[j])){
         if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing=TRUE'"));
         keepCol.push_back(i);
@@ -1028,15 +1050,30 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         stop(_("cannot specify 'limit' in 'iCov'"));
       } else if (tmpS == "method") {
         stop(_("cannot specify 'method' in 'iCov'"));
+      } else if (nmix > 0 && tmpS == "mixest") {
+        // add it to the parameters
+        if (hasMixUnif) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
+        CharacterVector parsNew = CharacterVector(pars.size()+1);
+        for (j = pars.size(); j--;) parsNew[j] = pars[j];
+        parsNew[pars.size()] = lName[i];
+        pars = parsNew;
+        hasMixest = true;
+      } else if (nmix > 0 && tmpS == "mixunif") {
+        if (hasMixUnif) stop(_("cannot have both 'mixest' and 'mixunif' in the same dataset"));
+        CharacterVector parsNew = CharacterVector(pars.size()+1);
+        for (j = pars.size(); j--;) parsNew[j] = pars[j];
+        parsNew[pars.size()] = lName[i];
+        pars = parsNew;
+        hasMixUnif = true;
       }
       for (j = pars.size(); j--;) {
-        if (tmpS == as<std::string>(pars[j])){
+        if (tmpS == as<std::string>(pars[j])) {
           // Covariate found; dv not considered covariate
           covCol.push_back(-i-1);
           covParPos.push_back(j);
           break;
         }
-        if (tmpS0 == as<std::string>(pars[j])){
+        if (tmpS0 == as<std::string>(pars[j])) {
           // Covariate found.
           covCol.push_back(-i-1);
           covParPos.push_back(j);
@@ -1044,22 +1081,22 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         // Check upper case.
         std::transform(tmpS.begin(), tmpS.end(), tmpS.begin(), ::toupper);
-        if (tmpS == as<std::string>(pars[j])){
+        if (tmpS == as<std::string>(pars[j])) {
           // Covariate found.
           covCol.push_back(-i-1);
           covParPos.push_back(j);
           break;
         }
       }
-      for (j = keep.size(); j--;){
-        if (as<std::string>(diName[i]) == as<std::string>(keep[j])){
+      for (j = keep.size(); j--;) {
+        if (as<std::string>(diName[i]) == as<std::string>(keep[j])) {
           keepCol.push_back(-i-1);
           keepI[j] = 2;
           break;
         }
       }
     }
-    if (idIcovCol == -1)  {
+    if (idIcovCol == -1) {
       stop(_("'iCov' must have an 'id' column"));
     }
   }
@@ -1068,9 +1105,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   _lastT0 = clock();
 #endif
   std::string wKeep = "";
-  if ((int)(keepCol.size()) != (int)keep.size()){
+  if ((int)(keepCol.size()) != (int)keep.size()) {
     wKeep = "Cannot keep missing columns:";
-    for (j = 0; j < keep.size(); j++){
+    for (j = 0; j < keep.size(); j++) {
       if (keepI[j] == 0){
         wKeep += " " + as<std::string>(keep[j]);
       }
@@ -1086,7 +1123,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   List inDataF(covCol.size());
   List inDataLvlN(covCol.size()+strAssign.size());
   List inDataLvl(covCol.size()+strAssign.size());
-  for (i = covCol.size(); i--;){
+  for (i = covCol.size(); i--;) {
     int covColi = covCol[i];
     if (covColi >= 0) {
       inDataLvlN[i] = covUnitsN[i] = lName[covColi];
@@ -1099,7 +1136,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       inDataLvlN[i] = covUnitsN[i] = liName[-covColi-1];
     }
     nvTmp2 = NumericVector::create(1.0);
-    if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt"){
+    if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt") {
       RObject cur;
       if (covColi >= 0) {
         cur = inData[covColi];
@@ -1118,7 +1155,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         inDataLvl[i] = lvls;
       }
       nvTmp = as<NumericVector>(cur);
-      if (!dropUnits && Rf_inherits(nvTmp, "units")){
+      if (!dropUnits && Rf_inherits(nvTmp, "units")) {
         Rf_setAttrib(nvTmp2, R_ClassSymbol, wrap("units"));
         nvTmp2.attr("units") = nvTmp.attr("units");
       }
@@ -1128,7 +1165,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     covUnits[i] = nvTmp2;
   }
-  for (i = 0; i < strAssign.size(); ++i){
+  for (i = 0; i < strAssign.size(); ++i) {
     inDataLvlN[i+covCol.size()] = strAssignN[i];
     inDataLvl[i+covCol.size()] = strAssign[i];
   }
@@ -1168,24 +1205,24 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector stateE = as<CharacterVector>(mv[RxMv_stateExtra]);
   CharacterVector stateS = as<CharacterVector>(mv[RxMv_sens]);
   CharacterVector state(state0.size() + stateE.size());
-  for (int i = 0; i < state0.size(); i++){
+  for (int i = 0; i < state0.size(); i++) {
     state[i] = state0[i];
   }
-  for (int i = 0; i < stateE.size(); i++){
+  for (int i = 0; i < stateE.size(); i++) {
     state[i+state0.size()] = stateE[i];
   }
   // Now adjust the compartment numbers if needed.
   int baseSize = state0.size() - stateS.size();
   for (int i = curDvid.size(); i--;){
-    if (curDvid[i] > baseSize){
+    if (curDvid[i] > baseSize) {
       curDvid[i] = stateS.size()+curDvid[i];
     }
   }
-  if (timeCol== -1){
+  if (timeCol== -1) {
     stop(_("'time' is required in dataset"));
   }
   NumericVector inTime;
-  if (rxIsNumIntLgl(inData[timeCol])){
+  if (rxIsNumIntLgl(inData[timeCol])) {
     inTime = as<NumericVector>(inData[timeCol]);
   } else {
     List newInData = clone(inData);
@@ -1238,7 +1275,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // save units information
   bool addTimeUnits = false;
   RObject timeUnits;
-  if (Rf_inherits(inTime, "units")){
+  if (Rf_inherits(inTime, "units")) {
     addTimeUnits=true;
     timeUnits=inTime.attr("units");
   }
@@ -1247,8 +1284,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector idLvl;
   IntegerVector inIdCov;
   int idInt=0;
-  if (idCol != -1){
-    if (rxode2parseIsIntegerish(inData[idCol])){
+  if (idCol != -1) {
+    if (rxode2parseIsIntegerish(inData[idCol])) {
       idInt = 1;
     }
     inId = convertId_(inData[idCol]);//as<IntegerVector>();
@@ -1281,7 +1318,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   IntegerVector inCmt;
   RObject cmtInfo = R_NilValue;
-  if (cmtCol != -1){
+  if (cmtCol != -1) {
     inCmt = as<IntegerVector>(toCmt(inData[cmtCol], state, false,
                                     state0.size(), stateS.size(), curDvid,
                                     inId, idLvl,
@@ -1291,7 +1328,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     inCmt.attr("cmtNames") = R_NilValue;
   }
   IntegerVector inDvid;
-  if (dvidCol != -1){
+  if (dvidCol != -1) {
     inDvid = as<IntegerVector>(toCmt(inData[dvidCol], state, true,
                                      state0.size(), stateS.size(),
                                      curDvid, inId, idLvl,
@@ -1300,8 +1337,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     inDvid.attr("cmtNames") = R_NilValue;
   }
   IntegerVector inSs;
-  if (ssCol != -1){
-    if (rxIsNumIntLgl(inData[ssCol])){
+  if (ssCol != -1) {
+    if (rxIsNumIntLgl(inData[ssCol])) {
       // NA by default is NA_logical
       inSs = as<IntegerVector>(inData[ssCol]);
     } else {
@@ -1311,39 +1348,40 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector inEvid;
   bool evidIsMDV = false;
   bool hasEvid=false;
-  if (evidCol != -1){
+  if (evidCol != -1) {
     if (rxIsNumIntLgl(inData[evidCol])){
       inEvid = as<IntegerVector>(inData[evidCol]);
       hasEvid=true;
     } else {
       stop(_("event id ('evid') needs to be an integer"));
     }
-  } else if (mdvCol != -1){
+  } else if (mdvCol != -1) {
     evidCol = mdvCol;
     mdvCol=-1;
     evidIsMDV=true;
-    if (rxIsNumIntLgl(inData[evidCol])){
+    if (rxIsNumIntLgl(inData[evidCol])) {
       inEvid = as<IntegerVector>(inData[evidCol]);
     } else {
       stop(_("missing DV ('mdv') needs to be an integer"));
     }
     hasEvid=true;
-  } else if (methodCol != -1){
+  } else if (methodCol != -1) {
     inEvid = convertMethod(inData[methodCol]);
     evidCol= methodCol;
     //hasEvid=true; The EVID is not present in the right form.
     // This allows mixing of deSolve with rate info
   }
   IntegerVector inMdv;
-  if (mdvCol != -1){
-    if (rxIsNumIntLgl(inData[mdvCol])){
+  if (mdvCol != -1) {
+    if (rxIsNumIntLgl(inData[mdvCol])) {
       inMdv = as<IntegerVector>(inData[mdvCol]);
     } else {
       stop(_("missing dependent variable ('mdv') needs to be an integer"));
     }
   }
+
   NumericVector inRate;
-  if (rateCol != -1){
+  if (rateCol != -1) {
     if (rxIsNumIntLgl(inData[rateCol])) {
       inRate = as<NumericVector>(inData[rateCol]);
     } else {
@@ -1352,7 +1390,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
 
   NumericVector inDur;
-  if (durCol != -1){
+  if (durCol != -1) {
     if (rxIsNumIntLgl(inData[durCol])) {
       inDur = as<NumericVector>(inData[durCol]);
     } else {
@@ -1363,10 +1401,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool addAmtUnits = false;
   RObject amtUnits;
   NumericVector inAmt;
-  if (amtCol != -1){
-    if (rxIsNumIntLgl(inData[amtCol])){
+  if (amtCol != -1) {
+    if (rxIsNumIntLgl(inData[amtCol])) {
       inAmt = as<NumericVector>(inData[amtCol]);
-      if (Rf_inherits(inAmt, "units")){
+      if (Rf_inherits(inAmt, "units")) {
         addAmtUnits=true;
         amtUnits=inAmt.attr("units");
       }
@@ -1375,23 +1413,23 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   NumericVector inIi;
-  if (iiCol != -1){
-    if (rxIsNumIntLgl(inData[iiCol])){
+  if (iiCol != -1) {
+    if (rxIsNumIntLgl(inData[iiCol])) {
       inIi = as<NumericVector>(inData[iiCol]);
     } else {
       stop(_("inter-dose interval ('ii') needs to be a number"));
     }
   }
   IntegerVector inAddl;
-  if (addlCol != -1){
-    if (rxIsNumIntLgl(inData[addlCol])){
+  if (addlCol != -1) {
+    if (rxIsNumIntLgl(inData[addlCol])) {
       inAddl = as<IntegerVector>(inData[addlCol]);
     } else {
       stop(_("number of additional doses ('addl') needs to be an integer"));
     }
   }
   NumericVector inDv;
-  if (dvCol != -1){
+  if (dvCol != -1) {
     if (rxIsNumIntLgl(inData[dvCol])) {
       inDv = as<NumericVector>(inData[dvCol]);
     } else {
@@ -1399,15 +1437,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   IntegerVector inCens;
-  if (censCol != -1){
-    if (rxIsNumIntLgl(inData[censCol])){
+  if (censCol != -1) {
+    if (rxIsNumIntLgl(inData[censCol])) {
       inCens = as<IntegerVector>(inData[censCol]);
     } else {
       stop(_("censoring variable ('cens') needs to be a number"));
     }
   }
   NumericVector inLimit;
-  if (limitCol != -1){
+  if (limitCol != -1) {
     if (rxIsNumIntLgl(inData[limitCol])) {
       inLimit = as<NumericVector>(inData[limitCol]);
     } else {
@@ -1495,10 +1533,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (limitCol == -1) climit = R_NegInf;
     else climit = inLimit[i];
     if (ISNA(climit)) climit = R_NegInf;
-    if (std::isinf(ctime)){
+    if (std::isinf(ctime)) {
       stop(_("infinite times are not allowed (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
     }
-    if (ctime < 0 && _ini0){
+    if (ctime < 0 && _ini0) {
       doWarnNeg=true;
     }
     if (iiCol == -1) cii = 0;
@@ -1506,11 +1544,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (ISNA(cii)) cii=0.0;
 
     if (cid == NA_INTEGER) stop(_("'id' cannot be 'NA'"));
-    if (std::find(allId.begin(), allId.end(), cid) == allId.end()){
+    if (std::find(allId.begin(), allId.end(), cid) == allId.end()) {
       allId.push_back(cid);
       // New ID
       // Add mtime records
-      for (j = nMtime; j--;){
+      for (j = nMtime; j--;) {
         id.push_back(cid);
         evid.push_back(j+10);
         cmtF.push_back(0);
@@ -1537,24 +1575,24 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else if (IntegerVector::is_na(inSs[i])) flg=1;
     else if (inSs[i] == 1 && cii > 0) flg=10;
     else if (inSs[i] == 2 && cii > 0) flg=20;
-    else if (inSs[i] == 1 && cii == 0 && camt == 0.0){
+    else if (inSs[i] == 1 && cii == 0 && camt == 0.0) {
       flg=40;
     }
 
     if (cmtCol != -1) {
       tmpCmt = inCmt[i];
-      if (inCmt[i] == 0 || IntegerVector::is_na(inCmt[i])){
-        if (evidCol == -1){
+      if (inCmt[i] == 0 || IntegerVector::is_na(inCmt[i])) {
+        if (evidCol == -1) {
           tmpCmt=cmt1;
-        } else if (inEvid[i] == 0){
+        } else if (inEvid[i] == 0) {
           tmpCmt=cmt1;
         } else {
           tmpCmt=cmt1;
         }
       }
-      if (IntegerVector::is_na(inCmt[i])){
+      if (IntegerVector::is_na(inCmt[i])) {
         tmpCmt = cmt1;
-      } else if (inCmt[i] < 0){
+      } else if (inCmt[i] < 0) {
         if (flg != 1) stop(_("steady state records cannot be on negative compartments (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         if (cmtSupportsOff(cmt, numLin, numLinSens, depotLin, numCmt, numSens)) {
           flg = 30;
@@ -1584,7 +1622,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     }
-    if (cmt <= 99){
+    if (cmt <= 99) {
       cmt100=0;
       cmt99=cmt;
     } else {
@@ -1595,20 +1633,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
     rateI = 0;
     // Rate
-    if (durCol == -1 || inDur[i] == 0 || ISNA(inDur[i])){
+    if (durCol == -1 || inDur[i] == 0 || ISNA(inDur[i])) {
       if (rateCol == -1 || inRate[i] == 0 || ISNA(inRate[i])) rate = 0.0;
       else rate = inRate[i];
-      if (rate == -1.0){
+      if (rate == -1.0) {
         // rate is modeled
         if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                 depotLin, numCmt, numSens)) {
           rateI = 9;
-        } else  {
+        } else {
           stop(_("specifying a modeled rate with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-      } else if (rate == -2.0){
+      } else if (rate == -2.0) {
         // duration is modeled
-        if (flg == 40){
+        if (flg == 40) {
           stop(_("when using steady state constant infusion modeling duration does not make sense (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (cmtSupportsInfusion(cmt, numLin, numLinSens,
@@ -1636,7 +1674,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (durCol == -1) rate = 0.0;
       if (inDur[i] == 0) rate = 0;
       // if (inDur[i] > 0)
-      if (inDur[i] == -1.0){
+      if (inDur[i] == -1.0) {
         // rate is modeled
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
@@ -1649,7 +1687,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       } else if (inDur[i] == -2.0){
         // duration is modeled
-        if (flg == 40){
+        if (flg == 40) {
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (cmtSupportsInfusion(cmt, numLin, numLinSens,
@@ -1658,12 +1696,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           stop(_("specifying a modeled duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-      } else if (inDur[i] > 0){
+      } else if (inDur[i] > 0) {
         // Duration is fixed
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
+        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                   depotLin, numCmt, numSens)) {
             rateI = 2;
@@ -1671,7 +1709,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             stop(_("specifying a fixed duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
           }
           rate = camt/inDur[i];
-        } else if (inEvid[i] > 4){
+        } else if (inEvid[i] > 4) {
           rateI=0;
           rate = 0.0;
         }
@@ -1685,17 +1723,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     // EVID flag
     if (evidCol == -1) {
       // Missing EVID
-      if (rateI == 0 && (ISNA(camt) || camt == 0.0)){
+      if (rateI == 0 && (ISNA(camt) || camt == 0.0)) {
         cevid = 0;
-        if (mdvCol != -1 && inMdv[i] == 1){
+        if (mdvCol != -1 && inMdv[i] == 1) {
           cevid=2;
         }
         if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
-            std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+            std::find(obsId.begin(), obsId.end(), cid) == obsId.end()) {
           obsId.push_back(cid);
         }
       } else {
-        if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
+        if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))) {
           stop(_("'amt' or 'dur'/'rate' are non-zero therefore MDV cannot = 0 (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         // For Rates and non-zero amts, assume dosing event
@@ -1705,17 +1743,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     } else {
       cevid = inEvid[i];
     }
-    if (evidIsMDV && cevid == 1 && camt == 0){
+    if (evidIsMDV && cevid == 1 && camt == 0) {
       cevid=2;
     }
-    if (IntegerVector::is_na(cevid)){
-      if (evidIsMDV){
+    if (IntegerVector::is_na(cevid)) {
+      if (evidIsMDV) {
         cevid=1;
       } else {
         cevid=0;
       }
     }
-    if (cevid == 4 && nobs ==0 && ndose == 0){
+    if (cevid == 4 && nobs ==0 && ndose == 0) {
       // No reset here
       cevid = 1;
     }
@@ -1727,24 +1765,24 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // Observation
       nobs++;
       cevid = 0;
-      if (mdvCol != -1 && inMdv[i] == 1){
+      if (mdvCol != -1 && inMdv[i] == 1) {
         cevid = 2;
       }
-      if (dvCol != -1 && ISNA(inDv[i])){
-        if (amtCol==-1){
+      if (dvCol != -1 && ISNA(inDv[i])) {
+        if (amtCol==-1) {
           cevid=2;
-        } else if (ISNA(inAmt[i]) || inAmt[i] == 0){
+        } else if (ISNA(inAmt[i]) || inAmt[i] == 0) {
           cevid=2;
         }
       }
       if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
-          std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+          std::find(obsId.begin(), obsId.end(), cid) == obsId.end()) {
         obsId.push_back(cid);
       }
-      if (caddl > 0){
+      if (caddl > 0) {
         Rf_warningcall(R_NilValue, "%s", _("'addl' is ignored with observations"));
       }
-      if (flg != 1){
+      if (flg != 1) {
         flg=1;
       }
       {
@@ -2360,7 +2398,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time6: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
-  if (zeroId.size() != allId.size()){
+  if (zeroId.size() != allId.size()) {
     std::string idWarn = "IDs without zero-time start at the first observed time:";
     for (j = allId.size(); j--;){
       if (std::find(zeroId.begin(), zeroId.end(), allId[j]) == zeroId.end()){
@@ -2402,7 +2440,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   NumericVector nvTime = wrap(time);
   IntegerVector ivEvid = clone(wrap(evid));
 
-  if (!keepDosingOnly && doseId.size() > 0){
+  if (!keepDosingOnly && doseId.size() > 0) {
 #define sortID if (ivEvid[j]==3){               \
       ivEvid[j] = NA_INTEGER+1;                 \
     } else if (amt[j] == 0){                    \
@@ -2430,7 +2468,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   ord = order3(ivId, nvTime, ivEvid);
   ord = ord - 1;
   idxOutput = as<std::vector<int>>(ord);
-  while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])){
+  while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])) {
     idxOutput.pop_back();
   }
   if (hasIcov) {
@@ -2446,12 +2484,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   lastId = id[idxOutput.back()]+42;
   int rmAmt = 0;
   // Remove trailing doses
-  if (!keepDosingOnly){
-    for (j =idxOutput.size(); j--; ){
-      if (lastId != id[idxOutput[j]]){
+  if (!keepDosingOnly) {
+    for (j =idxOutput.size(); j--; ) {
+      if (lastId != id[idxOutput[j]]) {
         // New id
         lastId = id[idxOutput[j]];
-        while (isDose(evid[idxOutput[j]]) && amt[idxOutput[j]] > 0 && j--){
+        while (isDose(evid[idxOutput[j]]) && amt[idxOutput[j]] > 0 && j--) {
           // keep negative doses or turning infusion off
           idxOutput[j+1] = -1;
           rmAmt++;
@@ -2460,20 +2498,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     // Remove trailing dose from idO
-    while(idxOutput.size() > 0 && idxOutput.back() == -1){
+    while(idxOutput.size() > 0 && idxOutput.back() == -1) {
       idxOutput.pop_back();
       rmAmt--;
     }
   }
   if (idxOutput.size()-rmAmt <= 0) stop(_("empty data"));
-  if (!keepDosingOnly){
+  if (!keepDosingOnly) {
     nid = obsId.size();
   } else {
     nid = allId.size();
   }
   NumericVector fPars = NumericVector(pars.size()*nid, NA_REAL);
   // sorted create the vectors/list
-  if (needCmt || addCmt && !hasCmt){
+  if (needCmt || addCmt && !hasCmt) {
     baseSize = 7;
   } else {
     baseSize = 6;
@@ -2484,7 +2522,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     Rf_warningcall(R_NilValue, "%s", _("while censoring is included in dataset, no observations are censored"));
     censAdd=0;
   }
-  if (swapDvLimit){
+  if (swapDvLimit) {
     Rf_warningcall(R_NilValue, "%s", _("'dv' and 'limit' swapped since 'limit' > 'dv'"));
   }
   int limitAdd = 0;
@@ -2534,7 +2572,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     nme[baseSize] = "LIMIT";
     baseSize++;
   }
-
   List lst1(1+covCol.size());
   CharacterVector nme1(1+covCol.size());
   std::vector<bool> sub1(1+covCol.size(), true);
@@ -2944,10 +2981,117 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   j=0;
-  List lst1F(1+covCol.size()-nTv);
-  CharacterVector nme1F(1+covCol.size()-nTv);
-  for (i = 0; i < lst1.size();i++){
-    if (sub1[i]){
+  if (hasMixest && (rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixest") != 0 ||
+                    !sub1[lst1.size()-1])) {
+    stop(_("mixest is time-varying but must be constant within an individual"));
+  }
+  if (hasMixUnif && (rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixunif") != 0 ||
+                    !sub1[lst1.size()-1])) {
+    stop(_("mixunif is time-varying but must be constant within an individual"));
+  }
+  int rmExtra = 0;
+  RObject mixUnif = R_NilValue;
+  if (hasMixest || hasMixUnif) {
+    rmExtra = 1;
+    NumericVector mixEst = as<NumericVector>(lst1[lst1.size()-1]);
+    NumericVector mixUnifNV(nid);
+    for (i = 0; i < nid; i++) {
+      if (hasMixest) {
+        if (mixEst[i] <= 0 || mixEst[i] > nmix) {
+          stop(_("mixest must be between 1 and %d for this model"), nmix);
+        }
+        if (std::trunc(mixEst[i]) != mixEst[i]) {
+          stop(_("mixest must be an integer value, one non-integer value is %f"), mixEst[i]);
+        }
+      } else {
+        if (mixEst[i] < 0 || mixEst[i] > 1) {
+          stop(_("mixunif must be between 0 and 1"));
+        }
+      }
+      // These are determined by the mixture probabilities, and cannot
+      // be determined without the parameter estimates
+      mixUnifNV[i] = mixEst[i];
+    }
+    mixUnif = wrap(mixUnifNV);
+    // erase "mixest" or "mixunif" from the covParPos
+    covParPos.erase(std::remove(covParPos.begin(), covParPos.end(), parn),
+                    covParPos.end());
+
+    // Remove mixest from the covUnits
+    List covUnits2(covCol.size()-1);
+    CharacterVector covUnitsN2(covCol.size()-1);
+    j = 0;
+    if (hasMixest) {
+      for (i = 0; i < covCol.size(); i++){
+        if (rxstrcmpi(CHAR(covUnitsN[i]), "mixest")) {
+          covUnits2[j] = covUnits[i];
+          covUnitsN2[j] = covUnitsN[i];
+          j++;
+        }
+      }
+    } else {
+      for (i = 0; i < covCol.size(); i++){
+        if (rxstrcmpi(CHAR(covUnitsN[i]), "mixunif")) {
+          covUnits2[j] = covUnits[i];
+          covUnitsN2[j] = covUnitsN[i];
+          j++;
+        }
+      }
+    }
+    Rf_setAttrib(covUnits2, R_NamesSymbol, covUnitsN2);
+    covUnits = covUnits2;
+    covUnitsN = covUnitsN2;
+
+    // Remove mixest or mixunif from $pars
+
+    NumericVector fPars2 = NumericVector((pars.size()-1)*nid, NA_REAL);
+    for (i = 0; i < nid; i++){
+      // copy, removing the last row
+      std::copy(fPars.begin() + i*pars.size(),
+                fPars.begin() + i*pars.size() + pars.size() - 1,
+                fPars2.begin()+ i*(pars.size()-1));
+    }
+    Rf_setAttrib(fPars2, R_DimSymbol,
+                 IntegerVector::create(pars.size()-1, nid));
+    Rf_setAttrib(fPars2, R_DimNamesSymbol,
+                 List::create(as<CharacterVector>(mv[RxMv_params]), R_NilValue));
+
+    fPars = fPars2;
+
+    // Remove mixest or mixunif from levelInfo
+    List inDataLvlN2(covCol.size()+strAssign.size()-1);
+    List inDataLvl2(covCol.size()+strAssign.size()-1);
+    int j = 0;
+    if (hasMixest) {
+      for (i = 0; i < inDataLvl.size(); ++i) {
+        if (rxstrcmpi(CHAR(inDataLvlN[i]), "mixest")) {
+          inDataLvlN2[j] = inDataLvlN[i];
+          inDataLvl2[j] = inDataLvl[i];
+          j++;
+        }
+      }
+    } else {
+      for (i = 0; i < inDataLvl.size(); ++i) {
+        if (rxstrcmpi(CHAR(inDataLvlN[i]), "mixunif")) {
+          inDataLvlN2[j] = inDataLvlN[i];
+          inDataLvl2[j] = inDataLvl[i];
+          j++;
+        }
+      }
+    }
+    Rf_setAttrib(inDataLvl2, R_NamesSymbol, inDataLvlN2);
+    inDataLvl = inDataLvl2;
+  } else {
+    Rf_setAttrib(fPars, R_DimSymbol,
+                 IntegerVector::create(pars.size(), nid));
+
+    Rf_setAttrib(fPars, R_DimNamesSymbol,
+                 List::create(pars, R_NilValue));
+  }
+  List lst1F(1+covCol.size()-nTv-rmExtra);
+  CharacterVector nme1F(1+covCol.size()-nTv-rmExtra);
+  for (i = 0; i < lst1.size()-rmExtra;i++){
+    if (sub1[i]) {
       lst1F[j]=lst1[i];
       nme1F[j]=nme1[i];
       j++;
@@ -2982,7 +3126,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(lst1F, R_ClassSymbol, wrap("data.frame"));
   Rf_setAttrib(lst1F, R_RowNamesSymbol,
                IntegerVector::create(NA_INTEGER, -nid));
-  List e(30);
+  List e(31);
   RxTransNames;
   e[RxTrans_ndose] = IntegerVector::create(ndose);
   e[RxTrans_nobs]  = IntegerVector::create(nobs);
@@ -3015,10 +3159,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   e[RxTrans_covParPos0] = wrap(covParPos0);
   e[RxTrans_covUnits] = covUnits;
-  Rf_setAttrib(fPars, R_DimSymbol,
-               IntegerVector::create(pars.size(), nid));
-  Rf_setAttrib(fPars, R_DimNamesSymbol,
-               List::create(pars, R_NilValue));
   e[RxTrans_pars] = fPars;
   e[RxTrans_allBolus] = allBolus;
   e[RxTrans_allInf] = allInf;
@@ -3045,6 +3185,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(keepL, Rf_install("keepCov"), wrap(keepLc));
   e[RxTrans_keepL] = List::create(_["keepL"]=keepL, _["keepLtype"]=inDataFKL);
   e[RxTrans_maxItemsPerId] = maxItemsPerId;
+  e[RxTrans_mixUnif] = mixUnif;
   Rf_setAttrib(e, R_ClassSymbol, wrap("rxHidden"));
   cls.attr(".rxode2.lst") = e;
   tmp = lstF[0];

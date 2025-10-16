@@ -68,7 +68,7 @@ extern "C" SEXP _rxode2_assignUdf(SEXP in);
 extern "C" SEXP _rxode2_udfEnvSet(SEXP udf);
 extern "C" SEXP _rxode2_udfReset();
 extern "C" SEXP _rxode2_rxC(SEXP in);
-
+extern "C" double rxunifmix(rx_solving_options_ind* ind);
 
 #include "../inst/include/rxode2_as.h"
 
@@ -1656,7 +1656,7 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
     List envCls = tmpCls.attr(".rxode2.lst");
     NumericMatrix iniPars = envCls[RxTrans_pars];
     // Copy the pre-filled covariates into the parameter values.
-    for (int j = rx->nsim;j--;){
+    for (int j = rx->nsim; j--; ){
       std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+rx->nsub*npars*j);
     }
     IntegerVector parPos = envCls["covParPos0"];
@@ -2937,7 +2937,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                      const RObject &inits,
                                      rxSolve_t* rxSolveDat){
   rx_solve* rx = getRxSolve_();
-  if (rxIs(ev1, "rxEt")){
+  if (rxIs(ev1, "rxEt")) {
     CharacterVector cls = ev1.attr("class");
     List etE = cls.attr(".rxode2.lst");
     int nobs = asInt(etE["nobs"], "nobs");
@@ -3022,7 +3022,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       ev1 = et_(List::create(newObs), as<List>(ev1));
     }
   }
-  if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")){
+  if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
     ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                            false, false, true, R_NilValue,
                            rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
@@ -3061,7 +3061,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     }
   }
   rx->hasFactors=0;
-  if (rxIs(ev1, "rxEtTran")){
+  if (rxIs(ev1, "rxEtTran")) {
     CharacterVector cls = ev1.attr("class");
     List tmpL = cls.attr(".rxode2.lst");
     rx->nobs2 = asInt(tmpL[RxTrans_nobs], "nobs");
@@ -3404,6 +3404,23 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   }
 }
 
+static inline NumericVector getMixUnif(const RObject &ev1)  {
+  NumericVector mixUnif;
+  rx_solve* rx = getRxSolve_();
+  rx->input_mixnum = 0;
+  if (rxIs(ev1, "rxEtTran")){
+    CharacterVector tmpCls = ev1.attr("class");
+    List e = tmpCls.attr(".rxode2.lst");
+    RObject tmpO = e[RxTrans_mixUnif];
+    if (!Rf_isNull(tmpO)){
+      mixUnif = as<NumericVector>(tmpO);
+      rx->input_mixnum = 1;
+    }
+  } else {
+  }
+  return mixUnif;
+}
+
 // This loops through the data to put each individual into the
 // approiate data structure.
 // At the same time calculate hmax per individual as well
@@ -3428,6 +3445,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
   unsigned int nobs = 0, ndoses = 0;
 
   int ncov =0, curcovi = 0;
+
+  NumericVector mixUnif = getMixUnif(ev1);
 
   if (rxIs(ev1,"event.data.frame")||
       rxIs(ev1,"event.matrix")){
@@ -3611,6 +3630,14 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         if (nall != 0) {
           // Finalize last solve.
           ind->n_all_times    = ndoses+nobs;
+          if (rx->mixnum) {
+            ind->mixest = 0;
+            if (nsub >= mixUnif.size()) {
+              ind->mixunif = rxunifmix(ind);
+            } else {
+              ind->mixunif = mixUnif[nsub];
+            }
+          }
           if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
           ind->cov_ptr = &(_globals.gcov[curcovi]);
           for (ii = 0; ii < ncov; ii++){
@@ -3709,6 +3736,14 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     rx->nevid9 = nevid9;
     // Finalize the prior individual
     ind->n_all_times    = ndoses+nobs;
+    if (rx->mixnum) {
+      ind->mixest = 0;
+      if (nsub >= mixUnif.size()) {
+        ind->mixunif = rxunifmix(ind);
+      } else {
+        ind->mixunif = mixUnif[nsub];
+      }
+    }
     if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
     ind->cov_ptr = &(_globals.gcov[curcovi]);
     for (ii = 0; ii < ncov; ii++){
@@ -3976,15 +4011,6 @@ static inline void rxSolve_resample(const RObject &obj,
       if (updatePar){
         rxSolveDat->par1 = as<RObject>(parListF);
       }
-      // REprintf("ret\n");
-      // ret.attr("dimnames") = List::create(pars, R_NilValue);
-      // Rcpp::print(ret);
-
-      // REprintf("parList\n");
-      // Rcpp::print(parList);
-      // REprintf("parListF\n");
-      // Rcpp::print(parListF);
-
       // Put sampled dataset in gpars
       std::copy(ret.begin(), ret.end(), &_globals.gpars[0]);
     }
@@ -4089,6 +4115,16 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->cov_ptr = indS.cov_ptr;
             }
             ind->n_all_times =indS.n_all_times;
+            if (rx->mixnum) {
+              // In this case, it is a new individual so rxunifmix is
+              // always selected.
+              //
+              // In the case where simulating, the input dataset should not
+              // contain mixest
+              //
+              ind->mixest = 0;
+              ind->mixunif = rxunifmix(ind);
+            }
             if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
             ind->HMAX = indS.HMAX;
             ind->idose = &(indS.idose[0]);
@@ -4413,26 +4449,6 @@ static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
   _rxModels[".rxSolveDat.idLevels"] = rxSolveDat->idLevels;
 }
 
-// static inline void rxSolveSaveRxRestore(rxSolve_t* rxSolveDat){
-//   // Assigned as a precaution against R's gc()
-//   rxSolveDat->mv = as<List>(_rxModels[".rxSolveDat.mv"]);
-//   rxSolveDat->addDosing = as<Nullable<LogicalVector>>(_rxModels[".rxSolveDat.addDosing"]);
-//   rxSolveDat->timeUnitsU = as<RObject>(_rxModels[".rxSolveDat.timeUnitsU"]);
-//   rxSolveDat->covUnits = as<List>(_rxModels[".rxSolveDat.covUnits"]);
-//   rxSolveDat->par1 = as<RObject>(_rxModels[".rxSolveDat.par1"]);
-//   rxSolveDat->par1ini = as<RObject>(_rxModels[".rxSolveDat.par1ini"]);
-//   rxSolveDat->initsC = as<NumericVector>(_rxModels[".rxSolveDat.initsC"]);
-//   rxSolveDat->eGparPos = as<IntegerVector>(_rxModels[".rxSolveDat.eGparPos"]);
-//   rxSolveDat->sigmaN = as<CharacterVector>(_rxModels[".rxSolveDat.sigmaN"]);
-//   rxSolveDat->omegaN = as<CharacterVector>(_rxModels[".rxSolveDat.omegaN"]);
-//   rxSolveDat->parNumeric = as<NumericVector>(_rxModels[".rxSolveDat.parNumeric"]);
-//   rxSolveDat->parDf = as<DataFrame>(_rxModels[".rxSolveDat.parDf"]);
-//   rxSolveDat->parMat = as<NumericMatrix>(_rxModels[".rxSolveDat.parMat"]);
-//   rxSolveDat->nmP = as<CharacterVector>(_rxModels[".rxSolveDat.nmP"]);
-//   rxSolveDat->mvIni = as<NumericVector>(_rxModels[".rxSolveDat.mvIni"]);
-//   rxSolveDat->idLevels = as<CharacterVector>(_rxModels[".rxSolveDat.idLevels"]);
-// }
-
 RObject _curPar;
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   unsigned int i;
@@ -4455,64 +4471,6 @@ static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   }
 }
 
-// This updates the parameters based on the already loaded event table.
-// static inline void rxSolve_updateParams(RObject &trueParams,
-//          const RObject &obj,
-//          const List &rxControl,
-//          const Nullable<CharacterVector> &specParams,
-//          const Nullable<List> &extraArgs,
-//          const RObject &params,
-//          const RObject &events,
-//          const RObject &inits,
-//          rxSolve_t* rxSolveDat){
-//   rxSolveDat->par1 = trueParams;
-//   rxSolveDat->usePar1=true;
-//   rx_solve* rx = getRxSolve_();
-//   rx_solving_options* op = rx->op;
-//   if (rxIs(rxSolveDat->par1, "data.frame")){
-//     if (rxSolveDat->idLevels.size() > 0){
-//       // FIXME: check to see if IDs are dropped.
-//       Function sort = getRxFn(".sortId");
-//       rxSolveDat->parDf = clone(sortId(rxSolveDat->par1, rxSolveDat->idLevels, "parameters",
-//              rxSolveDat->warnIdSort));
-//       rxSolveDat->par1 = rxSolveDat->parDf;
-//     } else {
-//       rxSolveDat->parDf = as<DataFrame>(rxSolveDat->par1);
-//     }
-//     rxSolveDat->parType = 2;
-//     rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
-//     unsigned int parDfi = rxSolveDat->parDf.size();
-//     rxSolveDat->parMat = NumericMatrix(rxSolveDat->nPopPar, parDfi);
-//     while (parDfi--){
-//       rxSolveDat->parMat(_,parDfi)=NumericVector(rxSolveDat->parDf[parDfi]);
-//     }
-//     rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parDf.names());
-//   } else if (rxIs(rxSolveDat->par1, "matrix")){
-//     rxSolveDat->parMat = as<NumericMatrix>(rxSolveDat->par1);
-//     rxSolveDat->nPopPar = rxSolveDat->parMat.nrow();
-//     rxSolveDat->parType = 3;
-//   } else if (!rxIsNull(rxSolveDat->par1)) {
-//     rxSolveDat->parNumeric = rxSolveDat->par1;
-//     // Convert NumericVector to a matrix
-
-//     rxSolveDat->parMat = NumericMatrix(rx->nsub, rxSolveDat->parNumeric.size());
-//     unsigned int parDfi = rxSolveDat->parNumeric.size();
-//     while (parDfi--){
-//       std::fill_n(rxSolveDat->parMat.begin()+parDfi*rx->nsub, rx->nsub, rxSolveDat->parNumeric[parDfi]);
-//     }
-//     rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parNumeric.attr("names"));
-//   }
-//   RObject ev1=_rxModels[".lastEv1"];
-//   std::fill_n(&_globals.gpars[0], rx->npars*rxSolveDat->nPopPar, NA_REAL);
-//   gparsCovSetupConstant(ev1, rx->npars);
-//   // Setup a possibly new scale.
-//   RObject scale = rxControl[Rxc_scale];
-//   NumericVector scaleC = rxSetupScale(obj, scale, extraArgs);
-//   std::copy(scaleC.begin(),scaleC.end(),&_globals.gscale[0]);
-//   rxSolve_assignGpars(rxSolveDat);
-//   // std::fill_n(&_globals.gsolve[0], rx->nall*op->neq*rx->nsim, 0.0);
-//   seedEng(op->cores); // Reseed
-// }
 
 static inline SEXP rxSolve_finalize(const RObject &obj,
                                     const List &rxControl,
@@ -5241,6 +5199,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->nSize = rxSolveDat->nPopPar*rx->nsub;
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
+    if (rx->input_mixnum && rx->nsim > 1) {
+      stop(_("with mixnum or mixunif specified, cannot simulate %d simulations"),
+           rx->nsim);
+    }
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
     int n0 = rx->nall*state.size()*rx->nsim;
     int nsave = op->neq*op->cores;
@@ -6418,7 +6380,6 @@ SEXP setRstudio(bool isRstudio=false){
 extern "C" int isRstudio(){
   return isRstudioI;
 }
-
 
 int isProgSupportedI = 1;
 
