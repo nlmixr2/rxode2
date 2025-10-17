@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+- Added `dmexpit()` for getting the diagonal Jacobian.
+
+- Added special handling of `mixest` and `mixunif`.
+
 # rxode2 4.1.1
 
 - Stacking for multiple-endpoint `ipredSim` now matches
