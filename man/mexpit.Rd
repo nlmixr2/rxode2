@@ -2,9 +2,12 @@
 % Please edit documentation in R/mlogit.R
 \name{mexpit}
 \alias{mexpit}
+\alias{dmexpit}
 \title{mexpit -- Convert log-scale numbers to probabilities}
 \usage{
 mexpit(...)
+
+dmexpit(...)
 }
 \arguments{
 \item{...}{numeric log-scale numbers to convert to probabilities.}
@@ -23,14 +26,20 @@ The probabilities are calculated using the following equation:
 This ensures one remaining probability will add to one, that is
 
 \deqn{p_N = \frac{1}{1+\sum_{j=1}^{N-1} e^{x_j}}}
+
+For the function \code{dmexpit()}, the element-wise derivatives are calculated; that is, it returns the diagonal of the Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
 }
 \examples{
 
 m <- mlogit(0.1, 0.2, 0.3)
 mexpit(m)
 
+# derivatives
+dmexpit(m)
+
 p <- mexpit(-3, 0.5, 3)
 mlogit(p)
+
 
 }
 \author{

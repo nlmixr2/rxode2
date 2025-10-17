@@ -593,6 +593,7 @@ SEXP _rxode2_getCmtNum_(SEXP, SEXP, SEXP);
 SEXP _rxode2_cmtSupportsInfusion_(SEXP, SEXP);
 SEXP _rxode2_cmtSupportsOff_(SEXP, SEXP);
 SEXP _rxode2_mexpit(SEXP p);
+SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
 
@@ -602,6 +603,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
     {"_rxode2_mlogit_j", (DL_FUNC) &_rxode2_mlogit_j, 1},
     {"_rxode2_mexpit", (DL_FUNC) &_rxode2_mexpit, 1},
+    {"_rxode2_dmexpit", (DL_FUNC) &_rxode2_dmexpit, 1},
     {"_rxode2_cmtSupportsOff_", (DL_FUNC) &_rxode2_cmtSupportsOff_, 2},
     {"_rxode2_cmtSupportsInfusion_", (DL_FUNC) &_rxode2_cmtSupportsInfusion_, 2},
     {"_rxode2_getCmtNum_", (DL_FUNC) &_rxode2_getCmtNum_, 3},
