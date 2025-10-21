@@ -7,151 +7,151 @@
 // Define 2 LHS values
 #define _LHS_0_ 0 // C2
 #define _LHS_1_ 1 // C3
-#define _getRxSolve_ _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2030__getRxSolve__OclB
-#define _evalUdf _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2031__evalUdf_dvcH
-#define _solveData _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2032__solveData_YHlO
-#define _assign_ptr _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2033__assign_ptr_Rzkg
-#define _rxRmModelLib _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2034__rxRmModelLib_9phZ
-#define _rxGetModelLib _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2035__rxGetModelLib_jbtv
-#define _old_c _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2036__old_c_sFQk
-#define _ptrid _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2037__ptrid_pVHF
-#define _rxIsCurrentC _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2038__rxIsCurrentC_4tE5
-#define _sumPS _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2039__sumPS_bqrW
-#define _prodPS _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2040__prodPS_j2jI
-#define _prodType _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2041__prodType_RW0c
-#define _sumType _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2042__sumType_rrgc
-#define _update_par_ptr _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2043__update_par_ptr_GmEs
-#define _getParCov _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2044__getParCov_Ju9x
-#define _rxode2_rxAssignPtr _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2045__rxode2_rxAssignPtr_ahgB
-#define _rxQr _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2046__rxQr_OZl3
-#define _compareFactorVal _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2047__compareFactorVal_zYvT
-#define _sum _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2048__sum_a97E
-#define _udf _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2049__udf_hW3M
-#define _sign _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2050__sign_G9V3
-#define _prod _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2051__prod_pR1a
-#define _max _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2052__max_NkG5
-#define _min _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2053__min_JwD9
-#define _transit4P _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2054__transit4P_TK40
-#define _transit3P _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2055__transit3P_NPJi
-#define _assignFuns0 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2056__assignFuns0_ALZB
-#define _assignFuns _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2057__assignFuns_rhef
-#define _rxord _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2058__rxord_ghDr
-#define __assignFuns2 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2059___assignFuns2_m85i
-#define _llikCauchyDscale _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2060__llikCauchyDscale_gvlJ
-#define _llikCauchyDlocation _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2061__llikCauchyDlocation_YgGq
-#define _llikCauchy _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2062__llikCauchy_QxLo
-#define _llikGammaDrate _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2063__llikGammaDrate_YlFg
-#define _llikGammaDshape _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2064__llikGammaDshape_JdKa
-#define _llikGamma _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2065__llikGamma_FgmD
-#define _llikWeibullDscale _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2066__llikWeibullDscale_R4jx
-#define _llikWeibullDshape _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2067__llikWeibullDshape_uoP8
-#define _llikWeibull _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2068__llikWeibull_gmoU
-#define _llikUnifDbeta _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2069__llikUnifDbeta_omwL
-#define _llikUnifDalpha _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2070__llikUnifDalpha_tuDg
-#define _llikUnif _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2071__llikUnif_OztP
-#define _llikGeomDp _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2072__llikGeomDp_ZwDq
-#define _llikGeom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2073__llikGeom_x2t0
-#define _llikFDdf2 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2074__llikFDdf2_FfCR
-#define _llikFDdf1 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2075__llikFDdf1_upBf
-#define _llikF _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2076__llikF_cLLl
-#define _llikExpDrate _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2077__llikExpDrate_Jk0H
-#define _llikExp _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2078__llikExp_Ouqu
-#define _llikChisqDdf _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2079__llikChisqDdf_MQIP
-#define _llikChisq _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2080__llikChisq_4sBK
-#define _llikTDsd _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2081__llikTDsd_wlIO
-#define _llikTDmean _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2082__llikTDmean_N1tT
-#define _llikTDdf _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2083__llikTDdf_X5Du
-#define _llikT _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2084__llikT_lHLx
-#define _llikBetaDshape2 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2085__llikBetaDshape2_eAUt
-#define _llikBetaDshape1 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2086__llikBetaDshape1_0po6
-#define _llikBeta _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2087__llikBeta_AqSQ
-#define _llikNbinomMuDmu _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2088__llikNbinomMuDmu_knH8
-#define _llikNbinomMu _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2089__llikNbinomMu_fPCA
-#define _llikNbinomDprob _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2090__llikNbinomDprob_nNkU
-#define _llikNbinom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2091__llikNbinom_mswi
-#define _llikBinomDprob _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2092__llikBinomDprob_OWG1
-#define _llikBinom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2093__llikBinom_6HPU
-#define _llikPoisDlambda _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2094__llikPoisDlambda_gnCj
-#define _llikPois _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2095__llikPois_uwA8
-#define _llikNormDsd _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2096__llikNormDsd_iwbn
-#define _llikNormDmean _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2097__llikNormDmean_2GTQ
-#define _llikNorm _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2098__llikNorm_jSre
-#define simeps _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2099_simeps_r5ze
-#define simeta _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2100_simeta_xLgA
-#define probitInv _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2101_probitInv_wME6
-#define expit _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2102_expit_nqR3
-#define probit _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2103_probit_DD9j
-#define logit _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2104_logit_N5O4
-#define gammapDer _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2105_gammapDer_r9D9
-#define lowergamma _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2106_lowergamma_7me5
-#define uppergamma _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2107_uppergamma_ybV8
-#define gammaqInva _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2108_gammaqInva_EuZ1
-#define gammaqInv _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2109_gammaqInv_xTQY
-#define gammapInva _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2110_gammapInva_OQe6
-#define gammapInv _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2111_gammapInv_aqt3
-#define gammaq _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2112_gammaq_Lbsb
-#define gammap _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2113_gammap_eaw5
-#define phi _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2114_phi_m4br
-#define d2ELUa _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2115_d2ELUa_D9EZ
-#define dELUa _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2116_dELUa_AJNe
-#define d2aELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2117_d2aELU_7IxU
-#define d2ELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2118_d2ELU_FA5R
-#define dELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2119_dELU_2wZw
-#define ELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2120_ELU_wBgR
-#define dPReLUa1 _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2121_dPReLUa1_vbln
-#define dPReLUa _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2122_dPReLUa_k357
-#define dPReLU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2123_dPReLU_cfUw
-#define PReLU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2124_PReLU_MarE
-#define dSwish _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2125_dSwish_A9z1
-#define Swish _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2126_Swish_SE1K
-#define dlReLU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2127_dlReLU_zAf2
-#define lReLU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2128_lReLU_H4Q2
-#define dSELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2129_dSELU_oF0j
-#define SELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2130_SELU_oCGj
-#define d4softplus _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2131_d4softplus_0a8w
-#define d3softplus _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2132_d3softplus_AbQE
-#define d2softplus _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2133_d2softplus_LOlO
-#define dsoftplus _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2134_dsoftplus_bqNa
-#define softplus _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2135_softplus_thlt
-#define d4GELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2136_d4GELU_iWR2
-#define d3GELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2137_d3GELU_IGVL
-#define d2GELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2138_d2GELU_QYM8
-#define dGELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2139_dGELU_4JCn
-#define GELU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2140_GELU_uyCX
-#define dReLU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2141_dReLU_PJUj
-#define ReLU _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2142_ReLU_vFk7
-#define riweibull _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2143_riweibull_KJvD
-#define riunif _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2144_riunif_xqbV
-#define rit_ _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2145_rit__SKVf
-#define ripois _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2146_ripois_r7Tc
-#define ribeta _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2147_ribeta_aUEg
-#define rigamma _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2148_rigamma_pYkN
-#define rigeom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2149_rigeom_IqnE
-#define rif _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2150_rif_nmhS
-#define riexp _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2151_riexp_boMZ
-#define richisq _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2152_richisq_YBjk
-#define ricauchy _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2153_ricauchy_iCoU
-#define rinbinomMu _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2154_rinbinomMu_qvni
-#define rinbinom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2155_rinbinom_I75U
-#define ribinom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2156_ribinom_i0GV
-#define rinorm _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2157_rinorm_Ts34
-#define rxweibull _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2158_rxweibull_TNHe
-#define rxunif _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2159_rxunif_Fpue
-#define rxt_ _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2160_rxt__1ZaE
-#define rxpois _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2161_rxpois_nJR6
-#define rxbeta _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2162_rxbeta_UHZK
-#define rxgamma _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2163_rxgamma_bSsm
-#define rxgeom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2164_rxgeom_NYlS
-#define rxf _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2165_rxf_2wzY
-#define rxexp _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2166_rxexp_qw2z
-#define rxchisq _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2167_rxchisq_8bGM
-#define rxcauchy _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2168_rxcauchy_djLB
-#define rxnbinomMu _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2169_rxnbinomMu_3LsO
-#define rxnbinom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2170_rxnbinom_URbP
-#define rxbinom _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2171_rxbinom_YUPm
-#define rxnorm _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2172_rxnorm_W8sO
-#define linCmtB _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2173_linCmtB_mGyp
-#define linCmtA _rxmod1_f7daf533f0f9f0fd5e9c10f6ff8f16dc2174_linCmtA_O55O
+#define _getRxSolve_ _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942030__getRxSolve__OclB
+#define _evalUdf _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942031__evalUdf_dvcH
+#define _solveData _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942032__solveData_YHlO
+#define _assign_ptr _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942033__assign_ptr_Rzkg
+#define _rxRmModelLib _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942034__rxRmModelLib_9phZ
+#define _rxGetModelLib _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942035__rxGetModelLib_jbtv
+#define _old_c _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942036__old_c_sFQk
+#define _ptrid _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942037__ptrid_pVHF
+#define _rxIsCurrentC _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942038__rxIsCurrentC_4tE5
+#define _sumPS _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942039__sumPS_bqrW
+#define _prodPS _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942040__prodPS_j2jI
+#define _prodType _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942041__prodType_RW0c
+#define _sumType _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942042__sumType_rrgc
+#define _update_par_ptr _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942043__update_par_ptr_GmEs
+#define _getParCov _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942044__getParCov_Ju9x
+#define _rxode2_rxAssignPtr _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942045__rxode2_rxAssignPtr_ahgB
+#define _rxQr _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942046__rxQr_OZl3
+#define _compareFactorVal _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942047__compareFactorVal_zYvT
+#define _sum _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942048__sum_a97E
+#define _udf _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942049__udf_hW3M
+#define _sign _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942050__sign_G9V3
+#define _prod _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942051__prod_pR1a
+#define _max _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942052__max_NkG5
+#define _min _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942053__min_JwD9
+#define _transit4P _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942054__transit4P_TK40
+#define _transit3P _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942055__transit3P_NPJi
+#define _assignFuns0 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942056__assignFuns0_ALZB
+#define _assignFuns _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942057__assignFuns_rhef
+#define _rxord _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942058__rxord_ghDr
+#define __assignFuns2 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942059___assignFuns2_m85i
+#define _llikCauchyDscale _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942060__llikCauchyDscale_gvlJ
+#define _llikCauchyDlocation _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942061__llikCauchyDlocation_YgGq
+#define _llikCauchy _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942062__llikCauchy_QxLo
+#define _llikGammaDrate _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942063__llikGammaDrate_YlFg
+#define _llikGammaDshape _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942064__llikGammaDshape_JdKa
+#define _llikGamma _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942065__llikGamma_FgmD
+#define _llikWeibullDscale _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942066__llikWeibullDscale_R4jx
+#define _llikWeibullDshape _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942067__llikWeibullDshape_uoP8
+#define _llikWeibull _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942068__llikWeibull_gmoU
+#define _llikUnifDbeta _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942069__llikUnifDbeta_omwL
+#define _llikUnifDalpha _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942070__llikUnifDalpha_tuDg
+#define _llikUnif _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942071__llikUnif_OztP
+#define _llikGeomDp _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942072__llikGeomDp_ZwDq
+#define _llikGeom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942073__llikGeom_x2t0
+#define _llikFDdf2 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942074__llikFDdf2_FfCR
+#define _llikFDdf1 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942075__llikFDdf1_upBf
+#define _llikF _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942076__llikF_cLLl
+#define _llikExpDrate _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942077__llikExpDrate_Jk0H
+#define _llikExp _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942078__llikExp_Ouqu
+#define _llikChisqDdf _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942079__llikChisqDdf_MQIP
+#define _llikChisq _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942080__llikChisq_4sBK
+#define _llikTDsd _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942081__llikTDsd_wlIO
+#define _llikTDmean _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942082__llikTDmean_N1tT
+#define _llikTDdf _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942083__llikTDdf_X5Du
+#define _llikT _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942084__llikT_lHLx
+#define _llikBetaDshape2 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942085__llikBetaDshape2_eAUt
+#define _llikBetaDshape1 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942086__llikBetaDshape1_0po6
+#define _llikBeta _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942087__llikBeta_AqSQ
+#define _llikNbinomMuDmu _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942088__llikNbinomMuDmu_knH8
+#define _llikNbinomMu _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942089__llikNbinomMu_fPCA
+#define _llikNbinomDprob _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942090__llikNbinomDprob_nNkU
+#define _llikNbinom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942091__llikNbinom_mswi
+#define _llikBinomDprob _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942092__llikBinomDprob_OWG1
+#define _llikBinom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942093__llikBinom_6HPU
+#define _llikPoisDlambda _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942094__llikPoisDlambda_gnCj
+#define _llikPois _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942095__llikPois_uwA8
+#define _llikNormDsd _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942096__llikNormDsd_iwbn
+#define _llikNormDmean _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942097__llikNormDmean_2GTQ
+#define _llikNorm _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942098__llikNorm_jSre
+#define simeps _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942099_simeps_r5ze
+#define simeta _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942100_simeta_xLgA
+#define probitInv _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942101_probitInv_wME6
+#define expit _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942102_expit_nqR3
+#define probit _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942103_probit_DD9j
+#define logit _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942104_logit_N5O4
+#define gammapDer _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942105_gammapDer_r9D9
+#define lowergamma _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942106_lowergamma_7me5
+#define uppergamma _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942107_uppergamma_ybV8
+#define gammaqInva _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942108_gammaqInva_EuZ1
+#define gammaqInv _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942109_gammaqInv_xTQY
+#define gammapInva _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942110_gammapInva_OQe6
+#define gammapInv _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942111_gammapInv_aqt3
+#define gammaq _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942112_gammaq_Lbsb
+#define gammap _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942113_gammap_eaw5
+#define phi _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942114_phi_m4br
+#define d2ELUa _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942115_d2ELUa_D9EZ
+#define dELUa _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942116_dELUa_AJNe
+#define d2aELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942117_d2aELU_7IxU
+#define d2ELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942118_d2ELU_FA5R
+#define dELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942119_dELU_2wZw
+#define ELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942120_ELU_wBgR
+#define dPReLUa1 _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942121_dPReLUa1_vbln
+#define dPReLUa _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942122_dPReLUa_k357
+#define dPReLU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942123_dPReLU_cfUw
+#define PReLU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942124_PReLU_MarE
+#define dSwish _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942125_dSwish_A9z1
+#define Swish _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942126_Swish_SE1K
+#define dlReLU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942127_dlReLU_zAf2
+#define lReLU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942128_lReLU_H4Q2
+#define dSELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942129_dSELU_oF0j
+#define SELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942130_SELU_oCGj
+#define d4softplus _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942131_d4softplus_0a8w
+#define d3softplus _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942132_d3softplus_AbQE
+#define d2softplus _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942133_d2softplus_LOlO
+#define dsoftplus _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942134_dsoftplus_bqNa
+#define softplus _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942135_softplus_thlt
+#define d4GELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942136_d4GELU_iWR2
+#define d3GELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942137_d3GELU_IGVL
+#define d2GELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942138_d2GELU_QYM8
+#define dGELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942139_dGELU_4JCn
+#define GELU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942140_GELU_uyCX
+#define dReLU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942141_dReLU_PJUj
+#define ReLU _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942142_ReLU_vFk7
+#define riweibull _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942143_riweibull_KJvD
+#define riunif _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942144_riunif_xqbV
+#define rit_ _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942145_rit__SKVf
+#define ripois _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942146_ripois_r7Tc
+#define ribeta _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942147_ribeta_aUEg
+#define rigamma _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942148_rigamma_pYkN
+#define rigeom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942149_rigeom_IqnE
+#define rif _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942150_rif_nmhS
+#define riexp _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942151_riexp_boMZ
+#define richisq _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942152_richisq_YBjk
+#define ricauchy _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942153_ricauchy_iCoU
+#define rinbinomMu _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942154_rinbinomMu_qvni
+#define rinbinom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942155_rinbinom_I75U
+#define ribinom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942156_ribinom_i0GV
+#define rinorm _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942157_rinorm_Ts34
+#define rxweibull _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942158_rxweibull_TNHe
+#define rxunif _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942159_rxunif_Fpue
+#define rxt_ _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942160_rxt__1ZaE
+#define rxpois _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942161_rxpois_nJR6
+#define rxbeta _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942162_rxbeta_UHZK
+#define rxgamma _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942163_rxgamma_bSsm
+#define rxgeom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942164_rxgeom_NYlS
+#define rxf _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942165_rxf_2wzY
+#define rxexp _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942166_rxexp_qw2z
+#define rxchisq _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942167_rxchisq_8bGM
+#define rxcauchy _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942168_rxcauchy_djLB
+#define rxnbinomMu _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942169_rxnbinomMu_3LsO
+#define rxnbinom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942170_rxnbinom_URbP
+#define rxbinom _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942171_rxbinom_YUPm
+#define rxnorm _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942172_rxnorm_W8sO
+#define linCmtB _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942173_linCmtB_mGyp
+#define linCmtA _rxmod1_eeb3d4d083a05042da9b184fc1e3d2942174_linCmtA_O55O
 #include <rxode2_model_shared.h>
 #define __MAX_PROD__ 0
 #define _CMT CMT
@@ -341,30 +341,60 @@ double _sign(unsigned int n, ...) {
 double _mix(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
   va_list valist;
-  va_start(valist, n);
   double ret = NA_REAL;
   double p = 0.0;
-  double u = ind->mixunif; // sampled once per patient
-  int found = 0;
-  double v = 0.0;
-  for (unsigned int i = 0; i < n-1; i+= 2) {
-    v = va_arg(valist, double);
-    p += va_arg(valist, double);
-    if (found == 0) {
-      if (u < p) {
-        ret = v;
-        ind->mixest = i/2 + 1; // 1-based index
-        found = 1;
+  // In the case of simulating, mixunif is sampled once per patient
+  double u = ind->mixunif;
+  if (u >= 1.0) {
+    // In this case, the mixest is assigned
+    ind->mixest = u;
+    u = 0;
+    int found = 0;
+    double v = 0.0;
+    va_start(valist, n);
+    for (unsigned int i = 0; i < n-1; i+= 2) {
+      v = va_arg(valist, double);
+      p += va_arg(valist, double);
+      if (found == 0) {
+        if (trunc(i*0.5 + 1) == trunc(ind->mixest)) {
+          // This is the mixture selected
+          ret = v;
+          found = 1;
+          ind->mixunif = u + (p - u)*0.5;
+        }
+        u = p;
       }
     }
+    v = va_arg(valist, double); // other possibility
+    if (found == 0) {
+      ind->mixunif = u + (1.0 - u)*0.5;
+      ret = v;
+    }
+    va_end(valist);
+    return ret;
+  } else {
+    int found = 0;
+    double v = 0.0;
+    va_start(valist, n);
+    for (unsigned int i = 0; i < n-1; i+= 2) {
+      v = va_arg(valist, double);
+      p += va_arg(valist, double);
+      if (found == 0) {
+        if (u < p) {
+          ret = v;
+          ind->mixest = i*0.5 + 1; // 1-based index
+          found = 1;
+        }
+      }
+    }
+    v = va_arg(valist, double); // other possibility
+    if (found == 0) {
+      ind->mixest = _solveData->mixnum;
+      ret = v;
+    }
+    va_end(valist);
+    return ret;
   }
-  v = va_arg(valist, double); // other possibility
-  if (found == 0) {
-    ind->mixest = _solveData->mixnum;
-    ret = v;
-  }
-  va_end(valist);
-  return ret;
 }
 double _rxord(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
@@ -815,9 +845,9 @@ extern SEXP mod1__model_vars(void){
   SEXP _mv = PROTECT(_rxGetModelLib("mod1__model_vars"));pro++;
   if (!_rxIsCurrentC(_mv)){
     SEXP hash    = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
-#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAAuW8AAAv7#aT)}gq]OA@UK;>WrmYB~1tUJGulSCz8Pxg#Lv|T~j*>&+3GvOVjy,qG[7,uw9L|RCfQ`Ovsf|8^@PylD7=IGlf_WCtkK.Vj,hUA<A_8%%48|P4\?h4t3,_Z8jd~a$JRbTLIR!AQwIh\?9*c^fk4&BNm{h.Ki#oe5Vn1,V!kUU~RXFZ_.YZg+Qsm6Fb3</Qoam>[v@`MjYv[c[=yKr#GhP~>J`6K$X0!M\?_x`10Vv>5!aG|N2J#jud`F/&7@>.c.q6u!]BhP,1x(1>6&MGYE@7i1E/Tbc.qYoLC[LQYM%%KB0::2>^H{2,h=\?zSKJ[TY12!!Zs%%[}!ovRPu*OywQ=Wr`|vMvk_LUgx<M\?01o2p!pTC/uNMNzF5rI%%.v=kei705$HhD:O0@.%%sm\"MWi.q:kLRK^eCQ1;r:TgV~JO<miS!1`dp3fd%%rf8)q.QPwR~vtn=())fuh*fF;Tl&&yTjO]vJ~hkQXDLb+%%SDBGicsoATl)l,cj)+;]F=!LGzTjDzCTR5uDIAdZ5~PGZxRJG=C`{3s;qnn3^(~o5^<B*@mPXtAL;b<=~Iv,.G^n_tQMCw&_qFkXJeW0[mNU`5YfQ>qP8eo7f3Oec^R=I<dXfxQ%%V#u#b9%%n38c]W8hWl9>F#b%%7etyg9<xI1|tZiGUwSy5|X7=qvS,`{zBUV_$5xD.[4$bG!0kk/9}e0xLE\?=VFLz<!g.\?;`{y^NN0LTi%%{vP9\?.TddM,`Wu:{92]Yn([rmueLq3v*>#%%!{4}[kr.VCB=63=(Bs1#xGMjK(;:_po6oYZD*{/sDleW9^F!Th\?q$Oap>k}S^8R]3f2D7WAb_~bbg}N(5}n#*M$gKblXjl~R^>s>.j@yclmihxOG4+pNad<M%%I1BGaU,RF.A6!cU)(|jmG(Zv2W<&IE7Z0BrqJPD#:]^U*SLCFUXsJ}okEqdoo*H288NU@3YlQUywzla#wm#pCYaq<]6FDR`WfqlL{1=cORqF*ruCovsjG{nR,Zu`\"$y0Y+wP&tyw~4/Jw5%%It=v@>3E48!wYwK6CQCZY>)9E:bbbyoTuIql|GJ^\?*,2#MXL#,\"8.eo9<*!:xEkl3W)ZSdn]$|\?qI[ROEOQH`lYtQMH`fZvqRGCCF[Ai}TdM@GJ4![[}nlFVTH31C4Ia(/6[Qf8|6PjK0ng2VOTk@76eIUZ>T@{P,M;2I})Db;\?rG");
-    char buf[1234];
-#define __doBufN__ 1234
+#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA*h8AAAv7#aT)}gZ`OA@US;i\"\?*6t#uv_HK1w*;\"tH)2)]wYBi9[#<Z&2KaWNbg<uGSbWpY&_B_Hzt/vcbWHl5@Ah.@,pY=x6hFO2a$@Q[QKAmAeI%%cC~O:#[DR[Aq^5E{sC%%Oknh\"\"zauvK)O8(p/s~{GFpAenUBX>B$2B8@7h2\"n}os8PG~Fc|B=|r7bW`$N|w=f/pQY+EOl8jy>4P)#4$vT^^Cv<e;X9VT:OX+\?Z0emcE6+7&s\?O\"\?Kf<z%%s<!#^ajjIkvK_}BnK$+,uPU.Rv/hI>BFG%%3HTLM7n=J3[.yXBN]X%%&&WIinSn0:`,Juy*%%uy!DO*c9j9KahrgaN\?cLv*^g!Ua2[prkx;X164X|u[D*g*DJU(ZDzo4kgJ2P;7*uNn!7W>WDaMJEmBOd8x^U*dP$BfoI)C]M5v{o,J*+Q)*F=(8Wn2E&8@2jSp94f#u*B>bSJFLKO.q3/k}P\?+xYO@hjzY,nOQY]`w6JM`(x5h5E](qN37Ya^KU=~ZV&c\?[GBIo@ABAO+%%BYHCNUaA%%9P%%]HC&M3O_yW6P~$XG}yzY/+Qag_1VF\?:,Bs^giD+=iIt|L!d@N*f:n#CV$jgF}hyE1qab8jp*S:_{9B5nCK(&n@#a_m^\?8/}n`UL:96BP;b`]vy>51UC@Vj\?!u_JZN2WJ%%/qGzTWn)Q8qs=M(WDCc^zxTN2Qv`ig(+WCh`hv]kDeHn58p~tg6/m/x/g3)K,S@PKQ,SjYX07!1}&`^[ZiAgJ2=*qW2YepV|qG38=F/*WbV)X3\"Oh3xharv9f=kpuV%%b[;9&\?#q`Q#\",k.I/xe^l:;]Rp.mE>o$GV=fF8FL.!tk/V&LT.fl+(gH=]{8umK/H}I$=TlJo9xcxPGZX;I`M8D>MIBTtuO]I9\"Ft;H/6qItEd)qOddDgg56#Dd69QB84IrWslq7M@L9[QBLF/L!DzbrXep%%u.}e7yYwRSoG]<n#{:(.+yJ@:k\"T(0Hs;@b3ma`N+ogP7iT^eZRY[dV+TS/fz1+g!CqGo{spUCz}{Mcsc4r1tI;HGDG+dY65ZxrUeY28OxR{*cM`PiX]=~T3o1Bmur<Le4]np(12%%di_P2[qO^7z&U(Kn[ra*B6]tu^8yD*Mhn7Gn.\"N\"m$j,nDCzDwGb@.Oq`\?8t3n/d5S$!hQ59aa`scwNw\?z[r7|oaLNTMH2@Kphof~[%%u;9J^%%NBS");
+    char buf[1236];
+#define __doBufN__ 1236
     __doBuf__
 #undef __doBuf__
 #undef __doBufN__
