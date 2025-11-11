@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Easy rxode2 Event Tables</h1>
             
-            <h4 data-toc-skip class="date">2025-11-04</h4>
+            <h4 data-toc-skip class="date">2025-11-11</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-event-table.Rmd" class="external-link"><code>vignettes/rxode2-event-table.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-table.Rmd</code></div>
@@ -308,7 +308,7 @@ table units.</p>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" width="700"></p>
 <p>If you are more familiar with the NONMEM/rxode2 event records, you
 can also specify dosing using <code>et</code> with the dose elements
 directly:</p>
@@ -333,7 +333,7 @@ directly:</p>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" width="700"></p>
 <p>This shows how easy creating event tables can be.</p>
 </div>
 <div class="section level3">
@@ -374,7 +374,7 @@ event table by <code>add.sampling</code> or <code>et</code></p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-13-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" width="700"></p>
 <p>Or if you use <code>et</code> you can simply add them in a similar
 way to <code>add.sampling</code>:</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
@@ -405,7 +405,7 @@ way to <code>add.sampling</code>:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-15-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" width="700"></p>
 <p>Note the jagged nature of these plots since there was only a few
 sample times.</p>
 </div>
@@ -452,7 +452,7 @@ are solved for:</p>
 <span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-17-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" width="700"></p>
 </div>
 <div class="section level3">
 <h3 id="add-doses-and-samples-within-a-sampling-window">Add doses and samples within a sampling window<a class="anchor" aria-label="anchor" href="#add-doses-and-samples-within-a-sampling-window"></a>
@@ -506,7 +506,7 @@ simulation:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-19-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" width="700"></p>
 <p>Of course in reality the dosing interval may only be 2 hours:</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
@@ -523,7 +523,7 @@ simulation:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-20-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" width="700"></p>
 <p>The same sort of thing can be specified with sampling times. To
 specify the sampling times in terms of a sampling window, you can create
 a list of the sampling times. Each sampling time will be a two element
@@ -550,7 +550,7 @@ ordered numeric vector.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-21-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" width="700"></p>
 <p>This shows the flexibility in dosing and sampling that the rxode2
 event tables allow.</p>
 </div>
@@ -583,7 +583,7 @@ and adds at least one inter-dose interval between them:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-22-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-22-1.png" class="r-plt" width="700"></p>
 <p>When sequencing events, you can also separate this sequence by a
 period of time; For example if you wanted to separate this by a week,
 you could easily do that with the following sequence of event
@@ -596,7 +596,7 @@ tables:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-23-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" width="700"></p>
 <p>Note that in this example the time between the bid and the qd event
 tables is exactly one week, not 1 week plus 24 hours because of the
 inter-dose interval. If you want that behavior, you can sequence it
@@ -609,7 +609,7 @@ using the <code>wait="+ii"</code>.</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-24-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-24-1.png" class="r-plt" width="700"></p>
 <p>Also note, that rxode2 assumes that the dosing is what you want to
 space the event tables by, and clears out any sampling records when you
 combine the event tables. If that is not true, you can also use the
@@ -631,7 +631,7 @@ on QD therapy and 1 week off of therapy can be simply specified:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span>  <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-25-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" width="700"></p>
 <p>This is a simplified way to use a sequence of event tables.
 Therefore, many of the same options still apply; That is
 <code>samples</code> are cleared unless you use
@@ -663,7 +663,7 @@ difference. Here was the sequence:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-26-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-26-1.png" class="r-plt" width="700"></p>
 <p>But if you bind them together with <code>rbind</code></p>
 <div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## bid for 5 days</span></span>
@@ -673,7 +673,7 @@ difference. Here was the sequence:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-27-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" width="700"></p>
 <p>Still the waiting period applies (but does not consider the
 inter-dose interval)</p>
 <div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
@@ -683,7 +683,7 @@ inter-dose interval)</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-28-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" width="700"></p>
 <p>You can also bind the tables together and make each ID in the event
 table unique; This can be good to combine cohorts with different
 expected dosing and sampling times. This requires the
@@ -698,7 +698,7 @@ is different in this case:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">et</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span> <span class="op">~</span> <span class="va">id</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-29-1.png" width="700"></p>
+<p><img src="rxode2-event-table_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" width="700"></p>
 </div>
 <div class="section level3">
 <h3 id="event-tables-in-rstudio-notebooks">Event tables in Rstudio Notebooks<a class="anchor" aria-label="anchor" href="#event-tables-in-rstudio-notebooks"></a>
@@ -796,7 +796,7 @@ method:</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

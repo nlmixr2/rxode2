@@ -1,0 +1,100 @@
+# Get list of supported functions
+
+Get list of supported functions
+
+## Usage
+
+``` r
+rxSupportedFuns()
+```
+
+## Value
+
+list of supported functions in rxode2
+
+## Examples
+
+``` r
+rxSupportedFuns()
+#>   [1] "gammafn"              "lgammafn"             "lgamma"              
+#>   [4] "loggamma"             "digamma"              "trigamma"            
+#>   [7] "tetragamma"           "pentagamma"           "cospi"               
+#>  [10] "sinpi"                "tanpi"                "log1p"               
+#>  [13] "expm1"                "factorial"            "lfactorial"          
+#>  [16] "lgamma1p"             "log10"                "log2"                
+#>  [19] "log1pexp"             "phi"                  "pnorm"               
+#>  [22] "normcdf"              "qnorm"                "fabs"                
+#>  [25] "pow"                  "R_pow"                "R_pow_di"            
+#>  [28] "Rx_pow_di"            "Rx_pow"               "lbeta"               
+#>  [31] "abs"                  "acos"                 "acosh"               
+#>  [34] "asin"                 "asinh"                "atan"                
+#>  [37] "atan2"                "atanh"                "beta"                
+#>  [40] "cos"                  "cosh"                 "erf"                 
+#>  [43] "erfc"                 "exp"                  "gamma"               
+#>  [46] "log"                  "polygamma"            "rxTBS"               
+#>  [49] "rxTBSi"               "rxTBSd"               "rxTBSd2"             
+#>  [52] "sin"                  "sinh"                 "sqrt"                
+#>  [55] "tan"                  "tanh"                 "gammap"              
+#>  [58] "floor"                "round"                "ceil"                
+#>  [61] "trunc"                "bessel_i"             "bessel_j"            
+#>  [64] "bessel_k"             "bessel_y"             "logspace_add"        
+#>  [67] "logspace_sub"         "fmax2"                "fmin2"               
+#>  [70] "sign"                 "fsign"                "fprec"               
+#>  [73] "fround"               "ftrunc"               "transit"             
+#>  [76] "gammaq"               "gammapDer"            "gammapInv"           
+#>  [79] "gammapInva"           "gammaqInv"            "gammaqInva"          
+#>  [82] "lowergamma"           "uppergamma"           "linCmtA"             
+#>  [85] "linCmtB"              "max"                  "min"                 
+#>  [88] "logit"                "expit"                "probit"              
+#>  [91] "probitInv"            "tlast"                "tlast0"              
+#>  [94] "tfirst"               "tfirst0"              "lag"                 
+#>  [97] "lead"                 "dose"                 "podo"                
+#> [100] "dose0"                "podo0"                "dabs"                
+#> [103] "dabs2"                "abs1"                 "dabs1"               
+#> [106] "erfinv"               "abs0"                 "dosenum"             
+#> [109] "first"                "last"                 "diff"                
+#> [112] "is.nan"               "is.na"                "is.finite"           
+#> [115] "is.infinite"          "llikPois"             "llikPoisDlambda"     
+#> [118] "llikBinom"            "llikBinomDprob"       "llikNbinom"          
+#> [121] "llikNbinomDprob"      "llikNbinomMu"         "llikNbinomMuDmu"     
+#> [124] "llikBeta"             "llikBetaDshape1"      "llikBetaDshape2"     
+#> [127] "llikT"                "llikTDdf"             "llikTDmean"          
+#> [130] "llikTDsd"             "llikChisq"            "llikChisqDdf"        
+#> [133] "llikExp"              "llikExpDrate"         "llikF"               
+#> [136] "llikFDdf1"            "llikFDdf2"            "llikGeom"            
+#> [139] "llikGeomDprob"        "llikUnif"             "llikUnifDalpha"      
+#> [142] "llikUnifDbeta"        "llikWeibull"          "llikWeibullDshape"   
+#> [145] "llikWeibullDscale"    "llikGamma"            "llikGammaDshape"     
+#> [148] "llikGammaDrate"       "llikCauchy"           "llikCauchyDlocation" 
+#> [151] "llikCauchyDscale"     "llikNorm"             "llikNormDmean"       
+#> [154] "llikNormDsd"          "llikXPois"            "llikXPoisDlambda"    
+#> [157] "llikXBinom"           "llikXBinomDprob"      "llikXNbinomMu"       
+#> [160] "llikXNbinomMuDmu"     "llikXNbinom"          "llikXNbinomDprob"    
+#> [163] "llikXBeta"            "llikXBetaDshape1"     "llikXBetaDshape2"    
+#> [166] "llikXT"               "llikXTDdf"            "llikXTDmean"         
+#> [169] "llikXTDsd"            "llikXChisq"           "llikXChisqDdf"       
+#> [172] "llikXExp"             "llikXExpDrate"        "llikXF"              
+#> [175] "llikXFDdf1"           "llikXFDdf2"           "llikXGeom"           
+#> [178] "llikXGeomDprob"       "llikXUnif"            "llikXUnifDalpha"     
+#> [181] "llikXUnifDbeta"       "llikXWeibull"         "llikXWeibullDshape"  
+#> [184] "llikXWeibullDscale"   "llikXGamma"           "llikXGammaDshape"    
+#> [187] "llikXGammaDrate"      "llikXCauchy"          "llikXCauchyDlocation"
+#> [190] "llikXCauchyDscale"    "llikXNorm"            "llikXNormDmean"      
+#> [193] "llikXNormDsd"         "ReLU"                 "dReLU"               
+#> [196] "GELU"                 "dGELU"                "d2GELU"              
+#> [199] "d3GELU"               "d4GELU"               "ELU"                 
+#> [202] "dELU"                 "d2ELU"                "d2aELU"              
+#> [205] "dELUa"                "d2ELUa"               "softplus"            
+#> [208] "dsoftplus"            "d2softplus"           "d3softplus"          
+#> [211] "d4softplus"           "SELU"                 "dSELU"               
+#> [214] "lReLU"                "dlReLU"               "PReLU"               
+#> [217] "dPReLU"               "d2PReLU"              "dPReLUa"             
+#> [220] "dPReLUa1"             "Swish"                "dSwish"              
+#> [223] "linCmt"               "rnorm"                "rxnorm"              
+#> [226] "rxbinom"              "rbinom"               "rxcauchy"            
+#> [229] "rcauchy"              "rchisq"               "rxchisq"             
+#> [232] "rexp"                 "rxexp"                "rbeta"               
+#> [235] "rxbeta"               "rgeom"                "rxgeom"              
+#> [238] "rxpois"               "rpois"                "rxt"                 
+#> [241] "rt"                  
+```

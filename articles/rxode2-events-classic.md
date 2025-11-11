@@ -1,0 +1,199 @@
+# Classic rxode2 Events
+
+## Classic RxODE evid values
+
+Originally RxODE supported compound event IDs; rxode2 still supports
+these parameters, but it is often more useful to use the the normal
+NONMEM dataset standard that is used by many modeling tools like NONMEM,
+Monolix and nlmixr, described in the [rxode2
+types](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.md)
+article.
+
+Classically, RxODE supported event coding in a single event id `evid`
+described in the following table.
+
+| 100+ cmt | Infusion/Event Flag           | \<99 Cmt  | SS flag & Turning off Compartment                                                                                            |
+|----------|-------------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------|
+| 100+ cmt | 0 = bolus dose                | \< 99 cmt | 01 = dose                                                                                                                    |
+|          | 1 = infusion (rate)           |           | 08 = Turn off Steady state infusion with lag time                                                                            |
+|          | 2 = infusion (dur)            |           | 09 = Steady state 1 at dose time with alag (SS=1)                                                                            |
+|          | 6 = turn off modeled duration |           | 10 = Steady state 1 (equivalent to SS=1) without alag()                                                                      |
+|          | 7 = turn off modeled rate     |           | 09 = Steady state 1/2 at dose+ alag()                                                                                        |
+|          | 8 = turn on modeled duration  |           | 19 = Steady state 2 at dose time with alag (SS=2)                                                                            |
+|          | 9 = turn on modeled rate      |           | 20 = Steady state 2 (equivalent to SS=2)                                                                                     |
+|          | 4 = replace event             |           | 30 = Turn off a compartment (equivalent to -CMT w/EVID=2)                                                                    |
+|          | 5 = multiply event            |           | 40 = Steady state constant infusion                                                                                          |
+|          |                               |           | 50 = Phantom event, used for transit compartments doses                                                                      |
+|          |                               |           | 60 = Non-tracking dose, a dose that is not counted for time after dose and related numbers. Used for turning on compartments |
+
+The classic EVID concatenate the numbers in the above table, so an
+infusion would to compartment 1 would be `10101` and an infusion to
+compartment 199 would be `119901`.
+
+EVID = 0 (observations), EVID=2 (other type event) and EVID=3 are all
+supported. Internally an EVID=9 is a non-observation event and makes
+sure the system is initialized to zero; EVID=9 should not be manually
+set. EVID 10-99 represents modeled time interventions, similar to
+NONMEM’s MTIME. This along with amount (amt) and time columns specify
+the events in the ODE system.
+
+For infusions specified with EVIDs \> 100 the amt column represents the
+rate value.
+
+For Infusion flags 1 and 2 `+amt` turn on the infusion to a specific
+compartment `-amt` turn off the infusion to a specific compartment. To
+specify a dose/duration you place the dosing records at the time the
+duration starts or stops.
+
+For modeled rate/duration infusion flags the on infusion flag must be
+followed by an off infusion record.
+
+These number are concatenated together to form a full RxODE event ID, as
+shown in the following examples:
+
+### Bolus Dose Examples
+
+*A 100 bolus dose to compartment \#1 at time 0*
+
+| time | evid | amt |
+|------|------|-----|
+| 0    | 101  | 100 |
+| 0.5  | 0    | 0   |
+| 1    | 0    | 0   |
+
+*A 100 bolus dose to compartment \#99 at time 0*
+
+| time | evid | amt |
+|------|------|-----|
+| 0    | 9901 | 100 |
+| 0.5  | 0    | 0   |
+| 1    | 0    | 0   |
+
+*A 100 bolus dose to compartment \#199 at time 0*
+
+| time | evid   | amt |
+|------|--------|-----|
+| 0    | 109901 | 100 |
+| 0.5  | 0      | 0   |
+| 1    | 0      | 0   |
+
+### Infusion Event Examples
+
+Bolus infusion with rate 50 to compartment 1 for 1.5 hr, (modeled
+bioavailability changes duration of infusion)
+
+| time | evid  | amt |
+|------|-------|-----|
+| 0    | 10101 | 50  |
+| 0.5  | 0     | 0   |
+| 1    | 0     | 0   |
+| 1.5  | 10101 | -50 |
+
+Bolus infusion with rate 50 to compartment 1 for 1.5 hr (modeled
+bioavailability changes rate of infusion)
+
+| time | evid  | amt |
+|------|-------|-----|
+| 0    | 20101 | 50  |
+| 0.5  | 0     | 0   |
+| 1    | 0     | 0   |
+| 1.5  | 20101 | -50 |
+
+Modeled rate with amount of 50
+
+| time | evid  | amt |
+|------|-------|-----|
+| 0    | 90101 | 50  |
+| 0    | 70101 | 50  |
+| 0.5  | 0     | 0   |
+| 1    | 0     | 0   |
+
+Modeled duration with amount of 50
+
+| time | evid  | amt |
+|------|-------|-----|
+| 0    | 80101 | 50  |
+| 0    | 60101 | 50  |
+| 0.5  | 0     | 0   |
+| 1    | 0     | 0   |
+
+### Steady State for classic RxODE EVID example
+
+Steady state dose to cmt 1
+
+| time | evid | amt | ii  |
+|------|------|-----|-----|
+| 0    | 110  | 50  | 24  |
+
+Steady State with super-positioning principle for am 50 and pm 100 dose
+
+| time | evid | amt | ii  |
+|------|------|-----|-----|
+| 0    | 110  | 50  | 24  |
+| 12   | 120  | 100 | 24  |
+
+### Steady state with lagged dose for classic RxODE evid
+
+Steady state with lagged dose for a bolus dose:
+
+time \| evid \| amt \| ii \|  
+0 \| 109 \| 100 \| 24 \|  
+0 \| 101 \| 100 \| 0 \|
+
+The event 109 calculates the trough amount after the steady state has
+passed by (ii-lag_time) while event `101` applies the next steady state
+dose.
+
+Steady state (=2) with a lagged bolus dose
+
+| time | evid | amt | ii  |
+|------|------|-----|-----|
+| 0    | 109  | 50  | 24  |
+| 0    | 101  | 50  |     |
+| 12   | 119  | 100 | 24  |
+| 12   | 101  | 100 |     |
+
+Steady state infusion with lag time
+
+time \| evid \| amt \| ii \|  
+0 \| 10109 \| 5 \| 24 \|  
+0 \| 10108 \| -5 \| 24 \|  
+0 \| 10101 \| 5 \| \|  
+20 \| 10101 \| -5 \| \|
+
+As in the case of the bolus, the `10109` event calculates the trough
+concentration with `ii=24`, which may (or may not) still have an
+infusion running. If the infusion is running the `10108` event will turn
+off that infusion at the appropriate time. If the infusion has been
+completed, then the `10108` event is ignored.
+
+The next 2 events `10101` represent the event times (assuming no
+bioavailability has been applied).
+
+### Turning off a compartment with classic RxODE EVID
+
+Turn off the first compartment at time 12
+
+| time | evid | amt |
+|------|------|-----|
+| 0    | 110  | 50  |
+
+Event coding in `rxode2` is encoded in a single event number `evid`. For
+compartments under 100, this is coded as:
+
+- This event is `0` for observation events.
+- For a specified compartment a bolus dose is defined as:
+  - 100\*(Compartment Number) + 1
+  - The dose is then captured in the `amt`
+- For IV bolus doses the event is defined as:
+  - 10000 + 100\*(Compartment Number) + 1
+  - The infusion rate is captured in the `amt` column
+  - The infusion is turned off by subtracting `amt` with the same `evid`
+    at the stop of the infusion.
+
+For compartments greater or equal to 100, the 100s place and above
+digits are transferred to the 100,000th place digit. For doses to the
+99th compartment the `evid` for a bolus dose would be `9901` and the
+`evid` for an infusion would be `19901`. For a bolus dose to the `199`th
+compartment the `evid` for the bolus dose would be `109901`. An infusion
+dosing record for the `199`th compartment would be `119901`.
