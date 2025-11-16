@@ -236,7 +236,11 @@ bool rxIs_list(const RObject &obj, std::string cls){
         int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
         rx->maxShift = asDouble(e[RxTrans_maxShift],"maxShift");
         CharacterVector nDf = obj.attr("names");
+        int nDfLen = nDf.size();
         if (censAdd == 1 && limitAdd == 1) {
+          if (nDfLen < 8) {
+            Rcpp::stop("Insufficient columns for 'cens' and 'limit' (expected at least 8, got %d)", nDfLen);
+          }
           if (nDf[6] == "CENS") {
             rxcCens = 6;
             rxcLimit = 7;
@@ -247,6 +251,9 @@ bool rxIs_list(const RObject &obj, std::string cls){
             Rcpp::stop("Corrupt translation, 'cens' / 'limit' in not in expected location");
           }
         } else if (censAdd == 1){
+          if (nDfLen < 8) {
+            Rcpp::stop("Insufficient columns for 'cens' (expected at least 8, got %d)", nDfLen);
+          }
           if (nDf[6] == "CENS") {
             rxcCens = 6;
           } else if (nDf[7] == "CENS") {
@@ -256,6 +263,9 @@ bool rxIs_list(const RObject &obj, std::string cls){
           }
           rxcLimit = -1;
         } else if (limitAdd == 1){
+          if (nDfLen < 8) {
+            Rcpp::stop("Insufficient columns for 'limit' (expected at least 8, got %d)", nDfLen);
+          }
           if (nDf[6] == "LIMIT") {
             rxcLimit = 6;
           } else if (nDf[7] == "LIMIT") {
