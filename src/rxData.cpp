@@ -245,7 +245,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
             rxcCens = 7;
             rxcLimit = 6;
           } else {
-            Rcpp::stop("Corrupt translation, 'cens' / 'limit' in not in expected location");
+            Rcpp::stop("Corrupt translation, 'cens' / 'limit' is not in expected location");
           }
         } else if (censAdd == 1){
           if (nCol > 6 && nDf[6] == "CENS") {
@@ -253,7 +253,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
           } else if (nCol > 7 && nDf[7] == "CENS") {
             rxcCens = 7;
           } else {
-            Rcpp::stop("Corrupt translation, 'cens' in not in expected location");
+            Rcpp::stop("Corrupt translation, 'cens' is not in expected location");
           }
           rxcLimit = -1;
         } else if (limitAdd == 1){
@@ -262,7 +262,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
           } else if (nCol > 7 && nDf[7] == "LIMIT") {
             rxcLimit = 7;
           } else {
-            Rcpp::stop("Corrupt translation, 'limit' in not in expected location");
+            Rcpp::stop("Corrupt translation, 'limit' is not in expected location");
           }
           rxcCens  = -1;
         } else {
