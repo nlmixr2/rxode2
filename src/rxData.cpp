@@ -236,29 +236,30 @@ bool rxIs_list(const RObject &obj, std::string cls){
         int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
         rx->maxShift = asDouble(e[RxTrans_maxShift],"maxShift");
         CharacterVector nDf = obj.attr("names");
+        int nCol = nDf.size();
         if (censAdd == 1 && limitAdd == 1) {
-          if (nDf[6] == "CENS") {
+          if (nCol > 6 && nDf[6] == "CENS") {
             rxcCens = 6;
             rxcLimit = 7;
-          } else if (nDf[7] == "CENS") {
+          } else if (nCol > 7 && nDf[7] == "CENS") {
             rxcCens = 7;
             rxcLimit = 6;
           } else {
             Rcpp::stop("Corrupt translation, 'cens' / 'limit' in not in expected location");
           }
         } else if (censAdd == 1){
-          if (nDf[6] == "CENS") {
+          if (nCol > 6 && nDf[6] == "CENS") {
             rxcCens = 6;
-          } else if (nDf[7] == "CENS") {
+          } else if (nCol > 7 && nDf[7] == "CENS") {
             rxcCens = 7;
           } else {
             Rcpp::stop("Corrupt translation, 'cens' in not in expected location");
           }
           rxcLimit = -1;
         } else if (limitAdd == 1){
-          if (nDf[6] == "LIMIT") {
+          if (nCol > 6 && nDf[6] == "LIMIT") {
             rxcLimit = 6;
-          } else if (nDf[7] == "LIMIT") {
+          } else if (nCol > 7 && nDf[7] == "LIMIT") {
             rxcLimit = 7;
           } else {
             Rcpp::stop("Corrupt translation, 'limit' in not in expected location");
