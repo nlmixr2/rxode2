@@ -243,7 +243,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
             rxcLimit = 7;
           } else if (nCol > 7 && nDf[7] == "CENS") {
             rxcCens = 7;
-            rxcLimit = 6;
+            rxcLimit = 8;
           } else {
             Rcpp::stop("Corrupt translation, 'cens' / 'limit' is not in expected location");
           }
