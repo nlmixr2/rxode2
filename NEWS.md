@@ -1,7 +1,7 @@
 # rxode2 (development version)
 
 - Fixed translation for censoring/limit to account for a possible
-  `CMT` variable before the `CENS` / `LIMIT` column.
+  `CMT` variable before the `CENS` / `LIMIT` column (#951, #952)
 
 - Added `dmexpit()` for getting the diagonal Jacobian.
 
