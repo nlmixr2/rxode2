@@ -3,8 +3,8 @@ rxTest({
     ## Example 3.1 from
     ## "Solving Differential Equations in R" by Soetaert et al (2012)
     ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf Example #1
-    skip_if_not(file.exists(test_path("test-example-3-1.qs")))
-    df.test <- qs::qread(test_path("test-example-3-1.qs"))
+    skip_if_not(file.exists(test_path("test-example-3-1.qs2")))
+    df.test <- qs2::qs_read(test_path("test-example-3-1.qs2"))
 
     ms <- c("liblsoda", "lsoda", "dop853")
     ode <- rxode2(model = "d/dt(y) = r * y * (1.0 - y/K);")

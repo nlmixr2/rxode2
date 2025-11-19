@@ -1,7 +1,7 @@
 rxTest({
   test_that("rxode2 threading doesn't disturb some solves; Issue RxODE#430", {
     skip_if_not(file.exists("test-issue-430.qs"))
-    
+
     model <- rxode2({
       KA <- THETA_KA * exp(ETA_KA)
       CL <- THETA_CL * exp(ETA_CL)
@@ -17,14 +17,14 @@ rxTest({
       lag(A_DEPOT) <- ALAG1
       CP <- A_CENTRAL / S2
     })
-    
+
     theta <- c(THETA_KA = 1, THETA_CL = 5, THETA_V2 = 80, THETA_V3 = 20, THETA_Q = 4, THETA_ALAG1 = 5)
-    
-    dataset <- qs::qread("test-issue-430.qs") # This dataset contains 3 boluses given at time 0, 24 & 48
-    
+
+    dataset <- qs2::qs_read("test-issue-430.qs2") # This dataset contains 3 boluses given at time 0, 24 & 48
+
     r2 <- rxode2::rxSolve(object = model, params = theta, omega = NULL, sigma = NULL, events = dataset, cores = 2, returnType = "data.frame")
     r1 <- rxode2::rxSolve(object = model, params = theta, omega = NULL, sigma = NULL, events = dataset, cores = 1, returnType = "data.frame")
-    
+
     expect_equal(r1, r2)
   })
 })

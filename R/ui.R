@@ -448,7 +448,7 @@ print.rxUi <-function(x, ...) {
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)
-  .ret <- qs::qdeserialize(ui)
+  .ret <- qs2::qs_deserialize(ui)
   class(.ret) <- "rxUi"
   .ret
 }
@@ -458,8 +458,7 @@ rxUiDecompress <- function(ui) {
 rxUiCompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui)) {
-    .ret <- try(qs::qserialize(ui, preset="fast"), silent=TRUE)
-    if (inherits(.ret, "try-error")) .ret <- qs::qserialize(ui, preset="archive")
+    .ret <- qs2::qs_serialize(ui)
     class(.ret) <- c("rxUi", "raw")
     return(.ret)
   }

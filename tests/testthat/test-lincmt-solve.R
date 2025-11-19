@@ -3,9 +3,9 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
     test_that("table step for linCmtB", {
 
-      pars <- test_path("lincmt-solve-focei-sol.qs")
+      pars <- test_path("lincmt-solve-focei-sol.qs2")
       skip_if_not(file.exists(pars))
-      pars <- qs::qread(pars)
+      pars <- qs2::qs_read(pars)
 
       rx <- rxode2({
         param(THETA[1], THETA[2], THETA[3], THETA[4], ETA[1], ETA[2],

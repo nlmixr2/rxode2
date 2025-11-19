@@ -307,9 +307,9 @@ d/dt(blood)     = a*intestine - b*blood
 
 
     test_that("strange rate doesn't affect model", {
-      et1 <- test_path("etTrans1.qs")
+      et1 <- test_path("etTrans1.qs2")
       skip_if_not(file.exists(et1))
-      dat <- qs::qread(et1)
+      dat <- qs2::qs_read(et1)
       expect_false(any(etTrans(dat, mod)$AMT < 0, na.rm = TRUE))
     })
 
@@ -812,7 +812,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     ## etTrans example from xgxr + nlmixr + ggpmx
     test_that("etTrans", {
-      lst <- qs::qread(test_path("test-etTrans-1.qs"))
+      lst <- qs2::qs_read(test_path("test-etTrans-1.qs2"))
       events2 <- lst$events
       events2 <- events2[, names(events2) != "CENS"]
 
@@ -829,7 +829,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     test_that("etTrans drop levels are correct", {
 
-      dat <- qs::qread(test_path("etTrans-drop.qs"))
+      dat <- qs2::qs_read(test_path("etTrans-drop.qs2"))
 
       mod <- rxode2parse("
         lka <- log(0.1) # log Ka
@@ -925,7 +925,7 @@ d/dt(blood)     = a*intestine - b*blood
         dvid(5)
       ")
 
-      prepfit <- qs::qdeserialize(qs::base91_decode("un]\"BAAA@QRtHACAAAAAAAuWeBAABdk1kus^^d8Ah9}?=Z:alBMc4Iv(F\":C?hVBAMZRxwFfBB7IB.y6FTL)yFQA@v;KlgSH3Vn~rL/,{CP/ez~`.3>$Wj$rcy==//#}Pu?\"V(RgKtf1J3qQg/yI7*1]/WV=iegVmPs3?a\":kEMu~/*zmX#;E4`i@It`]Ouu[N]T8G3!4A.^j0<Zd;mY7D`P6Z|KTj_p?r7u[IPuyFRoUcL\"6u|(G_on6g9c{ZLJ[_gE^&47rbL(#6W{EA%hQUW!][2;k<}\"(4SB{!~>M%xmxwMU%ET6#~xvX9rH!;S53gbLTWY]Fcri\"]7\"|Z^W{xobiiTc~DLN_;.Itj(INGKCupDYxEA^!GzfHO=aDW&(I)z}0*mZD\"^b.O!QdY2rVRD;~Z*HB(]G_Dpj]*0A`]+7VoGDF@,vk>jx}tFI>MVOnZojuABN9Bt\"O~V[n6U[kn|W74&xR7CL(Skn:CA)NP`||hQ%w/i+&c8$#KxsFdb4,qI\"Fl&lLg,?$eh&s{`QxtwPWi$GX<[*<0{to@[:NAy}a=O`wedEA*Abqhz2bL2sfII3ZRJR#5q~:FeBW%/F<]`(?Q:c(qc,DZ_d.&|J(NW~Q4kz;Us(7e+Z0YGMdvf.%XRgD]FA2D10sl^KxuPXvXSm+p}ndVY!3`o}Iq+M;i~mLmr1In0~ymm]K2x9g9Ij.UkBOTriq+93<po9tNj@%%W#FzA+/MMb]k3YmXS*RdjE{?pjnr%q6}&81.2&#ni.Au{pL>#eKT9uaMmvF7L^aDwL?sj>s|}[XMQdEx(yS|vIDfwqH:YXc(EfrzuplGn3`|X=ObNnD%;3(ST3tWr^D+vDG=cjKk!^:5ZfpXK5/dqF@dW6+*lb~@\"*H_t@3rRG9w|kG1!SRghm{sUOcDQ?.gYd?c;:IC~RF6lEfd4X;I3+4Y&8.x0P[h8]Ffo)$Y=7)|08Vid5@2btxd4I[0>E7~+CCX~|{Ve0qf^aQ1M4vsQN<B6]~R{LE*vH*8[Q|b[`QO%/.,mr9d<+O/PqesyX).kR)a[.s^OsSJLRZgrwt?NA#EQf)p,+wjGm!8aRz9^SKrW5`PTsjH_EVK.eZ)T]k0Md!mRLU%+}K!{BB>[uCto@(_b&&NA0eV*R}~Tp<Ey:7|>#Kz+AL~%_Wu@J&>C__{[#o3Lmxh$%R;264SAA)O;,:*:p.s:z+=pot[NkrFE@[}VoBF=P<AI)v_tBGUZy4^}6MUL|glMtnz]K/D|qUE``3x])hpz{k$OXX}C4B%m,AwVR)[N\"d$i}eLLJ;bFzpavPm|k^Ef;$C|S+GBP;CdOQSE<>v:;Cj#YR]M@a{68?;s&4Y4Zd[D`znL|kp1n)}0+Q`(/LcQM42JIA}ZFH+9>#dQLs>JX?#GT<W+#YOo[zpESq=N.@3/bpfI)5wKpkIRY>_M&#wui|N/HWs/WyJ/CSn*BaX!:]**?VL`zPu?xA|.+kn)M[xCjLHQ@8A6HX^T4hXT7F~JQw])fR/^Y>YBD([_QsK;[iYPcbW2Z\"BA9q~@t^rOgPg95OnA01xfA00E8k)eQtyH#MzpQ$4|et<eI&o|Uhx|t19ZFY$DAw5Z<,6p7MQM*N07@b$w):77pmoP{iZ4KvtvMyKYw|?{al}MZNtX<:RTKFB?PAdg=76:~4(HH*s62mDm2K:Qw^(9,*ICI.`?HiTsl8KIYV0C!0%0S:JM6(#2A)w(y(<9\"?n`k{0V!yrmQChNo8WWL=/*eAA_+&bKol/+*eiJi*e2dIW!hi.)+RHLR9O}Z69<<eE;aD%#B0ql|30pbBs3Z^0(q$nWfGs|LD$erJR2r@>6W(eGPRmx0B?bGrM@DA31ha^UZWMe52Egm6nn3=lcs3[gq!vBvrKiTSf],3$wjk7^`BPE#{kPh.CcbM*h:9+XPRfGx1P^)X!utw{#;**|LZtNdAwx\"IC?m[]Wil9!m3Tx}{Xx@9;`=+ODLPp)w]zc\"D.rl7/d:ismtgiesu]/CF[9v7ICZ:U?wky`@wQn])q@|Dd#IfQbwAQF`7]{f;hJCK=Vv)N6M4x4>G.u%o7I5fCay=\"^,?M!600bO\"MBTL9~4}eDkY:YkGc6G9oMzo3<9[Ye`GFvPyXiw5$Z]*PByzRza9ik5LJ;}@p;JH}+.,1om5gxAkHdn%`#kbKMJuiDOa#*M!h.2dUje501>,MIW$207SwS$M~FCMaG:`&l?j<c+ZMyFt+u:CpBWOZL)$@WywmY|LCGPdVv=>K]e\"!>HG]Tw0Xbm7SOIjt.B%cH5Ewy_YgfI6(#$I]1Q4Jte1:^W%XdqR4C#OV#._I`G$k|#>NfxcZp!Y]YnX~yZ0nx),%jfE\"u7yS,:y&oJV`;4nMg0g[a]Tidjt|y[*~_8H;*X61T/1kv9x$f/3N?~>xL$mO^0Nk6W|U[wD"))
+      prepfit <- qs2::qs_deserialize(qs2::base91_decode("unjXVBZLQAAAAAAAAAJVRi~RksD((ZIAC\"><F{v88I2FDtT`p=!J`hs:WxsI6|6,IuC%gDH+mFjX(N{HboiZ5n0Q;LWx=A`:{:*IkQPk9BGQlH;hobe}QOy(cAYBOK:S3[vc}mZ+;U!29wz,@=zL;L1tet)2dC:N4|<7a^.HNHfd!&)I/gbbQi!,K:<KN&aY6|7KXqUM*]uC8S[>T<`zENuiFYnYN2t\"(dTlN}R}JBSMj:xk<fRLA+0]`DKxO:>dRkU2.Hls(6sxU%^`V=yU=kIprAz@_zoP$<;)Ncaf;UtY?2W]IBExZy{6jQf*(_$gpJ0*rda7>@~Z41(U7+jJvV%RP,viFGZ+Pi/oP{MS4M6wpanBC@KEQ={V0Qz$jE&yckCNoCm^EZ6t8.8D`RyJM$In8&6WltZl>{Ipfn%?oe\"=)/=K}4k}1Y^PC]2TeqN+FzF,i#3$kEad?y\"A*^q968;[M~&&enrSI!R2zrxdlne$Z,El\"o,:5T!Q>p;8J7Fd@):\"cRC30{zs^Klg@j@3LM\"W,lph~Nk!AdxA_qSROy5lKY;Q)jK.W$7t&P~{$:1kOLEJ,5HM)Sdq2D|N)`ajt$$l_5TevW!_YY(HKT;X9OhYb]CF>:m6rORwWxkS5B^|/.XAv3QV)T]nW[jbP3qv8`TU:,w6F?Ph:(e%;Tbj:qbjy)dUllvHgXd}X({c[S#zWiX#Fzc[r|Y^[SvPr+HncW&*A}>w3Bv9C3]t(M?s*.N\"Ma09`eR)DR/3V~u;r[AW9]oi>jsoWt7qiCcXXm~7w9%jR5Ew#*~:]TPmelT:IMaSIR2<u$A_uEmdi^>wnBN]9DB~NtUUky0z`z({aQtS+e@1^agdI)o{#J)*tc_1jWROq1m!3^5X&FKz4(z%=!tj0oywZW:H9yymTXI/9}bb1esj9#|ZcC\"6xaY2FMBJn]soSYv~1D6b@SMrX,;4=@Pe.PeE|^7)wc^Wq{h3*FxSZ/fE!,e{w!U$z]>.{A#4EXOyAC(0G9VbE%nS#PKuN{_N:|&a|HaWdi!09Efp]|Ko\"\":,z{5O_E<[RiXWQB[ps+<%5#/c6F7C)5i^1a4upsI]3]a}Py4S|p:b;vd,}YI/[FxJ$xIkl21g+BvPT;`u!#JjqQgri#xo5+n!Zs!}OCSJ/=WCv?;0Am[b:#?C76%5p#aDM;Mp[<>#p,*Hlg>3_GSt7$Pd&fUi9.4X\"o)q9h\"eo+gK7wDdf;;<o:S+cPF,C&[<)&)]E;ni^3]58Q0plY.W0olGn#%FgM(jsyq)KN);eN{Tqnf|\"sPcGreEio}SO0~l\"_|]I%_Nj2_8#swiP#i$#O9,<0QeICWt;J?U)>3Nl}38EK*?Q?NW2%RXN)hJbGM*XGj#L]6nCEXfp>2V2PYz*u?[@em%D$vm3gSHgnjEmF\"&3oW3yFr,cmHW>xtS3~Kpz,I^llzQ!Lz2p23vT;0aKB$.A^/mb=cRVl[.6B5([wd2lufQ]=0Me@CjR#=y+)[I(effT$R(~dS;[3jJ0YX>\"Ye7V_i##!6G?A,sG+1Z]L!\"8ms/wAJ70)92hN`/g_ELokpM5v+FX4+4\"LZbX)sdFKc8Q?[}.F^6m2dH1}OG{Z.GSv+bK?rw6mZ)8`FA\"&fv!qVo(Nc;Z(yRLAqbDjt.R+(W|X;<X`+cVA7c}pvd;*Up*L9:^Ej*X=?]VL@?DVJ`S~SVu5C}8w:QcE2G=id0<@dBKU5=6]wBg@JaJ$On3X?D_K~C^xl`s]rmu`zUljf7J7%sqgPtPfh>l7VVDNwz.{\"7m9a2Jd(}[$$wPrmueWkKQbyh1.;MWBclCrs{u0WcV1T*99;=$+e%7/@Y(%,0Tv2|0.]ll`8!w1p@(2^]s!~ENT_>1N#7kbW`aAddc=4NSKl{=k=t\"IwnrM?)3?Tv!f|Sq!9EB3R+.8j~a[[RB>u9+Z5`l&2xcje19;@Sc[f?c?kw8,`.2.R/UvMq2H~D!]7f4qZa.!E2RG(}7=_c(f[I1QGKb={Oo5wd7s(e>ha(q)n~gJSOHV9tl|vP4v^UYw#CUbe+yn~irgWOL}w.cS2zb4G|cP:4HxmnOZ~b47m\"Y(r0>qXO*[,)iD;FeV#.b?Qc{8qIkPWiT?QOs>M7GR1(t^1wiMb?NSBx3pxBfiYG!}.2<+wP$.J<54~9fq!YnzW6c&0nM%!+g.pL<Txs?wxz{a`Q$p}=_EB\"#[;>|zw}]Tz;:5K<@;$[$dg+#Xd^.h+y@0Q{.n+2n6WGoqFCJ,qZAvW&#rHg9N<_|%r13U\"yS(O@e><Aa?}H65v8fDYsr9e&9Lv,vT4Z;.0_Q7qfZ:5F:6iV3zmO<C)+[;%7SmdDT?deX51XE:5}Yd(LrfiD@N][V3)Gw_P0WTAg)Bd(HE^!c&nO|*vKd$p`J4=eefy.oE2tEPoOL,3@k@vWjLx/8OdtyWwChziM9M#Z~~?wmK%FLVRHgfg81xk^)gjq,K0A~0/s29/V3,6kiA+>H[I,k~B9vnnLZfM0!BZcY!h}{ibK&scur64`(I,xOiNQUH>G,:AKi;;:8N!$=(H/A_O5*u[3\"}KS9)NQSXu{#2ki?Ng|H1[:DEo2vLbg|lr7F>qw@C%dA:^?HSaxKjz>xRK=HQla%I>yrOeXtn#?ptZ6$asInr}CX(oC?AzFA"))
 
       trans <- etTrans(prepfit,rx)
 
@@ -1552,9 +1552,9 @@ d/dt(blood)     = a*intestine - b*blood
 
 test_that("warning on translation (#780)", {
 
-  p <- test_path("test-etTrans-780.qs")
+  p <- test_path("test-etTrans-780.qs2")
   skip_if_not(file.exists(p))
-  dat <- qs::qread(p)
+  dat <- qs2::qs_read(p)
 
   m <- rxode2parse("
     param(Kpm_pop, V_pop, k_pop, k12_pop, k21_pop, ka_pop,

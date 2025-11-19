@@ -1,11 +1,11 @@
 rxTest({
   test_that("RxODE#393", {
-    filePath <- test_path("test-issue-393.qs")
-    
+    filePath <- test_path("test-issue-393.qs2")
+
     skip_if_not(file.exists(filePath))
-    
-    d <- qs::qread(filePath)
-    
+
+    d <- qs2::qs_read(filePath)
+
     mod1 <- rxode2({
       #  CLH = THETA[1];
       #  CLD = THETA[2];
@@ -26,7 +26,7 @@ rxTest({
       d / dt(A_absorption) <- -ka * A_absorption
       f(A_absorption) <- Fh * FaFg
     })
-    
+
     mod2 <- rxode2({
       CLH <- THETA[1]
       CLD <- THETA[2]
@@ -47,28 +47,28 @@ rxTest({
       d / dt(A_absorption) <- -ka * A_absorption
       f(A_absorption) <- Fh * FaFg
     })
-    
-    
+
+
     s1 <- rxSolve(mod1, d, params = c(CLH = 2, CLD = 10, V_centr = 77, V_peri = 10), returnType = "data.frame")
     s2 <- rxSolve(mod2, d, params = setNames(c(2, 10, 77, 10), paste0("THETA[", 1:4, "]")), returnType = "data.frame")
     s2 <- s2[, names(s1)]
     expect_equal(s1, s2)
-    
+
     s3 <- rxSolve(mod2, d,
                   params = c(c(CLR = 0, ka = 0, FQ_LV = 2.604, BW = 6.2, RBP = 0.679, FaFg = 1), setNames(c(2, 10, 77, 10), paste0("THETA[", 1:4, "]"))),
                   returnType = "data.frame"
                   )
-    
+
     s3 <- s3[, names(s1)]
     expect_equal(s1, s3)
-    
+
     s4 <- rxSolve(mod2, d, theta = c(2, 10, 77, 10), returnType = "data.frame")
-    
+
     s4 <- s4[, names(s1)]
     expect_equal(s1, s3)
-    
+
     s5 <- rxSolve(mod2, d, theta = c(2, 10, 77, 10))
-    
+
     s6 <- rxSolve(mod2, d, params = setNames(c(2, 10, 77, 10), paste0("THETA[", 1:4, "]")))
   })
 })
