@@ -263,7 +263,6 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom methods signature is
 #' @importFrom memoise memoise is.memoised
 #' @importFrom utils capture.output
-#' @importFrom qs qsave
 #' @import tools
 #' @import data.table
 #' @export
