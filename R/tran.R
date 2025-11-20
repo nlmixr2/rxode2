@@ -17,7 +17,7 @@
 #'   rxode2 syntax expression
 #' @export
 #' @importFrom Rcpp evalCpp
-#' @importFrom qs qsave
+#' @importFrom qs2 qs_save
 #' @importFrom dparser dparse
 #' @importFrom utils capture.output
 #' @importFrom stats setNames
