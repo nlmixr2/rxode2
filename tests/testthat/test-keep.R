@@ -162,7 +162,7 @@ rxTest({
       qs <- test_path("keep-756.qs2")
       skip_if_not(file.exists(qs), "Test file not found")
 
-      d <- qs2::qs_read(qs2)
+      d <- qs2::qs_read(qs)
 
       mod <- function() {
         ini({
