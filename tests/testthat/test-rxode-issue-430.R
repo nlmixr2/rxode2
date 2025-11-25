@@ -1,6 +1,6 @@
 rxTest({
   test_that("rxode2 threading doesn't disturb some solves; Issue RxODE#430", {
-    skip_if_not(file.exists("test-issue-430.qs"))
+    skip_if_not(file.exists("test-issue-430.qs2"))
 
     model <- rxode2({
       KA <- THETA_KA * exp(ETA_KA)

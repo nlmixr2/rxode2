@@ -1,6 +1,6 @@
 rxTest({
   test_that("CMT translation matches input", {
-    filename <- test_path("433.qs")
+    filename <- test_path("433.qs2")
     skip_if_not(file.exists(filename))
 
     lst <- qs2::qs_read(filename)
