@@ -247,11 +247,11 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
 .rxRename <- function(.data, ..., envir=parent.frame()) {
   .inCompress <- FALSE
   if (inherits(.data, "rxUi") &&
-        inherits(.data, "raw")) {
+        is.list(.data)) {
     .inCompress <- TRUE
   }
   rxui <- assertRxUi(.data)
-  if (inherits(rxui, "raw")) {
+  if (is.list(rxui)) {
     rxui <- rxUiDecompress(rxui)
   }
   .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, rxui$predDf$var, rxui$predDf$cond, rxui$iniDf$name))

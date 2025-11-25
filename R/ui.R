@@ -448,7 +448,7 @@ print.rxUi <-function(x, ...) {
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)
-  .ret <- qs2::qs_deserialize(ui)
+  .ret <- list2env(ui, parent=emptyenv())
   class(.ret) <- "rxUi"
   .ret
 }
@@ -458,8 +458,12 @@ rxUiDecompress <- function(ui) {
 rxUiCompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui)) {
-    .ret <- qs2::qs_serialize(ui)
-    class(.ret) <- c("rxUi", "raw")
+    .ls <- ls(ui, all.names=TRUE)
+    .ret <- lapply(.ls, function(nm) {
+      get(nm, ui)
+    })
+    names(.ret) <- .ls
+    class(.ret) <- c("rxUi", "list")
     return(.ret)
   }
   ui

@@ -1804,7 +1804,7 @@ rxModelVars <- function(obj) {
     .obj <- paste(.obj, collapse = "\n")
     return(rxModelVars_(.obj))
   }
-  if (inherits(obj, "raw") &&
+  if (is.list(obj) &&
         inherits(obj, "rxUi")) {
     obj <- rxUiDecompress(obj)
   }
