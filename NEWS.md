@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+- Remove `qs` dependency; For rxode2 ui objects, use lists instead of
+  serialized objects. The internal C++ code still generates `qs2`
+  sterilization objects (#950)
+
 - Fixed translation for censoring/limit to account for a possible
   `CMT` variable before the `CENS` / `LIMIT` column (#951, #952)
 
