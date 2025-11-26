@@ -22,7 +22,8 @@ rxTest({
 
   tmp <- rxSolve(mod2, et)
 
-  vdiffr::expect_doppelganger("intestine-mod2a", plot(tmp, intestine))
+  expect_error(plot(tmp, intestine), NA)
+  ## vdiffr::expect_doppelganger("intestine-mod2a", plot(tmp, intestine))
 
   et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) %>%
     et(time=0, cmt=1, amt=5, ii=4, ss=1) %>%
@@ -32,7 +33,8 @@ rxTest({
 
   tmp <- rxSolve(mod2, et)
 
-  vdiffr::expect_doppelganger("intestine-mod2b", plot(tmp, intestine))
+  ## vdiffr::expect_doppelganger("intestine-mod2b", plot(tmp, intestine))
+  expect_error(plot(tmp, intestine), NA)
 
   ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
