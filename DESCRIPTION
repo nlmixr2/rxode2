@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 4.1.1.9000
+Version: 5.0.0
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
@@ -63,7 +63,6 @@ Suggests:
     testthat,
     tidyr,
     usethis,
-    vdiffr (>= 1.0),
     withr,
     xgxr,
     pillar,
@@ -96,7 +95,7 @@ Imports:
     dparser (>= 1.3.1-12),
     rxode2ll(>= 2.0.9),
     data.table (>= 1.12.4),
-    qs (>= 0.26.3)
+    qs2
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other
     compartmental models.  A compilation manager translates the ODE model

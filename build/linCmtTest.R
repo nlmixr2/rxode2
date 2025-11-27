@@ -235,7 +235,6 @@ fit <- nlmixr2(f, dat, est="focei")
 ## eta <- fit$eta[,-1]
 ## names(eta) <- paste0("ETA[", seq_along(eta), "]")
 
-## qs::qsave(list(theta, eta), "linCmtTest.qs")
 
 
 ## ###################################################################
@@ -248,9 +247,6 @@ fit <- nlmixr2(f, dat, est="focei")
 ## dat <- dat[, names(dat) != "SS"]
 
 
-## p <- qs::qread("linCmtTest.qs")
-
-## p <- qs::qread("../linCmtTest.qs")
 
 ## theta <- p[[1]]
 

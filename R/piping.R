@@ -5,7 +5,7 @@
 #' @author Matthew L. Fidler
 #' @export
 .copyUi <- function(ui) {
-  if (inherits(ui, "raw")) {
+  if (is.list(ui)) {
     return(rxUiDecompress(ui))
   }
   .ret <- new.env(parent=emptyenv())
@@ -216,7 +216,8 @@
             bquote(.(str2lang(.n)) <- .(setNames(.cur[.n], NULL)))
           }
         })
-      } else if (inherits(.cur, "list")) {
+      } else if (!inherits(.cur, "rxUi") &&
+                   inherits(.cur, "list")) {
         if (is.null(names(.cur))) {
           stop("cannot figure out what to do with the unnamed list", call.=FALSE)
         }

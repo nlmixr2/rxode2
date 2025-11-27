@@ -14,7 +14,7 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .uiToRxUiGet <- function(obj, arg, exact=TRUE) {
-  if (inherits(obj, "raw")) obj <- rxUiDecompress(obj)
+  if (is.list(obj)) obj <- rxUiDecompress(obj)
   .lst <- list(obj, exact)
   .arg <- .rxUiBackward[arg]
   if (is.na(.arg)) .arg <- arg

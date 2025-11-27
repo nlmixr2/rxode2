@@ -6,17 +6,18 @@
 This is done by the `predict()`, `solve()`, or `rxSolve()` methods.
 
 ```{r}
+
 library(rxode2)
 library(units)
 
 ## Setup example model
 mod1 <- function() {
   ini({
-    # central 
+    # central
     KA <- 2.94E-01
     CL <- 1.86E+01
     # peripheral
-    V2 <- 4.02E+01 
+    V2 <- 4.02E+01
     Q  <- 1.05E+01
     V3 <- 2.97E+02
     # effects
@@ -71,7 +72,7 @@ x <- mod1 %>% solve(ev) %>%
 x
 ```
 
-# Updating the data-set interactively 
+# Updating the data-set interactively
 However it isn't just a simple data object.  You can use the solved
 object to update parameters on the fly, or even change the sampling
 time.
@@ -112,6 +113,9 @@ plot(x)
 ```
 
 
-You can access/change all the parameters, initialization(s) or events with the `$params`, `$inits`, `$events` accessor syntax, similar to what is used above.
+You can access/change all the parameters, initialization(s) or events
+with the `$params`, `$inits`, `$events` accessor syntax, similar to
+what is used above.
 
-This syntax makes it easy to update and explore the effect of various parameters on the solved object.
+This syntax makes it easy to update and explore the effect of various
+parameters on the solved object.

@@ -8,7 +8,7 @@
 #' @author Matthew L. Fidler
 #' @export
 rxRemoveControl <- function(ui) {
-  if (inherits(ui, "raw")) {
+  if (is.list(ui)) {
     stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
          call.=FALSE)
   }
@@ -44,7 +44,7 @@ rxSetControl <- function(ui, control) {
 #' @author Matthew L. Fidler
 #' @export
 rxAssignControlValue <- function(ui, option, value) {
-  if (inherits(ui, "raw")) {
+  if (is.list(ui)) {
     stop("cannot assign value to compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
          call.=FALSE)
   }

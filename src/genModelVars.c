@@ -10,7 +10,6 @@ SEXP generateModelVars(void) {
   calcNparamsNlhsNslhs();
   calcNextra();
 
-
   int pro = 0;
   SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 29));pro++;
   SEXP names = PROTECT(Rf_allocVector(STRSXP, 29));pro++;

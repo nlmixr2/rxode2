@@ -380,11 +380,11 @@ rxTest({
 
 test_that("evid4", {
 
-  df <- "un]\"BAAA@QRtHACAAAAAAAAAPAAA+:g6Ji,J_8DAE+d1RAK*mJsyNK+:DGqit,>jj(>ph{/KV80[Qh\"~\"=)h>UD~mN@pb$YTVW?CGwjB)v2W`/^kDbH[6nC\"Jpl,moPVY6kUoIDtWA!(@CPA8zJM3b6!,sU\"7<>1!q\"Nq~6eF8[#l2^efwtU]|DzBa)*L%(&X{c%v.`R`V%uy3&$Wq8e+#y)sv]^`f81+\"$M?1WILGf;rpV}@ITW>k,XKH{s[|/Jx7tl[g)ndEQBAH[&U_X=7$J|Z&rpb+Q|k>c%X[TSCxq9jwQO+d2E!C*t=JAoc$,RCiewrSb21kuUx?jgT%i6ffZptmaT3W+t{eq6nfb=U$Au+B%F>CEQK!\"I0ScDfzy<0023?.Gh~t:$e+&`8wLvv7[`d*Mye!{n=Nn:$F7?e)2uXw?u&uS?ALs6.rFs.IJ*B`2vx_m6J^Y$;SgEH},R*H9WB)#&=;*(gE)YJV%/kM81i&Vr9EB8yIoAvlRtWt*hUU0?ADHG}Ep+|6D,c$n^x5I{1Rbf6JdpE3,RM$@U=NFB%SR,F~d#Ku4juP*):i5R:Imx/I:Wh+yV9chv^a_EgRy.wRy?cx^mVgzeNest.yUFNaD"
+  df <- "unjXVBZLQAAAAAAAAA|;[2w|gWj2@.BAC\"><F{+,tB@nC\"OG>cYAAA:CVtAADHMA@AAAH7m0<fKSxAAAHAAAqCAA@QBALtBtaL:ulyT9D<6FlgSH3VY{:CzWmyT92D:3VKf^Uk0D/KlgSH)W3eN\"gA6}[aRBkMhY@DIAAAmyT92D/KQVv`B.zUsYp3dW9}c[HcX&&2x~Rmt>ole6)~[4w?8~<*_~002|T)NAkM(.P4sqVA$!_r+7ZIG\"&2OCt8octWple6|M#FZ4AS.~mTdE}e[4dAU\"AAlBAABtEAIA.AAAe+8^eQCELgO[aAk}B\"tWG$Y.GFCAFAAAbf=[]@|REvG92CEAAAl%?#%85plMbAAAmu:x2o1a,<][cCM%RzQLAA&a7SOQC2y1`Is;Hf6*&S0CU\"?0(ZD@$IHO+U1=mkG/2AEA.&jYcSa]fy>,SSOFp{}Zna%`zzxx3O*<{Qij[umQr4kz~%u\"9l7>H9X~X>s_^5hFC^l9;4I]_8A~Iia?11?yTGxIHel!1Rn*eek:?q~(S5f5^!T$_:%%h`2+v1t`Y5/no;uG\"0719JtYbx2`Dc/1C+6;rCx}P+r~b0P6G"
 
   df <- df %>%
-    qs::base91_decode() %>%
-    qs::qdeserialize()
+    qs2::base91_decode() %>%
+    qs2::qs_deserialize()
 
 
   evid4 <- function() {

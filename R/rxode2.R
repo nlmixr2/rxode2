@@ -263,7 +263,6 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom methods signature is
 #' @importFrom memoise memoise is.memoised
 #' @importFrom utils capture.output
-#' @importFrom qs qsave
 #' @import tools
 #' @import data.table
 #' @export
@@ -1309,6 +1308,37 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
   return(.normalizePath(system.file("include", package = "rxode2")))
 }
 
+.rxCompileEnv <- new.env(parent = emptyenv())
+.rxCompileEnv$lst <- list()
+#' Get the last compiled model information as alist
+#'
+#' @return A list contains the following elements:
+#'
+#' * `msg` the message for a bad compilation, or NULL if successful.
+#'
+#' * `stdout` the standard output from the compilation
+#'
+#' * `stderr` the standard error from the compilation
+#'
+#' * `c` the code code that was used
+#'
+#' This list will be returned invisibly, but the function will
+#' also message the contents to the console.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' rxode2({
+#'   a <- b
+#' })
+#' rxLastCompile()
+rxLastCompile <- function() {
+  lapply(names(.rxCompileEnv$lst), function(nm) {
+    cli::rule(left = nm)
+    message(.rxCompileEnv$lst[[nm]])
+  })
+  return(invisible(.rxCompileEnv$lst))
+}
 .pkg <- NULL
 #' @rdname rxCompile
 #' @export
@@ -1491,22 +1521,25 @@ rxCompile.rxModelVars <- function(model, # Model
           .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
         })
         .stderr <- rawToChar(.out$stderr)
+        .rxCompileEnv$lst <- list()
         if (!(all(.stderr == "") && length(.stderr) == 1)) {
-          message(paste(.stderr, sep = "\n"))
+          .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, sep = "\n")
         }
         .badBuild <- function(msg, cSrc = TRUE) {
-          msg <- gettext(msg)
-          message(msg)
-          cli::rule(left = "stdout output")
-          message(paste(rawToChar(.out$stdout), sep = "\n"))
-          cli::rule(left = "stderr output")
-          message(paste(rawToChar(.out$stderr), sep = "\n"))
+          .rxCompileEnv$lst[["msg"]] <- gettext(msg)
+          .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
           if (cSrc) {
-            cli::rule(left = "c source")
-            message(paste(readLines(.cFile), collapse = "\n"))
+            .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
           } else {
             dyn.load(.cDllFile)
           }
+          message("Error building the model: see rxode2::rxLastCompile()")
+          if (.Platform$OS.type == "windows") {
+            message("this could be because your Rtools is not set up correctly")
+          } else {
+            message("please make sure you have a working C compiler set up")
+          }
+          message("you may use nlmixr2::nlmixr2CheckInstall() to help diagnose installation issues")
           stop(msg, call. = FALSE)
         }
         if (!(.out$status == 0 && file.exists(.cDllFile))) {
@@ -1805,7 +1838,7 @@ rxModelVars <- function(obj) {
     .obj <- paste(.obj, collapse = "\n")
     return(rxModelVars_(.obj))
   }
-  if (inherits(obj, "raw") &&
+  if (is.list(obj) &&
         inherits(obj, "rxUi")) {
     obj <- rxUiDecompress(obj)
   }

@@ -1981,7 +1981,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   if (rxode2.debug) {
     .rx <- rxNorm(object)
-    qs::qsave(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs"))
+    qs2::qs_save(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs2"))
   }
   if (inherits(object, "function") ||
         inherits(object, "rxUi")) {

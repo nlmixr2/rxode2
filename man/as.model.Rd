@@ -38,7 +38,7 @@ model <- quote(model({
   cp = center / v
   cp ~ add(add.sd)
 }))
- 
+
 as.model(model)
 
 one.compartment <- function() {
@@ -63,7 +63,7 @@ one.compartment <- function() {
 }
 
 as.model(one.compartment)
- 
+
 ui <- one.compartment()
 
 as.model(ui)

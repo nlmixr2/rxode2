@@ -159,10 +159,10 @@ rxTest({
 
     test_that("rxSolve 'keep' does not crash and keeps correct values #756", {
 
-      qs <- test_path("keep-756.qs")
+      qs <- test_path("keep-756.qs2")
       skip_if_not(file.exists(qs), "Test file not found")
 
-      d <- qs::qread(qs)
+      d <- qs2::qs_read(qs)
 
       mod <- function() {
         ini({

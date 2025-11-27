@@ -28,9 +28,9 @@ rxTest({
 
     p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
     dat <- NULL
-    dataFile <- test_path("test-data-setup.qs")
+    dataFile <- test_path("test-data-setup.qs2")
     if (file.exists(dataFile)) {
-      dat <- qs::qread(dataFile)
+      dat <- qs2::qs_read(dataFile)
     }
 
     for (rt in c("data.table", "tbl")) {
