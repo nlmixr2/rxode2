@@ -96,7 +96,6 @@ f <- rxode2({
 })
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 
 e <- et(1:10) %>% as.data.frame()
@@ -146,7 +145,6 @@ rxSolve(f, e)
 #> triggered a recompile to use the C user function (they are always preferred)
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 #> ── Solved rxode2 object ──
 #> ── Parameters (value$params): ──
 #> # A tibble: 1 × 0
@@ -168,7 +166,6 @@ rxSolve(f, e)
 f <- rxode2(f)
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 rxSolve(f, e)
 #> ── Solved rxode2 object ──

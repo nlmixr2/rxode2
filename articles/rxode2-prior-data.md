@@ -12,7 +12,7 @@ the `theo_sd` data frame
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 library(nlmixr2data)
 
@@ -69,7 +69,6 @@ parsDf <- tribble(
 solveData <- rxSolve(theo, parsDf, d)
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 plot(solveData, cp)
 ```
@@ -116,7 +115,6 @@ print(solveData)
 solveData <- rxSolve(theo, parsDf, d, returnType="data.frame")
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ## solved data
 dplyr::as_tibble(solveData)

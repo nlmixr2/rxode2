@@ -12,17 +12,18 @@ data-frame. This is done by the
 methods.
 
 ``` r
+
 library(rxode2)
 library(units)
 
 ## Setup example model
 mod1 <- function() {
   ini({
-    # central 
+    # central
     KA <- 2.94E-01
     CL <- 1.86E+01
     # peripheral
-    V2 <- 4.02E+01 
+    V2 <- 4.02E+01
     Q  <- 1.05E+01
     V3 <- 2.97E+02
     # effects

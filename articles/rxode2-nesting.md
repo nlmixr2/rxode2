@@ -28,7 +28,7 @@ This event table contains nesting variables:
 library(rxode2)
 ```
 
-    #> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+    #> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
     #>   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -83,8 +83,6 @@ mod <- rxode2({
   ef0 = eff + add.sd
 })
 ```
-
-    #> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ### Uncertainty in Model parameters
 
@@ -185,8 +183,6 @@ s <- rxSolve(mod, theta, ev,
              sigma=sigma, sigmaDf=400,
              nStud=400)
 ```
-
-    #> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
     #> unhandled error message: EE:[lsoda] 70000 steps taken before reaching tout
     #>  @(lsoda.c:748

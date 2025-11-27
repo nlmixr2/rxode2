@@ -1201,7 +1201,6 @@ qd <- qd %>% et(0:24) %>%
 qd.cp <- rxSolve(m1, qd)
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 head(qd.cp)
 #>    time       C2        C3     depot    centr      peri      eff

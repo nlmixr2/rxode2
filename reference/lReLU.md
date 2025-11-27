@@ -48,7 +48,6 @@ lReLU(c(-1, 0, 1))
 r <- rxode2({r <- lReLU(time)})
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 e <- et(c(-1, 0, 1))
 rxSolve(r, e)
 #> ── Solved rxode2 object ──

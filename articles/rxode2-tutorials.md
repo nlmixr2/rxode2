@@ -4,7 +4,7 @@
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 ```
 

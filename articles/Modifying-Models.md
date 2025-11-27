@@ -2,7 +2,7 @@
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 ```
 
@@ -1333,7 +1333,7 @@ print(f)
 #>         cp <- center/v
 #>     })
 #> }
-#> <environment: 0x561ccf2f0830>
+#> <environment: 0x56150192a238>
 ```
 
 Note that these functions do not modify the `ini({})` block. You may

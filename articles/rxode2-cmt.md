@@ -10,7 +10,7 @@ used:
 library(rxode2)
 ```
 
-    #> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+    #> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
     #>   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -222,16 +222,11 @@ use the [`summary()`](https://rdrr.io/r/base/summary.html) function:
 
 ``` r
 pbpk <- pbpk$simulationModel
-```
-
-    #> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-
-``` r
 summary(pbpk)
 ```
 
-    #> rxode2 4.1.1.9000 model named rx_8f82e4f20c8e708f13441bd577a3fb12 model (ready). 
-    #> DLL: /tmp/RtmpiZIzI5/rxode2/rx_8f82e4f20c8e708f13441bd577a3fb12__.rxd/rx_8f82e4f20c8e708f13441bd577a3fb12_.so
+    #> rxode2 5.0.0 model named rx_a67c220db36b9deac63167cb3e8e1e78 model (ready). 
+    #> DLL: /tmp/RtmpVFanKs/rxode2/rx_a67c220db36b9deac63167cb3e8e1e78__.rxd/rx_a67c220db36b9deac63167cb3e8e1e78_.so
     #> NULL
     #> 
     #> Calculated Variables:
@@ -593,9 +588,7 @@ model:
 ode.1c.ka$simulationModel
 ```
 
-    #> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-
-    #> rxode2 4.1.1.9000 model named rx_7ddd95a162308c64629ee8615a691196 model (ready). 
+    #> rxode2 5.0.0 model named rx_15d5e8f2832864e21cd3fbd779367d96 model (ready). 
     #> x$state: depot, center
     #> x$stateExtra: eff
     #> x$params: V, KA, CL

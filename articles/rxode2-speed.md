@@ -11,7 +11,7 @@ These models are in the form of:
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 mod1 <- function() {
@@ -106,8 +106,8 @@ see the differences below:
 
 ``` r
 summary(mod1$simulationModel)
-#> rxode2 4.1.1.9000 model named rx_9c8bd1b1b4c70daaac18c6d175e0e56a model (✔ ready). 
-#> DLL: /tmp/RtmpiZIzI5/rxode2/rx_9c8bd1b1b4c70daaac18c6d175e0e56a__.rxd/rx_9c8bd1b1b4c70daaac18c6d175e0e56a_.so
+#> rxode2 5.0.0 model named rx_f31be0a6adb47cd410d815ad66d43e38 model (✔ ready). 
+#> DLL: /tmp/RtmpVFanKs/rxode2/rx_f31be0a6adb47cd410d815ad66d43e38__.rxd/rx_f31be0a6adb47cd410d815ad66d43e38_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -124,9 +124,8 @@ summary(mod1$simulationModel)
 #>     eff(0) = 1
 #> })
 summary(mod1$simulationIniModel)
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-#> rxode2 4.1.1.9000 model named rx_a6639ccee84a18eca2d4a8cdd7dda870 model (✔ ready). 
-#> DLL: /tmp/RtmpiZIzI5/rxode2/rx_a6639ccee84a18eca2d4a8cdd7dda870__.rxd/rx_a6639ccee84a18eca2d4a8cdd7dda870_.so
+#> rxode2 5.0.0 model named rx_984b4259e0eff2d3e8e5294693aaf9c7 model (✔ ready). 
+#> DLL: /tmp/RtmpVFanKs/rxode2/rx_984b4259e0eff2d3e8e5294693aaf9c7__.rxd/rx_984b4259e0eff2d3e8e5294693aaf9c7_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -151,9 +150,8 @@ summary(mod1$simulationIniModel)
 #>     eff(0) = 1
 #> })
 summary(mod2f$simulationModel)
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-#> rxode2 4.1.1.9000 model named rx_dc812cc2ca31f7090dda9c66d7b64d7f model (✔ ready). 
-#> DLL: /tmp/RtmpiZIzI5/rxode2/rx_dc812cc2ca31f7090dda9c66d7b64d7f__.rxd/rx_dc812cc2ca31f7090dda9c66d7b64d7f_.so
+#> rxode2 5.0.0 model named rx_5dc3dcbae4811b413d0c27b100d567c5 model (✔ ready). 
+#> DLL: /tmp/RtmpVFanKs/rxode2/rx_5dc3dcbae4811b413d0c27b100d567c5__.rxd/rx_5dc3dcbae4811b413d0c27b100d567c5_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -208,9 +206,8 @@ summary(mod2f$simulationModel)
 #>     dvid(5, 4)
 #> })
 summary(mod2f$simulationIniModel)
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-#> rxode2 4.1.1.9000 model named rx_8b61564f29aca16e4a17d804f3e7774b model (✔ ready). 
-#> DLL: /tmp/RtmpiZIzI5/rxode2/rx_8b61564f29aca16e4a17d804f3e7774b__.rxd/rx_8b61564f29aca16e4a17d804f3e7774b_.so
+#> rxode2 5.0.0 model named rx_c9792a7020cf588e29423e17f5b2c856 model (✔ ready). 
+#> DLL: /tmp/RtmpVFanKs/rxode2/rx_c9792a7020cf588e29423e17f5b2c856__.rxd/rx_c9792a7020cf588e29423e17f5b2c856_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -325,7 +322,6 @@ mod1 <- rxode2({
     d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff
     eff(0) = 1
 })
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ## Create an event table
 
@@ -410,10 +406,10 @@ bench <- microbenchmark(runFor(), runSapply(), runSingleThread(),run2Thread())
 print(bench)
 #> Unit: milliseconds
 #>               expr       min        lq      mean    median        uq       max
-#>           runFor() 431.17310 439.97430 450.56295 445.49581 450.86924 610.35449
-#>        runSapply() 431.57661 440.50383 447.37326 444.09708 449.58704 603.67994
-#>  runSingleThread()  33.23268  33.65849  34.30240  33.98335  34.36563  40.02304
-#>       run2Thread()  21.48751  21.75734  22.46174  22.19828  22.58947  27.61150
+#>           runFor() 413.92322 419.47562 424.18908 422.75649 425.05427 567.41612
+#>        runSapply() 414.41581 420.41277 427.53851 423.94715 427.73334 573.31011
+#>  runSingleThread()  31.83201  32.03098  32.38185  32.12993  32.34891  36.91948
+#>       run2Thread()  20.81253  21.08236  21.73835  21.22926  21.47027  26.84750
 #>  neval
 #>    100
 #>    100
@@ -454,11 +450,11 @@ bench <- eval(parse(text=sprintf("microbenchmark(%s)",
                                            collapse=","))))
 print(bench)
 #> Unit: milliseconds
-#>          expr      min       lq     mean   median       uq      max neval
-#>  runThread(1) 33.60524 34.05487 34.41939 34.28737 34.54475 39.65984   100
-#>  runThread(2) 21.91844 22.36403 24.21951 22.69338 25.79786 36.23254   100
-#>  runThread(3) 22.70446 23.49014 24.66638 23.82751 26.73555 31.49799   100
-#>  runThread(4) 22.96583 23.44210 24.04120 23.71328 24.11734 29.44270   100
+#>          expr      min       lq     mean   median       uq       max neval
+#>  runThread(1) 31.78743 31.95749 32.31639 32.09016 32.35775  39.95983   100
+#>  runThread(2) 20.73361 21.37018 22.85454 21.62235 21.92685  35.05054   100
+#>  runThread(3) 22.15713 22.60507 25.61575 23.04458 26.11370 195.23206   100
+#>  runThread(4) 22.53094 22.79575 23.52473 22.98941 23.31830  43.56090   100
 ```
 
 ``` r
@@ -529,7 +525,6 @@ mod2f <- function() {
 mod2f <- mod2f()
 
 mod2s <- mod2f$simulationIniModel
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ev  <- et(amountUnits="mg", timeUnits="hours") %>%
   et(amt=10000, addl=9,ii=12,cmt="depot") %>%
@@ -545,7 +540,6 @@ rxClean()
 withr::with_options(list(rxode2.compile.O="fast"), {
   mod2s <- mod2f$simulationIniModel
 })
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 bench2 <- microbenchmark(fastCompile=rxSolve(mod2s, ev, nSub=1000))
 
@@ -554,8 +548,8 @@ bench <- rbind(bench1, bench2)
 print(bench)
 #> Unit: milliseconds
 #>             expr      min       lq     mean   median       uq      max neval
-#>  standardCompile 346.7688 356.4568 444.4648 515.6779 525.3001 541.5990   100
-#>      fastCompile 346.0484 353.3562 440.1920 374.4747 526.4739 536.5435   100
+#>  standardCompile 351.8475 363.0782 444.9475 446.9836 526.7234 553.0149   100
+#>      fastCompile 353.8205 362.9997 444.4537 380.2670 526.8013 540.7568   100
 
 autoplot(bench)
 ```
@@ -595,7 +589,6 @@ library(data.table)
 
 #Create the rxode2 simulation object
 mod1 <- rxode2(model = ode1)
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 #Population parameter values on log-scale
   paramsl <- c(CL = log(4),
@@ -654,7 +647,7 @@ Startlapply <- Sys.time()
 Stoplapply <- Sys.time()
 
 print(Stoplapply - Startlapply)
-#> Time difference of 17.31095 secs
+#> Time difference of 13.79431 secs
 ```
 
 By applying some of the new parallel solving concepts you can simply run
@@ -672,7 +665,6 @@ rx <- rxode2({
     d/dt(centr)  =  KA*abs-(CL/V)*centr;
     C2=centr/V;
 })
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 omega <- lotri(eta.CL ~ 0.09,
                eta.V ~ 0.09,
@@ -698,7 +690,7 @@ ev <- do.call("rbind",
 res <- rxSolve(rx, ev, omega=omega, returnType="data.table")
 endParallel <- Sys.time()
 print(endParallel - startParallel)
-#> Time difference of 0.128583 secs
+#> Time difference of 0.1287532 secs
 ```
 
 You can see a striking time difference between the two methods; A few
@@ -762,29 +754,29 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] MASS_7.3-65          data.table_1.17.8    ggplot2_4.0.0       
-#> [4] microbenchmark_1.5.0 rxode2_4.1.1.9000   
+#> [1] MASS_7.3-65          data.table_1.17.8    ggplot2_4.0.1       
+#> [4] microbenchmark_1.5.0 rxode2_5.0.0        
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] sass_0.4.10           generics_0.1.4        lattice_0.22-7       
-#>  [4] digest_0.6.37         magrittr_2.0.4        evaluate_1.0.5       
+#>  [4] digest_0.6.39         magrittr_2.0.4        evaluate_1.0.5       
 #>  [7] grid_4.5.2            RColorBrewer_1.1-3    fastmap_1.2.0        
-#> [10] lotri_1.0.2           jsonlite_2.0.0        rxode2ll_2.0.13      
-#> [13] backports_1.5.0       scales_1.4.0          lazyeval_0.2.2       
-#> [16] textshaping_1.0.4     jquerylib_0.1.4       RApiSerialize_0.1.4  
-#> [19] cli_3.6.5             symengine_0.2.10      rlang_1.1.6          
+#> [10] lotri_1.0.2           qs2_0.1.6             jsonlite_2.0.0       
+#> [13] rxode2ll_2.0.13       backports_1.5.0       scales_1.4.0         
+#> [16] lazyeval_0.2.2        textshaping_1.0.4     jquerylib_0.1.4      
+#> [19] cli_3.6.5             rlang_1.1.6           symengine_0.2.10     
 #> [22] crayon_1.5.3          units_1.0-0           withr_3.0.2          
 #> [25] cachem_1.1.0          yaml_2.3.10           tools_4.5.2          
-#> [28] qs_0.27.3             memoise_2.0.1         checkmate_2.3.3      
-#> [31] dplyr_1.1.4           vctrs_0.6.5           R6_2.6.1             
-#> [34] lifecycle_1.0.4       fs_1.6.6              stringfish_0.17.0    
-#> [37] htmlwidgets_1.6.4     ragg_1.5.0            PreciseSums_0.7      
-#> [40] pkgconfig_2.0.3       desc_1.4.3            rex_1.2.1            
-#> [43] pkgdown_2.2.0         RcppParallel_5.1.11-1 pillar_1.11.1        
-#> [46] bslib_0.9.0           gtable_0.3.6          glue_1.8.0           
-#> [49] Rcpp_1.1.0            systemfonts_1.3.1     xfun_0.54            
-#> [52] tibble_3.3.0          tidyselect_1.2.1      sys_3.4.3            
-#> [55] knitr_1.50            farver_2.1.2          dparser_1.3.1-13     
-#> [58] htmltools_0.5.8.1     nlme_3.1-168          labeling_0.4.3       
-#> [61] rmarkdown_2.30        compiler_4.5.2        S7_0.2.0
+#> [28] memoise_2.0.1         checkmate_2.3.3       dplyr_1.1.4          
+#> [31] vctrs_0.6.5           R6_2.6.1              lifecycle_1.0.4      
+#> [34] fs_1.6.6              stringfish_0.17.0     htmlwidgets_1.6.4    
+#> [37] ragg_1.5.0            PreciseSums_0.7       pkgconfig_2.0.3      
+#> [40] desc_1.4.3            rex_1.2.1             pkgdown_2.2.0        
+#> [43] RcppParallel_5.1.11-1 pillar_1.11.1         bslib_0.9.0          
+#> [46] gtable_0.3.6          glue_1.8.0            Rcpp_1.1.0           
+#> [49] systemfonts_1.3.1     xfun_0.54             tibble_3.3.0         
+#> [52] tidyselect_1.2.1      sys_3.4.3             knitr_1.50           
+#> [55] farver_2.1.2          dparser_1.3.1-13      htmltools_0.5.8.1    
+#> [58] nlme_3.1-168          labeling_0.4.3        rmarkdown_2.30       
+#> [61] compiler_4.5.2        S7_0.2.1
 ```

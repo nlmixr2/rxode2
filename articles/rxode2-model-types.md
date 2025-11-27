@@ -22,7 +22,7 @@ one-compartment model.
 library(rxode2)
 ```
 
-    ## rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+    ## rxode2 5.0.0 using 2 threads (see ?getRxThreads)
     ##   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -44,8 +44,6 @@ cmt1 <- rxSolve(mod,et,params=c(ke=0.5))
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ``` r
 cmt1
@@ -138,8 +136,6 @@ cmt1 <- rxSolve(mod,et)
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
     ## Warning: dose to compartment 2 ignored (not in system; 'id=1')
 
@@ -246,8 +242,6 @@ x <- mod2 %>%  solve(theta, ev)
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ``` r
 print(x)

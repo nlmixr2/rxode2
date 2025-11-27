@@ -4,7 +4,7 @@
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 ```
 
@@ -43,7 +43,6 @@ newAbs <- function(x) {
 f <- rxode2({
   a <- newAbs(time)
 })
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 e <- et(-10, 10, length.out=40)
 ```
@@ -93,7 +92,6 @@ rxFun(newAbs)
 f <- rxode2({
   a <- newAbs(time)
 })
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 mb2 <- microbenchmark::microbenchmark(withC=rxSolve(f,e, cores=1))
 
@@ -108,9 +106,9 @@ autoplot(mb) + rxTheme() + xgxr::xgx_scale_y_log10()
 ``` r
 print(mb)
 #> Unit: milliseconds
-#>      expr      min        lq      mean    median        uq       max neval
-#>  withoutC 9.705151 10.013692 10.865908 10.188082 10.588394 20.625280   100
-#>     withC 3.339291  3.426173  3.955002  3.611719  4.406042  9.114409   100
+#>      expr      min       lq     mean   median       uq       max neval
+#>  withoutC 9.278725 9.424951 9.995604 9.530129 9.682807 16.115936   100
+#>     withC 3.256894 3.327967 3.789737 3.424952 4.312688  8.533645   100
 ```
 
 The C version is almost twice as fast as the R version. You may have
@@ -732,7 +730,7 @@ linMod
 #>             iniDf = .iniDf)
 #>     }
 #> }
-#> <bytecode: 0x5583929870a8>
+#> <bytecode: 0x55b256b25208>
 #> <environment: namespace:rxode2>
 
 # You can also print the s3 method that is used for this method
@@ -742,7 +740,7 @@ rxode2:::rxUdfUi.linMod
 #> {
 #>     eval(fun)
 #> }
-#> <bytecode: 0x5583922ec2d8>
+#> <bytecode: 0x55b25648bf58>
 #> <environment: namespace:rxode2>
 #> attr(,"nargs")
 #> [1] 2

@@ -22,7 +22,7 @@ In rxode2 these can be specified by the following:
 library(rxode2)
 ```
 
-    ## rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+    ## rxode2 5.0.0 using 2 threads (see ?getRxThreads)
     ##   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -52,8 +52,6 @@ s1 <- Vtpol2 %>%  solve(et, method="lsoda")
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ``` r
 print(s1)
@@ -87,8 +85,6 @@ s2 <- Vtpol2 %>%  solve(c(mu=1000), et)
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ``` r
 print(s2)
@@ -139,8 +135,6 @@ Vtpol <- Vtpol()
 Vtpol <- rxode2(Vtpol$symengineModelNoPrune,  calcJac=TRUE)
 ```
 
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-
     ## > pruning branches (`if`/`else`)...
 
     ## v done
@@ -153,14 +147,12 @@ Vtpol <- rxode2(Vtpol$symengineModelNoPrune,  calcJac=TRUE)
 
     ## [====|====|====|====|====|====|====|====|====|====] 0:00:00
 
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-
 ``` r
 summary(Vtpol)
 ```
 
-    ## rxode2 4.1.1.9000 model named rx_7ce6d5970725bd5740abf8bde7ff9d8a model (ready). 
-    ## DLL: /tmp/RtmpiZIzI5/rxode2/rx_7ce6d5970725bd5740abf8bde7ff9d8a__.rxd/rx_7ce6d5970725bd5740abf8bde7ff9d8a_.so
+    ## rxode2 5.0.0 model named rx_2e62c6684900a51d5d8c18b69ffc68f1 model (ready). 
+    ## DLL: /tmp/RtmpVFanKs/rxode2/rx_2e62c6684900a51d5d8c18b69ffc68f1__.rxd/rx_2e62c6684900a51d5d8c18b69ffc68f1_.so
     ## NULL
     ## -- rxode2 Model Syntax --
     ## rxode2({

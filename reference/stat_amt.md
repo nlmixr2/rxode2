@@ -193,7 +193,6 @@ bidQd <- rxSolve(mod1, et, addDosing=TRUE)
 #> ℹ Need to run with the source intact to parse comments
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 # by default dotted and under-stated
 plot(bidQd, C2) + geom_amt(aes(amt=amt))

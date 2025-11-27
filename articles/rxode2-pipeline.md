@@ -9,7 +9,7 @@ workflows that rxode2 can handle:
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 Ribba2012 <- function() {
@@ -88,7 +88,6 @@ Ribba2012 %>% # Use rxode2
     plot(pt, q, qp, pstar) # Plot it, plotting the variables of interest
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 ```
 
 ![](rxode2-pipeline_files/figure-html/unnamed-chunk-6-1.png)
@@ -151,7 +150,6 @@ Ribba2012 %>% # Use rxode2
     plot(pt, q, qp, pstar) # Plot it, plotting the variables of interest
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 #> Warning: multi-subject simulation without without 'omega'
 ```
 
@@ -361,7 +359,6 @@ Ribba2012 <- Ribba2012()
 # Convert to classic rxode2 model with ini attached
 
 r <- Ribba2012$simulationIniModel
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 pars <- rxInits(r)
 pars <- pars[regexpr("(prop|eta)",names(pars)) == -1]

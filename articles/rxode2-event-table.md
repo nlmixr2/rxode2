@@ -16,7 +16,7 @@ supports](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.md).
 library(rxode2)
 ```
 
-    #> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+    #> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
     #>   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -165,8 +165,6 @@ rxSolve(m1, ev) %>% plot(C2)
 
     #> i Need to run with the source intact to parse comments
 
-    #> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-
 ![](rxode2-event-table_files/figure-html/unnamed-chunk-9-1.png)
 
 If you are more familiar with the NONMEM/rxode2 event records, you can
@@ -199,8 +197,6 @@ rxSolve(m1, ev) %>% plot(C2)
     #> i parameter labels from comments are typically ignored in non-interactive mode
 
     #> i Need to run with the source intact to parse comments
-
-    #> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ![](rxode2-event-table_files/figure-html/unnamed-chunk-11-1.png)
 

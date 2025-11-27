@@ -16,7 +16,7 @@ compartment.
 library(rxode2)
 ```
 
-    ## rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+    ## rxode2 5.0.0 using 2 threads (see ?getRxThreads)
     ##   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -47,8 +47,6 @@ transit <- rxSolve(mod, et)
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ``` r
 plot(transit, cen, ylab="Central Concentration")
@@ -91,8 +89,6 @@ transit <- rxSolve(mod, et)
     ## i parameter labels from comments are typically ignored in non-interactive mode
 
     ## i Need to run with the source intact to parse comments
-
-    ## using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 ``` r
 plot(transit, cen, ylab="Central Concentration")

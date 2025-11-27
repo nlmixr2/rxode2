@@ -32,7 +32,6 @@ mod <- rxode2({
 })
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 rxStateOde(mod)
 #> [1] "Ce"
@@ -47,7 +46,6 @@ mod <- rxode2({
 }, linCmtSens="linCmtB")
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 rxStateOde(mod)
 #> [1] "Ce"

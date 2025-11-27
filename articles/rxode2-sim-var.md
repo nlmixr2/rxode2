@@ -15,7 +15,7 @@ set create an rxode2 model describing this system below:
 
 ``` r
 library(rxode2)
-#> rxode2 4.1.1.9000 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 set.seed(32)
@@ -78,7 +78,6 @@ Once this is complete you can simulate using the `rxSolve` routine:
 sim  <- rxSolve(mod, ev, nSub=100)
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 ```
 
 To quickly look and customize your simulation you use the default `plot`
@@ -216,7 +215,6 @@ Which allows you to solve the system:
 
 ``` r
 sim  <- rxSolve(mod2, ev, nSub=100)
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 ```
 
 Since this is simulated from a model with the residual specification
@@ -282,7 +280,6 @@ dat <- rbind(data.frame(ID=1, ev1$get.EventTable()),
 sim  <- rxSolve(mod, dat)
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 sim %>% select(id, time, eff, C2)
 #>    id          time      eff          C2
@@ -460,7 +457,6 @@ rx1 <- rxode2({
   ipred <- linCmt()
   obs <- ipred * (1 + prop.sd) + add.sd
 })
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 ```
 
 Next we input the estimated parameters:

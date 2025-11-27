@@ -99,7 +99,6 @@ genShinyApp.template(appDir = "myapp")
 #> 
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 #> 
 #> Parameters and their values:
 #>      KA      CL      V2       Q      V3     Kin    Kout    EC50 

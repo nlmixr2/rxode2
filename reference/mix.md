@@ -94,7 +94,6 @@ s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
 #> ℹ Need to run with the source intact to parse comments
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 plot(s, ipredSim)
 

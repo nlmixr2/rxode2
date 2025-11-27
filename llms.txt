@@ -405,6 +405,8 @@ math’s auto-differentiation). This currently uses the same equations as
   sessions
 - [`rxDelete()`](https://nlmixr2.github.io/rxode2/reference/rxDelete.md)
   : Delete the DLL for the model
+- [`rxLastCompile()`](https://nlmixr2.github.io/rxode2/reference/rxLastCompile.md)
+  : Get the last compiled model information as alist
 - [`rxUnloadAll()`](https://nlmixr2.github.io/rxode2/reference/rxUnloadAll.md)
   : Unloads all rxode2 compiled DLLs
 - [`rxode2()`](https://nlmixr2.github.io/rxode2/reference/rxode2.md)

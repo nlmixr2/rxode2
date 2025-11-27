@@ -55,7 +55,7 @@ f <- rxode2(one.cmt)
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
 print(class(f))
-#> [1] "rxUi" "raw" 
+#> [1] "rxUi" "list"
 print(is.environment(f))
 #> [1] FALSE
 
@@ -67,7 +67,7 @@ print(is.environment(f))
 
 f  <- rxUiCompress(f)
 print(class(f))
-#> [1] "rxUi" "raw" 
+#> [1] "rxUi" "list"
 print(is.environment(f))
 #> [1] FALSE
 ```

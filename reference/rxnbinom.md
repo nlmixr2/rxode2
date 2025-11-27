@@ -103,7 +103,6 @@ s <- rxSolve(rx, et)
 #> ℹ Need to run with the source intact to parse comments
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 
 rx <- function() {
   model({
@@ -118,6 +117,5 @@ s <- rxSolve(rx, et)
 #> ℹ Need to run with the source intact to parse comments
 #>  
 #>  
-#> using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
 # }
 ```

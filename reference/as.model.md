@@ -46,7 +46,7 @@ model <- quote(model({
   cp = center / v
   cp ~ add(add.sd)
 }))
- 
+
 as.model(model)
 #> model({
 #>     ka <- exp(tka + eta.ka)
@@ -93,7 +93,7 @@ as.model(one.compartment)
 #>     cp = center/v
 #>     cp ~ add(add.sd)
 #> })
- 
+
 ui <- one.compartment()
 
 as.model(ui)
