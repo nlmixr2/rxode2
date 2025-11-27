@@ -173,7 +173,11 @@ static inline void assertNoLinCmtDepotCentral(void) {
     if (tb.hasCentralCmt == -1) {
       trans_syntax_error_report_fn0("'cmt(central)' does not work with 'linCmt()'");
     }
-  }
+
+    if (tb.hasDepotCmt == 1 && !tb.hasKa) {
+      trans_syntax_error_report_fn0("'tad(depot)' and related functions require an depot compartment in 'linCmt()'");
+    }
+ }
 }
 
 static inline SEXP calcIniVals(void) {
