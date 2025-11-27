@@ -29,7 +29,7 @@ value of code
 .rxWithWd(tempdir(), {
   getwd()
 })
-#> [1] "/tmp/RtmpVFanKs"
+#> [1] "/tmp/Rtmp0IWJei"
 
 getwd()
 #> [1] "/home/runner/work/rxode2/rxode2/docs/reference"

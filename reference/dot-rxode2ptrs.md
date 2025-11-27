@@ -22,165 +22,165 @@ Matthew L. Fidler
 ``` r
 .rxode2ptrs()
 #> $rxode2rxRmvnSEXP
-#> <pointer: 0x7f27dfae9b60>
+#> <pointer: 0x7ff791ce9b60>
 #> 
 #> $rxode2rxParProgress
-#> <pointer: 0x7f27dfce3c20>
+#> <pointer: 0x7ff791ee3c20>
 #> 
 #> $rxode2getRxSolve_
-#> <pointer: 0x7f27dfce4e20>
+#> <pointer: 0x7ff791ee4e20>
 #> 
 #> $rxode2indSolve
-#> <pointer: 0x7f27dfcf5940>
+#> <pointer: 0x7ff791ef5940>
 #> 
 #> $rxode2getTime
-#> <pointer: 0x7f27dfce4e50>
+#> <pointer: 0x7ff791ee4e50>
 #> 
 #> $rxode2isRstudio
-#> <pointer: 0x7f27dfcffaa0>
+#> <pointer: 0x7ff791effaa0>
 #> 
 #> $rxode2iniSubjectE
-#> <pointer: 0x7f27dfcec860>
+#> <pointer: 0x7ff791eec860>
 #> 
 #> $rxode2sortIds
-#> <pointer: 0x7f27dfd0b690>
+#> <pointer: 0x7ff791f0b690>
 #> 
 #> $getSolvingOptionsInd
-#> <pointer: 0x7f27dfcfcbd0>
+#> <pointer: 0x7ff791efcbd0>
 #> 
 #> $rxode2getUpdateInis
-#> <pointer: 0x7f27dfcfcbe0>
+#> <pointer: 0x7ff791efcbe0>
 #> 
 #> $rxode2_rxode2_rxModelVars_
-#> <pointer: 0x7f27dfae48a0>
+#> <pointer: 0x7ff791ce48a0>
 #> 
 #> $rxode2_par_solve
-#> <pointer: 0x7f27dfcf4700>
+#> <pointer: 0x7ff791ef4700>
 #> 
 #> $rxode2rxGetId
-#> <pointer: 0x7f27dfce2d20>
+#> <pointer: 0x7ff791ee2d20>
 #> 
 #> $rxode2getIndLambda
-#> <pointer: 0x7f27dfcfcc20>
+#> <pointer: 0x7ff791efcc20>
 #> 
 #> $rxode2getIndLambdaYj
-#> <pointer: 0x7f27dfcfcc30>
+#> <pointer: 0x7ff791efcc30>
 #> 
 #> $rxode2getIndLogitLow
-#> <pointer: 0x7f27dfcfcc40>
+#> <pointer: 0x7ff791efcc40>
 #> 
 #> $rxode2getIndLogitHi
-#> <pointer: 0x7f27dfcfcc50>
+#> <pointer: 0x7ff791efcc50>
 #> 
 #> $rxode2setIndParPtr
-#> <pointer: 0x7f27dfcfcc60>
+#> <pointer: 0x7ff791efcc60>
 #> 
 #> $rxode2getIndParPtr
-#> <pointer: 0x7f27dfcfccc0>
+#> <pointer: 0x7ff791efccc0>
 #> 
 #> $rxode2getIndNallTimes
-#> <pointer: 0x7f27dfcfcd10>
+#> <pointer: 0x7ff791efcd10>
 #> 
 #> $rxode2setIndIdx
-#> <pointer: 0x7f27dfcfcd20>
+#> <pointer: 0x7ff791efcd20>
 #> 
 #> $rxode2getIndIx
-#> <pointer: 0x7f27dfcfcd30>
+#> <pointer: 0x7ff791efcd30>
 #> 
 #> $rxode2getIndEvid
-#> <pointer: 0x7f27dfcfcdc0>
+#> <pointer: 0x7ff791efcdc0>
 #> 
 #> $rxode2getIndLhs
-#> <pointer: 0x7f27dfcfcdf0>
+#> <pointer: 0x7ff791efcdf0>
 #> 
 #> $rxode2getIndNdoses
-#> <pointer: 0x7f27dfcfce00>
+#> <pointer: 0x7ff791efce00>
 #> 
 #> $rxode2getIndNevid2
-#> <pointer: 0x7f27dfcfce10>
+#> <pointer: 0x7ff791efce10>
 #> 
 #> $rxode2setIndSolve
-#> <pointer: 0x7f27dfcfce20>
+#> <pointer: 0x7ff791efce20>
 #> 
 #> $rxode2getIndSolve
-#> <pointer: 0x7f27dfcfce30>
+#> <pointer: 0x7ff791efce30>
 #> 
 #> $rxode2getIndDv
-#> <pointer: 0x7f27dfcfce40>
+#> <pointer: 0x7ff791efce40>
 #> 
 #> $rxode2getIndYj
-#> <pointer: 0x7f27dfcfce80>
+#> <pointer: 0x7ff791efce80>
 #> 
 #> $rxode2getIndLimit
-#> <pointer: 0x7f27dfcfce90>
+#> <pointer: 0x7ff791efce90>
 #> 
 #> $rxode2getIndCens
-#> <pointer: 0x7f27dfcfced0>
+#> <pointer: 0x7ff791efced0>
 #> 
 #> $rxode2getIndIdx
-#> <pointer: 0x7f27dfcfcf00>
+#> <pointer: 0x7ff791efcf00>
 #> 
 #> $rxode2getOpNeq
-#> <pointer: 0x7f27dfcfcf10>
+#> <pointer: 0x7ff791efcf10>
 #> 
 #> $rxode2setOpNeq
-#> <pointer: 0x7f27dfcfcf20>
+#> <pointer: 0x7ff791efcf20>
 #> 
 #> $rxode2hasOpBadSolve
-#> <pointer: 0x7f27dfcfcf30>
+#> <pointer: 0x7ff791efcf30>
 #> 
 #> $rxode2getOpNlin
-#> <pointer: 0x7f27dfcfcf40>
+#> <pointer: 0x7ff791efcf40>
 #> 
 #> $rxode2getOpCores
-#> <pointer: 0x7f27dfcfcf50>
+#> <pointer: 0x7ff791efcf50>
 #> 
 #> $rxode2getOpNlhs
-#> <pointer: 0x7f27dfcfcf60>
+#> <pointer: 0x7ff791efcf60>
 #> 
 #> $rxode2getOpStiff
-#> <pointer: 0x7f27dfcfcf70>
+#> <pointer: 0x7ff791efcf70>
 #> 
 #> $rxode2resetOpBadSolve
-#> <pointer: 0x7f27dfcfcf80>
+#> <pointer: 0x7ff791efcf80>
 #> 
 #> $rxode2getRxNsub
-#> <pointer: 0x7f27dfcfcf90>
+#> <pointer: 0x7ff791efcf90>
 #> 
 #> $rxode2hasRxLimit
-#> <pointer: 0x7f27dfcfcfa0>
+#> <pointer: 0x7ff791efcfa0>
 #> 
 #> $rxode2hasRxCens
-#> <pointer: 0x7f27dfcfcfb0>
+#> <pointer: 0x7ff791efcfb0>
 #> 
 #> $rxode2getRxNall
-#> <pointer: 0x7f27dfcfcfc0>
+#> <pointer: 0x7ff791efcfc0>
 #> 
 #> $rxode2getRxNobs
-#> <pointer: 0x7f27dfcfcfd0>
+#> <pointer: 0x7ff791efcfd0>
 #> 
 #> $rxode2getRxNobs2
-#> <pointer: 0x7f27dfcfcfe0>
+#> <pointer: 0x7ff791efcfe0>
 #> 
 #> $rxode2getOpIndSolve
-#> <pointer: 0x7f27dfcfd000>
+#> <pointer: 0x7ff791efd000>
 #> 
 #> $rxode2getRxNpars
-#> <pointer: 0x7f27dfcfcff0>
+#> <pointer: 0x7ff791efcff0>
 #> 
 #> $rxode2getIndMixest
-#> <pointer: 0x7f27dfcfcd60>
+#> <pointer: 0x7ff791efcd60>
 #> 
 #> $rxode2setIndMixest
-#> <pointer: 0x7f27dfcfcd70>
+#> <pointer: 0x7ff791efcd70>
 #> 
 #> $rxode2mexpit
-#> <pointer: 0x7f27dfc84b60>
+#> <pointer: 0x7ff791e84b60>
 #> 
 #> $rxode2getRxMixnum
-#> <pointer: 0x7f27dfcfcd90>
+#> <pointer: 0x7ff791efcd90>
 #> 
 #> $rxode2setRxMixnum
-#> <pointer: 0x7f27dfcfcda0>
+#> <pointer: 0x7ff791efcda0>
 #> 
 ```
