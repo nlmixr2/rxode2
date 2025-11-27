@@ -8,7 +8,7 @@
 #' @author Matthew L. Fidler
 #' @export
 rxRemoveControl <- function(ui) {
-  if (is.list(ui)) {
+  if (is.list(ui) || inherits(ui, "raw")) {
     stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
          call.=FALSE)
   }

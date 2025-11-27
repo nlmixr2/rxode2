@@ -5,7 +5,8 @@
 #' @author Matthew L. Fidler
 #' @export
 .copyUi <- function(ui) {
-  if (is.list(ui)) {
+  if (is.list(ui) ||
+        inherits(ui, "raw")) {
     return(rxUiDecompress(ui))
   }
   .ret <- new.env(parent=emptyenv())

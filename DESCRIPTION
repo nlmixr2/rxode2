@@ -75,6 +75,7 @@ Suggests:
     lifecycle,
     kableExtra,
     pmxTools,
+    qs,
     rootSolve
 Imports:
     PreciseSums (>= 0.7),

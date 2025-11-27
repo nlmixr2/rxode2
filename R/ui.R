@@ -448,7 +448,14 @@ print.rxUi <-function(x, ...) {
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)
-  .ret <- list2env(ui, parent=emptyenv())
+  if (inherits(ui, "raw")) {
+    rxReq("qs")
+    warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN",
+            call.=FALSE)
+    .ret <- qs::qdeserialize(ui)
+  } else if (is.list(ui)) {
+    .ret <- list2env(ui, parent=emptyenv())
+  }
   class(.ret) <- "rxUi"
   .ret
 }

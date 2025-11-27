@@ -1838,8 +1838,9 @@ rxModelVars <- function(obj) {
     .obj <- paste(.obj, collapse = "\n")
     return(rxModelVars_(.obj))
   }
-  if (is.list(obj) &&
-        inherits(obj, "rxUi")) {
+  if ((is.list(obj) &&
+         inherits(obj, "rxUi")) ||
+        inherits(obj, "raw")) {
     obj <- rxUiDecompress(obj)
   }
   if (is(obj, "rxModelVars")) {
