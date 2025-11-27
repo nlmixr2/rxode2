@@ -7,13 +7,16 @@
 rxLastCompile()
 }
 \value{
-This list contains the following elements:
+A list contains the following elements:
 \itemize{
 \item \code{msg} the message for a bad compilation, or NULL if successful.
 \item \code{stdout} the standard output from the compilation
 \item \code{stderr} the standard error from the compilation
 \item \code{c} the code code that was used
 }
+
+This list will be returned invisibly, but the function will
+also message the contents to the console.
 }
 \description{
 Get the last compiled model information as alist
