@@ -13,6 +13,7 @@ reference:
   - rxCompile
   - rxCreateCache
   - rxDelete
+  - rxLastCompile
   - rxUnloadAll
   - rxode2
 - title: Creating rxode2 event tables/data frames
