@@ -2,6 +2,8 @@
 
 ## rxode2 5.0.0
 
+CRAN release: 2025-11-28
+
 - Better error for `tad(depot)` when `linCmt()` doesn’t include a depot
   compartment.
 
