@@ -106,9 +106,9 @@ autoplot(mb) + rxTheme() + xgxr::xgx_scale_y_log10()
 ``` r
 print(mb)
 #> Unit: milliseconds
-#>      expr      min       lq     mean   median       uq     max neval
-#>  withoutC 9.229505 9.353426 9.928010 9.402814 9.713072 16.1307   100
-#>     withC 3.272360 3.342993 3.794871 3.449927 4.306095  8.6326   100
+#>      expr      min       lq      mean   median        uq       max neval
+#>  withoutC 9.593013 9.935510 10.689080 10.22668 10.475116 16.034626   100
+#>     withC 3.318327 3.446347  3.824479  3.62056  4.155033  8.321726   100
 ```
 
 The C version is almost twice as fast as the R version. You may have
@@ -730,7 +730,7 @@ linMod
 #>             iniDf = .iniDf)
 #>     }
 #> }
-#> <bytecode: 0x556481b15ad8>
+#> <bytecode: 0x55f635ca1508>
 #> <environment: namespace:rxode2>
 
 # You can also print the s3 method that is used for this method
@@ -740,7 +740,7 @@ rxode2:::rxUdfUi.linMod
 #> {
 #>     eval(fun)
 #> }
-#> <bytecode: 0x556481473828>
+#> <bytecode: 0x55f635600ea8>
 #> <environment: namespace:rxode2>
 #> attr(,"nargs")
 #> [1] 2
