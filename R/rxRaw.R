@@ -36,6 +36,13 @@
 #'
 rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
+  if (missing(type)) {
+    op <- getOption("rxode2.serialize.type", "qs2")
+    if (!op %in% c("qs2", "qdata", "base")) {
+      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
+    }
+    type <- op
+  }
   if (!.validSerializationObject(x)) {
     .cls <- class(x)
     stop("serialization object of class ",
@@ -122,6 +129,13 @@ rxDeserialize <- function(x) {
 #' message(rxRawToC(mtcars))
 #'
 rxRawToC <- function(raw, type=c("qs2", "qdata", "base")) {
+  if (missing(type)) {
+    op <- getOption("rxode2.serialize.type", "qs2")
+    if (!op %in% c("qs2", "qdata", "base")) {
+      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
+    }
+    type <- op
+  }
   if (inherits(raw, "raw")) {
     .env <- new.env(parent = emptyenv())
     .env$i <- -1L
