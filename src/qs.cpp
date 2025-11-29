@@ -82,6 +82,9 @@ bool rxParseSetSilentErr(int silent){
 //'    "qs2", "qdata", "qs", "base", or "unknown"
 //[[Rcpp::export]]
 Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
+  if (TYPEOF(raw) != RAWSXP) {
+    Rcpp::stop("Expected a raw vector");
+  }
   unsigned char QS2_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xC1};
   unsigned char QDATA_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xCD};
   unsigned char QS_LEGACY_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0x0C};

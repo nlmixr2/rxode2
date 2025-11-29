@@ -1,7 +1,7 @@
 # rxode2 5.0.1
 
 - Change string representation of model variables to internal binary C
-  code (to avoid m1 san issues with strings).
+  code (to avoid macOS M1 sanitizer issues with strings).
 
 - Removed lsoda `CDIR$ IVDEP` directive, as requested by CRAN.
 

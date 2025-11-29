@@ -46,21 +46,31 @@ rxDeserialize <- function(x) {
   }
   if (!inherits(x, "raw")) return(x)
   .type <- .Call(`_rxode2_rxGetSerialType_`, x)
-  switch(.type,
-         qs2 = {
-           qs2::qs_deserialize(x)
-         },
-         qdata = {
-           qs2::qd_deserialize(x)
-         },
-         qs = {
-           rxReq("qs")
-           qs::qdeserialize(x)
-         },
-         base = {
-           unserialize(x)
-         },
-         stop("Unknown serialization type"))
+  .ret <- switch(.type,
+                 qs2 = {
+                   qs2::qs_deserialize(x)
+                 },
+                 qdata = {
+                   qs2::qd_deserialize(x)
+                 },
+                 qs = {
+                   rxReq("qs")
+                   qs::qdeserialize(x)
+                 },
+                 base = {
+                   unserialize(x)
+                 },
+                 stop("Unknown serialization type"))
+  .cls <- class(.ret)
+  ## Suggested for security reasons to limit what can be deserialized
+  if (length(.cls) == 1L &&
+        (inherits(.ret, "rxModelVars") ||
+           inherits(.ret, "data.frame"))) {
+    return(.ret)
+  }
+  stop("Deserialized object of class ",
+       paste(.cls, collapse=", "),
+       " is not supported")
 }
 #' Convert a Raw Vector or R object to C Code
 #'
