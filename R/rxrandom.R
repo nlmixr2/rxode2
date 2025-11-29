@@ -288,7 +288,7 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' # s <- rxSolve(rx, et) # m1 mac sanatizer doesn't like this
 #' }
 #' @export
 rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
