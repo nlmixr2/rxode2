@@ -34,9 +34,8 @@ rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
 #' @author Matthew L. Fidler
 #' @examples
 #'
-#' rxDeserialize(rxSerialize(mtcars, qs2=TRUE))
+#' rxDeserialize(rxSerialize(mtcars))
 #'
-#' rxDeserialize(rxSerialize(mtcars, qs2=FALSE))
 rxDeserialize <- function(x) {
   if (checkmate::testCharacter(x, len=1L, any.missing=FALSE)) {
     .x <- try(qs2::base91_decode(x))

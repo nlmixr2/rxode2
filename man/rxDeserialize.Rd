@@ -17,9 +17,9 @@ Deserialize a Raw Vector or String to an R Object
 }
 \examples{
 
-rxDeserialize(rxSerialize(mtcars, qs2=TRUE))
+rxDeserialize(rxSerialize(mtcars))
 
-rxDeserialize(rxSerialize(mtcars, qs2=FALSE))
+rxDeserialize(rxSerialize(mtcars))
 }
 \author{
 Matthew L. Fidler
