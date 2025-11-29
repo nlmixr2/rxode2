@@ -242,7 +242,7 @@ rxOpt <- list(
   rxode2.compile.O = c("2", "2"),
   rxode2.unload.unused = c(FALSE, FALSE),
   rxode2.debug=c(FALSE, FALSE),
-  rxode2.serialize.type = c("qdata", "qdata")
+  rxode2.serialize.type = c("qs2", "qs2")
 )
 
 rxode2.prefer.tbl <- NULL
