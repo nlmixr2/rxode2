@@ -1,9 +1,31 @@
+#' Determines if the object is a valid object for serialization
+#'
+#' Currently this is only data frames and rxModelVars objects
+#'
+#' @param obj object to test for validity
+#' @return boolean, TRUE if valid for serialization in rxode2
+#' @keywords internal
+#' @noRd
+#' @author Matthew L. Fidler
+.validSerializationObject <- function(obj) {
+  .cls <- class(obj)
+  if (length(.cls) == 1L &&
+        (inherits(obj, "rxModelVars") ||
+           inherits(obj, "data.frame"))) {
+    return(TRUE)
+  }
+  FALSE
+}
 #' Serialize an R Object to a Raw Vector
 #'
 #' @param x object to serialize
+#'
 #' @param type serialization type; one of "qs2", "qdata", or "base".
+#'
 #' @return raw vector
+#'
 #' @export
+#'
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @examples
@@ -13,6 +35,13 @@
 #' rxRawToC(mtcars)
 #'
 rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
+  ## Suggested for security reasons to limit what can be deserialized
+  if (!.validSerializationObject(x)) {
+    .cls <- class(x)
+    stop("serialization object of class ",
+         paste(.cls, collapse=", "),
+         " is not supported")
+  }
   switch(match.arg(type),
          qs2 = {
            qs2::qs_serialize(x)
@@ -23,7 +52,8 @@ rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
          base = {
            serialize(x, NULL)
          },
-         stop("Unknown serialization type"))
+         stop("unknown serialization type") # nocov
+         )
 }
 #' Deserialize a Raw Vector or String to an R Object
 #'
@@ -40,13 +70,15 @@ rxDeserialize <- function(x) {
   if (checkmate::testCharacter(x, len=1L, any.missing=FALSE)) {
     .x <- try(qs2::base91_decode(x))
     if (inherits(.x, "try-error")) {
-      return(x)
+      stop("Input must be a raw vector or base91 encoded string")
     }
     x <- .x
   }
-  if (!inherits(x, "raw")) return(x)
+  if (!inherits(x, "raw")) {
+    stop("Input must be a raw vector or base91 encoded string")
+  }
   .type <- .Call(`_rxode2_rxGetSerialType_`, x)
-  .ret <- switch(.type,
+  .ret <- try(switch(.type,
                  qs2 = {
                    qs2::qs_deserialize(x)
                  },
@@ -60,12 +92,13 @@ rxDeserialize <- function(x) {
                  base = {
                    unserialize(x)
                  },
-                 stop("Unknown serialization type"))
+                 stop("Unknown serialization type")), silent=TRUE)
+  if (inherits(.ret, "try-error")) {
+    stop("Deserialization failed")
+  }
   .cls <- class(.ret)
   ## Suggested for security reasons to limit what can be deserialized
-  if (length(.cls) == 1L &&
-        (inherits(.ret, "rxModelVars") ||
-           inherits(.ret, "data.frame"))) {
+  if (.validSerializationObject(.ret)) {
     return(.ret)
   }
   stop("Deserialized object of class ",
