@@ -7,13 +7,15 @@
 rxRawToC(raw, type = c("qs2", "qdata", "base"))
 }
 \arguments{
+\item{raw}{raw vector or R object to convert}
+
 \item{type}{serialization type; one of "qs2", "qdata", or "base".}
 }
 \value{
 character string of C code
 }
 \description{
-This function converts a raw vector or R object to C code that that
+This function converts a raw vector or R object to C code that
 is used in the rxode2 model
 }
 \examples{

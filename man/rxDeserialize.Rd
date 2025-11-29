@@ -19,7 +19,6 @@ Deserialize a Raw Vector or String to an R Object
 
 rxDeserialize(rxSerialize(mtcars))
 
-rxDeserialize(rxSerialize(mtcars))
 }
 \author{
 Matthew L. Fidler

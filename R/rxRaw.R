@@ -64,12 +64,13 @@ rxDeserialize <- function(x) {
 }
 #' Convert a Raw Vector or R object to C Code
 #'
-#' This function converts a raw vector or R object to C code that that
+#' This function converts a raw vector or R object to C code that
 #' is used in the rxode2 model
 #'
 #' @return character string of C code
 #'
 #' @keywords internal
+#' @param raw raw vector or R object to convert
 #' @inherit rxSerialize
 #' @export
 #' @author Matthew L. Fidler
