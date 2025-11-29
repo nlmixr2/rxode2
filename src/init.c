@@ -90,6 +90,8 @@ SEXP _rxode2_rxRmvnSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_itostr(SEXP, SEXP);
 SEXP _rxode2_itoletter(SEXP, SEXP);
 
+SEXP _rxode2_rxGetSerialType_(SEXP);
+
 SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_);
 
 SEXP _rxode2_nestingInfo_(SEXP omega, SEXP data);
@@ -600,6 +602,7 @@ SEXP _rxode2_mlogit_j(SEXP x);
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
     {"_rxode2_mlogit_j", (DL_FUNC) &_rxode2_mlogit_j, 1},
     {"_rxode2_mexpit", (DL_FUNC) &_rxode2_mexpit, 1},

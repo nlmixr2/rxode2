@@ -666,6 +666,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rxGetSerialType_
+Rcpp::CharacterVector rxGetSerialType_(SEXP raw);
+RcppExport SEXP _rxode2_rxGetSerialType_(SEXP rawSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type raw(rawSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxGetSerialType_(raw));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxIs
 bool rxIs(const RObject& obj, std::string cls);
 static SEXP _rxode2_rxIs_try(SEXP objSEXP, SEXP clsSEXP) {

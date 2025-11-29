@@ -365,6 +365,18 @@ rxParseSetSilentErr <- function(silent) {
     .Call(`_rxode2_rxParseSetSilentErr`, silent)
 }
 
+#' Get the serialization type from raw vector
+#'
+#' @param raw A raw vector
+#'
+#' @keywords internal
+#'
+#' @return a string indicating the serialization type:
+#'    "qs2", "qdata", "qs", "base", or "unknown"
+rxGetSerialType_ <- function(raw) {
+    .Call(`_rxode2_rxGetSerialType_`, raw)
+}
+
 #' This handles the drop list
 #'
 #' @param drop a character vector representing the list of items to

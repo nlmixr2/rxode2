@@ -51,8 +51,6 @@ SEXP rxQr(const std::string& encoded_string) {
   return qdeserialize(base91_decode(Rcpp::wrap(encoded_string)), false, false);
 }
 
-
-
 int rxode2parseIsRstudioI = 0;
 
 //[[Rcpp::export]]
@@ -75,4 +73,42 @@ extern "C" void setSilentErr(int silent);
 bool rxParseSetSilentErr(int silent){
   setSilentErr(silent);
   return true;
+}
+
+
+//' Get the serialization type from raw vector
+//'
+//' @param raw A raw vector
+//'
+//' @keywords internal
+//'
+//' @return a string indicating the serialization type:
+//'    "qs2", "qdata", "qs", "base", or "unknown"
+//[[Rcpp::export]]
+Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
+  unsigned char QS2_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xC1};
+  unsigned char QDATA_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xCD};
+  unsigned char QS_LEGACY_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0x0C};
+  Rcpp::CharacterVector ret(1);
+  if (Rf_length(raw) < 4) {
+    ret[0] = "unknown";
+  } else if (RAW(raw)[0] == QS2_MAGIC_BITS[0] &&
+             RAW(raw)[1] == QS2_MAGIC_BITS[1] &&
+             RAW(raw)[2] == QS2_MAGIC_BITS[2] &&
+             RAW(raw)[3] == QS2_MAGIC_BITS[3]) {
+    ret[0] = "qs2";
+  } else if (RAW(raw)[0] == QDATA_MAGIC_BITS[0] &&
+             RAW(raw)[1] == QDATA_MAGIC_BITS[1] &&
+             RAW(raw)[2] == QDATA_MAGIC_BITS[2] &&
+             RAW(raw)[3] == QDATA_MAGIC_BITS[3]) {
+    ret[0] = "qdata";
+  } else if (RAW(raw)[0] == QS_LEGACY_MAGIC_BITS[0] &&
+             RAW(raw)[1] == QS_LEGACY_MAGIC_BITS[1] &&
+             RAW(raw)[2] == QS_LEGACY_MAGIC_BITS[2] &&
+             RAW(raw)[3] == QS_LEGACY_MAGIC_BITS[3]) {
+    ret[0] = "qs";
+  } else {
+    ret[0] = "base";
+  }
+  return ret;
 }
