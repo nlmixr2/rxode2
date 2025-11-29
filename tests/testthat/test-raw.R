@@ -38,5 +38,15 @@ rxTest({
 
   })
 
+  test_that("serial type", {
+    expect_equal(rxGetSerialType_(as.raw("0")), "unknown")
+    # qs is off CRAN, test by header only
+    expect_equal(rxGetSerialType_(as.raw(c(0x0B,0x0E,0x0A,0x0C))), "qs")
+    expect_equal(rxGetSerialType_(qs2::qs_serialize("matt")), "qs2")
+    expect_equal(rxGetSerialType_(qs2::qd_serialize("matt")), "qdata")
+    expect_equal(rxGetSerialType_(serialize("matt", NULL)), "base")
+    expect_error(rxGetSerialType_(4))
+  })
+
 
 })
