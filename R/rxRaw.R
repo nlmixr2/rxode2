@@ -137,26 +137,13 @@ rxRawToC <- function(raw, type=c("qs2", "qdata", "base")) {
     type <- op
   }
   if (inherits(raw, "raw")) {
-    .env <- new.env(parent = emptyenv())
-    .env$i <- -1L
     .ret <- paste0("    SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, ",
                    length(raw),
                    "));pro++;\n",
-
                    "    unsigned char r[]={",
-                   paste(vapply(seq_along(raw),
-                                function(i) {
-                                  .env$i <- .env$i + 1L
-                                  if (.env$i %% 10L == 0L) {
-                                    paste0("\n                0x", toupper(format(raw[i], width=2)))
-                                  } else {
-                                    paste0("0x", toupper(format(raw[i], width=2)))
-
-                                  }
-                                },
-                                character(1),
-                                USE.NAMES=FALSE),
-                         collapse=", "),
+                   paste(paste0(ifelse((seq_along(raw) - 1L) %% 10L == 0L, "\n                0x", "0x"),
+                                sprintf("%02X", as.integer(raw))),
+                        collapse=", "),
                    "\n                };\n",
                    "    memcpy(RAW(rw), r, sizeof(r));")
     .ret
