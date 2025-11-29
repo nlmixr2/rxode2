@@ -1,8 +1,7 @@
 #' Serialize an R Object to a Raw Vector
 #'
 #' @param x object to serialize
-#' @param qs2 logical; if TRUE (default) use the 'qs2' package for
-#'   serialization, otherwise use base R serialize
+#' @param type serialization type; one of "qs2", "qdata", or "base".
 #' @return raw vector
 #' @export
 #' @author Matthew L. Fidler
@@ -15,12 +14,18 @@
 #'
 #' rxSerialize(mtcars, qs2=FALSE)
 #'
-rxSerialize <- function(x, qs2=TRUE) {
-  if (qs2) {
-    qs2::qs_serialize(x)
-  } else {
-    serialize(x, NULL)
-  }
+rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
+  switch(match.arg(type),
+         qs2 = {
+           qs2::qs_serialize(x)
+         },
+         qdata = {
+           qs2::qd_serialize(x)
+         },
+         base = {
+           serialize(x, NULL)
+         },
+         stop("Unknown serialization type"))
 }
 #' Deserialize a Raw Vector or String to an R Object
 #'
@@ -35,14 +40,21 @@ rxSerialize <- function(x, qs2=TRUE) {
 #'
 #' rxDeserialize(rxSerialize(mtcars, qs2=FALSE))
 rxDeserialize <- function(x) {
+  if (checkmate::testCharacter(x, len=1L, any.missing=FALSE)) {
+    .x <- try(qs2::base91_decode(x))
+    if (inherits(.x, "try-error")) {
+      return(x)
+    }
+    x <- .x
+  }
   if (!inherits(x, "raw")) return(x)
   .type <- .Call(`_rxode2_rxGetSerialType_`, x)
   switch(.type,
          qs2 = {
-           qs2::qs_unserialize(x)
+           qs2::qs_deserialize(x)
          },
          qdata = {
-           qs2::qdata_deserialize(x)
+           qs2::qd_deserialize(x)
          },
          qs = {
            rxReq("qs")
@@ -67,6 +79,7 @@ rxDeserialize <- function(x) {
 #' @examples
 #'
 #' message(rxRawToC(mtcars))
+#'
 rxRawToC <- function(raw, qs2=TRUE) {
   if (inherits(raw, "raw")) {
     .env <- new.env(parent = emptyenv())
