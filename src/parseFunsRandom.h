@@ -155,8 +155,8 @@ static inline int handleFunctionRxnorm(transFunctions *tf) {
     case 0:
       if (tf->isInd) {
         // rxnorm()
-        sAppend(&sb,"%s(&_solveData->subjects[_cSub], %d, 0.0, 1.0",  tf->v, tb.nInd);
-        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], %d, 0.0, 1.0", tf->v, tb.nInd++);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)%d, 0.0, 1.0",  tf->v, tb.nInd);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)%d, 0.0, 1.0", tf->v, tb.nInd++);
         foundF0=1;
       } else {
         sAppend(&sb,"%s(&_solveData->subjects[_cSub], 0.0, 1.0", tf->v);
@@ -166,23 +166,23 @@ static inline int handleFunctionRxnorm(transFunctions *tf) {
       break;
     case 1:
       if (tf->isInd) {
-        sAppend(&sb,"%s1(%d,", tf->v, tb.nInd);
-        sAppend(&sbDt,"%s1(%d,", tf->v, tb.nInd++);
+        sAppend(&sb,"%s1((double)%d,", tf->v, tb.nInd);
+        sAppend(&sbDt,"%s1((double)%d,", tf->v, tb.nInd++);
         foundF0=1;
       } else {
-        sAppend(&sb,"%s1(", tf->v);
-        sAppend(&sbDt,"%s1(", tf->v);
+        sAppend(&sb,"%s1((double)", tf->v);
+        sAppend(&sbDt,"%s1((double)", tf->v);
       }
       sAppend(&sbt, "%s(", tf->v);
       break;
     case 2:
       if (tf->isInd){
         foundF0=1;
-        sAppend(&sb,"%s(&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd);
-        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd++);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd++);
       } else {
-        sAppend(&sb,"%s(&_solveData->subjects[_cSub], ", tf->v);
-        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], ", tf->v);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
       }
       sAppend(&sbt, "%s(", tf->v);
     }
@@ -232,8 +232,8 @@ static inline int handleFunctionRchisq(transFunctions *tf) {
     switch(nargs){
     case 0:
       if (tf->isInd) {
-        sAppend(&sb,"%s(&_solveData->subjects[_cSub], %d, 1.0", tf->v, tb.nInd);
-        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], %d, 1.0", tf->v, tb.nInd++);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double) %d, 1.0", tf->v, tb.nInd);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double) %d, 1.0", tf->v, tb.nInd++);
         foundF0=1;
       } else {
         sAppend(&sb,"%s(&_solveData->subjects[_cSub], 1.0", tf->v);
@@ -244,8 +244,8 @@ static inline int handleFunctionRchisq(transFunctions *tf) {
     case 1:
       if (tf->isT){
         if (tf->isInd) {
-          sAppend(&sb,"rit_(&_solveData->subjects[_cSub], %d, ", tb.nInd);
-          sAppend(&sbDt,"rit_(&_solveData->subjects[_cSub], %d, ", tb.nInd++);
+          sAppend(&sb,"rit_(&_solveData->subjects[_cSub], (double) %d, ", tb.nInd);
+          sAppend(&sbDt,"rit_(&_solveData->subjects[_cSub], (double) %d, ", tb.nInd++);
           foundF0=1;
           sAppendN(&sbt, "rit(", 4);
         } else {
@@ -255,12 +255,12 @@ static inline int handleFunctionRchisq(transFunctions *tf) {
         }
       } else {
         if (tf->isInd) {
-          sAppend(&sb,"%s(&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd);
-          sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd++);
+          sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd);
+          sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd++);
           foundF0=1;
         } else {
-          sAppend(&sb,"%s(&_solveData->subjects[_cSub], ", tf->v);
-          sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], ", tf->v);
+          sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
+          sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
         }
         sAppend(&sbt, "%s(", tf->v);
       }
@@ -395,4 +395,3 @@ static inline int handleFunctionRnbinom(transFunctions *tf) {
   }
   return 0;
 }
-
