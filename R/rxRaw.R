@@ -120,8 +120,8 @@ rxDeserialize <- function(x) {
 #' @return character string of C code
 #'
 #' @keywords internal
-#' @param raw raw vector or R object to convert
 #' @inherit rxSerialize
+#' @param raw raw vector or R object to convert
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
