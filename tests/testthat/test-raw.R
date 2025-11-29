@@ -46,6 +46,11 @@ rxTest({
     expect_equal(rxGetSerialType_(qs2::qd_serialize("matt")), "qdata")
     expect_equal(rxGetSerialType_(serialize("matt", NULL)), "base")
     expect_error(rxGetSerialType_(4))
+    expect_equal(rxGetSerialType_(as.raw(c(0x58, 0x0A))), "base")
+    expect_equal(rxGetSerialType_(as.raw(c(0x41, 0x0A))), "base")
+    expect_equal(rxGetSerialType_(as.raw(c(0x42, 0x0A))), "base")
+    expect_equal(rxGetSerialType_(as.raw(c(0x43, 0x0A))), "unknown")
+    expect_equal(rxGetSerialType_(as.raw(c(0x43, 0x0A, 0x0A))), "unknown")
   })
 
 
