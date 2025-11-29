@@ -726,9 +726,9 @@ expand.grid.jc <- function(seq1, seq2) {
 # \donttest{
 microbenchmark::microbenchmark(rxExpandGrid(letters, letters), expand.grid.jc(letters, letters))
 #> Unit: microseconds
-#>                              expr    min     lq     mean  median     uq     max
-#>    rxExpandGrid(letters, letters) 20.519 20.964 24.24266 21.1945 24.480 199.071
-#>  expand.grid.jc(letters, letters) 16.140 16.766 18.78599 18.2540 20.263  34.224
+#>                              expr    min     lq     mean median      uq     max
+#>    rxExpandGrid(letters, letters) 20.529 20.874 22.02594 21.165 22.2820  46.637
+#>  expand.grid.jc(letters, letters) 15.559 16.255 19.26551 17.583 18.4845 166.391
 #>  neval
 #>    100
 #>    100

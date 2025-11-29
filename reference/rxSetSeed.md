@@ -62,7 +62,7 @@ rxnorm()
 
 # Use R's random number generator
 rnorm(1)
-#> [1] 0.5756458
+#> [1] -1.388039
 
 rxSetSeed(42)
 
@@ -73,7 +73,7 @@ rxnorm()
 # But R's random number is not the same
 
 rnorm(1)
-#> [1] -1.388039
+#> [1] 1.630818
 
 # If we reset this to use the R's seed
 # (internally rxode2 uses a uniform random number to span seeds)

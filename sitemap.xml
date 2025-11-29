@@ -207,6 +207,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDelete.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDemoteAddErr.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDerived.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxDeserialize.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDfdy.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDll.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDynLoad.html</loc></url>
@@ -230,6 +231,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxGetLin.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxGetModel.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxGetSeed.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxGetSerialType_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxGetrxode2.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxHtml.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxIndLinState.html</loc></url>
@@ -261,6 +263,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxProgress.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxPrune.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRateDur.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxRawToC.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxReload.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRemoveControl.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRename.html</loc></url>
@@ -271,6 +274,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRmvn.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxS.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSeedEng.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxSerialize.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetControl.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetCovariateNamesForPiping.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetIni0.html</loc></url>
