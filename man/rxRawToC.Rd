@@ -4,7 +4,7 @@
 \alias{rxRawToC}
 \title{Convert a Raw Vector or R object to C Code}
 \usage{
-rxRawToC(raw, type = c("qs2", "qdata", "base"))
+rxRawToC(raw, type = c("qdata", "qs2", "base"))
 }
 \arguments{
 \item{raw}{raw vector or R object to convert}

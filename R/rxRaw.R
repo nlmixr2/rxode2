@@ -34,7 +34,7 @@
 #'
 #' rxRawToC(mtcars)
 #'
-rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
+rxSerialize <- function(x, type=c("qdata", "qs2", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
   if (missing(type)) {
     op <- rxode2.serialize.type
@@ -128,7 +128,7 @@ rxDeserialize <- function(x) {
 #'
 #' message(rxRawToC(mtcars))
 #'
-rxRawToC <- function(raw, type=c("qs2", "qdata", "base")) {
+rxRawToC <- function(raw, type=c("qdata", "qs2", "base")) {
   if (missing(type)) {
     op <- rxode2.serialize.type
     if (!op %in% c("qs2", "qdata", "base")) {
