@@ -37,7 +37,7 @@
 rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
   if (missing(type)) {
-    op <- getOption("rxode2.serialize.type", "qs2")
+    op <- rxode2.serialize.type
     if (!op %in% c("qs2", "qdata", "base")) {
       stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
     }
@@ -130,7 +130,7 @@ rxDeserialize <- function(x) {
 #'
 rxRawToC <- function(raw, type=c("qs2", "qdata", "base")) {
   if (missing(type)) {
-    op <- getOption("rxode2.serialize.type", "qs2")
+    op <- rxode2.serialize.type
     if (!op %in% c("qs2", "qdata", "base")) {
       stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
     }
