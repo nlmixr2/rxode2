@@ -65,12 +65,12 @@ not depend on the number of cores used.
 ## Use threefry engine
 
 rxbinom(10, 0.9, n = 10) # with rxbinom you have to explicitly state n
-#>  [1] 10  8  9  7 10  9  9  8 10  8
+#>  [1] 10 10 10 10 10  8 10  9 10  9
 rxbinom(3, 0.5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1] 3 3 2 3 2 3 2 1 3 1
+#>  [1] 1 0 3 2 2 2 3 1 1 1
 
 rxbinom(4, 0.7)
-#> [1] 3
+#> [1] 1
 
 
 ## This example uses `rxbinom` directly in the model

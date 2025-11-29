@@ -62,9 +62,9 @@ not depend on the number of cores used.
 ## Use threefry engine
 
 rxgeom(0.5, n = 10) # with rxgeom you have to explicitly state n
-#>  [1] 0 0 0 0 3 0 3 0 1 0
+#>  [1] 0 0 0 0 4 0 2 0 0 1
 rxgeom(0.25, n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1] 2 0 4 0 1 1 0 2 0 2
+#>  [1] 1 4 2 8 1 0 0 8 8 0
 
 rxgeom(0.75)
 #> [1] 0

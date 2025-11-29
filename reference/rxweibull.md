@@ -63,16 +63,16 @@ not depend on the number of cores used.
 
 # with rxweibull you have to explicitly state n
 rxweibull(shape = 1, scale = 4, n = 10)
-#>  [1]  1.953503  0.124592 12.502286  2.284222  4.342211  2.337220  3.743978
-#>  [8]  1.087069  1.155109  7.962468
+#>  [1]  2.1951564  1.1143366  1.2975847  1.6129127  1.7116034  3.3428141
+#>  [7]  3.4527044  3.7975944  0.2128471 13.0646823
 
 # You can parallelize the simulation using openMP
 rxweibull(shape = 1, scale = 4, n = 10, ncores = 2)
-#>  [1]  8.673411 11.228521  3.515282  8.043888  2.588675  9.741515  2.163835
-#>  [8]  1.233657  6.839772  3.783971
+#>  [1]  1.953503  7.309882  0.124592  4.338529 12.502286  5.555027  2.284222
+#>  [8]  7.165424  4.342211  4.552606
 
 rxweibull(3)
-#> [1] 0.5160208
+#> [1] 1.294325
 
 
 ## This example uses `rxweibull` directly in the model

@@ -60,12 +60,12 @@ not depend on the number of cores used.
 ## Use threefry engine
 
 rxpois(lambda = 3, n = 10) # with rxpois you have to explicitly state n
-#>  [1] 3 4 1 2 3 2 1 1 7 1
+#>  [1] 3 4 3 2 0 2 1 3 4 5
 rxpois(lambda = 3, n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1] 2 1 3 3 5 2 6 6 8 2
+#>  [1] 3 3 4 4 1 1 2 1 3 3
 
 rxpois(4) ## The first arguments are the lambda parameter
-#> [1] 6
+#> [1] 3
 
 
 ## This example uses `rxpois` directly in the model
