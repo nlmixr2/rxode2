@@ -37,21 +37,15 @@ extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
 
 //[[Rcpp::export]]
 Rcpp::CharacterVector rxQs(SEXP const x) {
-  loadQs();
-  Rcpp::Function base91_encode = Rcpp::as<Rcpp::Function>(qsNs["base91_encode"]);
-  Rcpp::Function qserialize = Rcpp::as<Rcpp::Function>(qsNs["qs_serialize"]);
-  return base91_encode(qserialize(x));
+  Rcpp::Function f = getRxFn("rxRawToC");
+  return f(x);
 }
 
 //[[Rcpp::export]]
-SEXP rxQr(const std::string& encoded_string) {
-  loadQs();
-  Rcpp::Function base91_decode = Rcpp::as<Rcpp::Function>(qsNs["base91_decode"]);
-  Rcpp::Function qdeserialize = Rcpp::as<Rcpp::Function>(qsNs["qs_deserialize"]);
-  return qdeserialize(base91_decode(Rcpp::wrap(encoded_string)), false, false);
+SEXP rxQr(SEXP const y) {
+  Rcpp::Function f = getRxFn("rxDeserialize");
+  return f(y);
 }
-
-
 
 int rxode2parseIsRstudioI = 0;
 
@@ -75,4 +69,57 @@ extern "C" void setSilentErr(int silent);
 bool rxParseSetSilentErr(int silent){
   setSilentErr(silent);
   return true;
+}
+
+
+//' Get the serialization type from raw vector
+//'
+//' @param raw A raw vector
+//'
+//' @keywords internal
+//'
+//' @return a string indicating the serialization type:
+//'    "qs2", "qdata", "qs", "base", or "unknown"
+//[[Rcpp::export]]
+Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
+  if (TYPEOF(raw) != RAWSXP) {
+    Rcpp::stop("Expected a raw vector");
+  }
+  unsigned char QS2_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xC1};
+  unsigned char QDATA_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xCD};
+  unsigned char QS_LEGACY_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0x0C};
+  // Version-2 serialization first writes a header indicating the format (normally ‘X\n’ for an XDR
+  // format binary save, but ‘A\n’, ASCII, and ‘B\n’, native word-order binary, can also occur)
+  unsigned char BASE_MAGIC_BITSX[] = {0x58,0x0A};
+  unsigned char BASE_MAGIC_BITSA[] = {0x41,0x0A};
+  unsigned char BASE_MAGIC_BITSB[] = {0x42,0x0A};
+  Rcpp::CharacterVector ret(1);
+  ret[0] = "unknown";
+  if (Rf_length(raw) < 2) {
+  } else if ((RAW(raw)[0] == BASE_MAGIC_BITSX[0] &&
+              RAW(raw)[1] == BASE_MAGIC_BITSX[1]) ||
+             (RAW(raw)[0] == BASE_MAGIC_BITSA[0] &&
+              RAW(raw)[1] == BASE_MAGIC_BITSA[1]) ||
+             (RAW(raw)[0] == BASE_MAGIC_BITSB[0] &&
+              RAW(raw)[1] == BASE_MAGIC_BITSB[1])) {
+    ret[0] = "base";
+  } else if (Rf_length(raw) < 4) {
+  } else if (RAW(raw)[0] == QS2_MAGIC_BITS[0] &&
+             RAW(raw)[1] == QS2_MAGIC_BITS[1] &&
+             RAW(raw)[2] == QS2_MAGIC_BITS[2] &&
+             RAW(raw)[3] == QS2_MAGIC_BITS[3]) {
+    ret[0] = "qs2";
+  } else if (RAW(raw)[0] == QDATA_MAGIC_BITS[0] &&
+             RAW(raw)[1] == QDATA_MAGIC_BITS[1] &&
+             RAW(raw)[2] == QDATA_MAGIC_BITS[2] &&
+             RAW(raw)[3] == QDATA_MAGIC_BITS[3]) {
+    ret[0] = "qdata";
+  } else if (RAW(raw)[0] == QS_LEGACY_MAGIC_BITS[0] &&
+             RAW(raw)[1] == QS_LEGACY_MAGIC_BITS[1] &&
+             RAW(raw)[2] == QS_LEGACY_MAGIC_BITS[2] &&
+             RAW(raw)[3] == QS_LEGACY_MAGIC_BITS[3]) {
+    ret[0] = "qs";
+  } else {
+  }
+  return ret;
 }

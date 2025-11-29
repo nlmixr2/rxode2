@@ -717,7 +717,6 @@ C-----------------------------------------------------------------------
       I1 = NQNYH + 1
       DO 215 JB = 1,NQ
         I1 = I1 - NYH
-CDIR$ IVDEP
         DO 210 I = I1,NQNYH
 C210      YH1(I) = YH1(I) + YH1(I+NYH)
           YH1(I) = YH1(I) + YH1(I+NYH)
@@ -841,7 +840,6 @@ C-----------------------------------------------------------------------
       I1 = NQNYH + 1
       DO 445 JB = 1,NQ
         I1 = I1 - NYH
-CDIR$ IVDEP
         DO 440 I = I1,NQNYH
 C440      YH1(I) = YH1(I) - YH1(I+NYH)
           YH1(I) = YH1(I) - YH1(I+NYH)
@@ -1012,7 +1010,6 @@ C-----------------------------------------------------------------------
       I1 = NQNYH + 1
       DO 515 JB = 1,NQ
         I1 = I1 - NYH
-CDIR$ IVDEP
         DO 510 I = I1,NQNYH
 C510      YH1(I) = YH1(I) - YH1(I+NYH)
           YH1(I) = YH1(I) - YH1(I+NYH)
@@ -2710,7 +2707,7 @@ C     GO TO (210, 250, 220, 230, 240), ITASK
       IF (ITASK .EQ. 3) GO TO 220
       IF (ITASK .EQ. 4) GO TO 230
       IF (ITASK .EQ. 5) GO TO 240
-      
+
  210  IF ((TN - TOUT)*H .LT. 0.0D0) GO TO 250
       CALL DINTDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)
       IF (IFLAG .NE. 0) GO TO 627
@@ -2833,7 +2830,7 @@ C310  GO TO (320, 400, 330, 340, 350), ITASK
       IF (ITASK .EQ. 3) GO TO 330
       IF (ITASK .EQ. 4) GO TO 340
       IF (ITASK .EQ. 5) GO TO 350
-      
+
 C ITASK = 1.  If TOUT has been reached, interpolate. -------------------
  320  IF ((TN - TOUT)*H .LT. 0.0D0) GO TO 250
       CALL DINTDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)

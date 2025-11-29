@@ -1,3 +1,15 @@
+# rxode2 5.0.1
+
+- Change string representation of model variables to internal binary C
+  code (to avoid macOS M1 sanitizer issues with strings).
+
+- Allow user to change the internal serialization type with
+  `options("rxode2.serialize.type")`; Currently can be one of "qs2",
+  "qdata", and "base".  This option must be set before `rxode2` is
+  loaded, once loaded it keeps the option initially set.
+
+- Removed lsoda `CDIR$ IVDEP` directive, as requested by CRAN.
+
 # rxode2 5.0.0
 
 - Better error for `tad(depot)` when `linCmt()` doesn't include a

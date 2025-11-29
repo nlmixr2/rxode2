@@ -634,13 +634,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // rxQr
-SEXP rxQr(const std::string& encoded_string);
-RcppExport SEXP _rxode2_rxQr(SEXP encoded_stringSEXP) {
+SEXP rxQr(SEXP const y);
+RcppExport SEXP _rxode2_rxQr(SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type encoded_string(encoded_stringSEXP);
-    rcpp_result_gen = Rcpp::wrap(rxQr(encoded_string));
+    Rcpp::traits::input_parameter< SEXP const >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(rxQr(y));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -663,6 +663,17 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< int >::type silent(silentSEXP);
     rcpp_result_gen = Rcpp::wrap(rxParseSetSilentErr(silent));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxGetSerialType_
+Rcpp::CharacterVector rxGetSerialType_(SEXP raw);
+RcppExport SEXP _rxode2_rxGetSerialType_(SEXP rawSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type raw(rawSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxGetSerialType_(raw));
     return rcpp_result_gen;
 END_RCPP
 }

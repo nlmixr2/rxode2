@@ -346,8 +346,8 @@ rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }
 
-rxQr <- function(encoded_string) {
-    .Call(`_rxode2_rxQr`, encoded_string)
+rxQr <- function(y) {
+    .Call(`_rxode2_rxQr`, y)
 }
 
 rxode2parseSetRstudio <- function(isRstudio = FALSE) {
@@ -363,6 +363,18 @@ rxode2parseSetRstudio <- function(isRstudio = FALSE) {
 #' @export
 rxParseSetSilentErr <- function(silent) {
     .Call(`_rxode2_rxParseSetSilentErr`, silent)
+}
+
+#' Get the serialization type from raw vector
+#'
+#' @param raw A raw vector
+#'
+#' @keywords internal
+#'
+#' @return a string indicating the serialization type:
+#'    "qs2", "qdata", "qs", "base", or "unknown"
+rxGetSerialType_ <- function(raw) {
+    .Call(`_rxode2_rxGetSerialType_`, raw)
 }
 
 #' This handles the drop list
