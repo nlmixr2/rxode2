@@ -8,11 +8,9 @@
 #' @keywords internal
 #' @examples
 #'
-#' rxSerialize(mtcars, qs2=TRUE)
+#' rxSerialize(mtcars)
 #'
 #' rxRawToC(mtcars)
-#'
-#' rxSerialize(mtcars, qs2=FALSE)
 #'
 rxSerialize <- function(x, type=c("qs2", "qdata", "base")) {
   switch(match.arg(type),
@@ -80,14 +78,15 @@ rxDeserialize <- function(x) {
 #'
 #' message(rxRawToC(mtcars))
 #'
-rxRawToC <- function(raw, qs2=TRUE) {
+rxRawToC <- function(raw, type=c("qs2", "qdata", "base")) {
   if (inherits(raw, "raw")) {
     .env <- new.env(parent = emptyenv())
     .env$i <- -1L
     .ret <- paste0("    SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, ",
                    length(raw),
                    "));pro++;\n",
-                   "    RAW(rw)    ={",
+
+                   "    unsigned char r[]={",
                    paste(vapply(seq_along(raw),
                                 function(i) {
                                   .env$i <- .env$i + 1L
@@ -101,9 +100,10 @@ rxRawToC <- function(raw, qs2=TRUE) {
                                 character(1),
                                 USE.NAMES=FALSE),
                          collapse=", "),
-                   "\n                };\n")
+                   "\n                };\n",
+                   "    memcpy(RAW(rw), r, sizeof(r));")
     .ret
   } else {
-    rxRawToC(rxSerialize(raw, qs2=qs2))
+    rxRawToC(rxSerialize(raw, type=type))
   }
 }

@@ -37,18 +37,14 @@ extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
 
 //[[Rcpp::export]]
 Rcpp::CharacterVector rxQs(SEXP const x) {
-  loadQs();
-  Rcpp::Function base91_encode = Rcpp::as<Rcpp::Function>(qsNs["base91_encode"]);
-  Rcpp::Function qserialize = Rcpp::as<Rcpp::Function>(qsNs["qs_serialize"]);
-  return base91_encode(qserialize(x));
+  Rcpp::Function f = getRxFn("rxRawToC");
+  return f(x);
 }
 
 //[[Rcpp::export]]
-SEXP rxQr(const std::string& encoded_string) {
-  loadQs();
-  Rcpp::Function base91_decode = Rcpp::as<Rcpp::Function>(qsNs["base91_decode"]);
-  Rcpp::Function qdeserialize = Rcpp::as<Rcpp::Function>(qsNs["qs_deserialize"]);
-  return qdeserialize(base91_decode(Rcpp::wrap(encoded_string)), false, false);
+SEXP rxQr(SEXP const y) {
+  Rcpp::Function f = getRxFn("rxDeserialize");
+  return f(y);
 }
 
 int rxode2parseIsRstudioI = 0;

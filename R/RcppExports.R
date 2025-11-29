@@ -346,8 +346,8 @@ rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }
 
-rxQr <- function(encoded_string) {
-    .Call(`_rxode2_rxQr`, encoded_string)
+rxQr <- function(y) {
+    .Call(`_rxode2_rxQr`, y)
 }
 
 rxode2parseSetRstudio <- function(isRstudio = FALSE) {
