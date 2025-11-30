@@ -82,12 +82,6 @@ rx <- function() {
 
 et <- et(1, id = 1:2)
 
-s <- rxSolve(rx, et)
-#>  
-#>  
-#> ℹ parameter labels from comments are typically ignored in non-interactive mode
-#> ℹ Need to run with the source intact to parse comments
-#>  
-#>  
+# s <- rxSolve(rx, et)
 # }
 ```
