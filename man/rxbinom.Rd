@@ -67,7 +67,7 @@ rx <- function() {
 
 et <- et(1, id = 1:2)
 
-s <- rxSolve(rx, et)
+#s <- rxSolve(rx, et)
 }
 
 }
