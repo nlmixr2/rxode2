@@ -37,17 +37,17 @@ Matthew L. Fidler
 rxord(0.5)
 #> [1] 1
 rxord(0.5)
-#> [1] 2
-rxord(0.5)
-#> [1] 2
-rxord(0.5)
 #> [1] 1
+rxord(0.5)
+#> [1] 2
+rxord(0.5)
+#> [1] 2
 
 # This will give values 1, 2 and 3
+rxord(0.3, 0.3)
+#> [1] 2
 rxord(0.3, 0.3)
 #> [1] 3
 rxord(0.3, 0.3)
 #> [1] 2
-rxord(0.3, 0.3)
-#> [1] 1
 ```

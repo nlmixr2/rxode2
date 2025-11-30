@@ -147,9 +147,9 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxpois</span><span class="op">(</span>lambda <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxpois you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2 2 7 4 3 4 3 3 5 5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0 1 4 1 1 4 3 4 2 2</span>
 <span class="r-in"><span><span class="fu">rxpois</span><span class="op">(</span>lambda <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 3 4 4 3 3 4 2 5 0 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2 0 2 2 7 1 4 2 3 3</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxpois</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span> <span class="co">## The first arguments are the lambda parameter</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
