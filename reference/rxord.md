@@ -35,11 +35,11 @@ Matthew L. Fidler
 ``` r
 # This will give values 1, and 2
 rxord(0.5)
-#> [1] 1
+#> [1] 2
 rxord(0.5)
 #> [1] 1
 rxord(0.5)
-#> [1] 1
+#> [1] 2
 rxord(0.5)
 #> [1] 1
 
@@ -47,7 +47,7 @@ rxord(0.5)
 rxord(0.3, 0.3)
 #> [1] 1
 rxord(0.3, 0.3)
-#> [1] 2
+#> [1] 1
 rxord(0.3, 0.3)
-#> [1] 3
+#> [1] 1
 ```

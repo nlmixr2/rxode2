@@ -62,14 +62,14 @@ not depend on the number of cores used.
 ## Use threefry engine
 
 rxcauchy(0, 1, n = 10) # with rxcauchy you have to explicitly state n
-#>  [1]  1.8081782 -2.0814166 -2.2317520  0.2836702  5.6635863  2.1914016
-#>  [7]  0.9479879  1.0607785 -0.4471394 -5.1158296
+#>  [1] -0.3161956 -9.8293808  0.2817785  0.5647767 -0.8987297 -0.2183899
+#>  [7] 18.6560233  2.9999284 -0.5308393 -1.9472665
 rxcauchy(0.5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1]  0.6741904  1.5930772  1.4168419  0.5513095  4.4858583 -2.0193630
-#>  [7]  3.2429941  0.5643090 -0.0738962  4.7696909
+#>  [1]   1.55072313   1.22780297 -49.40914679  32.47667344   2.33699668
+#>  [6]   4.99563885   2.63606252  -1.93851598  -0.05421445 -11.45911180
 
 rxcauchy(3)
-#> [1] 2.683804
+#> [1] 2.112529
 
 
 ## This example uses `rxcauchy` directly in the model
@@ -82,6 +82,12 @@ rx <- function() {
 
 et <- et(1, id = 1:2)
 
-# s <- rxSolve(rx, et)
+s <- rxSolve(rx, et)
+#>  
+#>  
+#> ℹ parameter labels from comments are typically ignored in non-interactive mode
+#> ℹ Need to run with the source intact to parse comments
+#>  
+#>  
 # }
 ```

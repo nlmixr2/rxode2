@@ -66,17 +66,17 @@ not depend on the number of cores used.
 ## Use threefry engine
 
 rxgamma(0.5, n = 10) # with rxgamma you have to explicitly state n
-#>  [1] 0.007467039 0.556134532 0.332924594 0.394289092 0.002433890 0.433859812
-#>  [7] 0.399444410 0.886509023 0.182246977 0.058005082
+#>  [1] 0.1492627910 0.0004773476 0.2923598511 0.0950681735 0.3802674587
+#>  [6] 0.6579192476 0.4933942531 1.5417386996 0.1254190514 1.7440363766
 rxgamma(5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1] 5.117424 3.865193 2.996427 5.080937 4.753730 3.085370 3.466756 9.935795
-#>  [9] 6.560045 4.019028
+#>  [1] 4.667288 3.456419 1.734316 3.399774 2.329945 3.257427 4.929922 5.185524
+#>  [9] 3.221306 4.644219
 
 rxgamma(1)
-#> [1] 0.389395
+#> [1] 0.5626083
 
 
-## This example uses `rxgamma` directly in the model
+## This example uses `rxbeta` directly in the model
 
 rx <- function() {
   model({

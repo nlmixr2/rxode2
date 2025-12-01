@@ -62,14 +62,14 @@ not depend on the number of cores used.
 ## Use threefry engine
 
 rxf(0.5, 0.5, n = 10) # with rxf you have to explicitly state n
-#>  [1] 1.926531e+00 2.000853e+00 9.206099e-03 8.889364e-04 3.872734e-01
-#>  [6] 4.760471e-02 1.301191e+01 2.871642e+02 3.244250e-08 4.014507e+02
+#>  [1] 2.268848e-06 1.315195e+00 1.918315e+02 5.195747e-05 1.602946e+00
+#>  [6] 2.437402e+00 5.475269e+02 2.882414e+04 2.329001e-07 5.059613e+00
 rxf(5, 1, n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1]    0.6350873    3.3053210    2.4290059    0.1428285 4782.1776033
-#>  [6]    3.0144850    0.9910547   11.2321214    2.2102048    1.7826063
+#>  [1] 23.7578920 28.9085893  0.5882514  0.3202233 20.7032261  0.2102623
+#>  [7]  6.0936919  0.7095009  0.6808133  1.2529923
 
 rxf(1, 3)
-#> [1] 24.01135
+#> [1] 0.8087568
 
 
 ## This example uses `rxf` directly in the model
@@ -82,6 +82,12 @@ rx <- function() {
 
 et <- et(1, id = 1:2)
 
-# s <- rxSolve(rx, et)
+s <- rxSolve(rx, et)
+#>  
+#>  
+#> ℹ parameter labels from comments are typically ignored in non-interactive mode
+#> ℹ Need to run with the source intact to parse comments
+#>  
+#>  
 # }
 ```

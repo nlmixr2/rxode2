@@ -48,15 +48,15 @@ Omar Elashkar
 #> # A tibble: 80 × 4
 #>       id  time   amt evid         
 #>    <int> <dbl> <dbl> <evid>       
-#>  1     1  10.4    NA 0:Observation
-#>  2     1  10.6    NA 0:Observation
-#>  3     1  10.8    NA 0:Observation
-#>  4     1  11.0    NA 0:Observation
-#>  5     1  11.2    NA 0:Observation
-#>  6     1  11.4    NA 0:Observation
-#>  7     1  11.6    NA 0:Observation
-#>  8     1  11.8    NA 0:Observation
-#>  9     2  14.0    NA 0:Observation
-#> 10     2  14.2    NA 0:Observation
+#>  1     1  10.0    NA 0:Observation
+#>  2     1  10.2    NA 0:Observation
+#>  3     1  10.4    NA 0:Observation
+#>  4     1  10.6    NA 0:Observation
+#>  5     1  10.8    NA 0:Observation
+#>  6     1  11.0    NA 0:Observation
+#>  7     1  11.2    NA 0:Observation
+#>  8     1  11.4    NA 0:Observation
+#>  9     2  12.5    NA 0:Observation
+#> 10     2  12.7    NA 0:Observation
 #> # ℹ 70 more rows
 ```

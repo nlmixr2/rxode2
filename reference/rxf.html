@@ -149,14 +149,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxf you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.926531e+00 2.000853e+00 9.206099e-03 8.889364e-04 3.872734e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 4.760471e-02 1.301191e+01 2.871642e+02 3.244250e-08 4.014507e+02</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.268848e-06 1.315195e+00 1.918315e+02 5.195747e-05 1.602946e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 2.437402e+00 5.475269e+02 2.882414e+04 2.329001e-07 5.059613e+00</span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">5</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]    0.6350873    3.3053210    2.4290059    0.1428285 4782.1776033</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6]    3.0144850    0.9910547   11.2321214    2.2102048    1.7826063</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 23.7578920 28.9085893  0.5882514  0.3202233 20.7032261  0.2102623</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  6.0936919  0.7095009  0.6808133  1.2529923</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 24.01135</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.8087568</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxf` directly in the model</span></span></span>
@@ -169,7 +169,13 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># s &lt;- rxSolve(rx, et)</span></span></span>
+<span class="r-in"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">et</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
