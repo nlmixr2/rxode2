@@ -324,7 +324,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' rxgamma(1)
 #'
 #'
-#' ## This example uses `rxgamma` directly in the model
+#' ## This example uses `rxbeta` directly in the model
 #'
 #' rx <- function() {
 #'   model({
@@ -593,7 +593,7 @@ rxord <- function(...) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' #s <- rxSolve(rx, et)
+#' s <- rxSolve(rx, et)
 #' }
 #'
 #' @export

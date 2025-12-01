@@ -59,7 +59,7 @@ rxgamma(5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
 rxgamma(1)
 
 
-## This example uses `rxgamma` directly in the model
+## This example uses `rxbeta` directly in the model
 
 rx <- function() {
   model({
