@@ -379,7 +379,7 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' # s <- rxSolve(rx, et)
 #' }
 #'
 #' @export
