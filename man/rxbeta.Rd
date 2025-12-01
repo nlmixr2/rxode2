@@ -66,6 +66,6 @@ rx <- function() {
 
 et <- et(1, id = 1:2)
 
-# s <- rxSolve(rx, et) # m1 mac sanatizer doesn't like this
+s <- rxSolve(rx, et)
 }
 }
