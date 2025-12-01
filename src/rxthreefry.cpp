@@ -471,15 +471,15 @@ rx_cholperms cholperm(arma::mat Sig, arma::vec& cl, arma::vec& cu,
     L(j,j)= sqrt(sv(0));
     if (j < d-1 ){
       if (j > 1){
-	L(span(j+1,d-1), j) = (Sig(span(j+1,d-1),j)-
-			       L(span(j+1,d-1),span(0,j-1)) *
-			       trans(L(j,span(0,(j-1))))) / L(j,j);
+        L(span(j+1,d-1), j) = (Sig(span(j+1,d-1),j)-
+                               L(span(j+1,d-1),span(0,j-1)) *
+                               trans(L(j,span(0,(j-1))))) / L(j,j);
       } else if (j == 1){
-	L(span(j+1,d-1),j) = (Sig(span(j+1,d-1),j)-
-					L(span(j+1,d-1),0) *
-					L(j,0)) / L(j,j);
+        L(span(j+1,d-1),j) = (Sig(span(j+1,d-1),j)-
+                              L(span(j+1,d-1),0) *
+                              L(j,0)) / L(j,j);
       } else if (j == 0){
-	L(span(j+1,d-1),j)=Sig(span((j+1),d-1),j)/L(j,j);
+        L(span(j+1,d-1),j)=Sig(span((j+1),d-1),j)/L(j,j);
       }
     }
     // find mean value, z(j), of truncated normal:
@@ -673,7 +673,7 @@ double psy(arma::vec x,arma::mat L,arma::vec l, arma::mat u, arma::vec mu,
 #endif
     for (int thread = 0; thread < ncores; ++thread) {
       for (int j = thread; j < d; j += ncores){
-	p+= lnNpr(l[j], u[j]) + 0.5*mu[j]*mu[j]-x[j]*mu[j];
+        p+= lnNpr(l[j], u[j]) + 0.5*mu[j]*mu[j]-x[j]*mu[j];
       }
     }
 #ifdef _OPENMP
@@ -727,11 +727,11 @@ arma::mat mvrandn(arma::vec lin, arma::vec uin, arma::mat Sig, int n,
     // idx=-log(runif(n))>(psistar-logpr); # acceptance tests
     for (int i = n; i--;){
       if (out.u[i] > (psistar-logpr[i]) &&
-	  all(outC.l < curZ.col(i)) &&
-	  all(outC.u > curZ.col(i))) {
-	ret.col(accepted) =curZ.col(i);
-	accepted++;
-	if (accepted == n) break;
+          all(outC.l < curZ.col(i)) &&
+          all(outC.u > curZ.col(i))) {
+        ret.col(accepted) =curZ.col(i);
+        accepted++;
+        if (accepted == n) break;
       }
     }
     iter++;
@@ -739,11 +739,11 @@ arma::mat mvrandn(arma::vec lin, arma::vec uin, arma::mat Sig, int n,
       Rf_warningcall(R_NilValue, "%s", _("acceptance probability smaller than 0.001"));
     } else if (iter> 1e4){
       if (accepted == 0) {
-	stop(_("could not sample from truncated normal"));
+        stop(_("could not sample from truncated normal"));
       } else if (accepted > 1) {
-	Rf_warningcall(R_NilValue, _("sample of size %d which is smaller than requested 'n' returned"), accepted);
-	ret = ret.rows(0, accepted);
-	break;
+        Rf_warningcall(R_NilValue, _("sample of size %d which is smaller than requested 'n' returned"), accepted);
+        ret = ret.rows(0, accepted);
+        break;
       }
     }
   }
@@ -789,20 +789,20 @@ void rxMvrandn__(arma::mat& A,
       arma::vec up = upper-trans(mu);
 
       if (d == 1){
-	double sd = sqrt(sigma(0,0));
-	double l=low(0)/sd;
-	double u=up(0)/sd;
+        double sd = sqrt(sigma(0,0));
+        double l=low(0)/sd;
+        double u=up(0)/sd;
 #ifdef _OPENMP
 #pragma omp for schedule(static)
 #endif
-	for (int i = 0; i < n; ++i) {
-	  A[i] = sd*trandn(l, u, eng, a, tol)+mu(0);
-	}
+        for (int i = 0; i < n; ++i) {
+          A[i] = sd*trandn(l, u, eng, a, tol)+mu(0);
+        }
       } else {
-	arma::mat ret = mvrandn(low, up, sigma, n, eng, a, tol,
-				nlTol, nlMaxiter, ncores);
-	ret.each_row() += mu;
-	std::copy(ret.begin(), ret.end(), A.begin());
+        arma::mat ret = mvrandn(low, up, sigma, n, eng, a, tol,
+                                nlTol, nlMaxiter, ncores);
+        ret.each_row() += mu;
+        std::copy(ret.begin(), ret.end(), A.begin());
       }
     }
 #ifdef _OPENMP
@@ -860,11 +860,13 @@ static inline int _rxnbinom_mu_(double size, double mu) {
   return dist(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" int rxnbinomMu(rx_solving_options_ind* ind, int size, double mu) {
+extern "C" int rxnbinomMu(void* indv, int size, double mu) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   return _rxnbinom_mu_(size, mu);
 }
 
-extern "C" int rinbinomMu(rx_solving_options_ind* ind, int id, int size, double mu){
+extern "C" int rinbinomMu(void* indv, int id, int size, double mu){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     ind->simIni[id] = (double) _rxnbinom_mu_(size, mu);
   }
@@ -896,11 +898,13 @@ IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
   return ret;
 }
 
-extern "C" int rxnbinom(rx_solving_options_ind* ind, int size, double prob) {
+extern "C" int rxnbinom(void* indv, int size, double prob) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   return _rxnbinom__(size, prob);
 }
 
-extern "C" int rinbinom(rx_solving_options_ind* ind, int id, int size, double prob){
+extern "C" int rinbinom(void* indv, int id, int size, double prob){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     ind->simIni[id] = (double) _rxnbinom__(size, prob);
   }
@@ -933,13 +937,15 @@ IntegerVector rxnbinom_(double size, double prob, int n, int ncores){
 }
 
 
-extern "C" int rxbinom(rx_solving_options_ind* ind, int n, double prob){
+extern "C" int rxbinom(void* indv, int n, double prob){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   boost::random::binomial_distribution<int> d(n, prob);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" int ribinom(rx_solving_options_ind* ind, int id, int n, double prob){
+extern "C" int ribinom(void* indv, int id, int n, double prob){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     boost::random::binomial_distribution<int> d(n, prob);
     ind->simIni[id] = (double) d(_eng[rx_get_thread(op_global.cores)]);
@@ -973,13 +979,15 @@ IntegerVector rxbinom_(int n0, double prob, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxcauchy(rx_solving_options_ind* ind, double location, double scale){
+extern "C" double rxcauchy(void* indv, double location, double scale){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   boost::random::cauchy_distribution<double> d(location, scale);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double ricauchy(rx_solving_options_ind* ind, int id, double location, double scale){
+extern "C" double ricauchy(void* indv, int id, double location, double scale){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     boost::random::cauchy_distribution<double> d(location, scale);
     ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
@@ -1013,14 +1021,16 @@ NumericVector rxcauchy_(double location, double scale, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxchisq(rx_solving_options_ind* ind, double df){
+extern "C" double rxchisq(void* indv, double df){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   // Non central not supported in C++11
   boost::random::chi_squared_distribution<double> d(df);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double richisq(rx_solving_options_ind* ind, int id, double df){
+extern "C" double richisq(void* indv, int id, double df){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     // Non central not supported in C++11
     boost::random::chi_squared_distribution<double> d(df);
@@ -1055,14 +1065,16 @@ NumericVector rxchisq_(double df, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxexp(rx_solving_options_ind* ind, double rate){
+extern "C" double rxexp(void* indv, double rate){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   boost::random::exponential_distribution<double> d(rate);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 
-extern "C" double riexp(rx_solving_options_ind* ind, int id, double rate){
+extern "C" double riexp(void* indv, int id, double rate){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni) {
     boost::random::exponential_distribution<double> d(rate);
     ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
@@ -1096,13 +1108,15 @@ NumericVector rxexp_(double rate, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxf(rx_solving_options_ind* ind, double df1, double df2){
+extern "C" double rxf(void* indv, double df1, double df2){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   boost::random::fisher_f_distribution<double> d(df1, df2);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double rif(rx_solving_options_ind* ind, int id, double df1, double df2){
+extern "C" double rif(void* indv, int id, double df1, double df2){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni) {
     boost::random::fisher_f_distribution<double> d(df1, df2);
     ind->simIni[id] =  d(_eng[rx_get_thread(op_global.cores)]);
@@ -1136,14 +1150,16 @@ NumericVector rxf_(double df1, double df2, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxgamma(rx_solving_options_ind* ind, double shape, double rate){
+extern "C" double rxgamma(void* indv, double shape, double rate){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   // R uses rate; C++ uses scale
   if (!ind->inLhs) return 0;
   boost::random::gamma_distribution<double> d(shape, 1.0/rate);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double rigamma(rx_solving_options_ind* ind, int id, double shape, double rate) {
+extern "C" double rigamma(void* indv, int id, double shape, double rate) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni) {
     boost::random::gamma_distribution<double> d(shape, 1.0/rate);
     ind->simIni[id] =  d(_eng[rx_get_thread(op_global.cores)]);
@@ -1177,7 +1193,8 @@ NumericVector rxgamma_(double shape, double rate, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
+extern "C" double rxbeta(void* indv, double shape1, double shape2) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   // Efficient simulation when shape1 and shape2 are "large"
   // (p 658) Intro Prob Stats 8th Ed by Sheldon Ross
@@ -1185,7 +1202,8 @@ extern "C" double rxbeta(rx_solving_options_ind* ind, double shape1, double shap
   return x/(x+rxgamma(ind, shape2, 1.0));
 }
 
-extern "C" double ribeta(rx_solving_options_ind* ind, int id, double shape1, double shape2) {
+extern "C" double ribeta(void* indv, int id, double shape1, double shape2) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     int inLhs = ind->inLhs;
     ind->inLhs = 1;
@@ -1223,13 +1241,15 @@ NumericVector rxbeta_(double shape1, double shape2, int n, int ncores){
   return ret;
 }
 
-extern "C" int rxgeom(rx_solving_options_ind* ind, double prob){
+extern "C" int rxgeom(void* indv, double prob){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0;
   boost::random::geometric_distribution<int> d(prob);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" int rigeom(rx_solving_options_ind* ind, int id, double prob){
+extern "C" int rigeom(void* indv, int id, double prob){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni) {
     boost::random::geometric_distribution<int> d(prob);
     ind->simIni[id] = (double)d(_eng[rx_get_thread(op_global.cores)]);
@@ -1263,13 +1283,15 @@ IntegerVector rxgeom_(double prob, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxnorm(rx_solving_options_ind* ind, double mean, double sd){
+extern "C" double rxnorm(void* indv, double mean, double sd){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0.0;
   boost::random::normal_distribution<double> d(mean, sd);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double rinorm(rx_solving_options_ind* ind, int id, double mean, double sd) {
+extern "C" double rinorm(void* indv, int id, double mean, double sd) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni) {
     boost::random::normal_distribution<double> d(mean, sd);
     ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
@@ -1303,13 +1325,15 @@ NumericVector rxnorm_(double mean, double sd, int n, int ncores){
   return ret;
 }
 
-extern "C" int rxpois( rx_solving_options_ind* ind, double lambda){
+extern "C" int rxpois( void* indv, double lambda){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0.0;
   boost::random::poisson_distribution<int> d(lambda);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" int ripois(rx_solving_options_ind* ind, int id, double lambda){
+extern "C" int ripois(void* indv, int id, double lambda){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1){
     boost::random::poisson_distribution<int> d(lambda);
     ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
@@ -1343,13 +1367,15 @@ IntegerVector rxpois_(double lambda, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxt_(rx_solving_options_ind* ind, double df){
+extern "C" double rxt_(void* indv, double df){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0.0;
   boost::random::student_t_distribution<double> d(df);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double rit_(rx_solving_options_ind* ind, int id, double df){
+extern "C" double rit_(void* indv, int id, double df){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1){
     boost::random::student_t_distribution<double> d(df);
     ind->simIni[id] =  d(_eng[rx_get_thread(op_global.cores)]);
@@ -1388,14 +1414,16 @@ extern "C" double rxunifmix(rx_solving_options_ind* ind) {
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi){
+extern "C" double rxunif(void* indv, double low, double hi){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0.0;
   if (low >= hi) return std::numeric_limits<double>::quiet_NaN();
   std::uniform_real_distribution<double> d(low, hi);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" double riunif(rx_solving_options_ind* ind, int id, double low, double hi){
+extern "C" double riunif(void* indv, int id, double low, double hi){
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni == 1) {
     if (low >= hi) {
       ind->simIni[id] = std::numeric_limits<double>::quiet_NaN();
@@ -1437,14 +1465,16 @@ NumericVector rxunif_(double low, double hi, int n, int ncores){
   return ret;
 }
 
-extern "C" double rxweibull(rx_solving_options_ind* ind, double shape, double scale){
+extern "C" double rxweibull(void* indv, double shape, double scale) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (!ind->inLhs) return 0.0;
   boost::random::weibull_distribution<double> d(shape, scale);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 
-extern "C" double riweibull(rx_solving_options_ind* ind, int id, double shape, double scale){
+extern "C" double riweibull(void* indv, int id, double shape, double scale) {
+  rx_solving_options_ind *ind = (rx_solving_options_ind *)indv;
   if (ind->isIni) {
     boost::random::weibull_distribution<double> d(shape, scale);
     ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
@@ -1469,7 +1499,7 @@ NumericVector rxweibull_(double shape, double scale, int n, int ncores){
 #endif
     for (int thread = 0; thread < ncores; ++thread) {
       for (int i = thread; i < n2; i += ncores){
-	retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
       }
     }
 #ifdef _OPENMP
