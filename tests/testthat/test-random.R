@@ -403,7 +403,7 @@ rxTest({
   })
 
   test_that("rbeta tests", {
-    skip_on_os("mac") # Mac m1 san has problems with beta
+
     rx <- rxode2({
       x1 <- rbeta(2, 5)
       x2 <- rxbeta(2, 2)
@@ -717,7 +717,6 @@ rxTest({
   })
 
   test_that("individual random variable tests", {
-    skip_on_os("mac") # Mac m1 san has problems with beta
     rx <- rxode2({
       x0 <- rxnorm()
       x1 <- rinorm(a)
