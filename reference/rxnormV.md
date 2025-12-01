@@ -45,14 +45,14 @@ normal random number deviates
 ## Use threefry engine
 
 rxnorm(n = 10) # with rxnorm you have to explicitly state n
-#>  [1]  1.4566788  0.1270408 -0.5903779 -0.1518110 -0.7194818 -0.2137435
-#>  [7]  0.7710692 -1.1108157 -0.8684514 -1.6103059
+#>  [1]  0.686899534 -0.001168232 -0.321701856 -0.494907399  1.950512537
+#>  [6]  1.973538177  0.230160365 -1.721883041  0.919816806  1.735194994
 rxnorm(n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#>  [1]  1.0107943  0.6058134 -0.1480862 -0.2087799 -1.0682647  1.0362662
-#>  [7]  0.4104250 -1.6970379  0.0199034 -1.1134117
+#>  [1]  1.45667876  0.07317850  0.12704082 -0.76873491 -0.59037792 -0.51906444
+#>  [7] -0.15181101 -0.87724909 -0.71948178 -0.07161635
 
 rxnorm(2, 3) ## The first 2 arguments are the mean and standard deviation
-#> [1] 0.9343245
+#> [1] 5.032383
 
 
 ## This example uses `rxnorm` directly in the model
