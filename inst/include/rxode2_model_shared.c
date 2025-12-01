@@ -367,6 +367,7 @@ void _assignFuns0(void) {
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
+  REprintf("start dynamic\n");
   // dynamic start
   linCmtA=(linCmtA_p)R_GetCCallable("rxode2", "linCmtA");
   linCmtB=(linCmtB_p)R_GetCCallable("rxode2", "linCmtB");
@@ -499,6 +500,7 @@ void _assignFuns0(void) {
   _llikCauchyDlocation  = (rxode2_llikCauchyFun) R_GetCCallable("rxode2ll", "rxLlikCauchyDlocation");
   _llikCauchyDscale   = (rxode2_llikCauchyFun) R_GetCCallable("rxode2ll", "rxLlikCauchyDscale");
   // dynamic stop
+  REprintf("end dynmaic\n");
   _solveData = _getRxSolve_();
 }
 
@@ -521,9 +523,11 @@ void __assignFuns2(rx_solve rx,
                    t_locateTimeIndex timeindex,
                    t_handle_evidL handleEvid,
                    t_getDur getdur) {
+  REprintf("assign start\n");
   // assign start
   static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
   if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
   rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
+  REprintf("assign end\n");
 }
