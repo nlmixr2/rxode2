@@ -358,7 +358,7 @@ typedef double (*rxode2_llikWeibullFun) (double *in, double x, double shape, dou
 typedef double (*rxode2_llikGammaFun) (double *in, double x, double shape, double rate);
 typedef double (*rxode2_llikCauchyFun) (double *in, double x, double location, double scale);
 
-
+typedef void (*_setThreadInd_t) (int);
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 #endif // __rxode2_model_shared_H__

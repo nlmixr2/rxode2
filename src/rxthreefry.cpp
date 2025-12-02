@@ -36,7 +36,7 @@ using namespace arma;
 extern "C" {
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
-
+  extern rx_solving_options_ind *inds_thread;
 }
 
 extern "C" uint32_t getRxSeed1(int ncores);
@@ -1177,6 +1177,10 @@ NumericVector rxgamma_(double shape, double rate, int n, int ncores){
   return ret;
 }
 
+
+extern "C" void _setThreadInd(int cid) {
+  inds_thread[rx_get_thread(op_global.cores)] = rx_global.subjects[cid];
+}
 extern "C" double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
   if (!ind->inLhs) return 0;
   // Efficient simulation when shape1 and shape2 are "large"

@@ -56,7 +56,7 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
 extern "C" void rxOptionsFree();
 extern "C" void rxOptionsIni();
-extern "C" void rxOptionsIniEnsure(int mx);
+extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
@@ -3544,7 +3544,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       rxSolveFree();
       stop(_("nothing to solve"));
     }
-    rxOptionsIniEnsure(ntot);
+    rxOptionsIniEnsure(ntot, op->cores);
     if (_globals.gall_times != NULL) free(_globals.gall_times);
     _globals.gall_times = (double*)calloc(5*time0.size(), sizeof(double));
     std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
@@ -5179,7 +5179,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time9: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif// rxSolveT
-    rxOptionsIniEnsure(rxSolveDat->nPopPar); // 1 simulation per parameter specification
+    rxOptionsIniEnsure(rxSolveDat->nPopPar, op->cores); // 1 simulation per parameter specification
 
     // Setup some data-based parameters like hmax
     rxSolve_datSetupHmax(object, rxControl, specParams, extraArgs,

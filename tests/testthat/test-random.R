@@ -12,6 +12,7 @@ rxTest({
   test_that("rnorm", {
 
     rxWithSeed(1024, {
+
       rx <- rxode2({
         x1 <- rnorm()
         x2 <- rxnorm(a)

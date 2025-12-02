@@ -175,6 +175,9 @@ extern "C" void printErr(int err, int id){
 rx_solving_options op_global;
 
 rx_solving_options_ind *inds_global = NULL;
+
+rx_solving_options_ind *inds_thread = NULL;
+
 int gitol=0, gitask = 1, giopt = 0, gliw=0, glrw = 0;
 
 void par_flush_console() {
@@ -376,9 +379,11 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
 
 t_set_solve set_solve = NULL;
 
-extern "C" void rxOptionsIniEnsure(int mx){
+extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_global);
+  R_Free(inds_thread);
   inds_global = R_Calloc(mx, rx_solving_options_ind);
+  inds_thread = R_Calloc(max2(1, cores), rx_solving_options_ind);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->ordId = NULL;
@@ -2772,6 +2777,7 @@ extern "C" void freeExtraDosingC();
 extern "C" void rxFreeLast(){
   freeExtraDosingC();
   R_Free(inds_global);
+  R_Free(inds_thread);
   inds_global=NULL;
 }
 

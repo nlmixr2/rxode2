@@ -859,6 +859,8 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "compareFactorVal", (DL_FUNC) &compareFactorVal);
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
+  R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
+
   R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
   R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);
   R_RegisterCCallable("rxode2", "ricauchy", (DL_FUNC) &ricauchy);

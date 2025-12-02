@@ -41,6 +41,7 @@ extern "C" {
   void simeta(int id);
   void simeps(int id);
   double phi(double qn);
+  void _setThreadInd(int cid);
 
 #if defined(__cplusplus)
 
