@@ -155,12 +155,12 @@ static inline int handleFunctionRxnorm(transFunctions *tf) {
     case 0:
       if (tf->isInd) {
         // rxnorm()
-        sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], (double)%d, 0.0, 1.0",  tf->v, tb.nInd);
-        sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], (double)%d, 0.0, 1.0", tf->v, tb.nInd++);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)%d, 0.0, 1.0",  tf->v, tb.nInd);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)%d, 0.0, 1.0", tf->v, tb.nInd++);
         foundF0=1;
       } else {
-        sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], 0.0, 1.0", tf->v);
-        sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], 0.0, 1.0", tf->v);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], 0.0, 1.0", tf->v);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], 0.0, 1.0", tf->v);
       }
       sAppend(&sbt, "%s(", tf->v);
       break;
@@ -178,11 +178,11 @@ static inline int handleFunctionRxnorm(transFunctions *tf) {
     case 2:
       if (tf->isInd){
         foundF0=1;
-        sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd);
-        sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd++);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd++);
       } else {
-        sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], (double)", tf->v);
-        sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], (double)", tf->v);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
       }
       sAppend(&sbt, "%s(", tf->v);
     }
@@ -232,35 +232,35 @@ static inline int handleFunctionRchisq(transFunctions *tf) {
     switch(nargs){
     case 0:
       if (tf->isInd) {
-        sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], (double) %d, 1.0", tf->v, tb.nInd);
-        sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], (double) %d, 1.0", tf->v, tb.nInd++);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double) %d, 1.0", tf->v, tb.nInd);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double) %d, 1.0", tf->v, tb.nInd++);
         foundF0=1;
       } else {
-        sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], 1.0", tf->v);
-        sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], 1.0", tf->v);
+        sAppend(&sb,"%s(&_solveData->subjects[_cSub], 1.0", tf->v);
+        sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], 1.0", tf->v);
       }
       sAppend(&sbt, "%s(", tf->v);
       break;
     case 1:
       if (tf->isT){
         if (tf->isInd) {
-          sAppend(&sb,"rit_((void*)&_solveData->subjects[_cSub], (double) %d, ", tb.nInd);
-          sAppend(&sbDt,"rit_((void*)&_solveData->subjects[_cSub], (double) %d, ", tb.nInd++);
+          sAppend(&sb,"rit_(&_solveData->subjects[_cSub], (double) %d, ", tb.nInd);
+          sAppend(&sbDt,"rit_(&_solveData->subjects[_cSub], (double) %d, ", tb.nInd++);
           foundF0=1;
           sAppendN(&sbt, "rit(", 4);
         } else {
-          sAppendN(&sb,"rxt_((void*)&_solveData->subjects[_cSub], ", 42);
-          sAppendN(&sbDt,"rxt_((void*)&_solveData->subjects[_cSub], ", 42);
+          sAppendN(&sb,"rxt_(&_solveData->subjects[_cSub], ", 35);
+          sAppendN(&sbDt,"rxt_(&_solveData->subjects[_cSub], ", 35);
           sAppendN(&sbt, "rxt(", 4);
         }
       } else {
         if (tf->isInd) {
-          sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd);
-          sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd++);
+          sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd);
+          sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)%d, ", tf->v, tb.nInd++);
           foundF0=1;
         } else {
-          sAppend(&sb,"%s((void*)&_solveData->subjects[_cSub], (double)", tf->v);
-          sAppend(&sbDt,"%s((void*)&_solveData->subjects[_cSub], (double)", tf->v);
+          sAppend(&sb,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
+          sAppend(&sbDt,"%s(&_solveData->subjects[_cSub], (double)", tf->v);
         }
         sAppend(&sbt, "%s(", tf->v);
       }
@@ -303,12 +303,12 @@ static inline int handleFunctionRgeom(transFunctions *tf) {
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectGeomArgs(tf, nargs)) return 1;
     if (tf->isInd) {
-      sAppend(&sb, "(double)%s((void*)&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd);
-      sAppend(&sbDt, "(double)%s((void*)&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd++);
+      sAppend(&sb, "(double)%s(&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd);
+      sAppend(&sbDt, "(double)%s(&_solveData->subjects[_cSub], %d, ", tf->v, tb.nInd++);
       foundF0=1;
     } else {
-      sAppend(&sb, "(double)%s((void*)&_solveData->subjects[_cSub], ", tf->v);
-      sAppend(&sbDt, "(double)%s((void*)&_solveData->subjects[_cSub], ", tf->v);
+      sAppend(&sb, "(double)%s(&_solveData->subjects[_cSub], ", tf->v);
+      sAppend(&sbDt, "(double)%s(&_solveData->subjects[_cSub], ", tf->v);
     }
     sAppend(&sbt, "%s(", tf->v);
     tf->i[0] = 1;// Parse next arguments
@@ -329,11 +329,11 @@ static inline int handleFunctionRbinom(transFunctions *tf) {
       trans_syntax_error_report_fn(_("'ribinom'/'rbinom'/'rxbinom' takes 2 arguments 'rxbinom(size, prob)'"));
     } else {
       if (tf->isInd){
-        sAppend(&sb,   "(double)ribinom((void*)&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
-        sAppend(&sbDt, "(double)ribinom((void*)&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
+        sAppend(&sb,   "(double)ribinom(&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
+        sAppend(&sbDt, "(double)ribinom(&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
         sAppendN(&sbt, "ribinom(", 8);
       } else {
-        aAppendN("(double)rxbinom((void*)&_solveData->subjects[_cSub], (int)", 58);
+        aAppendN("(double)rxbinom(&_solveData->subjects[_cSub], (int)", 51);
         sAppendN(&sbt, "rxbinom(", 8);
       }
     }
@@ -355,11 +355,11 @@ static inline int handleFunctionRnbinomMu(transFunctions *tf) {
       trans_syntax_error_report_fn(_("'rinbinomMu'/'rnbinomMu'/'rxnbinomMu' takes 2 arguments 'rxnbinomMu(size, mu)'"));
     } else {
       if (tf->isInd){
-        sAppend(&sb,   "(double)rinbinomMu((void*)&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
-        sAppend(&sbDt, "(double)rinbinomMu((void*)&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
+        sAppend(&sb,   "(double)rinbinomMu(&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
+        sAppend(&sbDt, "(double)rinbinomMu(&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
         sAppendN(&sbt, "rinbinomMu(", 10);
       } else {
-        aAppendN("(double)rxnbinomMu((void*)&_solveData->subjects[_cSub], (int)", 61);
+        aAppendN("(double)rxnbinomMu(&_solveData->subjects[_cSub], (int)", 54);
         sAppendN(&sbt, "rxnbinomMu(", 11);
       }
     }
@@ -381,11 +381,11 @@ static inline int handleFunctionRnbinom(transFunctions *tf) {
       trans_syntax_error_report_fn(_("'rinbinom'/'rnbinom'/'rxnbinom' takes 2 arguments 'rxnbinom(size, prob)'"));
     } else {
       if (tf->isInd){
-        sAppend(&sb,   "(double)rinbinom((void*)&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
-        sAppend(&sbDt, "(double)rinbinom((void*)&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
+        sAppend(&sb,   "(double)rinbinom(&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
+        sAppend(&sbDt, "(double)rinbinom(&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
         sAppendN(&sbt, "rinbinom(", 9);
       } else {
-        aAppendN("(double)rxnbinom((void*)&_solveData->subjects[_cSub], (int)", 59);
+        aAppendN("(double)rxnbinom(&_solveData->subjects[_cSub], (int)", 52);
         sAppendN(&sbt, "rxnbinom(", 9);
       }
     }
