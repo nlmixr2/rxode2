@@ -1585,6 +1585,7 @@ static inline double *getCurDoseSThread() {
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
+  inds_thread[rx_get_thread(op_global.cores)] = *ind;
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
     ind->InfusionRate = getInfusionRateThread();

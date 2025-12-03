@@ -81,46 +81,46 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
                              (_ind->simIni[id] = (val)) : \
                              _ind->simIni[id])
 #undef rbeta
-#define rbeta(ind, x, y) rxbeta(ind, x, y)
+#define rbeta(x, y) rxbeta(x, y)
 #undef rnorm
-#define rnorm(ind,x,y) rxnorm(ind, x,y)
-#define rxnorm1(x) rxnorm(_ind, x, 1.0)
-#define rnorm1(x) rxnorm(_ind,x, 1.0)
-#define rxnormV1(x) rxnorm(_ind, x, 1.0)
-#define rinorm1(id, x) rinorm(_ind, id, x, 1.0)
-#define rinormV1(id, x) rinorm(_ind, id, x, 1.0)
+#define rnorm(x,y) rxnorm(x,y)
+#define rxnorm1(x) rxnorm(x, 1.0)
+#define rnorm1(x) rxnorm(x, 1.0)
+#define rxnormV1(x) rxnorm(x, 1.0)
+#define rinorm1(id, x) rinorm(id, x, 1.0)
+#define rinormV1(id, x) rinorm(id, x, 1.0)
 
 // FIXME: need to use same scheme here
-#define rnormV(ind, x,y) rxnormV(ind,x,y)
-#define rnormV1(ind, id, x) rxnormV(ind, id, x, 1.0)
+#define rnormV(x,y) rxnormV(x,y)
+#define rnormV1(id, x) rxnormV(id, x, 1.0)
 
 #undef rcauchy
-#define rcauchy(ind, x, y) rxcauchy(ind,x,y)
-#define rxcauchy1(x) rxcauchy(_ind,x, 1.0)
-#define ricauchy1(id, x) ricauchy(_ind, id, x, 1.0)
+#define rcauchy(x, y) rxcauchy(x,y)
+#define rxcauchy1(x) rxcauchy(x, 1.0)
+#define ricauchy1(id, x) ricauchy(id, x, 1.0)
 #undef rchisq
-#define rchisq(ind, x) rxchisq(ind, x)
+#define rchisq(x) rxchisq(x)
 #undef rexp
-#define rexp(ind, x) rxexp(ind, x)
+#define rexp(x) rxexp(x)
 #undef rgamma
-#define rgamma(ind, x,y) rxgamma(ind, x,y)
-#define rgamma1(x) rxgamma(_ind, x,1.0)
-#define rxgamma1(x) rxgamma(_ind, x,1.0)
-#define rigamma1(id, x) rigamma(_ind, id, x,1.0)
+#define rgamma(x,y) rxgamma(x,y)
+#define rgamma1(x) rxgamma(x,1.0)
+#define rxgamma1(x) rxgamma(x,1.0)
+#define rigamma1(id, x) rigamma(id, x,1.0)
 #undef rgeom
-#define rgeom(ind,x) rxgeom(ind,x)
+#define rgeom(x) rxgeom(x)
 #undef rpois
-#define rpois(ind,x) rxpois(ind,x)
+#define rpois(x) rxpois(x)
 #undef runif
-#define runif(ind,x,y) rxunif(ind,x,y)
-#define runif1(x) rxunif(_ind,x,1.0)
-#define rxunif1(x) rxunif(_ind,x,1.0)
-#define riunif1(id, x) riunif(_ind,id, x,1.0)
+#define runif(x,y) rxunif(x,y)
+#define runif1(x) rxunif(x,1.0)
+#define rxunif1(x) rxunif(x,1.0)
+#define riunif1(id, x) riunif(id, x,1.0)
 #undef rweibull
-#define rweibull(ind,x,y) rxweibull(ind,x,y)
-#define rxweibull1(x) rxweibull(_ind, x, 1.0)
-#define riweibull1(id, x) riweibull(_ind, id, x, 1.0)
-#define rweibull1(x) rxweibull(_ind, x, 1.0)
+#define rweibull(x,y) rxweibull(x,y)
+#define rxweibull1(x) rxweibull( x, 1.0)
+#define riweibull1(id, x) riweibull( id, x, 1.0)
+#define rweibull1(x) rxweibull( x, 1.0)
 #define __llikSav _ind->llikSave
 #define __llikSavX(i) _ind->llikSave + (int)(i)*rxLlikSaveSize
 #define llikNorm(x, mu, sd) _llikNorm(__llikSav, x, mu, sd)
@@ -259,7 +259,7 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define rxDurLin(x) x
 #define rxDur1Lin(x) x
 #undef rf
-#define rf(ind, x, y) rxf(ind, x, y)
+#define rf(x, y) rxf(x, y)
 // int compareFactorVal(int val, const char *valStr, const char *cmpValue)
 // equality_str2 : identifier_r ('!=' | '==' ) string;
 #define cmt CMT
@@ -278,24 +278,24 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 // Types for par pointers.r
 typedef int (*rxode2_compareFactorVal_fn)(int val, const char *factor, const char *value);
 typedef double (*rxode2_fn) (double x);
-typedef int (*rxode2_ifn) (double x);
+typedef double (*rxode2_ifn) (double x);
 typedef double (*rxode2_fn2) (double x, double y);
 typedef double (*rxode2_fn3) (double x, double y, double z);
 typedef double (*rxode2_fn3i) (double x, double y, int i);
 typedef double (*rxode2_fn2i) (double x, int i);
 typedef int (*rxode2_fn0i) (void);
-typedef double (*rxode2i_fn) (rx_solving_options_ind* ind, double x);
-typedef int (*rxode2i_ifn) (rx_solving_options_ind* ind, double x);
-typedef double (*rxode2i_fn2) (rx_solving_options_ind* ind, double x, double y);
-typedef double (*rxode2i_fn3i) (rx_solving_options_ind* ind, double x, double y, int i);
-typedef double (*rxode2i_fn2i) (rx_solving_options_ind* ind, double x, int i);
+typedef double (*rxode2i_fn) (double x);
+typedef double (*rxode2i_ifn) (double x);
+typedef double (*rxode2i_fn2) (double x, double y);
+typedef double (*rxode2i_fn3i) (double x, double y, int i);
+typedef double (*rxode2i_fn2i) (double x, int i);
 
-typedef int (*rxode2i2_fn0i) (rx_solving_options_ind* ind, int id);
-typedef double (*rxode2i2_fn) (rx_solving_options_ind* ind, int id, double x);
-typedef int (*rxode2i2_ifn) (rx_solving_options_ind* ind, int id, double x);
-typedef double (*rxode2i2_fn2) (rx_solving_options_ind* ind, int id, double x, double y);
-typedef double (*rxode2i2_fn3i) (rx_solving_options_ind* ind, int id, double x, double y, int i);
-typedef double (*rxode2i2_fn2i) (rx_solving_options_ind* ind, int id, double x, int i);
+typedef int (*rxode2i2_fn0i) (int id);
+typedef double (*rxode2i2_fn) (int id, double x);
+typedef int (*rxode2i2_ifn) (int id, double x);
+typedef double (*rxode2i2_fn2) (int id, double x, double y);
+typedef double (*rxode2i2_fn3i) (int id, double x, double y, int i);
+typedef double (*rxode2i2_fn2i) (int id, double x, int i);
 
 typedef double (*rxode2_vec) (int val, rx_solve *rx, unsigned int id);
 typedef double (*rxode2_val) (rx_solve *rx, unsigned int id);
@@ -340,8 +340,10 @@ typedef double (*_getParCov_p)(unsigned int id, rx_solve *rx, int parNo, int idx
 
 typedef rx_solve *(*_getRxSolve_t)(void);
 
-typedef int (*rxode2i_rxbinom) (rx_solving_options_ind* ind, int n, double prob);
-typedef int (*rxode2i2_ribinom) (rx_solving_options_ind* ind, int id, int n, double prob);
+typedef double (*rxode2i_rxbinom) (int n, double prob);
+typedef double (*rxode2i2_ribinom) (int id, int n, double prob);
+typedef double (*rxode2_rxbinom) (int n, double prob);
+
 
 typedef double (*rxode2_llikNormFun) (double *in, double x, double mean, double sd);
 typedef double (*rxode2_llikPoisFun) (double *in, double x, double lambda);

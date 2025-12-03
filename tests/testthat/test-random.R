@@ -17,7 +17,7 @@ rxTest({
         x1 <- rnorm()
         x2 <- rxnorm(a)
         x3 <- rnorm(b, c)
-        d / dt(x0) <- 0
+        d/dt(x0) <- 0
       })
 
       ev <- et(1, id = 1:70000)
@@ -68,6 +68,7 @@ rxTest({
       expect_equal(mean(x), 0, tolerance = 0.01)
 
       expect_equal(sd(x), 1, tolerance = 0.01)
+
     })
   })
 
@@ -81,6 +82,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(max(f$x1), 4)
@@ -123,6 +125,7 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rbinom(a, b, c)
       })))
+
     })
 
   })
@@ -163,12 +166,14 @@ rxTest({
 
       expect_equal(round(mu), round(mean(f$x1)))
       expect_equal(round(mu), round(mean(f$x2)))
+
     })
   })
 
   test_that("rcauchy", {
 
     rxWithSeed(1024, {
+
       rx <- rxode2({
         x1 <- rcauchy()
         x2 <- rxcauchy(a)
@@ -200,6 +205,7 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x4 <- rcauchy(a, b, c, d)
       })))
+
     })
 
   })
@@ -214,6 +220,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 15, tolerance = 0.1)
@@ -240,7 +247,6 @@ rxTest({
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-
       suppressMessages(expect_error(rxode2({
         x1 <- rchisq()
       })))
@@ -262,6 +268,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 2, tolerance = 0.1)
@@ -291,6 +298,7 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rexp(a, b)
       })))
+
     })
 
   })
@@ -305,6 +313,7 @@ rxTest({
     ev <- et(1, id = 1:40000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       sf <- function(d1, d2) {
@@ -364,6 +373,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       sgamma <- function(k, theta = 1) {
@@ -413,8 +423,8 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-      f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
+      f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       mbeta <- function(a, b) {
         return(a / (a + b))
@@ -459,6 +469,7 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rbeta()
       })))
+
     })
 
   })
@@ -473,6 +484,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       # expect_equal(median(f$x1), -ceiling(1 / log2(1 - 0.5)))
@@ -514,6 +526,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 1, tolerance = 0.01)
@@ -546,8 +559,8 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rxpois(a, b)
       })))
-    })
 
+    })
   })
 
   test_that("rt", {
@@ -560,6 +573,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 0, tolerance = 0.1)
@@ -667,6 +681,7 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
+
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       mweibull <- function(shape, scale = 1) {
@@ -718,6 +733,7 @@ rxTest({
   })
 
   test_that("individual random variable tests", {
+
     rx <- rxode2({
       x0 <- rxnorm()
       x1 <- rinorm(a)
@@ -747,6 +763,7 @@ rxTest({
     })
 
     rxWithSeed(10, {
+
       ev <- et(c(1, 2), id = 1:5)
 
       f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
@@ -799,6 +816,7 @@ rxTest({
         .s <- sum(duplicated(f[[paste0("x", i)]]))
         expect_true(.s < 10)
       }
+
     })
 
   })
@@ -844,7 +862,6 @@ rxTest({
 
       ## If the condition is already satisfied, it should keep the originally simulated values
       expect_equal(f3$c.x, f3$c.y)
-
 
       set.seed(10)
       f1 <- suppressMessages(rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3))

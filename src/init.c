@@ -302,8 +302,8 @@ void handleTlast(double *time, rx_solving_options_ind *ind);
 SEXP _rxode2_rxrandnV(SEXP, SEXP);
 SEXP _rxode2_rxErf(SEXP);
 
-void simeps(int id);
-void simeta(int id);
+void simeps(void);
+void simeta(void);
 
 void nullGlobals(void);
 SEXP _rxode2_codeLoaded(void);
