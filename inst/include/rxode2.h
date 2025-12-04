@@ -88,7 +88,7 @@ rx_solving_options *getRxOp(rx_solve *rx);
 SEXP rxode2_df(int doDose, int doTBS);
 SEXP rxode2_par_df(void);
 
-void rxOptionsIniEnsure(int mx);
+void rxOptionsIniEnsure(int mx, int cores);
 
 void rxUpdateFuns(SEXP trans);
 
@@ -489,10 +489,12 @@ static inline double dabs2(double x) {
   extern "C" rx_solve rx_global;
   extern "C" rx_solving_options op_global;
   extern "C" rx_solving_options_ind *inds_global;
+  extern "C" rx_solving_options_ind *inds_thread;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
   extern rx_solving_options_ind *inds_global;
+  extern rx_solving_options_ind *inds_thread;
 #endif
 
 

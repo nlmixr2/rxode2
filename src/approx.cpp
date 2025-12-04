@@ -22,7 +22,7 @@
 
 extern "C" void handleTlast(double *time, rx_solving_options_ind *ind);
 
-extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi);
+double rxunif(rx_solving_options_ind* ind, double low, double hi);
 
 // From https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
 extern "C" double log1mex(double a){
