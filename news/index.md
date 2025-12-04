@@ -2,6 +2,10 @@
 
 ## rxode2 5.0.1
 
+- Change random number generation to always return doubles internally as
+  well as no longer take a rxode2 individual structure, this is inferred
+  by the thread number.
+
 - Change string representation of model variables to internal binary C
   code (to avoid macOS M1 sanitizer issues with strings).
 

@@ -106,8 +106,8 @@ see the differences below:
 
 ``` r
 summary(mod1$simulationModel)
-#> rxode2 5.0.0 model named rx_364a0f46c0a7064714e143993400104c model (✔ ready). 
-#> DLL: /tmp/RtmpfcHU7H/rxode2/rx_364a0f46c0a7064714e143993400104c__.rxd/rx_364a0f46c0a7064714e143993400104c_.so
+#> rxode2 5.0.0 model named rx_ac6de1bc23c1400a732b004d13931d22 model (✔ ready). 
+#> DLL: /tmp/RtmpLuOu9v/rxode2/rx_ac6de1bc23c1400a732b004d13931d22__.rxd/rx_ac6de1bc23c1400a732b004d13931d22_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -124,8 +124,8 @@ summary(mod1$simulationModel)
 #>     eff(0) = 1
 #> })
 summary(mod1$simulationIniModel)
-#> rxode2 5.0.0 model named rx_bb9808c3943565b67e4a200e3e5e94be model (✔ ready). 
-#> DLL: /tmp/RtmpfcHU7H/rxode2/rx_bb9808c3943565b67e4a200e3e5e94be__.rxd/rx_bb9808c3943565b67e4a200e3e5e94be_.so
+#> rxode2 5.0.0 model named rx_a9be9daeb7759e2d9b4497725f942cca model (✔ ready). 
+#> DLL: /tmp/RtmpLuOu9v/rxode2/rx_a9be9daeb7759e2d9b4497725f942cca__.rxd/rx_a9be9daeb7759e2d9b4497725f942cca_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -150,8 +150,8 @@ summary(mod1$simulationIniModel)
 #>     eff(0) = 1
 #> })
 summary(mod2f$simulationModel)
-#> rxode2 5.0.0 model named rx_01c4155e88c47d6abafd225a7636f768 model (✔ ready). 
-#> DLL: /tmp/RtmpfcHU7H/rxode2/rx_01c4155e88c47d6abafd225a7636f768__.rxd/rx_01c4155e88c47d6abafd225a7636f768_.so
+#> rxode2 5.0.0 model named rx_61427b6be3e1ed652ea5ea3b0c96cbf2 model (✔ ready). 
+#> DLL: /tmp/RtmpLuOu9v/rxode2/rx_61427b6be3e1ed652ea5ea3b0c96cbf2__.rxd/rx_61427b6be3e1ed652ea5ea3b0c96cbf2_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -206,8 +206,8 @@ summary(mod2f$simulationModel)
 #>     dvid(5, 4)
 #> })
 summary(mod2f$simulationIniModel)
-#> rxode2 5.0.0 model named rx_863b3b4f10df3c68aa16bbe1d1a80b6c model (✔ ready). 
-#> DLL: /tmp/RtmpfcHU7H/rxode2/rx_863b3b4f10df3c68aa16bbe1d1a80b6c__.rxd/rx_863b3b4f10df3c68aa16bbe1d1a80b6c_.so
+#> rxode2 5.0.0 model named rx_36582b93f4b1118aef40c9640a642945 model (✔ ready). 
+#> DLL: /tmp/RtmpLuOu9v/rxode2/rx_36582b93f4b1118aef40c9640a642945__.rxd/rx_36582b93f4b1118aef40c9640a642945_.so
 #> NULL
 #> 
 #> Calculated Variables:
@@ -406,10 +406,10 @@ bench <- microbenchmark(runFor(), runSapply(), runSingleThread(),run2Thread())
 print(bench)
 #> Unit: milliseconds
 #>               expr       min        lq      mean    median        uq       max
-#>           runFor() 417.09641 425.21705 430.95400 428.75006 433.74346 581.10679
-#>        runSapply() 419.26173 425.77929 433.38176 429.98895 433.41094 582.73358
-#>  runSingleThread()  32.21775  32.45285  33.17668  32.65312  33.20603  46.31974
-#>       run2Thread()  21.12914  21.64807  22.09355  21.89433  22.31347  27.22190
+#>           runFor() 427.90079 436.43884 445.93934 441.77294 451.35219 579.04422
+#>        runSapply() 427.34650 438.52652 449.19621 443.45390 452.86331 590.26222
+#>  runSingleThread()  38.00288  38.40074  39.23596  38.66413  39.09000  55.44435
+#>       run2Thread()  24.22182  24.83094  25.33642  25.11383  25.69363  30.89834
 #>  neval
 #>    100
 #>    100
@@ -450,11 +450,11 @@ bench <- eval(parse(text=sprintf("microbenchmark(%s)",
                                            collapse=","))))
 print(bench)
 #> Unit: milliseconds
-#>          expr      min       lq     mean   median       uq       max neval
-#>  runThread(1) 32.32177 32.80352 33.30339 33.16497 33.45553  37.73637   100
-#>  runThread(2) 21.32408 21.65788 23.22010 21.99560 22.86385  31.77510   100
-#>  runThread(3) 22.65623 23.52476 24.65678 23.84987 24.89055  31.77327   100
-#>  runThread(4) 22.75175 23.30601 25.70170 23.58721 23.98372 203.08694   100
+#>          expr      min       lq     mean   median       uq      max neval
+#>  runThread(1) 38.50404 38.79289 39.12724 38.96589 39.16737 43.55921   100
+#>  runThread(2) 24.48207 25.27506 26.57813 25.62589 26.08086 38.78395   100
+#>  runThread(3) 26.36605 26.89791 28.07431 27.12472 30.26771 35.26757   100
+#>  runThread(4) 25.88997 26.29648 26.75419 26.46149 26.67959 31.63525   100
 ```
 
 ``` r
@@ -548,8 +548,8 @@ bench <- rbind(bench1, bench2)
 print(bench)
 #> Unit: milliseconds
 #>             expr      min       lq     mean   median       uq      max neval
-#>  standardCompile 353.3235 366.5687 451.1911 457.4700 533.5181 550.4122   100
-#>      fastCompile 354.4096 366.4140 449.0438 449.8158 529.9568 543.4854   100
+#>  standardCompile 381.6989 390.7098 471.4373 472.5751 551.0938 590.3140   100
+#>      fastCompile 382.5706 389.6289 469.8984 407.3161 550.7589 577.0089   100
 
 autoplot(bench)
 ```
@@ -647,7 +647,7 @@ Startlapply <- Sys.time()
 Stoplapply <- Sys.time()
 
 print(Stoplapply - Startlapply)
-#> Time difference of 15.31968 secs
+#> Time difference of 17.4169 secs
 ```
 
 By applying some of the new parallel solving concepts you can simply run
@@ -690,7 +690,7 @@ ev <- do.call("rbind",
 res <- rxSolve(rx, ev, omega=omega, returnType="data.table")
 endParallel <- Sys.time()
 print(endParallel - startParallel)
-#> Time difference of 0.1320202 secs
+#> Time difference of 0.1373389 secs
 ```
 
 You can see a striking time difference between the two methods; A few
@@ -776,7 +776,7 @@ sessionInfo()
 #> [46] gtable_0.3.6          glue_1.8.0            Rcpp_1.1.0           
 #> [49] systemfonts_1.3.1     xfun_0.54             tibble_3.3.0         
 #> [52] tidyselect_1.2.1      sys_3.4.3             knitr_1.50           
-#> [55] farver_2.1.2          dparser_1.3.1-13      htmltools_0.5.8.1    
+#> [55] farver_2.1.2          dparser_1.3.1-13      htmltools_0.5.9      
 #> [58] nlme_3.1-168          labeling_0.4.3        rmarkdown_2.30       
 #> [61] compiler_4.5.2        S7_0.2.1
 ```
