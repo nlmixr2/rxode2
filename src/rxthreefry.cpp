@@ -1200,11 +1200,14 @@ extern "C" double rxgamma(double shape, double rate){
 }
 
 extern "C" double rigamma(int id, double shape, double rate) {
-  if (ISNA(shape) || ISNA(rate)) return NA_REAL;
   rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
   if (ind->isIni) {
-    boost::random::gamma_distribution<double> d(shape, 1.0/rate);
-    ind->simIni[id] =  d(_eng[rx_get_thread(op_global.cores)]);
+    if (ISNA(shape) || ISNA(rate)) {
+      ind->simIni[id] = NA_REAL;
+    } else {
+      boost::random::gamma_distribution<double> d(shape, 1.0/rate);
+      ind->simIni[id] =  d(_eng[rx_get_thread(op_global.cores)]);
+    }
   }
   return ind->simIni[id];
 }
