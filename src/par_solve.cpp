@@ -2778,6 +2778,7 @@ extern "C" void rxFreeLast(){
   freeExtraDosingC();
   R_Free(inds_global);
   R_Free(inds_thread);
+  inds_thread = NULL;
   inds_global=NULL;
 }
 
