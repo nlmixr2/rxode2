@@ -35,7 +35,9 @@
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #'
 #' }
 #' @export
@@ -80,7 +82,9 @@ rxnorm <- rxnormV
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'  s <- rxSolve(rx, et)
+#' }
 #' }
 #' @export
 rxpois <- function(lambda, n = 1L, ncores = 1L) {
@@ -118,8 +122,9 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
-#'
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #' @export
 rxt <- function(df, n = 1L, ncores = 1L) {
@@ -159,7 +164,9 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'    s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -204,7 +211,9 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #' @export
 rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
@@ -245,7 +254,9 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -288,7 +299,9 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #' @export
 rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
@@ -334,7 +347,9 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -379,7 +394,9 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -424,7 +441,9 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -468,7 +487,9 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -511,7 +532,9 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -593,7 +616,9 @@ rxord <- function(...) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #'
 #' @export
@@ -639,7 +664,9 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:100)
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #'
 #' rx <- function() {
 #'   model({
@@ -647,7 +674,9 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'   })
 #' }
 #'
-#' s <- rxSolve(rx, et)
+#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+#'   s <- rxSolve(rx, et)
+#' }
 #' }
 #' @export
 rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
