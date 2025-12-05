@@ -16,7 +16,7 @@ supports](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.md).
 library(rxode2)
 ```
 
-    #> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
+    #> rxode2 5.0.1 using 2 threads (see ?getRxThreads)
     #>   no cache: create with `rxCreateCache()`
 
 ``` r

@@ -10,7 +10,7 @@ used:
 library(rxode2)
 ```
 
-    #> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
+    #> rxode2 5.0.1 using 2 threads (see ?getRxThreads)
     #>   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -225,8 +225,8 @@ pbpk <- pbpk$simulationModel
 summary(pbpk)
 ```
 
-    #> rxode2 5.0.0 model named rx_827f2251a916f01bdb724613bdb1da03 model (ready). 
-    #> DLL: /tmp/Rtmp5otDJs/rxode2/rx_827f2251a916f01bdb724613bdb1da03__.rxd/rx_827f2251a916f01bdb724613bdb1da03_.so
+    #> rxode2 5.0.1 model named rx_edd6a11b6a9920195b057189797c9450 model (ready). 
+    #> DLL: /tmp/RtmpEqcoMJ/rxode2/rx_edd6a11b6a9920195b057189797c9450__.rxd/rx_edd6a11b6a9920195b057189797c9450_.so
     #> NULL
     #> 
     #> Calculated Variables:
@@ -588,7 +588,7 @@ model:
 ode.1c.ka$simulationModel
 ```
 
-    #> rxode2 5.0.0 model named rx_e10cc6d503145ac26216c9932b61025b model (ready). 
+    #> rxode2 5.0.1 model named rx_7b6d665a1d7daa43c59458a1fa36cf16 model (ready). 
     #> x$state: depot, center
     #> x$stateExtra: eff
     #> x$params: V, KA, CL

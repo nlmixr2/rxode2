@@ -22,7 +22,7 @@ In rxode2 these can be specified by the following:
 library(rxode2)
 ```
 
-    ## rxode2 5.0.0 using 2 threads (see ?getRxThreads)
+    ## rxode2 5.0.1 using 2 threads (see ?getRxThreads)
     ##   no cache: create with `rxCreateCache()`
 
 ``` r
@@ -151,8 +151,8 @@ Vtpol <- rxode2(Vtpol$symengineModelNoPrune,  calcJac=TRUE)
 summary(Vtpol)
 ```
 
-    ## rxode2 5.0.0 model named rx_1b2b3b44f1873cc3bc6512ba94659500 model (ready). 
-    ## DLL: /tmp/Rtmp5otDJs/rxode2/rx_1b2b3b44f1873cc3bc6512ba94659500__.rxd/rx_1b2b3b44f1873cc3bc6512ba94659500_.so
+    ## rxode2 5.0.1 model named rx_12d70454bdd13dbf9729ca8e24ec6793 model (ready). 
+    ## DLL: /tmp/RtmpEqcoMJ/rxode2/rx_12d70454bdd13dbf9729ca8e24ec6793__.rxd/rx_12d70454bdd13dbf9729ca8e24ec6793_.so
     ## NULL
     ## -- rxode2 Model Syntax --
     ## rxode2({

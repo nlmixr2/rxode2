@@ -29,7 +29,3 @@ to see their documentation.
 - magrittr:
 
   `%>%`
-
-## Value
-
-Inherited from parent routine

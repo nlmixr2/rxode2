@@ -17,7 +17,7 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.1 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 mod1 <- function() {

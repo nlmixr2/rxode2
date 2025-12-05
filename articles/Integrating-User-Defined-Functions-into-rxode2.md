@@ -4,7 +4,7 @@
 
 ``` r
 library(rxode2)
-#> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
+#> rxode2 5.0.1 using 2 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 ```
 
@@ -107,8 +107,8 @@ autoplot(mb) + rxTheme() + xgxr::xgx_scale_y_log10()
 print(mb)
 #> Unit: milliseconds
 #>      expr      min       lq      mean   median       uq       max neval
-#>  withoutC 9.315637 9.447188 10.026252 9.516062 9.767823 15.918234   100
-#>     withC 3.250404 3.330468  3.775539 3.424980 4.320924  8.492359   100
+#>  withoutC 9.335065 9.529047 10.184044 9.637064 9.885812 16.238246   100
+#>     withC 3.278753 3.329453  3.802548 3.417933 4.321993  8.783346   100
 ```
 
 The C version is almost twice as fast as the R version. You may have
@@ -730,7 +730,7 @@ linMod
 #>             iniDf = .iniDf)
 #>     }
 #> }
-#> <bytecode: 0x55fe34d69e00>
+#> <bytecode: 0x562d07305650>
 #> <environment: namespace:rxode2>
 
 # You can also print the s3 method that is used for this method
@@ -740,7 +740,7 @@ rxode2:::rxUdfUi.linMod
 #> {
 #>     eval(fun)
 #> }
-#> <bytecode: 0x55fe346cd5d0>
+#> <bytecode: 0x562d06c611b0>
 #> <environment: namespace:rxode2>
 #> attr(,"nargs")
 #> [1] 2

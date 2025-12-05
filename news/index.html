@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -82,7 +82,7 @@
 <h2 class="pkg-version" data-toc-text="5.0.1" id="rxode2-501">rxode2 5.0.1<a class="anchor" aria-label="anchor" href="#rxode2-501"></a></h2>
 <ul><li><p>Change random number generation to always return doubles internally as well as no longer take a rxode2 individual structure, this is inferred by the thread number.</p></li>
 <li><p>Change string representation of model variables to internal binary C code (to avoid macOS M1 sanitizer issues with strings).</p></li>
-<li><p>Allow user to change the internal serialization type with <code>options("rxode2.serialize.type")</code>; Currently can be one of “qs2”, “qdata”, and “base”. This option must be set before <code>rxode2</code> is loaded, once loaded it keeps the option initially set.</p></li>
+<li><p>Allow user to change the internal serialization type with <code>options("rxode2.serialize.type")</code>; Currently can be one of “qs2”, “qdata”, “base”, “bzip2” and “xz”. This option must be set before <code>rxode2</code> is loaded, once loaded it keeps the option initially set. This is set to <code>xz</code> which is from base R, but could be sped up with either <code>"qs2"</code> (more future proof) or <code>"qdata"</code> (a bit faster).</p></li>
 <li><p>Removed lsoda <code>CDIR$ IVDEP</code> directive, as requested by CRAN.</p></li>
 </ul></div>
     <div class="section level2">

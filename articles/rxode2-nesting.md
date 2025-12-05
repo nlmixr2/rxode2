@@ -28,7 +28,7 @@ This event table contains nesting variables:
 library(rxode2)
 ```
 
-    #> rxode2 5.0.0 using 2 threads (see ?getRxThreads)
+    #> rxode2 5.0.1 using 2 threads (see ?getRxThreads)
     #>   no cache: create with `rxCreateCache()`
 
 ``` r
