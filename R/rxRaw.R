@@ -146,7 +146,7 @@ rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
   if (missing(type)) {
     op <- rxode2.serialize.type
     if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
-      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
+      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2', or 'xz'", call.=FALSE)
     }
     type <- op
   }
