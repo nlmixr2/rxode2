@@ -39,7 +39,7 @@ rxSerialize <- function(x, type=c("bzip2", "qs2", "qdata", "base")) {
   if (missing(type)) {
     op <- rxode2.serialize.type
     if (!op %in% c("qs2", "qdata", "base", "bzip2")) {
-      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
+      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', or 'bzip2'", call.=FALSE)
     }
     type <- op
   }
@@ -57,7 +57,6 @@ rxSerialize <- function(x, type=c("bzip2", "qs2", "qdata", "base")) {
            qs2::qd_serialize(x)
          },
          bzip2 = {
-           rxReq("qs")
            memCompress(serialize(x, NULL), type="bzip2")
          },
          base = {
