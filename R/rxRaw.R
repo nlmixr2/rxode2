@@ -39,7 +39,7 @@ rxSerialize <- function(x, type=c("xz", "bzip2", "qs2", "qdata", "base")) {
   if (missing(type)) {
     op <- rxode2.serialize.type
     if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
-      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' r 'xz'", call.=FALSE)
+      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' or 'xz'", call.=FALSE)
     }
     type <- op
   }
