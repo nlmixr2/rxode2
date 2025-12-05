@@ -9,9 +9,6 @@
 name: R-hub
 run-name: "${{ github.event.inputs.id }}: ${{ github.event.inputs.name || format('Manually run by {0}', github.triggering_actor) }}"
 
-env:
- NOT_CRAN: "false" # Explicitly set NOT_CRAN to "false" for CRAN-like checks
-
 on:
   workflow_dispatch:
     inputs:
