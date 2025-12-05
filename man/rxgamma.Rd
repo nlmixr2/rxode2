@@ -49,7 +49,7 @@ results do not depend on the number of cores used.
 }
 \examples{
 
-\donttest{
+\dontrun{
 
 ## Use threefry engine
 
