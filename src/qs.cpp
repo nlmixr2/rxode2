@@ -93,7 +93,8 @@ Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
   unsigned char BASE_MAGIC_BITSX[] = {0x58,0x0A};
   unsigned char BASE_MAGIC_BITSA[] = {0x41,0x0A};
   unsigned char BASE_MAGIC_BITSB[] = {0x42,0x0A};
-  unsigned char BZIP_BITS[] = {0x42,0x5A, 0x68}; // BZ
+  unsigned char BZIP_BITS[] = {0x42,0x5A, 0x68};
+  unsigned char XZ_BITS[] = {0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00};
   Rcpp::CharacterVector ret(1);
   ret[0] = "unknown";
   if (Rf_length(raw) < 2) {
@@ -125,7 +126,14 @@ Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
              RAW(raw)[2] == QS_LEGACY_MAGIC_BITS[2] &&
              RAW(raw)[3] == QS_LEGACY_MAGIC_BITS[3]) {
     ret[0] = "qs";
-  } else {
+  } else if (Rf_length(raw) < 6) {
+  } else if (RAW(raw)[0] == XZ_BITS[0] &&
+             RAW(raw)[1] == XZ_BITS[1] &&
+             RAW(raw)[2] == XZ_BITS[2] &&
+             RAW(raw)[3] == XZ_BITS[3] &&
+             RAW(raw)[4] == XZ_BITS[4] &&
+             RAW(raw)[5] == XZ_BITS[5]) {
+    ret[0] = "xz";
   }
   return ret;
 }

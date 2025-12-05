@@ -20,7 +20,7 @@
 #'
 #' @param x object to serialize
 #'
-#' @param type serialization type; one of "qs2", "qdata", "base" or "bzip2".
+#' @param type serialization type; one of "qs2", "qdata", "base", "xz" or "bzip2".
 #'
 #' @return raw vector
 #'
@@ -34,12 +34,12 @@
 #'
 #' rxRawToC(mtcars)
 #'
-rxSerialize <- function(x, type=c("bzip2", "qs2", "qdata", "base")) {
+rxSerialize <- function(x, type=c("xz", "bzip2", "qs2", "qdata", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
   if (missing(type)) {
     op <- rxode2.serialize.type
-    if (!op %in% c("qs2", "qdata", "base", "bzip2")) {
-      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', or 'bzip2'", call.=FALSE)
+    if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
+      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' r 'xz'", call.=FALSE)
     }
     type <- op
   }
@@ -58,6 +58,9 @@ rxSerialize <- function(x, type=c("bzip2", "qs2", "qdata", "base")) {
          },
          bzip2 = {
            memCompress(serialize(x, NULL), type="bzip2")
+         },
+         xz = {
+           memCompress(serialize(x, NULL), type="xz")
          },
          base = {
            serialize(x, NULL)
@@ -104,6 +107,9 @@ rxDeserialize <- function(x) {
                      bzip2 = {
                         unserialize(memDecompress(x, type="bzip2"))
                      },
+                     xz = {
+                       unserialize(memDecompress(x, type="xz"))
+                     },
                      base = {
                        unserialize(x)
                      },
@@ -136,10 +142,10 @@ rxDeserialize <- function(x) {
 #'
 #' message(rxRawToC(mtcars))
 #'
-rxRawToC <- function(raw, type=c("qs2", "qdata", "base", "bzip2")) {
+rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
   if (missing(type)) {
     op <- rxode2.serialize.type
-    if (!op %in% c("qs2", "qdata", "base", "bzip2")) {
+    if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
       stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
     }
     type <- op
