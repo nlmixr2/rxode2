@@ -9,8 +9,10 @@
 
 - Allow user to change the internal serialization type with
   `options("rxode2.serialize.type")`; Currently can be one of "qs2",
-  "qdata", and "base".  This option must be set before `rxode2` is
-  loaded, once loaded it keeps the option initially set.
+  "qdata", "base", "bzip2" and "xz".  This option must be set before
+  `rxode2` is loaded, once loaded it keeps the option initially
+  set. This is set to `xz` which is from base R, but could be sped up
+  with either `"qs2"` (more future proof) or `"qdata"` (a bit faster).
 
 - Removed lsoda `CDIR$ IVDEP` directive, as requested by CRAN.
 

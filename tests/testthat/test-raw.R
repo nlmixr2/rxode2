@@ -11,6 +11,8 @@ rxTest({
     expect_equal(rxDeserialize(r.base), mv)
     r.base <- rxSerialize(mv, "bzip2")
     expect_equal(rxDeserialize(r.base), mv)
+    r.base <- rxSerialize(mv, "xz")
+    expect_equal(rxDeserialize(r.base), mv)
   })
 
   df <- data.frame(a=1:10, b=11:20)
@@ -23,6 +25,8 @@ rxTest({
     r.base <- rxSerialize(df, "base")
     expect_equal(rxDeserialize(r.base), df)
     r.base <- rxSerialize(df, "bzip2")
+    expect_equal(rxDeserialize(r.base), df)
+    r.base <- rxSerialize(df, "xz")
     expect_equal(rxDeserialize(r.base), df)
   })
 
@@ -45,6 +49,7 @@ rxTest({
   test_that("serial type", {
     expect_equal(rxGetSerialType_(as.raw("0")), "unknown")
     # qs is off CRAN, test by header only
+    expect_equal(rxGetSerialType_(as.raw(c(0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00))), "xz")
     expect_equal(rxGetSerialType_(charToRaw("BZh")), "bzip2")
     expect_equal(rxGetSerialType_(as.raw(c(0x0B,0x0E,0x0A,0x0C))), "qs")
     expect_equal(rxGetSerialType_(qs2::qs_serialize("matt")), "qs2")

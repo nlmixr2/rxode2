@@ -4,12 +4,12 @@
 \alias{rxSerialize}
 \title{Serialize an R Object to a Raw Vector}
 \usage{
-rxSerialize(x, type = c("qs2", "qdata", "base"))
+rxSerialize(x, type = c("xz", "bzip2", "qs2", "qdata", "base"))
 }
 \arguments{
 \item{x}{object to serialize}
 
-\item{type}{serialization type; one of "qs2", "qdata", or "base".}
+\item{type}{serialization type; one of "qs2", "qdata", "base", "xz" or "bzip2".}
 }
 \value{
 raw vector

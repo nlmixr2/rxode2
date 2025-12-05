@@ -189,8 +189,6 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppendN(&sbOut,"#include \"extraC.h\"\n", 20);
       writeBody1();
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
-        sAppend(&sbOut, "REprintf(\"Loading C callable function: %s\\n\");\n",
-                R_CHAR(STRING_ELT(_rxode2parse_functionName, i)));
         sAppend(&sbOut,"  %s = (%s) R_GetCCallable(\"%s\", \"%s\");\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
                 R_CHAR(STRING_ELT(_rxode2parse_functionType, i)),

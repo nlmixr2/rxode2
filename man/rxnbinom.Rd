@@ -78,7 +78,9 @@ rx <- function() {
 
 et <- et(1, id = 1:100)
 
-s <- rxSolve(rx, et)
+if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+  s <- rxSolve(rx, et)
+}
 
 rx <- function() {
   model({
@@ -86,6 +88,8 @@ rx <- function() {
   })
 }
 
-s <- rxSolve(rx, et)
+if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
+  s <- rxSolve(rx, et)
+}
 }
 }
