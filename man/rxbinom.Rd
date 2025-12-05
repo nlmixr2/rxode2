@@ -51,6 +51,7 @@ results do not depend on the number of cores used.
 \donttest{
 ## Use threefry engine
 
+
 rxbinom(10, 0.9, n = 10) # with rxbinom you have to explicitly state n
 rxbinom(3, 0.5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
 
@@ -67,9 +68,7 @@ rx <- function() {
 
 et <- et(1, id = 1:2)
 
-if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-  s <- rxSolve(rx, et)
-}
+s <- rxSolve(rx, et)
 }
 
 }

@@ -1696,10 +1696,18 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+.rxSolveEnv <- new.env(parent=emptyenv())
+.rxSolveEnv$counter <- 0L
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
+  if (.rxSolveEnv$counter >= 25L) {
+    rxUnloadAll() # for mac m1 san
+    .rxSolveEnv$counter <- 0L
+  }
+  .rxSolveEnv$counter <- .rxSolveEnv$counter + 1L
   rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({

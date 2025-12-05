@@ -35,9 +35,7 @@
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#' s <- rxSolve(rx, et)
 #'
 #' }
 #' @export
@@ -82,9 +80,9 @@ rxnorm <- rxnormV
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #' @export
 rxpois <- function(lambda, n = 1L, ncores = 1L) {
@@ -122,9 +120,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#' s <- rxSolve(rx, et)
 #' }
 #' @export
 rxt <- function(df, n = 1L, ncores = 1L) {
@@ -164,9 +160,9 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #'
 #' @export
@@ -211,9 +207,9 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #' @export
 rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
@@ -254,9 +250,9 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #'
 #' @export
@@ -299,9 +295,9 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #' @export
 rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
@@ -347,9 +343,9 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #'
 #' @export
@@ -394,9 +390,8 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
 #' }
 #'
 #' @export
@@ -441,9 +436,9 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #'
 #' @export
@@ -487,9 +482,9 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #'
 #' @export
@@ -532,9 +527,8 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #'
 #' @export
@@ -600,6 +594,7 @@ rxord <- function(...) {
 #' \donttest{
 #' ## Use threefry engine
 #'
+#'
 #' rxbinom(10, 0.9, n = 10) # with rxbinom you have to explicitly state n
 #' rxbinom(3, 0.5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
 #'
@@ -616,9 +611,7 @@ rxord <- function(...) {
 #'
 #' et <- et(1, id = 1:2)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#' s <- rxSolve(rx, et)
 #' }
 #'
 #' @export
@@ -664,9 +657,9 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'
 #' et <- et(1, id = 1:100)
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #'
 #' rx <- function() {
 #'   model({
@@ -674,9 +667,9 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'   })
 #' }
 #'
-#' if (Sys.info()["sysname"] != "Darwin") { # skip on macOS for CRAN
-#'   s <- rxSolve(rx, et)
-#' }
+#'
+#' s <- rxSolve(rx, et)
+#'
 #' }
 #' @export
 rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
