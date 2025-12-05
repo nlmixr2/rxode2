@@ -136,10 +136,10 @@ rxDeserialize <- function(x) {
 #'
 #' message(rxRawToC(mtcars))
 #'
-rxRawToC <- function(raw, type=c("qs2", "qdata", "base")) {
+rxRawToC <- function(raw, type=c("qs2", "qdata", "base", "bzip2")) {
   if (missing(type)) {
     op <- rxode2.serialize.type
-    if (!op %in% c("qs2", "qdata", "base")) {
+    if (!op %in% c("qs2", "qdata", "base", "bzip2")) {
       stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', or 'base'", call.=FALSE)
     }
     type <- op
