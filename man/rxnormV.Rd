@@ -31,7 +31,7 @@ normal random number deviates
 Simulate random normal variable from threefry generator
 }
 \examples{
-\dontrun{
+\donttest{
 ## Use threefry engine
 
 rxnorm(n = 10) # with rxnorm you have to explicitly state n

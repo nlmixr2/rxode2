@@ -16,7 +16,7 @@
 #' @return normal random number deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Use threefry engine
 #'
 #' rxnorm(n = 10) # with rxnorm you have to explicitly state n
@@ -61,7 +61,7 @@ rxnorm <- rxnormV
 #' @template birthdayProblem
 #' @return poission random number deviates
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Use threefry engine
 #'
 #' rxpois(lambda = 3, n = 10) # with rxpois you have to explicitly state n
@@ -101,7 +101,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' @template birthdayProblem
 #' @return t-distribution random numbers
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #' rxt(df = 3, n = 10) # with rxt you have to explicitly state n
@@ -140,7 +140,7 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #' @template birthdayProblem
 #' @return uniform random numbers
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -184,7 +184,7 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #' @template birthdayProblem
 #' @return Weibull random deviates
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -230,7 +230,7 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #' @template birthdayProblem
 #' @return geometric random deviates
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -275,7 +275,7 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #' @return beta random deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -323,7 +323,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' @examples
 #'
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -370,7 +370,7 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #' @return f random deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -416,7 +416,7 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #' @return exponential random deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -462,7 +462,7 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #' @return chi squared random deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -507,7 +507,7 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #' @return Cauchy random deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'
 #' ## Use threefry engine
 #'
@@ -591,7 +591,7 @@ rxord <- function(...) {
 #' @return binomial random deviates
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Use threefry engine
 #'
 #'
@@ -636,7 +636,7 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'   parameterization (`mu=size/(prob+size)`)
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' ## Use threefry engine
 #'
 #' rxnbinom(10, 0.9, n = 10) # with rxbinom you have to explicitly state n
