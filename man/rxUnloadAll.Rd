@@ -19,5 +19,5 @@ Unloads all rxode2 compiled DLLs
 }
 \examples{
 
-print(rxUnloadAll())
+# print(rxUnloadAll())
 }

@@ -693,7 +693,7 @@ rxCores <- getRxThreads
 #'
 #' @examples
 #'
-#' print(rxUnloadAll())
+#' # print(rxUnloadAll())
 #' @export
 #'
 rxUnloadAll <- function(set=TRUE) {
