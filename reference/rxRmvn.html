@@ -214,27 +214,27 @@ converted to thread safe simulation;</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]     [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  5.239064 4.959084 4.784399 1.950413 7.508406</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.729417 2.737759 3.105391 1.732354 5.136244</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  2.244704 4.933124 2.527947 6.117024 5.025811</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.250616 1.306642 3.442411 1.696451 3.083392</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]       [,4]     [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.287173 2.336704 5.695019  2.7190585 5.835054</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.341073 2.868121 2.298639 -0.3662697 7.722565</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.965204 3.166014 1.676588  5.9713258 4.484314</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.194339 1.571025 3.938177 -1.0517664 5.218036</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]     [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  5.239064 4.959084 4.784399 1.950413 7.508406</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.729417 2.737759 3.105391 1.732354 5.136244</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  2.244704 4.933124 2.527947 6.117024 5.025811</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.250616 1.306642 3.442411 1.696451 3.083392</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]       [,4]     [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.287173 2.336704 5.695019  2.7190585 5.835054</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.341073 2.868121 2.298639 -0.3662697 7.722565</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.965204 3.166014 1.676588  5.9713258 4.484314</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.194339 1.571025 3.938177 -1.0517664 5.218036</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># r.v. generated on the second core are different</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  5.2390635 3.899504 4.328324  3.397540 7.333269</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  4.9556513 1.535007 6.226424 -1.660476 9.503750</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.7294170 1.786539 2.970677  3.075479 6.426285</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  0.5203225 3.469242 2.169031  5.685795 3.868330</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]      [,4]     [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.287173 1.788938 5.475332 4.5598239 9.370792</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  4.067402 0.646340 8.826282 0.8304205 7.798309</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.341073 2.376374 2.472091 3.2462580 8.843113</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  0.628035 2.894547 1.172571 4.7301406 3.525588</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">###### Here we create the matrix that will hold the simulated</span></span></span>
 <span class="r-in"><span><span class="co">#  random variables upfront.</span></span></span>
@@ -244,26 +244,26 @@ converted to thread safe simulation;</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="va">A</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># This returns NULL ...</span></span></span>
 <span class="r-in"><span><span class="va">A</span> <span class="co"># ... but the result is here</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  5.2390635 3.899504 4.328324  3.397540 7.333269</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  4.9556513 1.535007 6.226424 -1.660476 9.503750</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.7294170 1.786539 2.970677  3.075479 6.426285</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  0.5203225 3.469242 2.169031  5.685795 3.868330</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]      [,4]     [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.287173 1.788938 5.475332 4.5598239 9.370792</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  4.067402 0.646340 8.826282 0.8304205 7.798309</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.341073 2.376374 2.472091 3.2462580 8.843113</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  0.628035 2.894547 1.172571 4.7301406 3.525588</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## You can also simulate from a truncated normal:</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, lower <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="va">d</span> <span class="op">-</span> <span class="fl">1</span>, upper <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="va">d</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]     [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 0.7779842 1.038996 2.759178 4.282005 5.301866</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 1.0658284 1.160767 2.936772 3.239619 5.139684</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 0.6575943 1.526952 2.765851 3.275490 5.682884</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 1.1905019 2.503944 3.203830 4.859300 4.448689</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 0.9396633 2.055747 2.986239 4.921664 4.416667</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 1.0256213 2.457655 2.886997 3.260261 5.012083</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 0.7407370 1.599032 2.808889 4.736703 5.839267</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 0.9956325 2.763909 2.824578 3.970260 4.563017</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 1.1153760 1.887343 2.801929 4.055279 4.981264</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 0.8481447 2.220434 2.658241 4.772268 4.854159</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 1.2820045 1.850611 2.671424 3.783045 4.736074</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 1.4591103 2.311819 2.793385 4.025167 4.696344</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 0.2396192 2.078618 2.464807 4.064350 4.942105</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 0.2754903 2.139026 3.137202 3.665572 4.731758</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 1.8592999 1.859282 2.988815 4.186178 5.223483</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 1.1571552 1.849451 2.693424 4.155623 4.724930</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 0.1597937 1.819366 3.348327 4.109601 5.378433</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 1.9216645 1.376265 2.932036 3.941018 4.980638</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 0.2602608 1.865835 3.571745 4.025046 4.888187</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 1.7367034 2.356748 3.185982 3.746681 4.783113</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can also simulate from different matrices (if they match</span></span></span>
