@@ -1559,7 +1559,6 @@ rxCompile.rxModelVars <- function(model, # Model
         }
       }
     }
-    message("Number of DLLs: ", rxNumLoaded())
     .tmp <- try(dynLoad(.cDllFile), silent = FALSE)
     if (inherits(.tmp, "try-error")) {
       ## Try unloading rxode2 dlls now...

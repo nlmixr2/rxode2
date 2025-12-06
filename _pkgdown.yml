@@ -1,4 +1,6 @@
 url: https://nlmixr2.github.io/rxode2/
+# Seems to crash pkgdown
+llm-docs: false
 template:
   bootstrap: 5
   params:
@@ -160,6 +162,7 @@ reference:
   - rxLhs
   - rxLock
   - rxNorm
+  - rxNumLoaded
   - rxParams
   - rxProgress
   - rxState
