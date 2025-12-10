@@ -416,6 +416,7 @@ gammapInva <- function(x, p) {
                                      "probit", "probit + yeoJohnson",
                                      "logit + boxCox", "probit + boxCox"),
                          inverse=FALSE) {
+  if (is.na(x)) return(NA_real_)
   if (is.integer(transform)) {
   } else {
     transform <- factor(match.arg(transform),
