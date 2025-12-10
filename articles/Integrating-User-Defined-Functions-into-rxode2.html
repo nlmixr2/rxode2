@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.0.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -114,7 +114,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Integrating User Defined Functions into rxode2</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.0.1/vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd" class="external-link"><code>vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd" class="external-link"><code>vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd</code></a></small>
       <div class="d-none name"><code>Integrating-User-Defined-Functions-into-rxode2.Rmd</code></div>
     </div>
 
@@ -125,7 +125,7 @@
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 5.0.1 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 5.0.1.9000 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
 <p>When defining models you may have wished to write a small R function
 or make a function integrate into <code>rxode2</code> somehow. This
@@ -215,9 +215,9 @@ Lets see how this very simple function performs:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr      min       lq      mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 9.340239 9.503528 10.140570 9.587400 9.916248 16.617570   100</span></span>
-<span><span class="co">#&gt;     withC 3.276901 3.359930  3.814604 3.507076 4.331898  8.329694   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
+<span><span class="co">#&gt;  withoutC 9.298853 9.407124 9.994953 9.450876 9.699234 16.045433   100</span></span>
+<span><span class="co">#&gt;     withC 3.250356 3.340909 3.778772 3.435215 4.304678  8.334783   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -798,7 +798,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5653ca1166b8&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x560f218105c8&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -808,7 +808,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5653c9a703d0&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x560f2116a010&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
