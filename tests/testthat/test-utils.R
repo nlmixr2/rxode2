@@ -9,4 +9,8 @@ if (!.Call(`_rxode2_isIntel`)) {
     expect_true(.matchesLangTemplate(str2lang("d/(foo)"), str2lang("d/.call()")))
     expect_false(.matchesLangTemplate(str2lang("d/(foo)"), str2lang("d/.call")))
   })
+
+  test_that(".rxTransform() handles NA", {
+    expect_equal(.rxTransform(NA), NA_real_)
+  })
 }
