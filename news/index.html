@@ -83,7 +83,7 @@
 <ul><li>Allow transforms to return <code>NA</code>.</li>
 </ul></div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="5.0.1" id="rxode2-501">rxode2 5.0.1<a class="anchor" aria-label="anchor" href="#rxode2-501"></a></h2>
+<h2 class="pkg-version" data-toc-text="5.0.1" id="rxode2-501">rxode2 5.0.1<a class="anchor" aria-label="anchor" href="#rxode2-501"></a></h2><p class="text-muted">CRAN release: 2025-12-09</p>
 <ul><li><p>Change random number generation to always return doubles internally as well as no longer take a rxode2 individual structure, this is inferred by the thread number.</p></li>
 <li><p>Change string representation of model variables to internal binary C code (to avoid macOS M1 sanitizer issues with strings).</p></li>
 <li><p>Allow user to change the internal serialization type with <code>options("rxode2.serialize.type")</code>; Currently can be one of “qs2”, “qdata”, “base”, “bzip2” and “xz”. This option must be set before <code>rxode2</code> is loaded, once loaded it keeps the option initially set. This is set to <code>xz</code> which is from base R, but could be sped up with either <code>"qs2"</code> (more future proof) or <code>"qdata"</code> (a bit faster).</p></li>
