@@ -184,7 +184,7 @@ Lets see how this very simple function performs:</p>
 <span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span></code></pre></div>
-<p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/benmchmark1-1.png" class="r-plt" width="700"></p>
+<p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/benmchmark1-1.png" class="r-plt" alt="" width="700"></p>
 <p>Not terribly bad, even though it is shuffling between R and C.</p>
 <p>You can make it a better by converting the functions to C:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -211,13 +211,13 @@ Lets see how this very simple function performs:</p>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/rxTheme.html">rxTheme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu">xgxr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_y_log10.html" class="external-link">xgx_scale_y_log10</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Scale for <span style="color: #00BB00;">y</span> is already present.</span></span>
 <span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">y</span>, which will replace the existing scale.</span></span></code></pre></div>
-<p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/convertC-1.png" class="r-plt" width="700"></p>
+<p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/convertC-1.png" class="r-plt" alt="" width="700"></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 9.323304 9.407174 9.984497 9.479650 9.804265 16.194295   100</span></span>
-<span><span class="co">#&gt;     withC 3.287409 3.356043 3.810452 3.466609 4.337983  8.483498   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr      min       lq      mean   median       uq       max neval</span></span>
+<span><span class="co">#&gt;  withoutC 9.291107 9.458744 10.003094 9.556943 9.684020 15.871172   100</span></span>
+<span><span class="co">#&gt;     withC 3.295453 3.360569  3.816686 3.456814 4.326152  8.700594   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -798,7 +798,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x56406a3040f0&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55a558e2b438&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -808,7 +808,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x564069c5db38&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55a5587ae998&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>

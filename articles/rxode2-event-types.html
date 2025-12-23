@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Event Types</h1>
             
-            <h4 data-toc-skip class="date">2025-12-16</h4>
+            <h4 data-toc-skip class="date">2025-12-23</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-event-types.Rmd" class="external-link"><code>vignettes/rxode2-event-types.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-types.Rmd</code></div>
@@ -355,7 +355,7 @@ uses the convenience function <code><a href="../reference/et.html">et()</a></cod
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level2">
 <h2 id="infusion-doses">Infusion Doses<a class="anchor" aria-label="anchor" href="#infusion-doses"></a>
@@ -404,7 +404,7 @@ an infusion; The first is the <code>dur</code> keyword.</p>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="700"></p>
 <p>It can be also specified by the <code>rate</code> component:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
@@ -436,7 +436,7 @@ an infusion; The first is the <code>dur</code> keyword.</p>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="700"></p>
 <p>These are the same with the exception of how bioavailability changes
 the infusion.</p>
 <p>In the case of modeling <code>rate</code>, a bioavailability
@@ -447,7 +447,7 @@ example:</p>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="700"></p>
 <p>Similarly increasing the bioavailability increases the infusion
 duration.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
@@ -455,7 +455,7 @@ duration.</p>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="700"></p>
 <p>The rationale for this behavior is that the <code>rate</code> and
 <code>amt</code> are specified by the event table, so the only thing
 that can change with a bioavailability increase is the duration of the
@@ -486,7 +486,7 @@ the following plots:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## Use patchwork syntax to combine plots</span></span>
 <span><span class="va">p1</span> <span class="op">*</span> <span class="va">p2</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level3">
 <h3 id="modeled-rate-and-duration-of-infusion">Modeled Rate and Duration of Infusion<a class="anchor" aria-label="anchor" href="#modeled-rate-and-duration-of-infusion"></a>
@@ -523,7 +523,7 @@ the following plots:</p>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="700"></p>
 <p>Similarly, you may also model rate. This is equivalent to NONMEM’s
 <code>rate=-1</code> and is how <code>rxode2</code>’s event table
 specifies the data item as well.</p>
@@ -557,7 +557,7 @@ specifies the data item as well.</p>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 </div>
 <div class="section level2">
@@ -593,7 +593,7 @@ constant inter-dose interval.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" alt="" width="700"></p>
 <div class="section level3">
 <h3 id="steady-state-for-complex-dosing">Steady state for complex dosing<a class="anchor" aria-label="anchor" href="#steady-state-for-complex-dosing"></a>
 </h3>
@@ -625,7 +625,7 @@ by:</p>
 <span>           label<span class="op">=</span><span class="st">"Steady State AM/PM dosing"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-22-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-22-1.png" class="r-plt" alt="" width="700"></p>
 <p>You can see that it takes a full dose cycle to reach the true complex
 steady state dosing.</p>
 </div>
@@ -675,7 +675,7 @@ bioavailability on this type of dosing event is ignored.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">p1</span> <span class="op">/</span> <span class="va">p2</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" alt="" width="700"></p>
 <p>Not only can this be used for PK, it can be used for steady-state
 disease processes.</p>
 </div>
@@ -718,7 +718,7 @@ at 6 hours post-dose.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" alt="" width="700"></p>
 <p>You can see all the compartments are reset to their initial values.
 The next dose start the dosing cycle over.</p>
 <div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
@@ -752,7 +752,7 @@ The next dose start the dosing cycle over.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level2">
 <h2 id="turning-off-compartments">Turning off compartments<a class="anchor" aria-label="anchor" href="#turning-off-compartments"></a>
@@ -790,7 +790,7 @@ event.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
 <p>In this case, the depot is turned off, and the depot compartment
 concentrations are set to the initial values but the other compartment
 concentrations/levels are not reset. When another dose to the depot is
@@ -807,7 +807,7 @@ continues to be off after another dose to the depot.</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-30-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-30-1.png" class="r-plt" alt="" width="700"></p>
 <p>To turn back on the compartment, a zero-dose to the compartment or a
 evid=2 with the compartment would be needed.</p>
 <div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
@@ -820,7 +820,7 @@ evid=2 with the compartment would be needed.</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-31-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-31-1.png" class="r-plt" alt="" width="700"></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

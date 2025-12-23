@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Simulation</h1>
             
-            <h4 data-toc-skip class="date">2025-12-16</h4>
+            <h4 data-toc-skip class="date">2025-12-23</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-sim-var.Rmd" class="external-link"><code>vignettes/rxode2-sim-var.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-sim-var.Rmd</code></div>
@@ -208,22 +208,22 @@ the derived parameter <code>C2</code>:</p>
 <span><span class="co">## standard ggplot commands.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Central Compartment"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="700"></p>
 <p>Of course this additional parameter could also be a state value, like
 <code>eff</code>:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## They also takes many of the standard plot arguments; See ?plot</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">eff</span>, ylab<span class="op">=</span><span class="st">"Effect"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-10-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-10-1.png" class="r-plt" alt="" width="700"></p>
 <p>Or you could even look at the two side-by-side:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="700"></p>
 <p>Or stack them with <code>patchwork</code></p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level4">
 <h4 id="processing-the-data-to-create-summary-plots">Processing the data to create summary plots<a class="anchor" aria-label="anchor" href="#processing-the-data-to-create-summary-plots"></a>
@@ -241,13 +241,13 @@ plotted.</p>
 <span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span>ylab<span class="op">=</span><span class="st">"Central Concentration"</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> in order to put confidence bands around the intervals, you need at least 2500 simulations</span></span>
 <span><span class="co">#&gt; summarizing data...done</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="700"></p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">sim</span>, <span class="st">"eff"</span>, level<span class="op">=</span><span class="fl">0.95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span>ylab<span class="op">=</span><span class="st">"Effect"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> in order to put confidence bands around the intervals, you need at least 2500 simulations</span></span>
 <span><span class="co">#&gt; summarizing data...done</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="700"></p>
 <p>Note that you can see the parameters that were simulated for the
 example</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
@@ -305,7 +305,7 @@ endpoint by simply taking a confidence interval of
 <span><span class="co">#&gt; summarizing data...done</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" alt="" width="700"></p>
 <p>If you want to subset to a specific endpoint, like <code>eff</code>
 you can create the confidence interval for only that endpoint by using
 the specification <code>sim.eff</code>, where the endpoint name is
@@ -316,7 +316,7 @@ separated from <code>sim</code> by a dot:</p>
 <span><span class="co">#&gt; summarizing data...done</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">seff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level4">
 <h4 id="simulation-of-individuals">Simulation of Individuals<a class="anchor" aria-label="anchor" href="#simulation-of-individuals"></a>
@@ -437,7 +437,7 @@ matrices it is suggested you use the inverse wishart distribution
 <span><span class="co">#&gt; summarizing data...done</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" alt="" width="700"></p>
 <p>If you wish you can see what <code>omega</code> and
 <code>sigma</code> was used for each virtual study by accessing them in
 the solved data object with <code>$omega.list</code> and
@@ -636,7 +636,7 @@ covariance matrix is to use <code><a href="https://nlmixr2.github.io/lotri/refer
 <span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level3">
 <h3 id="simulate-without-uncertainty-in-omega-or-sigma-parameters">Simulate without uncertainty in <code>omega</code> or
@@ -656,7 +656,7 @@ option when solving:</p>
 <span><span class="co">#&gt; summarizing data...done</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" width="700"></p>
+<p><img src="rxode2-sim-var_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
 <p>Note since realizations of <code>omega</code> and <code>sigma</code>
 were not simulated, <code>$omegaList</code> and <code>$sigmaList</code>
 both return <code>NULL</code>.</p>
