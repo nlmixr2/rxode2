@@ -223,7 +223,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, NA, NA, 1, 2, 3, 4, 5, 6, 7))
 
@@ -233,7 +233,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, NA, NA, 1, 2, 3, 4, 5, 6, 7))
 
@@ -243,7 +243,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(2, 3, 4, 5, 6, 7, 8, 9, 10, NA))
 
@@ -253,7 +253,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, 1:10)
 
@@ -263,7 +263,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
@@ -274,7 +274,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
@@ -285,7 +285,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
@@ -296,7 +296,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
@@ -307,7 +307,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
   })
@@ -328,7 +328,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(4, 5, 6, 7, 8, 9, 10, NA, NA, NA))
 
@@ -338,7 +338,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(4, 5, 6, 7, 8, 9, 10, NA, NA, NA))
 
@@ -348,7 +348,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
@@ -358,7 +358,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, 1:10)
 
@@ -368,7 +368,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(2:10, NA))
 
@@ -379,7 +379,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(2:10, NA))
   })
@@ -403,7 +403,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_true(all(x1$a == 1))
 
@@ -414,7 +414,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_true(all(x1$a == 1))
   })
@@ -438,7 +438,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_true(all(x1$a == 10))
 
@@ -449,7 +449,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_true(all(x1$a == 10))
   })
@@ -489,7 +489,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
 
@@ -500,7 +500,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
 
@@ -511,7 +511,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
 
@@ -521,7 +521,7 @@ rxTest({
 
     expect_s3_class(m1, "rxode2")
 
-    x1 <- m1 %>% rxSolve(et)
+    x1 <- m1 |> rxSolve(et)
 
     expect_equal(x1$a, c(NA, NA, 6, 12, 24, 48, 96, 192, 384, 768))
   })
@@ -577,9 +577,9 @@ rxTest({
       }
     })
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(amt = 10000, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(amt = 10000, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") |>
       et(0, 240)
 
     r1 <- rxSolve(mod1, ev, addDosing = TRUE)
@@ -619,9 +619,9 @@ rxTest({
       }
     })
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(amt = 10000, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(amt = 10000, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") |>
       et(0, 240)
 
     r1 <- rxSolve(mod1, ev, addDosing = TRUE)

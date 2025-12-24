@@ -19,7 +19,7 @@ rxTest({
 
       is.ini(as.ini(ini))
 
-      suppressMessages(expect_error(ini %>% ini(tka=3), NA))
+      suppressMessages(expect_error(ini |> ini(tka=3), NA))
 
       l <- quote(lotri({
         tka <- log(1.57)
@@ -33,7 +33,7 @@ rxTest({
 
       is.ini(as.ini(l))
 
-      suppressMessages(expect_error(l %>% ini(tka=3), NA))
+      suppressMessages(expect_error(l |> ini(tka=3), NA))
 
       m <- lotri({
         eta.ka ~ 0.6
@@ -43,9 +43,9 @@ rxTest({
 
       is.ini(as.ini(m))
 
-      suppressMessages(expect_error(m %>% ini(eta.ka=3), NA))
+      suppressMessages(expect_error(m |> ini(eta.ka=3), NA))
 
-      suppressMessages(expect_true(inherits(m %>% ini(eta.ka=3), "matrix")))
+      suppressMessages(expect_true(inherits(m |> ini(eta.ka=3), "matrix")))
 
       one.compartment <- function() {
         ini({
@@ -88,16 +88,16 @@ rxTest({
 
       is.ini(as.ini(ini))
 
-      suppressMessages(expect_error(ini %>% ini(tka=3), NA))
+      suppressMessages(expect_error(ini |> ini(tka=3), NA))
 
-      suppressMessages(expect_true(inherits(ini %>% ini(tka=3) %>% lotri::as.lotri(.),
+      suppressMessages(expect_true(inherits(ini |> ini(tka=3) |> lotri::as.lotri(.),
                                             "lotriFix")))
 
       ini <- paste(ini, collapse="\n")
 
       is.ini(as.ini(ini))
 
-      suppressMessages(expect_error(ini %>% ini(tka=3), NA))
+      suppressMessages(expect_error(ini |> ini(tka=3), NA))
 
       l <- lotri({
         tka <- log(1.57)
@@ -109,8 +109,8 @@ rxTest({
         add.sd <- 0.7
       })
 
-      suppressMessages(expect_error(l %>% ini(tka=3), NA))
-      suppressMessages(expect_true(inherits(l %>% ini(tka=3), "lotriFix")))
+      suppressMessages(expect_error(l |> ini(tka=3), NA))
+      suppressMessages(expect_true(inherits(l |> ini(tka=3), "lotriFix")))
 
     })
   }

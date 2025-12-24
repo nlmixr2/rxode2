@@ -26,7 +26,7 @@ toTrialDuration <- function(ev, trialEnd, interval, writeDir = NULL) {
     data.frame(id = id, time = seq(time, time+trialEnd, interval))
   }, id = reg$id, time = reg$time
   )
-  reg <- do.call(rbind, reg) %>%
+  reg <- do.call(rbind, reg) |>
     merge(unique(ev[, names(ev) != "time", drop = FALSE]), by = "id", all.x = T)
   reg <- et(reg)
   if(is.character(writeDir)) {

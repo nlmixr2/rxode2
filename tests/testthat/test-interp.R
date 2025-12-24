@@ -267,8 +267,8 @@ rxTest({
     }
 
 
-    et <- et(amt=100) %>%
-      et(0:24) %>%
+    et <- et(amt=100) |>
+      et(0:24) |>
       as.data.frame()
 
     et$OCC  <- "first"

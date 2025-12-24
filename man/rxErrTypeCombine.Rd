@@ -31,7 +31,7 @@ being applied for the current endpoint
 
 rxErrTypeCombine("probitNorm")
 
-rxErrTypeCombine("probitNorm") \%>\%
+rxErrTypeCombine("probitNorm") |>
   rxErrTypeCombine("boxCox")
 
 

@@ -30,11 +30,11 @@ rxTest({
                      lotri(iov.Fa ~ 0.767^2) | occ(nu=10))
 
       #Define event table
-      ev <- et(amount.units = "mg", time.units = "hours") %>%
-        et(amt = 30*0.25 , cmt = "DEPOT", addl = 9, ii = 12) %>% #Dose is 30mg/kg, multiply by average rat weight of 250 grams
-        et(0,120) %>%
-        et(id = 1:20) %>%
-        mutate(occ = ceiling(as.numeric(time) / 12)) %>% # 10 occasions in total
+      ev <- et(amount.units = "mg", time.units = "hours") |>
+        et(amt = 30*0.25 , cmt = "DEPOT", addl = 9, ii = 12) |> #Dose is 30mg/kg, multiply by average rat weight of 250 grams
+        et(0,120) |>
+        et(id = 1:20) |>
+        mutate(occ = ceiling(as.numeric(time) / 12)) |> # 10 occasions in total
         mutate(occ = ifelse(occ == 0, 1, occ))
 
       expect_error(rxSolve(object=model, params=theta, events=ev, omega=omega, sigma=NULL), NA)

@@ -89,7 +89,8 @@ rxTest({
     })
 
     ## now resize down
-    et2 <- et1 %>% et(id = -(2:10))
+    et2 <- et1 |>
+      et(id = -(2:10))
 
     test_that("compartment check", {
       expect_equal(et2$nobs, 10L)
@@ -104,7 +105,8 @@ rxTest({
 
 
     ## now resize back up
-    et3 <- et2 %>% et(id = 1:10)
+    et3 <- et2 |>
+      et(id = 1:10)
 
     test_that("Using simulate with et without windows will warn", {
       f1 <- as.data.frame(et3)
@@ -115,45 +117,58 @@ rxTest({
       expect_warning(simulate(et3))
     })
 
-    eti <- et(amt = 10) %>% et(id = 2:3)
+    eti <- et(amt = 10) |>
+      et(id = 2:3)
     eti1 <- et(amt = 10, id = 3:4)
     eti2 <- et(amt = 10, id = 3)
 
     eti3 <- et(10, id = 3:4)
     eti4 <- et(10, id = 3)
 
-    eti5 <- et(10) %>% et(id = 2:3)
+    eti5 <- et(10) |>
+      et(id = 2:3)
 
-    eti6 <- et(amt = 10) %>% et(id = 2)
+    eti6 <- et(amt = 10) |>
+      et(id = 2)
 
-    eti7 <- et(10) %>% et(id = 2)
+    eti7 <- et(10) |>
+      et(id = 2)
 
 
     eti8 <- et(10, id = 1)
-    eti9 <- et(10) %>% et(id = 1)
+    eti9 <- et(10) |>
+      et(id = 1)
+
     eti10 <- et(amt = 10, id = 1)
-    eti11 <- et(amt = 10) %>% et(id = 1)
+    eti11 <- et(amt = 10) |>
+      et(id = 1)
 
     ## Now look at windows
 
     eti12 <- et(list(c(10, 11)), id = 1)
-    eti13 <- et(list(c(10, 11))) %>% et(id = 1)
+    eti13 <- et(list(c(10, 11))) |>
+      et(id = 1)
 
     eti14 <- et(list(c(10, 11)), amt = 10, id = 1)
-    eti15 <- et(list(c(10, 11)), amt = 10) %>% et(id = 1)
+    eti15 <- et(list(c(10, 11)), amt = 10) |>
+      et(id = 1)
 
 
     eti16 <- et(list(c(10, 11)), id = 2)
-    eti17 <- et(list(c(10, 11))) %>% et(id = 2)
+    eti17 <- et(list(c(10, 11))) |>
+      et(id = 2)
 
     eti18 <- et(list(c(10, 11)), amt = 10, id = 2)
-    eti19 <- et(list(c(10, 11)), amt = 10) %>% et(id = 2)
+    eti19 <- et(list(c(10, 11)), amt = 10) |>
+      et(id = 2)
 
     eti20 <- et(list(c(10, 11)), id = 2:3)
-    eti21 <- et(list(c(10, 11))) %>% et(id = 2:3)
+    eti21 <- et(list(c(10, 11))) |>
+      et(id = 2:3)
 
     eti22 <- et(list(c(10, 11)), amt = 10, id = 2:3)
-    eti23 <- et(list(c(10, 11)), amt = 10) %>% et(id = 2:3)
+    eti23 <- et(list(c(10, 11)), amt = 10) |>
+      et(id = 2:3)
 
     ## Now do it with dosing/sampling windows
 
@@ -216,26 +231,30 @@ rxTest({
     test_that("units tests", {
       skip_if_not_installed("units")
       ## Make sure units are right.
-      et3 <- et3 %>% units::set_units(mg)
-      e <- et(amount.units = "mg", time_units = "hr") %>%
-        add.sampling(seq(0, 24, by = 3)) %>%
-        add.dosing(1, 3) %>%
+      et3 <- et3 |> units::set_units(mg)
+      e <- et(amount.units = "mg", time_units = "hr") |>
+        add.sampling(seq(0, 24, by = 3)) |>
+        add.dosing(1, 3) |>
         et(rate = 3, amt = 2, time = 120)
-      e2 <- e %>% et(amt = units::set_units(0.0003, "lb"), time = 0.5)
-      expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)], units::set_units(units::set_units(0.0003, lb), mg))
-      e2 <- e %>% et(units::set_units(30, min))
+
+      e2 <- e |>
+        et(amt = units::set_units(0.0003, "lb"), time = 0.5)
+
+      expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)],
+                   units::set_units(units::set_units(0.0003, lb), mg))
+      e2 <- e |> et(units::set_units(30, min))
       expect_true(any(e2$time == units::set_units(0.5, hr)))
-      e2 <- e %>% et(time = 0.25, rate = units::set_units(30, ug / min), amt = units::set_units(4, ug))
+      e2 <- e |> et(time = 0.25, rate = units::set_units(30, ug / min), amt = units::set_units(4, ug))
       tmp <- e2[e2$time == units::set_units(0.25, hr), ]
       expect_equal(units::set_units(1.8, mg / h), tmp$rate)
       expect_equal(units::set_units(0.004, mg), tmp$amt)
-      e2 <- e %>% et(time = 0.25, ii = units::set_units(30, min), amt = 4, addl = 4)
+      e2 <- e |> et(time = 0.25, ii = units::set_units(30, min), amt = 4, addl = 4)
       expect_equal(e2$ii[e2$time == units::set_units(0.25, hr)], units::set_units(0.5, hr))
 
       ## Check importing wrong different ii and time units as well as different rate units work.
-      e <- et(amount.units = "mg", time_units = "hr") %>%
-        add.sampling(seq(0, 24, by = 3)) %>%
-        add.dosing(1, 3) %>%
+      e <- et(amount.units = "mg", time_units = "hr") |>
+        add.sampling(seq(0, 24, by = 3)) |>
+        add.dosing(1, 3) |>
         et(rate = 3, amt = 2, time = 120)
 
       etDf <- as.data.frame(e)
@@ -257,7 +276,7 @@ rxTest({
 
       e3 <- seq(e1, e2, e1)
 
-      e4 <- seq(e1, wait = 72, e2, wait = 72, e1) %>% as.data.frame()
+      e4 <- seq(e1, wait = 72, e2, wait = 72, e1) |> as.data.frame()
 
       expect_equal(structure(list(
         time = c(0, 216, 432),
@@ -270,7 +289,7 @@ rxTest({
       row.names = c(NA, -3L)
       ), e4)
 
-      e5 <- etSeq(e1, wait = 72, e2, wait = 72, e1, waitII = "+ii") %>%
+      e5 <- etSeq(e1, wait = 72, e2, wait = 72, e1, waitII = "+ii") |>
         as.data.frame()
 
       expect_equal(structure(list(
@@ -298,7 +317,7 @@ rxTest({
         class = "data.frame",
         row.names = c(NA, -2L)
         ),
-        c(e1, e2) %>% as.data.frame()
+        c(e1, e2) |> as.data.frame()
       )
 
       expect_equal(
@@ -312,14 +331,14 @@ rxTest({
         class = "data.frame",
         row.names = c(NA, -3L)
         ),
-        c(e2, e1, e2) %>% as.data.frame()
+        c(e2, e1, e2) |> as.data.frame()
       )
 
       e3 <- et(amt = 200)
 
       expect_warning(c(e1, e3))
 
-      e4 <- suppressWarnings(c(e1, e3) %>% as.data.frame())
+      e4 <- suppressWarnings(c(e1, e3) |> as.data.frame())
 
       expect_equal(
         structure(list(
@@ -335,7 +354,7 @@ rxTest({
         e4
       )
 
-      e4 <- suppressWarnings(c(e1, e3, ii = 12) %>% as.data.frame())
+      e4 <- suppressWarnings(c(e1, e3, ii = 12) |> as.data.frame())
 
       expect_equal(
         structure(list(
@@ -352,7 +371,7 @@ rxTest({
       )
 
 
-      e1 <- et(amt = 100, ii = 24, addl = 6) %>%
+      e1 <- et(amt = 100, ii = 24, addl = 6) |>
         et(seq(0, 2 * 168, by = 0.1))
       e2 <- c(e1, e1, samples = "use")
       expect_equal(range(e2$time), c(0, 672))
@@ -364,7 +383,7 @@ rxTest({
 
       e4 <- rbind(e1, e2, e3)
       expect_equal(
-        e4 %>% dplyr::select(id, time, amt, ii, addl) %>% as.data.frame(),
+        e4 |> dplyr::select(id, time, amt, ii, addl) |> as.data.frame(),
         structure(list(
           id = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 4L, 5L),
           time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -379,7 +398,7 @@ rxTest({
 
       e4 <- rbind(e1, e2, e3, id = "unique")
       expect_equal(
-        e4 %>% dplyr::select(id, time, amt, ii, addl) %>% as.data.frame(),
+        e4 |> dplyr::select(id, time, amt, ii, addl) |> as.data.frame(),
         structure(list(
           id = 1:10,
           time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -404,8 +423,8 @@ rxTest({
       c(4, 8),
       c(8, 12),
       c(12, 24)
-    )) %>%
-      et(amt = 10) %>%
+    )) |>
+      et(amt = 10) |>
       et(c(11, 13), amt = 10, addl = 3, ii = 12)
 
     test_that("Using simulate with et works and gives a different data frame", {
@@ -433,8 +452,8 @@ rxTest({
       c(4, 8),
       c(8, 12),
       c(12, 24)
-    ), cmt = 1) %>%
-      et(amt = 10) %>%
+    ), cmt = 1) |>
+      et(amt = 10) |>
       et(c(11, 13), amt = 10, addl = 3, ii = 12)
 
     test_that("Low/High middle tests; i.e windows", {
@@ -470,12 +489,12 @@ rxTest({
       expect_error(et(rate = 10, ii = 2, ss = 1))
       expect_error(et(rate = -2, ii = 0, ss = 1))
 
-      t1 <- et(amt = 0, rate = 10, ii = 0, ss = 1) %>% as.data.frame()
-      t2 <- et(rate = 10, ii = 0, ss = 1) %>% as.data.frame()
+      t1 <- et(amt = 0, rate = 10, ii = 0, ss = 1) |> as.data.frame()
+      t2 <- et(rate = 10, ii = 0, ss = 1) |> as.data.frame()
       expect_equal(t1, t2)
 
-      t1 <- et(amt = 0, rate = -1, ii = 0, ss = 1) %>% as.data.frame()
-      t2 <- et(rate = -1, ii = 0, ss = 1) %>% as.data.frame()
+      t1 <- et(amt = 0, rate = -1, ii = 0, ss = 1) |> as.data.frame()
+      t2 <- et(rate = -1, ii = 0, ss = 1) |> as.data.frame()
       expect_equal(t1, t2)
     })
 
@@ -488,7 +507,7 @@ rxTest({
       expect_equal(ev$time, c(0, 24, 48, 72, 96, 120))
     })
 
-    ev2 <- et(amt = 3, ii = 24, until = 120) %>% et(amt = 3, rate = 7)
+    ev2 <- et(amt = 3, ii = 24, until = 120) |> et(amt = 3, rate = 7)
 
     test_that("data.frame conversion", {
       tmp <- data.frame(ev2)
@@ -506,7 +525,7 @@ rxTest({
   }
 
   test_that("seq() args work; see #97", {
-    et1 <- et() %>% add.sampling(seq(0, 24, by = 3))
+    et1 <- et() |> add.sampling(seq(0, 24, by = 3))
 
     et2 <- et(from = 0, to = 24, by = 3)
 
@@ -541,20 +560,20 @@ rxTest({
   test_that("Issue #257 numeric cmt vectorized", {
     ds4 <- c(1, 2, 3, 4)
     rate <- c(1.5, 2.5, 3.5, 4.5)
-    expect_error(et() %>% et(amt = ds4, rate = rate, cmt = 4), NA)
+    expect_error(et() |> et(amt = ds4, rate = rate, cmt = 4), NA)
   })
 
   test_that("etRep #313", {
     skip_if_not_installed("units")
-    sch1 <- et(timeUnits = "hr") %>%
+    sch1 <- et(timeUnits = "hr") |>
       et(amt = 100, ii = 24, until = units::set_units(2, "days"))
 
     toto <- rep(sch1, times = 10, wait = units::set_units(19, "days"))
 
     expect_equal(toto$time, seq(0, by = 504, length.out = 10))
 
-    sch1 <- et(timeUnits = "hr") %>%
-      et(amt = 100, ii = 24, until = units::set_units(2, "days")) %>%
+    sch1 <- et(timeUnits = "hr") |>
+      et(amt = 100, ii = 24, until = units::set_units(2, "days")) |>
       etExpand()
 
     toto1 <- etExpand(toto)
@@ -580,13 +599,13 @@ rxTest({
   })
 
   test_that("can use 'evid=0' with time entries", {
-    expect_error(et(amt = 10, cmt = 1, time = 0, evid = 1, id = 1) %>%
+    expect_error(et(amt = 10, cmt = 1, time = 0, evid = 1, id = 1) |>
                    et(time = c(0, 10, 20), evid = 0), NA)
 
   })
 
   test_that("extra doses are not added (nlmixr2/rxode2et#2)", {
-    foo <- et(amt=10, id=1:2) %>% et(time=1, id=2:3)
+    foo <- et(amt=10, id=1:2) |> et(time=1, id=2:3)
     expect_equal(
       foo$id[!is.na(foo$amt)],
       1:2
@@ -594,14 +613,14 @@ rxTest({
   })
 
   test_that("event table id, (rxode2et#4)", {
-    expect_error(et(amt = 10, time = 0, evid = 1, id = 1:5) %>%
-                   et(amt = 100, time = 0, evid = 1, id = 6:10) %>%
+    expect_error(et(amt = 10, time = 0, evid = 1, id = 1:5) |>
+                   et(amt = 100, time = 0, evid = 1, id = 6:10) |>
                    et(amt = 1000, time = 0, evid = 1, id = 11), NA)
 
   })
 
   test_that("event table non-zero time", {
-    suppressWarnings(expect_warning(et(amt=1.153846, ii=24*7*6, until=24*7*6*2) %>%
+    suppressWarnings(expect_warning(et(amt=1.153846, ii=24*7*6, until=24*7*6*2) |>
                                       et(amt=1.153846, time=24*7*6*(2+8),
                                          ii=24*7*8, until=24*7), "until"))
   })
@@ -626,7 +645,7 @@ rxTest({
       time = sub_df$TIME,
       evid = 1,
       id = 1:5
-    ) %>%
+    ) |>
       add.sampling(time = samp_t), NA)
 
   })
@@ -857,7 +876,7 @@ rxTest({
                   c(0.5, 25, 50),
                   c(0.5, 30, 50),
                   c(0.5, 50, 80),
-                  c(0.5, 60, 90))) %>%
+                  c(0.5, 60, 90))) |>
       et(amt=100)
     expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
 
@@ -870,7 +889,7 @@ rxTest({
                   c(0.5, 50),
                   c(0.5, 50),
                   c(0.5, 80),
-                  c(0.5, 90))) %>%
+                  c(0.5, 90))) |>
       et(amt=100)
 
     expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
@@ -884,7 +903,7 @@ rxTest({
                   c(5, .1),
                   c(6, .1),
                   c(7, .1),
-                  c(8, .1))) %>%
+                  c(8, .1))) |>
       et(amt=100)
 
     expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
@@ -896,7 +915,7 @@ rxTest({
 
   test_that("adding an ID in the improper order will not cause an issue", {
 
-    e <- et(1:10) %>%
+    e <- et(1:10) |>
       et(id=rev(1:10))
 
     expect_equal(unique(e$id), 1:10)

@@ -16,7 +16,7 @@ rxTest({
     rxWithSeed(
       42,
       {
-        p1 <- mod %>%
+        p1 <- mod |>
           rxParams(
             params = c(
               KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
@@ -25,21 +25,21 @@ rxTest({
             ),
             inits = c(eff = 1),
             omega = lotri(eta.Cl ~ 0.4^2)
-          ) %>%
-          et(amountUnits = "mg", timeUnits = "hours") %>%
-          et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
+          ) |>
+          et(amountUnits = "mg", timeUnits = "hours") |>
+          et(amt = 10000, cmt = 2, ii = 12, until = 48) |>
           et(seq(0, 48, length.out = 100))
         if (type == "rxSolve") {
-          p1 <- p1 %>%
+          p1 <- p1 |>
             rxSolve(nSub = 30)
         } else if (type == "solve") {
-          p1 <- p1 %>%
+          p1 <- p1 |>
             solve(nSub = 30)
         } else if (type == "simulate") {
-          p1 <- p1 %>%
+          p1 <- p1 |>
             simulate(nSub = 30)
         } else if (type == "predict") {
-          p1 <- p1 %>%
+          p1 <- p1 |>
             predict(nSub = 30)
         }
       }
@@ -48,10 +48,10 @@ rxTest({
     rxWithSeed(
       42,
       {
-        p2 <- mod %>%
-          et(amountUnits = "mg", timeUnits = "hours") %>%
-          et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
-          et(seq(0, 48, length.out = 100)) %>%
+        p2 <- mod |>
+          et(amountUnits = "mg", timeUnits = "hours") |>
+          et(amt = 10000, cmt = 2, ii = 12, until = 48) |>
+          et(seq(0, 48, length.out = 100)) |>
           rxParams(
             params = c(
               KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
@@ -62,16 +62,16 @@ rxTest({
             omega = lotri(eta.Cl ~ 0.4^2)
           )
         if (type == "rxSolve") {
-          p2 <- p2 %>%
+          p2 <- p2 |>
             rxSolve(nSub = 30)
         } else if (type == "solve") {
-          p2 <- p2 %>%
+          p2 <- p2 |>
             solve(nSub = 30)
         } else if (type == "simulate") {
-          p2 <- p2 %>%
+          p2 <- p2 |>
             simulate(nSub = 30)
         } else if (type == "predict") {
-          p2 <- p2 %>%
+          p2 <- p2 |>
             predict(nSub = 30)
         }
       }
@@ -89,7 +89,7 @@ rxTest({
   fun("simulate")
   fun("predict")
 
-  p1 <- mod %>%
+  p1 <- mod |>
     rxParams(
       params = c(
         KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
@@ -98,14 +98,14 @@ rxTest({
       ),
       inits = c(eff = 1),
       omega = lotri(eta.Cl ~ 0.4^2)
-    ) %>%
-    et(amountUnits = "mg", timeUnits = "hours") %>%
-    et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
-    et(seq(0, 48, length.out = 100)) %>%
+    ) |>
+    et(amountUnits = "mg", timeUnits = "hours") |>
+    et(amt = 10000, cmt = 2, ii = 12, until = 48) |>
+    et(seq(0, 48, length.out = 100)) |>
     rxSolve(nSub = 4)
 
-  ps1 <- p1 %>%
-    rxParams(inits = c(eff = 2), dfSub = 4) %>%
+  ps1 <- p1 |>
+    rxParams(inits = c(eff = 2), dfSub = 4) |>
     rxSolve(nSub = 6, nStud = 3)
 
   test_that("can update parameters from solve", {
@@ -113,9 +113,9 @@ rxTest({
     expect_false(is.null(ps1$omegaList))
   })
 
-  ps2 <- p1 %>%
-    et(amt = 10000, cmt = 2, ii = 24, until = 48) %>%
-    et(seq(0, 48, length.out = 100)) %>%
+  ps2 <- p1 |>
+    et(amt = 10000, cmt = 2, ii = 24, until = 48) |>
+    et(seq(0, 48, length.out = 100)) |>
     rxSolve(nSub = 4)
 
   test_that("Can update event table in pipline solve", {

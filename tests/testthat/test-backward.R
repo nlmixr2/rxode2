@@ -125,9 +125,9 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
     d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
   })
 
-  ev <- eventTable(amount.units = "mg", time.units = "hours") %>%
-    add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12) %>%
-    add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24) %>%
+  ev <- eventTable(amount.units = "mg", time.units = "hours") |>
+    add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12) |>
+    add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24) |>
     add.sampling(0:240)
 
   theta <-
@@ -169,7 +169,7 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
 
     test_that("Add sampling makes sense", {
       ## Piping does not update object, like dplyr.
-      tmp <- x %>% add.sampling(0.5)
+      tmp <- x |> add.sampling(0.5)
       expect_equal(as.numeric(tmp$time[2]), 0.5)
       expect_equal(as.numeric(x$time[2]), 1)
       ## $ access updates object.
@@ -179,7 +179,7 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
     x <- solve(mod1, theta, ev, inits)
 
     test_that("Add dosing makes sense", {
-      tmp <- x %>% add.dosing(dose = 500, start.time = 0.5)
+      tmp <- x |> add.dosing(dose = 500, start.time = 0.5)
       expect_equal(tmp$get.dosing()$time[2], 0.5)
       expect_equal(x$get.dosing()$time[2], 120)
       x$add.dosing(0.5)

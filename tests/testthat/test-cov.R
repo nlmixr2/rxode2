@@ -539,10 +539,10 @@ rxTest({
 
     test_that("Data Frame single subject solve", {
       expect_equal(
-        tmp %>%
-          dplyr::select(CLI, V1I, V2I) %>% as.data.frame(),
-        d3 %>% dplyr::filter(EVID == 0) %>%
-          dplyr::select(CLI, V1I, V2I) %>% as.data.frame()
+        tmp |>
+          dplyr::select(CLI, V1I, V2I) |> as.data.frame(),
+        d3 |> dplyr::filter(EVID == 0) |>
+          dplyr::select(CLI, V1I, V2I) |> as.data.frame()
       )
       expect_equal(names(tmp$params), mod1$params[-(1:3)])
     })
@@ -571,11 +571,11 @@ rxTest({
 
     test_that("Data Frame multi subject solve", {
       expect_equal(
-        tmp %>%
-          dplyr::select(CLI, V1I, V2I) %>% as.data.frame(),
-        d3 %>%
-          dplyr::filter(EVID == 0) %>%
-          dplyr::select(CLI, V1I, V2I) %>% as.data.frame()
+        tmp |>
+          dplyr::select(CLI, V1I, V2I) |> as.data.frame(),
+        d3 |>
+          dplyr::filter(EVID == 0) |>
+          dplyr::select(CLI, V1I, V2I) |> as.data.frame()
       )
       expect_equal(names(tmp$params)[-1], mod1$params[-(1:3)])
     })

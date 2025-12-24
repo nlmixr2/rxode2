@@ -95,13 +95,13 @@ Using the `add.dosing()` function you have:
 ```{r}
 ev <- eventTable(amount.units="mg", time.units="hr")
 
-## The methods are attached to the event table, so you can use 
+## The methods are attached to the event table, so you can use
 ## them directly
 ev$add.dosing(dose=10000, nbr.doses = 3)# loading doses
 ## Starts at time 0; Default dosing interval is 24
 
 ## You can also pipe the event tables to these methods.
-ev <- ev %>%
+ev <- ev |>
   add.dosing(dose=5000, nbr.doses=14,
              dosing.interval=12)# maintenance
 
@@ -117,7 +117,7 @@ drop the rxode2 event table units.
 In this example, you can see the time axes is labeled:
 
 ```{r}
-rxSolve(m1, ev) %>% plot(C2)
+rxSolve(m1, ev) |> plot(C2)
 ```
 
 
@@ -125,7 +125,7 @@ If you are more familiar with the NONMEM/rxode2 event records, you can
 also specify dosing using `et` with the dose elements directly:
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
   et(amt=10000, until = set_units(3, days),
      ii=12) # loading doses
 
@@ -135,7 +135,7 @@ ev
 Which gives:
 
 ```{r}
-rxSolve(m1, ev) %>% plot(C2)
+rxSolve(m1, ev) |> plot(C2)
 ```
 
 This shows how easy creating event tables can be.
@@ -161,15 +161,15 @@ ev
 Which gives:
 
 ```{r}
-solve(m1, ev) %>% plot(C2)
+solve(m1, ev) |> plot(C2)
 ```
 
 Or if you use `et` you can simply add them in a similar way to `add.sampling`:
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
   et(amt=10000, until = set_units(3, days),
-     ii=12) %>% # loading doses
+     ii=12) |> # loading doses
   et(seq(0,24,by=4))
 
 ev
@@ -178,7 +178,7 @@ ev
 which gives the following rxode2 solve:
 
 ```{r}
-solve(m1, ev) %>% plot(C2)
+solve(m1, ev) |> plot(C2)
 ```
 
 Note the jagged nature of these plots since there was only a few
@@ -190,10 +190,10 @@ The only thing that is needed to expand an event table is a list of
 IDs that you want to expand;
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
   et(amt=10000, until = set_units(3, days),
-     ii=12) %>% # loading doses
-  et(seq(0,48,length.out=200)) %>%
+     ii=12) |> # loading doses
+  et(seq(0,48,length.out=200)) |>
   et(id=1:4)
 
 ev
@@ -206,7 +206,7 @@ set.seed(42)
 rxSetSeed(42)
 solve(m1, ev,
       params=data.frame(KA=0.294*exp(rnorm(4)),
-                        CL=18.6*exp(rnorm(4)))) %>%
+                        CL=18.6*exp(rnorm(4)))) |>
     plot(C2)
 ```
 
@@ -222,9 +222,9 @@ In this example, you start with a dosing time with a 6 hour dosing window:
 ```{r}
 set.seed(42)
 rxSetSeed(42)
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
   et(time=list(c(0,6)), amt=10000, until = set_units(2, days),
-     ii=12) %>% # loading doses
+     ii=12) |> # loading doses
   et(id=1:4)
 
 ev
@@ -232,11 +232,11 @@ ev
 
 You can clearly see different dosing times in the following simulation:
 ```{r}
-ev <- ev %>% et(seq(0,48,length.out=200))
+ev <- ev |> et(seq(0,48,length.out=200))
 
 solve(m1, ev,
       params=data.frame(KA=0.294*exp(rnorm(4)),
-                        CL=18.6*exp(rnorm(4)))) %>%
+                        CL=18.6*exp(rnorm(4)))) |>
   plot(C2)
 ```
 
@@ -245,15 +245,15 @@ Of course in reality the dosing interval may only be 2 hours:
 ```{r}
 set.seed(42)
 rxSetSeed(42)
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
   et(time=list(c(0,2)), amt=10000, until = set_units(2, days),
-     ii=12) %>% # loading doses
-  et(id=1:4) %>%
+     ii=12) |> # loading doses
+  et(id=1:4) |>
   et(seq(0,48,length.out=200))
 
 solve(m1, ev,
       params=data.frame(KA=0.294*exp(rnorm(4)),
-                        CL=18.6*exp(rnorm(4)))) %>%
+                        CL=18.6*exp(rnorm(4)))) |>
   plot(C2)
 ```
 
@@ -265,9 +265,9 @@ element ordered numeric vector.
 ```{r}
 rxSetSeed(42)
 set.seed(42)
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
   et(time=list(c(0,2)), amt=10000, until = set_units(2, days),
-     ii=12) %>% # loading doses
+     ii=12) |> # loading doses
   et(id=1:4)
 
 ## Create 20 samples in the first 24 hours and 20 samples in the
@@ -276,11 +276,11 @@ samples <- c(lapply(1:20, function(...){c(0,24)}),
              lapply(1:20, function(...){c(20,48)}))
 
 ## Add the random collection to the event table
-ev <- ev %>% et(samples)
+ev <- ev |> et(samples)
 
 library(ggplot2)
 solve(m1, ev, params=data.frame(KA=0.294*exp(rnorm(4)),
-                                CL=18.6*exp(rnorm(4)))) %>%
+                                CL=18.6*exp(rnorm(4)))) |>
   plot(C2) + geom_point()
 ```
 
@@ -300,17 +300,17 @@ inter-dose interval between them:
 
 ```{r}
 ## bid for 5 days
-bid <- et(timeUnits="hr") %>%
+bid <- et(timeUnits="hr") |>
        et(amt=10000,ii=12,until=set_units(5, "days"))
 
 ## qd for 5 days
-qd <- et(timeUnits="hr") %>%
+qd <- et(timeUnits="hr") |>
       et(amt=20000,ii=24,until=set_units(5, "days"))
 
 ## bid for 5 days followed by qd for 5 days
-et <- seq(bid,qd) %>% et(seq(0,11*24,length.out=100));
+et <- seq(bid,qd) |> et(seq(0,11*24,length.out=100));
 
-rxSolve(m1, et) %>% plot(C2)
+rxSolve(m1, et) |> plot(C2)
 ```
 
 When sequencing events, you can also separate this sequence by a
@@ -319,10 +319,10 @@ you could easily do that with the following sequence of event tables:
 
 ```{r}
 ## bid for 5 days followed by qd for 5 days
-et <- seq(bid,set_units(1, "week"), qd) %>%
+et <- seq(bid,set_units(1, "week"), qd) |>
     et(seq(0,18*24,length.out=100));
 
-rxSolve(m1, et) %>% plot(C2)
+rxSolve(m1, et) |> plot(C2)
 
 ```
 
@@ -333,10 +333,10 @@ using the `wait="+ii"`.
 
 ```{r}
 ## bid for 5 days followed by qd for 5 days
-et <- seq(bid,set_units(1, "week"), qd,wait="+ii") %>%
+et <- seq(bid,set_units(1, "week"), qd,wait="+ii") |>
     et(seq(0,18*24,length.out=100));
 
-rxSolve(m1, et) %>% plot(C2)
+rxSolve(m1, et) |> plot(C2)
 ```
 
 Also note, that rxode2 assumes that the dosing is what you want to
@@ -351,13 +351,13 @@ For example 4 rounds of 2 weeks on QD therapy and 1 week off of
 therapy can be simply specified:
 
 ```{r}
-qd <-et(timeUnits = "hr") %>%
+qd <-et(timeUnits = "hr") |>
   et(amt=10000, ii=24, until=set_units(2, "weeks"), cmt="depot")
 
-et <- rep(qd, times=4, wait=set_units(1,"weeks")) %>%
+et <- rep(qd, times=4, wait=set_units(1,"weeks")) |>
       add.sampling(set_units(seq(0, 12.5,by=0.005),weeks))
 
-rxSolve(m1, et)  %>% plot(C2)
+rxSolve(m1, et)  |> plot(C2)
 ```
 
 This is a simplified way to use a sequence of event tables.
@@ -376,35 +376,35 @@ not consider the inter-dose interval.
 Using the previous `seq` you can clearly see the difference.  Here was the sequence:
 ```{r}
 ## bid for 5 days
-bid <- et(timeUnits="hr") %>%
+bid <- et(timeUnits="hr") |>
        et(amt=10000,ii=12,until=set_units(5, "days"))
 
 ## qd for 5 days
-qd <- et(timeUnits="hr") %>%
+qd <- et(timeUnits="hr") |>
       et(amt=20000,ii=24,until=set_units(5, "days"))
 
-et <- seq(bid,qd) %>%
+et <- seq(bid,qd) |>
     et(seq(0,18*24,length.out=500));
 
-rxSolve(m1, et) %>% plot(C2)
+rxSolve(m1, et) |> plot(C2)
 ```
 
 But if you bind them together with `rbind`
 ```{r}
 ## bid for 5 days
-et <- rbind(bid,qd) %>%
+et <- rbind(bid,qd) |>
     et(seq(0,18*24,length.out=500));
 
-rxSolve(m1, et) %>% plot(C2)
+rxSolve(m1, et) |> plot(C2)
 ```
 
 Still the waiting period applies (but does not consider the inter-dose interval)
 
 ```{r}
-et <- rbind(bid,wait=set_units(10,days),qd) %>%
+et <- rbind(bid,wait=set_units(10,days),qd) |>
     et(seq(0,18*24,length.out=500));
 
-rxSolve(m1, et) %>% plot(C2)
+rxSolve(m1, et) |> plot(C2)
 ```
 
 You can also bind the tables together and make each ID in the event
@@ -414,11 +414,11 @@ option;  Using the first example shows how this is different in this case:
 
 ```{r}
 ## bid for 5 days
-et <- etRbind(bid,qd, id="unique") %>%
+et <- etRbind(bid,qd, id="unique") |>
     et(seq(0,150,length.out=500));
 
 library(ggplot2)
-rxSolve(m1, et) %>% plot(C2) + facet_wrap( ~ id)
+rxSolve(m1, et) |> plot(C2) + facet_wrap( ~ id)
 ```
 
 ## Event tables in Rstudio Notebooks
@@ -441,7 +441,7 @@ Event tables can be expanded so they contain an `addl` data item, like
 the following example:
 
 ```{r}
-ev <- et() %>%
+ev <- et() |>
   et(dose=50, ii=8, until=48)
 
 ev
@@ -471,5 +471,3 @@ similar to an object-oriented method:
 ev$expand()
 ev
 ```
-
-

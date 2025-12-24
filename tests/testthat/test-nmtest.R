@@ -382,8 +382,8 @@ test_that("evid4", {
 
   df <- "unjXVBZLQAAAAAAAAA|;[2w|gWj2@.BAC\"><F{+,tB@nC\"OG>cYAAA:CVtAADHMA@AAAH7m0<fKSxAAAHAAAqCAA@QBALtBtaL:ulyT9D<6FlgSH3VY{:CzWmyT92D:3VKf^Uk0D/KlgSH)W3eN\"gA6}[aRBkMhY@DIAAAmyT92D/KQVv`B.zUsYp3dW9}c[HcX&&2x~Rmt>ole6)~[4w?8~<*_~002|T)NAkM(.P4sqVA$!_r+7ZIG\"&2OCt8octWple6|M#FZ4AS.~mTdE}e[4dAU\"AAlBAABtEAIA.AAAe+8^eQCELgO[aAk}B\"tWG$Y.GFCAFAAAbf=[]@|REvG92CEAAAl%?#%85plMbAAAmu:x2o1a,<][cCM%RzQLAA&a7SOQC2y1`Is;Hf6*&S0CU\"?0(ZD@$IHO+U1=mkG/2AEA.&jYcSa]fy>,SSOFp{}Zna%`zzxx3O*<{Qij[umQr4kz~%u\"9l7>H9X~X>s_^5hFC^l9;4I]_8A~Iia?11?yTGxIHel!1Rn*eek:?q~(S5f5^!T$_:%%h`2+v1t`Y5/no;uG\"0719JtYbx2`Dc/1C+6;rCx}P+r~b0P6G"
 
-  df <- df %>%
-    qs2::base91_decode() %>%
+  df <- df |>
+    qs2::base91_decode() |>
     qs2::qs_deserialize()
 
 

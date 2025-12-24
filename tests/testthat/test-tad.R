@@ -62,10 +62,10 @@ rxTest({
       dosep <- dose(peri)
     })
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(time = 1, amt = 10000, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") %>%
-      et(time = 122, amt = 2200, addl = 4, ii = 14, cmt = "peri") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(time = 1, amt = 10000, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") |>
+      et(time = 122, amt = 2200, addl = 4, ii = 14, cmt = "peri") |>
       et(0, 240, by = 3)
 
     r1 <- rxSolve(mod1, ev, addDosing = TRUE)
@@ -291,10 +291,10 @@ rxTest({
 
     f(r1, r2)
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(time = 1, amt = 10000, rate=10000 / 6, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, rate=2000 / 6, addl = 4, ii = 14, cmt = "depot") %>%
-      et(time = 122, amt = 2200, rate=2200 / 6, addl = 4, ii = 14, cmt = "peri") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(time = 1, amt = 10000, rate=10000 / 6, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, rate=2000 / 6, addl = 4, ii = 14, cmt = "depot") |>
+      et(time = 122, amt = 2200, rate=2200 / 6, addl = 4, ii = 14, cmt = "peri") |>
       et(0, 240, by = 3)
 
     r2 <- rxSolve(mod1, ev, addDosing = TRUE)
@@ -305,10 +305,10 @@ rxTest({
 
     f(r1, r2)
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(time = 1, amt = 10000, dur=6, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, dur=6, addl = 4, ii = 14, cmt = "depot") %>%
-      et(time = 122, amt = 2200, dur=6, addl = 4, ii = 14, cmt = "peri") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(time = 1, amt = 10000, dur=6, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, dur=6, addl = 4, ii = 14, cmt = "depot") |>
+      et(time = 122, amt = 2200, dur=6, addl = 4, ii = 14, cmt = "peri") |>
       et(0, 240, by = 3)
 
     r3 <- rxSolve(mod1, ev, addDosing=TRUE)
@@ -319,10 +319,10 @@ rxTest({
 
     f(r1, r2)
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(time = 1, amt = 10000, rate = -1, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, rate = -1, addl = 4, ii = 14, cmt = "depot") %>%
-      et(time = 122, amt = 2200, rate= -1, addl = 4, ii = 14, cmt = "peri") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(time = 1, amt = 10000, rate = -1, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, rate = -1, addl = 4, ii = 14, cmt = "depot") |>
+      et(time = 122, amt = 2200, rate= -1, addl = 4, ii = 14, cmt = "peri") |>
       et(0, 240, by = 3)
 
     r1 <- rxSolve(mod1, ev, addDosing = TRUE)
@@ -331,10 +331,10 @@ rxTest({
 
     f(r1, r2)
 
-    ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(time = 1, amt = 10000, rate = -2, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, rate = -2, addl = 4, ii = 14, cmt = "depot") %>%
-      et(time = 122, amt = 2200, rate= -2, addl = 4, ii = 14, cmt = "peri") %>%
+    ev <- et(amountUnits = "mg", timeUnits = "hours") |>
+      et(time = 1, amt = 10000, rate = -2, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, rate = -2, addl = 4, ii = 14, cmt = "depot") |>
+      et(time = 122, amt = 2200, rate= -2, addl = 4, ii = 14, cmt = "peri") |>
       et(0, 240, by = 3)
 
     r1 <- rxSolve(mod1, ev, addDosing = TRUE)
@@ -387,12 +387,12 @@ rxTest({
       dosec <- dose(central)
     })
 
-    et <- eventTable() %>%
-      add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
+    et <- eventTable() |>
+      add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) |>
       add.dosing(
         dose = 6, nbr.doses = 6, dosing.interval = 8,
         start.time = 2, dosing.to = "central"
-      ) %>%
+      ) |>
       add.sampling(seq(0, 48, length.out = 200))
 
     s1 <- rxSolve(sol.1c.ka, et)
@@ -445,8 +445,8 @@ rxTest({
       dosec <- dose(central)
     })
 
-    et <- eventTable() %>%
-      add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
+    et <- eventTable() |>
+      add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) |>
       add.sampling(seq(0, 48, length.out = 200))
 
     s <- rxSolve(one.cmt, et)
@@ -485,8 +485,8 @@ rxTest({
       dosee <- dose(eff)
     })
 
-    ev <- eventTable(amount.units = "mg", time.units = "hours") %>%
-      add.dosing(dose = 10000, nbr.doses = 1, dosing.to = 1) %>%
+    ev <- eventTable(amount.units = "mg", time.units = "hours") |>
+      add.dosing(dose = 10000, nbr.doses = 1, dosing.to = 1) |>
       add.sampling(seq(0, 48, length.out = 100))
 
 
@@ -502,9 +502,9 @@ rxTest({
     expect_equal(x$dose, x$dosed)
     expect_true(all(is.na(x$dosee)))
 
-    ev <- eventTable(amount.units = "mg", time.units = "hours") %>%
-      add.dosing(dose = 10000, nbr.doses = 1, dosing.to = 1) %>%
-      add.dosing(dose = -1, start.time = 6, nbr.doses = 1, dosing.to = 3) %>%
+    ev <- eventTable(amount.units = "mg", time.units = "hours") |>
+      add.dosing(dose = 10000, nbr.doses = 1, dosing.to = 1) |>
+      add.dosing(dose = -1, start.time = 6, nbr.doses = 1, dosing.to = 3) |>
       add.sampling(seq(0, 48, length.out = 20))
 
 

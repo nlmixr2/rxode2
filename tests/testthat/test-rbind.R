@@ -28,11 +28,11 @@ rxTest({
       })
     }
 
-    ev <- eventTable() %>%
-      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) %>%
-      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) %>%
-      add.sampling(0:240) %>%
-      et(id=1:2) %>%
+    ev <- eventTable() |>
+      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
+      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
+      add.sampling(0:240) |>
+      et(id=1:2) |>
       as.data.frame()
 
     ev$dvid <- ifelse(ev$evid == 0, 1, NA_real_)
@@ -40,7 +40,7 @@ rxTest({
     ev2 <- ev[which(ev$dvid == 1), ]
     ev2$dvid <- 2
 
-    ev <- rbind(ev, ev2) %>%
+    ev <- rbind(ev, ev2) |>
       dplyr::arrange(id, time)
 
     rownames(ev) <- NULL

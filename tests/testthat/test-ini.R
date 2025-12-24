@@ -72,7 +72,7 @@ rxTest({
       ev$add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24)
       ev$add.sampling(0:240)
 
-      s <- fini %>% solve(theta, ev)
+      s <- fini |> solve(theta, ev)
 
       expect_equal(as.data.frame(s)[1, "eff"], 1)
 
@@ -100,18 +100,18 @@ rxTest({
         ev$add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24)
         ev$add.sampling(0:240)
 
-        s <- fini %>% solve(theta, ev)
+        s <- fini |> solve(theta, ev)
 
         expect_equal(as.data.frame(s)[1, "eff"], 1)
 
         theta["eta1"] <- 0.5
 
-        s <- fini %>% solve(theta, ev)
+        s <- fini |> solve(theta, ev)
         expect_equal(as.data.frame(s)[1, "eff"], 1.5)
 
         theta["eta1"] <- -0.5
 
-        s <- fini %>% solve(theta, ev)
+        s <- fini |> solve(theta, ev)
         expect_equal(as.data.frame(s)[1, "eff"], 0.5)
 
 

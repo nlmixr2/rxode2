@@ -1,10 +1,10 @@
 if (!.Call(`_rxode2_isIntel`)) {
   # lhs for different compartments make sense
 
-  et <- et() %>%
-    et(amt = 3, addl = 5, ii = 8, cmt = "depot") %>%
-    et(seq(0, 48, length.out = 200), cmt = "depot") %>%
-    et(seq(0, 48, length.out = 200), cmt = "centr") %>%
+  et <- et() |>
+    et(amt = 3, addl = 5, ii = 8, cmt = "depot") |>
+    et(seq(0, 48, length.out = 200), cmt = "depot") |>
+    et(seq(0, 48, length.out = 200), cmt = "centr") |>
     et(seq(0, 48, length.out = 200), cmt = "peri")
 
   ode.2c.ka <- rxode2({

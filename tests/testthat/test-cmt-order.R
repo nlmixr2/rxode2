@@ -22,7 +22,7 @@ rxTest({
 
     expect_equal(c("intestine", "blood"), rxState(mod))
 
-    
+
     expect_error(suppressMessages(rxode2({
       a <- 6
       b <- 0.6
@@ -30,7 +30,7 @@ rxTest({
       d/dt(intestine) <- -a * intestine
       d/dt(blood) <- a * intestine - b * blood
     })))
-      
+
 
     tmp <- rxode2({
       a <- 6
@@ -609,7 +609,7 @@ rxTest({
       })
     }
 
-    f1 <- f1 %>% zeroRe("omega")
+    f1 <- f1 |> zeroRe("omega")
 
     f2 <- function() {
       ini({
@@ -662,7 +662,7 @@ rxTest({
       })
     }
 
-    f2 <- f2 %>% zeroRe("omega")
+    f2 <- f2 |> zeroRe("omega")
 
     ev     <- eventTable()
     mybw   <- 70
@@ -671,7 +671,7 @@ rxTest({
     ev$add.dosing(dose=mydgrp*mybw*1000000/mymw ,nbr.doses= 13, dosing.interval= 7)
     ev$add.sampling(seq(0,13*7,length.out=7))
 
-    ev2 <- ev %>% as.data.frame() %>%
+    ev2 <- ev |> as.data.frame() |>
       dplyr::mutate(BW=mybw, DGRP=mydgrp, SPEC=4)
 
     s2 <- rxSolve(f2, ev2, returnType="data.frame")

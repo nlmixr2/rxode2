@@ -12,12 +12,12 @@ rxTest({
       f(center) <- fc
     })
 
-    et <- eventTable() %>%
-      add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
+    et <- eventTable() |>
+      add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) |>
       add.sampling(0:4)
 
-    et2 <- eventTable() %>%
-      add.dosing(start.time = 0.5, dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
+    et2 <- eventTable() |>
+      add.dosing(start.time = 0.5, dose = 3, nbr.doses = 6, dosing.interval = 8) |>
       add.sampling(0:4)
 
     ms <- c("liblsoda", "lsoda", "dop853")

@@ -32,14 +32,14 @@ rxTest({
 
       expect_equal(ui$iniDf$backTransform[ui$iniDf$name == "KA"], "exp")
 
-      p1 <- ui %>%
+      p1 <- ui |>
         ini(
           KA <- backTransform("log")
         )
 
       expect_equal(p1$iniDf$backTransform[ui$iniDf$name == "KA"], "log")
 
-      p2 <-ui %>%
+      p2 <-ui |>
         ini(
           KA <- backTransform(log)
         )
@@ -431,11 +431,11 @@ rxTest({
         })
       }
 
-      expect_error(mod %>% ini("h~3"), NA)
+      expect_error(mod |> ini("h~3"), NA)
 
-      expect_error(mod %>% ini("h~3;4*"))
+      expect_error(mod |> ini("h~3;4*"))
 
-      expect_error(mod %>% ini(factor("A")))
+      expect_error(mod |> ini(factor("A")))
 
     })
 
@@ -642,15 +642,15 @@ rxTest({
       }
 
       suppressMessages({
-        f2 <- m1 %>% ini(x2=-1)
+        f2 <- m1 |> ini(x2=-1)
         expect_equal(f2$iniDf[f2$iniDf$name == "x2","lower"], -Inf)
       })
       suppressMessages({
-        f2 <- m1 %>% ini(x3=4)
+        f2 <- m1 |> ini(x3=4)
         expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
       })
       suppressMessages({
-        f2 <- m1 %>% ini(x3=c(0,3))
+        f2 <- m1 |> ini(x3=c(0,3))
         expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
       })
     })
@@ -679,11 +679,11 @@ rxTest({
       }
       suppressMessages(
         newmod <-
-          mod %>%
+          mod |>
           model(
             ka <- exp(lka + ka_dose*DOSE),
             auto = FALSE
-          ) %>%
+          ) |>
           ini(
             ka_dose <- 1,
             append = "lka"
@@ -889,12 +889,12 @@ rxTest({
     }
 
     expect_message(
-      mod1 %>% ini(Kin = 2),
+      mod1 |> ini(Kin = 2),
       "promote `Kin` to population parameter with initial estimate 2"
     )
     expect_message(
       expect_message(
-        mod1 %>% ini(Kin = c(1, 2)),
+        mod1 |> ini(Kin = c(1, 2)),
         "promote `Kin` to population parameter with initial estimate 2"
       ),
       regexp = "change initial estimate (2) and lower bound (1) of `Kin`",
@@ -902,7 +902,7 @@ rxTest({
     )
     expect_message(
       expect_message(
-        mod1 %>% ini(Kin = c(1, 2, 3)),
+        mod1 |> ini(Kin = c(1, 2, 3)),
         "promote `Kin` to population parameter with initial estimate 2"
       ),
       regexp = "change initial estimate (2) and upper/lower bound (1 to 3) of `Kin`",
@@ -931,16 +931,16 @@ rxTest({
     }
 
     expect_error(
-      mod2 %>% ini(diag(lcl, matt)),
+      mod2 |> ini(diag(lcl, matt)),
       "matt"
     )
 
     expect_error(
-      mod2 %>% ini(diag(matt, lcl)),
+      mod2 |> ini(diag(matt, lcl)),
       "matt"
     )
 
-    tmp <- mod2 %>% ini(-cov(lcl, lvc))
+    tmp <- mod2 |> ini(-cov(lcl, lvc))
     expect_equal(tmp$omega,
                  lotri({
                    lvc ~ 3.45
@@ -949,7 +949,7 @@ rxTest({
                    lcl ~ c(0, 0.1, 0.01, 1)
                  }))
 
-    tmp <- mod2 %>% ini(-cor(lcl, lvc))
+    tmp <- mod2 |> ini(-cor(lcl, lvc))
     expect_equal(tmp$omega,
                  lotri({
                    lvc ~ 3.45
@@ -958,7 +958,7 @@ rxTest({
                    lcl ~ c(0, 0.1, 0.01, 1)
                  }))
 
-    tmp <- mod2 %>% ini(cor(lcl, lvc) <- NULL)
+    tmp <- mod2 |> ini(cor(lcl, lvc) <- NULL)
 
     expect_equal(tmp$omega,
                  lotri({
@@ -968,7 +968,7 @@ rxTest({
                    lcl ~ c(0, 0.1, 0.01, 1)
                  }))
 
-    tmp <- mod2 %>% ini(cor(lcl, lvc) ~ NULL)
+    tmp <- mod2 |> ini(cor(lcl, lvc) ~ NULL)
     expect_equal(tmp$omega,
                  lotri({
                    lvc ~ 3.45
@@ -977,11 +977,11 @@ rxTest({
                    lcl ~ c(0, 0.1, 0.01, 1)
                  }))
 
-    expect_error(mod2 %>% ini(diag(matt)),
+    expect_error(mod2 |> ini(diag(matt)),
                  "matt")
 
     # Will reorder
-    tmp <- mod2 %>% ini(diag(lcl, lvc))
+    tmp <- mod2 |> ini(diag(lcl, lvc))
     expect_equal(tmp$omega,
                  lotri({
                    lfun ~ 4
@@ -990,7 +990,7 @@ rxTest({
                    lcl ~ 1
                  }))
 
-    tmp <- mod2 %>% ini(diag)
+    tmp <- mod2 |> ini(diag)
     expect_equal(tmp$omega,
                  lotri({
                    lka ~ 0.45
@@ -999,7 +999,7 @@ rxTest({
                    lfun ~ 4
                  }))
 
-    tmp <- mod2 %>% ini(diag(lvc))
+    tmp <- mod2 |> ini(diag(lvc))
 
     expect_equal(tmp$omega,
                  lotri({
@@ -1027,7 +1027,7 @@ rxTest({
     }
 
 
-    tmp <- mod %>% ini(diag)
+    tmp <- mod |> ini(diag)
 
     expect_equal(tmp$omega,
                  lotri({
@@ -1036,7 +1036,7 @@ rxTest({
                    lvc ~ 3.45
                  }))
 
-    tmp <- mod %>% ini(diag())
+    tmp <- mod |> ini(diag())
 
     expect_equal(tmp$omega,
                  lotri({

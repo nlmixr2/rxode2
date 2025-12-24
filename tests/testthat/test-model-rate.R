@@ -17,13 +17,13 @@ rxTest({
       d/dt(blood) <- a * intestine - b * blood
     })
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
 
-    et2 <- et() %>%
-      et(amt = 2 / 24, rate = 2, 0, addl = 9, ii = 1) %>%
+    et2 <- et() |>
+      et(amt = 2 / 24, rate = 2, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     f1.a <- rxSolve(mod.rate, et, c(ri = 2, f = 1, li = 0), method = m)
@@ -53,14 +53,14 @@ rxTest({
       expect_equal(as.data.frame(f1.a), as.data.frame(f1.b))
     })
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = -1) %>%
-      et(amt = 0.2, time = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = -1) |>
+      et(amt = 0.2, time = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
-    et2 <- et() %>%
-      et(amt = 2 / 24, rate = 2) %>%
-      et(amt = 0.2, time = 1) %>%
+    et2 <- et() |>
+      et(amt = 2 / 24, rate = 2) |>
+      et(amt = 0.2, time = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     f.a <- rxSolve(mod.rate, et, c(ri = 2, f = 2, li = 0.3), method = m)
@@ -74,9 +74,9 @@ rxTest({
 
     f.a <- rxSolve(mod.rate, et, c(ri = 0.125, f = 2, li = 0.3), method = m)
 
-    et2 <- et() %>%
-      et(amt = 2 / 24, rate = 0.125) %>%
-      et(amt = 0.2, time = 1) %>%
+    et2 <- et() |>
+      et(amt = 2 / 24, rate = 0.125) |>
+      et(amt = 0.2, time = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     f.b <- rxSolve(mod.rate, et2, c(ri = 1e-6, f = 2, li = 0.3), method = m)
@@ -89,16 +89,16 @@ rxTest({
 
     f.a <- rxSolve(mod.rate, et, c(ri = 0.05, f = 2, li = 0.3), method = m)
 
-    et2 <- et() %>%
-      et(amt = 2 / 24, rate = 0.05) %>%
-      et(amt = 0.2, time = 1) %>%
+    et2 <- et() |>
+      et(amt = 2 / 24, rate = 0.05) |>
+      et(amt = 0.2, time = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     f.b <- rxSolve(mod.rate, et2, c(ri = 1, f = 2, li = 0.3), method = m)
 
-    et3 <- et() %>%
-      et(amt = 2 / 24 * 2, rate = 0.05) %>%
-      et(amt = 0.2 * 2, time = 1) %>%
+    et3 <- et() |>
+      et(amt = 2 / 24 * 2, rate = 0.05) |>
+      et(amt = 0.2 * 2, time = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     f.c <- rxSolve(mod.rate, et3, c(ri = 1, f = 1, li = 0.3), method = m)
@@ -134,8 +134,8 @@ rxTest({
     # context(sprintf("Modeled duration (%s)", m))
 
     ## Now model duration
-    et <- et(amt = 2 / 24 * 2, rate = -2) %>%
-      et(amt = 0.2 * 2, time = 2) %>%
+    et <- et(amt = 2 / 24 * 2, rate = -2) |>
+      et(amt = 0.2 * 2, time = 2) |>
       et(seq(0, 10, by = 1 / 24))
 
     test_that("Error is thrown without modeled duration", {
@@ -146,9 +146,9 @@ rxTest({
 
     f.a <- rxSolve(mod.dur, et, c(di = 0.5, f = 1, li = 0.3), method = m)
 
-    et2 <- et() %>%
-      et(amt = 2 / 24 * 2, dur = 0.5) %>%
-      et(amt = 0.2 * 2, time = 2) %>%
+    et2 <- et() |>
+      et(amt = 2 / 24 * 2, dur = 0.5) |>
+      et(amt = 0.2 * 2, time = 2) |>
       et(seq(0, 10, by = 1 / 24))
 
     f.b <- rxSolve(mod.dur, et2, c(di = 10, f = 1, li = 0.3), method = m)
@@ -157,9 +157,9 @@ rxTest({
       expect_equal(as.data.frame(f.a), as.data.frame(f.b))
     })
 
-    et2 <- et() %>%
-      et(amt = 2 / 24 * 2, dur = 0.5) %>%
-      et(amt = 0.2 * 2, time = 2) %>%
+    et2 <- et() |>
+      et(amt = 2 / 24 * 2, dur = 0.5) |>
+      et(amt = 0.2 * 2, time = 2) |>
       et(seq(0, 10, by = 1 / 24))
 
     f.a <- rxSolve(mod.dur, et, c(di = 0.5, f = 1, li = 0.3), method = m)
@@ -193,8 +193,8 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     expect_error(rxSolve(mod.rate, et))
@@ -212,8 +212,8 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     expect_error(rxSolve(mod.rate, et))
@@ -231,14 +231,14 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = 1, 0, addl = 9, ii = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = 1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     expect_error(rxSolve(mod.rate, et))
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     expect_error(rxSolve(mod.rate, et))
@@ -256,8 +256,8 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
 
-    et <- et() %>%
-      et(amt = 2 / 24, rate = -2, 0, addl = 9, ii = 1) %>%
+    et <- et() |>
+      et(amt = 2 / 24, rate = -2, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
     expect_error(rxSolve(mod.rate, et))
@@ -294,8 +294,8 @@ rxTest({
       V1 = V1 - Sample.V, Sample.V = Sample.V, ke = ke, Cp1 = 0
     )
 
-    sim.ev <- et(seq(0, Days * 60 * 24, by = 1)) %>%
-      et(cmt = "V.ms", evid = 4, amt = Sample.V, nbr = 5, ii = sample.int * 60) %>%
+    sim.ev <- et(seq(0, Days * 60 * 24, by = 1)) |>
+      et(cmt = "V.ms", evid = 4, amt = Sample.V, nbr = 5, ii = sample.int * 60) |>
       et(cmt = "A1", time = 1440, evid = 6, amt = 1)
 
     expect_error(rxSolve(mod, par, sim.ev, inits = ini, addDosing = TRUE), NA)

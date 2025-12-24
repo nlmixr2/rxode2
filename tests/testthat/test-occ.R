@@ -27,19 +27,19 @@ rxTest({
       d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
     })
 
-    et(amountUnits = "mg", timeUnits = "hours") %>%
-      et(amt = 10000, addl = 9, ii = 12, cmt = "depot") %>%
-      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") %>%
-      et(seq(0, 240, by = 4)) %>%
+    et(amountUnits = "mg", timeUnits = "hours") |>
+      et(amt = 10000, addl = 9, ii = 12, cmt = "depot") |>
+      et(time = 120, amt = 2000, addl = 4, ii = 14, cmt = "depot") |>
+      et(seq(0, 240, by = 4)) |>
       # Assumes sampling when there is no dosing information
-      et(seq(0, 240, by = 4) + 0.1) %>%
+      et(seq(0, 240, by = 4) + 0.1) |>
       ## adds 0.1 for separate eye
-      et(id = 1:20) %>%
+      et(id = 1:20) |>
       ## Add an occasion per dose
-      dplyr::mutate(occ = cumsum(!is.na(amt))) %>%
-      dplyr::mutate(occ = ifelse(occ == 0, 1, occ)) %>%
-      dplyr::mutate(occ = 2 - occ %% 2) %>%
-      dplyr::mutate(eye = ifelse(round(time) == time, 1, 2)) %>%
+      dplyr::mutate(occ = cumsum(!is.na(amt))) |>
+      dplyr::mutate(occ = ifelse(occ == 0, 1, occ)) |>
+      dplyr::mutate(occ = 2 - occ %% 2) |>
+      dplyr::mutate(eye = ifelse(round(time) == time, 1, 2)) |>
       dplyr::mutate(inv = ifelse(id < 10, 1, 2)) ->
       ev
 
@@ -330,18 +330,18 @@ rxTest({
                 ii=24,
                 evid=1,
                 cmt="AMTa",
-                time=0) %>%
+                time=0) |>
       et(amt=1000,
          addl=6,
          ii=24,
          evid=4,
          cmt="AMTa",
-         time = 336) %>%
-      et(seq(0,168,0.5)) %>%
-      et(seq(336,672,0.5)) %>%
+         time = 336) |>
+      et(seq(0,168,0.5)) |>
+      et(seq(336,672,0.5)) |>
       et(id=seq(1,n))
 
-    dosing <- dplyr::mutate(dosing, occ = 1) %>%
+    dosing <- dplyr::mutate(dosing, occ = 1) |>
       dplyr::mutate(occ = ifelse(time>=336,2,occ))
 
     expect_error(rxSolve(object = mod,

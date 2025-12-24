@@ -227,8 +227,8 @@ transit = matt + fun
       })
     }
 
-    ev1 <- et(0, 7, length.out=200) %>%
-      et(amt=20, cmt='depot1', evid=7) %>%
+    ev1 <- et(0, 7, length.out=200) |>
+      et(amt=20, cmt='depot1', evid=7) |>
       et(amt=20, cmt='depot2', evid=1)
 
     case1 <- rxSolve(mod, ev1)

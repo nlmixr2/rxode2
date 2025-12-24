@@ -87,16 +87,16 @@ bid.ext$add.dosing(
 
 # You can also use the Piping operator to create a table
 
-qd2 <- eventTable(amount.units = "mg", time.units = "days") \%>\%
-  add.dosing(dose = 50, nbr.doses = 5, dosing.interval = 1, do.sampling = FALSE) \%>\%
-  add.sampling(seq(from = 0, to = 1, by = 1 / 24)) \%>\%
+qd2 <- eventTable(amount.units = "mg", time.units = "days") |>
+  add.dosing(dose = 50, nbr.doses = 5, dosing.interval = 1, do.sampling = FALSE) |>
+  add.sampling(seq(from = 0, to = 1, by = 1 / 24)) |>
   add.sampling(seq(from = 1, to = 5, by = 12 / 24))
 # print(qd2$get.dosing())     # table of dosing records
 print(qd2$get.nobs()) # number of observation (not dosing) records
 
-# Note that piping with \%>\% will update the original table.
+# Note that piping with |> will update the original table.
 
-qd3 <- qd2 \%>\% add.sampling(seq(from = 5, to = 10, by = 6 / 24))
+qd3 <- qd2 |> add.sampling(seq(from = 5, to = 10, by = 6 / 24))
 print(qd2$get.nobs())
 print(qd3$get.nobs())
 }

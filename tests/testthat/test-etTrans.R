@@ -127,12 +127,12 @@ d/dt(blood)     = a*intestine - b*blood
     ##   nbr.doses = 10, dosing.interval = 1
     ## )
 
-    ## et <- et %>%
-    ##   et(0.05, evid = 2) %>%
-    ##   et(amt = 3, time = 0.5, cmt = out) %>%
-    ##   et(amt = 3, time = 0.1, cmt = intestine, ss = 1, ii = 3) %>%
-    ##   et(amt = 3, time = 0.3, cmt = intestine, ss = 2, ii = 3) %>%
-    ##   et(time = 0.2, cmt = "-intestine") %>%
+    ## et <- et |>
+    ##   et(0.05, evid = 2) |>
+    ##   et(amt = 3, time = 0.5, cmt = out) |>
+    ##   et(amt = 3, time = 0.1, cmt = intestine, ss = 1, ii = 3) |>
+    ##   et(amt = 3, time = 0.3, cmt = intestine, ss = 2, ii = 3) |>
+    ##   et(time = 0.2, cmt = "-intestine") |>
     ##   as.data.frame()
 
     test_that("error for empty data", {
@@ -194,9 +194,9 @@ d/dt(blood)     = a*intestine - b*blood
     ##   dose = 2 / 24, rate = 2, start.time = 0,
     ##   nbr.doses = 10, dosing.interval = 1
     ## )
-    ## et <- et %>%
-    ##   et(0.05, evid = 2) %>%
-    ##   et(amt = 3, time = 0.5, cmt = "-out") %>%
+    ## et <- et |>
+    ##   et(0.05, evid = 2) |>
+    ##   et(amt = 3, time = 0.5, cmt = "-out") |>
     ##   as.data.frame()
 
     et <- structure(list(time = c(0, 0.05, 0.5),
@@ -788,7 +788,7 @@ d/dt(blood)     = a*intestine - b*blood
       et <- structure(list(time = 0, amt = 0, rate = 10, ii = 0, evid = 1L,
                            ss = 1L), class = "data.frame", row.names = c(NA, -1L))
 
-      trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) %>% as.data.frame()
+      trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
       expect_equal(structure(list(
         ID = structure(1L, class = "factor", .Label = "1"),
@@ -800,7 +800,7 @@ d/dt(blood)     = a*intestine - b*blood
       et <- structure(list(time = 0, amt = 0, rate = -1, ii = 0, evid = 1L,
                            ss = 1L), class = "data.frame", row.names = c(NA, -1L))
 
-      trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) %>% as.data.frame()
+      trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
       expect_equal(structure(list(
         ID = structure(1L, class = "factor", .Label = "1"),
@@ -1004,7 +1004,7 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(t$EVID[length(t$EVID)], 10210L)
     expect_equal(t$II[length(t$II)], 0)
 
-    t2 <- t %>% dplyr::filter(AMT>0)
+    t2 <- t |> dplyr::filter(AMT>0)
 
     expect_equal(t2$TIME, c(0, 24, 48, 72))
     expect_true(all(t2$AMT == 10))
@@ -1521,11 +1521,11 @@ d/dt(blood)     = a*intestine - b*blood
                  amt  = scens[[scen]][["damts"]]*conv,
                  time = scens[[scen]][["dtimes"]],
                  cmt  = scens[[scen]][["cmt"]]
-                 ) %>%
+                 ) |>
               et(id   = scen_subs[tmp_sub_idx],
                  time = unique(c(scens[[scen]][["tsam"]])),
                  cmt   = "C_ng_ml"
-                 ) %>%
+                 ) |>
               et(id   = scen_subs[tmp_sub_idx],
                  time = unique(c(scens[[scen]][["tsam"]])),
                  cmt   = "BM_obs"

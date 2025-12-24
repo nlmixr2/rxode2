@@ -9,7 +9,7 @@ rxTest({
       alag(A2) <- ALAG2
       CP <- A2 / S2
     })
-    
+
     rx2 <- rxode2({
       K20 <- CL / VC
       S2 <- VC
@@ -21,7 +21,7 @@ rxTest({
       f(A2) <- 1 - F1
       CP <- A2 / S2
     })
-    
+
     t <- c(
       KA = 3,
       CL = 5,
@@ -30,16 +30,16 @@ rxTest({
       F1 = 0,
       ALAG2 = 4
     )
-    
-    et1 <- et(amt = 100000, rate = -2, cmt = 2) %>%
+
+    et1 <- et(amt = 100000, rate = -2, cmt = 2) |>
       et(seq(0, 24, length.out = 100))
-    
-    et2 <- et1 %>%
+
+    et2 <- et1 |>
       et(amt = 100000, cmt = 1)
-    
+
     a <- rxSolve(rx1, et1, t, returnType = "data.frame")
     b <- rxSolve(rx2, et2, t, returnType = "data.frame")
-    
+
     expect_equal(a, b)
   })
 })

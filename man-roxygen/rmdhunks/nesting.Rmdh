@@ -20,23 +20,23 @@ This event table contains nesting variables:
  - id: subject id
  - eye: eye id (left or right)
  - occ: occasion
- 
+
 ```{r}
 library(rxode2)
 library(dplyr)
 
-et(amountUnits="mg", timeUnits="hours") %>%
-  et(amt=10000, addl=9,ii=12,cmt="depot") %>%
-  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
-  et(seq(0, 240, by=4)) %>% # Assumes sampling when there is no dosing information
-  et(seq(0, 240, by=4) + 0.1) %>% ## adds 0.1 for separate eye
-  et(id=1:20) %>%
+et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+  et(seq(0, 240, by=4)) |> # Assumes sampling when there is no dosing information
+  et(seq(0, 240, by=4) + 0.1) |> ## adds 0.1 for separate eye
+  et(id=1:20) |>
   ## Add an occasion per dose
-  mutate(occ=cumsum(!is.na(amt))) %>%
-  mutate(occ=ifelse(occ == 0, 1, occ)) %>%
-  mutate(occ=2- occ %% 2) %>%
-  mutate(eye=ifelse(round(time) == time, 1, 2)) %>%
-  mutate(inv=ifelse(id < 10, 1, 2)) %>% as_tibble ->
+  mutate(occ=cumsum(!is.na(amt))) |>
+  mutate(occ=ifelse(occ == 0, 1, occ)) |>
+  mutate(occ=2- occ %% 2) |>
+  mutate(eye=ifelse(round(time) == time, 1, 2)) |>
+  mutate(inv=ifelse(id < 10, 1, 2)) |> as_tibble ->
   ev
 ```
 
@@ -76,7 +76,7 @@ dimnames(tMat) <- list(names(theta), names(theta))
 tMat
 ```
 
-### Nesting Variability 
+### Nesting Variability
 
 To specify multiple levels of nesting, you can specify it as a nested
 `lotri` matrix; When using this approach you use the condition
@@ -126,7 +126,7 @@ number of individuals enrolled at their site. `rxode2` automatically
 determines the number of investigators and then will simulate an
 effect for each investigator. With the output, `inv.Cl(inv==1)` will
 be the `inv.Cl` for investigator 1, `inv.Cl(inv==2)` will be the
-`inv.Cl` for investigator 2, etc. 
+`inv.Cl` for investigator 2, etc.
 
 `inv.Cl(inv==1)`, `inv.Cl(inv==2)`, etc will be simulated for each
 study and then combined to form the between investigator
@@ -145,7 +145,7 @@ print(head(s$params))
 ```
 
 ```{r}
-print(head(s$params %>% filter(sim.id == 2)))
+print(head(s$params |> filter(sim.id == 2)))
 ```
 
 For between eye variability and between occasion variability each

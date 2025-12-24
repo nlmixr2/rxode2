@@ -2,7 +2,7 @@ rxTest({
   test_that("PreciseSums::fsum", {
     skip_on_cran()
     skip_on_os("mac")
-    et <- eventTable() %>%
+    et <- eventTable() |>
       add.sampling(0)
 
     rx <- rxode2({

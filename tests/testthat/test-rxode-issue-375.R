@@ -18,9 +18,9 @@ rxTest({
     })
 
 
-    ev <- eventTable(amount.units = "mg", time.units = "hours") %>%
-      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) %>%
-      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) %>%
+    ev <- eventTable(amount.units = "mg", time.units = "hours") |>
+      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
+      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
       add.sampling(0:240)
 
     ## Add Residual differences
@@ -65,18 +65,18 @@ rxTest({
     ## })
 
 
-    ## et(amountUnits="mg", timeUnits="hours") %>%
-    ##   et(amt=10000, addl=9,ii=12,cmt="depot") %>%
-    ##   et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
-    ##   et(seq(0, 240, by=4)) %>% # Assumes sampling when there is no dosing information
-    ##   et(seq(0, 240, by=4) + 0.1) %>% ## adds 0.1 for separate eye
-    ##   et(id=1:20) %>%
+    ## et(amountUnits="mg", timeUnits="hours") |>
+    ##   et(amt=10000, addl=9,ii=12,cmt="depot") |>
+    ##   et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+    ##   et(seq(0, 240, by=4)) |> # Assumes sampling when there is no dosing information
+    ##   et(seq(0, 240, by=4) + 0.1) |> ## adds 0.1 for separate eye
+    ##   et(id=1:20) |>
     ##   ## Add an occasion per dose
-    ##   dplyr::mutate(occ=cumsum(!is.na(amt))) %>%
-    ##   dplyr::mutate(occ=ifelse(occ == 0, 1, occ)) %>%
-    ##   dplyr::mutate(occ=2- occ %% 2) %>%
-    ##   dplyr::mutate(eye=ifelse(round(time) == time, 1, 2)) %>%
-    ##   dplyr::mutate(inv=ifelse(id < 10, 1, 2)) %>%
+    ##   dplyr::mutate(occ=cumsum(!is.na(amt))) |>
+    ##   dplyr::mutate(occ=ifelse(occ == 0, 1, occ)) |>
+    ##   dplyr::mutate(occ=2- occ %% 2) |>
+    ##   dplyr::mutate(eye=ifelse(round(time) == time, 1, 2)) |>
+    ##   dplyr::mutate(inv=ifelse(id < 10, 1, 2)) |>
     ##   dplyr::as_tibble() ->
     ##   ev
 

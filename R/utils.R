@@ -989,7 +989,7 @@ is.latex <- function() {
   rxReq("knitr")
   if (knitr::is_latex_output()) {
     rxReq("kableExtra")
-    kableExtra::kbl(table, longtable=TRUE, booktabs=TRUE, caption=caption) %>%
+    kableExtra::kbl(table, longtable=TRUE, booktabs=TRUE, caption=caption) |>
       kableExtra::kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
   } else if (knitr::is_html_output(excludes = "gfm")) {
     rxReq("DT")

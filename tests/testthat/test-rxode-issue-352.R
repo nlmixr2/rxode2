@@ -13,22 +13,22 @@ rxTest({
       ipred <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_)
       sim <- rxTBSi(rx_pred_ + rx_r_, rx_lambda_, rx_yj_, rx_low_, rx_hi_)
     })
-    
+
     simdata <-
       et(
         amt = 25,
         time = 0,
         evid = 1
-      ) %>%
+      ) |>
       # Observations
       et(0:24)
-    
+
     omega <- lotri(eta.cl ~ 0, eta.v ~ 0)
-    
+
     sigma <- lotri(add.err ~ 0)
-    
+
     params <- c(tcl = -4.98894153987034, tv = 0.341202932945698)
-    
+
     suppressMessages(expect_error(
       rxSolve(rx, params = params, events = simdata, omega = omega, sigma = sigma),
       NA

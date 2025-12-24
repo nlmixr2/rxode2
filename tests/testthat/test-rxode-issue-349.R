@@ -14,8 +14,8 @@ rxTest({
       cp <- centr * (1 + cp.err)
     })
 
-    ev <- et(amount.units = "mg", time.units = "hours") %>%
-      et(amt = 10000, cmt = "centr") %>%
+    ev <- et(amount.units = "mg", time.units = "hours") |>
+      et(amt = 10000, cmt = "centr") |>
       et(0, 48, length.out = 100)
 
     ## Variability

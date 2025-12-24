@@ -48,14 +48,14 @@ one.compartment <- function() {
 
 # now TC is detected as a covariate instead of a population parameter
 
-one.compartment \%>\%
+one.compartment |>
   model({ka <- exp(tka + eta.ka + TC * cov_C)})
 
 # You can turn it off by simply adding it back
 
 rxSetCovariateNamesForPiping()
 
-one.compartment \%>\%
+one.compartment |>
   model({ka <- exp(tka + eta.ka + TC * cov_C)})
 
 # The covariates you set with `rxSetCovariateNamesForPiping()`

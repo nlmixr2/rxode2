@@ -197,7 +197,7 @@ rxTest({
       uiOne$f <- "matt"
       class(uiOne) <- c("uiOne", class(uiOne))
 
-      uiTwo <- uiOne %>%
+      uiTwo <- uiOne |>
         ini(tka=fix)
 
       expect_equal(uiTwo$matt, "f")
@@ -205,7 +205,7 @@ rxTest({
       expect_true(inherits(uiTwo, "uiOne"))
 
       # now a significant change
-      uiTwo <- uiOne %>%
+      uiTwo <- uiOne |>
         ini(tcl=77)
 
       expect_equal(uiTwo$matt, "f")
@@ -217,7 +217,7 @@ rxTest({
       expect_equal(uiOne$f, "matt")
       expect_true(inherits(uiOne, "uiOne"))
 
-      uiTwo <- uiOne %>%
+      uiTwo <- uiOne |>
         model(ka <- tka * exp(eta.ka))
 
       expect_equal(uiTwo$matt, "f")
@@ -225,7 +225,7 @@ rxTest({
       expect_true(inherits(uiTwo, "uiOne"))
 
       # rename something in the model block, insignificant
-      uiTwo <- uiOne %>%
+      uiTwo <- uiOne |>
         rxRename(isKa=ka)
 
       expect_equal(uiTwo$matt, "f")
@@ -234,7 +234,7 @@ rxTest({
 
 
       # rename something in the ini block is also an insignificant change
-      uiTwo <- uiOne %>%
+      uiTwo <- uiOne |>
         rxRename(isKa=tka)
 
       expect_equal(uiTwo$matt, "f")
