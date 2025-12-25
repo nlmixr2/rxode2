@@ -21,7 +21,7 @@ rxTest({
         dplyr::rename(NMID = ID)
 
       tabtot <- dat |>
-        dplyr::left_join(., par.tab, by = c("NMID", "id"))
+        dplyr::left_join(par.tab, by = c("NMID", "id"))
 
       mod1 <- rxode2({
         ## PK parameters
@@ -76,7 +76,7 @@ rxTest({
         dplyr::as_tibble()
 
       ev_ref <- ev_ref |>
-        dplyr::left_join(., tabtot, by = "id") |>
+        dplyr::left_join(tabtot, by = "id") |>
         dplyr::as_tibble()
 
       PK.ev_ref2 <- rxSolve(mod1,
@@ -229,7 +229,8 @@ rxTest({
 
       # only variables in the dataset are considered NA
       expect_true(merge(et, d2, all.x=TRUE) |>
-                    dplyr::filter(i!= 1) |> dplyr::pull(k) |> all(is.na(.)))
+                    dplyr::filter(i!= 1) |> dplyr::pull(k) |>
+                    is.na() |> all())
 
       ## s <- rxSolve(mod, d, keep="target_name")
 

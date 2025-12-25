@@ -388,15 +388,21 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   .lst <- as.list(match.call()[-1])
 
   .isPipe <- as.character(substitute(x))
-  if (length(.isPipe) == 1) {
-    .isPipe <- (.isPipe == ".")
+  if (length(.isPipe) == 1 && .isPipe == ".") {
+    .isPipe <- TRUE
+  } else if (missing(x)) {
+    .isPipe <- FALSE
   } else {
     .isPipe <- substitute(x)
-    if (is.call(.isPipe) &&
-          .isPipe[[1]] == quote(`et`)) {
+    if (is.call(.isPipe) && length(.isPipe) >= 1L) {
+      # This will assume the input is going to be an et compatible object
       .isPipe <- TRUE
     } else {
-      .isPipe <- FALSE
+      if (is.symbol(.isPipe)) {
+        .isPipe <- TRUE
+      } else {
+        .isPipe <- FALSE
+      }
     }
   }
   if (!missing(x)) {
