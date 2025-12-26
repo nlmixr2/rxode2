@@ -792,8 +792,25 @@ rxEtDispatchSolve.default <- function(x, ...) {
 #' @export
 simulate.rxEt <- # nolint
   function(object, nsim = 1, seed = NULL, ...) {
-    .name <- as.character(substitute(object))
-    if (is.null(.pipelineRx) || .name != ".") {
+    .isPipe <- as.character(substitute(object))
+    if (length(.isPipe) == 1 && .isPipe == ".") {
+      .isPipe <- TRUE
+    } else if (missing(object)) {
+      .isPipe <- FALSE
+    } else {
+      .isPipe <- substitute(object)
+      if (is.call(.isPipe) && length(.isPipe) >= 1L) {
+        # This will assume the input is going to be an et compatible object
+        .isPipe <- TRUE
+      } else {
+        if (is.symbol(.isPipe)) {
+          .isPipe <- TRUE
+        } else {
+          .isPipe <- FALSE
+        }
+      }
+    }
+    if (is.null(.pipelineRx) || !.isPipe) {
       if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
       if (!is.null(seed)) set.seed(seed)
       return(.Call(`_rxode2_et_`, list(simulate = TRUE), object))
