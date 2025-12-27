@@ -2,6 +2,8 @@
 
 - Allow transforms to return `NA`.
 
+- Drop `magrittr` and use `|>` instead of `%>%` in the examples
+
 # rxode2 5.0.1
 
 - Change random number generation to always return doubles internally
