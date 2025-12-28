@@ -468,7 +468,7 @@ ev <- do.call("rbind",
                 et(id=seq(1, nsubg) + (i - 1) * nsubg) |>
                 ## Convert to data frame to skip sorting the data
                 ## When binding the data together
-                as.data.frame
+                as.data.frame()
         }))
 ## To better compare, use the same output, that is data.table
 res <- rxSolve(rx, ev, omega=omega, returnType="data.table")

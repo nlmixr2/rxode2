@@ -72,7 +72,7 @@ e <- et() |>
     et(id=cov.df$id, amt=6*cov.df$WT, rate=6 * cov.df$WT) |>
     ## Sampling is added for each ID
     et(s) |>
-    as.data.frame |>
+    as.data.frame() |>
     ## Merge the event table with the covarite information
     merge(cov.df, by="id") |>
     as_tibble
