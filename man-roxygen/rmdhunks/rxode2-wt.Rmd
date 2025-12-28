@@ -75,7 +75,7 @@ e <- et() |>
     as.data.frame() |>
     ## Merge the event table with the covarite information
     merge(cov.df, by="id") |>
-    as_tibble
+    as_tibble()
 
 
 e
