@@ -20,7 +20,7 @@ rxTest({
 
     mod <- rxode2(pheno2)
 
-    et <- et(amt=1) %>% et(1:20) %>% et(id=1:20)
+    et <- et(amt=1) |> et(1:20) |> et(id=1:20)
 
     expect_error(rxWithSeed(42, rxSolve(mod, et)), NA)
   })

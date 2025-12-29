@@ -1,6 +1,6 @@
 rxTest({
   test_that("rxode2 to ui promotion", {
-    
+
     mod1 <- rxode2({
       C2 <- centr/V2
       C3 <- peri/V3
@@ -19,20 +19,20 @@ rxTest({
     expect_true(inherits(mod, "rxUi"))
 
     suppressMessages(
-      expect_error(mod1 %>% rxRename(C4=C2), NA)
+      expect_error(mod1 |> rxRename(C4=C2), NA)
     )
     suppressMessages(
-      mod <- mod1 %>% rxRename(C4=C2)
-    )
-    expect_true(inherits(mod, "rxUi"))
-
-    suppressMessages(
-      mod <- mod1 %>% ini(V2=1)
+      mod <- mod1 |> rxRename(C4=C2)
     )
     expect_true(inherits(mod, "rxUi"))
 
     suppressMessages(
-      mod <- mod1 %>% model(C2 <- centr)
+      mod <- mod1 |> ini(V2=1)
+    )
+    expect_true(inherits(mod, "rxUi"))
+
+    suppressMessages(
+      mod <- mod1 |> model(C2 <- centr)
     )
     expect_true(inherits(mod, "rxUi"))
   })

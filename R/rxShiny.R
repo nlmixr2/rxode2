@@ -333,8 +333,8 @@ $(document).on("keyup", function(e) {
 
       into <- ifelse(is.null(input$into), 1, match(input$into, values$cmts))
 
-      ev <- eventTable() %>%
-        add.sampling(seq(stime, etime, tstep)) %>%
+      ev <- eventTable() |>
+        add.sampling(seq(stime, etime, tstep)) |>
         add.dosing(
           dose = dose, start.time = start,
           nbr.doses = ndoses, rate = rate,

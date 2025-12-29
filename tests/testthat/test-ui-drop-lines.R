@@ -57,7 +57,7 @@ rxTest({
       })
     }
 
-    f2 <- one.compartment %>% model(-cp2)
+    f2 <- one.compartment |> model(-cp2)
 
     expect_equal(f2$lstExpr[[8]], quote(cp ~ add(add.err)))
     expect_length(f2$lstExpr, 8L)
@@ -87,7 +87,7 @@ rxTest({
       })
     }
 
-    f2 <- one.compartment %>% model(-cp2)
+    f2 <- one.compartment |> model(-cp2)
     expect_equal(f2$lstExpr[[8]], quote(cp ~ add(add.err)))
     expect_length(f2$lstExpr, 8L)
   })
@@ -151,7 +151,7 @@ rxTest({
     }
 
     suppressMessages(
-      f2 <- pk.turnover.emax %>% model(-cp)
+      f2 <- pk.turnover.emax |> model(-cp)
     )
 
     expect_length(f2$predDf$cond, 1)
@@ -184,12 +184,12 @@ rxTest({
     }
 
     suppressMessages(
-      f2 <- one.compartment %>% model(-d/dt(depot))
+      f2 <- one.compartment |> model(-d/dt(depot))
     )
     expect_equal(f2$mv0$state, "center")
     expect_length(f2$lstExpr, 7L)
 
-    f2 <- one.compartment %>% model(-f(depot))
+    f2 <- one.compartment |> model(-f(depot))
     expect_equal(f2$mv0$state, c("depot", "center"))
     expect_length(f2$lstExpr, 8L)
   })
@@ -218,13 +218,13 @@ rxTest({
     }
 
     suppressMessages(
-      f2 <- ocmt %>% model(-cp ~ .)
+      f2 <- ocmt |> model(-cp ~ .)
     )
     expect_true(is.null(f2$predDf))
     expect_equal(f2$theta, c(tka = 0.45, tcl = 1, tv = 3.45))
 
     suppressMessages(
-      f3 <- f2 %>% model(cp ~ add(add.sd), append=TRUE)
+      f3 <- f2 |> model(cp ~ add(add.sd), append=TRUE)
     )
 
     expect_false(is.null(f3$predDf))

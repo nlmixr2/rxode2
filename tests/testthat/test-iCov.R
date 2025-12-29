@@ -42,8 +42,8 @@ rxTest({
     }
 
 
-    ev <- eventTable() %>%
-      add.dosing(dose=900630, nbr.doses=1, rate=900630/2) %>%
+    ev <- eventTable() |>
+      add.dosing(dose=900630, nbr.doses=1, rate=900630/2) |>
       et(0, 600, length.out=10)
 
     expect_error(rxSolve(m, ev,
@@ -73,10 +73,10 @@ rxTest({
     })
 
 
-    ev <- et() %>%
-      et(amt=10000, addl=9,ii=12) %>%
-      et(time=120, amt=20000, addl=4, ii=24) %>%
-      et(0:240) %>% ## Add Sampling
+    ev <- et() |>
+      et(amt=10000, addl=9,ii=12) |>
+      et(time=120, amt=20000, addl=4, ii=24) |>
+      et(0:240) |> ## Add Sampling
       et(id=1:nsub) ## Add id
 
     sigma <- matrix(c(0.09,0.08,0.08,0.25),2,2) # IIV covariance matrix

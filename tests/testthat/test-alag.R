@@ -16,8 +16,8 @@ rxTest({
     d / dt(blood) <- a * intestine - b * blood
   })
 
-  et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) %>%
-    et(time=0, cmt=1, amt=5, addl=10, ii=4) %>%
+  et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) |>
+    et(time=0, cmt=1, amt=5, addl=10, ii=4) |>
     et(seq(0, 24, by=0.25/24))
 
   tmp <- rxSolve(mod2, et)
@@ -25,9 +25,9 @@ rxTest({
   expect_error(plot(tmp, intestine), NA)
   ## vdiffr::expect_doppelganger("intestine-mod2a", plot(tmp, intestine))
 
-  et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) %>%
-    et(time=0, cmt=1, amt=5, ii=4, ss=1) %>%
-    et(time=4, cmt=1, amt=5, addl=10, ii=4) %>%
+  et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) |>
+    et(time=0, cmt=1, amt=5, ii=4, ss=1) |>
+    et(time=4, cmt=1, amt=5, addl=10, ii=4) |>
     et(seq(0, 24, by=0.25/24))
 
 

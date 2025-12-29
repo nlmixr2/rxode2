@@ -66,16 +66,16 @@ print(cov.df)
 s<-c(0,0.25,0.5,0.75,1,1.5,seq(2,24,by=1))
 s <- lapply(s, function(x){.x <- 0.1 * x; c(x - .x, x + .x)})
 
-e <- et() %>%
+e <- et() |>
     ## Specify the id and weight based dosing from covariate data.frame
-    ## This requires rxode2 XXX 
-    et(id=cov.df$id, amt=6*cov.df$WT, rate=6 * cov.df$WT) %>%
+    ## This requires rxode2 XXX
+    et(id=cov.df$id, amt=6*cov.df$WT, rate=6 * cov.df$WT) |>
     ## Sampling is added for each ID
-    et(s) %>%
-    as.data.frame %>%
+    et(s) |>
+    as.data.frame() |>
     ## Merge the event table with the covarite information
-    merge(cov.df, by="id") %>%
-    as_tibble
+    merge(cov.df, by="id") |>
+    as_tibble()
 
 
 e
@@ -86,7 +86,7 @@ e
 ```{r}
 data <- rxSolve(m1, e,
              ## Lotri uses lower-triangular matrix rep. for named matrix
-             omega=lotri(eta.cl ~ .306, 
+             omega=lotri(eta.cl ~ .306,
                          eta.q ~0.0652,
                          eta.v1 ~.567,
                          eta.v2 ~ .191),

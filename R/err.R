@@ -290,12 +290,12 @@ rxPreferredDistributionName <- function(dist) {
 #' @author Matthew Fidler
 #' @export
 #' @examples
-#' rxErrTypeCombine("add") %>%
+#' rxErrTypeCombine("add") |>
 #'   rxErrTypeCombine("prop")
 #'
 #' # This removes the internal additive error
-#' rxErrTypeCombine("add") %>%
-#'   rxErrTypeCombine("prop") %>%
+#' rxErrTypeCombine("add") |>
+#'   rxErrTypeCombine("prop") |>
 #'   rxDemoteAddErr()
 #'
 #' # This is used for logitNorm(NA), the additive portion is stripped
@@ -567,7 +567,7 @@ rxDemoteAddErr <- function(errType) {
 #'
 #' rxErrTypeCombine("probitNorm")
 #'
-#' rxErrTypeCombine("probitNorm") %>%
+#' rxErrTypeCombine("probitNorm") |>
 #'   rxErrTypeCombine("boxCox")
 #'
 #'

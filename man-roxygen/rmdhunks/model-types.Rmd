@@ -39,7 +39,7 @@ available, some example translations are below:
 clLinCmt <- read.csv("../../vignettes/cl-lincmt.csv")
 if (knitr::is_latex_output()) {
   library(kableExtra)
-  kbl(clLinCmt, longtable=TRUE, booktabs=TRUE, caption="Clearance Based linCmt() parameterizations") %>%
+  kbl(clLinCmt, longtable=TRUE, booktabs=TRUE, caption="Clearance Based linCmt() parameterizations") |>
     kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
 } else {
   library(DT)
@@ -54,7 +54,7 @@ constant would be specified by `K`, `Ke` or `Kel`. Some example translations are
 ```{r kelLinCmt, echo=FALSE}
 kelLinCmt <- read.csv("../../vignettes/kel-lincmt.csv");
 if (knitr::is_latex_output()) {
-  kbl(kelLinCmt, longtable=TRUE, booktabs=TRUE, caption="Kel Based linCmt() parameterizations") %>%
+  kbl(kelLinCmt, longtable=TRUE, booktabs=TRUE, caption="Kel Based linCmt() parameterizations") |>
     kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
 } else {
   datatable(kelLinCmt, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
@@ -67,7 +67,7 @@ The last parameterization possible is using `alpha` and `V` and/or
 ```{r alphaLinCmt, echo=FALSE}
 alphaLinCmt <- read.csv("../../vignettes/alpha-lincmt.csv");
 if (knitr::is_latex_output()) {
-  kbl(alphaLinCmt, longtable=TRUE, booktabs=TRUE, caption="alpha Based linCmt() parameterizations") %>%
+  kbl(alphaLinCmt, longtable=TRUE, booktabs=TRUE, caption="alpha Based linCmt() parameterizations") |>
     kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
 } else {
   datatable(alphaLinCmt, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
@@ -90,13 +90,13 @@ When the absorption constant `ka` is missing, you may only dose to the
 `central` compartment.  Without any additional ODEs the compartment
 number is `central=1`.
 
-The peripheral compartments may be dosed to as well, though their numbers depend 
+The peripheral compartments may be dosed to as well, though their numbers depend
 on if they are mixed with the ODEs.  The `central` and `depot` compartment can
 have infusions, and all of the departments can have non-infusion doses.
 
 These compartments take the same sort of events that a ODE model can
 take, and are discussed in the [rxode2 events
-vignette](rxode2-events.html). 
+vignette](rxode2-events.html).
 
 ```{r modLinCmtExample}
 mod <- function() {
@@ -114,7 +114,7 @@ This then acts as an ODE model; You specify a dose to the depot
 compartment and then solve the system:
 
 ```{r modLinCmtEt}
-et  <- et(amt=10,time=0,cmt=depot) %>%
+et  <- et(amt=10,time=0,cmt=depot) |>
   et(seq(0,24,length.out=50))
 cmt1 <- rxSolve(mod,et)
 cmt1
@@ -152,9 +152,9 @@ theta <-
 inits <- c(eff=1)
 
 ## Setup dosing event information
-ev <- et(amountUnits="mg", timeUnits="hours") %>%
-    et(amt=10000, addl=9, ii=12) %>%
-    et(amt=20000, addl=4, time=120, ii=24) %>%
+ev <- et(amountUnits="mg", timeUnits="hours") |>
+    et(amt=10000, addl=9, ii=12) |>
+    et(amt=20000, addl=4, time=120, ii=24) |>
     add.sampling(0:240)
 
 ## Setup a mixed solved/ode system:
@@ -188,16 +188,16 @@ This compartment model requires a new event table since the
 compartment number changed:
 
 ```{r modMixedLinOdeET}
-ev <- et(amountUnits='mg', timeUnits='hours') %>%
-  et(amt=10000, addl=9, ii=12, cmt=2) %>%
-  et(amt=20000, addl=4, time=120, ii=24, cmt=2) %>%
+ev <- et(amountUnits='mg', timeUnits='hours') |>
+  et(amt=10000, addl=9, ii=12, cmt=2) |>
+  et(amt=20000, addl=4, time=120, ii=24, cmt=2) |>
   et(0:240)
 ```
 
 This can be solved with the following command:
 
 ```{r modMixedLinOdeSovle}
-x <- mod2 %>%  solve(theta, ev)
+x <- mod2 |>  solve(theta, ev)
 print(x)
 ```
 
@@ -208,7 +208,7 @@ initial condition to be `1`.  Rather, this is already pre-specified by
 This can be solved for different initial conditions easily:
 
 ```{r modMixedLinOdeIni}
-x <- mod2 %>%  solve(theta, ev,c(eff=2))
+x <- mod2 |>  solve(theta, ev,c(eff=2))
 print(x)
 ```
 
@@ -239,7 +239,8 @@ mod3 <- function() {
   })
 }
 
-x <- mod3 %>%  solve(ev)
+x <- mod3 |>
+  solve(ev)
 
 print(x)
 ```
@@ -248,6 +249,7 @@ Note that you do not specify the parameters when solving the system
 since they are built into the model, but you can override the parameters:
 
 ```{r}
-x <- mod3 %>%  solve(c(KA=10),ev)
+x <- mod3 |>
+  solve(c(KA=10),ev)
 print(x)
 ```

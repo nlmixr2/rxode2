@@ -394,7 +394,7 @@ idr <- function() {
   })
 }
 
-rxAppendModel(ocmt %>% rxRename(ceff=cp), idr)
+rxAppendModel(ocmt |> rxRename(ceff=cp), idr)
 ```
 
 You will get an error if you try to combine models without variables
@@ -511,7 +511,7 @@ You may wish to create your own functions; we will discuss this too.
 
 You can fix model estimates in two ways. The first is to fix the value
 to whatever is in the model function, this is done by piping the model
-parameter name (like `tka`) and setting it equal to `fix` (`%>%
+parameter name (like `tka`) and setting it equal to `fix` (`|>
 ini(tka=fix)`). Below is a full example:
 
 ```{r fixEstimate}
@@ -543,7 +543,7 @@ print(f2)
 
 You can also fix the parameter to a different value if you wish; This
 is very similar you can specify the value to fix inside of a `fix`
-pseudo-function as follows: `%>% ini(tka=fix(0.1))`. A fully worked
+pseudo-function as follows: `|> ini(tka=fix(0.1))`. A fully worked
 example is below:
 
 ```{r fixEstimate2}
@@ -876,13 +876,13 @@ fd <- function() {
 # If you want to remove all covariances you can use diag() with no
 # arguments
 
-fd %>% ini(diag())
+fd |> ini(diag())
 
 # if you want to remove only covariances with eta.ka  you can use:
-fd %>% ini(diag(eta.ka))
+fd |> ini(diag(eta.ka))
 
 # if you want to remove only the covariances with eta.ka and eta.v you can use:
-fd %>% ini(-cov(eta.ka, eta.v))
+fd |> ini(-cov(eta.ka, eta.v))
 
 ```
 

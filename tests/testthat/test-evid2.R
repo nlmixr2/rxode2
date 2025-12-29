@@ -12,7 +12,7 @@ d/dt(blood)     = a*intestine - b*blood
     dose = 2 / 24, rate = 2, start.time = 0,
     nbr.doses = 10, dosing.interval = 1
   )
-  et <- et %>% et(0.05, evid = 2)
+  et <- et |> et(0.05, evid = 2)
 
   s1 <- solve(mod, et, addDosing = FALSE)
 
@@ -71,12 +71,12 @@ d/dt(blood)     = a*intestine - b*blood
   dimnames(sigma) <- list(c("err1", "err2"), c("err1", "err2"))
 
 
-  ev <- eventTable() %>%
-    add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) %>%
-    add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) %>%
+  ev <- eventTable() |>
+    add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
+    add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
     add.sampling(0:240)
 
-  ev <- ev %>% et(0.5, evid = 2)
+  ev <- ev |> et(0.5, evid = 2)
 
   pk4 <- rxSolve(mod2, c(
     KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,

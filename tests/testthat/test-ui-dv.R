@@ -34,7 +34,7 @@ rxTest({
     expect_true(identical(v[[1]],
                           quote(rx_yj_ ~ 3)))
 
-    one.cmt <- one.cmt %>%
+    one.cmt <- one.cmt |>
       model(cp ~ lnorm(add.sd) + dv())
 
     v <- .handleSingleErrTypeNormOrTFoceiBase(one.cmt, one.cmt$predDf[1,])
@@ -45,7 +45,7 @@ rxTest({
     expect_true(identical(v[[1]],
                           quote(rx_yj_ ~ 3)))
 
-    one.cmt <- one.cmt %>%
+    one.cmt <- one.cmt |>
       model(cp ~ logitNorm(add.sd))
 
     v <- .handleSingleErrTypeNormOrTFoceiBase(one.cmt, one.cmt$predDf[1,])
@@ -57,7 +57,7 @@ rxTest({
                           quote(rx_pred_ ~ rxTBS(rx_pred_f_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))))
 
 
-    one.cmt <- one.cmt %>%
+    one.cmt <- one.cmt |>
       model(cp ~ logitNorm(add.sd) + dv())
 
     v <- .handleSingleErrTypeNormOrTFoceiBase(one.cmt, one.cmt$predDf[1,])

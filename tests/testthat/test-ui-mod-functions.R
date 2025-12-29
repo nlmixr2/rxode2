@@ -22,7 +22,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_output(
       expect_error(print(m1), NA),
@@ -63,7 +63,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_output(
       expect_error(print(m1), NA),
@@ -101,7 +101,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_output(
       expect_error(print(m1), NA),
@@ -148,7 +148,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_output(
       expect_error(print(m1), NA),
@@ -178,7 +178,7 @@ rxTest({
 
     suppressMessages(
       expect_error(
-        idr %>% model({
+        idr |> model({
           eff2 <- eff + 3
           eff2 ~ add(idr.sd2)
         }, append=TRUE),
@@ -188,7 +188,7 @@ rxTest({
 
     suppressMessages(
       addModelLine <-
-        idr %>% model({
+        idr |> model({
           eff2 <- eff + 3
           eff2 ~ add(idr.sd2)
         },
@@ -201,7 +201,7 @@ rxTest({
 
     suppressMessages(
       expect_error(
-        idr %>% model({
+        idr |> model({
           eff2 <- eff + 3
           eff2 ~ add(idr.sd2) | matt
         },
@@ -212,7 +212,7 @@ rxTest({
 
     suppressMessages(
       addModelLine <-
-        idr %>% model({
+        idr |> model({
           eff2 <- eff + 3
           eff2 ~ add(idr.sd2) | matt
         },
@@ -265,7 +265,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$theta,
                  c(tka = 1.56831218549017, tcl = 2.71828182845905, tv = 31.5003923087479, add.sd = 0.7, tkin = 0, tkout = 0, tic50 = 2.30258509299405, gamma = 1, idr.sd = 1))
@@ -302,7 +302,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$theta,
                  c(tv = 31.5003923087479))
@@ -349,7 +349,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$omega,
                  lotri({
@@ -403,7 +403,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$omega,
                  lotri({
@@ -460,7 +460,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$omega,
                  lotri({
@@ -522,7 +522,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$omega,
                  lotri({
@@ -583,7 +583,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$omega,
                  lotri({
@@ -644,7 +644,7 @@ rxTest({
       })
     }
 
-    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+    m1 <- rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr)
 
     expect_equal(m1$omega,
                  lotri({
@@ -704,7 +704,7 @@ rxTest({
       })
     }
 
-    expect_error(rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr))
+    expect_error(rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr))
   })
 
   test_that("bind together 2 models with etas with overlapping etas w/cov in 2", {
@@ -751,7 +751,7 @@ rxTest({
       })
     }
 
-    expect_error(rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr))
+    expect_error(rxAppendModel(ocmt |> model(ceff=cp,append=TRUE), idr))
 
   })
 

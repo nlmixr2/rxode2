@@ -49,13 +49,13 @@ mod <- function() {
 The next step to simulate is to create the dosing regimen for overall simulation:
 
 ```{r}
-ev <- et(amountUnits="mg", timeUnits="hours") %>%
+ev <- et(amountUnits="mg", timeUnits="hours") |>
   et(amt=10000, cmt="centr")
 ```
 If you wish, you can also add sampling times (though rxode2 can fill these in for you):
 
 ```{r}
-ev <- ev %>% et(0,48, length.out=100)
+ev <- ev |> et(0,48, length.out=100)
 ```
 
 Note the `et` takes similar arguments as `seq` when adding sampling
@@ -124,12 +124,12 @@ Below, the 5th, 50th, and 95th percentiles
 of the simulated data are plotted.
 
 ```{r}
-confint(sim, "C2", level=0.95) %>%
+confint(sim, "C2", level=0.95) |>
     plot(ylab="Central Concentration", log="y")
 ```
 
 ```{r}
-confint(sim, "eff", level=0.95) %>%
+confint(sim, "eff", level=0.95) |>
     plot(ylab="Effect")
 ```
 
@@ -148,9 +148,9 @@ One way to do that is to create a rxode2 model with the endpoints
 defined. Model piping can do this while keeping the model intact:
 
 ```{r}
-mod2 <- mod %>%
-  model(eff ~ add(eff.sd), append=TRUE) %>%
-  model(C2 ~ prop(prop.sd), append=TRUE) %>%
+mod2 <- mod |>
+  model(eff ~ add(eff.sd), append=TRUE) |>
+  model(C2 ~ prop(prop.sd), append=TRUE) |>
   ini(eff.sd=sqrt(0.1), prop.sd=sqrt(0.1))
 ```
 
@@ -164,9 +164,9 @@ mod2$multipleEndpoint
 Here you see the endpoints should be defined for `eff` and `C2`:
 
 ```{r}
-ev <- et(amountUnits="mg", timeUnits="hours") %>%
-  et(amt=10000, cmt="centr") %>%
-  et(seq(0,48, length.out=100), cmt="eff") %>%
+ev <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, cmt="centr") |>
+  et(seq(0,48, length.out=100), cmt="eff") |>
   et(seq(0,48, length.out=100), cmt="C2")
 ```
 
@@ -208,12 +208,12 @@ how these datasets should be created.
 
 ```{r}
 library(dplyr)
-ev1 <- et(amountUnits="mg", timeUnits="hours") %>%
-    et(amt=10000, cmt=2) %>%
+ev1 <- et(amountUnits="mg", timeUnits="hours") |>
+    et(amt=10000, cmt=2) |>
     et(0,48,length.out=10)
 
-ev2 <- et(amountUnits="mg", timeUnits="hours") %>%
-    et(amt=5000, cmt=2) %>%
+ev2 <- et(amountUnits="mg", timeUnits="hours") |>
+    et(amt=5000, cmt=2) |>
     et(0,48,length.out=8)
 
 dat <- rbind(data.frame(ID=1, ev1$get.EventTable()),
@@ -223,7 +223,7 @@ dat <- rbind(data.frame(ID=1, ev1$get.EventTable()),
 ## Note the number of subject is not needed since it is determined by the data
 sim  <- rxSolve(mod, dat)
 
-sim %>% select(id, time, eff, C2)
+sim |> select(id, time, eff, C2)
 ```
 
 # Simulation of Clinical Trials
@@ -285,7 +285,7 @@ dimnames(tMat) <- list(NULL, names(mod2$theta)[1:8])
 sim  <- rxSolve(mod2, ev, nSub=100, thetaMat=tMat, nStud=10,
                 dfSub=10, dfObs=100)
 
-s <-sim %>% confint("sim")
+s <-sim |> confint("sim")
 
 plot(s)
 ```
@@ -349,14 +349,14 @@ thetaMat <- lotri(
           -1.23E-03, -1.27E-05, -1.33E-03, -1.47E-05, -1.03E-04, 1.02E-05, 1.67E-06, 6.68E-05, 1.56E-04,
           7.69E-02, -7.23E-03, 3.74E-01, 1.79E-03, -2.85E-03, 1.18E-05, -2.54E-04, 1.61E-03, -9.03E-04, 3.12E-01))
 
-evw <- et(amount.units="mg", time.units="hours") %>%
-    et(amt=100) %>%
+evw <- et(amount.units="mg", time.units="hours") |>
+    et(amt=100) |>
     ## For this problem we will simulate with sampling windows
     et(list(c(0, 0.5),
        c(0.5, 1),
        c(1, 3),
        c(3, 6),
-       c(6, 12))) %>%
+       c(6, 12))) |>
     et(id=1:1000)
 
 ## From the run we know that:
@@ -377,9 +377,9 @@ print(sim)
 ## Notice that the simulation time-points change for the individual
 
 ## If you want the same sampling time-points you can do that as well:
-evw <- et(amount.units="mg", time.units="hours") %>%
-    et(amt=100) %>%
-    et(0, 24, length.out=50) %>%
+evw <- et(amount.units="mg", time.units="hours") |>
+    et(amt=100) |>
+    et(0, 24, length.out=50) |>
     et(id=1:100)
 
 sim  <- rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
@@ -394,7 +394,7 @@ sim  <- rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
                 dfSub=74, dfObs=476,
                 resample=TRUE)
 
-s <-sim %>% confint(c("ipred"))
+s <-sim |> confint(c("ipred"))
 plot(s)
 ```
 
@@ -409,7 +409,7 @@ specifying the `simVariability = FALSE` option when solving:
 sim  <- rxSolve(mod2, ev, nSub=100, thetaMat=tMat, nStud=10,
                 simVariability=FALSE)
 
-s <-sim %>% confint(c("centr", "eff"))
+s <-sim |> confint(c("centr", "eff"))
 
 plot(s)
 ```

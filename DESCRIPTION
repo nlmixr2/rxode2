@@ -37,7 +37,7 @@ Authors@R: c(
    person("Zufar", "Mulyukov", role="ctb", email="zufar.mulyukov@novartis.com"))
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
 Depends:
-    R (>= 4.0.0)
+    R (>= 4.1.0)
 Suggests:
     Matrix,
     DT,

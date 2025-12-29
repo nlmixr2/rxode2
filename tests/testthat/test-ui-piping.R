@@ -953,55 +953,55 @@ rxTest({
     test_that("simple ini piping, uncorrelated model", {
 
       testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
-      testEst(f %>% ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
-      testEst(f %>% ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
+      testEst(f |> ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
+      testEst(f |> ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
 
-      testEst(f %>% ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
-      testEst(f %>% ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
+      testEst(f |> ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
+      testEst(f |> ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
 
-      expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
+      expect_error(f |> ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-      expect_error(f %>% ini(tka=c(3,2,1)), "tka")
+      expect_error(f |> ini(tka=c(3,2,1)), "tka")
 
       suppressMessages(
-        fFix <- f %>% ini(tka=fix)
+        fFix <- f |> ini(tka=fix)
       )
       testEst(fFix, "tka", -Inf, 0.45, Inf, TRUE)
-      testEst(fFix %>% ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
-      testEst(fFix %>% ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
+      testEst(fFix |> ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
+      testEst(fFix |> ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
 
-      testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
+      testEst(f |> ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
 
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
 
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
 
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
 
       # Test adding matrix directly
 
       .omega <- lotri::lotri(eta.cl+eta.v~c(0.3, 0.02, 0.1))
 
-      testEst(f %>% ini(.omega), "eta.cl", -Inf, 0.3, Inf, FALSE)
-      testEst(f %>% ini(.omega), "eta.v", -Inf, 0.1, Inf, FALSE)
-      testEst(f %>% ini(.omega), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
+      testEst(f |> ini(.omega), "eta.cl", -Inf, 0.3, Inf, FALSE)
+      testEst(f |> ini(.omega), "eta.v", -Inf, 0.1, Inf, FALSE)
+      testEst(f |> ini(.omega), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
 
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+        testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
         regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
         )
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+        testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
         regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
         )
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+        testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
         regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
         )
 
@@ -1033,47 +1033,47 @@ rxTest({
     test_that("simple ini piping, correlated model", {
 
       testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
-      testEst(f %>% ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
-      testEst(f %>% ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
+      testEst(f |> ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
+      testEst(f |> ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
 
-      testEst(f %>% ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
-      testEst(f %>% ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
+      testEst(f |> ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
+      testEst(f |> ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
 
-      expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
+      expect_error(f |> ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-      expect_error(f %>% ini(tka=c(3,2,1)), "tka")
+      expect_error(f |> ini(tka=c(3,2,1)), "tka")
 
       suppressMessages(
-        fFix <- f %>% ini(tka=fix)
+        fFix <- f |> ini(tka=fix)
       )
       testEst(fFix, "tka", -Inf, 0.45, Inf, TRUE)
-      testEst(fFix %>% ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
-      testEst(fFix %>% ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
+      testEst(fFix |> ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
+      testEst(fFix |> ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
 
-      testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
+      testEst(f |> ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
 
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
 
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
 
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
 
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+        testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
         regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
         )
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+        testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
         regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
         )
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+        testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
         regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
         )
 
@@ -1105,62 +1105,62 @@ rxTest({
     test_that("simple ini piping, fixed correlated model", {
 
       testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
-      testEst(f %>% ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
-      testEst(f %>% ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
+      testEst(f |> ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
+      testEst(f |> ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
 
-      testEst(f %>% ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
-      testEst(f %>% ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
+      testEst(f |> ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
+      testEst(f |> ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
 
-      expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
+      expect_error(f |> ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-      expect_error(f %>% ini(tka=c(3,2,1)), "tka")
+      expect_error(f |> ini(tka=c(3,2,1)), "tka")
 
       suppressMessages(
-        fFix <- f %>% ini(tka=fix)
+        fFix <- f |> ini(tka=fix)
       )
       testEst(fFix, "tka", -Inf, 0.45, Inf, TRUE)
-      testEst(fFix %>% ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
-      testEst(fFix %>% ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
+      testEst(fFix |> ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
+      testEst(fFix |> ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
 
       # should warn? Modify fixed value
-      testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, TRUE)
+      testEst(f |> ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, TRUE)
 
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, TRUE)
 
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
-      testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
+      testEst(f |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, TRUE)
 
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
+        testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
         regexp="fix.*eta.cl"), regexp="fix.*eta.v"
         )
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
+        testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
         regexp="fix.*eta.cl"), regexp="fix.*eta.v"
         )
       expect_warning(expect_warning(
-        testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
+        testEst(f |> ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
         regexp="fix.*eta.cl"), regexp="fix.*eta.v"
         )
 
-      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE)
-      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE)
+      testEst(f |> ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE)
     })
 
-    # %>% ini(tka=0.5)
-    # %>% ini(tka=fix)
-    # %>% ini(tka=unfix)
-    # %>% ini(eta.v~0.2)
+    # |> ini(tka=0.5)
+    # |> ini(tka=fix)
+    # |> ini(tka=unfix)
+    # |> ini(eta.v~0.2)
 
     # Try with |>
-    # %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1))
-    # %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1))
-    # %>% ini(eta.v+eta.cl~fix(cor(sd(0.3,0.02,0.1))))
-    # %>% ini(eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1))))
+    # |> ini(eta.cl+eta.v~c(0.3, 0.02, 0.1))
+    # |> ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1))
+    # |> ini(eta.v+eta.cl~fix(cor(sd(0.3,0.02,0.1))))
+    # |> ini(eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1))))
 
     one.compartment <- function() {
       ini({
@@ -1215,7 +1215,7 @@ rxTest({
 
       # context("update: Multiple component change with c()")
       testUi(
-        f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), c(tcl = 3, tv = 4)),
+        f |> update(tka = 4, cl = exp(tcl), ka = exp(tka), c(tcl = 3, tv = 4)),
         c("tka", "tcl", "tv", "eta.v", "add.err"),
         c("eta.ka", "eta.cl"),
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
@@ -1223,7 +1223,7 @@ rxTest({
 
       # context("update: Multiple component change with list()")
       testUi(
-        f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), list(tcl = 3, tv = 4)),
+        f |> update(tka = 4, cl = exp(tcl), ka = exp(tka), list(tcl = 3, tv = 4)),
         c("tka", "tcl", "tv", "eta.v", "add.err"),
         c("eta.ka", "eta.cl"),
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
@@ -1232,7 +1232,7 @@ rxTest({
       # context("update: Multiple component change with assigned .tmp=list()")
       .tmp <- list(tcl = 3, tv = 4)
       testUi(
-        f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp),
+        f |> update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp),
         c("tka", "tcl", "tv", "eta.v", "add.err"),
         c("eta.ka", "eta.cl"),
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
@@ -1241,7 +1241,7 @@ rxTest({
       # context("update: Multiple component change with assigned .tmp=c()")
       .tmp <- c(tcl = 3, tv = 4)
       testUi(
-        f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp),
+        f |> update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp),
         c("tka", "tcl", "tv", "eta.v", "add.err"),
         c("eta.ka", "eta.cl"),
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
@@ -1252,14 +1252,14 @@ rxTest({
         ka <- exp(tka)
       })
       testUi(
-        f %>% update(tka = 4, cl = exp(tcl), .tmp, c(tcl = 3, tv = 4)),
+        f |> update(tka = 4, cl = exp(tcl), .tmp, c(tcl = 3, tv = 4)),
         c("tka", "tcl", "tv", "eta.v", "add.err"),
         c("eta.ka", "eta.cl"),
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
       )
 
       testUi(
-        f %>% update(
+        f |> update(
           tka = 4,
           cl = exp(tcl),
           {
@@ -1273,7 +1273,7 @@ rxTest({
       )
 
       testUi(
-        f %>% update(ka = exp(tka)),
+        f |> update(ka = exp(tka)),
         c("tka", "tcl", "tv", "eta.cl", "eta.v", "add.err"),
         "eta.ka", c(tka = 0.45, tcl = 1, tv = 3.45, eta.cl = 0.3, eta.v = 0.1, add.err = 0.7)
       )
@@ -1298,7 +1298,7 @@ rxTest({
       }
 
       suppressMessages(
-        .ui <- one.cmt %>% update({
+        .ui <- one.cmt |> update({
           linCmt() ~ add(add.err) + prop(prop.err)
         })
       )
@@ -1350,7 +1350,7 @@ rxTest({
 
     test_that("piping works for correlations #1", {
 
-      testUi(f %>% ini(eta.ka + eta.cl ~ c(
+      testUi(f |> ini(eta.ka + eta.cl ~ c(
         0.2,
         0.01, 0.2
       )),
@@ -1367,7 +1367,7 @@ rxTest({
 
       suppressMessages(
         expect_error(
-          f %>%
+          f |>
             ini(eta.ka + eta.matt ~ c(0.2,
                                       0.01, 0.2)
                 )))
@@ -1377,7 +1377,7 @@ rxTest({
     test_that("piping works for correlations #3", {
 
       testUi(
-        f %>% update(eta.ka + eta.cl ~ c(
+        f |> update(eta.ka + eta.cl ~ c(
           0.2,
           0.01, 0.2
         )),
@@ -1392,7 +1392,7 @@ rxTest({
 
       suppressMessages(
         expect_error(
-          f %>%
+          f |>
             update(eta.ka + eta.matt ~ c(0.2,
                                          0.01, 0.2))))
 
@@ -1416,7 +1416,7 @@ rxTest({
       f <- rxode2::rxode2(f)
 
       suppressMessages(
-        expect_error(f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA))
+        expect_error(f |> model(ipre ~ add(add.sd)) |> ini(add.sd=sqrt(0.1)), NA))
 
     })
 
@@ -1440,7 +1440,7 @@ rxTest({
 
       trans <- function(f) {
         suppressMessages(
-          f %>% model(ipre ~ propF(prop.sd, f2)) %>% ini(prop.sd=sqrt(0.1))
+          f |> model(ipre ~ propF(prop.sd, f2)) |> ini(prop.sd=sqrt(0.1))
         )
       }
 
@@ -1468,7 +1468,7 @@ rxTest({
 
       intke <- 5
       suppressMessages(
-        tmp <- f %>% ini(tke=fix(intke))
+        tmp <- f |> ini(tke=fix(intke))
       )
 
       expect_true(tmp$iniDf[tmp$iniDf$name == "tke","fix"])
@@ -1491,7 +1491,7 @@ rxTest({
         }
 
         intke <- 5
-        f %>% ini(tke=fix(intke))
+        f |> ini(tke=fix(intke))
 
       }
 
@@ -1524,7 +1524,7 @@ rxTest({
         })
       }
 
-      expect_error(f %>% model(ipre~prop(f2,f3,c)))
+      expect_error(f |> model(ipre~prop(f2,f3,c)))
 
     })
 
@@ -1550,7 +1550,7 @@ rxTest({
 
       suppressMessages(
         expect_error(
-          ocmt %>%
+          ocmt |>
             model(ka <- exp(tka + eta.ka)),
           NA))
 
@@ -1579,13 +1579,13 @@ rxTest({
 
       suppressMessages(
         expect_error(
-          ocmt %>%
+          ocmt |>
             model(ka <- exp(tka + covKa * wt + eta.ka)),
           NA))
 
       suppressMessages(
         tmp <-
-          ocmt %>%
+          ocmt |>
           model(ka <- exp(tka + covKaWt * wt + eta.ka)))
       expect_equal(tmp$allCovs, "wt")
 
@@ -1595,7 +1595,7 @@ rxTest({
 
       suppressMessages(
         tmp <-
-          ocmt %>%
+          ocmt |>
           model(ka <- exp(covKaWt * wt + eta.ka)))
 
       expect_equal(tmp$allCovs, "wt")
@@ -1605,7 +1605,7 @@ rxTest({
 
       suppressMessages(
         tmp <-
-          tmp %>%
+          tmp |>
           model(ka <- exp(tka + covKaWt * wt + eta.ka)))
       expect_equal(tmp$allCovs, "wt")
       expect_true("covKaWt" %in% tmp$iniDf$name)
@@ -1635,24 +1635,24 @@ rxTest({
       }
 
       f <- rxode2(ocmt)
-      f2 <- f %>% model(cp1 <- cp, append=TRUE)
+      f2 <- f |> model(cp1 <- cp, append=TRUE)
 
       expect_true("cp1" %in% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
       f <- rxode2(ocmt)
-      f2 <- f %>% model(cp1 <- cp, append=Inf)
+      f2 <- f |> model(cp1 <- cp, append=Inf)
 
       expect_true("cp1" %in% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
       f <- rxode2(ocmt)
-      f2 <- f %>% model(cp1 <- cp, append=100)
+      f2 <- f |> model(cp1 <- cp, append=100)
 
       expect_true("cp1" %in% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
-      f2 <- f %>% model(f2 <- 3 * 2, append=NA)
+      f2 <- f |> model(f2 <- 3 * 2, append=NA)
       expect_true("f2" %in% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
 
@@ -1685,14 +1685,14 @@ rxTest({
 
       # now promote tv
       suppressMessages(
-        f2 <- f %>% ini(tv=0.5))
+        f2 <- f |> ini(tv=0.5))
       expect_equal(f2$allCovs, c("eta.ka", "eta.cl", "eta.v"))
       expect_equal(f2$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
       expect_equal(f2$omega, NULL)
 
       # now promote eta.ka
       suppressMessages(
-        f3 <- f2 %>% ini(eta.ka ~ 0.01))
+        f3 <- f2 |> ini(eta.ka ~ 0.01))
 
       expect_equal(f3$allCovs, c("eta.cl", "eta.v"))
       expect_equal(f3$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
@@ -1700,7 +1700,7 @@ rxTest({
 
       # now promote a correlation between eta.cl and eta.v
       suppressMessages(
-        f4 <- f2 %>% ini(eta.cl + eta.v ~ c(1,
+        f4 <- f2 |> ini(eta.cl + eta.v ~ c(1,
                                             0.01, 1)))
       expect_equal(f4$allCovs, "eta.ka")
       expect_equal(f4$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
@@ -1710,7 +1710,7 @@ rxTest({
 
       # Now promote independent eta block
       suppressMessages(
-        f5 <- f3 %>% ini(eta.cl + eta.v ~ c(1,
+        f5 <- f3 |> ini(eta.cl + eta.v ~ c(1,
                                             0.01, 1)))
       expect_length(f5$allCovs, 0)
       expect_equal(f5$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
@@ -1720,7 +1720,7 @@ rxTest({
 
       # Now promote eta block that includes prior eta information
       suppressMessages(
-        f6 <- f3 %>% ini(eta.ka + eta.cl + eta.v ~ c(1,
+        f6 <- f3 |> ini(eta.ka + eta.cl + eta.v ~ c(1,
                                                      0.01, 1,
                                                      -0.01, 0.01, 1)))
       expect_length(f6$allCovs, 0)
@@ -1759,7 +1759,7 @@ rxTest({
       expect_equal(f$omega, matrix(0.01, dimnames=list("eta.v", "eta.v")))
 
       suppressMessages(suppressWarnings(
-        f2 <- f %>% model(ka <- tka * exp(eta.ka), auto=FALSE)
+        f2 <- f |> model(ka <- tka * exp(eta.ka), auto=FALSE)
       ))
 
       expect_equal(f2$allCovs, "eta.ka")
@@ -1768,8 +1768,8 @@ rxTest({
 
       suppressMessages(suppressWarnings(
         f2 <-
-          f %>%
-          model(ka <- tka * exp(eta.ka), auto=FALSE) %>%
+          f |>
+          model(ka <- tka * exp(eta.ka), auto=FALSE) |>
           ini(eta.ka ~ 0.02)))
       expect_equal(f2$allCovs, character(0))
       expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
@@ -1777,14 +1777,14 @@ rxTest({
                                    eta.ka ~ 0.02))
 
       suppressMessages(suppressWarnings(
-        f2 <- f %>% model(v <- tv + eta.v, auto=FALSE)
+        f2 <- f |> model(v <- tv + eta.v, auto=FALSE)
       ))
       expect_equal(f2$allCovs, "tv")
       expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
       expect_equal(f2$omega, lotri(eta.v ~ 0.01))
 
       suppressMessages(suppressWarnings(
-        f2 <- f %>% model(v <- tv + eta.v, auto=FALSE) %>%
+        f2 <- f |> model(v <- tv + eta.v, auto=FALSE) |>
           ini(tv=0.2)
       ))
       expect_equal(f2$allCovs, character(0))
@@ -1820,7 +1820,7 @@ rxTest({
         f1 <- ocmt()
       )
       suppressWarnings(
-        f2 <- ocmt %>% model(cp ~ add(add.sd) + prop(prop.sd))
+        f2 <- ocmt |> model(cp ~ add(add.sd) + prop(prop.sd))
       )
       expect_equal(f2$theta, f1$theta)
       expect_equal(f2$omega, f1$omega)
@@ -1857,7 +1857,7 @@ rxTest({
       # now TC is detected as a covariate instead of a population parameter
       suppressMessages(
         mod <-
-          one.compartment %>%
+          one.compartment |>
           model({ka <- exp(tka + eta.ka + TC * cov_C)})
       )
       expect_true("cov_C" %in% mod$iniDf$name)
@@ -1867,7 +1867,7 @@ rxTest({
 
       suppressMessages(
         mod <-
-          one.compartment %>%
+          one.compartment |>
           model({ka <- exp(tka + eta.ka + TC * cov_C)})
       )
       expect_true("cov_C" %in% mod$iniDf$name)
@@ -1889,13 +1889,13 @@ rxTest({
 
     suppressMessages(
       expect_error(
-        mod1 %>%
-          model(KA<-exp(tka+eta.ka), append=NA) %>% # Prepend a line by append=NA
+        mod1 |>
+          model(KA<-exp(tka+eta.ka), append=NA) |> # Prepend a line by append=NA
           ini(tka=log(2.94E-01),
               eta.ka=0.2,
               CL=1.86E+01, V2=4.02E+01, # central
               Q=1.05E+01,  V3=2.97E+02, # peripheral
-              Kin=1, Kout=1, EC50=200) %>%
+              Kin=1, Kout=1, EC50=200) |>
           model(eff(0) <- 1),
         NA))
 
@@ -1926,7 +1926,7 @@ rxTest({
 
     i <- rxode2(one.compartment)
 
-    j <- i %>%
+    j <- i |>
       model({
         f(central)  <- 1 + f_study1*(STUDYID==1)
       },
@@ -1946,17 +1946,17 @@ rxTest({
       cp = center / v
     })
 
-    m1 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = NA)
+    m1 <- ocmt_rx0 |> model( cl <- tvcl*2, append = NA)
 
     expect_true(identical(m1$lstExpr[[1]], quote(cl <- tvcl * 2)))
 
-    m2 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = d/dt(depot))
+    m2 <- ocmt_rx0 |> model( cl <- tvcl*2, append = d/dt(depot))
 
     expect_true(identical(m2$lstExpr[[2]], quote(cl <- tvcl * 2)))
 
-    expect_error(ocmt_rx0 %>% model( cl <- tvcl*2, append = notFound))
+    expect_error(ocmt_rx0 |> model( cl <- tvcl*2, append = notFound))
 
-    m3 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = cp)
+    m3 <- ocmt_rx0 |> model( cl <- tvcl*2, append = cp)
 
     expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
 
@@ -2117,7 +2117,7 @@ rxTest({
         })
       }
 
-      expect_error(u %>% model(-a), NA)
+      expect_error(u |> model(-a), NA)
     })
 
     test_that("adding a constant does not add to the ini block", {
@@ -2133,7 +2133,7 @@ rxTest({
         })
       }
 
-      n <- u %>% model(aa <- pi+4, append=c)
+      n <- u |> model(aa <- pi+4, append=c)
 
       expect_false(any(n$iniDf$name == "pi"))
     })
@@ -2152,7 +2152,7 @@ rxTest({
         })
       }
 
-      n <- u %>% model(aaa <- aa+4, append=c)
+      n <- u |> model(aaa <- aa+4, append=c)
 
       expect_false(any(n$iniDf$name == "aa"))
     })

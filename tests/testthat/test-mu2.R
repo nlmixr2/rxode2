@@ -45,8 +45,8 @@ rxTest({
       }
 
 
-      m2 <- model.BASE %>%
-        model(cl <- exp(tcl + eta.cl + wt_cl*log(WT/70.5))) %>%
+      m2 <- model.BASE |>
+        model(cl <- exp(tcl + eta.cl + wt_cl*log(WT/70.5))) |>
         ini(wt_cl <- fix(0.75))
 
       expect_equal(f$mu2RefCovariateReplaceDataFrame,

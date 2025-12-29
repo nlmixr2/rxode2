@@ -73,8 +73,8 @@ rxUdfUi.mix <- function(fun) {
 #'
 #' \donttest{
 #'
-#' s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
-#'                       et(seq(0, 72)) %>%
+#' s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
+#'                       et(seq(0, 72)) |>
 #'                       et(id=1:20))
 #'
 #' plot(s, ipredSim)

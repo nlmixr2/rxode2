@@ -180,8 +180,8 @@ rxTest({
         })
       }
 
-      s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
-                              et(seq(0, 72)) %>%
+      s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
+                              et(seq(0, 72)) |>
                               et(id=1:20))
 
       expect_false(all(s$me == 1))
@@ -221,10 +221,10 @@ rxTest({
       })
     }
 
-    s0 <- s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
-                                  et(seq(0, 72)) %>%
-                                  et(id=1:20), addDosing=TRUE) %>%
-      dplyr::rename(mixest=me, dv=sim) %>%
+    s0 <- s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
+                                  et(seq(0, 72)) |>
+                                  et(id=1:20), addDosing=TRUE) |>
+      dplyr::rename(mixest=me, dv=sim) |>
       dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
 
     trn <- etTrans(s, one.cmt)
@@ -266,8 +266,8 @@ rxTest({
 
     expect_error(rxSolve(one.cmt, s0, addDosing=TRUE, nStud=100))
 
-    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
-      dplyr::rename(mixest=me, dv=sim) %>%
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) |>
+      dplyr::rename(mixest=me, dv=sim) |>
       dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
 
     # keeps all the mixest
@@ -277,14 +277,14 @@ rxTest({
     expect_false(all(s2$mu == s0$mu))
 
 
-    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
-                             et(seq(0, 72)) %>%
-                             et(id=1:20), addDosing=TRUE) %>%
-      dplyr::rename(mixunif=mu, dv=sim) %>%
+    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
+                             et(seq(0, 72)) |>
+                             et(id=1:20), addDosing=TRUE) |>
+      dplyr::rename(mixunif=mu, dv=sim) |>
       dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
 
-    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) %>%
-      dplyr::rename(mixunif=mu, dv=sim) %>%
+    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) |>
+      dplyr::rename(mixunif=mu, dv=sim) |>
       dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
 
     # keeps all the mixest
@@ -294,10 +294,10 @@ rxTest({
     expect_true(all(s2$mixunif == s0$mixunif))
 
 
-    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) %>%
-                             et(seq(0, 72)) %>%
-                             et(id=1:20), addDosing=TRUE) %>%
-      dplyr::rename(mixunif=mu, mixest=me, dv=sim) %>%
+    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
+                             et(seq(0, 72)) |>
+                             et(id=1:20), addDosing=TRUE) |>
+      dplyr::rename(mixunif=mu, mixest=me, dv=sim) |>
       dplyr::select(id, mixunif, evid, cmt, amt, time, dv, mixest)
 
     expect_error(rxSolve(one.cmt, s0, addDosing=TRUE))

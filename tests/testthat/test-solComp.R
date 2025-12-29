@@ -1796,9 +1796,9 @@ rxTest({
       effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
     })
 
-    etTrans(et(amt=3,cmt=1) %>% et(1:10), rx)
+    etTrans(et(amt=3,cmt=1) |> et(1:10), rx)
 
-    etTrans(et(amt=3) %>% et(1:10), rx)
+    etTrans(et(amt=3) |> et(1:10), rx)
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
                  c(numLinSens = 0L, numLin = 4L, depotLin = 1L))
@@ -2097,7 +2097,7 @@ rxTest({
         cp <- central/V
       })
 
-      e <- et(amt=0, rate=600, ss=1) %>%
+      e <- et(amt=0, rate=600, ss=1) |>
         et(time=seq(1:25))
 
       f <- function(CL=6, V=25, DOSE=600, deriv=FALSE) {
@@ -2154,7 +2154,7 @@ rxTest({
         cp <- central/V
       })
 
-      e <- et(amt=0, rate=600, ss=1) %>%
+      e <- et(amt=0, rate=600, ss=1) |>
         et(time=seq(1:25))
 
       f <- function(CL=6, V=25, DOSE=600, ka=0.25, rate=c(600, 0), deriv=FALSE) {
@@ -2209,7 +2209,7 @@ rxTest({
 
       # Now infusion in the 2 compartment models to central
 
-      e <- et(amt=0, rate=600, ss=1, cmt=2) %>%
+      e <- et(amt=0, rate=600, ss=1, cmt=2) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2278,7 +2278,7 @@ rxTest({
         cp <- central/V
       })
 
-      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) %>%
+      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2304,7 +2304,7 @@ rxTest({
       expect_length(v$Jg, 3)
       expect_length(v$Alast, 6)
 
-      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) %>%
+      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2490,7 +2490,7 @@ rxTest({
         cp <- central/V
       })
 
-      e <- et(amt=0, rate=600, ss=1) %>%
+      e <- et(amt=0, rate=600, ss=1) |>
         et(time=seq(1:25))
 
       f <- function(CL=6, V=25, Q=0.5, V2=30, DOSE=600, deriv=FALSE) {
@@ -2556,7 +2556,7 @@ rxTest({
       })
 
 
-      e <- et(amt=0, rate=600, ss=1) %>%
+      e <- et(amt=0, rate=600, ss=1) |>
         et(time=seq(1:25))
 
       f <- function(CL=6, V=25, Q=0.5, V2=30, DOSE=600, ka=0.25, rate=c(600, 0), deriv=FALSE) {
@@ -2613,7 +2613,7 @@ rxTest({
 
       # Now infusion in the 2 compartment models to central
 
-      e <- et(amt=0, rate=600, ss=1, cmt=2) %>%
+      e <- et(amt=0, rate=600, ss=1, cmt=2) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2690,7 +2690,7 @@ rxTest({
       })
 
 
-      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) %>%
+      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2716,7 +2716,7 @@ rxTest({
       expect_length(v$Jg, 5)
       expect_length(v$Alast, 14)
 
-      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) %>%
+      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2911,7 +2911,7 @@ rxTest({
         cp <- central/V
       })
 
-      e <- et(amt=0, rate=600, ss=1) %>%
+      e <- et(amt=0, rate=600, ss=1) |>
         et(time=seq(1:25))
 
       f <- function(CL= 6, V = 25, V2 = 30, V3 = 200,
@@ -2986,7 +2986,7 @@ rxTest({
         cp <- central/V
       })
 
-      e <- et(amt=0, rate=600, ss=1) %>%
+      e <- et(amt=0, rate=600, ss=1) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -3046,7 +3046,7 @@ rxTest({
 
       # Now infusion in the 3 compartment models to central
 
-      e <- et(amt=0, rate=600, ss=1, cmt=2) %>%
+      e <- et(amt=0, rate=600, ss=1, cmt=2) |>
         et(time=seq(1:25))
 
       s <- rxSolve(rx, e, addDosing =TRUE)
@@ -3131,7 +3131,7 @@ rxTest({
 
 
 
-      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) %>%
+      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) |>
         et(time=0.5)
 
       s <- rxSolve(rx, e, addDosing =TRUE, maxsteps=700000)
@@ -3157,7 +3157,7 @@ rxTest({
       expect_length(v$Jg, 7)
       expect_length(v$Alast, 26)
 
-      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) %>%
+      e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) |>
         et(time=0.5)
 
       s <- rxSolve(rx, e, addDosing =TRUE, , maxsteps=700000)

@@ -13,9 +13,9 @@ rxTest({
       pk <- C2 * exp(err2)
     })
 
-    ev <- eventTable(amount.units = "mg", time.units = "hours") %>%
-      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) %>%
-      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) %>%
+    ev <- eventTable(amount.units = "mg", time.units = "hours") |>
+      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
+      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
       add.sampling(0:240)
 
     expect_equal(

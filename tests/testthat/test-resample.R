@@ -30,21 +30,21 @@ rxTest({
         c(x - d, x + d)
       })
 
-      e <- et() %>%
+      e <- et() |>
         ## Specify the id and weight based dosing from covariate data.frame
         ## This requires rxode2 XXX
-        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
+        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) |>
         ## Sampling is added for each ID
-        et(s) %>%
-        as.data.frame() %>%
+        et(s) |>
+        as.data.frame() |>
         ## Merge the event table with the covarite information
-        merge(cov.df, by = "id") %>%
+        merge(cov.df, by = "id") |>
         dplyr::as_tibble()
 
-      e2 <- et() %>%
+      e2 <- et() |>
         ## Specify the id and weight based dosing from covariate data.frame
         ## This requires rxode2 XXX
-        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
+        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) |>
         ## Sampling is added for each ID
         et(s)
 
@@ -241,21 +241,21 @@ rxTest({
         c(x - d, x + d)
       })
 
-      e <- et(time.units = "hr") %>%
+      e <- et(time.units = "hr") |>
         ## Specify the id and weight based dosing from covariate data.frame
         ## This requires rxode2 XXX
-        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
+        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) |>
         ## Sampling is added for each ID
-        et(s) %>%
-        as.data.frame() %>%
+        et(s) |>
+        as.data.frame() |>
         ## Merge the event table with the covarite information
-        merge(cov.df, by = "id") %>%
+        merge(cov.df, by = "id") |>
         dplyr::as_tibble()
 
-      e2 <- et(time.units = "hr") %>%
+      e2 <- et(time.units = "hr") |>
         ## Specify the id and weight based dosing from covariate data.frame
         ## This requires rxode2 XXX
-        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
+        et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) |>
         ## Sampling is added for each ID
         et(s)
 

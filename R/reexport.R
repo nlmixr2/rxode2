@@ -98,7 +98,3 @@ ggplot2::scale_y_date
 #' @importFrom ggplot2 expand_limits
 #' @export
 ggplot2::expand_limits
-
-#' @importFrom magrittr %>%
-#' @export
-magrittr::`%>%`

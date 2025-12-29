@@ -61,7 +61,7 @@ rxParams.rxode2 <- function(obj, constants = TRUE, ...,
       ), call. = FALSE)
     }
     ## Most likely
-    ## rxode2() %>% rxParams() %>%
+    ## rxode2() |> rxParams() |>
     rxode2::.pipeRx(obj)
     rxode2::.pipeInits(NULL)
     rxode2::.pipeEvents(NULL)
@@ -120,7 +120,7 @@ rxParams.rxSolve <- function(obj, constants = TRUE, ...,
       )
     }
     ## Most likely
-    ## solveObject %>% rxParams() %>%
+    ## solveObject |> rxParams() |>
     .x <- obj
     ## Assign prior information
     ## Need to extract:
@@ -159,7 +159,7 @@ rxParams.rxEt <- function(obj, ...,
   if (!is.null(iCov)) {
     stop("'iCov' in a pipline is no longer supported", call. = FALSE)
   }
-  # et() %>% rxParams() %>%
+  # et() |> rxParams() |>
   rxode2::.pipeEvents(obj)
   .lst <- list(...)
   if (length(.lst) > 0) {

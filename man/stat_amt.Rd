@@ -144,16 +144,17 @@ mod1 <- function() {
 ## These are making the more complex regimens of the rxode2 tutorial
 
 ## bid for 5 days
-bid <- et(timeUnits="hr") \%>\%
+bid <- et(timeUnits="hr") |>
   et(amt=10000,ii=12,until=set_units(5, "days"))
 
 ## qd for 5 days
-qd <- et(timeUnits="hr") \%>\%
+qd <- et(timeUnits="hr") |>
       et(amt=20000,ii=24,until=set_units(5, "days"))
 
 ## bid for 5 days followed by qd for 5 days
 
-et <- seq(bid,qd) \%>\% et(seq(0,11*24,length.out=100))
+et <- seq(bid,qd) |>
+      et(seq(0,11*24,length.out=100))
 
 bidQd <- rxSolve(mod1, et, addDosing=TRUE)
 

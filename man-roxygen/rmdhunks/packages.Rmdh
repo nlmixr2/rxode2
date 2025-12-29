@@ -36,11 +36,11 @@ This will:
   regenerates the `src` directory based on whatever version of `rxode2`
   this is compiled against. This should be modified if you plan to
   have your own compiled code, though this is not suggested.
-  
+
 - You can write your own R code in your package that interacts with
   the rxode2 object so you can distribute shiny apps and similar things
-  in the package context. 
-  
+  in the package context.
+
 Once this is present you can add more models to your package by
 `rxUse()`.  Simply compile the rxode2 model in your package then add
 the model with `rxUse()`
@@ -102,12 +102,12 @@ The `rxUse()` will:
 - Create stub R documentation for each of the models your are
   including in your package. You will be able to see the R
   documentation when loading your package by the standard `?` interface.
-  
+
 You will still need to:
 - Export at least one function.  If you do not have a function that
   you wish to export, you can add a re-export of `rxode2` using roxygen
   as follows:
-  
+
 ```
 ##' @importFrom rxode2 rxode2
 ##' @export
@@ -179,10 +179,6 @@ rxode2::genShinyApp.template
 ##' @export
 rxode2::cvPost
 
-# This is actually from `magrittr` but allows less imports
-##' @importFrom rxode2 %>%
-##' @export
-rxode2::`%>%`
 ```
 
 - You also need to instruct R to load the model library models
@@ -218,7 +214,7 @@ If you want to integrate with other sources in your `Rcpp` or
 - Register C interface to allow model solving by
   `R_init0_rxModels_rxode2_models()` (again `rxModels` would be
   replaced by your package name).
-  
+
 Once this is complete, you can compile/document by the standard methods:
 
 ```
@@ -234,7 +230,7 @@ will be recompiled when they are used.
 However, if you want the models recompiled for the most recent version
 of rxode2, you simply need to call `rxUse()` again in the project
 directory followed by the standard methods for install/create a
-package. 
+package.
 
 ```
 devtools::load_all()
@@ -244,7 +240,7 @@ devtools::install()
 
 **Note** you do not have to include the `rxode2` code required to
 generate the model to regenerate the rxode2 c-code in the `src`
-directory.  As with all rxode2 objects, a `summary` will show one way to recreate the same model. 
+directory.  As with all rxode2 objects, a `summary` will show one way to recreate the same model.
 
 An example of compiled models package can be found in the
 [rxModels](https://github.com/nlmixr2/rxModels) repository.

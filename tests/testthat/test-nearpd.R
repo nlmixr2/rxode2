@@ -35,14 +35,14 @@ rxTest({
     # so that there is "very small" uncertainty around tv
     thetaMat1[2, 2] <- 1e-06
 
-    evw <- et(amount.units="mg", time.units="hours") %>%
-      et(amt=100) %>%
+    evw <- et(amount.units="mg", time.units="hours") |>
+      et(amt=100) |>
       ## For this problem we will simulate with sampling windows
       et(list(c(0, 0.5),
               c(0.5, 1),
               c(1, 3),
               c(3, 6),
-              c(6, 12))) %>%
+              c(6, 12))) |>
       et(id=1:1000)
 
     skip_on_os("windows")

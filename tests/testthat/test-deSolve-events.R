@@ -24,7 +24,7 @@ rxTest({
     expect_equal(ett$AMT, ett2$AMT)
     expect_equal(ett$TIME, ett2$TIME)
 
-    e <- et(eventdat) %>%
+    e <- et(eventdat) |>
       et(seq(0, 10, by = 0.1))
 
     tmp1 <- rxSolve(derivs, e)
@@ -36,7 +36,7 @@ rxTest({
       evid = c(1, 6, 5, 1)
     )
 
-    e <- et(eventdat2) %>%
+    e <- et(eventdat2) |>
       et(seq(0, 10, by = 0.1))
 
     tmp3 <- rxSolve(derivs, e)

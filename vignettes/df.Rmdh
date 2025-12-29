@@ -40,9 +40,9 @@ mod1 <- function() {
 
 
 ## Setup dosing event information
-ev <- et(amountUnits="mg", timeUnits = "hours") %>%
-  et(amt=10000, addl=9, ii=12) %>%
-  et(amt=20000, addl=4, time=120, ii=24) %>%
+ev <- et(amountUnits="mg", timeUnits = "hours") |>
+  et(amt=10000, addl=9, ii=12) |>
+  et(amt=20000, addl=4, time=120, ii=24) |>
   et(0:240)
 
 
@@ -63,12 +63,12 @@ by `dpylr`.  For example you could filter it easily.
 
 library(dplyr)
 ## You can  drop units for comparisons and filtering
-x <- mod1 %>% solve(ev) %>%
-  drop_units() %>% filter(time <= 3) %>% as_tibble()
+x <- mod1 |> solve(ev) |>
+  drop_units() |> filter(time <= 3) |> as_tibble()
 
 ## or keep them and compare with the proper units.
-x <- mod1 %>% solve(ev) %>%
-    filter(time <= set_units(3, hr)) %>% as_tibble()
+x <- mod1 |> solve(ev) |>
+    filter(time <= set_units(3, hr)) |> as_tibble()
 x
 ```
 
@@ -81,7 +81,7 @@ time.
 First we need to recreate the original solved system:
 
 ```{r}
-x <- mod1 %>% solve(ev)
+x <- mod1 |> solve(ev)
 print(x)
 ```
 ## Modifying observation times for rxode2

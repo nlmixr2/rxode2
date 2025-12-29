@@ -277,9 +277,9 @@ navbar:
         - text: "Getting started"
         - text: "rxode2 mini language syntax"
           href: articles/rxode2-syntax.html
-        - text: "rxode2 model modification %>%"
+        - text: "rxode2 model modification |>"
           href: articles/Modifying-Models.html
-        - text: "rxode2 pipeline ie %>%"
+        - text: "rxode2 pipeline ie |>"
           href: articles/rxode2-pipeline.html
         - text: "Speeding up rxode2 ODE solving"
           href: articles/rxode2-speed.html

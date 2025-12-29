@@ -388,10 +388,22 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   .lst <- as.list(match.call()[-1])
 
   .isPipe <- as.character(substitute(x))
-  if (length(.isPipe) == 1) {
-    .isPipe <- (.isPipe == ".")
-  } else {
+  if (length(.isPipe) == 1 && .isPipe == ".") {
+    .isPipe <- TRUE
+  } else if (missing(x)) {
     .isPipe <- FALSE
+  } else {
+    .isPipe <- substitute(x)
+    if (is.call(.isPipe) && length(.isPipe) >= 1L) {
+      # This will assume the input is going to be an et compatible object
+      .isPipe <- TRUE
+    } else {
+      if (is.symbol(.isPipe)) {
+        .isPipe <- TRUE
+      } else {
+        .isPipe <- FALSE
+      }
+    }
   }
   if (!missing(x)) {
     names(.lst)[1] <- ""
@@ -780,8 +792,25 @@ rxEtDispatchSolve.default <- function(x, ...) {
 #' @export
 simulate.rxEt <- # nolint
   function(object, nsim = 1, seed = NULL, ...) {
-    .name <- as.character(substitute(object))
-    if (is.null(.pipelineRx) || .name != ".") {
+    .isPipe <- as.character(substitute(object))
+    if (length(.isPipe) == 1 && .isPipe == ".") {
+      .isPipe <- TRUE
+    } else if (missing(object)) {
+      .isPipe <- FALSE
+    } else {
+      .isPipe <- substitute(object)
+      if (is.call(.isPipe) && length(.isPipe) >= 1L) {
+        # This will assume the input is going to be an et compatible object
+        .isPipe <- TRUE
+      } else {
+        if (is.symbol(.isPipe)) {
+          .isPipe <- TRUE
+        } else {
+          .isPipe <- FALSE
+        }
+      }
+    }
+    if (is.null(.pipelineRx) || !.isPipe) {
       if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
       if (!is.null(seed)) set.seed(seed)
       return(.Call(`_rxode2_et_`, list(simulate = TRUE), object))
@@ -1008,16 +1037,16 @@ add.sampling <- function(eventTable, time, time.units = NA) {
 #'
 #' # You can also use the Piping operator to create a table
 #'
-#' qd2 <- eventTable(amount.units = "mg", time.units = "days") %>%
-#'   add.dosing(dose = 50, nbr.doses = 5, dosing.interval = 1, do.sampling = FALSE) %>%
-#'   add.sampling(seq(from = 0, to = 1, by = 1 / 24)) %>%
+#' qd2 <- eventTable(amount.units = "mg", time.units = "days") |>
+#'   add.dosing(dose = 50, nbr.doses = 5, dosing.interval = 1, do.sampling = FALSE) |>
+#'   add.sampling(seq(from = 0, to = 1, by = 1 / 24)) |>
 #'   add.sampling(seq(from = 1, to = 5, by = 12 / 24))
 #' # print(qd2$get.dosing())     # table of dosing records
 #' print(qd2$get.nobs()) # number of observation (not dosing) records
 #'
-#' # Note that piping with %>% will update the original table.
+#' # Note that piping with |> will update the original table.
 #'
-#' qd3 <- qd2 %>% add.sampling(seq(from = 5, to = 10, by = 6 / 24))
+#' qd3 <- qd2 |> add.sampling(seq(from = 5, to = 10, by = 6 / 24))
 #' print(qd2$get.nobs())
 #' print(qd3$get.nobs())
 #' @keywords models data

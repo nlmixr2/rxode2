@@ -179,10 +179,10 @@
 #' Off diagonal values of 'omega' can be set to zero using the
 #' \code{diag()} to remove all off-diagonals can be removed with
 #' `ini(diag())`.  To remove covariances of 'omega' item with `iivKa`,
-#' you can use `%>% ini(diag(iivKa))`.  Or to remove covariances that
-#' contain either `iivKa` or `iivCl` you can use `%>% ini(diag(iivKa,
+#' you can use `|> ini(diag(iivKa))`.  Or to remove covariances that
+#' contain either `iivKa` or `iivCl` you can use `|> ini(diag(iivKa,
 #' iivCl))`.  For finer control you can remove the covariance between
-#' two items (like `iivKa` and `iivCl`) by `%>% ini(-cov(iivKa, iivCl))
+#' two items (like `iivKa` and `iivCl`) by `|> ini(-cov(iivKa, iivCl))
 #'
 #' \code{rxode2}/\code{nlmixr2} will attempt to determine some
 #' back-transformations for the user.  For example, \code{CL <- exp(tvCL)} will
@@ -226,14 +226,14 @@
 #' }
 #'
 #' # Use piping to update initial conditions
-#' one.compartment %>% ini(tka <- log(2))
-#' one.compartment %>% ini(tka <- label("Absorption rate, Ka (1/hr)"))
+#' one.compartment |> ini(tka <- log(2))
+#' one.compartment |> ini(tka <- label("Absorption rate, Ka (1/hr)"))
 #' # Move the tka parameter to be just below the tv parameter (affects parameter
 #' # summary table, only)
-#' one.compartment %>% ini(tka <- label("Absorption rate, Ka (1/hr)"), append = "tv")
+#' one.compartment |> ini(tka <- label("Absorption rate, Ka (1/hr)"), append = "tv")
 #' # When programming with rxode2/nlmixr2, it may be easier to pass strings in
 #' # to modify the ini
-#' one.compartment %>% ini("tka <- log(2)")
+#' one.compartment |> ini("tka <- log(2)")
 #' @export
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {

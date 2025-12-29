@@ -150,7 +150,8 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
 #'   })
 #' }
 #'
-#' rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+#' rxAppendModel(ocmt |>
+#'   model(ceff=cp,append=TRUE), idr)
 #'
 #' }
 #'

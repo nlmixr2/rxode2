@@ -29,7 +29,7 @@ rxTest({
 
       fixItems <- setNames(rep("fix",length(theta)), names(theta))
       suppressMessages(
-        ui <- tmp %>% ini(fixItems)
+        ui <- tmp |> ini(fixItems)
       )
 
       expect_true(all(ui$iniDf$fix[!is.na(ui$iniDf$ntheta)]))
@@ -37,7 +37,7 @@ rxTest({
       unfixItems <- setNames(rep("unfix",length(theta)), names(theta))
 
       suppressMessages(
-        ui2 <- ui %>% ini(unfixItems)
+        ui2 <- ui |> ini(unfixItems)
       )
 
       expect_true(all(!ui2$iniDf$fix[!is.na(ui2$iniDf$ntheta)]))

@@ -8,7 +8,7 @@ rxTest({
       })
     }
 
-    expect_equal((f() %>% modelExtract),
+    expect_equal((f() |> modelExtract()),
                  "a <- logit(x, 0, 10)")
 
     f <- function() {
@@ -17,7 +17,7 @@ rxTest({
       })
     }
 
-    expect_equal((f() %>% modelExtract),
+    expect_equal((f() |> modelExtract()),
                  "a <- expit(x, 0, 11)")
 
     f <- function() {
@@ -26,7 +26,7 @@ rxTest({
       })
     }
 
-    expect_equal((f() %>% modelExtract),
+    expect_equal((f() |> modelExtract()),
                  "a <- expit(x, a, 11)")
 
 

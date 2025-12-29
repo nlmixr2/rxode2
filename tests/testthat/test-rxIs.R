@@ -8,18 +8,18 @@ rxTest({
     expect_true(rxIs(dat, "tbl_df"))
     expect_true(rxIs(dat, "event.data.frame"))
     expect_true(rxIs(dat, "rx.event"))
-    dat2 <- dat %>%
-      dplyr::mutate(amt = AMT, evid = EVID, time = TIME) %>%
+    dat2 <- dat |>
+      dplyr::mutate(amt = AMT, evid = EVID, time = TIME) |>
       dplyr::select(-AMT, -EVID, -TIME)
     expect_true(rxIs(dat2, "event.data.frame"))
     expect_true(rxIs(dat2, "rx.event"))
-    dat3 <- dat %>%
-      dplyr::mutate(Amt = AMT, Evid = EVID, Time = TIME) %>%
+    dat3 <- dat |>
+      dplyr::mutate(Amt = AMT, Evid = EVID, Time = TIME) |>
       dplyr::select(-AMT, -EVID, -TIME)
     expect_true(rxIs(dat3, "event.data.frame"))
     expect_true(rxIs(dat3, "rx.event"))
-    dat4 <- dat %>%
-      dplyr::mutate(AMt = AMT, EVid = EVID, TIme = TIME) %>%
+    dat4 <- dat |>
+      dplyr::mutate(AMt = AMT, EVid = EVID, TIme = TIME) |>
       dplyr::select(-AMT, -EVID, -TIME)
     expect_false(rxIs(dat4, "event.data.frame"))
     expect_false(rxIs(dat4, "rx.event"))
@@ -32,19 +32,19 @@ rxTest({
     expect_false(rxIs(as.matrix(dat), "event.data.frame"))
     expect_true(rxIs(as.matrix(dat), "rx.event"))
     expect_true(rxIs(as.matrix(dat), "event.matrix"))
-    dat2 <- dat %>%
-      dplyr::mutate(amt = AMT, evid = EVID, time = TIME) %>%
+    dat2 <- dat |>
+      dplyr::mutate(amt = AMT, evid = EVID, time = TIME) |>
       dplyr::select(-AMT, -EVID, -TIME)
     expect_true(rxIs(dat2, "event.data.frame"))
     expect_true(rxIs(dat2, "rx.event"))
     expect_true(rxIs(as.matrix(dat2), "event.matrix"))
     expect_true(rxIs(as.matrix(dat2), "rx.event"))
-    dat3 <- dat %>%
-      dplyr::mutate(Amt = AMT, Evid = EVID, Time = TIME) %>%
+    dat3 <- dat |>
+      dplyr::mutate(Amt = AMT, Evid = EVID, Time = TIME) |>
       dplyr::select(-AMT, -EVID, -TIME)
     expect_true(rxIs(dat3, "event.data.frame"))
-    dat4 <- dat %>%
-      dplyr::mutate(AMt = AMT, EVid = EVID, TIme = TIME) %>%
+    dat4 <- dat |>
+      dplyr::mutate(AMt = AMT, EVid = EVID, TIme = TIME) |>
       dplyr::select(-AMT, -EVID, -TIME)
     expect_false(rxIs(as.matrix(dat4), "event.matrix"))
     expect_false(rxIs(as.matrix(dat4), "rx.event"))

@@ -17,8 +17,8 @@ rxTest({
       d / dt(blood) <- ka * intestine - kel * blood
     })
 
-    et <- eventTable() %>%
-      add.dosing(dose = 3, nbr.doses = 1) %>%
+    et <- eventTable() |>
+      add.dosing(dose = 3, nbr.doses = 1) |>
       add.sampling(0:48)
 
 

@@ -197,7 +197,7 @@ library(rxode2)
 
 mod1 <- function() {
   ini({
-    # central 
+    # central
     KA=2.94E-01
     CL=1.86E+01
     V2=4.02E+01
@@ -207,7 +207,7 @@ mod1 <- function() {
     # effects
     Kin=1
     Kout=1
-    EC50=200 
+    EC50=200
   })
   model({
     C2 <- centr/V2
@@ -249,10 +249,10 @@ event table is generated through the “et()” function. This has an
 interface that is similar to NONMEM event tables:
 
 ``` r
-ev  <- et(amountUnits="mg", timeUnits="hours") %>%
-  et(amt=10000, addl=9,ii=12,cmt="depot") %>%
-  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
-  et(0:240) # Add sampling 
+ev  <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+  et(0:240) # Add sampling
 ```
 
 You can see from the above code, you can dose to the compartment named
@@ -270,7 +270,7 @@ vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 The ODE can now be solved using `rxSolve`:
 
 ``` r
-x <- mod1 %>% rxSolve(ev)
+x <- mod1 |> rxSolve(ev)
 #> ℹ parameter labels from comments are typically ignored in non-interactive mode
 #> ℹ Need to run with the source intact to parse comments
 #> → creating rxode2 include directory
@@ -281,16 +281,16 @@ x <- mod1 %>% rxSolve(ev)
 x
 #> ── Solved rxode2 object ──
 #> ── Parameters (x$params): ──
-#>      KA      CL      V2       Q      V3     Kin    Kout    EC50 
-#>   0.294  18.600  40.200  10.500 297.000   1.000   1.000 200.000 
+#>      KA      CL      V2       Q      V3     Kin    Kout    EC50
+#>   0.294  18.600  40.200  10.500 297.000   1.000   1.000 200.000
 #> ── Initial Conditions (x$inits): ──
-#> depot centr  peri   eff 
-#>     0     0     0     1 
+#> depot centr  peri   eff
+#>     0     0     0     1
 #> ── First part of data (object): ──
 #> # A tibble: 241 × 7
 #>   time    C2    C3  depot centr  peri   eff
 #>    [h] <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl>
-#> 1    0   0   0     10000     0     0   1   
+#> 1    0   0   0     10000     0     0   1
 #> 2    1  44.4 0.920  7453. 1784.  273.  1.08
 #> 3    2  54.9 2.67   5554. 2206.  794.  1.18
 #> 4    3  51.9 4.46   4140. 2087. 1324.  1.23

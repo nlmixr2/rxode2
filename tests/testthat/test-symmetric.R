@@ -74,7 +74,7 @@ rxTest({
   et$add.dosing(dose = 75000, nbr.doses = 1, start.time = 0, dosing.to = 1)
   et$add.sampling(0:360)
 
-  et <- et %>% et(id = 1:7)
+  et <- et |> et(id = 1:7)
 
   rxWithSeed(
     42,

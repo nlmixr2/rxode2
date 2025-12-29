@@ -231,12 +231,12 @@ NA_LOGICAL <- NA # nolint
 #'
 #' # QD (once daily) dosing for 5 days.
 #'
-#' qd <- et(amountUnits = "ug", timeUnits = "hours") %>%
+#' qd <- et(amountUnits = "ug", timeUnits = "hours") |>
 #'   et(amt = 10000, addl = 4, ii = 24)
 #'
 #' # Sample the system hourly during the first day, every 8 hours
 #' # then after
-#' qd <- qd %>% et(0:24) %>%
+#' qd <- qd |> et(0:24) |>
 #'   et(from = 24 + 8, to = 5 * 24, by = 8)
 #'
 #' # Step 3 - solve the system

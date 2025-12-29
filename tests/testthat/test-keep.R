@@ -5,8 +5,8 @@ rxTest({
     test_that("Make sure the keep gives the right values", {
       TVQ <- 4
       TVV3 <- 7
-      dat <- data.frame(AGE = c(20, 30), ID = c(10, 20)) %>%
-        dplyr::mutate(id = seq(from = 1, to = dplyr::n())) %>%
+      dat <- data.frame(AGE = c(20, 30), ID = c(10, 20)) |>
+        dplyr::mutate(id = seq(from = 1, to = dplyr::n())) |>
         dplyr::rename(NMID = ID)
 
 
@@ -15,13 +15,13 @@ rxTest({
         ThetaCl = c(4.6, 5.4),
         ThetaV2 = c(7, 8),
         ID = c(10, 20)
-      ) %>%
-        dplyr::mutate(id = seq(from = 1, to = dplyr::n())) %>%
-        dplyr::mutate(ThetaQ = TVQ, ThetaV3 = TVV3) %>%
+      ) |>
+        dplyr::mutate(id = seq(from = 1, to = dplyr::n())) |>
+        dplyr::mutate(ThetaQ = TVQ, ThetaV3 = TVV3) |>
         dplyr::rename(NMID = ID)
 
-      tabtot <- dat %>%
-        dplyr::left_join(., par.tab, by = c("NMID", "id"))
+      tabtot <- dat |>
+        dplyr::left_join(par.tab, by = c("NMID", "id"))
 
       mod1 <- rxode2({
         ## PK parameters
@@ -60,23 +60,23 @@ rxTest({
 
       dose_ref <- 8000 ##
 
-      ev_ref <- eventTable() %>%
-        et(dose = dose_ref / 1000, time = seq(0, 24, 24)) %>%
-        et(id = 1:NSubj) %>%
-        add.sampling(seq(0, 24, 1)) %>%
-        dplyr::mutate(DOSE = dose_ref) %>%
-        dplyr::group_by(id) %>%
-        tidyr::fill(DOSE, .direction = "downup") %>%
-        dplyr::ungroup() %>%
+      ev_ref <- eventTable() |>
+        et(dose = dose_ref / 1000, time = seq(0, 24, 24)) |>
+        et(id = 1:NSubj) |>
+        add.sampling(seq(0, 24, 1)) |>
+        dplyr::mutate(DOSE = dose_ref) |>
+        dplyr::group_by(id) |>
+        tidyr::fill(DOSE, .direction = "downup") |>
+        dplyr::ungroup() |>
         dplyr::mutate(Cycle = dplyr::case_when(
           time <= 12 ~ 1, #
           time >= 12 ~ 2, #
           TRUE ~ 0
-        )) %>%
+        )) |>
         dplyr::as_tibble()
 
-      ev_ref <- ev_ref %>%
-        dplyr::left_join(., tabtot, by = "id") %>%
+      ev_ref <- ev_ref |>
+        dplyr::left_join(tabtot, by = "id") |>
         dplyr::as_tibble()
 
       PK.ev_ref2 <- rxSolve(mod1,
@@ -224,12 +224,13 @@ rxTest({
       class(et) <- "data.frame"
       et <- cbind(et, k=et2$keepL$keepL[[1]])
 
-      d2 <- d %>% dplyr::filter(EVID==1) %>% dplyr::select(ID, TIME) %>%
+      d2 <- d |> dplyr::filter(EVID==1) |> dplyr::select(ID, TIME) |>
         dplyr::mutate(i=1)
 
       # only variables in the dataset are considered NA
-      expect_true(merge(et, d2, all.x=TRUE) %>%
-                    dplyr::filter(i!= 1) %>% dplyr::pull(k) %>% all(is.na(.)))
+      expect_true(merge(et, d2, all.x=TRUE) |>
+                    dplyr::filter(i!= 1) |> dplyr::pull(k) |>
+                    is.na() |> all())
 
       ## s <- rxSolve(mod, d, keep="target_name")
 

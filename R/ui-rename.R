@@ -236,7 +236,7 @@
 #'   })
 #' }
 #'
-#' ocmt %>% rxRename(cpParent=cp)
+#' ocmt |> rxRename(cpParent=cp)
 #'
 rxRename <- function(.data, ..., envir=parent.frame()) {
   UseMethod("rxRename")

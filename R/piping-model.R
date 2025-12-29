@@ -468,7 +468,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 #' Describe if the piping expression is a drop expression
 #'
 #' @param line expression for line/expression
-#' @return `TRUE` if this is a drop expression like `%>% model(-v)`, otherwise `FALSE`
+#' @return `TRUE` if this is a drop expression like `|> model(-v)`, otherwise `FALSE`
 #' @author Matthew L. Fidler
 #' @noRd
 .isDropExpression <- function(line) {
@@ -864,14 +864,14 @@ rxSetPipingAuto()
 #'
 #' # now TC is detected as a covariate instead of a population parameter
 #'
-#' one.compartment %>%
+#' one.compartment |>
 #'   model({ka <- exp(tka + eta.ka + TC * cov_C)})
 #'
 #' # You can turn it off by simply adding it back
 #'
 #' rxSetCovariateNamesForPiping()
 #'
-#' one.compartment %>%
+#' one.compartment |>
 #'   model({ka <- exp(tka + eta.ka + TC * cov_C)})
 #'
 #' # The covariates you set with `rxSetCovariateNamesForPiping()`

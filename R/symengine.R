@@ -367,7 +367,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' })
 #'
 #'
-#' e <- et(1:10) %>% as.data.frame()
+#' e <- et(1:10) |> as.data.frame()
 #'
 #' e$x <- 1:10
 #' e$y <- 21:30
