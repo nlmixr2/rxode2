@@ -41,8 +41,8 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changing rxode2 compartment numbers</h1>
             
-            <h4 data-toc-skip class="date">2025-12-23</h4>
+            <h4 data-toc-skip class="date">2025-12-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-cmt.Rmd" class="external-link"><code>vignettes/rxode2-cmt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-cmt.Rmd</code></div>
@@ -334,8 +334,8 @@ use the <code><a href="https://rdrr.io/r/base/summary.html" class="external-link
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="va">pbpk</span><span class="op">$</span><span class="va">simulationModel</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.1.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_eaf5f26ae79289690cb7f8f8fc8ed42b</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpwbJtj2/rxode2/rx_eaf5f26ae79289690cb7f8f8fc8ed42b__.rxd/rx_eaf5f26ae79289690cb7f8f8fc8ed42b_.so</span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.1.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_b326f226cb87a766abd0ff630ab38e6c</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/Rtmp2PYsVF/rxode2/rx_b326f226cb87a766abd0ff630ab38e6c__.rxd/rx_b326f226cb87a766abd0ff630ab38e6c_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -684,7 +684,7 @@ after all the differential equations are defined.</p>
 <code>rxode2</code> model:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ode.1c.ka</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.1.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_f162e38facd225bb460000c73dfa73b3</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.1.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_2c0304d111b40b903339cac5f9358f07</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span></span>

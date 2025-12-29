@@ -41,8 +41,8 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
@@ -1181,7 +1181,7 @@ the second model:</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/rxAppendModel.html">rxAppendModel</a></span><span class="op">(</span><span class="va">ocmt</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/rxRename.html">rxRename</a></span><span class="op">(</span>ceff<span class="op">=</span><span class="va">cp</span><span class="op">)</span>, <span class="va">idr</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxAppendModel.html">rxAppendModel</a></span><span class="op">(</span><span class="va">ocmt</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/rxRename.html">rxRename</a></span><span class="op">(</span>ceff<span class="op">=</span><span class="va">cp</span><span class="op">)</span>, <span class="va">idr</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -1384,7 +1384,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55ce3b27baa0&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x56290dde6750&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>
@@ -1417,7 +1417,7 @@ too.</p>
 <p>You can fix model estimates in two ways. The first is to fix the
 value to whatever is in the model function, this is done by piping the
 model parameter name (like <code>tka</code>) and setting it equal to
-<code>fix</code> (<code>%&gt;% ini(tka=fix)</code>). Below is a full
+<code>fix</code> (<code>|&gt; ini(tka=fix)</code>). Below is a full
 example:</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1490,7 +1490,7 @@ example:</p>
 <p>You can also fix the parameter to a different value if you wish; This
 is very similar you can specify the value to fix inside of a
 <code>fix</code> pseudo-function as follows:
-<code>%&gt;% ini(tka=fix(0.1))</code>. A fully worked example is
+<code>|&gt; ini(tka=fix(0.1))</code>. A fully worked example is
 below:</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
@@ -2991,7 +2991,7 @@ list:</p>
 <span><span class="co"># If you want to remove all covariances you can use diag() with no</span></span>
 <span><span class="co"># arguments</span></span>
 <span></span>
-<span><span class="va">fd</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fd</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka,eta.v)`</span></span>
@@ -3042,7 +3042,7 @@ list:</p>
 <span><span class="co">#&gt; }</span></span>
 <span></span>
 <span><span class="co"># if you want to remove only covariances with eta.ka  you can use:</span></span>
-<span><span class="va">fd</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fd</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka,eta.v)`</span></span>
@@ -3092,7 +3092,7 @@ list:</p>
 <span><span class="co">#&gt; }</span></span>
 <span></span>
 <span><span class="co"># if you want to remove only the covariances with eta.ka and eta.v you can use:</span></span>
-<span><span class="va">fd</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov</a></span><span class="op">(</span><span class="va">eta.ka</span>, <span class="va">eta.v</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fd</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov</a></span><span class="op">(</span><span class="va">eta.ka</span>, <span class="va">eta.v</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka, eta.v)`</span></span>

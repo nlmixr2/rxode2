@@ -41,8 +41,8 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Weight Based Dosing in rxode2</h1>
             
-            <h4 data-toc-skip class="date">2025-12-23</h4>
+            <h4 data-toc-skip class="date">2025-12-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-wt.Rmd" class="external-link"><code>vignettes/rxode2-wt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-wt.Rmd</code></div>
@@ -203,16 +203,16 @@ using weight based dosing, this needs to be simulated first</p>
 <code class="sourceCode R"><span><span class="va">s</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0.25</span>,<span class="fl">0.5</span>,<span class="fl">0.75</span>,<span class="fl">1</span>,<span class="fl">1.5</span>,<span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">24</span>,by<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">s</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="va">.x</span> <span class="op">&lt;-</span> <span class="fl">0.1</span> <span class="op">*</span> <span class="va">x</span>; <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">.x</span>, <span class="va">x</span> <span class="op">+</span> <span class="va">.x</span><span class="op">)</span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="co">## Specify the id and weight based dosing from covariate data.frame</span></span>
-<span>    <span class="co">## This requires rxode2 XXX </span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="va">cov.df</span><span class="op">$</span><span class="va">id</span>, amt<span class="op">=</span><span class="fl">6</span><span class="op">*</span><span class="va">cov.df</span><span class="op">$</span><span class="va">WT</span>, rate<span class="op">=</span><span class="fl">6</span> <span class="op">*</span> <span class="va">cov.df</span><span class="op">$</span><span class="va">WT</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="co">## This requires rxode2 XXX</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="va">cov.df</span><span class="op">$</span><span class="va">id</span>, amt<span class="op">=</span><span class="fl">6</span><span class="op">*</span><span class="va">cov.df</span><span class="op">$</span><span class="va">WT</span>, rate<span class="op">=</span><span class="fl">6</span> <span class="op">*</span> <span class="va">cov.df</span><span class="op">$</span><span class="va">WT</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="co">## Sampling is added for each ID</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>    <span class="va">as.data.frame</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="co">## Merge the event table with the covarite information</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">cov.df</span>, by<span class="op">=</span><span class="st">"id"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>    <span class="va">as_tibble</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">cov.df</span>, by<span class="op">=</span><span class="st">"id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span></span>
 <span><span class="va">e</span></span></code></pre></div>
@@ -237,7 +237,7 @@ using weight based dosing, this needs to be simulated first</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">e</span>,</span>
 <span>             <span class="co">## Lotri uses lower-triangular matrix rep. for named matrix</span></span>
-<span>             omega<span class="op">=</span><span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">.306</span>, </span>
+<span>             omega<span class="op">=</span><span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">.306</span>,</span>
 <span>                         <span class="va">eta.q</span> <span class="op">~</span><span class="fl">0.0652</span>,</span>
 <span>                         <span class="va">eta.v1</span> <span class="op">~</span><span class="fl">.567</span>,</span>
 <span>                         <span class="va">eta.v2</span> <span class="op">~</span> <span class="fl">.191</span><span class="op">)</span>,</span>

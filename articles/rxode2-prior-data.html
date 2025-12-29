@@ -41,8 +41,8 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Using Prior Data for ODE solving</h1>
             
-            <h4 data-toc-skip class="date">2025-12-23</h4>
+            <h4 data-toc-skip class="date">2025-12-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-prior-data.Rmd" class="external-link"><code>vignettes/rxode2-prior-data.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-prior-data.Rmd</code></div>
@@ -156,7 +156,7 @@ frame</p>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">center</span></span>
 <span>    <span class="va">cp</span> <span class="op">=</span> <span class="va">center</span> <span class="op">/</span> <span class="va">v</span></span>
-<span>  <span class="op">}</span><span class="op">)</span> </span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co">## Create parameter dataset</span></span>
@@ -170,7 +170,7 @@ frame</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
 <span><span class="va">parsDf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tribble.html" class="external-link">tribble</a></span><span class="op">(</span></span>
-<span>  <span class="op">~</span> <span class="va">eta.ka</span>, <span class="op">~</span> <span class="va">eta.cl</span>, <span class="op">~</span> <span class="va">eta.v</span>, </span>
+<span>  <span class="op">~</span> <span class="va">eta.ka</span>, <span class="op">~</span> <span class="va">eta.cl</span>, <span class="op">~</span> <span class="va">eta.v</span>,</span>
 <span>  <span class="fl">0.105</span>, <span class="op">-</span><span class="fl">0.487</span>, <span class="op">-</span><span class="fl">0.080</span>,</span>
 <span>  <span class="fl">0.221</span>, <span class="fl">0.144</span>, <span class="fl">0.021</span>,</span>
 <span>  <span class="fl">0.368</span>, <span class="fl">0.031</span>, <span class="fl">0.058</span>,</span>
@@ -182,7 +182,7 @@ frame</p>
 <span>  <span class="fl">1.420</span>, <span class="fl">0.042</span>, <span class="fl">0.012</span>,</span>
 <span> <span class="op">-</span><span class="fl">0.738</span>, <span class="op">-</span><span class="fl">0.391</span>, <span class="op">-</span><span class="fl">0.170</span>,</span>
 <span>  <span class="fl">0.790</span>, <span class="fl">0.281</span>, <span class="fl">0.146</span>,</span>
-<span> <span class="op">-</span><span class="fl">0.527</span>, <span class="op">-</span><span class="fl">0.126</span>, <span class="op">-</span><span class="fl">0.198</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span> <span class="op">-</span><span class="fl">0.527</span>, <span class="op">-</span><span class="fl">0.126</span>, <span class="op">-</span><span class="fl">0.198</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>tka <span class="op">=</span> <span class="fl">0.451</span>, tcl <span class="op">=</span> <span class="fl">1.017</span>, tv <span class="op">=</span> <span class="fl">3.449</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co">## Now solve the dataset</span></span>

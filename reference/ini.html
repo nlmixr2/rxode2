@@ -22,8 +22,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
@@ -191,9 +191,9 @@ label("Typical Value of Clearance (L/hr)")</code>.</p>
 <p>Off diagonal values of 'omega' can be set to zero using the
 <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> to remove all off-diagonals can be removed with
 <code>ini(diag())</code>.  To remove covariances of 'omega' item with <code>iivKa</code>,
-you can use <code>%&gt;% ini(diag(iivKa))</code>.  Or to remove covariances that
-contain either <code>iivKa</code> or <code>iivCl</code> you can use <code>%&gt;% ini(diag(iivKa, iivCl))</code>.  For finer control you can remove the covariance between
-two items (like <code>iivKa</code> and <code>iivCl</code>) by `%&gt;% ini(-cov(iivKa, iivCl))</p>
+you can use <code>|&gt; ini(diag(iivKa))</code>.  Or to remove covariances that
+contain either <code>iivKa</code> or <code>iivCl</code> you can use <code>|&gt; ini(diag(iivKa, iivCl))</code>.  For finer control you can remove the covariance between
+two items (like <code>iivKa</code> and <code>iivCl</code>) by `|&gt; ini(-cov(iivKa, iivCl))</p>
 <p><code>rxode2</code>/<code>nlmixr2</code> will attempt to determine some
 back-transformations for the user.  For example, <code>CL &lt;- exp(tvCL)</code> will
 detect that <code>tvCL</code> must be back-transformed by <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code> for easier
@@ -238,7 +238,7 @@ backTransform(exp())</code>.</p>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Use piping to update initial conditions</span></span></span>
-<span class="r-in"><span><span class="va">one.compartment</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu">ini</span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">one.compartment</span> <span class="op">|&gt;</span> <span class="fu">ini</span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
@@ -290,7 +290,7 @@ backTransform(exp())</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         cp ~ add(add.sd)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-in"><span><span class="va">one.compartment</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu">ini</span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu">label</span><span class="op">(</span><span class="st">"Absorption rate, Ka (1/hr)"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">one.compartment</span> <span class="op">|&gt;</span> <span class="fu">ini</span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu">label</span><span class="op">(</span><span class="st">"Absorption rate, Ka (1/hr)"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
@@ -343,7 +343,7 @@ backTransform(exp())</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="co"># Move the tka parameter to be just below the tv parameter (affects parameter</span></span></span>
 <span class="r-in"><span><span class="co"># summary table, only)</span></span></span>
-<span class="r-in"><span><span class="va">one.compartment</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu">ini</span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu">label</span><span class="op">(</span><span class="st">"Absorption rate, Ka (1/hr)"</span><span class="op">)</span>, append <span class="op">=</span> <span class="st">"tv"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">one.compartment</span> <span class="op">|&gt;</span> <span class="fu">ini</span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu">label</span><span class="op">(</span><span class="st">"Absorption rate, Ka (1/hr)"</span><span class="op">)</span>, append <span class="op">=</span> <span class="st">"tv"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
@@ -396,7 +396,7 @@ backTransform(exp())</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="co"># When programming with rxode2/nlmixr2, it may be easier to pass strings in</span></span></span>
 <span class="r-in"><span><span class="co"># to modify the ini</span></span></span>
-<span class="r-in"><span><span class="va">one.compartment</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu">ini</span><span class="op">(</span><span class="st">"tka &lt;- log(2)"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">one.compartment</span> <span class="op">|&gt;</span> <span class="fu">ini</span><span class="op">(</span><span class="st">"tka &lt;- log(2)"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>

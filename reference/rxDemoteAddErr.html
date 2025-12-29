@@ -20,8 +20,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
@@ -107,7 +107,7 @@
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"add"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"add"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"prop"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $transform</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] untransformed</span>
@@ -129,8 +129,8 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rxCombinedErrorList"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># This removes the internal additive error</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"add"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"prop"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span></span>
+<span class="r-in"><span><span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"add"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="rxErrTypeCombine.html">rxErrTypeCombine</a></span><span class="op">(</span><span class="st">"prop"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">rxDemoteAddErr</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $transform</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] untransformed</span>
