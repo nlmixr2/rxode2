@@ -78,6 +78,8 @@ bool rxParseSetSilentErr(int silent){
 //'
 //' @keywords internal
 //'
+//' @export
+//'
 //' @return a string indicating the serialization type:
 //'    "qs2", "qdata", "qs", "base", or "unknown"
 //[[Rcpp::export]]

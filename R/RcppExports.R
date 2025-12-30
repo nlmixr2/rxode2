@@ -371,6 +371,8 @@ rxParseSetSilentErr <- function(silent) {
 #'
 #' @keywords internal
 #'
+#' @export
+#'
 #' @return a string indicating the serialization type:
 #'    "qs2", "qdata", "qs", "base", or "unknown"
 rxGetSerialType_ <- function(raw) {
