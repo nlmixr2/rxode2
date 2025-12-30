@@ -16,6 +16,25 @@
   }
   FALSE
 }
+#' Get the Default Serialization Type
+#'
+#' @return string indicating the default serialization type
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+#'
+#' @examples
+#'
+#' rxGetDefaultSerialize()
+#'
+rxGetDefaultSerialize <- function() {
+  op <- rxode2.serialize.type
+  if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
+    stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' or 'xz'", call.=FALSE)
+  }
+  op
+}
 #' Serialize an R Object to a Raw Vector
 #'
 #' @param x object to serialize
@@ -37,11 +56,7 @@
 rxSerialize <- function(x, type=c("xz", "bzip2", "qs2", "qdata", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
   if (missing(type)) {
-    op <- rxode2.serialize.type
-    if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
-      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' or 'xz'", call.=FALSE)
-    }
-    type <- op
+    type <- rxGetDefaultSerialize()
   }
   if (!.validSerializationObject(x)) {
     .cls <- class(x)
@@ -144,11 +159,7 @@ rxDeserialize <- function(x) {
 #'
 rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
   if (missing(type)) {
-    op <- rxode2.serialize.type
-    if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
-      stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2', or 'xz'", call.=FALSE)
-    }
-    type <- op
+    type <- rxGetDefaultSerialize()
   }
   if (inherits(raw, "raw")) {
     .ret <- paste0("    SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, ",

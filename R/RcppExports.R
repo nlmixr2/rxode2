@@ -374,7 +374,7 @@ rxParseSetSilentErr <- function(silent) {
 #' @export
 #'
 #' @return a string indicating the serialization type:
-#'    "qs2", "qdata", "qs", "base", or "unknown"
+#'    "qs2", "qdata", "qs", "bzip2", "xz",  "base", or "unknown"
 rxGetSerialType_ <- function(raw) {
     .Call(`_rxode2_rxGetSerialType_`, raw)
 }

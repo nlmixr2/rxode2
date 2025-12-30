@@ -81,7 +81,7 @@ bool rxParseSetSilentErr(int silent){
 //' @export
 //'
 //' @return a string indicating the serialization type:
-//'    "qs2", "qdata", "qs", "base", or "unknown"
+//'    "qs2", "qdata", "qs", "bzip2", "xz",  "base", or "unknown"
 //[[Rcpp::export]]
 Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
   if (TYPEOF(raw) != RAWSXP) {

@@ -11,7 +11,7 @@ rxGetSerialType_(raw)
 }
 \value{
 a string indicating the serialization type:
-"qs2", "qdata", "qs", "base", or "unknown"
+"qs2", "qdata", "qs", "bzip2", "xz",  "base", or "unknown"
 }
 \description{
 Get the serialization type from raw vector

@@ -157,6 +157,7 @@ reference:
 - title: rxode2 utility functions
   contents:
   - rxDerived
+  - rxGetDefaultSerialize
   - rxInv
   - rxIsCurrent
   - rxLhs
