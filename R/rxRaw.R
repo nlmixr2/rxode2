@@ -117,7 +117,7 @@ rxDeserialize <- function(x) {
                      },
                      qs = {
                        rxReq("qs")
-                       qs::qdeserialize(x)
+                       .Call(`_rxode2_qsDes`, x)
                      },
                      bzip2 = {
                         unserialize(memDecompress(x, type="bzip2"))

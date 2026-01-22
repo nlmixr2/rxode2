@@ -15,6 +15,14 @@ static void loadQs() {
   }
 }
 
+extern "C" SEXP _rxode2_qsDes(SEXP const x) {
+BEGIN_RCPP
+  Rcpp::Environment qs_ = loadNamespaceQs("qs");
+  Rcpp::Function f = qs_.get("qdeserialize");
+  return f(x);
+END_RCPP
+}
+
 Rcpp::Function getRxFn(std::string name);
 
 extern "C" SEXP getRxode2ParseDf(void) {

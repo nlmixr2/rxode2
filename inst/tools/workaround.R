@@ -52,7 +52,8 @@ if (.Platform$OS.type == "windows") {
   .i <- "I"
 } else {
   .makevars <- file("src/Makevars", "wb")
-  if (any(grepl("Pop!_OS", utils::osVersion, fixed=TRUE))) {
+  if (any(grepl("Pop!_OS", utils::osVersion, fixed=TRUE)) ||
+          any(grepl("Ubuntu", utils::osVersion, fixed=TRUE))) {
     .i <- "isystem"
   } else {
     .i <- "I"
