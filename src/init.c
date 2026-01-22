@@ -241,6 +241,8 @@ SEXP _rxode2_convertId_(SEXP);
 SEXP _rxode2_rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S,
                   SEXP tmaxS, SEXP randomOrderS);
 
+SEXP _rxode2_qsDes(SEXP);
+
 extern int rxIsCurrentC(SEXP obj);
 
 rx_solve *getRxSolve_(void);
@@ -602,6 +604,7 @@ SEXP _rxode2_mlogit_j(SEXP x);
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
     {"_rxode2_mlogit_j", (DL_FUNC) &_rxode2_mlogit_j, 1},

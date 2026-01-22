@@ -452,7 +452,7 @@ rxUiDecompress <- function(ui) {
     rxReq("qs")
     warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN",
             call.=FALSE)
-    .ret <- qs::qdeserialize(ui)
+    .ret <- .Call(`_rxode2_qsDes`, ui)
   } else if (is.list(ui)) {
     .ret <- list2env(ui, parent=emptyenv())
   }

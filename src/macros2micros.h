@@ -23,7 +23,6 @@
 #undef FALSE
 #endif
 
-#include <Rinternals.h>
 #include <RcppEigen.h>
 
 #ifdef BEFORE_RCPP_TRUE
