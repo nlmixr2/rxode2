@@ -96,7 +96,7 @@ is used in the rxode2 model</p>
 
 
 <dl><dt id="arg-raw">raw<a class="anchor" aria-label="anchor" href="#arg-raw"></a></dt>
-<dd><p>raw vector or R object to convert</p></dd>
+<dd><p>vector or R object to convert</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -105,7 +105,7 @@ is used in the rxode2 model</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>character string of C code</p>
+    <p>raw vector for conversion to C in the codegen procedure</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
@@ -115,126 +115,62 @@ is used in the rxode2 model</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="fu">rxRawToC</span><span class="op">(</span><span class="va">mtcars</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>     SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, 1148));pro++;</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>     unsigned char r[]={</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, 0x00, 0x01, 0x69, 0x22, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xDE, 0x36, 0x02, 0x00, 0x21, 0x01, 0x1C, 0x00, 0x00, 0x00, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x10, 0xCF, 0x58, 0xCC, 0xE0, 0x0E, 0xDE, 0x04, 0x3F, 0x5D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x00, 0x2C, 0x02, 0x7C, 0x19, 0xF9, 0xAF, 0xF4, 0x1D, 0x47, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x1B, 0x6D, 0xDA, 0x57, 0x86, 0xCA, 0x28, 0x98, 0xA5, 0x72, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x2D, 0xB5, 0x8A, 0x1B, 0xCC, 0xF1, 0x0B, 0x92, 0x01, 0x0D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x46, 0xF0, 0x3A, 0x43, 0x43, 0xC7, 0x73, 0xAF, 0x7D, 0x11, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x82, 0x8A, 0x46, 0xCF, 0x56, 0x2C, 0x3C, 0x67, 0xEA, 0x82, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xEC, 0xFA, 0x8A, 0x28, 0xA1, 0x79, 0x6A, 0xA4, 0xFB, 0x97, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x47, 0x77, 0xD3, 0x3B, 0x9C, 0x72, 0x76, 0x94, 0x62, 0xEE, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x61, 0x91, 0x8E, 0x35, 0x54, 0xB9, 0x08, 0x3A, 0xC9, 0xCF, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xE9, 0x6B, 0xDD, 0x3F, 0x9E, 0x00, 0x1E, 0xD1, 0x06, 0xB7, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xCD, 0x3F, 0x39, 0x23, 0x51, 0x77, 0x9E, 0x57, 0x40, 0x84, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x5F, 0x7D, 0x60, 0x72, 0x59, 0xEC, 0x58, 0x0A, 0xD2, 0xBE, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x90, 0x3E, 0x9A, 0x25, 0xCB, 0xF6, 0x4B, 0x50, 0x8F, 0xAF, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x5A, 0x49, 0x9C, 0xA4, 0x98, 0x34, 0x7C, 0x00, 0x74, 0x8C, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x1A, 0xBF, 0x73, 0x30, 0x98, 0x3B, 0xA1, 0x44, 0xF6, 0xD7, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x86, 0x06, 0xBA, 0xF1, 0x42, 0x10, 0xB7, 0xA4, 0x0C, 0xBA, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x7A, 0xFE, 0xC6, 0x0A, 0x18, 0xA0, 0xED, 0x4D, 0x56, 0x0A, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xAF, 0x1D, 0xAC, 0x9B, 0x49, 0x19, 0x87, 0x36, 0x0C, 0xA7, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x6C, 0x0A, 0xF3, 0xA1, 0x62, 0xDA, 0x66, 0xCD, 0xC3, 0xD7, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x0A, 0x6F, 0x66, 0xBE, 0xA1, 0xDC, 0x52, 0x3D, 0xC2, 0xEE, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x09, 0x38, 0x59, 0xAA, 0xEA, 0xE8, 0x27, 0x3A, 0x5A, 0xFD, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x5B, 0x12, 0xA3, 0x3B, 0x86, 0x76, 0x8E, 0x78, 0x31, 0x4E, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xA5, 0x13, 0x7D, 0xEA, 0x62, 0x56, 0x2F, 0xC9, 0x25, 0xAB, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x06, 0x78, 0x0A, 0x4E, 0x21, 0xFA, 0xFC, 0xAA, 0x96, 0xC6, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x2A, 0x0D, 0x69, 0x33, 0x29, 0x0E, 0x7D, 0xAF, 0xF9, 0x30, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xC4, 0xDC, 0x49, 0x6E, 0xA0, 0x3C, 0x28, 0xBA, 0x34, 0xE2, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xCE, 0x3B, 0x8C, 0xA8, 0x21, 0x8C, 0x9B, 0xE6, 0x5F, 0x74, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x7F, 0x53, 0xB6, 0x19, 0x07, 0x75, 0x76, 0x79, 0xF3, 0x89, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x00, 0xCE, 0xDB, 0x58, 0xF4, 0x3C, 0xED, 0x4F, 0x20, 0xCD, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x70, 0xF9, 0x42, 0x97, 0x2C, 0xE8, 0x8E, 0xE0, 0x91, 0xC7, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x9D, 0x26, 0x81, 0x89, 0x0E, 0x8F, 0x8C, 0x46, 0x49, 0x26, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x9A, 0xCD, 0x5C, 0xDA, 0x1D, 0x6A, 0x0E, 0x52, 0x65, 0x76, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xD3, 0xA2, 0xEB, 0xCA, 0xD2, 0xA9, 0x02, 0x25, 0xB2, 0x30, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x28, 0x99, 0x9F, 0x36, 0x64, 0x36, 0xC5, 0x7B, 0x7B, 0xD8, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x6F, 0x2A, 0x0A, 0xED, 0x28, 0xAE, 0x16, 0x56, 0x87, 0xB0, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x9F, 0x25, 0xD8, 0x4B, 0xCD, 0x26, 0x0C, 0x19, 0x88, 0x3F, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x63, 0x27, 0xF1, 0x19, 0xBA, 0x0C, 0x15, 0x3A, 0x79, 0x64, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xA0, 0x3F, 0x09, 0xB1, 0x64, 0x9A, 0x27, 0x10, 0x09, 0x49, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x0C, 0x7B, 0x47, 0xE4, 0x47, 0xC6, 0xC2, 0xB4, 0x28, 0xBC, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFE, 0x68, 0xC2, 0x1D, 0x33, 0x56, 0xBD, 0xF9, 0xAF, 0xB9, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xC2, 0x97, 0x8B, 0x5F, 0xEA, 0x05, 0x1E, 0x89, 0xD2, 0xE6, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xA0, 0x24, 0xD2, 0x1D, 0x27, 0xD8, 0x3D, 0x32, 0x09, 0xD8, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFD, 0xCB, 0xB4, 0x22, 0xA2, 0x0C, 0x92, 0x7D, 0x75, 0xBB, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x7E, 0x5A, 0xE1, 0xCA, 0x68, 0x94, 0x1A, 0xD8, 0xE7, 0xC9, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x80, 0x3C, 0x63, 0x87, 0x79, 0x4B, 0x5E, 0x6D, 0xCB, 0xFB, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x7B, 0x33, 0xA4, 0x6C, 0x01, 0xCA, 0x6B, 0x9C, 0x48, 0x69, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xA6, 0x33, 0x82, 0x6E, 0x82, 0x38, 0x1E, 0xC1, 0xFB, 0x6D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x65, 0x30, 0x67, 0xE0, 0x9F, 0xDF, 0x49, 0x59, 0xD0, 0xE2, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xEC, 0xFA, 0x8D, 0x56, 0x86, 0x22, 0xEF, 0xEE, 0xFF, 0xFF, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xF8, 0x06, 0x6B, 0x9B, 0x77, 0xFC, 0x8D, 0xC9, 0x7B, 0xF9, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xC9, 0xCF, 0x81, 0x47, 0x56, 0xD7, 0xD6, 0x1A, 0x5D, 0x17, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x70, 0x5E, 0x80, 0x07, 0xA3, 0x50, 0xDC, 0xA6, 0xF1, 0xAA, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xC6, 0x7D, 0xCF, 0xEC, 0xD7, 0xF6, 0xF9, 0x90, 0x98, 0x09, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x3D, 0x67, 0xD7, 0xF2, 0x90, 0x26, 0xD0, 0xF8, 0xFF, 0x0B, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x13, 0xF9, 0x8D, 0x27, 0x1E, 0x3A, 0xA4, 0x52, 0x57, 0x44, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x99, 0xBE, 0x25, 0x8F, 0x26, 0x3B, 0x25, 0x5C, 0xDF, 0x3E, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x13, 0x3A, 0x58, 0x51, 0x90, 0x0A, 0x81, 0x82, 0xF4, 0x0D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x54, 0x16, 0xF0, 0xFE, 0x57, 0x7D, 0x8A, 0x13, 0xF4, 0xFC, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x7D, 0xA5, 0x57, 0xD8, 0x35, 0xBA, 0x13, 0xFE, 0x57, 0x5C, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xD1, 0xFE, 0x3F, 0x80, 0x14, 0xAC, 0x9B, 0x63, 0xCA, 0xB8, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x51, 0xD9, 0x31, 0x2F, 0x7A, 0x9E, 0x5F, 0x33, 0xD2, 0x68, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x77, 0xEC, 0x61, 0xA6, 0x73, 0xF0, 0x21, 0x6B, 0x98, 0x67, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xBA, 0xCF, 0x7C, 0x2B, 0x7B, 0x20, 0x34, 0x5A, 0xFD, 0xB8, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xCD, 0xF3, 0x03, 0x3C, 0xEA, 0x3E, 0x51, 0xAD, 0x23, 0x15, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x3E, 0x21, 0xB7, 0x79, 0x55, 0x51, 0xFB, 0x25, 0xD6, 0xA8, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x50, 0x6B, 0xAD, 0xB8, 0x10, 0x40, 0x21, 0x29, 0x82, 0x57, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFF, 0x46, 0x3D, 0xCC, 0x22, 0x9A, 0x93, 0x3A, 0xB4, 0x1D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFD, 0xF7, 0xAC, 0xF7, 0x8D, 0xD5, 0xDA, 0x8C, 0x2E, 0x4F, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x73, 0x2C, 0x02, 0xE3, 0x1A, 0x3B, 0xF2, 0xA9, 0xC1, 0x39, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xB3, 0xA4, 0x1D, 0x67, 0xC1, 0xBC, 0x9C, 0xDB, 0x58, 0x8F, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x16, 0x92, 0xE0, 0x6F, 0x03, 0x91, 0xD7, 0xB3, 0x4F, 0x27, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x3B, 0x2F, 0xEF, 0xF8, 0xE3, 0x14, 0x9E, 0xAC, 0xAE, 0x95, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x3F, 0x8F, 0xE8, 0xDF, 0x36, 0x65, 0x63, 0xC6, 0xE8, 0xA4, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x68, 0xEB, 0xD0, 0x37, 0x0E, 0xA8, 0x77, 0x04, 0xC8, 0x8D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xD8, 0x9E, 0xF0, 0x2E, 0xDF, 0x3B, 0x26, 0x95, 0x26, 0x02, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x6D, 0xFD, 0x4B, 0x6D, 0x70, 0x8C, 0x9E, 0xF8, 0xB0, 0x57, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x29, 0xFA, 0x0F, 0xC9, 0xC0, 0xDD, 0xB8, 0x86, 0x11, 0x0F, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFA, 0x3B, 0xF0, 0xB7, 0x17, 0x31, 0x11, 0xE5, 0x39, 0x9A, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x12, 0xF5, 0x5C, 0xA9, 0x1E, 0x36, 0x14, 0x17, 0x02, 0x52, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x51, 0x39, 0x23, 0xDF, 0x0E, 0xC3, 0x8C, 0x83, 0x78, 0xD4, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x04, 0xF2, 0x96, 0xF6, 0xD9, 0xCF, 0x47, 0x7A, 0x6C, 0x8F, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xD1, 0xF1, 0x9C, 0x30, 0x34, 0xBE, 0xE8, 0xF1, 0xAD, 0x01, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xA1, 0x65, 0x19, 0x8B, 0x1C, 0x27, 0x97, 0x40, 0x4F, 0x6D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x6C, 0x10, 0xA6, 0xD6, 0xF6, 0xBF, 0xF3, 0xBA, 0x3E, 0x26, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x5D, 0x47, 0x80, 0x0C, 0xA1, 0x51, 0x76, 0xD2, 0xC3, 0x7A, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x2A, 0x66, 0x06, 0x40, 0x8C, 0xAF, 0x01, 0x88, 0xEE, 0xF5, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xDC, 0xB0, 0xA4, 0x4B, 0xF6, 0x6D, 0xA2, 0x8F, 0xE4, 0x06, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x13, 0xC9, 0x4B, 0x8C, 0x55, 0x0B, 0xE0, 0xAD, 0x84, 0x16, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xF4, 0xDC, 0x3D, 0xA3, 0x1D, 0x99, 0x13, 0xB4, 0x51, 0xC2, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xB8, 0x2B, 0x25, 0x24, 0x55, 0x83, 0xC1, 0xB7, 0x60, 0x8B, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x79, 0xA0, 0x64, 0x6C, 0xC0, 0x65, 0xEF, 0x50, 0x53, 0xD2, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xD0, 0x4C, 0x65, 0x0D, 0x29, 0x1B, 0xD2, 0xEF, 0xD8, 0xB6, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x84, 0xAA, 0x6F, 0xAE, 0xB7, 0x3A, 0xFB, 0x83, 0xA2, 0x77, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xAC, 0xFF, 0x41, 0x31, 0xA2, 0x5F, 0xBB, 0x42, 0x14, 0x63, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x93, 0xF0, 0x45, 0x50, 0xF3, 0xC1, 0x3C, 0xDE, 0xCD, 0x70, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xF3, 0x9B, 0x73, 0x01, 0x09, 0x8C, 0x1F, 0x67, 0xF2, 0x88, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x88, 0xE4, 0x7E, 0xAD, 0xB7, 0x32, 0x9D, 0x32, 0xB5, 0xB1, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x66, 0xA6, 0x47, 0xEE, 0x3C, 0x1C, 0x78, 0x4D, 0x2E, 0x6F, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xFB, 0xD4, 0xDA, 0x20, 0x2D, 0x30, 0x65, 0x3C, 0xBD, 0xE8, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xA7, 0x24, 0xFD, 0x13, 0x91, 0xCC, 0x4A, 0xD3, 0xDF, 0x24, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x7E, 0x51, 0x3D, 0xDC, 0x54, 0x3A, 0xF9, 0xBA, 0xDB, 0xD4, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x1B, 0x7D, 0x3F, 0x58, 0x1C, 0x4C, 0x8D, 0x94, 0xE6, 0xAA, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x76, 0x67, 0xC8, 0xA9, 0x90, 0x8B, 0xE0, 0xED, 0x9B, 0x32, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x8C, 0xE3, 0xC0, 0x77, 0x6C, 0x68, 0x0B, 0x9D, 0xA0, 0x2C, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x63, 0x35, 0xFC, 0xB2, 0x56, 0x16, 0x3E, 0xAD, 0x62, 0x03, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xF8, 0xAB, 0x95, 0x6A, 0x52, 0x5E, 0x4F, 0x6F, 0x44, 0xF1, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x11, 0xB8, 0x1A, 0x1F, 0x56, 0xE1, 0x40, 0x49, 0x01, 0xB1, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x2E, 0x5A, 0x79, 0xBA, 0x8B, 0xC2, 0x4D, 0x1A, 0xE3, 0x74, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x2E, 0xD5, 0xAA, 0x2E, 0xC0, 0x13, 0x94, 0xFB, 0x6A, 0x82, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0xB2, 0xB1, 0x75, 0x03, 0xAA, 0xDE, 0xC0, 0x00, 0x00, 0x00, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x95, 0x5D, 0x00, 0x11, 0x00, 0x01, 0xD7, 0x08, 0xDF, 0x1D, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x00, 0x00, 0x67, 0x2A, 0xD7, 0x96, 0x3E, 0x30, 0x0D, 0x8B, </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x59, 0x5A</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>                 };</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>     memcpy(RAW(rw), r, sizeof(r));</span>
+<span class="r-in"><span><span class="fu">rxRawToC</span><span class="op">(</span><span class="va">mtcars</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    [1] 42 5a 68 39 31 41 59 26 53 59 81 7f 5f 7e 00 04 b9 ff ff ff ff fe 71 d4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [25] 77 ff ff ff f6 ff dd 3f ff ff fe 42 00 a0 34 4c 05 18 40 59 06 60 81 61</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [49] 0e 4b 73 50 04 76 1a 0b 6b 46 da 55 49 90 c8 91 a2 09 a8 f2 04 f5 3c 13</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [73] 53 26 d3 28 34 d3 4c 86 80 0d 3d 46 9a 0c 9e a1 93 c9 a3 51 91 ea 3d 1a</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [97] 9a 00 00 00 7a 80 d1 a0 d3 44 22 61 04 c8 6a 69 a6 4d a8 d1 a6 9a 03 40</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [121] 0d 34 03 43 40 00 68 00 03 4d 01 ea 00 06 99 00 1a 00 91 24 44 d1 34 6d</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [145] 20 03 21 a1 a7 a1 1a 64 00 d0 01 93 40 34 00 32 00 3d 41 a0 0d 00 0d 00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [169] 1a 32 68 83 09 82 32 60 26 01 30 4c 10 18 00 04 c0 04 c0 08 d3 08 62 30</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [193] 11 a3 08 c2 68 d0 0c 99 32 08 30 98 23 26 02 60 13 04 c1 01 80 00 4c 00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [217] 4c 00 8d 30 86 23 01 1a 30 8c 26 8d 00 c9 93 20 fc 81 67 d5 f1 64 d7 af</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [241] dd 99 c3 28 87 39 cd 06 0a 51 4c 1c e3 61 81 05 9d 00 95 ca 02 d0 36 37</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [265] 3d 84 a9 b6 db 60 99 33 02 1b 26 21 b2 1d 9b 2c a6 61 16 73 41 30 e0 81</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [289] a8 84 37 17 05 bd cd de a5 dd eb f7 b8 77 fc e3 93 57 38 0b 31 4d bd 04</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [313] 2b 16 8b 35 34 c9 00 8b 40 d2 42 08 18 d0 c4 d2 1a 69 5c 4d 0a 4c 58 95</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [337] 68 ee 6a 4e ab d3 15 1b 8a 4c 44 06 13 04 84 6d da 45 fe 0c 21 24 95 73</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [361] 05 4a ae 7d 8e bc 4b 15 db db 6e 10 47 32 b1 e5 c9 50 de e4 37 f2 ed f4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [385] 9b 12 e7 30 50 b1 3f a0 f8 89 74 af db c8 89 6f 1c 63 21 41 78 92 43 42</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [409] 4b 13 14 44 22 da af 16 51 0d b1 c2 4d 8a 18 36 10 d0 9b 21 b6 89 4e 04</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [433] e2 a0 a7 db d0 42 54 5a 40 c1 80 94 86 9a 71 10 36 a2 08 48 a3 63 00 a6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [457] 19 26 00 a7 61 d6 68 95 6d 64 91 80 35 30 55 70 c1 0d 34 34 92 1a 60 db</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [481] 0e cf d1 22 49 29 09 a6 a7 70 0c 1d 27 46 08 51 12 24 b6 50 81 10 0d b4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [505] 31 ba 54 a2 42 f6 a2 f4 20 2a 48 7e 4b be 52 6f 10 88 48 88 00 db c7 9f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [529] 00 92 f0 be 9b 30 0b d6 29 bf 98 d0 45 95 b0 e2 1a e7 02 21 42 c4 2c 11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [553] 2c 46 69 a7 19 01 37 b9 ad 3b 20 f4 94 02 10 4f 6c 8b d4 bc 50 27 f1 c2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [577] 2d 70 6e 28 3a cd da a0 05 4c 2d 65 d3 99 05 bb 82 97 82 0a 75 b3 a5 5e</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [601] 01 a7 60 07 bd 3f 1b 42 30 93 8e 27 8d 25 28 29 95 5a 32 96 47 24 c9 98</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [625] a9 39 47 47 10 10 73 39 46 d5 36 e2 5c b5 20 38 2e ab 71 8c 27 54 5f a4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [649] 14 c4 4b d4 25 45 35 6a 55 55 02 ad 1c 6f 95 9f 0e ce 6d 08 00 db 26 fb</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [673] 66 d9 9f 65 85 5a 2c de f8 16 08 97 24 05 0e fa 54 cb c3 c6 f4 44 a6 3e</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [697] d9 f9 40 19 9d 89 4c 98 59 84 d9 2a e1 69 4c 4a c2 d4 a0 71 01 4a 29 40</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [721] 14 a0 6a 71 f9 e7 a0 a2 08 39 38 ea 24 21 10 56 36 d8 aa ca 54 95 31 b3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [745] dd 74 6b 57 96 3b b7 b3 54 aa b3 3c 4c d6 86 71 7c 61 5b f2 b0 af 4a 29</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [769] d2 2b 26 85 42 59 49 04 c3 64 87 0c 6d 36 4e c1 44 4f 24 29 32 61 80 a8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [793] 0a c1 cc 6f 4a 97 9b 52 73 ba 88 03 58 b5 11 77 3e 86 7a 70 6b f0 5c 18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [817] 93 87 29 04 24 06 2b 91 1b 18 cc 4e 1c d8 42 95 9f 37 82 99 a8 a4 d5 14</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [841] a7 13 d4 89 92 f1 06 26 4d 28 07 00 04 42 16 e8 aa 3d 97 30 69 ad 9a 9b</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [865] 07 83 e8 35 d6 80 62 a0 38 80 eb dc 73 0b 08 0e 20 28 47 1e ad 5c ec dc</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [889] d0 ea 85 d5 4a af 54 a2 c7 2b 72 77 6d 83 08 3d cc d0 cf 76 be 1c 46 3c</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [913] 36 2b 5f 4d a2 e1 c4 10 70 d4 2b ee 12 e0 d1 d1 bd a7 b2 a0 22 ea 97 65</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [937] 8c f3 a4 90 44 2d 32 eb e3 89 68 da bc ce fc db 17 d5 44 ba eb 4a 23 16</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [961] b3 a7 65 00 43 fb 23 f3 79 9c b9 dd f1 ec c3 e1 b9 bf d0 75 b0 cc 59 17</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [985] d2 63 5a c0 9d 3d 64 4c 44 95 20 4c 84 ca 2d 9f bc 79 af c0 8a 2d fc 56</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1009] 81 a6 14 a8 2d 87 e7 6f 6f d9 44 6a 83 2a fd ff 3a 11 60 5c bd 8d 41 2a</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1033] c8 a5 c2 51 71 5e 27 5b 2c 5b e5 a9 83 77 65 cf 8d db 43 a1 b3 63 89 72</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1057] a0 64 89 38 37 11 b7 03 21 94 c7 23 89 5d 84 b8 50 4f 93 28 e9 c2 5c 1a</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1081] 77 cd 02 89 79 02 cd 76 e0 c4 5e e1 3d 85 5a 22 b3 85 88 a6 c6 92 e2 75</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1105] 7e 8e 46 b0 eb d6 94 1a 20 ca e9 cb 10 5c f8 df 66 4a 90 c1 80 9e 81 bf</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1129] d2 b8 42 36 b8 76 89 e2 95 01 d3 41 8a 42 40 65 26 2e 05 44 d2 12 12 85</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1153] e1 65 af e1 33 6d 86 4a 52 b4 e9 27 f4 0e 5d 22 91 d8 88 41 d6 f3 92 0f</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1177] 6a 06 7c 3e 2e af af eb 29 a7 09 08 7f 6c 2f e3 88 c1 08 18 b6 88 bb d9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1201] 5b 30 1c b9 d4 21 fd 09 7b 1e b5 3a ce eb 20 95 d5 f5 87 2f c3 bc 6f 1b</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1225] 20 55 cd 5e 34 8c 6a 3f 10 05 7e 5b b3 0f 1f f8 ab 71 8a 98 a6 99 5a 8d</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1249] 8c 62 da 71 e7 c7 3f d7 26 8a 48 2d 2f 4c 8b e8 ce f5 51 80 3c 96 14 6a</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1273] 16 36 d6 42 32 46 48 b1 37 22 1d 10 40 14 72 86 b8 3a 94 b6 ac 24 b4 48</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1297] 49 69 ff 17 72 45 38 50 90 81 7f 5f 7e</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
