@@ -260,7 +260,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .exact <- x[[2]]
   .predDf <- get("predDf", .x)
   .sigmaNames <- vapply(seq_along(.predDf$var), function(i) {
-    if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
+    if (.in(.predDf$distribution[i], c("dnorm",  "norm"))) {
       paste0("rxerr.", .predDf$var[i])
     } else {
       ""
@@ -644,7 +644,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .k <- .k + 1
   }
   for (.i in seq_along(.expr)) {
-    if (.i %in% .predDf$line) {
+    if (.in(.i, .predDf$line)) {
       .curErr <- errLines[[.curErrLine]]
       if (.if) {
         .ret[[.k]] <- as.call(list(quote(`if`),
