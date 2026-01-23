@@ -328,7 +328,7 @@ assertCompartmentNew <- function(ui, x) {
   )
 
   .ui <-rxode2::assertRxUi(ui)
-  if (.vn %in% c(rxode2::rxModelVars(.ui)$state)) {
+  if (!is.na(match(.vn, rxode2::rxModelVars(.ui)$state))) {
     stop("compartment '", .vn, "' already exists in the model",
          call.=FALSE)
   }
@@ -364,7 +364,7 @@ assertCompartmentExists <- function(ui, x) {
       .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
     )
 
-    if (.vn %in% .state) return(invisible(.vn))
+    if (!is.na(match(.vn, .state))) return(invisible(.vn))
   }
   stop("'", paste(.all, collapse="', '"), "' compartment is not in the model",
        call.=FALSE)
@@ -390,7 +390,7 @@ testCompartmentExists <- function(ui, x) {
   )
 
   .ui <-rxode2::assertRxUi(ui)
-  (.vn %in% c(rxode2::rxModelVars(.ui)$state))
+  (!is.na(match(.vn, rxode2::rxModelVars(.ui)$state)))
 }
 #' @describeIn assertCompartmentName Verify that a value is a valid
 #'   nlmixr2 variable name
