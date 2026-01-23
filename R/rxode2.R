@@ -446,7 +446,7 @@ rxode2 <- # nolint
         .p <- .ret["params"]
         .ini <- names(.mv$.ini)
         .init <- rxode2::rxInit(rxDll)
-        .ret$params <- .ret$params[!(.ret$params %in% names(.init))]
+        .ret$params <- .ret$params[!(.in(.ret$params, names(.init)))]
         class(.ret) <- "list"
         return(.ret)
       })
@@ -1074,7 +1074,7 @@ rxMd5 <- function(model, # Model File
 
 .rxShouldUnload <- function(parseMd5) {
   if (is.null(.rxLastModels)) return(TRUE)
-  return(!(parseMd5 %in% .rxLastModels))
+  return(!(.in(parseMd5, .rxLastModels)))
 }
 
 .rxTimeId <- function(parseMd5) {
