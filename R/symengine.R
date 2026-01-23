@@ -937,7 +937,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.ret)
   } else {
     .ret <- as.character(x)
-    if (.ret %in% .rxToSEDualVarFunction) {
+    if (.in(.ret, .rxToSEDualVarFunction)) {
       .ret <- paste0(.ret, "()")
       .ret <- rxToSE(.ret)
       return(.ret)
@@ -1877,7 +1877,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       )
     }
     .fun0 <- as.character(x[[1]])
-    if (.fun0 %in% c("dur", "rate", "lag", "alag", "f", "F")) {
+    if (.in(.fun0, c("dur", "rate", "lag", "alag", "f", "F"))) {
       .ret0 <- c(list(as.character(x[[1]])),
                  lapply(x[-1], as.character, envir = envir))
     } else {
@@ -2059,8 +2059,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
-        if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
-                        "midpoint", "linear")) return(NULL)
+        if (.in(.fun, c("param", "dvid", "cmt", "locf", "nocb",
+                        "midpoint", "linear"))) return(NULL)
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
           .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
@@ -3957,7 +3957,7 @@ rxSupportedFuns <- function() {
                     rxode2::rxReservedKeywords[, 1],
                     strsplit(paste(rxode2::rxReservedKeywords[, 3],collapse=","),"[,]+")[[1]])
   }
-  if (x %in% envir$funs) {
+  if (.in(x, envir$funs)) {
     return(paste0("_qf_", x))
   }
   x
@@ -4032,13 +4032,13 @@ rxSupportedFuns <- function() {
   ##   stop("formulas or other expressions with '~` are not supported in translation",
   ##        call.=FALSE)
   ## }
-  if (as.character(x[[2]]) %in% envir$args) {
+  if (.in(as.character(x[[2]]), envir$args)) {
     stop("cannot assign argument '", as.character(x[[2]]),
          "' in functions converted to C",
          call.=FALSE)
   }
   .lhs <- .rxFun2cNameOrAtomic(x[[2]], envir=envir)
-  if (!(.lhs %in% envir$args)) {
+  if (!(.in(.lhs,envir$args))) {
     envir$vars <- c(envir$vars, .lhs)
   }
   envir$didAssign <- TRUE
