@@ -641,7 +641,21 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     sPrint(&buf, "%sIndF", curPrefix);
     SET_STRING_ELT(trans, 21, Rf_mkChar(buf.s)); // IndF
   }
-  sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
+  //sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
+  SEXP rawMV = PROTECT(_rxode2_rxQs(mvLast)); pro++;
+  sPrint(&_mv,"   SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, %d));pro++;\n", Rf_length(rawMV));
+  unsigned char *raw = RAW(rawMV);
+  sAppendN(&_mv, "    unsigned char r[]={", 23);
+  for (int i = 0; i < Rf_length(rawMV); i++) {
+    if (i > 0){
+      sAppendN(&_mv, ", ", 2);
+    } if (i % 10 == 0) {
+      sAppendN(&_mv, "\n                ", 17);
+    }
+    sAppend(&_mv, "0x%02x", raw[i]);
+  }
+  sAppendN(&_mv, "\n                };\n", 20);
+  sAppendN(&_mv, "    memcpy(RAW(rw), r, sizeof(r));\n", 35);
   sFree(&buf);
   //SET_STRING_ELT(tran, 0, Rf_mkChar());
   sFree(&sbOut);
