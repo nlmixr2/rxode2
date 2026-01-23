@@ -12,7 +12,7 @@
   }
   if (.rxTransformHasALambdaParameter(pred1$transform)) {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("boxCox", "yeoJohnson") & env$iniDf$condition == .cnd)
+    .w <- which(.in(env$iniDf$err, c("boxCox", "yeoJohnson")) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       return(str2lang(env$iniDf$name[.w]))
     } else {
@@ -116,7 +116,7 @@
     .p1 <- str2lang(pred1$a)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("add", "lnorm", "logitNorm", "probitNorm") & env$iniDf$condition == .cnd)
+    .w <- which(.in(env$iniDf$err, c("add", "lnorm", "logitNorm", "probitNorm")) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -167,7 +167,7 @@
     .p1 <- str2lang(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("prop", "propF", "propT") & env$iniDf$condition == .cnd)
+    .w <- which(.in(env$iniDf$err, c("prop", "propF", "propT")) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -194,7 +194,8 @@
   if (!is.na(pred1$b)) {
     .p1 <- str2lang(pred1$b)
   } else {
-    .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
+    .w <- which(.in(env$iniDf$err, c("pow", "powF", "powT")) &
+                  env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -204,7 +205,8 @@
   if (!is.na(pred1$c)) {
     .p2 <- str2lang(pred1$c)
   } else {
-    .w <- which(env$iniDf$err %in% c("pow2", "powF2", "powT2") & env$iniDf$condition == .cnd)
+    .w <- which(.in(env$iniDf$err, c("pow2", "powF2", "powT2")) &
+                  env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -305,7 +307,8 @@
     .p3 <- str2lang(pred1$c)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("pow2", "powF2", "powT2") & env$iniDf$condition == .cnd)
+    .w <- which(.in(env$iniDf$err,
+                    c("pow2", "powF2", "powT2")) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p3 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -381,7 +384,7 @@
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
   type <- pred1$distribution
-  if (type %in% c("norm", "t", "cauchy", "dnorm")) {
+  if (.in(type, c("norm", "t", "cauchy", "dnorm"))) {
     .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
     .yj <- as.double(pred1$transform) - 1
     .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10*(as.integer(pred1$distribution)-1)))
