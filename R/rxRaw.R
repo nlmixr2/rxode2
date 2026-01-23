@@ -146,8 +146,7 @@ rxDeserialize <- function(x) {
 #' This function converts a raw vector or R object to C code that
 #' is used in the rxode2 model
 #'
-#' @return character string of C code
-#' @param retRaw boolean to return the raw vector instead of C code
+#' @return raw vector for conversion to C in the codegen procedure
 #'
 #' @keywords internal
 #' @inherit rxSerialize
@@ -156,10 +155,7 @@ rxDeserialize <- function(x) {
 #' @author Matthew L. Fidler
 #' @examples
 #'
-#' message(rxRawToC(mtcars))
-#'
-#'
-#' rxRawToC(mtcars, returnRaw=TRUE)
+#' rxRawToC(mtcars)
 #'
 rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
   if (missing(type)) {
