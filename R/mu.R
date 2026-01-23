@@ -998,7 +998,7 @@
   if (is.null(ui$predDf)) {
     .errEsts <- NULL
   } else {
-    .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
+    .errEsts <- .iniDf[!is.na(match(.iniDf$condition, ui$predDf$cond)), "name"]
   }
   .estName <- .iniDf$name[!is.na(.iniDf$ntheta) |
                             (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
@@ -1051,7 +1051,7 @@
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
     }
-    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
+    if (!is.na(match(.predDf$distribution[i], c("norm", "t"))) && is.na(match(.predDf$var[i], c(.mv$lhs, .mv$state, "rxLinCmt")))) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not defined in the model"))
     }
