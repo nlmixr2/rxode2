@@ -657,7 +657,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errHandleSingleDistributionArgument <- function(argumentNumber, funName, expression, env) {
   .cur <- expression[[argumentNumber + 1]]
-  .isLogitOrProbit <- (funName %in% c("logitNorm", "probitNorm"))
+  .isLogitOrProbit <- .in(funName, c("logitNorm", "probitNorm"))
   if (is.name(.cur)) {
     .curName <- as.character(.cur)
     .w <- which(env$df$name == .curName)
@@ -683,7 +683,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         }
       }
       if (env$estNotAllowed) {
-        if (!(funName %in% .allowEstimatedParameters)) {
+        if (!.in(funName, .allowEstimatedParameters)) {
           env$err <- c(env$err,
                        paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
         }

@@ -671,9 +671,9 @@
     }
     .x2 <- .muRefNextAdditiveExpression(.x2)
   }
-  .wt <- which(!is.na(match(.names, env$info$theta)))
-  .we <- which(!is.na(match(.names, env$info$eta)))
-  .wl <- if (!is.null(env$info$level)) which(!is.na(match(.names, env$info$level))) else integer(0)
+  .wt <- which(.in(.names, env$info$theta))
+  .we <- which(.in(.names, env$info$eta))
+  .wl <- if (!is.null(env$info$level)) which(.in(.names, env$info$level)) else integer(0)
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",

@@ -2596,7 +2596,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .isnan <- try(is.nan(x[[2]]), silent=TRUE)
         if (inherits(.isnan, "try-error")) .isnan <- FALSE
         if (.isnan) {
-          if (as.character(x[[1]]) %in% .rxToSEDualVarFunction) {
+          if (.in(as.character(x[[1]]), .rxToSEDualVarFunction)) {
             return(paste0(as.character(x[[1]]), "()"))
           }
         }

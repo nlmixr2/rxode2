@@ -78,7 +78,7 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
       "sim.id", "id", "evid", "cmt", "ss", "amt", "rate",
       "dur", "ii", "time", .mv$lhs, .mv$state
     )
-    .n2 <- names(object)[is.na(match(names(object), .vars))]
+    .n2 <- names(object)[!.in(names(object), .vars)]
     if (length(.n2) > 0) {
       cat("Other Variables:\n")
       for (.l in .n2) {
@@ -90,11 +90,11 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
         str(object[[.l]], nchar.max = nchar.max - .max - nchar(.l) - 4)
       }
     }
-    .dn <- .dn[is.na(match(.dn, c(
+    .dn <- .dn[!.in(.dn, c(
       names(object), paste0(.mv$state, "0"),
       "t", "params", "inits",
       .mv$params
-    )))]
+    ))]
     .fns <- sapply(.dn, function(x) {
       inherits(`$.rxSolve`(object, x), "function")
     })
@@ -110,7 +110,7 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
         str(object[[.l]], nchar.max = nchar.max - .max - nchar(.l) - 4)
       }
     }
-    .dn <- .dn[is.na(match(.dn, .fns))]
+    .dn <- .dn[!.in(.dn, .fns)]
     if (length(.dn) > 0) {
       cat("Other:\n")
       for (.l in .dn) {

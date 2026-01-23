@@ -178,7 +178,7 @@
            call.=FALSE)
     }
   }
-  if (.lhs %in% .covs) {
+  if (.in(.lhs, .covs)) {
     .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
     # assign is called again to handle the fixing of the variable
   }

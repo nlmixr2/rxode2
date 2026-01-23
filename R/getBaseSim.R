@@ -73,7 +73,7 @@ getBaseIniSimModel.default <- function(obj) {
     .sigma <- NULL
   } else {
     .sigma <- lapply(seq_along(.predDf$var), function(i) {
-      if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
+      if (.in(.predDf$distribution[i], c("dnorm",  "norm"))) {
         str2lang(paste0("rxerr.", .predDf$var[i], "<- 1"))
       } else {
         NULL

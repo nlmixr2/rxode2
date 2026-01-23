@@ -184,7 +184,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   .logx <- NULL
   .logy <- NULL
   if (useLogX) {
-    stopifnot(".dat requires 'time' column"=!is.na(match("time", names(.dat))))
+    stopifnot(".dat requires 'time' column"=.in("time", names(.dat)))
     .dat <- .dat[.dat$time > 0, ]
     if (useXgxr) {
       .logx <- xgxr::xgx_scale_x_log10()
@@ -223,7 +223,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- which(!is.na(match(names(.call), c("x", "y", "log", "xlab", "ylab"))))
+  .w <- which(.in(names(.call), c("x", "y", "log", "xlab", "ylab")))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }
@@ -252,7 +252,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
         stop("the `sim` endpoints requested in the plot do not exist in the solved object: ",
              paste(.cmts, collapse=", "))
       } else if (length(.cmts0) != length(.cmts)) {
-        .ignored <- .vars[is.na(match(.vars, .good))]
+        .ignored <- .vars[!.in(.vars, .good)]
         warning("some `sim` requested items do not exist in the solved object and were ignored: ",
                 paste(paste0("sim.", .ignored), collapse=", "))
       }
@@ -265,7 +265,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
         stop("the items requested in the plot do not exist in the solved object: ",
              paste(.cmts, collapse=", "))
       } else if (length(.cmts0) != length(.cmts)) {
-        .ignored <- .cmts[is.na(match(.cmts, .both))]
+        .ignored <- .cmts[!.in(.cmts, .both)]
         warning("some requested items do not exist in the solved object and were ignored: ",
                 paste(.ignored, collapse=", "))
       }
@@ -387,7 +387,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- which(!is.na(match(names(.call), c("x", "y", "log", "xlab", "ylab"))))
+  .w <- which(.in(names(.call), c("x", "y", "log", "xlab", "ylab")))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }
@@ -468,7 +468,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- which(!is.na(match(names(.call), c("x", "y", "log", "xlab", "ylab"))))
+  .w <- which(.in(names(.call), c("x", "y", "log", "xlab", "ylab")))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }

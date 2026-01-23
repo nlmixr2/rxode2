@@ -197,11 +197,11 @@ rxUiGet.props <- function(x, ...) {
   .lhs <- .mv$lhs
   .state <- .mv$state
   .end <- .x$predDf$var
-  .end <- .end[!is.na(match(.end, c(.lhs, .state)))]
-  .lhs <- .lhs[is.na(match(.lhs, .end))]
+  .end <- .end[.in(.end, c(.lhs, .state))]
+  .lhs <- .lhs[!.in(.lhs, .end)]
   .varLhs <- .x$varLhs
-  .primary <- .lhs[!is.na(match(.lhs, .varLhs))]
-  .secondary <- .lhs[is.na(match(.lhs, .primary))]
+  .primary <- .lhs[.in(.lhs, .varLhs)]
+  .secondary <- .lhs[!.in(.lhs, .primary)]
   list(pop=.pop,
        resid=.resid,
        group=.var,

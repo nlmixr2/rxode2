@@ -1990,7 +1990,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
 
     return(do.call(rxSolve, .lst))
   }
-  if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
+  if (!any(.in(class(object), c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll")))) {
     stop("Unsupported type of model trying to be solved")
   }
   .envReset <- new.env(parent=emptyenv())
@@ -2006,7 +2006,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (inherits(.ctl$omega, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$omega)
-    .w <- .col %in% .mv$params
+    .w <- .in(.col, .mv$params)
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {
       .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
@@ -2021,7 +2021,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .extraNames <- c(.extraNames, .ctl$omega)
     .mv <- rxModelVars(object)
     .col <- .ctl$omega
-    .w <- .col %in% .mv$params
+    .w <- .in(.col, .mv$params)
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {
       .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
@@ -2031,7 +2031,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (inherits(.ctl$sigma, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$sigma)
-    .w <- .col %in% .mv$params
+    .w <- .in(.col, .mv$params)
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
@@ -2046,7 +2046,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .extraNames <- c(.extraNames, .ctl$sigma)
     .mv <- rxModelVars(object)
     .col <- .ctl$sigma
-    .w <- .col %in% .mv$params
+    .w <- .in(.col, .mv$params)
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
@@ -2057,7 +2057,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (inherits(.ctl$thetaMat, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$thetaMat)
-    .w <- .col %in% c(.mv$params, .extraNames)
+    .w <- .in(.col, c(.mv$params, .extraNames))
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {
       .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))

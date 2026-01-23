@@ -1,5 +1,6 @@
 .forderEnv <- new.env()
 .forderEnv$useBase <- FALSE
+.forderEnv$useFastMatch <- if (requireNamespace("fastmatch", quietly = TRUE)) TRUE else FALSE
 
 
 .forder3 <- function(c1,c2,c3, decreasing=FALSE) {
@@ -64,6 +65,38 @@ forderForceBase <- function(forceBase = FALSE){
   invisible(.forderEnv$useBase)
 }
 
-.chin <- function(x, table) {
-  x %in% table
+#' Control fastmatch usage for membership testing
+#'
+#' @param useFastMatch boolean indicating if rxode2 should use
+#'   \code{fastmatch::fmatch()} for membership tests instead of base R's
+#'   \code{match()}. Default is TRUE when fastmatch is available.
+#'
+#' @return value of \code{useFastMatch}
+#'
+#' @examples
+#' \donttest{
+#' inUseFastMatch(TRUE)  # Use fastmatch (default)
+#' inUseFastMatch(FALSE) # Use base match()
+#' }
+#' @export
+#' @keywords internal
+inUseFastMatch <- function(useFastMatch = TRUE) {
+  if (useFastMatch) {
+    if (requireNamespace("fastmatch", quietly = TRUE)) {
+      .forderEnv$useFastMatch <- useFastMatch
+    } else {
+      .forderEnv$useFastMatch <- FALSE
+    }
+  } else {
+    .forderEnv$useFastMatch <- useFastMatch
+  }
+  invisible(.forderEnv$useFastMatch)
+}
+
+.in <- function(x, table) {
+  if (.forderEnv$useFastMatch) {
+    !is.na(fastmatch::fmatch(x, table))
+  } else {
+    !is.na(match(x, table))
+  }
 }
