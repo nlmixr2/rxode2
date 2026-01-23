@@ -3,6 +3,10 @@
 - Allow transforms to return `NA`.
 
 - Drop `magrittr` and use `|>` instead of `%>%` in the examples
+  (requires R 4.1)
+
+- Change default model serialization to `bzip2` and move binary code
+  generation inside of C.
 
 # rxode2 5.0.1
 

@@ -623,7 +623,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // rxQs
-Rcpp::CharacterVector rxQs(SEXP const x);
+SEXP rxQs(SEXP const x);
 RcppExport SEXP _rxode2_rxQs(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

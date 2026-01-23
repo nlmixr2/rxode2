@@ -146,32 +146,23 @@ rxDeserialize <- function(x) {
 #' This function converts a raw vector or R object to C code that
 #' is used in the rxode2 model
 #'
-#' @return character string of C code
+#' @return raw vector for conversion to C in the codegen procedure
 #'
 #' @keywords internal
 #' @inherit rxSerialize
-#' @param raw raw vector or R object to convert
+#' @param  raw vector or R object to convert
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
 #'
-#' message(rxRawToC(mtcars))
+#' rxRawToC(mtcars)
 #'
 rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
   if (missing(type)) {
     type <- rxGetDefaultSerialize()
   }
   if (inherits(raw, "raw")) {
-    .ret <- paste0("    SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, ",
-                   length(raw),
-                   "));pro++;\n",
-                   "    unsigned char r[]={",
-                   paste(paste0(ifelse((seq_along(raw) - 1L) %% 10L == 0L, "\n                0x", "0x"),
-                                sprintf("%02X", as.integer(raw))),
-                        collapse=", "),
-                   "\n                };\n",
-                   "    memcpy(RAW(rw), r, sizeof(r));")
-    .ret
+    raw
   } else {
     rxRawToC(rxSerialize(raw, type=type))
   }

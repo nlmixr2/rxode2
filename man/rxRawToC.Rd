@@ -7,12 +7,12 @@
 rxRawToC(raw, type = c("xz", "qs2", "qdata", "base", "bzip2"))
 }
 \arguments{
-\item{raw}{raw vector or R object to convert}
+\item{raw}{vector or R object to convert}
 
 \item{type}{serialization type; one of "qs2", "qdata", "base", "xz" or "bzip2".}
 }
 \value{
-character string of C code
+raw vector for conversion to C in the codegen procedure
 }
 \description{
 This function converts a raw vector or R object to C code that
@@ -20,7 +20,7 @@ is used in the rxode2 model
 }
 \examples{
 
-message(rxRawToC(mtcars))
+rxRawToC(mtcars)
 
 }
 \author{

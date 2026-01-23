@@ -44,7 +44,7 @@ extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
 }
 
 //[[Rcpp::export]]
-Rcpp::CharacterVector rxQs(SEXP const x) {
+SEXP rxQs(SEXP const x) {
   Rcpp::Function f = getRxFn("rxRawToC");
   return f(x);
 }
