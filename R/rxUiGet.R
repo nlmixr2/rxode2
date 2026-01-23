@@ -207,10 +207,10 @@ rxUiGet.props <- function(x, ...) {
        group=.var,
        linCmt=.lin,
        cmt=.dose,
-       output=list(primary=.primary,
-                   secondary=.secondary,
-                   endpoint=.end,
-                   state=.x$state),
+       output=list(primary=as.character(.primary),
+                   secondary=as.character(.secondary),
+                   endpoint=as.character(.end),
+                   state=as.character(.x$state)),
        cmtProp=rxUiGet.statePropDf(x,...))
 }
 attr(rxUiGet.props, "desc") <- "rxode2 model properties"
