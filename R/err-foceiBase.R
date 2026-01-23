@@ -230,7 +230,7 @@
     .p1 <- str2lang(pred1$a)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("add", "lnorm", "probitNorm", "logitNorm") & env$iniDf$condition == .cnd)
+    .w <- which(!is.na(match(env$iniDf$err, c("add", "lnorm", "probitNorm", "logitNorm"))) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -242,7 +242,7 @@
     .p2 <- str2lang(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("prop", "propT", "propF") & env$iniDf$condition == .cnd)
+    .w <- which(!is.na(match(env$iniDf$err, c("prop", "propT", "propF"))) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -282,7 +282,7 @@
     .p1 <- str2lang(pred1$a)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("add", "lnorm", "logitNorm", "probitNorm") & env$iniDf$condition == .cnd)
+    .w <- which(!is.na(match(env$iniDf$err, c("add", "lnorm", "logitNorm", "probitNorm"))) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
@@ -294,7 +294,7 @@
     .p2 <- str2lang(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
+    .w <- which(!is.na(match(env$iniDf$err, c("pow", "powF", "powT"))) & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- str2lang(env$iniDf$name[.w])
     } else {

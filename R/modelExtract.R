@@ -107,9 +107,9 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
     if (is.na(endpoint)) {
       # do both
     } else if (endpoint) {
-      .ret <- .ret[.ret %in% .endPointLines]
+      .ret <- .ret[!is.na(match(.ret, .endPointLines))]
     } else {
-      .ret <- .ret[!(.ret %in% .endPointLines)]
+      .ret <- .ret[is.na(match(.ret, .endPointLines))]
     }
   }
   .lines <- .ret
