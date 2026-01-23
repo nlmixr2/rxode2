@@ -92,7 +92,23 @@ inUseFastMatch <- function(useFastMatch = TRUE) {
   }
   invisible(.forderEnv$useFastMatch)
 }
-
+#' Fast replacement for %in%
+#'
+#' This is a fast replacement for \code{\%in\%} that uses
+#' \code{fastmatch::fmatch()} when available.
+#'
+#'
+#' @param x the x variable in \code{x \%in\% table}
+#' @param table the table variable in \code{x \%in\% table}
+#' @return logical vector indicating if elements of x are in table,
+#'   possibly containing a hash table attribute for fastmatch speed
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' .in(1:5, c(2,4,6))
+#'
 .in <- function(x, table) {
   if (.forderEnv$useFastMatch) {
     !is.na(fastmatch::fmatch(x, table))

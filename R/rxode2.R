@@ -446,7 +446,7 @@ rxode2 <- # nolint
         .p <- .ret["params"]
         .ini <- names(.mv$.ini)
         .init <- rxode2::rxInit(rxDll)
-        .ret$params <- .ret$params[!(.in(.ret$params, names(.init)))]
+        .ret$params <- .ret$params[!(rxode2::.in(.ret$params, names(.init)))]
         class(.ret) <- "list"
         return(.ret)
       })
