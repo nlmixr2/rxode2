@@ -179,6 +179,11 @@
 - Bug fix for parameters that are in both input (`$params`) and output
   (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
   #876)
+  
+- `if()` blocks may be removed by model piping (#878)
+
+- Model piping now removes endpoint and assignments using `NULL` assignment. For
+  example, `fit |> model(a ~ NULL)` and `fit |> model(a <- NULL)` now work.
 
 - Add `rxFixRes` to literally fix the residual estimates in a model (#889)
 
