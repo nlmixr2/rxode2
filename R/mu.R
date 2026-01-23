@@ -245,8 +245,8 @@
     if(is.name(y)) {
       env$found <- TRUE
       .th <- as.character(y)
-      if (.th %in% env$info$theta &&
-            !(.th %in% env$singleTheta)) {
+      if (!is.na(match(.th, env$info$theta)) &&
+            is.na(match(.th, env$singleTheta))) {
         env$singleTheta <- c(env$singleTheta, .th)
       }
       return(as.character(y))
@@ -422,7 +422,7 @@
         env$muRefCovariateDataFrame <- env$muRefCovariateDataFrame[-.w,, drop = FALSE]
         .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
       } else {
-        .w2 <- .w[which(!(.multPrior %in% .multBoth))]
+        .w2 <- .w[which(is.na(match(.multPrior, .multBoth)))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
           env$muRefDropParameters <-
@@ -500,7 +500,7 @@
         env$muRefExtra <- env$muRefExtra[-.w,, drop = FALSE]
         .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
       } else {
-        .w2 <- .w[which(!(.extraItemsPrior %in% .extraBoth))]
+        .w2 <- .w[which(is.na(match(.extraItemsPrior, .extraBoth)))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
           env$muRefDropParameters <- rbind(env$muRefDropParameters,

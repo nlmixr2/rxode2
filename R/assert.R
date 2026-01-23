@@ -428,7 +428,7 @@ assertVariableExists <- function(ui, x) {
       min.chars = 1,
       .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
     )
-    if (.vn %in% c(.mv$lhs, .mv$params)) {
+    if (!is.na(match(.vn, c(.mv$lhs, .mv$params)))) {
       return(invisible(.vn))
     }
   }
@@ -457,7 +457,7 @@ testVariableExists <- function(ui, x) {
       min.chars = 1,
       .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
     )
-    if (.vn %in% c(.mv$lhs, .mv$params)) return(TRUE)
+    if (!is.na(match(.vn, c(.mv$lhs, .mv$params)))) return(TRUE)
   }
   FALSE
 }
@@ -489,7 +489,7 @@ assertVariableNew <- function(ui, x) {
 
   .ui <-rxode2::assertRxUi(ui)
   .mv <- rxode2::rxModelVars(.ui)
-  if (.vn %in% c(.mv$lhs, .mv$params))  {
+  if (!is.na(match(.vn, c(.mv$lhs, .mv$params))))  {
     stop("variable '", .vn, "' is already in the model",
          call.=FALSE)
   }
@@ -531,7 +531,7 @@ assertExists <- function(ui, x) {
 
     .ui <-rxode2::assertRxUi(ui)
     .mv <- rxode2::rxModelVars(.ui)
-    if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(invisible(.vn))
+    if (!is.na(match(.vn, c(.mv$lhs, .mv$params, .mv$state)))) return(invisible(.vn))
   }
   stop("'", paste(.all, collapse="', '"), "' not in the model",
        call.=FALSE)
@@ -558,7 +558,7 @@ testExists <- function(ui, x) {
 
   .ui <-rxode2::assertRxUi(ui)
   .mv <- rxode2::rxModelVars(.ui)
-  if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(TRUE)
+  if (!is.na(match(.vn, c(.mv$lhs, .mv$params, .mv$state)))) return(TRUE)
   FALSE
 }
 
