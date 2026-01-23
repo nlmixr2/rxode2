@@ -90,7 +90,7 @@ chinUseFastMatch <- function(useFastMatch = TRUE) {
 }
 
 .chin <- function(x, table) {
-  if (.forderEnv$useFastMatch && requireNamespace("fastmatch", quietly = TRUE)) {
+  if (.forderEnv$useFastMatch) {
     !is.na(fastmatch::fmatch(x, table))
   } else {
     !is.na(match(x, table))
