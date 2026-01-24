@@ -70,6 +70,6 @@ rxGetControl <- function(ui, option, default) {
   ui <- rxUiDecompress(ui)
   if (!exists("control", envir=ui)) return(default)
   .ctl <- get("control", envir=ui)
-  if (!is.na(match(option, names(.ctl)))) return(.ctl[[option]])
+  if (option %in% names(.ctl)) return(.ctl[[option]])
   default
 }

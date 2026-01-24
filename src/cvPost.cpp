@@ -11,7 +11,6 @@
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2_as.h"
 #include <lotri.h>
-#include <unordered_set>
 
 extern "C" {
   iniLotri;
@@ -655,15 +654,12 @@ Function getRxFn(std::string name);
 static inline int getMethodInt(std::string& methodStr, CharacterVector& allNames, SEXP et) {
   int methodInt=1;
   if (methodStr == "auto") {
-    // Use native C++ hash-based lookup instead of R's .chin()
-    CharacterVector etNames = Rf_getAttrib(et, R_NamesSymbol);
-    std::unordered_set<std::string> etNamesSet;
-    for (int i = 0; i < etNames.size(); i++) {
-      etNamesSet.insert(as<std::string>(etNames[i]));
-    }
+    // FIXME don't use %in%/%chin% from R
+    Function chin = getRxFn(".chin");
+    LogicalVector inL = as<LogicalVector>(chin(allNames, Rf_getAttrib(et, R_NamesSymbol)));
     bool allIn = true;
-    for (int j = 0; j < allNames.size(); j++){
-      if (etNamesSet.find(as<std::string>(allNames[j])) == etNamesSet.end()) {
+    for (int j = inL.size(); j--;){
+      if (!inL[j]) {
         allIn = false;
         break;
       }
