@@ -1,5 +1,7 @@
 # rxode2 (development version)
 
+- Use `fastmatch` for slight performance gains.
+
 - Allow transforms to return `NA`.
 
 - Drop `magrittr` and use `|>` instead of `%>%` in the examples
