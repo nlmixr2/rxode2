@@ -68,7 +68,7 @@
 #' @export
 rxCat <- function(a, ...) {
   ## nocov start
-  if (rxode2.verbose) {
+  if (getOption("rxode2.verbose", TRUE)) {
     if (is(a, "rxode2")) {
       message(rxode2::rxNorm(a), appendLF = FALSE)
     } else {
@@ -854,11 +854,9 @@ rxUnloadAll <- function(set=TRUE) {
 #' print(pi)
 .rxWithOptions <- function(ops, code) {
   .old <- options() # nolint
-  rxSyncOptions()
   do.call(options, as.list(ops)) # nolint
   on.exit({
     options(.old) # nolint
-    rxSyncOptions()
   })
   force(code)
 }

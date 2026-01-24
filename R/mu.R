@@ -751,7 +751,7 @@
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
-          if (rxode2.debug) {
+          if (getOption("rxode2.debug", FALSE)) {
             .tmp <- lapply(x, function(y, env) {
               assign(".curEval", "", env)
               .rxMuRef0(y, env=env)

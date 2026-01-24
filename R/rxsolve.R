@@ -1979,7 +1979,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       stop("'iCov' must be an input dataset")
     }
   }
-  if (rxode2.debug) {
+  if (getOption("rxode2.debug", FALSE)) {
     .rx <- rxNorm(object)
     qs2::qs_save(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs2"))
   }
@@ -2100,7 +2100,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
-  if (rxode2.debug) {
+  if (getOption("rxode2.debug", FALSE)) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,
                                                   setupOnlyS = .setupOnly
