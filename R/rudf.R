@@ -181,12 +181,14 @@ rxRmFunParse <- function(name) {
   if (length(.udfEnv$searchList) == 0L) {
     .udfEnv$searchList <- list(envir)
   }
-  if (!any(vapply(seq_along(.udfEnv$searchList),
-                  function(i) {
-                    identical(.udfEnv$searchList[[i]], envir)
-                  }, logical(1), USE.NAMES = FALSE))) {
-    .udfEnv$searchList <- c(.udfEnv$searchList, list(envir))
-  }
+  ## if (!any(vapply(seq_along(.udfEnv$searchList),
+  ##                 function(i) {
+  ##                   identical(.udfEnv$searchList[[i]], envir)
+  ##                 }, logical(1), USE.NAMES = FALSE))) {
+
+  # check to see if identical takes too much time, just add
+  .udfEnv$searchList <- c(.udfEnv$searchList, list(envir))
+  ## }
   invisible()
 }
 

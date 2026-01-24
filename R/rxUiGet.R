@@ -436,7 +436,7 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     # Defined rxUdfUi methods
     uiFuns=as.character(utils::methods("rxUdfUi")),
     # Add version of rxode2
-    rxVersion=rxode2::rxVersion()
+    rxVersion=.rxVersion
   )
 }
 
