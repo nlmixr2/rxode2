@@ -202,6 +202,9 @@ rxUiGet.props <- function(x, ...) {
   .varLhs <- .x$varLhs
   .primary <- .lhs[.lhs %fin% .varLhs]
   .secondary <- .lhs[!(.lhs %fin% .primary)]
+  attr(.primary, ".match.hash") <- NULL
+  attr(.secondary, ".match.hash") <- NULL
+  attr(.end, ".match.hash") <- NULL
   list(pop=.pop,
        resid=.resid,
        group=.var,
