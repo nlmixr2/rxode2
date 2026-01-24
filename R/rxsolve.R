@@ -896,9 +896,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .bad <- .nxtra
     }
-    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros"))]
+    .bad <- .bad[!(.in(.bad, c(".setupOnly", "keepF", ".zeros")))]
     if (length(.bad) > 0) {
-      if ("transitAbs" %in% .bad) {
+      if (.in("transitAbs", .bad)) {
         stop("'transitAbs' is no longer supported, use 'evid=7' instead",
              call.=FALSE)
       }
@@ -1222,7 +1222,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     .invalidKeep <- c("id", "sim.id", "resetno", "time")
     .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
     if (length(.invalidKeep) > 0) {
-      .w <- which(tolower(keep) %in% .invalidKeep)
+      .w <- which(.in(tolower(keep), .invalidKeep))
       keep <- keep[-.w]
       warning("'keep' contains ", paste(.invalidKeep, collapse=", "), "\nwhich are output when needed, ignoring these items", call.=FALSE)
     }
@@ -1460,7 +1460,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   .lst <- list(...)
   .nlst <- names(.lst)
   .w <- which(vapply(names(.ctl), function(x) {
-    !(x %in% .nlst) && exists(x, envir=.meta)
+    !(.in(x, .nlst)) && exists(x, envir=.meta)
   }, logical(1), USE.NAMES=FALSE))
   .extra <- NULL
   if (length(.w) > 0) {
@@ -1504,7 +1504,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (inherits(params, "numeric")) {
     .theta <- object$theta
     .n <- names(.theta)
-    .theta <- .theta[!(.n %in% names(params))]
+    .theta <- .theta[!(.in(.n, names(params)))]
     params <- c(params, .theta)
   }
 
@@ -1528,7 +1528,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .omega <- .rxControl$omega
     .v <- vapply(dimnames(.omega)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(.in(v, names(params)))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
@@ -1561,7 +1561,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .sigma <- .rxControl$sigma
     .v <- vapply(dimnames(.sigma)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(.in(v, names(params)))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$sigma <- NULL
@@ -1801,7 +1801,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .mv <- rxModelVars(object)
     .both <- intersect(.mv$params, .ctl$keep)
     if (length(.both) > 0) {
-      .keep <- .ctl$keep[!(.ctl$keep %in% .both)]
+      .keep <- .ctl$keep[!(.in(.ctl$keep, .both))]
        if (length(.keep) == 0L) {
           .keep <- NULL
        }
@@ -2559,7 +2559,7 @@ rxUiDeparse.rxControl <- function(object, var) {
     } else if (x == "keepInterpolation") {
       .keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)
       paste0(x, " =", deparse1(names(.keepInterpolation)[which(object[[x]] == .keepInterpolation)]))
-    } else if (x %in% c("sigmaXform", "omegaXform")) {
+    } else if (.in(x, c("sigmaXform", "omegaXform"))) {
       .sigmaXform <- c(
         "variance" = 6L, "log" = 5L, "identity" = 4L,
         "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
