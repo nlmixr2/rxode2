@@ -1188,7 +1188,7 @@ rxTest({
     testUi <- function(ui, has = NULL, exclude = NULL, values = NULL) {
       uiForce <- suppressMessages(force(ui))
       if (!is.null(has)) {
-        expect_true(all(has %in% paste(uiForce$ini$name)))
+        expect_true(all(has %fin% paste(uiForce$ini$name)))
       }
       if (!is.null(values) && !is.null(names(values))) {
         .vals <- setNames(uiForce$ini$est, paste(uiForce$ini$name))
@@ -1196,7 +1196,7 @@ rxTest({
         expect_equal(values, .vals)
       }
       if (!is.null(exclude)) {
-        expect_false(any(exclude %in% paste(uiForce$ini$name)))
+        expect_false(any(exclude %fin% paste(uiForce$ini$name)))
       }
       ## General UI properties
       expect_true(all(!is.na(uiForce$ini$fix)))
@@ -1446,7 +1446,7 @@ rxTest({
 
       f2 <- trans(f)
 
-      expect_true(!any(f2$iniDf$name %in% c("f2")))
+      expect_true(!any(f2$iniDf$name %fin% c("f2")))
 
     })
 
@@ -1589,9 +1589,9 @@ rxTest({
           model(ka <- exp(tka + covKaWt * wt + eta.ka)))
       expect_equal(tmp$allCovs, "wt")
 
-      expect_true("covKaWt" %in% tmp$iniDf$name)
-      expect_true("tka" %in% tmp$iniDf$name)
-      expect_true("eta.ka" %in% tmp$iniDf$name)
+      expect_true("covKaWt" %fin% tmp$iniDf$name)
+      expect_true("tka" %fin% tmp$iniDf$name)
+      expect_true("eta.ka" %fin% tmp$iniDf$name)
 
       suppressMessages(
         tmp <-
@@ -1599,18 +1599,18 @@ rxTest({
           model(ka <- exp(covKaWt * wt + eta.ka)))
 
       expect_equal(tmp$allCovs, "wt")
-      expect_true("covKaWt" %in% tmp$iniDf$name)
-      expect_false("tka" %in% tmp$iniDf$name)
-      expect_true("eta.ka" %in% tmp$iniDf$name)
+      expect_true("covKaWt" %fin% tmp$iniDf$name)
+      expect_false("tka" %fin% tmp$iniDf$name)
+      expect_true("eta.ka" %fin% tmp$iniDf$name)
 
       suppressMessages(
         tmp <-
           tmp |>
           model(ka <- exp(tka + covKaWt * wt + eta.ka)))
       expect_equal(tmp$allCovs, "wt")
-      expect_true("covKaWt" %in% tmp$iniDf$name)
-      expect_true("tka" %in% tmp$iniDf$name)
-      expect_true("eta.ka" %in% tmp$iniDf$name)
+      expect_true("covKaWt" %fin% tmp$iniDf$name)
+      expect_true("tka" %fin% tmp$iniDf$name)
+      expect_true("eta.ka" %fin% tmp$iniDf$name)
 
     })
 
@@ -1637,23 +1637,23 @@ rxTest({
       f <- rxode2(ocmt)
       f2 <- f |> model(cp1 <- cp, append=TRUE)
 
-      expect_true("cp1" %in% f2$mv0$lhs)
+      expect_true("cp1" %fin% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
       f <- rxode2(ocmt)
       f2 <- f |> model(cp1 <- cp, append=Inf)
 
-      expect_true("cp1" %in% f2$mv0$lhs)
+      expect_true("cp1" %fin% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
       f <- rxode2(ocmt)
       f2 <- f |> model(cp1 <- cp, append=100)
 
-      expect_true("cp1" %in% f2$mv0$lhs)
+      expect_true("cp1" %fin% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
       f2 <- f |> model(f2 <- 3 * 2, append=NA)
-      expect_true("f2" %in% f2$mv0$lhs)
+      expect_true("f2" %fin% f2$mv0$lhs)
       expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
 
     })
@@ -1860,8 +1860,8 @@ rxTest({
           one.compartment |>
           model({ka <- exp(tka + eta.ka + TC * cov_C)})
       )
-      expect_true("cov_C" %in% mod$iniDf$name)
-      expect_false("TC" %in% mod$iniDf$name)
+      expect_true("cov_C" %fin% mod$iniDf$name)
+      expect_false("TC" %fin% mod$iniDf$name)
 
       rxSetCovariateNamesForPiping()
 
@@ -1870,8 +1870,8 @@ rxTest({
           one.compartment |>
           model({ka <- exp(tka + eta.ka + TC * cov_C)})
       )
-      expect_true("cov_C" %in% mod$iniDf$name)
-      expect_true("TC" %in% mod$iniDf$name)
+      expect_true("cov_C" %fin% mod$iniDf$name)
+      expect_true("TC" %fin% mod$iniDf$name)
 
     })
   })

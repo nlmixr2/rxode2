@@ -28,22 +28,22 @@ rxTest({
     f <- rxRename(ocmt, cpParent=cp, parentDepot=depot, parentCentral=center, parentKa=ka,
                   parentTka=tka, parent.sd=add.sd)
 
-    expect_true("parent.sd" %in% f$iniDf$name)
-    expect_true("parentTka" %in% f$iniDf$name)
-    expect_true("parentKa" %in% f$mv0$lhs)
-    expect_true("parentCentral" %in% f$mv0$state)
-    expect_true("parentDepot" %in% f$mv0$state)
-    expect_true("cpParent" %in% f$mv0$lhs)
-    expect_true("cpParent" %in% f$predDf$var)
-    expect_true("cpParent" %in% f$predDf$cond)
+    expect_true("parent.sd" %fin% f$iniDf$name)
+    expect_true("parentTka" %fin% f$iniDf$name)
+    expect_true("parentKa" %fin% f$mv0$lhs)
+    expect_true("parentCentral" %fin% f$mv0$state)
+    expect_true("parentDepot" %fin% f$mv0$state)
+    expect_true("cpParent" %fin% f$mv0$lhs)
+    expect_true("cpParent" %fin% f$predDf$var)
+    expect_true("cpParent" %fin% f$predDf$cond)
 
     f <- dplyr::rename(ocmt, cp.parent=cp)
-    expect_true("cp.parent" %in% f$mv0$lhs)
-    expect_true("cp.parent" %in% f$predDf$var)
-    expect_true("cp.parent" %in% f$predDf$cond)
+    expect_true("cp.parent" %fin% f$mv0$lhs)
+    expect_true("cp.parent" %fin% f$predDf$var)
+    expect_true("cp.parent" %fin% f$predDf$cond)
 
     f2 <- dplyr::rename(f, depot.parent=depot)
-    expect_true("depot.parent" %in% f2$mv0$state)
+    expect_true("depot.parent" %fin% f2$mv0$state)
 
     ocmt <- function() {
       ini({
@@ -65,7 +65,7 @@ rxTest({
 
     f <- rxRename(ocmt, metabolite=parent)
 
-    expect_true("metabolite" %in% f$predDf$cond)
+    expect_true("metabolite" %fin% f$predDf$cond)
 
     # now test that functions remain intact
 

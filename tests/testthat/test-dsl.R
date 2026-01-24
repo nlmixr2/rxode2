@@ -1394,8 +1394,8 @@ rxTest({
                 "rx_pred_=cp")
 
       m <- paste(test, collapse = "\n")
-      shouldError <- prop == "0" || (cmt %in% c("peripheral1", "peripheral2") &&
-                                       prop %in% c("dur", "rate"))
+      shouldError <- prop == "0" || (cmt %fin% c("peripheral1", "peripheral2") &&
+                                       prop %fin% c("dur", "rate"))
 
       if (shouldError) {
         test_that(sprintf("rxS errors in %s parameter in linCmtA()", val), {

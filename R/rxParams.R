@@ -183,7 +183,7 @@ rxParams.rxEt <- function(obj, ...,
   .ret <- rxParams_(obj)
   if (!constants) {
     .init <- rxode2::rxInit(obj)
-    .ret <- .ret[!(.ret %in% names(.init))]
+    .ret <- .ret[!(.ret %fin% names(.init))]
   }
   return(.ret)
 }

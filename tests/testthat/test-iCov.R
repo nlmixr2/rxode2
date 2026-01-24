@@ -132,9 +132,9 @@ rxTest({
     # Check keep of various sorts in iCov
     tmp <- rxSolve(mod1, ev, iCov=paramsDf, keep=c("CL", "V2", "ptS", "ptF", "ptI", "ptL"))
     expect_true(is.character(tmp$ptS))
-    expect_true(all(paste(1:nsub, "pt") %in% unique(tmp$ptS)))
+    expect_true(all(paste(1:nsub, "pt") %fin% unique(tmp$ptS)))
     expect_true(is.factor(tmp$ptF))
-    expect_true(all(paste(1:nsub, "pt") %in% unique(tmp$ptF)))
+    expect_true(all(paste(1:nsub, "pt") %fin% unique(tmp$ptF)))
     expect_true(is.integer(tmp$ptI))
     expect_true(is.logical(tmp$ptL))
     expect_true(all((tmp$ptI <= 50) == tmp$ptL))

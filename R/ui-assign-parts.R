@@ -77,7 +77,7 @@
 .getKeepEnv <- function(model) {
   .lsModel <- ls(envir=model)
   .ret <- setdiff(.lsModel, .rxUiBlessed)
-  .ret[.ret %in% model$sticky]
+  .ret[.ret %fin% model$sticky]
 }
 #' Checks to see if the models are nearly the same
 #'
@@ -299,7 +299,7 @@
     return(x)
   }
   .x <- x
-  if (name %in% c("ini", "iniDf")) {
+  if (name %fin% c("ini", "iniDf")) {
     ini(x) <- value
     return(x)
   }

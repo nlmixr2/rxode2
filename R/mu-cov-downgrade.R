@@ -38,7 +38,7 @@
     return(as.call(lapply(x, .hasACovariateToDowngrade, covariates, env)))
   } else if (is.name(x)) {
     .n <- as.character(x)
-    if (.n %in% covariates) {
+    if (.n %fin% covariates) {
       assign("covs", c(.n, env$covs), envir=env)
     }
     return(x)
@@ -63,7 +63,7 @@
     .curEval[.w, "hi"] <- NA_real_
   }
   if (length(.mu$eta) > 0) {
-    .w <- which(.curEval$parameter %in% .mu$eta)
+    .w <- which(.curEval$parameter %fin% .mu$eta)
     if (length(.w) > 0) {
       .curEval[.w, "curEval"] <- ""
       .curEval[.w, "low"] <- NA_real_

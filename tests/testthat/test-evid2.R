@@ -32,14 +32,14 @@ d/dt(blood)     = a*intestine - b*blood
   s4tbs <- solve(mod, et, addDosing = TRUE, returnType = "data.frame.TBS")
 
   test_that("evid is included with evid=2", {
-    expect_true("evid" %in% names(s1))
-    expect_false("evid" %in% names(s2))
-    expect_true("evid" %in% names(s3))
-    expect_true("evid" %in% names(s4))
-    expect_true("evid" %in% names(s1tbs))
-    expect_false("evid" %in% names(s2tbs))
-    expect_true("evid" %in% names(s3tbs))
-    expect_true("evid" %in% names(s4tbs))
+    expect_true("evid" %fin% names(s1))
+    expect_false("evid" %fin% names(s2))
+    expect_true("evid" %fin% names(s3))
+    expect_true("evid" %fin% names(s4))
+    expect_true("evid" %fin% names(s1tbs))
+    expect_false("evid" %fin% names(s2tbs))
+    expect_true("evid" %fin% names(s3tbs))
+    expect_true("evid" %fin% names(s4tbs))
   })
 
   test_that("Includes and ignores EVID=2", {

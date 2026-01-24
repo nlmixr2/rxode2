@@ -107,9 +107,9 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
     if (is.na(endpoint)) {
       # do both
     } else if (endpoint) {
-      .ret <- .ret[.ret %in% .endPointLines]
+      .ret <- .ret[.ret %fin% .endPointLines]
     } else {
-      .ret <- .ret[!(.ret %in% .endPointLines)]
+      .ret <- .ret[!(.ret %fin% .endPointLines)]
     }
   }
   .lines <- .ret
@@ -165,7 +165,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
              .cur <- str2lang(.cur)
            }
            if (is.null(.name)) {
-           } else if (.name %in% c("expression",  "endpoint", "envir", "lines")) {
+           } else if (.name %fin% c("expression",  "endpoint", "envir", "lines")) {
              return(NULL)
            }
            if (is.name(.cur)) {

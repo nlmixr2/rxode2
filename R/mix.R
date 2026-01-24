@@ -111,7 +111,7 @@ mix <- function(...) {
       .udfUiEnv$probs <- .probs[nzchar(.probs)]
       .mp <- vapply(.udfUiEnv$probs,
                     function(p) {
-                      p %in% .df$name
+                      p %fin% .df$name
                     }, logical(1), USE.NAMES = TRUE)
       .w <- which(!.mp)
       if (length(.w) >= 1) {
