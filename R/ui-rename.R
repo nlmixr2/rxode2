@@ -30,12 +30,12 @@
   } else {
     .var.name2 <- as.character(line[[3]])
   }
-  if (.var.name %in% vars) {
+  if (.in(.var.name, vars)) {
     stop("the new variable '", .var.name, "' is already present in the model; cannot replace '", .var.name2, "' with '",
          .var.name, "'",
          call.=FALSE)
   }
-  if (!(.var.name2 %in% vars)) {
+  if (!(.in(.var.name2, vars))) {
     stop("the old variable '", .var.name2, "' is not present in the model and cannot be renamed to '", .var.name, "'",
          call.=FALSE)
   }

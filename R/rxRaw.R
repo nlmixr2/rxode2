@@ -30,7 +30,7 @@
 #'
 rxGetDefaultSerialize <- function() {
   op <- rxode2.serialize.type
-  if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
+  if (!.in(op, c("qs2", "qdata", "base", "bzip2", "xz"))) {
     stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' or 'xz'", call.=FALSE)
   }
   op

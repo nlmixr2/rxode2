@@ -40,7 +40,7 @@
     .v <- as.character(utils::methods("rxUiGet"))
     .cls <- class(.obj)[1]
     .method <- paste0("rxUiGet.", .cls)
-    if (.method %in% .v) {
+    if (.in(.method, .v)) {
       # If there is a rstudio value in the method, assume that is what you
       # wish to return for the rstudio auto-completion method
       .rstudio <- attr(utils::getS3method("rxUiGet", .cls), "rstudio")
@@ -503,7 +503,7 @@ rxUiGet.modelDesc <- function(x, ...) {
                                     "peripheral1",
                                     "peripheral2")
     .state <- .mvL$state[!(
-      (.mvL$state %in% .rxUiLinCompartmentNames) |
+      (.in(.mvL$state, .rxUiLinCompartmentNames)) |
       startsWith(.mvL$state, "rx__sens_")
     )]
     return(sprintf(

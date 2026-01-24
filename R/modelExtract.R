@@ -165,7 +165,8 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
              .cur <- str2lang(.cur)
            }
            if (is.null(.name)) {
-           } else if (.name %in% c("expression",  "endpoint", "envir", "lines")) {
+           } else if (.in(.name,
+                          c("expression",  "endpoint", "envir", "lines"))) {
              return(NULL)
            }
            if (is.name(.cur)) {
