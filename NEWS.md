@@ -7,7 +7,9 @@
   - Replaced `%in%` and `match()` patterns with `.in()` in all hot paths for O(n+m) vs O(n*m) complexity
   - Added optional `fastmatch` support via `inUseFastMatch()` for 2-5x additional speedup
   - Optimized critical paths in FOCEI fitting, error model selection, and parameter validation
-  - Expected impact: 30-50% reduction in FOCEI fitting time when combined with nlmixr2est optimizations
+
+- Change default model serialization to `bzip2` and move binary code
+  generation inside of C.
 
 ## Other Changes
 
@@ -16,8 +18,6 @@
 - Drop `magrittr` and use `|>` instead of `%>%` in the examples
   (requires R 4.1)
 
-- Change default model serialization to `bzip2` and move binary code
-  generation inside of C.
 
 # rxode2 5.0.1
 
