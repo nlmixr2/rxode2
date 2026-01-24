@@ -245,8 +245,8 @@
     if(is.name(y)) {
       env$found <- TRUE
       .th <- as.character(y)
-      if (.th %in% env$info$theta &&
-            !(.th %in% env$singleTheta)) {
+      if (.th %fin% env$info$theta &&
+            !(.th %fin% env$singleTheta)) {
         env$singleTheta <- c(env$singleTheta, .th)
       }
       return(as.character(y))
@@ -422,7 +422,7 @@
         env$muRefCovariateDataFrame <- env$muRefCovariateDataFrame[-.w,, drop = FALSE]
         .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
       } else {
-        .w2 <- .w[which(!(.multPrior %in% .multBoth))]
+        .w2 <- .w[which(!(.multPrior %fin% .multBoth))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
           env$muRefDropParameters <-
@@ -500,7 +500,7 @@
         env$muRefExtra <- env$muRefExtra[-.w,, drop = FALSE]
         .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
       } else {
-        .w2 <- .w[which(!(.extraItemsPrior %in% .extraBoth))]
+        .w2 <- .w[which(!(.extraItemsPrior %fin% .extraBoth))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
           env$muRefDropParameters <- rbind(env$muRefDropParameters,
@@ -671,9 +671,9 @@
     }
     .x2 <- .muRefNextAdditiveExpression(.x2)
   }
-  .wt <- which(.names %in% env$info$theta)
-  .we <- which(.names %in% env$info$eta)
-  .wl <- if (!is.null(env$info$level)) which(.names %in% env$info$level) else integer(0)
+  .wt <- which(.names %fin% env$info$theta)
+  .we <- which(.names %fin% env$info$eta)
+  .wl <- if (!is.null(env$info$level)) which(.names %fin% env$info$level) else integer(0)
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
@@ -998,7 +998,7 @@
   if (is.null(ui$predDf)) {
     .errEsts <- NULL
   } else {
-    .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
+    .errEsts <- .iniDf[.iniDf$condition %fin% ui$predDf$cond, "name"]
   }
   .estName <- .iniDf$name[!is.na(.iniDf$ntheta) |
                             (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
@@ -1051,7 +1051,7 @@
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
     }
-    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
+    if (.predDf$distribution[i] %fin% c("norm", "t") && !(.predDf$var[i] %fin% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not defined in the model"))
     }

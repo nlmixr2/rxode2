@@ -89,7 +89,7 @@ d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff
   if (length(w) == 1) {
     names(data)[w] <- "time"
     new.names <- c(rxLhs(object), rxState(object), "time")
-    data <- data[, which(names(data) %in% c(rxLhs(object), rxState(object), "time")), drop = FALSE]
+    data <- data[, which(names(data) %fin% c(rxLhs(object), rxState(object), "time")), drop = FALSE]
   }
 
   ui <- eval(bquote(shiny::shinyUI(shiny::fluidPage(

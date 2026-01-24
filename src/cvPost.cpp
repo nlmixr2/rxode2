@@ -654,7 +654,7 @@ Function getRxFn(std::string name);
 static inline int getMethodInt(std::string& methodStr, CharacterVector& allNames, SEXP et) {
   int methodInt=1;
   if (methodStr == "auto") {
-    // FIXME don't use %in%/%chin% from R
+    // FIXME don't use %fin%/%chin% from R
     Function chin = getRxFn(".chin");
     LogicalVector inL = as<LogicalVector>(chin(allNames, Rf_getAttrib(et, R_NamesSymbol)));
     bool allIn = true;

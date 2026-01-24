@@ -124,17 +124,17 @@ regIni <- rex::rex(or(
 #'     own line with the closing bracket of the `if` statement
 #'     on the previous line.  This `else` statment must also
 #'     contain the opening bracket, like the code `else {}`
-#' 
+#'
 #' @param removeInis A boolean indicating if parameter
 #'     initializations should be removed from the model.
-#' 
+#'
 #' @param removePrint A boolean indicating if printing statements
 #'     should be removed from the model.
-#' 
+#'
 #' @return A named character vector. The names of the vector are the
 #'     logical conditions, the values are the lines that satisfy the
 #'     logical conditions.
-#' 
+#'
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
@@ -212,7 +212,7 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
       ret[[known[[i]][1]]] <- paste(mod, collapse = "\n")
     }
     ret <- unlist(ret)
-    ret <- ret[!(names(ret) %in% rm)]
+    ret <- ret[!(names(ret) %fin% rm)]
     return(ret)
   } else {
     return(paste(model, collapse = "\n"))
@@ -220,7 +220,7 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
 }
 
 #' Remove INIs
-#' 
+#'
 #' @param x rxode2 list of lines to remove
 #' @return rxode2 lines with inis removed.
 #' @author Matthew L. Fidler
@@ -241,7 +241,7 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
 }
 
 #' Remove print statements
-#' 
+#'
 #' @param x rxode2 lines to remove
 #' @return rxode2 with print lines removed.
 #' @author Matthew L. Fidler

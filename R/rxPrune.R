@@ -11,7 +11,7 @@
 #' @author Matthew L. Fidler
 .rxPruneStrAssign <- function(lhs, ret, strAssign=list()) {
   if (length(strAssign) == 0L) return(ret)
-  .w <- which(lhs %in% names(strAssign))
+  .w <- which(lhs %fin% names(strAssign))
   if (length(.w) == 1L) {
     # Replace with integer
     .w <- which(vapply(seq_along(strAssign[[.w]]),

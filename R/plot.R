@@ -175,7 +175,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   # (https://stackoverflow.com/questions/41441170/failure-of-match-arg-for-the-empty-string)
   stopifnot(length(log) == 1)
   stopifnot(is.character(log))
-  stopifnot(log %in% c("", "x", "y", "xy", "yx"))
+  stopifnot(log %fin% c("", "x", "y", "xy", "yx"))
   useLogX <- nchar(log) == 2L || log == "x"
   useLogY <- nchar(log) == 2L || log == "y"
   useXgxr <-
@@ -184,7 +184,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   .logx <- NULL
   .logy <- NULL
   if (useLogX) {
-    stopifnot(".dat requires 'time' column"="time" %in% names(.dat))
+    stopifnot(".dat requires 'time' column"="time" %fin% names(.dat))
     .dat <- .dat[.dat$time > 0, ]
     if (useXgxr) {
       .logx <- xgxr::xgx_scale_x_log10()
@@ -223,7 +223,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  .w <- which(names(.call) %fin% c("x", "y", "log", "xlab", "ylab"))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }
@@ -252,7 +252,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
         stop("the `sim` endpoints requested in the plot do not exist in the solved object: ",
              paste(.cmts, collapse=", "))
       } else if (length(.cmts0) != length(.cmts)) {
-        .ignored <- .vars[!(.vars %in% .good)]
+        .ignored <- .vars[!(.vars %fin% .good)]
         warning("some `sim` requested items do not exist in the solved object and were ignored: ",
                 paste(paste0("sim.", .ignored), collapse=", "))
       }
@@ -265,7 +265,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
         stop("the items requested in the plot do not exist in the solved object: ",
              paste(.cmts, collapse=", "))
       } else if (length(.cmts0) != length(.cmts)) {
-        .ignored <- .cmts[!(.cmts %in% .both)]
+        .ignored <- .cmts[!(.cmts %fin% .both)]
         warning("some requested items do not exist in the solved object and were ignored: ",
                 paste(.ignored, collapse=", "))
       }
@@ -387,7 +387,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  .w <- which(names(.call) %fin% c("x", "y", "log", "xlab", "ylab"))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }
@@ -402,7 +402,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .parm <- attr(class(x), ".rx")$parm
   if (length(.cmts) > 0) {
     .parm <- intersect(.parm, .cmts)
-    x  <- x[x$trt %in% .parm,]
+    x  <- x[x$trt %fin% .parm,]
   }
   .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$eff)
@@ -468,7 +468,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  .w <- which(names(.call) %fin% c("x", "y", "log", "xlab", "ylab"))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }
@@ -482,7 +482,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .parm <- attr(class(x), ".rx")$parm
   if (length(.cmts) > 0) {
     .parm <- intersect(.parm, .cmts)
-    x  <- x[x$trt %in% .parm,]
+    x  <- x[x$trt %fin% .parm,]
   }
   .lvl <- attr(class(x), ".rx")$lvl
   .ci  <- attr(class(x), ".rx")$ci

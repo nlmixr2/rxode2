@@ -204,7 +204,7 @@ linMod <- function(variable, power, dv="dv",
     .varsMv <- c(.mv$lhs, .mv$params, .mv$state)
     .pre <- paste0(.var, num, rxIntToLetter(seq_len(power+ifelse(intercept, 1L, 0L))-1L))
     .pre <- vapply(.pre, function(v) {
-      if (v %in% .varsMv) {
+      if (v %fin% .varsMv) {
         paste0("rx.linMod.", v)
       } else {
         v

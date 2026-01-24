@@ -284,13 +284,13 @@ rxTest({
       ## print(etTrans(d, fl))
     } else {
       sub <- 0
-      if (id %in% c(410, 411, 409, 415, 709, 510, 610)) {
+      if (id %fin% c(410, 411, 409, 415, 709, 510, 610)) {
         sub <- 24
       }
-      if (id %in% c(809, 909, 1009)) {
+      if (id %fin% c(809, 909, 1009)) {
         sub <- 48
       }
-      if (id %in% 825) {
+      if (id %fin% 825) {
         sub <- 96
       }
       if (noLag) {
