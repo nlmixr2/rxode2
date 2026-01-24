@@ -5,7 +5,7 @@ rxode2.logo <- "  _____         ____  _____  ______
  | | \\ \\  >  <| |__| | |__| | |____
  |_|  \\_\\/_/\\_\\\\____/|_____/|______|
 "
-.rxVersion <- c(version = version, repo = "https://github.com/nlmixr2/rxode2", md5 = rxode2.md5)
+.rxVersion <- c(repo = "https://github.com/nlmixr2/rxode2", md5 = rxode2.md5)
 
 #' Version and repository for this dparser package.
 #'
@@ -20,5 +20,5 @@ rxVersion <- function(extra = "", echo = FALSE, version = sessionInfo()$otherPkg
   if (echo) {
     message(sprintf(rxode2.logo, sprintf("%s%s", version, extra)), appendLF = FALSE)
   }
-  return(invisible(.rxVersion))
+  return(invisible(c(version=version, .rxVersion)))
 }
