@@ -175,7 +175,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   # (https://stackoverflow.com/questions/41441170/failure-of-match-arg-for-the-empty-string)
   stopifnot(length(log) == 1)
   stopifnot(is.character(log))
-  stopifnot(log %in% c("", "x", "y", "xy", "yx"))
+  stopifnot(.in(log, c("", "x", "y", "xy", "yx")))
   useLogX <- nchar(log) == 2L || log == "x"
   useLogY <- nchar(log) == 2L || log == "y"
   useXgxr <-
@@ -402,7 +402,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .parm <- attr(class(x), ".rx")$parm
   if (length(.cmts) > 0) {
     .parm <- intersect(.parm, .cmts)
-    x  <- x[x$trt %in% .parm,]
+    x  <- x[.in(x$trt, .parm),]
   }
   .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$eff)
@@ -482,7 +482,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .parm <- attr(class(x), ".rx")$parm
   if (length(.cmts) > 0) {
     .parm <- intersect(.parm, .cmts)
-    x  <- x[x$trt %in% .parm,]
+    x  <- x[.in(x$trt, .parm),]
   }
   .lvl <- attr(class(x), ".rx")$lvl
   .ci  <- attr(class(x), ".rx")$ci

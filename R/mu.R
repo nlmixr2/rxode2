@@ -1144,8 +1144,5 @@
                      "probitInv.theta.low", "top", "dupErr", "lstErr", "lstChr", "curLhs"),
                    ls(envir=.env, all.names=TRUE))
   if (length(.rm) > 0) rm(list=.rm, envir=.env)
-  if (exists("predDf", .env)) {
-    attr(.env$predDf$cond, ".match.hash") <- NULL
-  }
   return(invisible(.env))
 }

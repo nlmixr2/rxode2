@@ -463,11 +463,30 @@ rxUiDecompress <- function(ui) {
   .ret
 }
 
+.stripHash <- function(var, ui) {
+  if (length(var) > 1) {
+    for (v in var) {
+      .stripHash(v, ui)
+    }
+    return(invisible(NULL))
+  }
+  if (exists(var, envir = ui, inherits = FALSE)) {
+    .covariate <- get(var, envir = ui, inherits = FALSE)
+    attr(.covariate, ".match.hash") <- NULL
+    assign(var, .covariate, envir = ui)
+  }
+  return(invisible(NULL))
+}
+
 #' @rdname rxUiDecompress
 #' @export
 rxUiCompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui)) {
+    .stripHash(c("eta", "covariates"), ui)
+    if (exists("predDf", ui)) {
+      attr(ui$predDf$cond, ".match.hash") <- NULL
+    }
     .ls <- ls(ui, all.names=TRUE)
     .ret <- lapply(.ls, function(nm) {
       get(nm, ui)
