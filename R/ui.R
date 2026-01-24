@@ -101,7 +101,6 @@
   assign("model", fun, envir=.ret)
   if (exists("eta", .ret)) {
     attr(.ret$eta, ".match.hash") <- NULL
-    #.ret$eta <- get("eta", .ret)
   }
   rxUiCompress(.ret)
 }

@@ -245,8 +245,8 @@
     if(is.name(y)) {
       env$found <- TRUE
       .th <- as.character(y)
-      if (.th %in% env$info$theta &&
-            !(.th %in% env$singleTheta)) {
+      if (.in(.th, env$info$theta) &&
+            !(.in(.th, env$singleTheta))) {
         env$singleTheta <- c(env$singleTheta, .th)
       }
       return(as.character(y))
@@ -422,7 +422,7 @@
         env$muRefCovariateDataFrame <- env$muRefCovariateDataFrame[-.w,, drop = FALSE]
         .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
       } else {
-        .w2 <- .w[which(!(.multPrior %in% .multBoth))]
+        .w2 <- .w[which(!(.in(.multPrior, .multBoth)))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
           env$muRefDropParameters <-
@@ -500,7 +500,7 @@
         env$muRefExtra <- env$muRefExtra[-.w,, drop = FALSE]
         .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
       } else {
-        .w2 <- .w[which(!(.extraItemsPrior %in% .extraBoth))]
+        .w2 <- .w[which(!(.in(.extraItemsPrior, .extraBoth)))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
           env$muRefDropParameters <- rbind(env$muRefDropParameters,
@@ -998,7 +998,7 @@
   if (is.null(ui$predDf)) {
     .errEsts <- NULL
   } else {
-    .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
+    .errEsts <- .iniDf[.in(.iniDf$condition, ui$predDf$cond), "name"]
   }
   .estName <- .iniDf$name[!is.na(.iniDf$ntheta) |
                             (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
@@ -1051,7 +1051,8 @@
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
     }
-    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
+    if (.in(.predDf$distribution[i], c("norm", "t")) &&
+          !(.in(.predDf$var[i], c(.mv$lhs, .mv$state, "rxLinCmt")))) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not defined in the model"))
     }
@@ -1143,5 +1144,8 @@
                      "probitInv.theta.low", "top", "dupErr", "lstErr", "lstChr", "curLhs"),
                    ls(envir=.env, all.names=TRUE))
   if (length(.rm) > 0) rm(list=.rm, envir=.env)
+  if (exists("predDf", .env)) {
+    attr(.env$predDf$cond, ".match.hash") <- NULL
+  }
   return(invisible(.env))
 }
