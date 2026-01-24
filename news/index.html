@@ -80,7 +80,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li><p>Allow transforms to return <code>NA</code>.</p></li>
+<ul><li><p>With new versions of R, <code><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption()</a></code> is no longer a bottleneck, so syncing to local variables is no longer done internally</p></li>
+<li><p>Use <code>fastmatch</code> for slight performance gains.</p></li>
+<li><p>Allow transforms to return <code>NA</code>.</p></li>
 <li><p>Drop <code>magrittr</code> and use <code>|&gt;</code> instead of <code>%&gt;%</code> in the examples (requires R 4.1)</p></li>
 <li><p>Change default model serialization to <code>bzip2</code> and move binary code generation inside of C.</p></li>
 </ul></div>
