@@ -33,6 +33,9 @@
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
+  .ver <- .rxVersion
+  .ver["version"] <- as.character(utils::packageVersion("rxode2"))
+  assignInMyNamespace(".rxVersion", .ver)
   requireNamespace("data.table", quietly=TRUE)
   if (requireNamespace("pillar", quietly = TRUE)) {
     .s3register("pillar::type_sum", "rxEvid")
@@ -101,7 +104,9 @@
 
 
 .onAttach <- function(libname, pkgname) {
-  ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
+  .ver <- .rxVersion
+  .ver["version"] <- as.character(utils::packageVersion("rxode2"))
+  assignInMyNamespace(".rxVersion", .ver)
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
   if (!interactive()) {
@@ -181,12 +186,12 @@ rxTempDir <- function() {
     .tmp <- .normalizePath(.tmp)
     Sys.setenv(rxTempDir = .tmp)
     utils::assignInMyNamespace(".rxTempDir0", .tmp)
-    utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
+    options(rxode2.cache.directory = .tmp)
     return(.tmp)
   } else {
     .tmp <- getFromNamespace(".rxTempDir0", "rxode2")
     .mkCache(.tmp)
-    utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
+    options(rxode2.cache.directory = .tmp)
     return(.tmp)
   }
 }
@@ -207,7 +212,7 @@ rxCreateCache <- function() {
   .tmp <- .normalizePath(.tmp)
   Sys.setenv(rxTempDir = .tmp)
   utils::assignInMyNamespace(".rxTempDir0", .tmp)
-  utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
+  options(rxode2.cache.directory=.tmp)
   invisible()
 }
 
@@ -224,44 +229,6 @@ rxForget <- function() {
     }
   }
 }
-
-## strict/permissive
-rxOpt <- list(
-  rxode2.prefer.tbl = c(FALSE, FALSE),
-  rxode2.warn.on.assign = c(TRUE, TRUE),
-  rxode2.syntax.allow.ini = c(FALSE, TRUE),
-  rxode2.calculate.jacobian = c(FALSE, FALSE),
-  rxode2.calculate.sensitivity = c(FALSE, FALSE),
-  rxode2.verbose = c(TRUE, TRUE),
-  rxode2.suppress.syntax.info = c(FALSE, FALSE),
-  rxode2.sympy.engine = c("", ""),
-  rxode2.cache.directory = c(.cacheDefault, .cacheDefault),
-  rxode2.tempfiles = c(TRUE, TRUE),
-  rxode2.sympy.run.internal = c(FALSE, FALSE),
-  rxode2.syntax.require.ode.first = c(FALSE, FALSE),
-  rxode2.compile.O = c("2", "2"),
-  rxode2.unload.unused = c(FALSE, FALSE),
-  rxode2.debug=c(FALSE, FALSE),
-  rxode2.serialize.type = c("bzip2", "bzip2")
-)
-
-rxode2.prefer.tbl <- NULL
-rxode2.warn.on.assign <- NULL
-rxode2.syntax.allow.ini <- NULL
-rxode2.calculate.jacobian <- NULL
-rxode2.calculate.sensitivity <- NULL
-rxode2.verbose <- NULL
-rxode2.suppress.syntax.info <- NULL
-rxode2.sympy.engine <- NULL
-rxode2.cache.directory <- NULL
-rxode2.delete.unnamed <- NULL
-rxode2.tempfiles <- NULL
-rxode2.sympy.run.internal <- NULL
-rxode2.syntax.require.ode.first <- NULL
-rxode2.compile.O <- NULL
-rxode2.unload.unused <- NULL
-rxode2.debug <- NULL
-rxode2.serialize.type <- NULL
 
 .isTestthat <- function() {
   return(regexpr("/tests/testthat/", getwd(), fixed = TRUE) != -1) # nolint
@@ -309,8 +276,6 @@ rxSuppressMsg <- function() {
 
 #' Sync options with rxode2 variables
 #'
-#' Accessing rxode2 options via getOption slows down solving.  This
-#' allows the options to be synced with variables.
 #'
 #' @param setDefaults This will setup rxode2's default solving options with the following options:
 #'
@@ -324,18 +289,10 @@ rxSuppressMsg <- function() {
 #' @return nothing; called for side effects
 #' @export
 rxSyncOptions <- function(setDefaults = c("none", "permissive", "strict")) {
-  x <- c(
-    "none" = 0L, "permissive" = 2L,
-    "strict" = 1L
-  )[match.arg(setDefaults)]
-  if (x > 0) {
-    op.rx <- list()
-    for (v in names(rxOpt)) {
-      op.rx[[v]] <- getOption(v, rxOpt[[v]][x])
-    }
-    options(op.rx) # nolint
-  }
-  for (var in names(rxOpt)) {
-    assignInMyNamespace(var, getOption(var, rxOpt[[var]][1]))
+  setDefaults <- match.arg(setDefaults)
+  if (setDefaults == "permissive") {
+    options(rxode2.syntax.allow.ini=TRUE)
+  } else if (setDefaults == "strict") {
+    options(rxode2.syntax.allow.ini=FALSE)
   }
 }

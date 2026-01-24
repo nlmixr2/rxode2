@@ -20,8 +20,7 @@ assignment
 nothing; called for side effects
 }
 \description{
-Accessing rxode2 options via getOption slows down solving.  This
-allows the options to be synced with variables.
+Sync options with rxode2 variables
 }
 \author{
 Matthew L. Fidler

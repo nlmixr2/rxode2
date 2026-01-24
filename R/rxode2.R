@@ -381,7 +381,7 @@ rxode2 <- # nolint
     .env$missing.modName <- missing(modName)
     wd <- .normalizePath(wd, "/", mustWork = FALSE)
     if (.env$missing.modName) {
-      if (rxode2.tempfiles) {
+      if (getOption("rxode2.tempfiles", TRUE)) {
         .env$mdir <- suppressMessages(.normalizePath(rxTempDir(), mustWork = FALSE))
       } else {
         .env$mdir <- suppressMessages(.normalizePath(wd, mustWork = FALSE))
@@ -462,7 +462,7 @@ rxode2 <- # nolint
     .env$stateExtra <- .extra
     .env$lhs <- .env$.mv$lhs
     .env$params <- .env$.mv$params
-    .env$version <- rxode2::rxVersion()["version"]
+    .env$version <- .rxVersion["version"]
     .env$solve <- eval(bquote(function(..., returnType= "matrix", object = NULL) {
       rxode2::rxSolve(object = get("rxDll", envir = .(.env)), ..., returnType = "matrix")
     }))
@@ -1044,10 +1044,11 @@ rxMd5 <- function(model, # Model File
         stop("unknown model", call. = FALSE)
       }
     }
-    rxSyncOptions()
+    ## rxSyncOptions()
     .tmp <- c(
-      rxode2.syntax.allow.ini, rxode2.calculate.jacobian,
-      rxode2.calculate.sensitivity)
+      getOption("rxode2.syntax.allow.ini", TRUE),
+      getOption("rxode2.calculate.jacobian", FALSE),
+      getOption("rxode2.calculate.sensitivity", FALSE))
     .ret <- c(
       .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
       .linCmtSens, .udfMd5Info(), .rxFullPrint
@@ -1060,7 +1061,7 @@ rxMd5 <- function(model, # Model File
     ## new rxode2 DLLs gives different digests.
     .ret <- c(.ret, .md5Rx)
     ## Add version and github repository information
-    .ret <- c(.ret, rxode2::rxVersion())
+    .ret <- c(.ret, .rxVersion)
     return(list(
       text = model,
       digest = digest::digest(list(.ret, .indLinInfo), serialize = TRUE, algo = "md5")
@@ -1369,7 +1370,7 @@ rxCompile.rxModelVars <- function(model, # Model
     prefix <- .rxPre(model, modName)
   }
   if (is.null(dir)) {
-    if (rxode2.tempfiles) {
+    if (getOption("rxode2.tempfiles", TRUE)) {
       .dir <- file.path(rxTempDir(), paste0(prefix, ".rxd"))
     } else {
       .dir <- getwd()

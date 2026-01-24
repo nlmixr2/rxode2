@@ -421,7 +421,6 @@ attr(rxUiGet.fun, "rstudio") <- function() {}
 #' @rdname rxUiGet
 rxUiGet.funPartsDigest <- function(x, ...) {
   .ui <- x[[1]]
-  rxSyncOptions()
   list(
     normModel = .ui$mv0$model["normModel"],
     iniDf = .ui$iniDf,
@@ -431,13 +430,13 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     }, character(1), USE.NAMES=FALSE),
     # Now get environment specific differences in the model
     # This changes how models can be expressed (and their output)
-    allow.ini=rxode2.syntax.allow.ini,
+    allow.ini=getOption("rxode2.syntax.allow.ini", TRUE),
     # Defined lower level functions and udf functions
     definedFuns=  ls(.udfEnv$symengineFs, all.names=TRUE),
     # Defined rxUdfUi methods
     uiFuns=as.character(utils::methods("rxUdfUi")),
     # Add version of rxode2
-    rxVersion=rxode2::rxVersion()
+    rxVersion=.rxVersion
   )
 }
 

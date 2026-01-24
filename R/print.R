@@ -161,7 +161,7 @@ print.rxode2 <- function(x, ...) {
     .dll <- substr(.dll, 1, nchar(.dll) - nchar(.Platform$dynlib.ext) - 1)
   }
   cat(paste0(
-    crayon::bold("rxode2 "), as.vector(rxode2::rxVersion()["version"]), " model named ", .pkg,
+    crayon::bold("rxode2 "), .rxVersion["version"], " model named ", .pkg,
     crayon::yellow$bold(getOption("rxode2.dll.print", .dll)), .new, " model (", .ico, .msg,
     .msg2, ")."
   ), "\n")
