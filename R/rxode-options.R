@@ -181,12 +181,12 @@ rxTempDir <- function() {
     .tmp <- .normalizePath(.tmp)
     Sys.setenv(rxTempDir = .tmp)
     utils::assignInMyNamespace(".rxTempDir0", .tmp)
-    options(rxode2.cache.directory= .tmp)
+    options(rxode2.cache.directory = .tmp)
     return(.tmp)
   } else {
     .tmp <- getFromNamespace(".rxTempDir0", "rxode2")
     .mkCache(.tmp)
-    options(rxode2.cache.directory=.tmp)
+    options(rxode2.cache.directory = .tmp)
     return(.tmp)
   }
 }
