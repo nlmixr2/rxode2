@@ -1,5 +1,8 @@
 # rxode2 (development version)
 
+- With new versions of R, `getOption()` is no longer a bottleneck, so
+  syncing to local variables is no longer done internally
+
 - Use `fastmatch` for slight performance gains.
 
 - Allow transforms to return `NA`.
