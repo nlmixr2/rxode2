@@ -33,6 +33,9 @@
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
+  .ver <- .rxVersion
+  .ver["version"] <- as.character(utils::packageVersion("rxode2"))
+  assignInMyNamespace(".rxVersion", .ver)
   requireNamespace("data.table", quietly=TRUE)
   if (requireNamespace("pillar", quietly = TRUE)) {
     .s3register("pillar::type_sum", "rxEvid")
@@ -101,7 +104,9 @@
 
 
 .onAttach <- function(libname, pkgname) {
-  ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
+  .ver <- .rxVersion
+  .ver["version"] <- as.character(utils::packageVersion("rxode2"))
+  assignInMyNamespace(".rxVersion", .ver)
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
   if (!interactive()) {

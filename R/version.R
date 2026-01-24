@@ -5,20 +5,20 @@ rxode2.logo <- "  _____         ____  _____  ______
  | | \\ \\  >  <| |__| | |__| | |____
  |_|  \\_\\/_/\\_\\\\____/|_____/|______|
 "
-.rxVersion <- c(repo = "https://github.com/nlmixr2/rxode2", md5 = rxode2.md5)
+
+.rxVersion <- c(version = "calc", repo = "https://github.com/nlmixr2/rxode2", md5 = rxode2.md5)
 
 #' Version and repository for this dparser package.
 #'
-#' @param version Version to display/return
 #' @param echo Boolean to echo the text logo, by default FALSE
 #' @param extra extra text to display in the logo
 #' @return A character vector with the version and repository.
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-rxVersion <- function(extra = "", echo = FALSE, version = sessionInfo()$otherPkgs$rxode2$Version) {
+rxVersion <- function(extra = "", echo = FALSE) {
   if (echo) {
     message(sprintf(rxode2.logo, sprintf("%s%s", version, extra)), appendLF = FALSE)
   }
-  return(invisible(c(version=version, .rxVersion)))
+  return(invisible(.rxVersion))
 }

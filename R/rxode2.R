@@ -462,7 +462,7 @@ rxode2 <- # nolint
     .env$stateExtra <- .extra
     .env$lhs <- .env$.mv$lhs
     .env$params <- .env$.mv$params
-    .env$version <- rxode2::rxVersion()["version"]
+    .env$version <- .rxVersion["version"]
     .env$solve <- eval(bquote(function(..., returnType= "matrix", object = NULL) {
       rxode2::rxSolve(object = get("rxDll", envir = .(.env)), ..., returnType = "matrix")
     }))
@@ -1061,7 +1061,7 @@ rxMd5 <- function(model, # Model File
     ## new rxode2 DLLs gives different digests.
     .ret <- c(.ret, .md5Rx)
     ## Add version and github repository information
-    .ret <- c(.ret, rxode2::rxVersion())
+    .ret <- c(.ret, .rxVersion)
     return(list(
       text = model,
       digest = digest::digest(list(.ret, .indLinInfo), serialize = TRUE, algo = "md5")
