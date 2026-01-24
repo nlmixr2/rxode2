@@ -4,6 +4,7 @@
 .udfEnv$envir <- NULL
 .udfEnv$envList <- list()
 .udfEnv$searchList <- list()
+.udfEnv$hashSearchList <- new.env(parent = emptyenv())
 .udfEnv$rxSEeqUsr <- NULL
 .udfEnv$rxCcode <- NULL
 .udfEnv$symengineFs <- new.env(parent = emptyenv())
@@ -170,6 +171,8 @@ rxRmFunParse <- function(name) {
   return(invisible())
 }
 
+
+
 .udfAddToSearch <- function(envir) {
   if (is.list(envir)) {
     lapply(seq_along(envir),
@@ -180,15 +183,13 @@ rxRmFunParse <- function(name) {
   }
   if (length(.udfEnv$searchList) == 0L) {
     .udfEnv$searchList <- list(envir)
+    .udfEnv$hashSearchList[[data.table::address(envir)]] <- TRUE
   }
-  ## if (!any(vapply(seq_along(.udfEnv$searchList),
-  ##                 function(i) {
-  ##                   identical(.udfEnv$searchList[[i]], envir)
-  ##                 }, logical(1), USE.NAMES = FALSE))) {
-
-  # check to see if identical takes too much time, just add
+  if (exists(data.table::address(envir), envir = .udfEnv$hashSearchList, inherits = FALSE)) {
+    return(invisible())
+  }
   .udfEnv$searchList <- c(.udfEnv$searchList, list(envir))
-  ## }
+  .udfEnv$hashSearchList[[data.table::address(envir)]] <- TRUE
   invisible()
 }
 
@@ -223,6 +224,7 @@ rxRmFunParse <- function(name) {
 .udfEnvReset <- function(lock=TRUE) {
   .udfEnv$fun <- list()
   .udfEnv$searchList <- list()
+  .udfEnv$hashSearchList <- new.env(parent = emptyenv())
 }
 #' See if the UI function exists in given environment.
 #'
