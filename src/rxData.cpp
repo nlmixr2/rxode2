@@ -1653,13 +1653,12 @@ double maxAtolRtolFactor = 0.1;
 
 //[[Rcpp::export]]
 void atolRtolFactor_(double factor){
-  rx_solve* rx = getRxSolve_();
-  rx_solving_options* op = rx->op;
-  
 #ifdef _OPENMP
   #pragma omp critical(atolRtolFactor)
   {
 #endif
+    rx_solve* rx = getRxSolve_();
+    rx_solving_options* op = rx->op;
     for (int i = op->neq;i--;){
       _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
       _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
