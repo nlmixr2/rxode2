@@ -1655,12 +1655,20 @@ double maxAtolRtolFactor = 0.1;
 void atolRtolFactor_(double factor){
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  for (int i = op->neq;i--;){
-    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
-    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+  
+#ifdef _OPENMP
+  #pragma omp critical(atolRtolFactor)
+  {
+#endif
+    for (int i = op->neq;i--;){
+      _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
+      _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+    }
+    op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
+    op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+#ifdef _OPENMP
   }
-  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
-  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+#endif
 }
 
 extern "C" double * getAol(int n, double atol){
