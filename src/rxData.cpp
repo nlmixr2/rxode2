@@ -1682,8 +1682,8 @@ void atolRtolFactor_(double factor){
     ssAtol[i] = min2(ssAtol[i]*factor, maxAtolRtolFactor);
     ssRtol[i] = min2(ssRtol[i]*factor, maxAtolRtolFactor);
   }
-  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
-  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+  // Note: op->ATOL and op->RTOL are not modified to avoid race conditions
+  // The per-thread tolerance arrays are used by the solvers
 }
 
 extern "C" double * getAol(int n, double atol){
