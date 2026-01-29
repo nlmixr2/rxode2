@@ -732,7 +732,7 @@ static const char *err_msg_ls[] =
 //dummy solout fn
 extern "C" void solout(long int nr, double t_old, double t, double *y, int *nptr, int *irtrn){}
 
-extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, double tf,
+extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind, double tp, double *yp_, double tf,
                       double *InfusionRate_, int *on_,
                       t_ME ME, t_IndF  IndF);
 
@@ -760,7 +760,7 @@ static inline void solveWith1Pt(int *neq,
     case 3:
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
-        idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
+        idid = indLin(ind->id, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
       }
       if (idid <= 0) {
@@ -2251,7 +2251,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         badSolveExit(i);
       } else {
         preSolve(op, ind, xoutp, xout, yp);
-        idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
+        idid = indLin(solveid, op, ind, xoutp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
         xoutp=xout;
         postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
@@ -2368,6 +2368,13 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ctx = NULL;
     return;
   }
+  
+  // Use per-individual tolerance arrays if available
+  if (ind->rtol2 != NULL && ind->atol2 != NULL) {
+    opt.rtol = ind->rtol2;
+    opt.atol = ind->atol2;
+  }
+  
   nx = ind->n_all_times;
   BadDose = ind->BadDose;
   InfusionRate = ind->InfusionRate;

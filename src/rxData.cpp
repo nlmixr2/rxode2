@@ -1540,6 +1540,12 @@ struct rx_globals {
   // time per thread
   double *timeThread = NULL;
 
+  // Per-thread tolerance arrays for thread-safe atolRtolFactor_
+  double *gatol2Thread = NULL;
+  double *grtol2Thread = NULL;
+  double *gssAtolThread = NULL;
+  double *gssRtolThread = NULL;
+
   bool alloc=false;
 };
 
@@ -1633,6 +1639,12 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+  
+  // Assign per-thread tolerance arrays
+  ind->atol2 = _globals.gatol2Thread + op->neq*omp_get_thread_num();
+  ind->rtol2 = _globals.grtol2Thread + op->neq*omp_get_thread_num();
+  ind->ssAtol = _globals.gssAtolThread + op->neq*omp_get_thread_num();
+  ind->ssRtol = _globals.gssRtolThread + op->neq*omp_get_thread_num();
 }
 
 extern "C" void setZeroMatrix(int which) {
@@ -1655,12 +1667,23 @@ double maxAtolRtolFactor = 0.1;
 void atolRtolFactor_(double factor){
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  for (int i = op->neq;i--;){
-    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
-    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+  
+  // Get thread-specific tolerance arrays
+  int threadId = omp_get_thread_num();
+  double *atol2 = _globals.gatol2Thread + op->neq*threadId;
+  double *rtol2 = _globals.grtol2Thread + op->neq*threadId;
+  double *ssAtol = _globals.gssAtolThread + op->neq*threadId;
+  double *ssRtol = _globals.gssRtolThread + op->neq*threadId;
+  
+  // Modify thread-specific tolerances
+  for (int i = op->neq; i--;){
+    atol2[i] = min2(atol2[i]*factor, maxAtolRtolFactor);
+    rtol2[i] = min2(rtol2[i]*factor, maxAtolRtolFactor);
+    ssAtol[i] = min2(ssAtol[i]*factor, maxAtolRtolFactor);
+    ssRtol[i] = min2(ssRtol[i]*factor, maxAtolRtolFactor);
   }
-  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
-  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+  // Note: op->ATOL and op->RTOL are not modified to avoid race conditions
+  // The per-thread tolerance arrays are used by the solvers
 }
 
 extern "C" double * getAol(int n, double atol){
@@ -5256,10 +5279,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n8 = rx->maxAllTimes*op->cores;
     int n9 = (op->numLinSens+op->numLin)*op->cores;
     int n10 = (op->neq)*op->cores;
+    int n11 = 4*op->neq*op->cores; // Per-thread tolerance arrays (atol2, rtol2, ssAtol, ssRtol)
     int nlin = (rx->linB)* 7* rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 +
+                                      n9 + n10 + n11 +
                                       5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -5298,7 +5322,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
     _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
     _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
-    _globals.timeThread = _globals.gLinDummy + n10;
+    _globals.timeThread = _globals.gLinDummy + n10; // [n8]
+    _globals.gatol2Thread = _globals.timeThread + n8; // [op->neq * op->cores]
+    _globals.grtol2Thread = _globals.gatol2Thread + op->neq*op->cores; // [op->neq * op->cores]
+    _globals.gssAtolThread = _globals.grtol2Thread + op->neq*op->cores; // [op->neq * op->cores]
+    _globals.gssRtolThread = _globals.gssAtolThread + op->neq*op->cores; // [op->neq * op->cores]
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);
@@ -5310,6 +5338,19 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     std::fill_n(&_globals.gssRtol[0],op->neq, rtolNVss[0]);
     std::copy(atolNVss.begin(), atolNVss.begin() + min2(op->neq, atolNVss.size()), &_globals.gssAtol[0]);
     std::copy(rtolNVss.begin(), rtolNVss.begin() + min2(op->neq, rtolNVss.size()), &_globals.gssRtol[0]);
+    
+    // Initialize per-thread tolerance arrays from global values
+    for (int core = 0; core < op->cores; core++) {
+      std::copy(&_globals.gatol2[0], &_globals.gatol2[0] + op->neq, 
+                _globals.gatol2Thread + core*op->neq);
+      std::copy(&_globals.grtol2[0], &_globals.grtol2[0] + op->neq,
+                _globals.grtol2Thread + core*op->neq);
+      std::copy(&_globals.gssAtol[0], &_globals.gssAtol[0] + op->neq,
+                _globals.gssAtolThread + core*op->neq);
+      std::copy(&_globals.gssRtol[0], &_globals.gssRtol[0] + op->neq,
+                _globals.gssRtolThread + core*op->neq);
+    }
+    
     op->atol2 = &_globals.gatol2[0];
     op->rtol2 = &_globals.grtol2[0];
     op->ssAtol = _globals.gssAtol;
