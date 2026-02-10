@@ -113,7 +113,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Nesting levels in rxode2</h1>
             
-            <h4 data-toc-skip class="date">2026-02-03</h4>
+            <h4 data-toc-skip class="date">2026-02-10</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-nesting.Rmd" class="external-link"><code>vignettes/rxode2-nesting.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-nesting.Rmd</code></div>
@@ -304,7 +304,7 @@ occ, <code>nu=200</code> or the model came from 200 occasions - inv,
 <code>| var(nu=X)</code>, or:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.Cl</span> <span class="op">~</span> <span class="fl">0.1</span>,</span>
-<span>                     <span class="va">eta.Ka</span> <span class="op">~</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">|</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/defunct.html" class="external-link">id</a></span><span class="op">(</span>nu<span class="op">=</span><span class="fl">100</span><span class="op">)</span>,</span>
+<span>                     <span class="va">eta.Ka</span> <span class="op">~</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">|</span> <span class="fu">id</span><span class="op">(</span>nu<span class="op">=</span><span class="fl">100</span><span class="op">)</span>,</span>
 <span>               <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eye.Cl</span> <span class="op">~</span> <span class="fl">0.05</span>,</span>
 <span>                     <span class="va">eye.Ka</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">)</span> <span class="op">|</span> <span class="fu">eye</span><span class="op">(</span>nu<span class="op">=</span><span class="fl">200</span><span class="op">)</span>,</span>
 <span>               <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">iov.Cl</span> <span class="op">~</span> <span class="fl">0.01</span>,</span>
