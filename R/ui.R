@@ -481,9 +481,13 @@ rxUiDecompress <- function(ui) {
 rxUiCompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui)) {
-    .stripHash(c("covariates", "eta"), ui)
+    .stripHash(c("covariates", "eta", "level"), ui)
     if (exists("predDf", ui)) {
       attr(ui$predDf$cond, ".match.hash") <- NULL
+      attr(ui$predDf$line, ".match.hash") <- NULL
+    }
+    if (exists("muRefDataFrame", ui)) {
+      attr(ui$muRefDataFrame$eta, ".match.hash") <- NULL
     }
     .ls <- ls(ui, all.names=TRUE)
     .ret <- lapply(.ls, function(nm) {
