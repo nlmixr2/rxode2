@@ -200,7 +200,7 @@ rxPreferredDistributionName <- function(dist) {
     .names <- names(.errIdenticalDists)
     for(.n in .names) {
       if (dist == .n) return(.n)
-      else if (dist %fin% .errIdenticalDists[[.n]]) return(.n)
+      else if (dist %in% .errIdenticalDists[[.n]]) return(.n)
     }
     dist
   } else {
@@ -234,11 +234,11 @@ rxPreferredDistributionName <- function(dist) {
 
 
 .rxTransformHasALambdaParameter <- function(distribution) {
-  (as.integer(distribution) %fin% c(1L, 2L, 6L, 8L, 9L, 10L))
+  (as.integer(distribution) %in% c(1L, 2L, 6L, 8L, 9L, 10L))
 }
 
 .rxTransformHasBounds <- function(distribution) {
-  (as.integer(distribution) %fin% 5:14)
+  (as.integer(distribution) %in% 5:14)
 }
 
 .rxAddPropLevels <- c(
@@ -354,7 +354,7 @@ rxDemoteAddErr <- function(errType) {
   .tmp <- as.character(oldAddProp)
   .w <- which(names(.incompatibleAddProp) == .tmp)
   if (length(.w) == 1L) {
-    if (newAddProp %fin% .incompatibleAddProp[[.w]]) {
+    if (newAddProp %in% .incompatibleAddProp[[.w]]) {
       return(.incompatibleErr(.tmp, newAddProp))
     }
   }
@@ -384,7 +384,7 @@ rxDemoteAddErr <- function(errType) {
   .tmp <- as.character(oldErrTypeF)
   .w <- which(names(.incompatibleErrTypeF) == .tmp)
   if (length(.w) == 1L) {
-    if (newErrTypeF %fin% .incompatibleErrTypeF[[.w]]) {
+    if (newErrTypeF %in% .incompatibleErrTypeF[[.w]]) {
       return(.incompatibleErr(.tmp, newErrTypeF))
     }
   }
@@ -421,7 +421,7 @@ rxDemoteAddErr <- function(errType) {
   .tmp <- as.character(oldErrType)
   .w <- which(names(.incompatibleErrType) == .tmp)
   if (length(.w) == 1L) {
-    if (newErrType %fin% .incompatibleErrType[[.w]]) {
+    if (newErrType %in% .incompatibleErrType[[.w]]) {
       return(.incompatibleErr(.tmp, newErrType))
     }
   }
@@ -479,7 +479,7 @@ rxDemoteAddErr <- function(errType) {
   .tmp <- as.character(oldTransform)
   .w <- which(names(.incompatibleTransformations) == .tmp)
   if (length(.w) == 1L) {
-    if (newTransform %fin% .incompatibleTransformations[[.w]]) {
+    if (newTransform %in% .incompatibleTransformations[[.w]]) {
       return(.incompatibleErr(.tmp, newTransform))
     }
   }
@@ -657,7 +657,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errHandleSingleDistributionArgument <- function(argumentNumber, funName, expression, env) {
   .cur <- expression[[argumentNumber + 1]]
-  .isLogitOrProbit <- (funName %fin% c("logitNorm", "probitNorm"))
+  .isLogitOrProbit <- (funName %in% c("logitNorm", "probitNorm"))
   if (is.name(.cur)) {
     .curName <- as.character(.cur)
     .w <- which(env$df$name == .curName)
@@ -683,7 +683,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         }
       }
       if (env$estNotAllowed) {
-        if (!(funName %fin% .allowEstimatedParameters)) {
+        if (!(funName %in% .allowEstimatedParameters)) {
           env$err <- c(env$err,
                        paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
         }
@@ -696,7 +696,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       }
     }
   } else if (is.na(.cur)) {
-    if (argumentNumber == 1 && funName %fin% .allowDemoteAddDistributions) {
+    if (argumentNumber == 1 && funName %in% .allowDemoteAddDistributions) {
       env$needToDemoteAdditiveExpression <- TRUE
     } else {
       env$err <- c(env$err,
@@ -725,7 +725,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     .doIt <- TRUE
   } else {
     .errDistArgs <- .errDist[[funName]]
-    .doIt <- .nargs %fin% .errDistArgs
+    .doIt <- .nargs %in% .errDistArgs
   }
   if (.doIt) {
     if (.nargs > 0) {
@@ -787,7 +787,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     .errHandleErrorStructure(expression[[3]], env)
   } else if (env$isAnAdditiveExpression) {
     .currErr <- rxPreferredDistributionName(deparse1(expression[[1]]))
-    if (.currErr %fin% .errAddDists) {
+    if (.currErr %in% .errAddDists) {
       if (.currErr == "var") {
         env$var <- TRUE
         return(invisible())
@@ -822,7 +822,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         env$distribution <- "dnorm"
       }
       .errHandleSingleDistributionTerm(.currErr, expression, env)
-    } else if (.currErr %fin% names(.errDist)) {
+    } else if (.currErr %in% names(.errDist)) {
       assign("err", c(env$err,
                       paste0("`", .currErr, "` is incorrectly added to an error expression")), envir=env)
     } else {
@@ -836,7 +836,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     } else {
       .currErr <- deparse1(expression[[1]])
       .isC <- .currErr == "c"
-      .isErrDist <- .currErr %fin% names(.errDist)
+      .isErrDist <- .currErr %in% names(.errDist)
     }
     if (.isC) {
       env$distribution <- "ordinal"
@@ -996,7 +996,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       assign("errGlobal", c(env$errGlobal, "a -2 log-likelihood expression cannot use abbreviated error codes like add() + prop() "),
              envir=env)
     } else {
-      if (!(env$distribution %fin% .rxDistributionType)) {
+      if (!(env$distribution %in% .rxDistributionType)) {
         env$distribution <- "norm"
       }
       .tmp <- data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
@@ -1049,7 +1049,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
-      if (!(.predDf[.i, "distribution"] %fin% c("LL", "ordinal"))) {
+      if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
         if (length(.w) == 0L) {
@@ -1339,7 +1339,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .lstChr <- vapply(seq_along(.lstExpr),
                             function(i) {
                               .cur <- .lstExpr[[i]]
-                              if (i %fin% .w2) {
+                              if (i %in% .w2) {
                                 paste0("rxLL ~ ", deparse1(.cur[[3]]))
                               } else {
                                 deparse1(.cur)

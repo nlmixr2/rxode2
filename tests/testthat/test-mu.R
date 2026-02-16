@@ -613,9 +613,9 @@ rxTest({
     ui <- rxode(one.cmt)
 
     expect_equal(length(ui$muRefCovariateDataFrame$theta), 0)
-    expect_true("eta.ka" %fin% ui$muRefDataFrame$eta)
-    expect_true("eta.cl" %fin% ui$muRefDataFrame$eta)
-    expect_true("eta.v" %fin% ui$muRefDataFrame$eta)
+    expect_true("eta.ka" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.cl" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.v" %in% ui$muRefDataFrame$eta)
 
     one.cmt <- function() {
       ini({
@@ -640,9 +640,9 @@ rxTest({
     ui <- rxode(one.cmt)
 
     expect_equal(length(ui$muRefCovariateDataFrame$theta), 0)
-    expect_true("eta.ka" %fin% ui$muRefDataFrame$eta)
-    expect_true("eta.cl" %fin% ui$muRefDataFrame$eta)
-    expect_true("eta.v" %fin% ui$muRefDataFrame$eta)
+    expect_true("eta.ka" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.cl" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.v" %in% ui$muRefDataFrame$eta)
 
 
     one.cmt <- function() {
@@ -669,9 +669,9 @@ rxTest({
     ui <- rxode(one.cmt)
 
     expect_equal(length(ui$muRefCovariateDataFrame$theta), 0)
-    expect_true("eta.ka" %fin% ui$muRefDataFrame$eta)
-    expect_true("eta.cl" %fin% ui$muRefDataFrame$eta)
-    expect_true("eta.v" %fin% ui$muRefDataFrame$eta)
+    expect_true("eta.ka" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.cl" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.v" %in% ui$muRefDataFrame$eta)
 
   })
 })

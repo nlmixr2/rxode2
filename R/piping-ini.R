@@ -48,7 +48,7 @@
       ini$fix[w] <- fixedValue
       .etas <- unique(c(.etas, ini$neta1[w], ini$neta2[w]))
       .fixedEtas <- c(.neta, .fixedEtas)
-      .etas <- .etas[!(.etas %fin% .fixedEtas)]
+      .etas <- .etas[!(.etas %in% .fixedEtas)]
     }
   }
   ini
@@ -178,7 +178,7 @@
            call.=FALSE)
     }
   }
-  if (.lhs %fin% .covs) {
+  if (.lhs %in% .covs) {
     .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
     # assign is called again to handle the fixing of the variable
   }
@@ -202,12 +202,12 @@
 #' @noRd
 .iniAddCovarianceBetweenTwoEtaValues <- function(ini, neta1, neta2, est, doFix, rxui) {
   .covs <- rxui$allCovs
-  if (neta1 %fin% .covs) {
+  if (neta1 %in% .covs) {
     .addVariableToIniDf(neta1, rxui, toEta=TRUE, value=NA, promote=TRUE)
     ini <- rxui$iniDf
     .covs <- rxui$allCovs
   }
-  if (neta2 %fin% .covs) {
+  if (neta2 %in% .covs) {
     .addVariableToIniDf(neta2, rxui, toEta=TRUE, value=NA, promote=TRUE)
     ini <- rxui$iniDf
     .covs <- rxui$allCovs
@@ -254,7 +254,7 @@
   .dn <- dimnames(mat)[[1]]
   .iniDf <- rxui$iniDf
   .drop <- FALSE
-  .common <- rxui$iniDf$name[rxui$iniDf$name %fin% .dn]
+  .common <- rxui$iniDf$name[rxui$iniDf$name %in% .dn]
   if (all(is.na(rxui$iniDf$neta1))) {
     .maxEta <- 0
     .shift <- 0
@@ -285,7 +285,7 @@
   }
   .dfTheta <- .iniDf[is.na(.iniDf$neta1), ]
   .dfEta <- .iniDf[!is.na(.iniDf$neta1), ]
-  .dfEta <- .dfEta[!(.dfEta$name %fin% .dn),, drop = FALSE]
+  .dfEta <- .dfEta[!(.dfEta$name %in% .dn),, drop = FALSE]
   if (length(.dfEta$neta1) > 0) {
     .dfEta$neta1 <- factor(paste(.dfEta$neta1))
     .dfEta$neta2 <- factor(paste(.dfEta$neta2), levels=levels(.dfEta$neta1))
@@ -315,7 +315,7 @@
       }
       if (.df$neta1[i] == .df$neta2[i]) {
         .var <- as.character(.df$name[i])
-        if (.var %fin% .covs) {
+        if (.var %in% .covs) {
           .addVariableToIniDf(.var, rxui, toEta=TRUE, value=.df$est[i], promote=TRUE)
           .covs <- rxui$allCovs
         }
@@ -959,7 +959,7 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   .ret <- rxUiDecompress(.copyUi(object)) # copy so (as expected) old UI isn't affected by the call
   iniDf <- .ret$iniDf
   # In the code below there is no test for bounds since the bounds are typically (0, Inf).
-  if ("omega" %fin% which) {
+  if ("omega" %in% which) {
     maskOmega <- !is.na(iniDf$neta1)
     if (sum(maskOmega) == 0) {
       cli::cli_warn("No omega parameters in the model")
@@ -970,7 +970,7 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
       }
     }
   }
-  if ("sigma" %fin% which) {
+  if ("sigma" %in% which) {
     maskSigma <- !is.na(iniDf$err)
     if (sum(maskSigma) == 0) {
       cli::cli_warn("No sigma parameters in the model")

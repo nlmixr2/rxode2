@@ -937,7 +937,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.ret)
   } else {
     .ret <- as.character(x)
-    if (.ret %fin% .rxToSEDualVarFunction) {
+    if (.ret %in% .rxToSEDualVarFunction) {
       .ret <- paste0(.ret, "()")
       .ret <- rxToSE(.ret)
       return(.ret)
@@ -1877,7 +1877,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       )
     }
     .fun0 <- as.character(x[[1]])
-    if (.fun0 %fin% c("dur", "rate", "lag", "alag", "f", "F")) {
+    if (.fun0 %in% c("dur", "rate", "lag", "alag", "f", "F")) {
       .ret0 <- c(list(as.character(x[[1]])),
                  lapply(x[-1], as.character, envir = envir))
     } else {
@@ -2059,7 +2059,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
-        if (.fun %fin% c("param", "dvid", "cmt", "locf", "nocb",
+        if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
                         "midpoint", "linear")) return(NULL)
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
@@ -2596,7 +2596,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .isnan <- try(is.nan(x[[2]]), silent=TRUE)
         if (inherits(.isnan, "try-error")) .isnan <- FALSE
         if (.isnan) {
-          if (as.character(x[[1]]) %fin% .rxToSEDualVarFunction) {
+          if (as.character(x[[1]]) %in% .rxToSEDualVarFunction) {
             return(paste0(as.character(x[[1]]), "()"))
           }
         }
@@ -3957,7 +3957,7 @@ rxSupportedFuns <- function() {
                     rxode2::rxReservedKeywords[, 1],
                     strsplit(paste(rxode2::rxReservedKeywords[, 3],collapse=","),"[,]+")[[1]])
   }
-  if (x %fin% envir$funs) {
+  if (x %in% envir$funs) {
     return(paste0("_qf_", x))
   }
   x
@@ -4032,13 +4032,13 @@ rxSupportedFuns <- function() {
   ##   stop("formulas or other expressions with '~` are not supported in translation",
   ##        call.=FALSE)
   ## }
-  if (as.character(x[[2]]) %fin% envir$args) {
+  if (as.character(x[[2]]) %in% envir$args) {
     stop("cannot assign argument '", as.character(x[[2]]),
          "' in functions converted to C",
          call.=FALSE)
   }
   .lhs <- .rxFun2cNameOrAtomic(x[[2]], envir=envir)
-  if (!(.lhs %fin% envir$args)) {
+  if (!(.lhs %in% envir$args)) {
     envir$vars <- c(envir$vars, .lhs)
   }
   envir$didAssign <- TRUE

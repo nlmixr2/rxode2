@@ -40,7 +40,7 @@
     .v <- as.character(utils::methods("rxUiGet"))
     .cls <- class(.obj)[1]
     .method <- paste0("rxUiGet.", .cls)
-    if (.method %fin% .v) {
+    if (.method %in% .v) {
       # If there is a rstudio value in the method, assume that is what you
       # wish to return for the rstudio auto-completion method
       .rstudio <- attr(utils::getS3method("rxUiGet", .cls), "rstudio")
@@ -197,14 +197,11 @@ rxUiGet.props <- function(x, ...) {
   .lhs <- .mv$lhs
   .state <- .mv$state
   .end <- .x$predDf$var
-  .end <- .end[.end %fin% c(.lhs, .state)]
-  .lhs <- .lhs[!(.lhs %fin% .end)]
+  .end <- .end[.end %in% c(.lhs, .state)]
+  .lhs <- .lhs[!(.lhs %in% .end)]
   .varLhs <- .x$varLhs
-  .primary <- .lhs[.lhs %fin% .varLhs]
-  .secondary <- .lhs[!(.lhs %fin% .primary)]
-  attr(.primary, ".match.hash") <- NULL
-  attr(.secondary, ".match.hash") <- NULL
-  attr(.end, ".match.hash") <- NULL
+  .primary <- .lhs[.lhs %in% .varLhs]
+  .secondary <- .lhs[!(.lhs %in% .primary)]
   list(pop=.pop,
        resid=.resid,
        group=.var,
@@ -505,7 +502,7 @@ rxUiGet.modelDesc <- function(x, ...) {
                                     "peripheral1",
                                     "peripheral2")
     .state <- .mvL$state[!(
-      (.mvL$state %fin% .rxUiLinCompartmentNames) |
+      (.mvL$state %in% .rxUiLinCompartmentNames) |
       startsWith(.mvL$state, "rx__sens_")
     )]
     return(sprintf(

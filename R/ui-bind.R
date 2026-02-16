@@ -54,7 +54,7 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
     .minfo("duplicated population parameters when combining 2 models")
     .minfo(paste0("keeping initialization from first model: '",
                   paste(.both, collapse="', '"), "'"))
-    .ini2theta <- .ini2theta[!(.ini2theta$name %fin% .both),, drop =FALSE]
+    .ini2theta <- .ini2theta[!(.ini2theta$name %in% .both),, drop =FALSE]
   }
   .ini2theta$ntheta <- length(.ini1theta$ntheta) + seq_along(.ini2theta$ntheta)
   .iniT <- rbind(.ini1theta, .ini2theta)
@@ -85,7 +85,7 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
       .minfo(paste0("keeping initialization from first model: '",
                     paste(.both, collapse="', '"), "'"))
 
-      .ini2eta <- .ini2eta[!(.ini2eta$name %fin% .both),, drop =FALSE]
+      .ini2eta <- .ini2eta[!(.ini2eta$name %in% .both),, drop =FALSE]
     }
   }
   .maxEta <- suppressWarnings(max(.ini1eta$neta1))

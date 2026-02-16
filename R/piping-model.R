@@ -177,12 +177,12 @@ model.rxModelVars <- model.rxode2
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
     lapply(.v$rm, function(x) {
-      .removeVariableFromIniDf(x, rxui, promote=ifelse(x %fin% .v$err, NA, FALSE))
+      .removeVariableFromIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   if (length(.v$new) > 0) {
     lapply(.v$new, function(x) {
-      .isErr <- x %fin% .v$err
+      .isErr <- x %in% .v$err
       if (auto || .isErr) {
         .addVariableToIniDf(x, rxui, promote=ifelse(.isErr, NA, FALSE))
       } else if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
@@ -318,7 +318,7 @@ model.rxModelVars <- model.rxode2
   .ret <- NA_integer_
   .multipleEndpointModel <- length(errLines) != 1L
   for (.i in seq_along(origLines)) {
-    .isErrorLine <- .i %fin% errLines
+    .isErrorLine <- .i %in% errLines
     if (returnAllLines ||
           (useErrorLine && .isErrorLine) ||
           (!useErrorLine && !.isErrorLine)) {
@@ -347,7 +347,7 @@ model.rxModelVars <- model.rxode2
             # Make sure the lhs is included in the model prediction
             .var <- deparse1(expr)
             .modelVars <- c(rxui$mv0$lhs, rxui$mv0$state)
-            if (!(.var %fin% .modelVars)) {
+            if (!(.var %in% .modelVars)) {
               stop("the variable '", .var, "' must be in the defined the model for piping this: '",deparse(.expr), "'",
                    call.=FALSE)
             }
@@ -484,7 +484,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
         return(TRUE)
       } else if (is.call(line[[2]]) && length(line[[2]]) == 2L) {
         if (is.name(line[[2]][[2]]) &&
-              as.character(line[[2]][[1]]) %fin% c("F", "f", "alag", "lag", "dur", "rate")) {
+              as.character(line[[2]][[1]]) %in% c("F", "f", "alag", "lag", "dur", "rate")) {
           return(TRUE)
         } else if (identical(line[[2]][[2]], 0)) {
           return(TRUE)
@@ -612,7 +612,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
           .lstExpr <- get("lstExpr", rxui)
           .predDf <- get("predDf", rxui)
           .ret0 <- sort(.ret, decreasing=TRUE)
-          if (length(.predDf$cond) == 1L && any(.ret0 %fin% .predDf$line)) {
+          if (length(.predDf$cond) == 1L && any(.ret0 %in% .predDf$line)) {
             .predDf <- NULL
             .lstExpr <- .lstExpr[-.ret]
           } else {
@@ -903,7 +903,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
 #' @author Matthew L. Fidler
 #' @noRd
 .addVariableToIniDf <- function(var, rxui, toEta=NA, value=1, promote=FALSE) {
-  if (var %fin% c("pi", "M_E", "M_E", "E", "M_PI", "M_PI_2",
+  if (var %in% c("pi", "M_E", "M_E", "E", "M_PI", "M_PI_2",
                  "M_PI_4", "M_1_PI", "M_2_PI", "M_2PI", "M_SQRT_PI",
                  "M_2_SQRTPI", "M_1_SQRT_2PI", "M_SQRT2", "M_SQRT_3",
                  "M_SQRT_32", "M_SQRT_2dPI", "M_LN_SQRT_PI",
@@ -912,7 +912,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     return(invisible())
   }
   if (!is.null(.varSelect$cov)) {
-    if (var %fin% .varSelect$cov) {
+    if (var %in% .varSelect$cov) {
       if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("add covariate {.code ", var, "} (as requested by cov option)"))
       }
@@ -922,7 +922,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
   .mv <- rxModelVars(rxui)
   .ini <- .mv$ini
   .ini <- .ini[which(!is.na(.ini))]
-  if (var %fin% names(.ini)) {
+  if (var %in% names(.ini)) {
     return(invisible())
   }
   .iniDf <- rxui$iniDf
@@ -936,7 +936,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     } else if (toEta) {
       checkmate::assertNumeric(value, len=1, any.missing=TRUE)
     } else {
-      if (length(value) %fin% c(2, 3)) {
+      if (length(value) %in% c(2, 3)) {
         # This is for promotion to parameter, only.  Additional bound setting
         # happens elsewhere.
         value <- value[2]
@@ -992,7 +992,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         return(invisible())
       }
       if (!is.null(.varSelect$covariateNames)) {
-        if (var %fin% .varSelect$covariateNames) {
+        if (var %in% .varSelect$covariateNames) {
           if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
             .minfo(paste0("add covariate {.code ", var, "} (known covariate)"))
           }

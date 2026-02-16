@@ -149,7 +149,7 @@ rxFixPop <- function(ui, returnNull=FALSE) {
     return(any(sapply(line, .lineHasFixedRes, errs=errs)))
   } else if (is.name(line)) {
     .cline <- as.character(line)
-    if (.cline %fin% errs) {
+    if (.cline %in% errs) {
       .lineHasFixedResEnv$err <- .cline
       return(TRUE)
     } else {

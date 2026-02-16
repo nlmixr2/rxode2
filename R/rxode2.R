@@ -446,7 +446,7 @@ rxode2 <- # nolint
         .p <- .ret["params"]
         .ini <- names(.mv$.ini)
         .init <- rxode2::rxInit(rxDll)
-        .ret$params <- .ret$params[!(rxode2::`%fin%`(.ret$params,  names(.init)))]
+        .ret$params <- .ret$params[!(.ret$params %in%  names(.init))]
         class(.ret) <- "list"
         return(.ret)
       })
@@ -874,7 +874,7 @@ rxChain2.EventTable <- function(obj, solvedObject) {
 
 .isLatex <- function() {
   ## nocov start
-  if (!("knitr" %fin% loadedNamespaces())) {
+  if (!("knitr" %in% loadedNamespaces())) {
     return(FALSE)
   }
   get("is_latex_output", asNamespace("knitr"))()
@@ -1075,7 +1075,7 @@ rxMd5 <- function(model, # Model File
 
 .rxShouldUnload <- function(parseMd5) {
   if (is.null(.rxLastModels)) return(TRUE)
-  return(!(parseMd5 %fin% .rxLastModels))
+  return(!(parseMd5 %in% .rxLastModels))
 }
 
 .rxTimeId <- function(parseMd5) {

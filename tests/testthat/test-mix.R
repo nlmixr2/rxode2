@@ -243,7 +243,7 @@ rxTest({
     class(lst2) <- NULL
 
     for (n in names(lst)) {
-      if (n %fin% c("mixUnif", "lib_name")) next
+      if (n %in% c("mixUnif", "lib_name")) next
       expect_equal(lst[[n]], lst2[[n]], info=n)
     }
 

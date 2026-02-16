@@ -65,5 +65,5 @@ forderForceBase <- function(forceBase = FALSE){
 }
 
 .chin <- function(x, table) {
-  x %fin% table
+  x %in% table
 }

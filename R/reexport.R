@@ -1,10 +1,3 @@
-#' @importFrom fastmatch `%fin%`
-#' @export
-fastmatch::`%fin%`
-
-#' @importFrom fastmatch `%!fin%`
-#' @export
-fastmatch::`%!fin%`
 
 #' @importFrom ggplot2 scale_type
 #' @export

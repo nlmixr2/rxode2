@@ -69,7 +69,7 @@ rxTest({
       expect_error(print(m1), NA),
       "Normalized Syntax"
     )
-    expect_true("idr.sd" %fin% m1$iniDf$name)
+    expect_true("idr.sd" %in% m1$iniDf$name)
 
   })
   test_that("binding together second model missing ini", {
@@ -107,7 +107,7 @@ rxTest({
       expect_error(print(m1), NA),
       "Normalized Syntax"
     )
-    expect_true("tv" %fin% m1$iniDf$name)
+    expect_true("tv" %in% m1$iniDf$name)
 
   })
 
@@ -154,8 +154,8 @@ rxTest({
       expect_error(print(m1), NA),
       "Normalized Syntax"
     )
-    expect_true("idr.sd" %fin% m1$iniDf$name)
-    expect_true("tv" %fin% m1$iniDf$name)
+    expect_true("idr.sd" %in% m1$iniDf$name)
+    expect_true("tv" %in% m1$iniDf$name)
 
     expect_error(rxAppendModel(ocmt, idr))
 
@@ -794,8 +794,8 @@ rxTest({
 
     m1 <- rxAppendModel(ocmt, idr, common=FALSE)
 
-    expect_true("idr.sd" %fin% m1$iniDf$name)
-    expect_true("tv" %fin% m1$iniDf$name)
+    expect_true("idr.sd" %in% m1$iniDf$name)
+    expect_true("tv" %in% m1$iniDf$name)
 
   })
 

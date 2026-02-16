@@ -154,7 +154,7 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI, addDosing = TRUE, returnType="data.frame")
 
-      expect_true("rate" %fin% names(o1))
+      expect_true("rate" %in% names(o1))
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI)
       s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsI)
@@ -165,9 +165,9 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR,
                     addDosing = TRUE, returnType = "data.frame")
 
-      expect_true("rate" %fin% names(o1))
-      expect_true("ss" %fin% names(o1))
-      expect_true("ii" %fin% names(o1))
+      expect_true("rate" %in% names(o1))
+      expect_true("ss" %in% names(o1))
+      expect_true("ii" %in% names(o1))
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR)
       s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsR)

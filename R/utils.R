@@ -908,7 +908,7 @@ use.utf <- function() {
 }
 
 is.latex <- function() {
-  if (!("knitr" %fin% loadedNamespaces())) {
+  if (!("knitr" %in% loadedNamespaces())) {
     return(FALSE)
   }
   get("is_latex_output", asNamespace("knitr"))()

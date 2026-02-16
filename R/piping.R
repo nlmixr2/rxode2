@@ -40,7 +40,7 @@
   attr(.curLotri, "lotriEst") <- NULL
   .ini1 <- NULL
   if (!is.null(.lotriEst)) {
-    .w <- which(.lotriEst$name %fin% iniDf$name)
+    .w <- which(.lotriEst$name %in% iniDf$name)
     .drop <- NULL
     if (length(.w) == 0L) {
      .drop <- .lotriEst$name
@@ -57,7 +57,7 @@
   .ini2 <- NULL
   if (!is.null(.dn)) {
     .dn <- .dn[[1]]
-    .w <- which(.dn %fin% iniDf$name)
+    .w <- which(.dn %in% iniDf$name)
     if (length(.w) == 0L) {
       .drop <- c(.drop, .dn)
     } else  {
@@ -336,7 +336,7 @@
               is.call(.cur[[3]][[2]])) {
           .call <- deparse1(.cur[[3]][[2]][[1]])
         }
-        if (.call %fin% names(.errDist)) {
+        if (.call %in% names(.errDist)) {
           .isLotri <- FALSE
         }
       }
@@ -394,7 +394,7 @@
           .nsEnv$.quoteCallInfoLinesAppend <- eval(call("quote", .append))
         }
         return(NULL)
-      } else if (.name %fin% c("envir",  "auto", "iniDf", "cov")) {
+      } else if (.name %in% c("envir",  "auto", "iniDf", "cov")) {
         return(NULL)
       } else if (.name != "") {
         # Changed named items to

@@ -84,7 +84,7 @@ rxIndLinState <- function(preferred = NULL) {
 
     .curStates <- unlist(lapply(.mult, function(x) {
       .pars <- rxModelVars(paste0("rx_expr=", x))$params
-      return(.pars[.pars %fin% states])
+      return(.pars[.pars %in% states])
     }))
     .addState <- function(.state, .mult) {
       .num <- which(.mult == .state)
@@ -107,7 +107,7 @@ rxIndLinState <- function(preferred = NULL) {
             ## depends on other states.
             .otherStates <- unlist(lapply(.rest, function(x) {
               .pars <- rxModelVars(paste0("rx_expr=", x))$params
-              return(.pars[.pars %fin% states])
+              return(.pars[.pars %in% states])
             }))
             if (length(.otherStates) > 0) .fullIndLin <<- TRUE
           }

@@ -116,7 +116,7 @@ rxStack <- function(data, vars = NULL, doSim=TRUE, doIpredSim=TRUE) {
       attr(.ret, "row.names") <- c(NA_integer_, length(.cmt))
       attr(.ret, "class") <- "data.frame"
       if (length(.vars) > 0L) {
-        .ret <- .ret[.ret$trt %fin% .vars,]
+        .ret <- .ret[.ret$trt %in% .vars,]
       }
       return(.ret)
     }

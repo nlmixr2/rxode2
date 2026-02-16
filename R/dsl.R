@@ -212,7 +212,7 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
       ret[[known[[i]][1]]] <- paste(mod, collapse = "\n")
     }
     ret <- unlist(ret)
-    ret <- ret[!(names(ret) %fin% rm)]
+    ret <- ret[!(names(ret) %in% rm)]
     return(ret)
   } else {
     return(paste(model, collapse = "\n"))
