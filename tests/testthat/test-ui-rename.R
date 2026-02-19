@@ -256,5 +256,123 @@ rxTest({
 
   })
 
+  test_that("rename doesn't change parent ui", {
+
+    f <- function() {
+      description <- "BOLUS_2CPT_CLV1QV2 SINGLE DOSE FOCEI (120 Ind/2280 Obs) runODE032"
+      dfObs <- 2280
+      dfSub <- 120
+      sigma <- lotri({
+        eps1 ~ 1
+      })
+      thetaMat <- lotri({
+        theta1 ~ c(theta1 = 0.000887681)
+        theta2 ~ c(theta1 = -0.00010551, theta2 = 0.000871409)
+        theta3 ~ c(theta1 = 0.000184416, theta2 = -0.000106195,
+                   theta3 = 0.00299336)
+        theta4 ~ c(theta1 = -0.000120234, theta2 = -5.06663e-05,
+                   theta3 = 0.000165252, theta4 = 0.00121347)
+        RSV ~ c(theta1 = 5.2783e-08, theta2 = -1.56562e-05, theta3 = 5.99331e-06,
+                theta4 = -2.53991e-05, RSV = 9.94218e-06)
+        eps1 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                 RSV = 0, eps1 = 0)
+        eta1 ~ c(theta1 = -4.71273e-05, theta2 = 4.69667e-05,
+                 theta3 = -3.64271e-05, theta4 = 2.54796e-05, RSV = -8.16885e-06,
+                 eps1 = 0, eta1 = 0.000169296)
+        omega.2.1 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                      RSV = 0, eps1 = 0, eta1 = 0, omega.2.1 = 0)
+        eta2 ~ c(theta1 = -7.37156e-05, theta2 = 2.56634e-05,
+                 theta3 = -8.08349e-05, theta4 = 1.37e-05, RSV = -4.36564e-06,
+                 eps1 = 0, eta1 = 8.75181e-06, omega.2.1 = 0, eta2 = 0.00015125)
+        omega.3.1 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                      RSV = 0, eps1 = 0, eta1 = 0, omega.2.1 = 0, eta2 = 0,
+                      omega.3.1 = 0)
+        omega.3.2 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                      RSV = 0, eps1 = 0, eta1 = 0, omega.2.1 = 0, eta2 = 0,
+                      omega.3.1 = 0, omega.3.2 = 0)
+        eta3 ~ c(theta1 = 6.63383e-05, theta2 = -8.19002e-05,
+                 theta3 = 0.000548985, theta4 = 0.000168356, RSV = 1.59122e-06,
+                 eps1 = 0, eta1 = 3.48714e-05, omega.2.1 = 0, eta2 = 4.31593e-07,
+                 omega.3.1 = 0, omega.3.2 = 0, eta3 = 0.000959029)
+        omega.4.1 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                      RSV = 0, eps1 = 0, eta1 = 0, omega.2.1 = 0, eta2 = 0,
+                      omega.3.1 = 0, omega.3.2 = 0, eta3 = 0, omega.4.1 = 0)
+        omega.4.2 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                      RSV = 0, eps1 = 0, eta1 = 0, omega.2.1 = 0, eta2 = 0,
+                      omega.3.1 = 0, omega.3.2 = 0, eta3 = 0, omega.4.1 = 0,
+                      omega.4.2 = 0)
+        omega.4.3 ~ c(theta1 = 0, theta2 = 0, theta3 = 0, theta4 = 0,
+                      RSV = 0, eps1 = 0, eta1 = 0, omega.2.1 = 0, eta2 = 0,
+                      omega.3.1 = 0, omega.3.2 = 0, eta3 = 0, omega.4.1 = 0,
+                      omega.4.2 = 0, omega.4.3 = 0)
+        eta4 ~ c(theta1 = -9.49661e-06, theta2 = 0.000110108,
+                 theta3 = -0.000306537, theta4 = -9.12897e-05, RSV = 3.1877e-06,
+                 eps1 = 0, eta1 = 1.36628e-05, omega.2.1 = 0, eta2 = -1.95096e-05,
+                 omega.3.1 = 0, omega.3.2 = 0, eta3 = -0.00012977,
+                 omega.4.1 = 0, omega.4.2 = 0, omega.4.3 = 0, eta4 = 0.00051019)
+      })
+      validation <- c("IPRED relative difference compared to Nonmem IPRED: 0%; 95% percentile: (0%,0%); rtol=6.43e-06",
+                      "IPRED absolute difference compared to Nonmem IPRED: 95% percentile: (2.19e-05, 0.0418); atol=0.00167",
+                      "IWRES relative difference compared to Nonmem IWRES: 0%; 95% percentile: (0%,0.01%); rtol=8.99e-06",
+                      "IWRES absolute difference compared to Nonmem IWRES: 95% percentile: (1.82e-07, 4.63e-05); atol=3.65e-06",
+                      "PRED relative difference compared to Nonmem PRED: 0%; 95% percentile: (0%,0%); rtol=6.41e-06",
+                      "PRED absolute difference compared to Nonmem PRED: 95% percentile: (1.41e-07,0.00382) atol=6.41e-06")
+      ini({
+        theta1 <- 1.37034036528946
+        label("log Cl")
+        theta2 <- 4.19814911033061
+        label("log Vc")
+        theta3 <- 1.38003493562413
+        label("log Q")
+        theta4 <- 3.87657341967489
+        label("log Vp")
+        RSV <- c(0, 0.196446108190896, 1)
+        label("RSV")
+        eta1 ~ 0.101251418415006
+        eta2 ~ 0.0993872449483344
+        eta3 ~ 0.101302674763154
+        eta4 ~ 0.0730497519364148
+      })
+      model({
+        cmt(CENTRAL)
+        cmt(PERI)
+        cl <- exp(theta1 + eta1)
+        v <- exp(theta2 + eta2)
+        q <- exp(theta3 + eta3)
+        v2 <- exp(theta4 + eta4)
+        v1 <- v
+        scale1 <- v
+        k21 <- q/v2
+        k12 <- q/v
+        d/dt(CENTRAL) <- k21 * PERI - k12 * CENTRAL - cl * CENTRAL/v1
+        d/dt(PERI) <- -k21 * PERI + k12 * CENTRAL
+        f <- CENTRAL/scale1
+        ipred <- f
+        rescv <- RSV
+        w <- ipred * rescv
+        ires <- DV - ipred
+        iwres <- ires/w
+        y <- ipred + w * eps1
+      })
+    }
+
+    f <- f()
+
+    f2 <- f %>% rxRename(err1=eps1)
+    expect_equal(dimnames(f2$sigma)[[1]], "err1")
+    expect_equal(dimnames(f$sigma)[[1]], "eps1")
+    expect_true(any(dimnames(f2$thetaMat)[[1]] == "err1"))
+    expect_false(any(dimnames(f2$thetaMat)[[1]] == "eps1"))
+    expect_false(any(dimnames(f$thetaMat)[[1]] == "err1"))
+    expect_true(any(dimnames(f$thetaMat)[[1]] == "eps1"))
+
+    f3 <- f %>% rxRename(Vp=theta4)
+    expect_true(any(dimnames(f3$thetaMat)[[1]] == "Vp"))
+    expect_false(any(dimnames(f3$thetaMat)[[1]] == "theta4"))
+    expect_false(any(dimnames(f$thetaMat)[[1]] == "Vp"))
+    expect_true(any(dimnames(f$thetaMat)[[1]] == "theta4"))
+
+  })
+
 
 })
