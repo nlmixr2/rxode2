@@ -31,7 +31,9 @@
     .var.name2 <- as.character(line[[3]])
   }
   if (.var.name %in% vars) {
-    stop("the new variable '", .var.name, "' is already present in the model; cannot replace '", .var.name2, "' with '",
+    stop("the new variable '", .var.name,
+         "' is already present in the model; cannot replace '",
+         .var.name2, "' with '",
          .var.name, "'",
          call.=FALSE)
   }
@@ -263,7 +265,6 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   .rxRenameAll(rxui, .lst)
   .ret <- rxui$fun()
   if (inherits(.data, "rxUi")) {
-    ## .x <- rxUiDecompress(.data)
     .ret <- .newModelAdjust(.ret, rxui, rename=TRUE)
     if (.inCompress) {
       .ret <- rxUiCompress(.ret)

@@ -1,5 +1,7 @@
 # rxode2 (development version)
 
+- Bug fix for `.copyUi()` with the new format (5.0+) of rxode2 ui models
+
 - With new versions of R, `getOption()` is no longer a bottleneck, so
   syncing to local variables is no longer done internally
 

@@ -1,3 +1,33 @@
+#' Copy an environment and all of its contents
+#'
+#' This is a recursive copy that creates a new environment for every
+#' environment in the original environment.  This is used to copy the
+#' rxUi object so that it can be modified without modifying the
+#' original.
+#'
+#' @param env Environment to copy
+#'
+#' @return Copied environment
+#' @author Matthew L. Fidler
+#' @noRd
+.copyEnv <- function(env, visited=new.env(hash=TRUE, parent=emptyenv())) {
+  .addr <- environmentName(env)
+  if (identical(.addr, "") || is.na(.addr)) .addr <- format(env)
+  if (exists(.addr, envir=visited, inherits=FALSE)) {
+    return(get(.addr, envir=visited, inherits=FALSE))
+  }
+  .ret <- new.env(parent=emptyenv())
+  assign(.addr, .ret, envir=visited)
+  lapply(ls(envir=env, all.names=TRUE), function(item){
+    if (is.environment(get(item, envir=env))) {
+      assign(item, .copyEnv(get(item, envir=env), visited), envir=.ret)
+    } else {
+      assign(item, get(item, envir=env), envir=.ret)
+    }
+  })
+  .ret
+}
+
 #' This copies the rxode2 UI object so it can be modified
 #'
 #' @param ui Original UI object
@@ -10,8 +40,13 @@
     return(rxUiDecompress(ui))
   }
   .ret <- new.env(parent=emptyenv())
+  .visited <- new.env(hash=TRUE, parent=emptyenv())
   lapply(ls(envir=ui, all.names=TRUE), function(item){
-    assign(item, get(item, envir=ui), envir=.ret)
+    if (is.environment(get(item, envir=ui))) {
+      assign(item, .copyEnv(get(item, envir=ui), .visited), envir=.ret)
+    } else {
+      assign(item, get(item, envir=ui), envir=.ret)
+    }
   })
   class(.ret) <- class(ui)
   .ret
