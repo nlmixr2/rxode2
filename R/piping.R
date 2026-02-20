@@ -10,11 +10,17 @@
 #' @return Copied environment
 #' @author Matthew L. Fidler
 #' @noRd
-.copyEnv <- function(env) {
+.copyEnv <- function(env, visited=new.env(hash=TRUE, parent=emptyenv())) {
+  .addr <- environmentName(env)
+  if (identical(.addr, "") || is.na(.addr)) .addr <- format(env)
+  if (exists(.addr, envir=visited, inherits=FALSE)) {
+    return(get(.addr, envir=visited, inherits=FALSE))
+  }
   .ret <- new.env(parent=emptyenv())
+  assign(.addr, .ret, envir=visited)
   lapply(ls(envir=env, all.names=TRUE), function(item){
     if (is.environment(get(item, envir=env))) {
-      assign(item, .copyEnv(get(item, envir=env)), envir=.ret)
+      assign(item, .copyEnv(get(item, envir=env), visited), envir=.ret)
     } else {
       assign(item, get(item, envir=env), envir=.ret)
     }
@@ -34,9 +40,10 @@
     return(rxUiDecompress(ui))
   }
   .ret <- new.env(parent=emptyenv())
+  .visited <- new.env(hash=TRUE, parent=emptyenv())
   lapply(ls(envir=ui, all.names=TRUE), function(item){
     if (is.environment(get(item, envir=ui))) {
-      assign(item, .copyEnv(get(item, envir=ui)), envir=.ret)
+      assign(item, .copyEnv(get(item, envir=ui), .visited), envir=.ret)
     } else {
       assign(item, get(item, envir=ui), envir=.ret)
     }
