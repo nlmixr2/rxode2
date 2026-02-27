@@ -137,7 +137,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int errNrow = rxGetErrsNrow();
   if (op->nsvar != errNcol) {
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);
+    (Rf_errorcall)(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);
   }
   int doDose;
   int evid0 = 0;
@@ -215,29 +215,29 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       int errNo = op->naTime - 10*cmt;
       CharacterVector stateNames = rxStateNames(op->modNamePtr);
       if (errNo == rxErrNaTimeLag) {
-        Rf_errorcall(R_NilValue,
+        (Rf_errorcall)(R_NilValue,
                      _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
                      CHAR(STRING_ELT(stateNames, cmt)));
       } else if (errNo == rxErrNaTimeRate) {
-        Rf_errorcall(R_NilValue,
+        (Rf_errorcall)(R_NilValue,
                      _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
                      CHAR(STRING_ELT(stateNames, cmt)));
       } else if (errNo == rxErrNaTimeDur) {
-        Rf_errorcall(R_NilValue,
+        (Rf_errorcall)(R_NilValue,
                      _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
                      CHAR(STRING_ELT(stateNames, cmt)));
       } else if (errNo == rxErrNaTimeAmtI) {
-        Rf_errorcall(R_NilValue,
+        (Rf_errorcall)(R_NilValue,
                      _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
                      CHAR(STRING_ELT(stateNames, cmt)));
       } else if (errNo == rxErrNaTimeAmt) {
-        Rf_errorcall(R_NilValue,
+        (Rf_errorcall)(R_NilValue,
                      _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
                      CHAR(STRING_ELT(stateNames, cmt)));
       } else {
-        Rf_errorcall(R_NilValue, _("NA time error %d"), errNo);
+        (Rf_errorcall)(R_NilValue, _("NA time error %d"), errNo);
       }
-      // Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
+      // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
       for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
@@ -247,7 +247,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
       }
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, "%s", _("could not solve the system"));
+      (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
     } else {
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }

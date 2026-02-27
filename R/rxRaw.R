@@ -167,3 +167,15 @@ rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
     rxRawToC(rxSerialize(raw, type=type))
   }
 }
+
+#' Deserialize a Raw Vector using qs
+#'
+#' @param x raw vector to deserialize using qs (not on CRAN any more)
+#' @return qs::deserialize (if qs is available) of x
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+rxOldQsDes <- function(x) {
+  rxReq("qs")
+  .Call(`_rxode2_qsDes`, x)
+}
