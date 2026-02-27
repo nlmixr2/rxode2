@@ -24,7 +24,7 @@ extern t_calc_mtime calc_mtime;
       return time;                                  \
       break;                                        \
     case rxode2naTimeInputError:                    \
-      Rf_errorcall(R_NilValue, "supplied NA time"); \
+      (Rf_errorcall)(R_NilValue, "supplied NA time"); \
       break;                                        \
     }                                               \
   }

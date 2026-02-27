@@ -170,7 +170,7 @@ double _prod(double *input, double *p, int type, int n, ...){
 }
 
 double _udf(const char *funName, double *input, int n, ...) {
-  if (n == -42) Rf_error("%s", "this has a ui user function that cannot be called directly");
+  if (n == -42) (Rf_error)("%s", "this has a ui user function that cannot be called directly");
   va_list valist;
   va_start(valist, n);
   for (unsigned int i = 0; i < n; i++){

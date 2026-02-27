@@ -372,7 +372,7 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
+    (Rf_errorcall)(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
   }
   return R_NilValue;
 }
@@ -1739,10 +1739,10 @@ void handleSS(int *neq,
         ei++;
       }
       if (ind->ix[ei] != ind->idose[infEixds]){
-        /* Rf_errorcall(R_NilValue, "Cannot figure out infusion end time."); */
+        /* (Rf_errorcall)(R_NilValue, "Cannot figure out infusion end time."); */
         if (!(ind->err & rxErrRate02)){
           ind->err += rxErrRate02;
-          /* Rf_errorcall(R_NilValue, "Rate is zero/negative"); */
+          /* (Rf_errorcall)(R_NilValue, "Rate is zero/negative"); */
         }
         return;
       }
@@ -4250,7 +4250,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
     return(ind->lhs[i]);
   } else {
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, "Trying to access an equation that isn't calculated. lhs(%d/%d); id: %s\n",i, op->nlhs, getId(id));
+    (Rf_errorcall)(R_NilValue, "Trying to access an equation that isn't calculated. lhs(%d/%d); id: %s\n",i, op->nlhs, getId(id));
   }
   return 0;
 }
