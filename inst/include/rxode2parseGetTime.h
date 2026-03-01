@@ -46,10 +46,10 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
   return ret;
 }
 
-static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t){
+static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
   rx_solving_options *op = &op_global;
   returnBadTime(t);
-  double ret = RATE(id, cmt, dose, t);
+  double ret = RATE(id, cmt, dose, t, y);
   if (ISNA(ret)){
     op->badSolve=1;
     if (op->naTime == 0) {
@@ -59,11 +59,11 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
   return ret;
 }
 
-static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double dose, double t){
+static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
   rx_solving_options *op = &op_global;
   returnBadTime(t);
   if (ISNA(t)) return t;
-  double ret = DUR(id, cmt, dose, t);
+  double ret = DUR(id, cmt, dose, t, y);
   if (ISNA(ret)){
     op->badSolve=1;
     if (op->naTime == 0) {
@@ -92,7 +92,7 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
   int oldIdx = ind->idx;
   ind->idx = idx;
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind, idx), t, yp);
-  dur  = getDur(ind, ind->id, ind->cmt, amt, t);
+  dur  = getDur(ind, ind->id, ind->cmt, amt, t, yp);
   ind->idx = oldIdx;
   if (dur > 0) {
     setDoseP1(ind, idx, -amt/dur);
@@ -134,7 +134,7 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
   ind->idx=idx;
   double dur, rate, amt;
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind,idx), t, yp);
-  rate  = getRate(ind, ind->id, ind->cmt, amt, t);
+  rate  = getRate(ind, ind->id, ind->cmt, amt, t, yp);
   if (rate > 0){
     dur = amt/rate; // mg/hr
     setDoseP1(ind, idx, -rate);
