@@ -193,7 +193,7 @@ static inline void handleTurnOnModeledDuration(int idx, rx_solve *rx, rx_solving
       }
       return;
     }
-    updateDur(idx, ind, rx->ypNA);
+    updateDur(idx, ind, op->inits);
   }
 }
 
@@ -230,7 +230,7 @@ static inline void handleTurnOnModeledRate(int idx, rx_solve *rx, rx_solving_opt
       return;
     }
     setAllTimesP1(ind, idx, getAllTimes(ind, idx));
-    updateRate(idx, ind, rx->ypNA);
+    updateRate(idx, ind, op->inits);
   }
 }
 
