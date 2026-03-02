@@ -78,7 +78,10 @@ extern "C" {
 			ind->solved = -1;
 		}
     sortInd(ind);
-    if (op->badSolve) return 0;
+    // Note: previously checked op->badSolve here, but that is a shared
+    // global flag — in parallel mode another thread's failed solve would
+    // prevent THIS individual from initializing.  The bad-solve state is
+    // now handled per-individual via localBadSolve / *rc in the caller.
 		ind->ixds=ind->idx=0;
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;

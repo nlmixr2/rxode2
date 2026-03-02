@@ -2229,6 +2229,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   double *yp;
   inits = op->inits;
   int idid = 0;
+  int localBadSolve = 0;
   ind = &(rx->subjects[neq[1]]);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   nx = ind->n_all_times;
@@ -2249,6 +2250,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         *rc = -1000;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
@@ -2258,7 +2260,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &idid, u_inis);
@@ -2356,6 +2358,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double *yp;
   int neqOde = *neq - op->numLin - op->numLinSens;
   inits = op->inits;
+  int localBadSolve = 0;
   struct lsoda_context_t * ctx = lsoda_create_ctx();
   ctx->function = (_lsoda_f)dydt_liblsoda;
   ctx->data = neq;
@@ -2386,45 +2389,51 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         *rc = -1000;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         // REprintf("xp: %f xout: %f\n", xp, xout);
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
           }
-          int idx = ind->idx;
-          int ixds= ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ctx->state = 1;
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds= ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            ctx->state = 1;
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+            if (!isSameTime(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+              if (*rc < 0) localBadSolve = 1;
+            }
+            xp =  ind->extraDoseNewXout;
           }
-          xp =  ind->extraDoseNewXout;
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(ctx->state), u_inis);
@@ -2816,6 +2825,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   double xp = getAllTimes(ind, 0);
   double xout;
+  int localBadSolve = 0;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   ind->solvedIdx = 0;
@@ -2829,10 +2839,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         ind->rc[0] = -1000;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
@@ -2840,29 +2851,33 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             neq[0] = op->neq;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            if (*(ind->rc) < 0) localBadSolve = 1;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          istate = 1;
-          ind->ixds = ixds; // This is a fake dose, real dose stays in place
-          ind->idx = idx;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            neq[0] = op->neq - op->numLin - op->numLinSens;
-            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                             &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            neq[0] = op->neq;
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            istate = 1;
+            ind->ixds = ixds; // This is a fake dose, real dose stays in place
+            ind->idx = idx;
+            ind->idxExtra++;
+            if (!isSameTime(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              neq[0] = op->neq - op->numLin - op->numLinSens;
+              F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                               &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+              neq[0] = op->neq;
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+              if (*(ind->rc) < 0) localBadSolve = 1;
+            }
+            xp =  ind->extraDoseNewXout;
           }
-          xp =  ind->extraDoseNewXout;
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = op->neq - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
@@ -2874,13 +2889,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           neq[0] = op->neq;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          if (*(ind->rc) < 0) localBadSolve = 1;
         }
         xp = xout;
         //dadt_counter = 0;
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(istate), u_inis);
