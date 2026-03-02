@@ -15,6 +15,7 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
+
 	void sortInd(rx_solving_options_ind *ind);
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);
@@ -51,7 +52,6 @@ extern "C" {
 			ind->curDoseS[j] = NA_REAL;
 		}
 		ind->inLhs = inLhs;
-		if (rx->nMtime) calc_mtime(solveid, ind->mtime);
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {
         ind->lhs[j] = 1.0; // default is first string defined
@@ -67,8 +67,17 @@ extern "C" {
         if (inLhs == 0) memcpy(ind->solve, op->inits, op->neq*sizeof(double));
         u_inis(solveid, ind->solve); // Update initial conditions @ current time
         ind->isIni = 0;
+      } else if (rx->nMtime && inLhs == 0 && op->neq > 0) {
+        // No u_inis but state-dep mtime needs initial values in ind->solve
+        memcpy(ind->solve, op->inits, op->neq*sizeof(double));
       }
 		}
+    // Compute model times using ind->solve (which has user-specified inits after u_inis).
+    // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
+    if (rx->nMtime) {
+      double *_stateForMtime = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
+      calc_mtime(solveid, ind->mtime, _stateForMtime);
+    }
 		ind->_newind = 1;
 		ind->dosenum = 0;
 		ind->tlast = NA_REAL;

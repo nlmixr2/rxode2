@@ -297,10 +297,10 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       }
     } else if (show_ode == ode_mtime){
       if (nmtime){
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
                 prefix);
       } else {
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n",
                 prefix);
       }
     } else if (show_ode == ode_mexp){
@@ -358,7 +358,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
       }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
-      if (show_ode != ode_mtime && show_ode != ode_indLinVec){
+      if (show_ode != ode_indLinVec){
         for (i=0; i<tb.de.n; i++) {                   /* name state vars */
           buf = tb.ss.line[tb.di[i]];
           if (tb.idu[i] == 0) {

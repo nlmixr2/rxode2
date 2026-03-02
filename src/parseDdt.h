@@ -179,10 +179,6 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
 static inline int handleDdtRhs(nodeInfo ni, char *name, D_ParseNode *xpn) {
   if (nodeHas(der_rhs)) {
     switch(sbPm.lType[sbPm.n]){
-    case TMTIME:
-      updateSyntaxCol();
-      trans_syntax_error_report_fn(_("modeling times cannot depend on state values"));
-      break;
     case TMAT0:
       updateSyntaxCol();
       trans_syntax_error_report_fn(_("model-based matricies cannot depend on state values"));

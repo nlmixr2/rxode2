@@ -340,7 +340,7 @@ typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
 typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
 
-typedef void (*t_calc_mtime)(int cSub, double *mtime);
+typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);

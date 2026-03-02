@@ -1,4 +1,20 @@
 rxTest({
+  test_that("state-dependent mtime is parsed and solves without error", {
+    mod <- rxode2({
+      ka <- 0.04
+      kel <- 0.6
+      # mtime depends on state variable 'intestine'
+      mtime(t1) <- intestine * 0.01
+      d / dt(intestine) <- -ka * intestine
+      d / dt(blood) <- ka * intestine - kel * blood
+    })
+    et <- eventTable() |>
+      add.dosing(dose = 3, nbr.doses = 1) |>
+      add.sampling(0:48)
+    # Uses initial condition of intestine (0) to compute mtime at solve init
+    expect_no_error(solve(mod, et, inits = c(intestine = 100, blood = 0)))
+  })
+
   if (!.Call(`_rxode2_isIntel`)) {
     mod <- rxode2({
       ka <- 0.04
@@ -36,3 +52,4 @@ rxTest({
     })
   }
 })
+
