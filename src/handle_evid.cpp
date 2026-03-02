@@ -11,6 +11,7 @@
 #define _(String) (String)
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h"
 
 
 extern "C" int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) {

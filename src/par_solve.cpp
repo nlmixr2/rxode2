@@ -1722,7 +1722,7 @@ void handleSS(int *neq,
         rateOff = -getDose(ind, ind->idose[infEixds]);
       } else if (isModeled) {
         rateOn =getRate(ind, ind->id, ind->cmt, 0.0,
-                        getAllTimes(ind, ind->idose[ind->ixds]));
+                        getAllTimes(ind, ind->idose[ind->ixds]), yp);
         rateOff = -rateOn;
       } else {
         // shouldn't ever get here modeled duration would have to be
@@ -1760,7 +1760,7 @@ void handleSS(int *neq,
     }
     if (isSsLag) {
       int wh0 = ind->wh0; ind->wh0=1;
-      curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) -
+      curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD, yp) -
         startTimeD;
       ind->wh0 = wh0;
       overIi = floor(curLagExtra/curIi);

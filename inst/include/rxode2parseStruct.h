@@ -336,7 +336,7 @@ static inline void lineNull(vLines *sbb) {
 }
 
 typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
+typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
 typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
 

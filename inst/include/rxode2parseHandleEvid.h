@@ -557,14 +557,18 @@ static inline int handle_evid(int evid, int neq,
       // Rate already calculated and saved in the next dose record
       if (ind->wh0 != EVID0_SS0 &&
           ind->wh0 != EVID0_SS20) {
-        // Recompute with actual state for state-dependent rate/duration
+        // Recompute with actual state for state-dependent rate/duration.
+        // ind->idx is an ix-array index; updateRate/updateDur need the direct
+        // all_times/dose index.  For extra-dose events (ind->idx < 0) the
+        // negative value IS the direct index.
         {
           rx_solve *rx = &rx_global;
+          int _directIdx = (ind->idx >= 0) ? ind->ix[ind->idx] : ind->idx;
           if (ind->whI == EVIDF_MODEL_RATE_ON && (rx->needSort & needSortRate)) {
-            updateRate(ind->idx, ind, yp);
+            updateRate(_directIdx, ind, yp);
             ind->extraSorted = 0;
           } else if (ind->whI == EVIDF_MODEL_DUR_ON && (rx->needSort & needSortDur)) {
-            updateDur(ind->idx, ind, yp);
+            updateDur(_directIdx, ind, yp);
             ind->extraSorted = 0;
           }
         }
