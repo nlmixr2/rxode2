@@ -1,5 +1,10 @@
 # rxode2 (development version)
 
+- Model times (`mtime(var) <- expr`) can now reference ODE state
+  variables.  The value is computed from the model initial conditions at
+  solve initialisation, so the extra time-point is placed correctly even
+  when the expression depends on a state that starts at a non-zero value.
+
 - State-dependent bioavailability `f(cmt)` is now allowed when combined
   with modeled-rate (`rate=-1`) or modeled-duration (`rate=-2`) infusion
   events.  Previously this combination was rejected at parse time.
