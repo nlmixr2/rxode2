@@ -1,5 +1,24 @@
 # rxode2 (development version)
 
+- State-dependent bioavailability `f(cmt)` is now allowed when combined
+  with modeled-rate (`rate=-1`) or modeled-duration (`rate=-2`) infusion
+  events.  Previously this combination was rejected at parse time.
+
+- Modeled rate (`rate(cmt)`) and modeled duration (`dur(cmt)`) expressions
+  are now evaluated with the actual ODE state at the time the infusion
+  starts, enabling true state-dependent zero-order input.  The event
+  end-time is recomputed at runtime and unsolved extra-dose events are
+  re-sorted as needed.
+
+- Sort-phase estimation of infusion end-times for modeled rate/duration
+  now uses the model initial conditions instead of all-NA values,
+  producing a better initial event ordering.
+
+- Absorption lag-time expressions (`alag(cmt)`) that reference ODE states
+  via `d/dt(state)` are now syntactically accepted (previously a
+  parse-time error).  If the lag evaluates to NA at runtime a clear
+  error is raised.
+
 - Bug fix for `.copyUi()` with the new format (5.0+) of rxode2 ui models
 
 - With new versions of R, `getOption()` is no longer a bottleneck, so
