@@ -151,7 +151,7 @@ SEXP toReal(SEXP in){
     UNPROTECT(1);
     return ret;
   }
-  Rf_errorcall(R_NilValue, _("not an integer/real"));
+  (Rf_errorcall)(R_NilValue, _("not an integer/real"));
   return R_NilValue;
 }
 
@@ -169,7 +169,7 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
     if (lenP == 1){
       lenOut = lenV;
     } else if (lenV != 1){
-      Rf_errorcall(R_NilValue, _("The dimensions of the parameters must match"));
+      (Rf_errorcall)(R_NilValue, _("The dimensions of the parameters must match"));
     }
   }
   // vc, kel, vss, cl, thalf, alpha, A, fracA
@@ -291,7 +291,7 @@ extern "C" SEXP derived2(int trans, SEXP inp, double dig) {
         (lenP2 != 1 && lenP2 != lenOut) ||
         (lenP3 != 1 && lenP3 != lenOut) ||
         (lenV != 1  && lenV != lenOut)) {
-      Rf_errorcall(R_NilValue, _("The dimensions of the parameters must match"));
+      (Rf_errorcall)(R_NilValue, _("The dimensions of the parameters must match"));
     }
   }
   // vc, kel, k12, k21, vp, vss, cl, q, thalfAlpha, thalfBeta,
@@ -463,7 +463,7 @@ extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
         (lenP4 != 1 && lenP4 != lenOut) ||
         (lenP5 != 1 && lenP5 != lenOut) ||
         (lenV != 1  && lenV != lenOut)) {
-      Rf_errorcall(R_NilValue, _("The dimensions of the parameters must match"));
+      (Rf_errorcall)(R_NilValue, _("The dimensions of the parameters must match"));
     }
   }
   // vc, kel, k12, k21, vp, vss, cl, q, thalfAlpha, thalfBeta,
@@ -687,11 +687,11 @@ BEGIN_RCPP
       break;
     default:
       _rxode2parse_unprotect();
-      Rf_errorcall(R_NilValue, _("'ncmt' needs to be 1-3"));
+      (Rf_errorcall)(R_NilValue, _("'ncmt' needs to be 1-3"));
     }
   } else {
     _rxode2parse_unprotect();
-    Rf_errorcall(R_NilValue, _("'inp' needs to be list/data frame"));
+    (Rf_errorcall)(R_NilValue, _("'inp' needs to be list/data frame"));
   }
   return R_NilValue;
 END_RCPP

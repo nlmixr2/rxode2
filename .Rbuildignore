@@ -1,3 +1,4 @@
+^CLAUDE.md$
 ^test.R$
 ^rxode2\.smproj$
 ^codemeta\.json$
@@ -128,6 +129,7 @@ tests/testthat/*.d.*
 ..Rcheck
 ^\.github$
 man/rmdhunks/rxode2-datasets.Rmd
+^.claude
 authors.md
 ^cran-comments\.md$
 ^authors\.md$
