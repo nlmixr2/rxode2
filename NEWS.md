@@ -1,5 +1,27 @@
 # rxode2 (development version)
 
+- Fix: state-dependent `alag(cmt) <- state_expr` now evaluates correctly;
+  the generated `RxLag()` function populates state variables from the actual
+  state array (previously they were forced to `NA_REAL`, causing all
+  state-dependent lag expressions to produce NA errors).
+  **Note**: Previously-compiled cached models that use `alag()` must be
+  recompiled after upgrading — clear the model cache or reinstall rxode2
+  (`R CMD INSTALL .`).
+
+- Fix: when `dur(cmt)` or `rate(cmt)` is used with `alag(cmt)`, the
+  infusion stop-event time now stores the correct absolute lagged time
+  (`lagged_start + duration`) instead of raw `start + duration`; lag is no
+  longer incorrectly re-applied when the stop event time is retrieved.
+
+- Fix: all six ODE solve loops now use precomputed `timeThread` values for
+  event times instead of recomputing via `getTime_()` with `ypNA`, preventing
+  NA propagation for any state-dependent lag scenario.
+
+- Fix: state-dependent lag is recomputed at each dose event using the current
+  ODE state (`refreshLagTimesIfNeeded`); the main event timeline is re-sorted
+  when lag values change, analogous to the existing re-sort for
+  state-dependent rate/duration.
+
 - Fix: state-dependent modeled rate/duration expressions now use per-subject
   initial conditions (`ind->solve`) at sort time instead of global estimates
   (`op->inits`), so infusion end-times are placed correctly when subjects
