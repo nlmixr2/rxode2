@@ -191,6 +191,7 @@ typedef struct {
   double extraDoseNewXout;
   int idxExtra; // extra idx
   int extraSorted; // extra sorted?
+  int mainSorted;  // 0 = main ix[] needs re-sort after runtime rate/dur/mtime update
   //double *extraDoseIi; // ii doses unsupported
   bool lastIsSs2;
   double *timeThread;

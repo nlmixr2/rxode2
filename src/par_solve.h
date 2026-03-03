@@ -88,6 +88,7 @@ extern "C" {
 		}
     sortInd(ind);
     if (op->badSolve) return 0;
+    ind->mainSorted = 1;  // just sorted; main timeline is current
 		ind->ixds=ind->idx=0;
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
