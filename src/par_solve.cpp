@@ -2304,7 +2304,8 @@ extern "C" void par_indLin(rx_solve *rx){
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  int abort = 0;
+  // volatile ensures reads/writes are not cached in registers across threads
+  volatile int abort = 0;
   // FIXME parallel
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
@@ -2504,7 +2505,8 @@ extern "C" void par_linCmt(rx_solve *rx) {
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  int abort = 0;
+  // volatile ensures reads/writes are not cached in registers across threads
+  volatile int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
@@ -2581,7 +2583,8 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  int abort = 0;
+  // volatile ensures reads/writes are not cached in registers across threads
+  volatile int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
@@ -2656,7 +2659,8 @@ extern "C" void par_liblsoda(rx_solve *rx){
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  int abort = 0;
+  // volatile ensures reads/writes are not cached in registers across threads
+  volatile int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores)
