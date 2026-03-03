@@ -1,5 +1,18 @@
 # rxode2 (development version)
 
+- Fix: state-dependent modeled rate/duration expressions now use per-subject
+  initial conditions (`ind->solve`) at sort time instead of global estimates
+  (`op->inits`), so infusion end-times are placed correctly when subjects
+  start with different initial states.
+
+- Fix: after runtime recomputation of modeled rate/duration stop-event times,
+  the main event timeline is now re-sorted (using timsort) so that subsequent
+  events are processed in the correct temporal order.
+
+- Fix: state-dependent `mtime()` expressions are recomputed with the current
+  ODE state at each dose event during solving; the event timeline is re-sorted
+  whenever mtime values change.
+
 - Model times (`mtime(var) <- expr`) can now reference ODE state
   variables.  The value is computed from the model initial conditions at
   solve initialisation, so the extra time-point is placed correctly even
