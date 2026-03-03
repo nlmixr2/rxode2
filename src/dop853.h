@@ -180,6 +180,17 @@ nfcnRead    Number of function calls.
 typedef void (*FcnEqDiff)(int *nptr, double x, double *y, double *f);
 typedef void (*SolTrait)(long int nr, double xold, double x, double* y, int *nptr, int* irtrn);
 
+/* Context struct holding all solver state, enabling thread-safe reentrant calls.
+   Previously these were file-scope static variables in dop853.c. */
+typedef struct {
+  long int     nfcn, nstep, naccpt, nrejct;
+  double       hout, xold, xout;
+  int          nrds, *indir;
+  double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
+  double       *rcont1, *rcont2, *rcont3, *rcont4;
+  double       *rcont5, *rcont6, *rcont7, *rcont8;
+} dop853_ctx_t;
+
 
 extern int dop853
  (int *nptr,      /* dimension of the system <= INT_MAX-1*/
@@ -207,15 +218,3 @@ extern int dop853
   int* icont, /* indexes of components for which dense output is required, >= nrdens */
   int licont  /* declared length of icon */
  );
-
-extern double contd8
- (int ii,     /* index of desired component */
-  double x             /* approximation at x */
- );
-
-extern long int nfcnRead (void);   /* encapsulation of statistical data */
-extern long int nstepRead (void);
-extern long int naccptRead (void);
-extern long int nrejctRead (void);
-extern double hRead (void);
-extern double xRead (void);
