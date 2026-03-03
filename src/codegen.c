@@ -362,13 +362,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         for (i=0; i<tb.de.n; i++) {                   /* name state vars */
           buf = tb.ss.line[tb.di[i]];
           if (tb.idu[i] == 0) {
-          } else if (show_ode == ode_lag) {
-            // Lag function: state vars are NA so state-dep lag produces a runtime error
-            sAppendN(&sbOut, "  ", 2);
-            doDot(&sbOut, buf);
-            sAppendN(&sbOut, " = NA_REAL;\n", 12);
           } else {
-            // Rate/Dur/F functions: populate state vars from __zzStateVar__
+            // Rate/Dur/F/Lag functions: populate state vars from __zzStateVar__
             sAppendN(&sbOut, "  ", 2);
             doDot(&sbOut, buf);
             sAppend(&sbOut, " = __zzStateVar__[__DDT%d__]*((double)(_ON[__DDT%d__]));\n", i, i);
