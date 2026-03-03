@@ -37,6 +37,7 @@ extern "C" {
 #define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
   }                                                                     \
+  _Pragma("omp atomic write")                                           \
   op->badSolve = 1;                                                     \
   i = ind->n_all_times-1; // Get out of here!
 // Yay easy parallel support
