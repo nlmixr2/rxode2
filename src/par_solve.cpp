@@ -661,6 +661,45 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
   return getTime__(idx, ind, 0);
 }
 
+// Re-sorts ind->ix[startI..n_all_times-1] using ind->timeThread for times.
+// timeThread must be current for all raw indices at positions >= startI.
+static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
+  double *time = ind->timeThread;
+  SORT(ind->ix + startI, ind->ix + ind->n_all_times,
+       [time](int a, int b) -> bool {
+         double ta = time[a], tb = time[b];
+         if (ta == tb) return a < b;
+         return ta < tb;
+       });
+}
+
+// Recomputes ind->mtime with current state yp; updates timeThread for changed
+// mtime events in remaining ix[nextI..n_all_times-1].
+// Returns 1 if any mtime value changed (re-sort needed), 0 otherwise.
+static inline int recomputeMtimeIfNeeded(rx_solve *rx,
+                                         rx_solving_options_ind *ind,
+                                         double *yp, int nextI) {
+  if (rx->nMtime == 0) return 0;
+  int nm = rx->nMtime;
+  double oldMtime[90];  // max 90 mtime slots (evid 10-99)
+  for (int k = 0; k < nm; k++) oldMtime[k] = ind->mtime[k];
+  calc_mtime(ind->id, ind->mtime, yp);
+  int changed = 0;
+  double *time = ind->timeThread;
+  for (int j = nextI; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j];
+    int evid = getEvid(ind, raw);
+    if (evid >= 10 && evid <= 99) {
+      int k = evid - 10;
+      if (ind->mtime[k] != oldMtime[k]) {
+        time[raw] = ind->mtime[k];
+        changed = 1;
+      }
+    }
+  }
+  return changed;
+}
+
 // Adapted from
 extern "C" void sortInd(rx_solving_options_ind *ind) {
 // #ifdef _OPENMP
@@ -693,15 +732,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
     }
   }
   if (doSort) {
-    SORT(ind->ix, ind->ix + ind->n_all_times,
-         [ind, time](int a, int b){
-           double timea = time[a],
-             timeb = time[b];
-           if (timea == timeb) {
-             return a < b;
-           }
-           return timea < timeb;
-         });
+    reSortMainTimeline(ind, 0);
   }
 }
 
@@ -2242,6 +2273,24 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   for (i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
     xout = getTime_(ind->ix[i], ind);
     yp = getSolve(i);
     if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2271,7 +2320,11 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (rx->istateReset) idid = 1;
         xp = xout;
       }
-
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
     }
@@ -2379,6 +2432,24 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   for(i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3) {
@@ -2436,6 +2507,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (rx->istateReset) ctx->state = 1;
         xp = xout;
+      }
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
       }
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
@@ -2822,6 +2898,24 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2892,6 +2986,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
+      }
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
       }
       // Copy to next solve so when assigned to
       // yp=ind->solve[neq[0]*i]; it will be the prior values
@@ -3005,6 +3104,24 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   for(i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug) {
@@ -3061,6 +3178,11 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
           yp[ind->cmt] = inits[ind->cmt];
         }
         xp = xout;
+      }
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
       }
       // Geometric mean of all compartments
       double cur0 = 0.0;
@@ -3227,6 +3349,24 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   for(i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug) {
@@ -3283,6 +3423,11 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           yp[ind->cmt] = inits[ind->cmt];
         }
         xp = xout;
+      }
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
       }
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
@@ -3345,6 +3490,24 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   for(i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug){
@@ -3483,6 +3646,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           yp[ind->cmt] = inits[ind->cmt];
         }
         xp = xout;
+      }
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
       updateSolve(ind, op, neq, xout, i, nx);

@@ -567,9 +567,11 @@ static inline int handle_evid(int evid, int neq,
           if (ind->whI == EVIDF_MODEL_RATE_ON && (rx->needSort & needSortRate)) {
             updateRate(_directIdx, ind, yp);
             ind->extraSorted = 0;
+            if (ind->idx >= 0) ind->mainSorted = 0;  // flag main timeline re-sort
           } else if (ind->whI == EVIDF_MODEL_DUR_ON && (rx->needSort & needSortDur)) {
             updateDur(_directIdx, ind, yp);
             ind->extraSorted = 0;
+            if (ind->idx >= 0) ind->mainSorted = 0;  // flag main timeline re-sort
           }
         }
         ind->on[cmt] = 1;
