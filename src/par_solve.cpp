@@ -700,6 +700,43 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
   return changed;
 }
 
+// Recomputes timeThread for remaining non-stop dose events using current state yp.
+// Guards on needSortAlag; saves/restores ind wh fields to avoid side effects.
+// Returns 1 if any lag-adjusted time changed (re-sort needed), 0 otherwise.
+static inline int refreshLagTimesIfNeeded(rx_solve *rx,
+                                          rx_solving_options_ind *ind,
+                                          double *yp, int nextI) {
+  if (!(rx->needSort & needSortAlag)) return 0;
+  rx_solving_options *op = &op_global;
+  double *time = ind->timeThread;
+  int changed = 0;
+  int savedWh = ind->wh, savedCmt = ind->cmt, savedWh100 = ind->wh100,
+      savedWhI = ind->whI, savedWh0 = ind->wh0;
+  for (int j = nextI; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j];
+    int evid = getEvid(ind, raw);
+    if (isObs(evid) || evid == 9) continue;
+    if (evid >= 10 && evid <= 99) continue;  // mtime handled by recomputeMtimeIfNeeded
+    int wh, cmt, wh100, whI, wh0;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    // Stop events store absolute times; lag must not be re-applied
+    if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) continue;
+    // Fixed-rate infusions (EVIDF_INF_RATE): stop event sort key is lagged_start + f*dur,
+    // not raw_stop + lag. Skip all EVIDF_INF_RATE events to avoid corrupting stop times.
+    if (whI == EVIDF_INF_RATE) continue;
+    ind->wh = wh; ind->cmt = cmt; ind->wh100 = wh100; ind->whI = whI; ind->wh0 = wh0;
+    double rawTime = getAllTimes(ind, raw);
+    double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    if (!ISNA(newTime) && newTime != time[raw]) {
+      time[raw] = newTime;
+      changed = 1;
+    }
+  }
+  ind->wh = savedWh; ind->cmt = savedCmt; ind->wh100 = savedWh100;
+  ind->whI = savedWhI; ind->wh0 = savedWh0;
+  return changed;
+}
+
 // Adapted from
 extern "C" void sortInd(rx_solving_options_ind *ind) {
 // #ifdef _OPENMP
@@ -2284,14 +2321,14 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+            _rtime[_raw] = getAllTimes(ind, _raw);  // absolute time stored by updateDur/updateRate
           }
         }
       }
       reSortMainTimeline(ind, i);
       ind->mainSorted = 1;
     }
-    xout = getTime_(ind->ix[i], ind);
+    xout = ind->timeThread[ind->ix[i]];
     yp = getSolve(i);
     if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
@@ -2322,6 +2359,11 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       }
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
           ind->mainSorted = 0;
         }
       }
@@ -2443,7 +2485,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+            _rtime[_raw] = getAllTimes(ind, _raw);  // absolute time stored by updateDur/updateRate
           }
         }
       }
@@ -2451,7 +2493,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       ind->mainSorted = 1;
     }
     yp = getSolve(i);
-    xout = getTime_(ind->ix[i], ind);
+    xout = ind->timeThread[ind->ix[i]];
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
         *rc = -1000;
@@ -2510,6 +2552,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       }
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
           ind->mainSorted = 0;
         }
       }
@@ -2909,7 +2956,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+            _rtime[_raw] = getAllTimes(ind, _raw);  // absolute time stored by updateDur/updateRate
           }
         }
       }
@@ -2917,7 +2964,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       ind->mainSorted = 1;
     }
     yp   = getSolve(i);
-    xout = getTime_(ind->ix[i], ind);
+    xout = ind->timeThread[ind->ix[i]];
     if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         ind->rc[0] = -1000;
@@ -2989,6 +3036,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       }
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
           ind->mainSorted = 0;
         }
       }
@@ -3115,7 +3167,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+            _rtime[_raw] = getAllTimes(ind, _raw);  // absolute time stored by updateDur/updateRate
           }
         }
       }
@@ -3123,7 +3175,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       ind->mainSorted = 1;
     }
     yp = getSolve(i);
-    xout = getTime_(ind->ix[i], ind);
+    xout = ind->timeThread[ind->ix[i]];
     if (global_debug) {
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
@@ -3181,6 +3233,11 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       }
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
           ind->mainSorted = 0;
         }
       }
@@ -3360,7 +3417,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+            _rtime[_raw] = getAllTimes(ind, _raw);  // absolute time stored by updateDur/updateRate
           }
         }
       }
@@ -3368,7 +3425,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
       ind->mainSorted = 1;
     }
     yp = getSolve(i);
-    xout = getTime_(ind->ix[i], ind);
+    xout = ind->timeThread[ind->ix[i]];
     if (global_debug) {
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
@@ -3426,6 +3483,11 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
       }
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
           ind->mainSorted = 0;
         }
       }
@@ -3501,7 +3563,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-            _rtime[_raw] = getTime_(_raw, ind);  // includes lag adjustment
+            _rtime[_raw] = getAllTimes(ind, _raw);  // absolute time stored by updateDur/updateRate
           }
         }
       }
@@ -3509,7 +3571,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       ind->mainSorted = 1;
     }
     yp = getSolve(i);
-    xout = getTime_(ind->ix[i], ind);
+    xout = ind->timeThread[ind->ix[i]];
     if (global_debug){
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
@@ -3649,6 +3711,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       }
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+          ind->mainSorted = 0;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
           ind->mainSorted = 0;
         }
       }
