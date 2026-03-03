@@ -680,7 +680,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       }
     }
   }
-  lc.getJacCp(lcb.J, fx, theta, Jg);
+  lc.getJacCp(J, fx, theta, Jg);
   return lc.adjustF(fx, theta, ind->linCmtHV);
 #undef fx
 #undef J
