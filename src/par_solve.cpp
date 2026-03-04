@@ -703,6 +703,11 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
 // Recomputes timeThread for remaining non-stop dose events using current state yp.
 // Guards on needSortAlag; saves/restores ind wh fields to avoid side effects.
 // Returns 1 if any lag-adjusted time changed (re-sort needed), 0 otherwise.
+//
+// NOTE: The generated RxLag function returns (t + _alag[cmt] - ind->curShift).
+// sortInd runs with curShift=0, so timeThread[raw] = all_times[raw] + lag.
+// At runtime after a reset curShift != 0; we must zero it temporarily so
+// getLag gives the same sort-key convention as sortInd.
 static inline int refreshLagTimesIfNeeded(rx_solve *rx,
                                           rx_solving_options_ind *ind,
                                           double *yp, int nextI) {
@@ -710,12 +715,17 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
   rx_solving_options *op = &op_global;
   double *time = ind->timeThread;
   int changed = 0;
+  int savedIdx = ind->idx;
   int savedWh = ind->wh, savedCmt = ind->cmt, savedWh100 = ind->wh100,
       savedWhI = ind->whI, savedWh0 = ind->wh0;
+  // Zero curShift so getLag matches the sort-time convention (sortInd uses curShift=0).
+  double savedCurShift = ind->curShift;
+  ind->curShift = 0.0;
   for (int j = nextI; j < ind->n_all_times; j++) {
     int raw = ind->ix[j];
     int evid = getEvid(ind, raw);
     if (isObs(evid) || evid == 9) continue;
+    if (evid == 3) continue;  // reset event: cmt=-1 would cause _alag[-1] UB in RxLag
     if (evid >= 10 && evid <= 99) continue;  // mtime handled by recomputeMtimeIfNeeded
     int wh, cmt, wh100, whI, wh0;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
@@ -724,6 +734,9 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     // Fixed-rate infusions (EVIDF_INF_RATE): stop event sort key is lagged_start + f*dur,
     // not raw_stop + lag. Skip all EVIDF_INF_RATE events to avoid corrupting stop times.
     if (whI == EVIDF_INF_RATE) continue;
+    // Set ind->idx to j (ix[] position) so _update_par_ptr reads covariates at the
+    // correct event position (getValue uses y[ind->ix[ind->idx]] = y[raw]).
+    ind->idx = j;
     ind->wh = wh; ind->cmt = cmt; ind->wh100 = wh100; ind->whI = whI; ind->wh0 = wh0;
     double rawTime = getAllTimes(ind, raw);
     double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
@@ -732,6 +745,8 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
       changed = 1;
     }
   }
+  ind->curShift = savedCurShift;
+  ind->idx = savedIdx;
   ind->wh = savedWh; ind->cmt = savedCmt; ind->wh100 = savedWh100;
   ind->whI = savedWhI; ind->wh0 = savedWh0;
   return changed;
