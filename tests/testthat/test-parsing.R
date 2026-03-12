@@ -354,8 +354,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "mtime cannot depend on df(x)/dt(ETA[1])",
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=df(x)/dt(ETA[1])+3"
   )
-  badParse(
-    "mtime cannot depend on d/dt(x)",
+  goodParse(
+    "mtime can depend on d/dt(x) (state-dependent mtime allowed)",
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
   )
 
@@ -948,8 +948,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   goodParse(desc = "pi Parse", "a = pi+e2")
 
   for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
-    badParse(
-      sprintf("%s cannot depend on d/dt(state)", v),
+    goodParse(
+      sprintf("%s can depend on d/dt(state) (state-dependent expressions now allowed)", v),
       sprintf("d/dt(depot)=-depot*ka;\nd/dt(central)=ka*depot-kel*central\n%s(depot)=d/dt(central)+3", v)
     )
   }
@@ -973,8 +973,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "mtime cannot depend on df(x)/dt(ETA[1])",
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=df(x)/dt(ETA[1])+3"
   )
-  badParse(
-    "mtime cannot depend on d/dt(x)",
+  goodParse(
+    "mtime can depend on d/dt(x) (state-dependent mtime allowed)",
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
   )
 
