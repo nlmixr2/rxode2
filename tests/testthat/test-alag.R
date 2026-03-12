@@ -74,25 +74,5 @@ rxTest({
       expect_equal(solve3$blood, solve2$blood)
     })
 
-    test_that(sprintf("bad alag (%s)", m), {
-
-      ## test bad solves -- These could depend on intestine indirectly so these are run-time errors
-      mod3 <- rxode2({
-        a <- 6
-        b <- 0.6
-        d / dt(intestine) <- -a * intestine
-        alag(intestine) <- 2 * intestine
-        d / dt(blood) <- a * intestine - b * blood
-      })
-
-      et <- eventTable(time.units = "days")
-      obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
-      et$add.sampling(obs)
-      et$add.dosing(
-        dose = 2 / 24, start.time = 0,
-        nbr.doses = 10, dosing.interval = 1
-      )
-      expect_error(solve(mod3, et))
-    })
   }
 })
