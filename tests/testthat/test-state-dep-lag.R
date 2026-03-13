@@ -49,4 +49,37 @@ rxTest({
                  inits = c(depot = 0, central = 5))
     expect_false(any(is.na(s$central)))
   })
+
+  test_that("state-dep alag: dose fires at dosing_time + state_value (constant lag, numeric)", {
+    # Use d/dt(state_val)=0 so lag = state_val stays constant → analytically verifiable.
+    # With ka=0.5 (mono-exp depot), depot(t) after a dose at t_fire = 100*exp(-0.5*(t-t_fire)).
+    # dose1 raw_t=0, lag=state_val → fires at t=state_val.
+    # dose2 raw_t=3, lag=state_val → fires at t=3+state_val.
+    # At each obs time, depot = sum of contributions from fired doses.
+    mod <- rxode2({
+      alag(depot) <- state_val
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - kel * central
+      d/dt(state_val) <- 0
+    })
+    params <- c(ka = 0.5, kel = 0.2)
+    et2dose <- et(amt = 100, time = 0, cmt = "depot") |>
+      et(amt = 100, time = 3, cmt = "depot") |>
+      et(seq(0, 10, by = 1))
+
+    for (sv in c(0, 1, 2)) {
+      s <- rxSolve(mod, et2dose, params,
+                   inits = c(depot = 0, central = 0, state_val = sv))
+      t_fire1 <- sv          # dose1 fires at t=sv
+      t_fire2 <- 3 + sv      # dose2 fires at t=3+sv
+      for (tobs in seq(0, 10)) {
+        expected <- 0
+        if (tobs >= t_fire1) expected <- expected + 100 * exp(-0.5 * (tobs - t_fire1))
+        if (tobs >= t_fire2) expected <- expected + 100 * exp(-0.5 * (tobs - t_fire2))
+        got <- s$depot[s$time == tobs]
+        expect_equal(got, expected, tolerance = 1e-3,
+                     label = sprintf("state_val=%d, t=%d: depot", sv, tobs))
+      }
+    }
+  })
 })

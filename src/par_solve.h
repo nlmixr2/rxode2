@@ -86,9 +86,13 @@ extern "C" {
 		if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
 			ind->solved = -1;
 		}
-    sortInd(ind);
-    if (op->badSolve) return 0;
-    ind->mainSorted = 1;  // just sorted; main timeline is current
+    if (inLhs == 0) {
+      // Sort for solving; when inLhs==1 (rxode2_df output pass), preserve the
+      // final sort order from the solve loop so getSolve(i) positions agree.
+      sortInd(ind);
+      if (op->badSolve) return 0;
+    }
+    ind->mainSorted = 1;
 		ind->ixds=ind->idx=0;
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;

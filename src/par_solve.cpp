@@ -710,7 +710,8 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
 // getLag gives the same sort-key convention as sortInd.
 static inline int refreshLagTimesIfNeeded(rx_solve *rx,
                                           rx_solving_options_ind *ind,
-                                          double *yp, int nextI) {
+                                          double *yp, int nextI,
+                                          double xout) {
   if (!(rx->needSort & needSortAlag)) return 0;
   rx_solving_options *op = &op_global;
   double *time = ind->timeThread;
@@ -739,6 +740,11 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     ind->idx = j;
     ind->wh = wh; ind->cmt = cmt; ind->wh100 = wh100; ind->whI = whI; ind->wh0 = wh0;
     double rawTime = getAllTimes(ind, raw);
+    // Only recompute a dose's lag when the solver is exactly at the dose's original
+    // (raw) time.  At that moment yp holds the state at rawTime, giving the correct
+    // lag = f(state at dosing time).  Updating before or after the raw time would use
+    // a different state (e.g. pushing a pending dose forward on every observation).
+    if (!isSameTime(rawTime, xout)) continue;
     double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
     if (!ISNA(newTime) && newTime != time[raw]) {
       time[raw] = newTime;
@@ -2285,7 +2291,7 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
             double &xout,
             int &i, int &nx) {
   if (i+1 != nx) {
-    std::copy(getSolve(i), getSolve(i+1), getSolve(i+1));
+    std::copy(getSolve(i), getSolve(i) + op->neq, getSolve(i+1));
   }
   calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
 }
@@ -2378,7 +2384,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         }
       }
       if (rx->needSort & needSortAlag) {
-        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -2515,7 +2521,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         // Bad Solve => NA
         badSolveExit(i);
       } else {
-        // REprintf("xp: %f xout: %f\n", xp, xout);
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
@@ -2571,7 +2576,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
       }
       if (rx->needSort & needSortAlag) {
-        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3055,7 +3060,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
       }
       if (rx->needSort & needSortAlag) {
-        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3252,7 +3257,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         }
       }
       if (rx->needSort & needSortAlag) {
-        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3502,7 +3507,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         }
       }
       if (rx->needSort & needSortAlag) {
-        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3730,7 +3735,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
       }
       if (rx->needSort & needSortAlag) {
-        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1)) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
