@@ -1,5 +1,8 @@
 # rxode2 (development version)
 
+- Export the internal `.rxGetSeed()` and `.rxSetSeed()` for use in the
+  `nlmixr2save` package.
+
 - Bug fix for `.copyUi()` with the new format (5.0+) of rxode2 ui models
 
 - With new versions of R, `getOption()` is no longer a bottleneck, so

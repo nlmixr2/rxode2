@@ -1116,6 +1116,23 @@ rxSetSeed <- function(seed) {
   rm(".Random.seed", envir = globalenv())
 }
 
+#' Get the random seed for the session
+#'
+#'
+#' @return A list with the following components:
+#'
+#' * `seed` The random seed for the session.  This is the value of
+#'  `.Random.seed` in the global environment.
+#'
+#' * `kind` The random number generator kind for the session.  This is
+#'    the value of `RNGkind()` for the session.
+#'
+#' * `rxseed` The rxode2 random seed for the session.  This
+#'    is the value of `rxGetSeed()` for the session.
+#'
+#'
+#' @export
+#' @author Matthew L. Fidler
 .rxGetSeed <- function() {
   if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
     return(list(seed=NULL, kind=NULL, rxseed=rxGetSeed()))
@@ -1123,7 +1140,16 @@ rxSetSeed <- function(seed) {
   list(seed = get(".Random.seed", globalenv(), mode = "integer",
                   inherits = FALSE), kind = RNGkind(), rxseed=rxGetSeed())
 }
-
+#' Set the random seed for the session
+#'
+#' This sets the random seed for the session.  This is used internally
+#' to set the random seed for the session.
+#'
+#' @param seed Seed from `.rxGetSeed()`
+#' @return Nothing, called for its side effects
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
 .rxSetSeed <- function(seed) {
   if (is.null(seed$seed)) {
     .rxGetSeed()
@@ -1132,6 +1158,7 @@ rxSetSeed <- function(seed) {
     set.seed(seed$seed)
   }
   rxSetSeed(seed$rxseed)
+  invisible(NULL)
 }
 #' Preserved seed and possibly set the seed
 #'
