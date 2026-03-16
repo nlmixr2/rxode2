@@ -1190,7 +1190,7 @@ rxSetSeed <- function(seed) {
   } else {
     suppressWarnings({
       do.call(RNGkind, args = as.list(seed$kind))
-      assign(".Random.seed", seed$seed, envir = globalenv())
+      .Call(`_rxode2_setGlobalSeed`, seed$seed)
     })
   }
   rxSetSeed(seed$rxseed)

@@ -62,6 +62,11 @@ extern "C" void setRxSeedFinal(uint32_t seed) {
   }
 }
 
+extern "C" void _rxode2_setGlobalSeed(SEXP seed) {
+  Rcpp::Environment g = Rcpp::Environment::global_env();
+  g[".Random.seed"] = seed;
+}
+
 
 extern "C" SEXP _rxode2_rxGetSeed() {
   IntegerVector ret(1);
