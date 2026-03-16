@@ -85,7 +85,6 @@ Imports:
     ggplot2 (>= 3.4.0),
     inline,
     lotri (>= 1.0.2),
-    magrittr,
     memoise,
     methods,
     rex,
