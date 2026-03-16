@@ -18,8 +18,8 @@
 - Change default model serialization to `bzip2` and move binary code
   generation inside of C.
 
-- Fix where getting seed saves/modifies the RNG scope (since it came
-  from Rcpp).
+- Fix where getting seed saves/modifies the RNG scope, as well as a bug fix
+  for restoring the random seed state
 
 # rxode2 5.0.1
 

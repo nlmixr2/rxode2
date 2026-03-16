@@ -35,3 +35,4 @@ below to see their documentation.
   \item{lotri}{\code{\link[lotri]{lotri}}}
 }}
 
+\value{ Inherited from parent routine }

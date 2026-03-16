@@ -62,37 +62,17 @@ extern "C" void setRxSeedFinal(uint32_t seed) {
   }
 }
 
-//' Get the rxode2 seed
-//'
-//' @return rxode2 seed state or -1 when the seed isn't set
-//'
-//' @export
-//' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
-//' @examples
-//'
-//' # without setting seed
-//'
-//' rxGetSeed()
-//' # Now set the seed
-//' rxSetSeed(42)
-//'
-//' rxGetSeed()
-//'
-//' rxnorm()
-//'
-//' rxGetSeed()
-//'
-//' # don't use the rxode2 seed again
-//'
-//' rxSetSeed(-1)
-//'
-//' rxGetSeed()
-//'
-//' rxnorm()
-//'
-//' rxGetSeed()
-//'
-//[[Rcpp::export(rng = false)]]
+
+extern "C" SEXP _rxode2_rxGetSeed() {
+  IntegerVector ret(1);
+  if (useRxSeed) {
+    ret[0] = rxSeed;
+  } else {
+    ret[1] =  -1;
+  }
+  return Rcpp::wrap(ret);
+}
+
 int rxGetSeed() {
   if (useRxSeed) {
     return rxSeed;
