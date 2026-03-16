@@ -1024,6 +1024,40 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
   return(.ret)
 }
 
+#' Get the rxode2 seed
+#'
+#' @return rxode2 seed state or -1 when the seed isn't set
+#'
+#' @export
+#' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
+#' @examples
+#'
+#' # without setting seed
+#'
+#' rxGetSeed()
+#' # Now set the seed
+#' rxSetSeed(42)
+#'
+#' rxGetSeed()
+#'
+#' rxnorm()
+#'
+#' rxGetSeed()
+#'
+#' # don't use the rxode2 seed again
+#'
+#' rxSetSeed(-1)
+#'
+#' rxGetSeed()
+#'
+#' rxnorm()
+#'
+#' rxGetSeed()
+#'
+rxGetSeed <- function() {
+  .Call(`_rxode2_rxGetSeed`)
+}
+
 #' Set the parallel seed for rxode2 random number generation
 #'
 #' This sets the seed for the rxode2 parallel random number generation.
@@ -1155,7 +1189,7 @@ rxSetSeed <- function(seed) {
     .rxGetSeed()
   } else {
     do.call(RNGkind, args = as.list(seed$kind))
-    set.seed(seed$seed)
+    suppressWarnings(.Call(`_rxode2_setGlobalSeed`, seed$seed))
   }
   rxSetSeed(seed$rxseed)
   invisible(NULL)

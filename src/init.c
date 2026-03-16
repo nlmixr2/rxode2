@@ -100,6 +100,7 @@ SEXP _rxode2_isNullZero(SEXP in);
 
 SEXP rxode2_get_mv(void);
 SEXP _rxode2_rxGetSeed(void);
+SEXP _rxode2_setGlobalSeed(SEXP);
 
 SEXP _gammap(SEXP, SEXP);
 SEXP _gammaq(SEXP, SEXP);
@@ -665,6 +666,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_isLinCmt", (DL_FUNC) &_rxode2_isLinCmt, 0},
     {"rxode2_get_mv", (DL_FUNC) &rxode2_get_mv, 0},
     {"_rxode2_rxGetSeed", (DL_FUNC) &_rxode2_rxGetSeed, 0},
+    {"_rxode2_setGlobalSeed", (DL_FUNC) &_rxode2_setGlobalSeed, 1},
     {"_rxode2_rxInv", (DL_FUNC) &_rxode2_rxInv, 1},
     {"_rxCholInv", (DL_FUNC) &_rxCholInv, 3},
     {"_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC) &_rxode2_rxSymInvCholEnvCalculate, 3},
