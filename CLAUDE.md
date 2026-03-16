@@ -54,6 +54,15 @@ devtools::check()
 # Or: R CMD check .
 ```
 
+### Get generated C code from model
+
+When trying to get the underlying generated code from a model that
+compiled successfully, you can have it echo to the console with:
+
+```r
+summary(rxC(rxode2model))
+```
+
 ### Regenerate Grammar and Build Artifacts
 When modifying `inst/tran.g` (the dparser grammar) or needing to regenerate generated files:
 ```r
