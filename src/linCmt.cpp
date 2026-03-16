@@ -486,7 +486,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           // Oral parameters
                           double ka) {
   // Per-thread linCmtB state (matching linCmtA pattern for thread safety)
-  linB_t &lcb = __linCmtB[omp_get_thread_num()];
+  linB_t &lcb = __linCmtB[rx_get_thread(__linCmtB.size())];
 #define fx        lcb.fx
 #define Jg        lcb.Jg
 #define lc        lcb.lc
