@@ -1188,8 +1188,10 @@ rxSetSeed <- function(seed) {
   if (is.null(seed$seed)) {
     .rxGetSeed()
   } else {
-    do.call(RNGkind, args = as.list(seed$kind))
-    assign(".Random.seed", seed$seed, envir = globalenv())
+    suppressWarnings({
+      do.call(RNGkind, args = as.list(seed$kind))
+      assign(".Random.seed", seed$seed, envir = globalenv())
+    })
   }
   rxSetSeed(seed$rxseed)
   invisible(NULL)
