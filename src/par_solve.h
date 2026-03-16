@@ -86,9 +86,11 @@ extern "C" {
 		if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
 			ind->solved = -1;
 		}
-    if (inLhs == 0) {
-      // Sort for solving; when inLhs==1 (rxode2_df output pass), preserve the
-      // final sort order from the solve loop so getSolve(i) positions agree.
+    if (inLhs == 0 || op->neq == 0) {
+      // Sort for solving (inLhs==0), or for LHS-only models (neq==0) where no
+      // ODE solver ran.  When inLhs==1 and neq>0 the ODE solve loop already ran
+      // sortInd and may have re-sorted for state-dep lag; preserve that order so
+      // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
       if (op->badSolve) return 0;
     }
