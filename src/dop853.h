@@ -23,8 +23,8 @@ Version of Mai 2, 1994.
 Remarks about the C version : this version allocates memory by itself, the
 iwork array (among the initial FORTRAN parameters) has been splitted into
 independant initial parameters, the statistical variables and last step size
-and x have been encapsulated in the module and are now accessible through
-dedicated functions; the variable names have been kept to maintain a kind
+and x have been encapsulated in a dop853_ctx_t context struct for thread-safe
+reentrant usage; the variable names have been kept to maintain a kind
 of reading compatibility between the C and FORTRAN codes; adaptation made by
 J.Colinge (COLINGE@DIVSUN.UNIGE.CH).
 
@@ -74,10 +74,11 @@ solout   A pointer to the output function called during integration.
 	 Continuous output : during the calls to solout, a continuous solution
 	 for the interval (xold,x) is available through the function
 
-	   contd8(i,s)
+	   contd8(ctx, i, s)
 
 	 which provides an approximation to the i-th component of the solution
-	 at the point s (s must lie in the interval (xold,x)).
+	 at the point s (s must lie in the interval (xold,x)), where ctx is
+	 the dop853_ctx_t context pointer.
 
 iout     Switch for calling solout :
 	   iout=0 : no call,
@@ -145,7 +146,7 @@ Memory requirements
 OUTPUT PARAMETERS
 -----------------
 
-y       numerical solution at x=xRead() (see below).
+y       numerical solution at x=ctx->xout (see dop853_ctx_t below).
 
 dopri5 returns the following values
 
@@ -154,21 +155,22 @@ dopri5 returns the following values
 	-1 : input is not consistent,
 	-2 : larger nmax is needed,
 	-3 : step size becomes too small,
-	-4 : the problem is probably stff (interrupted).
+	-4 : the problem is probably stiff (interrupted).
 
 
-Several functions provide access to different values :
+After a successful call to dop853, the following fields of the dop853_ctx_t
+context struct provide solver statistics and output values :
 
-xRead   x value for which the solution has been computed (x=xend after
+ctx->xout    x value for which the solution has been computed (x=xend after
 	successful return).
 
-hRead   Predicted step size of the last accepted step (useful for a subsequent
-	call to dop853).
+ctx->hout    Predicted step size of the last accepted step (useful for a
+	subsequent call to dop853).
 
-nstepRead   Number of used steps.
-naccptRead  Number of accepted steps.
-nrejctRead  Number of rejected steps.
-nfcnRead    Number of function calls.
+ctx->nstep   Number of used steps.
+ctx->naccpt  Number of accepted steps.
+ctx->nrejct  Number of rejected steps.
+ctx->nfcn    Number of function calls.
 
 
 */
