@@ -58,6 +58,8 @@
   via `d/dt(state)` are now syntactically accepted (previously a
   parse-time error).  If the lag evaluates to NA at runtime a clear
   error is raised.
+- Export the internal `.rxGetSeed()` and `.rxSetSeed()` for use in the
+  `nlmixr2save` package.
 
 - Bug fix for `.copyUi()` with the new format (5.0+) of rxode2 ui models
 
