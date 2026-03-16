@@ -39,11 +39,16 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
   double ret = LAG(id, cmt, time);
   if (ISNA(ret)) {
     int newBadSolve = 1;
-    int newNaTime = 1 + 10*cmt;
 #pragma omp atomic write
     op->badSolve = newBadSolve;
+    int curNaTime;
+#pragma omp atomic read
+    curNaTime = op->naTime;
+    if (curNaTime == 0) {
+      int newNaTime = 1 + 10*cmt;
 #pragma omp atomic write
-    op->naTime = newNaTime;
+      op->naTime = newNaTime;
+    }
   }
   return ret;
 }
@@ -54,11 +59,16 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
   double ret = RATE(id, cmt, dose, t);
   if (ISNA(ret)){
     int newBadSolve = 1;
-    int newNaTime = 2 + 10*cmt;
 #pragma omp atomic write
     op->badSolve = newBadSolve;
+    int curNaTime;
+#pragma omp atomic read
+    curNaTime = op->naTime;
+    if (curNaTime == 0) {
+      int newNaTime = 2 + 10*cmt;
 #pragma omp atomic write
-    op->naTime = newNaTime;
+      op->naTime = newNaTime;
+    }
   }
   return ret;
 }
@@ -70,11 +80,16 @@ static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double
   double ret = DUR(id, cmt, dose, t);
   if (ISNA(ret)){
     int newBadSolve = 1;
-    int newNaTime = 3 + 10*cmt;
 #pragma omp atomic write
     op->badSolve = newBadSolve;
+    int curNaTime;
+#pragma omp atomic read
+    curNaTime = op->naTime;
+    if (curNaTime == 0) {
+      int newNaTime = 3 + 10*cmt;
 #pragma omp atomic write
-    op->naTime = newNaTime;
+      op->naTime = newNaTime;
+    }
   }
   return ret;
 }
@@ -347,11 +362,16 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     if (ISNA(f)){
       rx_solving_options *op = &op_global;
       int newBadSolve = 1;
-      int newNaTime = 4 + 10*ind->cmt;
 #pragma omp atomic write
       op->badSolve = newBadSolve;
+      int curNaTime;
+#pragma omp atomic read
+      curNaTime = op->naTime;
+      if (curNaTime == 0) {
+        int newNaTime = 4 + 10*ind->cmt;
 #pragma omp atomic write
-      op->naTime = newNaTime;
+        op->naTime = newNaTime;
+      }
     }
     double durOld = (getAllTimes(ind, ind->idose[infEidx]) -
                      getAllTimes(ind, ind->idose[infBidx]));
