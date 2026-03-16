@@ -18,6 +18,9 @@
 - Change default model serialization to `bzip2` and move binary code
   generation inside of C.
 
+- Fix where getting seed saves/modifies the RNG scope (since it came
+  from Rcpp).
+
 # rxode2 5.0.1
 
 - Change random number generation to always return doubles internally

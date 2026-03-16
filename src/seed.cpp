@@ -92,7 +92,7 @@ extern "C" void setRxSeedFinal(uint32_t seed) {
 //'
 //' rxGetSeed()
 //'
-//[[Rcpp::export]]
+//[[Rcpp::export(rng = false)]]
 int rxGetSeed() {
   if (useRxSeed) {
     return rxSeed;
