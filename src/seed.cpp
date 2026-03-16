@@ -66,7 +66,12 @@ extern "C" void _rxode2_setGlobalSeed(SEXP seed) {
   Rcpp::Environment g = Rcpp::Environment::global_env();
   if (Rf_isNull(seed)) {
     g.remove(".Random.seed");
-  } else if (TYPEOF(seed) == INTSXP) {
+  } else if (Rf_length(seed) == 1) {
+    Rcpp::Environment g = Rcpp::Environment::base_env();
+    Rcpp::Function setSeed = g["set.seed"];
+    setSeed(seed);
+  } else if (TYPEOF(seed) == INTSXP &&
+             Rf_length(seed)) {
     g[".Random.seed"] = seed;
   } else {
     (Rf_errorcall)(R_NilValue, "%s", _("'seed' must be an integer vector"));
