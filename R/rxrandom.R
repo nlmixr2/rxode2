@@ -1166,6 +1166,7 @@ rxSetSeed <- function(seed) {
 #'
 #'
 #' @export
+#' @keywords internal
 #' @author Matthew L. Fidler
 .rxGetSeed <- function() {
   if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
