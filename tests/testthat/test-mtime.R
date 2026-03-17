@@ -127,7 +127,7 @@ rxTest({
     et <- eventTable() |>
       add.dosing(dose = 3, nbr.doses = 1) |>
       add.sampling(0:48)
-    # Uses initial condition of intestine (0) to compute mtime at solve init
+    # Uses initial condition of intestine (100) to compute mtime at solve init
     expect_no_error(solve(mod, et, inits = c(intestine = 100, blood = 0)))
   })
 
