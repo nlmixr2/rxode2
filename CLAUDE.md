@@ -25,18 +25,18 @@ devtools::document()
 ### Run All Tests
 ```r
 # From within R (sets up proper environment)
-invisible(lapply(list.files("src", ".s?o$", full.names = TRUE), unlink));devtools::test()
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test()
 
 # Or from shell
-NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '.s?o$', full.names = TRUE), unlink));evtools::test()"
+NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '\\.s?o$', full.names = TRUE), unlink));devtools::test()"
 ```
 
 ### Run a Single Test File
 ```r
 # Filter by test file name (without "test-" prefix and ".R" suffix)
-invisible(lapply(list.files("src", ".s?o$", full.names = TRUE), unlink));devtools::test(filter="basic")
-invisible(lapply(list.files("src", ".s?o$", full.names = TRUE), unlink));devtools::test(filter="ui")
-invisible(lapply(list.files("src", ".s?o$", full.names = TRUE), unlink));devtools::test(filter="linCmt")
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="basic")
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="ui")
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="linCmt")
 ```
 
 ### Run Tests from Installed Package
@@ -50,7 +50,7 @@ rxValidate(FALSE)
 
 ### R CMD Check
 ```r
-invisible(lapply(list.files("src", ".s?o$", full.names = TRUE), unlink));devtools::check()
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::check()
 # Or: R CMD check .
 ```
 
