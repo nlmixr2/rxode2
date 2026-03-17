@@ -84,7 +84,7 @@ extern "C" SEXP _rxode2_rxGetSeed() {
   if (useRxSeed) {
     ret[0] = rxSeed;
   } else {
-    ret[1] =  -1;
+    ret[0] =  -1;
   }
   return Rcpp::wrap(ret);
 }
