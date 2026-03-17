@@ -25,9 +25,9 @@ rxTest({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - kel * central
     })
-    et <- et() %>%
-      et(amt = 100, rate = -1, time = 0) %>%
-      et(amt = 100, rate = -1, time = 2) %>%
+    et <- et() |>
+      et(amt = 100, rate = -1, time = 0) |>
+      et(amt = 100, rate = -1, time = 2) |>
       et(seq(0, 10))
     s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
                  inits = c(depot = 0, central = 3))
