@@ -80,12 +80,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li><p>Bug fix for <code><a href="../reference/dot-copyUi.html">.copyUi()</a></code> with the new format (5.0+) of rxode2 ui models</p></li>
+<ul><li><p>Export the internal <code><a href="../reference/dot-rxGetSeed.html">.rxGetSeed()</a></code> and <code><a href="../reference/dot-rxSetSeed.html">.rxSetSeed()</a></code> for use in the <code>nlmixr2save</code> package.</p></li>
+<li><p>Bug fix for <code><a href="../reference/dot-copyUi.html">.copyUi()</a></code> with the new format (5.0+) of rxode2 ui models</p></li>
 <li><p>With new versions of R, <code><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption()</a></code> is no longer a bottleneck, so syncing to local variables is no longer done internally</p></li>
 <li><p>Use <code>fastmatch</code> for slight performance gains.</p></li>
 <li><p>Allow transforms to return <code>NA</code>.</p></li>
 <li><p>Drop <code>magrittr</code> and use <code>|&gt;</code> instead of <code>%&gt;%</code> in the examples (requires R 4.1)</p></li>
 <li><p>Change default model serialization to <code>bzip2</code> and move binary code generation inside of C.</p></li>
+<li><p>Fix where getting seed saves/modifies the RNG scope, as well as a bug fix for restoring the random seed state</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.0.1" id="rxode2-501">rxode2 5.0.1<a class="anchor" aria-label="anchor" href="#rxode2-501"></a></h2><p class="text-muted">CRAN release: 2025-12-09</p>
