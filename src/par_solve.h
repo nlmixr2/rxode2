@@ -77,6 +77,10 @@ extern "C" {
     if (rx->nMtime) {
       double *_stateForMtime = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
       calc_mtime(solveid, ind->mtime, _stateForMtime);
+      // Save initial sort-time mtime values; recomputeMtimeIfNeeded uses these
+      // to guard one-time re-evaluation (fires only when solver reaches mtime0[k]).
+      for (int k = 0; k < rx->nMtime; k++) ind->mtime0[k] = ind->mtime[k];
+      for (int k = rx->nMtime; k < 90; k++) ind->mtime0[k] = R_NegInf;
     }
 		ind->_newind = 1;
 		ind->dosenum = 0;

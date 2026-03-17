@@ -7,14 +7,16 @@ rxTest({
       d/dt(offset) <- 0
       d/dt(y) <- -kel * y
     })
+    # Sparse sampling (by=3): 5 and 7 are NOT in the grid.
+    # mtime events (evid 10-99) are observations that add their own time point.
     et <- eventTable() |>
       add.dosing(dose = 100, nbr.doses = 1) |>
-      add.sampling(seq(0, 20, by = 0.5))
+      add.sampling(seq(0, 21, by = 3))
     s <- solve(mod, et, inits = c(offset = 0, y = 0),
                params = c(mt1 = 5, kel = 0.1))
-    expect_true(any(s$time == 5),
+    expect_true(any(abs(s$time - 5) < 1e-6),
                 label = "mtime fires at mt1 when state=0")
-    expect_false(any(s$time == 7),
+    expect_false(any(abs(s$time - 7) < 1e-6),
                  label = "mtime does not fire at mt1+2 when state=0")
   })
 
@@ -26,24 +28,25 @@ rxTest({
       d/dt(offset) <- 0
       d/dt(y) <- -kel * y
     })
+    # Sparse sampling (by=3): 5, 7, and 3.5 are NOT in the grid.
     et <- eventTable() |>
       add.dosing(dose = 100, nbr.doses = 1) |>
-      add.sampling(seq(0, 20, by = 0.5))
+      add.sampling(seq(0, 21, by = 3))
 
     # S0 = 2: fires at 5 + 2 = 7, not at 5
     s2 <- solve(mod, et, inits = c(offset = 2, y = 0),
                 params = c(mt1 = 5, kel = 0.1))
-    expect_true(any(s2$time == 7),
+    expect_true(any(abs(s2$time - 7) < 1e-6),
                 label = "mtime fires at mt1 + state (=7) when state=2")
-    expect_false(any(s2$time == 5),
+    expect_false(any(abs(s2$time - 5) < 1e-6),
                  label = "mtime does not fire at bare mt1 when state=2")
 
     # S0 = -1.5: fires at 5 + (-1.5) = 3.5, not at 5
     s3 <- solve(mod, et, inits = c(offset = -1.5, y = 0),
                 params = c(mt1 = 5, kel = 0.1))
-    expect_true(any(s3$time == 3.5),
+    expect_true(any(abs(s3$time - 3.5) < 1e-6),
                 label = "mtime fires at mt1 + state (=3.5) when state=-1.5")
-    expect_false(any(s3$time == 5),
+    expect_false(any(abs(s3$time - 5) < 1e-6),
                  label = "mtime does not fire at bare mt1 when state=-1.5")
   })
 
@@ -56,58 +59,59 @@ rxTest({
     })
     mt1_val <- 3
     kel_val <- 0.2
+    # Sampling by=0.7: none of the expected fire times (2.5, 3, 4, 5.5) fall on
+    # the grid, so the mtime event adds its own time point for each S0.
     for (S0 in c(0, 1, 2.5, -0.5)) {
       et <- eventTable() |>
         add.dosing(dose = 100, nbr.doses = 1) |>
-        add.sampling(seq(0, 10, by = 0.25))
+        add.sampling(seq(0, 10, by = 0.7))
       s <- solve(mod, et, inits = c(offset = S0, y = 0),
                  params = c(mt1 = mt1_val, kel = kel_val))
       expected_time <- mt1_val + S0
-      expect_true(any(abs(s$time - expected_time) < 1e-10),
+      expect_true(any(abs(s$time - expected_time) < 1e-6),
                   label = paste0("mtime fires at mt1+S0=", expected_time,
                                  " when S0=", S0))
     }
   })
 
-  test_that("state-dep mtime with decaying state: fires at fixed-point T = mt1 + state(T)", {
-    # mtime(t1) <- mt1 + state; state decays exponentially: state(t) = S0*exp(-ka*t)
-    # The actual firing time T satisfies T = mt1 + S0*exp(-ka*T)  [fixed point]
-    # With state=0 (S0=0), T = mt1 exactly (no state dependence)
+  test_that("state-dep mtime with decaying state: fires at T0 (initial sort), not fixed-point", {
+    # mtime(t1) <- mt1 + state; state decays: state(t) = S0*exp(-ka*t)
+    #
+    # T0 = mt1 + S0  (initial sort time, using initial state)
+    # At T0, re-evaluate: T1 = mt1 + S0*exp(-ka*T0) < T0  (state has decayed)
+    # Because T1 < T0, the solver cannot go back: mtime fires at T0.
+    #
+    # Old broken behaviour: continuous re-evaluation converges to fixed-point
+    # Tfp = mt1 + S0*exp(-ka*Tfp), which is strictly less than T0.
+    # Fixed: mtime fires at T0 (not at Tfp).
     mod <- rxode2({
       mtime(t1) <- mt1 + state
       d/dt(state) <- -ka * state
       d/dt(y) <- -kel * y
     })
     mt1_val <- 5
-    ka_val <- 0.3
+    ka_val  <- 0.3
     kel_val <- 0.1
+    S0      <- 1.5
 
-    # state=0 case: fires exactly at mt1
-    et0 <- eventTable() |>
-      add.dosing(dose = 100, nbr.doses = 1) |>
-      add.sampling(seq(0, 15, by = 0.1))
-    s0 <- solve(mod, et0, inits = c(state = 0, y = 100),
-                params = c(mt1 = mt1_val, ka = ka_val, kel = kel_val))
-    expect_true(any(abs(s0$time - mt1_val) < 1e-10),
-                label = "mtime fires at mt1 when state=0 throughout")
+    T0  <- mt1_val + S0  # = 6.5
+    Tfp <- uniroot(function(T) T - mt1_val - S0 * exp(-ka_val * T),
+                   interval = c(mt1_val - 2, mt1_val + S0 + 1))$root
 
-    # state != 0: actual firing time is the fixed point T = mt1 + S0*exp(-ka*T)
-    S0 <- 1.5
-    T_expected <- uniroot(function(T) T - mt1_val - S0 * exp(-ka_val * T),
-                          interval = c(mt1_val - 2, mt1_val + S0 + 1))$root
-    et1 <- eventTable() |>
+    # Sparse sampling (by=2): 6.5 and Tfp≈5.3 are NOT in the grid;
+    # the mtime event adds its own time point at T0.
+    et <- eventTable() |>
       add.dosing(dose = 100, nbr.doses = 1) |>
-      add.sampling(seq(0, 15, by = 0.01))
-    s1 <- solve(mod, et1, inits = c(state = S0, y = 100),
-                params = c(mt1 = mt1_val, ka = ka_val, kel = kel_val))
-    expect_true(any(abs(s1$time - T_expected) < 1e-6),
-                label = paste0("mtime fires at fixed-point T=", round(T_expected, 4),
-                               " (mt1 + state(T)) when S0=", S0))
-    # and NOT at the naive mt1 + state(0) = mt1 + S0
-    naive_time <- mt1_val + S0
-    if (abs(naive_time - T_expected) > 0.01) {
-      expect_false(any(abs(s1$time - naive_time) < 1e-6),
-                   label = "mtime does not fire at naive mt1+state(0) when state decays")
+      add.sampling(seq(0, 15, by = 2))
+    s <- solve(mod, et, inits = c(state = S0, y = 100),
+               params = c(mt1 = mt1_val, ka = ka_val, kel = kel_val))
+
+    expect_true(any(abs(s$time - T0) < 1e-4),
+                label = paste0("mtime fires at initial sort time T0=", round(T0, 4)))
+    if (abs(T0 - Tfp) > 0.05) {
+      expect_false(any(abs(s$time - Tfp) < 1e-4),
+                   label = paste0("mtime does NOT fire at fixed-point Tfp=",
+                                  round(Tfp, 4)))
     }
   })
 

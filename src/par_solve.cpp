@@ -673,29 +673,48 @@ static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
        });
 }
 
-// Recomputes ind->mtime with current state yp; updates timeThread for changed
-// mtime events in remaining ix[nextI..n_all_times-1].
+// Recomputes ind->mtime[k] with current state yp when the solver is exactly at
+// the original sort-time mtime0[k].  Only fires once per mtime slot (mtime0[k]
+// is set to R_NegInf after firing to prevent double re-evaluation).
+// Updates timeThread for changed mtime events in ix[nextI..n_all_times-1].
 // Returns 1 if any mtime value changed (re-sort needed), 0 otherwise.
 static inline int recomputeMtimeIfNeeded(rx_solve *rx,
                                          rx_solving_options_ind *ind,
-                                         double *yp, int nextI) {
+                                         double *yp, int nextI, double xout) {
   if (rx->nMtime == 0) return 0;
   int nm = rx->nMtime;
-  double oldMtime[90];  // max 90 mtime slots (evid 10-99)
-  for (int k = 0; k < nm; k++) oldMtime[k] = ind->mtime[k];
-  calc_mtime(ind->id, ind->mtime, yp);
+  // Check whether we are at the original time of any pending mtime slot.
+  int needEval = 0;
+  for (int k = 0; k < nm; k++) {
+    if (ind->mtime0[k] != R_NegInf && isSameTime(xout, ind->mtime0[k])) {
+      needEval = 1;
+      break;
+    }
+  }
+  if (!needEval) return 0;
+  // Evaluate all mtime slots with current state into a temporary buffer so we
+  // can selectively apply only the slot(s) whose trigger time has arrived.
+  double newMtime[90];
+  for (int k = 0; k < nm; k++) newMtime[k] = ind->mtime[k];
+  calc_mtime(ind->id, newMtime, yp);
   int changed = 0;
   double *time = ind->timeThread;
-  for (int j = nextI; j < ind->n_all_times; j++) {
-    int raw = ind->ix[j];
-    int evid = getEvid(ind, raw);
-    if (evid >= 10 && evid <= 99) {
-      int k = evid - 10;
-      if (ind->mtime[k] != oldMtime[k]) {
-        time[raw] = ind->mtime[k];
-        changed = 1;
+  for (int k = 0; k < nm; k++) {
+    if (ind->mtime0[k] == R_NegInf) continue;          // already fired
+    if (!isSameTime(xout, ind->mtime0[k])) continue;   // not yet at trigger time
+    // Lock in the one-time re-evaluated value and update timeThread.
+    if (newMtime[k] != ind->mtime[k]) {
+      ind->mtime[k] = newMtime[k];
+      for (int j = nextI; j < ind->n_all_times; j++) {
+        int raw = ind->ix[j];
+        int evid = getEvid(ind, raw);
+        if (evid == k + 10) {
+          time[raw] = ind->mtime[k];
+          changed = 1;
+        }
       }
     }
+    ind->mtime0[k] = R_NegInf; // mark fired; no further re-evaluation
   }
   return changed;
 }
@@ -2379,7 +2398,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         xp = xout;
       }
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -2571,7 +2590,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         xp = xout;
       }
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3055,7 +3074,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
       }
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3252,7 +3271,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         xp = xout;
       }
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3502,7 +3521,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         xp = xout;
       }
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }
@@ -3730,7 +3749,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         xp = xout;
       }
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
       }

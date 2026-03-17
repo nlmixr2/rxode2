@@ -108,6 +108,7 @@ typedef struct {
   double *ii;
   double *solve;
   double *mtime;
+  double mtime0[90]; // initial sort-time mtime values; sentinel R_NegInf = already fired
   double *solveSave;
   double *solveLast;
   double *solveLast2;
