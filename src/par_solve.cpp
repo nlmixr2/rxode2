@@ -759,6 +759,10 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     ind->idx = j;
     ind->wh = wh; ind->cmt = cmt; ind->wh100 = wh100; ind->whI = whI; ind->wh0 = wh0;
     double rawTime = getAllTimes(ind, raw);
+    // Events are processed in non-decreasing order of their raw times. Once rawTime
+    // exceeds the current solver time, no later event can satisfy rawTime == xout,
+    // so we can stop scanning.
+    if (rawTime > xout) break;
     // Only recompute a dose's lag when the solver is exactly at the dose's original
     // (raw) time.  At that moment yp holds the state at rawTime, giving the correct
     // lag = f(state at dosing time).  Updating before or after the raw time would use
