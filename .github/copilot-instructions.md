@@ -1,6 +1,6 @@
-# CLAUDE.md
+# rxode2 Copilot Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. The same content is mirrored in `.github/copilot-instructions.md` for GitHub Copilot.
+This file provides guidance to GitHub Copilot when working with code in this repository.
 
 ## Overview
 
