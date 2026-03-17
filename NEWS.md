@@ -31,9 +31,11 @@
   the main event timeline is now re-sorted (using timsort) so that subsequent
   events are processed in the correct temporal order.
 
-- Fix: state-dependent `mtime()` expressions are recomputed with the current
-  ODE state at each dose event during solving; the event timeline is re-sorted
-  whenever mtime values change.
+- Fix: state-dependent `mtime()` expressions are recomputed once, using the
+  current ODE state, when the solver reaches the original scheduled `mtime`
+  time for that slot (`recomputeMtimeIfNeeded`); if the recomputed time
+  differs, that model-time event is moved to the new time within the event
+  timeline.
 
 - Model times (`mtime(var) <- expr`) can now reference ODE state
   variables.  The value is computed from the model initial conditions at
