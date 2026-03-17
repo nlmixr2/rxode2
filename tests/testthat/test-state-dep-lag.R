@@ -7,7 +7,7 @@ rxTest({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - kel * central
     })
-    et <- et(amt = 100) %>% et(seq(0, 24, by = 1))
+    et <- et(amt = 100) |> et(seq(0, 24, by = 1))
     s0 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
                   inits = c(depot = 0, central = 0))
     s5 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
@@ -27,7 +27,7 @@ rxTest({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - kel * central
     })
-    et <- et(amt = 100, rate = -2) %>% et(seq(0, 24, by = 1))
+    et <- et(amt = 100, rate = -2) |> et(seq(0, 24, by = 1))
     s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
                  inits = c(depot = 0, central = 3))
     expect_false(any(is.na(s$central)))
@@ -40,9 +40,9 @@ rxTest({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - kel * central
     })
-    et <- et() %>%
-      et(amt = 100, time = 0) %>%
-      et(amt = 100, time = 6) %>%
+    et <- et() |>
+      et(amt = 100, time = 0) |>
+      et(amt = 100, time = 6) |>
       et(seq(0, 24, by = 1))
     # State changes between doses → lag differs for second dose; no NA
     s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
