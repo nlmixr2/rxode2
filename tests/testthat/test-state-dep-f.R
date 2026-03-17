@@ -17,8 +17,8 @@ rxTest({
       # Bioavailability depends on a state variable.
       # With state held at 0, this reduces to the fixed-f0 case.
       f(depot) <- f0 + state
-      d/dt(state) <- 0         # constant state; initial value is the only value
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0         # constant state; initial value is the only value
     })
 
     amt  <- 100
@@ -51,8 +51,8 @@ rxTest({
       # f(depot) is evaluated at the moment the dose fires.
       # With constant state the evaluation time doesn't matter.
       f(depot) <- f0 + state
-      d/dt(state) <- 0
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0
     })
 
     amt  <- 100
@@ -93,8 +93,8 @@ rxTest({
   test_that("state-dep f: each dose evaluated at its own firing-time state", {
     mod <- rxode2({
       f(depot)    <- f0 + state
-      d/dt(state) <- -kstate * state   # state decays so each dose sees a different f
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- -kstate * state   # state decays so each dose sees a different f
     })
 
     f0     <- 0.8
@@ -143,8 +143,8 @@ rxTest({
   test_that("state-dep f: no NAs across subjects with different initial state", {
     mod <- rxode2({
       f(depot) <- f0 + state
-      d/dt(state) <- 0
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0
     })
 
     et <- eventTable() |>

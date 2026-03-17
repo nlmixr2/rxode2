@@ -34,8 +34,8 @@ rxTest({
       # Infusion rate is modelled as rate0 + state.
       # With state held at 0, this collapses to the plain fixed-rate case.
       rate(depot) <- rate0 + state
-      d/dt(state) <- 0         # constant state (initial value is the only value)
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0         # constant state (initial value is the only value)
     })
 
     amt   <- 100
@@ -72,8 +72,8 @@ rxTest({
       # With d/dt(state)=0 the state stays at its initial value for the whole
       # simulation, giving an analytically verifiable rate.
       rate(depot) <- rate0 + state
-      d/dt(state) <- 0
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0
     })
 
     amt   <- 100
@@ -122,8 +122,8 @@ rxTest({
   test_that("state-dep rate: infusion ends at exactly amt/(rate0 + state_at_start)", {
     mod <- rxode2({
       rate(depot) <- rate0 + state
-      d/dt(state) <- 0
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0
     })
 
     amt   <- 100
@@ -173,8 +173,8 @@ rxTest({
       # rate depends on a decaying state variable so each dose sees a different
       # rate if the infusions are spaced far enough apart.
       rate(depot) <- rate0 + state
-      d/dt(state) <- -kstate * state   # state decays between doses
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- -kstate * state   # state decays between doses
     })
 
     et <- et() |>

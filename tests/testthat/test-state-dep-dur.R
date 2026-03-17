@@ -37,8 +37,8 @@ rxTest({
       # Infusion duration is modelled as dur0 + state.
       # With state held at 0 this collapses to the fixed-duration case.
       dur(depot) <- dur0 + state
-      d/dt(state) <- 0         # constant state; initial value is the only value
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0         # constant state; initial value is the only value
     })
 
     amt  <- 100
@@ -74,8 +74,8 @@ rxTest({
       # With d/dt(state)=0 the state stays at its initial value; the expected
       # duration is analytically known.
       dur(depot) <- dur0 + state
-      d/dt(state) <- 0
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0
     })
 
     amt  <- 100
@@ -123,8 +123,8 @@ rxTest({
   test_that("state-dep dur: infusion ends at exactly dur0 + state_at_start", {
     mod <- rxode2({
       dur(depot) <- dur0 + state
-      d/dt(state) <- 0
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- 0
     })
 
     amt  <- 100
@@ -171,8 +171,8 @@ rxTest({
       # Duration depends on a decaying state variable, so each dose receives a
       # different infusion duration if spaced far enough apart.
       dur(depot) <- dur0 + state
-      d/dt(state) <- -kstate * state
       d/dt(depot) <- -ka * depot
+      d/dt(state) <- -kstate * state
     })
 
     et <- et() |>
