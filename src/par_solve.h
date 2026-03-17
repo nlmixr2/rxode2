@@ -75,9 +75,7 @@ extern "C" {
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
     if (rx->nMtime) {
-      // For any model with states (neq > 0), use the per-subject state vector in ind->solve.
-      // Fall back to op->inits only for true neq==0 cases where no state vector exists.
-      double *_stateForMtime = (op->neq > 0) ? ind->solve : op->inits;
+      double *_stateForMtime = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
       calc_mtime(solveid, ind->mtime, _stateForMtime);
       // Save initial sort-time mtime values; recomputeMtimeIfNeeded uses these
       // to guard one-time re-evaluation (fires only when solver reaches mtime0[k]).
