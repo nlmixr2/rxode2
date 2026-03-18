@@ -179,6 +179,26 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
 static inline int handleDdtRhs(nodeInfo ni, char *name, D_ParseNode *xpn) {
   if (nodeHas(der_rhs)) {
     switch(sbPm.lType[sbPm.n]){
+    case TMTIME:
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("modeling times cannot depend on state values"));
+      break;
+    case FBIO:
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("bioavailability cannot depend on state values"));
+      break;
+    case ALAG:
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("absorption lag-time cannot depend on state values"));
+      break;
+    case RATE:
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("model-based rate cannot depend on state values"));
+      break;
+    case DUR:
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("model-based duration cannot depend on state values"));
+      break;
     case TMAT0:
       updateSyntaxCol();
       trans_syntax_error_report_fn(_("model-based matricies cannot depend on state values"));
