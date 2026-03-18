@@ -1,65 +1,13 @@
 # rxode2 (development version)
 
-- Fix: state-dependent `alag(cmt) <- state_expr` now evaluates correctly;
-  the generated `RxLag()` function populates state variables from the actual
-  state array (previously they were forced to `NA_REAL`, causing all
-  state-dependent lag expressions to produce NA errors).
-  **Note**: Previously-compiled cached models that use `alag()` must be
-  recompiled after upgrading — clear the model cache or reinstall rxode2
-  (`R CMD INSTALL .`).
-
-- Fix: when `dur(cmt)` or `rate(cmt)` is used with `alag(cmt)`, the
-  infusion stop-event time now stores the correct absolute lagged time
-  (`lagged_start + duration`) instead of raw `start + duration`; lag is no
-  longer incorrectly re-applied when the stop event time is retrieved.
+- Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
+  allow states to modify their behavior.  The state value at the time
+  of the event is used to calculate any changes.
 
 - Fix: all six ODE solve loops now use precomputed `timeThread` values for
   event times instead of recomputing via `getTime_()` with `ypNA`, preventing
   NA propagation for any state-dependent lag scenario.
 
-- Fix: state-dependent lag is recomputed at each dose event using the current
-  ODE state (`refreshLagTimesIfNeeded`); the main event timeline is re-sorted
-  when lag values change, analogous to the existing re-sort for
-  state-dependent rate/duration.
-
-- Fix: state-dependent modeled rate/duration expressions now use per-subject
-  initial conditions (`ind->solve`) at sort time instead of global estimates
-  (`op->inits`), so infusion end-times are placed correctly when subjects
-  start with different initial states.
-
-- Fix: after runtime recomputation of modeled rate/duration stop-event times,
-  the main event timeline is now re-sorted (using timsort) so that subsequent
-  events are processed in the correct temporal order.
-
-- Fix: state-dependent `mtime()` expressions are recomputed once, using the
-  current ODE state, when the solver reaches the original scheduled `mtime`
-  time for that slot (`recomputeMtimeIfNeeded`); if the recomputed time
-  differs, that model-time event is moved to the new time within the event
-  timeline.
-
-- Model times (`mtime(var) <- expr`) can now reference ODE state
-  variables.  The value is computed from the model initial conditions at
-  solve initialisation, so the extra time-point is placed correctly even
-  when the expression depends on a state that starts at a non-zero value.
-
-- State-dependent bioavailability `f(cmt)` is now allowed when combined
-  with modeled-rate (`rate=-1`) or modeled-duration (`rate=-2`) infusion
-  events.  Previously this combination was rejected at parse time.
-
-- Modeled rate (`rate(cmt)`) and modeled duration (`dur(cmt)`) expressions
-  are now evaluated with the actual ODE state at the time the infusion
-  starts, enabling true state-dependent zero-order input.  The event
-  end-time is recomputed at runtime and unsolved extra-dose events are
-  re-sorted as needed.
-
-- Sort-phase estimation of infusion end-times for modeled rate/duration
-  now uses the model initial conditions instead of all-NA values,
-  producing a better initial event ordering.
-
-- Absorption lag-time expressions (`alag(cmt)`) that reference ODE states
-  via `d/dt(state)` are now syntactically accepted (previously a
-  parse-time error).  If the lag evaluates to NA at runtime a clear
-  error is raised.
 - Export the internal `.rxGetSeed()` and `.rxSetSeed()` for use in the
   `nlmixr2save` package.
 
@@ -67,8 +15,6 @@
 
 - With new versions of R, `getOption()` is no longer a bottleneck, so
   syncing to local variables is no longer done internally
-
-- Use `fastmatch` for slight performance gains.
 
 - Allow transforms to return `NA`.
 
