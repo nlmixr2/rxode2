@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
   allow states to modify their behavior.  The state value at the time
