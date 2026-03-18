@@ -1356,7 +1356,12 @@ rxLastCompile <- function() {
 #'
 #' .rxLastCompileSuccess()
 #'
-.rxLastCompileSuccess <- function() {
+.rxLastCompileSuccess <- function(set) {
+  if (missing(set)) {
+    return(.rxCompileEnv$success)
+  } else {
+    .rxCompileEnv$success <- set
+  }
   .rxCompileEnv$success
 }
 #' Get the number of loaded rxode2 DLLs
