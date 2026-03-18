@@ -292,7 +292,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
         }
       } else {
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n return 0.0;\n",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return 0.0;\n",
                 prefix);
       }
     } else if (show_ode == ode_mtime){
