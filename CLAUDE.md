@@ -25,18 +25,18 @@ devtools::document()
 ### Run All Tests
 ```r
 # From within R (sets up proper environment)
-devtools::test()
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test()
 
 # Or from shell
-NOT_CRAN=true Rscript -e "devtools::test()"
+NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '\\.s?o$', full.names = TRUE), unlink));devtools::test()"
 ```
 
 ### Run a Single Test File
 ```r
 # Filter by test file name (without "test-" prefix and ".R" suffix)
-devtools::test(filter="basic")
-devtools::test(filter="ui")
-devtools::test(filter="linCmt")
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="basic")
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="ui")
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="linCmt")
 ```
 
 ### Run Tests from Installed Package
@@ -50,8 +50,17 @@ rxValidate(FALSE)
 
 ### R CMD Check
 ```r
-devtools::check()
+invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::check()
 # Or: R CMD check .
+```
+
+### Get generated C code from model
+
+When trying to get the underlying generated code from a model that
+compiled successfully, you can have it echo to the console with:
+
+```r
+summary(rxC(rxode2model))
 ```
 
 ### Regenerate Grammar and Build Artifacts

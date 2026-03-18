@@ -248,7 +248,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
@@ -267,7 +267,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
@@ -286,21 +286,21 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
         }
       } else {
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n return 0.0;\n",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return 0.0;\n",
                 prefix);
       }
     } else if (show_ode == ode_mtime){
       if (nmtime){
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
                 prefix);
       } else {
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n",
                 prefix);
       }
     } else if (show_ode == ode_mexp){
@@ -358,18 +358,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
       }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
-      if (show_ode != ode_mtime && show_ode != ode_indLinVec){
+      if (show_ode != ode_indLinVec){
         for (i=0; i<tb.de.n; i++) {                   /* name state vars */
           buf = tb.ss.line[tb.di[i]];
           if (tb.idu[i] == 0) {
-          } else if (show_ode == ode_lag ||
-              show_ode == ode_dur ||
-              show_ode == ode_rate) {
-            sAppendN(&sbOut, "  ", 2);
-            doDot(&sbOut, buf);
-            sAppendN(&sbOut, " = NA_REAL;\n", 12);
           } else {
-            // stateExtra
+            // Rate/Dur/F/Lag functions: populate state vars from __zzStateVar__
             sAppendN(&sbOut, "  ", 2);
             doDot(&sbOut, buf);
             sAppend(&sbOut, " = __zzStateVar__[__DDT%d__]*((double)(_ON[__DDT%d__]));\n", i, i);
@@ -400,6 +394,15 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           }
           break;
         case TMTIME:
+          if (show_ode != ode_mexp && show_ode != ode_indLinVec){
+            // For ode_mtime (calc_mtime): use the primal equation (sbPm) to evaluate
+            // the mtime expression using the provided __zzStateVar__ state vector.
+            // sbPmDt contains the sensitivity form which references dual state vars
+            // (__DDtStateVar_k__) that are excluded (TDDT is skipped for ode_mtime),
+            // so using sbPmDt here would leave the mtime expression unevaluated.
+            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mtime) ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
         case TASSIGN:
           if (show_ode != ode_mexp && show_ode != ode_indLinVec){
             sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);

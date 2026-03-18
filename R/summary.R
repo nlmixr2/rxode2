@@ -17,7 +17,9 @@ summary.rxode2 <- function(object, ...) {
 summary.rxC <- function(object, ...) {
   cat(sprintf("//C file: %s\n", object))
   cat("//\n")
-  suppressWarnings(cat(paste0(paste(readLines(object), collapse = "\n"), "\n")))
+  .rl <- suppressWarnings(paste0(paste(readLines(object), collapse = "\n")))
+  cat(.rl, "\n")
+  invisible(.rl)
 }
 
 #' Summary of rxDll object

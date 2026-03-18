@@ -358,7 +358,7 @@ rxTest({
 
     f <- f()
 
-    f2 <- f %>% rxRename(err1=eps1)
+    f2 <- f |> rxRename(err1=eps1)
     expect_equal(dimnames(f2$sigma)[[1]], "err1")
     expect_equal(dimnames(f$sigma)[[1]], "eps1")
     expect_true(any(dimnames(f2$thetaMat)[[1]] == "err1"))
@@ -366,7 +366,7 @@ rxTest({
     expect_false(any(dimnames(f$thetaMat)[[1]] == "err1"))
     expect_true(any(dimnames(f$thetaMat)[[1]] == "eps1"))
 
-    f3 <- f %>% rxRename(Vp=theta4)
+    f3 <- f |> rxRename(Vp=theta4)
     expect_true(any(dimnames(f3$thetaMat)[[1]] == "Vp"))
     expect_false(any(dimnames(f3$thetaMat)[[1]] == "theta4"))
     expect_false(any(dimnames(f$thetaMat)[[1]] == "Vp"))

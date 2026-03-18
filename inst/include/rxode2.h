@@ -34,7 +34,7 @@
 #ifdef _isrxode2_
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-#define isSameTime(xout, xp) (fabs((xout)-(xp))  <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
+#define isSameTime(xout, xp) (fabs((xout)-(xp))  <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 // use ~dop853 definition of same time
 #define isSameTimeDop(xout, xp) (0.1 * fabs((xout)-(xp)) <= fabs(xout) * 2.3E-16)
 

@@ -1,5 +1,13 @@
 # rxode2 (development version)
 
+- Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
+  allow states to modify their behavior.  The state value at the time
+  of the event is used to calculate any changes.
+
+- Fix: all six ODE solve loops now use precomputed `timeThread` values for
+  event times instead of recomputing via `getTime_()` with `ypNA`, preventing
+  NA propagation for any state-dependent lag scenario.
+
 - Export the internal `.rxGetSeed()` and `.rxSetSeed()` for use in the
   `nlmixr2save` package.
 
@@ -7,8 +15,6 @@
 
 - With new versions of R, `getOption()` is no longer a bottleneck, so
   syncing to local variables is no longer done internally
-
-- Use `fastmatch` for slight performance gains.
 
 - Allow transforms to return `NA`.
 

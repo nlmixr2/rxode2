@@ -15,7 +15,7 @@ extern t_update_inis update_inis;
 
 
 #define getLinRate ind->InfusionRate + op->linOffset
-#define isSameTime(xout, xp) (fabs((xout)-(xp)) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
+#define isSameTime(xout, xp) (fabs((xout)-(xp)) <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
 // Create linear compartment models for testing
 using namespace Rcpp;

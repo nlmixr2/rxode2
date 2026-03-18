@@ -1310,6 +1310,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 }
 
 .rxCompileEnv <- new.env(parent = emptyenv())
+.rxCompileEnv$success <- TRUE
 .rxCompileEnv$lst <- list()
 #' Get the last compiled model information as alist
 #'
@@ -1339,6 +1340,29 @@ rxLastCompile <- function() {
     message(.rxCompileEnv$lst[[nm]])
   })
   return(invisible(.rxCompileEnv$lst))
+}
+#' Was the last compilation successful?
+#'
+#' @return this determines if the last compilation was successful.  This is useful for
+#'   debugging and testing purposes.
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+#'
+#' @keywords internal
+#'
+#' @examples
+#'
+#' .rxLastCompileSuccess()
+#'
+.rxLastCompileSuccess <- function(set) {
+  if (missing(set)) {
+    return(.rxCompileEnv$success)
+  } else {
+    .rxCompileEnv$success <- set
+  }
+  .rxCompileEnv$success
 }
 #' Get the number of loaded rxode2 DLLs
 #'
@@ -1538,6 +1562,7 @@ rxCompile.rxModelVars <- function(model, # Model
         if (!(all(.stderr == "") && length(.stderr) == 1)) {
           .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, sep = "\n")
         }
+        .rxCompileEnv$success <- TRUE
         .badBuild <- function(msg, cSrc = TRUE) {
           .rxCompileEnv$lst[["msg"]] <- gettext(msg)
           .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
@@ -1547,6 +1572,7 @@ rxCompile.rxModelVars <- function(model, # Model
             dyn.load(.cDllFile)
           }
           message("Error building the model: see rxode2::rxLastCompile()")
+          .rxCompileEnv$success <- FALSE
           if (.Platform$OS.type == "windows") {
             message("this could be because your Rtools is not set up correctly")
           } else {

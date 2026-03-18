@@ -108,6 +108,7 @@ typedef struct {
   double *ii;
   double *solve;
   double *mtime;
+  double mtime0[90]; // initial sort-time mtime values; sentinel R_NegInf = already fired
   double *solveSave;
   double *solveLast;
   double *solveLast2;
@@ -191,6 +192,7 @@ typedef struct {
   double extraDoseNewXout;
   int idxExtra; // extra idx
   int extraSorted; // extra sorted?
+  int mainSorted;  // 0 = main ix[] needs re-sort after runtime rate/dur/mtime update
   //double *extraDoseIi; // ii doses unsupported
   bool lastIsSs2;
   double *timeThread;
@@ -336,11 +338,11 @@ static inline void lineNull(vLines *sbb) {
 }
 
 typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
-typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
-typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t);
+typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
+typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
+typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
 
-typedef void (*t_calc_mtime)(int cSub, double *mtime);
+typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);

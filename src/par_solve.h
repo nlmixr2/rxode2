@@ -15,6 +15,7 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
+
 	void sortInd(rx_solving_options_ind *ind);
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);
@@ -51,7 +52,6 @@ extern "C" {
 			ind->curDoseS[j] = NA_REAL;
 		}
 		ind->inLhs = inLhs;
-		if (rx->nMtime) calc_mtime(solveid, ind->mtime);
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {
         ind->lhs[j] = 1.0; // default is first string defined
@@ -67,8 +67,50 @@ extern "C" {
         if (inLhs == 0) memcpy(ind->solve, op->inits, op->neq*sizeof(double));
         u_inis(solveid, ind->solve); // Update initial conditions @ current time
         ind->isIni = 0;
+      } else if (rx->nMtime && inLhs == 0 && op->neq > 0) {
+        // No u_inis but state-dep mtime needs initial values in ind->solve
+        memcpy(ind->solve, op->inits, op->neq*sizeof(double));
       }
 		}
+    // Compute model times using ind->solve (which has user-specified inits after u_inis).
+    // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
+    if (rx->nMtime) {
+      if (inLhs == 0 || op->neq == 0) {
+        // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
+        // Compute mtime with actual initial state → mtime_init[k].
+        double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
+        calc_mtime(solveid, ind->mtime, _initState);
+
+        // Compute mtime with zero state → base (state-independent) time mtime_base[k].
+        // If base <= init, place event at base so the solver is forced to visit base,
+        // then recomputeMtimeIfNeeded re-evaluates with actual state(base) and reschedules
+        // to base + f(state(base)) >= base.  This is the correct semantics: state-dep offset
+        // is evaluated at the trigger time, not at t=0.
+        // If base > init (e.g. negative initial offset shifts event earlier), keep init
+        // so the event fires at the correct earlier time (old behaviour preserved).
+        double _baseMtime[90];
+        if (op->neq > 0) {
+          double *_zeroState = new double[op->neq]();  // zero-initialised
+          calc_mtime(solveid, _baseMtime, _zeroState);
+          delete[] _zeroState;
+        } else {
+          calc_mtime(solveid, _baseMtime, _initState);
+        }
+        for (int k = 0; k < rx->nMtime; k++) {
+          if (_baseMtime[k] <= ind->mtime[k]) {
+            // Event is at or after the base time: place at base so solver visits it.
+            ind->mtime[k] = _baseMtime[k];
+          }
+          // else: event is before base (negative offset); keep mtime_init (old behaviour).
+          ind->mtime0[k] = ind->mtime[k];  // trigger = initial placement
+        }
+        for (int k = rx->nMtime; k < 90; k++) ind->mtime0[k] = R_NegInf;
+      }
+      // else: LHS pass (inLhs==1, neq>0) — preserve ind->mtime[k] set by the ODE
+      // solve (including any recomputeMtimeIfNeeded updates).  getTime_ returns
+      // ind->mtime[evid-10] so using the correct final time is essential for the
+      // output dataframe to show the actual event time, not the trigger time.
+    }
 		ind->_newind = 1;
 		ind->dosenum = 0;
 		ind->tlast = NA_REAL;
@@ -77,8 +119,15 @@ extern "C" {
 		if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
 			ind->solved = -1;
 		}
-    sortInd(ind);
-    if (op->badSolve) return 0;
+    if (inLhs == 0 || op->neq == 0) {
+      // Sort for solving (inLhs==0), or for LHS-only models (neq==0) where no
+      // ODE solver ran.  When inLhs==1 and neq>0 the ODE solve loop already ran
+      // sortInd and may have re-sorted for state-dep lag; preserve that order so
+      // getSolve(i) positions in rxode2_df agree with the solve loop.
+      sortInd(ind);
+      if (op->badSolve) return 0;
+    }
+    ind->mainSorted = 1;
 		ind->ixds=ind->idx=0;
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
