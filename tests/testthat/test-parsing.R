@@ -361,7 +361,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=df(x)/dt(ETA[1])+3"
   )
   badParse(
-    "mtime can depend on d/dt(x)",
+    "mtime cannot depend on d/dt(x)",
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
   )
 
@@ -980,7 +980,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=df(x)/dt(ETA[1])+3"
   )
   badParse(
-    "mtime can depend on d/dt(x)",
+    "mtime cannot depend on d/dt(x)",
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
   )
 
