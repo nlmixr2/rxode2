@@ -75,12 +75,41 @@ extern "C" {
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
     if (rx->nMtime) {
-      double *_stateForMtime = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
-      calc_mtime(solveid, ind->mtime, _stateForMtime);
-      // Save initial sort-time mtime values; recomputeMtimeIfNeeded uses these
-      // to guard one-time re-evaluation (fires only when solver reaches mtime0[k]).
-      for (int k = 0; k < rx->nMtime; k++) ind->mtime0[k] = ind->mtime[k];
-      for (int k = rx->nMtime; k < 90; k++) ind->mtime0[k] = R_NegInf;
+      if (inLhs == 0 || op->neq == 0) {
+        // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
+        // Compute mtime with actual initial state → mtime_init[k].
+        double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
+        calc_mtime(solveid, ind->mtime, _initState);
+
+        // Compute mtime with zero state → base (state-independent) time mtime_base[k].
+        // If base <= init, place event at base so the solver is forced to visit base,
+        // then recomputeMtimeIfNeeded re-evaluates with actual state(base) and reschedules
+        // to base + f(state(base)) >= base.  This is the correct semantics: state-dep offset
+        // is evaluated at the trigger time, not at t=0.
+        // If base > init (e.g. negative initial offset shifts event earlier), keep init
+        // so the event fires at the correct earlier time (old behaviour preserved).
+        double _baseMtime[90];
+        if (op->neq > 0) {
+          double *_zeroState = new double[op->neq]();  // zero-initialised
+          calc_mtime(solveid, _baseMtime, _zeroState);
+          delete[] _zeroState;
+        } else {
+          calc_mtime(solveid, _baseMtime, _initState);
+        }
+        for (int k = 0; k < rx->nMtime; k++) {
+          if (_baseMtime[k] <= ind->mtime[k]) {
+            // Event is at or after the base time: place at base so solver visits it.
+            ind->mtime[k] = _baseMtime[k];
+          }
+          // else: event is before base (negative offset); keep mtime_init (old behaviour).
+          ind->mtime0[k] = ind->mtime[k];  // trigger = initial placement
+        }
+        for (int k = rx->nMtime; k < 90; k++) ind->mtime0[k] = R_NegInf;
+      }
+      // else: LHS pass (inLhs==1, neq>0) — preserve ind->mtime[k] set by the ODE
+      // solve (including any recomputeMtimeIfNeeded updates).  getTime_ returns
+      // ind->mtime[evid-10] so using the correct final time is essential for the
+      // output dataframe to show the actual event time, not the trigger time.
     }
 		ind->_newind = 1;
 		ind->dosenum = 0;

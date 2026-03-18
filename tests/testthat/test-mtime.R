@@ -10,7 +10,7 @@ rxTest({
     # Sparse sampling (by=3): 5 and 7 are NOT in the grid.
     # mtime events (evid 10-99) are observations that add their own time point.
     et <- eventTable() |>
-      add.dosing(dose = 100, nbr.doses = 1) |>
+      add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
       add.sampling(seq(0, 21, by = 3))
     s <- solve(mod, et, inits = c(offset = 0, y = 0),
                params = c(mt1 = 5, kel = 0.1))
@@ -30,7 +30,7 @@ rxTest({
     })
     # Sparse sampling (by=3): 5, 7, and 3.5 are NOT in the grid.
     et <- eventTable() |>
-      add.dosing(dose = 100, nbr.doses = 1) |>
+      add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
       add.sampling(seq(0, 21, by = 3))
 
     # S0 = 2: fires at 5 + 2 = 7, not at 5
@@ -63,7 +63,7 @@ rxTest({
     # the grid, so the mtime event adds its own time point for each S0.
     for (S0 in c(0, 1, 2.5, -0.5)) {
       et <- eventTable() |>
-        add.dosing(dose = 100, nbr.doses = 1) |>
+        add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
         add.sampling(seq(0, 10, by = 0.7))
       s <- solve(mod, et, inits = c(offset = S0, y = 0),
                  params = c(mt1 = mt1_val, kel = kel_val))
@@ -74,16 +74,15 @@ rxTest({
     }
   })
 
-  test_that("state-dep mtime with decaying state: fires at T0 (initial sort), not fixed-point", {
+  test_that("state-dep mtime with decaying state: fires at mt1 + state(mt1)", {
     # mtime(t1) <- mt1 + state; state decays: state(t) = S0*exp(-ka*t)
     #
-    # T0 = mt1 + S0  (initial sort time, using initial state)
-    # At T0, re-evaluate: T1 = mt1 + S0*exp(-ka*T0) < T0  (state has decayed)
-    # Because T1 < T0, the solver cannot go back: mtime fires at T0.
+    # Correct semantics: the mtime expression is evaluated at the base time mt1
+    # (the state-independent part of the expression).
+    #   actual_event_time = mt1 + state(mt1) = mt1 + S0*exp(-ka*mt1)
     #
-    # Old broken behaviour: continuous re-evaluation converges to fixed-point
-    # Tfp = mt1 + S0*exp(-ka*Tfp), which is strictly less than T0.
-    # Fixed: mtime fires at T0 (not at Tfp).
+    # This is always AFTER mt1 (since state > 0 for positive S0).
+    #
     mod <- rxode2({
       mtime(t1) <- mt1 + state
       d/dt(state) <- -ka * state
@@ -94,25 +93,24 @@ rxTest({
     kel_val <- 0.1
     S0      <- 1.5
 
-    T0  <- mt1_val + S0  # = 6.5
-    Tfp <- uniroot(function(T) T - mt1_val - S0 * exp(-ka_val * T),
-                   interval = c(mt1_val - 2, mt1_val + S0 + 1))$root
+    # Correct: mt1 + state(mt1) = mt1 + S0*exp(-ka*mt1)
+    T_actual <- mt1_val + S0 * exp(-ka_val * mt1_val)
+    # Old wrong value: mt1 + state(0) = mt1 + S0
+    T_old    <- mt1_val + S0  # = 6.5
 
-    # Sparse sampling (by=2): 6.5 and Tfp≈5.3 are NOT in the grid;
-    # the mtime event adds its own time point at T0.
+    # Sparse sampling (by=2): T_actual and T_old are NOT in the grid.
     et <- eventTable() |>
-      add.dosing(dose = 100, nbr.doses = 1) |>
+      add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
       add.sampling(seq(0, 15, by = 2))
-    s <- solve(mod, et, inits = c(state = S0, y = 100),
+    s <- solve(mod, et, inits = c(state = S0, y = 0),
                params = c(mt1 = mt1_val, ka = ka_val, kel = kel_val))
 
-    expect_true(any(abs(s$time - T0) < 1e-4),
-                label = paste0("mtime fires at initial sort time T0=", round(T0, 4)))
-    if (abs(T0 - Tfp) > 0.05) {
-      expect_false(any(abs(s$time - Tfp) < 1e-4),
-                   label = paste0("mtime does NOT fire at fixed-point Tfp=",
-                                  round(Tfp, 4)))
-    }
+    expect_true(any(abs(s$time - T_actual) < 1e-4),
+                label = paste0("mtime fires at mt1 + state(mt1) = ",
+                               round(T_actual, 4)))
+    expect_false(any(abs(s$time - T_old) < 1e-4),
+                 label = paste0("mtime does NOT fire at old T0 = mt1 + state(0) = ",
+                                round(T_old, 4)))
   })
 
   test_that("state-dependent mtime is parsed and solves without error", {
@@ -168,4 +166,3 @@ rxTest({
     })
   }
 })
-

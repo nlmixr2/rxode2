@@ -2401,9 +2401,11 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (rx->istateReset) idid = 1;
         xp = xout;
       }
+      int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
           ind->mainSorted = 0;
+          _mtime_requeued = 1;
         }
       }
       if (rx->needSort & needSortAlag) {
@@ -2413,6 +2415,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       }
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
   }
@@ -2593,9 +2596,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (rx->istateReset) ctx->state = 1;
         xp = xout;
       }
+      int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
           ind->mainSorted = 0;
+          _mtime_requeued = 1;
         }
       }
       if (rx->needSort & needSortAlag) {
@@ -2605,6 +2610,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       }
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
     ind->solvedIdx = i;
@@ -3077,9 +3083,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (rx->istateReset) istate = 1;
         xp = xout;
       }
+      int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
           ind->mainSorted = 0;
+          _mtime_requeued = 1;
         }
       }
       if (rx->needSort & needSortAlag) {
@@ -3090,6 +3098,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       // Copy to next solve so when assigned to
       // yp=ind->solve[neq[0]*i]; it will be the prior values
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
+      if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
   }
@@ -3274,9 +3283,11 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         }
         xp = xout;
       }
+      int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
           ind->mainSorted = 0;
+          _mtime_requeued = 1;
         }
       }
       if (rx->needSort & needSortAlag) {
@@ -3394,6 +3405,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       updateSolve(ind, op, neq, xout, i, nx);
 
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
     ind->solvedIdx = i;
@@ -3524,9 +3536,11 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         }
         xp = xout;
       }
+      int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
           ind->mainSorted = 0;
+          _mtime_requeued = 1;
         }
       }
       if (rx->needSort & needSortAlag) {
@@ -3536,6 +3550,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
       }
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
     ind->solvedIdx = i;
@@ -3752,9 +3767,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         xp = xout;
       }
+      int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
-        if (recomputeMtimeIfNeeded(rx, ind, yp, i + 1, xout)) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
           ind->mainSorted = 0;
+          _mtime_requeued = 1;
         }
       }
       if (rx->needSort & needSortAlag) {
@@ -3764,6 +3781,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
       updateSolve(ind, op, neq, xout, i, nx);
+      if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
   }

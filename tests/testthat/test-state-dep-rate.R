@@ -46,7 +46,7 @@ rxTest({
     times <- seq(0, 30, by = 0.5)
 
     et <- eventTable() |>
-      add.dosing(dose = amt, rate = -1) |>  # rate=-1 → use modelled rate
+      add.dosing(dose = amt, rate = -1) |>  # rate=-1 → use modeled rate
       add.sampling(times)
 
     s <- solve(mod, et,

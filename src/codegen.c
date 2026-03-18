@@ -394,6 +394,15 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           }
           break;
         case TMTIME:
+          if (show_ode != ode_mexp && show_ode != ode_indLinVec){
+            // For ode_mtime (calc_mtime): use the primal equation (sbPm) to evaluate
+            // the mtime expression using the provided __zzStateVar__ state vector.
+            // sbPmDt contains the sensitivity form which references dual state vars
+            // (__DDtStateVar_k__) that are excluded (TDDT is skipped for ode_mtime),
+            // so using sbPmDt here would leave the mtime expression unevaluated.
+            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mtime) ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
         case TASSIGN:
           if (show_ode != ode_mexp && show_ode != ode_indLinVec){
             sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
