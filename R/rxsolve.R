@@ -898,7 +898,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros"))]
     if (length(.bad) > 0) {
-      if ("transitAbs" %fn% .bad) {
+      if ("transitAbs" %in% .bad) {
         stop("'transitAbs' is no longer supported, use 'evid=7' instead",
              call.=FALSE)
       }
