@@ -75,11 +75,11 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.0.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="5.0.2" id="rxode2-502">rxode2 5.0.2<a class="anchor" aria-label="anchor" href="#rxode2-502"></a></h2>
+<h2 class="pkg-version" data-toc-text="5.0.2" id="rxode2-502">rxode2 5.0.2<a class="anchor" aria-label="anchor" href="#rxode2-502"></a></h2><p class="text-muted">CRAN release: 2026-03-20</p>
 <ul><li><p>Allow state-dependent <code>dur()</code>, <code>rate()</code>, <code>alag()</code>, <code>mtime()</code> now allow states to modify their behavior. The state value at the time of the event is used to calculate any changes.</p></li>
 <li><p>Fix: all six ODE solve loops now use precomputed <code>timeThread</code> values for event times instead of recomputing via <code>getTime_()</code> with <code>ypNA</code>, preventing NA propagation for any state-dependent lag scenario.</p></li>
 <li><p>Export the internal <code><a href="../reference/dot-rxGetSeed.html">.rxGetSeed()</a></code> and <code><a href="../reference/dot-rxSetSeed.html">.rxSetSeed()</a></code> for use in the <code>nlmixr2save</code> package.</p></li>
