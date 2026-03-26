@@ -5218,9 +5218,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time12: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    rxSolveDat->nSize = rxSolveDat->nPopPar*rx->nsub;
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
+    rxSolveDat->nSize = rxSolveDat->nPopPar;
     if (rx->input_mixnum && rx->nsim > 1) {
       stop(_("with mixnum or mixunif specified, cannot simulate %d simulations"),
            rx->nsim);
