@@ -902,15 +902,15 @@ struct lsoda_context_t * lsoda_create_ctx(void)
 	return mem;
 }
 
-struct lsoda_opt_t * lsoda_create_opt(void)
-{
-	struct lsoda_opt_t * mem = malloc(sizeof(struct lsoda_opt_t));
-	return mem;
-}
+/* struct lsoda_opt_t * lsoda_create_opt(void) */
+/* { */
+/* 	struct lsoda_opt_t * mem = malloc(sizeof(struct lsoda_opt_t)); */
+/* 	return mem; */
+/* } */
 
-void lsoda_free_opt(struct lsoda_opt_t * opt)
-{
-	free(opt->atol);
-	free(opt->rtol);
-	free(opt);
-}
+/* void lsoda_free_opt(struct lsoda_opt_t * opt) */
+/* { */
+/* 	free(opt->atol); */
+/* 	free(opt->rtol); */
+/* 	free(opt); */
+/* } */
