@@ -5218,9 +5218,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time12: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    rxSolveDat->nSize = rxSolveDat->nPopPar*rx->nsub;
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
+    {
+      int64_t nSizeLong = (int64_t)rx->nsim * (int64_t)rx->nsub;
+      if (nSizeLong > INT_MAX) {
+        rxSolveFree();
+        stop(_("the combination of subjects (%d) and simulations (%d) is too large for rxSolve to handle"),
+             rx->nsub, rx->nsim);
+      }
+      rxSolveDat->nSize = (int)nSizeLong;
+    }
     if (rx->input_mixnum && rx->nsim > 1) {
       stop(_("with mixnum or mixunif specified, cannot simulate %d simulations"),
            rx->nsim);
@@ -5326,6 +5334,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
+    if (_globals.gon == NULL){
+      rxSolveFree();
+      stop(_("could not allocate enough memory for solving (gon)"));
+    }
     //std::fill_n(&_globals.gon[0], n, 1);
     _globals.gBadDose = _globals.gon + n3a_c; // [n3]
     _globals.grc = _globals.gBadDose + n3; //[nSize]; needs to match the whole dataset
