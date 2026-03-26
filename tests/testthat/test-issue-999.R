@@ -69,4 +69,34 @@ rxTest({
       })
     }
   })
+
+  # Test that nSize = nsim * nsub is computed correctly for the VPC simulation
+  # path (nsim > 1).  The nSize overflow protection (int64_t check) guards
+  # against integer overflow when nsim * nsub would exceed INT_MAX; at those
+  # scales allocation itself would fail, so the overflow check fires first and
+  # rxSolve() throws an informative error rather than segfaulting.
+  test_that("rxSolve nSize is correct for multi-simulation (VPC) path", {
+    m2 <- rxode2({
+      CL <- TVCL * exp(eta.CL)
+      C2 <- centr / V2
+      d/dt(centr) <- -CL * C2
+    })
+
+    omega <- matrix(0.04, 1, 1, dimnames = list("eta.CL", "eta.CL"))
+    ev2 <- et(amt = 100, addl = 4, ii = 24) |>
+      et(0:120)
+
+    # nSub=10, nStud=5 => nSize = 5*10 = 50; verify no crash and correct dims
+    result <- expect_error(
+      rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2,
+              omega = omega, nSub = 10, nStud = 5, cores = 1),
+      NA
+    )
+    expect_true(nrow(result) > 0)
+    # sim.id should range from 1 to nStud=5
+    expect_equal(sort(unique(result$sim.id)), 1:5)
+    # id should range from 1 to nSub=10
+    expect_equal(length(unique(result$id)), 10)
+    rm(result); gc()
+  })
 })
