@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**rxode2** is an R package for solving and simulating from ODE-based pharmacometric models. It parses a mini-language into C code, compiles it, and dynamically loads it into R. The package contains mixed R, C, C++, and Fortran code.
+**rxode2** is an R package for solving and simulating from ODE-based
+pharmacometric models. It parses a mini-language into C code, compiles
+it, and dynamically loads it into R. The package contains mixed R, C,
+C++, and Fortran code.
 
 ## Build and Development Commands
 
@@ -64,7 +67,10 @@ summary(rxC(rxode2model))
 ```
 
 ### Regenerate Grammar and Build Artifacts
-When modifying `inst/tran.g` (the dparser grammar) or needing to regenerate generated files:
+
+When modifying `inst/tran.g` (the dparser grammar) or needing to
+regenerate generated files:
+
 ```r
 # Regenerates: src/tran.g.d_parser.h, R/rxrandomui.R, inst/include/*.h
 .rxodeBuildCode()
@@ -74,13 +80,21 @@ When modifying `inst/tran.g` (the dparser grammar) or needing to regenerate gene
 
 ### ODE Solving Pipeline
 
-1. **Model Definition**: Users define models as R functions with `ini({})` and `model({})` blocks, or as strings/files using the rxode2 mini-language.
+1. **Model Definition**: Users define models as R functions with
+   `ini({})` and `model({})` blocks, or as strings/files using the
+   rxode2 mini-language.
 
-2. **Parsing** (`src/tran.c`, `inst/tran.g`): The mini-language grammar is defined in `inst/tran.g` (a dparser grammar). `tran.c` uses this grammar (pre-compiled into `src/tran.g.d_parser.h`) to parse model equations into an AST.
+2. **Parsing** (`src/tran.c`, `inst/tran.g`): The mini-language
+   grammar is defined in `inst/tran.g` (a dparser grammar). `tran.c`
+   uses this grammar (pre-compiled into `src/tran.g.d_parser.h`) to
+   parse model equations into an AST.
 
-3. **Code Generation** (`src/codegen.c`): The parsed AST is translated into C code with ODE functions, Jacobians, and sensitivity equations.
+3. **Code Generation** (`src/codegen.c`): The parsed AST is translated
+   into C code with ODE functions, Jacobians, and sensitivity
+   equations.
 
-4. **Compilation**: The generated C code is compiled to a shared library (`inline` package) and dynamically loaded.
+4. **Compilation**: The generated C code is compiled to a shared
+   library (`inline` package) and dynamically loaded.
 
 5. **Solving** (`src/par_solve.cpp`): `rxSolve()` drives the numerical ODE solving using the compiled model. Supports multiple backends:
    - LSODA (`src/lsoda.c`, `src/dlsoda.f`) — stiff/non-stiff adaptive
@@ -96,9 +110,16 @@ When modifying `inst/tran.g` (the dparser grammar) or needing to regenerate gene
 - Model piping (`R/piping*.R`) copies and modifies `rxUi` objects via `.copyUi()`
 
 **Event Table** (`src/et.cpp`, `src/etTran.cpp`, `R/et.R`):
+
 - `et()` constructs dosing/sampling event tables
+
 - `etTran()` transforms event tables for the internal solver format
-- Supports NONMEM-compatible event IDs (evid 0-4)
+
+- Supports NONMEM-compatible event IDs (evid 0-4) as well as rxode2
+  specific evids like 5 (replace event), 6 (multiply event) and 7
+  (phantom/transit). Internally the EVIDs are translated to rxode2
+  specific evids documented
+  https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html
 
 **Linear Compartment Models** (`src/linCmt.cpp`, `R/linCmt.R`):
 - Analytical solutions for 1-3 compartment PK models
@@ -142,7 +163,8 @@ When modifying `inst/tran.g` (the dparser grammar) or needing to regenerate gene
 
 ### C/C++ Conventions
 
-- Use `(Rf_error)(...)` (wrapped in parens) rather than `Rf_error(...)` to prevent macro conflicts
+- Use `(Rf_error)(...)` (wrapped in parens) rather than
+  `Rf_error(...)` to prevent macro conflicts
 - C files use `#define STRICT_R_HEADERS` and `#define USE_FC_LEN_T`
 - C++ files use `#define R_NO_REMAP` to avoid R API name pollution
 - OpenMP support is conditional via `rxomp.h`
