@@ -1,8 +1,12 @@
-# rxode2 5.0.2
+# rxode2 (development)
+
+- Fix some potential security and memory issues identified by Claude
 
 - Fix integer overflow in the internal `nSize` buffer-sizing calculation that
   caused a segfault (process exit 139) when solving with approximately 16,384
   or more subjects.
+
+# rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
   allow states to modify their behavior.  The state value at the time
