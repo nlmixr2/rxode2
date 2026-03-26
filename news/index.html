@@ -80,7 +80,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.0.2" id="rxode2-502">rxode2 5.0.2<a class="anchor" aria-label="anchor" href="#rxode2-502"></a></h2><p class="text-muted">CRAN release: 2026-03-20</p>
-<ul><li><p>Allow state-dependent <code>dur()</code>, <code>rate()</code>, <code>alag()</code>, <code>mtime()</code> now allow states to modify their behavior. The state value at the time of the event is used to calculate any changes.</p></li>
+<ul><li><p>Fix integer overflow in the internal <code>nSize</code> buffer-sizing calculation that caused a segfault (process exit 139) when solving with approximately 16,384 or more subjects.</p></li>
+<li><p>Allow state-dependent <code>dur()</code>, <code>rate()</code>, <code>alag()</code>, <code>mtime()</code> now allow states to modify their behavior. The state value at the time of the event is used to calculate any changes.</p></li>
 <li><p>Fix: all six ODE solve loops now use precomputed <code>timeThread</code> values for event times instead of recomputing via <code>getTime_()</code> with <code>ypNA</code>, preventing NA propagation for any state-dependent lag scenario.</p></li>
 <li><p>Export the internal <code><a href="../reference/dot-rxGetSeed.html">.rxGetSeed()</a></code> and <code><a href="../reference/dot-rxSetSeed.html">.rxSetSeed()</a></code> for use in the <code>nlmixr2save</code> package.</p></li>
 <li><p>Bug fix for <code><a href="../reference/dot-copyUi.html">.copyUi()</a></code> with the new format (5.0+) of rxode2 ui models</p></li>
