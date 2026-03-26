@@ -494,7 +494,6 @@ void lsoda_free(struct lsoda_context_t * ctx) {
 	  RSprintf(_("unhandled error message: %s\n"), ctx->error);
 	  free(ctx->error);
 	}
-    if (ctx->error != NULL) free(ctx->error);
 	free(ctx->common);
 }
 
