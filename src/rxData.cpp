@@ -2321,6 +2321,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       rx->neta = omega0.n_rows;
       if (_globals.gomega != NULL) free(_globals.gomega);
       _globals.gomega = (double*)malloc((2 * rx->neta + rx->neta * rx->neta * omegaList.size())*sizeof(double));
+      if (_globals.gomega == NULL) {
+        rxSolveFree();
+        stop(_("memory for inter-individual variability could not be allocated"));
+      }
       for (int i = 0; i < omegaList.size(); i++) {
         omega0 = as<arma::mat>(omegaList[i]);
         std::copy(&omega0[0], &omega0[0] + rx->neta * rx->neta, _globals.gomega + 2 * rx->neta + i * rx->neta * rx->neta);
@@ -2336,6 +2340,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       if (_globals.gomega != NULL) free(_globals.gomega);
       rx->neta = omega0.n_rows;
       _globals.gomega = (double*)malloc((2 * rx->neta + rx->neta * rx->neta)*sizeof(double));
+      if (_globals.gomega == NULL) {
+        rxSolveFree();
+        stop(_("memory for inter-individual variability could not be allocated"));
+      }
       std::copy(&omega0[0], &omega0[0] + rx->neta * rx->neta, _globals.gomega + 2 * rx->neta);
       _globals.nOmega = 0;
     }
@@ -2790,6 +2798,10 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
     if (_globals.ordId != NULL) free(_globals.ordId);
     _globals.ordId=NULL;
     rx->ordId = _globals.ordId = (int*)malloc(nall*sizeof(int));
+    if (rx->ordId == NULL) {
+      rxSolveFree();
+      stop(_("memory for solve order could not be allocated"));
+    }
     std::iota(rx->ordId,rx->ordId+nall,1);
   } else if (rx->op->cores > 1 && rx->op->cores >= nall*getThrottle()) {
     // Here we order based on run times.  This way this iteratively
@@ -3993,6 +4005,10 @@ static inline void rxSolve_resample(const RObject &obj,
       // add sample indicators
       if (_globals.gSampleCov != NULL) free(_globals.gSampleCov);
       _globals.gSampleCov = (int*)calloc(op->ncov*rx->nsub*rx->nsim, sizeof(int));
+      if (_globals.gSampleCov == NULL) {
+        rxSolveFree();
+        stop(_("memory for sampling covariates could not be allocated"));
+      }
       for (int ir = nrow; ir--;) {
         // For sampling  (with replacement)
         if (rx->par_sample[ir]) {
