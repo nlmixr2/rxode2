@@ -164,8 +164,11 @@
 <div class="section level3">
 <h3 id="key-subsystems">Key Subsystems<a class="anchor" aria-label="anchor" href="#key-subsystems"></a></h3>
 <p><strong>UI/Model Interface</strong> (<code>R/ui.R</code>, <code>R/rxUiGet.R</code>, <code>R/asRxui.R</code>): - <code>rxUi</code> objects are R environments containing the fully parsed model - <code>rxUiGet</code> is an S3 dispatch system: <code>ui$property</code> calls <code>rxUiGet.property(x)</code> - Model piping (<code>R/piping*.R</code>) copies and modifies <code>rxUi</code> objects via <code><a href="reference/dot-copyUi.html">.copyUi()</a></code></p>
-<p><strong>Event Table</strong> (<code>src/et.cpp</code>, <code>src/etTran.cpp</code>, <code>R/et.R</code>): - <code><a href="reference/et.html">et()</a></code> constructs dosing/sampling event tables - <code>etTran()</code> transforms event tables for the internal solver format - Supports NONMEM-compatible event IDs (evid 0-4)</p>
-<p><strong>Linear Compartment Models</strong> (<code>src/linCmt.cpp</code>, <code>R/linCmt.R</code>): - Analytical solutions for 1-3 compartment PK models - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2) - Can be mixed with ODEs in the same model</p>
+<p><strong>Event Table</strong> (<code>src/et.cpp</code>, <code>src/etTran.cpp</code>, <code>R/et.R</code>):</p>
+<ul><li><p><code><a href="reference/et.html">et()</a></code> constructs dosing/sampling event tables</p></li>
+<li><p><code>etTran()</code> transforms event tables for the internal solver format</p></li>
+<li><p>Supports NONMEM-compatible event IDs (evid 0-4) as well as rxode2 specific evids like 5 (replace event), 6 (multiply event) and 7 (phantom/transit). Internally the EVIDs are translated to rxode2 specific evids documented <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html" class="uri">https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html</a></p></li>
+</ul><p><strong>Linear Compartment Models</strong> (<code>src/linCmt.cpp</code>, <code>R/linCmt.R</code>): - Analytical solutions for 1-3 compartment PK models - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2) - Can be mixed with ODEs in the same model</p>
 <p><strong>Output Data Frame</strong> (<code>src/rxode2_df.cpp</code>, <code>src/rxData.cpp</code>): - The solved result is returned as a modified data frame with special classes - Factor levels and units are preserved from the event table</p>
 <p><strong>Testing</strong> (<code>tests/testthat/</code>): - Tests use testthat edition 3 - Most test files wrap tests in <code>rxTest({...})</code> which skips on CRAN (requires <code>NOT_CRAN=true</code>) - Test files follow <code>test-*.R</code> naming convention</p>
 </div>
