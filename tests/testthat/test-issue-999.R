@@ -61,9 +61,8 @@ rxTest({
     for (n_sub in c(4000, 8000, 12000, 16000, 20000, 26208)) {
       dat <- make_dataset(n_sub)
       tryCatch({
-        expect_error(rxSolve(model, params = dat$params, events = dat$events,
+        result <- expect_error(rxSolve(model, params = dat$params, events = dat$events,
                              atol = 1e-50, rtol = 1e-8), NA)
-        cat(n_sub, "subjects: OK (", nrow(result), "rows)\n")
         rm(result); gc()
       }, error = function(e) {
         cat(n_sub, "subjects: ERROR -", conditionMessage(e), "\n")
