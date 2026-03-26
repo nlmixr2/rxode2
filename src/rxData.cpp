@@ -5220,7 +5220,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
-    rxSolveDat->nSize = rxSolveDat->nPopPar;
+    rxSolveDat->nSize = rx->nsim * rx->nsub;
     if (rx->input_mixnum && rx->nsim > 1) {
       stop(_("with mixnum or mixunif specified, cannot simulate %d simulations"),
            rx->nsim);
