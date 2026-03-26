@@ -1,5 +1,18 @@
 # rxode2 5.0.2
 
+- Fix integer overflow in the internal `nSize` buffer-sizing calculation that
+  caused a segfault (process exit 139) when solving with approximately 16,384
+  or more subjects. The previous formula multiplied `nPopPar` by `nsub` before
+  the number of simulations was known, producing a value up to `nsub` times
+  too large. For a single-simulation solve with 16,384 subjects this yielded
+  `nSize = 16384² = 268M`, causing the subsequent `gon` integer buffer
+  allocation to overflow signed 32-bit arithmetic, return `NULL` from
+  `calloc`, and segfault on the first pointer dereference. The fix sets
+  `nSize = nPopPar` after `nsim` is determined, which is the correct bound on
+  the subject index. Users running large population simulations (≥ 16,384
+  subjects) with stiff models (e.g. Michaelis-Menten or other nonlinear
+  elimination terms) should no longer encounter this crash.
+
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
   allow states to modify their behavior.  The state value at the time
   of the event is used to calculate any changes.
