@@ -2268,6 +2268,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       if (_globals.gsigma != NULL) free(_globals.gsigma);
       rx->neps = sigma0.n_rows;
       _globals.gsigma = (double*)malloc((rx->neps * rx->neps * sigmaList.size() + 2 * rx->neps) * sizeof(double));
+      if (_globals.gsigma == NULL) {
+        rxSolveFree();
+        stop(_("memory for residual errors could not be allocated"));
+      }
       for (int i = 0; i < sigmaList.size(); i++) {
         sigma0 = as<arma::mat>(sigmaList[i]);
         std::copy(&sigma0[0], &sigma0[0] + rx->neps * rx->neps, _globals.gsigma + 2 * rx->neps + i * rx->neps * rx->neps);
@@ -2284,6 +2288,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       rx->neps = sigma0.n_rows;
       if (rx->neps > 0) {
         _globals.gsigma = (double*)malloc((rx->neps * rx->neps + 2 * rx->neps)* sizeof(double));
+        if (_globals.gsigma == NULL) {
+          rxSolveFree();
+          stop(_("memory for residual errors could not be allocated"));
+        }
         std::copy(&sigma0[0], &sigma0[0] + rx->neps * rx->neps,
                   _globals.gsigma + 2 * rx->neps);
       } else {
