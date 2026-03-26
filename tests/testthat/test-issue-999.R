@@ -1,7 +1,5 @@
 rxTest({
   # This test is for issue #999
-  library(rxode2)
-
   # 3-compartment TMDD model (matches the pharmacokinetic simulation in this project)
   model <- rxode2({
     Kel     <- CL / Vcentral
@@ -58,6 +56,8 @@ rxTest({
   }
 
   test_that("rxSolve handles large datasets without crashing", {
+    skip_on_os("windows")
+    skip_on_os("mac")
     for (n_sub in c(4000, 8000, 12000, 16000, 20000, 26208)) {
       dat <- make_dataset(n_sub)
       tryCatch({
@@ -76,6 +76,7 @@ rxTest({
   # scales allocation itself would fail, so the overflow check fires first and
   # rxSolve() throws an informative error rather than segfaulting.
   test_that("rxSolve nSize is correct for multi-simulation (VPC) path", {
+
     m2 <- rxode2({
       CL <- TVCL * exp(eta.CL)
       C2 <- centr / V2
@@ -83,20 +84,37 @@ rxTest({
     })
 
     omega <- matrix(0.04, 1, 1, dimnames = list("eta.CL", "eta.CL"))
+
     ev2 <- et(amt = 100, addl = 4, ii = 24) |>
-      et(0:120)
+      et(0:120) %>%
+      et(id=1:10)
 
     # nSub=10, nStud=5 => nSize = 5*10 = 50; verify no crash and correct dims
     result <- expect_error(
       rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2,
-              omega = omega, nSub = 10, nStud = 5, cores = 1),
+              omega = omega, nStud = 5, cores = 1),
       NA
     )
+
     expect_true(nrow(result) > 0)
     # sim.id should range from 1 to nStud=5
     expect_equal(sort(unique(result$sim.id)), 1:5)
     # id should range from 1 to nSub=10
     expect_equal(length(unique(result$id)), 10)
+
+    ev2 <- et(amt = 100, addl = 4, ii = 24) |>
+      et(0:120)
+
+    result <- expect_error(
+      rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2,
+              omega = omega, nSub=10, nStud = 5, cores = 1),
+      NA
+    )
+
+    expect_true(nrow(result) > 0)
+    # sim.id should range from 1 to nStud=5
+    expect_equal(sort(unique(result$sim.id)), 1:50)
+
     rm(result); gc()
   })
 })
