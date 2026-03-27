@@ -1,6 +1,6 @@
 # rxode2 (development)
 
-- Fix some potential security and memory issues identified by Claude
+- Fix potential security and memory-management issues that could lead to crashes or undefined behavior
 
 - Fix integer overflow in the internal `nSize` buffer-sizing calculation that
   caused a segfault (process exit 139) when solving with approximately 16,384
