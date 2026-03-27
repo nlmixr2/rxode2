@@ -191,7 +191,7 @@ critical call for rxode2 integration.
 
 ### `R/zzz.R`
 
-```{r zzz}
+``` r
 ## Cache the original translation table so .onUnload can restore it.
 .origTranslation <- new.env(parent=emptyenv())
 .origTranslation$value <- NULL
@@ -293,7 +293,7 @@ When a user writes `rxode2({ dA1/dt <- -mm(Cp, Vmax, Km) })`:
 
 ## Using the custom function in a model
 
-```{r useModel}
+``` r
 library(rxode2)
 library(mypkg)   # triggers .onLoad -> rxode2parseAssignTranslation + rxD
 
@@ -301,6 +301,15 @@ mod <- rxode2({
   Cp     <- A1 / Vc
   dA1/dt <- -mm(Cp, Vmax, Km)   # Michaelis-Menten elimination
 })
+
+# Because you registered the mm() function to have 3 arguments, rxode2 will
+# produce a syntax error if you try to call it with the wrong number of arguments:
+
+try(rxode2({
+  Cp     <- A1 / Vc
+  dA1/dt <- -mm(Cp, Vmax, Km)   # Michaelis-Menten elimination
+}))
+
 
 ev  <- et(amt = 100) |> et(0, 24, by = 0.5)
 sim <- rxSolve(mod, ev, params = c(Vc = 10, Vmax = 5, Km = 1))
