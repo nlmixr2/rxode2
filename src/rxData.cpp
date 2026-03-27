@@ -4010,7 +4010,25 @@ static inline void rxSolve_resample(const RObject &obj,
       const char *cur;
       // add sample indicators
       if (_globals.gSampleCov != NULL) free(_globals.gSampleCov);
-      _globals.gSampleCov = (int*)calloc(op->ncov*rx->nsub*rx->nsim, sizeof(int));
+      {
+        // use size_t and explicit overflow checks for allocation size
+        size_t ncov = static_cast<size_t>(op->ncov);
+        size_t nsub = static_cast<size_t>(rx->nsub);
+        size_t nsim = static_cast<size_t>(rx->nsim);
+        size_t count1 = 0;
+        size_t total  = 0;
+        if (ncov != 0 && nsub > SIZE_MAX / ncov) {
+          rxSolveFree();
+          stop(_("memory for sampling covariates could not be allocated (size overflow)"));
+        }
+        count1 = ncov * nsub;
+        if (nsim != 0 && count1 > SIZE_MAX / nsim) {
+          rxSolveFree();
+          stop(_("memory for sampling covariates could not be allocated (size overflow)"));
+        }
+        total = count1 * nsim;
+        _globals.gSampleCov = (int*)calloc(total, sizeof(int));
+      }
       if (_globals.gSampleCov == NULL) {
         rxSolveFree();
         stop(_("memory for sampling covariates could not be allocated"));
