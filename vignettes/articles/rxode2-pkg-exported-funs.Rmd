@@ -296,10 +296,6 @@ mm_dKm <- function(C, Vmax, Km) {
 ### `R/zzz.R`
 
 ```r
-## Cache the original translation table so .onUnload can restore it.
-.origTranslation <- new.env(parent = emptyenv())
-.origTranslation$value <- NULL
-
 .onLoad <- function(libname, pkgname) {
 
   ## 1. Add rows to rxode2's function translation table.
@@ -326,8 +322,11 @@ mm_dKm <- function(C, Vmax, Km) {
   ##    All four functions here take three double args -> "rxode2_fn3".
   ##    Registering the derivative functions in the table allows rxode2
   ##    to call them directly as C when assembling the Jacobian.
+  ##
+  ##    Only add the rows if this package's functions are not already
+  ##    present (e.g. after a package reload in an interactive session).
 
-  .origTranslation$value <- rxode2::rxode2parseGetTranslation()
+  .cur <- rxode2::rxode2parseGetTranslation()
 
   .newRows <- data.frame(
     rxFun      = c("mm",         "mm_dC",      "mm_dVmax",   "mm_dKm"),
@@ -341,9 +340,10 @@ mm_dKm <- function(C, Vmax, Km) {
     stringsAsFactors = FALSE
   )
 
-  rxode2::rxode2parseAssignTranslation(
-    rbind(.origTranslation$value, .newRows)
-  )
+  ## Avoid duplicates if the package is reloaded without being unloaded.
+  .cur <- .cur[.cur$package != "mm", , drop = FALSE]
+
+  rxode2::rxode2parseAssignTranslation(rbind(.cur, .newRows))
 
   ## 2. Register derivatives for nlmixr2 gradient computation.
   ##
@@ -413,13 +413,16 @@ mm_dKm <- function(C, Vmax, Km) {
 }
 
 .onUnload <- function(libpath) {
-  ## Restore the original translation table so that rxode2 no longer
-  ## tries to call R_GetCCallable("mm", ...) after the DLL is gone.
-  if (!is.null(.origTranslation$value)) {
-    try(rxode2::rxode2parseAssignTranslation(.origTranslation$value),
-        silent = TRUE)
+  ## Remove only this package's rows from the translation table.
+  ## Filtering by package == "mm" is safe when multiple packages have
+  ## each added their own rows: other packages' entries are untouched.
+  .cur <- try(rxode2::rxode2parseGetTranslation(), silent = TRUE)
+  if (!inherits(.cur, "try-error")) {
+    try(rxode2::rxode2parseAssignTranslation(
+      .cur[.cur$package != "mm", , drop = FALSE]
+    ), silent = TRUE)
   }
-  ## Remove all derivative entries.
+  ## Remove derivative entries for all registered function names.
   try(rxode2::rxRmFun("mm"),       silent = TRUE)
   try(rxode2::rxRmFun("mm_dC"),    silent = TRUE)
   try(rxode2::rxRmFun("mm_dVmax"), silent = TRUE)
@@ -574,7 +577,7 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 | 7 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRows))` in `.onLoad` |
 | 8 | `R/zzz.R` | Call `rxD("fun", list(...))` referencing C functions for 1st-order |
 | 9 | `R/zzz.R` | Call `rxD("fun_dArg", list(...))` with expression strings for 2nd-order |
-| 10 | `R/zzz.R` | Restore translation table + call `rxRmFun` for all names in `.onUnload` |
+| 10 | `R/zzz.R` | Filter out rows where `package == "mm"` + call `rxRmFun` for all names in `.onUnload` |
 
 ## Further reading
 
