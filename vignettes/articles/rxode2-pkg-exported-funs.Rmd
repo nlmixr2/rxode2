@@ -199,10 +199,23 @@ critical call for rxode2 integration.
   ##      argMax      - maximum number of accepted arguments
   ##      threadSafe  - 1 if safe to call from OpenMP threads, 0 otherwise
   ##
+  ##    Note that while argMin and argMax are required fields in the
+  ##    translation table, they can only be different numbers when the
+  ##    function parsing is directly, and specifically handled by
+  ##    rxode2 parsing routines.
+
+  ##    If you want to support variable functions, you must implement
+  ##    the parsing using user functions that eventually translate to
+  ##    a fixed-arg function in the translation table with a rxUdfUi
+  ##    method.  For example, you could implement a variable-arg mm()
+  ##    that takes a vector of parameters and then calls a fixed-arg
+  ##    mm_impl() that is registered in the translation table.
+  ##
   ##    Common function-pointer typedefs (rxode2_model_shared.h):
   ##      rxode2_fn    double (*)(double)
   ##      rxode2_fn2   double (*)(double, double)
   ##      rxode2_fn3   double (*)(double, double, double)
+  ##      // up to 3 args with rxode2 <= 5.0.2
   ##      ...
   ##      // up to 10 args with development rxode2 (> 5.0.2)
   ##      rxode2_fn10  double (*)(double, double, ..., double)
