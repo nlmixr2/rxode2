@@ -17,6 +17,16 @@
   very large models (many ODEs × many subjects × many timepoints). Changed from
   `int` to `int64_t`.
 
+- Add pre-allocation guards before the main ODE solver buffer (`gsolve`) to
+  prevent process crashes on Windows (and low-memory systems generally) when a
+  requested allocation is too large to satisfy: a fast `n0 > INT_MAX` hard limit
+  (~16 GB for the dominant buffer term) fires first, followed by a
+  platform-specific available-memory check (`rxAvailableMemoryBytes()` in
+  `src/rxMemAvail.h`) that compares the total requested bytes against reported
+  available memory on Windows (`GlobalMemoryStatusEx`), Linux
+  (`/proc/meminfo` MemAvailable), and macOS (Mach VM statistics). The existing
+  post-`calloc` NULL check message now also reports the requested size in GB.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now

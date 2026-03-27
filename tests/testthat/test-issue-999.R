@@ -112,7 +112,7 @@ rxTest({
     )
 
     expect_true(nrow(result) > 0)
-    # sim.id should range from 1 to nStud=5
+    # sim.id should range from 1 to nSub*nStud=50 (nSub=10 subjects × nStud=5 studies)
     expect_equal(sort(unique(result$sim.id)), 1:50)
 
     rm(result); gc()

@@ -32,6 +32,7 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
+#include "rxMemAvail.h"
 #include "strncmp.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
@@ -5316,6 +5317,28 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
     int64_t n10 = (int64_t)(op->neq)*op->cores;
     int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
+    // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
+    // Portable, zero-cost backstop that catches the dominant overflow path.
+    if (n0 > (int64_t)INT_MAX) {
+      rxSolveFree();
+      stop(_("the solver buffer (%lld elements, %.1f GB) is too large for rxSolve to handle; "
+             "reduce the number of timepoints or simulations"),
+           (long long)n0, (double)n0 * sizeof(double) / 1e9);
+    }
+    // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
+    // Returns UINT64_MAX on unsupported platforms, skipping the check.
+    {
+      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
+                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+      uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
+      uint64_t _avail  = rxAvailableMemoryBytes();
+      if (_avail != UINT64_MAX && _needed > _avail) {
+        rxSolveFree();
+        stop(_("the solver requires %.1f GB but only %.1f GB appears available; "
+               "reduce the number of timepoints or simulations"),
+             (double)_needed / 1e9, (double)_avail / 1e9);
+      }
+    }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
@@ -5327,7 +5350,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
     if (_globals.gsolve == NULL){
       rxSolveFree();
-      stop(_("could not allocate enough memory for solving"));
+      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
+                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+      stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
+           (double)_totalElems * sizeof(double) / 1e9);
     }
     _globals.gLin = _globals.gsolve + n0; // [nlin]
     _globals.gLlikSave = _globals.gLin + nlin; // [nllik_c]
