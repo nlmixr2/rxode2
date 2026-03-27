@@ -340,7 +340,33 @@ mm_dKm <- function(C, Vmax, Km) {
     stringsAsFactors = FALSE
   )
 
-  ## Avoid duplicates if the package is reloaded without being unloaded.
+  ## Check for name conflicts before modifying the table.
+  .mmNames <- .newRows$rxFun
+  .conflicts <- .cur[.cur$rxFun %in% .mmNames, , drop = FALSE]
+
+  if (nrow(.conflicts) > 0L) {
+    .fromOther <- .conflicts[.conflicts$package != "mm", , drop = FALSE]
+    .fromSelf  <- .conflicts[.conflicts$package == "mm", , drop = FALSE]
+
+    if (nrow(.fromOther) > 0L) {
+      stop(
+        "Cannot load package 'mm': the following rxode2 function name(s) are ",
+        "already registered by another package:\n",
+        paste0("  ", .fromOther$rxFun, " (registered by '",
+               .fromOther$package, "')", collapse = "\n"),
+        call. = FALSE
+      )
+    }
+
+    if (nrow(.fromSelf) > 0L) {
+      message(
+        "Package 'mm' rxode2 function registration was already present ",
+        "(package reloaded); re-registering."
+      )
+    }
+  }
+
+  ## Remove any existing mm rows (covers the reload case) then add fresh ones.
   .cur <- .cur[.cur$package != "mm", , drop = FALSE]
 
   rxode2::rxode2parseAssignTranslation(rbind(.cur, .newRows))
