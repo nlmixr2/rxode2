@@ -308,7 +308,7 @@ mod <- rxode2({
 
 try(rxode2({
   Cp     <- A1 / Vc
-  dA1/dt <- -mm(Cp, Vmax, Km)   # Michaelis-Menten elimination
+  dA1/dt <- -mm(Cp, Vmax)   # Michaelis-Menten elimination
 }))
 
 
