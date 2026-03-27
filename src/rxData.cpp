@@ -5301,18 +5301,18 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
 
     int64_t n4 = rxSolveDat->initsC.size();
-    int64_t n5_c = lhs.size()*op->cores;
-    int64_t nllik_c = rxLlikSaveSize*op->nLlik*op->cores;
+    int64_t n5_c = (int64_t)lhs.size()*op->cores;
+    int64_t nllik_c = (int64_t)rxLlikSaveSize*op->nLlik*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
     int64_t n6 = scaleC.size();
     int64_t nIndSim = rx->nIndSim;
-    int64_t n7 =  nIndSim * rx->nsub * rx->nsim;
-    int64_t n8 = rx->maxAllTimes*op->cores;
-    int64_t n9 = (op->numLinSens+op->numLin)*op->cores;
-    int64_t n10 = (op->neq)*op->cores;
-    int64_t nlin = (rx->linB)* 7* rx->nsub * rx->nsim;
+    int64_t n7 =  nIndSim * (int64_t)rx->nsub * rx->nsim;
+    int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
+    int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
+    int64_t n10 = (int64_t)(op->neq)*op->cores;
+    int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
