@@ -5268,7 +5268,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t nsave = op->neq*op->cores;
     int64_t n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
     int64_t n3  = op->neq*rxSolveDat->nSize;
-    int64_t n3a_c = (op->neq + op->extraCmt)*op->cores;
+    int64_t n3a_c = ((int64_t)op->neq + op->extraCmt) * op->cores;
     //REprintf("n3a_c: %d, cores: %d\n", op->cores);
 #ifdef rxSolveT
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
