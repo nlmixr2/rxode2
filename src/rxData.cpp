@@ -4103,7 +4103,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
-  int curEvent = 0, curIdx = 0, curSolve=0;
+  int64_t curEvent = 0, curSolve=0; int curIdx = 0;
   switch(rxSolveDat->parType) {
   case 1: // NumericVector
     {
@@ -4142,7 +4142,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
                        inits, rxSolveDat);
       curSolve=0;
       curEvent=0;
-      curIdx=0;
+      curIdx=0; // curIdx is n_all_times only (not scaled by neq); stays int
       int curCov=0;
       int curSimIni=0;
       int curLin = 0;
@@ -4216,13 +4216,13 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->dose = &_globals.gamtS[(simNum-1)*rx->nall + cIdx2];
             }
           }
-          int eLen = op->neq*ind->n_all_times;
+          int64_t eLen = (int64_t)op->neq*ind->n_all_times;
           ind->solve = &_globals.gsolve[curSolve];
           ind->linH = &_globals.gLin[curLin];
           curLin += 7;
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
-          curSolve += (op->neq)*ind->n_all_times;
+          curSolve += (int64_t)(op->neq)*ind->n_all_times;
           ind->ix = &_globals.gix[curIdx];
           curEvent += eLen;
           curIdx += ind->n_all_times;
@@ -4408,7 +4408,7 @@ static inline Environment rxSolve_genenv(const RObject &object,
     }
     _rxModels.remove(".nestTheta");
   }
-  e[".check.nrow"] = rx->nr;
+  e[".check.nrow"] = (double)rx->nr;
   e[".check.ncol"] = dat.size();
   e[".check.names"] = dat.names();
   e[".idLevels"] = as<CharacterVector>(rxSolveDat->idLevels);
@@ -4616,7 +4616,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 #endif
       return dat;
     } else {
-      NumericMatrix tmpM(rx->nr, dat.size());
+      NumericMatrix tmpM((R_xlen_t)rx->nr, dat.size());
       for (unsigned int i = dat.size(); i--;){
         tmpM(_,i) = as<NumericVector>(dat[i]);
       }

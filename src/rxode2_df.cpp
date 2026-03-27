@@ -67,7 +67,7 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
       for (int j = 0; j < curLen; j++){
         SET_STRING_ELT(lvl, j,Rf_mkChar(rx->factors.line[base+j]));
       }
-      SEXP val = PROTECT(Rf_allocVector(INTSXP, rx->nr));
+      SEXP val = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)rx->nr));
       Rf_setAttrib(val, R_LevelsSymbol, lvl);
       SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));
       SET_STRING_ELT(cls, 0, Rf_mkChar("factor"));
@@ -77,7 +77,7 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
     }
     base += curLen;
   }
-  SEXP val = PROTECT(Rf_allocVector(REALSXP, rx->nr));
+  SEXP val = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t)rx->nr));
   UNPROTECT(1);
   return val;
 }
@@ -180,8 +180,21 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   rx_solving_options_ind *ind;
   if (subsetEvid == 1){
     dfCountRowsForNmOutput(rx, nsim, nsub);
+    if (rx->nr > (int64_t)INT_MAX) {
+      rxSolveFreeC();
+      (Rf_errorcall)(R_NilValue,
+                     _("the output size (%lld rows) is too large for rxSolve to handle"),
+                     (long long)rx->nr);
+    }
   } else {
-    rx->nr = (doDose == 1 ? nall : nobs)*nsim;
+    int64_t nrLong = (int64_t)(doDose == 1 ? (int64_t)nall : (int64_t)nobs) * (int64_t)nsim;
+    if (nrLong > (int64_t)INT_MAX) {
+      rxSolveFreeC();
+      (Rf_errorcall)(R_NilValue,
+                     _("the output size (%lld rows) is too large for rxSolve to handle"),
+                     (long long)nrLong);
+    }
+    rx->nr = nrLong;
   }
   scale = op->scale;
   neq[0] = op->neq;
@@ -255,7 +268,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
   List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
   for (i = nidCols; i--;){
-    df[i] = IntegerVector(rx->nr);
+    df[i] = IntegerVector((R_xlen_t)rx->nr);
   }
   i = nidCols;
   double *par_ptr;
@@ -267,27 +280,27 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   }
   if (doDose){
     //evid
-    df[i++] = IntegerVector(rx->nr);
+    df[i++] = IntegerVector((R_xlen_t)rx->nr);
     if (nmevid){
       // cmt
-      df[i++] = IntegerVector(rx->nr);
+      df[i++] = IntegerVector((R_xlen_t)rx->nr);
       // ss
-      df[i++] = IntegerVector(rx->nr);
+      df[i++] = IntegerVector((R_xlen_t)rx->nr);
     }
     // amt
-    df[i++] = NumericVector(rx->nr);
+    df[i++] = NumericVector((R_xlen_t)rx->nr);
   } else if (nevid2col) {
-    df[i++] = IntegerVector(rx->nr);
+    df[i++] = IntegerVector((R_xlen_t)rx->nr);
   }
   doseCols += nevid2col;
   CharacterVector paramNames = rxParamNames(op->modNamePtr);
   CharacterVector fkeepNames = get_fkeepn();
   // time comes in here
-  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector(rx->nr);
+  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector((R_xlen_t)rx->nr);
   CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
   // time
   int i0 = md + sm + ms + doseCols + 2*nmevid;
-  df[i0] = NumericVector(rx->nr);
+  df[i0] = NumericVector((R_xlen_t)rx->nr);
   i0++;
 
   // nlhs
@@ -296,14 +309,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       // factor; from string expression
       df[i] = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx);
     } else {
-      df[i] = NumericVector(rx->nr);
+      df[i] = NumericVector((R_xlen_t)rx->nr);
     }
   }
   i0+=nlhs;
 
   // Rest is numeric
   for (i = i0; i < ncols + doseCols + nidCols + 2*nmevid; i++){
-    df[i] = NumericVector(rx->nr);
+    df[i] = NumericVector((R_xlen_t)rx->nr);
   }
   // These could be factors
   j = ncols + doseCols + nidCols + 2*nmevid;
@@ -327,7 +340,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   for (i = ncols + doseCols + nidCols + 2*nmevid;
        i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
        i++){
-    df[i] = NumericVector(rx->nr);
+    df[i] = NumericVector((R_xlen_t)rx->nr);
   }
   // keep items
   j = 0;
@@ -336,14 +349,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
        i++) {
     int curType = get_fkeepType(j);
     if (curType == 4) {
-      df[i] = assign_fkeepAttr(j, NumericVector(rx->nr));
+      df[i] = assign_fkeepAttr(j, NumericVector((R_xlen_t)rx->nr));
     } else if (curType == 1) {
-      df[i] = assign_fkeepAttr(j, StringVector(rx->nr));
-      df[i] = StringVector(rx->nr);
+      df[i] = assign_fkeepAttr(j, StringVector((R_xlen_t)rx->nr));
+      df[i] = StringVector((R_xlen_t)rx->nr);
     } else if (curType == 5) {
-      df[i] = assign_fkeepAttr(j, LogicalVector(rx->nr));
+      df[i] = assign_fkeepAttr(j, LogicalVector((R_xlen_t)rx->nr));
     } else {
-      IntegerVector cur(rx->nr);
+      IntegerVector cur((R_xlen_t)rx->nr);
       if (curType == 2) {
         cur.attr("levels") = get_fkeepLevels(j);
       }
@@ -355,7 +368,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   for (i = ncols + doseCols + nidCols + nmevid*5;
        i < ncols + doseCols + nidCols + nmevid*5 + doTBS*4;
        i++) {
-    df[i] = NumericVector(rx->nr);
+    df[i] = NumericVector((R_xlen_t)rx->nr);
   }
   // Now create the data frame
   int resetno = 0;
@@ -879,7 +892,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   }
   IntegerVector sexp_rownames = IntegerVector(2);
   sexp_rownames[0] = NA_INTEGER;
-  sexp_rownames[1] = -rx->nr;
+  sexp_rownames[1] = -(int)rx->nr;
   Rf_setAttrib(df, R_RowNamesSymbol, sexp_rownames);
   CharacterVector sexp_colnames = CharacterVector(ncol);
   jj = 0;

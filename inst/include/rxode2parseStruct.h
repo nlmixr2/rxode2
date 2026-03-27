@@ -250,7 +250,7 @@ typedef struct {
   int nevid9;
   int nobs; // isObs() observations
   int nobs2; // evid=0 observations
-  int nr;
+  int64_t nr; // int64_t because nobs*nsim can exceed INT_MAX in VPC with many subjects/timepoints/sims
   int add_cov;
   int matrix;
   int needSort;

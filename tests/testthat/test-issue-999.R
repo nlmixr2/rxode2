@@ -123,6 +123,23 @@ rxTest({
   # 46342 * 46342 = 2,147,580,964 > 2,147,483,647 (INT_MAX).
   # Before the unsigned-type fix, this segfaulted via NumericVector(negative_size).
   # After the fix, an informative error is thrown before allocation.
+  # Test that the nr (output row count) overflow guard provides an informative
+  # error rather than a crash when nobs * nStud > INT_MAX.
+  # nobs = 2,147,485 timepoints for 1 subject; nStud=1000 → nr=2,147,485,000 > INT_MAX.
+  # The overflow guard fires before any ODE solving (fast test).
+  # Before the fix: "negative length vectors are not allowed".
+  # After the fix: informative "too large" error.
+  test_that("rxSolve nr overflow guard gives informative error not segfault", {
+    m_nr <- rxode2({ d/dt(x) <- -k * x })
+    ev_nr <- et(seq(0, 2147484, by = 1))
+    omega_nr <- matrix(0.04, 1, 1, dimnames = list("k", "k"))
+    expect_error(
+      rxSolve(m_nr, params = c(k = 0.1), events = ev_nr,
+              omega = omega_nr, nStud = 1000L, cores = 1),
+      "too large"
+    )
+  })
+
   test_that("rxSimThetaOmega overflow guard gives informative error not segfault", {
     m3 <- rxode2({
       CL <- TVCL * exp(eta.CL)
