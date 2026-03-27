@@ -117,4 +117,24 @@ rxTest({
 
     rm(result); gc()
   })
+
+  # Test that the rxSimThetaOmega overflow guard provides an informative error
+  # rather than a segfault when nSub * nStud > INT_MAX.
+  # 46342 * 46342 = 2,147,580,964 > 2,147,483,647 (INT_MAX).
+  # Before the unsigned-type fix, this segfaulted via NumericVector(negative_size).
+  # After the fix, an informative error is thrown before allocation.
+  test_that("rxSimThetaOmega overflow guard gives informative error not segfault", {
+    m3 <- rxode2({
+      CL <- TVCL * exp(eta.CL)
+      C2 <- centr / V2
+      d/dt(centr) <- -CL * C2
+    })
+    omega <- matrix(0.04, 1, 1, dimnames = list("eta.CL", "eta.CL"))
+    ev3 <- et(amt = 100, addl = 0) |> et(0:10)
+    expect_error(
+      rxSolve(m3, params = c(TVCL = 1, V2 = 10), events = ev3,
+              omega = omega, nSub = 46342L, nStud = 46342L, cores = 1),
+      "too large"
+    )
+  })
 })

@@ -2430,8 +2430,9 @@ extern "C" void par_indLin(rx_solve *rx){
   assignFuns();
   rx_solving_options *op = &op_global;
   int cores = 1;
-  int nsub = rx->nsub, nsim = rx->nsim;
-  int displayProgress = (op->nDisplayProgress <= nsim*nsub);
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   /* double *yp0=(double*) malloc((op->neq)*nsim*nsub*sizeof(double)); */
   int curTick=0;
@@ -2442,22 +2443,22 @@ extern "C" void par_indLin(rx_solve *rx){
   int abort = 0;
   // FIXME parallel
   uint32_t seed0 = getRxSeed1(1);
-  for (int solveid = 0; solveid < nsim*nsub; solveid++){
+  for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
       ind_indLin(rx, solveid, update_inis, ME, IndF);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
-        curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
+        curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
       }
     }
   }
-  setRxSeedFinal(seed0 + nsim*nsub);
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
-    par_progress(cur, nsim*nsub, curTick, cores, t0, 1);
+    par_progress(cur, nsolve, curTick, cores, t0, 1);
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, cores, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
 }
 
@@ -2654,8 +2655,9 @@ extern "C" void par_linCmt(rx_solve *rx) {
 #else
   int cores = 1;
 #endif
-  int nsub = rx->nsub, nsim = rx->nsim;
-  int displayProgress = (op->nDisplayProgress <= nsim*nsub);
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   int neq[2];
   neq[0] = op->neq;
@@ -2672,7 +2674,7 @@ extern "C" void par_linCmt(rx_solve *rx) {
 #pragma omp parallel for num_threads(cores)
 #endif
   for (int thread=0; thread < cores; thread++) {
-    for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
+    for (int solveid = thread; solveid < nsolve; solveid+=cores){
       if (abort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1);
 
@@ -2685,7 +2687,7 @@ extern "C" void par_linCmt(rx_solve *rx) {
           if (omp_get_thread_num() == 0) // only in master thread!
 #endif
             {
-              curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
+              curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
               if (abort == 0){
                 if (checkInterrupt()) abort =1;
               }
@@ -2694,13 +2696,13 @@ extern "C" void par_linCmt(rx_solve *rx) {
       }
     }
   }
-  setRxSeedFinal(seed0 + nsim*nsub);
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
-    par_progress(cur, nsim*nsub, curTick, cores, t0, 1);
+    par_progress(cur, nsolve, curTick, cores, t0, 1);
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, cores, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
   if (displayProgress) {
     int doIt = isProgSupported();
@@ -2720,8 +2722,9 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
 #else
   int cores = 1;
 #endif
-  int nsub = rx->nsub, nsim = rx->nsim;
-  int displayProgress = (op->nDisplayProgress <= nsim*nsub);
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   /* double *yp0=(double*) malloc((op->neq)*nsim*nsub*sizeof(double)); */
   struct lsoda_opt_t opt = {0};
@@ -2749,7 +2752,7 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
 #pragma omp parallel for num_threads(cores)
 #endif
   for (int thread=0; thread < cores; thread++) {
-    for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
+    for (int solveid = thread; solveid < nsolve; solveid+=cores){
       if (abort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
         ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
@@ -2760,7 +2763,7 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
           if (omp_get_thread_num() == 0) // only in master thread!
 #endif
             {
-              curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
+              curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
               if (abort == 0){
                 if (checkInterrupt()) abort =1;
               }
@@ -2769,13 +2772,13 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
       }
     }
   }
-  setRxSeedFinal(seed0 + nsim*nsub);
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
-    par_progress(cur, nsim*nsub, curTick, cores, t0, 1);
+    par_progress(cur, nsolve, curTick, cores, t0, 1);
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, cores, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
   if (displayProgress) {
     int doIt = isProgSupported();
@@ -2795,8 +2798,9 @@ extern "C" void par_liblsoda(rx_solve *rx){
 #else
   int cores = 1;
 #endif
-  int nsub = rx->nsub, nsim = rx->nsim;
-  int displayProgress = (op->nDisplayProgress <= nsim*nsub);
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   /* double *yp0=(double*) malloc((op->neq)*nsim*nsub*sizeof(double)); */
   struct lsoda_opt_t opt = {0};
@@ -2823,7 +2827,7 @@ extern "C" void par_liblsoda(rx_solve *rx){
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores)
 #endif
-  for (int solveid = 0; solveid < nsim*nsub; solveid++){
+  for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
       ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
@@ -2834,7 +2838,7 @@ extern "C" void par_liblsoda(rx_solve *rx){
         if (omp_get_thread_num() == 0) // only in master thread!
 #endif
           {
-            curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
+            curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
             if (abort == 0){
               if (checkInterrupt()) abort =1;
             }
@@ -2842,13 +2846,13 @@ extern "C" void par_liblsoda(rx_solve *rx){
       }
     }
   }
-  setRxSeedFinal(seed0 + nsim*nsub);
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
-    par_progress(cur, nsim*nsub, curTick, cores, t0, 1);
+    par_progress(cur, nsolve, curTick, cores, t0, 1);
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, cores, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
   if (displayProgress) {
     int doIt = isProgSupported();
@@ -3125,8 +3129,9 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
 }
 
 extern "C" void par_lsoda(rx_solve *rx) {
-  int nsub = rx->nsub, nsim = rx->nsim;
-  int displayProgress = (op_global.nDisplayProgress <= nsim*nsub);
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
+  int displayProgress = (op_global.nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   int neq[2];
   neq[0] = op_global.neq;
@@ -3147,13 +3152,13 @@ extern "C" void par_lsoda(rx_solve *rx) {
   int curTick = 0;
   int abort = 0;
   uint32_t seed0 = getRxSeed1(1);
-  for (int solveid = 0; solveid < nsim*nsub; solveid++){
+  for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
       ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
-        curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
+        curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
         if (checkInterrupt()){
           abort =1;
           break;
@@ -3161,11 +3166,11 @@ extern "C" void par_lsoda(rx_solve *rx) {
       }
     }
   }
-  setRxSeedFinal(seed0 + nsim*nsub);
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op_global.abort = 1;
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, 1, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
   }
 }
 
@@ -3799,8 +3804,9 @@ extern "C" void ind_dop(rx_solve *rx, int solveid,
 
 void par_dop(rx_solve *rx){
   rx_solving_options *op = &op_global;
-  int nsub = rx->nsub, nsim = rx->nsim;
-  int displayProgress = (op->nDisplayProgress <= nsim*nsub);
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   int neq[2];
   neq[0] = op->neq;
@@ -3813,21 +3819,21 @@ void par_dop(rx_solve *rx){
   int curTick = 0;
   int abort = 0;
   uint32_t seed0 = getRxSeed1(1);
-  for (int solveid = 0; solveid < nsim*nsub; solveid++){
+  for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
       ind_dop0(rx, &op_global, solveid, neq, dydt, update_inis);
       if (displayProgress && abort == 0){
         if (checkInterrupt()) abort =1;
       }
-      if (displayProgress) curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
+      if (displayProgress) curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
     }
   }
-  setRxSeedFinal(seed0 + nsim*nsub);
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsim*nsub, nsim*nsub, curTick, 1, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
   }
   if (displayProgress){
     int doIt = isProgSupported();

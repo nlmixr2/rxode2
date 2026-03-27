@@ -131,7 +131,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int nkeep  = rx->nKeepF;
   int nlhs = op->nlhs;
   int nobs = rx->nobs - rx->nevid9;
-  int nsim = rx->nsim;
+  int nsim = (int)rx->nsim;
   int nall = rx->nall - rx->nevid9;
   int errNcol = rxGetErrsNcol();
   int errNrow = rxGetErrsNrow();
@@ -171,7 +171,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     dullRate=1, dullDur=1,
     dullSS=1, dullIi=1;
   int csub = 0, evid = 0;
-  int nsub = rx->nsub;
+  int nsub = (int)rx->nsub;
   IntegerVector rmState = rxStateIgnore(op->modNamePtr);
   int nPrnState =0;
   int i, j;
@@ -240,7 +240,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
-      for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
+      for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
         rx_solving_options_ind *indE = &(rx->subjects[solveid]);
         if (indE->err != 0) {
           printErr(indE->err, indE->id);

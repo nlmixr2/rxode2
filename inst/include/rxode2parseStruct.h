@@ -240,13 +240,13 @@ typedef struct {
 typedef struct {
   rx_solving_options_ind *subjects;
   rx_solving_options *op;
-  int nsub;
-  int nsim;
+  uint32_t nsub;
+  uint32_t nsim;
   int neta;
   int neps;
   int nIndSim;
   int simflg;
-  int nall;
+  uint32_t nall;
   int nevid9;
   int nobs; // isObs() observations
   int nobs2; // evid=0 observations
