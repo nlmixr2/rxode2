@@ -17,10 +17,8 @@ C or C++ functions for use inside `rxode2` (and `nlmixr2`) models.
 Compared to the [inline approach](Integrating-User-Defined-Functions-into-rxode2.html),
 packaging the C code lets you:
 
-- ship compiled code to users via CRAN or GitHub without requiring
-  them to have a C compiler at run-time;
 - provide proper documentation, tests, and versioning for the
-  functions;
+  functions that are not yet provided in `nlmixr2`/`rxode2`.
 - supply exact analytic derivatives so that `nlmixr2` optimization
   works without falling back to finite differences.
 
@@ -284,13 +282,11 @@ critical call for rxode2 integration.
 
 When a user writes `rxode2({ dA1/dt <- -mm(Cp, Vmax, Km) })`:
 
-1. rxode2 looks up `"mm"` in the translation data frame and finds
-   `type = "rxode2_fn3"`, `package = "mypkg"`, `packageFun = "mm"`.
-2. It generates C code containing:
+1. Once registered, rxode2 generates C code containing:
    ```c
    mm = (rxode2_fn3) R_GetCCallable("mypkg", "mm");
    ```
-3. When the compiled model DLL is loaded, that call resolves to the
+2. When the compiled model DLL is loaded, that call resolves to the
    `mm` function exported from `mypkg` via `R_RegisterCCallable`.
 4. Calls to `mm()` inside the ODE system execute directly as C with
    no R overhead and full OpenMP thread safety.
