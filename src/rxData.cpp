@@ -2268,6 +2268,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       if (_globals.gsigma != NULL) free(_globals.gsigma);
       rx->neps = sigma0.n_rows;
       _globals.gsigma = (double*)malloc((rx->neps * rx->neps * sigmaList.size() + 2 * rx->neps) * sizeof(double));
+      if (_globals.gsigma == NULL) {
+        rxSolveFree();
+        stop(_("memory for residual errors could not be allocated"));
+      }
       for (int i = 0; i < sigmaList.size(); i++) {
         sigma0 = as<arma::mat>(sigmaList[i]);
         std::copy(&sigma0[0], &sigma0[0] + rx->neps * rx->neps, _globals.gsigma + 2 * rx->neps + i * rx->neps * rx->neps);
@@ -2284,6 +2288,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       rx->neps = sigma0.n_rows;
       if (rx->neps > 0) {
         _globals.gsigma = (double*)malloc((rx->neps * rx->neps + 2 * rx->neps)* sizeof(double));
+        if (_globals.gsigma == NULL) {
+          rxSolveFree();
+          stop(_("memory for residual errors could not be allocated"));
+        }
         std::copy(&sigma0[0], &sigma0[0] + rx->neps * rx->neps,
                   _globals.gsigma + 2 * rx->neps);
       } else {
@@ -2313,6 +2321,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       rx->neta = omega0.n_rows;
       if (_globals.gomega != NULL) free(_globals.gomega);
       _globals.gomega = (double*)malloc((2 * rx->neta + rx->neta * rx->neta * omegaList.size())*sizeof(double));
+      if (_globals.gomega == NULL) {
+        rxSolveFree();
+        stop(_("memory for inter-individual variability could not be allocated"));
+      }
       for (int i = 0; i < omegaList.size(); i++) {
         omega0 = as<arma::mat>(omegaList[i]);
         std::copy(&omega0[0], &omega0[0] + rx->neta * rx->neta, _globals.gomega + 2 * rx->neta + i * rx->neta * rx->neta);
@@ -2328,6 +2340,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       if (_globals.gomega != NULL) free(_globals.gomega);
       rx->neta = omega0.n_rows;
       _globals.gomega = (double*)malloc((2 * rx->neta + rx->neta * rx->neta)*sizeof(double));
+      if (_globals.gomega == NULL) {
+        rxSolveFree();
+        stop(_("memory for inter-individual variability could not be allocated"));
+      }
       std::copy(&omega0[0], &omega0[0] + rx->neta * rx->neta, _globals.gomega + 2 * rx->neta);
       _globals.nOmega = 0;
     }
@@ -2776,12 +2792,22 @@ extern "C" SEXP get_fkeepn() {
 
 extern "C" void sortIds(rx_solve* rx, int ini) {
   rx_solving_options_ind* ind;
+  int64_t nSizeLong = (int64_t)rx->nsim * (int64_t)rx->nsub;
+  if (nSizeLong > INT_MAX) {
+    rxSolveFree();
+    stop(_("the combination of subjects (%d) and simulations (%d) is too large for rxSolve to handle"),
+         rx->nsub, rx->nsim);
+  }
   int nall = rx->nsub*rx->nsim;
   // Perhaps throttle this to nall*X
   if (ini) {
     if (_globals.ordId != NULL) free(_globals.ordId);
     _globals.ordId=NULL;
     rx->ordId = _globals.ordId = (int*)malloc(nall*sizeof(int));
+    if (rx->ordId == NULL) {
+      rxSolveFree();
+      stop(_("memory for solve order could not be allocated"));
+    }
     std::iota(rx->ordId,rx->ordId+nall,1);
   } else if (rx->op->cores > 1 && rx->op->cores >= nall*getThrottle()) {
     // Here we order based on run times.  This way this iteratively
@@ -3984,7 +4010,29 @@ static inline void rxSolve_resample(const RObject &obj,
       const char *cur;
       // add sample indicators
       if (_globals.gSampleCov != NULL) free(_globals.gSampleCov);
-      _globals.gSampleCov = (int*)calloc(op->ncov*rx->nsub*rx->nsim, sizeof(int));
+      {
+        // use size_t and explicit overflow checks for allocation size
+        size_t ncov = static_cast<size_t>(op->ncov);
+        size_t nsub = static_cast<size_t>(rx->nsub);
+        size_t nsim = static_cast<size_t>(rx->nsim);
+        size_t count1 = 0;
+        size_t total  = 0;
+        if (ncov != 0 && nsub > SIZE_MAX / ncov) {
+          rxSolveFree();
+          stop(_("memory for sampling covariates could not be allocated (size overflow)"));
+        }
+        count1 = ncov * nsub;
+        if (nsim != 0 && count1 > SIZE_MAX / nsim) {
+          rxSolveFree();
+          stop(_("memory for sampling covariates could not be allocated (size overflow)"));
+        }
+        total = count1 * nsim;
+        _globals.gSampleCov = (int*)calloc(total, sizeof(int));
+      }
+      if (_globals.gSampleCov == NULL) {
+        rxSolveFree();
+        stop(_("memory for sampling covariates could not be allocated"));
+      }
       for (int ir = nrow; ir--;) {
         // For sampling  (with replacement)
         if (rx->par_sample[ir]) {
@@ -5234,11 +5282,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
            rx->nsim);
     }
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
-    int n0 = rx->nall*state.size()*rx->nsim;
-    int nsave = op->neq*op->cores;
-    int n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
-    int n3  = op->neq*rxSolveDat->nSize;
-    int n3a_c = (op->neq + op->extraCmt)*op->cores;
+    int64_t n0 = rx->nall*state.size()*rx->nsim;
+    int64_t nsave = op->neq*op->cores;
+    int64_t n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
+    int64_t n3  = op->neq*rxSolveDat->nSize;
+    int64_t n3a_c = ((int64_t)op->neq + op->extraCmt) * op->cores;
     //REprintf("n3a_c: %d, cores: %d\n", op->cores);
 #ifdef rxSolveT
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5252,19 +5300,19 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
 
-    int n4 = rxSolveDat->initsC.size();
-    int n5_c = lhs.size()*op->cores;
-    int nllik_c = rxLlikSaveSize*op->nLlik*op->cores;
+    int64_t n4 = rxSolveDat->initsC.size();
+    int64_t n5_c = (int64_t)lhs.size()*op->cores;
+    int64_t nllik_c = (int64_t)rxLlikSaveSize*op->nLlik*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
-    int n6 = scaleC.size();
-    int nIndSim = rx->nIndSim;
-    int n7 =  nIndSim * rx->nsub * rx->nsim;
-    int n8 = rx->maxAllTimes*op->cores;
-    int n9 = (op->numLinSens+op->numLin)*op->cores;
-    int n10 = (op->neq)*op->cores;
-    int nlin = (rx->linB)* 7* rx->nsub * rx->nsim;
+    int64_t n6 = scaleC.size();
+    int64_t nIndSim = rx->nIndSim;
+    int64_t n7 =  nIndSim * (int64_t)rx->nsub * rx->nsim;
+    int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
+    int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
+    int64_t n10 = (int64_t)(op->neq)*op->cores;
+    int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +

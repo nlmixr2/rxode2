@@ -2495,6 +2495,10 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   int neqOde = *neq - op->numLin - op->numLinSens;
   inits = op->inits;
   struct lsoda_context_t * ctx = lsoda_create_ctx();
+  if (ctx == NULL) {
+    rxSolveFreeC();
+    (Rf_error)(_("not enough memory for lsoda context"));
+  }
   ctx->function = (_lsoda_f)dydt_liblsoda;
   ctx->data = neq;
   ctx->neq = neqOde;

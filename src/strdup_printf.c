@@ -20,9 +20,9 @@ char * _strdup_printf(char * fmt, ...) {
   int s = vsnprintf(zero, 0, fmt, va);
 #endif
   va_end(va);
-  char * rt = malloc(s*sizeof(char));
+  char * rt = malloc((s + 1)*sizeof(char));
   va_start(va, fmt);
-  vsnprintf(rt, s, fmt, va);
+  vsnprintf(rt, s + 1, fmt, va);
   va_end(va);
   return rt;
 }

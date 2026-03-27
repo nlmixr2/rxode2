@@ -308,6 +308,10 @@ static int alloc_mem(struct lsoda_context_t * ctx) {
 	offset += (1 + nyh) * sizeof(int);
 
 	_rxC(memory) = malloc(offset);
+    if (_rxC(memory) == NULL) {
+      RSprintf(_("[lsoda] failed to allocate memory of size %ld bytes\n"), (long) offset);
+      return 0;
+    }
 
 	_rxC(yh) = (double **)((char *)_rxC(memory) + yhoff);
 	_rxC(wm) =  (double **)((char *)_rxC(memory) + wmoff);
@@ -896,17 +900,4 @@ struct lsoda_context_t * lsoda_create_ctx(void)
 {
 	struct lsoda_context_t * mem = malloc(sizeof(struct lsoda_context_t));
 	return mem;
-}
-
-struct lsoda_opt_t * lsoda_create_opt(void)
-{
-	struct lsoda_opt_t * mem = malloc(sizeof(struct lsoda_opt_t));
-	return mem;
-}
-
-void lsoda_free_opt(struct lsoda_opt_t * opt)
-{
-	free(opt->atol);
-	free(opt->rtol);
-	free(opt);
 }
