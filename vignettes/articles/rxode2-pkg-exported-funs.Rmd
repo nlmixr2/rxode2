@@ -270,8 +270,8 @@ critical call for rxode2 integration.
   ## Restore the original translation table.
   ## This is important: if the DLL is unloaded, any model that tries to
   ## call R_GetCCallable("mypkg", "mm") would crash.
-  if (!is.null(.origTranslation)) {
-    try(rxode2::rxode2parseAssignTranslation(.origTranslation), silent = TRUE)
+  if (!is.null(.origTranslation$value)) {
+    try(rxode2::rxode2parseAssignTranslation(.origTranslation$value), silent = TRUE)
   }
   ## Remove the derivative entry as well.
   try(rxode2::rxRmFun("mm"), silent = TRUE)
