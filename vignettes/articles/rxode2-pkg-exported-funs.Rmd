@@ -1,0 +1,347 @@
+---
+title: "Providing Custom C/C++ Functions to rxode2 from a Package"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Overview
+
+This vignette explains how to write an R package that provides custom
+C or C++ functions for use inside `rxode2` (and `nlmixr2`) models.
+Compared to the [inline approach](Integrating-User-Defined-Functions-into-rxode2.html),
+packaging the C code lets you:
+
+- ship compiled code to users via CRAN or GitHub without requiring
+  them to have a C compiler at run-time;
+- provide proper documentation, tests, and versioning for the
+  functions;
+- supply exact analytic derivatives so that `nlmixr2` optimization
+  works without falling back to finite differences.
+
+The worked example implements a simple Michaelis-Menten
+saturable-elimination function
+
+$$
+\text{mm}(C, V_{\max}, K_m) = \frac{V_{\max} \cdot C}{K_m + C}
+$$
+
+and its three partial derivatives.  The same pattern generalises to
+any number of custom functions.
+
+## How rxode2 calls compiled functions
+
+When rxode2 compiles a model it generates a C source file.  Inside
+that file, every external function the model uses is resolved at
+load time with a call like
+
+```c
+mm = (rxode2_fn3) R_GetCCallable("mypkg", "mm");
+```
+
+`R_GetCCallable` is R's standard mechanism for C-level inter-package
+calls.  For it to succeed, your package must register the symbol with
+`R_RegisterCCallable` during its own initialisation.
+
+The mapping from a model expression (`mm(Cp, Vmax, Km)`) to the
+generated `R_GetCCallable` call is held in a data frame that rxode2
+maintains at run-time.  You add a row to that data frame in `.onLoad`
+using `rxode2::rxode2parseAssignTranslation()`.
+
+## Package skeleton
+
+```
+mypkg/
+├── DESCRIPTION
+├── NAMESPACE
+├── R/
+│   └── zzz.R          # .onLoad / .onUnload hooks
+└── src/
+    ├── myfuns.c        # the numeric C functions
+    └── init.c          # R_init_mypkg: registers callables
+```
+
+### DESCRIPTION
+
+```
+Package: mypkg
+Version: 0.1.0
+Imports: rxode2
+LinkingTo: rxode2
+```
+
+`LinkingTo: rxode2` gives your C code access to the rxode2 headers,
+including the `rxode2_fn*` typedef family used in the translation
+table.
+
+### NAMESPACE
+
+```
+useDynLib(mypkg, .registration = TRUE)
+import(rxode2)
+importFrom(rxode2, rxD, rxode2parseAssignTranslation, rxode2parseGetTranslation)
+```
+
+These can also be generated with roxygen2 comments:
+
+```r
+#' @useDynLib mypkg, .registration=TRUE
+#' @import rxode2
+#' @importFrom rxode2 rxD rxode2parseAssignTranslation rxode2parseGetTranslation
+```
+
+## Writing the C functions
+
+### `src/myfuns.c`
+
+```c
+/* Standard R headers ---------------------------------------- */
+#define STRICT_R_HEADERS
+#include <R.h>
+#include <Rinternals.h>
+#include <R_ext/RS.h>
+
+/* ----------------------------------------------------------
+   Michaelis-Menten:  mm(C, Vmax, Km) = Vmax*C / (Km+C)
+   ---------------------------------------------------------- */
+double mm(double C, double Vmax, double Km) {
+  return Vmax * C / (Km + C);
+}
+
+/* Partial derivatives --------------------------------------- */
+
+/* d(mm)/dC   = Vmax*Km / (Km+C)^2 */
+double mm_dC(double C, double Vmax, double Km) {
+  double den = Km + C;
+  return Vmax * Km / (den * den);
+}
+
+/* d(mm)/dVmax = C / (Km+C) */
+double mm_dVmax(double C, double Vmax, double Km) {
+  (void)Vmax;
+  return C / (Km + C);
+}
+
+/* d(mm)/dKm  = -Vmax*C / (Km+C)^2 */
+double mm_dKm(double C, double Vmax, double Km) {
+  double den = Km + C;
+  return -Vmax * C / (den * den);
+}
+```
+
+Rules every rxode2-compatible C function must follow:
+
+- Return type is `double`.
+- All arguments are `double` scalars, not vectors.
+- No R API calls inside the body — pure numeric C.
+
+### `src/init.c` — registering the callables
+
+```c
+#include <R.h>
+#include <Rinternals.h>
+#include <R_ext/Rdynload.h>
+#include <stdlib.h>   /* NULL */
+
+/* Forward-declare functions from myfuns.c */
+extern double mm      (double, double, double);
+extern double mm_dC   (double, double, double);
+extern double mm_dVmax(double, double, double);
+extern double mm_dKm  (double, double, double);
+
+void R_init_mypkg(DllInfo *dll) {
+  /* R_registerRoutines makes symbols available to .C()/.Call() from R.
+     This is optional for rxode2 integration but good practice. */
+  static const R_CMethodDef cMethods[] = {
+    {"mm",       (DL_FUNC) &mm,       3},
+    {"mm_dC",    (DL_FUNC) &mm_dC,    3},
+    {"mm_dVmax", (DL_FUNC) &mm_dVmax, 3},
+    {"mm_dKm",   (DL_FUNC) &mm_dKm,  3},
+    {NULL, NULL, 0}
+  };
+  R_registerRoutines(dll, cMethods, NULL, NULL, NULL);
+  R_useDynamicSymbols(dll, FALSE);
+
+  /* R_RegisterCCallable is REQUIRED for rxode2 integration.
+     It makes each symbol retrievable from other packages' C code
+     via R_GetCCallable("mypkg", "<name>").
+     rxode2's generated model C files use exactly this mechanism. */
+  R_RegisterCCallable("mypkg", "mm",       (DL_FUNC) &mm);
+  R_RegisterCCallable("mypkg", "mm_dC",    (DL_FUNC) &mm_dC);
+  R_RegisterCCallable("mypkg", "mm_dVmax", (DL_FUNC) &mm_dVmax);
+  R_RegisterCCallable("mypkg", "mm_dKm",   (DL_FUNC) &mm_dKm);
+}
+```
+
+`R_RegisterCCallable` and `R_registerRoutines` serve different
+purposes:
+
+| Function | Who uses it | Purpose |
+|---|---|---|
+| `R_registerRoutines` | R itself | `.C()` / `.Call()` from R code |
+| `R_RegisterCCallable` | Other packages' compiled C | `R_GetCCallable(pkg, sym)` |
+
+rxode2 uses `R_GetCCallable`, so `R_RegisterCCallable` is the
+critical call for rxode2 integration.
+
+## Registering the functions with rxode2
+
+### `R/zzz.R`
+
+```{r zzz}
+## Cache the original translation table so .onUnload can restore it.
+.origTranslation <- new.env(parent=emptyenv())
+.origTranslation$value <- NULL
+
+
+.onLoad <- function(libname, pkgname) {
+
+  ## 1. Add a row to rxode2's function translation table.
+  ##
+  ##    Column meanings:
+  ##      rxFun       - name used in rxode2 model code
+  ##      fun         - C variable name in the generated model source
+  ##      type        - rxode2 function-pointer typedef (call convention)
+  ##      package     - first argument to R_GetCCallable()
+  ##      packageFun  - second argument to R_GetCCallable()
+  ##      argMin      - minimum number of accepted arguments
+  ##      argMax      - maximum number of accepted arguments
+  ##      threadSafe  - 1 if safe to call from OpenMP threads, 0 otherwise
+  ##
+  ##    Common function-pointer typedefs (rxode2_model_shared.h):
+  ##      rxode2_fn    double (*)(double)
+  ##      rxode2_fn2   double (*)(double, double)
+  ##      rxode2_fn3   double (*)(double, double, double)
+  ##      ...
+  ##      // up to 10 args with development rxode2 (> 5.0.2)
+  ##      rxode2_fn10  double (*)(double, double, ..., double)
+  ##
+  ##    mm() takes three double args  ->  type = "rxode2_fn3"
+
+  .origTranslation$value <- rxode2::rxode2parseGetTranslation()
+
+  .newRow <- data.frame(
+    rxFun      = c("mm", "mm_dC", "mm_dVmax", "mm_dKm"),
+    fun        = c("mm", "mm_dC", "mm_dVmax", "mm_dKm"),
+    type       = c("rxode2_fn3", "rxode2_fn3", "rxode2_fn3", "rxode2_fn3"),
+    package    = c("mypkg", "mypkg", "mypkg", "mypkg"),
+    packageFun = c("mm", "mm_dC", "mm_dVmax", "mm_dKm"),
+    argMin     = 3L,
+    argMax     = 3L,
+    threadSafe = 1L,
+    stringsAsFactors = FALSE
+  )
+
+  rxode2::rxode2parseAssignTranslation(rbind(.origTranslation, .newRow))
+
+  ## 2. Register analytic derivatives for nlmixr2 gradient computation.
+  ##
+  ##    rxD(name, list-of-derivative-functions)
+  ##
+  ##    Each function receives the same argument names as mm() and must
+  ##    return a CHARACTER string containing the C expression for the
+  ##    partial derivative with respect to that argument.
+
+  rxode2::rxD("mm", list(
+
+    ## d(mm)/dC
+    function(C, Vmax, Km) {
+      paste0("(", Vmax, "*", Km, ")/((", Km, "+", C, ")*(", Km, "+", C, "))")
+    },
+
+    ## d(mm)/dVmax
+    function(C, Vmax, Km) {
+      paste0("(", C, ")/(", Km, "+", C, ")")
+    },
+
+    ## d(mm)/dKm
+    function(C, Vmax, Km) {
+      paste0("-(", Vmax, "*", C, ")/((", Km, "+", C, ")*(", Km, "+", C, "))")
+    }
+  ))
+
+  invisible()
+}
+
+.onUnload <- function(libpath) {
+  ## Restore the original translation table.
+  ## This is important: if the DLL is unloaded, any model that tries to
+  ## call R_GetCCallable("mypkg", "mm") would crash.
+  if (!is.null(.origTranslation)) {
+    try(rxode2::rxode2parseAssignTranslation(.origTranslation), silent = TRUE)
+  }
+  ## Remove the derivative entry as well.
+  try(rxode2::rxRmFun("mm"), silent = TRUE)
+}
+```
+
+### How it works end-to-end
+
+When a user writes `rxode2({ dA1/dt <- -mm(Cp, Vmax, Km) })`:
+
+1. rxode2 looks up `"mm"` in the translation data frame and finds
+   `type = "rxode2_fn3"`, `package = "mypkg"`, `packageFun = "mm"`.
+2. It generates C code containing:
+   ```c
+   mm = (rxode2_fn3) R_GetCCallable("mypkg", "mm");
+   ```
+3. When the compiled model DLL is loaded, that call resolves to the
+   `mm` function exported from `mypkg` via `R_RegisterCCallable`.
+4. Calls to `mm()` inside the ODE system execute directly as C with
+   no R overhead and full OpenMP thread safety.
+
+## Using the custom function in a model
+
+```{r useModel}
+library(rxode2)
+library(mypkg)   # triggers .onLoad -> rxode2parseAssignTranslation + rxD
+
+mod <- rxode2({
+  Cp     <- A1 / Vc
+  dA1/dt <- -mm(Cp, Vmax, Km)   # Michaelis-Menten elimination
+})
+
+ev  <- et(amt = 100) |> et(0, 24, by = 0.5)
+sim <- rxSolve(mod, ev, params = c(Vc = 10, Vmax = 5, Km = 1))
+plot(sim, Cp ~ time)
+```
+
+`nlmixr2` estimation works without additional changes because the
+analytic derivatives registered via `rxD()` supply exact gradients.
+
+## Verifying registration
+
+```{r verify}
+## Check that mm() is in the translation table
+trans <- rxode2::rxode2parseGetTranslation()
+trans[trans$rxFun == "mm", ]
+
+## Check that derivatives are registered (should return C expressions,
+## not NA or finite-difference fallbacks)
+rxode2::rxFromSE("Derivative(mm(C, Vmax, Km), C)")
+rxode2::rxFromSE("Derivative(mm(C, Vmax, Km), Vmax)")
+rxode2::rxFromSE("Derivative(mm(C, Vmax, Km), Km)")
+```
+
+## Summary checklist
+
+| Step | File | What to do |
+|------|------|------------|
+| 1 | `src/myfuns.c` | Write `double fun(double, ...)` functions |
+| 2 | `src/init.c` | Call `R_RegisterCCallable("mypkg", "fun", ...)` for each function |
+| 3 | `src/init.c` | Optionally call `R_registerRoutines` + `R_useDynamicSymbols` |
+| 4 | `NAMESPACE` | `useDynLib(mypkg, .registration = TRUE)` |
+| 5 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRow))` in `.onLoad` |
+| 6 | `R/zzz.R` | Call `rxD("fun", list(...))` in `.onLoad` |
+| 7 | `R/zzz.R` | Restore old translation table + call `rxRmFun` in `.onUnload` |
+
+## Further reading
+
+- [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) -- the inline / R-function approach
+- [Writing R Extensions S5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html) -- `R_RegisterCCallable`, `R_GetCCallable`
+- `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`
