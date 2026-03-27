@@ -449,6 +449,77 @@ When a user writes `rxode2({ dA1/dt <- -mm(Cp, Vmax, Km) })`:
    `mm_dC(...)`, `mm_dVmax(...)`, and `mm_dKm(...)` — also resolved
    directly as C.
 
+## Named and variable-length arguments via `rxUdfUi`
+
+The C interface requires arguments in a fixed positional order
+(`C`, `Vmax`, `Km`).  rxode2 models are translated to C, so named
+arguments and alternative argument orders are not supported at the
+C level.  However, you can accept them at the **model-parsing** level
+by providing an `rxUdfUi.mm` S3 method that rewrites the call before
+it reaches the C translator.
+
+This mechanism is described in full in the
+[Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html#functions-to-insert-rxode2-code-into-the-current-model)
+vignette (section *Functions to insert rxode2 code into the current
+model*).  The short version: rxode2 calls `rxUdfUi.mm(fun)` during
+model parsing whenever it encounters a call to `mm()` in a ui model,
+where `fun` is the **quoted language object** of that call.  The
+method must return a list with at minimum a `$replace` element
+containing the rewritten call as a character string in the canonical
+positional form that the C translator expects.
+
+### `R/mm.R` — adding `rxUdfUi.mm`
+
+```r
+#' rxode2 ui model interface for mm()
+#'
+#' Allows \code{mm()} to be called with named arguments in any order
+#' inside \code{rxode2}/\code{nlmixr2} ui models, e.g.
+#' \code{mm(Km=Km, C=Cp, Vmax=Vmax)}.  The method rewrites the call
+#' to the canonical positional form \code{mm(C, Vmax, Km)} before the
+#' model is compiled.
+#'
+#' @param fun Quoted language object representing the \code{mm()} call
+#'   as it appears in the model.
+#' @return A list with element \code{$replace}: the rewritten call as
+#'   a character string.
+#' @export
+rxUdfUi.mm <- function(fun) {
+  # Use a dummy function with the canonical argument order so that
+  # match.call() can map any combination of named / positional
+  # arguments back to the C-level positional order.
+  .dummy <- function(C, Vmax, Km) {}
+  .mc <- match.call(.dummy, fun)
+
+  .C    <- deparse1(.mc$C)
+  .Vmax <- deparse1(.mc$Vmax)
+  .Km   <- deparse1(.mc$Km)
+
+  list(replace = paste0("mm(", .C, ",", .Vmax, ",", .Km, ")"))
+}
+```
+
+Exporting `rxUdfUi.mm` with `@export` is sufficient for roxygen2 to
+register the S3 method when the package is installed — no
+`.s3register` call is needed in `.onLoad`.
+
+With this method in place, all of the following are equivalent inside
+a ui model:
+
+```r
+## Positional (always worked):
+dA1/dt <- -mm(Cp, Vmax, Km)
+
+## Named in canonical order:
+dA1/dt <- -mm(C = Cp, Vmax = Vmax, Km = Km)
+
+## Named in a different order — rxUdfUi.mm reorders before compilation:
+dA1/dt <- -mm(Km = Km, Vmax = Vmax, C = Cp)
+```
+
+Note that plain `rxode2({...})` (low-level, without ui) does **not**
+call `rxUdfUi` methods and still requires positional arguments.
+
 ## Using the package
 
 ```r
@@ -499,6 +570,7 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 | 4 | `src/init.c` | Register scalar functions with `R_RegisterCCallable` |
 | 5 | `DESCRIPTION` | Add `Imports: rxode2`, `LinkingTo: rxode2`, `RoxygenNote:` |
 | 6 | `R/mm.R` | Write thin R wrappers using `.Call(\`_pkg_fun\`, ...)` with roxygen docs |
+| 6b | `R/mm.R` | Optionally add `rxUdfUi.mm` to support named / reordered arguments in ui models |
 | 7 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRows))` in `.onLoad` |
 | 8 | `R/zzz.R` | Call `rxD("fun", list(...))` referencing C functions for 1st-order |
 | 9 | `R/zzz.R` | Call `rxD("fun_dArg", list(...))` with expression strings for 2nd-order |
