@@ -223,7 +223,7 @@ critical call for rxode2 integration.
     stringsAsFactors = FALSE
   )
 
-  rxode2::rxode2parseAssignTranslation(rbind(.origTranslation, .newRow))
+  rxode2::rxode2parseAssignTranslation(rbind(.origTranslation$value, .newRow))
 
   ## 2. Register analytic derivatives for nlmixr2 gradient computation.
   ##
