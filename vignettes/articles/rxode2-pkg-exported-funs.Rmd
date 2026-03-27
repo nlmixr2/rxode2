@@ -153,18 +153,6 @@ extern double mm_dVmax(double, double, double);
 extern double mm_dKm  (double, double, double);
 
 void R_init_mypkg(DllInfo *dll) {
-  /* R_registerRoutines makes symbols available to .C()/.Call() from R.
-     This is optional for rxode2 integration but good practice. */
-  static const R_CMethodDef cMethods[] = {
-    {"mm",       (DL_FUNC) &mm,       3},
-    {"mm_dC",    (DL_FUNC) &mm_dC,    3},
-    {"mm_dVmax", (DL_FUNC) &mm_dVmax, 3},
-    {"mm_dKm",   (DL_FUNC) &mm_dKm,  3},
-    {NULL, NULL, 0}
-  };
-  R_registerRoutines(dll, cMethods, NULL, NULL, NULL);
-  R_useDynamicSymbols(dll, FALSE);
-
   /* R_RegisterCCallable is REQUIRED for rxode2 integration.
      It makes each symbol retrievable from other packages' C code
      via R_GetCCallable("mypkg", "<name>").
