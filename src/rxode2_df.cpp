@@ -351,7 +351,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     if (curType == 4) {
       df[i] = assign_fkeepAttr(j, NumericVector((R_xlen_t)rx->nr));
     } else if (curType == 1) {
-      df[i] = assign_fkeepAttr(j, StringVector((R_xlen_t)rx->nr));
       df[i] = StringVector((R_xlen_t)rx->nr);
     } else if (curType == 5) {
       df[i] = assign_fkeepAttr(j, LogicalVector((R_xlen_t)rx->nr));

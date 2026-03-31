@@ -10,7 +10,7 @@ rx_solving_options* getSolvingOptions(rx_solve* rx) {
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   uint32_t nall = rx->nsub*rx->nsim;
   if (id < 0 || (uint32_t)id >= nall) {
-    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, nall, rx->nsub, rx->nsim);
+    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, (unsigned int)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
   }
   return &(rx->subjects[id]);
 }

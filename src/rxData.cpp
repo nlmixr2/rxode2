@@ -5277,7 +5277,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (nSizeLong > (uint64_t)INT_MAX) {
         rxSolveFree();
         stop(_("the combination of subjects (%u) and simulations (%u) is too large for rxSolve to handle"),
-             rx->nsub, rx->nsim);
+             (unsigned int)rx->nsub, (unsigned int)rx->nsim);
       }
       rxSolveDat->nSize = (uint32_t)nSizeLong;
     }
