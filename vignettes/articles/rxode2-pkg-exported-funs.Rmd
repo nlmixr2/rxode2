@@ -8,6 +8,7 @@ knitr::opts_chunk$set(
   comment = "#>",
   eval = FALSE
 )
+#remotes::install_github("nlmixr2/mm")
 ```
 
 ## Overview
@@ -43,7 +44,7 @@ mm = (rxode2_fn3) R_GetCCallable("mm", "mm");
 
 `R_GetCCallable` is R's standard mechanism for C-level inter-package
 calls.  For it to succeed, your package must register the symbol with
-`R_RegisterCCallable` during its own initialisation.
+`R_RegisterCCallable` during its own initialization.
 
 The mapping from a model expression (`mm(Cp, Vmax, Km)`) to the
 generated `R_GetCCallable` call is held in a data frame that rxode2
@@ -585,13 +586,16 @@ mod <- rxode2({
 
 ev  <- et(amt = 100) |> et(0, 24, by = 0.5)
 sim <- rxSolve(mod, ev, params = c(Vc = 10, Vmax = 5, Km = 1))
-plot(sim, Cp ~ time)
+plot(sim, Cp)
 
 ## --- R vector interface ---
 mm(C = c(1, 2, 5), Vmax = 10, Km = 2)   # vectorised over C
 ```
 
 ## Verifying registration
+
+These could be adapted to tests so that you can make sure that rxode2
+loads the external function as requested:
 
 ```r
 ## Check translation table
@@ -627,5 +631,5 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 ## Further reading
 
 - [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) — the inline / R-function approach
-- [Writing R Extensions §5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html) — `R_RegisterCCallable`, `R_GetCCallable`
+- [Writing R Extensions 5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html) — `R_RegisterCCallable`, `R_GetCCallable`
 - `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`
