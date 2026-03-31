@@ -781,6 +781,8 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
+  extern int _rxPushDosingEvent(double, double, int, void *);
+  R_RegisterCCallable("rxode2", "_rxPushDosingEvent", (DL_FUNC) &_rxPushDosingEvent);
   R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
   R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
   R_RegisterCCallable("rxode2", "_rxode2_rxRmvnSEXP",

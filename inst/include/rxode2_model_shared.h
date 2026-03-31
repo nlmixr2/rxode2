@@ -3,6 +3,13 @@
 #include <rxode2.h>
 #include <rxode2parseHandleEvid.h>
 
+/* Forward declaration for et_() — _rxPushDosingEvent is defined in the
+   generated model body via R_GetCCallable("rxode2","_rxPushDosingEvent").
+   The #define rename from writeHeader makes this resolve to the per-model
+   unique symbol name.                                                       */
+typedef int (*_rxPushDosingEvent_t)(double, double, int, rx_solving_options_ind *);
+extern _rxPushDosingEvent_t _rxPushDosingEvent;
+
 /* et_(): dynamic dose injection from model equations.
    Called as et_(time, amt, evid, _ind) where _ind is the per-subject
    solver state injected by the et_statement codegen handler.
@@ -37,7 +44,7 @@ static inline void et_(double _time, double _amt, double _evidD,
     _ind->pastDoseN++;
     return;
   }
-  pushDosingEvent(_time, _amt, _evid, _ind);
+  _rxPushDosingEvent(_time, _amt, _evid, _ind);
 }
 
 #include <float.h>

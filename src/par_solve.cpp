@@ -174,6 +174,12 @@ extern "C" void printErr(int err, int id){
 
 rx_solving_options op_global;
 
+/* C-callable wrapper for pushDosingEvent — accessible from generated model .so
+   files that cannot directly reference op_global (RTLD_LOCAL).                */
+extern "C" int _rxPushDosingEvent(double time, double amt, int evid, void *ind) {
+  return pushDosingEvent(time, amt, evid, (rx_solving_options_ind *)ind);
+}
+
 rx_solving_options_ind *inds_global = NULL;
 
 rx_solving_options_ind *inds_thread = NULL;
