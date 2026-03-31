@@ -4536,6 +4536,32 @@ extern "C" void par_solve(rx_solve *rx) {
       }
     }
   }
+  // emit deferred et_() warnings — Rf_warning() is not thread-safe so violations
+  // were recorded per-subject during the parallel solve above
+  for (unsigned int _si = 0; _si < rx->nsub; _si++) {
+    rx_solving_options_ind *_ind2 = &(rx->subjects[_si]);
+    if (_ind2->pastDoseN > 0) {
+      int _nReport = (_ind2->pastDoseN < ET_PAST_DOSE_MAX)
+                       ? _ind2->pastDoseN : ET_PAST_DOSE_MAX;
+      for (int _pi = 0; _pi < _nReport; _pi++) {
+        Rf_warning("et_(): subject %d: requested dose time (%.4g) is earlier than "
+                   "current solver time (%.4g); dose dropped",
+                   _ind2->id + 1,
+                   _ind2->pastDoseTime[_pi],
+                   _ind2->pastDoseSolverTime[_pi]);
+      }
+      if (_ind2->pastDoseN > ET_PAST_DOSE_MAX) {
+        Rf_warning("et_(): subject %d: %d additional past-time dose(s) not shown",
+                   _ind2->id + 1,
+                   _ind2->pastDoseN - ET_PAST_DOSE_MAX);
+      }
+    }
+    if (_ind2->ssDoseN > 0) {
+      Rf_warning("et_(): subject %d: %d steady-state dose(s) cannot be dynamically "
+                 "injected and were dropped (SS requires the full time horizon)",
+                 _ind2->id + 1, _ind2->ssDoseN);
+    }
+  }
   par_progress_0=0;
 }
 
