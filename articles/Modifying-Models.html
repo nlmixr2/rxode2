@@ -590,7 +590,7 @@ change them as well with <code><a href="../reference/rxSetPipingAuto.html">rxSet
 <p>For example if you only wanted variables starting or ending with
 <code>te</code> you can change this with:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto</a></span><span class="op">(</span>thetamodelVars <span class="op">=</span> <span class="fu">rex</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/rex/man/rex.html" class="external-link">rex</a></span><span class="op">(</span><span class="st">"te"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto</a></span><span class="op">(</span>thetamodelVars <span class="op">=</span> <span class="fu">rex</span><span class="fu">::</span><span class="fu"><a href="https://rex.r-lib.org/reference/rex.html" class="external-link">rex</a></span><span class="op">(</span><span class="st">"te"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mod9</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -1384,7 +1384,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x562d5b32efe8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x556eb9118cd0&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>
