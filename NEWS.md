@@ -1,10 +1,7 @@
 # rxode2 (development)
 
-- Fix potential security and memory-management issues that could lead to crashes or undefined behavior
-
-- Fix integer overflow in the internal `nSize` buffer-sizing calculation that
-  caused a segfault (process exit 139) when solving with approximately 16,384
-  or more subjects.
+- Fix potential security and memory-management issues that could lead
+  to crashes or undefined behavior including integer overflow
 
 # rxode2 5.0.2
 

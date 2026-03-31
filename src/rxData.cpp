@@ -32,6 +32,7 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
+#include "rxMemAvail.h"
 #include "strncmp.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
@@ -1678,8 +1679,8 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
     List envCls = tmpCls.attr(".rxode2.lst");
     NumericMatrix iniPars = envCls[RxTrans_pars];
     // Copy the pre-filled covariates into the parameter values.
-    for (int j = rx->nsim; j--; ){
-      std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+rx->nsub*npars*j);
+    for (int j = (int)rx->nsim; j--; ){
+      std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+(int)rx->nsub*npars*j);
     }
     IntegerVector parPos = envCls["covParPos0"];
     std::copy(parPos.begin(), parPos.end(), &_globals.gParPos2[0]);
@@ -1687,7 +1688,7 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
     rx->cov0 = _globals.gParPos2;
   }
 }
-void gparsCovSetup(int npars, int nPopPar, int nsub, RObject ev1,rx_solve* rx){
+void gparsCovSetup(int npars, int nPopPar, uint32_t nsub, RObject ev1,rx_solve* rx){
   if (_globals.gpars != NULL) free(_globals.gpars);
   _globals.gpars = (double*)calloc(npars*max2(nsub, nPopPar), sizeof(double));
   if (_globals.gpars == NULL){
@@ -1862,8 +1863,8 @@ void rxSimOmega(bool &simOmega,
                 std::string omegaSeparation= "auto",//("lkj", "separation")
                 const int omegaXform = 1,
                 double dfSub = 0,
-                int nStud = 1,
-                int nSub = 1,
+                uint32_t nStud = 1,
+                uint32_t nSub = 1,
                 const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
   int j;
   bool simVar;
@@ -2071,6 +2072,9 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      double dfObs = 0,
                      bool simSubjects=true,
                      const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+  if (nSub > 0 && nStud > 0 && (int64_t)nSub * nStud > INT_MAX) {
+    stop(_("the combination of subjects (%d) and studies (%d) is too large"), nSub, nStud);
+  }
   rx_solve* rx = getRxSolve_();
   NumericVector par;
   CharacterVector parN;
@@ -2150,28 +2154,28 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   if (simSigma){
     ncol += scol;
     if (simSubjects){
-      ret1 = NumericMatrix(nObs*nStud*nSub, scol);
+      ret1 = NumericMatrix((R_xlen_t)nObs*nStud*nSub, scol);
     } else {
-      ret1 = NumericMatrix(nObs*nStud, scol);
+      ret1 = NumericMatrix((R_xlen_t)nObs*nStud, scol);
     }
   }
   List ret0(ncol);
   NumericVector nm;
   NumericMatrix nm1;
   for (i = 0; i < ncol; i++){
-    nm = NumericVector(nSub*nStud);
+    nm = NumericVector((R_xlen_t)nSub*nStud);
     ret0[i] = nm;
   }
   for (i = 0; i < nStud; i++) {
     for (j = 0; j < pcol; j++) {
       nm = ret0[j];
       for (k = 0; k < nSub; k++) {
-        nm[nSub*i + k] = par[j];
+        nm[(R_xlen_t)nSub*i + k] = par[j];
       }
       if (simTheta) {
         if(thetaPar[j] != -1) {
           for (k = 0; k < nSub; k++) {
-            nm[nSub*i + k] += thetaM(i, thetaPar[j]);
+            nm[(R_xlen_t)nSub*i + k] += thetaM(i, thetaPar[j]);
           }
         }
       }
@@ -2192,7 +2196,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       for (j=pcol; j < pcol+ocol; j++) {
         nm = ret0[j];
         for (k = 0; k < nSub; k++) {
-          nm[nSub*i + k] = nm1(k, j-pcol);
+          nm[(R_xlen_t)nSub*i + k] = nm1(k, j-pcol);
         }
         ret0[j] = nm;
       }
@@ -2792,13 +2796,13 @@ extern "C" SEXP get_fkeepn() {
 
 extern "C" void sortIds(rx_solve* rx, int ini) {
   rx_solving_options_ind* ind;
-  int64_t nSizeLong = (int64_t)rx->nsim * (int64_t)rx->nsub;
-  if (nSizeLong > INT_MAX) {
+  uint64_t nSizeLong = (uint64_t)rx->nsim * (uint64_t)rx->nsub;
+  if (nSizeLong > (uint64_t)INT_MAX) {
     rxSolveFree();
-    stop(_("the combination of subjects (%d) and simulations (%d) is too large for rxSolve to handle"),
+    stop(_("the combination of subjects (%u) and simulations (%u) is too large for rxSolve to handle"),
          rx->nsub, rx->nsim);
   }
-  int nall = rx->nsub*rx->nsim;
+  uint32_t nall = rx->nsub*rx->nsim;
   // Perhaps throttle this to nall*X
   if (ini) {
     if (_globals.ordId != NULL) free(_globals.ordId);
@@ -2809,12 +2813,12 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       stop(_("memory for solve order could not be allocated"));
     }
     std::iota(rx->ordId,rx->ordId+nall,1);
-  } else if (rx->op->cores > 1 && rx->op->cores >= nall*getThrottle()) {
+  } else if (rx->op->cores > 1 && (uint32_t)rx->op->cores >= nall*(uint32_t)getThrottle()) {
     // Here we order based on run times.  This way this iteratively
     // changes the order based on run-time.
     NumericVector solveTime(nall);
     IntegerVector ord;
-    for (int i = 0; i < nall; i++) {
+    for (uint32_t i = 0; i < nall; i++) {
       ind = &(rx->subjects[i]);
       solveTime[i] = ind->solveTime;
     }
@@ -2843,7 +2847,7 @@ struct rxSolve_t {
   bool swappedEvents = false;
   RObject par1ini;
   NumericVector initsC;
-  int nSize;
+  uint32_t nSize;
   bool fromIni = false;
   IntegerVector eGparPos;
   CharacterVector sigmaN;
@@ -3998,8 +4002,8 @@ static inline void rxSolve_resample(const RObject &obj,
         updatePar = true;
       }
       int nrow = rx->npars;
-      int ncol = rx->nsub;
-      int size = rx->nsub*rx->nsim;
+      int ncol = (int)rx->nsub;
+      int size = (int)(rx->nsub*rx->nsim);
       NumericMatrix iniPars(nrow, ncol, &_globals.gpars[0]);
       // iniPars.attr("dimnames") = List::create(pars, R_NilValue);
       // REprintf("iniPars\n");
@@ -4100,7 +4104,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
-  int curEvent = 0, curIdx = 0, curSolve=0;
+  int64_t curEvent = 0, curSolve=0; int curIdx = 0;
   switch(rxSolveDat->parType) {
   case 1: // NumericVector
     {
@@ -4114,7 +4118,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
         parDfL[i] = NumericVector(rx->nsub,rxSolveDat->parNumeric[i]);
       }
       parDfL.attr("names") = rxSolveDat->nmP;
-      parDfL.attr("row.names") = IntegerVector::create(NA_INTEGER,-rx->nsub);
+      parDfL.attr("row.names") = IntegerVector::create(NA_INTEGER,-(int)rx->nsub);
       parDfL.attr("class") = CharacterVector::create("data.frame");
       rxSolveDat->parDf = as<DataFrame>(parDfL);
       rxSolveDat->parType = 2;
@@ -4139,7 +4143,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
                        inits, rxSolveDat);
       curSolve=0;
       curEvent=0;
-      curIdx=0;
+      curIdx=0; // curIdx is n_all_times only (not scaled by neq); stays int
       int curCov=0;
       int curSimIni=0;
       int curLin = 0;
@@ -4154,7 +4158,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           stop(_("ran out of memory"));
         }
         _globals.gamtS= _globals.gall_timesS + (rx->nsim-1)*rx->nall;
-        for (int iii = 0; iii < rx->nsim-1; ++iii) {
+        for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
           std::copy(_globals.gamt, _globals.gamt + rx->nall,
                     _globals.gamtS + iii*rx->nall);
           std::copy(_globals.gall_times, _globals.gall_times + rx->nall,
@@ -4213,13 +4217,13 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->dose = &_globals.gamtS[(simNum-1)*rx->nall + cIdx2];
             }
           }
-          int eLen = op->neq*ind->n_all_times;
+          int64_t eLen = (int64_t)op->neq*ind->n_all_times;
           ind->solve = &_globals.gsolve[curSolve];
           ind->linH = &_globals.gLin[curLin];
           curLin += 7;
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
-          curSolve += (op->neq)*ind->n_all_times;
+          curSolve += (int64_t)(op->neq)*ind->n_all_times;
           ind->ix = &_globals.gix[curIdx];
           curEvent += eLen;
           curIdx += ind->n_all_times;
@@ -4405,7 +4409,7 @@ static inline Environment rxSolve_genenv(const RObject &object,
     }
     _rxModels.remove(".nestTheta");
   }
-  e[".check.nrow"] = rx->nr;
+  e[".check.nrow"] = (double)rx->nr;
   e[".check.ncol"] = dat.size();
   e[".check.names"] = dat.names();
   e[".idLevels"] = as<CharacterVector>(rxSolveDat->idLevels);
@@ -4414,8 +4418,8 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".slvr.counter"] = slvr_counterIv;
   e[".dadt.counter"] = dadt_counterIv;
   e[".jac.counter"] = jac_counterIv;
-  e[".nsub"] = rx->nsub;
-  e[".nsim"] = rx->nsim;
+  e[".nsub"] = (int)rx->nsub;
+  e[".nsim"] = (int)rx->nsim;
   e[".init.dat"] = rxSolveDat->initsC;
   CharacterVector units = CharacterVector::create(amountUnits[0], timeUnits[0]);
   units.names() = CharacterVector::create("dosing","time");
@@ -4613,7 +4617,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 #endif
       return dat;
     } else {
-      NumericMatrix tmpM(rx->nr, dat.size());
+      NumericMatrix tmpM((R_xlen_t)rx->nr, dat.size());
       for (unsigned int i = dat.size(); i--;){
         tmpM(_,i) = as<NumericVector>(dat[i]);
       }
@@ -5260,7 +5264,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Now setup the rest of the rx_solve object
     if (rxSolveDat->nPopPar != 1 && rxSolveDat->nPopPar % rx->nsub != 0){
       rxSolveFree();
-      stop(_("number of parameters (%d) solved by rxode2 for multi-subject data needs to be a multiple of the number of subjects (%d)"),rxSolveDat->nPopPar, rx->nsub);
+      stop(_("number of parameters (%d) solved by rxode2 for multi-subject data needs to be a multiple of the number of subjects (%u)"),rxSolveDat->nPopPar, rx->nsub);
     }
 #ifdef rxSolveT
     RSprintf("Time12: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5269,22 +5273,22 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
     {
-      int64_t nSizeLong = (int64_t)rx->nsim * (int64_t)rx->nsub;
-      if (nSizeLong > INT_MAX) {
+      uint64_t nSizeLong = (uint64_t)rx->nsim * (uint64_t)rx->nsub;
+      if (nSizeLong > (uint64_t)INT_MAX) {
         rxSolveFree();
-        stop(_("the combination of subjects (%d) and simulations (%d) is too large for rxSolve to handle"),
-             rx->nsub, rx->nsim);
+        stop(_("the combination of subjects (%u) and simulations (%u) is too large for rxSolve to handle"),
+             (unsigned int)rx->nsub, (unsigned int)rx->nsim);
       }
-      rxSolveDat->nSize = (int)nSizeLong;
+      rxSolveDat->nSize = (uint32_t)nSizeLong;
     }
     if (rx->input_mixnum && rx->nsim > 1) {
-      stop(_("with mixnum or mixunif specified, cannot simulate %d simulations"),
+      stop(_("with mixnum or mixunif specified, cannot simulate %u simulations"),
            rx->nsim);
     }
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
     int64_t n0 = rx->nall*state.size()*rx->nsim;
     int64_t nsave = op->neq*op->cores;
-    int64_t n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
+    int64_t n2  = (int64_t)rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
     int64_t n3  = op->neq*rxSolveDat->nSize;
     int64_t n3a_c = ((int64_t)op->neq + op->extraCmt) * op->cores;
     //REprintf("n3a_c: %d, cores: %d\n", op->cores);
@@ -5313,6 +5317,28 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
     int64_t n10 = (int64_t)(op->neq)*op->cores;
     int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
+    // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
+    // Portable, zero-cost backstop that catches the dominant overflow path.
+    if (n0 > (int64_t)INT_MAX) {
+      rxSolveFree();
+      stop(_("the solver buffer (%lld elements, %.1f GB) is too large for rxSolve to handle; "
+             "reduce the number of timepoints or simulations"),
+           (long long)n0, (double)n0 * sizeof(double) / 1e9);
+    }
+    // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
+    // Returns UINT64_MAX on unsupported platforms, skipping the check.
+    {
+      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
+                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+      uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
+      uint64_t _avail  = rxAvailableMemoryBytes();
+      if (_avail != UINT64_MAX && _needed > _avail) {
+        rxSolveFree();
+        stop(_("the solver requires %.1f GB but only %.1f GB appears available; "
+               "reduce the number of timepoints or simulations"),
+             (double)_needed / 1e9, (double)_avail / 1e9);
+      }
+    }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
@@ -5324,7 +5350,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
     if (_globals.gsolve == NULL){
       rxSolveFree();
-      stop(_("could not allocate enough memory for solving"));
+      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
+                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+      stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
+           (double)_totalElems * sizeof(double) / 1e9);
     }
     _globals.gLin = _globals.gsolve + n0; // [nlin]
     _globals.gLlikSave = _globals.gLin + nlin; // [nllik_c]
@@ -5377,7 +5406,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n3a_c +n3 + 4*rxSolveDat->nSize + 1*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
+    _globals.gon = (int*)calloc(n3a_c + n3 + (uint64_t)4*rxSolveDat->nSize + (uint64_t)rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
 #ifdef rxSolveT
     RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
