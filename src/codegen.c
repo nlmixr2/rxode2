@@ -187,7 +187,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       prnt_vars(print_simeta, 1, "#define _SYNC_simeta_ for (int _ovari=_solveData->neta; _ovari--;){", "}\n", 16);
       writeBody0();
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
-        char *pkg = R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, i));
+        const char *pkg = R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, i));
         if (strcmp(pkg, "rxode2") && strcmp(pkg, "rxode2ll")) {
           sAppend(&sbOut, "%s %s;\n",
                   R_CHAR(STRING_ELT(_rxode2parse_functionType, i)),
