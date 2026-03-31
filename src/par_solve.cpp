@@ -2421,6 +2421,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     }
     ind->solvedIdx = i;
   }
+  updateExtraDoseGlobals(ind);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -2625,6 +2626,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   // Reset LHS to NA
   lsoda_free(ctx);
   free(ctx);
+  updateExtraDoseGlobals(ind);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -3112,6 +3114,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     }
     ind->solvedIdx = i;
   }
+  updateExtraDoseGlobals(ind);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -3566,6 +3569,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     ind->solvedIdx = i;
   }
+  updateExtraDoseGlobals(ind);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -3796,6 +3800,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     ind->solvedIdx = i;
   }
+  updateExtraDoseGlobals(ind);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 

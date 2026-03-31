@@ -1,5 +1,10 @@
 # rxode2 (development)
 
+- Add `et_()` as an inline model statement that dynamically injects
+  doses during ODE integration. Doses in the past are warned and
+  dropped; steady-state doses cannot be injected inline and are
+  silently dropped with a deferred warning.
+
 - Fix potential security and memory-management issues that could lead
   to crashes or undefined behavior including integer overflow
 
