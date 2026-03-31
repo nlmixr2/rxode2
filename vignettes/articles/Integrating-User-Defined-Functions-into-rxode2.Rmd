@@ -28,6 +28,10 @@ discusses 4 ways to do this:
   the function with `rxode2` code.  This can be in the presence or
   absence of the data for simulation or estimation.
 
+You can also write [C code inside your package and register it for use
+with rxode2](rxode2-pkg-exported-funs.html) for a suite of functions
+that may be useful to analysts.
+
 ## R based user functions
 
 A R-based user function is the most convenient to include in the ODE,
