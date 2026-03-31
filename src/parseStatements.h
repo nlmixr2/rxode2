@@ -12,11 +12,9 @@ static inline int handleEtStatement(nodeInfo ni, char *name, int *i,
     if (*i == 0) {
       /* 'et_' keyword: reset buffers, set line type, emit 'et_(' */
       sb.o = 0; sbDt.o = 0; sbt.o = 0;
-      aType(TLOGIC);
-      aAppendN("et_(", 4);       /* sb and sbDt */
-      sAppendN(&sbt, "et_(", 4);
-      /* Back up one char so the '(' from child i=1 will provide it */
-      sb.o--; sbDt.o--; sbt.o--;
+      aType(TLOGIC); // even though et_ is not logical, this allows a single statement
+      aAppendN("et_", 3);       /* sb and sbDt */
+      sAppendN(&sbt, "et_", 3);
       return 1; /* skip 'et_' child */
     }
     if (*i == 1) {
