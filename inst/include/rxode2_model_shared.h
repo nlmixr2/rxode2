@@ -4,11 +4,15 @@
 #include <rxode2parseHandleEvid.h>
 
 /* et_(): dynamic dose injection from model equations.
-   Calls pushDosingEvent() via the already-in-scope _ind local.
+   Called as et_(time, amt, evid, _ind) where _ind is the per-subject
+   solver state injected by the et_statement codegen handler.
    Violations (SS dose, past-time) are recorded per-subject for
-   thread-safe deferred Rf_warning() emission at end of par_solve(). */
-static inline void et_(double _time, double _amt, int _evid,
+   thread-safe deferred Rf_warning() emission at end of par_solve().
+   _evidD is taken as double so no cast is needed at the call site;
+   it is converted to int internally.                                  */
+static inline void et_(double _time, double _amt, double _evidD,
                        rx_solving_options_ind *_ind) {
+  int _evid = (int)_evidD;
   /* SS dose check — SS requires full time horizon, cannot inject dynamically */
   {
     int _wh, _cmt2, _wh100, _whI, _wh0;
@@ -21,11 +25,14 @@ static inline void et_(double _time, double _amt, int _evid,
       return;
     }
   }
-  /* Past-time check — record violation; deferred warning emitted after solve */
-  if (_time < _ind->curTime) {
+  /* Past-time check — tprior is the start of the current solver interval.
+     If the requested dose time is before it, the solver has already passed
+     that point and the dose cannot be processed.
+     Record violation; deferred warning emitted after solve.            */
+  if (_time < _ind->tprior) {
     if (_ind->pastDoseN < ET_PAST_DOSE_MAX) {
-      _ind->pastDoseTime[_ind->pastDoseN]        = _time;
-      _ind->pastDoseSolverTime[_ind->pastDoseN]  = _ind->curTime;
+      _ind->pastDoseTime[_ind->pastDoseN]       = _time;
+      _ind->pastDoseSolverTime[_ind->pastDoseN] = _ind->tprior;
     }
     _ind->pastDoseN++;
     return;

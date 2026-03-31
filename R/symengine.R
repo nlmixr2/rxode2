@@ -275,6 +275,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 )
 
 .rxOnly <- c(
+  ## Dynamic dose injection (et_statement grammar rule; inline in rxode2_model_shared.h)
+  "et_" = NA,
   ## Now random number generators
   "rnorm" = NA,
   "rxnorm" = NA,
@@ -3934,6 +3936,8 @@ rxSupportedFuns <- function() {
   "uppergamma" = 2)
 
 .rxOnly <- c(
+  ## Dynamic dose injection (et_statement grammar rule; inline in rxode2_model_shared.h)
+  "et_" = NA,
   ## Now random number generators
   "rnorm" = NA,
   "rxnorm" = NA,

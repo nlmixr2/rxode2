@@ -1,4 +1,68 @@
 // -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+
+/* et_statement : 'et_' '(' arg1 ',' arg2 ',' arg3 ')'
+   Children:  0=et_  1=(  2=arg1  3=,  4=arg2  5=,  6=arg3  7=)
+   Emits:     et_(arg1, arg2, arg3, _ind);
+   The three arg children (i=2,4,6) are parsed recursively so that
+   rxode2 variable transformations (par_ptr, state vars, etc.) apply.
+   i=0,1,3,5,7 are handled explicitly and skipped.                       */
+static inline int handleEtStatement(nodeInfo ni, char *name, int *i,
+                                    D_ParseNode *xpn, D_ParseNode *pn) {
+  if (nodeHas(et_statement)) {
+    if (*i == 0) {
+      /* 'et_' keyword: reset buffers, set line type, emit 'et_(' */
+      sb.o = 0; sbDt.o = 0; sbt.o = 0;
+      aType(TLOGIC);
+      aAppendN("et_(", 4);       /* sb and sbDt */
+      sAppendN(&sbt, "et_(", 4);
+      /* Back up one char so the '(' from child i=1 will provide it */
+      sb.o--; sbDt.o--; sbt.o--;
+      return 1; /* skip 'et_' child */
+    }
+    if (*i == 1) {
+      /* '(' literal — fall through so it appends '(' to sb */
+      return 0;
+    }
+    if (*i == 2) {
+      /* arg1 (time) — fall through for recursive parse */
+      return 0;
+    }
+    if (*i == 3) {
+      /* ',' separator — emit ', ' explicitly */
+      aAppendN(", ", 2);
+      sAppendN(&sbt, ", ", 2);
+      return 1;
+    }
+    if (*i == 4) {
+      /* arg2 (amt) — fall through for recursive parse */
+      return 0;
+    }
+    if (*i == 5) {
+      /* ',' separator */
+      aAppendN(", ", 2);
+      sAppendN(&sbt, ", ", 2);
+      return 1;
+    }
+    if (*i == 6) {
+      /* arg3 (evid) — fall through for recursive parse */
+      return 0;
+    }
+    if (*i == 7) {
+      /* ')' — append ', _ind)' and finalize as a void statement */
+      aAppendN(", _ind)", 7);
+      sAppendN(&sbt, ")", 1);
+      addLine(&sbPm,   "%s;\n", sb.s);
+      addLine(&sbPmDt, "%s;\n", sbDt.s);
+      sAppend(&sbNrm,  "%s;\n", sbt.s);
+      addLine(&sbNrmL, "%s;\n", sbt.s);
+      ENDLINE;
+      return 1;
+    }
+    return 1; /* safety: skip anything beyond child 7 */
+  }
+  return 0;
+}
+
 static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
                                              D_ParseNode *xpn, D_ParseNode *pn) {
   if (nodeHas(interp_statement)) {

@@ -37,7 +37,7 @@
 "d4GELU", "ELU", "dELU", "d2ELU", "d2aELU", "dELUa", "d2ELUa", 
 "softplus", "dsoftplus", "d2softplus", "d3softplus", "d4softplus", 
 "SELU", "dSELU", "lReLU", "dlReLU", "PReLU", "dPReLU", "d2PReLU", 
-"dPReLUa", "dPReLUa1", "Swish", "dSwish", "linCmt", "rnorm", 
+"dPReLUa", "dPReLUa1", "Swish", "dSwish", "linCmt", "et_", "rnorm", 
 "rxnorm", "rxbinom", "rbinom", "rxcauchy", "rcauchy", "rchisq", 
 "rxchisq", "rexp", "rxexp", "rbeta", "rxbeta", "rgeom", "rxgeom", 
 "rxpois", "rpois", "rxt", "rt")

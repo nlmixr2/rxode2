@@ -169,6 +169,8 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
   if (handleIfElse(ni, name, *i) ||
       // simeta()/simeps()
       handleSimFunctions(ni, name, i, nch, pn) ||
+      // et_() dynamic dose injection
+      handleEtStatement(ni, name, i, xpn, pn) ||
       handleStringEqualityStatements(ni, name, *i, xpn) ||
       handleDvidStatement(ni, name, xpn, pn) ||
       handleStartInterpStatement(ni, name, i, xpn, pn) ||
