@@ -1,6 +1,38 @@
 #ifndef __rxode2_model_shared_H__
 #define __rxode2_model_shared_H__
 #include <rxode2.h>
+#include <rxode2parseHandleEvid.h>
+
+/* et_(): dynamic dose injection from model equations.
+   Calls pushDosingEvent() via the already-in-scope _ind local.
+   Violations (SS dose, past-time) are recorded per-subject for
+   thread-safe deferred Rf_warning() emission at end of par_solve(). */
+static inline void et_(double _time, double _amt, int _evid,
+                       rx_solving_options_ind *_ind) {
+  /* SS dose check — SS requires full time horizon, cannot inject dynamically */
+  {
+    int _wh, _cmt2, _wh100, _whI, _wh0;
+    getWh(_evid, &_wh, &_cmt2, &_wh100, &_whI, &_wh0);
+    int _flag = _wh % 100;
+    if (_flag == EVID0_SS   || _flag == EVID0_SS0  ||
+        _flag == EVID0_SS2  || _flag == EVID0_SS20 ||
+        _flag == EVID0_SSINF) {
+      _ind->ssDoseN++;
+      return;
+    }
+  }
+  /* Past-time check — record violation; deferred warning emitted after solve */
+  if (_time < _ind->curTime) {
+    if (_ind->pastDoseN < ET_PAST_DOSE_MAX) {
+      _ind->pastDoseTime[_ind->pastDoseN]        = _time;
+      _ind->pastDoseSolverTime[_ind->pastDoseN]  = _ind->curTime;
+    }
+    _ind->pastDoseN++;
+    return;
+  }
+  pushDosingEvent(_time, _amt, _evid, _ind);
+}
+
 #include <float.h>
 
 #define _evid getEvid(_ind, _ind->ix[_ind->idx])
