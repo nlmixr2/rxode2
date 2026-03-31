@@ -47,7 +47,7 @@ calls.  For it to succeed, your package must register the symbol with
 
 The mapping from a model expression (`mm(Cp, Vmax, Km)`) to the
 generated `R_GetCCallable` call is held in a data frame that rxode2
-maintains at run-time.  You add rows to that data frame in `.onLoad`
+maintains at run-time.  You add rows to that data frame in `.onAttach`
 using `rxode2::rxode2parseAssignTranslation()`.
 
 ## Package skeleton
@@ -58,7 +58,7 @@ mm/
 ├── NAMESPACE
 ├── R/
 │   ├── mm.R           # R interface + roxygen docs
-│   └── zzz.R          # .onLoad / .onUnload hooks
+│   └── zzz.R          # .onAttach / .onUnload hooks
 └── src/
     ├── myfuns.c        # scalar C functions and SEXP vector wrappers
     └── init.c          # R_init_mm: registers callables and routines
@@ -296,7 +296,7 @@ mm_dKm <- function(C, Vmax, Km) {
 ### `R/zzz.R`
 
 ```r
-.onLoad <- function(libname, pkgname) {
+.onAttach <- function(libname, pkgname) {
 
   ## 1. Add rows to rxode2's function translation table.
   ##
@@ -359,7 +359,7 @@ mm_dKm <- function(C, Vmax, Km) {
     }
 
     if (nrow(.fromSelf) > 0L) {
-      message(
+      packageStartupMessage(
         "Package 'mm' rxode2 function registration was already present ",
         "(package reloaded); re-registering."
       )
@@ -500,6 +500,11 @@ positional form that the C translator expects.
 ### `R/mm.R` — adding `rxUdfUi.mm`
 
 ```r
+
+#' @importFrom rxode2 rxUdfUi
+#' @export
+rxode2::rxUdfUi
+
 #' rxode2 ui model interface for mm()
 #'
 #' Allows \code{mm()} to be called with named arguments in any order
@@ -530,20 +535,33 @@ rxUdfUi.mm <- function(fun) {
 
 Exporting `rxUdfUi.mm` with `@export` is sufficient for roxygen2 to
 register the S3 method when the package is installed — no
-`.s3register` call is needed in `.onLoad`.
+`.s3register` call is needed in `.onAttach`.
 
 With this method in place, all of the following are equivalent inside
 a ui model:
 
 ```r
 ## Positional (always worked):
-dA1/dt <- -mm(Cp, Vmax, Km)
+m1 <- function() {
+  model({
+    d/dt(A1) <- -mm(Cp, Vmax, Km)
+  })
+}
+
 
 ## Named in canonical order:
-dA1/dt <- -mm(C = Cp, Vmax = Vmax, Km = Km)
+m2 <- function() {
+  model({
+    d/dt(A1) <- -mm(C = Cp, Vmax = Vmax, Km = Km)
+  })
+}
 
 ## Named in a different order — rxUdfUi.mm reorders before compilation:
-dA1/dt <- -mm(Km = Km, Vmax = Vmax, C = Cp)
+m3 <- function() {
+  model({
+    d/dt(A1) <- -mm(Km = Km, Vmax = Vmax, C = Cp)
+  })
+}
 ```
 
 Note that plain `rxode2({...})` (low-level, without ui) does **not**
@@ -553,16 +571,17 @@ call `rxUdfUi` methods and still requires positional arguments.
 
 ```r
 library(rxode2)
-library(mm)   # triggers .onLoad -> rxode2parseAssignTranslation + rxD
+library(mm)   # triggers .onAttach -> rxode2parseAssignTranslation + rxD
+
+# rxode2 produces a syntax error for the wrong number of arguments:
+try(rxode2({ d/dt(A1) <- -mm(Cp, Vmax) }))
+
 
 ## --- rxode2 simulation ---
 mod <- rxode2({
-  Cp     <- A1 / Vc
-  dA1/dt <- -mm(Cp, Vmax, Km)
+  Cp       <- A1 / Vc
+  d/dt(A1) <- -mm(Cp, Vmax, Km)
 })
-
-# rxode2 produces a syntax error for the wrong number of arguments:
-try(rxode2({ dA1/dt <- -mm(Cp, Vmax) }))
 
 ev  <- et(amt = 100) |> et(0, 24, by = 0.5)
 sim <- rxSolve(mod, ev, params = c(Vc = 10, Vmax = 5, Km = 1))
@@ -600,7 +619,7 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 | 5 | `DESCRIPTION` | Add `Imports: rxode2`, `LinkingTo: rxode2`, `RoxygenNote:` |
 | 6 | `R/mm.R` | Write thin R wrappers using `.Call(\`_pkg_fun\`, ...)` with roxygen docs |
 | 6b | `R/mm.R` | Optionally add `rxUdfUi.mm` to support named / reordered arguments in ui models |
-| 7 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRows))` in `.onLoad` |
+| 7 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRows))` in `.onAttach` |
 | 8 | `R/zzz.R` | Call `rxD("fun", list(...))` referencing C functions for 1st-order |
 | 9 | `R/zzz.R` | Call `rxD("fun_dArg", list(...))` with expression strings for 2nd-order |
 | 10 | `R/zzz.R` | Filter out rows where `package == "mm"` + call `rxRmFun` for all names in `.onUnload` |

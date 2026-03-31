@@ -3854,6 +3854,13 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
       "dabs1", "abs1"
     ))
   }
+
+  .df <- rxode2parseGetTranslation()
+  .w <- which(.df$package %in% c("rxode2", "rxode2ll"))
+  .df <- .df[-.w, ,drop=FALSE]
+
+  .ret <- c(.ret, .df$rxFun)
+
   # remove operators
   .ret <- setdiff(.ret,
                   c("==", "!=", ">=", "<=", "<", ">", "&&", "||", "&", "|", "!", "+", "-", "*", "**", "^", "/"))
