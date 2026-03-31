@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when
+working with code in this repository.
 
 ## Overview
 
@@ -160,6 +161,7 @@ regenerate generated files:
 - **Local variables inside functions**: `.camelCase` with a leading dot (e.g., `.model`, `.iniDf`, `.ret`)
 - **S3 methods**: follow `generic.class` R convention (e.g., `rxSolve.rxUi`, `modelExtract.function`)
 - Avoid `snake_case` for new names; underscores only appear in S3 methods for snake_case generics from other packages (e.g., `drop_units.rxSolve`)
+- Use American English spelling for consistency and do not use unicode characters
 
 ### C/C++ Conventions
 
