@@ -1,31 +1,7 @@
 # rxode2 (development)
 
-- Fix potential security and memory-management issues that could lead to crashes or undefined behavior
-
-- Fix integer overflow in the internal `nSize` buffer-sizing calculation that
-  caused a segfault (process exit 139) when solving with approximately 16,384
-  or more subjects.
-
-- Fix integer overflow in the output row count (`nr = nobs * nsim`) that could
-  cause a crash when running VPC simulations with many subjects, many
-  observation timepoints, and many simulations (e.g., 1000 subjects × 2148
-  obs × 1000 VPC sims → 2.148B rows > INT_MAX). An informative error is now
-  thrown instead of crashing.
-
-- Fix latent integer overflow in internal subject-setup accumulators
-  (`curSolve`, `curEvent`) that could corrupt ODE state-variable pointers with
-  very large models (many ODEs × many subjects × many timepoints). Changed from
-  `int` to `int64_t`.
-
-- Add pre-allocation guards before the main ODE solver buffer (`gsolve`) to
-  prevent process crashes on Windows (and low-memory systems generally) when a
-  requested allocation is too large to satisfy: a fast `n0 > INT_MAX` hard limit
-  (~16 GB for the dominant buffer term) fires first, followed by a
-  platform-specific available-memory check (`rxAvailableMemoryBytes()` in
-  `src/rxMemAvail.h`) that compares the total requested bytes against reported
-  available memory on Windows (`GlobalMemoryStatusEx`), Linux
-  (`/proc/meminfo` MemAvailable), and macOS (Mach VM statistics). The existing
-  post-`calloc` NULL check message now also reports the requested size in GB.
+- Fix potential security and memory-management issues that could lead
+  to crashes or undefined behavior including integer overflow
 
 # rxode2 5.0.2
 
