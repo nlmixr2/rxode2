@@ -179,7 +179,7 @@ rxTest({
     })
   }
 
-  test_that("error when bioavaibility(state)+rate/dur, but maintain f(state); Issues RxODE#216 and RxODE#222", {
+  test_that("state-dep f now allowed with modeled rate/dur; fixed-rate f(state) and rate(state)/dur(state) at zero still error; Issues RxODE#216 and RxODE#222", {
     mod.rate <- rxode2({
       a <- 6
       b <- 0.6
@@ -241,7 +241,8 @@ rxTest({
       et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
-    expect_error(rxSolve(mod.rate, et))
+    # f(intestine) <- f * intestine is now allowed with modeled rate (rate=-1)
+    expect_no_error(rxSolve(mod.rate, et))
 
     mod.rate <- rxode2({
       a <- 6
@@ -260,7 +261,8 @@ rxTest({
       et(amt = 2 / 24, rate = -2, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
-    expect_error(rxSolve(mod.rate, et))
+    # f(intestine) <- f * intestine is now allowed with modeled duration (rate=-2)
+    expect_no_error(rxSolve(mod.rate, et))
   })
 
   test_that("Test that state-based bio-availability's does work", {

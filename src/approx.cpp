@@ -291,7 +291,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
               // Set inLhs to 1 to make sure uniform is going to be used
               int inLhs = ind->inLhs;
               ind->inLhs = 1;
-              ind->cov_sample[k] = floor(rxunif(ind, 0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->cov_sample[k] = floor(rxunif(ind, 0, (double)rx->nsub * rx->nsim))+1;
               ind->inLhs = inLhs;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
@@ -329,7 +329,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
               // Set inLhs to 1 to make sure uniform is going to be used
               int inLhs = ind->inLhs;
               ind->inLhs = 1;
-              ind->cov_sample[k] = floor(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->cov_sample[k] = floor(rxunif(ind, 0.0, (double)rx->nsub * rx->nsim))+1;
               ind->inLhs = inLhs;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);

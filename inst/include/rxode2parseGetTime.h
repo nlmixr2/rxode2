@@ -30,13 +30,13 @@ extern t_calc_mtime calc_mtime;
   }
 
 
-static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double time) {
+static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double time, double *y) {
   rx_solving_options *op = &op_global;
   returnBadTime(time);
   if (ind->wh0 == EVID0_SS0 || ind->wh0 == EVID0_SS20) {
     return time;
   }
-  double ret = LAG(id, cmt, time);
+  double ret = LAG(id, cmt, time, y);
   if (ISNA(ret)) {
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -53,10 +53,10 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
   return ret;
 }
 
-static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t){
+static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
   rx_solving_options *op = &op_global;
   returnBadTime(t);
-  double ret = RATE(id, cmt, dose, t);
+  double ret = RATE(id, cmt, dose, t, y);
   if (ISNA(ret)){
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -73,11 +73,11 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
   return ret;
 }
 
-static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double dose, double t){
+static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
   rx_solving_options *op = &op_global;
   returnBadTime(t);
   if (ISNA(t)) return t;
-  double ret = DUR(id, cmt, dose, t);
+  double ret = DUR(id, cmt, dose, t, y);
   if (ISNA(ret)){
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -113,17 +113,23 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
   int oldIdx = ind->idx;
   ind->idx = idx;
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind, idx), t, yp);
-  dur  = getDur(ind, ind->id, ind->cmt, amt, t);
+  dur  = getDur(ind, ind->id, ind->cmt, amt, t, yp);
   ind->idx = oldIdx;
   if (dur > 0) {
     setDoseP1(ind, idx, -amt/dur);
-    setAllTimesP1(ind, idx, t+dur);
+    {
+      double _laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
+      setAllTimesP1(ind, idx, (ISNA(_laggedStart) ? t : _laggedStart) + dur);
+    }
   } else if (dur == 0 && ind->whI == EVIDF_MODEL_DUR_ON) {
     rx_solve *rx = &rx_global;
     rx_solving_options *op = &op_global;
     if (rx->needSort & needSortDur) {
       setDoseP1(ind, idx, 0.0);
-      setAllTimesP1(ind, idx, t);
+      {
+        double _laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
+        setAllTimesP1(ind, idx, ISNA(_laggedStart) ? t : _laggedStart);
+      }
     } else {
       if (!(ind->err & rxErrModelDurAbsent)){
         ind->err += rxErrModelDurAbsent;
@@ -155,11 +161,14 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
   ind->idx=idx;
   double dur, rate, amt;
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind,idx), t, yp);
-  rate  = getRate(ind, ind->id, ind->cmt, amt, t);
+  rate  = getRate(ind, ind->id, ind->cmt, amt, t, yp);
   if (rate > 0){
     dur = amt/rate; // mg/hr
     setDoseP1(ind, idx, -rate);
-    setAllTimesP1(ind, idx, t+dur);
+    {
+      double _laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
+      setAllTimesP1(ind, idx, (ISNA(_laggedStart) ? t : _laggedStart) + dur);
+    }
     ind->idx=oldIdx;
   } else {
     rx_solve *rx;
@@ -214,7 +223,7 @@ static inline void handleTurnOnModeledDuration(int idx, rx_solve *rx, rx_solving
       }
       return;
     }
-    updateDur(idx, ind, rx->ypNA);
+    updateDur(idx, ind, (op->neq > 0) ? ind->solve : op->inits);
   }
 }
 
@@ -251,7 +260,7 @@ static inline void handleTurnOnModeledRate(int idx, rx_solve *rx, rx_solving_opt
       return;
     }
     setAllTimesP1(ind, idx, getAllTimes(ind, idx));
-    updateRate(idx, ind, rx->ypNA);
+    updateRate(idx, ind, (op->neq > 0) ? ind->solve : op->inits);
   }
 }
 
@@ -340,7 +349,8 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
   }
   double amt = getDose(ind, idx);
   if (amt > 0) {
-    return getLag(ind, ind->id, ind->cmt, getAllTimes(ind, idx));
+    return getLag(ind, ind->id, ind->cmt, getAllTimes(ind, idx),
+                  (op->neq > 0) ? ind->solve : rx->ypNA);
   } else if (amt < 0) {
     int infEidx = getDoseNumberFromIndex(ind, idx);
     if (infEidx == -1){
@@ -380,7 +390,8 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     int wh0 = ind->wh0;
     int wh, cmt, wh100, whI;
     getWh(getEvid(ind, ind->idose[infBidx]), &wh, &cmt, &wh100, &whI, &(ind->wh0));
-    double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]));
+    double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]),
+                       (op->neq > 0) ? ind->solve : rx->ypNA);
     ind->wh0 = wh0;
     return tB + dur;
   } else {
@@ -396,13 +407,13 @@ static inline double getTimeCalculateInfusionTimes(int idx, rx_solve *rx, rx_sol
   switch(ind->whI){
   case EVIDF_MODEL_DUR_OFF:
     handleTurnOffModeledDuration(idx, rx, op, ind);
-    break;
+    return getAllTimes(ind, idx);  // absolute lagged stop time stored by updateDur
   case EVIDF_MODEL_DUR_ON:
     handleTurnOnModeledDuration(idx, rx, op, ind);
     break;
   case EVIDF_MODEL_RATE_OFF:
     handleTurnOffModeledRate(idx, rx, op, ind);
-    break;
+    return getAllTimes(ind, idx);  // absolute lagged stop time stored by updateRate
   case EVIDF_MODEL_RATE_ON:
     handleTurnOnModeledRate(idx, rx, op, ind);
     break;
@@ -410,7 +421,9 @@ static inline double getTimeCalculateInfusionTimes(int idx, rx_solve *rx, rx_sol
     return handleInfusionItem(idx, rx, op, ind);
     break;
   }
-  return getLag(ind, ind->id, ind->cmt, getAllTimes(ind,idx));
+  // Sort-time lag for start/bolus events: use per-subject initial state
+  return getLag(ind, ind->id, ind->cmt, getAllTimes(ind,idx),
+                (op->neq > 0) ? ind->solve : rx->ypNA);
 }
 
 static inline double getTime__(int idx, rx_solving_options_ind *ind, int update) {
@@ -435,11 +448,16 @@ static inline double getTime__(int idx, rx_solving_options_ind *ind, int update)
       if (ind->whI == EVIDF_INF_RATE) {
         return handleInfusionItem(idx, rx, op, ind);
       }
+      if (ind->whI == EVIDF_MODEL_RATE_OFF || ind->whI == EVIDF_MODEL_DUR_OFF) {
+        return getAllTimes(ind, idx);  // absolute lagged stop time stored by updateRate/updateDur
+      }
     } else {
       return getTimeCalculateInfusionTimes(idx, rx, op, ind);
     }
   }
-  return getLag(ind, ind->id, ind->cmt, getAllTimes(ind, idx));
+  // Use per-subject initial state for sort-time lag; runtime uses timeThread[] directly
+  return getLag(ind, ind->id, ind->cmt, getAllTimes(ind, idx),
+                (op->neq > 0) ? ind->solve : rx->ypNA);
 }
 
 static inline double getTime_(int idx, rx_solving_options_ind *ind) {

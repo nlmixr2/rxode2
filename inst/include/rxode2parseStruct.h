@@ -108,6 +108,7 @@ typedef struct {
   double *ii;
   double *solve;
   double *mtime;
+  double mtime0[90]; // initial sort-time mtime values; sentinel R_NegInf = already fired
   double *solveSave;
   double *solveLast;
   double *solveLast2;
@@ -191,6 +192,7 @@ typedef struct {
   double extraDoseNewXout;
   int idxExtra; // extra idx
   int extraSorted; // extra sorted?
+  int mainSorted;  // 0 = main ix[] needs re-sort after runtime rate/dur/mtime update
   //double *extraDoseIi; // ii doses unsupported
   bool lastIsSs2;
   double *timeThread;
@@ -238,17 +240,17 @@ typedef struct {
 typedef struct {
   rx_solving_options_ind *subjects;
   rx_solving_options *op;
-  int nsub;
-  int nsim;
+  uint32_t nsub;
+  uint32_t nsim;
   int neta;
   int neps;
   int nIndSim;
   int simflg;
-  int nall;
+  uint32_t nall;
   int nevid9;
   int nobs; // isObs() observations
   int nobs2; // evid=0 observations
-  int nr;
+  int64_t nr; // int64_t because nobs*nsim can exceed INT_MAX in VPC with many subjects/timepoints/sims
   int add_cov;
   int matrix;
   int needSort;
@@ -336,11 +338,11 @@ static inline void lineNull(vLines *sbb) {
 }
 
 typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
-typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
-typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t);
+typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
+typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
+typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
 
-typedef void (*t_calc_mtime)(int cSub, double *mtime);
+typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);

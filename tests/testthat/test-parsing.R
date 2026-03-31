@@ -7,7 +7,13 @@ rxTest({
       tmp <- normalizePath(tempfile(), mustWork = FALSE)
       on.exit(unlink(tmp))
       .rxWithSinkBoth(tmp, {
+        .rxLastCompileSuccess(TRUE)
         expect_error(rxode2(code))
+        # If the parser fails, it doesn't compile, which means
+        # the last compiler success should be TRUE. When FALSE it
+        # means the parser succeeded but the compiler failed, which
+        # is not what we want here.
+        expect_true(.rxLastCompileSuccess())
       })
     })
   }
@@ -330,7 +336,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
 
   for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
     badParse(
-      sprintf("%s cannot depend on d/dt(state)", v),
+      sprintf("%s can not depend on d/dt(state)", v),
       sprintf("d/dt(depot)=-depot*ka;\nd/dt(central)=ka*depot-kel*central\n%s(depot)=d/dt(central)+3", v)
     )
   }
@@ -949,7 +955,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
 
   for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
     badParse(
-      sprintf("%s cannot depend on d/dt(state)", v),
+      sprintf("%s can not depend on d/dt(state) (state-dependent not allowed)", v),
       sprintf("d/dt(depot)=-depot*ka;\nd/dt(central)=ka*depot-kel*central\n%s(depot)=d/dt(central)+3", v)
     )
   }

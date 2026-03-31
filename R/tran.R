@@ -41,7 +41,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
   .ret <- .Call(
     `_rxode2_trans`, model, modelPrefix, md5, .isStr,
     as.integer(crayon::has_color()),
-    "", .parseEnv$.parseFuns,
+    "", .rxSupportedFuns(),
     fullPrint
   )
   if (linear && .isLinCmt()) {
@@ -56,7 +56,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
     md5 <- digest::digest(.ret)
     .ret <- .Call(`_rxode2_trans`, .ret, modelPrefix, md5, .isStr,
                   as.integer(crayon::has_color()),
-                  "", .parseEnv$.parseFuns,
+                  "", .rxSupportedFuns(),
                   fullPrint)
   }
   md5 <- c(file_md5 = md5, parsed_md5 = digest::digest(c(
@@ -84,7 +84,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
     .Call(
       `_rxode2_codegen`, code, .prefix, .libname,
             md5["parsed_md5"], "-1",
-            .ret, .parseEnv$.parseFuns)
+      .ret, .rxSupportedFuns())
   }
   .ret
 }

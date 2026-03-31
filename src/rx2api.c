@@ -8,9 +8,9 @@ rx_solving_options* getSolvingOptions(rx_solve* rx) {
 }
 
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
-  int nall = rx->nsub*rx->nsim;
-  if (id < 0 || id >= nall) {
-    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %d); nsub: %d nsim: %d", id, nall, rx->nsub, rx->nsim);
+  uint32_t nall = rx->nsub*rx->nsim;
+  if (id < 0 || (uint32_t)id >= nall) {
+    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, (unsigned int)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
   }
   return &(rx->subjects[id]);
 }
@@ -187,7 +187,7 @@ void resetOpBadSolve(rx_solving_options* op) {
 ////////////////////////////////////////////////////////////////////////
 
 int getRxNsub(rx_solve *rx) {
-  return rx->nsub;
+  return (int)rx->nsub;
 }
 
 int hasRxLimit(rx_solve *rx) {

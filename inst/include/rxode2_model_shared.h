@@ -281,6 +281,21 @@ typedef double (*rxode2_fn) (double x);
 typedef double (*rxode2_ifn) (double x);
 typedef double (*rxode2_fn2) (double x, double y);
 typedef double (*rxode2_fn3) (double x, double y, double z);
+typedef double (*rxode2_fn4) (double x, double y, double z, double w);
+typedef double (*rxode2_fn5) (double x, double y, double z, double w,
+                              double v);
+typedef double (*rxode2_fn6) (double x, double y, double z, double w,
+                              double v, double u);
+typedef double (*rxode2_fn7) (double x, double y, double z, double w,
+                              double v, double u, double t);
+typedef double (*rxode2_fn8) (double x, double y, double z, double w,
+                              double v, double u, double t, double s);
+typedef double (*rxode2_fn9) (double x, double y, double z, double w,
+                              double v, double u, double t, double s,
+                              double r);
+typedef double (*rxode2_fn10) (double x, double y, double z, double w,
+                               double v, double u, double t, double s,
+                               double r, double q);
 typedef double (*rxode2_fn3i) (double x, double y, int i);
 typedef double (*rxode2_fn2i) (double x, int i);
 typedef int (*rxode2_fn0i) (void);
