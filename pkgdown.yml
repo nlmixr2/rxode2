@@ -15,6 +15,7 @@ articles:
   rxode2-model-types: rxode2-model-types.html
   rxode2-nesting: rxode2-nesting.html
   rxode2-pipeline: rxode2-pipeline.html
+  articles/rxode2-pkg-exported-funs: rxode2-pkg-exported-funs.html
   rxode2-plot: rxode2-plot.html
   rxode2-prior-data: rxode2-prior-data.html
   rxode2-rxUse: rxode2-rxUse.html
@@ -27,7 +28,7 @@ articles:
   rxode2-transit-compartments: rxode2-transit-compartments.html
   rxode2-tutorials: rxode2-tutorials.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-03-31T06:51Z
+last_built: 2026-03-31T13:06Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles
