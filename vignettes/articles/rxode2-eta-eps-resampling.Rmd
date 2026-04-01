@@ -1,0 +1,161 @@
+---
+title: "ETA and EPS Resampling in rxode2"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+library(lotri)
+```
+
+## Overview
+
+rxode2 supports resampling of between-subject variability (ETAs) and
+residual variability (EPSs) within the model code itself using
+`simeta()` and `simeps()`.  This allows you to implement rejection
+sampling, truncated distributions, or any custom sampling logic
+directly in the model definition — without post-processing the
+simulated output.
+
+This is analogous to the `SIMETA` and `SIMEPS` functions available
+in NONMEM, though the implementation and the context in
+which they are used differs slightly between the tools.
+
+## Resampling ETAs with `simeta()`
+
+A common use case is constraining a covariate derived from a
+lognormal distribution to a physiologically plausible range.  For
+example, simulating body weight from a lognormal distribution but
+only accepting values between 60 and 80 kg:
+
+```{r simeta-example}
+mod <- rxode2({
+  wt  <- 70 * exp(eta.wt)   # individual weight (kg)
+  i   <- 0                   # iteration counter (for safety)
+  while ((wt < 60) || (wt > 80)) {
+    i <- i + 1
+    if (i > 100) break       # prevent infinite loops
+    simeta()                 # resample all ETAs for this subject
+    wt <- 70 * exp(eta.wt)
+  }
+})
+```
+
+When `simeta()` is called, all ETA values for the current subject are
+re-drawn from the supplied omega matrix.  The model then re-evaluates
+the downstream expressions.  Because the resampling is done at the C
+level, parallel solving with OpenMP is fully supported.
+
+```{r simeta-solve}
+set.seed(1234)
+
+e <- et(seq(0, 24, by = 4), id = 1:100)
+
+f <- rxSolve(
+  mod, e,
+  omega = lotri(eta.wt ~ 0.25)   # SD ~ 0.5 on log scale: wide variability
+)
+
+summary(f$wt)
+```
+
+All simulated weights fall within the 60–80 kg window:
+
+```{r simeta-check}
+stopifnot(all(f$wt >= 60), all(f$wt <= 80))
+range(f$wt)
+```
+
+### Interaction with `nStud`
+
+`simeta()` works correctly when simulating multiple studies
+(`nStud`).  Each study draws its own omega matrix (if `dfSub` is
+specified for a scaled chi-squared draw), and `simeta()` resamples
+within the study-specific omega:
+
+```{r simeta-nstud}
+set.seed(42)
+
+f2 <- rxSolve(
+  mod, e,
+  omega  = lotri(eta.wt ~ 0.25),
+  nStud  = 5,
+  dfSub  = 40
+)
+
+range(f2$wt)
+```
+
+## Resampling EPSs with `simeps()`
+
+`simeps()` re-draws all EPS (residual variability) values for the
+current observation record.  A practical use case is ensuring a
+simulated observation is non-negative without post-hoc truncation:
+
+```{r simeps-example}
+mod_conc <- rxode2({
+  C <- 0 + err            # hypothetical: mean zero + residual noise
+  i <- 0
+  while (C < 0) {
+    simeps()              # resample all EPSs for this record
+    C <- 0 + err
+    i <- i + 1
+    if (i > 10) break
+  }
+})
+```
+
+```{r simeps-solve}
+set.seed(10)
+
+e2 <- et(0:9)
+
+f3 <- rxSolve(mod_conc, e2, sigma = lotri(err ~ 1))
+
+# Without resampling some records would be negative; with simeps() all are >= 0
+all(f3$C >= 0)
+```
+
+### Preserving original draws when the condition is already met
+
+When the initial draw already satisfies the condition, `simeps()` is
+never called and the original value is preserved.  This means the
+marginal distribution of accepted draws is the same as the original
+distribution restricted to the feasible region, without any hidden
+bias from extra calls:
+
+```{r simeps-preserve}
+# Solve without simeps as reference
+mod_ref <- rxode2({
+  C <- 0 + err
+  i <- 0
+})
+
+set.seed(10)
+f_ref <- rxSolve(mod_ref, e2, sigma = lotri(err ~ 1))
+
+set.seed(10)
+f_resamp <- rxSolve(mod_conc, e2, sigma = lotri(err ~ 1))
+
+# Records where no resampling was needed (i == 0) should match exactly
+both <- merge(f_ref, f_resamp[f_resamp$i == 0, ], by = "time")
+stopifnot(isTRUE(all.equal(both$C.x, both$C.y)))
+```
+
+## Differences from a pure post-hoc truncation
+
+Using `simeta()` / `simeps()` inside the model has two advantages over
+filtering or replacing values after `rxSolve()`:
+
+1. **Self-consistency**: downstream model quantities (e.g., PK
+   parameters computed from body weight) always reflect the accepted
+   draw — no risk of a filtered row having inconsistent derived
+   variables.
+2. **Parallelism**: resampling happens inside the C solver loop,
+   so OpenMP parallelism across subjects is fully preserved.
