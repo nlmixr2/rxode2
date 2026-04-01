@@ -439,3 +439,80 @@ m2$sha1
 ```
 
 These hashes change whenever the model equations, initial estimates, or error specification change, but are insensitive to label or comment differences.
+
+## Extending `rxUi` with custom `$` properties
+
+Any package (or user script) can add new `ui$myProperty` accessors by defining an S3 method for the `rxUiGet` generic. This is the same mechanism rxode2 uses internally for every property shown above.
+
+### How the dispatch works
+
+When you write `ui$myProperty`, the `$.rxUi` method:
+
+1. Wraps `ui` and the `exact` flag into a small list and sets its class to `c("myProperty", "rxUiGet")`.
+2. Calls `rxUiGet(x)`, which dispatches to `rxUiGet.myProperty(x)`.
+
+So adding a new property is simply a matter of defining `rxUiGet.myProperty`.
+
+### Method signature
+
+```{r rxUiGetSignature, eval=FALSE}
+rxUiGet.myProperty <- function(x, ...) {
+  .ui <- x[[1]]   # the decompressed rxUi environment
+  # x[[2]] is the `exact` logical — rarely needed
+  # compute and return your value
+}
+```
+
+`x[[1]]` is the fully decompressed `rxUi` environment, so all built-in properties (e.g. `.ui$iniDf`, `.ui$state`) are available inside your method.
+
+### The `desc` attribute and autocomplete visibility
+
+The `desc` attribute controls whether the property appears in `str(ui)` output and in RStudio's `$` autocompletion list. A non-empty string makes the property visible; `NULL` or an empty string hides it (useful for internal helpers):
+
+```{r rxUiGetDesc, eval=FALSE}
+attr(rxUiGet.myProperty, "desc") <- "A short description for autocomplete"
+```
+
+The `rstudio` attribute sets the placeholder value that RStudio shows during tab-completion (so it does not have to evaluate the property while you type):
+
+```{r rxUiGetRstudio, eval=FALSE}
+# Use a representative example value — character, numeric, NA (passthrough), etc.
+attr(rxUiGet.myProperty, "rstudio") <- "example value"
+# NA means: evaluate for real even during completion
+attr(rxUiGet.myProperty, "rstudio") <- NA
+```
+
+### Discovering all registered properties
+
+`rxUiDevelop(TRUE)` temporarily makes hidden methods (those with an empty `desc`) visible in `str()` output, which is useful when exploring the full set of registered properties:
+
+```{r rxUiDevelop}
+rxUiDevelop(TRUE)
+str(m2)
+rxUiDevelop(FALSE)
+```
+
+### Worked example: counting ODE states
+
+The example below registers a new property `$nStates` that returns the number of ODE states in the model:
+
+```{r rxUiGetExample}
+rxUiGet.nStates <- function(x, ...) {
+  length(x[[1]]$state)
+}
+attr(rxUiGet.nStates, "desc") <- "Number of ODE states in the model"
+attr(rxUiGet.nStates, "rstudio") <- 0L  # integer placeholder
+
+m2$nStates
+```
+
+### Storing persistent metadata in `ui$meta`
+
+Each `rxUi` environment contains a child environment called `meta` for storing arbitrary key-value data that should travel with the model object (e.g. a model name or provenance tag). Values stored there are also accessible via the `$` operator through the `rxUiGet.default` fallback, and they are printed as assignment expressions when the model is displayed.
+
+```{r rxUiMeta}
+m2$meta$myTag <- "two-cmt PK/PD example"
+m2$meta$myTag
+# also accessible via the $ operator (falls through to meta via rxUiGet.default):
+m2$myTag
+```
