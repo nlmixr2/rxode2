@@ -1510,6 +1510,7 @@ struct rx_globals {
   int *jac_counter;
   int *gSampleCov;
   double *gmtime;
+  double *gmtime0;
   double *gsigma = NULL;
   int nSigma = 0;
   double *gomega = NULL;
@@ -1631,6 +1632,11 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
     ind->linCmtSave = NULL;
+  }
+  if (rx->nMtime > 0) {
+    ind->mtime0 = _globals.gmtime0 + rx->nMtime * omp_get_thread_num();
+  } else {
+    ind->mtime0 = NULL;
   }
   ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
@@ -5318,6 +5324,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
     int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
     int64_t n10 = (int64_t)(op->neq)*op->cores;
+    int64_t nmtime0_c = (int64_t)rx->nMtime * op->cores;
     int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
     // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
     // Portable, zero-cost backstop that catches the dominant overflow path.
@@ -5331,7 +5338,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
@@ -5343,7 +5350,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 +
+                                      n9 + n10 + nmtime0_c +
                                       5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -5353,7 +5360,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL){
       rxSolveFree();
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_totalElems * sizeof(double) / 1e9);
     }
@@ -5386,6 +5393,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
     _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
     _globals.timeThread = _globals.gLinDummy + n10;
+    _globals.gmtime0    = _globals.timeThread + n8; // [nmtime0_c]
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);

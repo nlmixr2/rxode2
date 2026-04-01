@@ -6,6 +6,8 @@
 - Change `dop853` to allow parallel solving and per state tolerances
   like `lsoda`.
 
+- Change mtime state-based dosing to use less memory
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
