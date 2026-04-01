@@ -2679,15 +2679,18 @@ extern "C" void par_linCmt(rx_solve *rx) {
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  // volatile ensures reads/writes are not cached in registers across threads
-  volatile int abort = 0;
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
+  int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsolve; solveid+=cores){
-      if (abort == 0){
+      int localAbort;
+#pragma omp atomic read
+      localAbort = abort;
+      if (localAbort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1);
 
         ind_linCmt0(rx, op, solveid, neq, dydt, update_inis);
@@ -2700,8 +2703,15 @@ extern "C" void par_linCmt(rx_solve *rx) {
 #endif
             {
               curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-              if (abort == 0){
-                if (checkInterrupt()) abort =1;
+              int localAbort2;
+#pragma omp atomic read
+              localAbort2 = abort;
+              if (localAbort2 == 0){
+                if (checkInterrupt()) {
+                  int newAbort = 1;
+#pragma omp atomic write
+                  abort = newAbort;
+                }
               }
             }
         }
@@ -2758,15 +2768,18 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  // volatile ensures reads/writes are not cached in registers across threads
-  volatile int abort = 0;
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
+  int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsolve; solveid+=cores){
-      if (abort == 0){
+      int localAbort;
+#pragma omp atomic read
+      localAbort = abort;
+      if (localAbort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
         ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
         if (displayProgress && thread == 0) {
@@ -2777,8 +2790,15 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
 #endif
             {
               curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-              if (abort == 0){
-                if (checkInterrupt()) abort =1;
+              int localAbort2;
+#pragma omp atomic read
+              localAbort2 = abort;
+              if (localAbort2 == 0){
+                if (checkInterrupt()) {
+                  int newAbort = 1;
+#pragma omp atomic write
+                  abort = newAbort;
+                }
               }
             }
         }
@@ -2835,14 +2855,17 @@ extern "C" void par_liblsoda(rx_solve *rx){
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  // volatile ensures reads/writes are not cached in registers across threads
-  volatile int abort = 0;
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
+  int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++){
-    if (abort == 0){
+    int localAbort;
+#pragma omp atomic read
+    localAbort = abort;
+    if (localAbort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
       ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
       if (displayProgress){
@@ -2853,8 +2876,15 @@ extern "C" void par_liblsoda(rx_solve *rx){
 #endif
           {
             curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-            if (abort == 0){
-              if (checkInterrupt()) abort =1;
+            int localAbort2;
+#pragma omp atomic read
+            localAbort2 = abort;
+            if (localAbort2 == 0){
+              if (checkInterrupt()) {
+                int newAbort = 1;
+#pragma omp atomic write
+                abort = newAbort;
+              }
             }
           }
       }

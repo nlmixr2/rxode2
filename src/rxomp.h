@@ -32,6 +32,10 @@ static inline int omp_get_thread_num(void) {
   return 0;
 }
 
+static inline int omp_in_parallel(void) {
+  return 0;
+}
+
 static inline int rx_get_thread(int mx) {
   return 0;
 }

@@ -289,14 +289,9 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
     int newBadSolve = 1;
 #pragma omp atomic write
     op->badSolve = newBadSolve;
-    int curNaTime;
-#pragma omp atomic read
-    curNaTime = op->naTime;
-    if (curNaTime == 0) {
-      int newNaTime = 5 + 10*cmt;
-#pragma omp atomic write
-      op->naTime = newNaTime;
-    }
+    int newNaTime = 5 + 10*cmt;
+#pragma omp critical
+    { if (op->naTime == 0) op->naTime = newNaTime; }
   }
   return ret;
 }

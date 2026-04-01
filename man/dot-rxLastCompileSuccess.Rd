@@ -6,6 +6,10 @@
 \usage{
 .rxLastCompileSuccess(set)
 }
+\arguments{
+\item{set}{Logical flag. If missing, returns the current compilation
+status. If provided, sets the compilation status.}
+}
 \value{
 this determines if the last compilation was successful.  This is useful for
 debugging and testing purposes.
