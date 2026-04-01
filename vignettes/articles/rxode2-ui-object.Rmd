@@ -189,3 +189,253 @@ The data frame `$covLhsDf` lists the left handed assignments where a covariate i
 ```{r showCovLhsDf}
 m2$covLhsDf
 ```
+
+The columns are:
+
+| Column | Description |
+|--------|-------------|
+| `lhs`  | The left-hand side variable name that uses the covariate |
+| `cov`  | The covariate name |
+
+Two companion named vectors are also available: `$covLhs` maps covariate name to LHS variable name, and `$lhsCov` maps LHS variable name to covariate name:
+
+```{r covLhsVectors}
+# covariate -> LHS
+m2$covLhs
+
+# LHS -> covariate
+m2$lhsCov
+```
+
+## Variable mapping tables
+
+Because `rxode2` model functions express parameters indirectly (e.g. `CL <- exp(tcl + eta.cl + covClWt*WT)`), several named-vector look-ups are provided to translate between the raw parameter name and the LHS variable it defines.
+
+### `$etaLhs` and `$lhsEta`: eta parameter mapping
+
+`$etaLhs` gives a named vector where names are eta parameter names and values are the corresponding LHS variable. `$lhsEta` is the reverse.
+
+```{r etaMaps}
+# eta -> LHS
+m2$etaLhs
+
+# LHS -> eta
+m2$lhsEta
+```
+
+### `$thetaLhs` and `$lhsTheta`: theta parameter mapping
+
+`$thetaLhs` maps each population (theta) parameter to the LHS variable it defines. `$lhsTheta` is the reverse.
+
+```{r thetaMaps}
+# theta -> LHS
+m2$thetaLhs
+
+# LHS -> theta
+m2$lhsTheta
+```
+
+### `$varLhs` and `$lhsVar`: combined variable mapping
+
+`$varLhs` is a combined look-up across all etas, thetas, covariates, and level assignments: names are the raw parameter/covariate/level names and values are the LHS variables. `$lhsVar` is the reverse.
+
+```{r varLhsMaps}
+# all vars -> LHS
+m2$varLhs
+
+# LHS -> all vars
+m2$lhsVar
+```
+
+## Mu-referencing (`$muRefTable`)
+
+When population parameters are expressed in a mu-referenced form (e.g. `CL <- exp(tcl + eta.cl)`), `$muRefTable` returns a data frame summarising those relationships. It returns `NULL` when no mu-referencing is detected.
+
+```{r muRefTable}
+m2$muRefTable
+```
+
+The columns are:
+
+| Column        | Description                                         |
+|---------------|-----------------------------------------------------|
+| `theta`       | The theta (population) parameter name               |
+| `eta`         | The eta (random-effect) parameter name              |
+| `lhs`         | The LHS variable that combines theta and eta        |
+| `covariates`  | Any covariate terms added to the mu-reference expression (if present) |
+
+## Model states
+
+### `$state`: compartment/state names
+
+`$state` returns a character vector of all ODE state (compartment) names in the order they appear in the model:
+
+```{r stateVec}
+m2$state
+```
+
+### `$stateDf`: compartment data frame
+
+`$stateDf` returns a data frame of compartment numbers and names. For linear compartment models it also includes whether each compartment supports infusion (`Rate`) and turn-off (`Off`) events:
+
+```{r stateDf}
+m2$stateDf
+```
+
+### `$statePropDf`: compartment property data frame
+
+`$statePropDf` lists which compartments have special dosing properties (`ini`, `f`, `alag`, `rate`, `dur`) explicitly defined in the model. A compartment only appears when at least one property is set:
+
+```{r statePropDf}
+m2$statePropDf
+```
+
+## Parameter vectors
+
+### `$theta`: population parameter estimates
+
+`$theta` returns a named numeric vector of all theta (population/fixed-effect and residual) initial estimates:
+
+```{r thetaVec}
+m2$theta
+```
+
+### `$thetaLower` and `$thetaUpper`: parameter bounds
+
+Named numeric vectors of the lower and upper bounds for every theta:
+
+```{r thetaBounds}
+m2$thetaLower
+m2$thetaUpper
+```
+
+### `$omega`: random-effects variance-covariance matrix
+
+`$omega` returns the between-subject variability (BSV) matrix derived from the `ini({})` block, or `NULL` when no etas are specified:
+
+```{r omegaMat}
+m2$omega
+```
+
+## Model properties (`$props`)
+
+`$props` is a comprehensive summary list of the model in one place:
+
+```{r propsObj}
+str(m2$props)
+```
+
+The list elements are:
+
+| Element    | Description |
+|------------|-------------|
+| `pop`      | Character vector of population (theta) parameter names |
+| `resid`    | Character vector of residual error parameter names |
+| `group`    | Named list of eta vectors, one element per BSV condition (e.g. `id`) |
+| `linCmt`   | Logical; `TRUE` when the model uses a linear compartment solution |
+| `cmt`      | Character vector of all doseable compartment names |
+| `output`   | List with `primary` (LHS vars defined by population params), `secondary` (other LHS vars), `endpoint` (endpoint variables), and `state` (ODE state names) |
+| `cmtProp`  | Same as `$statePropDf` |
+
+## Multiple endpoints (`$multipleEndpoint`)
+
+When a model has more than one residual endpoint, `$multipleEndpoint` returns a data frame showing how to specify each endpoint in an event table (via `cmt=` or `dvid=`). It returns `NULL` for single-endpoint models.
+
+```{r multipleEndpointNull}
+# m2 has two endpoints: C2 and eff
+m2$multipleEndpoint
+```
+
+The `cmt` column shows the compartment label or number to use, and the `dvid*` column shows the equivalent `dvid` specification.
+
+## Model representations
+
+### `$lstChr`: model as a character vector
+
+`$lstChr` deparses every line of `$lstExpr` to a character string. This is convenient for searching or displaying model lines:
+
+```{r lstChr}
+m2$lstChr
+```
+
+### `$funTxt`: model as a single string
+
+`$funTxt` is `$lstChr` collapsed with newlines — the entire model body as one character string:
+
+```{r funTxt}
+cat(m2$funTxt)
+```
+
+### `$modelDesc`: short description string
+
+`$modelDesc` produces a human-readable one-line description of the model structure (free-form ODE, linear compartment, Pred, etc.):
+
+```{r modelDesc}
+m2$modelDesc
+```
+
+### `$iniFun`: quoted `ini()` block
+
+`$iniFun` returns the `ini({})` block as a quoted R expression (a `lotri`-style call), which can be used to reconstruct or inspect the initialisation block programmatically:
+
+```{r iniFun}
+m2$iniFun
+```
+
+### `$modelFun`: quoted `model()` block
+
+`$modelFun` returns the `model({})` block as a quoted R expression:
+
+```{r modelFun}
+m2$modelFun
+```
+
+### `$fun`: reconstructed model function
+
+`$fun` reconstructs the full model as a standard R function (without arguments) whose body contains the meta-data assignments, then the `ini()` block, then the `model()` block:
+
+```{r funRecon}
+m2$fun
+```
+
+## Simulation models
+
+When a model includes a residual error specification, `rxode2` can generate a simulation version of the model that incorporates the error draws directly.
+
+### `$simulationSigma`: residual error (sigma) parameter values
+
+`$simulationSigma` returns a named numeric vector of the residual (sigma) parameter initial estimates, extracted from `$iniDf`:
+
+```{r simSigma}
+m2$simulationSigma
+```
+
+### `$simulationModel`: simulation model object
+
+`$simulationModel` returns an `rxode2` model object that appends the error-sampling code to the base ODE model, ready for stochastic simulation:
+
+```{r simModel}
+m2$simulationModel
+```
+
+### `$simulationIniModel`: simulation model with initial estimates prepended
+
+`$simulationIniModel` is like `$simulationModel` but with the theta/sigma initial estimates prepended as parameter assignments, so the model is self-contained and can be run without supplying a parameter vector:
+
+```{r simIniModel}
+m2$simulationIniModel
+```
+
+## Model identity and hashing
+
+Two hashes are computed over the normalised model structure (model expressions, `iniDf`, error lines, defined functions, and rxode2 version) and are suitable for caching or comparing models:
+
+```{r modelHashes}
+# MD5 hash
+m2$md5
+
+# SHA-1 hash
+m2$sha1
+```
+
+These hashes change whenever the model equations, initial estimates, or error specification change, but are insensitive to label or comment differences.
