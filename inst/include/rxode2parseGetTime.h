@@ -38,10 +38,12 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
   }
   double ret = LAG(id, cmt, time, y);
   if (ISNA(ret)) {
-    op->badSolve=1;
-    if (op->naTime == 0) {
-      op->naTime = 1 + 10*cmt;
-    }
+    int newBadSolve = 1;
+#pragma omp atomic write
+    op->badSolve = newBadSolve;
+    int newNaTime = 1 + 10*cmt;
+#pragma omp critical
+    { if (op->naTime == 0) op->naTime = newNaTime; }
   }
   return ret;
 }
@@ -51,10 +53,12 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
   returnBadTime(t);
   double ret = RATE(id, cmt, dose, t, y);
   if (ISNA(ret)){
-    op->badSolve=1;
-    if (op->naTime == 0) {
-      op->naTime = 2 + 10*cmt;
-    }
+    int newBadSolve = 1;
+#pragma omp atomic write
+    op->badSolve = newBadSolve;
+    int newNaTime = 2 + 10*cmt;
+#pragma omp critical
+    { if (op->naTime == 0) op->naTime = newNaTime; }
   }
   return ret;
 }
@@ -65,10 +69,12 @@ static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double
   if (ISNA(t)) return t;
   double ret = DUR(id, cmt, dose, t, y);
   if (ISNA(ret)){
-    op->badSolve=1;
-    if (op->naTime == 0) {
-      op->naTime = 3 + 10*cmt;
-    }
+    int newBadSolve = 1;
+#pragma omp atomic write
+    op->badSolve = newBadSolve;
+    int newNaTime = 3 + 10*cmt;
+#pragma omp critical
+    { if (op->naTime == 0) op->naTime = newNaTime; }
   }
   return ret;
 }
@@ -350,10 +356,12 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     ind->idx = oIdx;
     if (ISNA(f)){
       rx_solving_options *op = &op_global;
-      op->badSolve=1;
-      if (op->naTime == 0) {
-        op->naTime = 4 + 10*ind->cmt;
-      }
+      int newBadSolve = 1;
+#pragma omp atomic write
+      op->badSolve = newBadSolve;
+      int newNaTime = 4 + 10*ind->cmt;
+#pragma omp critical
+      { if (op->naTime == 0) op->naTime = newNaTime; }
     }
     double durOld = (getAllTimes(ind, ind->idose[infEidx]) -
                      getAllTimes(ind, ind->idose[infBidx]));

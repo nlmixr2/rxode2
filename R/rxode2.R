@@ -1343,6 +1343,9 @@ rxLastCompile <- function() {
 }
 #' Was the last compilation successful?
 #'
+#' @param set Logical flag. If missing, returns the current compilation
+#'   status. If provided, sets the compilation status.
+#'
 #' @return this determines if the last compilation was successful.  This is useful for
 #'   debugging and testing purposes.
 #'

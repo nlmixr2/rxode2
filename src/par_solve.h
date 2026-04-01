@@ -125,7 +125,10 @@ extern "C" {
       // sortInd and may have re-sorted for state-dep lag; preserve that order so
       // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
-      if (op->badSolve) return 0;
+      // Note: op->badSolve is NOT checked here — it is a shared global flag.
+      // In parallel mode another thread's failed solve would prevent THIS
+      // individual from initializing.  Bad-solve state is handled per-individual
+      // via localBadSolve / *rc in the caller.
     }
     ind->mainSorted = 1;
 		ind->ixds=ind->idx=0;

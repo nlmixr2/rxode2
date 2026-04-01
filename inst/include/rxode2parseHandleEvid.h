@@ -286,8 +286,12 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
   double ret = AMT(id, cmt, dose, t, y);
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
-    op->badSolve=1;
-    op->naTime = 5 + 10*cmt;
+    int newBadSolve = 1;
+#pragma omp atomic write
+    op->badSolve = newBadSolve;
+    int newNaTime = 5 + 10*cmt;
+#pragma omp critical
+    { if (op->naTime == 0) op->naTime = newNaTime; }
   }
   return ret;
 }
@@ -310,20 +314,22 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
   }
   if (ind->ignoredDosesN[0]+1 >= ind->ignoredDosesAllocN[0]) {
     rx_solving_options *op = &op_global;
+    int allocFailed = 0;
 #pragma omp critical
     {
       int *tmpI = (int*)realloc(ind->ignoredDoses, (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
       if (tmpI == NULL) {
-        op->badSolve = 1;
-        // return 0;
+        allocFailed = 1;
       } else {
         ind->ignoredDoses = tmpI;
         ind->ignoredDosesAllocN[0] = (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE);
         re = 1;
       }
     }
-    if (op->badSolve) {
-      return 0; // don't continue if we have a bad solve.
+    if (allocFailed) {
+#pragma omp atomic write
+      op->badSolve = 1;
+      return 0;
     }
   }
   ind->ignoredDoses[ind->ignoredDosesN[0]] = doseIdx;
@@ -335,19 +341,21 @@ static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->pendingDosesN[0]+1 >= ind->pendingDosesAllocN[0]) {
     rx_solving_options *op = &op_global;
+    int allocFailed = 0;
 #pragma omp critical
     {
       int *tmpI = (int*)realloc(ind->pendingDoses, (ind->pendingDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
       if (tmpI == NULL) {
-        op->badSolve = 1;
-        //return 0;
+        allocFailed = 1;
       } else {
         ind->pendingDoses = tmpI;
         ind->pendingDosesAllocN[0] = (ind->pendingDosesN[0]+1+EVID_EXTRA_SIZE);
         re = 1;
       }
     }
-    if (op->badSolve == 1)  {
+    if (allocFailed) {
+#pragma omp atomic write
+      op->badSolve = 1;
       return 0;
     }
   }
@@ -362,32 +370,29 @@ static inline int pushDosingEvent(double time, double amt, int evid,
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
     rx_solving_options *op = &op_global;
+    int allocFailed = 0;  // 0=ok, 1=partial alloc, -1=first alloc failed
 #pragma omp critical
     {
       int *tmpI = (int*)realloc(ind->extraDoseTimeIdx, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
       if (tmpI == NULL) {
-        op->badSolve = -1;
-        // return 0;
+        allocFailed = -1;
       } else {
         ind->extraDoseTimeIdx = tmpI;
 
         tmpI = (int*)realloc(ind->extraDoseEvid, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
         if (tmpI == NULL) {
-          op->badSolve = 1;
-          // return 1;
+          allocFailed = 1;
         } else {
           ind->extraDoseEvid = tmpI;
           double * tmpD = (double*)realloc(ind->extraDoseTime, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
           if (tmpD == NULL) {
-            op->badSolve = 1;
-            //return 1;
+            allocFailed = 1;
           } else {
             ind->extraDoseTime = tmpD;
 
             tmpD = (double*)realloc(ind->extraDoseDose,  (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
             if (tmpD == NULL) {
-              op->badSolve = 1;
-              //return 1;
+              allocFailed = 1;
             } else {
               ind->extraDoseDose = tmpD;
 
@@ -398,11 +403,11 @@ static inline int pushDosingEvent(double time, double amt, int evid,
         }
       }
     }
-    if (op->badSolve == 1) {
-      return 1;
-    } else if (op->badSolve == -1) {
-      op->badSolve = 1; // set to bad solve.
-      return 0;
+    if (allocFailed != 0) {
+      int newBadSolve = 1;
+#pragma omp atomic write
+      op->badSolve = newBadSolve;
+      return (allocFailed == 1) ? 1 : 0;
     }
   }
   ind->extraDoseTimeIdx[ind->extraDoseN[0]] = ind->extraDoseN[0];
@@ -420,33 +425,30 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
     rx_solving_options *op = &op_global;
+    int allocFailed = 0;  // 0=ok, 1=partial alloc, -1=first alloc failed
 #pragma omp critical
     {
       int *tmpI = (int*)realloc(ind->extraDoseTimeIdx, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
       if (tmpI == NULL) {
-        op->badSolve = -1;
-        // return 0;
+        allocFailed = -1;
       }  else {
         ind->extraDoseTimeIdx = tmpI;
 
         tmpI = (int*)realloc(ind->extraDoseEvid, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
         if (tmpI == NULL) {
-          op->badSolve = 1;
-          // return 1;
+          allocFailed = 1;
         } else {
           ind->extraDoseEvid = tmpI;
 
           double * tmpD = (double*)realloc(ind->extraDoseTime, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
           if (tmpD == NULL) {
-            op->badSolve = 1;
-            //return 1;
+            allocFailed = 1;
           } else {
             ind->extraDoseTime = tmpD;
 
             tmpD = (double*)realloc(ind->extraDoseDose,  (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
             if (tmpD == NULL) {
-              op->badSolve = 1;
-              // return 1;
+              allocFailed = 1;
             } else {
               ind->extraDoseDose = tmpD;
 
@@ -456,11 +458,11 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
         }
       }
     }
-    if (op->badSolve == 1) {
-      return 1; // don't continue if we have a bad solve.
-    } else if (op->badSolve == -1) {
-      op->badSolve = 1; // set to bad solve.
-      return 0;
+    if (allocFailed != 0) {
+      int newBadSolve = 1;
+#pragma omp atomic write
+      op->badSolve = newBadSolve;
+      return (allocFailed == 1) ? 1 : 0;
     }
     re = 1;
   }

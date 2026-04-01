@@ -37,6 +37,7 @@ extern "C" {
 #define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
   }                                                                     \
+  _Pragma("omp atomic write")                                           \
   op->badSolve = 1;                                                     \
   i = ind->n_all_times-1; // Get out of here!
 // Yay easy parallel support
@@ -2337,6 +2338,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   double *yp;
   inits = op->inits;
   int idid = 0;
+  int localBadSolve = 0;
   ind = &(rx->subjects[neq[1]]);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   nx = ind->n_all_times;
@@ -2375,6 +2377,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         *rc = -1000;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
@@ -2384,7 +2387,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &idid, u_inis);
@@ -2440,7 +2443,8 @@ extern "C" void par_indLin(rx_solve *rx){
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  int abort = 0;
+  // volatile ensures reads/writes are not cached in registers across threads
+  volatile int abort = 0;
   // FIXME parallel
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; solveid++){
@@ -2495,6 +2499,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double *yp;
   int neqOde = *neq - op->numLin - op->numLinSens;
   inits = op->inits;
+  int localBadSolve = 0;
   struct lsoda_context_t * ctx = lsoda_create_ctx();
   if (ctx == NULL) {
     rxSolveFreeC();
@@ -2547,44 +2552,50 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         *rc = -1000;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
           }
-          int idx = ind->idx;
-          int ixds= ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ctx->state = 1;
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds= ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            ctx->state = 1;
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+            if (!isSameTime(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+              if (*rc < 0) localBadSolve = 1;
+            }
+            xp =  ind->extraDoseNewXout;
           }
-          xp =  ind->extraDoseNewXout;
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(ctx->state), u_inis);
@@ -2668,6 +2679,7 @@ extern "C" void par_linCmt(rx_solve *rx) {
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
   int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
@@ -2675,7 +2687,10 @@ extern "C" void par_linCmt(rx_solve *rx) {
 #endif
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsolve; solveid+=cores){
-      if (abort == 0){
+      int localAbort;
+#pragma omp atomic read
+      localAbort = abort;
+      if (localAbort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1);
 
         ind_linCmt0(rx, op, solveid, neq, dydt, update_inis);
@@ -2688,8 +2703,15 @@ extern "C" void par_linCmt(rx_solve *rx) {
 #endif
             {
               curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-              if (abort == 0){
-                if (checkInterrupt()) abort =1;
+              int localAbort2;
+#pragma omp atomic read
+              localAbort2 = abort;
+              if (localAbort2 == 0){
+                if (checkInterrupt()) {
+                  int newAbort = 1;
+#pragma omp atomic write
+                  abort = newAbort;
+                }
               }
             }
         }
@@ -2746,6 +2768,7 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
   int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
@@ -2753,7 +2776,10 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
 #endif
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsolve; solveid+=cores){
-      if (abort == 0){
+      int localAbort;
+#pragma omp atomic read
+      localAbort = abort;
+      if (localAbort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
         ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
         if (displayProgress && thread == 0) {
@@ -2764,8 +2790,15 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
 #endif
             {
               curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-              if (abort == 0){
-                if (checkInterrupt()) abort =1;
+              int localAbort2;
+#pragma omp atomic read
+              localAbort2 = abort;
+              if (localAbort2 == 0){
+                if (checkInterrupt()) {
+                  int newAbort = 1;
+#pragma omp atomic write
+                  abort = newAbort;
+                }
               }
             }
         }
@@ -2822,13 +2855,17 @@ extern "C" void par_liblsoda(rx_solve *rx){
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
   int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++){
-    if (abort == 0){
+    int localAbort;
+#pragma omp atomic read
+    localAbort = abort;
+    if (localAbort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
       ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
       if (displayProgress){
@@ -2839,8 +2876,15 @@ extern "C" void par_liblsoda(rx_solve *rx){
 #endif
           {
             curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-            if (abort == 0){
-              if (checkInterrupt()) abort =1;
+            int localAbort2;
+#pragma omp atomic read
+            localAbort2 = abort;
+            if (localAbort2 == 0){
+              if (checkInterrupt()) {
+                int newAbort = 1;
+#pragma omp atomic write
+                abort = newAbort;
+              }
             }
           }
       }
@@ -2992,6 +3036,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   double xp = getAllTimes(ind, 0);
   double xout;
+  int localBadSolve = 0;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   ind->solvedIdx = 0;
@@ -3023,10 +3068,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         ind->rc[0] = -1000;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
@@ -3034,29 +3080,33 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             neq[0] = op->neq;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            if (*(ind->rc) < 0) localBadSolve = 1;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          istate = 1;
-          ind->ixds = ixds; // This is a fake dose, real dose stays in place
-          ind->idx = idx;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            neq[0] = op->neq - op->numLin - op->numLinSens;
-            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                             &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            neq[0] = op->neq;
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            istate = 1;
+            ind->ixds = ixds; // This is a fake dose, real dose stays in place
+            ind->idx = idx;
+            ind->idxExtra++;
+            if (!isSameTime(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              neq[0] = op->neq - op->numLin - op->numLinSens;
+              F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                               &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+              neq[0] = op->neq;
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+              if (*(ind->rc) < 0) localBadSolve = 1;
+            }
+            xp =  ind->extraDoseNewXout;
           }
-          xp =  ind->extraDoseNewXout;
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = op->neq - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
@@ -3068,13 +3118,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           neq[0] = op->neq;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          if (*(ind->rc) < 0) localBadSolve = 1;
         }
         xp = xout;
         //dadt_counter = 0;
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(istate), u_inis);
@@ -3578,8 +3629,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                          t_dydt c_dydt,
                          t_update_inis u_inis) {
   clock_t t0 = clock();
-  double rtol=op->RTOL, atol=op->ATOL;
-  int itol=0;           //0: rtol/atol scalars; 1: rtol/atol vectors
+  int itol=1;           //1: rtol/atol are vectors (per-compartment), matching liblsoda
   int iout=0;           //iout=0: solout() NEVER called
   int idid=0;
   int i;
@@ -3655,8 +3705,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           xp,           /* initial x-value */
                           yp,           /* initial values for y */
                           ind->extraDoseNewXout, /* final x-value (xend-x may be positive or negative) */
-                          &rtol,          /* relative error tolerance */
-                          &atol,          /* absolute error tolerance */
+                          op->rtol2,      /* relative error tolerance (per-compartment vector) */
+                          op->atol2,      /* absolute error tolerance (per-compartment vector) */
                           itol,         /* switch for rtoler and atoler */
                           solout,         /* function providing the numerical solution during integration */
                           iout,         /* switch for calling solout */
@@ -3698,8 +3748,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           ind->extraDoseNewXout,           /* initial x-value */
                           yp,           /* initial values for y */
                           xout, /* final x-value (xend-x may be positive or negative) */
-                          &rtol,          /* relative error tolerance */
-                          &atol,          /* absolute error tolerance */
+                          op->rtol2,      /* relative error tolerance (per-compartment vector) */
+                          op->atol2,      /* absolute error tolerance (per-compartment vector) */
                           itol,         /* switch for rtoler and atoler */
                           solout,         /* function providing the numerical solution during integration */
                           iout,         /* switch for calling solout */
@@ -3732,8 +3782,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         xp,           /* initial x-value */
                         yp,           /* initial values for y */
                         xout,         /* final x-value (xend-x may be positive or negative) */
-                        &rtol,          /* relative error tolerance */
-                        &atol,          /* absolute error tolerance */
+                        op->rtol2,      /* relative error tolerance (per-compartment vector) */
+                        op->atol2,      /* absolute error tolerance (per-compartment vector) */
                         itol,         /* switch for rtoler and atoler */
                         solout,         /* function providing the numerical solution during integration */
                         iout,         /* switch for calling solout */
@@ -3804,6 +3854,11 @@ extern "C" void ind_dop(rx_solve *rx, int solveid,
 
 void par_dop(rx_solve *rx){
   rx_solving_options *op = &op_global;
+#ifdef _OPENMP
+  int cores = op->cores;
+#else
+  int cores = 1;
+#endif
   uint32_t nsub = rx->nsub, nsim = rx->nsim;
   int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
   int displayProgress = (op->nDisplayProgress <= nsolve);
@@ -3811,29 +3866,49 @@ void par_dop(rx_solve *rx){
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-
-  //DE solver config vars
-  // This part CAN be parallelized, if dop is thread safe...
-  // Therefore you could use https://github.com/jacobwilliams/dop853, but I haven't yet
-
   int curTick = 0;
+  int cur = 0;
+  // dop853 is thread-safe: dop853_ctx_t is stack-allocated per call (no static state)
   int abort = 0;
-  uint32_t seed0 = getRxSeed1(1);
+  uint32_t seed0 = getRxSeed1(cores);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(op->cores)
+#endif
   for (int solveid = 0; solveid < nsolve; solveid++){
-    if (abort == 0){
-      setSeedEng1(seed0 + solveid - 1 );
+    int localAbort;
+#pragma omp atomic read
+    localAbort = abort;
+    if (localAbort == 0){
+      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
       ind_dop0(rx, &op_global, solveid, neq, dydt, update_inis);
-      if (displayProgress && abort == 0){
-        if (checkInterrupt()) abort =1;
+      if (displayProgress){
+#pragma omp critical
+        cur++;
+#ifdef _OPENMP
+        if (omp_get_thread_num() == 0) // only in master thread!
+#endif
+          {
+            curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
+            int localAbort2;
+#pragma omp atomic read
+            localAbort2 = abort;
+            if (localAbort2 == 0){
+              if (checkInterrupt()) {
+                int newAbort = 1;
+#pragma omp atomic write
+                abort = newAbort;
+              }
+            }
+          }
       }
-      if (displayProgress) curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
     }
   }
   setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
+    par_progress(cur, nsolve, curTick, cores, t0, 1);
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
   if (displayProgress){
     int doIt = isProgSupported();

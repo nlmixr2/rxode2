@@ -3,6 +3,9 @@
 - Fix potential security and memory-management issues that could lead
   to crashes or undefined behavior including integer overflow
 
+- Change `dop853` to allow parallel solving and per state tolerances
+  like `lsoda`.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now

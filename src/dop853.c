@@ -15,54 +15,9 @@
 
 #define _(String) (String)
 
-static long int     nfcn, nstep, naccpt, nrejct;
-static double       hout, xold, xout;
-static int nrds, *indir;
-static double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
-static double       *rcont1, *rcont2, *rcont3, *rcont4;
-static double       *rcont5, *rcont6, *rcont7, *rcont8;
-
-
-long int nfcnRead (void)
-{
-  return nfcn;
-
-} /* nfcnRead */
-
-
-long int nstepRead (void)
-{
-  return nstep;
-
-} /* stepRead */
-
-
-long int naccptRead (void)
-{
-  return naccpt;
-
-} /* naccptRead */
-
-
-long int nrejctRead (void)
-{
-  return nrejct;
-
-} /* nrejct */
-
-
-double hRead (void)
-{
-  return hout;
-
-} /* hRead */
-
-
-double xRead (void)
-{
-  return xout;
-
-} /* xRead */
+/* All former static variables are now in dop853_ctx_t (see dop853.h).
+   This makes the solver reentrant and thread-safe: each call to dop853()
+   uses its own local context on the stack. */
 
 
 static double sign (double a, double b)
@@ -162,8 +117,36 @@ static double hinit (int *nptr, FcnEqDiff fcn, double x, double* y,
 } /* hinit */
 
 
+/* dense output function */
+static double contd8 (dop853_ctx_t *ctx, int ii, double x)
+{
+  int i;
+  double       s, s1;
+
+  i = INT_MAX;
+
+  if (!ctx->indir)
+    i = ii;
+  else
+    i = ctx->indir[ii];
+
+  if (i == INT_MAX)
+    {
+      Rprintf (_("no dense output available for %uth component"), ii);
+      return 0.0;
+    }
+
+  s = (x - ctx->xold) / ctx->hout;
+  s1 = 1.0 - s;
+
+  return ctx->rcont1[i]+s*(ctx->rcont2[i]+s1*(ctx->rcont3[i]+s*(ctx->rcont4[i]+s1*(ctx->rcont5[i]+
+							       s*(ctx->rcont6[i]+s1*(ctx->rcont7[i]+s*ctx->rcont8[i]))))));
+
+} /* contd8 */
+
+
 /* core integrator */
-static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
+static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                    double hmax, double h, double* rtoler, double* atoler,
                    int itoler, FILE* fileout, SolTrait solout, int iout,
                    long int nmax, double uround, int meth, long int nstiff, double safe,
@@ -190,6 +173,16 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
   double   d51, d56, d57, d58, d59, d510, d511, d512, d513, d514, d515, d516;
   double   d61, d66, d67, d68, d69, d610, d611, d612, d613, d614, d615, d616;
   double   d71, d76, d77, d78, d79, d710, d711, d712, d713, d714, d715, d716;
+
+  /* local aliases for context arrays */
+  double *yy1 = ctx->yy1, *k1 = ctx->k1, *k2 = ctx->k2, *k3 = ctx->k3;
+  double *k4 = ctx->k4, *k5 = ctx->k5, *k6 = ctx->k6, *k7 = ctx->k7;
+  double *k8 = ctx->k8, *k9 = ctx->k9, *k10 = ctx->k10;
+  double *rcont1 = ctx->rcont1, *rcont2 = ctx->rcont2;
+  double *rcont3 = ctx->rcont3, *rcont4 = ctx->rcont4;
+  double *rcont5 = ctx->rcont5, *rcont6 = ctx->rcont6;
+  double *rcont7 = ctx->rcont7, *rcont8 = ctx->rcont8;
+  int nrds = ctx->nrds;
 
   /* initialisations */
   switch (meth)
@@ -384,16 +377,16 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
   iord = 8;
   if (h == 0.0)
     h = hinit (nptr, fcn, x, y, posneg, k1, k2, k3, iord, hmax, atoler, rtoler, itoler);
-  nfcn += 2;
+  ctx->nfcn += 2;
   reject = 0;
-  xold = x;
+  ctx->xold = x;
 
   if (iout)
     {
       irtrn = 1;
-      hout = 1.0;
-      xout = x;
-      solout (naccpt+1, xold, x, y, nptr, &irtrn);
+      ctx->hout = 1.0;
+      ctx->xout = x;
+      solout (ctx->naccpt+1, ctx->xold, x, y, nptr, &irtrn);
       if (irtrn < 0)
         {
           /* if (fileout) */
@@ -405,12 +398,12 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
   /* basic integration step */
   while (1)
     {
-      if (nstep > nmax)
+      if (ctx->nstep > nmax)
         {
           /* if (fileout) */
 	  Rprintf (_("exit of dop853 at x = %.16e, more than nmax = %li are needed\n"), x, nmax);
-          xout = x;
-          hout = h;
+          ctx->xout = x;
+          ctx->hout = h;
           return -2;
         }
 
@@ -418,8 +411,8 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
         {
           /* if (fileout) */
 	  Rprintf (_("exit of dop853 at x = %.16e, step size too small h = %.16e\n"), x, h);
-          xout = x;
-          hout = h;
+          ctx->xout = x;
+          ctx->hout = h;
           return -3;
         }
 
@@ -429,7 +422,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
           last = 1;
         }
 
-      nstep++;
+      ctx->nstep++;
 
       /* the twelve stages */
       for (i = 0; i < n; i++)
@@ -472,7 +465,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                              a127*k7[i] + a128*k8[i] + a129*k9[i] +
                              a1210*k10[i] + a1211*k2[i]);
       fcn (nptr, xph, yy1, k3);
-      nfcn += 11;
+      ctx->nfcn += 11;
       for (i = 0; i < n; i++)
         {
           k4[i] = b1*k1[i] + b6*k6[i] + b7*k7[i] + b8*k8[i] + b9*k9[i] +
@@ -525,12 +518,12 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
           /* step accepted */
 
           facold = max_d (err, 1.0E-4);
-          naccpt++;
+          ctx->naccpt++;
           fcn (nptr, xph, k5, k4);
-          nfcn++;
+          ctx->nfcn++;
 
           /* stiffness detection */
-          if (!(naccpt % nstiff) || (iasti > 0))
+          if (!(ctx->naccpt % nstiff) || (iasti > 0))
             {
               stnum = 0.0;
               stden = 0.0;
@@ -550,8 +543,8 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                   if (iasti == 15)
                     {
 		      Rprintf (_("the problem seems to become stiff at x = %.16e\n"), x);
-		      xout = x;
-		      hout = h;
+		      ctx->xout = x;
+		      ctx->hout = h;
 		      return -4;
                     }
                 }
@@ -621,7 +614,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                                      a169*k9[i] + a1613*k4[i] + a1614*k10[i] +
                                      a1615*k2[i]);
               fcn (nptr, x+c16*h, yy1, k3);
-              nfcn += 3;
+              ctx->nfcn += 3;
 
               /* final preparation */
               if (nrds == n)
@@ -653,14 +646,14 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
 
           memcpy (k1, k4, n * sizeof(double));
           memcpy (y, k5, n * sizeof(double));
-          xold = x;
+          ctx->xold = x;
           x = xph;
 
           if (iout)
             {
-              hout = h;
-              xout = x;
-              solout (naccpt+1, xold, x, y, nptr, &irtrn);
+              ctx->hout = h;
+              ctx->xout = x;
+              solout (ctx->naccpt+1, ctx->xold, x, y, nptr, &irtrn);
               if (irtrn < 0)
                 {
                   /* if (fileout) */
@@ -672,8 +665,8 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
           /* normal exit */
           if (last)
             {
-              hout=hnew;
-              xout = x;
+              ctx->hout=hnew;
+              ctx->xout = x;
               return 1;
             }
 
@@ -689,8 +682,8 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
           /* step rejected */
           hnew = h / min_d (facc1, fac11/safe);
           reject = 1;
-          if (naccpt >= 1)
-            nrejct=nrejct + 1;
+          if (ctx->naccpt >= 1)
+            ctx->nrejct=ctx->nrejct + 1;
           last = 0;
         }
 
@@ -707,14 +700,22 @@ int dop853
  double safe, double fac1, double fac2, double beta, double hmax, double h,
  long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont)
 {
+  dop853_ctx_t ctx;
   int          arret, idid;
   int i;
   int n = nptr[0];
 
-  /* initialisations */
-  nfcn = nstep = naccpt = nrejct = arret = 0;
-  rcont1 = rcont2 = rcont3 = rcont4 = rcont5 = rcont6 = rcont7 = rcont8 = NULL;
-  indir = NULL;
+  /* initialise context */
+  ctx.nfcn = ctx.nstep = ctx.naccpt = ctx.nrejct = 0;
+  ctx.hout = ctx.xold = ctx.xout = 0.0;
+  ctx.nrds = 0;
+  ctx.indir = NULL;
+  ctx.rcont1 = ctx.rcont2 = ctx.rcont3 = ctx.rcont4 = NULL;
+  ctx.rcont5 = ctx.rcont6 = ctx.rcont7 = ctx.rcont8 = NULL;
+  ctx.yy1 = ctx.k1 = ctx.k2 = ctx.k3 = ctx.k4 = ctx.k5 = NULL;
+  ctx.k6 = ctx.k7 = ctx.k8 = ctx.k9 = ctx.k10 = NULL;
+
+  arret = 0;
 
   /* n, the dimension of the system */
   if (n == INT_MAX)
@@ -768,19 +769,19 @@ int dop853
   else if (nrdens)
     {
       /* is there enough memory to allocate rcont12345678&indir ? */
-      rcont1 = R_Calloc(nrdens,double);
-      rcont2 = R_Calloc(nrdens,double);
-      rcont3 = R_Calloc(nrdens,double);
-      rcont4 = R_Calloc(nrdens,double);
-      rcont5 = R_Calloc(nrdens,double);
-      rcont6 = R_Calloc(nrdens,double);
-      rcont7 = R_Calloc(nrdens,double);
-      rcont8 = R_Calloc(nrdens,double);
+      ctx.rcont1 = R_Calloc(nrdens,double);
+      ctx.rcont2 = R_Calloc(nrdens,double);
+      ctx.rcont3 = R_Calloc(nrdens,double);
+      ctx.rcont4 = R_Calloc(nrdens,double);
+      ctx.rcont5 = R_Calloc(nrdens,double);
+      ctx.rcont6 = R_Calloc(nrdens,double);
+      ctx.rcont7 = R_Calloc(nrdens,double);
+      ctx.rcont8 = R_Calloc(nrdens,double);
       if (nrdens < n)
-        indir = R_Calloc(n,int);
+        ctx.indir = R_Calloc(n,int);
 
-      if (!rcont1 || !rcont2 || !rcont3 || !rcont4 || !rcont5 ||
-          !rcont6 || !rcont7 || !rcont8 || (!indir && (nrdens < n)))
+      if (!ctx.rcont1 || !ctx.rcont2 || !ctx.rcont3 || !ctx.rcont4 || !ctx.rcont5 ||
+          !ctx.rcont6 || !ctx.rcont7 || !ctx.rcont8 || (!ctx.indir && (nrdens < n)))
         {
           /* if (fileout) */
 	  Rprintf ( _("not enough free memory for rcont12345678&indir\n"));
@@ -792,7 +793,7 @@ int dop853
         {
           if (icont)
             Rprintf ( _("warning : when nrdens = n there is no need allocating memory for icont\n"));
-          nrds = n;
+          ctx.nrds = n;
         }
       else if (licont < nrdens)
         {
@@ -804,11 +805,11 @@ int dop853
         {
           if ((iout < 2) && fileout)
             fprintf (fileout, "Warning : put iout = 2 for dense output\n");
-          nrds = nrdens;
+          ctx.nrds = nrdens;
           for (i = 0; i < n; i++)
-            indir[i] = INT_MAX;
+            ctx.indir[i] = INT_MAX;
           for (i = 0; i < nrdens; i++)
-            indir[icont[i]] = i;
+            ctx.indir[icont[i]] = i;
         }
     }
 
@@ -855,19 +856,20 @@ int dop853
     hmax = xend - x;
 
   /* is there enough free memory for the method ? */
-  yy1 =R_Calloc(n,double);
-  k1 = R_Calloc(n,double);
-  k2 = R_Calloc(n,double);
-  k3 = R_Calloc(n,double);
-  k4 = R_Calloc(n,double);
-  k5 = R_Calloc(n,double);
-  k6 = R_Calloc(n,double);
-  k7 = R_Calloc(n,double);
-  k8 = R_Calloc(n,double);
-  k9 = R_Calloc(n,double);
-  k10 = R_Calloc(n,double);
+  ctx.yy1 =R_Calloc(n,double);
+  ctx.k1 = R_Calloc(n,double);
+  ctx.k2 = R_Calloc(n,double);
+  ctx.k3 = R_Calloc(n,double);
+  ctx.k4 = R_Calloc(n,double);
+  ctx.k5 = R_Calloc(n,double);
+  ctx.k6 = R_Calloc(n,double);
+  ctx.k7 = R_Calloc(n,double);
+  ctx.k8 = R_Calloc(n,double);
+  ctx.k9 = R_Calloc(n,double);
+  ctx.k10 = R_Calloc(n,double);
 
-  if (!yy1 || !k1 || !k2 || !k3 || !k4 || !k5 || !k6 || !k7 || !k8 || !k9 || !k10)
+  if (!ctx.yy1 || !ctx.k1 || !ctx.k2 || !ctx.k3 || !ctx.k4 || !ctx.k5 ||
+      !ctx.k6 || !ctx.k7 || !ctx.k8 || !ctx.k9 || !ctx.k10)
     {
       if (fileout)
         fprintf (fileout, "Not enough free memory for the method\n");
@@ -877,107 +879,79 @@ int dop853
   /* when a failure has occured, we return -1 */
   if (arret)
     {
-      if (k10)
-        R_Free (k10);
-      if (k9)
-        R_Free (k9);
-      if (k8)
-        R_Free (k8);
-      if (k7)
-        R_Free (k7);
-      if (k6)
-        R_Free (k6);
-      if (k5)
-        R_Free (k5);
-      if (k4)
-        R_Free (k4);
-      if (k3)
-        R_Free (k3);
-      if (k2)
-        R_Free (k2);
-      if (k1)
-        R_Free (k1);
-      if (yy1)
-        R_Free (yy1);
-      if (indir)
-        R_Free (indir);
-      if (rcont8)
-        R_Free (rcont8);
-      if (rcont7)
-        R_Free (rcont7);
-      if (rcont6)
-        R_Free (rcont6);
-      if (rcont5)
-        R_Free (rcont5);
-      if (rcont4)
-        R_Free (rcont4);
-      if (rcont3)
-        R_Free (rcont3);
-      if (rcont2)
-        R_Free (rcont2);
-      if (rcont1)
-        R_Free (rcont1);
+      if (ctx.k10)
+        R_Free (ctx.k10);
+      if (ctx.k9)
+        R_Free (ctx.k9);
+      if (ctx.k8)
+        R_Free (ctx.k8);
+      if (ctx.k7)
+        R_Free (ctx.k7);
+      if (ctx.k6)
+        R_Free (ctx.k6);
+      if (ctx.k5)
+        R_Free (ctx.k5);
+      if (ctx.k4)
+        R_Free (ctx.k4);
+      if (ctx.k3)
+        R_Free (ctx.k3);
+      if (ctx.k2)
+        R_Free (ctx.k2);
+      if (ctx.k1)
+        R_Free (ctx.k1);
+      if (ctx.yy1)
+        R_Free (ctx.yy1);
+      if (ctx.indir)
+        R_Free (ctx.indir);
+      if (ctx.rcont8)
+        R_Free (ctx.rcont8);
+      if (ctx.rcont7)
+        R_Free (ctx.rcont7);
+      if (ctx.rcont6)
+        R_Free (ctx.rcont6);
+      if (ctx.rcont5)
+        R_Free (ctx.rcont5);
+      if (ctx.rcont4)
+        R_Free (ctx.rcont4);
+      if (ctx.rcont3)
+        R_Free (ctx.rcont3);
+      if (ctx.rcont2)
+        R_Free (ctx.rcont2);
+      if (ctx.rcont1)
+        R_Free (ctx.rcont1);
 
       return -1;
     }
   else
     {
-      idid = dopcor (nptr, fcn, x, y, xend, hmax, h, rtoler, atoler, itoler, fileout,
+      idid = dopcor (&ctx, nptr, fcn, x, y, xend, hmax, h, rtoler, atoler, itoler, fileout,
                      solout, iout, nmax, uround, meth, nstiff, safe, beta, fac1, fac2, icont);
-      R_Free (k10);
-      R_Free (k9);
-      R_Free (k8);
-      R_Free (k7);
-      R_Free (k6);
-      R_Free (k5);    /* reverse order R_Freeing too increase chances */
-      R_Free (k4);    /* of efficient dynamic memory managing       */
-      R_Free (k3);
-      R_Free (k2);
-      R_Free (k1);
-      R_Free (yy1);
-      if (indir)
-        R_Free (indir);
-      if (rcont8)
+      R_Free (ctx.k10);
+      R_Free (ctx.k9);
+      R_Free (ctx.k8);
+      R_Free (ctx.k7);
+      R_Free (ctx.k6);
+      R_Free (ctx.k5);    /* reverse order R_Freeing too increase chances */
+      R_Free (ctx.k4);    /* of efficient dynamic memory managing       */
+      R_Free (ctx.k3);
+      R_Free (ctx.k2);
+      R_Free (ctx.k1);
+      R_Free (ctx.yy1);
+      if (ctx.indir)
+        R_Free (ctx.indir);
+      if (ctx.rcont8)
         {
-          R_Free (rcont8);
-          R_Free (rcont7);
-          R_Free (rcont6);
-          R_Free (rcont5);
-          R_Free (rcont4);
-          R_Free (rcont3);
-          R_Free (rcont2);
-          R_Free (rcont1);
+          R_Free (ctx.rcont8);
+          R_Free (ctx.rcont7);
+          R_Free (ctx.rcont6);
+          R_Free (ctx.rcont5);
+          R_Free (ctx.rcont4);
+          R_Free (ctx.rcont3);
+          R_Free (ctx.rcont2);
+          R_Free (ctx.rcont1);
         }
 
       return idid;
     }
 
 } /* dop853 */
-
-
-/* dense output function */
-double contd8 (int ii, double x)
-{
-  int i;
-  double       s, s1;
-
-  i = INT_MAX;
-
-  if (!indir)
-    i = ii;
-  else
-    i = indir[ii];
-
-  if (i == INT_MAX)
-    {
-      Rprintf (_("no dense output available for %uth component"), ii);
-      return 0.0;
-    }
-
-  s = (x - xold) / hout;
-  s1 = 1.0 - s;
-
-  return rcont1[i]+s*(rcont2[i]+s1*(rcont3[i]+s*(rcont4[i]+s1*(rcont5[i]+
-							       s*(rcont6[i]+s1*(rcont7[i]+s*rcont8[i]))))));
-
-} /* contd8 */
