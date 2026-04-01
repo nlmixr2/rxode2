@@ -196,11 +196,17 @@ static inline int handleExtraDose(int *neq,
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
-    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra + 1 < ind->extraDoseN[0]) {
       ind->idxExtra++;
       trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
       ind->idx = -1-trueIdx;
       time = getAllTimes(ind, ind->idx);
+    }
+    // If current dose is still strictly before xp, no in-interval dose found
+    if (!isSameTimeOp(time, xp) && time < xp) {
+      ind->idx = idx;
+      ind->ixds = ixds;
+      return 0;
     }
     if ((isSameTimeOp(time, xp) || time > xp) &&
         (isSameTimeOp(time, xout) || time <= xout)) {
@@ -249,10 +255,10 @@ static inline int handleExtraDose(int *neq,
 
 static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
                             double &xp, double &xout, double *yp) {
-  // First set the last values of time and compartment values
+  // Always update tprior so et_() past-time checks work for all solver types
+  ind->tprior = xp + ind->curShift;
   if (op->numLin > 0) {
     ind->linCmtAlast = yp + op->linOffset;
-    ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
   }
 }

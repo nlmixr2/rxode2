@@ -2602,10 +2602,36 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
+          // Save pre-lsoda state so we can restore and retry if et_() pushes
+          // doses with time <= xout during ODE body evaluation
+          int _extraN_pre = ind->extraDoseN[0];
+          double _xp_pre = xp;
+          double *_yp_pre = (double*) alloca(neq[0] * sizeof(double));
+          memcpy(_yp_pre, yp, neq[0] * sizeof(double));
           preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          // Check if et_() pushed doses for time <= xout during lsoda
+          if (ind->extraDoseN[0] > _extraN_pre) {
+            bool _hasInInterval = false;
+            for (int _k = _extraN_pre; _k < ind->extraDoseN[0]; _k++) {
+              if (isSameTimeOp(ind->extraDoseTime[_k], xout) ||
+                  ind->extraDoseTime[_k] <= xout) {
+                _hasInInterval = true;
+                break;
+              }
+            }
+            if (_hasInInterval) {
+              // Restore and let handleExtraDose process the dose on the next
+              // pass through the outer loop (decrement i to re-visit this xout)
+              memcpy(yp, _yp_pre, neq[0] * sizeof(double));
+              xp = _xp_pre;
+              ctx->state = 1;
+              ind->extraSorted = 0;
+              i--;  // re-visit this observation
+            }
+          }
         }
         xp = xout;
       }
