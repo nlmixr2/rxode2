@@ -1,0 +1,378 @@
+---
+title: "rxode2 and mrgsolve: An Accurate Feature Comparison"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction
+
+Both rxode2 and mrgsolve are open-source R packages for ODE-based
+pharmacometric simulation.  They share the same fundamental goal and
+many capabilities, but differ in design philosophy and in some specific
+features.
+
+This article documents the feature landscape as accurately as possible.
+Both packages are moving targets; details may change as each evolves.
+
+## Features shared by both tools
+
+Before comparing differences it helps to establish how much the two
+tools have in common:
+
+- NONMEM-compatible data sets (EVID, AMT, CMT, TIME, ID, …)
+- ODE solving with adaptive step-size solvers (LSODA-family)
+- Analytical PK compartment models (though parameterization differs)
+- Between-subject variability (omega) and residual variability (sigma)
+- Event tables with complex dosing regimens
+- `simeta()` / `simeps()` for within-model ETA/EPS resampling
+- Custom C/C++ functions registered at the R or package level
+- Custom header files included in the compiled model
+- Algebraic (ODE-free) prediction models
+- NONMEM dataset translation tooling
+- Population simulation across many subjects
+- Parallel execution (OpenMP or otherwise)
+
+## Features rxode2 has that mrgsolve does not
+
+### Symbolic Jacobians and forward sensitivities
+
+rxode2 can automatically derive the symbolic Jacobian of the ODE
+system and forward-sensitivity equations.  These are used directly by
+nlmixr2's FOCEi algorithm for parameter estimation without finite
+differences.  mrgsolve does not currently support symbolic
+differentiation.
+
+```{r}
+library(rxode2)
+
+# rxode2 generates Jacobian code automatically during compilation
+mod <- rxode2({
+  C2 <- centr / V2
+  d/dt(centr) <- -CL * C2
+})
+
+# Jacobian is embedded in the compiled DLL and used by nlmixr2
+```
+
+### 1–3 compartment analytical solutions with exact gradients
+
+`linCmt()` in rxode2 supports one-, two-, and three-compartment
+analytical solutions.  Gradients are computed via Stan math
+auto-differentiation, enabling exact gradient-based estimation in
+nlmixr2.  mrgsolve's `$PKMODEL` block supports one and two
+compartments only, and does not provide analytical gradients.
+
+```{r}
+mod <- function() {
+  ini({
+    TCl <- 4;   eta.Cl ~ 0.09
+    V   <- 10
+    Q   <- 2;   V2 <- 50
+    V3  <- 200; Q2 <- 0.5
+  })
+  model({
+    CL <- TCl * exp(eta.Cl)
+    cp <- linCmt()           # 3-cmt solved automatically from parameter names
+  })
+}
+```
+
+Mrgsolve equivalent would require explicit ODE equations for the
+three-compartment case.
+
+### Multiple ODE solvers
+
+rxode2 ships three solver backends that can be selected per run:
+
+| Solver | Type | Use case |
+|--------|------|----------|
+| LSODA (C, thread-safe) | adaptive stiff/non-stiff | default |
+| Fortran LSODA | adaptive stiff/non-stiff | reference |
+| DOP853 | explicit Runge-Kutta | non-stiff, fast |
+
+mrgsolve uses a single C++ LSODA backend.
+
+```{r}
+rxSolve(mod, ev, method = "dop853")   # explicit RK8 solver
+rxSolve(mod, ev, method = "lsoda")    # default
+```
+
+### NONMEM model import
+
+`nonmem2rx` converts NONMEM control streams directly into rxode2 model
+objects, including parameter estimates, omega/sigma matrices, and
+covariate relationships.  mrgsolve has a community package
+`nonmem2mrgsolve` (<https://github.com/Andy00000000000/nonmem2mrgsolve>)
+that performs a similar translation, but it is not on CRAN and is not
+maintained by the mrgsolve core team.  `nonmem2rx` is on CRAN and is
+maintained as part of the nlmixr2 ecosystem.
+
+```{r}
+library(nonmem2rx)
+
+# Import a NONMEM run directly into an rxode2 model
+mod <- nonmem2rx("run001.ctl")
+```
+
+### nlmixr2 integration for parameter estimation
+
+rxode2 models can be passed directly to nlmixr2 for population
+parameter estimation (FOCE, FOCEi, SAEM, etc.).  The same model
+object is used for both simulation and estimation.  mrgsolve is
+a simulation-only tool.
+
+### Thread-safe C LSODA enabling OpenMP parallelism
+
+rxode2's LSODA is implemented in thread-safe C, allowing genuine
+parallel ODE solving across subjects via OpenMP.  mrgsolve parallelism
+relies on forked processes or future-based backends.
+
+### Model piping
+
+rxode2 model objects support R's native pipe operator (`|>`) to
+incrementally build or modify models without rewriting the full
+specification.  `model()` and `ini()` pipes copy the model,
+apply the change, and return a new object — leaving the original
+untouched.
+
+```{r}
+library(rxode2)
+
+base <- rxode2({
+  d/dt(depot) <- -KA * depot
+  d/dt(centr) <- KA * depot - CL / V * centr
+})
+
+# Add population parameters and a covariate in one pipeline
+full <- base |>
+  model({
+    KA <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl + cov.wt * WT)
+    V  <- exp(tv)
+  }, append = FALSE, cov = "WT") |>
+  ini({
+    tka <- log(0.5);  eta.ka ~ 0.09
+    tcl <- log(4);    eta.cl ~ 0.09
+    tv  <- log(20)
+  })
+```
+
+The `append` argument controls where new model lines are inserted
+(`FALSE` = prepend, `TRUE` = append, or an integer line number for a
+specific position).  The `cov` argument declares covariate columns so
+they are not treated as missing parameters.
+
+Additional convenience pipes allow targeted changes:
+
+```{r}
+# Change a single initial estimate without touching the rest of the model
+mod2 <- full |> ini(tka = log(1))
+
+# Fix a parameter
+mod3 <- full |> ini(fix(eta.ka))
+
+# Remove a covariate relationship
+mod4 <- full |> model(CL <- exp(tcl + eta.cl), append = NA)
+```
+
+mrgsolve models are defined as self-contained text blocks or files;
+there is no equivalent incremental piping API.
+
+## Features mrgsolve has that rxode2 does not
+
+### `$GLOBAL` block
+
+mrgsolve allows global C++ declarations (variables, typedefs, helper
+structs) that persist across the model's C++ functions via a
+`$GLOBAL` block.  rxode2 has no direct equivalent at the model
+specification level; shared state must be handled through rxFun or
+package-level C code.
+
+```cpp
+// mrgsolve only
+$GLOBAL
+static int call_count = 0;
+```
+
+### `$EVENT` block
+
+mrgsolve's `$EVENT` block (v1.5.2+) executes just before `$TABLE`,
+allowing programmatic dose creation inside the model file with the
+result visible in output on the same record.  rxode2 handles
+modeled events through the event table API outside the model
+definition.
+
+### `nm-vars` plugin for verbatim NONMEM-style ODE syntax
+
+mrgsolve's `nm-vars` plugin lets you write `A(1)`, `DADT(1)`, `F1`,
+`R1` etc. inside ODE and PK blocks — effectively copy-pasting NONMEM
+`$DES`/`$PK` code with minimal changes.  This is a syntax convenience
+within a *new* mrgsolve model file, not a full NONMEM import.  rxode2
+uses its own ODE notation (`d/dt(cmt)`) and `nonmem2rx` handles the
+translation programmatically.
+
+### External library plugins
+
+mrgsolve's `$PLUGIN` block can link model C++ code against:
+
+- `Rcpp` — full Rcpp header access inside the model
+- `BH` — Boost headers
+- `RcppArmadillo` — Armadillo linear algebra
+
+rxode2's extension system (via `rxFun()`, `.extraC()`, or package
+registration) provides custom C/C++ function injection but does not
+expose Rcpp, Boost, or Armadillo directly inside model code.
+
+### `EVID=8` replacement event
+
+mrgsolve supports `EVID=8` for a compartment replacement (set
+compartment to a given value at a point in time).  rxode2 uses
+`EVID=5` for the equivalent operation.  Both tools support the
+concept; only the numeric code differs.
+
+### `tad` plugin for automatic time-after-dose tracking
+
+mrgsolve's `tad` plugin automatically tracks time after the most
+recent dose in a variable accessible within the model.  In rxode2
+this requires explicit calculation in the model equations.
+
+## Features that exist in both tools but are often claimed as mrgsolve-only
+
+### ETA/EPS resampling
+
+Both tools provide `simeta()` and `simeps()` with essentially
+identical semantics.  See the dedicated rxode2 vignette
+[ETA and EPS Resampling in rxode2](rxode2-eta-eps-resampling.html)
+for worked examples.
+
+### R functions available inside model code
+
+mrgsolve's `$ENV` block places R code inside the model file, evaluated
+into a dedicated environment at compile time; those R objects are then
+accessible from C++ via the `mrgx` plugin.
+
+rxode2 handles this differently but equivalently: any R function
+defined in the calling environment (session, script, or package) is
+automatically available for use inside an rxode2 model.  No special
+block or registration step is needed — rxode2 finds the function by
+name in the parent environment and calls it at solve time.
+
+```{r eval=TRUE}
+library(rxode2)
+
+# Plain R function defined anywhere in the session
+Hill <- function(C, Emax, EC50) Emax * C / (EC50 + C)
+
+mod <- rxode2({
+  effect <- Hill(cp, Emax, EC50)   # calls the R function above
+})
+```
+
+For performance, `rxFun()` can translate such R functions to C
+automatically (see the user-functions vignette).
+
+### Custom C functions with header support
+
+rxode2 supports custom C functions through `rxFun()` and inline C
+strings, or through `.extraC()` which accepts either a file path
+(generating a `#include`) or raw C code.  The MD5 of any included
+file contributes to the model's cache key, so a changed header
+triggers recompilation automatically.
+
+```{r}
+# Include a local header file; model recompiles if the file changes
+.extraC("mymodels/special_functions.h")
+
+mod <- rxode2({
+  cp <- mySpecialPK(dose, CL, V)
+})
+```
+
+Full package-level registration (including analytic derivatives for
+nlmixr2) is described in the vignette
+[Providing Custom C/C++ Functions to rxode2 from a Package](rxode2-pkg-exported-funs.html).
+
+### Custom R code / model expansion
+
+rxode2's `rxUdfUi` S3 dispatch system allows R functions to rewrite
+model code at parse time — inserting lines, modifying initial
+estimates, or expanding a single function call into multi-line model
+code.  Built-in examples include `linCmt()`, `linMod()`, and
+distribution functions like `rxpois()`.  This is described in
+[Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html).
+
+```{r}
+# Register a model-expansion function
+rxUdfUi.myFun <- function(fun) { eval(fun) }
+rxode2::.s3register("rxode2::rxUdfUi", "myFun")
+```
+
+### Algebraic (ODE-free) prediction models
+
+Both tools support purely algebraic models without any ODEs.  In
+rxode2 you simply omit `d/dt()` statements:
+
+```{r eval=TRUE}
+library(rxode2)
+
+mod_pred <- rxode2({
+  ipre <- 10 * exp(-ke * t)
+})
+
+et  <- et(seq(0, 24, length.out = 20))
+rxSolve(mod_pred, et, params = c(ke = 0.5))
+```
+
+This is equivalent to NONMEM's `$PRED` block or mrgsolve's `$PRED`
+block.
+
+### NONMEM-compatible datasets
+
+Both tools accept NONMEM-format datasets with only minor differences
+in EVID coding (`EVID=5` vs `EVID=8` for replacement events).
+
+## Compilation speed
+
+Compilation speed between rxode2 and mrgsolve is comparable in
+practice.  rxode2 generates C (not C++) which compiles faster per
+translation unit, but includes an additional grammar parsing step.
+mrgsolve generates C++ which allows richer language features.
+Benchmarks on equivalent models show similar wall-clock times.
+
+## Summary table
+
+| Feature | rxode2 | mrgsolve |
+|---------|--------|----------|
+| ODE solving | LSODA (C, thread-safe), Fortran LSODA, DOP853 | C++ LSODA |
+| Parallel solving (OpenMP) | yes (thread-safe solver) | process-based |
+| 1–3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1–2 cmt, no gradients |
+| Symbolic Jacobian / sensitivities | yes | no |
+| Parameter estimation | via nlmixr2 | simulation only |
+| Model piping (`\|>`) | yes (`model()`, `ini()` pipes) | no |
+| NONMEM model import | `nonmem2rx` (CRAN, nlmixr2 ecosystem) | `nonmem2mrgsolve` (GitHub only, community) |
+| `simeta()` / `simeps()` | yes | yes |
+| Custom C functions | `rxFun()`, `.extraC()`, package registration | `$GLOBAL`, `$PLUGIN` |
+| R functions usable inside model | yes (any function in calling env) | yes (`$ENV` block, `mrgx` plugin) |
+| Algebraic (no-ODE) models | yes (omit `d/dt`) | `$PRED` block |
+| Custom header files | `.extraC("file.h")` with MD5 cache | `$INCLUDE` with MD5 cache |
+| Direct C++ in model | no | yes (`$MAIN`, `$ODE`, `$TABLE`) |
+| `$GLOBAL` persistent C++ state | no | yes |
+| `$EVENT` block | no | yes |
+| Rcpp/Boost/Armadillo in model | no | via `$PLUGIN` |
+| `nm-vars` verbatim NONMEM syntax | no (use `nonmem2rx`) | yes |
+| `tad` auto time-after-dose | manual calculation | `$PLUGIN tad` |
+| EVID=5 (replacement) | yes | no (uses EVID=8) |
+| EVID=8 (replacement) | no (uses EVID=5) | yes |
+
+## References
+
+- [nlmixr2 blog: mrgsolve vs rxode2](https://blog.nlmixr2.org/blog/2022-10-13-mrgsolve-vs-rxode2/)
+- [mrgsolve user guide](https://mrgsolve.org/user-guide/)
+- [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
+- [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
