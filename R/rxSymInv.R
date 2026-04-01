@@ -193,15 +193,16 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
     ##
 
     mat2 <- sprintf(
-      "if (theta_n== NA_INTEGER){\n    SEXP ret=  PROTECT(allocVector(INTSXP,%s));\n%s\n    UNPROTECT(1);\n    return(ret);  \n}\n",
+
+      "if (theta_n== NA_INTEGER){\n    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,%s));\n%s\n    UNPROTECT(1);\n    return(ret);  \n}\n",
       length(mat2), paste(paste(gsub(rex::rex("t", capture(any_numbers), "="), "    INTEGER(ret)[\\1]=", mat2), ";", sep = ""),
         collapse = "\n"
       )
     )
-    matExpr <- sprintf("  if (theta_n >= -1){\n    SEXP ret = PROTECT(allocMatrix(REALSXP, %s, %s));for (int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n", d, d, d * d)
-    vecExpr <- sprintf("    UNPROTECT(1);\n    return(ret);\n  } else {\n    SEXP ret = PROTECT(allocVector(REALSXP, %s));for(int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n%s\n    UNPROTECT(1);\n    return(ret);\n  }", d, d, diag)
+    matExpr <- sprintf("  if (theta_n >= -1){\n    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, %s, %s));for (int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n", d, d, d * d)
+    vecExpr <- sprintf("    UNPROTECT(1);\n    return(ret);\n  } else {\n    SEXP ret = PROTECT(Rf_allocVector(REALSXP, %s));for(int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n%s\n    UNPROTECT(1);\n    return(ret);\n  }", d, d, diag)
     src <- sprintf(
-      "  int theta_n = INTEGER(tn)[0];\n  %s\nif (theta_n == -2){\n    SEXP ret = PROTECT(allocVector(INTSXP, 1));\n    INTEGER(ret)[0] = %s;\n    UNPROTECT(1);\n    return ret;\n  }\n  else if (theta_n < %s || theta_n > %s){\n    error(\"d(Omega^-1) derivative outside bounds\");\n  }\n  else if (length(theta) != %s){\n    error(\"requires vector with %s arguments\");\n  }\n%s\n%s\n%s",
+      "  int theta_n = INTEGER(tn)[0];\n  %s\nif (theta_n == -2){\n    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));\n    INTEGER(ret)[0] = %s;\n    UNPROTECT(1);\n    return ret;\n  }\n  else if (theta_n < %s || theta_n > %s){\n    Rf_error(\"d(Omega^-1) derivative outside bounds\");\n  }\n  else if (Rf_length(theta) != %s){\n    Rf_error(\"requires vector with %s arguments\");\n  }\n%s\n%s\n%s",
       mat2, length(vars), min(diags) - 1, length(vars), length(vars), length(vars),
       paste0(matExpr, omega0), omega1, paste0(omega1p, "\n", vecExpr)
     )
@@ -219,7 +220,7 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
       force(x)
       return(rxFromSE(x))
     }), d)
-    ret <- paste0("#define Rx_pow_di R_pow_di\n#define Rx_pow R_pow\n", src)
+    ret <- paste0("#define warning Rf_warning\n#define Rx_pow_di R_pow_di\n#define Rx_pow R_pow\n", src)
     ret <- list(ret, fmat)
     if (allow.cache) {
       save(ret, file = cache.file)
@@ -251,7 +252,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
   mat2 <- rxInv(mat2)
   mat2 <- try({
     chol(mat2)
-  })
+  }, silent = TRUE)
   if (inherits(mat2, "try-error")) {
     stop("initial 'omega' matrix inverse is non-positive definite", call. = FALSE)
   }
@@ -495,7 +496,6 @@ rxSymInvCholCreate <- function(mat,
     return(do.call(rxSymInvCreateC_, args, envir = envir))
   }
 }
-
 
 #' @export
 `$.rxSymInvCholEnv` <- function(obj, arg, exact = TRUE) {

@@ -158,17 +158,17 @@ rxTest({
      expect_true(inherits(as.rxUi(tmp1), "rxUi"))
      expect_true(inherits(as.rxUi(tmp2), "rxUi"))
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithSeed(42, {
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
 
-      s <- s %>% dplyr::filter(CMT == 2)
+      s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
 
       expect_equal(sort(unique(s$sim)), c(1, 2))
@@ -178,7 +178,7 @@ rxTest({
       s <- rxSolve(tmp1, ev,
                    returnType="tibble", addCov=TRUE)
 
-      s <- s %>% dplyr::filter(CMT == 2)
+      s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
 
       expect_equal(sort(unique(s$sim)), c(1, 2))
@@ -188,7 +188,7 @@ rxTest({
       s <- rxSolve(tmp2, ev,
                    returnType="tibble", addCov=TRUE)
 
-      s <- s %>% dplyr::filter(CMT == 2)
+      s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
 
       expect_equal(sort(unique(s$sim)), c(1, 2))
@@ -214,10 +214,10 @@ rxTest({
 
     expect_error(tmp$simulationModel, NA)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithSeed(42, {
@@ -225,7 +225,7 @@ rxTest({
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
 
-      s <- s %>% dplyr::filter(CMT == 2)
+      s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
 
       expect_equal(sort(unique(s$sim)), c(0, 0.5))
@@ -255,10 +255,10 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -292,10 +292,10 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -329,10 +329,10 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -369,10 +369,10 @@ rxTest({
     expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -399,8 +399,8 @@ rxTest({
 
     expect_true(regexpr("rpois[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -429,8 +429,8 @@ rxTest({
 
     expect_true(regexpr("rxbinom[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -460,8 +460,8 @@ rxTest({
 
     expect_true(regexpr("rbeta[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -488,8 +488,8 @@ rxTest({
 
     expect_true(regexpr("rchisq[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -516,8 +516,8 @@ rxTest({
 
     expect_true(regexpr("rexp[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -551,8 +551,8 @@ rxTest({
 
   ##   expect_true(regexpr("rf[(]", rxNorm(tmp$simulationModel)) != -1)
 
-  ##   ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-  ##     et(id=1:20) %>%
+  ##   ev <- et(seq(0.1, 24 * 8, by=12)) |>
+  ##     et(id=1:20) |>
   ##     dplyr::as_tibble()
 
   ##   rxWithPreserveSeed({
@@ -587,8 +587,8 @@ rxTest({
 
     expect_true(regexpr("runif[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -619,8 +619,8 @@ rxTest({
 
     expect_true(regexpr("rweibull[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -655,8 +655,8 @@ rxTest({
 
     expect_true(regexpr("rcauchy[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -686,8 +686,8 @@ rxTest({
 
     expect_true(regexpr("rgamma[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -714,8 +714,8 @@ rxTest({
 
     expect_true(regexpr("rgeom[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -751,10 +751,10 @@ rxTest({
 
     expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
-      et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
-      et(id=1:20) %>%
+    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
+      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -795,8 +795,8 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
     expect_true(regexpr("rxnbinom[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
@@ -825,8 +825,8 @@ rxTest({
     expect_true(regexpr("rxnbinomMu[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
 
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
-      et(id=1:20) %>%
+    ev <- et(seq(0.1, 24 * 8, by=12)) |>
+      et(id=1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({

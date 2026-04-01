@@ -1,4 +1,8 @@
 //Generated from refresh.R for 12 dimensions
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
+#define warning Rf_warning
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <R.h>
@@ -8,35 +12,36 @@
 SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn){
 int dm=INTEGER(dms)[0];
 if (dm == 0){
-  SEXP ret=  PROTECT(allocVector(INTSXP,1));
+  SEXP ret=  PROTECT(Rf_allocVector(INTSXP,1));
   INTEGER(ret)[0] = 12;
   UNPROTECT(1);
   return(ret);
-}else if (dm == 1){
+}else if (dm == 1) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,1));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,1));
     INTEGER(ret)[0]=2;
     UNPROTECT(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 1;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -3 || theta_n > 1){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 1){
-    Rf_errorcall(R_NilValue, "requires vector with 1 arguments");
+  else if (Rf_length(theta) != 1){
+    Rf_error("requires vector with 1 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 1, 1));for (int i = 0; i < 1; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 1, 1));for (int i = 0; i < 1; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
     }
@@ -49,7 +54,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 1));for(int i = 0; i < 1; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 1));for(int i = 0; i < 1; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -57,12 +62,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 2){
+else if (dm == 2) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,3));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,3));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -71,19 +77,19 @@ else if (dm == 2){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 3;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -5 || theta_n > 3){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 3){
-    Rf_errorcall(R_NilValue, "requires vector with 3 arguments");
+  else if (Rf_length(theta) != 3){
+    Rf_error("requires vector with 3 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 2, 2));for (int i = 0; i < 4; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 2, 2));for (int i = 0; i < 4; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[2] = REAL(theta)[1];
@@ -111,7 +117,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 2));for(int i = 0; i < 2; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 2));for(int i = 0; i < 2; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -122,12 +128,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 3){
+else if (dm == 3) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,6));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,6));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -139,19 +146,19 @@ else if (dm == 3){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 6;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -8 || theta_n > 6){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 6){
-    Rf_errorcall(R_NilValue, "requires vector with 6 arguments");
+  else if (Rf_length(theta) != 6){
+    Rf_error("requires vector with 6 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 3, 3));for (int i = 0; i < 9; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 3, 3));for (int i = 0; i < 9; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[3] = REAL(theta)[1];
@@ -208,7 +215,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 3));for(int i = 0; i < 3; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 3));for(int i = 0; i < 3; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -222,12 +229,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 4){
+else if (dm == 4) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,10));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,10));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -243,19 +251,19 @@ else if (dm == 4){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 10;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -12 || theta_n > 10){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 10){
-    Rf_errorcall(R_NilValue, "requires vector with 10 arguments");
+  else if (Rf_length(theta) != 10){
+    Rf_error("requires vector with 10 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 4, 4));for (int i = 0; i < 16; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 4, 4));for (int i = 0; i < 16; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[4] = REAL(theta)[1];
@@ -359,7 +367,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 4));for(int i = 0; i < 4; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 4));for(int i = 0; i < 4; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -376,12 +384,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 5){
+else if (dm == 5) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,15));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,15));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -402,19 +411,19 @@ else if (dm == 5){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 15;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -17 || theta_n > 15){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 15){
-    Rf_errorcall(R_NilValue, "requires vector with 15 arguments");
+  else if (Rf_length(theta) != 15){
+    Rf_error("requires vector with 15 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 5, 5));for (int i = 0; i < 25; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 5, 5));for (int i = 0; i < 25; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[5] = REAL(theta)[1];
@@ -587,7 +596,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 5));for(int i = 0; i < 5; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 5));for(int i = 0; i < 5; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -607,12 +616,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 6){
+else if (dm == 6) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,21));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,21));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -639,19 +649,19 @@ else if (dm == 6){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 21;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -23 || theta_n > 21){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 21){
-    Rf_errorcall(R_NilValue, "requires vector with 21 arguments");
+  else if (Rf_length(theta) != 21){
+    Rf_error("requires vector with 21 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 6, 6));for (int i = 0; i < 36; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 6, 6));for (int i = 0; i < 36; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[6] = REAL(theta)[1];
@@ -919,7 +929,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 6));for(int i = 0; i < 6; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 6));for(int i = 0; i < 6; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -942,12 +952,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 7){
+else if (dm == 7) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,28));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,28));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -981,19 +992,19 @@ else if (dm == 7){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 28;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -30 || theta_n > 28){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 28){
-    Rf_errorcall(R_NilValue, "requires vector with 28 arguments");
+  else if (Rf_length(theta) != 28){
+    Rf_error("requires vector with 28 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 7, 7));for (int i = 0; i < 49; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 7, 7));for (int i = 0; i < 49; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[7] = REAL(theta)[1];
@@ -1386,7 +1397,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 7));for(int i = 0; i < 7; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 7));for(int i = 0; i < 7; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -1412,12 +1423,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 8){
+else if (dm == 8) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,36));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,36));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -1459,19 +1471,19 @@ else if (dm == 8){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 36;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -38 || theta_n > 36){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 36){
-    Rf_errorcall(R_NilValue, "requires vector with 36 arguments");
+  else if (Rf_length(theta) != 36){
+    Rf_error("requires vector with 36 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 8, 8));for (int i = 0; i < 64; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 8, 8));for (int i = 0; i < 64; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[8] = REAL(theta)[1];
@@ -2023,7 +2035,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 8));for(int i = 0; i < 8; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 8));for(int i = 0; i < 8; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -2052,12 +2064,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 9){
+else if (dm == 9) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,45));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,45));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -2108,19 +2121,19 @@ else if (dm == 9){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 45;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -47 || theta_n > 45){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 45){
-    Rf_errorcall(R_NilValue, "requires vector with 45 arguments");
+  else if (Rf_length(theta) != 45){
+    Rf_error("requires vector with 45 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 9, 9));for (int i = 0; i < 81; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 9, 9));for (int i = 0; i < 81; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[9] = REAL(theta)[1];
@@ -2869,7 +2882,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 9));for(int i = 0; i < 9; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 9));for(int i = 0; i < 9; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -2901,12 +2914,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 10){
+else if (dm == 10) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,55));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,55));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -2967,19 +2981,19 @@ else if (dm == 10){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 55;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -57 || theta_n > 55){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 55){
-    Rf_errorcall(R_NilValue, "requires vector with 55 arguments");
+  else if (Rf_length(theta) != 55){
+    Rf_error("requires vector with 55 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 10, 10));for (int i = 0; i < 100; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 10, 10));for (int i = 0; i < 100; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[10] = REAL(theta)[1];
@@ -3967,7 +3981,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 10));for(int i = 0; i < 10; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 10));for(int i = 0; i < 10; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -4002,12 +4016,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 11){
+else if (dm == 11) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,66));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,66));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -4079,19 +4094,19 @@ else if (dm == 11){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 66;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -68 || theta_n > 66){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 66){
-    Rf_errorcall(R_NilValue, "requires vector with 66 arguments");
+  else if (Rf_length(theta) != 66){
+    Rf_error("requires vector with 66 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 11, 11));for (int i = 0; i < 121; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 11, 11));for (int i = 0; i < 121; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[11] = REAL(theta)[1];
@@ -5364,7 +5379,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 11));for(int i = 0; i < 11; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 11));for(int i = 0; i < 11; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -5402,12 +5417,13 @@ if (theta_n == -2){
     return(ret);
   }
 }
-else if (dm == 12){
+else if (dm == 12) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(allocVector(INTSXP,78));
+    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,78));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -5491,19 +5507,19 @@ else if (dm == 12){
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(allocVector(INTSXP, 1));
+    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 78;
     UNPROTECT(1);
     return ret;
   }
   else if (theta_n < -80 || theta_n > 78){
-    Rf_errorcall(R_NilValue, "d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
-  else if (length(theta) != 78){
-    Rf_errorcall(R_NilValue, "requires vector with 78 arguments");
+  else if (Rf_length(theta) != 78){
+    Rf_error("requires vector with 78 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(allocMatrix(REALSXP, 12, 12));for (int i = 0; i < 144; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 12, 12));for (int i = 0; i < 144; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[12] = REAL(theta)[1];
@@ -7111,7 +7127,7 @@ if (theta_n == -2){
     UNPROTECT(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(allocVector(REALSXP, 12));for(int i = 0; i < 12; i++){REAL(ret)[i]=0;}
+    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 12));for(int i = 0; i < 12; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }

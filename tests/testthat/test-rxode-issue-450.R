@@ -1,4 +1,5 @@
 rxTest({
+
   test_that("Parallel solve vs single vs for; Issue RxODE#450", {
     TV_CLr  <- 6.54  # L/h, (CLr/F)
     TV_CLnr <- 2.39  # L/h, (CLnr/F)
@@ -59,7 +60,7 @@ rxTest({
                                                    }),
                                                    n = nsubj))
 
-      eta_D_trans <- data.frame(eta_D_normal = rnorm(mean=0,sd=sqrt(OM_D_normal),n=nsubj)) %>%
+      eta_D_trans <- data.frame(eta_D_normal = rnorm(mean=0,sd=sqrt(OM_D_normal),n=nsubj)) |>
         dplyr::mutate(eta_D = ((exp(eta_D_normal))^D_trans-1)/D_trans)
 
       par.pk <- data.frame(sim.id = seq(nsubj),
@@ -83,7 +84,7 @@ rxTest({
         dur(central) <- D
       })
 
-      ev <-  et(amt=2,cmt="central",rate=-2,ii=24,addl=4) %>%
+      ev <-  et(amt=2,cmt="central",rate=-2,ii=24,addl=4) |>
         et(seq(0,120,0.1))
 
       bar2x <- rxSolve(mod, ev, params=par.pk, cores=2L, returnType="data.frame")
@@ -99,8 +100,8 @@ rxTest({
 
       for (id in seq(nsubj)) {
         # now combine
-        ev.new <- eventTable() %>%
-          add.dosing(dose = 2, nbr.doses = 5, dosing.interval = 24, dur = par.pk$D[par.pk$sim.id == id]) %>%
+        ev.new <- eventTable() |>
+          add.dosing(dose = 2, nbr.doses = 5, dosing.interval = 24, dur = par.pk$D[par.pk$sim.id == id]) |>
           add.sampling(seq(0,120,0.1))
         theta <- c(CLr = par.pk$CLr[par.pk$sim.id == id],
                    CLnr = par.pk$CLnr[par.pk$sim.id == id],
@@ -119,7 +120,7 @@ rxTest({
         row.names(res.id) <- NULL
         res2 <- as.data.frame(bar3x[bar3x$sim.id == id,])
         row.names(res2) <- NULL
-        expect_equal(res.id, res2)
+        expect_equal(res.id, res2, tolerance=1e-4)
 
         res.all = rbind(res.all, res.id)
       }

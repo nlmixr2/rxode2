@@ -9,7 +9,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .args <- list(...)
   if (any(names(.args) == "doSim")) {
     checkmate::assertLogical(.args$doSim, len=1,
-                                       any.missing=FALSE, .var.name="doSim")
+                             any.missing=FALSE, .var.name="doSim")
     .doSim <- .args$doSim
   } else {
     .doSim<-TRUE

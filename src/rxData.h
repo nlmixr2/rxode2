@@ -1,10 +1,13 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifndef __RXDATA_H__
 #define __RXDATA_H__
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-  double get_fkeep(int col, int id, rx_solving_options_ind *ind);
+  double get_fkeep(int col, int id, rx_solving_options_ind *ind, int fid);
   int get_fkeepType(int col);
   SEXP get_fkeepLevels(int col);
   SEXP assign_fkeepAttr(int col, SEXP in);
@@ -27,6 +30,7 @@ extern "C" {
   void rxAssignPtrC(SEXP obj);
   SEXP rxModelVarsC(char *ptr);
   SEXP rxStateNames(char *ptr);
+  SEXP rxStateIgnore(char *ptr);
   SEXP rxLhsNames(char *ptr);
   SEXP rxParamNames(char *ptr);
   int rxIsCurrentC(SEXP obj);

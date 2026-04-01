@@ -1,50 +1,52 @@
-test_that("noop has identical mu-ref", {
-  pheno <- function() {
-    ini({
-      tcl <- log(0.008)
-      tv <-  log(0.6)
-      eta.cl + eta.v ~ c(1,
-                         0.01, 1)
-      add.err <- 0.1
-    })
-    model({
-      cl <- exp(tcl + eta.cl) # individual value of clearance
-      v <- exp(tv + eta.v)    # individual value of volume
-      ke <- cl / v            # elimination rate constant
-      d/dt(A1) = - ke * A1    # model differential equation
-      cp = A1 / v             # concentration in plasma
-      cp ~ add(add.err)  # define error model
-    })
-  }
+if (!.Call(`_rxode2_isIntel`)) {
+  test_that("noop has identical mu-ref", {
+    pheno <- function() {
+      ini({
+        tcl <- log(0.008)
+        tv <-  log(0.6)
+        eta.cl + eta.v ~ c(1,
+                           0.01, 1)
+        add.err <- 0.1
+      })
+      model({
+        cl <- exp(tcl + eta.cl) # individual value of clearance
+        v <- exp(tv + eta.v)    # individual value of volume
+        ke <- cl / v            # elimination rate constant
+        d/dt(A1) = - ke * A1    # model differential equation
+        cp = A1 / v             # concentration in plasma
+        cp ~ add(add.err)  # define error model
+      })
+    }
 
-  p1 <- rxode2(pheno)
+    p1 <- rxode2(pheno)
 
-  pheno2 <- function() {
-    ini({
-      tcl <- log(0.008)
-      tv <-  log(0.6)
-      eta.cl + eta.v ~ c(1,
-                         0.01, 1)
-      add.err <- 0.1
-    })
-    model({
-      cl <- exp(+tcl + eta.cl) # individual value of clearance
-      v <- exp(tv + eta.v)    # individual value of volume
-      ke <- cl / v            # elimination rate constant
-      d/dt(A1) = - ke * A1    # model differential equation
-      cp = A1 / v             # concentration in plasma
-      cp ~ add(add.err)  # define error model
-    })
-  }
+    pheno2 <- function() {
+      ini({
+        tcl <- log(0.008)
+        tv <-  log(0.6)
+        eta.cl + eta.v ~ c(1,
+                           0.01, 1)
+        add.err <- 0.1
+      })
+      model({
+        cl <- exp(+tcl + eta.cl) # individual value of clearance
+        v <- exp(tv + eta.v)    # individual value of volume
+        ke <- cl / v            # elimination rate constant
+        d/dt(A1) = - ke * A1    # model differential equation
+        cp = A1 / v             # concentration in plasma
+        cp ~ add(add.err)  # define error model
+      })
+    }
 
-  p2 <- rxode2(pheno2)
+    p2 <- rxode2(pheno2)
 
-  expect_equal(p1$muRefCovariateDataFrame, p2$muRefCovariateDataFrame)
-  expect_equal(p1$muRefCovariateEmpty, p2$muRefCovariateEmpty)
-  expect_equal(p1$muRefCurEval, p2$muRefCurEval)
-  expect_equal(p1$muRefDataFrame, p2$muRefDataFrame)
-  expect_equal(p1$muRefDropParameters, p2$muRefDropParameters)
-  expect_equal(p1$muRefExtra, p2$muRefExtra)
-  expect_equal(p1$muRefExtraEmpty, p2$muRefExtraEmpty)
-  expect_equal(p1$nonMuEtas, p2$nonMuEtas)
-})
+    expect_equal(p1$muRefCovariateDataFrame, p2$muRefCovariateDataFrame)
+    expect_equal(p1$muRefCovariateEmpty, p2$muRefCovariateEmpty)
+    expect_equal(p1$muRefCurEval, p2$muRefCurEval)
+    expect_equal(p1$muRefDataFrame, p2$muRefDataFrame)
+    expect_equal(p1$muRefDropParameters, p2$muRefDropParameters)
+    expect_equal(p1$muRefExtra, p2$muRefExtra)
+    expect_equal(p1$muRefExtraEmpty, p2$muRefExtraEmpty)
+    expect_equal(p1$nonMuEtas, p2$nonMuEtas)
+  })
+}

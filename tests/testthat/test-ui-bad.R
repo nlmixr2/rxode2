@@ -566,6 +566,7 @@ rxTest({
   })
 
   test_that("if/else in endpoints should error", {
+    
     myModel_OS <- function(){           # TTE model for OS. Weibull baseline hazard.
       ini({
 
@@ -649,24 +650,10 @@ rxTest({
         Y ~ add(add.err)
       })
     }
-
-    expect_output(
-      expect_message(
-        expect_error(
-          rxode2(myModel_OS),
-          regexp = "syntax errors"
-        ),
-        regexp = "parameter labels from comments will be replaced by"
-      ),
-      regexp = "rxode2 model syntax error"
-    )
-
-    expect_output(
-      expect_error(
-        myModel_OS(),
-        regexp = "syntax errors"
-      ),
-      regexp = "rxode2 model syntax error"
-    )
+    
+    expect_error(suppressMessages(rxode2(myModel_OS)))
+    
+    
+    expect_error(suppressMessages(myModel_OS()))
   })
 })

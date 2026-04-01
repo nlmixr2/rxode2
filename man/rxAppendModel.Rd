@@ -57,7 +57,8 @@ idr <- function() {
   })
 }
 
-rxAppendModel(ocmt \%>\% model(ceff=cp,append=TRUE), idr)
+rxAppendModel(ocmt |>
+  model(ceff=cp,append=TRUE), idr)
 
 }
 

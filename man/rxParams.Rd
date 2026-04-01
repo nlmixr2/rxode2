@@ -85,7 +85,8 @@ vector must be the same as the state variables (e.g., PK/PD
 compartments);}
 
 \item{iCov}{A data frame of individual non-time varying covariates
-to combine with the \code{events} dataset by merge.}
+to combine with the \code{events} dataset.  The \code{iCov} dataset has one
+covariate per ID and should match the event table}
 
 \item{keep}{Columns to keep from either the input dataset or the
 \code{iCov} dataset.  With the \code{iCov} dataset, the column

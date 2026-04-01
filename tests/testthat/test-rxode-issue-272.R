@@ -24,12 +24,12 @@ rxTest({
       d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
       eff(0) <- 1
     })
-    
-    ev <- et(timeUnits = "hr") %>%
-      et(amt = 10000, ii = 12, addl = 3) %>%
-      et(time = 6, cmt = "-depot", evid = 2, ii = 12, addl = 3) %>%
+
+    ev <- et(timeUnits = "hr") |>
+      et(amt = 10000, ii = 12, addl = 3) |>
+      et(time = 6, cmt = "-depot", evid = 2, ii = 12, addl = 3) |>
       et(seq(0, 24, length.out = 100))
-    
+
     expect_error(s <- rxSolve(m1, ev), NA)
     expect_false(s$C2[3] == 0) # 273
   })

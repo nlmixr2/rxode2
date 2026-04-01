@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 /***********
  * daxpy.c *
@@ -12,7 +15,7 @@ To: whitbeck@sanjuan.wrc.unr.edu
 */
 
 void daxpy0(int n, double da, double *dx, int incx, double *dy, int incy) {
-  
+
 /*
    Purpose : To compute
 

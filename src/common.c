@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #include "common.h"
 /* newly added static variables */

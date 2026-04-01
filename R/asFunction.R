@@ -21,6 +21,17 @@ as.function.rxode2 <- function(x, ...) {
     "}"), collapse="\n")))
 }
 
+#' @export
+as.function.character <- function(x, ...) {
+  if (length(x) != 1) {
+    x <- paste(x, collapse="\n")
+  }
+  eval(str2lang(paste(c("function() {",
+                        "model({",
+                        rxNorm(x),
+                        "})",
+                        "}"), collapse="\n")))
+}
 
 
 #' @export

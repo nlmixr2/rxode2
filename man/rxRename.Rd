@@ -69,7 +69,7 @@ ocmt <- function() {
   })
 }
 
-ocmt \%>\% rxRename(cpParent=cp)
+ocmt |> rxRename(cpParent=cp)
 
 }
 \author{

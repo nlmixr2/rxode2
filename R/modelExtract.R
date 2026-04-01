@@ -12,7 +12,7 @@
 #' @param endpoint include endpoint.  This can be:
 #'
 #'  - `NA`    -- Missing means include both the endpoint and non-endpoint lines
-#' 
+#'
 #'  - `TRUE`  -- Only include endpoint lines
 #'
 #'  - `FALSE` -- Only include non-endpoint lines
@@ -27,9 +27,9 @@
 #'   lines
 #'
 #' @export
-#' 
+#'
 #' @author Matthew L. Fidler
-#' 
+#'
 #' @examples
 #'
 #' one.compartment <- function() {
@@ -73,7 +73,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
   UseMethod("modelExtract")
 }
 #' Common extract model lines
-#'  
+#'
 #' @param modelLines Model lines, in this case it is the variables
 #' @param rxui rxode2 parsed ui
 #' @param expression Should an expression list be returned
@@ -92,12 +92,13 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
   } else {
     .ret <- do.call(`c`, lapply(seq_along(modelLines),
                                 function(i) {
-                                  .w <- .getModelLineFromExpression(modelLines[[i]], rxui, errorLine=FALSE,
+                                  .w <- .getModelLineFromExpression(modelLines[[i]],
+                                                                    rxui, errorLine=FALSE,
                                                                     returnAllLines=TRUE)
                                   .w <- .w[.w>0]
                                   .w
                                 }))
-    
+
   }
   .ret <- sort(unique(.ret))
   .endPointLines <- rxui$predDf
@@ -135,7 +136,10 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @author Matthew L. Fidler
 .quoteCallVars <- function(callInfo, ..., envir=parent.frame()) {
   if (length(callInfo) == 0L) return(NULL)
-  lapply(seq_along(callInfo),
+  .env <- new.env(parent=emptyenv())
+  .env$alag <- list()
+  .env$lag <- list()
+  c(lapply(seq_along(callInfo),
          function(i) {
            .name <- names(callInfo)[i]
            .cur <- callInfo[[i]]
@@ -167,12 +171,28 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
            if (is.name(.cur)) {
              return(str2lang(paste0("-",deparse1(.cur))))
            } else if (is.call(.cur) &&
-                        .matchesLangTemplate(.cur, str2lang("d/dt(.name)"))) {
+                        (.matchesLangTemplate(.cur, str2lang("d/dt(.name)")) ||
+                           .matchesLangTemplate(.cur, str2lang("f(.name)")) ||
+                           .matchesLangTemplate(.cur, str2lang(".name(0)")) ||
+                           .matchesLangTemplate(.cur, str2lang("rate(.name)")) ||
+                           .matchesLangTemplate(.cur, str2lang("dur(.name)")))) {
+             return(str2lang(paste0("-", deparse1(.cur))))
+           } else if (is.call(.cur) &&
+                        .matchesLangTemplate(.cur, str2lang("alag(.name)"))) {
+             .env$lag <- c(.env$lag,
+                           list(str2lang(paste0("-", sub("alag", "lag", deparse1(.cur))))))
+              return(str2lang(paste0("-", deparse1(.cur))))
+           } else if (is.call(.cur) &&
+                        .matchesLangTemplate(.cur, str2lang("lag(.name)"))) {
+             .env$alag <- c(.env$alag,
+                            list(str2lang(paste0("-", sub("lag", "alag", deparse1(.cur))))))
              return(str2lang(paste0("-", deparse1(.cur))))
            }
            stop("unknown variable expression: ", deparse1(.cur),
                 call.=FALSE)
-         })
+         }),
+    .env$alag,
+    .env$lag)
 }
 
 #' @export
@@ -206,4 +226,3 @@ modelExtract.default <- function(x, ..., expression=FALSE, endpoint=FALSE, lines
   stop("rxode2 does not know how to handle this modelExtract object",
        call.=FALSE)
 }
-

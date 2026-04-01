@@ -1,8 +1,11 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifndef _LSODA_H_
 #define _LSODA_H_
 #include <stdlib.h>
 /* ************************************
- * 
+ *
  */
 struct lsoda_opt_t {
 	int ixpr;

@@ -28,9 +28,9 @@ rxTest({
 
     p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
     dat <- NULL
-    dataFile <- test_path("test-data-setup.qs")
+    dataFile <- test_path("test-data-setup.qs2")
     if (file.exists(dataFile)) {
-      dat <- qs::qread(dataFile)
+      dat <- qs2::qs_read(dataFile)
     }
 
     for (rt in c("data.table", "tbl")) {
@@ -41,9 +41,9 @@ rxTest({
         sigma <- diag(2) * 0.05
         dimnames(sigma) <- list(c("err1", "err2"), c("err1", "err2"))
 
-        ev <- eventTable(amount.units = "mg", time.units = "hours") %>%
-          add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) %>%
-          add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) %>%
+        ev <- eventTable(amount.units = "mg", time.units = "hours") |>
+          add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
+          add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
           add.sampling(0:240)
 
         pk3 <- rxSolve(mod2, c(

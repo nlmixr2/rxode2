@@ -5,7 +5,7 @@
 #' @author Matthew Fidler
 #' @noRd
 .rxReplaceCommentWithLabel <- function(src) {
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent=emptyenv())#match.call(expand.dots = TRUE)[-(1:2)]
   .env$inIni <- FALSE
   .env$convertLabel <- FALSE
   .regIni <- rex::rex(boundary, or("ini", "lotri"), "(", any_spaces, "{", any_spaces)
@@ -137,14 +137,17 @@
 #'
 #' 'omega' values can be set as a single value or as the values of a
 #' lower-triangular matrix.  The values may be set as either a
-#' variance-covariance matrix (the default) or as a correlation matrix for the
-#' off-diagonals with the standard deviations on the diagonals.  Names may be
-#' set on the left side of the \code{~}.  To set a variance-covariance matrix
-#' with variance values of 2 and 3 and a covariance of -2.5 use \code{~c(2, 2.5,
-#' 3)}.  To set the same matrix with names of \code{iivKa} and \code{iivCL}, use
-#' \code{iivKa + iivCL~c(2, 2.5, 3)}.  To set a correlation matrix with standard
-#' deviations on the diagonal, use \code{cor()} like \code{iivKa + iivCL~cor(2,
-#' -0.5, 3)}.
+#' variance-covariance matrix (the default) or as a correlation matrix
+#' for the off-diagonals with the standard deviations on the
+#' diagonals.  Names may be set on the left side of the \code{~}.  To
+#' set a variance-covariance matrix with variance values of 2 and 3
+#' and a covariance of -2.5 use \code{~c(2, 2.5, 3)}.  To set the same
+#' matrix with names of \code{iivKa} and \code{iivCL}, use \code{iivKa
+#' + iivCL~c(2, 2.5, 3)}.  To set a correlation matrix with standard
+#' deviations on the diagonal, use \code{cor()} like \code{iivKa +
+#' iivCL~cor(2, -0.5, 3)}.  As of rxode2 3.0 you can also use
+#' \code{iivKa ~ 2, iivCL ~ c(2.5, 3)} for covariance matrices as
+#' well.
 #'
 #' Values may be fixed (and therefore not estimated) using either the name
 #' \code{fixed} at the end of the assignment or by calling \code{fixed()} as a
@@ -172,6 +175,14 @@
 #' estimation.  The typical way to set a label so that the parameter \code{tvCL}
 #' has a label of "Typical Value of Clearance (L/hr)" is \code{tvCL <- 1;
 #' label("Typical Value of Clearance (L/hr)")}.
+#'
+#' Off diagonal values of 'omega' can be set to zero using the
+#' \code{diag()} to remove all off-diagonals can be removed with
+#' `ini(diag())`.  To remove covariances of 'omega' item with `iivKa`,
+#' you can use `|> ini(diag(iivKa))`.  Or to remove covariances that
+#' contain either `iivKa` or `iivCl` you can use `|> ini(diag(iivKa,
+#' iivCl))`.  For finer control you can remove the covariance between
+#' two items (like `iivKa` and `iivCl`) by `|> ini(-cov(iivKa, iivCl))
 #'
 #' \code{rxode2}/\code{nlmixr2} will attempt to determine some
 #' back-transformations for the user.  For example, \code{CL <- exp(tvCL)} will
@@ -215,18 +226,20 @@
 #' }
 #'
 #' # Use piping to update initial conditions
-#' one.compartment %>% ini(tka <- log(2))
-#' one.compartment %>% ini(tka <- label("Absorption rate, Ka (1/hr)"))
+#' one.compartment |> ini(tka <- log(2))
+#' one.compartment |> ini(tka <- label("Absorption rate, Ka (1/hr)"))
 #' # Move the tka parameter to be just below the tv parameter (affects parameter
 #' # summary table, only)
-#' one.compartment %>% ini(tka <- label("Absorption rate, Ka (1/hr)"), append = "tv")
+#' one.compartment |> ini(tka <- label("Absorption rate, Ka (1/hr)"), append = "tv")
 #' # When programming with rxode2/nlmixr2, it may be easier to pass strings in
 #' # to modify the ini
-#' one.compartment %>% ini("tka <- log(2)")
+#' one.compartment |> ini("tka <- log(2)")
 #' @export
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
-    .ini <- eval(bquote(lotri(.(substitute(x)))), envir=envir)
+    .ini <- eval(bquote(lotri::lotri(.(substitute(x)),
+                                     cov=TRUE, rcm=TRUE)),
+                 envir=envir)
     assignInMyNamespace(".lastIni", .ini)
     assignInMyNamespace(".lastIniQ", bquote(.(substitute(x))))
     return(invisible(.ini))
@@ -279,7 +292,7 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     if (inherits(.funName, "try-error")) {
       .funName <- NULL
     } else if (length(.funName) == 1L && exists(.funName, envir=parent.env(envir))) {
-      rxode2parse::.udfEnvSet(parent.env(envir))
+      .udfEnvSet(parent.env(envir))
     }
     .ini <- .lastIni
     .iniQ <- .lastIniQ
@@ -390,6 +403,7 @@ print.rxUi <-function(x, ...) {
   print(as.call(x$funPrint))
   return(invisible(x))
 }
+
 #' Compress/Decompress `rxode2` ui
 #'
 #'
@@ -435,7 +449,14 @@ print.rxUi <-function(x, ...) {
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)
-  .ret <- qs::qdeserialize(ui)
+  if (inherits(ui, "raw")) {
+    rxReq("qs")
+    warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN",
+            call.=FALSE)
+    .ret <- .Call(`_rxode2_qsDes`, ui)
+  } else if (is.list(ui)) {
+    .ret <- list2env(ui, parent=emptyenv())
+  }
   class(.ret) <- "rxUi"
   .ret
 }
@@ -445,8 +466,12 @@ rxUiDecompress <- function(ui) {
 rxUiCompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui)) {
-    .ret <- qs::qserialize(ui)
-    class(.ret) <- c("rxUi", "raw")
+    .ls <- ls(ui, all.names=TRUE)
+    .ret <- lapply(.ls, function(nm) {
+      get(nm, ui)
+    })
+    names(.ret) <- .ls
+    class(.ret) <- c("rxUi", "list")
     return(.ret)
   }
   ui

@@ -1,9 +1,12 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define STRICT_R_HEADERS
-#include <R.h>
-#include <Rinternals.h>
 #include "lsoda.h"
 #include "common.h"
 #include "cfode_static.h"
+#include <R.h>
+#include <Rinternals.h>
 
 void RSprintf(const char *format, ...);
 
@@ -35,5 +38,5 @@ void printcm12(void) {
 		if((i + 1) % 4 == 0) RSprintf("\n  ");
 	}
 	RSprintf("};\n");
-	
+
 }

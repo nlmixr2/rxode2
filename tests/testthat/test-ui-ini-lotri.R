@@ -19,7 +19,7 @@ rxTest({
     }
 
     suppressMessages(
-      f <- rxode2(one.cmt) %>%
+      f <- rxode2(one.cmt) |>
         ini(eta.v + eta.ka + eta.cl ~ c(1,
                                         0.01, 1,
                                         -0.01, 0.01, 1))
@@ -29,7 +29,7 @@ rxTest({
 
 
     suppressMessages(
-      f <- rxode2(one.cmt) %>%
+      f <- rxode2(one.cmt) |>
         ini(eta.v + eta.cl ~ c(1,
                                0.01, 1))
     )

@@ -24,10 +24,10 @@ rxTest({
           round(runif(...))
         }
 
-        et(amount.units = "mg", time.units = "hours") %>%
-          et(dose = 10000, addl = 9, ii = 12) %>%
-          et(dose = 20000, addl = 4, time = 120, ii = 24) %>%
-          et(id = 1:10) %>%
+        et(amount.units = "mg", time.units = "hours") |>
+          et(dose = 10000, addl = 9, ii = 12) |>
+          et(dose = 20000, addl = 4, time = 120, ii = 24) |>
+          et(id = 1:10) |>
           et(0:240) ->
           ev3_hum
 

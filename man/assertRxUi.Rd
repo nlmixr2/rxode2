@@ -3,6 +3,8 @@
 \name{assertRxUi}
 \alias{assertRxUi}
 \alias{assertRxUiPrediction}
+\alias{assertRxUiIovNoCor}
+\alias{assertRxUiNoMix}
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
@@ -13,28 +15,32 @@
 \alias{assertRxUiRandomOnIdOnly}
 \title{Assert properties of the rxUi models}
 \usage{
-assertRxUi(model, extra = "", .var.name = .vname(model))
+assertRxUi(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiPrediction(model, extra = "", .var.name = .vname(model))
+assertRxUiPrediction(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiSingleEndpoint(model, extra = "", .var.name = .vname(model))
+assertRxUiIovNoCor(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiTransformNormal(model, extra = "", .var.name = .vname(model))
+assertRxUiNoMix(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiNormal(model, extra = "", .var.name = .vname(model))
+assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiMuRefOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiTransformNormal(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiEstimatedResiduals(model, extra = "", .var.name = .vname(model))
+assertRxUiNormal(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiPopulationOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiMixedOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiEstimatedResiduals(ui, extra = "", .var.name = .vname(ui))
 
-assertRxUiRandomOnIdOnly(model, extra = "", .var.name = .vname(model))
+assertRxUiPopulationOnly(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiMixedOnly(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiRandomOnIdOnly(ui, extra = "", .var.name = .vname(ui))
 }
 \arguments{
-\item{model}{Model to check}
+\item{ui}{Model to check}
 
 \item{extra}{Extra text to append to the error message (like
 "for focei")}
@@ -67,6 +73,8 @@ population effect, only)
 \item \code{assertRxUiPrediction} -- Make sure the model has predictions
 \item \code{assertRxUiMuRefOnly} -- Make sure that all the parameters are mu-referenced
 \item \code{assertRxUiRandomOnIdOnly} -- Make sure there are only random effects at the ID level
+\item \code{assertRxUiIovNoCor} -- Make sure that the IOV model does not have any correlations
+\item \code{assertRxUiNoMix} -- Make sure that the model does not have a mixture model inside it
 }
 }
 \examples{
@@ -96,6 +104,17 @@ assertRxUi(one.cmt)
 assertRxUiSingleEndpoint(one.cmt)
 }
 }
+\seealso{
+Other Assertions: 
+\code{\link{assertCompartmentExists}()},
+\code{\link{assertCompartmentName}()},
+\code{\link{assertCompartmentNew}()},
+\code{\link{assertVariableExists}()},
+\code{\link{assertVariableNew}()},
+\code{\link{testIniDf}()},
+\code{\link{testRxUnbounded}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Assertions}

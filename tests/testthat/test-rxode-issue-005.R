@@ -24,15 +24,15 @@ rxTest({
     EC50 <- 200
   })
 
-  event_table <- rxode2::eventTable() %>%
-    add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12) %>%
+  event_table <- rxode2::eventTable() |>
+    add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12) |>
     add.sampling(0:240)
 
   test_that("Bad solve raises error, RxODE#5", {
     tf <- tempfile()
     sink(tf)
     expect_error(
-      model %>% solve(c(KA = -10), event_table, maxsteps = 5000),
+      model |> solve(c(KA = -10), event_table, maxsteps = 5000),
       rex::rex("could not solve the system")
     )
     sink()

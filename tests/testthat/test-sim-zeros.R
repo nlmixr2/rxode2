@@ -1,6 +1,6 @@
 rxTest({
   test_that("simulate zeros tests", {
-    
+
     # from nonmem2R
     f <- function() {
       description <- "PK"
@@ -85,10 +85,10 @@ rxTest({
         ktr <- nt/mtt
         nn <- nt - 1
         if (nn >= 0.558) {
-          l <- log(2.5066) + (nn + 0.5) * log(nn) - nn + log(1 + 
+          l <- log(2.5066) + (nn + 0.5) * log(nn) - nn + log(1 +
                                                                1/(12 * nn))
         } else {
-          l <- -0.1171157 + 0.569 * ((0.558 - nn)^2) - 0.1122 * 
+          l <- -0.1171157 + 0.569 * ((0.558 - nn)^2) - 0.1122 *
             (0.558 - nn)
         }
         k13 <- q1/v1
@@ -107,13 +107,13 @@ rxTest({
         bio <- F1 * e7
         X <- 1e-07
         if (t >= tdos) {
-          d/dt(cent) <- bio * pd * ktr * exp(nn * log(ktr * 
-                                                        (t - tdos) + X) - ktr * (t - tdos) - l) - k10 * 
+          d/dt(cent) <- bio * pd * ktr * exp(nn * log(ktr *
+                                                        (t - tdos) + X) - ktr * (t - tdos) - l) - k10 *
                                          cent - k12 * cent - k13 * cent + k31 * peri
         } else {
           d/dt(cent) <- -k12 * cent - k13 * cent + k31 * peri
         }
-        d/dt(centmet) <- k12 * cent - k20 * centmet - k24 * centmet + 
+        d/dt(centmet) <- k12 * cent - k20 * centmet - k24 * centmet +
           k42 * perimet
         d/dt(peri) <- k13 * cent - k31 * peri
         d/dt(perimet) <- k24 * centmet - k42 * perimet
@@ -132,7 +132,7 @@ rxTest({
         cp <- cent/scale1
         cm <- centmet/scale2
         del <- 0
-        if (w == 0) 
+        if (w == 0)
           del <- 1
         ires <- DV - ipred
         iwres <- ires/(w + del)
@@ -140,13 +140,13 @@ rxTest({
     }
     f <- f()
 
-    e <- et(amt=100) %>% et(seq(0,20))
+    e <- et(amt=100) |> et(seq(0,20))
     e$FLAG <- 1
 
     expect_error(rxSolve(f, e), NA)
 
     m <- f$simulationModel
-    
+
     expect_error(rxSolve(m, params=f$theta, events=e, omega=f$omega), NA)
 
     # ok now try just the control
@@ -181,6 +181,6 @@ rxTest({
     expect_equal(.ctl$.zeros, "eps1")
     expect_equal(.ctl$sigmaLower, c(eps1=-1, eps2=-1))
     expect_equal(.ctl$sigmaUpper, c(eps1=1, eps2=1))
-    
+
   })
 })

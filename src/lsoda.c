@@ -1,14 +1,12 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#define _(String) (String)
+
 #include <R.h>
 #include <Rinternals.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
-#define _(String) (String)
-#endif
 
 void RSprintf(const char *format, ...);
 
@@ -127,7 +125,7 @@ tam@wri.com
     ctx->state = -3 ;                           \
     return ctx->state;				\
   }
-  
+
 
 /* Terminate lsoda due to various error conditions. */
 #define softfailure(code, fmt,...) \
@@ -310,6 +308,10 @@ static int alloc_mem(struct lsoda_context_t * ctx) {
 	offset += (1 + nyh) * sizeof(int);
 
 	_rxC(memory) = malloc(offset);
+    if (_rxC(memory) == NULL) {
+      RSprintf(_("[lsoda] failed to allocate memory of size %ld bytes\n"), (long) offset);
+      return 0;
+    }
 
 	_rxC(yh) = (double **)((char *)_rxC(memory) + yhoff);
 	_rxC(wm) =  (double **)((char *)_rxC(memory) + wmoff);
@@ -898,17 +900,4 @@ struct lsoda_context_t * lsoda_create_ctx(void)
 {
 	struct lsoda_context_t * mem = malloc(sizeof(struct lsoda_context_t));
 	return mem;
-}
-
-struct lsoda_opt_t * lsoda_create_opt(void)
-{
-	struct lsoda_opt_t * mem = malloc(sizeof(struct lsoda_opt_t));
-	return mem;
-}
-
-void lsoda_free_opt(struct lsoda_opt_t * opt)
-{
-	free(opt->atol);
-	free(opt->rtol);
-	free(opt);
 }

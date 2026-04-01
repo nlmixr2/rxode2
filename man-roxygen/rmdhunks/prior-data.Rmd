@@ -30,13 +30,13 @@ theo <- function() {
     d/dt(depot) = -ka * depot
     d/dt(center) = ka * depot - cl / v * center
     cp = center / v
-  }) 
+  })
 }
 
 ## Create parameter dataset
 library(dplyr)
 parsDf <- tribble(
-  ~ eta.ka, ~ eta.cl, ~ eta.v, 
+  ~ eta.ka, ~ eta.cl, ~ eta.v,
   0.105, -0.487, -0.080,
   0.221, 0.144, 0.021,
   0.368, 0.031, 0.058,
@@ -48,7 +48,7 @@ parsDf <- tribble(
   1.420, 0.042, 0.012,
  -0.738, -0.391, -0.170,
   0.790, 0.281, 0.146,
- -0.527, -0.126, -0.198) %>%
+ -0.527, -0.126, -0.198) |>
     mutate(tka = 0.451, tcl = 1.017, tv = 3.449)
 
 ## Now solve the dataset
@@ -67,4 +67,3 @@ dplyr::as_tibble(solveData)
 
 data.table::data.table(solveData)
 ```
-

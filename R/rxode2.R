@@ -83,7 +83,7 @@ NA_LOGICAL <- NA # nolint
 #'   print on every step (except ME/indLin), otherwise when `FALSE`
 #'   print only when calculating the `d/dt`
 #'
-#' @inheritParams rxode2parse::rxode2parse
+#' @inheritParams rxode2parse
 #'
 #' @details
 #'
@@ -231,12 +231,12 @@ NA_LOGICAL <- NA # nolint
 #'
 #' # QD (once daily) dosing for 5 days.
 #'
-#' qd <- et(amountUnits = "ug", timeUnits = "hours") %>%
+#' qd <- et(amountUnits = "ug", timeUnits = "hours") |>
 #'   et(amt = 10000, addl = 4, ii = 24)
 #'
 #' # Sample the system hourly during the first day, every 8 hours
 #' # then after
-#' qd <- qd %>% et(0:24) %>%
+#' qd <- qd |> et(0:24) |>
 #'   et(from = 24 + 8, to = 5 * 24, by = 8)
 #'
 #' # Step 3 - solve the system
@@ -254,8 +254,8 @@ NA_LOGICAL <- NA # nolint
 #' @concept Pharmacokinetics (PK)
 #' @concept Pharmacodynamics (PD)
 #' @useDynLib rxode2, .registration=TRUE
+#' @eval .rxodeBuildCode()
 #' @importFrom PreciseSums fsum
-#' @importFrom rxode2parse rxode2parse
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
@@ -263,7 +263,6 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom methods signature is
 #' @importFrom memoise memoise is.memoised
 #' @importFrom utils capture.output
-#' @importFrom qs qsave
 #' @import tools
 #' @import data.table
 #' @export
@@ -272,15 +271,19 @@ rxode2 <- # nolint
            wd = getwd(),
            filename = NULL, extraC = NULL, debug = FALSE, calcJac = NULL, calcSens = NULL,
            collapseModel = FALSE, package = NULL, ...,
-           linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+           linCmtSens = c("linCmtA", "linCmtB"),
            indLin = FALSE,
            verbose = FALSE,
            fullPrint=getOption("rxode2.fullPrint", FALSE),
            envir=parent.frame()) {
-    rxode2parse::.udfEnvSet(envir)
+    if (!missing(wd) && missing(modName)) {
+      stop("working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`",
+              call.=FALSE)
+    }
+    .udfEnvSet(envir)
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
-    rxode2parse::rxParseSuppressMsg()
+    rxParseSuppressMsg()
     .modelName <- try(as.character(substitute(model)), silent=TRUE)
     if (inherits(.modelName, "try-error")) .modelName <- NULL
     if (!missing(modName)) {
@@ -366,8 +369,7 @@ rxode2 <- # nolint
         .vars,
         setNames(
           c(
-            "linCmtA" = 1L, "linCmtB" = 2L,
-            "linCmtC" = 3L
+            "linCmtA" = 1L, "linCmtB" = 2L
           )[match.arg(linCmtSens)],
           NULL
         ), verbose
@@ -379,7 +381,7 @@ rxode2 <- # nolint
     .env$missing.modName <- missing(modName)
     wd <- .normalizePath(wd, "/", mustWork = FALSE)
     if (.env$missing.modName) {
-      if (rxode2.tempfiles) {
+      if (getOption("rxode2.tempfiles", TRUE)) {
         .env$mdir <- suppressMessages(.normalizePath(rxTempDir(), mustWork = FALSE))
       } else {
         .env$mdir <- suppressMessages(.normalizePath(wd, mustWork = FALSE))
@@ -415,7 +417,7 @@ rxode2 <- # nolint
           .rx$.clearME()
         })
         .rx$.rxWithWd(wd, {
-          rxode2parse::.extraC(extraC)
+          rxode2::.extraC(extraC)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
@@ -436,7 +438,7 @@ rxode2 <- # nolint
         })
       })
     }))
-    rxode2parse::.extraC(extraC)
+    rxode2::.extraC(extraC)
     .env$compile()
     .env$get.modelVars <- eval(bquote(function() {
       with(.(.env), {
@@ -444,7 +446,7 @@ rxode2 <- # nolint
         .p <- .ret["params"]
         .ini <- names(.mv$.ini)
         .init <- rxode2::rxInit(rxDll)
-        .ret$params <- .ret$params[!(.ret$params %in% names(.init))]
+        .ret$params <- .ret$params[!(.ret$params %in%  names(.init))]
         class(.ret) <- "list"
         return(.ret)
       })
@@ -460,7 +462,7 @@ rxode2 <- # nolint
     .env$stateExtra <- .extra
     .env$lhs <- .env$.mv$lhs
     .env$params <- .env$.mv$params
-    .env$version <- rxode2::rxVersion()["version"]
+    .env$version <- .rxVersion["version"]
     .env$solve <- eval(bquote(function(..., returnType= "matrix", object = NULL) {
       rxode2::rxSolve(object = get("rxDll", envir = .(.env)), ..., returnType = "matrix")
     }))
@@ -1042,13 +1044,14 @@ rxMd5 <- function(model, # Model File
         stop("unknown model", call. = FALSE)
       }
     }
-    rxSyncOptions()
+    ## rxSyncOptions()
     .tmp <- c(
-      rxode2.syntax.allow.ini, rxode2.calculate.jacobian,
-      rxode2.calculate.sensitivity)
+      getOption("rxode2.syntax.allow.ini", TRUE),
+      getOption("rxode2.calculate.jacobian", FALSE),
+      getOption("rxode2.calculate.sensitivity", FALSE))
     .ret <- c(
       .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
-      .linCmtSens, rxode2parse::.udfMd5Info(), .rxFullPrint
+      .linCmtSens, .udfMd5Info(), .rxFullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1058,7 +1061,7 @@ rxMd5 <- function(model, # Model File
     ## new rxode2 DLLs gives different digests.
     .ret <- c(.ret, .md5Rx)
     ## Add version and github repository information
-    .ret <- c(.ret, rxode2::rxVersion())
+    .ret <- c(.ret, .rxVersion)
     return(list(
       text = model,
       digest = digest::digest(list(.ret, .indLinInfo), serialize = TRUE, algo = "md5")
@@ -1264,7 +1267,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 
 .getIncludeDir <- function() {
   .cache <- R_user_dir("rxode2", "cache")
-  .parseInclude <- system.file("include", package = "rxode2parse")
+  .parseInclude <- system.file("include", package = "rxode2")
   if (dir.exists(.cache)) {
     .include <- .normalizePath(file.path(.cache, "include"))
     if (!dir.exists(.include)) {
@@ -1306,6 +1309,76 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
   return(.normalizePath(system.file("include", package = "rxode2")))
 }
 
+.rxCompileEnv <- new.env(parent = emptyenv())
+.rxCompileEnv$success <- TRUE
+.rxCompileEnv$lst <- list()
+#' Get the last compiled model information as alist
+#'
+#' @return A list contains the following elements:
+#'
+#' * `msg` the message for a bad compilation, or NULL if successful.
+#'
+#' * `stdout` the standard output from the compilation
+#'
+#' * `stderr` the standard error from the compilation
+#'
+#' * `c` the code code that was used
+#'
+#' This list will be returned invisibly, but the function will
+#' also message the contents to the console.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' rxode2({
+#'   a <- b
+#' })
+#' rxLastCompile()
+rxLastCompile <- function() {
+  lapply(names(.rxCompileEnv$lst), function(nm) {
+    cli::rule(left = nm)
+    message(.rxCompileEnv$lst[[nm]])
+  })
+  return(invisible(.rxCompileEnv$lst))
+}
+#' Was the last compilation successful?
+#'
+#' @param set Logical flag. If missing, returns the current compilation
+#'   status. If provided, sets the compilation status.
+#'
+#' @return this determines if the last compilation was successful.  This is useful for
+#'   debugging and testing purposes.
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+#'
+#' @keywords internal
+#'
+#' @examples
+#'
+#' .rxLastCompileSuccess()
+#'
+.rxLastCompileSuccess <- function(set) {
+  if (missing(set)) {
+    return(.rxCompileEnv$success)
+  } else {
+    .rxCompileEnv$success <- set
+  }
+  .rxCompileEnv$success
+}
+#' Get the number of loaded rxode2 DLLs
+#'
+#'
+#' @return Number of loaded rxode2 DLLs
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' rxNumLoaded()
+rxNumLoaded <- function() {
+  .dlls <- getLoadedDLLs()
+  length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
+}
 .pkg <- NULL
 #' @rdname rxCompile
 #' @export
@@ -1324,7 +1397,7 @@ rxCompile.rxModelVars <- function(model, # Model
     prefix <- .rxPre(model, modName)
   }
   if (is.null(dir)) {
-    if (rxode2.tempfiles) {
+    if (getOption("rxode2.tempfiles", TRUE)) {
       .dir <- file.path(rxTempDir(), paste0(prefix, ".rxd"))
     } else {
       .dir <- getwd()
@@ -1464,14 +1537,14 @@ rxCompile.rxModelVars <- function(model, # Model
           "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "2"),
           .defs, .getIncludeDir(),
-          system.file("include", package = "rxode2parse")
+          system.file("include", package = "rxode2")
         )
         ## .ret <- paste(.ret, "-g")
         sink(.Makevars)
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(rxode2parse::.extraCnow())
+        cat(rxode2::.extraCnow())
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))
@@ -1488,22 +1561,27 @@ rxCompile.rxModelVars <- function(model, # Model
           .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
         })
         .stderr <- rawToChar(.out$stderr)
+        .rxCompileEnv$lst <- list()
         if (!(all(.stderr == "") && length(.stderr) == 1)) {
-          message(paste(.stderr, sep = "\n"))
+          .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, sep = "\n")
         }
+        .rxCompileEnv$success <- TRUE
         .badBuild <- function(msg, cSrc = TRUE) {
-          msg <- gettext(msg)
-          message(msg)
-          cli::rule(left = "stdout output")
-          message(paste(rawToChar(.out$stdout), sep = "\n"))
-          cli::rule(left = "stderr output")
-          message(paste(rawToChar(.out$stderr), sep = "\n"))
+          .rxCompileEnv$lst[["msg"]] <- gettext(msg)
+          .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
           if (cSrc) {
-            cli::rule(left = "c source")
-            message(paste(readLines(.cFile), collapse = "\n"))
+            .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
           } else {
             dyn.load(.cDllFile)
           }
+          message("Error building the model: see rxode2::rxLastCompile()")
+          .rxCompileEnv$success <- FALSE
+          if (.Platform$OS.type == "windows") {
+            message("this could be because your Rtools is not set up correctly")
+          } else {
+            message("please make sure you have a working C compiler set up")
+          }
+          message("you may use nlmixr2::nlmixr2CheckInstall() to help diagnose installation issues")
           stop(msg, call. = FALSE)
         }
         if (!(.out$status == 0 && file.exists(.cDllFile))) {
@@ -1802,8 +1880,9 @@ rxModelVars <- function(obj) {
     .obj <- paste(.obj, collapse = "\n")
     return(rxModelVars_(.obj))
   }
-  if (inherits(obj, "raw") &&
-        inherits(obj, "rxUi")) {
+  if ((is.list(obj) &&
+         inherits(obj, "rxUi")) ||
+        inherits(obj, "raw")) {
     obj <- rxUiDecompress(obj)
   }
   if (is(obj, "rxModelVars")) {

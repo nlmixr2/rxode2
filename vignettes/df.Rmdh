@@ -6,17 +6,18 @@
 This is done by the `predict()`, `solve()`, or `rxSolve()` methods.
 
 ```{r}
+
 library(rxode2)
 library(units)
 
 ## Setup example model
 mod1 <- function() {
   ini({
-    # central 
+    # central
     KA <- 2.94E-01
     CL <- 1.86E+01
     # peripheral
-    V2 <- 4.02E+01 
+    V2 <- 4.02E+01
     Q  <- 1.05E+01
     V3 <- 2.97E+02
     # effects
@@ -39,9 +40,9 @@ mod1 <- function() {
 
 
 ## Setup dosing event information
-ev <- et(amountUnits="mg", timeUnits = "hours") %>%
-  et(amt=10000, addl=9, ii=12) %>%
-  et(amt=20000, addl=4, time=120, ii=24) %>%
+ev <- et(amountUnits="mg", timeUnits = "hours") |>
+  et(amt=10000, addl=9, ii=12) |>
+  et(amt=20000, addl=4, time=120, ii=24) |>
   et(0:240)
 
 
@@ -62,16 +63,16 @@ by `dpylr`.  For example you could filter it easily.
 
 library(dplyr)
 ## You can  drop units for comparisons and filtering
-x <- mod1 %>% solve(ev) %>%
-  drop_units() %>% filter(time <= 3) %>% as_tibble()
+x <- mod1 |> solve(ev) |>
+  drop_units() |> filter(time <= 3) |> as_tibble()
 
 ## or keep them and compare with the proper units.
-x <- mod1 %>% solve(ev) %>%
-    filter(time <= set_units(3, hr)) %>% as_tibble()
+x <- mod1 |> solve(ev) |>
+    filter(time <= set_units(3, hr)) |> as_tibble()
 x
 ```
 
-# Updating the data-set interactively 
+# Updating the data-set interactively
 However it isn't just a simple data object.  You can use the solved
 object to update parameters on the fly, or even change the sampling
 time.
@@ -80,7 +81,7 @@ time.
 First we need to recreate the original solved system:
 
 ```{r}
-x <- mod1 %>% solve(ev)
+x <- mod1 |> solve(ev)
 print(x)
 ```
 ## Modifying observation times for rxode2
@@ -112,6 +113,9 @@ plot(x)
 ```
 
 
-You can access/change all the parameters, initialization(s) or events with the `$params`, `$inits`, `$events` accessor syntax, similar to what is used above.
+You can access/change all the parameters, initialization(s) or events
+with the `$params`, `$inits`, `$events` accessor syntax, similar to
+what is used above.
 
-This syntax makes it easy to update and explore the effect of various parameters on the solved object.
+This syntax makes it easy to update and explore the effect of various
+parameters on the solved object.

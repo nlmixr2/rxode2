@@ -18,7 +18,7 @@ rxode2(
   collapseModel = FALSE,
   package = NULL,
   ...,
-  linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+  linCmtSens = c("linCmtA", "linCmtB"),
   indLin = FALSE,
   verbose = FALSE,
   fullPrint = getOption("rxode2.fullPrint", FALSE),
@@ -37,7 +37,7 @@ RxODE(
   collapseModel = FALSE,
   package = NULL,
   ...,
-  linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+  linCmtSens = c("linCmtA", "linCmtB"),
   indLin = FALSE,
   verbose = FALSE,
   fullPrint = getOption("rxode2.fullPrint", FALSE),
@@ -56,7 +56,7 @@ rxode(
   collapseModel = FALSE,
   package = NULL,
   ...,
-  linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+  linCmtSens = c("linCmtA", "linCmtB"),
   indLin = FALSE,
   verbose = FALSE,
   fullPrint = getOption("rxode2.fullPrint", FALSE),
@@ -218,10 +218,7 @@ drug-disease modeling, etc.
 The ODE-based model specification may be coded inside four places:
 \itemize{
 \item Inside a \code{rxode2({})} block statements:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{library(rxode2)
 mod <- rxode2(\{
@@ -234,10 +231,7 @@ mod <- rxode2(\{
 }\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2("
   # simple assignment
@@ -249,10 +243,7 @@ mod <- rxode2(\{
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{writeLines("
   # simple assignment
@@ -266,10 +257,7 @@ unlink("modelFile.rxode2")
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a model function which can be parsed by \code{rxode2}:
-}\if{html}{\out{
-<!-- end list -->
-}}
-
+}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- function() \{
   model(\{
@@ -323,24 +311,9 @@ creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
 compilation model.
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
-}\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_22699ef487579a63baec999e5bee4f82 model (ready). 
-## x$state: depot, center
-## x$stateExtra: cp
-## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
-## x$lhs: ka, cl, v, cp, ipredSim, sim
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{# or 
+# or
 mod$simulationIniModel
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_85bfff7e67355fe5de08b65b7a424b1e model (ready). 
-## x$state: depot, center
-## x$stateExtra: cp
-## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
-## x$lhs: ka, cl, v, cp, ipredSim, sim
 }\if{html}{\out{</div>}}
 
 This is the same type of function required for \code{nlmixr2} estimation and
@@ -361,10 +334,10 @@ printing statements (for debugging/testing).
 Assignment statements can be:
 \itemize{
 \item \strong{simple} assignments, where the left hand is an identifier (i.e.,
-variable)
-\item special \strong{time-derivative} assignments, where the left hand
-specifies the change of the amount in the corresponding state
-variable (compartment) with respect to time e.g., \code{d/dt(depot)}:
+variable). This includes string assignments
+\item special \strong{time-derivative} assignments, where the left hand specifies
+the change of the amount in the corresponding state variable
+(compartment) with respect to time e.g., \code{d/dt(depot)}:
 \item special \strong{initial-condition} assignments where the left hand
 specifies the compartment of the initial condition being specified,
 e.g. \code{depot(0) = 0}
@@ -373,15 +346,20 @@ e.g. \code{depot(0) = 0}
 (\code{rate(depot)=2}) and \strong{modeled duration} (\code{dur(depot)=2}). An
 example of these model features and the event specification for the
 modeled infusions the rxode2 data specification is found in \href{https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html}{rxode2 events vignette}.
-\item special \strong{change point syntax, or model times}. These model times
-are specified by \code{mtime(var)=time}
+\item special \strong{change point syntax, or model times}. These model times are
+specified by \code{mtime(var)=time}
 \item special \strong{Jacobian-derivative} assignments, where the left hand
 specifies the change in the compartment ode with respect to a
 variable. For example, if \code{d/dt(y) = dy}, then a Jacobian for this
-compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be
-some advantage to obtaining the solution or specifying the Jacobian
-for very stiff ODE systems. However, for the few stiff systems we
-tried with LSODA, this actually slightly slowed down the solving.
+compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be some
+advantage to obtaining the solution or specifying the Jacobian for
+very stiff ODE systems. However, for the few stiff systems we tried
+with LSODA, this actually slightly slowed down the solving.
+\item Special \strong{string value declarations} which tell what values a string
+variable will take within a \code{rxode2} solving structure. These values
+will then cause a factor to be created for this variable on solving
+the \code{rxode2} model. As such, they are declared in much the same way as
+\code{R}, that is: \code{labels(a) <- c("a1", "a2")}.
 }
 
 Note that assignment can be done by \code{=}, \verb{<-} or \code{~}.
@@ -399,9 +377,15 @@ add extra compartment names at the end (useful for multiple-endpoint
 nlmixr models); These are specified by \code{cmt(compartmentName)}
 \item \strong{Parameter declaration statements}, which can make sure the input
 parameters are in a certain order instead of ordering the parameters
-by the order they are parsed. This is useful for keeping the
-parameter order the same when using 2 different ODE models. These
-are specified by \code{param(par1, par2,...)}
+by the order they are parsed. This is useful for keeping the parameter
+order the same when using 2 different ODE models. These are specified
+by \code{param(par1, par2,...)}
+\item \strong{Variable interpolation statements}, which tells the interpolation
+for specific covariates. These include \code{locf(cov1,     cov2, ...)} for
+last observation carried forward, \code{nocb(cov1,     cov2, ...)} for next
+observation carried backward, \code{linear(cov1,     cov2, ...)} for linear
+interpolation and \code{midpoint(cov1, cov2,     ...)} for midpoint
+interpolation.
 }
 
 An example model is shown below:
@@ -415,8 +399,9 @@ An example model is shown below:
 
 Expressions in assignment and \code{if} statements can be numeric or logical.
 
-Numeric expressions can include the following numeric operators \verb{+, -, *, /, ^} and those mathematical functions defined in the C or the R math
-libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
+Numeric expressions can include the following numeric operators
+\verb{+, -, *, /, ^} and those mathematical functions defined in the C or the
+R math libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
 
 You may also access the R’s functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
 like \code{lgammafn} for the log gamma function.
@@ -437,11 +422,9 @@ pharmacokinetics model).
 \code{podo} (oral dose, in the undocumented case of absorption transit
 models).
 \item Special constants like \code{pi} or \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants}{R’s predefined constants}.
-\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance,
-etc.)
-\item Others, as created by assignments as part of the model
-specification; these are referred as \emph{LHS} (left-hand side)
-variable.
+\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance, etc.)
+\item Others, as created by assignments as part of the model specification;
+these are referred as \emph{LHS} (left-hand side) variable.
 }
 
 Currently, the \code{rxode2} modeling language only recognizes system state
@@ -458,7 +441,12 @@ assigned, or used as a state but can be accessed in the rxode2 code:
 \item \code{dvid}
 \item \code{addl}
 \item \code{ss}
+\item \code{amt}
+\item \code{dur}
 \item \code{rate}
+\item \code{Rprintf}
+\item \code{print}
+\item \code{printf}
 \item \code{id}
 }
 
@@ -568,11 +556,15 @@ table:\tabular{lll}{
    rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
    rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
    rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
-   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt) \tab  \cr
-   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt) \tab  \cr
+   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA \tab  \cr
+   tad0() or tad0(x) \tab Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0 \tab  \cr
+   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
+   tafd0() or tafd0(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
    dosenum() \tab Dose Number \tab  \cr
-   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment \tab  \cr
-   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment \tab  \cr
+   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=NA \tab  \cr
+   tlast0() or tlast0(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=0 \tab  \cr
+   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=NA \tab  \cr
+   tfirst0() or tfirst0(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=0 \tab  \cr
    prod(…) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
    sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
    max(…) \tab maximum of a group of numbers \tab  \cr
@@ -740,7 +732,7 @@ y=f+(a+b* f^c)*err
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-y=f+[sqrt(a^2+b^2 *f^(2c))]*err
+y=f+$$sqrt(a^2+b^2 *f^(2c))$$*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in
@@ -1002,6 +994,63 @@ In general all the that are supported are in the following table
 NA
 }
 
+\section{Note on strings in rxode2}{
+Strings are converted to double values inside of \code{rxode2}, hence you can
+refer to them as an integer corresponding to the string value or the
+string value itself. For covariates these are calculated on the fly
+based on your data and you should likely not try this, though you should
+be aware. For strings defined in the model, this is fixed and both could
+be used.
+
+For example:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{if (APGAR == 10 || APGAR == 8 || APGAR == 9) \{
+    tAPGAR <- "High"
+  \} else if (APGAR == 1 || APGAR == 2 || APGAR == 3) \{
+    tAPGAR <- "Low"
+  \} else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) \{
+    tAPGAR <- "Med"
+  \} else \{
+    tAPGAR<- "Med"
+  \}
+}\if{html}{\out{</div>}}
+
+Could also be replaced by:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{if (APGAR == 10 || APGAR == 8 || APGAR == 9) \{
+    tAPGAR <- "High"
+  \} else if (APGAR == 1 || APGAR == 2 || APGAR == 3) \{
+    tAPGAR <- "Low"
+  \} else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) \{
+    tAPGAR <- "Med"
+  \} else \{
+    tAPGAR<- 3
+  \}
+}\if{html}{\out{</div>}}
+
+Since \code{"Med"} is already defined
+
+If you wanted you can pre-declare what levels it has (and the order) to
+give you better control of this:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{levels(tAPGAR) <- c("Med", "Low", "High")
+if (APGAR == 10 || APGAR == 8 || APGAR == 9) \{
+    tAPGAR <- 3
+  \} else if (APGAR == 1 || APGAR == 2 || APGAR == 3) \{
+    tAPGAR <- 2
+  \} else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) \{
+    tAPGAR <- 1
+  \} else \{
+    tAPGAR<- 1
+  \}
+}\if{html}{\out{</div>}}
+
+You can see that the number changed since the declaration change the
+numbers in each variable for \code{tAPGAR}. These \code{levels()} statements need
+to be declared before the variable occurs to ensure the numbering is
+consistent with what is declared.
+}
+
 \examples{
 \donttest{
 
@@ -1037,12 +1086,12 @@ print(m1)
 
 # QD (once daily) dosing for 5 days.
 
-qd <- et(amountUnits = "ug", timeUnits = "hours") \%>\%
+qd <- et(amountUnits = "ug", timeUnits = "hours") |>
   et(amt = 10000, addl = 4, ii = 24)
 
 # Sample the system hourly during the first day, every 8 hours
 # then after
-qd <- qd \%>\% et(0:24) \%>\%
+qd <- qd |> et(0:24) |>
   et(from = 24 + 8, to = 5 * 24, by = 8)
 
 # Step 3 - solve the system

@@ -38,17 +38,17 @@ Vtpol2 <- function() {
   })
 }
 
-et <- et(0, 10, length.out=200) %>%
+et <- et(0, 10, length.out=200) |>
   et(amt=0)
 
-s1 <- Vtpol2 %>%  solve(et, method="lsoda")
+s1 <- Vtpol2 |> solve(et, method="lsoda")
 print(s1)
 ```
 
 While this is not stiff at mu=1, mu=1000 is a stiff system
 
 ```{r}
-s2 <- Vtpol2 %>%  solve(c(mu=1000), et)
+s2 <- Vtpol2 |> solve(c(mu=1000), et)
 print(s2)
 ```
 

@@ -4,11 +4,7 @@
 \alias{rxGetLin}
 \title{Get the linear compartment model true function}
 \usage{
-rxGetLin(
-  model,
-  linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
-  verbose = FALSE
-)
+rxGetLin(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALSE)
 }
 \arguments{
 \item{model}{This is the ODE model specification.  It can be:

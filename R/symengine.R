@@ -92,9 +92,6 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "erfc" = 1,
   "exp" = 1,
   "gamma" = 1,
-  "linCmtA" = 20,
-  "linCmtC" = 20,
-  "linCmtB" = 21,
   "log" = 1,
   "polygamma" = 2,
   "rxTBS" = 5,
@@ -135,6 +132,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "gammaqInva" = 2,
   "lowergamma" = 2,
   "uppergamma" = 2,
+  "linCmtA"=14,
+  "linCmtB"=15,
   "max" = NA,
   "min" = NA,
   "logit" = NA,
@@ -142,11 +141,15 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "probit" = NA,
   "probitInv" = NA,
   "tlast" = NA,
+  "tlast0" = NA,
   "tfirst" = NA,
+  "tfirst0" = NA,
   "lag" = NA,
   "lead" = NA,
   "dose" =NA,
   "podo" =NA,
+  "dose0" =NA,
+  "podo0" =NA,
   "dabs" = 1,
   "dabs2" = 1,
   "abs1" = 1,
@@ -239,7 +242,36 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikXCauchyDscale"=4,
   "llikXNorm"=4,
   "llikXNormDmean"=4,
-  "llikXNormDsd"=4
+  "llikXNormDsd"=4,
+  "ReLU"=1,
+  "dReLU"=1,
+  "GELU"=1,
+  "dGELU"=1,
+  "d2GELU"=1,
+  "d3GELU"=1,
+  "d4GELU"=1,
+  "ELU"=2,
+  "dELU"=2,
+  "d2ELU"=2,
+  "d2aELU"=2,
+  "dELUa"=2,
+  "d2ELUa"=2,
+  "softplus"=1,
+  "dsoftplus"=1,
+  "d2softplus"=1,
+  "d3softplus"=1,
+  "d4softplus"=1,
+  "SELU"=1,
+  "dSELU"=1,
+  "lReLU"=1,
+  "dlReLU"=1,
+  "PReLU"=2,
+  "dPReLU"=2,
+  "d2PReLU"=2,
+  "dPReLUa"=2,
+  "dPReLUa1"=2,
+  "Swish"=1,
+  "dSwish"=1
 )
 
 .rxOnly <- c(
@@ -266,7 +298,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 
 #' Add/Create C functions for use in rxode2
 #'
-#' @inheritParams rxode2parse::rxFunParse
+#' @inheritParams rxFunParse
 #'
 #' @param name This can either give the name of the user function or
 #'   be a simple R function that you wish to convert to C.  If you
@@ -278,29 +310,29 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' @export
 #' @examples
 #' \donttest{
-#' ## Right now rxode2 is not aware of the function fun
-#' ## Therefore it cannot translate it to symengine or
-#' ## Compile a model with it.
+#' # Right now rxode2 is not aware of the function fun
+#' # Therefore it cannot translate it to symengine or
+#' # Compile a model with it.
 #'
 #' try(rxode2("a=fun(a,b,c)"))
 #'
-#' ## Note for this approach to work, it cannot interfere with C
-#' ## function names or reserved rxode2 special terms.  Therefore
-#' ## f(x) would not work since f is an alias for bioavailability.
+#' # Note for this approach to work, it cannot interfere with C
+#' # function names or reserved rxode2 special terms.  Therefore
+#' # f(x) would not work since f is an alias for bioavailability.
 #'
 #' fun <- "
 #' double fun(double a, double b, double c) {
 #'   return a*a+b*a+c;
 #' }
-#' " ## C-code for function
+#' " # C-code for function
 #'
 #' rxFun("fun", c("a", "b", "c"), fun) ## Added function
 #'
-#' ## Now rxode2 knows how to translate this function to symengine
+#' # Now rxode2 knows how to translate this function to symengine
 #'
 #' rxToSE("fun(a,b,c)")
 #'
-#' ## And will take a central difference when calculating derivatives
+#' # And will take a central difference when calculating derivatives
 #'
 #' rxFromSE("Derivative(fun(a,b,c),a)")
 #'
@@ -384,7 +416,6 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #'
 #' rxRmFun("fun")
 #'
-#'
 #' }
 rxFun <- function(name, args, cCode) {
   if (missing(args) && missing(cCode)) {
@@ -394,7 +425,7 @@ rxFun <- function(name, args, cCode) {
     .env$d <- list()
     lapply(seq_along(.lst), function(i) {
       .cur <- .lst[[i]]
-      do.call(rxode2parse::rxFunParse, .cur[1:3])
+      do.call(rxode2::rxFunParse, .cur[1:3])
       message("converted R function '", .cur$name, "' to C (will now use in rxode2)")
       ## message(.cur$cCode)
       if (length(.cur) == 4L) {
@@ -407,13 +438,13 @@ rxFun <- function(name, args, cCode) {
     }
     return(invisible())
   }
-  rxode2parse::rxFunParse(name, args, cCode)
+  rxFunParse(name, args, cCode)
 }
 
 #' @rdname rxFun
 #' @export
 rxRmFun <- function(name) {
-  rxode2parse::rxRmFunParse(name)
+  rxRmFunParse(name)
 }
 
 .SE1p <- c(
@@ -493,14 +524,13 @@ rxD <- function(name, derivatives) {
   if (!all(sapply(derivatives, function(x) (inherits(x, "function") || is.null(x))))) {
     stop("derivatives must be a list of functions with at least 1 element", call. = FALSE)
   }
-  .rxD <- rxode2parse::rxode2parseD()
+  .rxD <- rxode2::rxode2parseD()
   if (exists(name, envir = .rxD)) {
     warning(sprintf(gettext("replacing defined derivatives for '%s'"), name), call. = FALSE)
   }
   assign(name, derivatives, envir = .rxD)
   return(invisible())
 }
-
 
 .rxToSE.envir <- new.env(parent=emptyenv())
 .rxToSE.envir$envir <- NULL
@@ -533,8 +563,10 @@ rxD <- function(name, derivatives) {
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
-  rxode2parse::.udfEnvSet(parent)
+  .udfEnvSet(parent)
   .rxToSE.envir$parent <- parent
+  .rxToSElinCmt$linCmt <- NULL # no linCmt() found
+  if (exists("t", envir=.rxToSElinCmt, inherits=FALSE)) rm("t", envir=.rxToSElinCmt)
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
   assignInMyNamespace(".rxLastAssignedDdt", "")
@@ -572,43 +604,325 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(.rxToSE(eval(parse(text = paste0("quote({", x, "})"))), envir, progress))
 }
 
+## adapted from URLencode
+.rxStrEncode <- function (str) {
+  paste0("rxQ__",
+         vapply(str, function(str) {
+           OK <- "[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789]"
+           x <- strsplit(str, "")[[1L]]
+           z <- grep(OK, x)
+           if (length(z)) {
+             y <- vapply(x[z], function(x)
+               paste0("_", toupper(as.character(charToRaw(x))),
+                      collapse = ""), "")
+             x[z] <- y
+           }
+           paste(x, collapse = "")
+         }, character(1), USE.NAMES = FALSE),
+         "__rxQ")
+}
+
+.rxStrDecode <- function(x) {
+  .nchr <- nchar(x)
+  if (.nchr > 10) {
+    if (substr(x, 1, 5) == "rxQ__") {
+      .x <- charToRaw(substr(x, 6, .nchr - 5))
+      .pc <- charToRaw("_")
+      .out <- raw(0L)
+      .i <- 1L
+      while (.i <= length(.x)) {
+        if (.x[.i] != .pc) {
+          .out <- c(.out, .x[.i])
+          .i <- .i + 1L
+        }
+        else {
+          .y <- as.integer(.x[.i + 1L:2L])
+          .y[.y > 96L] <- .y[.y > 96L] - 32L
+          .y[.y > 57L] <- .y[.y > 57L] - 7L
+          .y <- sum((.y - 48L) * c(16L, 1L))
+          .out <- c(.out, as.raw(as.character(.y)))
+          .i <- .i + 3L
+        }
+      }
+      return(rawToChar(.out))
+    }
+  }
+  return(x)
+}
+
+
 .rxChrToSym <- function(x) {
-  str2lang(paste0(
-    "rxQ__",
-    gsub(
-      " ", "_rxSpace_",
-      gsub("[.]", "_rxDoT_", x)
-    ),
-    "__rxQ"
-  ))
+  str2lang(.rxStrEncode(x))
 }
 
 .rxRepRxQ <- function(x) {
   .nchr <- nchar(x)
   if (.nchr > 10) {
     if (substr(x, 1, 5) == "rxQ__") {
-      return(deparse1(gsub(
-        "_rxSpace_", " ",
-        gsub(
-          "_rxDoT_", ".",
-          substr(x, 6, .nchr - 5)
-        )
-      )))
+      return(deparse1(.rxStrDecode(x)))
     }
   }
   return(x)
 }
 
-.rxToSEDualVarFunction <- c("tlast", "tad", "tafd", "dose", "podo")
+.rxToSEDualVarFunction <- c("tlast", "tlast0", "tad", "tad0", "tafd", "tafd0",
+                            "dose", "podo", "dose0", "podo0")
+
+#' Change rxode2 linCmt states to `linCmtA/B` syntax
+#'
+#' @param x character expression
+#' @param envir Current evaluating environment
+#' @param progress Progress information
+#' @param isEnvir Tell if this is an environment parse
+#' @return Changed expression (as character), or NULL if not
+#' @author Matthew L. Fidler
+#' @noRd
+.rxToSEtoLinCmt <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (is.null(.rxToSElinCmt$linCmt)) {
+    return(NULL)
+  }
+  .linCmtB <- .rxToSElinCmt$linCmt == "linCmtB"
+  .oral0 <- as.numeric(paste(.rxToSElinCmt$oral0)) == 1
+  .ncmt <- as.numeric(paste(.rxToSElinCmt$ncmt))
+  .which1 <- NA_integer_
+  if (.oral0) {
+    if (.ncmt == 1) {
+      if (x == "depot") {
+        .which1 <- 0L
+      } else if (x == "central") {
+        .which1 <- 1L
+      }
+      # The sensitivity equations
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 2L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_ka") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_depot_BY_ka") {
+          .which1 <- 5L
+        }
+      }
+    } else if (.ncmt == 2) {
+      if (x == "depot") {
+        .which1 <- 0L
+      } else if (x == "central") {
+        .which1 <- 1L
+      } else if (x == "peripheral1") {
+        .which1 <- 2L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_central_BY_ka") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 9L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 10L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 11L
+        } else if (x == "rx__sens_peripheral1_BY_ka") {
+          .which1 <- 12L
+        } else if (x == "rx__sens_depot_BY_ka") {
+          .which1 <- 13L
+        }
+      }
+    } else {
+      if (x == "depot") {
+        .which1 <- 0L
+      } else if (x == "central") {
+        .which1 <- 1L
+      } else if (x == "peripheral1") {
+        .which1 <- 2L
+      } else if (x == "peripheral2") {
+        .which1 <- 3L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_central_BY_p4") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_central_BY_p5") {
+          .which1 <- 9L
+        } else if (x == "rx__sens_central_BY_ka") {
+          .which1 <- 10L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 11L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 12L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 13L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 14L
+        } else if (x == "rx__sens_peripheral1_BY_p4") {
+          .which1 <- 15L
+        } else if (x == "rx__sens_peripheral1_BY_p5") {
+          .which1 <- 16L
+        } else if (x == "rx__sens_peripheral1_BY_ka") {
+          .which1 <- 17L
+        } else if (x == "rx__sens_peripheral2_BY_p1") {
+          .which1<- 18L
+        } else if (x == "rx__sens_peripheral2_BY_v1") {
+          .which1 <- 19L
+        } else if (x == "rx__sens_peripheral2_BY_p2") {
+          .which1 <- 20L
+        } else if (x == "rx__sens_peripheral2_BY_p3") {
+          .which1 <- 21L
+        } else if (x == "rx__sens_peripheral2_BY_p4") {
+          .which1 <- 22L
+        } else if (x == "rx__sens_peripheral2_BY_p5") {
+          .which1 <- 23L
+        } else if (x == "rx__sens_peripheral2_BY_ka") {
+          .which1 <- 24L
+        } else if (x == "rx__sens_depot_BY_ka") {
+          .which1 <- 25L
+        }
+      }
+    }
+  } else {
+    if (.ncmt == 1) {
+      if (x == "central") {
+        .which1 <- 0L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 1L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 2L
+        }
+      }
+    } else if (.ncmt == 2) {
+      if (x == "central") {
+        .which1 <- 0L
+      } else if (x == "peripheral1") {
+        .which1 <- 1L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 2L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 9L
+        }
+      }
+    } else if (.ncmt == 3) {
+      if (x == "central") {
+        .which1 <- 0L
+      } else if (x == "peripheral1") {
+        .which1 <- 1L
+      } else if (x == "peripheral2") {
+        .which1 <- 2L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_central_BY_p4") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_central_BY_p5") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 9L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 10L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 11L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 12L
+        } else if (x == "rx__sens_peripheral1_BY_p4") {
+          .which1 <- 13L
+        } else if (x == "rx__sens_peripheral1_BY_p5") {
+          .which1 <- 14L
+        } else if (x == "rx__sens_peripheral2_BY_p1") {
+          .which1 <- 15L
+        } else if (x == "rx__sens_peripheral2_BY_v1") {
+          .which1 <- 16L
+        } else if (x == "rx__sens_peripheral2_BY_p2") {
+          .which1 <- 17L
+        } else if (x == "rx__sens_peripheral2_BY_p3") {
+          .which1 <- 18L
+        } else if (x == "rx__sens_peripheral2_BY_p4") {
+          .which1 <- 19L
+        } else if (x == "rx__sens_peripheral2_BY_p5") {
+          .which1 <- 20L
+        }
+      }
+    }
+  }
+  if (is.na(.which1)) {
+    return(NULL)
+  }
+  if (!.linCmtB) {
+    # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
+    #         p1, v1, p2, p3, p4, p5, ka)
+    .rxToSElinCmt$which <- .which1
+    return(sprintf("linCmtA(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                   .rxToSElinCmt$t, .rxToSElinCmt$linCmtN, .rxToSElinCmt$ncmt,
+                   .rxToSElinCmt$oral0, .rxToSElinCmt$which,
+                   .rxToSElinCmt$trans, .rxToSElinCmt$p1,
+                   .rxToSElinCmt$v1, .rxToSElinCmt$p2, .rxToSElinCmt$p3,
+                   .rxToSElinCmt$p4, .rxToSElinCmt$p5,
+                   .rxToSElinCmt$ka))
+  } else {
+    .rxToSElinCmt$which1 <- .which1
+    .rxToSElinCmt$which2 <- -2L
+    return(sprintf("linCmtB(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                   .rxToSElinCmt$t,
+                   .rxToSElinCmt$linCmtN,
+                   .rxToSElinCmt$ncmt,
+                   .rxToSElinCmt$oral0,
+                   .rxToSElinCmt$which1,
+                   .rxToSElinCmt$which2,
+                   .rxToSElinCmt$trans,
+                   .rxToSElinCmt$p1,
+                   .rxToSElinCmt$v1,
+                   .rxToSElinCmt$p2,
+                   .rxToSElinCmt$p3,
+                   .rxToSElinCmt$p4,
+                   .rxToSElinCmt$p5,
+                   .rxToSElinCmt$ka))
+  }
+}
 
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
-#'
 #'
 #' @param x expression
 #' @param envir Current evaluating environment
 #' @param progress Progress information
 #' @param isEnvir Tell if this is an environment parse
-#' @return Changed environment
+#' @return Changed expression (as character)
 #' @author Matthew L. Fidler
 #' @noRd
 .rxToSENameOrAtomic <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
@@ -638,6 +952,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       }
       return(.ret)
     } else {
+      .lin <- .rxToSEtoLinCmt(.ret, envir=envir, progress=progress, isEnv=isEnv)
+      if (!is.null(.lin)) {
+        return(.lin)
+      }
       .ret0 <- .rxSEcnt[.ret]
       if (is.na(.ret0)) {
         if (isEnv && is.name(x)) {
@@ -655,7 +973,6 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
-
 .rxToSECurlyBrace <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .x2 <- x[-1]
   if (progress) {
@@ -670,8 +987,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     rxProgressStop()
   } else {
     .ret <- paste(lapply(.x2, .rxToSE, envir = envir),
-                  collapse = "\n"
-                  )
+                  collapse = "\n")
   }
   ## Assign and evaluate deferred items.
   if (isEnv) {
@@ -693,11 +1009,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       assign(.var, .expr, envir = envir)
       .rx <- paste0(
         rxFromSE(.var), "=",
-        rxFromSE(.expr)
-      )
+        rxFromSE(.expr))
       assign("..sens0", c(envir$..sens0, .rx),
-             envir = envir
-             )
+             envir = envir)
     }
     for (.var in names(envir$..jac0..)) {
       .expr <- envir$..jac0..[[.var]]
@@ -705,11 +1019,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       assign(.var, .expr, envir = envir)
       .rx <- paste0(
         rxFromSE(.var), "=",
-        rxFromSE(.expr)
-      )
+        rxFromSE(.expr))
       assign("..jac0", c(envir$..jac0, .rx),
-             envir = envir
-             )
+             envir = envir)
     }
   }
   return(.ret)
@@ -866,6 +1178,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         }
       }
     } else {
+
       .expr <- eval(parse(text = .expr))
       if (envir$..doConst || !is.numeric(.expr)) {
         assign(.var, .expr, envir = envir)
@@ -939,6 +1252,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
+.rxToSETad0 <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .len <- length(x)
+  if (.len == 1L) {
+  } else if (.len == 2L) {
+    if (length(x[[2]]) != 1) {
+      stop(as.character(x[[1]]), "() must be used with a state", call. = FALSE)
+    }
+    return(paste0("(t-tlast0(", as.character(x[[2]]), "))"))
+  } else {
+    stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
+  }
+  return(paste0("(t-tlast0())"))
+}
+
 .rxToSETad <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .len <- length(x)
   if (.len == 1L) {
@@ -994,11 +1321,28 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(paste0("(t-tfirst())"))
 }
 
+.rxToSETlastOrTafd0 <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .len <- length(x)
+  if (.len == 1L) {
+  } else if (.len == 2L) {
+    if (length(x[[2]]) != 1) {
+      stop(as.character(x[[1]]), "() must be used with a state", call. = FALSE)
+    }
+    return(paste0("(t-tfirst0(", as.character(x[[2]]), "))"))
+  } else {
+    stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
+  }
+  return(paste0("(t-tfirst0())"))
+}
+
 .rxToSETlastOrTfirst <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .len <- length(x)
   if (.len == 1L) {
     if (identical(x[[1]], quote(`podo`))) {
       return(paste0("podo(", .rxLastAssignedDdt, ")"))
+    }
+    if (identical(x[[1]], quote(`podo0`))) {
+      return(paste0("podo0(", .rxLastAssignedDdt, ")"))
     }
   } else if (.len == 2L) {
     if (length(x[[2]]) != 1) {
@@ -1106,6 +1450,92 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
+.rxToSEd4GELU <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "d4GELU")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    return(
+      paste0("exp(-(", .x, ")^2/2)*(7*(", .x, ")^2 - 4 - (", .x, ")^4)/sqrt(2*pi)")
+    )
+  } else {
+    stop("'d4GELU' can only take 1 argument", call. = FALSE)
+  }
+}
+
+.rxToSEd4softplus <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "d4softplus")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    .ex1 <- paste0("(1.0 + exp(-(", .x, ")))")
+    return(
+      paste0("6.0*exp(-3.0*(", .x, "))/((", .ex1,
+             ")^4) - 6.0*exp(-2.0*(", .x, "))/((", .ex1,
+             ")^3) + exp(-(", .x, "))/((", .ex1, ")^2)")
+    )
+  } else {
+    stop("'d4softplus' can only take 1 argument", call. = FALSE)
+  }
+}
+
+.rxToSEdSELU <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "dSELU")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    return(
+      paste0("(rxGt(", .x, ", 0)*1.0507009873554804934193349852946 + 1.0507009873554804934193349852946*1.6732632423543772848170429916717*exp(", .x, ")*rxLeq(", .x, ", 0))")
+    )
+  } else {
+    stop("'dSELU' can only take 1 argument", call. = FALSE)
+  }
+
+}
+
+.rxToSEdSwish <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "dSwish")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    # x*exp(-x)/(1.0 + exp(-x))^2 + (1.0 + exp(-x))^(-1);
+    return(
+      paste0("((", .x, ")*exp(-(", .x, "))/(1.0 + exp(-(", .x,
+             ")))^2 + 1.0/(1.0 + exp(-(", .x, ")))")
+      )
+  } else {
+    stop("'dSwish' can only take 1 argument", call. = FALSE)
+  }
+
+}
+
+
+# Convert the mix() expression to a if clause with mixest for symengine
+.rxToSEMix <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .expr <- vapply(seq_along(x), function(i) {
+    if (i %% 2 == 0)  {
+      # Noting that argument 1 is the function name,
+      # The even arguments are the mixture values
+      paste0("rxEq(mixest, ", i/2, ")*(", deparse1(x[[i]]), ")")
+    } else {
+      ""
+    }
+  }, character(1L), USE.NAMES = FALSE)
+  paste0("(", paste(.expr[nzchar(.expr)], collapse="+"), ")")
+}
+
 .rxToSETransit <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x) == 4) {
     ## transit(n, mtt, bio)
@@ -1123,11 +1553,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .bio <- .rxToSE(x[[4]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
     return(paste0(
-      "exp(log((", .bio, ")*(podo(", .rxLastAssignedDdt, ")))+log(",
+      "exp(log((", .bio, ")*(podo0(", .rxLastAssignedDdt, ")))+log(",
       .n, " + 1)-log(", .mtt, ")+(", .n,
       ")*((log(", .n, "+1)-log(", .mtt,
-      "))+log(t-tlast(", .rxLastAssignedDdt, ")))-((", .n, "+1)/(", .mtt,
-      "))*(t-tlast(", .rxLastAssignedDdt, "))-lgamma(1+", .n, "))"
+      "))+log(t-tlast0(", .rxLastAssignedDdt, ")))-((", .n, "+1)/(", .mtt,
+      "))*(t-tlast0(", .rxLastAssignedDdt, "))-lgamma(1+", .n, "))"
     ))
   } else if (length(x) == 3) {
     if (isEnv) {
@@ -1137,12 +1567,201 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .n <- .rxToSE(x[[2]], envir = envir)
     .mtt <- .rxToSE(x[[3]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
-    return(paste0("exp(log(podo(", .rxLastAssignedDdt, "))+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t-tlast(", .rxLastAssignedDdt, ")))-((", .n, " + 1)/(", .mtt, "))*(t-tlast(",.rxLastAssignedDdt, "))-lgamma(1+", .n, "))"))
+    return(paste0("exp(log(podo0(", .rxLastAssignedDdt, "))+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t-tlast0(", .rxLastAssignedDdt, ")))-((", .n, " + 1)/(", .mtt, "))*(t-tlast0(",.rxLastAssignedDdt, "))-lgamma(1+", .n, "))"))
   } else {
     stop("'transit' can only take 2-3 arguments", call. = FALSE)
   }
 }
 
+.rxToSEMax <- function(x, min=FALSE) {
+  # Based on https://stackoverflow.com/questions/30738923/max-implemented-with-basic-operators
+  if (length(x) == 0) return("")
+  if (length(x) == 1) return(paste0("(", x[1], ")"))
+  .x2 <- x[1:2]
+  .xrest <- x[-(1:2)]
+  .a <- paste0(.x2[1])
+  .b <- paste0(.x2[2])
+  .cmp <- ifelse(min, "rxLt", "rxGt")
+  .av <- suppressWarnings(as.numeric(.x2[1]))
+  .bv <- suppressWarnings(as.numeric(.x2[2]))
+  if (identical(.av, 0)) {
+    return(paste0("((", .b, ")*", .cmp, "(", .b, ",0))"))
+  }
+  if (identical(.bv, 0)) {
+    return(paste0("((", .a, ")*", .cmp, "(", .a,",0))"))
+  }
+  .ret <- paste0("(((", .a, ")-(", .b, "))*", .cmp, "(", .a, ",", .b, ")+(", .b, "))")
+  if (length(.xrest) == 0) return(.ret)
+  return(.rxToSEMax(c(.ret, .xrest), min=min))
+}
+
+.rxToSElinCmt <- new.env(parent=emptyenv())
+.rxToSElinCmt$linCmt <- NULL
+
+
+#' This saves the linCmt information to the .rxToSElinCmt environment
+#'
+#' This is useful when trying to convert the depot and other states
+#' defined by the linear compartment to `linCmtA` or `linCmtB` to the
+#' function.
+#'
+#' @param expr language based expression to save information for.
+#'
+#' @return nothing, called for side effects
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+.rxSEsaveLinCmt <- function(expr) {
+  if (is.null(.rxToSElinCmt$linCmt)) stop(".rxToSElinCmt$linCmt is NULL")
+  if (!exists("t", envir=.rxToSElinCmt)) {
+    if (.rxToSElinCmt$linCmt == "linCmtA") {
+      # [[1]] == linCmtA
+      # [[2]] == rx__PTR__
+      .rxToSElinCmt$t <- expr[[3]]
+      .rxToSElinCmt$linCmtN <- expr[[4]]
+      .rxToSElinCmt$ncmt <- expr[[5]]
+      .rxToSElinCmt$oral0 <- expr[[6]]
+      # [[7]] = which
+      .rxToSElinCmt$trans <- expr[[8]]
+      .rxToSElinCmt$p1 <- expr[[9]]
+      .rxToSElinCmt$v1 <- expr[[10]]
+      .rxToSElinCmt$p2 <- expr[[11]]
+      .rxToSElinCmt$p3 <- expr[[12]]
+      .rxToSElinCmt$p4 <- expr[[13]]
+      .rxToSElinCmt$p5 <- expr[[14]]
+      .rxToSElinCmt$ka <- expr[[15]]
+      # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
+      #         p1, v1, p2, p3, p4, p5, ka)
+    } else {
+      # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
+      #         p1, v1, p2, p3, p4, p5, ka)
+      # [[1]] == linCmtB
+      # [[2]] == rx__PTR__
+      .rxToSElinCmt$t <- expr[[3]]
+      .rxToSElinCmt$linCmtN <- expr[[4]]
+      .rxToSElinCmt$ncmt <- expr[[5]]
+      .rxToSElinCmt$oral0 <- expr[[6]]
+      # [[7]] = which1
+      # [[8]] = which2
+      .rxToSElinCmt$trans <- expr[[9]]
+      .rxToSElinCmt$p1 <- expr[[10]]
+      .rxToSElinCmt$v1 <- expr[[11]]
+      .rxToSElinCmt$p2 <- expr[[12]]
+      .rxToSElinCmt$p3 <- expr[[13]]
+      .rxToSElinCmt$p4 <- expr[[14]]
+      .rxToSElinCmt$p5 <- expr[[15]]
+      .rxToSElinCmt$ka <- expr[[16]]
+    }
+  } else {
+    if (.rxToSElinCmt$linCmt != expr[[1]]) {
+      stop("linCmtA and linCmtB cannot be used in the same model", call. = FALSE)
+    }
+    if (.rxToSElinCmt$linCmt == "linCmtA") {
+      # [[1]] == linCmtA
+      # [[2]] == rx__PTR__
+      err <- NULL
+      if (!identical(.rxToSElinCmt$t, expr[[3]])) {
+        err <- c(err, "t")
+      }
+      if (!identical(.rxToSElinCmt$linCmtN, expr[[4]])) {
+        err <- c(err, "linCmtN")
+      }
+      if (!identical(.rxToSElinCmt$ncmt, expr[[5]])) {
+        err <- c(err, "ncmt")
+      }
+      if (!identical(.rxToSElinCmt$oral0, expr[[6]])) {
+        err <- c(err, "oral0")
+      }
+      if (!identical(.rxToSElinCmt$trans, expr[[8]])) {
+        err <- c(err, "trans")
+      }
+      if (!identical(.rxToSElinCmt$p1, expr[[9]])) {
+        err <- c(err, "p1")
+      }
+      if (!identical(.rxToSElinCmt$v1, expr[[10]])) {
+        err <- c(err, "v1")
+      }
+      if (!identical(.rxToSElinCmt$p2, expr[[11]])) {
+        err <- c(err, "p2")
+      }
+      if (!identical(.rxToSElinCmt$p3, expr[[12]])) {
+        err <- c(err, "p3")
+      }
+      if (!identical(.rxToSElinCmt$p4, expr[[13]])) {
+        err <- c(err, "p4")
+      }
+      if (!identical(.rxToSElinCmt$p5, expr[[14]])) {
+        err <- c(err, "p5")
+      }
+      if (!identical(.rxToSElinCmt$ka, expr[[15]])) {
+        err <- c(err, "ka")
+      }
+      if (!is.null(err)) {
+        stop(paste0("linCmtA needs exactly the same arguments: ",
+                    paste(err, collapse = ", ")),
+             call. = FALSE)
+      }
+    } else {
+      # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
+      #         p1, v1, p2, p3, p4, p5, ka)
+      # [[1]] == linCmtB
+      # [[2]] == rx__PTR__
+      err <- NULL
+      if (!identical(.rxToSElinCmt$t, expr[[3]])) {
+        err <- c(err, "t")
+      }
+      if (!identical(.rxToSElinCmt$linCmtN, expr[[4]])) {
+        err <- c(err, "linCmtN")
+      }
+      if (!identical(.rxToSElinCmt$ncmt, expr[[5]])) {
+        err <- c(err, "ncmt")
+      }
+      if (!identical(.rxToSElinCmt$oral0, expr[[6]])) {
+        err <- c(err, "oral0")
+      }
+      if (!identical(.rxToSElinCmt$trans, expr[[9]])) {
+        err <- c(err, "trans")
+      }
+      if (!identical(.rxToSElinCmt$p1, expr[[10]])) {
+        err <- c(err, "p1")
+      }
+      if (!identical(.rxToSElinCmt$v1, expr[[11]])) {
+        err <- c(err, "v1")
+      }
+      if (!identical(.rxToSElinCmt$p2, expr[[12]])) {
+        err <- c(err, "p2")
+      }
+      if (!identical(.rxToSElinCmt$p3, expr[[13]])) {
+        err <- c(err, "p3")
+      }
+      if (!identical(.rxToSElinCmt$p4, expr[[14]])) {
+        err <- c(err, "p4")
+      }
+      if (!identical(.rxToSElinCmt$p5, expr[[15]])) {
+        err <- c(err, "p5")
+      }
+      if (!identical(.rxToSElinCmt$ka, expr[[16]])) {
+        err <- c(err, "ka")
+      }
+      if (!is.null(err)) {
+        stop(paste0("linCmtB needs exactly the same arguments: ",
+                    paste(err, collapse = ", ")),
+             call. = FALSE)
+      }
+    }
+  }
+}
+
+#' This is used converting the rxode2 functions to a symengine call
+#'
+#' @param x language object that is a call
+#' @param envir environment that has information
+#' @param progress boolean telling if the progress bar should be shown
+#' @param isEnv boolean to indicate if the environment is a rxode2 environment
+#' @return string representing the translation
+#' @noRd
+#' @author Matthew L. Fidler
 .rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (identical(x[[1]], quote(`(`))) {
     return(paste0("(", .rxToSE(x[[2]], envir = envir), ")"))
@@ -1157,20 +1776,32 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`=`)) ||
                identical(x[[1]], quote(`<-`)) ||
                identical(x[[1]], quote(`~`))) {
+    if (length(x[[2]]) == 2 &&
+          identical(x[[2]][[1]], quote(`levels`))) {
+      return("")
+    }
     return(.rxToSEAssignOperators(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`[`))) {
     return(.rxToSESquareBracket(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tad`))) {
     return(.rxToSETad(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`tad0`))) {
+    return(.rxToSETad0(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lag`)) ||
                identical(x[[1]], quote(`lead`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`tafd0`))) {
+    return(.rxToSETlastOrTafd0(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tlast`)) ||
                identical(x[[1]], quote(`tfirst`)) ||
+               identical(x[[1]], quote(`tlast0`)) ||
+               identical(x[[1]], quote(`tfirst0`)) ||
                identical(x[[1]], quote(`dose`)) ||
-               identical(x[[1]], quote(`podo`))) {
+               identical(x[[1]], quote(`podo`)) ||
+               identical(x[[1]], quote(`dose0`)) ||
+               identical(x[[1]], quote(`podo0`))) {
     return(.rxToSETlastOrTfirst(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`psigamma`))) {
     return(.rxToSEPsigamma(x, envir = envir, progress = progress, isEnv=isEnv))
@@ -1186,6 +1817,22 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`mix`))) {
+    return(.rxToSEMix(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`abs`)) ||
+               identical(x[[1]], quote(`fabs`)) ||
+               identical(x[[1]], quote(`abs0`))) {
+    if (length(x) != 2) stop("abs only takes 1 argument", call.=FALSE)
+    .r <- .rxToSE(x[[2]], envir = envir)
+    return(paste0("(2.0*(", .r, ")*rxGt(", .r, ",0.0)-(", .r, "))"))
+  } else if (identical(x[[1]], quote(`d4GELU`))) {
+    return(.rxToSEd4GELU(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`d4softplus`))) {
+    return(.rxToSEd4softplus(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`dSELU`))) {
+    .rxToSEdSELU(x, envir=envir, progress=progress, isEnv=isEnv)
+  } else if (identical(x[[1]], quote(`dSwish`))) {
+    .rxToSEdSwish(x, envir=envir, progress=progress, isEnv=isEnv)
   } else {
     if (length(x[[1]]) == 1) {
       .x1 <- as.character(x[[1]])
@@ -1229,19 +1876,52 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         as.character(x[[1]])
       )
     }
-    .ret0 <- c(list(as.character(x[[1]])), lapply(x[-1], .rxToSE, envir = envir))
+    .fun0 <- as.character(x[[1]])
+    if (.fun0 %in% c("dur", "rate", "lag", "alag", "f", "F")) {
+      .ret0 <- c(list(as.character(x[[1]])),
+                 lapply(x[-1], as.character, envir = envir))
+    } else {
+      .ret0 <- c(list(as.character(x[[1]])),
+                 lapply(x[-1], .rxToSE, envir = envir))
+    }
     if (isEnv) envir$..curCall <- .lastCall
-    .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
+    .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
-    if (.promoteLinB && .curName == "linCmtA") {
-      .ret0 <- c(
-        list("linCmtB"),
-        .ret0[2:6],
-        list("0"),
-        .ret0[-c(1, 2:6)]
-      )
-      .nargs <- .nargs + 1
+    if (.curName == "linCmtA") {
+      # Save the information about the model so that
+      # depot and the rest can be converted to the right equivalent
+      # linear compartment model
+      if (.promoteLinB) {
+        # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
+        #         p1, v1, p2, p3, p4, p5, ka)
+        # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
+        #         p1, v1, p2, p3, p4, p5, ka)
+        .rxToSElinCmt$linCmt <- "linCmtB"
+        .which <- eval(str2lang(.ret0[[7]]))
+        if (.which == -1) {
+          # Linear compartment solution
+          .ret0 <- c(
+            list("linCmtB"),
+            .ret0[2:6],
+            list("-1", "-1"),
+            .ret0[-c(1, 2:7)]
+          )
+        } else {
+          # Compartment value, convert to the corresponding compartment
+          # value
+          .ret0 <- c(
+            list("linCmtB"),
+            .ret0[2:6],
+            list(paste0(.which), "-2"),
+            .ret0[-c(1, 2:7)]
+          )
+        }
+        .nargs <- .nargs + 1
+      } else {
+        .rxToSElinCmt$linCmt <- "linCmtA"
+      }
+      .rxSEsaveLinCmt(.ret0)
     }
     if (!is.na(.nargs)) {
       if (.nargs == length(.ret0) - 1) {
@@ -1276,8 +1956,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         return(paste0("rx_", .fun, "_ini_0__"))
       } else if (any(.fun == c("cmt", "dvid"))) {
         return("")
-      } else if (any(.fun == c("max", "min"))) {
-        .ret <- paste0(.fun, "(", paste(unlist(.ret0), collapse = ","), ")")
+      } else if (.fun == "max") {
+        .ret <- .rxToSEMax(unlist(.ret0), min=FALSE)
+      } else if (.fun == "min") {
+        .ret <- .rxToSEMax(unlist(.ret0), min=TRUE)
       } else if (.fun == "sum") {
         .ret <- paste0("(", paste(paste0("(", unlist(.ret0), ")"), collapse = "+"), ")")
       } else if (.fun == "prod") {
@@ -1377,9 +2059,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
+        if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
+                        "midpoint", "linear")) return(NULL)
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
-          .udf <- try(get(.fun, envir = rxode2parse::.udfEnvSet(NULL), mode="function"), silent =TRUE)
+          .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
         }
         if (inherits(.udf, "try-error")) {
           stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
@@ -1442,7 +2126,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
                      parent=parent.frame()) {
   rxReq("symengine")
-  rxode2parse::.udfEnvSet(parent)
+  .udfEnvSet(parent)
   .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
@@ -1927,7 +2611,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         }
       }
       .ret0 <- lapply(lapply(x, .stripP), .rxFromSE)
-      .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
+      .SEeq <- c(.rxSEeq, .rxSEeqUsr())
       .nargs <- .SEeq[paste(.ret0[[1]])]
       if (!is.na(.nargs)) {
         if (.nargs == length(.ret0) - 1) {
@@ -2103,7 +2787,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (any(.fun[1] == c("lead", "lag"))) {
             return("0")
           }
-          .rxD <- rxode2parse::rxode2parseD()
+          .rxD <- rxode2parseD()
           if (exists(.fun[1], envir = .rxD)) {
             .funLst <- get(.fun[1], envir = .rxD)
             if (length(.funLst) < .with) {
@@ -2163,7 +2847,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           ")"
         )
         return(.ret)
-      } else if (any(paste(.ret0[[1]]) == c("tlast", "tfirst", "dose", "podo"))) {
+      } else if (any(paste(.ret0[[1]]) == c("tlast", "tfirst", "dose", "podo",
+                                            "tlast0", "first0", "dose0", "podo0"))) {
         if (length(.ret0) == 1L) {
           return(paste0(.ret0[[1]], "()"))
         } else if (length(.ret0) == 2L) {
@@ -2176,8 +2861,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .fun <- paste(.ret0[[1]])
         .g <- try(get(.fun, envir=.rxFromSE.envir$parent, mode="function"), silent=TRUE)
         if (inherits(.g, "try-error")) {
-          .g <- try(get(.fun, envir=rxode2parse::.udfEnvSet(NULL),
-                        mode="function"), silent=TRUE)
+          .g <- try(get(.fun, envir=.udfEnvSet(NULL), mode="function"), silent=TRUE)
         }
         if (inherits(.g, "try-error")) {
           stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), .fun),
@@ -2231,7 +2915,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 #' @author Matthew Fidler
 #' @export
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(envir)
+  .udfEnvSet(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
@@ -2245,10 +2929,11 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$..lhs <- NULL
   .env$..lhs0 <- NULL
   .env$..doConst <- doConst
-  .rxD <- rxode2parse::rxode2parseD()
+  .rxD <- rxode2parseD()
   for (.f in c(
-    ls(rxode2parse::.symengineFs()),
-    ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
+    ls(.symengineFs()),
+    ls(.rxD), "linCmtA", "linCmtB",
+    "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
   )) {
@@ -2271,15 +2956,16 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   # "tlast"
   .pars <- c(
     rxParams(x), rxState(x),
-    "t", "time",  "rx1c", "rx__PTR__"
-  )
+    "t", "time",  "rx1c", "rx__PTR__",
+    "mixnum", "mixest", "mixunif")
+
   ## default lambda/yj values
   .env$rx_lambda_ <- symengine::S("1")
   .env$rx_yj_ <- symengine::S("2")
   .env$rx_low_ <- symengine::S("0")
   .env$rx_hi_ <- symengine::S("1")
-  if (!is.null(rxode2parse::.rxSEeqUsr())) {
-    sapply(names(rxode2parse::.rxSEeqUsr()), function(x) {
+  if (!is.null(.rxSEeqUsr())) {
+    sapply(names(.rxSEeqUsr()), function(x) {
       assign(x, .rxFunction(x), envir = .env)
     })
   }
@@ -3159,15 +3845,22 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
   .ret <- c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
-    "linCmt", names(.rxOnly), ls(rxode2parse::.symengineFs())
+    "linCmt", names(.rxOnly), ls(.symengineFs())
   )
   if (extra) {
-    .ret <- c(.ret, c(
+    .ret <- c(.ret, c("linCmtA","linCmtB",
       "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
       "rxGt", "rxAnd", "rxOr", "rxNot", "dabs", "dabs2", "abs0",
       "dabs1", "abs1"
     ))
   }
+
+  .df <- rxode2parseGetTranslation()
+  .w <- which(.df$package %in% c("rxode2", "rxode2ll"))
+  .df <- .df[-.w, ,drop=FALSE]
+
+  .ret <- c(.ret, .df$rxFun)
+
   # remove operators
   .ret <- setdiff(.ret,
                   c("==", "!=", ">=", "<=", "<", ">", "&&", "||", "&", "|", "!", "+", "-", "*", "**", "^", "/"))
@@ -3472,7 +4165,7 @@ rxSupportedFuns <- function() {
       return(paste0(.pre, "return (", .rxFun2c(x[[2]], envir=envir), ");\n"))
     }
     .ret0 <- lapply(x, .stripP)
-    .FunEq <- c(.rxFunEq, rxode2parse::.rxSEeqUsr())
+    .FunEq <- c(.rxFunEq, .rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .FunEq[.curName]
     if (!is.na(.nargs)) {

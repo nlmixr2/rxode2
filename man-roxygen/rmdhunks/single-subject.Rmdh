@@ -20,7 +20,7 @@ single subject solving. There are three differences:
 The first obvious difference is in speed; With multiple subjects you
 can run each subject ID in parallel.  For more information and
 examples of the speed gains with multiple subject solving see the
-[Speeding up rxode2](rxode2-speed.html) vignette. 
+[Speeding up rxode2](rxode2-speed.html) vignette.
 
 The next difference is the amount of information output in the final data.
 
@@ -51,10 +51,10 @@ mod1 <- function() {
     eff(0) = 1
   })
 }
-  
-et <- et(amount.units='mg', time.units='hours') %>%
-    et(dose=10000, addl=9, ii=12) %>%
-    et(amt=20000, nbr.doses=5, start.time=120, dosing.interval=24) %>%
+
+et <- et(amount.units='mg', time.units='hours') |>
+    et(dose=10000, addl=9, ii=12) |>
+    et(amt=20000, nbr.doses=5, start.time=120, dosing.interval=24) |>
     et(0:240) # sampling
 ```
 
@@ -73,7 +73,7 @@ To better see the differences between the single solve, you can solve
 for 2 individuals
 
 ```{r}
-x2 <- rxSolve(mod1, et %>% et(id=1:2), params=data.frame(CL=c(18.6, 7.6)))
+x2 <- rxSolve(mod1, et |> et(id=1:2), params=data.frame(CL=c(18.6, 7.6)))
 print(x2)
 
 plot(x2, C2, eff)
@@ -83,7 +83,7 @@ By observing the two solves, you can see:
 
 - A multiple subject solve contains the `id` column both in the data
   frame and then data frame of parameters for each subject.
-  
+
 The last feature that is not as obvious, modifying the individual
 parameters.  For single subject data, you can modify the rxode2 data
 frame changing initial conditions and parameter values as if they were

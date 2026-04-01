@@ -33,12 +33,12 @@ rxTest({
 
     f <- mod2()
 
-    ev <- eventTable() %>%
-      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) %>%
-      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) %>%
+    ev <- eventTable() |>
+      add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
+      add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
       add.sampling(0:240)
 
-    ev <- ev %>% et(0.5, evid = 2)
+    ev <- ev |> et(0.5, evid = 2)
 
     pk4 <- rxSolve(f, events=ev, nSub=4, cores = 1, addDosing = TRUE)
     expect_true(inherits(pk4, "rxSolve"))

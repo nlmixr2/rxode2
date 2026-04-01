@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 // Taken from expm::expm; Its not exported as a C call.
 /* Copyright (C) 2013-2014 Drew Schmidt.
@@ -27,7 +30,7 @@
 // #include <assert.h>
 #include <math.h>
 
-#include <Rconfig.h> 
+#include <Rconfig.h>
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Lapack.h>
@@ -280,5 +283,3 @@ void matexp_MH09(double *x, int n, const int p, double *ret)
 
   matpow_by_squaring(x, n, m, ret);
 }
-
-

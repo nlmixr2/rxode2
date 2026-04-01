@@ -40,21 +40,21 @@ rxTest({
                                        ))
 
   test_that("filter works", {
-    expect_equal((o1.first %>% dplyr::filter(time <= 5))$time, 0:5)
+    expect_equal((o1.first |> dplyr::filter(time <= 5))$time, 0:5)
   })
 
 
   test_that("distinct works", {
-    expect_equal(sum((o1.first %>% dplyr::distinct())$time == 24), 1)
+    expect_equal(sum((o1.first |> dplyr::distinct())$time == 24), 1)
   })
 
 
   test_that("slice works", {
-    expect_equal((o1.first %>% dplyr::slice(2:4))$time, 1:3)
+    expect_equal((o1.first |> dplyr::slice(2:4))$time, 1:3)
   })
 
   test_that("top n works", {
-    expect_equal((o1.first %>% dplyr::top_n(3, depot))$time, c(48, 72, 96))
+    expect_equal((o1.first |> dplyr::top_n(3, depot))$time, c(48, 72, 96))
   })
 
   sn <- dplyr::sample_n(o1.first, 3)
@@ -76,35 +76,35 @@ rxTest({
   })
 
   test_that("select works", {
-    expect_equal(names(o1.first %>% dplyr::select(time, depot)), c("time", "depot"))
+    expect_equal(names(o1.first |> dplyr::select(time, depot)), c("time", "depot"))
   })
 
   test_that("summarize works", {
-    expect_equal((o1.first %>% dplyr::summarize(avg = mean(depot)))$avg, mean(o1.first$depot))
+    expect_equal((o1.first |> dplyr::summarize(avg = mean(depot)))$avg, mean(o1.first$depot))
   })
 
   test_that("summarize count works", {
-    expect_equal((o1.first %>% dplyr::filter(time == 24) %>% dplyr::count())$n, 2)
+    expect_equal((o1.first |> dplyr::filter(time == 24) |> dplyr::count())$n, 2)
   })
 
   test_that("mutate works", {
-    expect_equal((o1.first %>% dplyr::mutate(time = time + 1))$time, et1$get.sampling()$time + 1)
+    expect_equal((o1.first |> dplyr::mutate(time = time + 1))$time, et1$get.sampling()$time + 1)
   })
 
   test_that("transmute works", {
-    expect_equal(names(o1.first %>% dplyr::transmute(C1 = C2 + C3, time = time)), c("C1", "time"))
+    expect_equal(names(o1.first |> dplyr::transmute(C1 = C2 + C3, time = time)), c("C1", "time"))
   })
 
   test_that("rename works", {
-    expect_equal(names(o1.first %>% dplyr::rename(Cdepot = C2)), c("time", "Cdepot", "C3", "depot", "centr", "peri", "eff"))
+    expect_equal(names(o1.first |> dplyr::rename(Cdepot = C2)), c("time", "Cdepot", "C3", "depot", "centr", "peri", "eff"))
   })
 
-  tmp <- round(o1.first %>% dplyr::arrange(C2), 4)
+  tmp <- round(o1.first |> dplyr::arrange(C2), 4)
 
   attr(tmp, ".env") <- NULL
   test_that("arrange works", {
     expect_equal(
-      round(o1.first %>% dplyr::arrange(C2), 4),
+      round(o1.first |> dplyr::arrange(C2), 4),
       structure(
         list(
           time = c(0, 24, 24, 23, 22, 21, 20, 19, 18, 17, 48, 16, 15, 72, 14, 96, 120, 40, 13, 64, 12, 88, 112, 11, 10, 9, 8, 32, 56, 7, 80, 104, 6, 5, 1, 4, 3, 2),

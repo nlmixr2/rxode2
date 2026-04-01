@@ -1,4 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 // [[Rcpp::interfaces(r,cpp)]]
@@ -6,13 +9,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 bool rxIs(const RObject &obj, std::string cls);
 Function getRxFn(std::string name);
 
@@ -359,7 +356,7 @@ void rxExpandNestingRep(CharacterVector &thetaNest,
       std::string curPar = as<std::string>(nestVars[i]);
       retS += curPar + "=";
       for (int k = 0; k < nnest; ++k) {
-        theta = thetaVar + std::to_string(lastTheta+i+k*nnest+firstTheta) + "]";
+        theta = thetaVar + std::to_string(lastTheta+k+i*nnest+firstTheta) + "]";
         retS += "(" + curNest + "==" + std::to_string(k+1)+")*" + theta;
         thetaNestTran[thCnt] = curPar + "(" + curNest + "==" +
           as<std::string>(curNestLvl[k])+")";

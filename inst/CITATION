@@ -9,7 +9,7 @@ bibentry(bibtype = "Manual",
                     person("Wenping", "Wang")),
          year = year,
          note = note,
-         url = "https://CRAN.R-project.org/package=RxODE")
+         url = "https://CRAN.R-project.org/package=rxode2")
 
 
 bibentry(bibtype="Article",
@@ -26,5 +26,4 @@ bibentry(bibtype="Article",
          abstract = "This tutorial presents the application of an R package, RxODE, that facilitates quick, efficient simulations of ordinary differential equation models completely within R. Its application is illustrated through simulation of design decision effects on an adaptive dosing regimen. The package provides an efficient, versatile way to specify dosing scenarios and to perform simulation with variability with minimal custom coding. Models can be directly translated to Rshiny applications to facilitate interactive, real-time evaluation/iteration on simulation scenarios.",
          address ="Hoboken",
          issn = "2163-8306",
-         publisher = "John Wiley and Sons Inc.",
-         url = "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/")
+         publisher = "John Wiley and Sons Inc.")

@@ -23,46 +23,6 @@
 \alias{scale_x_date}
 \alias{scale_y_date}
 \alias{expand_limits}
-\alias{\%>\%}
-\alias{rxWithPreserveSeed}
-\alias{rxSetSeed}
-\alias{rxWithSeed}
-\alias{rxGetSeed}
-\alias{cvPost}
-\alias{invWR1d}
-\alias{phi}
-\alias{rLKJ1}
-\alias{rinvchisq}
-\alias{rxRmvn}
-\alias{rxSeedEng}
-\alias{.vecDf}
-\alias{.cbindOme}
-\alias{et}
-\alias{.s3register}
-\alias{add.dosing}
-\alias{add.sampling}
-\alias{as.et}
-\alias{as.rxEvid}
-\alias{as.rxRateDur}
-\alias{etExpand}
-\alias{etRbind}
-\alias{etRep}
-\alias{etSeq}
-\alias{eventTable}
-\alias{rxEtDispatchSolve}
-\alias{rxEvid}
-\alias{rxRateDur}
-\alias{rxReq}
-\alias{.collectWarnings}
-\alias{.clearPipe}
-\alias{rxCbindStudyIndividual}
-\alias{rxStack}
-\alias{rxDerived}
-\alias{forderForceBase}
-\alias{rxSetIni0}
-\alias{.getLastIdLvl}
-\alias{.expandPars}
-\alias{toTrialDuration}
 \title{Objects exported from other packages}
 \keyword{internal}
 \description{
@@ -73,14 +33,6 @@ below to see their documentation.
   \item{ggplot2}{\code{\link[ggplot2]{aes}}, \code{\link[ggplot2]{expand_limits}}, \code{\link[ggplot2]{facet_wrap}}, \code{\link[ggplot2:geom_path]{geom_line}}, \code{\link[ggplot2]{ggplot}}, \code{\link[ggplot2:labellers]{label_both}}, \code{\link[ggplot2:labellers]{label_context}}, \code{\link[ggplot2:labellers]{label_context}}, \code{\link[ggplot2:labellers]{label_value}}, \code{\link[ggplot2:labellers]{label_wrap_gen}}, \code{\link[ggplot2]{scale_type}}, \code{\link[ggplot2:scale_continuous]{scale_x_continuous}}, \code{\link[ggplot2:scale_date]{scale_x_date}}, \code{\link[ggplot2:scale_discrete]{scale_x_discrete}}, \code{\link[ggplot2:scale_continuous]{scale_y_continuous}}, \code{\link[ggplot2:scale_date]{scale_y_date}}, \code{\link[ggplot2:scale_discrete]{scale_y_discrete}}, \code{\link[ggplot2]{waiver}}, \code{\link[ggplot2:labs]{xlab}}, \code{\link[ggplot2:labs]{ylab}}}
 
   \item{lotri}{\code{\link[lotri]{lotri}}}
-
-  \item{magrittr}{\code{\link[magrittr:pipe]{\%>\%}}}
-
-  \item{rxode2et}{\code{\link[rxode2et:dot-clearPipe]{.clearPipe}}, \code{\link[rxode2et:dot-collectWarnings]{.collectWarnings}}, \code{\link[rxode2et:dot-s3register]{.s3register}}, \code{\link[rxode2et]{add.dosing}}, \code{\link[rxode2et]{add.sampling}}, \code{\link[rxode2et]{as.et}}, \code{\link[rxode2et:rxEvid]{as.rxEvid}}, \code{\link[rxode2et:rxRateDur]{as.rxRateDur}}, \code{\link[rxode2et]{et}}, \code{\link[rxode2et]{etExpand}}, \code{\link[rxode2et]{etRbind}}, \code{\link[rxode2et]{etRep}}, \code{\link[rxode2et]{etSeq}}, \code{\link[rxode2et]{eventTable}}, \code{\link[rxode2et]{rxCbindStudyIndividual}}, \code{\link[rxode2et]{rxEtDispatchSolve}}, \code{\link[rxode2et]{rxEvid}}, \code{\link[rxode2et]{rxRateDur}}, \code{\link[rxode2et]{rxReq}}, \code{\link[rxode2et]{rxStack}}, \code{\link[rxode2et]{toTrialDuration}}}
-
-  \item{rxode2parse}{\code{\link[rxode2parse:dot-getLastIdLvl]{.getLastIdLvl}}, \code{\link[rxode2parse]{forderForceBase}}, \code{\link[rxode2parse]{rxDerived}}, \code{\link[rxode2parse]{rxSetIni0}}}
-
-  \item{rxode2random}{\code{\link[rxode2random:dot-cbindOme]{.cbindOme}}, \code{\link[rxode2random:dot-expandPars]{.expandPars}}, \code{\link[rxode2random:dot-vecDf]{.vecDf}}, \code{\link[rxode2random]{cvPost}}, \code{\link[rxode2random]{invWR1d}}, \code{\link[rxode2random]{phi}}, \code{\link[rxode2random]{rinvchisq}}, \code{\link[rxode2random]{rLKJ1}}, \code{\link[rxode2random]{rxGetSeed}}, \code{\link[rxode2random]{rxGetSeed}}, \code{\link[rxode2random]{rxRmvn}}, \code{\link[rxode2random]{rxSeedEng}}, \code{\link[rxode2random]{rxSetSeed}}, \code{\link[rxode2random]{rxSetSeed}}, \code{\link[rxode2random]{rxSetSeed}}, \code{\link[rxode2random:rxWithSeed]{rxWithPreserveSeed}}, \code{\link[rxode2random]{rxWithSeed}}, \code{\link[rxode2random]{rxWithSeed}}}
 }}
 
 \value{ Inherited from parent routine }

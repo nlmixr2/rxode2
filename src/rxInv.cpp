@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 // [[Rcpp::interfaces(r,cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -6,24 +9,18 @@
 #include <stdarg.h>
 #include <RcppArmadillo.h>
 #include <R.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 using namespace Rcpp;
 using namespace R;
 using namespace arma;
 extern "C" SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn);
 
-//' Invert matrix using RcppArmadillo.  
+//' Invert matrix using RcppArmadillo.
 //'
 //' @param matrix matrix to be inverted.
-//' 
+//'
 //' @return inverse or pseudo inverse of matrix.
-//' 
+//'
 //' @export
 // [[Rcpp::export]]
 NumericVector rxInv(SEXP matrix){
@@ -33,7 +30,7 @@ NumericVector rxInv(SEXP matrix){
   success = inv(imat, smatrix);
   if (!success){
     imat = pinv(smatrix);
-    Rprintf(_("matrix seems singular; Using pseudo-inverse\n"));
+    Rprintf("%s", _("matrix seems singular; Using pseudo-inverse\n"));
   }
   NumericVector ret;
   ret = wrap(imat);
@@ -71,15 +68,15 @@ arma::mat rxToCholOmega(arma::mat cholMat){
 //'   [rxSymInvCholCreate()] with the default arguments and return a
 //'   reactive s3 object.  Otherwise, use the inversion object to
 //'   calculate the requested derivative/inverse.
-//' 
+//'
 //' @param theta Thetas to be used for calculation.  If missing (`NULL`), a
 //'     special s3 class is created and returned to access `Omega^1`
 //'     objects as needed and cache them based on the theta that is
 //'     used.
-//' 
+//'
 //' @param type The type of object.  Currently the following types are
 //'     supported:
-//' 
+//'
 //' * `cholOmegaInv` gives the
 //'     Cholesky decomposition of the Omega Inverse matrix.
 //' * `omegaInv` gives the Omega Inverse matrix.
@@ -88,18 +85,18 @@ arma::mat rxToCholOmega(arma::mat cholMat){
 //' * `d(D)` gives the `d(diagonal(Omega^-1))` with respect to
 //'     the theta parameter specified in the `thetaNumber`
 //'     parameter
-//' 
+//'
 //' @param thetaNumber For types `d(omegaInv)` and `d(D)`,
 //'     the theta number that the derivative is taken against.  This
 //'     must be positive from 1 to the number of thetas defining the
 //'     Omega matrix.
-//' 
+//'
 //' @return Matrix based on parameters or environment with all the
 //'     matrixes calculated in variables `omega`, `omegaInv`, `dOmega`,
 //'     `dOmegaInv`.
-//' 
+//'
 //' @author Matthew L. Fidler
-//' 
+//'
 //' @export
 // [[Rcpp::export]]
 RObject rxSymInvChol(RObject invObjOrMatrix, Nullable<NumericVector> theta = R_NilValue, std::string type = "cholOmegaInv", int thetaNumber = 0){
@@ -200,7 +197,7 @@ RObject rxSymInvCholEnvCalculate(List obj, std::string what, Nullable<NumericVec
       } else if (what == "chol.omega1"){
         rxSymInvCholEnvCalculate(obj, "chol.omegaInv", R_NilValue);
         arma::mat ret = rxToCholOmega(as<arma::mat>(e["chol.omegaInv"]));
-        e["chol.omega1"] = ret; 
+        e["chol.omega1"] = ret;
       } else if (what == "omega"){
         rxSymInvCholEnvCalculate(obj, "chol.omega1", R_NilValue);
         arma::mat U1 = as<mat>(e["chol.omega1"]);
@@ -261,10 +258,14 @@ RObject rxSymInvCholEnvCalculate(List obj, std::string what, Nullable<NumericVec
     if (what == "theta"){
       NumericVector par(theta);
       int ntheta = as<int>(rxSymInvCholEnvCalculate(obj, "ntheta", R_NilValue));
-      if (par.size() == ntheta){
+      if (par.size() == ntheta) {
         // Clear cache with the exception of
-        CharacterVector sym = e.ls(TRUE);
-	// Clear the cache
+        Function ls2("ls", R_BaseNamespace);
+        CharacterVector sym = ls2(_["envir"]=e,
+                                  _["all.names"]=true,
+                                  _["sorted"]=false);
+
+        // Clear the cache
         for (int i = 0; i < sym.size(); i++){
           if (sym[i] != "invobj" && sym[i] != "ntheta") {
             e.remove(as<std::string>(sym[i]));

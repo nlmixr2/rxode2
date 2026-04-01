@@ -9,7 +9,7 @@
 status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
-coverage](https://codecov.io/gh/nlmixr2/rxode2/branch/main/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2?branch=main)
+coverage](https://codecov.io/gh/nlmixr2/rxode2/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2)
 [![CRAN
 version](http://www.r-pkg.org/badges/version/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CRAN total
@@ -18,7 +18,7 @@ downloads](https://cranlogs.r-pkg.org/badges/grand-total/rxode2)](https://cran.r
 downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CodeFactor](https://www.codefactor.io/repository/github/nlmixr2/rxode2/badge)](https://www.codefactor.io/repository/github/nlmixr2/rxode2)
 ![r-universe](https://nlmixr2.r-universe.dev/badges/rxode2)
-<!-- badges: end  -->
+<!-- badges: end -->
 
 ## Overview
 
@@ -67,8 +67,7 @@ development version for MacOS and for Windows so you don’t have to wait
 for package compilation:
 
 ``` r
-install.packages(c("dparser", "rxode2ll", "rxode2parse",
-                   "rxode2random", "rxode2et", "rxode2"),
+install.packages(c("dparser", "rxode2ll", "rxode2"),
                  repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
                          CRAN="https://cloud.r-project.org"))
 ```
@@ -76,9 +75,6 @@ install.packages(c("dparser", "rxode2ll", "rxode2parse",
 If this doesn’t work you install the development version of rxode2 with
 
 ``` r
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -152,6 +148,14 @@ library(symengine)
 To install on linux make sure you install `gcc` (with openmp support)
 and `gfortran` using your distribution’s package manager.
 
+You will also have to install system dependencies like `udunits` and the
+[symengine
+dependencies](https://github.com/symengine/symengine.R?tab=readme-ov-file#installation)
+for the complete installation to work in linux. You could also have this
+done by system packages in your package manager if you add the
+appropriate repositories. This is the point of the
+[r2u](https://github.com/eddelbuettel/r2u) project.
+
 ### R versions 4.0 and 4.1
 
 For installation on R versions 4.0.x and 4.1.x, please see the
@@ -174,9 +178,6 @@ with:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -192,12 +193,11 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 2.0.13.9000 using 8 threads (see ?getRxThreads)
-#>   no cache: create with `rxCreateCache()`
+#> rxode2 3.0.4.9000 using 8 threads (see ?getRxThreads)
 
 mod1 <- function() {
   ini({
-    # central 
+    # central
     KA=2.94E-01
     CL=1.86E+01
     V2=4.02E+01
@@ -207,7 +207,7 @@ mod1 <- function() {
     # effects
     Kin=1
     Kout=1
-    EC50=200 
+    EC50=200
   })
   model({
     C2 <- centr/V2
@@ -249,10 +249,10 @@ event table is generated through the “et()” function. This has an
 interface that is similar to NONMEM event tables:
 
 ``` r
-ev  <- et(amountUnits="mg", timeUnits="hours") %>%
-  et(amt=10000, addl=9,ii=12,cmt="depot") %>%
-  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
-  et(0:240) # Add sampling 
+ev  <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+  et(0:240) # Add sampling
 ```
 
 You can see from the above code, you can dose to the compartment named
@@ -270,20 +270,27 @@ vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 The ODE can now be solved using `rxSolve`:
 
 ``` r
-x <- mod1 %>% rxSolve(ev)
+x <- mod1 |> rxSolve(ev)
+#> ℹ parameter labels from comments are typically ignored in non-interactive mode
+#> ℹ Need to run with the source intact to parse comments
+#> → creating rxode2 include directory
+#> → getting R compile options
+#> → precompiling headers
+#> ✔ done
+#> using C compiler: 'gcc.exe (GCC) 14.2.0'
 x
 #> ── Solved rxode2 object ──
 #> ── Parameters (x$params): ──
-#>      KA      CL      V2       Q      V3     Kin    Kout    EC50 
-#>   0.294  18.600  40.200  10.500 297.000   1.000   1.000 200.000 
+#>      KA      CL      V2       Q      V3     Kin    Kout    EC50
+#>   0.294  18.600  40.200  10.500 297.000   1.000   1.000 200.000
 #> ── Initial Conditions (x$inits): ──
-#> depot centr  peri   eff 
-#>     0     0     0     1 
+#> depot centr  peri   eff
+#>     0     0     0     1
 #> ── First part of data (object): ──
 #> # A tibble: 241 × 7
 #>   time    C2    C3  depot centr  peri   eff
 #>    [h] <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl>
-#> 1    0   0   0     10000     0     0   1   
+#> 1    0   0   0     10000     0     0   1
 #> 2    1  44.4 0.920  7453. 1784.  273.  1.08
 #> 3    2  54.9 2.67   5554. 2206.  794.  1.18
 #> 4    3  51.9 4.46   4140. 2087. 1324.  1.23

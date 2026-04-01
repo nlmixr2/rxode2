@@ -265,15 +265,15 @@ d/dt(blood)     = a*intestine - b*blood
     ## s3 <- rxSolve(van, et, c(mu=1000), method="dop853")
 
     ## f <- function(mu = 1, ...) {
-    ##   s1 <- rxSolve(van1, et, c(mu = mu), method = "lsoda") %>% plot() +
+    ##   s1 <- rxSolve(van1, et, c(mu = mu), method = "lsoda") |> plot() +
     ##     ggtitle(sprintf("Lsoda mu=%s", mu))
-    ##   s2 <- rxSolve(van1, et, c(mu = mu), method = "indLin", ...) %>% plot() +
+    ##   s2 <- rxSolve(van1, et, c(mu = mu), method = "indLin", ...) |> plot() +
     ##     ggtitle(sprintf("indLin1 mu=%s", mu))
-    ##   s3 <- rxSolve(van3, et, c(mu = mu), method = "indLin", ...) %>% plot() +
+    ##   s3 <- rxSolve(van3, et, c(mu = mu), method = "indLin", ...) |> plot() +
     ##     ggtitle(sprintf("indLin3 mu=%s", mu))
-    ##   ## s4 <- rxSolve(van3, et, c(mu=mu), method="indLin", ...) %>% plot() +
+    ##   ## s4 <- rxSolve(van3, et, c(mu=mu), method="indLin", ...) |> plot() +
     ##   ##     ggtitle(sprintf("indLin3 mu=%s", mu))
-    ##   s4 <- rxSolve(van3, et, c(mu = mu), method = "dop853", ...) %>% plot() +
+    ##   s4 <- rxSolve(van3, et, c(mu = mu), method = "dop853", ...) |> plot() +
     ##     ggtitle(sprintf("dop853 mu=%s", mu))
     ##   gridExtra::grid.arrange(s1, s2, s3, s4)
     ## }
@@ -292,8 +292,8 @@ d/dt(blood)     = a*intestine - b*blood
     ## expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance =1e-4)
     ## s3 <- rxSolve(van, et, c(mu=1), method="dop853")
 
-    ## s1 %>% rename(y.lsoda=y, dy.lsoda=dy) %>%
-    ##     merge(s2) %>% mutate(y.diff=y.lsoda - y) %>%
+    ## s1 |> rename(y.lsoda=y, dy.lsoda=dy) |>
+    ##     merge(s2) |> mutate(y.diff=y.lsoda - y) |>
     ##     ggplot(aes(time, y.diff)) + geom_line()
 
     ## gridExtra::grid.arrange(plot(s1), plot(s2))
@@ -302,8 +302,8 @@ d/dt(blood)     = a*intestine - b*blood
     ## f <- function(mu=5){
     ##     s1 <- rxSolve(van, et, c(mu=mu), method="lsoda")
     ##     s2 <- rxSolve(van, et, c(mu=mu), method="indLin")
-    ##     s1 %>% rename(y.lsoda=y, dy.lsoda=dy) %>%
-    ##         merge(s2) %>% mutate(y.diff=y.lsoda - y) %>%
+    ##     s1 |> rename(y.lsoda=y, dy.lsoda=dy) |>
+    ##         merge(s2) |> mutate(y.diff=y.lsoda - y) |>
     ##         ggplot(aes(time, y.diff)) + geom_line() + ylim(-5, 5) +
     ##         ggtitle(paste0("mu=", mu)) ->
     ##         ret

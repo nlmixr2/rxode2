@@ -32,7 +32,6 @@ d/dt(y3) = a3*y1*y2
     expect_true(rxDllLoaded(rigid))
     expect_true(file.exists(dll))
     rxDelete(rigid)
-    rxSyncOptions()
     expect_false(rxDllLoaded(rigid))
     expect_false(file.exists(dll))
     ## Test $ syntax

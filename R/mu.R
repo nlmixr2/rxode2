@@ -82,6 +82,14 @@
                                 data.frame(lhs=.lhs, cov=.n))
       }
       return(TRUE)
+    } else if (any(.n == env$info$level)) {
+      .w <- which(env$levelLhsDf$lhs == .lhs &
+                    env$levelLhsDf$level == .n)
+      if (length(.w) == 0) {
+        env$levelLhsDf <- rbind(env$levelLhsDf,
+                              data.frame(lhs=.lhs, level=.n))
+      }
+      return(TRUE)
     }
     return(FALSE)
   } else if (is.call(x)) {
@@ -212,7 +220,7 @@
     .lhs <- deparse1(env$curLhs)
     if (any(.n == env$info$theta)) {
       return(.n)
-    } 
+    }
     return(NULL)
   } else if (is.call(x)) {
     return(do.call(`c`, lapply(x[-1], .muRefExtractTheta, env=env)))
@@ -260,7 +268,7 @@
 #' @return A list of covariates with estimates attached
 #'
 #' @author Matthew Fidler
-#' 
+#'
 #' @noRd
 .muRefExtractMultiplyMuCovariates <- function(x, doubleNames, env) {
   c(doubleNames, do.call(`c`, lapply(x, function(y) {
@@ -295,10 +303,8 @@
       .thetas <- try(.muRefExtractTheta(y, env), silent=TRUE)
       if (inherits(.thetas, "try-error")) .thetas <- NULL
       if (length(.thetas) == 1L) {
-        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas),
-                  silent=TRUE)
-        .extra <- try(str2lang(rxFromSE(.d)),
-                      silent=TRUE)
+        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas), silent=TRUE)
+        .extra <- try(str2lang(rxFromSE(.d)), silent=TRUE)
         .thetaD <- try(.muRefExtractTheta(.extra, env), silent=TRUE)
         if (inherits(.thetaD, "try-error")) .thetaD <- NULL
         if (is.null(.thetaD)) {
@@ -536,6 +542,7 @@
 #' @author Matthew Fidler
 #' @noRd
 .muRefSetNonMuEta <- function(.curEta, env) {
+  if (!is.null(env$levels) && any(env$levels == .curEta)) return(invisible())
   if (!any(env$nonMuEtas == .curEta)) {
     env$nonMuEtas <- c(env$nonMuEtas, .curEta)
     .wEtaInDf <- which(env$muRefDataFrame$eta == .curEta)
@@ -612,7 +619,8 @@
       }
     }
   } else if (length(.we) != 0) {
-    stop("currently do not support IOV etc")
+    # Mu reference can only occur on id-referenced items currently
+    stop("currently do not theta + eta1 + eta2")
   }
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
@@ -665,6 +673,7 @@
   }
   .wt <- which(.names %in% env$info$theta)
   .we <- which(.names %in% env$info$eta)
+  .wl <- if (!is.null(env$info$level)) which(.names %in% env$info$level) else integer(0)
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
@@ -681,6 +690,12 @@
     .muRefSetCurEval(.curEta, env)
     .muRefSetNonMuEta(.curEta, env)
     .muRefHandleSingleThetaExtraOnly(.we, .wt, .names, .doubleNames, .extraItems, env, eta=TRUE)
+  }
+  if (length(.wl) > 0) {
+    .iovs <- .names[.wl]
+    lapply(.iovs, function(iov) {
+      .muRefSetCurEval(iov, env)
+    })
   }
   invisible()
 }
@@ -708,7 +723,8 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
-  assign(".curEval", as.character(x[[1]]), env)
+  .curEval <- as.character(x[[1]])
+  assign(".curEval", .curEval, env)
   env$curHi <- NA_real_
   env$curLow <- NA_real_
   if (env$.curEval == "probitInv" ||
@@ -735,7 +751,7 @@
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
-          if (rxode2.debug) {
+          if (getOption("rxode2.debug", FALSE)) {
             .tmp <- lapply(x, function(y, env) {
               assign(".curEval", "", env)
               .rxMuRef0(y, env=env)
@@ -830,8 +846,19 @@
     .iniDf <- mod$iniDf
     .mv <- mod$mv0
     .env <- mod
+    .level <- mod$level
   } else {
-    .eta <- dimnames(ini)[[1]]
+    .level <- NULL
+    if (is.list(ini) && any(names(ini) == "id")) {
+      .eta <- dimnames(ini$id)[[1]]
+      for (v in names(ini)) {
+        if (v != "id") {
+          .level <- c(.level, dimnames(ini[[v]])[[1]])
+        }
+      }
+    } else {
+      .eta <- dimnames(ini)[[1]]
+    }
     .iniDf <- as.data.frame(ini)
     .mv  <- rxModelVars(mod)
     .env <- new.env(parent=emptyenv())
@@ -849,8 +876,8 @@
                 lhs=NULL,
                 theta=.theta,
                 eta=.eta,
-                cov=setdiff(.params, c(.theta, .eta, names(rxInits(.mv)))))
-
+                level=.level,
+                cov=setdiff(.params, c(.theta, .eta, .level, names(rxInits(.mv)))))
   .env$param <- list()
   .env$singleTheta <- NULL
   .env$body <- list()
@@ -900,6 +927,7 @@
   .env$etaLhsDf <- data.frame(lhs=character(0), eta=character(0))
   .env$thetaLhsDf <- data.frame(lhs=character(0), theta=character(0))
   .env$covLhsDf <- data.frame(lhs=character(0), cov=character(0))
+  .env$levelLhsDf <- data.frame(lhs=character(0), level=character(0))
   .env$curLhs <- NULL
   return(.env)
 }
@@ -935,7 +963,7 @@
                             .est, ") needs to be below ", .range[2]))
       }
       if (.lower < .range[1]) {
-        if (rxode2.verbose.pipe && is.finite(.lower)) {
+        if (isTRUE(getOption("rxode2.verbose.pipe", TRUE)) && is.finite(.lower)) {
           .minfo(paste0("'", .name, "' lower bound (",
                         .lower, ") needs to be equal or above ", .range[1],
                         "; adjusting"))
@@ -943,7 +971,7 @@
         .lower <- .range[1]
       }
       if (.upper > .range[2]) {
-        if (rxode2.verbose.pipe && is.finite(.upper)) {
+        if (isTRUE(getOption("rxode2.verbose.pipe", TRUE)) && is.finite(.upper)) {
           .minfo(paste0("'", .name, "' upper bound (", .upper,
                         ") needs to be equal or below ", .range[2],
                         "; adjusting"))
@@ -1106,24 +1134,7 @@
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
   .muRefDowngrade(.env)
   .muRefSeparateCalculatedMuRefCovs(.env)
-  if (.env$hasErrors) {
-    .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
-                      paste(vapply(seq_along(.env$lstExpr),
-                                   function(i) {
-                                     sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
-                                             ifelse(is.null(.env$lstErr[[i]]), "",
-                                                    sprintf(paste0(crayon::bold("%s"), "\n"), .env$lstErr[[i]])),
-                                             i, deparse1(.env$lstExpr[[i]]))
-                                   }, character(1), USE.NAMES=FALSE), collapse="\n"))
-    message(.errMsg)
-  }
-  if (length(.env$err) > 0) {
-    stop(paste0(ifelse(.env$hasErrors, "syntax/parsing errors (see above) and additionally:\n", "syntax/parsing errors:\n"),
-                paste(.env$err, collapse="\n")),
-         call.=FALSE)
-  } else if (.env$hasErrors) {
-    stop("syntax/parsing errors, see above", call.=FALSE)
-  }
+  .handleErrs(.env)
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",

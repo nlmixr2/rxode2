@@ -1,7 +1,7 @@
 #pragma once
 #ifndef __rxode2_control_H__
 #define __rxode2_control_H__
-#include <rxode2parse_control.h>
+#include "rxode2parse_control.h"
 #define Rxc_scale 0
 #define Rxc_method 1
 #define Rxc_atol 2
@@ -77,24 +77,40 @@
 #define Rxc_safeZero 72
 #define Rxc_sumType 73
 #define Rxc_prodType 74
-#define Rxc_sensType 75
-#define Rxc_linDiff 76
-#define Rxc_linDiffCentral 77
-#define Rxc_resample 78
-#define Rxc_resampleID 79
-#define Rxc_maxwhile 80
-#define Rxc_cores 81
-#define Rxc_atolSens 82
-#define Rxc_rtolSens 83
-#define Rxc_ssAtolSens 84
-#define Rxc_ssRtolSens 85
-#define Rxc_simVariability 86
-#define Rxc_nLlikAlloc 87
-#define Rxc_useStdPow 88
-#define Rxc_naTimeHandle 89
-#define Rxc_addlKeepsCov 90
-#define Rxc_addlDropSs 91
-#define Rxc_ssAtDoseTime 92
-#define Rxc_ss2cancelAllPending 93
-#define Rxc__zeros 94
+#define Rxc_resample 75
+#define Rxc_resampleID 76
+#define Rxc_maxwhile 77
+#define Rxc_cores 78
+#define Rxc_atolSens 79
+#define Rxc_rtolSens 80
+#define Rxc_ssAtolSens 81
+#define Rxc_ssRtolSens 82
+#define Rxc_simVariability 83
+#define Rxc_nLlikAlloc 84
+#define Rxc_useStdPow 85
+#define Rxc_naTimeHandle 86
+#define Rxc_addlKeepsCov 87
+#define Rxc_addlDropSs 88
+#define Rxc_ssAtDoseTime 89
+#define Rxc_ss2cancelAllPending 90
+#define Rxc_naInterpolation 91
+#define Rxc_keepInterpolation 92
+#define Rxc_safeLog 93
+#define Rxc_safePow 94
+#define Rxc_ssSolved 95
+#define Rxc_linCmtSensType 96
+#define Rxc_linCmtSensH 97
+#define Rxc_linCmtGillFtol 98
+#define Rxc_linCmtGillK 99
+#define Rxc_linCmtGillStep 100
+#define Rxc_linCmtGillRtol 101
+#define Rxc_linCmtShiErr 102
+#define Rxc_linCmtShiMax 103
+#define Rxc_linCmtScale 104
+#define Rxc_linCmtHcmt 105
+#define Rxc_linCmtHmeanI 106
+#define Rxc_linCmtHmeanO 107
+#define Rxc_linCmtSuspect 108
+#define Rxc_linCmtForwardMax 109
+#define Rxc__zeros 110
 #endif // __rxode2_control_H__

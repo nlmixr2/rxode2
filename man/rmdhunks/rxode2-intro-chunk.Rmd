@@ -3,14 +3,14 @@ file or an R expression. Both differential and algebraic equations are
 permitted. Differential equations are specified by `d/dt(var_name) = `. Each
 equation can be separated by a semicolon.
 
-To load `rxode2` package and compile the model: 
+To load `rxode2` package and compile the model:
 
 ```{r}
 library(rxode2)
 
 mod1 <- function() {
   ini({
-    # central 
+    # central
     KA=2.94E-01
     CL=1.86E+01
     V2=4.02E+01
@@ -20,7 +20,7 @@ mod1 <- function() {
     # effects
     Kin=1
     Kout=1
-    EC50=200 
+    EC50=200
   })
   model({
     C2 <- centr/V2
@@ -36,13 +36,13 @@ mod1 <- function() {
 
 Model parameters may be specified in the `ini({})` model block,
 initial conditions can be specified within the model with the `cmt(0)=
-X`, like in this model `eff(0) <- 1`. 
+X`, like in this model `eff(0) <- 1`.
 
 You may also specify between subject variability initial conditions
 and residual error components just like nlmixr2.  This allows a single
 interface for `nlmixr2`/`rxode2` models.  Also note, the classic
 `rxode2` interface still works just like it did in the past (so don't
-worry about breaking code at this time). 
+worry about breaking code at this time).
 
 In fact, you can get the classic `rxode2` model `$simulationModel` in
 the ui object:
@@ -64,10 +64,10 @@ empty event table is generated through the "et()" function. This
 has an interface that is similar to NONMEM event tables:
 
 ```{r}
-ev  <- et(amountUnits="mg", timeUnits="hours") %>%
-  et(amt=10000, addl=9,ii=12,cmt="depot") %>%
-  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
-  et(0:240) # Add sampling 
+ev  <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+  et(0:240) # Add sampling
 ```
 
 You can see from the above code, you can dose to the compartment named
@@ -83,11 +83,11 @@ vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 
 ## Solving ODEs
 
-The ODE can now be solved using `rxSolve`: 
+The ODE can now be solved using `rxSolve`:
 
 
 ```{r}
-x <- mod1 %>% rxSolve(ev)
+x <- mod1 |> rxSolve(ev)
 x
 ```
 
@@ -99,7 +99,7 @@ library(ggplot2)
 plot(x,C2) + ylab("Central Concentration")
 ```
 
-Or, 
+Or,
 
 ```{r intro-effect}
 plot(x,eff)  + ylab("Effect")

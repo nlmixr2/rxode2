@@ -150,9 +150,9 @@ mod1 <- rxode2({
 
 ## Create an event table
 
-ev <- et() %>%
-    et(amt=10000, addl=9,ii=12) %>%
-    et(time=120, amt=20000, addl=4, ii=24) %>%
+ev <- et() |>
+    et(amt=10000, addl=9,ii=12) |>
+    et(time=120, amt=20000, addl=4, ii=24) |>
     et(0:240) ## Add Sampling
 
 nsub <- 100 # 100 sub-problems
@@ -316,9 +316,9 @@ mod2f <- mod2f()
 
 mod2s <- mod2f$simulationIniModel
 
-ev  <- et(amountUnits="mg", timeUnits="hours") %>%
-  et(amt=10000, addl=9,ii=12,cmt="depot") %>%
-  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
+ev  <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
   et(0:240) # Add sampling
 
 bench1 <- microbenchmark(standardCompile=rxSolve(mod2s, ev, nSub=1000))
@@ -460,15 +460,15 @@ doses <- c(10, 30, 60, 120)
 startParallel <- Sys.time()
 ev <- do.call("rbind",
         lapply(seq_along(doses), function(i){
-            et() %>%
-                et(amt=doses[i]) %>% # Add single dose
-                et(0) %>% # Add 0 observation
+            et() |>
+                et(amt=doses[i]) |> # Add single dose
+                et(0) |> # Add 0 observation
                 ## Generate 4 samples in 24 hour period
-                et(lapply(1:4, function(...){c(0, 24)})) %>%
-                et(id=seq(1, nsubg) + (i - 1) * nsubg) %>%
+                et(lapply(1:4, function(...){c(0, 24)})) |>
+                et(id=seq(1, nsubg) + (i - 1) * nsubg) |>
                 ## Convert to data frame to skip sorting the data
                 ## When binding the data together
-                as.data.frame
+                as.data.frame()
         }))
 ## To better compare, use the same output, that is data.table
 res <- rxSolve(rx, ev, omega=omega, returnType="data.table")

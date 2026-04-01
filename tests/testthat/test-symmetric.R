@@ -34,7 +34,7 @@ rxTest({
   Gp(0) = kcp*Gss*Vg/kpc;
   Ie(0) = Iss;
   I(0) = Iss*Vi;
-  Isec(0) = Iss*ki*Vi;
+  Isec_0 = Iss*ki*Vi;
 
   d/dt(depot) = -absg;
   d/dt(trn) = absg - ka*trn;
@@ -74,7 +74,7 @@ rxTest({
   et$add.dosing(dose = 75000, nbr.doses = 1, start.time = 0, dosing.to = 1)
   et$add.sampling(0:360)
 
-  et <- et %>% et(id = 1:7)
+  et <- et |> et(id = 1:7)
 
   rxWithSeed(
     42,

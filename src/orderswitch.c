@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #include "lsoda.h"
 #include "common.h"
@@ -106,5 +109,3 @@ int orderswitch(struct lsoda_context_t * ctx, double rhup, double dsm, double *r
 	_rxC(nq) = newq;
 	return 2;
 }				/* end orderswitch   */
-
-

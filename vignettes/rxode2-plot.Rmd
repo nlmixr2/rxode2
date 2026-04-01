@@ -50,8 +50,8 @@ m1 <- function() {
   })
 }
 
-ev <- et(timeUnits = "hr") %>%
-  et(amt = 10000, ii = 12, until = 24) %>%
+ev <- et(timeUnits = "hr") |>
+  et(amt = 10000, ii = 12, until = 24) |>
   et(seq(0, 24, length.out = 100))
 
 s <- rxSolve(m1, ev)
@@ -97,7 +97,7 @@ The following are currently unsupported:
    g. `axes`
 
 
-## Subsetting plots 
+## Subsetting plots
 
 While this is very interesting, it is often more useful to subset
 plots based on values you are more interested in; For example, it is
@@ -123,7 +123,7 @@ show the semi-log nature of the plot.
 ## Plots with multi-subject plots
 
 If you have multi-subject plots you can easily plot applying the same
-principles as above. To illustrate this plot, lets expand an event table to 
+principles as above. To illustrate this plot, lets expand an event table to
 include a plot of 4 subjects with lognormal random variability between subjects;
 
 ```{r}
@@ -142,7 +142,7 @@ m2 <- function() {
     fdepot <- 1
     durDepot <- 8
     rateDepot <- 1250
-    eta.Cl ~ 0.4^2    
+    eta.Cl ~ 0.4^2
   })
   model({
     CL <- TCL * exp(eta.Cl)
@@ -160,9 +160,9 @@ m2 <- function() {
 }
 
 # Create the event table
-ev <- et(timeUnits = "hr") %>%
-  et(amt = 10000, until = units::set_units(3, days), ii = 12) %>% # loading doses
-  et(seq(0, 48, length.out = 200)) %>%
+ev <- et(timeUnits = "hr") |>
+  et(amt = 10000, until = units::set_units(3, days), ii = 12) |> # loading doses
+  et(seq(0, 48, length.out = 200)) |>
   et(id = 1:4)
 
 s <- rxSolve(m2, ev)
@@ -186,16 +186,16 @@ Notice that this plot each individual is labeled by an attached id to
 let you know where the individual comes from.  This is done by
 `ggrepel` if it is available, otherwise a legend is retained.
 
-### Multi-subject plots with large number of subjects 
+### Multi-subject plots with large number of subjects
 
 This can get a bit much when there are many subjects that are solved
 (in this example lets simulate 100)
 
 
 ```{r}
-ev <- et(timeUnits = "hr") %>%
-  et(amt = 10000, until = units::set_units(3, days), ii = 12) %>% # loading doses
-  et(seq(0, 48, length.out = 200)) %>%
+ev <- et(timeUnits = "hr") |>
+  et(amt = 10000, until = units::set_units(3, days), ii = 12) |> # loading doses
+  et(seq(0, 48, length.out = 200)) |>
   et(id = 1:100) # 100 subjects
 
 s <- rxSolve(m2, ev)

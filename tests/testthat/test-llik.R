@@ -7,7 +7,7 @@ rxTest({
     expect_equal(setNames(rxModelVars("a=llikNorm(a,mu,sigma)")$flags["nLlik"], NULL), 1L)
 
     expect_equal(setNames(rxModelVars("a=llikXNorm(3, a,mu,sigma)")$flags["nLlik"], NULL), 4L)
-    
+
   })
 
   test_that("log-liklihood tests for normal (including derivatives)", {
@@ -315,7 +315,7 @@ rxTest({
   })
 
   test_that("log-liklihood tests for beta (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikBeta(x, shape1, shape2)"), NA)
     expect_error(rxode2("tmp=llikBetaDshape1(x, shape1, shape2)"), NA)
@@ -385,7 +385,7 @@ rxTest({
 
 
   test_that("log-liklihood tests for T (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikT(x, nu, mean, sd)"), NA)
     expect_error(rxode2("tmp=llikTDdf(x, nu, mean, sd)"), NA)
@@ -400,10 +400,10 @@ rxTest({
     # Make sure they translate correctly:
     expect_equal(rxToSE("llikT(x, nu, mean, sd)"), "llikT(x,nu,mean,sd)")
     expect_equal(rxFromSE("llikT(x, nu, mean, sd)"), "llikT(x,nu,mean,sd)")
-    
+
     expect_equal(rxToSE("llikTDdf(x, nu, mean, sd)"), "llikTDdf(x,nu,mean,sd)")
     expect_equal(rxFromSE("llikTDdf(x, nu, mean, sd)"), "llikTDdf(x,nu,mean,sd)")
-    
+
     expect_equal(rxToSE("llikTDmean(x, nu, mean, sd)"), "llikTDmean(x,nu,mean,sd)")
     expect_equal(rxFromSE("llikTDmean(x, nu, mean, sd)"), "llikTDmean(x,nu,mean,sd)")
 
@@ -412,10 +412,10 @@ rxTest({
 
     expect_equal(rxToSE("llikXT(i,x, nu, mean, sd)"), "llikXT(i,x,nu,mean,sd)")
     expect_equal(rxFromSE("llikXT(i,x, nu, mean, sd)"), "llikXT(i,x,nu,mean,sd)")
-    
+
     expect_equal(rxToSE("llikXTDdf(i,x, nu, mean, sd)"), "llikXTDdf(i,x,nu,mean,sd)")
     expect_equal(rxFromSE("llikXTDdf(i,x, nu, mean, sd)"), "llikXTDdf(i,x,nu,mean,sd)")
-    
+
     expect_equal(rxToSE("llikXTDmean(i,x, nu, mean, sd)"), "llikXTDmean(i,x,nu,mean,sd)")
     expect_equal(rxFromSE("llikXTDmean(i,x, nu, mean, sd)"), "llikXTDmean(i,x,nu,mean,sd)")
 
@@ -424,7 +424,7 @@ rxTest({
 
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikT(x,nu, mean, sd),nu)"),"llikTDdf(x, nu, mean, sd)")
-    
+
     expect_equal(rxFromSE("Derivative(llikT(x, nu, mean, sd), mean)"),
                  "llikTDmean(x, nu, mean, sd)")
 
@@ -434,7 +434,7 @@ rxTest({
 
     #
     expect_equal(rxFromSE("Derivative(llikXT(x, i,nu, mean, sd),nu)"),"llikXTDdf(x, i, nu, mean, sd)")
-    
+
     expect_equal(rxFromSE("Derivative(llikXT(x, i, nu, mean, sd), mean)"),
                  "llikXTDmean(x, i, nu, mean, sd)")
 
@@ -482,7 +482,7 @@ rxTest({
 
 
   test_that("log-liklihood tests for chi-squared (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikChisq(x, nu)"), NA)
     expect_error(rxode2("tmp=llikChisqDdf(x, nu)"), NA)
@@ -493,18 +493,18 @@ rxTest({
     # Make sure they translate correctly:
     expect_equal(rxToSE("llikChisq(x, nu)"), "llikChisq(x,nu)")
     expect_equal(rxFromSE("llikChisq(x, nu)"), "llikChisq(x,nu)")
-    
+
     expect_equal(rxToSE("llikChisqDdf(x, nu)"), "llikChisqDdf(x,nu)")
     expect_equal(rxFromSE("llikChisqDdf(x, nu)"), "llikChisqDdf(x,nu)")
 
     #
     expect_equal(rxToSE("llikXChisq(i,x, nu)"), "llikXChisq(i,x,nu)")
     expect_equal(rxFromSE("llikXChisq(i,x, nu)"), "llikXChisq(i,x,nu)")
-    
+
     expect_equal(rxToSE("llikXChisqDdf(i,x, nu)"), "llikXChisqDdf(i,x,nu)")
     expect_equal(rxFromSE("llikXChisqDdf(i,x, nu)"), "llikXChisqDdf(i,x,nu)")
 
-    
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikChisq(x,nu),nu)"),"llikChisqDdf(x, nu)")
     expect_equal(rxFromSE("Derivative(llikXChisq(1,x,nu),nu)"),"llikXChisqDdf(1, x, nu)")
@@ -534,9 +534,9 @@ rxTest({
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dDf, fromOdeX$dDf)
 
-    
+
     expect_equal(fromR$fx, dchisq(1, fromOde$time, log=TRUE))
-    
+
   })
 
   test_that("log-liklihood tests for exponential (including derivatives)", {
@@ -550,16 +550,16 @@ rxTest({
     # Make sure they translate correctly:
     expect_equal(rxToSE("llikExp(x, nu)"), "llikExp(x,nu)")
     expect_equal(rxFromSE("llikExp(x, nu)"), "llikExp(x,nu)")
-    
+
     expect_equal(rxToSE("llikExpDrate(x, nu)"), "llikExpDrate(x,nu)")
     expect_equal(rxFromSE("llikExpDrate(x, nu)"), "llikExpDrate(x,nu)")
     #
     expect_equal(rxToSE("llikXExp(i,x, nu)"), "llikXExp(i,x,nu)")
     expect_equal(rxFromSE("llikXExp(i,x, nu)"), "llikXExp(i,x,nu)")
-    
+
     expect_equal(rxToSE("llikXExpDrate(i,x, nu)"), "llikXExpDrate(i,x,nu)")
     expect_equal(rxFromSE("llikXExpDrate(i,x, nu)"), "llikXExpDrate(i,x,nu)")
-    
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikExp(x,nu),nu)"),"llikExpDrate(x, nu)")
     expect_equal(rxFromSE("Derivative(llikXExp(i,x,nu),nu)"),"llikXExpDrate(i, x, nu)")
@@ -588,13 +588,13 @@ rxTest({
 
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dRate, fromOdeX$dRate)
-    
+
     expect_equal(fromR$fx, dexp(1, fromOde$time, log=TRUE))
   })
 
 
   test_that("log-liklihood tests for f (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikF(x, df1, df2)"), NA)
     expect_error(rxode2("tmp=llikFDdf1(x, df1, df2)"), NA)
@@ -621,15 +621,15 @@ rxTest({
     expect_equal(rxFromSE("llikXFDdf1(i,x, df1, df2)"), "llikXFDdf1(i,x,df1,df2)")
 
     expect_equal(rxToSE("llikXFDdf2(i,x, df1, df2)"), "llikXFDdf2(i,x,df1,df2)")
-    expect_equal(rxFromSE("llikXFDdf2(i,x, df1, df2)"), "llikXFDdf2(i,x,df1,df2)")  
-    
+    expect_equal(rxFromSE("llikXFDdf2(i,x, df1, df2)"), "llikXFDdf2(i,x,df1,df2)")
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikF(x,df1,df2),df1)"),"llikFDdf1(x, df1, df2)")
     expect_equal(rxFromSE("Derivative(llikF(x,df1,df2),df2)"),"llikFDdf2(x, df1, df2)")
 
     expect_equal(rxFromSE("Derivative(llikXF(1,x,df1,df2),df1)"),"llikXFDdf1(1, x, df1, df2)")
     expect_equal(rxFromSE("Derivative(llikXF(1,x,df1,df2),df2)"),"llikXFDdf2(1, x, df1, df2)")
-    
+
     # Check rxode2 internals with R exported
 
     x <- seq(0.001, 5, length.out = 100)
@@ -662,14 +662,14 @@ rxTest({
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dDf1, fromOdeX$dDf1)
     expect_equal(fromR$dDf2, fromOdeX$dDf2)
-    
+
     expect_equal(fromR$fx, df(et$time, 1, 5, log=TRUE))
 
   })
 
 
   test_that("log-liklihood tests for geom (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikGeom(x, p)"), NA)
     expect_error(rxode2("tmp=llikGeomDprob(x, p)"), NA)
@@ -694,11 +694,11 @@ rxTest({
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikGeom(x,p),p)"),"llikGeomDprob(x, p)")
     expect_equal(rxFromSE("Derivative(llikXGeom(i,x,p),p)"),"llikXGeomDprob(i, x, p)")
-    
+
     # Check rxode2 internals with R exported
     et  <- et(1:10)
     et$prob <- 0.2
-    
+
     model <- rxode2({
       fx <- llikGeom(time, prob)
       dProb <- llikGeomDprob(time, prob)
@@ -725,7 +725,7 @@ rxTest({
 
 
   test_that("log-liklihood tests for unif (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikUnif(x, alpha, beta)"), NA)
     expect_error(rxode2("tmp=llikUnifDalpha(x, alpha, beta)"), NA)
@@ -753,7 +753,7 @@ rxTest({
 
     expect_equal(rxToSE("llikXUnifDbeta(x,i, alpha, beta)"), "llikXUnifDbeta(x,i,alpha,beta)")
     expect_equal(rxFromSE("llikXUnifDbeta(x,i, alpha, beta)"), "llikXUnifDbeta(x,i,alpha,beta)")
-    
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikUnif(x,alpha, beta),alpha)"),"llikUnifDalpha(x, alpha, beta)")
     expect_equal(rxFromSE("Derivative(llikUnif(x,alpha, beta),beta)"),"llikUnifDbeta(x, alpha, beta)")
@@ -762,12 +762,12 @@ rxTest({
                  "llikXUnifDalpha(i, x, alpha, beta)")
     expect_equal(rxFromSE("Derivative(llikXUnif(i,x,alpha, beta),beta)"),
                  "llikXUnifDbeta(i, x, alpha, beta)")
-    
+
     # Check rxode2 internals with R exported
     et  <- et(seq(-4,4, length.out=10))
     et$alpha <- -2
     et$beta <- 2
-    
+
     model <- rxode2({
       fx <- llikUnif(time, alpha, beta)
       dAlpha<- llikUnifDalpha(time, alpha, beta)
@@ -792,14 +792,14 @@ rxTest({
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dAlpha, fromOdeX$dAlpha)
     expect_equal(fromR$dBeta, fromOdeX$dBeta)
-    
+
     expect_equal(fromR$fx, dunif(et$time,-2, 2, log=TRUE))
 
   })
 
 
   test_that("log-liklihood tests for weibull (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikWeibull(x, shape, scale)"), NA)
     expect_error(rxode2("tmp=llikWeibullDshape(x, shape, scale)"), NA)
@@ -827,23 +827,23 @@ rxTest({
 
     expect_equal(rxToSE("llikXWeibullDscale(i,x, shape, scale)"), "llikXWeibullDscale(i,x,shape,scale)")
     expect_equal(rxFromSE("llikXWeibullDscale(i,x, shape, scale)"), "llikXWeibullDscale(i,x,shape,scale)")
-    
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikWeibull(x,shape, scale),shape)"),"llikWeibullDshape(x, shape, scale)")
     expect_equal(rxFromSE("Derivative(llikWeibull(x,shape, scale),scale)"),"llikWeibullDscale(x, shape, scale)")
 
     expect_equal(rxFromSE("Derivative(llikXWeibull(i, x, shape, scale),shape)"),
                  "llikXWeibullDshape(i, x, shape, scale)")
-    
+
     expect_equal(rxFromSE("Derivative(llikXWeibull(i, x, shape, scale),scale)"),
                  "llikXWeibullDscale(i, x, shape, scale)")
 
-    
+
     # Check rxode2 internals with R exported
     et  <- et(seq(0.01,4, length.out=10))
     et$shape <- 1
     et$scale <- 10
-    
+
     model <- rxode2({
       fx <- llikWeibull(time, shape, scale)
       dShape<- llikWeibullDshape(time, shape, scale)
@@ -868,14 +868,14 @@ rxTest({
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dShape, fromOdeX$dShape)
     expect_equal(fromR$dScale, fromOdeX$dScale)
-    
+
     expect_equal(fromR$fx, dweibull(et$time, 1, 10, log=TRUE))
 
   })
 
 
   test_that("log-liklihood tests for gamma (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikGamma(x, shape, rate)"), NA)
     expect_error(rxode2("tmp=llikGammaDshape(x, shape, rate)"), NA)
@@ -904,7 +904,7 @@ rxTest({
 
     expect_equal(rxToSE("llikXGammaDrate(x,i, shape, rate)"), "llikXGammaDrate(x,i,shape,rate)")
     expect_equal(rxFromSE("llikXGammaDrate(x,i, shape, rate)"), "llikXGammaDrate(x,i,shape,rate)")
-    
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikGamma(x,shape, rate),shape)"),"llikGammaDshape(x, shape, rate)")
     expect_equal(rxFromSE("Derivative(llikGamma(x,shape, rate),rate)"),"llikGammaDrate(x, shape, rate)")
@@ -914,12 +914,12 @@ rxTest({
     expect_equal(rxFromSE("Derivative(llikXGamma(i, x, shape, rate),rate)"),
                  "llikXGammaDrate(i, x, shape, rate)")
 
-    
+
     # Check rxode2 internals with R exported
     et  <- et(seq(0.01,4, length.out=10))
     et$shape <- 1
     et$rate <- 10
-    
+
     model <- rxode2({
       fx <- llikGamma(time, shape, rate)
       dShape<- llikGammaDshape(time, shape, rate)
@@ -944,10 +944,10 @@ rxTest({
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dShape, fromOdeX$dShape)
     expect_equal(fromR$dRate, fromOdeX$dRate)
-    
+
     expect_equal(fromR$fx, dgamma(et$time, 1, rate=10, log=TRUE))
 
-    et  <- et(seq(0.01, 4, length.out = 10)) %>%
+    et  <- et(seq(0.01, 4, length.out = 10)) |>
       et(id = 1:200)
     et$shape <- 1
     et$rate <- 10
@@ -965,12 +965,12 @@ rxTest({
     })
 
     expect_error(rxSolve(modelX, et, cores=2), NA)
-    
+
   })
 
 
   test_that("log-liklihood tests for cauchy (including derivatives)", {
-    
+
     # Make sure they compile:
     expect_error(rxode2("tmp=llikCauchy(x, location, scale)"), NA)
     expect_error(rxode2("tmp=llikCauchyDlocation(x, location, scale)"), NA)
@@ -999,8 +999,8 @@ rxTest({
 
     expect_equal(rxToSE("llikXCauchyDscale(i,x, location, scale)"), "llikXCauchyDscale(i,x,location,scale)")
     expect_equal(rxFromSE("llikXCauchyDscale(i,x, location, scale)"), "llikXCauchyDscale(i,x,location,scale)")
-    
-    
+
+
     # Check the derivatives
     expect_equal(rxFromSE("Derivative(llikCauchy(x,location, scale),location)"),"llikCauchyDlocation(x, location, scale)")
     expect_equal(rxFromSE("Derivative(llikCauchy(x,location, scale),scale)"),"llikCauchyDscale(x, location, scale)")
@@ -1010,12 +1010,12 @@ rxTest({
                  "llikXCauchyDlocation(i, x, location, scale)")
     expect_equal(rxFromSE("Derivative(llikXCauchy(i, x, location, scale),scale)"),
                  "llikXCauchyDscale(i, x, location, scale)")
-    
+
     # Check rxode2 internals with R exported
     et  <- et(seq(0.01,4, length.out=10))
     et$location <- 1
     et$scale <- 10
-    
+
     model <- rxode2({
       fx <- llikCauchy(time, location, scale)
       dLocation<- llikCauchyDlocation(time, location, scale)
@@ -1040,11 +1040,11 @@ rxTest({
     expect_equal(fromR$fx, fromOdeX$fx)
     expect_equal(fromR$dLocation, fromOdeX$dLocation)
     expect_equal(fromR$dScale, fromOdeX$dScale)
-    
+
     expect_equal(fromR$fx, dcauchy(et$time, location=1, scale=10, log=TRUE))
 
 
-    et  <- et(seq(0.01,4, length.out=10)) %>%
+    et  <- et(seq(0.01,4, length.out=10)) |>
       et(id=1:200)
     et$location <- 1
     et$scale <- 10

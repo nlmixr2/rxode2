@@ -23,13 +23,13 @@ rxTest({
     expect_equal("ipre", f$predDf$var)
     suppressMessages(
       expect_warning(
-        .tmp <- f %>% model(lipre ~ add(log.add.sd)),
+        .tmp <- f |> model(lipre ~ add(log.add.sd)),
         "with single endpoint model prediction 'ipre' is changed to 'lipre'"
       )
     )
     expect_equal("lipre", .tmp$predDf$var)
 
-    expect_error(f %>% model(PD ~ add(log.add.sd)))
+    expect_error(f |> model(PD ~ add(log.add.sd)))
 
     fo <- function() {
       ini({
@@ -52,13 +52,13 @@ rxTest({
     expect_equal("ipre", fo$predDf$var)
     suppressMessages(
       expect_warning(
-        .tmp <- fo %>% model(lipre ~ add(log.add.sd)),
+        .tmp <- fo |> model(lipre ~ add(log.add.sd)),
         "with single endpoint model prediction 'ipre' is changed to 'lipre'"
       )
     )
     expect_equal("lipre", .tmp$predDf$var)
 
-    expect_error(fo %>% model(PD ~ add(log.add.sd)))
+    expect_error(fo |> model(PD ~ add(log.add.sd)))
 
     pk.turnover.emax2 <- function() {
       ini({
@@ -116,9 +116,9 @@ rxTest({
 
     multiple <- rxode2(pk.turnover.emax2)
 
-    expect_error(multiple %>% model(PD ~ add(add.sd)))
+    expect_error(multiple |> model(PD ~ add(add.sd)))
     suppressMessages(
-      expect_error(multiple %>% model(effect ~ add(add.sd)), NA)
+      expect_error(multiple |> model(effect ~ add(add.sd)), NA)
     )
   })
 })

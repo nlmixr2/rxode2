@@ -1,4 +1,7 @@
 //#undef NDEBUG
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADER
 #define ARMA_DONT_USE_OPENMP // Known to cause speed problems
@@ -9,13 +12,7 @@
 #define ARMA_DONT_PRINT_ERRORS
 #define ARMA_DONT_USE_OPENMP // Known to cause speed problems
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 using namespace Rcpp;
 
@@ -129,15 +126,15 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
     int m = op->indLinPhiM;
     if (m <= 0) m = std::min(n, 30);
     double anorm = arma::norm(A, "inf");
-    int mxrej = 10;  double btol  = 1.0e-7; 
-    double gamma = 0.9; double delta = 1.2; 
+    int mxrej = 10;  double btol  = 1.0e-7;
+    double gamma = 0.9; double delta = 1.2;
     int mb    = m; double t_out   = fabs(t);
     int istep = 0; double t_new   = 0;
     double t_now = 0; double s_error = 0;
     double rndoff= anorm*DBL_EPSILON;
     double sgn = (0.0 < t) - (t > 0.0);
     int k1 = 3, ireject = 0, mx=0;
-    double xm = 1.0/m; 
+    double xm = 1.0/m;
     arma::vec w = v;
     arma::mat V, H, F, tmp;
     arma::vec p;
@@ -163,7 +160,7 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 	  H(i,j) = tmp(0,0);
 	  p = p-H(i,j)*V.col(i);
 	}
-	s = norm(p); 
+	s = norm(p);
 	if (s < btol){
 	  k1 = 0;
 	  mb = j;
@@ -173,13 +170,13 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 	H(j+1,j) = s;
 	V.col(j+1) = (1/s)*p;
       }
-      H(0,mb) = 1; 
+      H(0,mb) = 1;
       if (k1 != 0){
 	H(m,m+1) = 1;
 	H(m+1,m+2) = 1;
 	h = H(m,m-1);
 	H(m,m-1) = 0;
-	avnorm = norm(A*V.col(m-1)); 
+	avnorm = norm(A*V.col(m-1));
       }
       ireject = 0;
       while(ireject <= mxrej){
@@ -187,7 +184,7 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 	F = H(arma::span(0,mx-1),arma::span(0,mx-1));
 	F = matrixExp(F, sgn*t_step, type, order);
 	if (k1 == 0){
-	  err_loc = btol; 
+	  err_loc = btol;
 	  break;
 	} else {
 	  F(m,m) = h*F(m-1,m+1);
@@ -223,7 +220,7 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 	mx = mb;
       }
       w = V.cols(0,mx-1)*(beta*F(arma::span(0,mx-1),arma::span(mb,mb))) + w;
-  
+
       t_now = t_now + t_step;
       t_new = gamma * t_step * pow(t_step*tol/err_loc, xm);
       t_new = std::max(std::min(t_new, 1e300), 1.0-200);
@@ -304,16 +301,17 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 //'    When doIndLin == 0, cache > 0 = nInf-1
 //' @param ME the rxode2 matrix exponential function
 //' @param IndF The rxode2 Inductive Linearization function F
-//' 
+//'
 //' @return Returns a status for solving
-//' 
+//'
 //'   1 = Successful solve
-//' 
+//'
 //'   -1 = Maximum number of iterations reached when doing
 //'        inductive linearization
 //' @name rxIndLin_
+//' @noRd
 extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, double tf,
-		      double *InfusionRate_, int *on_, 
+		      double *InfusionRate_, int *on_,
 		      t_ME ME, t_IndF  IndF){
   int neq = op->neq;
   double *rtol=op->rtol2;
@@ -325,7 +323,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, 
   // int phiM=op->indLinPhiM;
   // double phiTol=op->indLinPhiTol;
   // double phiAnorm = op->indLinPhiAnorm;
-  
+
   int locf=(op->is_locf!=2);
   double tcov = tf;
   if (locf) tcov = tp;
@@ -334,7 +332,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, 
     return meOnly(cSub, yp_, yp_, tp, tf, tcov, InfusionRate_, on_, ME, op);
   }
   case 3: {
-    // Matrix exponential  +  inductive linearzation 
+    // Matrix exponential  +  inductive linearzation
     arma::vec wLast(neq);
     arma::vec w(yp_, neq);
     arma::vec y0 = w;

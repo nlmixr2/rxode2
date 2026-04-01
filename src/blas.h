@@ -1,4 +1,6 @@
-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 double ddot0(int n, double dx[], int incx, double dy[], int incy);
 void dgesl0(double **a, int n, int * ipvt, double b[], int job);
 void dgefa0(double ** a, int n, int * ipvt, int * info);

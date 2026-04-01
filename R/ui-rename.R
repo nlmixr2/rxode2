@@ -31,7 +31,9 @@
     .var.name2 <- as.character(line[[3]])
   }
   if (.var.name %in% vars) {
-    stop("the new variable '", .var.name, "' is already present in the model; cannot replace '", .var.name2, "' with '",
+    stop("the new variable '", .var.name,
+         "' is already present in the model; cannot replace '",
+         .var.name2, "' with '",
          .var.name, "'",
          call.=FALSE)
   }
@@ -236,7 +238,7 @@
 #'   })
 #' }
 #'
-#' ocmt %>% rxRename(cpParent=cp)
+#' ocmt |> rxRename(cpParent=cp)
 #'
 rxRename <- function(.data, ..., envir=parent.frame()) {
   UseMethod("rxRename")
@@ -247,11 +249,11 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
 .rxRename <- function(.data, ..., envir=parent.frame()) {
   .inCompress <- FALSE
   if (inherits(.data, "rxUi") &&
-        inherits(.data, "raw")) {
+        (is.list(.data) || inherits(.data, "raw"))) {
     .inCompress <- TRUE
   }
   rxui <- assertRxUi(.data)
-  if (inherits(rxui, "raw")) {
+  if (is.list(rxui) || inherits(rxui, "raw")) {
     rxui <- rxUiDecompress(rxui)
   }
   .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, rxui$predDf$var, rxui$predDf$cond, rxui$iniDf$name))
@@ -263,7 +265,6 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   .rxRenameAll(rxui, .lst)
   .ret <- rxui$fun()
   if (inherits(.data, "rxUi")) {
-    ## .x <- rxUiDecompress(.data)
     .ret <- .newModelAdjust(.ret, rxui, rename=TRUE)
     if (.inCompress) {
       .ret <- rxUiCompress(.ret)

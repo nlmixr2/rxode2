@@ -1,6 +1,6 @@
 ---
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: 72
 ---
 
@@ -63,8 +63,11 @@ ODE-solving pharmacometric projects listed.
 ## PK Solved systems
 
 `rxode2` supports 1-3 compartment models with gradients (using stan
-math's auto-differentiation). This currently uses the same equations as
-`PKADVAN` to allow time-varying covariates.
+math's auto-differentiation). This uses the same equations as the
+[wnl](https://cran.r-project.org/package=wnl) package
+modified to allow infusions in the depot compartment. It also uses
+steady state solutions derived from the `PKADVAN` approach.  Like `PKADVAN`, `wnl` and `rxode2`
+allows time-varying covariates.
 
 `rxode2` can mix ODEs and solved systems.
 
@@ -78,9 +81,11 @@ math's auto-differentiation). This currently uses the same equations as
     implementation.
 -   [PKPDsim](https://github.com/InsightRX/PKPDsim) uses 1-3 "ADVAN"
     solutions using non-superpositioning.
-
 -   [PKPDmodels](https://CRAN.R-project.org/package=PKPDmodels)
     has a one-compartment model with gradients.
+-   [wnl](https://cran.r-project.org/package=wnl) is another
+    non-superpositioning solution that is also used in `rxode2`
+    (modified a bit).
 
 ### Non-CRAN libraries:
 

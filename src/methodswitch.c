@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #include <math.h>
 #include "lsoda.h"
@@ -11,16 +14,16 @@
  *
  * */
 static double cm1[13] = {
-0x0p+0, 0x1p+1, 0x1.7ffffffffffffp+2, 0x1p+2, 
-  0x1.9435e50d79434p+0, 0x1.c71c71c71c721p-2, 0x1.8eaf0473189ecp-4, 0x1.1df9ab7934513p-6, 
-  0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
+0x0p+0, 0x1p+1, 0x1.7ffffffffffffp+2, 0x1p+2,
+  0x1.9435e50d79434p+0, 0x1.c71c71c71c721p-2, 0x1.8eaf0473189ecp-4, 0x1.1df9ab7934513p-6,
+  0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18,
   0x1.ac0fa4b46f6c6p-22, };
 
 /* only useful till cm2[5] */
 static double cm2[13] = {
-0x0p+0, 0x1p+1, 0x1.8p+0, 0x1.5555555555556p-1, 
-  0x1.aaaaaaaaaaaacp-3, 0x1.9999999999999p-5, 0x1.8eaf0473189ecp-4, 0x1.1df9ab7934513p-6, 
-  0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18, 
+0x0p+0, 0x1p+1, 0x1.8p+0, 0x1.5555555555556p-1,
+  0x1.aaaaaaaaaaaacp-3, 0x1.9999999999999p-5, 0x1.8eaf0473189ecp-4, 0x1.1df9ab7934513p-6,
+  0x1.5b6f81b154515p-9, 0x1.6e1dd3d149b81p-12, 0x1.54a9415f71629p-15, 0x1.1bcb8f930a98p-18,
   0x1.ac0fa4b46f6c6p-22, };
 
 /* rh is an output. */
@@ -139,4 +142,3 @@ void methodswitch(struct lsoda_context_t * ctx, double dsm, double pnorm, double
 	_rxC(nq) = nqm1;
 
 }				/* end methodswitch   */
-

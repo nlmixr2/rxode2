@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #include "lsoda.h"
 #include "common.h"
@@ -23,4 +26,3 @@ int corfailure(struct lsoda_context_t * ctx, double told)
 	_rxC(ipup) = _rxC(miter);
 	return 1;
 }
-

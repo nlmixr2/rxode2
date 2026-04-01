@@ -394,7 +394,7 @@ idr <- function() {
   })
 }
 
-rxAppendModel(ocmt %>% rxRename(ceff=cp), idr)
+rxAppendModel(ocmt |> rxRename(ceff=cp), idr)
 ```
 
 You will get an error if you try to combine models without variables
@@ -502,6 +502,8 @@ The common items you want to do with initial estimates are:
 
 -   Reorder parameters
 
+- Remove covariances between all parameters or a group of parameters
+
 You may wish to create your own functions; we will discuss this too.
 
 
@@ -509,7 +511,7 @@ You may wish to create your own functions; we will discuss this too.
 
 You can fix model estimates in two ways. The first is to fix the value
 to whatever is in the model function, this is done by piping the model
-parameter name (like `tka`) and setting it equal to `fix` (`%>%
+parameter name (like `tka`) and setting it equal to `fix` (`|>
 ini(tka=fix)`). Below is a full example:
 
 ```{r fixEstimate}
@@ -541,7 +543,7 @@ print(f2)
 
 You can also fix the parameter to a different value if you wish; This
 is very similar you can specify the value to fix inside of a `fix`
-pseudo-function as follows: `%>% ini(tka=fix(0.1))`. A fully worked
+pseudo-function as follows: `|> ini(tka=fix(0.1))`. A fully worked
 example is below:
 
 ```{r fixEstimate2}
@@ -664,6 +666,17 @@ print(f4)
 
 f4 <- f |> ini(eta.ka + eta.v ~ c(0.6,
                                   0.01, 0.2))
+print(f4)
+```
+
+Another option is to use a variable, but prefix it with `~` so that
+they are promoted to between subject variabilities:
+
+```{r covVa}
+eta <- c(eta.ka=0.6, eta.v=0.6)
+
+f5 <- f |> ini(~eta)
+
 print(f4)
 ```
 
@@ -828,6 +841,49 @@ f8 <- f |>
   ini(tka=backTransform(NULL))
 
 print(f8)
+```
+
+### Removing covariances between between subject varaibilities
+
+There are two approaches to removing covarinaces for between subject
+variabilities: `diag()` and `-cov(var1, var2)`
+
+The `diag()` removes either all covariance elements (with no
+arguments) or any covariance elements included in the argument list:
+
+```{r diagExamples}
+fd <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- c(0, 0.7)
+    eta.ka ~ 0.6
+    eta.v ~ c(0.01, 0.1)
+    eta.cl ~ c(0.01, 0.01, 1)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+
+# If you want to remove all covariances you can use diag() with no
+# arguments
+
+fd |> ini(diag())
+
+# if you want to remove only covariances with eta.ka  you can use:
+fd |> ini(diag(eta.ka))
+
+# if you want to remove only the covariances with eta.ka and eta.v you can use:
+fd |> ini(-cov(eta.ka, eta.v))
+
 ```
 
 ### More granular access of initial conditions

@@ -1,4 +1,6 @@
-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define max( a , b )  ( (a) > (b) ? (a) : (b) )
 #define min( a , b )  ( (a) < (b) ? (a) : (b) )
 

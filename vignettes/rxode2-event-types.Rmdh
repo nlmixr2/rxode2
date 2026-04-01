@@ -12,7 +12,7 @@ the exceptions:
      compartment name in the model. This can be tedious to count, so
      you can specify compartment numbers easier by using the
      `cmt(cmtName)` at the beginning of the model.
- - An additional column, `dur` can specify the duration of infusions; 
+ - An additional column, `dur` can specify the duration of infusions;
     - Bioavailability changes will change the rate of infusion since
       `dur`/`amt` are fixed in the input data.
     - Similarly, when specifying `rate`/`amt` for an infusion, the
@@ -32,9 +32,9 @@ the exceptions:
      dose `tad()` but doesn't actually put the dose in the
      compartment. This allows the `transit()` function to easily apply
      to the compartment.
- 
+
  Here are the legal entries to a data table:
- 
+
 | Data Item | Meaning               | Notes                                                                        |
 |-----------|-----------------------|------------------------------------------------------------------------------|
 | id        | Individual identifier | Can be a integer, factor, character, or numeric                              |
@@ -60,7 +60,7 @@ Other notes:
  - Instead of `NONMEM`-compatible data, it can accept `deSolve`
    compatible data-frames.
 
- 
+
 When returning the `rxode2` solved data-set there are a few additional
 event ids (`EVID`) that you may see depending on the solving options:
 
@@ -113,7 +113,7 @@ m1 <- function() {
   })
 }
 ```
- 
+
 # Bolus/Additive Doses
 
 A bolus dose is the default type of dose in `rxode2` and only requires
@@ -121,15 +121,15 @@ the `amt`/`dose`.  Note that this uses the convenience function `et()`
 described in the [rxode2 event tables](rxode2-event-table.html)
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev) %>% plot(C2) +
+rxSolve(m1, ev) |> plot(C2) +
     xlab("Time")
 ```
 
@@ -150,30 +150,30 @@ an infusion; The first is the `dur` keyword.
 An example of this is:
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, dur=8) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, dur=8) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev) %>% plot(depot, C2) +
+rxSolve(m1, ev) |> plot(depot, C2) +
     xlab("Time")
 ```
 
 It can be also specified by the `rate` component:
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, rate=10000/8) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=10000/8) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev) %>% plot(depot, C2) +
+rxSolve(m1, ev) |> plot(depot, C2) +
     xlab("Time")
 ```
 
@@ -184,14 +184,14 @@ In the case of modeling `rate`, a bioavailability decrease,
 decreases the infusion duration, as in NONMEM. For example:
 
 ```{r}
-rxSolve(m1, ev, c(fdepot=0.25)) %>% plot(depot, C2) +
+rxSolve(m1, ev, c(fdepot=0.25)) |> plot(depot, C2) +
     xlab("Time")
 ```
 
-Similarly increasing the bioavailability increases the infusion duration. 
+Similarly increasing the bioavailability increases the infusion duration.
 
 ```{r}
-rxSolve(m1, ev, c(fdepot=1.25)) %>% plot(depot, C2) +
+rxSolve(m1, ev, c(fdepot=1.25)) |> plot(depot, C2) +
     xlab("Time")
 ```
 
@@ -203,8 +203,8 @@ If you specify the `amt` and `dur` components in the event table,
 bioavailability changes affect the `rate` of infusion.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, dur=8) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, dur=8) |>
     et(seq(0, 24, length.out=100))
 
 ```
@@ -217,10 +217,10 @@ following plots:
 library(ggplot2)
 library(patchwork)
 
-p1 <- rxSolve(m1, ev, c(fdepot=1.25)) %>% plot(depot) +
+p1 <- rxSolve(m1, ev, c(fdepot=1.25)) |> plot(depot) +
     xlab("Time") + ylim(0,5000)
 
-p2 <- rxSolve(m1, ev, c(fdepot=0.25)) %>% plot(depot) +
+p2 <- rxSolve(m1, ev, c(fdepot=0.25)) |> plot(depot) +
     xlab("Time")+ ylim(0,5000)
 
 ## Use patchwork syntax to combine plots
@@ -230,17 +230,17 @@ p1 * p2
 ## Modeled Rate and Duration of Infusion
 
 You can model the duration, which is equivalent to NONMEM's
-`rate=-2`. 
+`rate=-2`.
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, rate=-2) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=-2) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev, c(durDepot=7)) %>% plot(depot, C2) +
+rxSolve(m1, ev, c(durDepot=7)) |> plot(depot, C2) +
     xlab("Time")
 
 ```
@@ -250,15 +250,15 @@ Similarly, you may also model rate.  This is equivalent to NONMEM's
 well.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, rate=-1) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=-1) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev, c(rateDepot=10000/3)) %>% plot(depot, C2) +
+rxSolve(m1, ev, c(rateDepot=10000/3)) |> plot(depot, C2) +
     xlab("Time")
 ```
 
@@ -269,15 +269,15 @@ These doses are solved until a steady state is
 reached with a constant inter-dose interval.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12, ss=1) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, ss=1) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev) %>% plot(C2)
+rxSolve(m1, ev) |> plot(C2)
 ```
 
 ## Steady state for complex dosing
@@ -289,18 +289,18 @@ in linear kinetics to get steady state nonstandard dosing
  - Saving all the state values
  - Resetting all the states and solving the system to steady state
  - Adding back all the prior state values
- 
+
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=24, ss=1) %>%
-    et(time=12, amt=15000, ii=24, ss=2) %>%
-    et(time=24, amt=10000, ii=24, addl=3) %>%
-    et(time=36, amt=15000, ii=24, addl=3) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=24, ss=1) |>
+    et(time=12, amt=15000, ii=24, ss=2) |>
+    et(time=24, amt=10000, ii=24, addl=3) |>
+    et(time=36, amt=15000, ii=24, addl=3) |>
     et(seq(0, 64, length.out=500))
 
 library(ggplot2)
 
-rxSolve(m1, ev,maxsteps=10000) %>% plot(C2) +
+rxSolve(m1, ev,maxsteps=10000) |> plot(C2) +
   annotate("rect", xmin=0, xmax=24, ymin=-Inf, ymax=Inf,
            alpha=0.2) +
   annotate("text", x=12.5, y=7,
@@ -339,17 +339,17 @@ on this type of dosing event is ignored.
 Here is an example:
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
+ev <- et(timeUnits="hr") |>
     et(amt=0, ss=1,rate=10000/8)
 
-p1 <- rxSolve(m1, ev) %>% plot(C2, eff)
+p1 <- rxSolve(m1, ev) |> plot(C2, eff)
 
 
-ev <- et(timeUnits="hr") %>%
-    et(amt=200000, rate=10000/8) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=200000, rate=10000/8) |>
     et(0, 250, length.out=1000)
 
-p2 <- rxSolve(m1, ev) %>% plot(C2, eff)
+p2 <- rxSolve(m1, ev) |> plot(C2, eff)
 
 library(patchwork)
 
@@ -366,9 +366,9 @@ Reset events are implemented by `evid=3` or `evid=reset`, for reset
 and `evid=4` for reset and dose.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12, addl=3) %>%
-    et(time=6, evid=reset) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, evid=reset) |>
     et(seq(0, 24, length.out=100))
 
 ev
@@ -377,16 +377,16 @@ ev
 The solving show what happens in this system when the system is reset at 6 hours post-dose.
 
 ```{r}
-rxSolve(m1, ev) %>% plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot,C2, eff)
 ```
 
 You can see all the compartments are reset to their initial values.
 The next dose start the dosing cycle over.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12, addl=3) %>%
-    et(time=6, amt=10000, evid=4) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, amt=10000, evid=4) |>
     et(seq(0, 24, length.out=100))
 
 ev
@@ -395,7 +395,7 @@ ev
 In this case, the whole system is reset and the dose is given
 
 ```{r}
-rxSolve(m1, ev) %>% plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot,C2, eff)
 ```
 
 # Turning off compartments
@@ -403,9 +403,9 @@ rxSolve(m1, ev) %>% plot(depot,C2, eff)
 You may also turn off a compartment, which is similar to a reset event.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12, addl=3) %>%
-    et(time=6, cmt="-depot", evid=2) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, cmt="-depot", evid=2) |>
     et(seq(0, 24, length.out=100))
 
 ev
@@ -414,7 +414,7 @@ ev
 Solving shows what this does in the system:
 
 ```{r}
-rxSolve(m1, ev) %>% plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot,C2, eff)
 ```
 
 In this case, the depot is turned off, and the depot compartment
@@ -427,23 +427,23 @@ that was dosed.  Hence if you turn off the effect compartment, it
 continues to be off after another dose to the depot.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12, addl=3) %>%
-    et(time=6, cmt="-eff", evid=2) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, cmt="-eff", evid=2) |>
     et(seq(0, 24, length.out=100))
 
-rxSolve(m1, ev) %>% plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot,C2, eff)
 ```
 
 To turn back on the compartment, a zero-dose to the compartment or a
 evid=2 with the compartment would be needed.
 
 ```{r}
-ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12, addl=3) %>%
-    et(time=6, cmt="-eff", evid=2) %>%
-    et(time=12,cmt="eff",evid=2) %>%
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, cmt="-eff", evid=2) |>
+    et(time=12,cmt="eff",evid=2) |>
     et(seq(0, 24, length.out=100))
 
-rxSolve(m1, ev) %>% plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot,C2, eff)
 ```

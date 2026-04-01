@@ -20,6 +20,7 @@ d/dt(y3) = a3*y1*y2
     et <- eventTable()
     et$add.sampling(seq(0, 20, by = 0.01))
 
+
     out <- solve(rigid, et)
 
     expect_equal(rxModelVars(rigid), rxModelVars(rigid$cmpMgr$rxDll()))
@@ -30,5 +31,11 @@ d/dt(y3) = a3*y1*y2
     rigid_compare <- rxModelVars(rigid)
     rigid_compare <- rigid_compare[setdiff(names(rigid_compare), "timeId")]
     expect_equal(rigid0_compare, rigid_compare)
+  })
+
+  test_that("blank modelvars has same size", {
+    blank <- rxModelVars("")
+    full <-  rxModelVars("y = 1")
+    expect_equal(length(rxModelVars(blank)), length(full))
   })
 })

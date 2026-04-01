@@ -273,12 +273,10 @@ rxTest({
       })
     }
 
-    expect_warning(
-      expect_error(
-        assertRxUiRandomOnIdOnly(one.cmt),
-        regexp = "can only have random effects on ID"
-      ),
-      regexp = "some etas defaulted to non-mu referenced"
+    expect_error(
+      assertRxUiRandomOnIdOnly(one.cmt),
+      regexp = "can only have random effects on ID"
     )
+
   })
 })
