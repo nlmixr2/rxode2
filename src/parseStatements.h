@@ -61,7 +61,60 @@ static inline int handleEtStatement(nodeInfo ni, char *name, int *i,
   return 0;
 }
 
-static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
+/* etInf_statement : 'etInf_' '(' arg1 ',' arg2 ',' arg3 ',' arg4 ')'
+   Children:  0=etInf_  1=(  2=arg1  3=,  4=arg2  5=,  6=arg3  7=,  8=arg4  9=)
+   Emits:     _etInf_impl_(arg1, arg2, arg3, arg4, _ind, __zzStateVar__);
+   The four arg children (i=2,4,6,8) are parsed recursively so that
+   rxode2 variable transformations apply. i=0,1,3,5,7,9 are explicit/skipped.
+   NOTE: requires regenerating src/tran.g.d_parser.h from inst/tran.g via
+         .rxodeBuildCode() before this grammar rule takes effect.            */
+static inline int handleEtInfStatement(nodeInfo ni, char *name, int *i,
+                                       D_ParseNode *xpn, D_ParseNode *pn) {
+  if (nodeHas(etInf_statement)) {
+    if (*i == 0) {
+      sb.o = 0; sbDt.o = 0; sbt.o = 0;
+      aType(TLOGIC);
+      aAppendN("_etInf_impl_", 12);
+      sAppendN(&sbt, "_etInf_impl_", 12);
+      return 1;
+    }
+    if (*i == 1) { return 0; }   /* '(' — fall through */
+    if (*i == 2) { return 0; }   /* arg1 (time) — recursive parse */
+    if (*i == 3) {               /* first ',' */
+      aAppendN(", ", 2);
+      sAppendN(&sbt, ", ", 2);
+      return 1;
+    }
+    if (*i == 4) { return 0; }   /* arg2 (amt) — recursive parse */
+    if (*i == 5) {               /* second ',' */
+      aAppendN(", ", 2);
+      sAppendN(&sbt, ", ", 2);
+      return 1;
+    }
+    if (*i == 6) { return 0; }   /* arg3 (dur) — recursive parse */
+    if (*i == 7) {               /* third ',' */
+      aAppendN(", ", 2);
+      sAppendN(&sbt, ", ", 2);
+      return 1;
+    }
+    if (*i == 8) { return 0; }   /* arg4 (evid) — recursive parse */
+    if (*i == 9) {
+      /* ')' — append ', _ind, __zzStateVar__)' and finalize */
+      aAppendN(", _ind, __zzStateVar__)", 22);
+      sAppendN(&sbt, ")", 1);
+      addLine(&sbPm,   "%s;\n", sb.s);
+      addLine(&sbPmDt, "%s;\n", sbDt.s);
+      sAppend(&sbNrm,  "%s;\n", sbt.s);
+      addLine(&sbNrmL, "%s;\n", sbt.s);
+      ENDLINE;
+      return 1;
+    }
+    return 1;
+  }
+  return 0;
+}
+
+
                                              D_ParseNode *xpn, D_ParseNode *pn) {
   if (nodeHas(interp_statement)) {
     if (*i == 0) {

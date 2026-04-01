@@ -85,6 +85,10 @@ typedef struct {
 } rx_solving_options;
 
 
+/* Maximum number of past-time dose violations to record per-subject for
+   deferred warning emission after par_solve().                             */
+#define ET_PAST_DOSE_MAX 10
+
 typedef struct {
   double bT;
   int *slvr_counter;
@@ -194,7 +198,6 @@ typedef struct {
   int extraSorted; // extra sorted?
   int mainSorted;  // 0 = main ix[] needs re-sort after runtime rate/dur/mtime update
   // et_() dynamic dose injection — deferred warning tracking (thread-safe: per-subject)
-#define ET_PAST_DOSE_MAX 10
   int    pastDoseN;                           // violations recorded (may exceed cap)
   double pastDoseTime[ET_PAST_DOSE_MAX];      // requested (bad) dose times
   double pastDoseSolverTime[ET_PAST_DOSE_MAX];// curTime when rejected

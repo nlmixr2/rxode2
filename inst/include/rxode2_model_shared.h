@@ -10,13 +10,22 @@
 typedef int (*_rxPushDosingEvent_t)(double, double, int, rx_solving_options_ind *);
 extern _rxPushDosingEvent_t _rxPushDosingEvent;
 
+/* _rxGetAMT: C-callable wrapper for the AMT (bioavailability) function.
+   Allows model code to query F(id, cmt, dose, t, y) without direct access
+   to the AMT function pointer in par_solve.cpp (which is RTLD_LOCAL).
+   Returns dose * F; returns dose unchanged if AMT is not yet initialised.  */
+typedef double (*_rxGetAMT_t)(int, int, double, double, double *);
+extern _rxGetAMT_t _rxGetAMT;
+
 /* et_(): dynamic dose injection from model equations.
    Called as et_(time, amt, evid, _ind) where _ind is the per-subject
    solver state injected by the et_statement codegen handler.
    Violations (SS dose, past-time) are recorded per-subject for
    thread-safe deferred Rf_warning() emission at end of par_solve().
    _evidD is taken as double so no cast is needed at the call site;
-   it is converted to int internally.                                  */
+   it is converted to int internally.
+   Bioavailability (F) is applied automatically when the injected event
+   is processed by handle_evid() in the solver — no pre-scaling needed.     */
 static inline void et_(double _time, double _amt, double _evidD,
                        rx_solving_options_ind *_ind) {
   int _evid = (int)_evidD;
@@ -46,6 +55,74 @@ static inline void et_(double _time, double _amt, double _evidD,
   }
   _rxPushDosingEvent(_time, _amt, _evid, _ind);
 }
+
+/* _etInf_impl_(): implementation for etInf_() infusion dose injection.
+   Pushes a constant-rate infusion by injecting both:
+     • start event at _time   (dose = +rate, evid with EVIDF_INF_RATE)
+     • end   event at _time + F*_dur  (dose = -rate, same evid + EVID0_RATEADJ)
+   F (bioavailability) is obtained via _rxGetAMT so that the effective duration
+   reflects the current per-compartment bioavailability fraction.
+   _evidD encodes the compartment in rxode2 EVID format (e.g. 101 = cmt 1).
+   _y is the current ODE state vector (needed by the F function).
+   Rate is computed as _amt / _dur (i.e. _amt is the total dose amount).     */
+static inline void _etInf_impl_(double _time, double _amt, double _dur,
+                                double _evidD,
+                                rx_solving_options_ind *_ind,
+                                double *_y) {
+  if (_dur <= 0.0) return;
+  int _evid = (int)_evidD;
+  /* SS / past-time guards (reuse et_() logic) */
+  {
+    int _wh, _cmt2, _wh100, _whI, _wh0;
+    getWh(_evid, &_wh, &_cmt2, &_wh100, &_whI, &_wh0);
+    int _flag = _wh % 100;
+    if (_flag == EVID0_SS   || _flag == EVID0_SS0  ||
+        _flag == EVID0_SS2  || _flag == EVID0_SS20 ||
+        _flag == EVID0_SSINF) {
+      _ind->ssDoseN++;
+      return;
+    }
+    if (_time < _ind->tprior) {
+      if (_ind->pastDoseN < ET_PAST_DOSE_MAX) {
+        _ind->pastDoseTime[_ind->pastDoseN]       = _time;
+        _ind->pastDoseSolverTime[_ind->pastDoseN] = _ind->tprior;
+      }
+      _ind->pastDoseN++;
+      return;
+    }
+    /* Build EVIDF_INF_RATE start and EVID0_RATEADJ end EVIDs from _evid.
+       _evid is assumed to be a bolus-type EVID (EVIDF_NORMAL).  We replace
+       the whI field with EVIDF_INF_RATE (1) for the start event, and use
+       EVID0_RATEADJ (2) for the wh0 field of the end event.                */
+    int _cmt99  = _cmt2 + 1;           /* 1-indexed compartment              */
+    int _cmt100 = _wh100;              /* high compartment bits               */
+    int _startEvid = _cmt100 * 100000 + EVIDF_INF_RATE * 10000
+                     + _cmt99 * 100 + EVID0_REGULAR;
+    int _endEvid   = _cmt100 * 100000 + EVIDF_INF_RATE * 10000
+                     + _cmt99 * 100 + EVID0_RATEADJ;
+    double _rate = _amt / _dur;
+    /* Apply bioavailability to determine the effective end time.
+       F = _rxGetAMT(id, cmt, 1.0, t, y) gives the fraction (dose=1 → F).  */
+    double _f = (_rxGetAMT != NULL)
+                  ? _rxGetAMT(_ind->id, _cmt2, 1.0, _time, _y)
+                  : 1.0;
+    if (_f <= 0.0 || _f != _f) _f = 1.0;  /* guard against NaN / non-positive */
+    double _endTime = _time + _f * _dur;
+    _rxPushDosingEvent(_time,    +_rate, _startEvid, _ind);
+    _rxPushDosingEvent(_endTime, -_rate, _endEvid,   _ind);
+  }
+}
+
+/* etInf_: macro wrapper for _etInf_impl_ that captures _ind and
+   __zzStateVar__ from the enclosing generated ODE function scope.
+   Usage (inside an rxode2 model assignment, e.g. in an if-block):
+     _infRes = etInf_(time, amt, dur, evid_cmt)
+   where evid_cmt is a bolus-type EVID (e.g. 101 for compartment 1).
+   Note: grammar-level statement support (without the assignment wrapper)
+   requires regenerating src/tran.g.d_parser.h from inst/tran.g.             */
+#define etInf_(time, amt, dur, evid) \
+  (_etInf_impl_((double)(time), (double)(amt), (double)(dur), (double)(evid), \
+                _ind, __zzStateVar__), 0.0)
 
 #include <float.h>
 

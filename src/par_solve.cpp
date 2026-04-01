@@ -174,13 +174,33 @@ extern "C" void printErr(int err, int id){
 
 rx_solving_options op_global;
 
-/* C-callable wrapper for pushDosingEvent — accessible from generated model .so
-   files that cannot directly reference op_global (RTLD_LOCAL).                */
+/* C-callable wrapper for pushUniqueDosingEvent — accessible from generated
+   model .so files that cannot directly reference op_global (RTLD_LOCAL).
+   Using pushUniqueDosingEvent makes et_() idempotent: if the ODE RHS is
+   evaluated multiple times at the same time step (as solvers may do),
+   duplicate {time, amt, evid} events are not inserted.                      */
 extern "C" int _rxPushDosingEvent(double time, double amt, int evid, void *ind) {
-  return pushDosingEvent(time, amt, evid, (rx_solving_options_ind *)ind);
+  return pushUniqueDosingEvent(time, amt, evid, (rx_solving_options_ind *)ind);
 }
 
 rx_solving_options_ind *inds_global = NULL;
+
+/* C-callable wrapper for AMT (bioavailability) — allows model .so code to
+   query the current bioavailability for a given subject/compartment/dose/time
+   without needing direct access to the AMT function pointer in par_solve.cpp.
+   Returns dose * F(id, cmt, dose, t, y); when AMT is not yet set, returns dose
+   unchanged.                                                                   */
+extern "C" double _rxGetAMT(int id, int cmt, double dose, double t, double *y) {
+  if (AMT == NULL) return dose;
+  double ret = AMT(id, cmt, dose, t, y);
+  if (ISNA(ret)) {
+    op_global.badSolve = 1;
+    if (op_global.naTime == 0) {
+      op_global.naTime = 5 + 10 * cmt;
+    }
+  }
+  return ret;
+}
 
 rx_solving_options_ind *inds_thread = NULL;
 
@@ -4555,8 +4575,8 @@ extern "C" void par_solve(rx_solve *rx) {
       int _nReport = (_ind2->pastDoseN < ET_PAST_DOSE_MAX)
                        ? _ind2->pastDoseN : ET_PAST_DOSE_MAX;
       for (int _pi = 0; _pi < _nReport; _pi++) {
-        Rf_warning("et_(): subject %d: requested dose time (%.4g) is earlier than "
-                   "current solver time (%.4g); dose dropped",
+        Rf_warning("et_(): subject %d: past-time dose request: requested time (%.4g) is "
+                   "earlier than current solver time (%.4g); dose dropped",
                    _ind2->id + 1,
                    _ind2->pastDoseTime[_pi],
                    _ind2->pastDoseSolverTime[_pi]);

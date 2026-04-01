@@ -277,6 +277,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 .rxOnly <- c(
   ## Dynamic dose injection (et_statement grammar rule; inline in rxode2_model_shared.h)
   "et_" = NA,
+  ## Infusion dose injection macro (etInf_ in rxode2_model_shared.h; 4 args via assignment)
+  "etInf_" = 4,
   ## Now random number generators
   "rnorm" = NA,
   "rxnorm" = NA,
@@ -3938,6 +3940,8 @@ rxSupportedFuns <- function() {
 .rxOnly <- c(
   ## Dynamic dose injection (et_statement grammar rule; inline in rxode2_model_shared.h)
   "et_" = NA,
+  ## Infusion dose injection macro (etInf_ in rxode2_model_shared.h; 4 args via assignment)
+  "etInf_" = 4,
   ## Now random number generators
   "rnorm" = NA,
   "rxnorm" = NA,

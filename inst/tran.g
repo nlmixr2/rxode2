@@ -26,6 +26,7 @@ statement
   | break_statement end_statement
   | simfun_statement end_statement
   | et_statement end_statement
+  | etInf_statement end_statement
   | compound_statement
   | selection_statement
   | ifelse_statement
@@ -46,6 +47,8 @@ break_statement
 simfun_statement : "(simeps|simeta)" '(' ')' ;
 
 et_statement : 'et_' '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
+
+etInf_statement : 'etInf_' '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
 
 cmt_statement
     : 'cmt' '(' identifier_r_no_output ')';

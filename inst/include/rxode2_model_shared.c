@@ -20,6 +20,7 @@ _update_par_ptr_p _update_par_ptr=NULL;
 _getParCov_p _getParCov=NULL;
 _setThreadInd_t _setThreadInd=NULL;
 _rxPushDosingEvent_t _rxPushDosingEvent=NULL;
+_rxGetAMT_t _rxGetAMT=NULL;
 linCmtA_p linCmtA;
 linCmtB_p linCmtB;
 _rx_asgn _rxode2_rxAssignPtr =NULL;
@@ -371,6 +372,7 @@ void _assignFuns0(void) {
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   _setThreadInd = (_setThreadInd_t) R_GetCCallable("rxode2","_setThreadInd");
   _rxPushDosingEvent = (_rxPushDosingEvent_t) R_GetCCallable("rxode2","_rxPushDosingEvent");
+  _rxGetAMT = (_rxGetAMT_t) R_GetCCallable("rxode2","_rxGetAMT");
   // dynamic start
   linCmtA=(linCmtA_p)R_GetCCallable("rxode2", "linCmtA");
   linCmtB=(linCmtB_p)R_GetCCallable("rxode2", "linCmtB");

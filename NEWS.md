@@ -1,9 +1,24 @@
 # rxode2 (development)
 
 - Add `et_()` as an inline model statement that dynamically injects
-  doses during ODE integration. Doses in the past are warned and
-  dropped; steady-state doses cannot be injected inline and are
-  silently dropped with a deferred warning.
+  bolus doses during ODE integration. Bioavailability (F) is correctly
+  applied to injected doses via `handle_evid()` at processing time.
+  Past-time dose warnings now include "past-time" in the message for
+  easier filtering. Steady-state doses cannot be injected inline and
+  emit a deferred warning.
+
+- `et_()` uses `pushUniqueDosingEvent()` so that repeated RHS
+  evaluations at the same solver time step do not duplicate events.
+
+- Add `etInf_()` infrastructure: the `_etInf_impl_()` function and
+  `etInf_()` macro in `rxode2_model_shared.h` support constant-rate
+  infusion injection with bioavailability (F) applied to the effective
+  duration. Full grammar-level statement support (calling `etInf_()`
+  without an assignment wrapper) requires regenerating
+  `src/tran.g.d_parser.h` from `inst/tran.g` via `.rxodeBuildCode()`.
+
+- Add `_rxGetAMT` C-callable so that model code can query the current
+  bioavailability function for a given compartment/time/state.
 
 - Fix potential security and memory-management issues that could lead
   to crashes or undefined behavior including integer overflow
