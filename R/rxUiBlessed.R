@@ -1,5 +1,5 @@
 ## created by .createRxUiBlessedList() in ui-assign-parts.R edit there
-.rxUiBlessed <- c("covariates", "covLhsDf", "curHi", "curLow", 
+.rxUiBlessed <- c("covLhsDf", "covariates", "curHi", "curLow", 
     "errParams0", "estNotAllowed", "eta", "etaLhsDf", "extraCmt", 
     "extraDvid", "hasErrors", "iniDf", "level", "levelLhsDf", 
     "lstExpr", "meta", "mixProbs", "model", "modelName", "mu2RefCovariateReplaceDataFrame", 

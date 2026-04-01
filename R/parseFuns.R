@@ -37,10 +37,10 @@
 "d4GELU", "ELU", "dELU", "d2ELU", "d2aELU", "dELUa", "d2ELUa", 
 "softplus", "dsoftplus", "d2softplus", "d3softplus", "d4softplus", 
 "SELU", "dSELU", "lReLU", "dlReLU", "PReLU", "dPReLU", "d2PReLU", 
-"dPReLUa", "dPReLUa1", "Swish", "dSwish", "linCmt", "et_", "etInf_", "rnorm", 
-"rxnorm", "rxbinom", "rbinom", "rxcauchy", "rcauchy", "rchisq", 
-"rxchisq", "rexp", "rxexp", "rbeta", "rxbeta", "rgeom", "rxgeom", 
-"rxpois", "rpois", "rxt", "rt")
+"dPReLUa", "dPReLUa1", "Swish", "dSwish", "linCmt", "et_", "etInf_", 
+"rnorm", "rxnorm", "rxbinom", "rbinom", "rxcauchy", "rcauchy", 
+"rchisq", "rxchisq", "rexp", "rxexp", "rbeta", "rxbeta", "rgeom", 
+"rxgeom", "rxpois", "rpois", "rxt", "rt")
 .parseEnv$.parseNum <- c(lgamma = 1, abs = 1, acos = 1, acosh = 1, asin = 1, asinh = 1, 
 atan = 1, atan2 = 2, atanh = 1, beta = 2, cos = 1, cosh = 1, 
 erf = 1, erfc = 1, exp = 1, gamma = 1, log = 1, polygamma = 2, 
@@ -81,4 +81,4 @@ d4GELU = 1, ELU = 2, dELU = 2, d2ELU = 2, d2aELU = 2, dELUa = 2,
 d2ELUa = 2, softplus = 1, dsoftplus = 1, d2softplus = 1, d3softplus = 1, 
 d4softplus = 1, SELU = 1, dSELU = 1, lReLU = 1, dlReLU = 1, PReLU = 2, 
 dPReLU = 2, d2PReLU = 2, dPReLUa = 2, dPReLUa1 = 2, Swish = 1, 
-dSwish = 1, etInf_ = 4)
+dSwish = 1)

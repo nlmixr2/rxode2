@@ -114,7 +114,7 @@ static inline int handleEtInfStatement(nodeInfo ni, char *name, int *i,
   return 0;
 }
 
-
+static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
                                              D_ParseNode *xpn, D_ParseNode *pn) {
   if (nodeHas(interp_statement)) {
     if (*i == 0) {

@@ -213,6 +213,7 @@ typedef struct nodeInfo {
   int equality_str2;
   int simfun_statement;
   int et_statement;
+  int etInf_statement;
   int relational_op;
   int string;
 } nodeInfo;
@@ -276,6 +277,7 @@ static inline void niReset(nodeInfo *ni){
   ni->equality_str2 = -1;
   ni->simfun_statement = -1;
   ni->et_statement = -1;
+  ni->etInf_statement = -1;
   ni->relational_op = -1;
   ni->string = -1;
 }
