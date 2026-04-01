@@ -106,7 +106,7 @@ static inline void _etInf_impl_(double _time, double _amt, double _dur,
     double _f = (_rxGetAMT != NULL)
                   ? _rxGetAMT(_ind->id, _cmt2, 1.0, _time, _y)
                   : 1.0;
-    if (_f <= 0.0 || _f != _f) _f = 1.0;  /* guard against NaN / non-positive */
+    if (_f <= 0.0 || ISNAN(_f)) _f = 1.0;  /* guard against NaN / non-positive */
     double _endTime = _time + _f * _dur;
     _rxPushDosingEvent(_time,    +_rate, _startEvid, _ind);
     _rxPushDosingEvent(_endTime, -_rate, _endEvid,   _ind);

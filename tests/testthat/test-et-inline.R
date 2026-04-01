@@ -1,22 +1,27 @@
 rxTest({
   test_that("et_() bolus dose injected when threshold crossed", {
-    m <- rxode2({
+    m_et <- rxode2({
       d/dt(depot) = -ka * depot
       d/dt(central) = ka * depot - cl/v * central
       if (central/v > threshold) {
         et_(t + 1, 50, 101)
       }
     })
+    m_ref <- rxode2({
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - cl/v * central
+    })
     e <- et(0, amt = 200, evid = 101) |> et(seq(0, 10, by = 0.5))
     params <- c(ka = 1, cl = 5, v = 50, threshold = 1.0)
-    s <- rxSolve(m, params, e)
-    expect_s3_class(s, "rxSolve")
-    expect_true(nrow(s) > 0)
-    # Verify that at least one additional inline dose event was actually injected:
-    # the solved output should reflect extra dose events (concentration affected)
-    s_df <- as.data.frame(s)
-    # The model with threshold-triggered et_() should have extra dose entries in output
-    expect_true(any(!is.na(s_df$central)))
+    s_et  <- rxSolve(m_et,  params, e)
+    s_ref <- rxSolve(m_ref, params, e)
+    expect_s3_class(s_et, "rxSolve")
+    # The et_() model should have higher late-time concentrations than the reference
+    # model because additional doses are injected when the threshold is crossed
+    central_et  <- as.data.frame(s_et)$central
+    central_ref <- as.data.frame(s_ref)$central
+    # At least some time points should show higher concentration due to injected dose
+    expect_true(any(central_et > central_ref, na.rm = TRUE))
   })
 
   test_that("et_() past-time dose records warning counter", {
