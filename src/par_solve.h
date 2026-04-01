@@ -96,6 +96,7 @@ extern "C" {
         } else {
           calc_mtime(solveid, _baseMtime, _initState);
         }
+        std::fill_n(ind->mtime0, rx->nMtime, R_NegInf);
         for (int k = 0; k < rx->nMtime; k++) {
           if (_baseMtime[k] <= ind->mtime[k]) {
             // Event is at or after the base time: place at base so solver visits it.
@@ -104,7 +105,6 @@ extern "C" {
           // else: event is before base (negative offset); keep mtime_init (old behaviour).
           ind->mtime0[k] = ind->mtime[k];  // trigger = initial placement
         }
-        for (int k = rx->nMtime; k < 90; k++) ind->mtime0[k] = R_NegInf;
       }
       // else: LHS pass (inLhs==1, neq>0) — preserve ind->mtime[k] set by the ODE
       // solve (including any recomputeMtimeIfNeeded updates).  getTime_ returns
