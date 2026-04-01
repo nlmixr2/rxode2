@@ -3782,8 +3782,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         xp,           /* initial x-value */
                         yp,           /* initial values for y */
                         xout,         /* final x-value (xend-x may be positive or negative) */
-                        &rtol,          /* relative error tolerance */
-                        &atol,          /* absolute error tolerance */
+                        op->rtol2,      /* relative error tolerance (per-compartment vector) */
+                        op->atol2,      /* absolute error tolerance (per-compartment vector) */
                         itol,         /* switch for rtoler and atoler */
                         solout,         /* function providing the numerical solution during integration */
                         iout,         /* switch for calling solout */
