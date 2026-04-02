@@ -48,160 +48,152 @@ pkModel <- function() {
   })
 }
 
-## Assumed variance-covariance matrix for the fixed effects (thetas)
+## Variance-covariance matrix for the fixed effects (thetas)
 ## In practice this comes from your estimation software output
-thetaVcov <-   lotri::lotri({
+thetaVcov <- lotri::lotri({
   tka ~ 0.04
-  tcl ~ c(0.01,  0.02)
-  tv ~ 0.03})
+  tcl ~ c(0.01, 0.02)
+  tv  ~ 0.03
+})
 
-thetaMean <- c(tka = log(1.57), tcl = log(2.72), tv = log(31.07))
+## Extend the model with an AUC compartment via model piping.
+## d/dt(auc) <- cp accumulates concentration over time, so auc at
+## the last observation time equals AUC_0-t directly.
+pkModelAuc <- pkModel |>
+  model(d/dt(auc) <- cp, append = TRUE)
 ```
 
-## Drawing parameter sets from the covariance matrix
+## Built-in simulation with parameter uncertainty
 
-`rxRmvn()` samples multivariate-normal parameter vectors from the
-theta mean and covariance matrix:
+Pass `thetaMat` (the theta variance-covariance matrix) and `nStud`
+(number of virtual studies, i.e. parameter draws) directly to
+`rxSolve()`.  Internally rxode2 samples `nStud` parameter vectors from
+a multivariate normal distribution and simulates `nSub` subjects for
+each draw.
 
-```{r draws}
-set.seed(42)
-nDraw <- 500
+```{r sim, message=FALSE}
+rxSetSeed(42)
 
-thetaDraws <- rxRmvn(nDraw, thetaMean, thetaVcov)
-head(thetaDraws)
-```
-
-## Simulating across parameter draws
-
-For each draw, simulate a population of subjects and compute a
-summary statistic of interest (here, AUC over 24 h for a 100 mg dose).
-
-```{r simUncertainty, message=FALSE}
 et <- et(amt = 100, time = 0) |>
   et(seq(0, 24, by = 0.5))
 
-library(data.table)
-
-# Simulate all draws at once by passing a matrix of parameters
-# Each row of thetaDraws is one parameter-uncertainty replicate;
-# within each replicate rxSolve simulates nSub subjects with BSV.
-dt <- rxSolve(
-  pkModel,
+sim <- rxSolve(
+  pkModelAuc,
   et,
-  params  = thetaDraws,
-  nSub    = 20,           # subjects per draw
-  returnType = "data.table"
+  thetaMat = thetaVcov,   # uncertainty matrix for thetas
+  nStud    = 500,          # virtual studies (parameter draws)
+  nSub     = 20            # subjects per study
 )
 ```
 
-## Confidence interval on concentration-time profile
+## Confidence interval on the concentration-time profile
 
-Summarize across both parameter draws and subjects to get the overall
-prediction interval:
+Call `confint()` on the solved object to summarize across both
+parameter draws and subjects.  When `nStud > 1` rxode2 uses the study
+dimension to construct confidence bands around the percentile curves.
 
 ```{r ciProfile, fig.width=7, fig.height=4}
-ci <- dt[, .(
-  p05 = quantile(cp, 0.05),
-  p50 = quantile(cp, 0.50),
-  p95 = quantile(cp, 0.95)
-), by = time]
+ci <- confint(sim, "cp", level = 0.95)
+plot(ci)
+```
 
-ggplot(ci, aes(x = time)) +
-  geom_ribbon(aes(ymin = p05, ymax = p95), fill = "steelblue", alpha = 0.3) +
-  geom_line(aes(y = p50), colour = "steelblue", linewidth = 1) +
-  labs(x = "Time (h)", y = "Concentration (mg/L)",
-       title = "Concentration-time profile with parameter uncertainty",
-       subtitle = "Shaded: 90% CI combining parameter uncertainty and BSV") +
-  theme_bw()
+The shaded ribbon spans the 2.5th to 97.5th percentile of the
+population prediction (combining BSV and parameter uncertainty); the
+solid line is the median.  The `ci` argument to `confint()` controls
+the width of the confidence bands placed around those percentiles:
+
+```{r ciProfileNarrow, fig.width=7, fig.height=4}
+## 90% interval with 95% confidence bands around it
+ci90 <- confint(sim, "cp", level = 0.90, ci = 0.95)
+plot(ci90)
 ```
 
 ## Uncertainty in a summary exposure metric (AUC)
 
-```{r aucDist, fig.width=6, fig.height=4}
-## Approximate AUC_0-24 with the trapezoidal rule for each sim replicate
-auc <- dt[, .(AUC = sum(diff(time) * (cp[-length(cp)] + cp[-1]) / 2)),
-          by = .(sim.id, id)]
+Extract the per-study, per-subject AUC from the simulation and
+summarize across subjects within each study to obtain the distribution
+of study-level median AUC.
 
-aucByDraw <- auc[, .(medAUC = median(AUC)), by = sim.id]
+```{r aucDist, fig.width=6, fig.height=4, message=FALSE}
+library(data.table)
 
-ggplot(aucByDraw, aes(x = medAUC)) +
+dt <- as.data.table(sim)
+
+## auc at time == 24 is AUC_0-24 directly (no trapezoid rule needed)
+aucByStudy <- dt[time == 24, .(medAUC = median(auc)), by = sim.id]
+
+## Point estimate and 90% CI across draws
+quantile(aucByStudy$medAUC, c(0.05, 0.50, 0.95))
+
+ggplot(aucByStudy, aes(x = medAUC)) +
   geom_histogram(bins = 40, fill = "steelblue", colour = "white") +
-  geom_vline(xintercept = quantile(aucByDraw$medAUC, c(0.05, 0.95)),
+  geom_vline(xintercept = quantile(aucByStudy$medAUC, c(0.05, 0.95)),
              linetype = "dashed") +
-  labs(x = "Median AUC per draw (mg·h/L)",
+  labs(x = "Median AUC per study (mg*h/L)",
        y = "Count",
        title = "Distribution of median AUC across parameter draws",
        subtitle = "Dashed lines: 5th and 95th percentiles") +
   theme_bw()
 ```
 
-## Forest plot for covariate effects
+## Forest plot for covariate effects with uncertainty
 
-A forest plot shows how a covariate shifts exposure relative to a
-reference individual.  Simulate the reference subject and each
-covariate scenario across parameter draws.
+Simulate each covariate scenario with the same parameter uncertainty,
+then compare the AUC ratio relative to a reference.
 
-```{r forestPlot, fig.width=7, fig.height=5}
-# Build covariate scenarios
-scenarios <- data.frame(
-  label  = c("Reference (WT=70)", "WT = 40 kg", "WT = 100 kg",
-             "Mild RI (CL -20%)", "Moderate RI (CL -50%)"),
-  tka    = log(1.57),
-  tcl    = c(log(2.72), log(2.72), log(2.72),
-             log(2.72 * 0.80), log(2.72 * 0.50)),
-  tv     = log(31.07)
+```{r forestSetup, message=FALSE}
+## Helper: simulate one scenario and return median AUC per study
+simScenAuc <- function(params, label) {
+  s <- rxSolve(
+    pkModelAuc, et,
+    params   = params,
+    thetaMat = thetaVcov,
+    nStud    = 500,
+    nSub     = 10
+  )
+  dt <- as.data.table(s)
+  ## auc at the last time point is AUC_0-24 directly
+  med <- dt[time == 24, .(medAUC = median(auc)), by = sim.id]
+  med[, scenario := label]
+  med
+}
+
+set.seed(42)
+scenarios <- list(
+  reference  = c(tka = log(1.57), tcl = log(2.72),       tv = log(31.07)),
+  mild_ri    = c(tka = log(1.57), tcl = log(2.72 * 0.80), tv = log(31.07)),
+  moderate_ri = c(tka = log(1.57), tcl = log(2.72 * 0.50), tv = log(31.07))
 )
 
-simScen <- rxSolve(
-  pkModel,
-  et,
-  params     = scenarios,
-  nSub       = 1,
-  returnType = "data.frame"
-)
+aucAll <- rbindlist(Map(simScenAuc, scenarios, names(scenarios)))
+```
 
-aucScen <- as.data.table(simScen)[, .(
-  AUC = sum(diff(time) * (cp[-length(cp)] + cp[-1]) / 2)
-), by = .(sim.id)]
-aucScen$label <- scenarios$label
+```{r forestPlot, fig.width=7, fig.height=4}
+## AUC ratio relative to reference, median + 90% CI
+refAuc <- aucAll[scenario == "reference", medAUC]
 
-refAUC <- aucScen$AUC[aucScen$label == "Reference (WT=70)"]
-aucScen$ratio <- aucScen$AUC / refAUC
+forest <- aucAll[scenario != "reference",
+  .(
+    ratio    = median(medAUC) / median(refAuc),
+    lo       = quantile(medAUC / median(refAuc), 0.05),
+    hi       = quantile(medAUC / median(refAuc), 0.95)
+  ),
+  by = scenario
+]
+forest[, scenario := factor(scenario,
+  levels = c("mild_ri", "moderate_ri"),
+  labels = c("Mild RI (CL -20%)", "Moderate RI (CL -50%)"))]
 
-ggplot(aucScen[aucScen$label != "Reference (WT=70)", ],
-       aes(x = ratio, y = label)) +
+ggplot(forest, aes(x = ratio, y = scenario)) +
   geom_point(size = 3) +
-  geom_vline(xintercept = 1, linetype = "dashed") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2) +
+  geom_vline(xintercept = 1,        linetype = "dashed") +
   geom_vline(xintercept = c(0.8, 1.25), linetype = "dotted", colour = "red") +
-  scale_x_continuous(limits = c(0.3, 1.8),
+  scale_x_continuous(limits = c(0.3, 2.0),
                      breaks = c(0.5, 0.8, 1.0, 1.25, 1.5)) +
   labs(x = "AUC ratio vs reference",
        y = NULL,
-       title = "Forest plot — covariate effects on AUC",
-       subtitle = "Dotted red lines: 0.8–1.25 no-effect boundary") +
+       title = "Forest plot: covariate effects on AUC",
+       subtitle = "Points: median ratio; bars: 90% CI from parameter uncertainty\nDotted red: 0.8-1.25 no-effect boundary") +
   theme_bw()
 ```
-
-## Using `rxSimThetaOmega()`
-
-`rxSimThetaOmega()` is a convenience function that jointly samples
-thetas and omegas from their respective distributions in a single
-call, which is useful when you also want to propagate omega
-uncertainty:
-
-```{r rxSimThetaOmega}
-## Simulate 200 sets of (theta, omega) from their distributions
-thetaOmegaSim <- rxSimThetaOmega(
-  params  = c(tka = log(1.57), tcl = log(2.72), tv = log(31.07)),
-  lower   = c(-Inf, -Inf, -Inf),
-  upper   = c(Inf, Inf, Inf),
-  sigma   = thetaVcov,
-  n       = 200,
-  omega   = lotri(eta.ka ~ 0.6, eta.cl ~ 0.09, eta.v ~ 0.1),
-  omegaDf = 10   # degrees of freedom for the inverse-Wishart draw
-)
-head(thetaOmegaSim)
-```
-
-Pass the resulting data frame directly to `rxSolve()` as the `params`
-argument for fully uncertainty-propagated simulations.
