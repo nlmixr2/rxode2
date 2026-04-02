@@ -164,7 +164,7 @@ installation and a valid license to be present on the machine.
 ### GUI for interactive exploration
 
 Simulx's primary strength is its point-and-click GUI.  The
-**Exploration** workflow lets modellers interactively sweep parameter
+**Exploration** workflow lets modelers interactively sweep parameter
 values and dosing regimens for a typical individual with real-time
 graphical output — no code required.  This low-friction interface is
 valuable for non-programmers and for rapid "what-if" exploration
@@ -192,14 +192,14 @@ review.
 
 Simulx provides a structured GUI workflow for defining named
 simulation scenarios (groups with different doses, covariates, or
-parameter values), running them, and visualising results in
+parameter values), running them, and visualizing results in
 interactive tables and plots — all within the application.
 
 In rxode2 all scenario management, tabulation, and plotting is done
 in R using general-purpose packages (e.g., `ggplot2`, `data.table`),
 which gives more flexibility but requires more code.
 
-### Standardised clinical trial simulation workflow
+### Standardized clinical trial simulation workflow
 
 Simulx's GUI enforces a clear three-step workflow — **Definition**
 (parameters, treatments, outputs, covariates), **Exploration**

@@ -48,18 +48,6 @@ nlmixr2's FOCEi algorithm for parameter estimation without finite
 differences.  mrgsolve does not currently support symbolic
 differentiation.
 
-```{r}
-library(rxode2)
-
-# rxode2 generates Jacobian code automatically during compilation
-mod <- rxode2({
-  C2 <- centr / V2
-  d/dt(centr) <- -CL * C2
-})
-
-# Jacobian is embedded in the compiled DLL and used by nlmixr2
-```
-
 ### 1–3 compartment analytical solutions with exact gradients
 
 `linCmt()` in rxode2 supports one-, two-, and three-compartment
@@ -71,14 +59,17 @@ compartments only, and does not provide analytical gradients.
 ```{r}
 mod <- function() {
   ini({
-    TCl <- 4;   eta.Cl ~ 0.09
+    TCl <- 4;
+    eta.Cl ~ 0.09
     V   <- 10
-    Q   <- 2;   V2 <- 50
-    V3  <- 200; Q2 <- 0.5
+    Q   <- 2;
+    V2 <- 50
+    V3  <- 200;
+    Q2 <- 0.5
   })
   model({
     CL <- TCl * exp(eta.Cl)
-    cp <- linCmt()           # 3-cmt solved automatically from parameter names
+    cp <- linCmt(CL, V, Q, V2, V3, Q2)           # 3-cmt solved automatically from parameter names
   })
 }
 ```
@@ -183,6 +174,34 @@ mod4 <- full |> model(CL <- exp(tcl + eta.cl))
 mrgsolve models are defined as self-contained text blocks or files;
 there is no equivalent incremental piping API.
 
+### R functions available inside model code
+
+rxode2 allows R function defined in the calling environment (session,
+script, or package) to be automatically available for use inside an
+rxode2 model.  No special block or registration step is needed —
+rxode2 finds the function by name in the parent environment and calls
+it at solve time.
+
+```{r eval=TRUE}
+library(rxode2)
+
+# Plain R function defined anywhere in the session
+Hill <- function(C, Emax, EC50) Emax * C / (EC50 + C)
+
+mod <- rxode2({
+  effect <- Hill(cp, Emax, EC50)   # calls the R function above
+})
+```
+
+For performance, `rxFun()` can translate such R functions to C
+automatically (see the user-functions vignette).
+
+mrgsolve allows function calls but requires the plugin `mrgx` and the following steps in the `mrgx` environment:
+
+- Add a function to the `mrgx` environment
+
+- Call the function using `Rcpp`.
+
 ## Features mrgsolve has that rxode2 does not
 
 ### `$GLOBAL` block
@@ -199,6 +218,13 @@ $GLOBAL
 static int call_count = 0;
 ```
 
+### `$ENV` block
+mrgsolve's `$ENV` block places a R environment inside the model file,
+evaluated into a dedicated environment at compile time; those R
+objects are then accessible from C++ via the `mrgx` plugin.  These can
+also be used as functions and then Rcpp can call them.
+
+
 ### `$EVENT` block
 
 mrgsolve's `$EVENT` block (v1.5.2+) executes just before `$TABLE`,
@@ -206,6 +232,8 @@ allowing programmatic dose creation inside the model file with the
 result visible in output on the same record.  rxode2 handles
 modeled events through the event table API outside the model
 definition.
+
+
 
 ### `nm-vars` plugin for verbatim NONMEM-style ODE syntax
 
@@ -257,31 +285,6 @@ For the functions without `0` appended, values before dosing occur are
 `NA`; on the other hand, when `0` is appended times before dosing are
 zero.
 
-### R functions available inside model code
-
-mrgsolve's `$ENV` block places R code inside the model file, evaluated
-into a dedicated environment at compile time; those R objects are then
-accessible from C++ via the `mrgx` plugin.
-
-rxode2 handles this differently but equivalently: any R function
-defined in the calling environment (session, script, or package) is
-automatically available for use inside an rxode2 model.  No special
-block or registration step is needed — rxode2 finds the function by
-name in the parent environment and calls it at solve time.
-
-```{r eval=TRUE}
-library(rxode2)
-
-# Plain R function defined anywhere in the session
-Hill <- function(C, Emax, EC50) Emax * C / (EC50 + C)
-
-mod <- rxode2({
-  effect <- Hill(cp, Emax, EC50)   # calls the R function above
-})
-```
-
-For performance, `rxFun()` can translate such R functions to C
-automatically (see the user-functions vignette).
 
 ### Custom C functions with header support
 
