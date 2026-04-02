@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and mrgsolve: An Accurate Feature Comparison"
+title: "rxode2 and mrgsolve: A Feature Comparison"
 ---
 
 ```{r, include = FALSE}
@@ -164,9 +164,8 @@ full <- base |>
 ```
 
 The `append` argument controls where new model lines are inserted
-(`FALSE` = prepend, `TRUE` = append, or an integer line number for a
-specific position).  The `cov` argument declares covariate columns so
-they are not treated as missing parameters.
+(`FALSE` = prepend, `TRUE` = append).  The `cov` argument declares
+covariate columns so they are not treated as missing parameters.
 
 Additional convenience pipes allow targeted changes:
 
@@ -178,7 +177,7 @@ mod2 <- full |> ini(tka = log(1))
 mod3 <- full |> ini(fix(eta.ka))
 
 # Remove a covariate relationship
-mod4 <- full |> model(CL <- exp(tcl + eta.cl), append = NA)
+mod4 <- full |> model(CL <- exp(tcl + eta.cl))
 ```
 
 mrgsolve models are defined as self-contained text blocks or files;
@@ -236,13 +235,7 @@ compartment to a given value at a point in time).  rxode2 uses
 `EVID=5` for the equivalent operation.  Both tools support the
 concept; only the numeric code differs.
 
-### `tad` plugin for automatic time-after-dose tracking
-
-mrgsolve's `tad` plugin automatically tracks time after the most
-recent dose in a variable accessible within the model.  In rxode2
-this requires explicit calculation in the model equations.
-
-## Features that exist in both tools but are often claimed as mrgsolve-only
+## Features that exist in both tools but are often claimed by AI as mrgsolve-only
 
 ### ETA/EPS resampling
 
@@ -250,6 +243,19 @@ Both tools provide `simeta()` and `simeps()` with essentially
 identical semantics.  See the dedicated rxode2 vignette
 [ETA and EPS Resampling in rxode2](rxode2-eta-eps-resampling.html)
 for worked examples.
+
+### Automatic time-after-dose tracking
+
+mrgsolve's `tad` plugin automatically tracks time after the most
+recent dose in a variable accessible within the model.
+
+In rxode2 this requires assigning the either `tad()`/`tad0()` or `tad(cmt)`/`tad0(cmt)`
+(for a specific compartment) to a variable in the code to use it in
+the model.
+
+For the functions without `0` appended, values before dosing occur are
+`NA`; on the other hand, when `0` is appended times before dosing are
+zero.
 
 ### R functions available inside model code
 
@@ -335,7 +341,8 @@ block.
 ### NONMEM-compatible datasets
 
 Both tools accept NONMEM-format datasets with only minor differences
-in EVID coding (`EVID=5` vs `EVID=8` for replacement events).
+in EVID coding (`EVID=5` in `rxode2` vs `EVID=8` in `mrgsolve` for
+replacement events; note replacement is not supported by NONMEM).
 
 ## Compilation speed
 
