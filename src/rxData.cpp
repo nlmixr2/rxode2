@@ -1543,6 +1543,14 @@ struct rx_globals {
   // time per thread
   double *timeThread = NULL;
 
+  // Per-thread tolerance arrays for thread-safe atolRtolFactor_().
+  // Each thread gets its own slice of size op->neq so modifications
+  // in atolRtolFactor_() never race between threads.
+  double *gatol2Thread = NULL;
+  double *grtol2Thread = NULL;
+  double *gssAtolThread = NULL;
+  double *gssRtolThread = NULL;
+
   bool alloc=false;
 };
 
@@ -5324,6 +5332,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
     int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
     int64_t n10 = (int64_t)(op->neq)*op->cores;
+    int64_t n11 = 4 * op->neq * op->cores; // per-thread tolerance arrays (atol2, rtol2, ssAtol, ssRtol)
     int64_t nmtime0_c = (int64_t)rx->nMtime * op->cores;
     int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
     // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
@@ -5338,7 +5347,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
@@ -5350,7 +5359,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 + nmtime0_c +
+                                      n9 + n10 + n11 + nmtime0_c +
                                       5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -5360,7 +5369,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL){
       rxSolveFree();
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_totalElems * sizeof(double) / 1e9);
     }
@@ -5393,7 +5402,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
     _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
     _globals.timeThread = _globals.gLinDummy + n10;
-    _globals.gmtime0    = _globals.timeThread + n8; // [nmtime0_c]
+    _globals.gatol2Thread  = _globals.timeThread + n8; // [op->neq * op->cores]
+    _globals.grtol2Thread  = _globals.gatol2Thread  + op->neq * op->cores;
+    _globals.gssAtolThread = _globals.grtol2Thread  + op->neq * op->cores;
+    _globals.gssRtolThread = _globals.gssAtolThread + op->neq * op->cores;
+    _globals.gmtime0       = _globals.gssRtolThread + op->neq * op->cores; // [nmtime0_c]
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);
@@ -5409,6 +5422,18 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->rtol2 = &_globals.grtol2[0];
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
+
+    // Initialize per-thread tolerance arrays from the global baseline values.
+    for (int _core = 0; _core < op->cores; _core++) {
+      std::copy(&_globals.gatol2[0],  &_globals.gatol2[0]  + op->neq,
+                _globals.gatol2Thread  + _core * op->neq);
+      std::copy(&_globals.grtol2[0],  &_globals.grtol2[0]  + op->neq,
+                _globals.grtol2Thread  + _core * op->neq);
+      std::copy(&_globals.gssAtol[0], &_globals.gssAtol[0] + op->neq,
+                _globals.gssAtolThread + _core * op->neq);
+      std::copy(&_globals.gssRtol[0], &_globals.gssRtol[0] + op->neq,
+                _globals.gssRtolThread + _core * op->neq);
+    }
     // Not needed since we use Calloc.
     // std::fill_n(&_globals.gsolve[0], rx->nall*state.size()*rx->nsim, 0.0);
 #ifdef rxSolveT
