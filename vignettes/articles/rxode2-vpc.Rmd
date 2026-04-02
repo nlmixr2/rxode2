@@ -57,6 +57,9 @@ For illustration we use the built-in `theo_sd` dataset as observed data:
 obs <- nlmixr2data::theo_sd
 ```
 
+Note these may come from many sources, a native `nlmixr2` model, or an
+imported model from another tool like NONMEM or Monolix.
+
 ## Running replicated simulations
 
 A VPC requires simulating the study design many times (typically

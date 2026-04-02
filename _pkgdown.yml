@@ -292,7 +292,7 @@ reference:
   - summary.rxode2
 navbar:
   left:
-  - text: "Get Started"
+  - text: "Begin"
     icon: fas fa-rocket
     menu:
         - text: "Introduction to rxode2"
@@ -344,7 +344,7 @@ navbar:
           href: articles/rxode2-parameter-uncertainty.html
         - text: "ETA/EPS resampling"
           href: articles/rxode2-eta-eps-resampling.html
-  - text: "Clinical Applications"
+  - text: "Applications"
     icon: fas fa-hospital
     menu:
         - text: "Exposure-response simulation"
@@ -396,16 +396,3 @@ navbar:
   - text: "Functions"
     icon: fa-file-code-o
     href: https://nlmixr2.github.io/rxode2/reference/index.html
-  right:
-  - icon: fas fa-archive
-    menu:
-      - text: rxode2 User Guide
-        href: https://nlmixr2.github.io/rxode2-manual/
-      - text: nlmixr2
-        href: https://nlmixr2.org/
-      - text: Changes/News
-        href: news/index.html
-  - icon: fa-github
-    href: https://github.com/nlmixr2/rxode2
-  - icon: fa-download
-    href: https://github.com/nlmixr2/rxode2/releases
