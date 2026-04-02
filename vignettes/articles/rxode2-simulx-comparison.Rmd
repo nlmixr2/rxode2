@@ -1,0 +1,267 @@
+---
+title: "rxode2 and Simulx: A Feature Comparison"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction
+
+[rxode2](https://nlmixr2.github.io/rxode2/) and
+[Simulx](https://www.simulations-plus.com/software/monolix/simulx/)
+are both tools for pharmacometric simulation, but they differ
+substantially in design philosophy, licensing, and ecosystem
+integration.
+
+- **rxode2** is an open-source R package.  Models are defined in R
+  using rxode2's own mini-language, compiled to a shared library, and
+  solved within the R session.  It is fully scriptable and integrates
+  with nlmixr2 for parameter estimation.
+
+- **Simulx** is a commercial clinical trial simulation application
+  (part of the MonolixSuite, distributed by Simulations Plus / Lixoft).
+  It provides a graphical user interface (GUI) as its primary
+  interaction mode, and an R scripting interface via the
+  `lixoftConnectors` package.  Models are specified in mlxtran — the
+  same language used by Monolix for estimation — so Monolix projects
+  can be imported directly with no re-implementation.  A commercial or
+  academic license is required.
+
+## Shared capabilities
+
+- ODE-based pharmacometric models
+- Between-subject variability (BSV / omega)
+- Residual error models
+- Covariate distributions (continuous and categorical)
+- Population simulation across many subjects
+- Multiple dosing regimen groups
+- Parameter uncertainty simulation
+- VPC (visual predictive check) workflows
+- Clinical trial scenario design and simulation
+
+## Features rxode2 has that Simulx does not
+
+### No license required
+
+rxode2 is entirely open-source (GPL ≥ 3).  Simulx requires a
+commercial license from Simulations Plus; an academic license is
+available free of charge but must be requested and renewed.  rxode2
+runs without any registration or license file on any machine with R
+and a C compiler.
+
+### Fully scriptable, reproducible workflows
+
+rxode2 is a pure R package.  Every aspect of model definition,
+simulation, and output processing is expressed in R code, making
+workflows fully reproducible and straightforward to version-control,
+review, and automate in CI/CD pipelines.
+
+Simulx's primary interface is a GUI application.  Its R scripting
+layer (`lixoftConnectors`) is a thin connector to the underlying
+Simulx engine rather than a native R simulation library, so GUI state
+and R scripts are partially coupled.
+
+```{r}
+library(rxode2)
+
+# Entirely self-contained R script — no GUI, no license file
+mod <- rxode2({
+  KA <- exp(tka + eta.ka)
+  CL <- exp(tcl + eta.cl)
+  d/dt(depot) <- -KA * depot
+  d/dt(centr) <- KA * depot - CL / V * centr
+  cp          <- centr / V
+})
+
+et  <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
+sim <- rxSolve(mod, et,
+               params = c(tka = log(0.5), tcl = log(4), V = 10),
+               omega  = lotri(eta.ka ~ 0.09, eta.cl ~ 0.09),
+               nSub   = 100)
+```
+
+### Parameter estimation via nlmixr2
+
+rxode2 models can be passed directly to nlmixr2 for population
+parameter estimation (FOCE, FOCEi, SAEM, etc.) using the exact same
+model object used for simulation.  Simulx is simulation-only;
+estimation is performed in Monolix separately.
+
+### OpenMP parallelism across subjects
+
+rxode2's LSODA solver is implemented in thread-safe C, enabling
+genuine parallel ODE solving across subjects via OpenMP within a
+single R process.  Simulx uses a C++ solver internally and parallelises
+across CPU cores through its own engine, but this is not directly
+controlled from R.
+
+### Model piping for incremental modification
+
+rxode2 model objects support the native R pipe (`|>`) to clone and
+modify a model incrementally without rewriting the full specification.
+
+```{r}
+base <- rxode2({
+  d/dt(depot) <- -KA * depot
+  d/dt(centr) <- KA * depot - CL / V * centr
+  cp          <- centr / V
+})
+
+# Add population structure and residual error
+full <- base |>
+  model({
+    KA <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl)
+  }, append = FALSE) |>
+  ini({
+    tka <- log(0.5); eta.ka ~ 0.09
+    tcl <- log(4);   eta.cl ~ 0.09
+    V   <- 10
+    add.sd <- 0.5
+  }) |>
+  model(cp ~ add(add.sd), append = TRUE)
+
+# Sensitivity run: fix BSV on KA
+sens <- full |> ini(fix(eta.ka))
+```
+
+Simulx does not have an equivalent R-level model algebra; scenario
+modifications are made through the GUI or via `lixoftConnectors`
+function calls that manipulate named elements of a loaded project.
+
+### Symbolic Jacobians and forward sensitivities
+
+rxode2 automatically derives the symbolic Jacobian and forward-
+sensitivity equations, used by nlmixr2's FOCEi algorithm for exact
+gradient-based parameter estimation.
+
+### 1–3 compartment analytical solutions with exact gradients
+
+`linCmt()` provides analytical solutions for one-, two-, and
+three-compartment PK models with gradients via Stan math
+auto-differentiation.  Simulx uses ODEs for all compartment models.
+
+### Multiple ODE solver backends
+
+rxode2 offers three solver backends selectable per run: thread-safe
+C LSODA (default), Fortran LSODA, and DOP853 (explicit 8th-order
+Runge-Kutta for non-stiff systems).  Simulx uses a single C++ LSODA-
+based solver.
+
+### Runs anywhere without infrastructure
+
+rxode2 runs on any machine with R — laptops, CI servers, Docker
+containers, or Shiny apps.  Simulx requires the MonolixSuite
+installation and a valid license to be present on the machine.
+
+## Features Simulx has that rxode2 does not
+
+### GUI for interactive exploration
+
+Simulx's primary strength is its point-and-click GUI.  The
+**Exploration** workflow lets modelers interactively sweep parameter
+values and dosing regimens for a typical individual with real-time
+graphical output — no code required.  This low-friction interface is
+valuable for non-programmers and for rapid "what-if" exploration
+before committing to a full simulation script.
+
+rxode2 is code-only; interactive exploration requires writing R code
+or building a custom Shiny interface.
+
+### Direct Monolix project import
+
+Because Simulx uses the same mlxtran model language as Monolix,
+a Monolix estimation project can be imported into Simulx in one click:
+the model equations, parameter estimates, omega and sigma matrices,
+and covariate distributions are all carried over automatically with
+zero re-implementation.
+
+rxode2 uses a different model language.  Monolix models can be
+converted via the `monolix2rx` package, which translates mlxtran to
+rxode2 syntax and runs an automatic validation comparing PRED/IPRED
+between the two tools.  Models that pass validation can be simulated
+in rxode2 with confidence; models that do not pass require manual
+review.
+
+### Built-in scenario management and result display
+
+Simulx provides a structured GUI workflow for defining named
+simulation scenarios (groups with different doses, covariates, or
+parameter values), running them, and visualizing results in
+interactive tables and plots — all within the application.
+
+In rxode2 all scenario management, tabulation, and plotting is done
+in R using general-purpose packages (e.g., `ggplot2`, `data.table`),
+which gives more flexibility but requires more code.
+
+### Standardized clinical trial simulation workflow
+
+Simulx's GUI enforces a clear three-step workflow — **Definition**
+(parameters, treatments, outputs, covariates), **Exploration**
+(typical individual), and **Simulation** (population) — that guides
+users toward a complete and well-structured simulation.  This
+structured approach reduces the risk of ad hoc or incomplete
+simulation setups.
+
+rxode2 imposes no workflow structure; the user is responsible for
+organising their simulation code.
+
+## Monolix-to-rxode2 import via `monolix2rx`
+
+For users who estimate in Monolix and want to simulate in rxode2,
+the `monolix2rx` package (part of the nlmixr2 ecosystem) converts a
+Monolix project to an rxode2 model and automatically validates the
+conversion by comparing PRED/IPRED against the original Monolix
+output.  A passing validation gives confidence that the rxode2 model
+is numerically equivalent to the Monolix model.
+
+```{r}
+library(monolix2rx)
+
+# Convert a Monolix project and validate automatically
+mod <- monolix2rx("path/to/run001.mlxtran")
+
+# Simulate the converted model in rxode2
+rxSolve(mod, event_table, nSub = 1000)
+```
+
+This bridges the Monolix/Simulx and rxode2/nlmixr2 ecosystems,
+allowing estimation in Monolix and fast scripted simulation in rxode2.
+
+## Summary table
+
+| Feature | rxode2 | Simulx |
+|---------|--------|--------|
+| License | open-source (GPL ≥ 3) | commercial (free academic) |
+| Primary interface | R code | GUI + `lixoftConnectors` R API |
+| Model language | rxode2 mini-language | mlxtran |
+| Monolix project import | `monolix2rx` (with auto-validation) | direct (same language) |
+| Re-implementation risk | mitigated: `monolix2rx` auto-validates PRED/IPRED | none |
+| Simulation engine | rxode2 C/Fortran solver | Simulx C++ solver |
+| ODE solver options | LSODA (C), LSODA (Fortran), DOP853 | single C++ LSODA-based |
+| 1–3 cmt analytical solution | `linCmt()` with gradients | ODE-based only |
+| Symbolic Jacobians / sensitivities | yes | no |
+| Parameter estimation | via nlmixr2 | no (Monolix only) |
+| OpenMP parallelism (R-controlled) | yes | engine-internal |
+| Model piping (`\|>`) | yes | no |
+| GUI / interactive exploration | no (code only) | yes |
+| Built-in scenario management | no (use R code) | yes |
+| Built-in result visualisation | no (use ggplot2 etc.) | yes |
+| Monolix ecosystem integration | via monolix2rx | native |
+| nlmixr2 ecosystem integration | native | no |
+| Runs without installed application | yes | no |
+| CRAN | yes | no (`lixoftConnectors` distributed by Lixoft) |
+
+## References
+
+- [Simulx product page](https://www.simulations-plus.com/software/monolix/simulx/)
+- [Simulx documentation](https://monolixsuite.slp-software.com/simulx/2024R1/introduction-to-simulx)
+- [MonolixSuite R functions (lixoftConnectors)](https://monolixsuite.slp-software.com/r-functions/2024R1)
+- [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
+- [monolix2rx package](https://nlmixr2.github.io/monolix2rx/)
+- [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)

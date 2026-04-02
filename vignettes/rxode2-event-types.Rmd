@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Event Types"
+title: "rxode2 Datasets and Event Types"
 date: "`r Sys.Date()`"
 output:
   html_document:

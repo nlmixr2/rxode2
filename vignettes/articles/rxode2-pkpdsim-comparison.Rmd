@@ -1,0 +1,327 @@
+---
+title: "rxode2 and PKPDsim: A Feature Comparison"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction
+
+Both [rxode2](https://nlmixr2.github.io/rxode2/) and
+[PKPDsim](https://insightrx.github.io/PKPDsim/) are open-source R
+packages for ODE-based pharmacokinetic-pharmacodynamic simulation.
+They occupy a similar niche and share many capabilities, but differ in
+model language, solver design, and intended use cases.
+
+- **rxode2** uses its own domain-specific mini-language (`d/dt(cmt)`),
+  compiles it to C, and solves using a thread-safe C LSODA
+  implementation with OpenMP parallelism across subjects.  It
+  integrates tightly with nlmixr2 for parameter estimation via
+  symbolic Jacobians.
+
+- **PKPDsim** uses C++ array notation (`dAdt[1] = ...`) for ODE
+  definitions, compiled via `new_ode_model()`, and solves using the
+  Boost::odeint C++ library.  It separates a fast inner solver
+  (`sim_core()`) from the full-featured outer function (`sim()`) and
+  has a built-in literature model library and model-package export
+  system.  It was developed by InsightRX with a focus on clinical dose
+  individualization.
+
+Both are on CRAN and are MIT or similarly permissive open-source
+licenses.
+
+## Shared capabilities
+
+- ODE-based PK/PD simulation
+- Between-subject variability (BSV / IIV)
+- Residual error models
+- Time-varying covariates
+- Population simulation across many subjects
+- Complex dosing regimens (bolus, infusion, oral)
+- Integration with nlmixr2 for parameter estimation
+- C/C++ compiled model code for speed
+
+## Features rxode2 has that PKPDsim does not
+
+### Readable domain-specific model language
+
+rxode2 uses a natural ODE notation that closely mirrors mathematical
+writing:
+
+```{r}
+library(rxode2)
+
+mod <- rxode2({
+  KA   <- exp(tka + eta.ka)
+  CL   <- exp(tcl + eta.cl)
+  d/dt(depot) <- -KA * depot
+  d/dt(centr) <- KA * depot - CL / V * centr
+  cp          <- centr / V
+})
+```
+
+PKPDsim uses C++ array indexing (`A[1]`, `dAdt[1]`) which is more
+verbose and requires familiarity with zero-based vs one-based indexing
+conventions:
+
+```{r}
+library(PKPDsim)
+
+mod <- new_ode_model(
+  code = "
+    dAdt[1] = -KA * A[1];
+    dAdt[2] =  KA * A[1] - (CL/V) * A[2];
+  ",
+  obs  = list(cmt = 2, scale = "V"),
+  dose = list(cmt = 1)
+)
+```
+
+### NONMEM-compatible event datasets
+
+rxode2 accepts standard NONMEM-format data frames (with `EVID`, `AMT`,
+`CMT`, `TIME`, `ID`, `RATE`, etc.) directly as event tables.  This
+makes it straightforward to reuse datasets from NONMEM workflows or
+produce datasets compatible with multiple tools.
+
+PKPDsim uses its own `new_regimen()` API for dosing, which is clean
+and simple but is not directly interchangeable with NONMEM-format
+datasets.
+
+### OpenMP parallelism across subjects
+
+rxode2's LSODA solver is implemented in thread-safe C, enabling genuine
+parallel ODE solving across subjects via OpenMP within a single R
+process.  PKPDsim loops over subjects in R, calling the Boost::odeint
+C++ solver for each subject sequentially.
+
+As PKPDsim's own documentation notes, rxode2 is substantially faster
+than PKPDsim in iterative contexts (e.g., population estimation or
+optimal design) because rxode2 separates pre- and post-processing from
+the solver by default, while PKPDsim's `sim()` includes this overhead
+on every call.  PKPDsim's `sim_core()` mitigates this but requires the
+user to manually manage the separation.
+
+```{r}
+# rxode2: pre/post processing is separated by default
+# Iterative calls re-use the compiled model with minimal overhead
+rxSolve(mod, et, params = p)   # fast in any context
+
+# PKPDsim: use sim_core() for iterative use to avoid repeated overhead
+design <- sim(mod, regimen = r, return_design = TRUE)
+sim_core(design = design, ode = mod)   # fast inner loop only
+```
+
+### Model piping for incremental modification
+
+rxode2 model objects support the native R pipe (`|>`) to clone and
+modify a model without rewriting the full specification.
+
+```{r}
+base <- rxode2({
+  d/dt(depot) <- -KA * depot
+  d/dt(centr) <- KA * depot - CL / V * centr
+  cp          <- centr / V
+})
+
+full <- base |>
+  model({ KA <- exp(tka + eta.ka); CL <- exp(tcl + eta.cl) },
+        append = FALSE) |>
+  ini({ tka <- log(0.5); eta.ka ~ 0.09; tcl <- log(4); eta.cl ~ 0.09; V <- 10 }) |>
+  model(cp ~ add(add.sd), append = TRUE) |>
+  ini(add.sd = 0.5)
+```
+
+PKPDsim has no equivalent R-level model modification API; changes
+require editing the `new_ode_model()` call.
+
+### Symbolic Jacobians and exact gradients for estimation
+
+rxode2 automatically derives the symbolic Jacobian and forward-
+sensitivity equations used by nlmixr2's FOCEi algorithm for exact
+gradient-based estimation.  PKPDsim's nlmixr2 integration uses
+finite-difference gradients.
+
+### 1–3 compartment analytical solutions with exact gradients
+
+`linCmt()` provides one-, two-, and three-compartment analytical PK
+solutions with gradients computed via Stan math auto-differentiation.
+PKPDsim's `reparametrization` argument offers standardised
+re-parameterisation for 1–3-compartment models, but these are still
+solved as ODEs rather than analytically.
+
+### Multiple ODE solver backends
+
+rxode2 provides three solver backends selectable per run: thread-safe
+C LSODA (default), Fortran LSODA, and DOP853 (explicit 8th-order
+Runge-Kutta for non-stiff systems).  PKPDsim uses a single
+Boost::odeint backend with a configurable step size.
+
+## Features available in both tools (with different approaches)
+
+### Literature model libraries
+
+Both tools provide curated libraries of published PK/PD models, though
+they are organised differently.
+
+PKPDsim ships models as self-contained installable R packages via its
+own distribution system:
+
+```{r}
+# See what models are available
+available_default_literature_models()
+
+# Install and use a literature model
+install_default_literature_model("pk_busulfan_mccune")
+library(pkbusulfanmccune)
+
+sim(
+  ode        = pkbusulfanmccune::model(),
+  parameters = pkbusulfanmccune::parameters(),
+  regimen    = new_regimen(amt = 100, n = 4, interval = 6)
+)
+```
+
+rxode2 models from the literature are available via the `nlmixr2lib`
+package (part of the nlmixr2 ecosystem), which provides a collection
+of published models as rxode2 model functions ready for simulation or
+estimation:
+
+```{r}
+library(nlmixr2lib)
+
+# List available models
+modeldb
+
+# Load and simulate a model directly
+mod <- modeldb$one.compartment
+rxSolve(mod, et(amt = 100, time = 0) |> et(seq(0, 24, by = 1)))
+```
+
+### Inter-occasion variability (IOV)
+
+Both tools support inter-occasion variability, with different syntax.
+
+In rxode2, IOV is specified in the `ini({})` block using the `| occ`
+condition syntax, then included in the model equation:
+
+```{r}
+mod <- rxode2(function() {
+  ini({
+    tcl    <- log(4)
+    eta.cl ~ 0.09          # IIV on CL
+    iov.cl ~ 0.04 | occ    # IOV on CL, keyed by occasion variable `occ`
+  })
+  model({
+    CL <- exp(tcl + eta.cl + iov.cl)
+    d/dt(centr) <- -(CL / V) * centr
+  })
+})
+```
+
+PKPDsim specifies IOV via the dedicated `iov` argument to
+`new_ode_model()`:
+
+```{r}
+mod <- new_ode_model(
+  code = "dAdt[1] = -(CL/V)*A[1];",
+  iiv  = list(CL = "exp", V = "exp"),
+  iov  = list(CL = "exp")
+)
+```
+
+## Features PKPDsim has that rxode2 does not
+
+### Model export as installable R packages
+
+PKPDsim can export a compiled model as a proper R package (with
+versioning, documentation, and default parameters) via the `package`
+argument to `new_ode_model()`.  This makes it easy to share a specific
+model version as a reproducible, installable unit.
+
+```{r}
+new_ode_model(
+  code       = "dAdt[1] = -(CL/V)*A[1]",
+  obs        = list(cmt = 1, scale = "V"),
+  parameters = list(CL = 5, V = 50),
+  package    = "myPKmodel",
+  version    = "1.0.0"
+)
+```
+
+rxode2 models can be included in packages (see the `rxUse()` vignette)
+but there is no single-function model-package export workflow.
+
+### Event-specific C++ hooks (`pk_code`, `dose_code`)
+
+`new_ode_model()` accepts `pk_code` (C++ code executed at every event)
+and `dose_code` (C++ code executed only at dose events).  These allow
+model-specific logic — such as parameter recomputation at dose time or
+post-dose state resets — to be embedded directly in the compiled model.
+
+```{r}
+mod <- new_ode_model(
+  code      = "dAdt[1] = -(CL/V)*A[1];",
+  pk_code   = "CL = TVCL * pow(WT/70, 0.75);",   # recompute at every event
+  dose_code = "A[1] = A[1] + oral_dose_fraction * dose;"
+)
+```
+
+rxode2 handles event-specific behaviour through model equations and
+the event table but does not expose separate C++ hooks at the event
+level.
+
+### Mixture models as a first-class argument
+
+PKPDsim supports mixture models (subpopulations with different
+parameter values and associated probabilities) directly via the
+`mixture` argument to `new_ode_model()`:
+
+```{r}
+mod <- new_ode_model(
+  code    = "dAdt[1] = -(CL/V)*A[1];",
+  mixture = list(
+    CL = list(values = c(2, 10), probability = 0.8)
+  )
+)
+```
+
+rxode2 supports within-model mixture via the `mix()` function, but it
+is not a single dedicated argument at the model-definition level.
+
+## Summary table
+
+| Feature | rxode2 | PKPDsim |
+|---------|--------|---------|
+| License | GPL ≥ 3 | MIT |
+| CRAN | yes | yes |
+| ODE language | rxode2 mini-language (`d/dt(cmt)`) | C++ array notation (`dAdt[1]`) |
+| Solver | thread-safe C LSODA; Fortran LSODA; DOP853 | Boost::odeint C++ |
+| OpenMP parallelism | yes (thread-safe solver) | no (R loop over subjects) |
+| Iterative-use speed | fast by default (separated pre/post) | use `sim_core()` explicitly |
+| NONMEM-format datasets | yes | no (`new_regimen()` API) |
+| 1–3 cmt analytical solution | `linCmt()` with exact gradients | `reparametrization` (ODE-based) |
+| Symbolic Jacobians / sensitivities | yes | no (finite differences) |
+| nlmixr2 estimation | yes (exact gradients via FOCEi) | yes (finite-difference gradients) |
+| Model piping (`\|>`) | yes | no |
+| Literature model library | yes (`nlmixr2lib`) | yes (`install_default_literature_model()`) |
+| Export model as R package | via `rxUse()` (manual) | built-in (`package` argument) |
+| `pk_code` / `dose_code` C++ hooks | no | yes |
+| Inter-occasion variability (IOV) | yes (`iov.cl ~ 0.2 \| occ` in `ini({})`) | yes (`iov` argument) |
+| Mixture models | `mix()` function | `mixture` argument |
+| Time-varying covariates | yes | yes (`new_covariate()`) |
+| Between-subject variability | yes | yes (`iiv` argument) |
+| Residual error | yes | yes (`ruv` argument) |
+
+## References
+
+- [PKPDsim website](https://insightrx.github.io/PKPDsim/)
+- [PKPDsim speed vignette](https://insightrx.github.io/PKPDsim/articles/speed.html)
+- [PKPDsim estimation with nlmixr2](https://insightrx.github.io/PKPDsim/articles/estimation-nlmixr.html)
+- [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
+- [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
