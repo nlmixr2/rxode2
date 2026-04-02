@@ -1,0 +1,312 @@
+---
+title: "rxode2 and NMsim: A Feature Comparison"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction
+
+[rxode2](https://nlmixr2.github.io/rxode2/) and
+[NMsim](https://nmautoverse.github.io/NMsim/) both help
+pharmacometricians simulate pharmacokinetic and pharmacodynamic models
+from R, but they take fundamentally different approaches.
+
+- **rxode2** is a self-contained R/C/Fortran ODE solver.  Models are
+  written (or imported) in R, compiled to a shared library, and solved
+  entirely within the R session.  No external software is required.
+
+- **NMsim** is an R interface that orchestrates NONMEM.  It takes an
+  existing NONMEM estimation control stream, modifies it into a
+  simulation control stream, runs NONMEM as an external process, and
+  returns the results to R.  A licensed NONMEM installation is
+  required.
+
+This fundamental difference drives most of the trade-offs described
+below.
+
+## Shared capabilities
+
+- NONMEM-compatible datasets (EVID, AMT, CMT, TIME, ID, …)
+- Simulation of new subjects with sampled ETAs
+- Simulation of typical subjects (all ETAs = 0)
+- Covariate sampling and prediction-interval generation
+- VPC (visual predictive check) workflows
+- Simulation from empirical Bayes estimates (individual ETAs from a
+  prior NONMEM estimation run)
+- Parameter uncertainty simulation (e.g., from bootstrap runs or a
+  covariance step)
+- Multiple models simulated in a single call (e.g., all bootstrap
+  replicates)
+- Dataset creation helpers (`NMcreateDoses()`/`NMaddSamples()` in
+  NMsim; `et()` in rxode2)
+
+## Features rxode2 has that NMsim does not
+
+### No NONMEM license required
+
+rxode2 is entirely open-source (GPL ≥ 3) and self-contained.
+Simulation runs without any external software.  NMsim requires a
+working, licensed NONMEM installation configured via
+`NMdataConf(path.nonmem = ...)` before any simulation can be
+performed.
+
+### Interactive iteration speed
+
+Because rxode2 compiles and solves models in-process, the turnaround
+for a simulation is typically sub-second to a few seconds for most
+models.  NMsim must launch NONMEM as an external process for every
+simulation run.  NONMEM's startup, I/O, and table-writing overhead
+means each NMsim call takes at least several seconds and often
+minutes, even for simple models.  This makes rxode2 much more
+practical for exploratory iteration, sensitivity analyses, and
+interactive model development.
+
+```{r}
+library(rxode2)
+
+# Compile once; re-solve in milliseconds
+mod <- rxode2({
+  C2 <- centr / V
+  d/dt(centr) <- -CL * C2
+})
+et <- et(seq(0, 24, by = 1))
+# Parameter sweeps are instant
+rxSolve(mod, et, params = c(CL = 2, V = 10))
+rxSolve(mod, et, params = c(CL = 5, V = 10))
+```
+
+### OpenMP parallelism across subjects
+
+rxode2's LSODA solver is implemented in thread-safe C, allowing
+parallel ODE solving across subjects via OpenMP within a single R
+process.  NMsim relies on NONMEM for its computation, which can be
+submitted to an HPC cluster (via PSN) but does not offer
+within-process parallelism from R.
+
+```{r}
+# rxode2 automatically uses multiple cores for multi-subject sims
+getRxThreads()   # see how many threads are active
+```
+
+### Model piping for incremental modification
+
+rxode2 model objects support the native R pipe operator (`|>`) to
+clone and modify a model without rewriting the full specification.
+
+```{r}
+base <- rxode2({
+  d/dt(depot) <- -KA * depot
+  d/dt(centr) <- KA * depot - CL / V * centr
+})
+
+# Add population structure incrementally
+full <- base |>
+  model({
+    KA <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl)
+    V  <- exp(tv)
+  }, append = FALSE) |>
+  ini({
+    tka <- log(0.5); eta.ka ~ 0.09
+    tcl <- log(4);   eta.cl ~ 0.09
+    tv  <- log(20)
+  })
+
+# Fix a parameter for a sensitivity run
+sens <- full |> ini(fix(eta.ka))
+```
+
+NMsim's `modify` argument provides some control over the simulation
+control stream, but it operates at the text level on an already-
+estimated NONMEM model rather than providing an R-level model algebra.
+
+### Parameter estimation via nlmixr2
+
+rxode2 models can be passed directly to nlmixr2 for population
+parameter estimation (FOCE, FOCEi, SAEM, etc.) using the same model
+object.  NMsim is simulation-only; estimation is always done in
+NONMEM separately.
+
+### Symbolic Jacobians and forward sensitivities
+
+rxode2 automatically derives the symbolic Jacobian of the ODE system
+and forward-sensitivity equations, which are used by nlmixr2's FOCEi
+algorithm for exact gradient-based estimation.  This capability is
+irrelevant to NMsim, which delegates all numerical work to NONMEM.
+
+### 1–3 compartment analytical solutions with exact gradients
+
+`linCmt()` in rxode2 provides analytical solutions for one-, two-,
+and three-compartment models with gradients computed via Stan math
+auto-differentiation.  mrgsolve and NMsim do not provide this
+independently of NONMEM's own ADVAN routines.
+
+### Multiple ODE solver backends
+
+rxode2 offers three solver backends selectable per run: a thread-safe
+C LSODA (default), a Fortran LSODA reference implementation, and
+DOP853 (explicit 8th-order Runge-Kutta for non-stiff systems).
+NMsim uses whichever ADVAN is specified in the NONMEM control stream.
+
+### Runs anywhere without infrastructure
+
+rxode2 simulations run on any machine with R and a C compiler — a
+laptop, a CI server, a Docker container, or Shiny.  NMsim requires
+a NONMEM license and a configured executable path, which typically
+restricts it to specific workstations or servers.
+
+## Features NMsim has that rxode2 does not
+
+### Zero model re-implementation risk
+
+NMsim's core value proposition is that it simulates the *exact*
+NONMEM model used for estimation — the same control stream, the same
+ADVAN, the same `$PRED`/`$DES`/`$ERROR` code.  There is no
+translation step, so there is no risk of introducing bugs when
+converting the model to a different syntax.
+
+rxode2 requires the model to be re-expressed in rxode2's own
+mini-language or imported via `nonmem2rx`.  Importantly, `nonmem2rx`
+performs an automatic validation step after import: it re-runs the
+simulation with the converted rxode2 model and compares PRED/IPRED/IWRES
+against the original NONMEM output, reporting whether the two agree
+within a tolerance.  This means you know immediately whether the
+re-implementation is correct, rather than discovering discrepancies
+later.  Complex or highly customised NONMEM models may still require
+manual adjustment when the automated comparison does not pass.
+
+```{r}
+library(NMsim)
+
+# Simulate the exact estimation model — no reimplementation
+simres <- NMsim(
+  file.mod = "path/to/run001.mod",
+  data     = data.sim
+)
+```
+
+### Full NONMEM feature coverage
+
+Because NMsim runs NONMEM itself, it supports the entire NONMEM
+feature set: all ADVAN routines (ADVAN1–ADVAN13), `$MIXTURE` models,
+any `$PRED`/`$DES` code, inter-occasion variability, `$PRIOR`, and
+any NONMEM-compatible extension.  rxode2's own solver covers the
+most common pharmacometric models but does not replicate every NONMEM
+feature; notably:
+
+- `$MIXTURE` population mixture models: `nonmem2rx` can import them,
+  but the automatic PRED/IPRED/IWRES validation step is skipped for
+  mixture models, so correctness of the import must be verified
+  manually.
+- Models that rely heavily on NONMEM-specific verbatim Fortran or
+  C code in `$DES` have no direct equivalent.
+
+### Cluster submission via PSN
+
+`NMexec()` (the NMsim companion for running estimation) can submit
+NONMEM jobs to an HPC cluster using PsN.  For large bootstrap or
+uncertainty simulations NMsim can similarly distribute NONMEM runs
+across cluster nodes.  rxode2's parallelism is always within a single
+R process via OpenMP.
+
+## Features available in both tools (with different approaches)
+
+### EBE-based simulation of known subjects
+
+Both tools can simulate known subjects using their empirical Bayes
+estimates (individual ETAs) under a new dosing regimen without
+re-estimating the model.
+
+NMsim does this natively from any NONMEM run via
+`method.sim = NMsim_EBE`, which retrieves the individual ETAs directly
+from NONMEM output tables.
+
+`nonmem2rx` imports the individual EBEs alongside the model, storing
+them in `$etaData` of the imported model object, so they can be passed
+directly to `rxSolve()` without any manual extraction step.
+
+```{r}
+# NMsim approach
+simres <- NMsim(
+  file.mod   = "path/to/run001.mod",
+  data       = data.sim,
+  method.sim = NMsim_EBE
+)
+
+# rxode2 approach (after nonmem2rx import)
+library(nonmem2rx)
+mod <- nonmem2rx("path/to/run001.mod")
+rxSolve(mod, data.sim, iCov = mod$etaData)
+```
+
+### Parameter uncertainty from the NONMEM covariance step
+
+Both tools support simulation with parameter uncertainty derived from
+NONMEM's `$COVARIANCE` step.
+
+NMsim uses `method.sim = NMsim_VarCov` to draw parameter sets from
+the variance-covariance matrix and run one NONMEM instance per draw,
+or `method.sim = NMsim_NWPRI` for a `$PRIOR NWPRI` specification.
+
+`nonmem2rx` imports the NONMEM variance-covariance matrix alongside
+the model, so draws can be generated immediately and passed to
+`rxSolve()` without any manual extraction step.  Draws can also come
+from a bootstrap, nlmixr2's uncertainty output, or a user-supplied
+covariance matrix.
+
+## Complementary use: NMsim and rxode2 together
+
+The two tools are often complementary rather than competing.  A
+common workflow is:
+
+1. **Estimate** in NONMEM.
+2. **Import and validate** with `nonmem2rx`: the package converts the
+   control stream to an rxode2 model *and* automatically compares its
+   PRED/IPRED/IWRES against the original NONMEM output.  A passing
+   validation confirms the rxode2 model is numerically equivalent to
+   the NONMEM model.
+3. **Simulate** with rxode2 for fast exploratory analyses, sensitivity
+   analyses, and trial-design work — with confidence from the
+   validation step.
+4. **Simulate** with NMsim when exact NONMEM fidelity is required
+   for regulatory submissions, when the automated `nonmem2rx`
+   validation does not pass, or when the model uses NONMEM features
+   with no rxode2 equivalent.
+
+## Summary table
+
+| Feature | rxode2 | NMsim |
+|---------|--------|-------|
+| NONMEM required | no | yes (licensed) |
+| Simulation engine | rxode2 C/Fortran solver | NONMEM |
+| Model re-implementation needed | yes (or via `nonmem2rx`) | no |
+| Re-implementation risk | mitigated: `nonmem2rx` auto-validates PRED/IPRED/IWRES vs NONMEM | none |
+| Simulation speed | sub-second to seconds | seconds to minutes |
+| Full NONMEM feature set | partial | yes |
+| `$MIXTURE` models | `nonmem2rx` imports; no auto-validation | yes |
+| EBE-based simulation | yes — `nonmem2rx` imports EBEs into `$etaData` | yes — `NMsim_EBE` |
+| Uncertainty from covariance step | yes — `nonmem2rx` imports covariance matrix for draws | yes — `NMsim_VarCov` / `NMsim_NWPRI` |
+| Bootstrap uncertainty | manual (supply draws) | built-in (simulate all bootstrap models) |
+| OpenMP within-process parallelism | yes | no |
+| Cluster submission | no | yes (via PSN) |
+| Model piping (`\|>`) | yes | no |
+| Parameter estimation | via nlmixr2 | no (NONMEM only) |
+| Symbolic Jacobians / sensitivities | yes | no |
+| 1–3 cmt analytical solutions | `linCmt()` with gradients | ADVAN1/2/3/4/11/12 via NONMEM |
+| Multiple ODE solver backends | LSODA (C), LSODA (Fortran), DOP853 | NONMEM ADVAN |
+| Runs without licensed software | yes | no |
+| CRAN | yes | yes |
+
+## References
+
+- [NMsim website](https://nmautoverse.github.io/NMsim/)
+- [NMsim introductory vignette](https://nmautoverse.github.io/NMsim/articles/NMsim-intro.html)
+- [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
+- [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
+- [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
