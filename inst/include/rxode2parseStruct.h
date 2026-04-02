@@ -235,6 +235,12 @@ typedef struct {
 
   // Add mixture uniform variable
   double mixunif;
+
+  // Per-individual sticky tolerance factor; initialized to 1.0 by
+  // setupRxInd() at first allocation and intentionally NOT reset on
+  // subsequent calls so that any loosening applied via atolRtolFactor_()
+  // or setIndTolFactor() persists across re-solves for stiff individuals.
+  double tolFactor;
 } rx_solving_options_ind;
 
 typedef struct {
