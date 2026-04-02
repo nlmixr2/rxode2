@@ -90,6 +90,14 @@ void setRxMixnum(rx_solve *rx, int mixnum) {
   rx->mixnum = mixnum;
 }
 
+double getIndTolFactor(rx_solving_options_ind *ind) {
+  return ind->tolFactor;
+}
+
+void setIndTolFactor(rx_solving_options_ind *ind, double tolFactor) {
+  ind->tolFactor = tolFactor;
+}
+
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);

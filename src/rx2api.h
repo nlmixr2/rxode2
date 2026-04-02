@@ -137,6 +137,16 @@ extern "C" {
 
   double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int idx);
 
+  // Get the per-individual sticky tolerance factor (initialized to 1.0).
+  // This factor is re-applied to the thread-local tolerance arrays every
+  // time iniSubject() re-initializes this individual.
+  double getIndTolFactor(rx_solving_options_ind *ind);
+
+  // Set the per-individual sticky tolerance factor.  Values > 1.0 loosen
+  // tolerances; use when an individual is too stiff to solve at the
+  // requested tolerance so the factor persists across re-solves.
+  void setIndTolFactor(rx_solving_options_ind *ind, double tolFactor);
+
 #if defined(__cplusplus)
 }
 #endif
