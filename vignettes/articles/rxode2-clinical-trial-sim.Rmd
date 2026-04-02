@@ -39,8 +39,8 @@ model to illustrate several CTS tasks.
 pkpdModel <- function() {
   ini({
     tka   <- log(1.0);  label("log Ka (1/h)")
-    tcl   <- log(4.0);  label("log CL (L/h)")
-    tv    <- log(35.0); label("log V (L)")
+    tcl   <- log(0.5);  label("log CL (L/h)")
+    tv    <- log(5.0);  label("log V (L)")
     temax <- log(80);   label("log Emax (%)")
     tec50 <- log(2.0);  label("log EC50 (mg/L)")
     eta.cl ~ 0.09
@@ -131,18 +131,18 @@ ggplot(trough, aes(x = factor(dose), y = pctAbove)) +
 
 ## PK/PD target: % of population with effect ≥ 50%
 
-Using the Emax model, what fraction achieves ≥ 50% of maximum effect
+Using the Emax model, what fraction achieves ≥ 30% of maximum effect
 at the trough?
 
 ```{r pdTarget, fig.width=6, fig.height=4}
 pdTarget <- dt[time == 168, .(
-  pctTarget = mean(effect >= 50) * 100
+  pctTarget = mean(effect >= 30) * 100
 ), by = dose]
 
 ggplot(pdTarget, aes(x = factor(dose), y = pctTarget)) +
   geom_col(fill = "coral", width = 0.5) +
   geom_hline(yintercept = 80, linetype = "dashed", colour = "red") +
-  labs(x = "Dose (mg)", y = "% subjects with effect ≥ 50%",
+  labs(x = "Dose (mg)", y = "% subjects with effect ≥ 30%",
        title = "PD target attainment at steady-state trough",
        subtitle = "Dashed line: 80% target attainment criterion") +
   theme_bw()
@@ -158,7 +158,7 @@ ss <- dt[time >= 144 & time <= 168]
 
 aucSS <- ss[, .(
   AUCtau = sum(diff(time) * (cp[-length(cp)] + cp[-1]) / 2)
-), by = .(id, dose)]
+), by = .(sim.id, dose)]
 
 ggplot(aucSS, aes(x = AUCtau, fill = factor(dose))) +
   geom_density(alpha = 0.4) +
@@ -176,7 +176,7 @@ sample size.
 
 ```{r powerSim, message=FALSE}
 set.seed(99)
-nSizes  <- c(20, 40, 60, 80, 100)
+nSizes  <- c(5, 10, 15, 20, 30)
 nTrials <- 200   # increase to >= 1000 for stable power estimates
 
 powerRes <- rbindlist(lapply(nSizes, function(n) {
@@ -202,7 +202,7 @@ ggplot(powerRes, aes(x = n, y = power)) +
   scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
   labs(x = "Subjects per arm", y = "Power",
        title = "Power by simulation — 100 mg vs 50 mg trough comparison",
-       subtitle = "Dashed line: 80% power target") +
+       subtitle = "Dashed line: 80% power target. ~23 subjects/arm sufficient here.") +
   theme_bw()
 ```
 
@@ -228,7 +228,9 @@ pedModel <- pkpdModel |>
 
 pedSim <- rxSolve(
   pedModel,
-  et(amt = 100, ii = 24, addl = 6) |> et(seq(0, 168, by = 2)),
+  et(amt = 100, ii = 24, addl = 6) |>
+    et(seq(0, 168, by = 2)) |>
+    et(id=1:200),
   iCov = pedCovs,
   nSub = nrow(pedCovs),
   returnType = "data.frame"
@@ -256,5 +258,6 @@ ggplot(pedCI, aes(x = time)) +
 - Combine parameter uncertainty (see the
   [parameter uncertainty vignette](rxode2-parameter-uncertainty.html))
   with BSV for the most complete uncertainty propagation.
-- The `nlmixr2lib` package provides published models ready for use in
-  clinical trial simulations.
+- The [`nlmixr2lib`](https://nlmixr2.github.io/nlmixr2lib/) package
+  provides published models ready for use in clinical trial
+  simulations.

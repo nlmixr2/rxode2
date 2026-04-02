@@ -50,13 +50,10 @@ pkModel <- function() {
 
 ## Assumed variance-covariance matrix for the fixed effects (thetas)
 ## In practice this comes from your estimation software output
-thetaVcov <- matrix(
-  c(0.04,  0.01,  0.00,
-    0.01,  0.02,  0.00,
-    0.00,  0.00,  0.03),
-  nrow = 3,
-  dimnames = list(c("tka","tcl","tv"), c("tka","tcl","tv"))
-)
+thetaVcov <-   lotri::lotri({
+  tka ~ 0.04
+  tcl ~ c(0.01,  0.02)
+  tv ~ 0.03})
 
 thetaMean <- c(tka = log(1.57), tcl = log(2.72), tv = log(31.07))
 ```
@@ -83,27 +80,26 @@ summary statistic of interest (here, AUC over 24 h for a 100 mg dose).
 et <- et(amt = 100, time = 0) |>
   et(seq(0, 24, by = 0.5))
 
+library(data.table)
+
 # Simulate all draws at once by passing a matrix of parameters
 # Each row of thetaDraws is one parameter-uncertainty replicate;
 # within each replicate rxSolve simulates nSub subjects with BSV.
-simRes <- rxSolve(
+dt <- rxSolve(
   pkModel,
   et,
   params  = thetaDraws,
   nSub    = 20,           # subjects per draw
-  returnType = "data.frame"
+  returnType = "data.table"
 )
 ```
 
 ## Confidence interval on concentration-time profile
 
-Summarise across both parameter draws and subjects to get the overall
+Summarize across both parameter draws and subjects to get the overall
 prediction interval:
 
 ```{r ciProfile, fig.width=7, fig.height=4}
-library(data.table)
-dt <- as.data.table(simRes)
-
 ci <- dt[, .(
   p05 = quantile(cp, 0.05),
   p50 = quantile(cp, 0.50),
