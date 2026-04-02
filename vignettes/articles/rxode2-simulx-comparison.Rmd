@@ -241,7 +241,7 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 | Primary interface | R code | GUI + `lixoftConnectors` R API |
 | Model language | rxode2 mini-language | mlxtran |
 | Monolix project import | `monolix2rx` (with auto-validation) | direct (same language) |
-| Re-implementation risk | mitigated: `monolix2rx` auto-validates PRED/IPRED/IWRES | none |
+| Re-implementation risk | mitigated: `monolix2rx` auto-validates PRED/IPRED | none |
 | Simulation engine | rxode2 C/Fortran solver | Simulx C++ solver |
 | ODE solver options | LSODA (C), LSODA (Fortran), DOP853 | single C++ LSODA-based |
 | 1–3 cmt analytical solution | `linCmt()` with gradients | ODE-based only |

@@ -1,88 +1,200 @@
 # rxode2 event tables
 
-In general, rxode2 event tables follow NONMEM dataset convention with
-the exceptions:
+In general, rxode2 event tables follow NONMEM dataset conventions with
+the following exceptions and extensions:
 
  - The compartment data item (`cmt`) can be a string/factor with
-   compartment names
+   compartment names.
    - You may turn off a compartment with a negative compartment number
-     or "-cmt" where cmt is the compartment name.
-   - The compartment data item (`cmt`) can still be a number, the
-     number of the compartment is defined by the appearance of the
-     compartment name in the model. This can be tedious to count, so
-     you can specify compartment numbers easier by using the
-     `cmt(cmtName)` at the beginning of the model.
- - An additional column, `dur` can specify the duration of infusions;
-    - Bioavailability changes will change the rate of infusion since
+     or `"-cmt"` where `cmt` is the compartment name.
+   - The compartment data item (`cmt`) can still be a number; the
+     number of a compartment is defined by the order of appearance of
+     its name in the model.  You can assign compartment numbers
+     explicitly with `cmt(cmtName)` at the beginning of the model.
+ - An additional column `dur` can specify the duration of infusions:
+    - Bioavailability changes will change the *rate* of infusion when
       `dur`/`amt` are fixed in the input data.
-    - Similarly, when specifying `rate`/`amt` for an infusion, the
-      bioavailability will change the infusion duration since
-      `rate`/`amt` are fixed in the input data.
+    - Similarly, when specifying `rate`/`amt` for an infusion,
+      bioavailability changes will alter the infusion *duration* since
+      `rate`/`amt` are fixed.
  - Some infrequent NONMEM columns are not supported: `pcmt`, `call`.
  - NONMEM-style events are supported (0: Observation, 1: Dose, 2:
    Other, 3: Reset, 4: Reset+Dose).  Additional events are supported:
-   - `evid=5` or replace event; This replaces the value of a
-       compartment with the value specified in the `amt` column. This
-       is equivalent to `deSolve`=`replace`.
-   - `evid=6` or multiply event; This multiplies the value in the
-     compartment with the value specified by the `amt` column.  This
-     is equivalent to `deSolve`=`multiply`.
-   - `evid=7` or transit compartment model/phantom event. This puts
-     the dose in the `dose()` function and calculates time since last
-     dose `tad()` but doesn't actually put the dose in the
-     compartment. This allows the `transit()` function to easily apply
-     to the compartment.
+   - `evid=5` or replace event: replaces the value of a compartment
+     with the value specified in the `amt` column (equivalent to
+     `deSolve` `replace`).
+   - `evid=6` or multiply event: multiplies the compartment value by
+     the `amt` column (equivalent to `deSolve` `multiply`).
+   - `evid=7` or transit/phantom event: puts the dose in the `dose()`
+     function and calculates time since last dose `tad()`, but does
+     not place the dose in the compartment.  This allows the
+     `transit()` function to be applied easily.
 
- Here are the legal entries to a data table:
+# Dataset column reference
+
+## Columns by type of use
+
+Data for input into `rxode2` (and `nlmixr2`) is similar to NONMEM
+data; most NONMEM-ready datasets can be used directly.
+
+### Subject identification
+
+| Column | Meaning |
+|--------|---------|
+| `ID`   | Subject identifier — integer, character, or factor |
+
+### Observation columns
+
+| Column  | Meaning |
+|---------|---------|
+| `DV`    | Dependent variable (measurement) |
+| `CENS`  | Censoring indicator (0 = not censored, 1 = left censored, -1 = right censored) |
+| `LIMIT` | Censoring bound used with `CENS` (see below) |
+| `MDV`   | Missing dependent variable indicator |
+| `CMT`   | Compartment name or number for the observation |
+| `DVID`  | Dependent variable identifier for multiple endpoints |
+| `EVID`  | Event identifier |
+
+### Dosing columns
+
+| Column        | Meaning |
+|---------------|---------|
+| `AMT`         | Dose amount |
+| `CMT`         | Compartment name or number for the dose |
+| `EVID`        | Event identifier |
+| `ADDL`        | Number of additional doses identical to this one |
+| `II`          | Inter-dose interval |
+| `RATE` or `DUR` | Infusion rate or duration |
+| `SS`          | Steady-state flag |
+
+## Complete column quick-reference table
 
 | Data Item | Meaning               | Notes                                                                        |
 |-----------|-----------------------|------------------------------------------------------------------------------|
-| id        | Individual identifier | Can be a integer, factor, character, or numeric                              |
-| time      | Individual time       | Numeric for each time.                                                       |
-| amt       | dose amount           | Positive for doses zero/NA for observations                                  |
-| rate      | infusion rate         | When specified the infusion duration will be dur=amt/rate                    |
-|           |                       | rate = -1, rate modeled; rate = -2, duration modeled                         |
-| dur       | infusion duration     | When specified the infusion rate will be rate = amt/dur                      |
-| evid      | event ID              | 0=Observation; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace; 6=Multiply;7=Transit |
-| cmt       | Compartment           | Represents compartment #/name for dose/observation                           |
-| ss        | Steady State Flag     | 0 = non-steady-state; 1=steady state; 2=steady state +prior states           |
-| ii        | Inter-dose Interval   | Time between doses.                                                          |
-| addl      | # of additional doses | Number of doses like the current dose.                                       |
+| `id`      | Individual identifier | Integer, factor, character, or numeric                                       |
+| `time`    | Individual time       | Numeric                                                                      |
+| `amt`     | Dose amount           | Positive for doses; zero/NA for observations                                 |
+| `rate`    | Infusion rate         | Duration = `amt/rate`; `rate=-1`: rate modeled; `rate=-2`: duration modeled  |
+| `dur`     | Infusion duration     | Rate = `amt/dur`                                                             |
+| `evid`    | Event ID              | 0=Obs; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace; 6=Multiply; 7=Transit |
+| `cmt`     | Compartment           | Name or number; prefix `-` to turn off                                       |
+| `ss`      | Steady-state flag     | 0=non-SS; 1=SS; 2=SS + keep prior states                                     |
+| `ii`      | Inter-dose interval   | Time between doses                                                           |
+| `addl`    | Additional doses      | Number of doses identical to this one                                        |
+| `dvid`    | DV identifier         | Identifies which endpoint an observation belongs to                          |
 
+## Per-column details
+
+### `AMT` column
+
+The `AMT` column defines the amount of a dose administered to `CMT`.
+For observation rows it should be `0` or `NA`.  For zero-order
+infusions the rate or duration is set via `RATE` or `DUR`.
+
+### `CENS` / `LIMIT` columns
+
+`CENS` indicates whether the observation in `DV` is censored:
+
+- `CENS = 0`: not censored; `LIMIT` is ignored.
+- `CENS = 1`: left censored (e.g., below the limit of quantification);
+  the true value lies in (`LIMIT`, `DV`).
+- `CENS = -1`: right censored (above limit of quantification); the
+  true value lies in (`DV`, `LIMIT`).
+
+`rxode2` stores these values so that `nlmixr2` can use them in
+likelihood calculations.
+
+### `CMT` column
+
+`CMT` indicates the compartment where an event occurs.  A character
+string or factor (the preferred form) is matched by name in the model.
+An integer is matched by the order in which compartments appear in the
+model.  Prefix with `-` (e.g. `cmt="-depot"`) to turn off a
+compartment.
+
+### `DUR` column
+
+`DUR` defines the duration of a zero-order infusion.  When `DUR` is
+specified, the infusion rate is computed as `rate = amt/dur`.
+Bioavailability changes affect the rate, not the duration.
+
+### `DV` column
+
+`DV` is the dependent variable in the observation compartment defined
+by `CMT` / `DVID`.  It may be missing (`MDV=1`) or censored
+(`CENS≠0`).
+
+### `DVID` column
+
+`DVID` identifies which endpoint an observation belongs to in
+multi-endpoint models.  It maps to the `cond` field in `$predDf` and
+can be specified as a name (matching the endpoint variable) or integer.
+
+### `EVID` column
+
+The event identifier for a row of data:
+
+| `EVID` | Meaning |
+|--------|---------|
+| 0      | Observation |
+| 1      | Dose |
+| 2      | Other (e.g. turn off compartment) |
+| 3      | Reset all compartments to initial values |
+| 4      | Reset + dose |
+| 5      | Replace compartment value with `amt` |
+| 6      | Multiply compartment value by `amt` |
+| 7      | Transit/phantom dose (`dose()` / `tad()` only) |
+
+Output-only `EVID` values (visible when `addDosing=TRUE, subsetNonmem=FALSE`):
+
+| `EVID` | Meaning |
+|--------|---------|
+| -1     | Modeled-rate infusion end (`rate=-1`) |
+| -2     | Modeled-duration infusion end (`rate=-2`) |
+| -10    | Rate-specified infusion end (`rate>0`) |
+| -20    | Duration-specified infusion end (`dur>0`) |
+| 101, 102, … | Modeled times 1, 2, … (`mtime`) |
+
+Use `addDosing=NA` to see classic `EVID` equivalents instead.
+
+### `ID` column
+
+`ID` separates individuals (persons, animals, etc.).  The solver
+re-initialises the numerical integrator and samples new random effects
+with each new `ID`.  It may be an integer, character, or factor.
+
+### `RATE` column
+
+`RATE` specifies a zero-order infusion rate.  The infusion duration is
+computed as `dur = amt/rate`.  Special values:
+
+- `rate = -1`: rate is modeled (set via `rate(cmt)` in the model
+  block); equivalent to NONMEM `RATE=-1`.
+- `rate = -2`: duration is modeled (set via `dur(cmt)` in the model
+  block); equivalent to NONMEM `RATE=-2`.
+
+When `RATE` is fixed in the dataset, a bioavailability change alters
+the infusion *duration*.  When `DUR` is fixed instead, a
+bioavailability change alters the infusion *rate*.
 
 Other notes:
 
- - The `evid` can be the classic RxODE (described
-   [here](rxode2-events-classic.html))
-   or the `NONMEM`-style `evid` described above.
- - `NONMEM`'s `DV` is not required; `rxode2` is a ODE solving framework.
- - `NONMEM`'s `MDV` is not required, since it is captured in `EVID`.
- - Instead of `NONMEM`-compatible data, it can accept `deSolve`
-   compatible data-frames.
+ - `NONMEM`'s `DV` is not required; `rxode2` is an ODE solving
+   framework and `DV` is only used by `nlmixr2`.
+ - `NONMEM`'s `MDV` is not required; missingness is captured in
+   `EVID`.
+ - Instead of NONMEM-compatible data, `deSolve`-compatible data frames
+   are also accepted.
+ - The classic RxODE `EVID` encoding is also supported (see
+   [Classic rxode2 Events](rxode2-events-classic.html)).
 
+# Event type examples
 
-When returning the `rxode2` solved data-set there are a few additional
-event ids (`EVID`) that you may see depending on the solving options:
-
-- `EVID = -1` is when a modeled rate ends (corresponds to `rate = -1`)
-- `EVID = -2` is when a modeled duration ends (corresponds to `rate=-2`)
-- `EVID = -10` when a rate specified zero-order infusion ends
-  (corresponds to `rate > 0`)
-- `EVID = -20` when a duration specified zero-order infusion ends
-  (corresponds to `dur > 0`)
-- `EVID = 101, 102, 103,...` These correspond to the `1`, `2`, `3`,
-  ... modeled time (`mtime`).
-
-These can only be accessed when solving with the option combination
-`addDosing=TRUE` and `subsetNonmem=FALSE`. If you want to see the
-classic `EVID` equivalents you can use `addDosing=NA`.
-
-To illustrate the event types we will use the model from the original `rxode2`
-tutorial.
+To illustrate each event type, the following model from the original
+`rxode2` tutorial is used throughout:
 
 ```{r}
 library(rxode2)
-## Model from rxode2 tutorial
 
 m1 <- function() {
   ini({
@@ -94,21 +206,21 @@ m1 <- function() {
     Kin  <- 1
     Kout <- 1
     EC50 <- 200
-    ## Added modeled bioavaiblity, duration and rate
-    fdepot <- 1
-    durDepot <- 8
+    ## Modeled bioavailability, duration and rate
+    fdepot    <- 1
+    durDepot  <- 8
     rateDepot <- 1250
   })
   model({
     C2 <- centr/V2
     C3 <- peri/V3
     d/dt(depot) <- -KA*depot
-    f(depot) <- fdepot
-    dur(depot) <- durDepot
+    f(depot)    <- fdepot
+    dur(depot)  <- durDepot
     rate(depot) <- rateDepot
     d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
     d/dt(peri)  <-                    Q*C2 - Q*C3
-    d/dt(eff)  <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
     eff(0) <- 1
   })
 }
@@ -116,13 +228,11 @@ m1 <- function() {
 
 # Bolus/Additive Doses
 
-A bolus dose is the default type of dose in `rxode2` and only requires
-the `amt`/`dose`.  Note that this uses the convenience function `et()`
-described in the [rxode2 event tables](rxode2-event-table.html)
+A bolus dose is the default dose type and only requires `amt`.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=10000, ii=12,until=24) |>
+    et(amt=10000, ii=12, until=24) |>
     et(seq(0, 24, length.out=100))
 
 ev
@@ -135,23 +245,20 @@ rxSolve(m1, ev) |> plot(C2) +
 
 # Infusion Doses
 
-There are a few different type of infusions that `rxode2` supports:
+`rxode2` supports several infusion types:
 
-- Constant Rate Infusion (`rate`)
-- Constant Duration Infusion (`dur`)
-- Estimated Rate of Infusion
-- Estimated Duration of Infusion
+- Constant rate infusion (`rate`)
+- Constant duration infusion (`dur`)
+- Estimated (modeled) rate of infusion
+- Estimated (modeled) duration of infusion
 
-## Constant Infusion (in terms of duration and rate)
+## Constant infusion specified by duration or rate
 
-The next type of event is an infusion; There are two ways to specify
-an infusion; The first is the `dur` keyword.
-
-An example of this is:
+### Using `dur`
 
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=10000, ii=12,until=24, dur=8) |>
+    et(amt=10000, ii=12, until=24, dur=8) |>
     et(seq(0, 24, length.out=100))
 
 ev
@@ -162,11 +269,11 @@ rxSolve(m1, ev) |> plot(depot, C2) +
     xlab("Time")
 ```
 
-It can be also specified by the `rate` component:
+### Using `rate`
 
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=10000, ii=12,until=24, rate=10000/8) |>
+    et(amt=10000, ii=12, until=24, rate=10000/8) |>
     et(seq(0, 24, length.out=100))
 
 ev
@@ -177,96 +284,70 @@ rxSolve(m1, ev) |> plot(depot, C2) +
     xlab("Time")
 ```
 
-These are the same with the exception of how bioavailability changes
-the infusion.
+The two specifications produce the same nominal infusion.  The
+difference appears when bioavailability changes.
 
-In the case of modeling `rate`, a bioavailability decrease,
-decreases the infusion duration, as in NONMEM. For example:
-
-```{r}
-rxSolve(m1, ev, c(fdepot=0.25)) |> plot(depot, C2) +
-    xlab("Time")
-```
-
-Similarly increasing the bioavailability increases the infusion duration.
+When `rate` is fixed in the event table, a bioavailability decrease
+shortens the infusion *duration* (as in NONMEM):
 
 ```{r}
-rxSolve(m1, ev, c(fdepot=1.25)) |> plot(depot, C2) +
-    xlab("Time")
+rxSolve(m1, ev, c(fdepot=0.25)) |> plot(depot, C2) + xlab("Time")
+rxSolve(m1, ev, c(fdepot=1.25)) |> plot(depot, C2) + xlab("Time")
 ```
 
-The rationale for this behavior is that the `rate` and `amt` are
-specified by the event table, so the only thing that can change with a
-bioavailability increase is the duration of the infusion.
-
-If you specify the `amt` and `dur` components in the event table,
-bioavailability changes affect the `rate` of infusion.
+When `dur` is fixed instead, a bioavailability change alters the
+infusion *rate*:
 
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=10000, ii=12,until=24, dur=8) |>
+    et(amt=10000, ii=12, until=24, dur=8) |>
     et(seq(0, 24, length.out=100))
 
-```
-
-You can see the side-by-side comparison of bioavailability changes
-affecting `rate` instead of duration with these records in the
-following plots:
-
-```{r}
 library(ggplot2)
 library(patchwork)
 
 p1 <- rxSolve(m1, ev, c(fdepot=1.25)) |> plot(depot) +
-    xlab("Time") + ylim(0,5000)
-
+    xlab("Time") + ylim(0, 5000)
 p2 <- rxSolve(m1, ev, c(fdepot=0.25)) |> plot(depot) +
-    xlab("Time")+ ylim(0,5000)
+    xlab("Time") + ylim(0, 5000)
 
-## Use patchwork syntax to combine plots
 p1 * p2
 ```
 
-## Modeled Rate and Duration of Infusion
+## Modeled rate and duration of infusion
 
-You can model the duration, which is equivalent to NONMEM's
-`rate=-2`.
+Model the infusion duration (`rate=-2`, equivalent to NONMEM `RATE=-2`):
+
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=10000, ii=12,until=24, rate=-2) |>
+    et(amt=10000, ii=12, until=24, rate=-2) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev, c(durDepot=7)) |> plot(depot, C2) +
-    xlab("Time")
-
+rxSolve(m1, ev, c(durDepot=7)) |> plot(depot, C2) + xlab("Time")
 ```
 
-Similarly, you may also model rate.  This is equivalent to NONMEM's
-`rate=-1` and is how `rxode2`'s event table specifies the data item as
-well.
+Model the infusion rate (`rate=-1`, equivalent to NONMEM `RATE=-1`):
 
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=10000, ii=12,until=24, rate=-1) |>
+    et(amt=10000, ii=12, until=24, rate=-1) |>
     et(seq(0, 24, length.out=100))
 
 ev
 ```
 
 ```{r}
-rxSolve(m1, ev, c(rateDepot=10000/3)) |> plot(depot, C2) +
-    xlab("Time")
+rxSolve(m1, ev, c(rateDepot=10000/3)) |> plot(depot, C2) + xlab("Time")
 ```
 
 # Steady State
 
-
-These doses are solved until a steady state is
-reached with a constant inter-dose interval.
+Steady-state doses are solved until a constant inter-dose interval
+produces a repeating cycle.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
@@ -280,15 +361,14 @@ ev
 rxSolve(m1, ev) |> plot(C2)
 ```
 
-## Steady state for complex dosing
+## Steady state for complex dosing (`ss=2`)
 
-By using the `ss=2` flag, you can use the super-positioning principle
-in linear kinetics to get steady state nonstandard dosing
-(i.e. morning 100 mg vs evening 150 mg). This is done by:
+`ss=2` uses superposition to achieve steady state for non-uniform
+dosing regimens (e.g. morning 100 mg vs evening 150 mg):
 
- - Saving all the state values
- - Resetting all the states and solving the system to steady state
- - Adding back all the prior state values
+ - All state values are saved.
+ - States are reset and solved to steady state.
+ - Saved state values are added back.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
@@ -300,50 +380,32 @@ ev <- et(timeUnits="hr") |>
 
 library(ggplot2)
 
-rxSolve(m1, ev,maxsteps=10000) |> plot(C2) +
-  annotate("rect", xmin=0, xmax=24, ymin=-Inf, ymax=Inf,
-           alpha=0.2) +
-  annotate("text", x=12.5, y=7,
-           label="Initial Steady State Period") +
-  annotate("text", x=44,   y=7,
-           label="Steady State AM/PM dosing")
-
+rxSolve(m1, ev, maxsteps=10000) |> plot(C2) +
+  annotate("rect", xmin=0, xmax=24, ymin=-Inf, ymax=Inf, alpha=0.2) +
+  annotate("text", x=12.5, y=7, label="Initial Steady State Period") +
+  annotate("text", x=44,   y=7, label="Steady State AM/PM dosing")
 ```
 
-You can see that it takes a full dose cycle to reach the true complex
-steady state dosing.
+It takes a full dose cycle to reach the true complex steady-state.
 
-## Steady state for constant infusion or zero order processes
+## Steady state for constant infusion or zero-order processes
 
+Constant-infusion steady state (as in NONMEM):
 
-The last type of steady state that `rxode2` supports is steady-state
-constant infusion rate.  This can be specified the same way as NONMEM,
-that is:
+- No inter-dose interval: `ii=0`
+- Steady-state flag: `ss=1`
+- Positive rate (`rate>0`) or estimated rate (`rate=-1`)
+- Zero dose: `amt=0`
 
-- No inter-dose interval `ii`=`0`
-- A steady state dose, ie `ss`=`1`
-- Either a positive rate (`rate`>0) or a estimated rate `rate`=`-1`.
-- A zero dose, ie `amt`=`0`
-- Once the steady-state constant infusion is achieved, the infusion is
-  turned off when using this record, just like NONMEM.
-
-Note that `rate`=`-2` where we model the duration of infusion doesn't
-make much sense since we are solving the infusion until steady state.
-The duration is specified by the steady state solution.
-
-Also note that bioavailability changes on this steady state infusion
-also do not make sense because they neither change the `rate` or the
-duration of the steady state infusion.  Hence modeled bioavailability
-on this type of dosing event is ignored.
-
-Here is an example:
+The infusion is turned off once steady state is reached, just like
+NONMEM.  Note that `rate=-2` (modeled duration) and modeled
+bioavailability have no effect for this event type.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
-    et(amt=0, ss=1,rate=10000/8)
+    et(amt=0, ss=1, rate=10000/8)
 
 p1 <- rxSolve(m1, ev) |> plot(C2, eff)
-
 
 ev <- et(timeUnits="hr") |>
     et(amt=200000, rate=10000/8) |>
@@ -352,18 +414,15 @@ ev <- et(timeUnits="hr") |>
 p2 <- rxSolve(m1, ev) |> plot(C2, eff)
 
 library(patchwork)
-
 p1 / p2
 ```
 
-Not only can this be used for PK, it can be used for steady-state
-disease processes.
+This technique can also be used for steady-state disease processes.
 
 # Reset Events
 
-
-Reset events are implemented by `evid=3` or `evid=reset`, for reset
-and `evid=4` for reset and dose.
+`evid=3` (or `evid=reset`) resets all compartments to their initial
+values.  `evid=4` resets and then applies a dose.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
@@ -374,33 +433,28 @@ ev <- et(timeUnits="hr") |>
 ev
 ```
 
-The solving show what happens in this system when the system is reset at 6 hours post-dose.
-
 ```{r}
-rxSolve(m1, ev) |> plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot, C2, eff)
 ```
 
-You can see all the compartments are reset to their initial values.
-The next dose start the dosing cycle over.
+All compartments are reset to their initial values at 6 hours.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
     et(amt=10000, ii=12, addl=3) |>
     et(time=6, amt=10000, evid=4) |>
     et(seq(0, 24, length.out=100))
-
-ev
 ```
 
-In this case, the whole system is reset and the dose is given
-
 ```{r}
-rxSolve(m1, ev) |> plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot, C2, eff)
 ```
 
 # Turning off compartments
 
-You may also turn off a compartment, which is similar to a reset event.
+Setting `cmt="-depot"` with `evid=2` turns off a compartment: its
+value is set to the initial value, but other compartments are
+unchanged.  A subsequent dose to that compartment turns it back on.
 
 ```{r}
 ev <- et(timeUnits="hr") |>
@@ -411,20 +465,13 @@ ev <- et(timeUnits="hr") |>
 ev
 ```
 
-Solving shows what this does in the system:
-
 ```{r}
-rxSolve(m1, ev) |> plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot, C2, eff)
 ```
 
-In this case, the depot is turned off, and the depot compartment
-concentrations are set to the initial values but the other compartment
-concentrations/levels are not reset. When another dose to the depot is
-administered the depot compartment is turned back on.
-
-Note that a dose to a compartment only turns back on the compartment
-that was dosed.  Hence if you turn off the effect compartment, it
-continues to be off after another dose to the depot.
+Note that a dose turns back on only the compartment that was dosed.
+Turning off the effect compartment keeps it off even after a new depot
+dose:
 
 ```{r}
 ev <- et(timeUnits="hr") |>
@@ -432,18 +479,18 @@ ev <- et(timeUnits="hr") |>
     et(time=6, cmt="-eff", evid=2) |>
     et(seq(0, 24, length.out=100))
 
-rxSolve(m1, ev) |> plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot, C2, eff)
 ```
 
-To turn back on the compartment, a zero-dose to the compartment or a
-evid=2 with the compartment would be needed.
+To re-enable it, send a zero dose or an `evid=2` event to the
+compartment:
 
 ```{r}
 ev <- et(timeUnits="hr") |>
     et(amt=10000, ii=12, addl=3) |>
-    et(time=6, cmt="-eff", evid=2) |>
-    et(time=12,cmt="eff",evid=2) |>
+    et(time=6,  cmt="-eff", evid=2) |>
+    et(time=12, cmt="eff",  evid=2) |>
     et(seq(0, 24, length.out=100))
 
-rxSolve(m1, ev) |> plot(depot,C2, eff)
+rxSolve(m1, ev) |> plot(depot, C2, eff)
 ```

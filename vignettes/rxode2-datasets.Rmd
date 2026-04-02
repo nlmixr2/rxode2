@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Event Types"
+title: "rxode2 Datasets and Event Types"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -14,5 +14,5 @@ options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
 
-```{r child='../man/rmdhunks/rxode2-datasets.Rmd'}
+```{r child='rxode2-event-types.Rmdh'}
 ```
