@@ -257,10 +257,10 @@ ggplot(aucBin, aes(x = AUC, y = resp)) +
 
 - Use `mix()` for mixture models where a sub-population is a
   non-responder (e.g. poor metabolisers or intrinsic non-responders).
-- Time-to-event endpoints can be simulated using a hazard function
-  defined in the model block; see `rxode2-model-types` for examples.
-- For ordered categorical endpoints, use `rxord()` to sample from an
-  ordinal distribution within the model.
-- Use the ETA/EPS resampling vignette when you want to resample
-  variability from an existing dataset rather than sampling from
-  parametric distributions.
+<!-- - Time-to-event endpoints can be simulated using a hazard function -->
+<!--   defined in the model block; see `rxode2-model-types` for examples. -->
+<!-- - For ordered categorical endpoints, use `rxord()` to sample from an -->
+<!--   ordinal distribution within the model. -->
+<!-- - Use the ETA/EPS resampling vignette when you want to resample -->
+<!--   variability from an existing dataset rather than sampling from -->
+<!--   parametric distributions. -->
