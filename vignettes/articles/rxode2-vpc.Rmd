@@ -54,12 +54,7 @@ pkModel <- function() {
 For illustration we use the built-in `theo_sd` dataset as observed data:
 
 ```{r obsdata}
-obs <- nlme::Theoph
-names(obs) <- toupper(names(obs))
-obs$CMT  <- ifelse(obs$TIME == 0 & obs$AMT > 0, 1, 2)
-obs$EVID <- ifelse(obs$AMT > 0, 1, 0)
-obs$DV   <- obs$CONC
-head(obs)
+obs <- nlmixr2data::theo_sd
 ```
 
 ## Running replicated simulations
@@ -75,8 +70,9 @@ set.seed(1234)
 simDat <- rxSolve(
   pkModel,
   obs,
-  nSub  = nRep,          # subjects per replicate
-  returnType = "data.frame"
+  nStud  = nRep,          #  per replicate
+  returnType = "data.frame",
+  keep="WT"
 )
 ```
 
@@ -153,9 +149,9 @@ simDT2  <- as.data.table(simDat)
 obsDT2  <- as.data.table(obs[obs$EVID == 0, ])
 
 simPctl2 <- simDT2[, .(
-  p05 = quantile(cp, 0.05, na.rm = TRUE),
-  p50 = quantile(cp, 0.50, na.rm = TRUE),
-  p95 = quantile(cp, 0.95, na.rm = TRUE)
+  p05 = quantile(sim, 0.05, na.rm = TRUE),
+  p50 = quantile(sim, 0.50, na.rm = TRUE),
+  p95 = quantile(sim, 0.95, na.rm = TRUE)
 ), by = .(time, wtGrp)]
 setnames(simPctl2, "time", "TIME")
 
@@ -194,10 +190,10 @@ several plot options.
 library(vpc)
 
 vpc(
-  sim  = simDat[simDat$EVID == 0, ],
+  sim  = simDat,
   obs  = obs[obs$EVID == 0, ],
   obs_cols = list(id = "ID", dv = "DV", idv = "TIME"),
-  sim_cols = list(id = "id",  dv = "cp", idv = "time"),
+  sim_cols = list(id = "id",  dv = "sim", idv = "time"),
   pi   = c(0.05, 0.95),
   ci   = c(0.05, 0.95)
 )
