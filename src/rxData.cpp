@@ -1649,6 +1649,14 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+  // Point the individual's tolerance arrays at the current thread's
+  // slice.  iniSubject() will then multiply them by ind->tolFactor to
+  // apply any sticky loosening.  No conditional needed here: tolFactor
+  // is always valid (set to 1.0 by setupRxInd() on first allocation).
+  ind->atol2  = _globals.gatol2Thread  + op->neq * omp_get_thread_num();
+  ind->rtol2  = _globals.grtol2Thread  + op->neq * omp_get_thread_num();
+  ind->ssAtol = _globals.gssAtolThread + op->neq * omp_get_thread_num();
+  ind->ssRtol = _globals.gssRtolThread + op->neq * omp_get_thread_num();
 }
 
 extern "C" void setZeroMatrix(int which) {
