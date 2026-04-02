@@ -1676,15 +1676,33 @@ extern "C" void setZeroMatrix(int which) {
 double maxAtolRtolFactor = 0.1;
 
 //[[Rcpp::export]]
-void atolRtolFactor_(double factor){
-  rx_solve* rx = getRxSolve_();
-  rx_solving_options* op = rx->op;
-  for (int i = op->neq;i--;){
-    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
-    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+void atolRtolFactor_(double factor) {
+  rx_solve *rx = getRxSolve_();
+  rx_solving_options *op = rx->op;
+
+  // Modify only the current thread's tolerance arrays — fully thread-safe,
+  // no critical section needed because each thread has its own slice.
+  int _threadId = omp_get_thread_num();
+  double *_atol2  = _globals.gatol2Thread  + op->neq * _threadId;
+  double *_rtol2  = _globals.grtol2Thread  + op->neq * _threadId;
+  double *_ssAtol = _globals.gssAtolThread + op->neq * _threadId;
+  double *_ssRtol = _globals.gssRtolThread + op->neq * _threadId;
+
+  for (int _i = op->neq; _i--;) {
+    _atol2[_i]  = min2(_atol2[_i]  * factor, maxAtolRtolFactor);
+    _rtol2[_i]  = min2(_rtol2[_i]  * factor, maxAtolRtolFactor);
+    _ssAtol[_i] = min2(_ssAtol[_i] * factor, maxAtolRtolFactor);
+    _ssRtol[_i] = min2(_ssRtol[_i] * factor, maxAtolRtolFactor);
   }
-  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
-  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+
+  // Persist the cumulative factor on the individual currently being solved
+  // on this thread so that iniSubject() can reapply it on every re-solve.
+  rx_solving_options_ind *_ind = &(inds_thread[rx_get_thread(op->cores)]);
+  if (_ind != NULL) {
+    _ind->tolFactor = min2(_ind->tolFactor * factor, maxAtolRtolFactor);
+  }
+  // Note: op->ATOL and op->RTOL are deliberately NOT modified here to
+  // avoid races between threads sharing the op structure.
 }
 
 extern "C" double * getAol(int n, double atol){
