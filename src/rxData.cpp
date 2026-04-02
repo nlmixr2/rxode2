@@ -3476,6 +3476,11 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
     ind->wrongSSDur = 0;
+    // tolFactor is the per-individual cumulative tolerance multiplier.
+    // Initialized to 1.0 (no effect) here and intentionally NOT reset
+    // on subsequent calls (first == 0) so that stiff individuals retain
+    // their loosened tolerances across re-solves.
+    ind->tolFactor = 1.0;
   }
 }
 
