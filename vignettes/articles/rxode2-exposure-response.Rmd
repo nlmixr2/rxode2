@@ -100,7 +100,7 @@ simDoses <- rbindlist(lapply(doses, function(d) {
 er <- as.data.table(simDoses)[, .(
   AUC    = sum(diff(time) * (cp[-length(cp)]     + cp[-1])     / 2),
   meanEff = sum(diff(time) * (effect[-length(effect)] + effect[-1]) / 2) / 24
-), by = .(id, dose)]
+), by = .(sim.id, dose)]
 
 ggplot(er, aes(x = AUC, y = meanEff, colour = factor(dose))) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -235,7 +235,7 @@ simBin <- rxSolve(emaxMod,
                   nSub = 500, returnType = "data.frame")
 dtBin  <- as.data.table(simBin)
 aucBin <- dtBin[, .(AUC = sum(diff(time) * (cp[-length(cp)] + cp[-1]) / 2)),
-                by = id]
+                by = sim.id]
 
 # Logistic model: log-odds = -2 + 0.3 * log(AUC)
 set.seed(42)
