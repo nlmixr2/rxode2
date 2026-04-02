@@ -9,16 +9,18 @@ template:
     in_header: |
       <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU" />
 reference:
-- title: Creating/Deleting/Loading rxode2 compiled objects
+- title: Model Definition & Compilation
+  desc: Define, parse, compile, and manage rxode2 ODE models.
   contents:
-  - rxClean
+  - rxode2
   - rxCompile
+  - rxLastCompile
+  - rxClean
   - rxCreateCache
   - rxDelete
-  - rxLastCompile
   - rxUnloadAll
-  - rxode2
-- title: Creating rxode2 event tables/data frames
+- title: Event Tables & Dosing
+  desc: Construct and manipulate dosing/sampling event tables.
   contents:
   - et
   - toTrialDuration
@@ -30,22 +32,17 @@ reference:
   - eventTable
   - add.dosing
   - add.sampling
-- title: Solving, Simulating and Solving options
+- title: Solving & Simulation
+  desc: Solve ODEs and simulate populations.
   contents:
   - rxSolve
   - rxCbindStudyIndividual
-- title: Functions for working with nlmixr2/rxode2 functions
+- title: Model UI & Piping
+  desc: Work with rxUi model objects, piping, and model modification.
   contents:
   - as.ini
   - as.model
   - as.rxUi
-  - assertCompartmentExists
-  - assertCompartmentName
-  - assertCompartmentNew
-  - assertRxUi
-  - assertRxUiIovNoCor
-  - assertVariableExists
-  - assertVariableNew
   - ini
   - ini<-
   - model
@@ -60,36 +57,32 @@ reference:
   - rxUiCompress
   - rxUiDecompress
   - rxode2<-
+  - update.rxUi
+  - zeroRe
+  - assertCompartmentExists
+  - assertCompartmentName
+  - assertCompartmentNew
+  - assertRxUi
+  - assertRxUiIovNoCor
+  - assertVariableExists
+  - assertVariableNew
   - testIniDf
   - testRxLinCmt
   - testRxUnbounded
-  - update.rxUi
-  - zeroRe
-- title: ggplot2/plot support functions
+- title: Population Variability & Uncertainty
+  desc: Simulate between-subject variability and parameter uncertainty.
   contents:
-  - stat_cens
-  - stat_amt
-  - plot.rxSolve
-- title: Exploring rxode2 and creating models with Shiny
-  contents:
-  - rxShiny
-  - genShinyApp.template
-- title: Using rxode2 in Packages
-  contents:
-  - rxUse
-  - rxPkg
-- title: Specialized Simulation functions
-  contents:
-  - binomProbs
+  - rxRmvn
+  - rxSimThetaOmega
   - cvPost
   - dfWishart
-  - meanProbs
   - rinvchisq
-  - rxGetSeed
   - rxPp
-  - rxSetSeed
-  - rxSimThetaOmega
-  - rxWithSeed
+- title: Simulation Distributions & Random Sampling
+  desc: Parametric distributions and random draw functions for simulation.
+  contents:
+  - binomProbs
+  - meanProbs
   - rxbeta
   - rxbinom
   - rxcauchy
@@ -105,56 +98,111 @@ reference:
   - rxt
   - rxunif
   - rxweibull
-- title: Optimizing models and/or adding precision
+- title: Reproducibility
+  desc: Control random seeds for reproducible simulations.
+  contents:
+  - rxGetSeed
+  - rxSetSeed
+  - rxWithSeed
+- title: Visualization
+  desc: Plot and ggplot2 support functions.
+  contents:
+  - stat_cens
+  - stat_amt
+  - plot.rxSolve
+- title: Special Mathematical Functions
+  desc: Transcendental, link, and other special functions used in models.
+  contents:
+  - boxCox
+  - erf
+  - gammap
+  - gammapDer
+  - gammapInv
+  - gammaq
+  - gammaqInv
+  - logit
+  - lowergamma
+  - mexpit
+  - mlogit
+  - phi
+  - probit
+  - uppergamma
+- title: Log-likelihood Functions
+  desc: Log-likelihood functions supporting generalized likelihoods for FOCEi.
+  contents:
+  - llikBeta
+  - llikBinom
+  - llikCauchy
+  - llikChisq
+  - llikExp
+  - llikF
+  - llikGamma
+  - llikGeom
+  - llikNbinom
+  - llikNbinomMu
+  - llikNorm
+  - llikPois
+  - llikT
+  - llikUnif
+  - llikWeibull
+- title: Neural Network Activation Functions
+  desc: Activation functions and their derivatives for use in neural-network PK/PD models.
+  contents:
+  - ELU
+  - GELU
+  - PReLU
+  - ReLU
+  - SELU
+  - Swish
+  - dELU
+  - dGELU
+  - dPReLU
+  - dReLU
+  - dSELU
+  - dSwish
+  - dlReLU
+  - dsoftplus
+  - lReLU
+  - softplus
+- title: Performance & Optimization
+  desc: Speed up ODE solving and expression evaluation.
   contents:
   - rxOptExpr
   - rxSumProdModel
   - rxSetProd
   - rxSetSum
-- title: Adding/Modifying rxode2 C-based functions and derivatives
+  - getRxThreads
+- title: User-Defined Functions
+  desc: Register and control user-defined C functions inside rxode2 models.
+  contents:
+  - linMod
+  - mix
+  - rxIntToBase
+  - rxIntToLetter
+  - rxUdfUiControl
+  - rxUdfUiData
+  - rxUdfUiEst
+  - rxUdfUiIniDf
+  - rxUdfUiIniLhs
+  - rxUdfUiMv
+  - rxUdfUiNum
+  - rxUdfUiParsing
+- title: C Derivatives & Extensions
+  desc: Add or modify rxode2 C-based functions and their derivatives.
   contents:
   - rxD
-- title: Running unit tests in rxode2
+- title: Interactive Exploration
+  desc: Shiny apps for model exploration.
   contents:
-  - rxValidate
-- title: Special Functions for rxode2
+  - rxShiny
+  - genShinyApp.template
+- title: Package Development
+  desc: Bundle compiled rxode2 models into R packages.
   contents:
-    - boxCox
-    - erf
-    - forderForceBase
-    - gammap
-    - gammapDer
-    - gammapInv
-    - gammaq
-    - gammaqInv
-    - logit
-    - lowergamma
-    - mexpit
-    - mlogit
-    - phi
-    - probit
-    - rxRmvn
-- title: log likelihood functions supporting generalized likelihoods for focei methods
-  contents:
-    - llikBeta
-    - llikBinom
-    - llikCauchy
-    - llikChisq
-    - llikExp
-    - llikF
-    - llikGamma
-    - llikGeom
-    - llikNbinom
-    - llikNbinomMu
-    - llikNorm
-    - llikPois
-    - llikT
-    - llikUnif
-    - llikWeibull
-- title: Parallel processing support commands
-  contents:
-  -  getRxThreads
-- title: rxode2 utility functions
+  - rxUse
+  - rxPkg
+- title: Utility Functions
+  desc: Miscellaneous helpers for working with rxode2 objects.
   contents:
   - rxDerived
   - rxGetDefaultSerialize
@@ -170,21 +218,15 @@ reference:
   - rxStateOde
   - rxSymInvChol
   - swapMatListWithCube
-  - uppergamma
-- title: User functions
+  - forderForceBase
+- title: Testing & Validation
+  desc: Run unit tests and validate rxode2 installations.
   contents:
-  - linMod
-  - mix
-  - rxIntToBase
-  - rxIntToLetter
-  - rxUdfUiControl
-  - rxUdfUiData
-  - rxUdfUiEst
-  - rxUdfUiIniDf
-  - rxUdfUiIniLhs
-  - rxUdfUiMv
-  - rxUdfUiNum
-  - rxUdfUiParsing
+  - rxValidate
+- title: Datasets
+  desc: Example datasets bundled with rxode2.
+  contents:
+  - rxResidualError
 - title: Internal Functions
   contents:
   - .cbindOme
@@ -248,99 +290,109 @@ reference:
   - rxode2parseGetPointerAssignment
   - rxode2parseGetTranslation
   - summary.rxode2
-- title: Neural Network Activation functions
-  contents:
-  - ELU
-  - GELU
-  - PReLU
-  - ReLU
-  - SELU
-  - Swish
-  - dELU
-  - dGELU
-  - dPReLU
-  - dReLU
-  - dSELU
-  - dSwish
-  - dlReLU
-  - dsoftplus
-  - lReLU
-  - softplus
-- title: Rxode2 data sets
-  contents:
-  - rxResidualError
 navbar:
   left:
-  - text: Articles
-    icon: fas fa-book
+  - text: "Get Started"
+    icon: fas fa-rocket
     menu:
-        - text: "--------------------------"
-        - text: "Getting started"
-        - text: "rxode2 mini language syntax"
+        - text: "Introduction to rxode2"
+          href: articles/rxode2-intro.html
+        - text: "rxode2 mini-language syntax"
           href: articles/rxode2-syntax.html
-        - text: "rxode2 model modification |>"
-          href: articles/Modifying-Models.html
-        - text: "rxode2 pipeline ie |>"
-          href: articles/rxode2-pipeline.html
-        - text: "Speeding up rxode2 ODE solving"
-          href: articles/rxode2-speed.html
-        - text: "Adaptive Data Frames with rxode2"
-          href: articles/rxode2-data-frame.html
-        - text: "Plotting with rxode2"
-          href: articles/rxode2-plot.html
-        - text: "--------------------------"
-        - text: "Advanced Features, Model Types, Technical Details"
-        - text: "rxode2 model types"
+        - text: "Interactive tutorials"
+          href: articles/rxode2-tutorials.html
+  - text: "Model Definition"
+    icon: fas fa-code
+    menu:
+        - text: "Model types (linCmt, ODEs, mixed)"
           href: articles/rxode2-model-types.html
-        - text: "Chainging rxode2 compartment numbers"
+        - text: "rxode2 UI object reference"
+          href: articles/rxode2-ui-object.html
+        - text: "Model piping with |>"
+          href: articles/rxode2-pipeline.html
+        - text: "Modifying models"
+          href: articles/Modifying-Models.html
+        - text: "Changing compartment numbers"
           href: articles/rxode2-cmt.html
-        - text: "rxode2 transit compartment models"
-          href: articles/rxode2-transit-compartments.html
-        - text: "Using Shiny with rxode2"
-          href: articles/rxode2-shiny.html
-        - text: "rxode2 covariates"
-          href: articles/rxode2-covariates.html
-        - text: "Stiff Systems and Jacobian specification"
-          href: articles/rxode2-stiff.html
-        - text: "Adding compiled rxode2 models to your package"
-          href: articles/rxode2-rxUse.html
-  - text: "Dosing/Events"
+        - text: "Integrating user-defined functions"
+          href: articles/Integrating-User-Defined-Functions-into-rxode2.html
+        - text: "Package-exported rxode2 functions"
+          href: articles/rxode2-pkg-exported-funs.html
+  - text: "Data & Events"
     icon: fas fa-stethoscope
     menu:
-        - text: "nlmixr/rxode2 dataset overview"
+        - text: "Dataset format and event types"
           href: articles/rxode2-datasets.html
-        - text: "Supported Event Types"
-          href: articles/rxode2-event-types.html
-        - text: "Easy rxode2 Event Tables"
+        - text: "Easy event tables (et())"
           href: articles/rxode2-event-table.html
         - text: "Classic rxode2 events explained"
           href: articles/rxode2-events-classic.html
-  - text: "Simulations"
+  - text: "Simulation"
     icon: fas fa-desktop
     menu:
-        - text: "Single Subject ODE solving"
+        - text: "--------------------------"
+        - text: "Core simulation"
+        - text: "Single-subject ODE solving"
           href: articles/rxode2-single-subject.html
-        - text: "Multiple Subject rxode2 Simulation"
+        - text: "Population simulation (multiple subjects)"
           href: articles/rxode2-sim-var.html
-        - text: "Using Prior Data for ODE solving"
+        - text: "Simulation from observed data"
           href: articles/rxode2-prior-data.html
-  - text: "Help"
-    icon: fas fa-life-ring
+        - text: "--------------------------"
+        - text: "Variability and uncertainty"
+        - text: "Parameter uncertainty"
+          href: articles/rxode2-parameter-uncertainty.html
+        - text: "ETA/EPS resampling"
+          href: articles/rxode2-eta-eps-resampling.html
+  - text: "Clinical Applications"
+    icon: fas fa-hospital
     menu:
-       - text: Running the interactive tutorials
-         href: articles/rxode2-tutorials.html
-       - text: 2015 CPT tutorial
-         href: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/pdf/PSP4-5-03.pdf
-       - text: "--------------------------"
-       - text: Adding Circadian Rythmn (time-varying covariates)
-         href: articles/rxode2-covariates.html
-       - text: Weight Based Dosing
-         href: articles/rxode2-wt.html
-       - text: Simulating Multiple levels of nesting (iov, between study etc)
-         href: articles/rxode2-nesting.html
-       - text: "--------------------------"
-       - text: Changes/News
-         href: news/index.html
+        - text: "Exposure-response simulation"
+          href: articles/rxode2-exposure-response.html
+        - text: "Clinical trial simulation"
+          href: articles/rxode2-clinical-trial-sim.html
+        - text: "Visual predictive checks (VPC)"
+          href: articles/rxode2-vpc.html
+  - text: "Advanced"
+    icon: fas fa-cogs
+    menu:
+        - text: "--------------------------"
+        - text: "Model features"
+        - text: "Covariates and covariate models"
+          href: articles/rxode2-covariates.html
+        - text: "Transit compartment models"
+          href: articles/rxode2-transit-compartments.html
+        - text: "Multiple levels of nesting (IOV, between-study)"
+          href: articles/rxode2-nesting.html
+        - text: "Stiff systems and Jacobian specification"
+          href: articles/rxode2-stiff.html
+        - text: "Weight-based dosing"
+          href: articles/rxode2-wt.html
+        - text: "--------------------------"
+        - text: "Output and performance"
+        - text: "Adaptive data frames"
+          href: articles/rxode2-data-frame.html
+        - text: "Plotting with rxode2"
+          href: articles/rxode2-plot.html
+        - text: "Speeding up ODE solving"
+          href: articles/rxode2-speed.html
+        - text: "--------------------------"
+        - text: "Developer tools"
+        - text: "Interactive model explorer (Shiny)"
+          href: articles/rxode2-shiny.html
+        - text: "Adding compiled models to a package"
+          href: articles/rxode2-rxUse.html
+  - text: "Comparisons"
+    icon: fas fa-balance-scale
+    menu:
+        - text: "rxode2 vs mrgsolve"
+          href: articles/rxode2-mrgsolve-comparison.html
+        - text: "rxode2 vs NMsim"
+          href: articles/rxode2-nmsim-comparison.html
+        - text: "rxode2 vs Simulx"
+          href: articles/rxode2-simulx-comparison.html
+        - text: "rxode2 vs PKPDsim"
+          href: articles/rxode2-pkpdsim-comparison.html
   - text: "Functions"
     icon: fa-file-code-o
     href: https://nlmixr2.github.io/rxode2/reference/index.html
@@ -351,6 +403,8 @@ navbar:
         href: https://nlmixr2.github.io/rxode2-manual/
       - text: nlmixr2
         href: https://nlmixr2.org/
+      - text: Changes/News
+        href: news/index.html
   - icon: fa-github
     href: https://github.com/nlmixr2/rxode2
   - icon: fa-download
