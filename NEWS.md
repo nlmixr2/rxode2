@@ -1,10 +1,12 @@
 # rxode2 (development)
 
+- Create per-individual ODE solving tolerances for use in focei.
+
 - Fix potential security and memory-management issues that could lead
   to crashes or undefined behavior including integer overflow
 
 - Change `dop853` to allow parallel solving and per state tolerances
-  like `lsoda`.
+  like `liblsoda`.
 
 - Change mtime state-based dosing to use less memory
 
