@@ -16,57 +16,75 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-book"></span> Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced Features, Model Types, Technical Details</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">rxode2 model types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Chainging rxode2 compartment numbers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">rxode2 transit compartment models</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Using Shiny with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">rxode2 covariates</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff Systems and Jacobian specification</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled rxode2 models to your package</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-dosing-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Dosing/Events</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-dosing-events"><li><a class="dropdown-item" href="../articles/rxode2-datasets.html">nlmixr/rxode2 dataset overview</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-types.html">Supported Event Types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy rxode2 Event Tables</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-model-definition" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model Definition</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-model-definition"><li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types (linCmt, ODEs, mixed)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">rxode2 UI object reference</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Model piping with |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">Modifying models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Changing compartment numbers</a></li>
+    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">Integrating user-defined functions</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">Package-exported rxode2 functions</a></li>
+  </ul></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-data-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Data &amp; Events</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-data-events"><li><a class="dropdown-item" href="../articles/rxode2-datasets.html">Dataset format and event types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy event tables (et())</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulations" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulations</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-simulations"><li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single Subject ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Multiple Subject rxode2 Simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Using Prior Data for ODE solving</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulation" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulation</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-simulation"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single-subject ODE solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Population simulation (multiple subjects)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulation from observed data</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Variability and uncertainty</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA/EPS resampling</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-help" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-life-ring"></span> Help</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-help"><li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Running the interactive tutorials</a></li>
-    <li><a class="external-link dropdown-item" href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/pdf/PSP4-5-03.pdf">2015 CPT tutorial</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-applications" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Applications</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-applications"><li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-clinical-trial-sim.html">Clinical trial simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks (VPC)</a></li>
+  </ul></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-advanced" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-cogs"></span> Advanced</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-advanced"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Adding Circadian Rythmn (time-varying covariates)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight Based Dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Simulating Multiple levels of nesting (iov, between study etc)</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../news/index.html">Changes/News</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+  </ul></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-comparisons" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Comparisons</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-comparisons"><li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html"><span class="fa fa-file-code-o"></span> Functions</a></li>
-      </ul><ul class="navbar-nav"><li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-archive"></span></button>
-  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-"><li><a class="dropdown-item" href="https://nlmixr2.github.io/rxode2-manual/">rxode2 User Guide</a></li>
-    <li><a class="external-link dropdown-item" href="https://nlmixr2.org/">nlmixr2</a></li>
-  </ul></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2"><span class="fa fa-github"></span></a></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/releases"><span class="fa fa-download"></span></a></li>
+      </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
+ <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -78,9 +96,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="creating-deleting-loading-rxode-compiled-objects">Creating/Deleting/Loading rxode2 compiled objects<a class="anchor" aria-label="anchor" href="#creating-deleting-loading-rxode-compiled-objects"></a></h2>
+      <h2 id="model-definition-compilation">Model Definition &amp; Compilation<a class="anchor" aria-label="anchor" href="#model-definition-compilation"></a></h2>
 
-
+      <div class="section-desc"><p>Define, parse, compile, and manage rxode2 ODE models.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -89,10 +107,10 @@
 
       <dl><dt>
 
-          <code><a href="rxClean.html">rxClean()</a></code>
+          <code><a href="rxode2.html">rxode2()</a></code> <code><a href="rxode2.html">RxODE()</a></code> <code><a href="rxode2.html">rxode()</a></code>
 
         </dt>
-        <dd>Cleanup anonymous DLLs by unloading them</dd>
+        <dd>Create an ODE-based model specification</dd>
 
         <dt>
 
@@ -100,6 +118,20 @@
 
         </dt>
         <dd>Compile a model if needed</dd>
+
+        <dt>
+
+          <code><a href="rxLastCompile.html">rxLastCompile()</a></code>
+
+        </dt>
+        <dd>Get the last compiled model information as alist</dd>
+
+        <dt>
+
+          <code><a href="rxClean.html">rxClean()</a></code>
+
+        </dt>
+        <dd>Cleanup anonymous DLLs by unloading them</dd>
 
         <dt>
 
@@ -117,28 +149,14 @@
 
         <dt>
 
-          <code><a href="rxLastCompile.html">rxLastCompile()</a></code>
-
-        </dt>
-        <dd>Get the last compiled model information as alist</dd>
-
-        <dt>
-
           <code><a href="rxUnloadAll.html">rxUnloadAll()</a></code>
 
         </dt>
         <dd>Unloads all rxode2 compiled DLLs</dd>
-
-        <dt>
-
-          <code><a href="rxode2.html">rxode2()</a></code> <code><a href="rxode2.html">RxODE()</a></code> <code><a href="rxode2.html">rxode()</a></code>
-
-        </dt>
-        <dd>Create an ODE-based model specification</dd>
       </dl></div><div class="section level2">
-      <h2 id="creating-rxode-event-tables-data-frames">Creating rxode2 event tables/data frames<a class="anchor" aria-label="anchor" href="#creating-rxode-event-tables-data-frames"></a></h2>
+      <h2 id="event-tables-dosing">Event Tables &amp; Dosing<a class="anchor" aria-label="anchor" href="#event-tables-dosing"></a></h2>
 
-
+      <div class="section-desc"><p>Construct and manipulate dosing/sampling event tables.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -215,9 +233,9 @@
         </dt>
         <dd>Add sampling to eventTable</dd>
       </dl></div><div class="section level2">
-      <h2 id="solving-simulating-and-solving-options">Solving, Simulating and Solving options<a class="anchor" aria-label="anchor" href="#solving-simulating-and-solving-options"></a></h2>
+      <h2 id="solving-simulation">Solving &amp; Simulation<a class="anchor" aria-label="anchor" href="#solving-simulation"></a></h2>
 
-
+      <div class="section-desc"><p>Solve ODEs and simulate populations.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -238,9 +256,9 @@
         </dt>
         <dd>Bind the study parameters and individual parameters</dd>
       </dl></div><div class="section level2">
-      <h2 id="functions-for-working-with-nlmixr-rxode-functions">Functions for working with nlmixr2/rxode2 functions<a class="anchor" aria-label="anchor" href="#functions-for-working-with-nlmixr-rxode-functions"></a></h2>
+      <h2 id="model-ui-piping">Model UI &amp; Piping<a class="anchor" aria-label="anchor" href="#model-ui-piping"></a></h2>
 
-
+      <div class="section-desc"><p>Work with rxUi model objects, piping, and model modification.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -267,48 +285,6 @@
 
         </dt>
         <dd>As rxode2 ui</dd>
-
-        <dt>
-
-          <code><a href="assertCompartmentExists.html">assertCompartmentExists()</a></code> <code><a href="assertCompartmentExists.html">testCompartmentExists()</a></code>
-
-        </dt>
-        <dd>Verify that the compartment exists in a model</dd>
-
-        <dt>
-
-          <code><a href="assertCompartmentName.html">assertCompartmentName()</a></code> <code><a href="assertCompartmentName.html">assertVariableName()</a></code> <code><a href="assertCompartmentName.html">assertParameterValue()</a></code> <code><a href="assertCompartmentName.html">assertExists()</a></code> <code><a href="assertCompartmentName.html">testExists()</a></code>
-
-        </dt>
-        <dd>Verify that a value is a valid nlmixr2 compartment name</dd>
-
-        <dt>
-
-          <code><a href="assertCompartmentNew.html">assertCompartmentNew()</a></code>
-
-        </dt>
-        <dd>Verify that a compartment would be new to the model</dd>
-
-        <dt>
-
-          <code><a href="assertRxUi.html">assertRxUi()</a></code> <code><a href="assertRxUi.html">assertRxUiPrediction()</a></code> <code><a href="assertRxUi.html">assertRxUiIovNoCor()</a></code> <code><a href="assertRxUi.html">assertRxUiNoMix()</a></code> <code><a href="assertRxUi.html">assertRxUiSingleEndpoint()</a></code> <code><a href="assertRxUi.html">assertRxUiTransformNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiMuRefOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiEstimatedResiduals()</a></code> <code><a href="assertRxUi.html">assertRxUiPopulationOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiMixedOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiRandomOnIdOnly()</a></code>
-
-        </dt>
-        <dd>Assert properties of the rxUi models</dd>
-
-        <dt>
-
-          <code><a href="assertVariableExists.html">assertVariableExists()</a></code> <code><a href="assertVariableExists.html">testVariableExists()</a></code>
-
-        </dt>
-        <dd>Assert a variable exists in the model</dd>
-
-        <dt>
-
-          <code><a href="assertVariableNew.html">assertVariableNew()</a></code>
-
-        </dt>
-        <dd>Assert a variable would be new to the model</dd>
 
         <dt>
 
@@ -403,6 +379,62 @@
 
         <dt>
 
+          <code><a href="update.rxUi.html">update(<i>&lt;rxUi&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Update for rxUi</dd>
+
+        <dt>
+
+          <code><a href="zeroRe.html">zeroRe()</a></code>
+
+        </dt>
+        <dd>Set random effects and residual error to zero</dd>
+
+        <dt>
+
+          <code><a href="assertCompartmentExists.html">assertCompartmentExists()</a></code> <code><a href="assertCompartmentExists.html">testCompartmentExists()</a></code>
+
+        </dt>
+        <dd>Verify that the compartment exists in a model</dd>
+
+        <dt>
+
+          <code><a href="assertCompartmentName.html">assertCompartmentName()</a></code> <code><a href="assertCompartmentName.html">assertVariableName()</a></code> <code><a href="assertCompartmentName.html">assertParameterValue()</a></code> <code><a href="assertCompartmentName.html">assertExists()</a></code> <code><a href="assertCompartmentName.html">testExists()</a></code>
+
+        </dt>
+        <dd>Verify that a value is a valid nlmixr2 compartment name</dd>
+
+        <dt>
+
+          <code><a href="assertCompartmentNew.html">assertCompartmentNew()</a></code>
+
+        </dt>
+        <dd>Verify that a compartment would be new to the model</dd>
+
+        <dt>
+
+          <code><a href="assertRxUi.html">assertRxUi()</a></code> <code><a href="assertRxUi.html">assertRxUiPrediction()</a></code> <code><a href="assertRxUi.html">assertRxUiIovNoCor()</a></code> <code><a href="assertRxUi.html">assertRxUiNoMix()</a></code> <code><a href="assertRxUi.html">assertRxUiSingleEndpoint()</a></code> <code><a href="assertRxUi.html">assertRxUiTransformNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiMuRefOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiEstimatedResiduals()</a></code> <code><a href="assertRxUi.html">assertRxUiPopulationOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiMixedOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiRandomOnIdOnly()</a></code>
+
+        </dt>
+        <dd>Assert properties of the rxUi models</dd>
+
+        <dt>
+
+          <code><a href="assertVariableExists.html">assertVariableExists()</a></code> <code><a href="assertVariableExists.html">testVariableExists()</a></code>
+
+        </dt>
+        <dd>Assert a variable exists in the model</dd>
+
+        <dt>
+
+          <code><a href="assertVariableNew.html">assertVariableNew()</a></code>
+
+        </dt>
+        <dd>Assert a variable would be new to the model</dd>
+
+        <dt>
+
           <code><a href="testIniDf.html">testIniDf()</a></code> <code><a href="testIniDf.html">assertIniDf()</a></code>
 
         </dt>
@@ -421,24 +453,10 @@
 
         </dt>
         <dd>Test if the rxode2 model has any parameters with user defined boundaries</dd>
-
-        <dt>
-
-          <code><a href="update.rxUi.html">update(<i>&lt;rxUi&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Update for rxUi</dd>
-
-        <dt>
-
-          <code><a href="zeroRe.html">zeroRe()</a></code>
-
-        </dt>
-        <dd>Set random effects and residual error to zero</dd>
       </dl></div><div class="section level2">
-      <h2 id="ggplot-plot-support-functions">ggplot2/plot support functions<a class="anchor" aria-label="anchor" href="#ggplot-plot-support-functions"></a></h2>
+      <h2 id="population-variability-uncertainty">Population Variability &amp; Uncertainty<a class="anchor" aria-label="anchor" href="#population-variability-uncertainty"></a></h2>
 
-
+      <div class="section-desc"><p>Simulate between-subject variability and parameter uncertainty.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -447,86 +465,17 @@
 
       <dl><dt>
 
-          <code><a href="stat_cens.html">stat_cens()</a></code> <code><a href="stat_cens.html">geom_cens()</a></code>
+          <code><a href="rxRmvn.html">rxRmvn()</a></code>
 
         </dt>
-        <dd>Censoring geom/stat</dd>
+        <dd>Simulate from a (truncated) multivariate normal</dd>
 
         <dt>
 
-          <code><a href="stat_amt.html">stat_amt()</a></code> <code><a href="stat_amt.html">geom_amt()</a></code>
+          <code><a href="rxSimThetaOmega.html">rxSimThetaOmega()</a></code>
 
         </dt>
-        <dd>Dosing/Amt geom/stat</dd>
-
-        <dt>
-
-          <code><a href="plot.rxSolve.html">plot(<i>&lt;rxSolve&gt;</i>)</a></code> <code><a href="plot.rxSolve.html">plot(<i>&lt;rxSolveConfint1&gt;</i>)</a></code> <code><a href="plot.rxSolve.html">plot(<i>&lt;rxSolveConfint2&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Plot rxode2 objects</dd>
-      </dl></div><div class="section level2">
-      <h2 id="exploring-rxode-and-creating-models-with-shiny">Exploring rxode2 and creating models with Shiny<a class="anchor" aria-label="anchor" href="#exploring-rxode-and-creating-models-with-shiny"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="rxShiny.html">rxShiny()</a></code>
-
-        </dt>
-        <dd>Use Shiny to help develop an rxode2 model</dd>
-
-        <dt>
-
-          <code><a href="genShinyApp.template.html">genShinyApp.template()</a></code> <code><a href="genShinyApp.template.html">write.template.server()</a></code> <code><a href="genShinyApp.template.html">write.template.ui()</a></code>
-
-        </dt>
-        <dd>Generate an example (template) of a dosing regimen shiny app</dd>
-      </dl></div><div class="section level2">
-      <h2 id="using-rxode-in-packages">Using rxode2 in Packages<a class="anchor" aria-label="anchor" href="#using-rxode-in-packages"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="rxUse.html">rxUse()</a></code>
-
-        </dt>
-        <dd>Use model object in your package</dd>
-
-        <dt>
-
-          <code><a href="rxPkg.html">rxPkg()</a></code>
-
-        </dt>
-        <dd>Creates a package from compiled rxode2 models</dd>
-      </dl></div><div class="section level2">
-      <h2 id="specialized-simulation-functions">Specialized Simulation functions<a class="anchor" aria-label="anchor" href="#specialized-simulation-functions"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="binomProbs.html">binomProbs()</a></code>
-
-        </dt>
-        <dd>Calculate expected confidence bands with binomial sampling distribution</dd>
+        <dd>Simulate Parameters from a Theta/Omega specification</dd>
 
         <dt>
 
@@ -544,13 +493,6 @@
 
         <dt>
 
-          <code><a href="meanProbs.html">meanProbs()</a></code>
-
-        </dt>
-        <dd>Calculate expected confidence bands or prediction intreval with normal or t sampling distribution</dd>
-
-        <dt>
-
           <code><a href="rinvchisq.html">rinvchisq()</a></code>
 
         </dt>
@@ -558,38 +500,33 @@
 
         <dt>
 
-          <code><a href="rxGetSeed.html">rxGetSeed()</a></code>
-
-        </dt>
-        <dd>Get the rxode2 seed</dd>
-
-        <dt>
-
           <code><a href="rxPp.html">rxPp()</a></code>
 
         </dt>
         <dd>Simulate a from a Poisson process</dd>
+      </dl></div><div class="section level2">
+      <h2 id="simulation-distributions-random-sampling">Simulation Distributions &amp; Random Sampling<a class="anchor" aria-label="anchor" href="#simulation-distributions-random-sampling"></a></h2>
+
+      <div class="section-desc"><p>Parametric distributions and random draw functions for simulation.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="binomProbs.html">binomProbs()</a></code>
+
+        </dt>
+        <dd>Calculate expected confidence bands with binomial sampling distribution</dd>
 
         <dt>
 
-          <code><a href="rxSetSeed.html">rxSetSeed()</a></code>
+          <code><a href="meanProbs.html">meanProbs()</a></code>
 
         </dt>
-        <dd>Set the parallel seed for rxode2 random number generation</dd>
-
-        <dt>
-
-          <code><a href="rxSimThetaOmega.html">rxSimThetaOmega()</a></code>
-
-        </dt>
-        <dd>Simulate Parameters from a Theta/Omega specification</dd>
-
-        <dt>
-
-          <code><a href="rxWithSeed.html">rxWithSeed()</a></code> <code><a href="rxWithSeed.html">rxWithPreserveSeed()</a></code>
-
-        </dt>
-        <dd>Preserved seed and possibly set the seed</dd>
+        <dd>Calculate expected confidence bands or prediction intreval with normal or t sampling distribution</dd>
 
         <dt>
 
@@ -696,46 +633,9 @@
         </dt>
         <dd>Simulate Weibull variable from threefry generator</dd>
       </dl></div><div class="section level2">
-      <h2 id="optimizing-models-and-or-adding-precision">Optimizing models and/or adding precision<a class="anchor" aria-label="anchor" href="#optimizing-models-and-or-adding-precision"></a></h2>
+      <h2 id="reproducibility">Reproducibility<a class="anchor" aria-label="anchor" href="#reproducibility"></a></h2>
 
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="rxOptExpr.html">rxOptExpr()</a></code>
-
-        </dt>
-        <dd>Optimize rxode2 for computer evaluation</dd>
-
-        <dt>
-
-          <code><a href="rxSumProdModel.html">rxSumProdModel()</a></code>
-
-        </dt>
-        <dd>Recast model in terms of sum/prod</dd>
-
-        <dt>
-
-          <code><a href="rxSetProd.html">rxSetProd()</a></code>
-
-        </dt>
-        <dd>Defunct setting of product</dd>
-
-        <dt>
-
-          <code><a href="rxSetSum.html">rxSetSum()</a></code>
-
-        </dt>
-        <dd>Defunct setting of sum</dd>
-      </dl></div><div class="section level2">
-      <h2 id="adding-modifying-rxode-c-based-functions-and-derivatives">Adding/Modifying rxode2 C-based functions and derivatives<a class="anchor" aria-label="anchor" href="#adding-modifying-rxode-c-based-functions-and-derivatives"></a></h2>
-
-
+      <div class="section-desc"><p>Control random seeds for reproducible simulations.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -744,14 +644,28 @@
 
       <dl><dt>
 
-          <code><a href="rxD.html">rxD()</a></code>
+          <code><a href="rxGetSeed.html">rxGetSeed()</a></code>
 
         </dt>
-        <dd>Add to rxode2's derivative tables</dd>
+        <dd>Get the rxode2 seed</dd>
+
+        <dt>
+
+          <code><a href="rxSetSeed.html">rxSetSeed()</a></code>
+
+        </dt>
+        <dd>Set the parallel seed for rxode2 random number generation</dd>
+
+        <dt>
+
+          <code><a href="rxWithSeed.html">rxWithSeed()</a></code> <code><a href="rxWithSeed.html">rxWithPreserveSeed()</a></code>
+
+        </dt>
+        <dd>Preserved seed and possibly set the seed</dd>
       </dl></div><div class="section level2">
-      <h2 id="running-unit-tests-in-rxode-">Running unit tests in rxode2<a class="anchor" aria-label="anchor" href="#running-unit-tests-in-rxode-"></a></h2>
+      <h2 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a></h2>
 
-
+      <div class="section-desc"><p>Plot and ggplot2 support functions.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -760,14 +674,28 @@
 
       <dl><dt>
 
-          <code><a href="rxValidate.html">rxValidate()</a></code> <code><a href="rxValidate.html">rxTest()</a></code>
+          <code><a href="stat_cens.html">stat_cens()</a></code> <code><a href="stat_cens.html">geom_cens()</a></code>
 
         </dt>
-        <dd>Validate rxode2 This allows easy validation/qualification of nlmixr by running the testing suite on your system.</dd>
+        <dd>Censoring geom/stat</dd>
+
+        <dt>
+
+          <code><a href="stat_amt.html">stat_amt()</a></code> <code><a href="stat_amt.html">geom_amt()</a></code>
+
+        </dt>
+        <dd>Dosing/Amt geom/stat</dd>
+
+        <dt>
+
+          <code><a href="plot.rxSolve.html">plot(<i>&lt;rxSolve&gt;</i>)</a></code> <code><a href="plot.rxSolve.html">plot(<i>&lt;rxSolveConfint1&gt;</i>)</a></code> <code><a href="plot.rxSolve.html">plot(<i>&lt;rxSolveConfint2&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot rxode2 objects</dd>
       </dl></div><div class="section level2">
-      <h2 id="special-functions-for-rxode-">Special Functions for rxode2<a class="anchor" aria-label="anchor" href="#special-functions-for-rxode-"></a></h2>
+      <h2 id="special-mathematical-functions">Special Mathematical Functions<a class="anchor" aria-label="anchor" href="#special-mathematical-functions"></a></h2>
 
-
+      <div class="section-desc"><p>Transcendental, link, and other special functions used in models.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -787,13 +715,6 @@
 
         </dt>
         <dd>Error function</dd>
-
-        <dt>
-
-          <code><a href="forderForceBase.html">forderForceBase()</a></code>
-
-        </dt>
-        <dd>Force using base order for rxode2 radix sorting</dd>
 
         <dt>
 
@@ -874,14 +795,14 @@
 
         <dt>
 
-          <code><a href="rxRmvn.html">rxRmvn()</a></code>
+          <code><a href="uppergamma.html">uppergamma()</a></code>
 
         </dt>
-        <dd>Simulate from a (truncated) multivariate normal</dd>
+        <dd>uppergamma: upper incomplete gamma function</dd>
       </dl></div><div class="section level2">
-      <h2 id="log-likelihood-functions-supporting-generalized-likelihoods-for-focei-methods">log likelihood functions supporting generalized likelihoods for focei methods<a class="anchor" aria-label="anchor" href="#log-likelihood-functions-supporting-generalized-likelihoods-for-focei-methods"></a></h2>
+      <h2 id="log-likelihood-functions">Log-likelihood Functions<a class="anchor" aria-label="anchor" href="#log-likelihood-functions"></a></h2>
 
-
+      <div class="section-desc"><p>Log-likelihood functions supporting generalized likelihoods for FOCEi.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -993,9 +914,9 @@
         </dt>
         <dd>log likelihood and derivatives for Weibull distribution</dd>
       </dl></div><div class="section level2">
-      <h2 id="parallel-processing-support-commands">Parallel processing support commands<a class="anchor" aria-label="anchor" href="#parallel-processing-support-commands"></a></h2>
+      <h2 id="neural-network-activation-functions">Neural Network Activation Functions<a class="anchor" aria-label="anchor" href="#neural-network-activation-functions"></a></h2>
 
-
+      <div class="section-desc"><p>Activation functions and their derivatives for use in neural-network PK/PD models.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -1004,14 +925,318 @@
 
       <dl><dt>
 
+          <code><a href="ELU.html">ELU()</a></code>
+
+        </dt>
+        <dd>Exponential Linear Unit (ELU) Activation Function</dd>
+
+        <dt>
+
+          <code><a href="GELU.html">GELU()</a></code>
+
+        </dt>
+        <dd>GELU activation function</dd>
+
+        <dt>
+
+          <code><a href="PReLU.html">PReLU()</a></code>
+
+        </dt>
+        <dd>Parametric ReLU Activation Function</dd>
+
+        <dt>
+
+          <code><a href="ReLU.html">ReLU()</a></code>
+
+        </dt>
+        <dd>Rectified Linear Unit (ReLU) Activation Function</dd>
+
+        <dt>
+
+          <code><a href="SELU.html">SELU()</a></code>
+
+        </dt>
+        <dd>Scaled Exponential Linear Unit (SELU) Activation Function</dd>
+
+        <dt>
+
+          <code><a href="Swish.html">Swish()</a></code>
+
+        </dt>
+        <dd>Switch Activation Function</dd>
+
+        <dt>
+
+          <code><a href="dELU.html">dELU()</a></code> <code><a href="dELU.html">d2ELU()</a></code> <code><a href="dELU.html">d2aELU()</a></code> <code><a href="dELU.html">dELUa()</a></code> <code><a href="dELU.html">d2ELUa()</a></code>
+
+        </dt>
+        <dd>Derivatives of the Exponential Linear Unit (ELU) Activation Function</dd>
+
+        <dt>
+
+          <code><a href="dGELU.html">dGELU()</a></code> <code><a href="dGELU.html">d2GELU()</a></code> <code><a href="dGELU.html">d3GELU()</a></code> <code><a href="dGELU.html">d4GELU()</a></code>
+
+        </dt>
+        <dd>Derivatives of GELU</dd>
+
+        <dt>
+
+          <code><a href="dPReLU.html">dPReLU()</a></code> <code><a href="dPReLU.html">dPReLUa()</a></code> <code><a href="dPReLU.html">dPReLUa1()</a></code>
+
+        </dt>
+        <dd>Derivatives Parametric ReLU Activation Function</dd>
+
+        <dt>
+
+          <code><a href="dReLU.html">dReLU()</a></code>
+
+        </dt>
+        <dd>Derivative of the Rectified Linear Unit (ReLU) Activation Function</dd>
+
+        <dt>
+
+          <code><a href="dSELU.html">dSELU()</a></code>
+
+        </dt>
+        <dd>Derivative of the Scaled Exponential Linear Unit (SELU) Activation Function</dd>
+
+        <dt>
+
+          <code><a href="dSwish.html">dSwish()</a></code>
+
+        </dt>
+        <dd>Derivative of the Swish Activation Function</dd>
+
+        <dt>
+
+          <code><a href="dlReLU.html">dlReLU()</a></code>
+
+        </dt>
+        <dd>Derivative of Leaky ReLU activation function</dd>
+
+        <dt>
+
+          <code><a href="dsoftplus.html">dsoftplus()</a></code> <code><a href="dsoftplus.html">d2softplus()</a></code> <code><a href="dsoftplus.html">d3softplus()</a></code> <code><a href="dsoftplus.html">d4softplus()</a></code>
+
+        </dt>
+        <dd>Default Softplus Activation Function</dd>
+
+        <dt>
+
+          <code><a href="lReLU.html">lReLU()</a></code>
+
+        </dt>
+        <dd>Leaky ReLU activation function</dd>
+
+        <dt>
+
+          <code><a href="softplus.html">softplus()</a></code>
+
+        </dt>
+        <dd>Softplus Activation Function</dd>
+      </dl></div><div class="section level2">
+      <h2 id="performance-optimization">Performance &amp; Optimization<a class="anchor" aria-label="anchor" href="#performance-optimization"></a></h2>
+
+      <div class="section-desc"><p>Speed up ODE solving and expression evaluation.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rxOptExpr.html">rxOptExpr()</a></code>
+
+        </dt>
+        <dd>Optimize rxode2 for computer evaluation</dd>
+
+        <dt>
+
+          <code><a href="rxSumProdModel.html">rxSumProdModel()</a></code>
+
+        </dt>
+        <dd>Recast model in terms of sum/prod</dd>
+
+        <dt>
+
+          <code><a href="rxSetProd.html">rxSetProd()</a></code>
+
+        </dt>
+        <dd>Defunct setting of product</dd>
+
+        <dt>
+
+          <code><a href="rxSetSum.html">rxSetSum()</a></code>
+
+        </dt>
+        <dd>Defunct setting of sum</dd>
+
+        <dt>
+
           <code><a href="getRxThreads.html">getRxThreads()</a></code> <code><a href="getRxThreads.html">setRxThreads()</a></code> <code><a href="getRxThreads.html">rxCores()</a></code>
 
         </dt>
         <dd>Get/Set the number of threads that rxode2 uses</dd>
       </dl></div><div class="section level2">
-      <h2 id="rxode-utility-functions">rxode2 utility functions<a class="anchor" aria-label="anchor" href="#rxode-utility-functions"></a></h2>
+      <h2 id="user-defined-functions">User-Defined Functions<a class="anchor" aria-label="anchor" href="#user-defined-functions"></a></h2>
+
+      <div class="section-desc"><p>Register and control user-defined C functions inside rxode2 models.</p></div>
+
+      <dl></dl></div><div class="section level2">
 
 
+
+
+      <dl><dt>
+
+          <code><a href="linMod.html">linMod()</a></code> <code><a href="linMod.html">linMod0()</a></code> <code><a href="linMod.html">linModB()</a></code> <code><a href="linMod.html">linModB0()</a></code> <code><a href="linMod.html">linModA()</a></code> <code><a href="linMod.html">linModA0()</a></code> <code><a href="linMod.html">linModD()</a></code> <code><a href="linMod.html">linModD0()</a></code> <code><a href="linMod.html">linModM()</a></code> <code><a href="linMod.html">linModM0()</a></code>
+
+        </dt>
+        <dd>Linear model to replace in rxode2 ui model</dd>
+
+        <dt>
+
+          <code><a href="mix.html">mix()</a></code>
+
+        </dt>
+        <dd>Specify a mixture model of variables</dd>
+
+        <dt>
+
+          <code><a href="rxIntToBase.html">rxIntToBase()</a></code>
+
+        </dt>
+        <dd>Convert a positive base</dd>
+
+        <dt>
+
+          <code><a href="rxIntToLetter.html">rxIntToLetter()</a></code>
+
+        </dt>
+        <dd>Convert a positive integer to a letter series</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiControl.html">rxUdfUiControl()</a></code>
+
+        </dt>
+        <dd>Return the control that is being processed or setup control for processing</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiData.html">rxUdfUiData()</a></code>
+
+        </dt>
+        <dd>Return the data.frame that is being processed or setup data.frame for processing</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiEst.html">rxUdfUiEst()</a></code>
+
+        </dt>
+        <dd>Return the current estimation method for the UI processing</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiIniDf.html">rxUdfUiIniDf()</a></code>
+
+        </dt>
+        <dd>Get the rxode2 iniDf of the current UI being processed (or return NULL)</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiIniLhs.html">rxUdfUiIniLhs()</a></code>
+
+        </dt>
+        <dd>Return the lhs parsed language expression</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiMv.html">rxUdfUiMv()</a></code>
+
+        </dt>
+        <dd>Return the model variables that is being processed or setup model variables for processing</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiNum.html">rxUdfUiNum()</a></code>
+
+        </dt>
+        <dd>This gives the current number in the ui of the particular function being called.</dd>
+
+        <dt>
+
+          <code><a href="rxUdfUiParsing.html">rxUdfUiParsing()</a></code>
+
+        </dt>
+        <dd>Returns if the current ui function is being parsed</dd>
+      </dl></div><div class="section level2">
+      <h2 id="c-derivatives-extensions">C Derivatives &amp; Extensions<a class="anchor" aria-label="anchor" href="#c-derivatives-extensions"></a></h2>
+
+      <div class="section-desc"><p>Add or modify rxode2 C-based functions and their derivatives.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rxD.html">rxD()</a></code>
+
+        </dt>
+        <dd>Add to rxode2's derivative tables</dd>
+      </dl></div><div class="section level2">
+      <h2 id="interactive-exploration">Interactive Exploration<a class="anchor" aria-label="anchor" href="#interactive-exploration"></a></h2>
+
+      <div class="section-desc"><p>Shiny apps for model exploration.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rxShiny.html">rxShiny()</a></code>
+
+        </dt>
+        <dd>Use Shiny to help develop an rxode2 model</dd>
+
+        <dt>
+
+          <code><a href="genShinyApp.template.html">genShinyApp.template()</a></code> <code><a href="genShinyApp.template.html">write.template.server()</a></code> <code><a href="genShinyApp.template.html">write.template.ui()</a></code>
+
+        </dt>
+        <dd>Generate an example (template) of a dosing regimen shiny app</dd>
+      </dl></div><div class="section level2">
+      <h2 id="package-development">Package Development<a class="anchor" aria-label="anchor" href="#package-development"></a></h2>
+
+      <div class="section-desc"><p>Bundle compiled rxode2 models into R packages.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rxUse.html">rxUse()</a></code>
+
+        </dt>
+        <dd>Use model object in your package</dd>
+
+        <dt>
+
+          <code><a href="rxPkg.html">rxPkg()</a></code>
+
+        </dt>
+        <dd>Creates a package from compiled rxode2 models</dd>
+      </dl></div><div class="section level2">
+      <h2 id="utility-functions">Utility Functions<a class="anchor" aria-label="anchor" href="#utility-functions"></a></h2>
+
+      <div class="section-desc"><p>Miscellaneous helpers for working with rxode2 objects.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -1118,14 +1343,14 @@
 
         <dt>
 
-          <code><a href="uppergamma.html">uppergamma()</a></code>
+          <code><a href="forderForceBase.html">forderForceBase()</a></code>
 
         </dt>
-        <dd>uppergamma: upper incomplete gamma function</dd>
+        <dd>Force using base order for rxode2 radix sorting</dd>
       </dl></div><div class="section level2">
-      <h2 id="user-functions">User functions<a class="anchor" aria-label="anchor" href="#user-functions"></a></h2>
+      <h2 id="testing-validation">Testing &amp; Validation<a class="anchor" aria-label="anchor" href="#testing-validation"></a></h2>
 
-
+      <div class="section-desc"><p>Run unit tests and validate rxode2 installations.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -1134,87 +1359,26 @@
 
       <dl><dt>
 
-          <code><a href="linMod.html">linMod()</a></code> <code><a href="linMod.html">linMod0()</a></code> <code><a href="linMod.html">linModB()</a></code> <code><a href="linMod.html">linModB0()</a></code> <code><a href="linMod.html">linModA()</a></code> <code><a href="linMod.html">linModA0()</a></code> <code><a href="linMod.html">linModD()</a></code> <code><a href="linMod.html">linModD0()</a></code> <code><a href="linMod.html">linModM()</a></code> <code><a href="linMod.html">linModM0()</a></code>
+          <code><a href="rxValidate.html">rxValidate()</a></code> <code><a href="rxValidate.html">rxTest()</a></code>
 
         </dt>
-        <dd>Linear model to replace in rxode2 ui model</dd>
+        <dd>Validate rxode2 This allows easy validation/qualification of nlmixr by running the testing suite on your system.</dd>
+      </dl></div><div class="section level2">
+      <h2 id="datasets">Datasets<a class="anchor" aria-label="anchor" href="#datasets"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>Example datasets bundled with rxode2.</p></div>
 
-          <code><a href="mix.html">mix()</a></code>
+      <dl></dl></div><div class="section level2">
 
-        </dt>
-        <dd>Specify a mixture model of variables</dd>
 
-        <dt>
 
-          <code><a href="rxIntToBase.html">rxIntToBase()</a></code>
 
-        </dt>
-        <dd>Convert a positive base</dd>
+      <dl><dt>
 
-        <dt>
-
-          <code><a href="rxIntToLetter.html">rxIntToLetter()</a></code>
+          <code><a href="rxResidualError.html">rxResidualError</a></code>
 
         </dt>
-        <dd>Convert a positive integer to a letter series</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiControl.html">rxUdfUiControl()</a></code>
-
-        </dt>
-        <dd>Return the control that is being processed or setup control for processing</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiData.html">rxUdfUiData()</a></code>
-
-        </dt>
-        <dd>Return the data.frame that is being processed or setup data.frame for processing</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiEst.html">rxUdfUiEst()</a></code>
-
-        </dt>
-        <dd>Return the current estimation method for the UI processing</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiIniDf.html">rxUdfUiIniDf()</a></code>
-
-        </dt>
-        <dd>Get the rxode2 iniDf of the current UI being processed (or return NULL)</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiIniLhs.html">rxUdfUiIniLhs()</a></code>
-
-        </dt>
-        <dd>Return the lhs parsed language expression</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiMv.html">rxUdfUiMv()</a></code>
-
-        </dt>
-        <dd>Return the model variables that is being processed or setup model variables for processing</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiNum.html">rxUdfUiNum()</a></code>
-
-        </dt>
-        <dd>This gives the current number in the ui of the particular function being called.</dd>
-
-        <dt>
-
-          <code><a href="rxUdfUiParsing.html">rxUdfUiParsing()</a></code>
-
-        </dt>
-        <dd>Returns if the current ui function is being parsed</dd>
+        <dd>A description of Rode2 supported residual errors</dd>
       </dl></div><div class="section level2">
       <h2 id="internal-functions">Internal Functions<a class="anchor" aria-label="anchor" href="#internal-functions"></a></h2>
 
@@ -1651,143 +1815,6 @@
 
         </dt>
         <dd>Print expanded information about the rxode2 object.</dd>
-      </dl></div><div class="section level2">
-      <h2 id="neural-network-activation-functions">Neural Network Activation functions<a class="anchor" aria-label="anchor" href="#neural-network-activation-functions"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="ELU.html">ELU()</a></code>
-
-        </dt>
-        <dd>Exponential Linear Unit (ELU) Activation Function</dd>
-
-        <dt>
-
-          <code><a href="GELU.html">GELU()</a></code>
-
-        </dt>
-        <dd>GELU activation function</dd>
-
-        <dt>
-
-          <code><a href="PReLU.html">PReLU()</a></code>
-
-        </dt>
-        <dd>Parametric ReLU Activation Function</dd>
-
-        <dt>
-
-          <code><a href="ReLU.html">ReLU()</a></code>
-
-        </dt>
-        <dd>Rectified Linear Unit (ReLU) Activation Function</dd>
-
-        <dt>
-
-          <code><a href="SELU.html">SELU()</a></code>
-
-        </dt>
-        <dd>Scaled Exponential Linear Unit (SELU) Activation Function</dd>
-
-        <dt>
-
-          <code><a href="Swish.html">Swish()</a></code>
-
-        </dt>
-        <dd>Switch Activation Function</dd>
-
-        <dt>
-
-          <code><a href="dELU.html">dELU()</a></code> <code><a href="dELU.html">d2ELU()</a></code> <code><a href="dELU.html">d2aELU()</a></code> <code><a href="dELU.html">dELUa()</a></code> <code><a href="dELU.html">d2ELUa()</a></code>
-
-        </dt>
-        <dd>Derivatives of the Exponential Linear Unit (ELU) Activation Function</dd>
-
-        <dt>
-
-          <code><a href="dGELU.html">dGELU()</a></code> <code><a href="dGELU.html">d2GELU()</a></code> <code><a href="dGELU.html">d3GELU()</a></code> <code><a href="dGELU.html">d4GELU()</a></code>
-
-        </dt>
-        <dd>Derivatives of GELU</dd>
-
-        <dt>
-
-          <code><a href="dPReLU.html">dPReLU()</a></code> <code><a href="dPReLU.html">dPReLUa()</a></code> <code><a href="dPReLU.html">dPReLUa1()</a></code>
-
-        </dt>
-        <dd>Derivatives Parametric ReLU Activation Function</dd>
-
-        <dt>
-
-          <code><a href="dReLU.html">dReLU()</a></code>
-
-        </dt>
-        <dd>Derivative of the Rectified Linear Unit (ReLU) Activation Function</dd>
-
-        <dt>
-
-          <code><a href="dSELU.html">dSELU()</a></code>
-
-        </dt>
-        <dd>Derivative of the Scaled Exponential Linear Unit (SELU) Activation Function</dd>
-
-        <dt>
-
-          <code><a href="dSwish.html">dSwish()</a></code>
-
-        </dt>
-        <dd>Derivative of the Swish Activation Function</dd>
-
-        <dt>
-
-          <code><a href="dlReLU.html">dlReLU()</a></code>
-
-        </dt>
-        <dd>Derivative of Leaky ReLU activation function</dd>
-
-        <dt>
-
-          <code><a href="dsoftplus.html">dsoftplus()</a></code> <code><a href="dsoftplus.html">d2softplus()</a></code> <code><a href="dsoftplus.html">d3softplus()</a></code> <code><a href="dsoftplus.html">d4softplus()</a></code>
-
-        </dt>
-        <dd>Default Softplus Activation Function</dd>
-
-        <dt>
-
-          <code><a href="lReLU.html">lReLU()</a></code>
-
-        </dt>
-        <dd>Leaky ReLU activation function</dd>
-
-        <dt>
-
-          <code><a href="softplus.html">softplus()</a></code>
-
-        </dt>
-        <dd>Softplus Activation Function</dd>
-      </dl></div><div class="section level2">
-      <h2 id="rxode-data-sets">Rxode2 data sets<a class="anchor" aria-label="anchor" href="#rxode-data-sets"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="rxResidualError.html">rxResidualError</a></code>
-
-        </dt>
-        <dd>A description of Rode2 supported residual errors</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

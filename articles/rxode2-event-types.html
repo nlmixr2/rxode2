@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>rxode2 Event Types • rxode2</title>
+<title>rxode2 Datasets and Event Types • rxode2</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="rxode2 Event Types">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="rxode2 Datasets and Event Types">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
@@ -36,69 +36,92 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-book"></span> Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification |&gt;</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie |&gt;</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced Features, Model Types, Technical Details</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">rxode2 model types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Chainging rxode2 compartment numbers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">rxode2 transit compartment models</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Using Shiny with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">rxode2 covariates</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff Systems and Jacobian specification</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled rxode2 models to your package</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
+<li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
-<li class="active nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-dosing-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Dosing/Events</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-dosing-events">
-<li><a class="dropdown-item" href="../articles/rxode2-datasets.html">nlmixr/rxode2 dataset overview</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-types.html">Supported Event Types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy rxode2 Event Tables</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-model-definition" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model Definition</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-model-definition">
+<li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types (linCmt, ODEs, mixed)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">rxode2 UI object reference</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Model piping with |&gt;</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">Modifying models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Changing compartment numbers</a></li>
+    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">Integrating user-defined functions</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">Package-exported rxode2 functions</a></li>
+  </ul>
+</li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-data-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Data &amp; Events</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-data-events">
+<li><a class="dropdown-item" href="../articles/rxode2-datasets.html">Dataset format and event types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy event tables (et())</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulations" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulations</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-simulations">
-<li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single Subject ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Multiple Subject rxode2 Simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Using Prior Data for ODE solving</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulation" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulation</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-simulation">
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single-subject ODE solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Population simulation (multiple subjects)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulation from observed data</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Variability and uncertainty</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA/EPS resampling</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-help" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-life-ring"></span> Help</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-help">
-<li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Running the interactive tutorials</a></li>
-    <li><a class="external-link dropdown-item" href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/pdf/PSP4-5-03.pdf">2015 CPT tutorial</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-applications" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Applications</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-applications">
+<li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-clinical-trial-sim.html">Clinical trial simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks (VPC)</a></li>
+  </ul>
+</li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-advanced" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-cogs"></span> Advanced</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-advanced">
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Adding Circadian Rythmn (time-varying covariates)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight Based Dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Simulating Multiple levels of nesting (iov, between study etc)</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../news/index.html">Changes/News</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+  </ul>
+</li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-comparisons" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Comparisons</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-comparisons">
+<li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html"><span class="fa fa-file-code-o"></span> Functions</a></li>
       </ul>
 <ul class="navbar-nav">
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-archive"></span></button>
-  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-">
-<li><a class="dropdown-item" href="https://nlmixr2.github.io/rxode2-manual/">rxode2 User Guide</a></li>
-    <li><a class="external-link dropdown-item" href="https://nlmixr2.org/">nlmixr2</a></li>
-  </ul>
-</li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2"><span class="fa fa-github"></span></a></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/releases"><span class="fa fa-download"></span></a></li>
+<li class="nav-item"><form class="form-inline" role="search">
+ <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
+</form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -111,9 +134,9 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>rxode2 Event Types</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>rxode2 Datasets and Event Types</h1>
             
-            <h4 data-toc-skip class="date">2026-04-01</h4>
+            <h4 data-toc-skip class="date">2026-04-02</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-event-types.Rmd" class="external-link"><code>vignettes/rxode2-event-types.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-types.Rmd</code></div>
@@ -124,29 +147,29 @@
 <div class="section level2">
 <h2 id="rxode2-event-tables">rxode2 event tables<a class="anchor" aria-label="anchor" href="#rxode2-event-tables"></a>
 </h2>
-<p>In general, rxode2 event tables follow NONMEM dataset convention with
-the exceptions:</p>
+<p>In general, rxode2 event tables follow NONMEM dataset conventions
+with the following exceptions and extensions:</p>
 <ul>
 <li>The compartment data item (<code>cmt</code>) can be a string/factor
-with compartment names
+with compartment names.
 <ul>
 <li>You may turn off a compartment with a negative compartment number or
-“-cmt” where cmt is the compartment name.</li>
-<li>The compartment data item (<code>cmt</code>) can still be a number,
-the number of the compartment is defined by the appearance of the
-compartment name in the model. This can be tedious to count, so you can
-specify compartment numbers easier by using the
+<code>"-cmt"</code> where <code>cmt</code> is the compartment name.</li>
+<li>The compartment data item (<code>cmt</code>) can still be a number;
+the number of a compartment is defined by the order of appearance of its
+name in the model. You can assign compartment numbers explicitly with
 <code>cmt(cmtName)</code> at the beginning of the model.</li>
 </ul>
 </li>
-<li>An additional column, <code>dur</code> can specify the duration of
-infusions;
+<li>An additional column <code>dur</code> can specify the duration of
+infusions:
 <ul>
-<li>Bioavailability changes will change the rate of infusion since
-<code>dur</code>/<code>amt</code> are fixed in the input data.</li>
+<li>Bioavailability changes will change the <em>rate</em> of infusion
+when <code>dur</code>/<code>amt</code> are fixed in the input data.</li>
 <li>Similarly, when specifying <code>rate</code>/<code>amt</code> for an
-infusion, the bioavailability will change the infusion duration since
-<code>rate</code>/<code>amt</code> are fixed in the input data.</li>
+infusion, bioavailability changes will alter the infusion
+<em>duration</em> since <code>rate</code>/<code>amt</code> are
+fixed.</li>
 </ul>
 </li>
 <li>Some infrequent NONMEM columns are not supported: <code>pcmt</code>,
@@ -155,23 +178,136 @@ infusion, the bioavailability will change the infusion duration since
 Other, 3: Reset, 4: Reset+Dose). Additional events are supported:
 <ul>
 <li>
-<code>evid=5</code> or replace event; This replaces the value of a
-compartment with the value specified in the <code>amt</code> column.
-This is equivalent to <code>deSolve</code>=<code>replace</code>.</li>
+<code>evid=5</code> or replace event: replaces the value of a
+compartment with the value specified in the <code>amt</code> column
+(equivalent to <code>deSolve</code> <code>replace</code>).</li>
 <li>
-<code>evid=6</code> or multiply event; This multiplies the value in
-the compartment with the value specified by the <code>amt</code> column.
-This is equivalent to <code>deSolve</code>=<code>multiply</code>.</li>
+<code>evid=6</code> or multiply event: multiplies the compartment
+value by the <code>amt</code> column (equivalent to <code>deSolve</code>
+<code>multiply</code>).</li>
 <li>
-<code>evid=7</code> or transit compartment model/phantom event. This
-puts the dose in the <code>dose()</code> function and calculates time
-since last dose <code>tad()</code> but doesn’t actually put the dose in
-the compartment. This allows the <code>transit()</code> function to
-easily apply to the compartment.</li>
+<code>evid=7</code> or transit/phantom event: puts the dose in the
+<code>dose()</code> function and calculates time since last dose
+<code>tad()</code>, but does not place the dose in the compartment. This
+allows the <code>transit()</code> function to be applied easily.</li>
 </ul>
 </li>
 </ul>
-<p>Here are the legal entries to a data table:</p>
+</div>
+<div class="section level2">
+<h2 id="dataset-column-reference">Dataset column reference<a class="anchor" aria-label="anchor" href="#dataset-column-reference"></a>
+</h2>
+<div class="section level3">
+<h3 id="columns-by-type-of-use">Columns by type of use<a class="anchor" aria-label="anchor" href="#columns-by-type-of-use"></a>
+</h3>
+<p>Data for input into <code>rxode2</code> (and <code>nlmixr2</code>) is
+similar to NONMEM data; most NONMEM-ready datasets can be used
+directly.</p>
+<div class="section level4">
+<h4 id="subject-identification">Subject identification<a class="anchor" aria-label="anchor" href="#subject-identification"></a>
+</h4>
+<table class="table">
+<thead><tr class="header">
+<th>Column</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td><code>ID</code></td>
+<td>Subject identifier — integer, character, or factor</td>
+</tr></tbody>
+</table>
+</div>
+<div class="section level4">
+<h4 id="observation-columns">Observation columns<a class="anchor" aria-label="anchor" href="#observation-columns"></a>
+</h4>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Column</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>DV</code></td>
+<td>Dependent variable (measurement)</td>
+</tr>
+<tr class="even">
+<td><code>CENS</code></td>
+<td>Censoring indicator (0 = not censored, 1 = left censored, -1 = right
+censored)</td>
+</tr>
+<tr class="odd">
+<td><code>LIMIT</code></td>
+<td>Censoring bound used with <code>CENS</code> (see below)</td>
+</tr>
+<tr class="even">
+<td><code>MDV</code></td>
+<td>Missing dependent variable indicator</td>
+</tr>
+<tr class="odd">
+<td><code>CMT</code></td>
+<td>Compartment name or number for the observation</td>
+</tr>
+<tr class="even">
+<td><code>DVID</code></td>
+<td>Dependent variable identifier for multiple endpoints</td>
+</tr>
+<tr class="odd">
+<td><code>EVID</code></td>
+<td>Event identifier</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level4">
+<h4 id="dosing-columns">Dosing columns<a class="anchor" aria-label="anchor" href="#dosing-columns"></a>
+</h4>
+<table class="table">
+<thead><tr class="header">
+<th>Column</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>AMT</code></td>
+<td>Dose amount</td>
+</tr>
+<tr class="even">
+<td><code>CMT</code></td>
+<td>Compartment name or number for the dose</td>
+</tr>
+<tr class="odd">
+<td><code>EVID</code></td>
+<td>Event identifier</td>
+</tr>
+<tr class="even">
+<td><code>ADDL</code></td>
+<td>Number of additional doses identical to this one</td>
+</tr>
+<tr class="odd">
+<td><code>II</code></td>
+<td>Inter-dose interval</td>
+</tr>
+<tr class="even">
+<td>
+<code>RATE</code> or <code>DUR</code>
+</td>
+<td>Infusion rate or duration</td>
+</tr>
+<tr class="odd">
+<td><code>SS</code></td>
+<td>Steady-state flag</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level3">
+<h3 id="complete-column-quick-reference-table">Complete column quick-reference table<a class="anchor" aria-label="anchor" href="#complete-column-quick-reference-table"></a>
+</h3>
 <table class="table">
 <colgroup>
 <col width="9%">
@@ -185,112 +321,274 @@ easily apply to the compartment.</li>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>id</td>
+<td><code>id</code></td>
 <td>Individual identifier</td>
-<td>Can be a integer, factor, character, or numeric</td>
+<td>Integer, factor, character, or numeric</td>
 </tr>
 <tr class="even">
-<td>time</td>
+<td><code>time</code></td>
 <td>Individual time</td>
-<td>Numeric for each time.</td>
+<td>Numeric</td>
 </tr>
 <tr class="odd">
-<td>amt</td>
-<td>dose amount</td>
-<td>Positive for doses zero/NA for observations</td>
+<td><code>amt</code></td>
+<td>Dose amount</td>
+<td>Positive for doses; zero/NA for observations</td>
 </tr>
 <tr class="even">
-<td>rate</td>
-<td>infusion rate</td>
-<td>When specified the infusion duration will be dur=amt/rate</td>
+<td><code>rate</code></td>
+<td>Infusion rate</td>
+<td>Duration = <code>amt/rate</code>; <code>rate=-1</code>: rate
+modeled; <code>rate=-2</code>: duration modeled</td>
 </tr>
 <tr class="odd">
-<td></td>
-<td></td>
-<td>rate = -1, rate modeled; rate = -2, duration modeled</td>
+<td><code>dur</code></td>
+<td>Infusion duration</td>
+<td>Rate = <code>amt/dur</code>
+</td>
 </tr>
 <tr class="even">
-<td>dur</td>
-<td>infusion duration</td>
-<td>When specified the infusion rate will be rate = amt/dur</td>
+<td><code>evid</code></td>
+<td>Event ID</td>
+<td>0=Obs; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace;
+6=Multiply; 7=Transit</td>
 </tr>
 <tr class="odd">
-<td>evid</td>
-<td>event ID</td>
-<td>0=Observation; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace;
-6=Multiply;7=Transit</td>
-</tr>
-<tr class="even">
-<td>cmt</td>
+<td><code>cmt</code></td>
 <td>Compartment</td>
-<td>Represents compartment #/name for dose/observation</td>
-</tr>
-<tr class="odd">
-<td>ss</td>
-<td>Steady State Flag</td>
-<td>0 = non-steady-state; 1=steady state; 2=steady state +prior
-states</td>
+<td>Name or number; prefix <code>-</code> to turn off</td>
 </tr>
 <tr class="even">
-<td>ii</td>
-<td>Inter-dose Interval</td>
-<td>Time between doses.</td>
+<td><code>ss</code></td>
+<td>Steady-state flag</td>
+<td>0=non-SS; 1=SS; 2=SS + keep prior states</td>
 </tr>
 <tr class="odd">
-<td>addl</td>
-<td># of additional doses</td>
-<td>Number of doses like the current dose.</td>
+<td><code>ii</code></td>
+<td>Inter-dose interval</td>
+<td>Time between doses</td>
+</tr>
+<tr class="even">
+<td><code>addl</code></td>
+<td>Additional doses</td>
+<td>Number of doses identical to this one</td>
+</tr>
+<tr class="odd">
+<td><code>dvid</code></td>
+<td>DV identifier</td>
+<td>Identifies which endpoint an observation belongs to</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level3">
+<h3 id="per-column-details">Per-column details<a class="anchor" aria-label="anchor" href="#per-column-details"></a>
+</h3>
+<div class="section level4">
+<h4 id="amt-column">
+<code>AMT</code> column<a class="anchor" aria-label="anchor" href="#amt-column"></a>
+</h4>
+<p>The <code>AMT</code> column defines the amount of a dose administered
+to <code>CMT</code>. For observation rows it should be <code>0</code> or
+<code>NA</code>. For zero-order infusions the rate or duration is set
+via <code>RATE</code> or <code>DUR</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="cens-limit-columns">
+<code>CENS</code> / <code>LIMIT</code> columns<a class="anchor" aria-label="anchor" href="#cens-limit-columns"></a>
+</h4>
+<p><code>CENS</code> indicates whether the observation in
+<code>DV</code> is censored:</p>
+<ul>
+<li>
+<code>CENS = 0</code>: not censored; <code>LIMIT</code> is
+ignored.</li>
+<li>
+<code>CENS = 1</code>: left censored (e.g., below the limit of
+quantification); the true value lies in (<code>LIMIT</code>,
+<code>DV</code>).</li>
+<li>
+<code>CENS = -1</code>: right censored (above limit of
+quantification); the true value lies in (<code>DV</code>,
+<code>LIMIT</code>).</li>
+</ul>
+<p><code>rxode2</code> stores these values so that <code>nlmixr2</code>
+can use them in likelihood calculations.</p>
+</div>
+<div class="section level4">
+<h4 id="cmt-column">
+<code>CMT</code> column<a class="anchor" aria-label="anchor" href="#cmt-column"></a>
+</h4>
+<p><code>CMT</code> indicates the compartment where an event occurs. A
+character string or factor (the preferred form) is matched by name in
+the model. An integer is matched by the order in which compartments
+appear in the model. Prefix with <code>-</code>
+(e.g. <code>cmt="-depot"</code>) to turn off a compartment.</p>
+</div>
+<div class="section level4">
+<h4 id="dur-column">
+<code>DUR</code> column<a class="anchor" aria-label="anchor" href="#dur-column"></a>
+</h4>
+<p><code>DUR</code> defines the duration of a zero-order infusion. When
+<code>DUR</code> is specified, the infusion rate is computed as
+<code>rate = amt/dur</code>. Bioavailability changes affect the rate,
+not the duration.</p>
+</div>
+<div class="section level4">
+<h4 id="dv-column">
+<code>DV</code> column<a class="anchor" aria-label="anchor" href="#dv-column"></a>
+</h4>
+<p><code>DV</code> is the dependent variable in the observation
+compartment defined by <code>CMT</code> / <code>DVID</code>. It may be
+missing (<code>MDV=1</code>) or censored (<code>CENS≠0</code>).</p>
+</div>
+<div class="section level4">
+<h4 id="dvid-column">
+<code>DVID</code> column<a class="anchor" aria-label="anchor" href="#dvid-column"></a>
+</h4>
+<p><code>DVID</code> identifies which endpoint an observation belongs to
+in multi-endpoint models. It maps to the <code>cond</code> field in
+<code>$predDf</code> and can be specified as a name (matching the
+endpoint variable) or integer.</p>
+</div>
+<div class="section level4">
+<h4 id="evid-column">
+<code>EVID</code> column<a class="anchor" aria-label="anchor" href="#evid-column"></a>
+</h4>
+<p>The event identifier for a row of data:</p>
+<table class="table">
+<thead><tr class="header">
+<th><code>EVID</code></th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td>Observation</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>Dose</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>Other (e.g. turn off compartment)</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>Reset all compartments to initial values</td>
+</tr>
+<tr class="odd">
+<td>4</td>
+<td>Reset + dose</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>Replace compartment value with <code>amt</code>
+</td>
+</tr>
+<tr class="odd">
+<td>6</td>
+<td>Multiply compartment value by <code>amt</code>
+</td>
+</tr>
+<tr class="even">
+<td>7</td>
+<td>Transit/phantom dose (<code>dose()</code> / <code>tad()</code>
+only)</td>
+</tr>
+</tbody>
+</table>
+<p>Output-only <code>EVID</code> values (visible when
+<code>addDosing=TRUE, subsetNonmem=FALSE</code>):</p>
+<table class="table">
+<thead><tr class="header">
+<th><code>EVID</code></th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>-1</td>
+<td>Modeled-rate infusion end (<code>rate=-1</code>)</td>
+</tr>
+<tr class="even">
+<td>-2</td>
+<td>Modeled-duration infusion end (<code>rate=-2</code>)</td>
+</tr>
+<tr class="odd">
+<td>-10</td>
+<td>Rate-specified infusion end (<code>rate&gt;0</code>)</td>
+</tr>
+<tr class="even">
+<td>-20</td>
+<td>Duration-specified infusion end (<code>dur&gt;0</code>)</td>
+</tr>
+<tr class="odd">
+<td>101, 102, …</td>
+<td>Modeled times 1, 2, … (<code>mtime</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>addDosing=NA</code> to see classic <code>EVID</code>
+equivalents instead.</p>
+</div>
+<div class="section level4">
+<h4 id="id-column">
+<code>ID</code> column<a class="anchor" aria-label="anchor" href="#id-column"></a>
+</h4>
+<p><code>ID</code> separates individuals (persons, animals, etc.). The
+solver re-initialises the numerical integrator and samples new random
+effects with each new <code>ID</code>. It may be an integer, character,
+or factor.</p>
+</div>
+<div class="section level4">
+<h4 id="rate-column">
+<code>RATE</code> column<a class="anchor" aria-label="anchor" href="#rate-column"></a>
+</h4>
+<p><code>RATE</code> specifies a zero-order infusion rate. The infusion
+duration is computed as <code>dur = amt/rate</code>. Special values:</p>
+<ul>
+<li>
+<code>rate = -1</code>: rate is modeled (set via
+<code>rate(cmt)</code> in the model block); equivalent to NONMEM
+<code>RATE=-1</code>.</li>
+<li>
+<code>rate = -2</code>: duration is modeled (set via
+<code>dur(cmt)</code> in the model block); equivalent to NONMEM
+<code>RATE=-2</code>.</li>
+</ul>
+<p>When <code>RATE</code> is fixed in the dataset, a bioavailability
+change alters the infusion <em>duration</em>. When <code>DUR</code> is
+fixed instead, a bioavailability change alters the infusion
+<em>rate</em>.</p>
 <p>Other notes:</p>
 <ul>
-<li>The <code>evid</code> can be the classic RxODE (described <a href="rxode2-events-classic.html">here</a>) or the
-<code>NONMEM</code>-style <code>evid</code> described above.</li>
 <li>
 <code>NONMEM</code>’s <code>DV</code> is not required;
-<code>rxode2</code> is a ODE solving framework.</li>
+<code>rxode2</code> is an ODE solving framework and <code>DV</code> is
+only used by <code>nlmixr2</code>.</li>
 <li>
-<code>NONMEM</code>’s <code>MDV</code> is not required, since it is
-captured in <code>EVID</code>.</li>
-<li>Instead of <code>NONMEM</code>-compatible data, it can accept
-<code>deSolve</code> compatible data-frames.</li>
+<code>NONMEM</code>’s <code>MDV</code> is not required; missingness
+is captured in <code>EVID</code>.</li>
+<li>Instead of NONMEM-compatible data, <code>deSolve</code>-compatible
+data frames are also accepted.</li>
+<li>The classic RxODE <code>EVID</code> encoding is also supported (see
+<a href="rxode2-events-classic.html">Classic rxode2 Events</a>).</li>
 </ul>
-<p>When returning the <code>rxode2</code> solved data-set there are a
-few additional event ids (<code>EVID</code>) that you may see depending
-on the solving options:</p>
-<ul>
-<li>
-<code>EVID = -1</code> is when a modeled rate ends (corresponds to
-<code>rate = -1</code>)</li>
-<li>
-<code>EVID = -2</code> is when a modeled duration ends (corresponds
-to <code>rate=-2</code>)</li>
-<li>
-<code>EVID = -10</code> when a rate specified zero-order infusion
-ends (corresponds to <code>rate &gt; 0</code>)</li>
-<li>
-<code>EVID = -20</code> when a duration specified zero-order
-infusion ends (corresponds to <code>dur &gt; 0</code>)</li>
-<li>
-<code>EVID = 101, 102, 103,...</code> These correspond to the
-<code>1</code>, <code>2</code>, <code>3</code>, … modeled time
-(<code>mtime</code>).</li>
-</ul>
-<p>These can only be accessed when solving with the option combination
-<code>addDosing=TRUE</code> and <code>subsetNonmem=FALSE</code>. If you
-want to see the classic <code>EVID</code> equivalents you can use
-<code>addDosing=NA</code>.</p>
-<p>To illustrate the event types we will use the model from the original
-<code>rxode2</code> tutorial.</p>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="event-type-examples">Event type examples<a class="anchor" aria-label="anchor" href="#event-type-examples"></a>
+</h2>
+<p>To illustrate each event type, the following model from the original
+<code>rxode2</code> tutorial is used throughout:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; rxode2 5.0.2 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## Model from rxode2 tutorial</span></span>
-<span></span>
-<span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">KA</span>   <span class="op">&lt;-</span> <span class="fl">2.94E-01</span></span>
 <span>    <span class="va">CL</span>   <span class="op">&lt;-</span> <span class="fl">1.86E+01</span></span>
@@ -300,21 +598,21 @@ want to see the classic <code>EVID</code> equivalents you can use
 <span>    <span class="va">Kin</span>  <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span>    <span class="va">Kout</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span>    <span class="va">EC50</span> <span class="op">&lt;-</span> <span class="fl">200</span></span>
-<span>    <span class="co">## Added modeled bioavaiblity, duration and rate</span></span>
-<span>    <span class="va">fdepot</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span>    <span class="va">durDepot</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
+<span>    <span class="co">## Modeled bioavailability, duration and rate</span></span>
+<span>    <span class="va">fdepot</span>    <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">durDepot</span>  <span class="op">&lt;-</span> <span class="fl">8</span></span>
 <span>    <span class="va">rateDepot</span> <span class="op">&lt;-</span> <span class="fl">1250</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
 <span>    <span class="va">C3</span> <span class="op">&lt;-</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span></span>
-<span>    <span class="fu">f</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">fdepot</span></span>
-<span>    <span class="fu">dur</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">durDepot</span></span>
+<span>    <span class="fu">f</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>    <span class="op">&lt;-</span> <span class="va">fdepot</span></span>
+<span>    <span class="fu">dur</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">durDepot</span></span>
 <span>    <span class="fu">rate</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">rateDepot</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span></span>
 <span>    <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -322,12 +620,11 @@ want to see the classic <code>EVID</code> equivalents you can use
 <div class="section level2">
 <h2 id="bolusadditive-doses">Bolus/Additive Doses<a class="anchor" aria-label="anchor" href="#bolusadditive-doses"></a>
 </h2>
-<p>A bolus dose is the default type of dose in <code>rxode2</code> and
-only requires the <code>amt</code>/<code>dose</code>. Note that this
-uses the convenience function <code><a href="../reference/et.html">et()</a></code> described in the <a href="rxode2-event-table.html">rxode2 event tables</a></p>
+<p>A bolus dose is the default dose type and only requires
+<code>amt</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>,until<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span></span></code></pre></div>
@@ -360,23 +657,22 @@ uses the convenience function <code><a href="../reference/et.html">et()</a></cod
 <div class="section level2">
 <h2 id="infusion-doses">Infusion Doses<a class="anchor" aria-label="anchor" href="#infusion-doses"></a>
 </h2>
-<p>There are a few different type of infusions that <code>rxode2</code>
-supports:</p>
+<p><code>rxode2</code> supports several infusion types:</p>
 <ul>
-<li>Constant Rate Infusion (<code>rate</code>)</li>
-<li>Constant Duration Infusion (<code>dur</code>)</li>
-<li>Estimated Rate of Infusion</li>
-<li>Estimated Duration of Infusion</li>
+<li>Constant rate infusion (<code>rate</code>)</li>
+<li>Constant duration infusion (<code>dur</code>)</li>
+<li>Estimated (modeled) rate of infusion</li>
+<li>Estimated (modeled) duration of infusion</li>
 </ul>
 <div class="section level3">
-<h3 id="constant-infusion-in-terms-of-duration-and-rate">Constant Infusion (in terms of duration and rate)<a class="anchor" aria-label="anchor" href="#constant-infusion-in-terms-of-duration-and-rate"></a>
+<h3 id="constant-infusion-specified-by-duration-or-rate">Constant infusion specified by duration or rate<a class="anchor" aria-label="anchor" href="#constant-infusion-specified-by-duration-or-rate"></a>
 </h3>
-<p>The next type of event is an infusion; There are two ways to specify
-an infusion; The first is the <code>dur</code> keyword.</p>
-<p>An example of this is:</p>
+<div class="section level4">
+<h4 id="using-dur">Using <code>dur</code><a class="anchor" aria-label="anchor" href="#using-dur"></a>
+</h4>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>,until<span class="op">=</span><span class="fl">24</span>, dur<span class="op">=</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, dur<span class="op">=</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span></span></code></pre></div>
@@ -405,10 +701,13 @@ an infusion; The first is the <code>dur</code> keyword.</p>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="700"></p>
-<p>It can be also specified by the <code>rate</code> component:</p>
+</div>
+<div class="section level4">
+<h4 id="using-rate">Using <code>rate</code><a class="anchor" aria-label="anchor" href="#using-rate"></a>
+</h4>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>,until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span></span></code></pre></div>
@@ -437,65 +736,52 @@ an infusion; The first is the <code>dur</code> keyword.</p>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="700"></p>
-<p>These are the same with the exception of how bioavailability changes
-the infusion.</p>
-<p>In the case of modeling <code>rate</code>, a bioavailability
-decrease, decreases the infusion duration, as in NONMEM. For
-example:</p>
+<p>The two specifications produce the same nominal infusion. The
+difference appears when bioavailability changes.</p>
+<p>When <code>rate</code> is fixed in the event table, a bioavailability
+decrease shortens the infusion <em>duration</em> (as in NONMEM):</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">0.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">0.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="700"></p>
-<p>Similarly increasing the bioavailability increases the infusion
-duration.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">1.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="700"></p>
-<p>The rationale for this behavior is that the <code>rate</code> and
-<code>amt</code> are specified by the event table, so the only thing
-that can change with a bioavailability increase is the duration of the
-infusion.</p>
-<p>If you specify the <code>amt</code> and <code>dur</code> components
-in the event table, bioavailability changes affect the <code>rate</code>
-of infusion.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">1.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-12-2.png" class="r-plt" alt="" width="700"></p>
+<p>When <code>dur</code> is fixed instead, a bioavailability change
+alters the infusion <em>rate</em>:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>,until<span class="op">=</span><span class="fl">24</span>, dur<span class="op">=</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>You can see the side-by-side comparison of bioavailability changes
-affecting <code>rate</code> instead of duration with these records in
-the following plots:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, dur<span class="op">=</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">1.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">0.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span><span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## Use patchwork syntax to combine plots</span></span>
-<span><span class="va">p1</span> <span class="op">*</span> <span class="va">p2</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="700"></p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">p1</span> <span class="op">*</span> <span class="va">p2</span></span></code></pre></div>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="700"></p>
+</div>
 </div>
 <div class="section level3">
-<h3 id="modeled-rate-and-duration-of-infusion">Modeled Rate and Duration of Infusion<a class="anchor" aria-label="anchor" href="#modeled-rate-and-duration-of-infusion"></a>
+<h3 id="modeled-rate-and-duration-of-infusion">Modeled rate and duration of infusion<a class="anchor" aria-label="anchor" href="#modeled-rate-and-duration-of-infusion"></a>
 </h3>
-<p>You can model the duration, which is equivalent to NONMEM’s
-<code>rate=-2</code>.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<p>Model the infusion duration (<code>rate=-2</code>, equivalent to
+NONMEM <code>RATE=-2</code>):</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>,until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="op">-</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="op">-</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span></span></code></pre></div>
@@ -518,18 +804,16 @@ the following plots:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>durDepot<span class="op">=</span><span class="fl">7</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>durDepot<span class="op">=</span><span class="fl">7</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="700"></p>
-<p>Similarly, you may also model rate. This is equivalent to NONMEM’s
-<code>rate=-1</code> and is how <code>rxode2</code>’s event table
-specifies the data item as well.</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="700"></p>
+<p>Model the infusion rate (<code>rate=-1</code>, equivalent to NONMEM
+<code>RATE=-1</code>):</p>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>,until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="op">-</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="op">-</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span></span></code></pre></div>
@@ -552,20 +836,19 @@ specifies the data item as well.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rateDepot<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rateDepot<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="steady-state">Steady State<a class="anchor" aria-label="anchor" href="#steady-state"></a>
 </h2>
-<p>These doses are solved until a steady state is reached with a
-constant inter-dose interval.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<p>Steady-state doses are solved until a constant inter-dose interval
+produces a repeating cycle.</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, ss<span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -589,24 +872,22 @@ constant inter-dose interval.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span>    <span style="color: #BB0000;">NA</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span>    <span style="color: #BB0000;">NA</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="700"></p>
 <div class="section level3">
-<h3 id="steady-state-for-complex-dosing">Steady state for complex dosing<a class="anchor" aria-label="anchor" href="#steady-state-for-complex-dosing"></a>
+<h3 id="steady-state-for-complex-dosing-ss2">Steady state for complex dosing (<code>ss=2</code>)<a class="anchor" aria-label="anchor" href="#steady-state-for-complex-dosing-ss2"></a>
 </h3>
-<p>By using the <code>ss=2</code> flag, you can use the
-super-positioning principle in linear kinetics to get steady state
-nonstandard dosing (i.e. morning 100 mg vs evening 150 mg). This is done
-by:</p>
+<p><code>ss=2</code> uses superposition to achieve steady state for
+non-uniform dosing regimens (e.g. morning 100 mg vs evening 150 mg):</p>
 <ul>
-<li>Saving all the state values</li>
-<li>Resetting all the states and solving the system to steady state</li>
-<li>Adding back all the prior state values</li>
+<li>All state values are saved.</li>
+<li>States are reset and solved to steady state.</li>
+<li>Saved state values are added back.</li>
 </ul>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">24</span>, ss<span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">12</span>, amt<span class="op">=</span><span class="fl">15000</span>, ii<span class="op">=</span><span class="fl">24</span>, ss<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -616,54 +897,41 @@ by:</p>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>,maxsteps<span class="op">=</span><span class="fl">10000</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"rect"</span>, xmin<span class="op">=</span><span class="fl">0</span>, xmax<span class="op">=</span><span class="fl">24</span>, ymin<span class="op">=</span><span class="op">-</span><span class="cn">Inf</span>, ymax<span class="op">=</span><span class="cn">Inf</span>,</span>
-<span>           alpha<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"text"</span>, x<span class="op">=</span><span class="fl">12.5</span>, y<span class="op">=</span><span class="fl">7</span>,</span>
-<span>           label<span class="op">=</span><span class="st">"Initial Steady State Period"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"text"</span>, x<span class="op">=</span><span class="fl">44</span>,   y<span class="op">=</span><span class="fl">7</span>,</span>
-<span>           label<span class="op">=</span><span class="st">"Steady State AM/PM dosing"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, maxsteps<span class="op">=</span><span class="fl">10000</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"rect"</span>, xmin<span class="op">=</span><span class="fl">0</span>, xmax<span class="op">=</span><span class="fl">24</span>, ymin<span class="op">=</span><span class="op">-</span><span class="cn">Inf</span>, ymax<span class="op">=</span><span class="cn">Inf</span>, alpha<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"text"</span>, x<span class="op">=</span><span class="fl">12.5</span>, y<span class="op">=</span><span class="fl">7</span>, label<span class="op">=</span><span class="st">"Initial Steady State Period"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"text"</span>, x<span class="op">=</span><span class="fl">44</span>,   y<span class="op">=</span><span class="fl">7</span>, label<span class="op">=</span><span class="st">"Steady State AM/PM dosing"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-22-1.png" class="r-plt" alt="" width="700"></p>
-<p>You can see that it takes a full dose cycle to reach the true complex
-steady state dosing.</p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" alt="" width="700"></p>
+<p>It takes a full dose cycle to reach the true complex
+steady-state.</p>
 </div>
 <div class="section level3">
-<h3 id="steady-state-for-constant-infusion-or-zero-order-processes">Steady state for constant infusion or zero order processes<a class="anchor" aria-label="anchor" href="#steady-state-for-constant-infusion-or-zero-order-processes"></a>
+<h3 id="steady-state-for-constant-infusion-or-zero-order-processes">Steady state for constant infusion or zero-order processes<a class="anchor" aria-label="anchor" href="#steady-state-for-constant-infusion-or-zero-order-processes"></a>
 </h3>
-<p>The last type of steady state that <code>rxode2</code> supports is
-steady-state constant infusion rate. This can be specified the same way
-as NONMEM, that is:</p>
+<p>Constant-infusion steady state (as in NONMEM):</p>
 <ul>
-<li>No inter-dose interval <code>ii</code>=<code>0</code>
+<li>No inter-dose interval: <code>ii=0</code>
 </li>
-<li>A steady state dose, ie <code>ss</code>=<code>1</code>
+<li>Steady-state flag: <code>ss=1</code>
 </li>
-<li>Either a positive rate (<code>rate</code>&gt;0) or a estimated rate
-<code>rate</code>=<code>-1</code>.</li>
-<li>A zero dose, ie <code>amt</code>=<code>0</code>
+<li>Positive rate (<code>rate&gt;0</code>) or estimated rate
+(<code>rate=-1</code>)</li>
+<li>Zero dose: <code>amt=0</code>
 </li>
-<li>Once the steady-state constant infusion is achieved, the infusion is
-turned off when using this record, just like NONMEM.</li>
 </ul>
-<p>Note that <code>rate</code>=<code>-2</code> where we model the
-duration of infusion doesn’t make much sense since we are solving the
-infusion until steady state. The duration is specified by the steady
-state solution.</p>
-<p>Also note that bioavailability changes on this steady state infusion
-also do not make sense because they neither change the <code>rate</code>
-or the duration of the steady state infusion. Hence modeled
-bioavailability on this type of dosing event is ignored.</p>
-<p>Here is an example:</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<p>The infusion is turned off once steady state is reached, just like
+NONMEM. Note that <code>rate=-2</code> (modeled duration) and modeled
+bioavailability have no effect for this event type.</p>
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">0</span>, ss<span class="op">=</span><span class="fl">1</span>,rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">0</span>, ss<span class="op">=</span><span class="fl">1</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">200000</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, length.out<span class="op">=</span><span class="fl">1000</span><span class="op">)</span></span>
@@ -671,22 +939,21 @@ bioavailability on this type of dosing event is ignored.</p>
 <span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">p1</span> <span class="op">/</span> <span class="va">p2</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" alt="" width="700"></p>
-<p>Not only can this be used for PK, it can be used for steady-state
-disease processes.</p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" alt="" width="700"></p>
+<p>This technique can also be used for steady-state disease
+processes.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="reset-events">Reset Events<a class="anchor" aria-label="anchor" href="#reset-events"></a>
 </h2>
-<p>Reset events are implemented by <code>evid=3</code> or
-<code>evid=reset</code>, for reset and <code>evid=4</code> for reset and
-dose.</p>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<p><code>evid=3</code> (or <code>evid=reset</code>) resets all
+compartments to their initial values. <code>evid=4</code> resets and
+then applies a dose.</p>
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, evid<span class="op">=</span><span class="va">reset</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -712,54 +979,31 @@ dose.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 92 more rows</span></span></span></code></pre>
-<p>The solving show what happens in this system when the system is reset
-at 6 hours post-dose.</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" alt="" width="700"></p>
-<p>You can see all the compartments are reset to their initial values.
-The next dose start the dosing cycle over.</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" alt="" width="700"></p>
+<p>All compartments are reset to their initial values at 6 hours.</p>
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, amt<span class="op">=</span><span class="fl">10000</span>, evid<span class="op">=</span><span class="fl">4</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ev</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 102 records --</span></span></span>
-<span><span class="co">#&gt; 2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span></span>
-<span><span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
-<span><span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 102 x 5</span></span></span>
-<span><span class="co">#&gt;     time   amt  ii  addl evid         </span></span>
-<span><span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 0        <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 0     <span style="text-decoration: underline;">10</span>000  12     3 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 0.242    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 0.485    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 0.727    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 0.970    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 1.21     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 1.45     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># i 92 more rows</span></span></span></code></pre>
-<p>In this case, the whole system is reset and the dose is given</p>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level2">
 <h2 id="turning-off-compartments">Turning off compartments<a class="anchor" aria-label="anchor" href="#turning-off-compartments"></a>
 </h2>
-<p>You may also turn off a compartment, which is similar to a reset
-event.</p>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
+<p>Setting <code>cmt="-depot"</code> with <code>evid=2</code> turns off
+a compartment: its value is set to the initial value, but other
+compartments are unchanged. A subsequent dose to that compartment turns
+it back on.</p>
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-depot"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -785,42 +1029,37 @@ event.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70  (obs)        <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94  (obs)        <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 92 more rows</span></span></span></code></pre>
-<p>Solving shows what this does in the system:</p>
-<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
-<p>In this case, the depot is turned off, and the depot compartment
-concentrations are set to the initial values but the other compartment
-concentrations/levels are not reset. When another dose to the depot is
-administered the depot compartment is turned back on.</p>
-<p>Note that a dose to a compartment only turns back on the compartment
-that was dosed. Hence if you turn off the effect compartment, it
-continues to be off after another dose to the depot.</p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" alt="" width="700"></p>
+<p>Note that a dose turns back on only the compartment that was dosed.
+Turning off the effect compartment keeps it off even after a new depot
+dose:</p>
+<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
+<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" alt="" width="700"></p>
+<p>To re-enable it, send a zero dose or an <code>evid=2</code> event to
+the compartment:</p>
 <div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>,  cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">12</span>, cmt<span class="op">=</span><span class="st">"eff"</span>,  evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-30-1.png" class="r-plt" alt="" width="700"></p>
-<p>To turn back on the compartment, a zero-dose to the compartment or a
-evid=2 with the compartment would be needed.</p>
-<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">12</span>,cmt<span class="op">=</span><span class="st">"eff"</span>,evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>,<span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-31-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
