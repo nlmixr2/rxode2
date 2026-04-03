@@ -376,7 +376,7 @@ Benchmarks on equivalent models show similar wall-clock times.
 | `$EVENT` block | no | yes |
 | Rcpp/Boost/Armadillo in model | no | via `$PLUGIN` |
 | `nm-vars` verbatim NONMEM syntax | no (use `nonmem2rx`) | yes |
-| `tad` auto time-after-dose | manual calculation | `$PLUGIN tad` |
+| `tad` auto time-after-dose | yes `tad()`, `tad0()`, `tad(cmt)`, `tad0(cmt)` | `$PLUGIN tad` |
 | EVID=5 (replacement) | yes | no (uses EVID=8) |
 | EVID=8 (replacement) | no (uses EVID=5) | yes |
 
@@ -386,3 +386,4 @@ Benchmarks on equivalent models show similar wall-clock times.
 - [mrgsolve user guide](https://mrgsolve.org/user-guide/)
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
+- [nonmem2mrgsolve](https://github.com/Andy00000000000/nonmem2mrgsolve)

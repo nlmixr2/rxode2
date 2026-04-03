@@ -382,7 +382,7 @@ navbar:
           href: articles/rxode2-shiny.html
         - text: "Adding compiled models to a package"
           href: articles/rxode2-rxUse.html
-  - text: "Comparisons"
+  - text: "Compare"
     icon: fas fa-balance-scale
     menu:
         - text: "rxode2 vs mrgsolve"
