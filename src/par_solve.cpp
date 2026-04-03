@@ -14,6 +14,7 @@
 #include "../inst/include/rxode2dataErr.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "../inst/include/rxode2EventTranslate.h"
 #include "linCmtDiffConstant.h"
 
 #define SORT gfx::timsort
@@ -672,6 +673,110 @@ static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
          if (ta == tb) return a < b;
          return ta < tb;
        });
+}
+
+// Re-sorts ind->idose[startDose..ndoses-1] by time (for pushed future doses).
+static inline void _rxSortIdoseSuffix(rx_solving_options_ind *ind, int startDose) {
+  if (startDose >= ind->ndoses) return;
+  double *time = ind->timeThread;
+  int    *idose = ind->idose;
+  SORT(idose + startDose, idose + ind->ndoses,
+       [time](int a, int b) -> bool {
+         return time[a] < time[b];
+       });
+}
+
+#define EVID_EXTRA_SIZE 16
+
+// Push a future event into the individual's own event arrays during ODE solving.
+// _curTime: current ODE model time (for past-time guard).
+// Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
+extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
+                            double _time, int _evid, int _cmt,
+                            double _amt, double _ii, int _ss, double _rate) {
+  rx_solving_options *op = &op_global;
+
+  if (_time <= _curTime) {
+#pragma omp atomic
+    op->nPastEvid++;
+    return 0;
+  }
+
+  if (!_ind->indOwnAlloc) return 0; // safety: only works with owned arrays
+
+  rx_translated_event ev = _rxTranslateOneEvent(_time, _evid, _cmt,
+                                                 _amt, _ii, _ss, _rate);
+  if (ev.n == 0) return 0;
+
+  int nDose = 0;
+  for (int _k = 0; _k < ev.n; _k++) if (ev.isDose[_k]) nDose++;
+
+  // Grow main event arrays if needed
+  if (_ind->n_all_times + ev.n > _ind->indOwnAllocN) {
+    int newCap = _ind->n_all_times + ev.n + EVID_EXTRA_SIZE;
+    double *a   = (double*)realloc(_ind->all_times,  newCap * sizeof(double));
+    double *d   = (double*)realloc(_ind->dose,        newCap * sizeof(double));
+    double *i2  = (double*)realloc(_ind->ii,          newCap * sizeof(double));
+    int    *ev2 = (int*)   realloc(_ind->evid,        newCap * sizeof(int));
+    int    *ix  = (int*)   realloc(_ind->ix,          newCap * sizeof(int));
+    double *tt  = (double*)realloc(_ind->timeThread,  newCap * sizeof(double));
+    double *sl  = (double*)realloc(_ind->solve,
+                                   (int64_t)op->neq * newCap * sizeof(double));
+    if (!a || !d || !i2 || !ev2 || !ix || !tt || !sl) {
+      int bad = 1;
+#pragma omp atomic write
+      op->badSolve = bad;
+      return -1;
+    }
+    int oldN = _ind->n_all_times;
+    _ind->all_times  = a;  _ind->dose = d;  _ind->ii = i2;
+    _ind->evid       = ev2; _ind->ix  = ix; _ind->timeThread = tt;
+    _ind->solve      = sl;
+    _ind->indOwnAllocN = newCap;
+    // Zero the newly allocated solve slots
+    memset(sl + (int64_t)op->neq * oldN, 0,
+           (int64_t)op->neq * (newCap - oldN) * sizeof(double));
+  }
+
+  // Grow idose if needed
+  if (nDose > 0 && _ind->ndoses + nDose > _ind->idoseOwnAllocN) {
+    int newCap = _ind->ndoses + nDose + EVID_EXTRA_SIZE;
+    int *id = (int*)realloc(_ind->idose, newCap * sizeof(int));
+    if (!id) {
+      int bad = 1;
+#pragma omp atomic write
+      op->badSolve = bad;
+      return -1;
+    }
+    _ind->idose          = id;
+    _ind->idoseOwnAllocN = newCap;
+  }
+
+  // Append the translated events
+  int doseSuffix = _ind->ndoses; // idose sort start
+  for (int _k = 0; _k < ev.n; _k++) {
+    int rawIdx = _ind->n_all_times;
+    _ind->all_times[rawIdx]  = ev.time[_k];
+    _ind->dose[rawIdx]       = ev.amt[_k];
+    _ind->ii[rawIdx]         = ev.ii[_k];
+    _ind->evid[rawIdx]       = ev.evid[_k];
+    _ind->timeThread[rawIdx] = ev.time[_k];
+    _ind->ix[rawIdx]         = rawIdx;
+    _ind->n_all_times++;
+    if (ev.isDose[_k]) {
+      _ind->idose[_ind->ndoses++] = rawIdx;
+    }
+  }
+
+  // Re-sort ix from current event forward so new events land in the right slots
+  int sortStart = (_ind->idx >= 0 && _ind->idx < _ind->n_all_times)
+                  ? _ind->idx : 0;
+  reSortMainTimeline(_ind, sortStart);
+
+  // Re-sort unprocessed idose suffix
+  _rxSortIdoseSuffix(_ind, doseSuffix < _ind->ixds ? _ind->ixds : doseSuffix);
+
+  return 1;
 }
 
 // Recomputes ind->mtime[k] with current state yp when the solver is exactly at
@@ -2593,6 +2698,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
+          ind->_atEventTime = 1;
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -3115,6 +3221,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
+          ind->_atEventTime = 1;
           neq[0] = op->neq - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &gitol,
@@ -3783,6 +3890,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         if (!isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
+          ind->_atEventTime = 1;
           neq[0] = op->neq - op->numLin - op->numLinSens;
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
