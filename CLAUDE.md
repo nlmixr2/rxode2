@@ -67,14 +67,14 @@ compiled successfully, you can have it echo to the console with:
 summary(rxC(rxode2model))
 ```
 
-### Regenerate Grammar and Build Artifacts
+### Regenerate Grammar, Documentation and Build Artifacts
 
 When modifying `inst/tran.g` (the dparser grammar) or needing to
 regenerate generated files:
 
 ```r
 # Regenerates: src/tran.g.d_parser.h, R/rxrandomui.R, inst/include/*.h
-.rxodeBuildCode()
+devtools::document()
 ```
 
 ## Architecture
