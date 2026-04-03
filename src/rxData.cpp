@@ -4425,6 +4425,9 @@ List rxSolve_df(const RObject &obj,
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
   }
+  if (op->nPastEvid > 0) {
+    warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), op->nPastEvid);
+  }
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
@@ -4825,6 +4828,7 @@ static inline void iniRx(rx_solve* rx) {
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
+  op->nPastEvid = 0;
   op->naTime = 0;
   op->ATOL = 1e-8; //absolute error
   op->RTOL = 1e-8; //relative error
@@ -5119,7 +5123,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->stiff = method;
 
     rxSolveDat->throttle = false;
-    if (method != 2){
+    if (method != 2) { // dop853 and liblsoda should be thread safe
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
@@ -5231,6 +5235,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
     }
     op->badSolve = 0;
+    op->nPastEvid = 0;
     op->naTime = 0;
     op->abort = 0;
     op->ATOL = atolNV[0];          //absolute error
