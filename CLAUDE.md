@@ -29,10 +29,10 @@ devtools::document()
 ### Run All Tests
 ```r
 # From within R (sets up proper environment)
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test()
+invisible(lapply(list.files("src", "[.]s?o$", full.names = TRUE), unlink));devtools::test()
 
 # Or from shell
-NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '\\.s?o$', full.names = TRUE), unlink));devtools::test()"
+NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '[.]s?o$', full.names = TRUE), unlink));devtools::test()"
 ```
 
 ### Run a Single Test File

@@ -744,6 +744,12 @@
 #'   (if this value is 2), and finally a third is calculated if the
 #'   gradient is still suspect.
 #'
+#' @param indOwnAlloc Logical; when `TRUE` (default) each individual's
+#'   `dose`, `ii`, `all_times`, and `solve` arrays are allocated
+#'   independently via `malloc`/`calloc` rather than as pointers into
+#'   a single global buffer.  This enables per-individual reallocation
+#'   for future dose-pushing functionality.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -882,6 +888,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
                     linCmtSuspect=1e-6,
                     linCmtForwardMax=2L,
+                    indOwnAlloc=TRUE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1418,6 +1425,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtHmeanO=linCmtHmeanO,
       linCmtSuspect=linCmtSuspect,
       linCmtForwardMax=linCmtForwardMax,
+      indOwnAlloc=as.integer(indOwnAlloc),
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1699,6 +1707,7 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                            indOwnAlloc = TRUE,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
   rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
@@ -1796,7 +1805,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (any(names(.lst) == ".setupOnly")) {
     .setupOnly <- .lst$.setupOnly
   }
-  .ctl <- rxControl(..., events = events, params = params)
+  .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
     .both <- intersect(.mv$params, .ctl$keep)
