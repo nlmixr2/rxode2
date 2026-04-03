@@ -82,6 +82,7 @@ typedef struct {
   int depotLin;
   int linOffset;
   int ssSolved;
+  int indOwnAlloc;
 } rx_solving_options;
 
 
@@ -241,6 +242,10 @@ typedef struct {
   // subsequent calls so that any loosening applied via atolRtolFactor_()
   // or setIndTolFactor() persists across re-solves for stiff individuals.
   double tolFactor;
+
+  // When 1, this individual owns its dose/ii/all_times/solve arrays
+  // (independently malloc'd, not pointers into the global buffer)
+  int indOwnAlloc;
 } rx_solving_options_ind;
 
 typedef struct {
