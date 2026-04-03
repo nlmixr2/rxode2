@@ -445,8 +445,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2mexpit = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&mexpit, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxMixnum = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxMixnum, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setRxMixnum = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setRxMixnum, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getIndTolFactor = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndTolFactor, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndTolFactor = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndTolFactor, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 54
+#define nVec 56
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -502,6 +504,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 51, rxode2mexpit);
   SET_VECTOR_ELT(ret, 52, rxode2getRxMixnum);
   SET_VECTOR_ELT(ret, 53, rxode2setRxMixnum);
+  SET_VECTOR_ELT(ret, 54, rxode2getIndTolFactor);
+  SET_VECTOR_ELT(ret, 55, rxode2setIndTolFactor);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -558,6 +562,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 51, Rf_mkChar("rxode2mexpit"));
   SET_STRING_ELT(retN, 52, Rf_mkChar("rxode2getRxMixnum"));
   SET_STRING_ELT(retN, 53, Rf_mkChar("rxode2setRxMixnum"));
+  SET_STRING_ELT(retN, 54, Rf_mkChar("rxode2getIndTolFactor"));
+  SET_STRING_ELT(retN, 55, Rf_mkChar("rxode2setIndTolFactor"));
 
 #undef nVec
 
@@ -898,6 +904,8 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxweibull", (DL_FUNC) &rxweibull);
   R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
+  R_RegisterCCallable("rxode2", "getIndTolFactor", (DL_FUNC) &getIndTolFactor);
+  R_RegisterCCallable("rxode2", "setIndTolFactor", (DL_FUNC) &setIndTolFactor);
   // log likelihoods used in calculations
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

@@ -1545,6 +1545,14 @@ struct rx_globals {
   // time per thread
   double *timeThread = NULL;
 
+  // Per-thread tolerance arrays for thread-safe atolRtolFactor_().
+  // Each thread gets its own slice of size op->neq so modifications
+  // in atolRtolFactor_() never race between threads.
+  double *gatol2Thread = NULL;
+  double *grtol2Thread = NULL;
+  double *gssAtolThread = NULL;
+  double *gssRtolThread = NULL;
+
   bool alloc=false;
 };
 
@@ -1643,6 +1651,14 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+  // Point the individual's tolerance arrays at the current thread's
+  // slice.  iniSubject() will then multiply them by ind->tolFactor to
+  // apply any sticky loosening.  No conditional needed here: tolFactor
+  // is always valid (set to 1.0 by setupRxInd() on first allocation).
+  ind->atol2  = _globals.gatol2Thread  + op->neq * omp_get_thread_num();
+  ind->rtol2  = _globals.grtol2Thread  + op->neq * omp_get_thread_num();
+  ind->ssAtol = _globals.gssAtolThread + op->neq * omp_get_thread_num();
+  ind->ssRtol = _globals.gssRtolThread + op->neq * omp_get_thread_num();
 }
 
 extern "C" void setZeroMatrix(int which) {
@@ -1662,15 +1678,33 @@ extern "C" void setZeroMatrix(int which) {
 double maxAtolRtolFactor = 0.1;
 
 //[[Rcpp::export]]
-void atolRtolFactor_(double factor){
-  rx_solve* rx = getRxSolve_();
-  rx_solving_options* op = rx->op;
-  for (int i = op->neq;i--;){
-    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
-    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+void atolRtolFactor_(double factor) {
+  rx_solve *rx = getRxSolve_();
+  rx_solving_options *op = rx->op;
+
+  // Modify only the current thread's tolerance arrays — fully thread-safe,
+  // no critical section needed because each thread has its own slice.
+  int _threadId = omp_get_thread_num();
+  double *_atol2  = _globals.gatol2Thread  + op->neq * _threadId;
+  double *_rtol2  = _globals.grtol2Thread  + op->neq * _threadId;
+  double *_ssAtol = _globals.gssAtolThread + op->neq * _threadId;
+  double *_ssRtol = _globals.gssRtolThread + op->neq * _threadId;
+
+  for (int _i = op->neq; _i--;) {
+    _atol2[_i]  = min2(_atol2[_i]  * factor, maxAtolRtolFactor);
+    _rtol2[_i]  = min2(_rtol2[_i]  * factor, maxAtolRtolFactor);
+    _ssAtol[_i] = min2(_ssAtol[_i] * factor, maxAtolRtolFactor);
+    _ssRtol[_i] = min2(_ssRtol[_i] * factor, maxAtolRtolFactor);
   }
-  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
-  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+
+  // Persist the cumulative factor on the individual currently being solved
+  // on this thread so that iniSubject() can reapply it on every re-solve.
+  rx_solving_options_ind *_ind = &(inds_thread[rx_get_thread(op->cores)]);
+  if (_ind != NULL) {
+    _ind->tolFactor = min2(_ind->tolFactor * factor, maxAtolRtolFactor);
+  }
+  // Note: op->ATOL and op->RTOL are deliberately NOT modified here to
+  // avoid races between threads sharing the op structure.
 }
 
 extern "C" double * getAol(int n, double atol){
@@ -3520,6 +3554,11 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
     ind->wrongSSDur = 0;
+    // tolFactor is the per-individual cumulative tolerance multiplier.
+    // Initialized to 1.0 (no effect) here and intentionally NOT reset
+    // on subsequent calls (first == 0) so that stiff individuals retain
+    // their loosened tolerances across re-solves.
+    ind->tolFactor = 1.0;
   }
 }
 
@@ -5389,6 +5428,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
     int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
     int64_t n10 = (int64_t)(op->neq)*op->cores;
+    int64_t n11 = 4 * op->neq * op->cores; // per-thread tolerance arrays (atol2, rtol2, ssAtol, ssRtol)
     int64_t nmtime0_c = (int64_t)rx->nMtime * op->cores;
     int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
     // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
@@ -5403,7 +5443,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 3*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
@@ -5415,8 +5455,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 + nmtime0_c +
-                                      5*op->neq + 3*n3a_c + nllik_c,
+                                      n9 + n10 + n11 + nmtime0_c +
+                                      5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5425,7 +5465,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL){
       rxSolveFree();
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 3*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_totalElems * sizeof(double) / 1e9);
     }
@@ -5458,7 +5498,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
     _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
     _globals.timeThread = _globals.gLinDummy + n10;
-    _globals.gmtime0    = _globals.timeThread + n8; // [nmtime0_c]
+    _globals.gatol2Thread  = _globals.timeThread + n8; // [op->neq * op->cores]
+    _globals.grtol2Thread  = _globals.gatol2Thread  + op->neq * op->cores;
+    _globals.gssAtolThread = _globals.grtol2Thread  + op->neq * op->cores;
+    _globals.gssRtolThread = _globals.gssAtolThread + op->neq * op->cores;
+    _globals.gmtime0       = _globals.gssRtolThread + op->neq * op->cores; // [nmtime0_c]
 
     // Allocate gInfusionRate per-thread independently so each thread's buffer
     // can be realloc'd without disturbing others
@@ -5505,6 +5549,18 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->rtol2 = &_globals.grtol2[0];
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
+
+    // Initialize per-thread tolerance arrays from the global baseline values.
+    for (int _core = 0; _core < op->cores; _core++) {
+      std::copy(&_globals.gatol2[0],  &_globals.gatol2[0]  + op->neq,
+                _globals.gatol2Thread  + _core * op->neq);
+      std::copy(&_globals.grtol2[0],  &_globals.grtol2[0]  + op->neq,
+                _globals.grtol2Thread  + _core * op->neq);
+      std::copy(&_globals.gssAtol[0], &_globals.gssAtol[0] + op->neq,
+                _globals.gssAtolThread + _core * op->neq);
+      std::copy(&_globals.gssRtol[0], &_globals.gssRtol[0] + op->neq,
+                _globals.gssRtolThread + _core * op->neq);
+    }
     // Not needed since we use Calloc.
     // std::fill_n(&_globals.gsolve[0], rx->nall*state.size()*rx->nsim, 0.0);
 #ifdef rxSolveT

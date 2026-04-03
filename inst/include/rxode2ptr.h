@@ -182,6 +182,14 @@ extern "C" {
   typedef void (*setRxMixnum_t)(rx_solve *rx, int mixnum);
   extern setRxMixnum_t setRxMixnum;
 
+  // Get the per-individual sticky tolerance factor
+  typedef double (*getIndTolFactor_t)(rx_solving_options_ind *ind);
+  extern getIndTolFactor_t getIndTolFactor;
+
+  // Set the per-individual sticky tolerance factor
+  typedef void (*setIndTolFactor_t)(rx_solving_options_ind *ind, double tolFactor);
+  extern setIndTolFactor_t setIndTolFactor;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -238,6 +246,8 @@ extern "C" {
       mexpit = (mexpit_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 51));
       getRxMixnum = (getRxMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 52));
       setRxMixnum = (setRxMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 53));
+      getIndTolFactor = (getIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 54));
+      setIndTolFactor = (setIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 55));
     }
     return R_NilValue;
   }
@@ -297,6 +307,8 @@ extern "C" {
   mexpit_t mexpit = NULL;                               \
   getRxMixnum_t getRxMixnum = NULL;                     \
   setRxMixnum_t setRxMixnum = NULL;                     \
+  getIndTolFactor_t getIndTolFactor = NULL;             \
+  setIndTolFactor_t setIndTolFactor = NULL;             \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

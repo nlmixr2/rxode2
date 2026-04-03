@@ -6,6 +6,9 @@
 #define __PAR_SOLVE_H___
 
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+#ifndef min2
+#define min2( a , b )  ( (a) < (b) ? (a) : (b) )
+#endif
 
 #if defined(__cplusplus)
 
@@ -20,6 +23,8 @@ extern "C" {
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);
 
+  extern double maxAtolRtolFactor;
+
 
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
@@ -32,6 +37,21 @@ extern "C" {
     ind->linCmtAlast = NULL;
     ind->ssTime = NA_REAL;
     _setIndPointersByThread(ind);
+    // Apply this individual's sticky tolerance factor to the thread-local
+    // tolerance arrays.  _setIndPointersByThread() has already reset
+    // ind->atol2/rtol2/ssAtol/ssRtol to the per-thread global baseline.
+    // Multiplying by tolFactor here means the ODE solver immediately sees
+    // the correct loosened tolerances without any further call to
+    // atolRtolFactor_().  For most individuals tolFactor == 1.0 (set by
+    // setupRxInd()), so this loop costs only a few multiplications.
+    if (ind->atol2 != NULL) {
+      for (int _i = op->neq; _i--;) {
+        ind->atol2[_i]  = min2(ind->atol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
+        ind->rtol2[_i]  = min2(ind->rtol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
+        ind->ssAtol[_i] = min2(ind->ssAtol[_i] * ind->tolFactor, maxAtolRtolFactor);
+        ind->ssRtol[_i] = min2(ind->ssRtol[_i] * ind->tolFactor, maxAtolRtolFactor);
+      }
+    }
 		for (int i=rxLlikSaveSize*op->nLlik; i--;) {
 			ind->llikSave[i] = 0.0;
 		}
