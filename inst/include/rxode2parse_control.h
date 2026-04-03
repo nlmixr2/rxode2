@@ -111,7 +111,8 @@
 #define Rxc_linCmtHmeanO 107
 #define Rxc_linCmtSuspect 108
 #define Rxc_linCmtForwardMax 109
-#define Rxc__zeros 110
+#define Rxc_indOwnAlloc 110
+#define Rxc__zeros 111
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

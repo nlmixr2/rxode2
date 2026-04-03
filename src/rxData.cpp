@@ -1464,7 +1464,9 @@ struct rx_globals {
   int *gon;
   double *gIndSim;
   double *gsolve;
-  double *gInfusionRate;
+  double **gInfusionRate;    // per-thread independently allocated buffers
+  int    *gInfusionRateN;    // allocation count per thread (neq + extraCmt)
+  int     nInfusionRateThreads; // number of threads allocated
   double *gTlastS;
   double *gTfirstS;
   double *gCurDoseS;
@@ -1570,7 +1572,7 @@ static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
 }
 
 static inline double *getInfusionRateThread() {
-  return getAlagFamilyPointerFromThreadId(_globals.gInfusionRate);
+  return _globals.gInfusionRate[omp_get_thread_num()];
 }
 
 static inline double *getTlastSThread() {
@@ -1713,7 +1715,59 @@ void rxFreeErrs(){
   _rxGetErrs=NULL;
 }
 
+static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
+  int nat = ind->n_all_times;
+
+  // dose and ii are indexed by ALL event indices (0..n_all_times-1), not just ndoses
+  double *newDose  = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
+  double *newIi    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
+  double *newAT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
+  double *newSolve = (double*)calloc((int64_t)op->neq * nat, sizeof(double));
+
+  if ((nat > 0 && (!newDose || !newIi || !newAT)) || !newSolve) {
+    free(newDose); free(newIi); free(newAT); free(newSolve);
+    rxSolveFree();
+    (Rf_error)(_("cannot allocate per-individual memory"));
+  }
+  if (nat > 0) {
+    memcpy(newDose, ind->dose,      nat * sizeof(double));
+    memcpy(newIi,   ind->ii,        nat * sizeof(double));
+    memcpy(newAT,   ind->all_times, nat * sizeof(double));
+  }
+
+  ind->dose        = newDose;
+  ind->ii          = newIi;
+  ind->all_times   = newAT;
+  ind->solve       = newSolve;
+  ind->indOwnAlloc = 1;
+}
+
+static void rxFreeInd(rx_solving_options_ind *ind) {
+  if (ind->indOwnAlloc) {
+    free(ind->dose);      ind->dose = NULL;
+    free(ind->ii);        ind->ii = NULL;
+    free(ind->all_times); ind->all_times = NULL;
+    free(ind->solve);     ind->solve = NULL;
+    ind->indOwnAlloc = 0;
+  }
+}
+
 extern "C" void gFree(){
+  // Note: per-individual arrays (indOwnAlloc) are freed in rxSolveFree()
+  // before gFree() is called, where inds_global is still valid.
+  // Free per-thread InfusionRate (independently allocated)
+  if (_globals.gInfusionRate != NULL) {
+    for (int _t = 0; _t < _globals.nInfusionRateThreads; _t++) {
+      if (_globals.gInfusionRate[_t] != NULL) free(_globals.gInfusionRate[_t]);
+    }
+    free(_globals.gInfusionRate);
+    _globals.gInfusionRate = NULL;
+  }
+  if (_globals.gInfusionRateN != NULL) {
+    free(_globals.gInfusionRateN);
+    _globals.gInfusionRateN = NULL;
+  }
+  _globals.nInfusionRateThreads = 0;
   // Free cov_sample
   if (_globals.gSampleCov!=NULL) free(_globals.gSampleCov);
   _globals.gSampleCov=NULL;
@@ -2661,6 +2715,12 @@ LogicalVector rxSolveFree(){
   resetFkeep();
   if (!_globals.alloc) return true;
   rx_solve* rx = getRxSolve_();
+  // Free per-individual owned arrays (inds_global still valid here)
+  if (rx->subjects != NULL) {
+    for (uint32_t _i = 0; _i < rx->nsub; _i++) {
+      rxFreeInd(&rx->subjects[_i]);
+    }
+  }
   // Free the solve id order
   if (rx->par_sample != NULL) free(rx->par_sample);
   rx->par_sample=NULL;
@@ -4225,7 +4285,11 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             }
           }
           int64_t eLen = (int64_t)op->neq*ind->n_all_times;
-          ind->solve = &_globals.gsolve[curSolve];
+          if (op->indOwnAlloc) {
+            rxAllocInd(ind, op); // mallocs dose/ii/all_times (copied) and solve (zeroed)
+          } else {
+            ind->solve = &_globals.gsolve[curSolve];
+          }
           ind->linH = &_globals.gLin[curLin];
           curLin += 7;
           ind->simIni = &_globals.gIndSim[curSimIni];
@@ -4988,6 +5052,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
     op->ssSolved = asInt(rxControl[Rxc_ssSolved], "ssSolved");
+    op->indOwnAlloc = asInt(rxControl[Rxc_indOwnAlloc], "indOwnAlloc");
     op->stiff = method;
 
     rxSolveDat->throttle = false;
@@ -5338,7 +5403,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 3*n3a_c + nllik_c;
       uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
@@ -5351,7 +5416,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 + nmtime0_c +
-                                      5*op->neq + 4*n3a_c + nllik_c,
+                                      5*op->neq + 3*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5360,7 +5425,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL){
       rxSolveFree();
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + nmtime0_c + 5*op->neq + 3*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_totalElems * sizeof(double) / 1e9);
     }
@@ -5370,8 +5435,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
     _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
-    _globals.gInfusionRate = _globals.gmtime + n2; //[n3a_c]
-    _globals.ginits = _globals.gInfusionRate + n3a_c; // [n4]
+    // gInfusionRate is now allocated per-thread independently (see below)
+    _globals.ginits = _globals.gmtime + n2; // [n4]
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
     _globals.glhs = _globals.ginits + n4; // [n5_c]
@@ -5394,6 +5459,37 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
     _globals.timeThread = _globals.gLinDummy + n10;
     _globals.gmtime0    = _globals.timeThread + n8; // [nmtime0_c]
+
+    // Allocate gInfusionRate per-thread independently so each thread's buffer
+    // can be realloc'd without disturbing others
+    {
+      int _ncmt = op->neq + op->extraCmt;
+      if (_globals.gInfusionRate != NULL) {
+        for (int _t = 0; _t < _globals.nInfusionRateThreads; _t++) {
+          if (_globals.gInfusionRate[_t] != NULL) free(_globals.gInfusionRate[_t]);
+        }
+        free(_globals.gInfusionRate);
+        free(_globals.gInfusionRateN);
+      }
+      _globals.gInfusionRate  = (double**)calloc(op->cores, sizeof(double*));
+      _globals.gInfusionRateN = (int*)calloc(op->cores, sizeof(int));
+      _globals.nInfusionRateThreads = op->cores;
+      if (_globals.gInfusionRate == NULL || _globals.gInfusionRateN == NULL) {
+        rxSolveFree();
+        stop(_("could not allocate per-thread InfusionRate memory"));
+      }
+      for (int _t = 0; _t < op->cores; _t++) {
+        if (_ncmt > 0) {
+          _globals.gInfusionRate[_t]  = (double*)calloc(_ncmt, sizeof(double));
+          if (_globals.gInfusionRate[_t] == NULL) {
+            rxSolveFree();
+            stop(_("could not allocate per-thread InfusionRate memory for thread %d"), _t);
+          }
+        }
+        _globals.gInfusionRateN[_t] = _ncmt;
+      }
+    }
+
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);

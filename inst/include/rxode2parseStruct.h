@@ -82,6 +82,7 @@ typedef struct {
   int depotLin;
   int linOffset;
   int ssSolved;
+  int indOwnAlloc;
 } rx_solving_options;
 
 
@@ -235,6 +236,10 @@ typedef struct {
 
   // Add mixture uniform variable
   double mixunif;
+
+  // When 1, this individual owns its dose/ii/all_times/solve arrays
+  // (independently malloc'd, not pointers into the global buffer)
+  int indOwnAlloc;
 } rx_solving_options_ind;
 
 typedef struct {
