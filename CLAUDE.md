@@ -55,13 +55,31 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 # Or: R CMD check .
 ```
 
-### Get generated C code from model
+### Get generated C code and C code errors from model
 
 When trying to get the underlying generated code from a model that
 compiled successfully, you can have it echo to the console with:
 
 ```r
 summary(rxC(rxode2model))
+```
+
+With a model that did not compile successfully, you can get the code by:
+
+```r
+cat(suppressMessages(rxode2::rxLastCompile())$c)
+```
+
+To get the compile error you can use:
+
+```r
+cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+```
+
+If you need stout too you can get that with
+
+```r
+cat(suppressMessages(rxode2::rxLastCompile())$stderr)
 ```
 
 ### Regenerate Grammar, Documentation and Build Artifacts
