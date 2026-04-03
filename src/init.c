@@ -17,6 +17,10 @@
 
 SEXP _rxHasOpenMp(void);
 
+extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
+                       double _time, int _evid, int _cmt,
+                       double _amt, double _ii, int _ss, double _rate);
+
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
 SEXP _rxode2_atolRtolFactor_(SEXP);
@@ -871,6 +875,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
+  R_RegisterCCallable("rxode2", "_rxPushDose",   (DL_FUNC) &_rxPushDose);
 
   R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
   R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);
