@@ -121,10 +121,10 @@
 <div class="section level3">
 <h3 id="run-all-tests">Run All Tests<a class="anchor" aria-label="anchor" href="#run-all-tests"></a></h3>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># From within R (sets up proper environment)</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">lapply</span>(<span class="fu">list.files</span>(<span class="st">"src"</span>, <span class="st">"</span><span class="sc">\\</span><span class="st">.s?o$"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>), unlink));devtools<span class="sc">::</span><span class="fu">test</span>()</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">lapply</span>(<span class="fu">list.files</span>(<span class="st">"src"</span>, <span class="st">"[.]s?o$"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>), unlink));devtools<span class="sc">::</span><span class="fu">test</span>()</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Or from shell</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>NOT_CRAN<span class="ot">=</span>true Rscript <span class="sc">-</span>e <span class="st">"invisible(lapply(list.files('src', '</span><span class="sc">\\</span><span class="st">.s?o$', full.names = TRUE), unlink));devtools::test()"</span></span></code></pre></div>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>NOT_CRAN<span class="ot">=</span>true Rscript <span class="sc">-</span>e <span class="st">"invisible(lapply(list.files('src', '[.]s?o$', full.names = TRUE), unlink));devtools::test()"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-a-single-test-file">Run a Single Test File<a class="anchor" aria-label="anchor" href="#run-a-single-test-file"></a></h3>
