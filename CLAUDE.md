@@ -27,20 +27,17 @@ devtools::document()
 ```
 
 ### Run All Tests
-```r
-# From within R (sets up proper environment)
-invisible(lapply(list.files("src", "[.]s?o$", full.names = TRUE), unlink));devtools::test()
-
-# Or from shell
-NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '[.]s?o$', full.names = TRUE), unlink));devtools::test()"
+```sh
+# From shell
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test()"
 ```
 
 ### Run a Single Test File
-```r
+```sh
 # Filter by test file name (without "test-" prefix and ".R" suffix)
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="basic")
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="ui")
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="linCmt")
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test(filter='basic')"
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test(filter='ui')"
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test(filter='linCmt')"
 ```
 
 ### Run Tests from Installed Package
@@ -99,7 +96,6 @@ devtools::document()
 
 5. **Solving** (`src/par_solve.cpp`): `rxSolve()` drives the numerical ODE solving using the compiled model. Supports multiple backends:
    - LSODA (`src/lsoda.c`, `src/dlsoda.f`) — stiff/non-stiff adaptive
-   - VODE (`src/call_dvode.c`) — stiff solver
    - DOP853 (`src/dop853.c`) — non-stiff Runge-Kutta
    - Parallel solving via OpenMP across subjects
 
