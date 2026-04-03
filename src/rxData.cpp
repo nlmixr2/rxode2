@@ -1648,7 +1648,8 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   } else {
     ind->mtime0 = NULL;
   }
-  ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
+  if (!ind->indOwnAlloc)
+    ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
   // Point the individual's tolerance arrays at the current thread's
@@ -1751,15 +1752,23 @@ void rxFreeErrs(){
 
 static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   int nat = ind->n_all_times;
+  int nd  = ind->ndoses;
 
-  // dose and ii are indexed by ALL event indices (0..n_all_times-1), not just ndoses
+  // dose, ii, all_times indexed by ALL event indices (0..n_all_times-1)
   double *newDose  = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
   double *newIi    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
   double *newAT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
   double *newSolve = (double*)calloc((int64_t)op->neq * nat, sizeof(double));
+  // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
+  int    *newEvid  = nat > 0 ? (int*)   malloc(nat * sizeof(int))    : NULL;
+  int    *newIx    = nat > 0 ? (int*)   malloc(nat * sizeof(int))    : NULL;
+  double *newTT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
+  int    *newIdose = nd  > 0 ? (int*)   malloc(nd  * sizeof(int))    : NULL;
 
-  if ((nat > 0 && (!newDose || !newIi || !newAT)) || !newSolve) {
+  if ((nat > 0 && (!newDose || !newIi || !newAT || !newEvid || !newIx || !newTT)) ||
+      !newSolve || (nd > 0 && !newIdose)) {
     free(newDose); free(newIi); free(newAT); free(newSolve);
+    free(newEvid); free(newIx); free(newTT); free(newIdose);
     rxSolveFree();
     (Rf_error)(_("cannot allocate per-individual memory"));
   }
@@ -1767,21 +1776,36 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
     memcpy(newDose, ind->dose,      nat * sizeof(double));
     memcpy(newIi,   ind->ii,        nat * sizeof(double));
     memcpy(newAT,   ind->all_times, nat * sizeof(double));
+    memcpy(newEvid, ind->evid,      nat * sizeof(int));
+    // ix and timeThread: sortInd re-initialises both; no copy needed
+  }
+  if (nd > 0) {
+    memcpy(newIdose, ind->idose, nd * sizeof(int));
   }
 
-  ind->dose        = newDose;
-  ind->ii          = newIi;
-  ind->all_times   = newAT;
-  ind->solve       = newSolve;
-  ind->indOwnAlloc = 1;
+  ind->dose           = newDose;
+  ind->ii             = newIi;
+  ind->all_times      = newAT;
+  ind->solve          = newSolve;
+  ind->evid           = newEvid;
+  ind->ix             = newIx;
+  ind->timeThread     = newTT;
+  ind->idose          = newIdose;
+  ind->indOwnAlloc    = 1;
+  ind->indOwnAllocN   = nat;
+  ind->idoseOwnAllocN = nd;
 }
 
 static void rxFreeInd(rx_solving_options_ind *ind) {
   if (ind->indOwnAlloc) {
-    free(ind->dose);      ind->dose = NULL;
-    free(ind->ii);        ind->ii = NULL;
-    free(ind->all_times); ind->all_times = NULL;
-    free(ind->solve);     ind->solve = NULL;
+    free(ind->dose);       ind->dose = NULL;
+    free(ind->ii);         ind->ii = NULL;
+    free(ind->all_times);  ind->all_times = NULL;
+    free(ind->solve);      ind->solve = NULL;
+    free(ind->evid);       ind->evid = NULL;
+    free(ind->ix);         ind->ix = NULL;
+    free(ind->timeThread); ind->timeThread = NULL;
+    free(ind->idose);      ind->idose = NULL;
     ind->indOwnAlloc = 0;
   }
 }
@@ -4334,7 +4358,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (int64_t)(op->neq)*ind->n_all_times;
-          ind->ix = &_globals.gix[curIdx];
+          if (!op->indOwnAlloc) ind->ix = &_globals.gix[curIdx];
           curEvent += eLen;
           curIdx += ind->n_all_times;
           if (rx->sample) {

@@ -83,6 +83,7 @@ typedef struct {
   int linOffset;
   int ssSolved;
   int indOwnAlloc;
+  int nPastEvid;          // count of past-time evid_() calls (atomic increment)
 } rx_solving_options;
 
 
@@ -246,6 +247,9 @@ typedef struct {
   // When 1, this individual owns its dose/ii/all_times/solve arrays
   // (independently malloc'd, not pointers into the global buffer)
   int indOwnAlloc;
+  int indOwnAllocN;     // allocated capacity (>= n_all_times)
+  int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
+  int _atEventTime;     // set before each event-table interval; consumed once in dydt
 } rx_solving_options_ind;
 
 typedef struct {
