@@ -220,7 +220,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppendN(&sbOut,"\n", 1);
 
       sAppendN(&sbOut, "\n// prj-specific differential eqns\nvoid ", 40);
-      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=1;\n", prefix);
+      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=1;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0;\n  (void)_wasAtEventTime;\n", prefix);
     } else if (show_ode == ode_jac){
       sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=2;\n", prefix);
     } else if (show_ode == ode_ini){
@@ -410,6 +410,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             // (__DDtStateVar_k__) that are excluded (TDDT is skipped for ode_mtime),
             // so using sbPmDt here would leave the mtime expression unevaluated.
             sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mtime) ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
+        case TEVID:
+          /* evid_() calls only emit code in dydt, guarded by _wasAtEventTime */
+          if (show_ode == ode_dydt) {
+            sAppend(&sbOut, "  if (_wasAtEventTime) { %s }\n", sbPm.line[i]);
           }
           break;
         case TASSIGN:

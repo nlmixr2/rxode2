@@ -426,6 +426,45 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
   return 0;
 }
 
+static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(evid_statement) && *i == 0) {
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Grammar: 'evid_' '(' e0 ',' e1 ',' e2 ',' e3 ',' e4 ',' e5 ',' e6 ')'
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=cmt, 7=',',
+    //           8=amt, 9=',', 10=ii, 11=',', 12=ss, 13=',', 14=rate, 15=')'
+    D_ParseNode *cTime = d_get_child(pn, 2);
+    D_ParseNode *cEvid = d_get_child(pn, 4);
+    D_ParseNode *cCmt  = d_get_child(pn, 6);
+    D_ParseNode *cAmt  = d_get_child(pn, 8);
+    D_ParseNode *cIi   = d_get_child(pn, 10);
+    D_ParseNode *cSs   = d_get_child(pn, 12);
+    D_ParseNode *cRate = d_get_child(pn, 14);
+    char *vTime = (char*)rc_dup_str(cTime->start_loc.s, cTime->end);
+    char *vEvid = (char*)rc_dup_str(cEvid->start_loc.s, cEvid->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    char *vRate = (char*)rc_dup_str(cRate->start_loc.s,  cRate->end);
+    aType(TEVID);
+    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), (int)(%s), %s, %s, (int)(%s), %s);\n",
+            vTime, vEvid, vCmt, vAmt, vIi, vSs, vRate);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), (int)(%s), %s, %s, (int)(%s), %s);\n",
+            vTime, vEvid, vCmt, vAmt, vIi, vSs, vRate);
+    sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s);",
+            vTime, vEvid, vCmt, vAmt, vIi, vSs, vRate);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handlePrintf(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
   if (nodeHas(printf_statement)){
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
