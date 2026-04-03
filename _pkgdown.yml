@@ -301,7 +301,7 @@ navbar:
           href: articles/rxode2-syntax.html
         - text: "Interactive tutorials"
           href: articles/rxode2-tutorials.html
-  - text: "Model Definition"
+  - text: "Model Def."
     icon: fas fa-code
     menu:
         - text: "Model types (linCmt, ODEs, mixed)"
@@ -318,7 +318,7 @@ navbar:
           href: articles/Integrating-User-Defined-Functions-into-rxode2.html
         - text: "Package-exported rxode2 functions"
           href: articles/rxode2-pkg-exported-funs.html
-  - text: "Data & Events"
+  - text: "Events"
     icon: fas fa-stethoscope
     menu:
         - text: "Dataset format and event types"
@@ -393,6 +393,6 @@ navbar:
           href: articles/rxode2-simulx-comparison.html
         - text: "rxode2 vs PKPDsim"
           href: articles/rxode2-pkpdsim-comparison.html
-  - text: "Functions"
+  - text: "Funs"
     icon: fa-file-code-o
     href: https://nlmixr2.github.io/rxode2/reference/index.html

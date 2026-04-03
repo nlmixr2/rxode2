@@ -378,6 +378,8 @@ Benchmarks on equivalent models show similar wall-clock times.
 | `nm-vars` verbatim NONMEM syntax | no (use `nonmem2rx`) | yes |
 | `tad` auto time-after-dose | yes `tad()`, `tad0()`, `tad(cmt)`, `tad0(cmt)` | `$PLUGIN tad` |
 | EVID=5 (replacement) | yes | no (uses EVID=8) |
+| EVID=6 (multiply)    | yes | no |
+| EVID=7 (phantom/transit) | yes | no |
 | EVID=8 (replacement) | no (uses EVID=5) | yes |
 
 ## References
