@@ -8,6 +8,7 @@ articles:
   rxode2-cmt: rxode2-cmt.html
   rxode2-covariates: rxode2-covariates.html
   rxode2-data-frame: rxode2-data-frame.html
+  articles/rxode2-desolve-comparison: rxode2-desolve-comparison.html
   articles/rxode2-eta-eps-resampling: rxode2-eta-eps-resampling.html
   rxode2-event-table: rxode2-event-table.html
   rxode2-event-types: rxode2-event-types.html
@@ -37,7 +38,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-04-03T13:30Z
+last_built: 2026-04-05T23:26Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles
