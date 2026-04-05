@@ -385,6 +385,8 @@ navbar:
   - text: "Compare"
     icon: fas fa-balance-scale
     menu:
+        - text: "rxode2 vs desolve"
+          href: articles/rxode2-desolve-comparison.html
         - text: "rxode2 vs mrgsolve"
           href: articles/rxode2-mrgsolve-comparison.html
         - text: "rxode2 vs NMsim"
