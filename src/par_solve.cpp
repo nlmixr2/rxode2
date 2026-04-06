@@ -3979,9 +3979,6 @@ void par_dop(rx_solve *rx){
   int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
   int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
-  int neq[2];
-  neq[0] = op->neq;
-  neq[1] = 0;
   int curTick = 0;
   int cur = 0;
   // dop853 is thread-safe: dop853_ctx_t is stack-allocated per call (no static state)
@@ -3991,6 +3988,9 @@ void par_dop(rx_solve *rx){
 #pragma omp parallel for num_threads(op->cores)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++){
+    int neq[2];        // per-thread: ind_dop0 writes neq[0] and neq[1]
+    neq[0] = op->neq;
+    neq[1] = 0;
     int localAbort;
 #pragma omp atomic read
     localAbort = abort;

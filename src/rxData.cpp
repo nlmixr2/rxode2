@@ -5127,7 +5127,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->stiff = method;
 
     rxSolveDat->throttle = false;
-    if (method != 2) { // dop853 and liblsoda should be thread safe
+    if (method != 2) {
+      if (method != 2 && method != 0) { // dop853 and liblsoda should be thread safe
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
