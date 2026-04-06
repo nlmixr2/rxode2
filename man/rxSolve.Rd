@@ -150,6 +150,7 @@ rxSolve(
   linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
   linCmtSuspect = 1e-06,
   linCmtForwardMax = 2L,
+  indOwnAlloc = TRUE,
   envir = parent.frame()
 )
 
@@ -214,6 +215,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  indOwnAlloc = TRUE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -950,6 +952,12 @@ integer from 1 to 3.  There is at least 1 extra point taken for
 gradient calculation, if the gradient is suspect another is taken
 (if this value is 2), and finally a third is calculated if the
 gradient is still suspect.}
+
+\item{indOwnAlloc}{Logical; when \code{TRUE} (default) each individual's
+\code{dose}, \code{ii}, \code{all_times}, and \code{solve} arrays are allocated
+independently via \code{malloc}/\code{calloc} rather than as pointers into
+a single global buffer.  This enables per-individual reallocation
+for future dose-pushing functionality.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
