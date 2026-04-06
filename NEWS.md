@@ -5,7 +5,8 @@
 - Fix potential security and memory-management issues that could lead
   to crashes or undefined behavior including integer overflow
 
-- Change `dop853` to allow per state tolerances like `liblsoda`.
+- Change `dop853` to allow per state tolerances and parallel solving
+  like `liblsoda`.
 
 - Change mtime state-based dosing to use less memory
 
