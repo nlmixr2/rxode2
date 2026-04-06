@@ -76,6 +76,10 @@ extern "C" double rxunifmix(rx_solving_options_ind* ind);
 
 SEXP qassertS(SEXP in, const char *test, const char *what);
 
+// nPastEvid is kept out of rx_solving_options to avoid breaking the
+// assignFuns2 ABI (which passes rx_solving_options by value).
+int nPastEvid_global = 0;
+
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
 List etTrans(List inData, const RObject &obj, bool addCmt,
@@ -1761,7 +1765,7 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   double *newSolve = (double*)calloc((int64_t)op->neq * nat, sizeof(double));
   // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
   int    *newEvid  = nat > 0 ? (int*)   malloc(nat * sizeof(int))    : NULL;
-  int    *newIx    = nat > 0 ? (int*)   malloc(nat * sizeof(int))    : NULL;
+  int    *newIx    = nat > 0 ? (int*)   calloc(nat,  sizeof(int))    : NULL;
   double *newTT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
   int    *newIdose = nd  > 0 ? (int*)   malloc(nd  * sizeof(int))    : NULL;
 
@@ -4425,8 +4429,8 @@ List rxSolve_df(const RObject &obj,
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
   }
-  if (op->nPastEvid > 0) {
-    warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), op->nPastEvid);
+  if (nPastEvid_global > 0) {
+    warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), nPastEvid_global);
   }
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
@@ -4828,7 +4832,7 @@ static inline void iniRx(rx_solve* rx) {
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
-  op->nPastEvid = 0;
+  nPastEvid_global = 0;
   op->naTime = 0;
   op->ATOL = 1e-8; //absolute error
   op->RTOL = 1e-8; //relative error
@@ -5235,7 +5239,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
     }
     op->badSolve = 0;
-    op->nPastEvid = 0;
+    nPastEvid_global = 0;
     op->naTime = 0;
     op->abort = 0;
     op->ATOL = atolNV[0];          //absolute error

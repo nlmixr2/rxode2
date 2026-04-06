@@ -175,6 +175,7 @@ extern "C" void printErr(int err, int id){
 }
 
 rx_solving_options op_global;
+extern int nPastEvid_global;
 
 rx_solving_options_ind *inds_global = NULL;
 
@@ -698,7 +699,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
 
   if (_time <= _curTime) {
 #pragma omp atomic
-    op->nPastEvid++;
+    nPastEvid_global++;
     return 0;
   }
 

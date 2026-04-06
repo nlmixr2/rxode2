@@ -83,7 +83,6 @@ typedef struct {
   int linOffset;
   int ssSolved;
   int indOwnAlloc;
-  int nPastEvid;          // count of past-time evid_() calls (atomic increment)
 } rx_solving_options;
 
 
