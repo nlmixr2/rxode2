@@ -746,7 +746,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
   // Grow idose if needed
   if (nDose > 0 && _ind->ndoses + nDose > _ind->idoseOwnAllocN) {
     int newCap = _ind->ndoses + nDose + EVID_EXTRA_SIZE;
-    int *id = (int*)realloc(_ind->idose, newCap * sizeof(int));
+    int *id = (int*)realloc(_ind->idose, (newCap + 1) * sizeof(int));
     if (!id) {
       int bad = 1;
 #pragma omp atomic write

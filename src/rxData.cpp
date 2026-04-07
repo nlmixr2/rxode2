@@ -1774,9 +1774,11 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
   // evid also gets +1 guard element for getEvidP1.
   int    *newEvid  = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
-  int    *newIx    = nat > 0 ? (int*)   calloc(nat,  sizeof(int))      : NULL;
-  double *newTT    = nat > 0 ? (double*)malloc(nat * sizeof(double))   : NULL;
-  int    *newIdose = nd  > 0 ? (int*)   malloc(nd  * sizeof(int))      : NULL;
+  // ix and timeThread get +1 guard so any accidental [nat] access doesn't corrupt
+  // adjacent heap metadata.  idose gets +1 for the same reason.
+  int    *newIx    = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
+  double *newTT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)): NULL;
+  int    *newIdose = nd  > 0 ? (int*)   calloc(nd  + 1, sizeof(int))   : NULL;
 
   if ((nat > 0 && (!newDose || !newIi || !newAT || !newEvid || !newIx || !newTT)) ||
       !newSolve || (nd > 0 && !newIdose)) {
