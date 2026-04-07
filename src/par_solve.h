@@ -276,6 +276,7 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
   }
+  ind->_atEventTime = 1;
 }
 
 

@@ -1758,16 +1758,25 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   int nat = ind->n_all_times;
   int nd  = ind->ndoses;
 
-  // dose, ii, all_times indexed by ALL event indices (0..n_all_times-1)
-  double *newDose  = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newIi    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newAT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newSolve = (double*)calloc((int64_t)op->neq * nat, sizeof(double));
+  // dose, ii, all_times, evid indexed by ALL event indices (0..n_all_times-1).
+  // Allocate nat+1 elements so that the [idx+1] "plus-one" macros
+  // (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1, getEvidP1) are always
+  // within bounds even when idx == nat-1.  The guard element is zero-initialised
+  // and must never be written with a meaningful value.
+  double *newDose  = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  double *newIi    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  double *newAT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  // Allocate solve with EVID_EXTRA_SIZE extra event slots so that _rxPushDose
+  // can grow n_all_times by up to EVID_EXTRA_SIZE without OOB in the solve loop.
+  // updateSolve() will realloc further if needed (safe there — between ODE steps).
+  int solveN = nat + EVID_EXTRA_SIZE;
+  double *newSolve = (double*)calloc((int64_t)op->neq * solveN, sizeof(double));
   // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
-  int    *newEvid  = nat > 0 ? (int*)   malloc(nat * sizeof(int))    : NULL;
-  int    *newIx    = nat > 0 ? (int*)   calloc(nat,  sizeof(int))    : NULL;
-  double *newTT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  int    *newIdose = nd  > 0 ? (int*)   malloc(nd  * sizeof(int))    : NULL;
+  // evid also gets +1 guard element for getEvidP1.
+  int    *newEvid  = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
+  int    *newIx    = nat > 0 ? (int*)   calloc(nat,  sizeof(int))      : NULL;
+  double *newTT    = nat > 0 ? (double*)malloc(nat * sizeof(double))   : NULL;
+  int    *newIdose = nd  > 0 ? (int*)   malloc(nd  * sizeof(int))      : NULL;
 
   if ((nat > 0 && (!newDose || !newIi || !newAT || !newEvid || !newIx || !newTT)) ||
       !newSolve || (nd > 0 && !newIdose)) {
@@ -1782,6 +1791,7 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
     memcpy(newAT,   ind->all_times, nat * sizeof(double));
     memcpy(newEvid, ind->evid,      nat * sizeof(int));
     // ix and timeThread: sortInd re-initialises both; no copy needed
+    // guard elements [nat] remain zero from calloc
   }
   if (nd > 0) {
     memcpy(newIdose, ind->idose, nd * sizeof(int));
@@ -1797,6 +1807,7 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   ind->idose          = newIdose;
   ind->indOwnAlloc    = 1;
   ind->indOwnAllocN   = nat;
+  ind->solveAllocN    = solveN;
   ind->idoseOwnAllocN = nd;
 }
 
@@ -4719,7 +4730,6 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 
   List dat = rxSolve_df(obj, rxControl, specParams, extraArgs,
                         params, events, inits, rxSolveDat);
-
 #ifdef rxSolveT
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -4891,12 +4901,15 @@ static inline void iniRx(rx_solve* rx) {
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
+static int _rxSolveCallN = 0;
+
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
               const Nullable<List> &extraArgs,
               const RObject &params, const RObject &events, const RObject &inits,
               const int setupOnly){
+  _rxSolveCallN++;
   if (setupOnly == 0){
     rxSolveFree();
   }
@@ -5127,8 +5140,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->stiff = method;
 
     rxSolveDat->throttle = false;
-    if (method != 2) {
-      if (method != 2 && method != 0) { // dop853 and liblsoda should be thread safe
+    if (method != 2 && method != 0) { // dop853 and liblsoda should be thread safe
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");

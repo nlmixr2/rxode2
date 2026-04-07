@@ -1,3 +1,9 @@
+// Extra event slots pre-allocated in ind->solve / indOwnAllocN to absorb
+// _rxPushDose growth without requiring a solve-buffer realloc mid-integration.
+#ifndef EVID_EXTRA_SIZE
+#define EVID_EXTRA_SIZE 16
+#endif
+
 typedef struct sbuf {
   char *s;        /* curr print buffer */
   int sN;
@@ -246,7 +252,8 @@ typedef struct {
   // When 1, this individual owns its dose/ii/all_times/solve arrays
   // (independently malloc'd, not pointers into the global buffer)
   int indOwnAlloc;
-  int indOwnAllocN;     // allocated capacity (>= n_all_times)
+  int indOwnAllocN;     // allocated capacity for event arrays (>= n_all_times)
+  int solveAllocN;      // allocated capacity for ind->solve in units of events (neq doubles each)
   int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
   int _atEventTime;     // set before each event-table interval; consumed once in dydt
 } rx_solving_options_ind;
