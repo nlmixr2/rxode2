@@ -1145,7 +1145,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
     }
-    if (!checkmate::assertIntegerish(indOwnAlloc, lower=-1, upper=1, len=1, any.missing=FALSE)) {
+    if (!checkmate::testIntegerish(indOwnAlloc, lower=-1, upper=1, len=1, any.missing=FALSE)) {
       checkmate::assertLogical(indOwnAlloc, len=1, any.missing=TRUE)
       if (is.na(indOwnAlloc)) {
         indOwnAlloc <- -1L

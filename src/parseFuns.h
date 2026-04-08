@@ -429,11 +429,13 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
   if (nodeHas(evid_statement) && *i == 0) {
+    tb.evid_ = 1;
     *i = nch; // skip all children; we process the whole statement at once
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     // Grammar: 'evid_' '(' e0 ',' e1 ',' e2 ',' e3 ',' e4 ',' e5 ',' e6 ',' e7 ')'
     // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
-    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',', 16=ss, 17=')'
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
     D_ParseNode *cTime = d_get_child(pn, 2);
     D_ParseNode *cEvid = d_get_child(pn, 4);
     D_ParseNode *cAmt  = d_get_child(pn, 6);

@@ -19,7 +19,7 @@
 #include "../inst/include/rxode2parseVer.h"
 
 static inline SEXP calcSLinCmt(void) {
-  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,14));
+  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,15));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -33,8 +33,9 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[11]= tb.nLlik;
   INTEGER(sLinCmt)[12] = tb.ndiff;
   INTEGER(sLinCmt)[13] = tb.hasMix;
+  INTEGER(sLinCmt)[14] = tb.evid_;
 
-  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 14));
+  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 15));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -49,6 +50,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 11, Rf_mkChar("nLlik"));
   SET_STRING_ELT(sLinCmtN, 12, Rf_mkChar("ndiff"));
   SET_STRING_ELT(sLinCmtN, 13, Rf_mkChar("mix"));
+  SET_STRING_ELT(sLinCmtN, 14, Rf_mkChar("evid_"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   UNPROTECT(2);
   return(sLinCmt);

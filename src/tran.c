@@ -432,6 +432,7 @@ void reset(void) {
   tb.simflg     = 0;
   tb.nLlik      = 0;
   tb.hasMix     = 0;
+  tb.evid_      = 0;
 
   // Reset Arrays
   // Reset integers
