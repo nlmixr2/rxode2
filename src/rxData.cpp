@@ -1652,8 +1652,9 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   } else {
     ind->mtime0 = NULL;
   }
-  if (!ind->indOwnAlloc)
+  if (!ind->indOwnAlloc) {
     ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
+  }
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
   // Point the individual's tolerance arrays at the current thread's
@@ -5148,6 +5149,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
     op->ssSolved = asInt(rxControl[Rxc_ssSolved], "ssSolved");
     op->indOwnAlloc = asInt(rxControl[Rxc_indOwnAlloc], "indOwnAlloc");
+    if (op->indOwnAlloc == -1) {
+      op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
+    }
     op->stiff = method;
 
     rxSolveDat->throttle = false;
