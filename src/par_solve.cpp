@@ -710,6 +710,22 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
   int nDose = 0;
   for (int _k = 0; _k < ev.n; _k++) if (ev.isDose[_k]) nDose++;
 
+  // Pushed pure observations (evid=0/2) require resizing dv/cens/limit/rc arrays
+  // which are not managed by _rxPushDose.  Skip them for now.
+  if (nDose == 0) return 0;
+
+  // Check per-individual push limit (maxExtra > 0 enables the guard).
+  rx_solve *rx = &rx_global;
+  _ind->nPushedExtra++;
+  if (rx->maxExtra > 0 && _ind->nPushedExtra > rx->maxExtra) {
+    int bad = 1;
+#pragma omp atomic write
+    rx->extraPushAbort = bad;
+#pragma omp atomic write
+    op->badSolve = bad;
+    return -1;
+  }
+
   // Grow main event arrays if needed.
   // NOTE: ind->solve is intentionally NOT reallocated here.  _rxPushDose can
   // be called from within the dydt callback while an ODE integrator (lsoda/dop)

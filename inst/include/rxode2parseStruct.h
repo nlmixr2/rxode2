@@ -129,6 +129,7 @@ typedef struct {
   // 2 5
   // 3 6
   int n_all_times;
+  int n_all_times_orig;
   int nevid2;
   int ixds;
   int ndoses;
@@ -256,6 +257,7 @@ typedef struct {
   int solveAllocN;      // allocated capacity for ind->solve in units of events (neq doubles each)
   int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
   int _atEventTime;     // set before each event-table interval; consumed once in dydt
+  int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
 } rx_solving_options_ind;
 
 typedef struct {
@@ -338,6 +340,13 @@ typedef struct {
   // Add mixture number flag
   int mixnum;
   int input_mixnum;
+
+  // Maximum number of events that evid_() may push per individual per solve.
+  // 0 = unlimited.  Exceeding the limit aborts the individual with NA output.
+  int maxExtra;
+  // Set to 1 (atomically) when any individual exceeds maxExtra; checked after
+  // the solve completes to emit an error.
+  int extraPushAbort;
 } rx_solve;
 
 static inline void sNull(sbuf *sbb) {

@@ -3829,6 +3829,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         if (nall != 0) {
           // Finalize last solve.
           ind->n_all_times    = ndoses+nobs;
+          ind->n_all_times_orig = ind->n_all_times;
           if (rx->mixnum) {
             ind->mixest = 0;
             if (nsub >= mixUnif.size()) {
@@ -3935,6 +3936,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     rx->nevid9 = nevid9;
     // Finalize the prior individual
     ind->n_all_times    = ndoses+nobs;
+    ind->n_all_times_orig = ind->n_all_times;
     if (rx->mixnum) {
       ind->mixest = 0;
       if (nsub >= mixUnif.size()) {
@@ -4336,6 +4338,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->cov_ptr = indS.cov_ptr;
             }
             ind->n_all_times =indS.n_all_times;
+            ind->n_all_times_orig = indS.n_all_times;
             if (rx->mixnum) {
               // In this case, it is a new individual so rxunifmix is
               // always selected.
@@ -4841,6 +4844,8 @@ static inline void iniRx(rx_solve* rx) {
   rx->maxShift = 0.0;
   rx->maxwhile = 100000;
   rx->whileexit= 0;
+  rx->maxExtra = 100;
+  rx->extraPushAbort = 0;
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
@@ -5051,6 +5056,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx_solve* rx = getRxSolve_();
     iniRx(rx);
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
+    rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
+    rx->extraPushAbort = 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     return rxSolve_update(object, rxControl, specParams,
@@ -5080,6 +5087,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
+    rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
+    rx->extraPushAbort = 0;
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
     op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");

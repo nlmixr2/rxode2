@@ -744,6 +744,14 @@
 #'   (if this value is 2), and finally a third is calculated if the
 #'   gradient is still suspect.
 #'
+#' @param maxExtra Integer; maximum number of events (doses and
+#'   observations) that `evid_()` may push per individual per solve.
+#'   When an individual exceeds this limit the solve is aborted for
+#'   that individual (output filled with `NA`) and an error is raised
+#'   after the full parallel solve completes.  Set to `0L` to allow
+#'   unlimited pushes (use with care — cascading `evid_()` calls can
+#'   grow without bound).  Default is `100L`.
+#'
 #' @param indOwnAlloc Logical; when `TRUE` (default) each individual's
 #'   `dose`, `ii`, `all_times`, and `solve` arrays are allocated
 #'   independently via `malloc`/`calloc` rather than as pointers into
@@ -889,6 +897,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtSuspect=1e-6,
                     linCmtForwardMax=2L,
                     indOwnAlloc=TRUE,
+                    maxExtra=100L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1261,6 +1270,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
+    checkmate::assertIntegerish(maxExtra, lower=0, len=1)
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1276,6 +1286,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(ssSolved, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
+    maxExtra <- as.integer(maxExtra)
     .zeros <- .xtra$.zeros
     if (inherits(.omega, "matrix")) {
       .w <-which(diag(.omega) == 0.0)
@@ -1426,6 +1437,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtSuspect=linCmtSuspect,
       linCmtForwardMax=linCmtForwardMax,
       indOwnAlloc=as.integer(indOwnAlloc),
+      maxExtra=maxExtra,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

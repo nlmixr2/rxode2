@@ -253,6 +253,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
+      if (rx->extraPushAbort) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue,
+          _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
+          rx->maxExtra);
+      }
       for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
         rx_solving_options_ind *indE = &(rx->subjects[solveid]);
         if (indE->err != 0) {
@@ -262,6 +268,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       rxSolveFreeC();
       (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
     } else {
+      if (rx->extraPushAbort) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue,
+          _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
+          rx->maxExtra);
+      }
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }
   }

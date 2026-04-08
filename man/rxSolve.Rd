@@ -151,6 +151,7 @@ rxSolve(
   linCmtSuspect = 1e-06,
   linCmtForwardMax = 2L,
   indOwnAlloc = TRUE,
+  maxEvid = 100L,
   envir = parent.frame()
 )
 
@@ -958,6 +959,14 @@ gradient is still suspect.}
 independently via \code{malloc}/\code{calloc} rather than as pointers into
 a single global buffer.  This enables per-individual reallocation
 for future dose-pushing functionality.}
+
+\item{maxEvid}{Integer; maximum number of events (doses and
+observations) that \code{evid_()} may push per individual per solve.
+When an individual exceeds this limit the solve is aborted for
+that individual (output filled with \code{NA}) and an error is raised
+after the full parallel solve completes.  Set to \code{0L} to allow
+unlimited pushes (use with care — cascading \code{evid_()} calls can
+grow without bound).  Default is \code{100L}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

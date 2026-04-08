@@ -1,4 +1,47 @@
 rxTest({
+  test_that("exceeding maxExtra raises an error (single subject)", {
+    # This model unconditionally pushes a new event at t+0.1 on every ODE
+    # evaluation step.  Each integration interval (0.1 wide) produces one push,
+    # so seq(0, 2, by=0.1) creates 20 intervals → 20 pushes, which exceeds
+    # maxExtra=10 and must raise an error.
+    mCascade <- rxode2({
+      d/dt(x) <- -x
+      evid_(t + 0.1, 1, 1, 10, 0, 0, 0)
+    })
+    e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
+    expect_error(
+      rxSolve(mCascade, c(x = 1), e, maxExtra = 10L),
+      regexp = "maxExtra"
+    )
+  })
+
+  test_that("exceeding maxExtra does not crash R with parallel subjects", {
+    # Same cascading model, multiple subjects solved in parallel.
+    # Must raise an error rather than segfaulting.
+    mCascade <- rxode2({
+      d/dt(x) <- -x
+      evid_(t + 0.1, 1, 1, 10, 0, 0, 0)
+    })
+    nSub <- 4L
+    params <- data.frame(id = seq_len(nSub), x = rep(1, nSub))
+    e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
+    expect_error(
+      rxSolve(mCascade, params, e, maxExtra = 10L, cores = 2L),
+      regexp = "maxExtra"
+    )
+  })
+
+  test_that("maxExtra=0 allows unlimited pushes (no error)", {
+    # Limited cascade: condition prevents indefinite growth.
+    # maxExtra=0 disables the guard entirely; should succeed without error.
+    m <- rxode2({
+      d/dt(x) <- -x
+      evid_(t + 0.1, 1, 1, 10, 0, 0, 0)
+    })
+    e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
+    expect_no_error(rxSolve(m, c(x = 1), e, maxExtra = 0L))
+  })
+
   test_that("bolus push via evid_() adds extra timepoints and affects trajectory", {
     m <- rxode2({
       d/dt(depot) <- -ka * depot
