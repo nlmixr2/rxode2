@@ -57,7 +57,11 @@ extern "C" {
 		}
 		ind->ixds = ind->idx = ind->_update_par_ptr_in = 0; // reset dosing
     ind->nPushedExtra = 0; // reset per-solve evid_() push counter
-    ind->n_all_times = ind->n_all_times_orig; // reset n_all_times to original value (in case it was increased for extra doses in a previous solve)
+    // Reset n_all_times to the original event-table size for the ODE solve
+    // pass.  _rxPushDose() grows n_all_times during the solve; the LHS output
+    // pass (inLhs==1) must see the grown count so that pushed events that
+    // interleave with original observations are not silently dropped.
+    if (inLhs == 0) ind->n_all_times = ind->n_all_times_orig;
 		ind->id=solveid;
 		ind->cacheME=0;
 		ind->curShift=0.0;
