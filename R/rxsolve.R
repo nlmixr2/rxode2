@@ -752,11 +752,16 @@
 #'   unlimited pushes (use with care — cascading `evid_()` calls can
 #'   grow without bound).  Default is `100L`.
 #'
-#' @param indOwnAlloc Logical; when `TRUE` (default) each individual's
-#'   `dose`, `ii`, `all_times`, and `solve` arrays are allocated
-#'   independently via `malloc`/`calloc` rather than as pointers into
-#'   a single global buffer.  This enables per-individual reallocation
-#'   for future dose-pushing functionality.
+#' @param indOwnAlloc Logical; when `TRUE` each individual's `dose`,
+#'   `ii`, `all_times`, and `solve` arrays are allocated independently
+#'   via `malloc`/`calloc` rather than as pointers into a single
+#'   global buffer.  This enables per-individual reallocation for dose
+#'   and observation-pushing with `evid_()` and related
+#'   functions. When `FALSE` these arrays are allocated as a single
+#'   global buffer, which is slightly faster and slightly more memory
+#'   efficient but does not allow for dynamic dosing/observations.  By
+#'   default this is `NA` which automatically decides based on if
+#'   there is any dosing or observation pushing in the model.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -896,7 +901,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
                     linCmtSuspect=1e-6,
                     linCmtForwardMax=2L,
-                    indOwnAlloc=TRUE,
+                    indOwnAlloc=NA,
                     maxExtra=100L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
@@ -1139,6 +1144,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     safeLog <- as.integer(safeLog)
     if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
+    }
+    if (!checkmate::assertIntegerish(indOwnAlloc, lower=-1, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(indOwnAlloc, len=1, any.missing=TRUE)
+      if (is.na(indOwnAlloc)) {
+        indOwnAlloc <- -1L
+      } else {
+        indOwnAlloc <- as.integer(indOwnAlloc)
+      }
     }
     safePow <- as.integer(safePow)
     if (is.null(scale)) {
