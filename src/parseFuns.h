@@ -431,30 +431,32 @@ static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
   if (nodeHas(evid_statement) && *i == 0) {
     *i = nch; // skip all children; we process the whole statement at once
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
-    // Grammar: 'evid_' '(' e0 ',' e1 ',' e2 ',' e3 ',' e4 ',' e5 ',' e6 ')'
-    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=cmt, 7=',',
-    //           8=amt, 9=',', 10=ii, 11=',', 12=ss, 13=',', 14=rate, 15=')'
+    // Grammar: 'evid_' '(' e0 ',' e1 ',' e2 ',' e3 ',' e4 ',' e5 ',' e6 ',' e7 ')'
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',', 16=ss, 17=')'
     D_ParseNode *cTime = d_get_child(pn, 2);
     D_ParseNode *cEvid = d_get_child(pn, 4);
-    D_ParseNode *cCmt  = d_get_child(pn, 6);
-    D_ParseNode *cAmt  = d_get_child(pn, 8);
-    D_ParseNode *cIi   = d_get_child(pn, 10);
-    D_ParseNode *cSs   = d_get_child(pn, 12);
-    D_ParseNode *cRate = d_get_child(pn, 14);
+    D_ParseNode *cAmt  = d_get_child(pn, 6);
+    D_ParseNode *cCmt  = d_get_child(pn, 8);
+    D_ParseNode *cRate = d_get_child(pn, 10);
+    D_ParseNode *cIi   = d_get_child(pn, 12);
+    D_ParseNode *cAddl = d_get_child(pn, 14);
+    D_ParseNode *cSs   = d_get_child(pn, 16);
     char *vTime = (char*)rc_dup_str(cTime->start_loc.s, cTime->end);
     char *vEvid = (char*)rc_dup_str(cEvid->start_loc.s, cEvid->end);
-    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
     char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
-    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
-    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
     char *vRate = (char*)rc_dup_str(cRate->start_loc.s,  cRate->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
-    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), (int)(%s), %s, %s, (int)(%s), %s);\n",
-            vTime, vEvid, vCmt, vAmt, vIi, vSs, vRate);
-    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), (int)(%s), %s, %s, (int)(%s), %s);\n",
-            vTime, vEvid, vCmt, vAmt, vIi, vSs, vRate);
-    sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s);",
-            vTime, vEvid, vCmt, vAmt, vIi, vSs, vRate);
+    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
+            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
+            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+    sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s, %s);",
+            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
     addLine(&sbPm,   "%s\n", sb.s);
     addLine(&sbPmDt, "%s\n", sbDt.s);
     sAppend(&sbNrm,  "%s\n", sbt.s);

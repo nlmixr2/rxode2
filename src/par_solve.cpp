@@ -691,109 +691,123 @@ static inline void _rxSortIdoseSuffix(rx_solving_options_ind *ind, int startDose
 // _curTime: current ODE model time (for past-time guard).
 // Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
 extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
-                            double _time, int _evid, int _cmt,
-                            double _amt, double _ii, int _ss, double _rate) {
+                            double _time, int _evid, double _amt, int _cmt,
+                            double _rate, double _ii, int _addl, int _ss) {
   rx_solving_options *op = &op_global;
-
-  if (_time <= _curTime) {
-#pragma omp atomic
-    nPastEvid_global++;
-    return 0;
-  }
 
   if (!_ind->indOwnAlloc) return 0; // safety: only works with owned arrays
 
-  rx_translated_event ev = _rxTranslateOneEvent(_time, _evid, _cmt,
-                                                 _amt, _ii, _ss, _rate);
-  if (ev.n == 0) return 0;
-
-  int nDose = 0;
-  for (int _k = 0; _k < ev.n; _k++) if (ev.isDose[_k]) nDose++;
-
-  // Check per-individual push limit (maxExtra > 0 enables the guard).
   rx_solve *rx = &rx_global;
-  _ind->nPushedExtra++;
-  if (rx->maxExtra > 0 && _ind->nPushedExtra > rx->maxExtra) {
-    int bad = 1;
-#pragma omp atomic write
-    rx->extraPushAbort = bad;
-#pragma omp atomic write
-    op->badSolve = bad;
-    return -1;
-  }
 
-  // Grow main event arrays if needed.
-  // NOTE: ind->solve is intentionally NOT reallocated here.  _rxPushDose can
-  // be called from within the dydt callback while an ODE integrator (lsoda/dop)
-  // is actively using yp = getSolve(i) = ind->solve + neq*i.  Reallocating
-  // ind->solve here would free that buffer under the integrator's feet, causing
-  // a use-after-free / heap corruption.  The pushed events all have future
-  // times; the current solver loop uses a cached nx = n_all_times and never
-  // accesses getSolve(j) for j >= nx.  The solve array is grown to the correct
-  // size by rxAllocInd() at the start of the next rxSolve() call.
-  if (_ind->n_all_times + ev.n > _ind->indOwnAllocN) {
-    int newCap = _ind->n_all_times + ev.n + EVID_EXTRA_SIZE;
-    // dose, all_times, ii, evid: allocate newCap+1 so that the [idx+1]
-    // "plus-one" macros (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1,
-    // getEvidP1) are always within bounds when idx == n_all_times-1.
-    double *a   = (double*)realloc(_ind->all_times,  (newCap + 1) * sizeof(double));
-    double *d   = (double*)realloc(_ind->dose,        (newCap + 1) * sizeof(double));
-    double *i2  = (double*)realloc(_ind->ii,          (newCap + 1) * sizeof(double));
-    int    *ev2 = (int*)   realloc(_ind->evid,        (newCap + 1) * sizeof(int));
-    int    *ix  = (int*)   realloc(_ind->ix,          (newCap + 1) * sizeof(int));
-    double *tt  = (double*)realloc(_ind->timeThread,  (newCap + 1) * sizeof(double));
-    if (!a || !d || !i2 || !ev2 || !ix || !tt) {
+  // Loop over addl+1 doses: dose 0 uses the given ss, subsequent doses use ss=0
+  int nDosesToPush = (_addl > 0 && _ii > 0) ? _addl + 1 : 1;
+  int anyPushed = 0;
+  for (int _rep = 0; _rep < nDosesToPush; _rep++) {
+    double _doseTime = _time + _rep * _ii;
+    int    _doseSs   = (_rep == 0) ? _ss : 0;
+
+    if (_doseTime <= _curTime) {
+#pragma omp atomic
+      nPastEvid_global++;
+      continue;
+    }
+
+    // Each addl repetition is a standalone event; ii=0 so the solver does not
+    // auto-schedule further repeats.  For the first dose (rep==0) with SS, we
+    // pass the original _ii so flg is set correctly; for all others ii=0.
+    double _doseIi = (_rep == 0 && _doseSs != 0) ? _ii : 0.0;
+    rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _evid, _cmt,
+                                                   _amt, _doseIi, _doseSs, _rate);
+    if (ev.n == 0) continue;
+
+    int nDose = 0;
+    for (int _k = 0; _k < ev.n; _k++) if (ev.isDose[_k]) nDose++;
+
+    // Check per-individual push limit (maxExtra > 0 enables the guard).
+    _ind->nPushedExtra++;
+    if (rx->maxExtra > 0 && _ind->nPushedExtra > rx->maxExtra) {
       int bad = 1;
+#pragma omp atomic write
+      rx->extraPushAbort = bad;
 #pragma omp atomic write
       op->badSolve = bad;
       return -1;
     }
-    _ind->all_times  = a;  _ind->dose = d;  _ind->ii = i2;
-    _ind->evid       = ev2; _ind->ix  = ix; _ind->timeThread = tt;
-    _ind->indOwnAllocN = newCap;
-    // Zero guard elements (solve slots are grown on next rxAllocInd call)
-    a[newCap] = 0.0;  d[newCap] = 0.0;  i2[newCap] = 0.0;  ev2[newCap] = 0;
-  }
 
-  // Grow idose if needed
-  if (nDose > 0 && _ind->ndoses + nDose > _ind->idoseOwnAllocN) {
-    int newCap = _ind->ndoses + nDose + EVID_EXTRA_SIZE;
-    int *id = (int*)realloc(_ind->idose, (newCap + 1) * sizeof(int));
-    if (!id) {
-      int bad = 1;
+    // Grow main event arrays if needed.
+    // NOTE: ind->solve is intentionally NOT reallocated here.  _rxPushDose can
+    // be called from within the dydt callback while an ODE integrator (lsoda/dop)
+    // is actively using yp = getSolve(i) = ind->solve + neq*i.  Reallocating
+    // ind->solve here would free that buffer under the integrator's feet, causing
+    // a use-after-free / heap corruption.  The pushed events all have future
+    // times; the current solver loop uses a cached nx = n_all_times and never
+    // accesses getSolve(j) for j >= nx.  The solve array is grown to the correct
+    // size by rxAllocInd() at the start of the next rxSolve() call.
+    if (_ind->n_all_times + ev.n > _ind->indOwnAllocN) {
+      int newCap = _ind->n_all_times + ev.n + EVID_EXTRA_SIZE;
+      // dose, all_times, ii, evid: allocate newCap+1 so that the [idx+1]
+      // "plus-one" macros (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1,
+      // getEvidP1) are always within bounds when idx == n_all_times-1.
+      double *a   = (double*)realloc(_ind->all_times,  (newCap + 1) * sizeof(double));
+      double *d   = (double*)realloc(_ind->dose,        (newCap + 1) * sizeof(double));
+      double *i2  = (double*)realloc(_ind->ii,          (newCap + 1) * sizeof(double));
+      int    *ev2 = (int*)   realloc(_ind->evid,        (newCap + 1) * sizeof(int));
+      int    *ix  = (int*)   realloc(_ind->ix,          (newCap + 1) * sizeof(int));
+      double *tt  = (double*)realloc(_ind->timeThread,  (newCap + 1) * sizeof(double));
+      if (!a || !d || !i2 || !ev2 || !ix || !tt) {
+        int bad = 1;
 #pragma omp atomic write
-      op->badSolve = bad;
-      return -1;
+        op->badSolve = bad;
+        return -1;
+      }
+      _ind->all_times  = a;  _ind->dose = d;  _ind->ii = i2;
+      _ind->evid       = ev2; _ind->ix  = ix; _ind->timeThread = tt;
+      _ind->indOwnAllocN = newCap;
+      // Zero guard elements (solve slots are grown on next rxAllocInd call)
+      a[newCap] = 0.0;  d[newCap] = 0.0;  i2[newCap] = 0.0;  ev2[newCap] = 0;
     }
-    _ind->idose          = id;
-    _ind->idoseOwnAllocN = newCap;
-  }
 
-  // Append the translated events
-  int doseSuffix = _ind->ndoses; // idose sort start
-  for (int _k = 0; _k < ev.n; _k++) {
-    int rawIdx = _ind->n_all_times;
-    _ind->all_times[rawIdx]  = ev.time[_k];
-    _ind->dose[rawIdx]       = ev.amt[_k];
-    _ind->ii[rawIdx]         = ev.ii[_k];
-    _ind->evid[rawIdx]       = ev.evid[_k];
-    _ind->timeThread[rawIdx] = ev.time[_k];
-    _ind->ix[rawIdx]         = rawIdx;
-    _ind->n_all_times++;
-    if (ev.isDose[_k]) {
-      _ind->idose[_ind->ndoses++] = rawIdx;
+    // Grow idose if needed
+    if (nDose > 0 && _ind->ndoses + nDose > _ind->idoseOwnAllocN) {
+      int newCap = _ind->ndoses + nDose + EVID_EXTRA_SIZE;
+      int *id = (int*)realloc(_ind->idose, (newCap + 1) * sizeof(int));
+      if (!id) {
+        int bad = 1;
+#pragma omp atomic write
+        op->badSolve = bad;
+        return -1;
+      }
+      _ind->idose          = id;
+      _ind->idoseOwnAllocN = newCap;
     }
-  }
 
-  // Re-sort ix from current event forward so new events land in the right slots
-  int sortStart = (_ind->idx >= 0 && _ind->idx < _ind->n_all_times)
-                  ? _ind->idx : 0;
-  reSortMainTimeline(_ind, sortStart);
+    // Append the translated events
+    int doseSuffix = _ind->ndoses; // idose sort start
+    for (int _k = 0; _k < ev.n; _k++) {
+      int rawIdx = _ind->n_all_times;
+      _ind->all_times[rawIdx]  = ev.time[_k];
+      _ind->dose[rawIdx]       = ev.amt[_k];
+      _ind->ii[rawIdx]         = ev.ii[_k];
+      _ind->evid[rawIdx]       = ev.evid[_k];
+      _ind->timeThread[rawIdx] = ev.time[_k];
+      _ind->ix[rawIdx]         = rawIdx;
+      _ind->n_all_times++;
+      if (ev.isDose[_k]) {
+        _ind->idose[_ind->ndoses++] = rawIdx;
+      }
+    }
 
-  // Re-sort unprocessed idose suffix
-  _rxSortIdoseSuffix(_ind, doseSuffix < _ind->ixds ? _ind->ixds : doseSuffix);
+    // Re-sort ix from current event forward so new events land in the right slots
+    int sortStart = (_ind->idx >= 0 && _ind->idx < _ind->n_all_times)
+                    ? _ind->idx : 0;
+    reSortMainTimeline(_ind, sortStart);
 
-  return 1;
+    // Re-sort unprocessed idose suffix
+    _rxSortIdoseSuffix(_ind, doseSuffix < _ind->ixds ? _ind->ixds : doseSuffix);
+    anyPushed = 1;
+  } // end addl loop
+
+  return anyPushed ? 1 : 0;
 }
 
 // Recomputes ind->mtime[k] with current state yp when the solver is exactly at

@@ -151,7 +151,7 @@ rxSolve(
   linCmtSuspect = 1e-06,
   linCmtForwardMax = 2L,
   indOwnAlloc = TRUE,
-  maxEvid = 100L,
+  maxExtra = 100L,
   envir = parent.frame()
 )
 
@@ -960,7 +960,7 @@ independently via \code{malloc}/\code{calloc} rather than as pointers into
 a single global buffer.  This enables per-individual reallocation
 for future dose-pushing functionality.}
 
-\item{maxEvid}{Integer; maximum number of events (doses and
+\item{maxExtra}{Integer; maximum number of events (doses and
 observations) that \code{evid_()} may push per individual per solve.
 When an individual exceeds this limit the solve is aborted for
 that individual (output filled with \code{NA}) and an error is raised

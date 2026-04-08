@@ -376,9 +376,9 @@ typedef double (*rxode2_llikGammaFun) (double *in, double x, double shape, doubl
 typedef double (*rxode2_llikCauchyFun) (double *in, double x, double location, double scale);
 
 typedef void (*_setThreadInd_t) (int);
-typedef int  (*_rxPushDose_t)(rx_solving_options_ind *_ind, double _curTime,
-                               double _time, int evidVal, int _cmt,
-                               double _amt, double _ii, int _ss, double _rate);
+typedef int  (*_rxPushDose_t)(rx_solving_options_ind *, double,
+                               double, int, double, int,
+                               double, double, int, int);
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 #endif // __rxode2_model_shared_H__

@@ -18,8 +18,8 @@
 SEXP _rxHasOpenMp(void);
 
 extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
-                       double _time, int _evid, int _cmt,
-                       double _amt, double _ii, int _ss, double _rate);
+                       double _time, int _evid, double _amt, int _cmt,
+                       double _rate, double _ii, int _addl, int _ss);
 
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);

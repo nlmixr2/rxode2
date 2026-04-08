@@ -6,7 +6,7 @@ rxTest({
     # maxExtra=10 and must raise an error.
     mCascade <- rxode2({
       d/dt(x) <- -x
-      evid_(t + 0.1, 1, 1, 10, 0, 0, 0)
+      evid_(t + 0.1, 1, 10, 1, 0, 0, 0, 0)
     })
     e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
     expect_error(
@@ -20,7 +20,7 @@ rxTest({
     # Must raise an error rather than segfaulting.
     mCascade <- rxode2({
       d/dt(x) <- -x
-      evid_(t + 0.1, 1, 1, 10, 0, 0, 0)
+      evid_(t + 0.1, 1, 10, 1, 0, 0, 0, 0)
     })
     nSub <- 4L
     params <- data.frame(id = seq_len(nSub), x = rep(1, nSub))
@@ -36,7 +36,7 @@ rxTest({
     # maxExtra=0 disables the guard entirely; should succeed without error.
     m <- rxode2({
       d/dt(x) <- -x
-      evid_(t + 0.1, 1, 1, 10, 0, 0, 0)
+      evid_(t + 0.1, 1, 10, 1, 0, 0, 0, 0)
     })
     e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
     expect_no_error(rxSolve(m, c(x = 1), e, maxExtra = 0L))
@@ -48,7 +48,7 @@ rxTest({
       d/dt(central) <- ka * depot - cl/vd * central
       cp <- central / vd
       if (t < 24) {
-        evid_(t + 12, 1, 1, 50, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
+        evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
       }
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
@@ -68,7 +68,7 @@ rxTest({
       d/dt(central) <- -cl / vd * central
       cp <- central / vd
       if (t < 30) {
-        evid_(t + 6, 1, 1, 100, 0, 0, 10)  # rate=10, so dur=10h
+        evid_(t + 6, 1, 100, 1, 10, 0, 0, 0)  # rate=10, so dur=10h
       }
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 30, by = 1))
@@ -87,7 +87,7 @@ rxTest({
     m3 <- rxode2({
       d/dt(x) <- -x
       if (t < 5) {
-        evid_(t - 1, 1, 1, 10, 0, 0, 0)  # past time — should warn
+        evid_(t - 1, 1, 10, 1, 0, 0, 0, 0)  # past time — should warn
       }
     })
     e <- et(amt = 1, time = 0) |> et(seq(0, 5, by = 1))
@@ -102,13 +102,35 @@ rxTest({
       d/dt(central) <- -cl / vd * central
       cp <- central / vd
       if (t < 12) {
-        evid_(t + 5.5, 0, 1, 0, 0, 0, 0)  # push observation at t+5.5
+        evid_(t + 5.5, 0, 0, 1, 0, 0, 0, 0)  # push observation at t+5.5
       }
     })
     e <- et(amt = 100, time = 0) |> et(c(0, 6, 12))
     p <- c(cl = 1, vd = 10)
     r <- rxSolve(m4, p, e)
     expect_equal(nrow(r), 5) # 5 observations should be in the output
+  })
+
+  test_that("addl doses via evid_() push multiple doses at ii intervals", {
+    # evid_(t+6, 1, 50, 1, 0, 12, 2, 0) pushes 3 boluses: t+6, t+18, t+30
+    m6 <- rxode2({
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <- ka * depot - cl / vd * central
+      cp <- central / vd
+      if (t < 1) {
+        evid_(t + 6, 1, 50, 1, 0, 12, 2, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 36, by = 1))
+    p <- c(ka = 0.5, cl = 1, vd = 10)
+    r <- rxSolve(m6, p, e)
+    expect_true(nrow(r) > 0)
+    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
+    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    cp28 <- r$cp[r$time == 28]
+    cp31 <- r$cp[r$time == 31]
+    expect_true(length(cp28) > 0 && length(cp31) > 0)
+    expect_true(cp31 > cp28)
   })
 
   test_that("classic rxode2 internal evid >= 100 passes through verbatim", {
@@ -118,7 +140,7 @@ rxTest({
       d/dt(central) <- ka * depot - cl / vd * central
       cp <- central / vd
       if (t < 24) {
-        evid_(t + 12, 101, 1, 50, 0, 0, 0)
+        evid_(t + 12, 101, 50, 1, 0, 0, 0, 0)
       }
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
