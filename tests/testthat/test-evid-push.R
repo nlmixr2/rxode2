@@ -4,7 +4,9 @@ rxTest({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl/vd * central
       cp <- central / vd
-      evid_(t + 12, 1, 1, 50, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
+      if (t < 24) {
+        evid_(t + 12, 1, 1, 50, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
+      }
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
     p <- c(ka = 0.5, cl = 1, vd = 10)
@@ -22,7 +24,9 @@ rxTest({
     m2 <- rxode2({
       d/dt(central) <- -cl / vd * central
       cp <- central / vd
-      evid_(t + 6, 1, 1, 100, 0, 0, 10)  # rate=10, so dur=10h
+      if (t < 30) {
+        evid_(t + 6, 1, 1, 100, 0, 0, 10)  # rate=10, so dur=10h
+      }
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 30, by = 1))
     p <- c(cl = 1, vd = 10)
@@ -39,7 +43,9 @@ rxTest({
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
-      evid_(t - 1, 1, 1, 10, 0, 0, 0)  # past time — should warn
+      if (t < 5) {
+        evid_(t - 1, 1, 1, 10, 0, 0, 0)  # past time — should warn
+      }
     })
     e <- et(amt = 1, time = 0) |> et(seq(0, 5, by = 1))
     expect_warning(
@@ -52,7 +58,9 @@ rxTest({
     m4 <- rxode2({
       d/dt(central) <- -cl / vd * central
       cp <- central / vd
-      evid_(t + 5.5, 0, 1, 0, 0, 0, 0)  # push observation at t+5.5
+      if (t < 12) {
+        evid_(t + 5.5, 0, 1, 0, 0, 0, 0)  # push observation at t+5.5
+      }
     })
     e <- et(amt = 100, time = 0) |> et(c(0, 6, 12))
     p <- c(cl = 1, vd = 10)
@@ -66,7 +74,9 @@ rxTest({
       d/dt(depot)   <- -ka * depot
       d/dt(central) <- ka * depot - cl / vd * central
       cp <- central / vd
-      evid_(t + 12, 101, 1, 50, 0, 0, 0)
+      if (t < 24) {
+        evid_(t + 12, 101, 1, 50, 0, 0, 0)
+      }
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
     p <- c(ka = 0.5, cl = 1, vd = 10)
