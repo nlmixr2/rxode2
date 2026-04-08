@@ -152,4 +152,18 @@ rxTest({
     expect_true(length(cp12) > 0 && length(cp14) > 0)
     expect_true(cp14 > cp12)
   })
+
+  test_that("evid_() ui changes work", {
+
+    f <- function() {
+      model({
+        evid_(t + 12, 101, 50)
+      })
+    }
+
+    f <- f()
+    expect_equal(rxModelVars(f)$model["normModel"],
+                 "evid_(t + 12, 101, 50, 1, 0, 0, 0, 0);\n")
+
+  })
 })

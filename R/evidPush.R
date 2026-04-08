@@ -108,3 +108,42 @@
 evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
 }
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.evid_ <- function(fun) {
+  .dummy <- function(time, evid, amt, cmt, rate, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .time    <- deparse1(.mc$time)
+  .evid <- deparse1(.mc$evid)
+  .amt   <- deparse1(.mc$amt)
+
+  .cmt  <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") {
+    .cmt <- "1"
+  }
+
+  .rate   <- deparse1(.mc$rate)
+  if (.rate == "NULL") {
+    .rate <- "0"
+  }
+
+  .ii   <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+
+  .addl   <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+
+  .ss   <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+
+  list(replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt,
+                        ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")"))
+}

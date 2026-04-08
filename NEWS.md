@@ -1,5 +1,7 @@
 # rxode2 (development)
 
+- Add `evid_()` function to allow arbitrary doses and observations in a rxode2 model.
+
 - Create per-individual ODE solving tolerances for use in focei.
 
 - Fix potential security and memory-management issues that could lead
