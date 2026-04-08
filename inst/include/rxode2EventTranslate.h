@@ -22,7 +22,7 @@ typedef struct {
  *
  * Internal evid encoding (unchanged from existing rxode2 convention):
  *   internal_evid = cmt100*100000 + rateI*10000 + cmt99*100 + flg
- *   rateI: 0=bolus, 1=fixed rate, 2=fixed dur, 4=replace, 5=mult, 8=model_dur, 9=model_rate
+ *   rateI: 0=bolus, 1=fixed rate, 2=fixed dur, 4=replace, 5=mult, 7=phantom, 8=model_dur, 9=model_rate
  *   flg:   1=regular, 10=SS1(ii>0), 20=SS2(ii>0), 40=SS1 const infusion
  *
  * For evid >= 100: passed through verbatim; isDose determined by flg = evid%100.
@@ -81,8 +81,8 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.isDose[0] = 0;
     break;
 
-  case 1:
-    /* Dose: bolus or infusion */
+  case 1: case 7:
+    /* Dose: bolus, phantom or infusion */
     out.evid[0]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
     out.time[0]   = time;
     out.amt[0]    = (rateI == 1) ? useRate : amt;
