@@ -56,7 +56,6 @@ extern "C" {
 			ind->llikSave[i] = 0.0;
 		}
 		ind->ixds = ind->idx = ind->_update_par_ptr_in = 0; // reset dosing
-    ind->
     ind->nPushedExtra = 0; // reset per-solve evid_() push counter
     ind->n_all_times = ind->n_all_times_orig; // reset n_all_times to original value (in case it was increased for extra doses in a previous solve)
 		ind->id=solveid;
