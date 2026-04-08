@@ -186,8 +186,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                      _("the output size (%lld rows) is too large for rxSolve to handle"),
                      (long long)rx->nr);
     }
-  } else {
-    int64_t nrLong = (int64_t)(doDose == 1 ? (int64_t)nall : (int64_t)nobs) * (int64_t)nsim;
+  } else if (doDose == 1) {
+    int64_t nrLong = (int64_t)nall * (int64_t)nsim;
     if (nrLong > (int64_t)INT_MAX) {
       rxSolveFreeC();
       (Rf_errorcall)(R_NilValue,
@@ -195,6 +195,24 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                      (long long)nrLong);
     }
     rx->nr = nrLong;
+  } else {
+    // Count observation rows from the grown n_all_times (includes evid_()-pushed observations).
+    rx->nr = 0;
+    for (int _cs = 0; _cs < nsim; _cs++) {
+      for (int _cb = 0; _cb < nsub; _cb++) {
+        rx_solving_options_ind *_ind = &rx->subjects[_cb + _cs * nsub];
+        for (int _i = 0; _i < _ind->n_all_times; _i++) {
+          int _e = getEvid(_ind, _ind->ix[_i]);
+          if (isObs(_e)) rx->nr++;
+        }
+      }
+    }
+    if (rx->nr > (int64_t)INT_MAX) {
+      rxSolveFreeC();
+      (Rf_errorcall)(R_NilValue,
+                     _("the output size (%lld rows) is too large for rxSolve to handle"),
+                     (long long)rx->nr);
+    }
   }
   scale = op->scale;
   neq[0] = op->neq;

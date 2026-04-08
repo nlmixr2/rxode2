@@ -108,7 +108,7 @@ rxTest({
     e <- et(amt = 100, time = 0) |> et(c(0, 6, 12))
     p <- c(cl = 1, vd = 10)
     r <- rxSolve(m4, p, e)
-    expect_true(nrow(r) > 0)
+    expect_equal(nrow(r), 5) # 5 observations should be in the output
   })
 
   test_that("classic rxode2 internal evid >= 100 passes through verbatim", {
