@@ -196,23 +196,40 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
     rx->nr = nrLong;
   } else {
-    // Count observation rows from the grown n_all_times (includes evid_()-pushed observations).
-    rx->nr = 0;
-    for (int _cs = 0; _cs < nsim; _cs++) {
-      for (int _cb = 0; _cb < nsub; _cb++) {
-        rx_solving_options_ind *_ind = &rx->subjects[_cb + _cs * nsub];
-        for (int _i = 0; _i < _ind->n_all_times; _i++) {
-          int _e = getEvid(_ind, _ind->ix[_i]);
-          if (isObs(_e)) rx->nr++;
-        }
+    // When evid_() pushed extra observation events during the solve, n_all_times grew beyond
+    // n_all_times_orig, so we must count per-subject observations rather than using nobs*nsim.
+    // For models without evid_() (indOwnAlloc=0), ix may not be fully initialised at this
+    // point (sortInd runs during the solve pass, which may be skipped for neq==0 models),
+    // so fall back to the nobs * nsim formula which is always correct in that case.
+    bool anyPushed = false;
+    for (int _cs = 0; _cs < nsim && !anyPushed; _cs++) {
+      for (int _cb = 0; _cb < nsub && !anyPushed; _cb++) {
+        if (rx->subjects[_cb + _cs * nsub].nPushedExtra > 0) anyPushed = true;
       }
     }
-    if (rx->nr > (int64_t)INT_MAX) {
+    int64_t nrLong;
+    if (anyPushed) {
+      // Count observation rows from the grown n_all_times (includes evid_()-pushed observations).
+      nrLong = 0;
+      for (int _cs = 0; _cs < nsim; _cs++) {
+        for (int _cb = 0; _cb < nsub; _cb++) {
+          rx_solving_options_ind *_ind = &rx->subjects[_cb + _cs * nsub];
+          for (int _i = 0; _i < _ind->n_all_times; _i++) {
+            int _e = getEvid(_ind, _ind->ix[_i]);
+            if (isObs(_e)) nrLong++;
+          }
+        }
+      }
+    } else {
+      nrLong = (int64_t)nobs * (int64_t)nsim;
+    }
+    if (nrLong > (int64_t)INT_MAX) {
       rxSolveFreeC();
       (Rf_errorcall)(R_NilValue,
                      _("the output size (%lld rows) is too large for rxSolve to handle"),
-                     (long long)rx->nr);
+                     (long long)nrLong);
     }
+    rx->nr = nrLong;
   }
   scale = op->scale;
   neq[0] = op->neq;
