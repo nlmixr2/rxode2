@@ -162,7 +162,7 @@ rxTest({
     }
 
     f <- f()
-    expect_equal(rxModelVars(f)$model["normModel"],
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "evid_(t + 12, 101, 50, 1, 0, 0, 0, 0);\n")
 
   })
