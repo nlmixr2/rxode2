@@ -151,7 +151,7 @@ rxSolve(
   linCmtSuspect = 1e-06,
   linCmtForwardMax = 2L,
   indOwnAlloc = NA,
-  maxExtra = 100L,
+  maxExtra = 1000L,
   envir = parent.frame()
 )
 

@@ -902,7 +902,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtSuspect=1e-6,
                     linCmtForwardMax=2L,
                     indOwnAlloc=NA,
-                    maxExtra=100L,
+                    maxExtra=1000L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
