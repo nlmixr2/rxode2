@@ -748,12 +748,12 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       // dose, all_times, ii, evid: allocate newCap+1 so that the [idx+1]
       // "plus-one" macros (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1,
       // getEvidP1) are always within bounds when idx == n_all_times-1.
-      double *a   = (double*)realloc(_ind->all_times,  (newCap + 1) * sizeof(double));
-      double *d   = (double*)realloc(_ind->dose,        (newCap + 1) * sizeof(double));
-      double *i2  = (double*)realloc(_ind->ii,          (newCap + 1) * sizeof(double));
-      int    *ev2 = (int*)   realloc(_ind->evid,        (newCap + 1) * sizeof(int));
-      int    *ix  = (int*)   realloc(_ind->ix,          (newCap + 1) * sizeof(int));
-      double *tt  = (double*)realloc(_ind->timeThread,  (newCap + 1) * sizeof(double));
+      double *a   = (double*)realloc(_ind->all_times,  newCap * sizeof(double));
+      double *d   = (double*)realloc(_ind->dose,       newCap * sizeof(double));
+      double *i2  = (double*)realloc(_ind->ii,         newCap * sizeof(double));
+      int    *ev2 = (int*)   realloc(_ind->evid,       newCap * sizeof(int));
+      int    *ix  = (int*)   realloc(_ind->ix,         newCap * sizeof(int));
+      double *tt  = (double*)realloc(_ind->timeThread, newCap * sizeof(double));
       if (!a || !d || !i2 || !ev2 || !ix || !tt) {
         int bad = 1;
 #pragma omp atomic write
@@ -764,7 +764,10 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       _ind->evid       = ev2; _ind->ix  = ix; _ind->timeThread = tt;
       _ind->indOwnAllocN = newCap;
       // Zero guard elements (solve slots are grown on next rxAllocInd call)
-      a[newCap] = 0.0;  d[newCap] = 0.0;  i2[newCap] = 0.0;  ev2[newCap] = 0;
+      memset(a + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
+      memset(d + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
+      memset(i2 + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
+      memset(ev2 + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(int));
     }
 
     // Grow idose if needed
@@ -777,6 +780,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
         op->badSolve = bad;
         return -1;
       }
+      memset(id + _ind->ndoses, 0, (newCap - _ind->ndoses) * sizeof(int));
       _ind->idose          = id;
       _ind->idoseOwnAllocN = newCap;
     }

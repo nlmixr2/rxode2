@@ -2793,7 +2793,7 @@ LogicalVector rxSolveFree(){
   rx_solve* rx = getRxSolve_();
   // Free per-individual owned arrays (inds_global still valid here)
   if (rx->subjects != NULL) {
-    for (uint32_t _i = 0; _i < rx->nsub; _i++) {
+    for (uint32_t _i = 0; _i < rx->nsub*rx->nsim; _i++) {
       rxFreeInd(&rx->subjects[_i]);
     }
   }
