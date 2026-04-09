@@ -32,6 +32,7 @@ reference:
   - eventTable
   - add.dosing
   - add.sampling
+  - evid_
 - title: Solving & Simulation
   desc: Solve ODEs and simulate populations.
   contents:
