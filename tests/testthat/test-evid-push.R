@@ -13,6 +13,27 @@ rxTest({
       rxSolve(mCascade, c(x = 1), e, maxExtra = 10L),
       regexp = "maxExtra"
     )
+
+    # Now with linear compartment model -- bolus
+    mLinCascade <- rxode2({
+      cp <- linCmt(cl, v)
+      evid_(t+0.1, 1, 10, 1, 0, 0, 0, 0)
+    })
+    e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
+    expect_error(
+      rxSolve(mLinCascade, c(cl = 2, v=1), e, maxExtra = 10L),
+      regexp = "maxExtra")
+
+    # Oral
+    mLinCascade <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      evid_(t+0.1, 1, 10, 1, 0, 0, 0, 0)
+    })
+    e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
+    expect_error(
+      rxSolve(mLinCascade, c(ka=0.02, cl = 2, v=1), e, maxExtra = 10L),
+      regexp = "maxExtra")
+
   })
 
   test_that("exceeding maxExtra does not crash R with parallel subjects", {
@@ -25,6 +46,33 @@ rxTest({
     nSub <- 4L
     params <- data.frame(id = seq_len(nSub), x = rep(1, nSub))
     e <- et(amt = 1, time = 0) |> et(seq(0, 2, by = 0.1))
+    expect_error(
+      rxSolve(mCascade, params, e, maxExtra = 10L, cores = 2L),
+      regexp = "maxExtra"
+    )
+
+    # Try with linear compartment model
+    mLinCascade <- rxode2({
+      cp <- linCmt(cl, v)
+      evid_(t+0.1, 1, 10, 1, 0, 0, 0, 0)
+    })
+
+    params <- data.frame(id = seq_len(nSub), cl = rep(2, nSub),
+                         v=rep(1, nSub))
+
+    expect_error(
+      rxSolve(mCascade, params, e, maxExtra = 10L, cores = 2L),
+      regexp = "maxExtra"
+    )
+
+    mLinCascade <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      evid_(t+0.1, 1, 10, 1, 0, 0, 0, 0)
+    })
+
+    params <- data.frame(id = seq_len(nSub), cl = rep(2, nSub),
+                         v=rep(1, nSub), ka=rep(0.02, nSub))
+
     expect_error(
       rxSolve(mCascade, params, e, maxExtra = 10L, cores = 2L),
       regexp = "maxExtra"
@@ -43,6 +91,7 @@ rxTest({
   })
 
   test_that("bolus push via evid_() adds extra timepoints and affects trajectory", {
+
     m <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl/vd * central
@@ -51,7 +100,8 @@ rxTest({
         evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
       }
     })
-    e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
+    e <- et(amt = 100, time = 0) |>
+      et(seq(0, 24, by = 1))
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m, p, e)
     # The pushed dose at t+12 should create an extra event, affecting cp after t=12
@@ -59,6 +109,26 @@ rxTest({
     # The bolus at t=12 should be visible — cp should rise after t=12
     cp12 <- r$cp[r$time == 12]
     cp14 <- r$cp[r$time == 14]
+    expect_true(length(cp12) > 0 && length(cp14) > 0)
+    expect_true(cp14 > cp12)
+    # Now try with linCmt() only
+    m <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      if (t < 24) {
+        evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
+      }
+    })
+    e <- et(amt = 100, time = 0) |>
+      et(seq(0, 24, by = 1))
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    rLin <- rxSolve(m, p, e)
+    # rLin$time >= 19 should be non-zero
+    expect_true(all(rLin$cp[rLin$time >= 19] > 0))
+    # The pushed dose at t+12 should create an extra event, affecting cp after t=12
+    expect_true(nrow(r) > 0)
+    # The bolus at t=12 should be visible — cp should rise after t=12
+    cp12 <- rLin$cp[rLin$time == 12]
+    cp14 <- rLin$cp[rLin$time == 14]
     expect_true(length(cp12) > 0 && length(cp14) > 0)
     expect_true(cp14 > cp12)
   })
