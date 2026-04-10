@@ -92,25 +92,42 @@ rxTest({
 
   test_that("bolus push via evid_() adds extra timepoints and affects trajectory", {
 
-    m <- rxode2({
-      d/dt(depot) <- -ka * depot
-      d/dt(central) <- ka * depot - cl/vd * central
-      cp <- central / vd
-      if (t < 24) {
-        evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
-      }
-    })
-    e <- et(amt = 100, time = 0) |>
-      et(seq(0, 24, by = 1))
-    p <- c(ka = 0.5, cl = 1, vd = 10)
-    r <- rxSolve(m, p, e)
-    # The pushed dose at t+12 should create an extra event, affecting cp after t=12
-    expect_true(nrow(r) > 0)
-    # The bolus at t=12 should be visible — cp should rise after t=12
-    cp12 <- r$cp[r$time == 12]
-    cp14 <- r$cp[r$time == 14]
-    expect_true(length(cp12) > 0 && length(cp14) > 0)
-    expect_true(cp14 > cp12)
+    for (meth in c("dop853", "liblsoda")) {
+      m <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl/vd * central
+        cp <- central / vd
+        if (t < 24) {
+          evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
+        }
+      })
+      e <- et(amt = 100, time = 0) |>
+        et(seq(0, 24, by = 1))
+      p <- c(ka = 0.5, cl = 1, vd = 10)
+      r <- rxSolve(m, p, e, method = meth)
+      # The pushed dose at t+12 should create an extra event, affecting cp after t=12
+      expect_true(nrow(r) > 0)
+      # The bolus at t=12 should be visible — cp should rise after t=12
+      cp12 <- r$cp[r$time == 12]
+      cp14 <- r$cp[r$time == 14]
+      expect_true(length(cp12) > 0 && length(cp14) > 0)
+      expect_true(cp14 > cp12)
+
+      m2 <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl/vd * central
+        cp <- central / vd
+      })
+      e2 <- et(amt = 100, time = 0) |>
+        et(seq(0, 24, by = 1)) |>
+        et(amt = 50, time = 12, ii=1, until=30)
+
+      p <- c(ka = 0.5, cl = 1, vd = 10)
+      r2 <- rxSolve(m2, p, e2, method = meth)
+
+      expect_equal(r$cp, r2$cp)
+    }
+
     # Now try with linCmt() only
     m <- rxode2({
       cp <- linCmt(ka, cl, v)
@@ -131,26 +148,53 @@ rxTest({
     cp14 <- rLin$cp[rLin$time == 14]
     expect_true(length(cp12) > 0 && length(cp14) > 0)
     expect_true(cp14 > cp12)
+
+    m2 <- rxode2({
+      cp <- linCmt(ka, cl, v)
+    })
+    e2 <- et(amt = 100, time = 0) |>
+      et(seq(0, 24, by = 1)) |>
+      et(amt = 50, time = 12, ii=1, until=30)
+
+    rLin2 <- rxSolve(m, p, e)
+
+    expect_equal(rLin$cp, rLin2$cp)
+
   })
 
   test_that("infusion push via evid_() adds start+stop events", {
-    m2 <- rxode2({
-      d/dt(central) <- -cl / vd * central
-      cp <- central / vd
-      if (t < 30) {
-        evid_(t + 6, 1, 100, 1, 10, 0, 0, 0)  # rate=10, so dur=10h
-      }
-    })
-    e <- et(amt = 100, time = 0) |> et(seq(0, 30, by = 1))
-    p <- c(cl = 1, vd = 10)
-    r <- rxSolve(m2, p, e)
-    expect_true(nrow(r) > 0)
-    # Central should rise during the pushed infusion window (t=6 to t=16)
-    cp7  <- r$cp[r$time == 7]
-    cp20 <- r$cp[r$time == 20]
-    expect_true(length(cp7) > 0 && length(cp20) > 0)
-    # At t=7, infusion is active; at t=20, it has stopped and cp is declining
-    expect_true(cp7 > 0)
+    for (meth in c("dop853", "liblsoda")) {
+      m <- rxode2({
+        d/dt(central) <- -cl / vd * central
+        cp <- central / vd
+        if (t == 15) {
+          evid_(t, 1, 100, 1, 10, 0, 0, 0)  # rate=10, so dur=10h
+        }
+      })
+      e <- et(amt = 100, time = 0) |> et(seq(0, 30, by = 1))
+      p <- c(cl = 1, vd = 10)
+      r <- rxSolve(m, p, e, method=meth)
+      expect_true(nrow(r) > 0)
+      # Central should rise during the pushed infusion window (t=6 to t=16)
+      cp7  <- r$cp[r$time == 7]
+      cp20 <- r$cp[r$time == 20]
+      expect_true(length(cp7) > 0 && length(cp20) > 0)
+      # At t=7, infusion is active; at t=20, it has stopped and cp is declining
+      expect_true(cp7 > 0)
+
+      m2 <- rxode2({
+        d/dt(central) <- -cl / vd * central
+        cp <- central / vd
+      })
+
+      e2 <- et(amt = 100, time = 0) |>
+        et(seq(0, 30, by = 1)) |>
+        et(amt=100, time=15, rate=10)
+
+      r2 <- rxSolve(m2, p, e2, method=meth)
+
+      expect_equal(r$cp, r2$cp)
+    }
   })
 
   test_that("past-time evid_() produces a warning", {
