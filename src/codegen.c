@@ -416,18 +416,6 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           /* evid_() calls only emit code in dydt, guarded by _wasAtEventTime */
           if (show_ode == ode_dydt) {
             sAppend(&sbOut, "  if (_wasAtEventTime) { %s }\n", sbPm.line[i]);
-          } else if (tb.linCmt && show_ode == ode_lhs) {
-            // Only add doses to lhs when it is purely linCmt() without ode
-
-            // Here there is no check for _wasAtEventTime because
-            // linCmt() doses are added to the lhs at the time of the
-            // event.
-            int node = tb.de.n;
-            if (tb.hasKa) node--;
-            node--;
-            if (node == 0) {
-              sAppend(&sbOut, "  %s", sbPm.line[i]);
-            }
           }
           break;
         case TASSIGN:
