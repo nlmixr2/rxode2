@@ -318,7 +318,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
     } else if (show_ode == ode_indLinVec) {
       sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
     } else {
-      sAppend(&sbOut,  "// prj-specific derived vars\nvoid %scalc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n", prefix);
+      sAppend(&sbOut,  "// prj-specific derived vars\nvoid %scalc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0; (void)_wasAtEventTime;\n", prefix);
     }
     if ((show_ode == ode_jac && found_jac == 1 && good_jac == 1) ||
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
@@ -413,8 +413,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           }
           break;
         case TEVID:
-          /* evid_() calls only emit code in dydt, guarded by _wasAtEventTime */
-          if (show_ode == ode_dydt) {
+          /* evid_() calls emit code in dydt and lhs, guarded by _wasAtEventTime */
+          if (show_ode == ode_dydt || show_ode == ode_lhs) {
             sAppend(&sbOut, "  if (_wasAtEventTime) { %s }\n", sbPm.line[i]);
           }
           break;

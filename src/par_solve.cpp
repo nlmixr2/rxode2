@@ -3772,7 +3772,15 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           ind->mainSorted = 0;
         }
       }
+      // For linCmt-only models with evid_() (indOwnAlloc), set _atEventTime=1
+      // so that calc_lhs (called inside updateSolve) fires any evid_() calls.
+      // This replicates the ODE behaviour where preSolve sets _atEventTime=1
+      // before dydt, which fires evid_() at the first sub-step.
+      if (op->indOwnAlloc) ind->_atEventTime = 1;
       updateSolve(ind, op, neq, xout, i, nx);
+      // Refresh nx after updateSolve: evid_() inside calc_lhs may have pushed
+      // new events into the timeline, growing ind->n_all_times.
+      nx = ind->n_all_times;
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
