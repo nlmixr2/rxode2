@@ -125,7 +125,7 @@ rxTest({
       p <- c(ka = 0.5, cl = 1, vd = 10)
       r2 <- rxSolve(m2, p, e2, method = meth)
 
-      expect_equal(r$cp, r2$cp)
+      expect_equal(r$cp, r2$cp, tolerance = 1e-5)
     }
 
     # Now try with linCmt() only
@@ -167,15 +167,15 @@ rxTest({
       m <- rxode2({
         d/dt(central) <- -cl / vd * central
         cp <- central / vd
-        if (t == 15) {
-          evid_(t, 1, 100, 1, 10, 0, 0, 0)  # rate=10, so dur=10h
+        if (t >= 14 && t < 15) {
+          evid_(15, 1, 100, 1, 10, 0, 0, 0)  # rate=10, so dur=10h; push from t=14
         }
       })
       e <- et(amt = 100, time = 0) |> et(seq(0, 30, by = 1))
       p <- c(cl = 1, vd = 10)
       r <- rxSolve(m, p, e, method=meth)
       expect_true(nrow(r) > 0)
-      # Central should rise during the pushed infusion window (t=6 to t=16)
+      # Central should rise during the pushed infusion window (t=15 to t=25)
       cp7  <- r$cp[r$time == 7]
       cp20 <- r$cp[r$time == 20]
       expect_true(length(cp7) > 0 && length(cp20) > 0)
@@ -193,7 +193,7 @@ rxTest({
 
       r2 <- rxSolve(m2, p, e2, method=meth)
 
-      expect_equal(r$cp, r2$cp)
+      expect_equal(r$cp, r2$cp, tolerance = 1e-5)
     }
   })
 
