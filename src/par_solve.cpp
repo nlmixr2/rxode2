@@ -668,11 +668,17 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 // timeThread must be current for all raw indices at positions >= startI.
 static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
   double *time = ind->timeThread;
+  int    *evid = ind->evid;
   SORT(ind->ix + startI, ind->ix + ind->n_all_times,
-       [time](int a, int b) -> bool {
+       [time, evid](int a, int b) -> bool {
          double ta = time[a], tb = time[b];
-         if (ta == tb) return a < b;
-         return ta < tb;
+         if (ta != tb) return ta < tb;
+         // Match etTrans() ordering: higher evid (doses) sort before lower evid (obs)
+         // etTran() negates evid so that larger evid values become more negative;
+         // sort first
+         int ea = evid[a], eb = evid[b];
+         if (ea != eb) return ea > eb;
+         return a < b;
        });
 }
 
