@@ -2528,7 +2528,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   double xp = ind->all_times[0];
   xoutp=xp;
   ind->solvedIdx = 0;
-  for (i=0; i<nx; i++) {
+  for (i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
     if (ind->mainSorted == 0) {
@@ -2573,7 +2573,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &idid, u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, nx, &idid, op, ind, u_inis, NULL);
+                 xp, ind->id, &i, ind->n_all_times, &idid, op, ind, u_inis, NULL);
         if (ind->wh0 == 30){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
@@ -2592,7 +2592,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           ind->mainSorted = 0;
         }
       }
-      updateSolve(ind, op, neq, xout, i, nx);
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       if (_mtime_requeued) i--;
     }
@@ -3840,7 +3840,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   rc= ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
-  for(i=0; i<nx; i++) {
+  for(i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
     if (ind->mainSorted == 0) {
@@ -3994,7 +3994,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = inits[ind->cmt];
         }
@@ -4013,7 +4013,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
-      updateSolve(ind, op, neq, xout, i, nx);
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
