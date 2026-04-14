@@ -2765,6 +2765,14 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
+          if (ctx->state == 2) {
+            // liblsoda continuation mode does not call f at xp (it uses the cached
+            // derivative from the previous step).  Explicitly call f at xp so that
+            // any model side-effects that depend on _atEventTime (e.g. evid_() push
+            // doses) fire at the correct time, matching dop853 behaviour.
+            double _evid_tmpydot[neqOde];
+            (*ctx->function)(xp, yp, _evid_tmpydot, ctx->data);
+          }
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
