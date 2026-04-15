@@ -79,6 +79,30 @@
   if (is.null(.dt[["ss"]]))   data.table::set(.dt, j = "ss",   value = ifelse(.isDose, 0L,  NA_integer_))
   if (is.null(.dt[["dur"]]))  data.table::set(.dt, j = "dur",  value = ifelse(.isDose, 0.0, NA_real_))
 
+  # ---- Patch NA cells in dose rows for numeric dose fields ----
+  # rbindlist fills obs-chunk rows with NA in dose-only columns.
+  # That's correct for obs rows. But if any DOSE rows ended up with NA
+  # (e.g., from a sparse dose chunk), fill with 0.
+  .doseIdx <- which(.dt$evid != 0L)
+  if (length(.doseIdx) > 0L) {
+    for (.col in c("rate", "ii", "dur")) {
+      .vals <- .dt[[.col]]
+      .naInDose <- is.na(.vals[.doseIdx])
+      if (any(.naInDose)) {
+        .vals[.doseIdx[.naInDose]] <- 0.0
+        data.table::set(.dt, j = .col, value = .vals)
+      }
+    }
+    for (.col in c("addl", "ss")) {
+      .vals <- .dt[[.col]]
+      .naInDose <- is.na(.vals[.doseIdx])
+      if (any(.naInDose)) {
+        .vals[.doseIdx[.naInDose]] <- 0L
+        data.table::set(.dt, j = .col, value = .vals)
+      }
+    }
+  }
+
   # ---- Sort: id ASC, time ASC, evid=3 before others at same time ----
   # Map evid=3 -> -1 so it sorts first within same (id, time)
   .evidSort <- ifelse(.dt$evid == 3L, -1L, as.integer(.dt$evid))

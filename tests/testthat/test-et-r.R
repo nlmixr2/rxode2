@@ -70,4 +70,27 @@ rxTest({
     df <- .etMaterialize(ev)
     expect_equal(df$evid[1], 3L)
   })
+
+  test_that(".etMaterialize mixed dose+obs fills dose defaults correctly", {
+    .ev <- .newRxEt()
+    .envRef <- .subset2(.ev, ".env")
+    # Obs chunk (sparse — no dose columns)
+    .envRef$chunks <- list(
+      list(time = c(1, 2), evid = 0L),
+      list(time = 0, evid = 1L, amt = 100, cmt = "(default)")
+      # dose chunk missing rate/ii/addl/ss/dur
+    )
+    .envRef$nobs  <- 2L
+    .envRef$ndose <- 1L
+    df <- .etMaterialize(.ev)
+    .doseRow <- df[df$evid == 1L, ]
+    expect_equal(.doseRow$rate, 0.0)
+    expect_equal(.doseRow$ii,   0.0)
+    expect_equal(.doseRow$addl, 0L)
+    expect_equal(.doseRow$ss,   0L)
+    expect_equal(.doseRow$dur,  0.0)
+    # Obs rows should still be NA for dose cols
+    .obsRows <- df[df$evid == 0L, ]
+    expect_true(all(is.na(.obsRows$rate)))
+  })
 })
