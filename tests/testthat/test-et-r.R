@@ -21,4 +21,9 @@ rxTest({
     expect_false(is.rxEt(list()))
     expect_false(is.rxEt(data.frame()))
   })
+
+  test_that("is.rxEt handles class-only rxEt (no .env)", {
+    # Should return FALSE — wrong structure, not a valid rxEt
+    expect_false(is.rxEt(structure(list(), class = "rxEt")))
+  })
 })

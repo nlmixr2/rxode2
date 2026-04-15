@@ -28,5 +28,10 @@
 #' @return logical
 #' @export
 is.rxEt <- function(x) {
-  inherits(x, "rxEt") && is.environment(.subset2(x, ".env"))
+  if (!inherits(x, "rxEt")) return(FALSE)
+  # New-style: list with .env environment (pure-R rewrite)
+  .env <- .subset2(x, ".env")
+  if (is.environment(.env)) return(TRUE)
+  # Old-style: data.frame-based rxEt (C++ et_() output, has .rxode2.lst in class attr)
+  !is.null(attr(class(x), ".rxode2.lst"))
 }
