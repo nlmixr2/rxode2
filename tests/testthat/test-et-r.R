@@ -93,4 +93,37 @@ rxTest({
     .obsRows <- df[df$evid == 0L, ]
     expect_true(all(is.na(.obsRows$rate)))
   })
+
+  test_that(".etObsChunk basic times", {
+    chunk <- .etObsChunk(c(0, 1, 2, 4, 8))
+    expect_equal(chunk$time, c(0, 1, 2, 4, 8))
+    expect_equal(chunk$evid, 0L)
+    expect_null(chunk$amt)   # obs chunks are sparse
+    expect_null(chunk$rate)
+  })
+
+  test_that(".etObsChunk with cmt", {
+    chunk <- .etObsChunk(c(0, 1), cmt = "central")
+    expect_equal(chunk$cmt, "central")
+  })
+
+  test_that(".etObsChunk with id vector", {
+    chunk <- .etObsChunk(c(0, 1), id = c(1L, 2L))
+    expect_equal(chunk$id, c(1L, 2L))
+  })
+
+  test_that(".etObsChunk window list c(low,high) returns window chunk", {
+    chunk <- .etObsChunk(list(c(0, 2), c(4, 8)))
+    expect_equal(chunk$low,  c(0, 4))
+    expect_equal(chunk$high, c(2, 8))
+    expect_equal(chunk$evid, 0L)
+    expect_equal(chunk$time, c(1, 6))  # midpoints
+  })
+
+  test_that(".etObsChunk window list c(low,mid,high) uses mid as time", {
+    chunk <- .etObsChunk(list(c(0, 1, 2), c(4, 6, 8)))
+    expect_equal(chunk$time, c(1, 6))
+    expect_equal(chunk$low,  c(0, 4))
+    expect_equal(chunk$high, c(2, 8))
+  })
 })

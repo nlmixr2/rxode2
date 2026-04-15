@@ -121,6 +121,52 @@
 #' @param x object to test
 #' @return logical
 #' @export
+#' Build an observation chunk list
+#'
+#' @param time numeric vector of sample times, OR a list of c(low,high)
+#'   or c(low,mid,high) windows.
+#' @param cmt compartment name or number (optional)
+#' @param id integer vector of subject IDs (optional)
+#' @return named list (sparse — only columns that matter)
+#' @noRd
+.etObsChunk <- function(time, cmt = NULL, id = NULL) {
+  .chunk <- list(evid = 0L)
+
+  if (inherits(time, "list")) {
+    # Window specification: each element is c(low,high) or c(low,mid,high)
+    .nw <- length(time)
+    .low  <- numeric(.nw)
+    .mid  <- numeric(.nw)
+    .high <- numeric(.nw)
+    for (.i in seq_len(.nw)) {
+      .w <- time[[.i]]
+      if (length(.w) == 2L) {
+        if (.w[1] > .w[2]) stop("window bounds must be ordered c(low, high)", call. = FALSE)
+        .low[.i]  <- .w[1]
+        .mid[.i]  <- (.w[1] + .w[2]) / 2
+        .high[.i] <- .w[2]
+      } else if (length(.w) == 3L) {
+        if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
+        .low[.i]  <- .w[1]
+        .mid[.i]  <- .w[2]
+        .high[.i] <- .w[3]
+      } else {
+        stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
+      }
+    }
+    .chunk$time <- .mid
+    .chunk$low  <- .low
+    .chunk$high <- .high
+  } else {
+    .chunk$time <- as.numeric(time)
+  }
+
+  if (!is.null(cmt)) .chunk$cmt <- cmt
+  if (!is.null(id))  .chunk$id  <- as.integer(id)
+
+  .chunk
+}
+
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) return(FALSE)
   # New-style: list with .env environment (pure-R rewrite)
