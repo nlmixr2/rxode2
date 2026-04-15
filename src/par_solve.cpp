@@ -677,6 +677,12 @@ static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
          // etTran() negates evid so that larger evid values become more negative;
          // sort first
          int ea = evid[a], eb = evid[b];
+         // Reset events (evid==3) must sort BEFORE dose events at the same time
+         // to preserve evid=4 (reset+dose) semantics: reset zeroes compartments,
+         // then dose is applied — not the other way around.
+         if (ea == 3 && eb != 3) return true;
+         if (eb == 3 && ea != 3) return false;
+         // Otherwise: higher evid (doses) before lower evid (obs) — matches etTrans()
          if (ea != eb) return ea > eb;
          return a < b;
        });
