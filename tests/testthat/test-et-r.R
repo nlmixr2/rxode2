@@ -126,4 +126,58 @@ rxTest({
     expect_equal(chunk$low,  c(0, 4))
     expect_equal(chunk$high, c(2, 8))
   })
+
+  test_that(".etDoseChunk basic dose", {
+    chunk <- .etDoseChunk(time = 0, amt = 100)
+    expect_equal(chunk$time, 0)
+    expect_equal(chunk$amt,  100)
+    expect_equal(chunk$evid, 1L)
+    expect_equal(chunk$ii,   0.0)
+    expect_equal(chunk$addl, 0L)
+    expect_equal(chunk$ss,   0L)
+    expect_equal(chunk$rate, 0.0)
+    expect_equal(chunk$dur,  0.0)
+    expect_equal(chunk$cmt,  "(default)")
+  })
+
+  test_that(".etDoseChunk with addl", {
+    chunk <- .etDoseChunk(time = 0, amt = 100, ii = 24, addl = 4L)
+    expect_equal(chunk$ii,   24)
+    expect_equal(chunk$addl, 4L)
+  })
+
+  test_that(".etDoseChunk nbr.doses interface", {
+    chunk <- .etDoseChunk(time = 0, amt = 100,
+                           nbr.doses = 5L, dosing.interval = 24)
+    expect_equal(chunk$addl, 4L)
+    expect_equal(chunk$ii,   24)
+  })
+
+  test_that(".etDoseChunk with until", {
+    chunk <- .etDoseChunk(time = 0, amt = 100, ii = 24, until = 120)
+    expect_equal(chunk$addl, 5L)
+  })
+
+  test_that(".etDoseChunk dur converts to rate", {
+    chunk <- .etDoseChunk(time = 0, amt = 100, dur = 2)
+    expect_equal(chunk$rate, 50)
+    expect_equal(chunk$dur,  0.0)
+  })
+
+  test_that(".etDoseChunk rate=-1 modeled rate", {
+    chunk <- .etDoseChunk(time = 0, amt = 100, rate = -1)
+    expect_equal(chunk$rate, -1)
+  })
+
+  test_that(".etDoseChunk ss flag", {
+    chunk <- .etDoseChunk(time = 0, amt = 100, ss = 1L)
+    expect_equal(chunk$ss, 1L)
+  })
+
+  test_that(".etDoseChunk vector amt creates data.frame", {
+    chunk <- .etDoseChunk(time = c(0, 24), amt = c(100, 50))
+    expect_equal(nrow(chunk), 2L)
+    expect_equal(chunk$amt, c(100, 50))
+    expect_equal(chunk$time, c(0, 24))
+  })
 })

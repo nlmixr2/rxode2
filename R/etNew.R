@@ -167,6 +167,83 @@
   .chunk
 }
 
+#' Build a dosing chunk list
+#'
+#' Handles both the amt/time interface and the legacy
+#' nbr.doses/dosing.interval/start.time interface.
+#'
+#' @param time numeric start time(s)
+#' @param amt numeric dose amount(s)
+#' @param evid integer event ID (default 1L)
+#' @param cmt compartment name/number (default "(default)")
+#' @param ii inter-dose interval (default 0)
+#' @param addl additional doses (default 0L)
+#' @param ss steady-state flag (default 0L)
+#' @param rate infusion rate; -1=modeled rate, -2=modeled duration (default 0)
+#' @param dur infusion duration; if >0 and rate==0, rate is computed as amt/dur
+#' @param until time of last dose; overrides addl
+#' @param nbr.doses number of doses (legacy); sets addl = nbr.doses - 1
+#' @param dosing.interval inter-dose interval (legacy alias for ii)
+#' @param id integer subject IDs (optional)
+#' @return named list, or data.frame if multiple rows needed
+#' @noRd
+.etDoseChunk <- function(time = 0, amt, evid = 1L, cmt = "(default)",
+                          ii = 0.0, addl = 0L, ss = 0L, rate = 0.0, dur = 0.0,
+                          until = NULL, nbr.doses = NULL, dosing.interval = NULL,
+                          id = NULL) {
+  # Legacy nbr.doses/dosing.interval interface
+  if (!is.null(dosing.interval)) ii <- as.numeric(dosing.interval)
+  if (!is.null(nbr.doses)) {
+    addl <- as.integer(nbr.doses) - 1L
+  }
+
+  # until → compute addl from (until - time) / ii
+  if (!is.null(until)) {
+    if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
+    addl <- as.integer(round((until - time) / ii))
+  }
+
+  # dur → convert to rate (amt/dur); clear dur
+  if (dur > 0 && rate == 0.0) {
+    rate <- amt / dur
+    dur  <- 0.0
+  }
+
+  # Handle vector amt/time (multiple dose records) → return data.frame
+  if (length(amt) > 1L || length(time) > 1L) {
+    if (length(time) == 1L) time <- rep(time, length(amt))
+    if (length(amt)  == 1L) amt  <- rep(amt,  length(time))
+    if (length(time) != length(amt)) {
+      stop("'time' and 'amt' must have the same length", call. = FALSE)
+    }
+    .chunk <- data.frame(
+      time = as.numeric(time), amt  = as.numeric(amt),
+      evid = as.integer(evid), cmt  = as.character(cmt),
+      ii   = as.numeric(ii),   addl = as.integer(addl),
+      ss   = as.integer(ss),   rate = as.numeric(rate),
+      dur  = as.numeric(dur),
+      stringsAsFactors = FALSE
+    )
+    if (!is.null(id)) .chunk$id <- as.integer(id)
+    return(.chunk)
+  }
+
+  # Single dose record — sparse named list
+  .chunk <- list(
+    time = as.numeric(time),
+    amt  = as.numeric(amt),
+    evid = as.integer(evid),
+    cmt  = as.character(cmt),
+    ii   = as.numeric(ii),
+    addl = as.integer(addl),
+    ss   = as.integer(ss),
+    rate = as.numeric(rate),
+    dur  = as.numeric(dur)
+  )
+  if (!is.null(id)) .chunk$id <- as.integer(id)
+  .chunk
+}
+
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) return(FALSE)
   # New-style: list with .env environment (pure-R rewrite)
