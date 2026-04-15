@@ -180,4 +180,70 @@ rxTest({
     expect_equal(chunk$amt, c(100, 50))
     expect_equal(chunk$time, c(0, 24))
   })
+
+  test_that("et() empty creates rxEt", {
+    ev <- et()
+    expect_true(is.rxEt(ev))
+    .envRef <- .subset2(ev, ".env")
+    expect_equal(.envRef$nobs, 0L)
+    expect_equal(.envRef$ndose, 0L)
+  })
+
+  test_that("et(time) creates obs record", {
+    ev <- et(time = c(0, 1, 2, 4, 8))
+    .envRef <- .subset2(ev, ".env")
+    expect_equal(.envRef$nobs, 5L)
+    df <- .etMaterialize(ev)
+    expect_equal(nrow(df), 5L)
+    expect_equal(df$time, c(0, 1, 2, 4, 8))
+    expect_true(all(df$evid == 0L))
+  })
+
+  test_that("et(0, 24) two-arg sequence", {
+    ev <- et(0, 24)
+    df <- .etMaterialize(ev)
+    expect_equal(df$time, 0:24)
+  })
+
+  test_that("et(0, 24, by=4) generates seq", {
+    ev <- et(0, 24, by = 4)
+    df <- .etMaterialize(ev)
+    expect_equal(df$time, seq(0, 24, by = 4))
+  })
+
+  test_that("et(amt=100) dose record", {
+    ev <- et(amt = 100)
+    .envRef <- .subset2(ev, ".env")
+    expect_equal(.envRef$ndose, 1L)
+    df <- .etMaterialize(ev)
+    expect_equal(df$amt[df$evid == 1L], 100)
+  })
+
+  test_that("et pipe: obs then dose", {
+    ev <- et(amt = 100) |> et(time = c(0, 1, 2, 4))
+    .envRef <- .subset2(ev, ".env")
+    expect_equal(.envRef$ndose, 1L)
+    expect_equal(.envRef$nobs, 4L)
+    df <- .etMaterialize(ev)
+    expect_equal(nrow(df), 5L)
+  })
+
+  test_that("et(amountUnits, timeUnits)", {
+    ev <- et(amountUnits = "mg", timeUnits = "hours")
+    .envRef <- .subset2(ev, ".env")
+    expect_equal(.envRef$units["dosing"], c(dosing = "mg"))
+    expect_equal(.envRef$units["time"],   c(time   = "hours"))
+  })
+
+  test_that("et evid=obs alias", {
+    ev <- et(time = 0, evid = obs)
+    df <- .etMaterialize(ev)
+    expect_equal(df$evid[1], 0L)
+  })
+
+  test_that("et cmt string", {
+    ev <- et(amt = 100, cmt = "depot")
+    df <- .etMaterialize(ev)
+    expect_equal(df$cmt[df$evid == 1L], "depot")
+  })
 })

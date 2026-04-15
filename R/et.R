@@ -381,390 +381,168 @@ et.rxParams <- function(x, ..., envir = parent.frame()) {
 #' @rdname et
 #' @export
 et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
-                       ss, rate, dur, until, id,
-                       amountUnits, timeUnits, addSampling,
-                       envir = parent.frame(),
-                       by = NULL, length.out = NULL) {
-  .lst <- as.list(match.call()[-1])
+                        ss, rate, dur, until, id,
+                        amountUnits, timeUnits, addSampling,
+                        envir = parent.frame(),
+                        by = NULL, length.out = NULL) {
 
-  .isPipe <- as.character(substitute(x))
-  if (length(.isPipe) == 1 && .isPipe == ".") {
-    .isPipe <- TRUE
-  } else if (missing(x)) {
-    .isPipe <- FALSE
+  # ---- Determine base rxEt object ----
+  .xIsRxEt <- !missing(x) && is.rxEt(x)
+  if (.xIsRxEt) {
+    .et <- x
   } else {
-    .isPipe <- substitute(x)
-    if (is.call(.isPipe) && length(.isPipe) >= 1L) {
-      # This will assume the input is going to be an et compatible object
-      .isPipe <- TRUE
+    .et <- .newRxEt()
+  }
+  .envRef <- .subset2(.et, ".env")
+
+  # ---- seq helpers: by / length.out ----
+  if (!is.null(by) || !is.null(length.out)) {
+    if (!missing(x) && !.xIsRxEt) {
+      .xVal <- eval(substitute(x), envir = envir)
     } else {
-      if (is.symbol(.isPipe)) {
-        .isPipe <- TRUE
-      } else {
-        .isPipe <- FALSE
-      }
+      .xVal <- NULL
     }
-  }
-  if (!missing(x)) {
-    names(.lst)[1] <- ""
-  }
-  if (!missing(by)) {
-    force(by)
-    checkmate::assertNumeric(by, finite = TRUE, max.len = 1, any.missing = FALSE, min.len = 0)
-    if (!missing(length.out)) {
-      stop("cannot supply both 'by' and 'length.out'", call. = FALSE)
-    }
-    .lst <- .lst[names(.lst) != "by"]
-    .lst <- .lst[names(.lst) != "envir"]
-    if (.isPipe) {
-      if (length(.lst) == 3) {
-        .from <- eval(.lst[[2]], envir = envir)
-        .to <- eval(.lst[[3]], envir = envir)
-        .lst <- .lst[-3]
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        checkmate::assertNumeric(.to, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "to")
-        .lst[[2]] <- seq(from = .from, to = .to, by = by)
-        return(do.call(et.default, .lst, envir = envir))
-      } else {
-        .from <- eval(.lst[[2]], envir = envir)
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        .lst[[2]] <- seq(from = .from, by = by)
-        return(do.call(et.default, .lst, envir = envir))
-      }
+    .dots <- list(...)
+    .dotsNum <- Filter(function(.v) is.numeric(.v) || is.integer(.v), .dots)
+    if (!is.null(.xVal) && (is.numeric(.xVal) || is.integer(.xVal)) && length(.dotsNum) >= 1L) {
+      .from <- as.numeric(.xVal)
+      .to   <- as.numeric(.dotsNum[[1]])
+      .resolvedTime <- if (!is.null(by)) seq(from = .from, to = .to, by = by) else seq(from = .from, to = .to, length.out = length.out)
+    } else if (!missing(time)) {
+      .fromVal <- as.numeric(eval(substitute(time), envir = envir))
+      .resolvedTime <- if (!is.null(by)) seq(from = .fromVal, by = by) else seq(from = .fromVal, length.out = length.out)
     } else {
-      if (length(.lst) == 2) {
-        .from <- eval(.lst[[1]], envir = envir)
-        .to <- eval(.lst[[2]], envir = envir)
-        .lst <- .lst[-2]
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        checkmate::assertNumeric(.to, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "to")
-        .lst[[1]] <- seq(from = .from, to = .to, by = by)
-        return(do.call(et.default, .lst, envir = envir))
-      } else {
-        .from <- eval(.lst[[1]], envir = envir)
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        .lst[[1]] <- seq(from = .from, by = by)
-        return(do.call(et.default, .lst, envir = envir))
-      }
+      .resolvedTime <- numeric(0)
+    }
+    .envRef$chunks <- c(.envRef$chunks, list(.etObsChunk(.resolvedTime)))
+    .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
+    return(invisible(.et))
+  }
+
+  # ---- Two positional numeric args → from/to range ----
+  # Must check BEFORE assigning time from x, so we can detect the from/to pattern
+  if (missing(time) && !missing(x) && !.xIsRxEt) {
+    .xVal <- tryCatch(eval(substitute(x), envir = envir), error = function(e) NULL)
+    .dots <- list(...)
+    if (!is.null(.xVal) && length(.xVal) == 1L &&
+        (is.numeric(.xVal) || is.integer(.xVal)) &&
+        length(.dots) == 1L &&
+        (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
+      .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
+      .envRef$chunks <- c(.envRef$chunks, list(.etObsChunk(.resolvedTime)))
+      .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
+      return(invisible(.et))
+    } else if (!is.null(.xVal)) {
+      # single positional arg becomes time
+      time <- .xVal
     }
   }
-  if (!missing(length.out)) {
-    checkmate::assertCount(length.out)
-    .lst <- .lst[names(.lst) != "length.out"]
-    .lst <- .lst[names(.lst) != "envir"]
-    if (.isPipe) {
-      if (length(.lst) == 3) {
-        .from <- eval(.lst[[2]], envir = envir)
-        .to <- eval(.lst[[3]], envir = envir)
-        .lst <- .lst[-3]
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        checkmate::assertNumeric(.to, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "to")
-        .lst[[2]] <- seq(from = .from, to = .to, length.out = length.out)
-        return(do.call(et.default, .lst, envir = envir))
-      } else {
-        .from <- eval(.lst[[2]], envir = envir)
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        .lst[[2]] <- seq(from = .from, length.out = length.out)
-        return(do.call(et.default, .lst, envir = envir))
-      }
-    } else {
-      if (length(.lst) == 2) {
-        .from <- eval(.lst[[1]], envir = envir)
-        .to <- eval(.lst[[2]], envir = envir)
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        checkmate::assertNumeric(.to, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "to")
-        .lst <- eval(.lst[-2], envir = envir)
-        .lst[[1]] <- seq(from = .from, to = .to, length.out = length.out)
-        return(do.call(et.default, .lst, envir = envir))
-      } else {
-        .from <- eval(.lst[[1]], envir = envir)
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        .lst[[1]] <- seq(from = .from, length.out = length.out)
-        return(do.call(et.default, .lst, envir = envir))
-      }
-    }
+
+  # ---- Units ----
+  if (!missing(amountUnits)) .envRef$units["dosing"] <- amountUnits
+  if (!missing(timeUnits))   .envRef$units["time"]   <- timeUnits
+
+  # ---- ID expansion ----
+  .resolvedId <- NULL
+  if (!missing(id)) {
+    .idVal <- as.integer(eval(substitute(id), envir = envir))
+    .posIds <- .idVal[.idVal > 0L]
+    .negIds <- abs(.idVal[.idVal < 0L])
+    if (length(.posIds) > 0L) .envRef$IDs <- sort(unique(c(.envRef$IDs, .posIds)))
+    if (length(.negIds) > 0L) .envRef$IDs <- setdiff(.envRef$IDs, .negIds)
+    if (length(.envRef$IDs) > 1L) .envRef$show["id"] <- TRUE
+    .resolvedId <- .idVal
   }
-  if (!.isPipe) {
-    if (all(names(.lst) == "") && length(.lst) == 2) {
-      if ((is(.lst[[1]], "numeric") || is(.lst[[1]], "integer")) &&
-        (is(.lst[[2]], "numeric") || is(.lst[[2]], "integer"))) {
-        .from <- eval(.lst[[1]], envir = envir)
-        .to <- eval(.lst[[2]], envir = envir)
-        .lst <- .lst[-2]
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        checkmate::assertNumeric(.to, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "to")
-        .lst[[1]] <- seq(from = .from, to = .to)
-        return(do.call(et.default, .lst, envir = envir))
-      }
-    }
-    .len <- sum(names(.lst) == "")
-    if (.len == 2 && is(.lst[[2]], "character")) {
-    } else if (.len > 1) {
-      stop("improper arguments to 'et'", call. = FALSE)
-    }
-  } else {
-    if (all(names(.lst)[-1] == "") && length(.lst) == 3) {
-      if ((is(.lst[[2]], "numeric") || is(.lst[[2]], "integer")) &&
-        (is(.lst[[3]], "numeric") || is(.lst[[3]], "integer"))) {
-        .from <- eval(.lst[[2]], envir = envir)
-        .to <- eval(.lst[[3]], envir = envir)
-        checkmate::assertNumeric(.from, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "from")
-        checkmate::assertNumeric(.to, finite = TRUE, max.len = 1, any.missing = FALSE, .var.name = "to")
-        .lst <- .lst[-3]
-        .lst[[2]] <- seq(from = .from, to = .to)
-        return(do.call(et.default, .lst, envir = envir))
-      }
-    }
-    .len <- sum(names(.lst)[-1] == "")
-    if (.len == 2 && is(.lst[[3]], "character")) {
-    } else if (.len > 1) {
-      if (sum(names(.lst)[-1] == "") > 1) {
-        stop("improper arguments to 'et'", call. = FALSE)
-      }
-    }
-  }
-  if (!missing(amt)) {
-    if (length(amt) > 1) {
-      if (missing(time)) {
-        time <- 0
-      } else if (length(time) != length(amt)) {
-        if (length(time) != 1) {
-          stop("when supplying vectors of 'time', 'amt' they need to be the same size", call. = FALSE)
-        }
-      }
-      .df <- data.frame(time = time, amt = amt)
-      ##
-      if (!missing(id)) {
-        force(id)
-        .df$id <- id
-      }
-      if (missing(cmt)) {
-        .df$cmt <- "(default)"
-      } else {
-        .df$cmt <- cmt
-      }
-      .df$amt <- amt
-      if (missing(rate)) {
-        .df$rate <- 0.0
-      } else {
-        .df$rate <- rate
-      }
-      if (missing(ii)) {
-        .df$ii <- 0.0
-      } else {
-        .df$ii <- ii
-      }
-      if (missing(addl)) {
-        .df$addl <- 0L
-      } else {
-        .df$addl <- addl
-      }
-      if (missing(evid)) {
-        .df$evid <- 1L
-      } else {
-        .df$evid <- evid
-      }
-      if (missing(ss)) {
-        .df$ss <- 0L
-      } else {
-        .df$ss <- ss
-      }
-      if (missing(dur)) {
-        .df$dur <- 0.0
-      } else {
-        .df$dur <- dur
-      }
-      .et <- et()
-      .et$import.EventTable(.df)
-      if (.isPipe) {
-        .tmp <- eval(.lst[[1]], envir = envir)
-        if (nrow(.et) == 0) {
-          return(.tmp)
-        } else if (nrow(.tmp) == 0) {
-          return(.et)
-        } else {
-          return(etRbind(.tmp, .et))
-        }
-      } else {
-        return(.et)
-      }
-    }
-  }
-  if (!missing(time)) {
-    if (inherits(time, "list")) {
-      checkmate::assertList(time,
-        any.missing = FALSE,
-        unique = FALSE,
-        names = "unnamed"
-      )
-    } else {
-      checkmate::assertNumeric(time,
-        finite = TRUE,
-        any.missing = FALSE,
-        unique = TRUE,
-        names = "unnamed"
-      )
-    }
-    .lst$time <- time
-  }
-  if (!missing(amt)) {
-    checkmate::assertNumeric(amt,
-      finite = TRUE,
-      any.missing = FALSE,
-      max.len = 1,
-      names = "unnamed"
-    )
-    .lst$amt <- amt
-  }
+
+  # ---- Resolve evid aliases ----
+  .evidVal <- NULL
   if (!missing(evid)) {
-    .evid <- as.character(substitute(evid))
-    if (length(.evid) != 1) {
-      if (all(.evid == .evid[1])) {
-        .evid <- .evid[1]
-      } else {
-        .evid0 <- suppressWarnings(try(as.numeric(evid), silent = TRUE))
-        if (inherits(.evid, "try-error")) {
-          stop(sprintf(
-            gettext("only a single evid 'evid' can be specified ('%s')"),
-            paste(.evid, collapse = "', '")
-          ), call. = FALSE)
-        } else {
-          .evid <- .evid0
-        }
-      }
-    }
-    if (.evid == "obs" || .evid == "0") {
-      .tmp <- try(eval(evid, envir = envir), silent = TRUE)
-      if (inherits(.tmp, "try-error")) {
-        .lst$evid <- 0L
-      } else {
-        .lst$evid <- as.integer(.tmp)
-      }
-    } else if (.evid == "dose" || .evid == "1") {
-      .tmp <- try(eval(evid, envir = envir), silent = TRUE)
-      if (inherits(.tmp, "try-error")) {
-        .lst$evid <- 1L
-      } else {
-        .lst$evid <- as.integer(.tmp)
-      }
-    } else if (.evid == "other" || .evid == "2") {
-      .tmp <- try(eval(evid, envir = envir), silent = TRUE)
-      if (inherits(.tmp, "try-error")) {
-        .lst$evid <- 2L
-      } else {
-        .lst$evid <- as.integer(.tmp)
-      }
-    } else if (.evid == "reset" || .evid == "3") {
-      .tmp <- try(eval(evid, envir = envir), silent = TRUE)
-      if (inherits(.tmp, "try-error")) {
-        .lst$evid <- 3L
-      } else {
-        .lst$evid <- as.integer(.tmp)
-      }
-    } else if (.evid == "doseReset" || .evid == "resetDose" || .evid == "4") {
-      .tmp <- try(eval(evid, envir = envir), silent = TRUE)
-      if (inherits(.tmp, "try-error")) {
-        .lst$evid <- 4L
-      } else {
-        .lst$evid <- as.integer(.tmp)
-      }
-    } else {
-      .lst$evid <- as.integer(evid)
-    }
+    .evidSym <- as.character(substitute(evid))
+    .evidVal <- switch(.evidSym,
+      obs       = 0L,
+      `0`       = 0L,
+      dose      = 1L,
+      `1`       = 1L,
+      other     = 2L,
+      `2`       = 2L,
+      reset     = 3L,
+      `3`       = 3L,
+      doseReset = 4L,
+      resetDose = 4L,
+      `4`       = 4L,
+      as.integer(tryCatch(eval(substitute(evid), envir = envir),
+                          error = function(e) as.integer(.evidSym)))
+    )
   }
+
+  # ---- Resolve cmt ----
+  .cmtVal <- NULL
   if (!missing(cmt)) {
-    .cmt <- as.character(substitute(cmt))
-    .cmt2 <- try(force(cmt), silent=TRUE)
-    if (inherits(.cmt2, "character") ||
-          inherits(.cmt2, "numeric")) {
-      .cmt <- .cmt2
-    }
-    if (length(.cmt) != 1) {
-      if (.cmt[1] == "$") {
-        force(cmt)
-        .cmt <- cmt
-      } else if (all(.cmt == .cmt[1])) {
-        .cmt <- .cmt[1]
-      } else {
-        .cmt0 <- suppressWarnings(try(as.numeric(cmt), silent = TRUE))
-        if (inherits(.cmt, "try-error")) {
-          stop(sprintf(
-            gettext("only a single compartment 'cmt' can be specified ('%s')"),
-            paste(.cmt, collapse = "', '")
-          ), call. = FALSE)
-        } else {
-          .cmt <- .cmt0
-        }
-      }
-    }
-    .cmt1 <- try(suppressWarnings(as.integer(cmt)), silent = TRUE)
-    if (inherits(.cmt1, "try-error")) {
-      .lst$cmt <- .cmt
-    } else {
-      if (is.na(.cmt1)) {
-        .lst$cmt <- .cmt
-      } else {
-        .lst$cmt <- .cmt1
-      }
-    }
+    .cmtSym <- as.character(substitute(cmt))
+    .cmtTry <- tryCatch(eval(substitute(cmt), envir = envir), error = function(e) .cmtSym)
+    .cmtVal <- if (is.character(.cmtTry) || is.numeric(.cmtTry)) .cmtTry else .cmtSym
   }
-  if (!missing(rate)) {
-    .rate <- as.character(substitute(rate))
-    if (length(.rate) != 1) {
-      if (all(.rate == .rate[1])) {
-        .rate <- .rate[1]
-      } else {
-        .rate0 <- suppressWarnings(try(as.numeric(rate), silent = TRUE))
-        if (inherits(.rate, "try-error")) {
-          stop(sprintf(
-            gettext("only a single rate 'rate' can be specified ('%s')"),
-            paste(.rate, collapse = "', '")
-          ), call. = FALSE)
-        } else {
-          .rate <- .rate0
-        }
-      }
+
+  # ---- Dose record (amt supplied) ----
+  if (!missing(amt)) {
+    .amtVal  <- eval(substitute(amt), envir = envir)
+    .timeVal <- if (!missing(time)) eval(substitute(time), envir = envir) else 0.0
+    .iiVal   <- if (!missing(ii))   as.numeric(eval(substitute(ii), envir = envir))   else 0.0
+    .addlVal <- if (!missing(addl)) as.integer(eval(substitute(addl), envir = envir)) else 0L
+    .ssVal   <- if (!missing(ss))   as.integer(eval(substitute(ss), envir = envir))   else 0L
+    .rateVal <- if (!missing(rate)) {
+      .rateSym <- as.character(substitute(rate))
+      if (.rateSym == "model") -1.0
+      else if (.rateSym == "dur") -2.0
+      else as.numeric(eval(substitute(rate), envir = envir))
+    } else 0.0
+    .durVal  <- if (!missing(dur))  as.numeric(eval(substitute(dur), envir = envir))  else 0.0
+    .untilVal <- if (!missing(until)) as.numeric(eval(substitute(until), envir = envir)) else NULL
+
+    .chunk <- .etDoseChunk(
+      time = .timeVal, amt = .amtVal,
+      evid = if (!is.null(.evidVal)) .evidVal else 1L,
+      cmt  = if (!is.null(.cmtVal))  .cmtVal  else "(default)",
+      ii   = .iiVal, addl = .addlVal, ss = .ssVal,
+      rate = .rateVal, dur = .durVal,
+      until = .untilVal, id = .resolvedId
+    )
+    .envRef$chunks <- c(.envRef$chunks, list(.chunk))
+    .envRef$ndose  <- .envRef$ndose + max(1L, length(.amtVal))
+    .envRef$show["amt"] <- TRUE
+    if (.iiVal > 0)    .envRef$show["ii"]   <- TRUE
+    if (.addlVal > 0L) .envRef$show["addl"] <- TRUE
+    if (!is.null(.untilVal)) .envRef$show["addl"] <- TRUE
+    if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
+    if (.rateVal != 0) .envRef$show["rate"] <- TRUE
+    if (!is.null(.cmtVal) && .cmtVal != "(default)") .envRef$show["cmt"] <- TRUE
+
+    if (!missing(addSampling) && isTRUE(addSampling)) {
+      .obsChunk <- .etObsChunk(.timeVal, id = .resolvedId)
+      .envRef$chunks <- c(.envRef$chunks, list(.obsChunk))
+      .envRef$nobs   <- .envRef$nobs + max(1L, length(.timeVal))
     }
-    .lst$rate <- rate
+    return(invisible(.et))
   }
-  if (!missing(dur)) {
-    .dur <- as.character(substitute(dur))
-    if (length(.dur) != 1) {
-      if (all(.dur == .dur[1])) {
-        .dur <- .dur[1]
-      } else {
-        .dur0 <- suppressWarnings(try(as.numeric(dur), silent = TRUE))
-        if (inherits(.dur, "try-error")) {
-          stop(sprintf(
-            gettext("only a single duration 'dur' can be specified ('%s')"),
-            paste(.dur, collapse = "', '")
-          ), call. = FALSE)
-        } else {
-          .dur <- .dur0
-        }
-      }
-    }
-    .lst$dur <- dur
+
+  # ---- Observation record (time supplied) ----
+  if (!missing(time)) {
+    .timeVal <- tryCatch(
+      eval(substitute(time), envir = envir),
+      error = function(e) time
+    )
+    .evid2 <- if (!is.null(.evidVal)) .evidVal else 0L
+    .chunk <- .etObsChunk(.timeVal, cmt = .cmtVal, id = .resolvedId)
+    if (.evid2 != 0L) .chunk$evid <- as.integer(.evid2)
+    .envRef$chunks <- c(.envRef$chunks, list(.chunk))
+    .nNew <- if (inherits(.timeVal, "list")) length(.timeVal) else length(.timeVal)
+    .envRef$nobs <- .envRef$nobs + .nNew
+    if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
+    return(invisible(.et))
   }
-  .unitNames <- names(.lst)
-  .unitNames <- .unitNames[regexpr("^(amount|time)", .unitNames) != -1]
-  .unitNames <- .unitNames[.unitNames != "time"]
-  for (.u in .unitNames) {
-    if (inherits(.lst[[.u]], "name")) {
-      .tmp <- .lst[[.u]]
-      .tmp <- deparse(substitute(.tmp))
-      .lst[[.u]] <- .tmp
-    }
-  }
-  .lst <- lapply(.lst, function(x) {
-    eval(x, envir)
-  })
-  if (any(names(.lst) == "evid")) {
-    if (all(.lst$evid == 0)) {
-      .lst <- .lst[names(.lst) != "evid"]
-    }
-  }
-  .Call(`_rxode2_et_`, .lst, list())
+
+  # Empty call: return current object
+  invisible(.et)
 }
 
 #' @export
