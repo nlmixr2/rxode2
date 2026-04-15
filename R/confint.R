@@ -79,10 +79,6 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .ciMethod <- .args$method
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
-  if (!any(names(.stk) == "id") &&
-        any(names(.stk) == "sim.id")) {
-    names(.stk) <- gsub("sim.id", "id", names(.stk))
-  }
   for(.v in .by) {
     .stk[[.v]] <- object[[.v]]
   }
