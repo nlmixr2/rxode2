@@ -169,6 +169,8 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
   if (handleIfElse(ni, name, *i) ||
       // simeta()/simeps()
       handleSimFunctions(ni, name, i, nch, pn) ||
+      // evid_() dose-push
+      handleEvidStatement(ni, name, i, nch, pn) ||
       handleStringEqualityStatements(ni, name, *i, xpn) ||
       handleDvidStatement(ni, name, xpn, pn) ||
       handleStartInterpStatement(ni, name, i, xpn, pn) ||
@@ -430,6 +432,7 @@ void reset(void) {
   tb.simflg     = 0;
   tb.nLlik      = 0;
   tb.hasMix     = 0;
+  tb.evid_      = 0;
 
   // Reset Arrays
   // Reset integers

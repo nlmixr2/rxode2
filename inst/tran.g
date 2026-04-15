@@ -25,6 +25,7 @@ statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
+  | evid_statement end_statement
   | compound_statement
   | selection_statement
   | ifelse_statement
@@ -43,6 +44,18 @@ break_statement
     : 'break';
 
 simfun_statement : "(simeps|simeta)" '(' ')' ;
+
+evid_statement
+  : 'evid_' '('
+    logical_or_expression ','   /* time  */
+    logical_or_expression ','   /* evid  */
+    logical_or_expression ','   /* amt   */
+    logical_or_expression ','   /* cmt   */
+    logical_or_expression ','   /* rate  */
+    logical_or_expression ','   /* ii    */
+    logical_or_expression ','   /* addl  */
+    logical_or_expression       /* ss    */
+    ')' ;
 
 cmt_statement
     : 'cmt' '(' identifier_r_no_output ')';

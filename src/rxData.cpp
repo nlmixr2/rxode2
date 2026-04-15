@@ -76,6 +76,10 @@ extern "C" double rxunifmix(rx_solving_options_ind* ind);
 
 SEXP qassertS(SEXP in, const char *test, const char *what);
 
+// nPastEvid is kept out of rx_solving_options to avoid breaking the
+// assignFuns2 ABI (which passes rx_solving_options by value).
+int nPastEvid_global = 0;
+
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
 List etTrans(List inData, const RObject &obj, bool addCmt,
@@ -1648,7 +1652,9 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   } else {
     ind->mtime0 = NULL;
   }
-  ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
+  if (!ind->indOwnAlloc) {
+    ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
+  }
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
   // Point the individual's tolerance arrays at the current thread's
@@ -1751,15 +1757,34 @@ void rxFreeErrs(){
 
 static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   int nat = ind->n_all_times;
+  int nd  = ind->ndoses;
 
-  // dose and ii are indexed by ALL event indices (0..n_all_times-1), not just ndoses
-  double *newDose  = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newIi    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newAT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newSolve = (double*)calloc((int64_t)op->neq * nat, sizeof(double));
+  // dose, ii, all_times, evid indexed by ALL event indices (0..n_all_times-1).
+  // Allocate nat+1 elements so that the [idx+1] "plus-one" macros
+  // (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1, getEvidP1) are always
+  // within bounds even when idx == nat-1.  The guard element is zero-initialised
+  // and must never be written with a meaningful value.
+  double *newDose  = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  double *newIi    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  double *newAT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  // Allocate solve with EVID_EXTRA_SIZE extra event slots so that _rxPushDose
+  // can grow n_all_times by up to EVID_EXTRA_SIZE without OOB in the solve loop.
+  // updateSolve() will realloc further if needed (safe there — between ODE steps).
+  int solveN = nat + EVID_EXTRA_SIZE;
+  double *newSolve = (double*)calloc((int64_t)op->neq * solveN, sizeof(double));
+  // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
+  // evid also gets +1 guard element for getEvidP1.
+  int    *newEvid  = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
+  // ix and timeThread get +1 guard so any accidental [nat] access doesn't corrupt
+  // adjacent heap metadata.  idose gets +1 for the same reason.
+  int    *newIx    = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
+  double *newTT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)): NULL;
+  int    *newIdose = nd  > 0 ? (int*)   calloc(nd  + 1, sizeof(int))   : NULL;
 
-  if ((nat > 0 && (!newDose || !newIi || !newAT)) || !newSolve) {
+  if ((nat > 0 && (!newDose || !newIi || !newAT || !newEvid || !newIx || !newTT)) ||
+      !newSolve || (nd > 0 && !newIdose)) {
     free(newDose); free(newIi); free(newAT); free(newSolve);
+    free(newEvid); free(newIx); free(newTT); free(newIdose);
     rxSolveFree();
     (Rf_error)(_("cannot allocate per-individual memory"));
   }
@@ -1767,21 +1792,38 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
     memcpy(newDose, ind->dose,      nat * sizeof(double));
     memcpy(newIi,   ind->ii,        nat * sizeof(double));
     memcpy(newAT,   ind->all_times, nat * sizeof(double));
+    memcpy(newEvid, ind->evid,      nat * sizeof(int));
+    // ix and timeThread: sortInd re-initialises both; no copy needed
+    // guard elements [nat] remain zero from calloc
+  }
+  if (nd > 0) {
+    memcpy(newIdose, ind->idose, nd * sizeof(int));
   }
 
-  ind->dose        = newDose;
-  ind->ii          = newIi;
-  ind->all_times   = newAT;
-  ind->solve       = newSolve;
-  ind->indOwnAlloc = 1;
+  ind->dose           = newDose;
+  ind->ii             = newIi;
+  ind->all_times      = newAT;
+  ind->solve          = newSolve;
+  ind->evid           = newEvid;
+  ind->ix             = newIx;
+  ind->timeThread     = newTT;
+  ind->idose          = newIdose;
+  ind->indOwnAlloc    = 1;
+  ind->indOwnAllocN   = nat;
+  ind->solveAllocN    = solveN;
+  ind->idoseOwnAllocN = nd;
 }
 
 static void rxFreeInd(rx_solving_options_ind *ind) {
   if (ind->indOwnAlloc) {
-    free(ind->dose);      ind->dose = NULL;
-    free(ind->ii);        ind->ii = NULL;
-    free(ind->all_times); ind->all_times = NULL;
-    free(ind->solve);     ind->solve = NULL;
+    free(ind->dose);       ind->dose = NULL;
+    free(ind->ii);         ind->ii = NULL;
+    free(ind->all_times);  ind->all_times = NULL;
+    free(ind->solve);      ind->solve = NULL;
+    free(ind->evid);       ind->evid = NULL;
+    free(ind->ix);         ind->ix = NULL;
+    free(ind->timeThread); ind->timeThread = NULL;
+    free(ind->idose);      ind->idose = NULL;
     ind->indOwnAlloc = 0;
   }
 }
@@ -2751,7 +2793,7 @@ LogicalVector rxSolveFree(){
   rx_solve* rx = getRxSolve_();
   // Free per-individual owned arrays (inds_global still valid here)
   if (rx->subjects != NULL) {
-    for (uint32_t _i = 0; _i < rx->nsub; _i++) {
+    for (uint32_t _i = 0; _i < rx->nsub*rx->nsim; _i++) {
       rxFreeInd(&rx->subjects[_i]);
     }
   }
@@ -3788,6 +3830,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         if (nall != 0) {
           // Finalize last solve.
           ind->n_all_times    = ndoses+nobs;
+          ind->n_all_times_orig = ind->n_all_times;
           if (rx->mixnum) {
             ind->mixest = 0;
             if (nsub >= mixUnif.size()) {
@@ -3894,6 +3937,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     rx->nevid9 = nevid9;
     // Finalize the prior individual
     ind->n_all_times    = ndoses+nobs;
+    ind->n_all_times_orig = ind->n_all_times;
     if (rx->mixnum) {
       ind->mixest = 0;
       if (nsub >= mixUnif.size()) {
@@ -4295,6 +4339,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->cov_ptr = indS.cov_ptr;
             }
             ind->n_all_times =indS.n_all_times;
+            ind->n_all_times_orig = indS.n_all_times;
             if (rx->mixnum) {
               // In this case, it is a new individual so rxunifmix is
               // always selected.
@@ -4334,7 +4379,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (int64_t)(op->neq)*ind->n_all_times;
-          ind->ix = &_globals.gix[curIdx];
+          if (!op->indOwnAlloc) ind->ix = &_globals.gix[curIdx];
           curEvent += eLen;
           curIdx += ind->n_all_times;
           if (rx->sample) {
@@ -4400,6 +4445,9 @@ List rxSolve_df(const RObject &obj,
   List dat = rxode2_df(doDose, doTBS);
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
+  }
+  if (nPastEvid_global > 0) {
+    warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), nPastEvid_global);
   }
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
@@ -4688,7 +4736,6 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 
   List dat = rxSolve_df(obj, rxControl, specParams, extraArgs,
                         params, events, inits, rxSolveDat);
-
 #ifdef rxSolveT
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -4798,9 +4845,12 @@ static inline void iniRx(rx_solve* rx) {
   rx->maxShift = 0.0;
   rx->maxwhile = 100000;
   rx->whileexit= 0;
+  rx->maxExtra = 100;
+  rx->extraPushAbort = 0;
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
+  nPastEvid_global = 0;
   op->naTime = 0;
   op->ATOL = 1e-8; //absolute error
   op->RTOL = 1e-8; //relative error
@@ -4859,12 +4909,15 @@ static inline void iniRx(rx_solve* rx) {
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
+static int _rxSolveCallN = 0;
+
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
               const Nullable<List> &extraArgs,
               const RObject &params, const RObject &events, const RObject &inits,
               const int setupOnly){
+  _rxSolveCallN++;
   if (setupOnly == 0){
     rxSolveFree();
   }
@@ -5004,6 +5057,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx_solve* rx = getRxSolve_();
     iniRx(rx);
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
+    rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
+    rx->extraPushAbort = 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     return rxSolve_update(object, rxControl, specParams,
@@ -5033,6 +5088,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
+    rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
+    rx->extraPushAbort = 0;
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
     op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");
@@ -5092,10 +5149,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
     op->ssSolved = asInt(rxControl[Rxc_ssSolved], "ssSolved");
     op->indOwnAlloc = asInt(rxControl[Rxc_indOwnAlloc], "indOwnAlloc");
+    if (op->indOwnAlloc == -1) {
+      op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
+    }
     op->stiff = method;
 
     rxSolveDat->throttle = false;
-    if (method != 2 && method != 0) {
+    if (method != 2 && method != 0) { // dop853 and liblsoda should be thread safe
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
@@ -5207,6 +5267,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
     }
     op->badSolve = 0;
+    nPastEvid_global = 0;
     op->naTime = 0;
     op->abort = 0;
     op->ATOL = atolNV[0];          //absolute error

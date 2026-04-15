@@ -150,7 +150,8 @@ rxSolve(
   linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
   linCmtSuspect = 1e-06,
   linCmtForwardMax = 2L,
-  indOwnAlloc = TRUE,
+  indOwnAlloc = NA,
+  maxExtra = 1000L,
   envir = parent.frame()
 )
 
@@ -953,11 +954,24 @@ gradient calculation, if the gradient is suspect another is taken
 (if this value is 2), and finally a third is calculated if the
 gradient is still suspect.}
 
-\item{indOwnAlloc}{Logical; when \code{TRUE} (default) each individual's
-\code{dose}, \code{ii}, \code{all_times}, and \code{solve} arrays are allocated
-independently via \code{malloc}/\code{calloc} rather than as pointers into
-a single global buffer.  This enables per-individual reallocation
-for future dose-pushing functionality.}
+\item{indOwnAlloc}{Logical; when \code{TRUE} each individual's \code{dose},
+\code{ii}, \code{all_times}, and \code{solve} arrays are allocated independently
+via \code{malloc}/\code{calloc} rather than as pointers into a single
+global buffer.  This enables per-individual reallocation for dose
+and observation-pushing with \code{evid_()} and related
+functions. When \code{FALSE} these arrays are allocated as a single
+global buffer, which is slightly faster and slightly more memory
+efficient but does not allow for dynamic dosing/observations.  By
+default this is \code{NA} which automatically decides based on if
+there is any dosing or observation pushing in the model.}
+
+\item{maxExtra}{Integer; maximum number of events (doses and
+observations) that \code{evid_()} may push per individual per solve.
+When an individual exceeds this limit the solve is aborted for
+that individual (output filled with \code{NA}) and an error is raised
+after the full parallel solve completes.  Set to \code{0L} to allow
+unlimited pushes (use with care — cascading \code{evid_()} calls can
+grow without bound).  Default is \code{100L}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

@@ -27,20 +27,17 @@ devtools::document()
 ```
 
 ### Run All Tests
-```r
-# From within R (sets up proper environment)
-invisible(lapply(list.files("src", "[.]s?o$", full.names = TRUE), unlink));devtools::test()
-
-# Or from shell
-NOT_CRAN=true Rscript -e "invisible(lapply(list.files('src', '[.]s?o$', full.names = TRUE), unlink));devtools::test()"
+```sh
+# From shell
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test()"
 ```
 
 ### Run a Single Test File
-```r
+```sh
 # Filter by test file name (without "test-" prefix and ".R" suffix)
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="basic")
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="ui")
-invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devtools::test(filter="linCmt")
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test(filter='basic')"
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test(filter='ui')"
+find src -name "*.so" -o -name "*.o" | xargs rm -f 2>/dev/null; NOT_CRAN=true Rscript -e "devtools::test(filter='linCmt')"
 ```
 
 ### Run Tests from Installed Package
@@ -58,7 +55,7 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 # Or: R CMD check .
 ```
 
-### Get generated C code from model
+### Get generated C code and C code errors from model
 
 When trying to get the underlying generated code from a model that
 compiled successfully, you can have it echo to the console with:
@@ -67,14 +64,32 @@ compiled successfully, you can have it echo to the console with:
 summary(rxC(rxode2model))
 ```
 
-### Regenerate Grammar and Build Artifacts
+With a model that did not compile successfully, you can get the code by:
+
+```r
+cat(suppressMessages(rxode2::rxLastCompile())$c)
+```
+
+To get the compile error you can use:
+
+```r
+cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+```
+
+If you need stout too you can get that with
+
+```r
+cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+```
+
+### Regenerate Grammar, Documentation and Build Artifacts
 
 When modifying `inst/tran.g` (the dparser grammar) or needing to
 regenerate generated files:
 
 ```r
 # Regenerates: src/tran.g.d_parser.h, R/rxrandomui.R, inst/include/*.h
-.rxodeBuildCode()
+devtools::document()
 ```
 
 ## Architecture
@@ -99,7 +114,6 @@ regenerate generated files:
 
 5. **Solving** (`src/par_solve.cpp`): `rxSolve()` drives the numerical ODE solving using the compiled model. Supports multiple backends:
    - LSODA (`src/lsoda.c`, `src/dlsoda.f`) — stiff/non-stiff adaptive
-   - VODE (`src/call_dvode.c`) — stiff solver
    - DOP853 (`src/dop853.c`) — non-stiff Runge-Kutta
    - Parallel solving via OpenMP across subjects
 

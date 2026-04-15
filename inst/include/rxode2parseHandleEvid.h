@@ -30,7 +30,6 @@ extern "C" {
 }
 #endif
 
-#define EVID_EXTRA_SIZE 10
 // EVID = 0; Observations
 // EVID = 1; is illegal, but converted from NONMEM
 // EVID = 2; Non-observation, possibly covariate

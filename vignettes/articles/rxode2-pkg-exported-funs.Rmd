@@ -621,12 +621,11 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 | 3 | `src/init.c` | Register SEXP wrappers with `R_registerRoutines` (`.Call` table) |
 | 4 | `src/init.c` | Register scalar functions with `R_RegisterCCallable` |
 | 5 | `DESCRIPTION` | Add `Imports: rxode2`, `LinkingTo: rxode2`, `RoxygenNote:` |
-| 6 | `R/mm.R` | Write thin R wrappers using `.Call(\`_pkg_fun\`, ...)` with roxygen docs |
+| 6 | `R/mm.R` | Write thin R wrappers using ``.Call(`_pkg_fun`, ...)`` with roxygen docs |
 | 6b | `R/mm.R` | Optionally add `rxUdfUi.mm` to support named / reordered arguments in ui models |
 | 7 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRows))` in `.onAttach` |
-| 8 | `R/zzz.R` | Call `rxD("fun", list(...))` referencing C functions for 1st-order |
-| 9 | `R/zzz.R` | Call `rxD("fun_dArg", list(...))` with expression strings for 2nd-order |
-| 10 | `R/zzz.R` | Filter out rows where `package == "mm"` + call `rxRmFun` for all names in `.onUnload` |
+| 8 | `R/zzz.R` | Call `rxD("fun", list(...))` for derivative registration |
+| 9 | `R/zzz.R` | Filter out rows where `package == "mm"` + call `rxRmFun` for all names in `.onUnload` |
 
 ## Further reading
 

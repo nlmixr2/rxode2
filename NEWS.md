@@ -1,11 +1,14 @@
 # rxode2 (development)
 
+- Add `evid_()` function to allow arbitrary doses and observations in
+  a rxode2 model.
+
 - Create per-individual ODE solving tolerances for use in focei.
 
 - Fix potential security and memory-management issues that could lead
   to crashes or undefined behavior including integer overflow
 
-- Change `dop853` to allow parallel solving and per state tolerances
+- Change `dop853` to allow per state tolerances and parallel solving
   like `liblsoda`.
 
 - Change mtime state-based dosing to use less memory

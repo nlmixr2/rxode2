@@ -129,6 +129,10 @@ double getIndDv(rx_solving_options_ind* ind, int j) {
   if (j < 0 || j >= ind->n_all_times) {
     Rf_error("[getIndDv]: j (%d) should be between [0, %d)", j, ind->n_all_times);
   }
+  if (j >= ind->n_all_times_orig) {
+    // dv is NA for events added after the original event table (e.g. evid_() pushes)
+    return NA_REAL;
+  }
   return ind->dv[j];
 }
 
@@ -140,12 +144,20 @@ double getIndLimit(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndLimit]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
   }
+  if (kk >= ind->n_all_times_orig) {
+    // limit is -Inf for events added after the original event table (e.g. evid_() pushes)
+    return R_NegInf;
+  }
   return ind->limit[kk];
 }
 
 int getIndCens(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndCens]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
+  if (kk >= ind->n_all_times_orig) {
+    // cens is 0 for events added after the original event table (e.g. evid_() pushes)
+    return 0;
   }
   return ind->cens[kk];
 }

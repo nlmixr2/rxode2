@@ -744,11 +744,24 @@
 #'   (if this value is 2), and finally a third is calculated if the
 #'   gradient is still suspect.
 #'
-#' @param indOwnAlloc Logical; when `TRUE` (default) each individual's
-#'   `dose`, `ii`, `all_times`, and `solve` arrays are allocated
-#'   independently via `malloc`/`calloc` rather than as pointers into
-#'   a single global buffer.  This enables per-individual reallocation
-#'   for future dose-pushing functionality.
+#' @param maxExtra Integer; maximum number of events (doses and
+#'   observations) that `evid_()` may push per individual per solve.
+#'   When an individual exceeds this limit the solve is aborted for
+#'   that individual (output filled with `NA`) and an error is raised
+#'   after the full parallel solve completes.  Set to `0L` to allow
+#'   unlimited pushes (use with care — cascading `evid_()` calls can
+#'   grow without bound).  Default is `100L`.
+#'
+#' @param indOwnAlloc Logical; when `TRUE` each individual's `dose`,
+#'   `ii`, `all_times`, and `solve` arrays are allocated independently
+#'   via `malloc`/`calloc` rather than as pointers into a single
+#'   global buffer.  This enables per-individual reallocation for dose
+#'   and observation-pushing with `evid_()` and related
+#'   functions. When `FALSE` these arrays are allocated as a single
+#'   global buffer, which is slightly faster and slightly more memory
+#'   efficient but does not allow for dynamic dosing/observations.  By
+#'   default this is `NA` which automatically decides based on if
+#'   there is any dosing or observation pushing in the model.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -888,7 +901,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
                     linCmtSuspect=1e-6,
                     linCmtForwardMax=2L,
-                    indOwnAlloc=TRUE,
+                    indOwnAlloc=NA,
+                    maxExtra=1000L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1131,6 +1145,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
     }
+    if (!checkmate::testIntegerish(indOwnAlloc, lower=-1, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(indOwnAlloc, len=1, any.missing=TRUE)
+      if (is.na(indOwnAlloc)) {
+        indOwnAlloc <- -1L
+      } else {
+        indOwnAlloc <- as.integer(indOwnAlloc)
+      }
+    }
     safePow <- as.integer(safePow)
     if (is.null(scale)) {
     } else if (is.list(scale)) {
@@ -1261,6 +1283,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
+    checkmate::assertIntegerish(maxExtra, lower=0, len=1)
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1276,6 +1299,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(ssSolved, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
+    maxExtra <- as.integer(maxExtra)
     .zeros <- .xtra$.zeros
     if (inherits(.omega, "matrix")) {
       .w <-which(diag(.omega) == 0.0)
@@ -1426,6 +1450,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtSuspect=linCmtSuspect,
       linCmtForwardMax=linCmtForwardMax,
       indOwnAlloc=as.integer(indOwnAlloc),
+      maxExtra=maxExtra,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

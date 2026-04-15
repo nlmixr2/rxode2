@@ -56,6 +56,12 @@ extern "C" {
 			ind->llikSave[i] = 0.0;
 		}
 		ind->ixds = ind->idx = ind->_update_par_ptr_in = 0; // reset dosing
+    ind->nPushedExtra = 0; // reset per-solve evid_() push counter
+    // Reset n_all_times to the original event-table size for the ODE solve
+    // pass.  _rxPushDose() grows n_all_times during the solve; the LHS output
+    // pass (inLhs==1) must see the grown count so that pushed events that
+    // interleave with original observations are not silently dropped.
+    if (inLhs == 0) ind->n_all_times = ind->n_all_times_orig;
 		ind->id=solveid;
 		ind->cacheME=0;
 		ind->curShift=0.0;
@@ -276,6 +282,7 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
   }
+  ind->_atEventTime = 1;
 }
 
 

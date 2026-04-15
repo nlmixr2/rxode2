@@ -112,6 +112,7 @@ lhs symbols?
   int lvlStr;
   int dummyLhs;
   int hasMix; // Has mixture function
+  int evid_; // pushing evid_() flag
 } symtab;
 
 extern symtab tb;
@@ -142,6 +143,7 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define TMATF 20
 #define TLIN 21
 #define TNONE 22
+#define TEVID 23
 
 // new de type
 #define fromDDT 2
@@ -212,6 +214,7 @@ typedef struct nodeInfo {
   int equality_str1;
   int equality_str2;
   int simfun_statement;
+  int evid_statement;
   int relational_op;
   int string;
 } nodeInfo;
@@ -274,6 +277,7 @@ static inline void niReset(nodeInfo *ni){
   ni->equality_str1 = -1;
   ni->equality_str2 = -1;
   ni->simfun_statement = -1;
+  ni->evid_statement = -1;
   ni->relational_op = -1;
   ni->string = -1;
 }

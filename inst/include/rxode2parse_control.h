@@ -112,7 +112,8 @@
 #define Rxc_linCmtSuspect 108
 #define Rxc_linCmtForwardMax 109
 #define Rxc_indOwnAlloc 110
-#define Rxc__zeros 111
+#define Rxc_maxExtra 111
+#define Rxc__zeros 112
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -158,6 +159,7 @@
 #define RxMvFlag_nLlik 11
 #define RxMvFlag_ndiff 12
 #define RxMvFlag_mix 13
+#define RxMvFlag_evid_ 14
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1
