@@ -269,4 +269,45 @@ rxTest({
     dt <- as.data.table(ev)
     expect_true(inherits(dt, "data.table"))
   })
+
+  test_that("$.rxEt add.dosing closure", {
+    ev <- et()
+    .env <- .subset2(ev, ".env")
+    ev$add.dosing(dose = 100, nbr.doses = 5, dosing.interval = 24)
+    expect_equal(.env$ndose, 1L)
+    df <- as.data.frame(ev)
+    expect_equal(df$amt[1], 100)
+    expect_equal(df$addl[1], 4L)
+    expect_equal(df$ii[1], 24)
+  })
+
+  test_that("$.rxEt add.sampling closure", {
+    ev <- et()
+    .env <- .subset2(ev, ".env")
+    ev$add.sampling(c(0, 1, 2, 4, 8))
+    expect_equal(.env$nobs, 5L)
+  })
+
+  test_that("$.rxEt get.units returns units", {
+    ev <- et(amountUnits = "mg", timeUnits = "hours")
+    expect_equal(ev$get.units(), c(dosing = "mg", time = "hours"))
+  })
+
+  test_that("$.rxEt nobs and ndose", {
+    ev <- et(amt = 100) |> et(time = c(0, 1))
+    expect_equal(ev$nobs,  2L)
+    expect_equal(ev$ndose, 1L)
+  })
+
+  test_that("$.rxEt time column", {
+    ev <- et(time = c(0, 1, 2))
+    expect_equal(ev$time, c(0, 1, 2))
+  })
+
+  test_that("$.rxEt show property", {
+    ev <- et()
+    expect_false(ev$show["amt"])
+    ev <- et(amt = 100)
+    expect_true(ev$show["amt"])
+  })
 })

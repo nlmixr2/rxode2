@@ -544,8 +544,24 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
 }
 
 #' @export
-`$.rxEt` <- function(obj, arg, exact = FALSE) {
-  return(.Call(`_rxode2_etUpdate`, obj, arg, NULL, exact))
+`$.rxEt` <- function(obj, arg) {
+  # 1. Check method closures / direct list slots (add.dosing, etc.)
+  .direct <- .subset2(obj, arg)
+  if (!is.null(.direct)) return(.direct)
+
+  # 2. Check mutable env properties (nobs, ndose, units, show, IDs, chunks)
+  .env <- .subset2(obj, ".env")
+  if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
+    return(get(arg, envir = .env, inherits = FALSE))
+  }
+
+  # 3. Materialize and return data column (time, amt, evid, etc.)
+  if (!is.null(.env)) {
+    .mat <- .etMaterialize(obj)
+    if (arg %in% names(.mat)) return(.mat[[arg]])
+  }
+
+  NULL
 }
 #' Dispatch solve to 'rxode2' solve
 #'

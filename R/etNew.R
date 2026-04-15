@@ -5,6 +5,114 @@
     ss = FALSE, dur = FALSE)
 }
 
+#' Attach method closures to an rxEt's list structure
+#'
+#' Each method captures .env by reference so mutations are shared.
+#' @param .env environment (mutable state)
+#' @return named list of closures
+#' @noRd
+.etBuildMethods <- function(.env) {
+  list(
+    add.dosing = function(dose, nbr.doses = 1L, dosing.interval = 24,
+                           dosing.to = 1L, rate = NULL,
+                           amount.units = NA_character_,
+                           start.time = 0.0, do.sampling = FALSE,
+                           time.units = NA_character_, ...) {
+      .cmt <- if (dosing.to == 1L) "(default)" else as.integer(dosing.to)
+      .chunk <- .etDoseChunk(
+        time = start.time, amt = dose, cmt = .cmt,
+        ii   = if (nbr.doses > 1L) dosing.interval else 0.0,
+        addl = as.integer(nbr.doses) - 1L,
+        rate = if (!is.null(rate)) rate else 0.0,
+        ...
+      )
+      .env$chunks <- c(.env$chunks, list(.chunk))
+      .env$ndose  <- .env$ndose + 1L
+      .env$show["amt"] <- TRUE
+      if (as.integer(nbr.doses) > 1L) {
+        .env$show["ii"]   <- TRUE
+        .env$show["addl"] <- TRUE
+      }
+      if (!is.na(amount.units)) .env$units["dosing"] <- amount.units
+      if (!is.na(time.units))   .env$units["time"]   <- time.units
+      invisible(NULL)
+    },
+
+    add.sampling = function(time, time.units = NA_character_) {
+      .chunk <- .etObsChunk(time)
+      .env$chunks <- c(.env$chunks, list(.chunk))
+      .env$nobs   <- .env$nobs + length(time)
+      if (!is.na(time.units)) .env$units["time"] <- time.units
+      invisible(NULL)
+    },
+
+    get.units = function() .env$units,
+    getUnits  = function() .env$units,
+    get_units = function() .env$units,
+
+    get.nobs  = function() .env$nobs,
+    get.EventTable = function() {
+      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .show <- .env$show
+      .mat[, names(.show)[.show], drop = FALSE]
+    },
+    get.obs.rec = function() {
+      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat$evid == 0L
+    },
+    get.dosing = function() {
+      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat[.mat$evid != 0L, , drop = FALSE]
+    },
+    get.sampling = function() {
+      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat[.mat$evid == 0L, , drop = FALSE]
+    },
+    clear.sampling = function() {
+      .obsIdx <- vapply(.env$chunks, function(.c) {
+        .evid <- .c$evid
+        if (is.null(.evid)) return(TRUE)   # obs chunk (evid defaults to 0)
+        all(.evid == 0L)
+      }, logical(1))
+      .env$chunks <- .env$chunks[!.obsIdx]
+      .env$nobs   <- 0L
+      invisible(NULL)
+    },
+    clear.dosing = function() {
+      .doseIdx <- vapply(.env$chunks, function(.c) {
+        .evid <- .c$evid
+        if (is.null(.evid)) return(FALSE)
+        any(.evid != 0L)
+      }, logical(1))
+      .env$chunks <- .env$chunks[!.doseIdx]
+      .env$ndose  <- 0L
+      invisible(NULL)
+    },
+    copy = function() {
+      .newEnv <- new.env(parent = emptyenv())
+      .newEnv$chunks     <- .env$chunks
+      .newEnv$units      <- .env$units
+      .newEnv$show       <- .env$show
+      .newEnv$IDs        <- .env$IDs
+      .newEnv$nobs       <- .env$nobs
+      .newEnv$ndose      <- .env$ndose
+      .newEnv$randomType <- .env$randomType
+      .newEnv$canResize  <- .env$canResize
+      structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
+    },
+    expand = function() {
+      .et <- structure(list(.env = .env), class = "rxEt")
+      .mat <- .etMaterialize(.et)
+      .expanded <- .etExpandAddlR(.mat)
+      .env$chunks <- list(.expanded)
+      invisible(NULL)
+    },
+    simulate = function(object, nsim = 1, seed = NULL, ...) {
+      .simulate.rxEt(structure(list(.env = .env), class = "rxEt"), seed = seed)
+    }
+  )
+}
+
 #' Create a new empty rxEt object
 #' @param amountUnits character dose unit, e.g. "mg"
 #' @param timeUnits character time unit, e.g. "hours"
@@ -12,15 +120,15 @@
 #' @noRd
 .newRxEt <- function(amountUnits = NA_character_, timeUnits = NA_character_) {
   .env <- new.env(parent = emptyenv())
-  .env$chunks    <- list()
-  .env$units     <- c(dosing = amountUnits, time = timeUnits)
-  .env$show      <- .etDefaultShow()
-  .env$IDs       <- 1L
-  .env$nobs      <- 0L
-  .env$ndose     <- 0L
+  .env$chunks     <- list()
+  .env$units      <- c(dosing = amountUnits, time = timeUnits)
+  .env$show       <- .etDefaultShow()
+  .env$IDs        <- 1L
+  .env$nobs       <- 0L
+  .env$ndose      <- 0L
   .env$randomType <- NA_integer_
   .env$canResize  <- TRUE
-  structure(list(.env = .env), class = "rxEt")
+  structure(c(list(.env = .env), .etBuildMethods(.env)), class = "rxEt")
 }
 
 # Canonical column order matching C++ etEmpty()
