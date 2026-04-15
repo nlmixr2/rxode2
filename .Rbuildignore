@@ -2,6 +2,7 @@
 ^compile_commands.json$
 ^\.vscode$
 ^\.vexp$
+^vexp\.toml$
 ^\.claude$
 ^CLAUDE.md$
 ^test.R$
