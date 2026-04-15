@@ -85,6 +85,7 @@ rxTest({
     expect_true(inherits(ci1, "rxSolveConfint2"))
     expect_true(inherits(ci2, "rxSolveConfint2"))
     expect_equal(names(ci1), names(ci2))
+    expect_equal(ci1, ci2, tolerance = 1e-8)
   })
 
   test_that("nSub=1 nStud>1 — no id column added (only sim.id)", {
