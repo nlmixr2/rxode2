@@ -1013,14 +1013,28 @@ as.et.default <- function(x, ...) {
 
 #' @export
 as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
-  if (.isRxEt(x)) {
-    .x <- x
-    .tmp <- .x[, .x$show, drop = FALSE]
-    class(.tmp) <- c("rxEt2", "data.frame")
-    return(as.data.frame(.tmp, row.names = NULL, optional = FALSE, ...))
+  if (!is.rxEt(x)) return(as.data.frame(unclass(x), ...))
+  .env  <- .subset2(x, ".env")
+  .show <- .env$show
+  .full <- .etMaterialize(x)
+  # Apply show mask — always include time and evid at minimum
+  .showCols <- names(.show)[.show]
+  .showCols <- union(c("time", "evid"), .showCols)
+  .showCols <- intersect(.showCols, names(.full))
+  .full[, .showCols, drop = FALSE]
+}
+
+#' @export
+print.rxEt <- function(x, ...) {
+  .env <- .subset2(x, ".env")
+  cat(sprintf("<rxEt> [%d obs, %d doses]\n", .env$nobs, .env$ndose))
+  .df <- as.data.frame(x)
+  if (nrow(.df) > 0L) {
+    print(.df)
   } else {
-    return(as.data.frame(x, row.names = NULL, optional = FALSE, ...))
+    cat("  (empty)\n")
   }
+  invisible(x)
 }
 
 .datatable.aware <- TRUE
@@ -1033,7 +1047,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' @noRd
 as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
   rxReq("data.table")
-  return(data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames, ...))
+  data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames)
 }
 
 #' Convert to tbl
@@ -1047,15 +1061,7 @@ as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
 #' @noRd
 as_tibble.rxEt <- function(x, ...) {
   rxReq("tibble")
-  if (.isRxEt(x)) {
-    .x <- x
-    .show <- .x$show
-    class(.x) <- "data.frame"
-    .tmp <- .x[, .show, drop = FALSE]
-    return(tibble::as_tibble(.tmp, ...))
-  } else {
-    return(tibble::as_tibble(x, ...))
-  }
+  tibble::as_tibble(as.data.frame.rxEt(x, ...), ...)
 }
 
 

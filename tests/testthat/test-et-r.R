@@ -246,4 +246,27 @@ rxTest({
     df <- .etMaterialize(ev)
     expect_equal(df$cmt[df$evid == 1L], "depot")
   })
+
+  test_that("as.data.frame shows only visible columns", {
+    ev <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 1, 2))
+    df <- as.data.frame(ev)
+    expect_true("time"  %in% names(df))
+    expect_true("evid"  %in% names(df))
+    expect_true("amt"   %in% names(df))
+    expect_true("ii"    %in% names(df))
+    expect_true("addl"  %in% names(df))
+    expect_false("id"   %in% names(df))   # single ID, hidden
+    expect_false("low"  %in% names(df))
+  })
+
+  test_that("print.rxEt does not error", {
+    ev <- et(amt = 100) |> et(time = c(0, 1, 2))
+    expect_output(print(ev))
+  })
+
+  test_that("as.data.table.rxEt returns data.table", {
+    ev <- et(time = c(0, 1, 2))
+    dt <- as.data.table(ev)
+    expect_true(inherits(dt, "data.table"))
+  })
 })
