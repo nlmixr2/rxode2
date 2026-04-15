@@ -13,7 +13,7 @@
 
 - Change mtime state-based dosing to use less memory
 
-- Change rxSolve() behavior to always add id when `nSub > 1`
+- Change rxSolve() behavior to always add id when `nSub > 1` (#1013)
 
 # rxode2 5.0.2
 
