@@ -1729,6 +1729,48 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+#' Add the id column when missing but sim.id is present and nSub > 1;
+#' splitting sim.id into id and sim.id
+#'
+#' @param .ret the output from rxSolve to be modified
+#' @param .nSub the number of subjects per study (nSub)
+#' @return the modified output with id column added and sim.id modified (if needed)
+#' @noRd
+#' @author Matthew L. Fidler
+.addSimId <- function(.ret, .nSub) {
+  if (.nSub <= 1L) return(.ret)
+  if (!"sim.id" %in% names(.ret)) return(.ret)
+  if ("id" %in% names(.ret)) return(.ret)
+  .simId <- as.integer(.ret[["sim.id"]])
+  .id <- ((.simId - 1L) %% .nSub) + 1L
+  .newSimId <- ((.simId - 1L) %/% .nSub) + 1L
+  # Capture ALL attributes (including class with .rxode2.env, row.names, etc.)
+  .allAttrs <- attributes(.ret)
+  .retList <- unclass(.ret)
+  .n <- length(.retList)
+  .pos <- which(names(.retList) == "sim.id")
+  .retList[[.pos]] <- .newSimId
+  # Build new list with id inserted after sim.id
+  .newList <- vector("list", .n + 1L)
+  for (.i in seq_len(.pos)) {
+    .newList[[.i]] <- .retList[[.i]]
+  }
+  .newList[[.pos + 1L]] <- .id
+  if (.pos < .n) {
+    for (.i in seq(.pos + 1L, .n)) {
+      .newList[[.i + 1L]] <- .retList[[.i]]
+    }
+  }
+  # Update names in captured attribute list, then restore ALL attributes
+  .oldNames <- .allAttrs$names
+  .allAttrs$names <- c(
+    .oldNames[seq_len(.pos)], "id",
+    if (.pos < .n) .oldNames[seq(.pos + 1L, .n)] else character(0)
+  )
+  attributes(.newList) <- .allAttrs
+  .newList
+}
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -2188,6 +2230,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))
   .ret <- .ret[[1]]
+  .ret <- .addSimId(.ret, .ctl$nSub)
   if (.ctl$returnType == 4L) {
     data.table::setDT(.ret)
   } else if (.ctl$returnType == 5L) {

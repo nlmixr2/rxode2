@@ -13,6 +13,8 @@
 
 - Change mtime state-based dosing to use less memory
 
+- Change rxSolve() behavior to always add id when `nSub > 1`
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
