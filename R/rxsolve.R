@@ -1744,31 +1744,25 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
   .simId <- as.integer(.ret[["sim.id"]])
   .id <- ((.simId - 1L) %% .nSub) + 1L
   .newSimId <- ((.simId - 1L) %/% .nSub) + 1L
-  # Capture ALL attributes (including class with .rxode2.env, row.names, etc.)
-  .allAttrs <- attributes(.ret)
-  .retList <- unclass(.ret)
-  .n <- length(.retList)
-  .pos <- which(names(.retList) == "sim.id")
-  .retList[[.pos]] <- .newSimId
-  # Build new list with id inserted after sim.id
-  .newList <- vector("list", .n + 1L)
-  for (.i in seq_len(.pos)) {
-    .newList[[.i]] <- .retList[[.i]]
-  }
-  .newList[[.pos + 1L]] <- .id
-  if (.pos < .n) {
-    for (.i in seq(.pos + 1L, .n)) {
-      .newList[[.i + 1L]] <- .retList[[.i]]
-    }
-  }
-  # Update names in captured attribute list, then restore ALL attributes
-  .oldNames <- .allAttrs$names
-  .allAttrs$names <- c(
-    .oldNames[seq_len(.pos)], "id",
-    if (.pos < .n) .oldNames[seq(.pos + 1L, .n)] else character(0)
-  )
-  attributes(.newList) <- .allAttrs
-  .newList
+  # Save class (carries .rxode2.env with structure-integrity checks)
+  .cls <- class(.ret)
+  .envir <- attr(.cls, ".rxode2.env")
+  # Modify sim.id in-place and append id at the end
+  .ret[["sim.id"]] <- .newSimId
+  .ret[["id"]] <- .id
+  # Reorder: move id to immediately after sim.id
+  .allNames <- names(.ret)
+  .simPos <- which(.allNames == "sim.id")
+  .idPos  <- which(.allNames == "id")
+  .newOrder <- c(seq_len(.simPos), .idPos,
+                 setdiff(seq(.simPos + 1L, length(.allNames)), .idPos))
+  .ret <- .ret[, .newOrder, drop = FALSE]
+  # Update the structure-integrity checks in the rxode2 environment
+  .envir$.check.ncol  <- ncol(.ret)
+  .envir$.check.names <- names(.ret)
+  # Restore rxSolve class (which carries .rxode2.env with the updated checks)
+  class(.ret) <- .cls
+  .ret
 }
 
 #' @rdname rxSolve
