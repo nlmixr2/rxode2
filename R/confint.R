@@ -80,6 +80,9 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
   for(.v in .by) {
+    if (.v %in% c("id", "sim.id") && any(names(.stk) == .v)) {
+      next
+    }
     .stk[[.v]] <- object[[.v]]
   }
   setDT(.stk)
