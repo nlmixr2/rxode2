@@ -1044,7 +1044,7 @@ print.rxEt <- function(x, ...) {
 #'
 #' @return data.table of event table
 #'
-#' @noRd
+#' @export
 as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
   rxReq("data.table")
   data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames)
@@ -1058,7 +1058,7 @@ as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
 #'
 #' @return tibble of event table
 #'
-#' @noRd
+#' @export
 as_tibble.rxEt <- function(x, ...) {
   rxReq("tibble")
   tibble::as_tibble(as.data.frame.rxEt(x, ...), ...)
