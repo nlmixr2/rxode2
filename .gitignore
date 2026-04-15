@@ -1,3 +1,9 @@
+.cache
+compile_commands.json
+.vscode
+.vexp
+vexp.toml
+.claude
 Meta
 doc
 *.o

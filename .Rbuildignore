@@ -1,3 +1,8 @@
+^\.cache$
+^compile_commands.json$
+^\.vscode$
+^\.vexp$
+^\.claude$
 ^CLAUDE.md$
 ^test.R$
 ^rxode2\.smproj$
