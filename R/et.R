@@ -409,8 +409,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       .to   <- as.numeric(.dotsNum[[1]])
       .resolvedTime <- if (!is.null(by)) seq(from = .from, to = .to, by = by) else seq(from = .from, to = .to, length.out = length.out)
     } else if (!missing(time)) {
-      .fromVal <- as.numeric(eval(substitute(time), envir = envir))
-      .resolvedTime <- if (!is.null(by)) seq(from = .fromVal, by = by) else seq(from = .fromVal, length.out = length.out)
+      stop("'by'/'length.out' requires both a 'from' and 'to' value", call. = FALSE)
     } else {
       .resolvedTime <- numeric(0)
     }
@@ -535,8 +534,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .chunk <- .etObsChunk(.timeVal, cmt = .cmtVal, id = .resolvedId)
     if (.evid2 != 0L) .chunk$evid <- as.integer(.evid2)
     .envRef$chunks <- c(.envRef$chunks, list(.chunk))
-    .nNew <- if (inherits(.timeVal, "list")) length(.timeVal) else length(.timeVal)
-    .envRef$nobs <- .envRef$nobs + .nNew
+    .envRef$nobs <- .envRef$nobs + length(.timeVal)
     if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
     return(invisible(.et))
   }
