@@ -1752,10 +1752,15 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
   .ret[["id"]] <- .id
   # Reorder: move id to immediately after sim.id
   .allNames <- names(.ret)
-  .simPos <- which(.allNames == "sim.id")
-  .idPos  <- which(.allNames == "id")
+  .simPos <- match("sim.id", .allNames)
+  .idPos  <- match("id", .allNames)
+  .tailIdx <- if (.simPos < length(.allNames)) {
+    seq.int(.simPos + 1L, length(.allNames))
+  } else {
+    integer(0)
+  }
   .newOrder <- c(seq_len(.simPos), .idPos,
-                 setdiff(seq(.simPos + 1L, length(.allNames)), .idPos))
+                 setdiff(.tailIdx, .idPos))
   .ret <- .ret[, .newOrder, drop = FALSE]
   # Update the structure-integrity checks in the rxode2 environment
   .envir$.check.ncol  <- ncol(.ret)
