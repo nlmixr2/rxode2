@@ -1282,22 +1282,7 @@ as_tibble.rxEt <- function(x, ...) {
   }
 }
 
-#' Check to see if this is an rxEt object.
-#'
-#' @param x object to check to see if it is rxEt
-#'
-#' If this is an rxEt object that has expired strip all rxEt
-#' information.
-#'
-#' @return Boolean indicating if this is a rxode2 event table
-#'
-#' @author Matthew L.Fidler
-#'
-#' @export
-#' @keywords internal
-is.rxEt <- function(x) {
-  .Call(`_rxode2_rxIsEt2`, x)
-}
+
 #' Expand additional doses
 #'
 #' @param et Event table to expand additional doses for.
