@@ -683,33 +683,22 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
 #' @author Matthew L. Fidler
 #' @template etExamples
 #' @export
-# nolint start
 add.dosing <- function(eventTable, dose, nbr.doses = 1L,
                        dosing.interval = 24, dosing.to = 1L,
                        rate = NULL, amount.units = NA_character_,
                        start.time = 0.0, do.sampling = FALSE,
                        time.units = NA_character_, ...) {
-  checkmate::assertDouble(dose, any.missing = FALSE, finite = TRUE, max.len = 1)
-  checkmate::assertDouble(dosing.interval, lower = 0, any.missing = FALSE, finite = TRUE, max.len = 1)
-  checkmate::assertDouble(start.time, any.missing = FALSE, finite = TRUE, max.len = 1)
-  .lst <- list(
-    dose = dose,
-    nbr.doses = nbr.doses,
-    start.time = start.time,
-    do.sampling = do.sampling,
-    ...
-  )
-  if (!is.na(amount.units)) .lst$amount.units <- amount.units
-  if (!is.na(time.units)) .lst$time.units <- time.units
-  if (dosing.to != 1) .lst$dosing.to <- dosing.to
-  if (!is.null(rate)) .lst$rate <- rate
-  if (nbr.doses > 1) {
-    .lst$dosing.interval <- dosing.interval
-  } else {
-    .lst$dosing.interval <- 0.0
+  if (is.rxEt(eventTable)) {
+    eventTable$add.dosing(
+      dose = dose, nbr.doses = nbr.doses,
+      dosing.interval = dosing.interval, dosing.to = dosing.to,
+      rate = rate, amount.units = amount.units,
+      start.time = start.time, do.sampling = do.sampling,
+      time.units = time.units
+    )
+    return(invisible(eventTable))
   }
-  checkmate::assertIntegerish(nbr.doses, lower = 1L, any.missing = FALSE, max.len = 1)
-  .Call(`_rxode2_et_`, .lst, eventTable)
+  stop("'eventTable' must be an rxEt object", call. = FALSE)
 }
 
 #' Add sampling to eventTable
@@ -727,10 +716,12 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
 #'     will be updated even if you don't reassign the eventTable)
 #' @template etExamples
 #' @export
-add.sampling <- function(eventTable, time, time.units = NA) {
-  .lst <- list(time = time)
-  if (!is.na(time.units)) .lst$time.units <- time.units
-  return(.Call(`_rxode2_et_`, .lst, eventTable))
+add.sampling <- function(eventTable, time, time.units = NA_character_) {
+  if (is.rxEt(eventTable)) {
+    eventTable$add.sampling(time, time.units = time.units)
+    return(invisible(eventTable))
+  }
+  stop("'eventTable' must be an rxEt object", call. = FALSE)
 }
 
 
@@ -848,16 +839,9 @@ add.sampling <- function(eventTable, time, time.units = NA) {
 #' @concept Pharmacodynamics (PD)
 #' @export
 eventTable <- function(amount.units = NA, time.units = NA) {
-  .lst <- list()
-  if (!missing(amount.units)) {
-    checkmate::assertCharacter(amount.units, max.len = 1)
-    .lst$amount.units <- amount.units
-  }
-  if (!missing(time.units)) {
-    checkmate::assertCharacter(time.units, max.len = 1)
-    .lst$time.units <- time.units
-  }
-  .Call(`_rxode2_et_`, .lst, list())
+  .amtU <- if (!missing(amount.units)) as.character(amount.units) else NA_character_
+  .timU <- if (!missing(time.units))   as.character(time.units)   else NA_character_
+  .newRxEt(amountUnits = .amtU, timeUnits = .timU)
 }
 # nolint end
 

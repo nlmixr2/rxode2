@@ -327,6 +327,22 @@ rxTest({
     expect_equal(sort(unique(df$id)), c(1L, 2L))
   })
 
+  test_that("eventTable() creates empty rxEt with units", {
+    ev <- eventTable(amount.units = "mg", time.units = "hours")
+    expect_true(is.rxEt(ev))
+    .env <- .subset2(ev, ".env")
+    expect_equal(.env$units["dosing"], c(dosing = "mg"))
+  })
+
+  test_that("eventTable add.dosing/add.sampling pipe", {
+    qd <- eventTable(amount.units = "mg", time.units = "days") |>
+      add.dosing(dose = 50, nbr.doses = 5, dosing.interval = 1) |>
+      add.sampling(seq(from = 0, to = 5, by = 0.5))
+    df <- as.data.frame(qd)
+    expect_equal(sum(df$evid == 1L), 1L)  # lazy: 1 dose row with addl=4
+    expect_true(sum(df$evid == 0L) > 0L)
+  })
+
   test_that("etExpand expands addl doses", {
     ev  <- et(amt = 100, ii = 24, addl = 4)
     ev2 <- etExpand(ev)
