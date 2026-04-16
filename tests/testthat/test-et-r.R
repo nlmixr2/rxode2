@@ -327,6 +327,21 @@ rxTest({
     expect_equal(sort(unique(df$id)), c(1L, 2L))
   })
 
+  test_that("etRep repeats event table", {
+    ev  <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 24))
+    ev3 <- etRep(ev, times = 3, samples = "use")
+    df  <- as.data.frame(ev3)
+    expect_equal(sum(df$evid == 1L), 3L)
+    expect_equal(sum(df$evid == 0L), 6L)
+  })
+
+  test_that("etRep with wait", {
+    ev  <- et(amt = 100) |> et(time = c(0, 24))
+    ev3 <- etRep(ev, times = 3, wait = 24, samples = "use")
+    df  <- as.data.frame(ev3)
+    expect_true(max(df$time) >= 48)
+  })
+
   test_that("etSeq offsets times of second table", {
     ev1 <- et(amt = 100) |> et(time = c(0, 24))
     ev2 <- et(amt = 100) |> et(time = c(0, 24))

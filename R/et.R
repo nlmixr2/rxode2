@@ -1103,18 +1103,16 @@ c.rxEt <- function(...) {
 etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, id = integer(0),
                   samples = c("clear", "use"),
                   waitII = c("smart", "+ii"), ii = 24) {
-  if (!is.null(n)) {
-    times <- n
-  }
-  .sampleIx <- c(clear = 0L, use = 1L)
-  .waitIx <- c(smart = 0L, `+ii` = 1L)
   if (!is.na(length.out)) stop("'length.out' makes no sense with event tables", call. = FALSE)
-  if (!is.na(each)) stop("'each' makes no sense with event tables", call. = FALSE)
-  .collectWarnings(.Call(
-    `_rxode2_etRep_`, x, as.integer(times),
-    wait, as.integer(id), setNames(.sampleIx[match.arg(samples)], NULL),
-    setNames(.waitIx[match.arg(waitII)], NULL), as.double(ii)
-  ))
+  if (!is.na(each))       stop("'each' makes no sense with event tables", call. = FALSE)
+  if (!is.null(n)) times <- n
+  # Build alternating list: et, wait, et, wait, ...
+  .lst <- vector("list", times * 2L)
+  for (.i in seq_len(times)) {
+    .lst[[.i * 2L - 1L]] <- x
+    .lst[[.i * 2L]]      <- wait
+  }
+  do.call(etSeq, c(.lst, list(samples = samples, waitII = waitII, ii = ii)))
 }
 
 #' @rdname etRep
