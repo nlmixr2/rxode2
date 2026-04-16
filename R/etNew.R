@@ -17,14 +17,13 @@
                            dosing.to = 1L, rate = NULL,
                            amount.units = NA_character_,
                            start.time = 0.0, do.sampling = FALSE,
-                           time.units = NA_character_, ...) {
+                           time.units = NA_character_) {
       .cmt <- if (dosing.to == 1L) "(default)" else as.integer(dosing.to)
       .chunk <- .etDoseChunk(
         time = start.time, amt = dose, cmt = .cmt,
         ii   = if (nbr.doses > 1L) dosing.interval else 0.0,
         addl = as.integer(nbr.doses) - 1L,
-        rate = if (!is.null(rate)) rate else 0.0,
-        ...
+        rate = if (!is.null(rate)) rate else 0.0
       )
       .env$chunks <- c(.env$chunks, list(.chunk))
       .env$ndose  <- .env$ndose + 1L
@@ -48,7 +47,6 @@
 
     get.units = function() .env$units,
     getUnits  = function() .env$units,
-    get_units = function() .env$units,
 
     get.nobs  = function() .env$nobs,
     get.EventTable = function() {
