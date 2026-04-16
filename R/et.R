@@ -1026,14 +1026,21 @@ etRbind <- function(..., samples = c("use", "clear"),
     } else {
       .show <- .show | .env$show
     }
-    # ID remapping for unique mode
-    if (.uniqueId) {
+    # ID remapping for unique mode (always materializes)
+    if (.uniqueId || .samples == "clear") {
       .mat    <- .etMaterialize(.et)
-      .oldIds <- sort(unique(.mat$id))
-      .map    <- seq_along(.oldIds) + .nextId
-      .nextId <- .nextId + length(.oldIds)
-      .mat$id <- .map[match(.mat$id, .oldIds)]
-      .IDs    <- c(.IDs, .map)
+      if (.uniqueId) {
+        .oldIds <- sort(unique(.mat$id))
+        .map    <- seq_along(.oldIds) + .nextId
+        .nextId <- .nextId + length(.oldIds)
+        .mat$id <- .map[match(.mat$id, .oldIds)]
+        .IDs    <- c(.IDs, .map)
+      } else {
+        .IDs <- sort(unique(c(.IDs, .env$IDs)))
+      }
+      if (.samples == "clear") {
+        .mat <- .mat[.mat$evid != 0L, , drop = FALSE]
+      }
       .chunks <- c(.chunks, list(.mat))
     } else {
       .chunks <- c(.chunks, .env$chunks)
