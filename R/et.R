@@ -1206,7 +1206,19 @@ as_tibble.rxEt <- function(x, ...) {
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
 etExpand <- function(et) {
-  .Call(`_rxode2_et_`, list(expand = TRUE), et)
+  .mat      <- .etMaterialize(et)
+  .expanded <- .etExpandAddlR(.mat)
+  .env      <- .subset2(et, ".env")
+  .newEnv <- new.env(parent = emptyenv())
+  .newEnv$chunks     <- list(.expanded)
+  .newEnv$units      <- .env$units
+  .newEnv$show       <- .env$show
+  .newEnv$IDs        <- .env$IDs
+  .newEnv$nobs       <- sum(.expanded$evid == 0L)
+  .newEnv$ndose      <- sum(.expanded$evid != 0L)
+  .newEnv$randomType <- NA_integer_
+  .newEnv$canResize  <- FALSE
+  structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
 }
 
 #' EVID formatting for tibble and other places.

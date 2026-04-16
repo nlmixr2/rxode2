@@ -327,6 +327,14 @@ rxTest({
     expect_equal(sort(unique(df$id)), c(1L, 2L))
   })
 
+  test_that("etExpand expands addl doses", {
+    ev  <- et(amt = 100, ii = 24, addl = 4)
+    ev2 <- etExpand(ev)
+    df  <- as.data.frame(ev2)
+    expect_equal(sum(df$evid == 1L), 5L)
+    expect_true(all(df$addl[df$evid == 1L] == 0L))
+  })
+
   test_that("etRep repeats event table", {
     ev  <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 24))
     ev3 <- etRep(ev, times = 3, samples = "use")

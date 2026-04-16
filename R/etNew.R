@@ -129,6 +129,32 @@
   structure(c(list(.env = .env), .etBuildMethods(.env)), class = "rxEt")
 }
 
+#' Expand addl doses into individual records (pure R)
+#' @param df materialized data.frame from .etMaterialize()
+#' @return data.frame with addl expanded into individual dose records
+#' @noRd
+.etExpandAddlR <- function(df) {
+  .doseRows <- df[df$evid != 0L & df$addl > 0L, , drop = FALSE]
+  if (nrow(.doseRows) == 0L) return(df)
+
+  .extras <- vector("list", nrow(.doseRows))
+  for (.i in seq_len(nrow(.doseRows))) {
+    .row   <- .doseRows[.i, ]
+    .n     <- .row$addl
+    .extra <- .row[rep(1L, .n), , drop = FALSE]
+    .extra$time <- .row$time + seq_len(.n) * .row$ii
+    .extra$addl <- 0L
+    .extra$ii   <- 0.0
+    .extras[[.i]] <- .extra
+  }
+  # Zero out addl/ii in original dose rows
+  df$addl[df$evid != 0L] <- 0L
+  df$ii[df$evid   != 0L] <- 0.0
+  .combined <- do.call(rbind, c(list(df), .extras))
+  .evidSort <- ifelse(.combined$evid == 3L, -1L, as.integer(.combined$evid))
+  .combined[.order3(.combined$id, .combined$time, .evidSort), ]
+}
+
 # Canonical column order matching C++ etEmpty()
 .etColOrder <- c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
 
