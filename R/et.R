@@ -908,15 +908,77 @@ eventTable <- function(amount.units = NA, time.units = NA) {
 #' @template etExamples
 #'
 #' @export
-etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), ii = 24) {
-  ## etSeq_(List ets, bool clearSampling=clearSampling);
-  .sampleIx <- c(clear = 0L, use = 1L)
-  .waitIx <- c(smart = 0L, `+ii` = 1L)
-  .collectWarnings(.Call(
-    `_rxode2_etSeq_`, list(...), setNames(.sampleIx[match.arg(samples)], NULL),
-    setNames(.waitIx[match.arg(waitII)], NULL), as.double(ii), FALSE, 0L,
-    0L, TRUE, character(0), logical(0), FALSE
-  ))
+etSeq <- function(..., samples = c("clear", "use"),
+                  waitII = c("smart", "+ii"), ii = 24) {
+  .samples  <- match.arg(samples)
+  .waitType <- match.arg(waitII)
+  .args     <- list(...)
+
+  .chunks    <- list()
+  .nobs      <- 0L
+  .ndose     <- 0L
+  .units     <- NULL
+  .show      <- NULL
+  .IDs       <- integer(0)
+  .timeDelta <- 0.0
+  .lastIi    <- 0.0
+  .lastDose  <- 0.0
+  .maxTime   <- 0.0
+
+  for (.item in .args) {
+    if (is.rxEt(.item)) {
+      .env <- .subset2(.item, ".env")
+      if (is.null(.units)) {
+        .units <- .env$units
+        .show  <- .env$show
+      } else {
+        .show <- .show | .env$show
+      }
+      .IDs <- sort(unique(c(.IDs, .env$IDs)))
+      # Materialize to apply time offset
+      .mat <- .etMaterialize(.item)
+      .mat$time <- .mat$time + .timeDelta
+      if (any(!is.na(.mat$low)))  .mat$low[!is.na(.mat$low)]   <- .mat$low[!is.na(.mat$low)]   + .timeDelta
+      if (any(!is.na(.mat$high))) .mat$high[!is.na(.mat$high)] <- .mat$high[!is.na(.mat$high)] + .timeDelta
+      .mat$ii[is.na(.mat$ii)] <- 0.0
+      # Track last dose for smart wait
+      .doseRows <- .mat[.mat$evid != 0L, , drop = FALSE]
+      if (nrow(.doseRows) > 0L) {
+        .lastDoseRow <- .doseRows[nrow(.doseRows), ]
+        .lastIi   <- if (.lastDoseRow$addl > 0L) .lastDoseRow$ii else .lastIi
+        .lastDose <- .lastDoseRow$time + .lastDoseRow$addl * .lastIi
+      }
+      .maxTime <- max(.mat$time, na.rm = TRUE)
+      if (.samples == "use") {
+        .chunks <- c(.chunks, list(.mat))
+        .nobs   <- .nobs + .env$nobs
+      } else {
+        .doseOnly <- .mat[.mat$evid != 0L, , drop = FALSE]
+        .chunks <- c(.chunks, list(.doseOnly))
+      }
+      .ndose     <- .ndose + .env$ndose
+      .timeDelta <- .timeDelta + .maxTime
+    } else if (is.numeric(.item) || is.integer(.item)) {
+      .wait <- as.numeric(.item)
+      if (.waitType == "smart" && .wait < .lastIi) {
+        .timeDelta <- .timeDelta + .lastIi
+      } else {
+        .timeDelta <- .timeDelta + .wait
+      }
+    }
+  }
+
+  .newEnv <- new.env(parent = emptyenv())
+  .newEnv$chunks     <- .chunks
+  .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
+  .newEnv$show       <- if (!is.null(.show)) .show else .etDefaultShow()
+  .newEnv$IDs        <- if (length(.IDs) > 0L) .IDs else 1L
+  .newEnv$nobs       <- .nobs
+  .newEnv$ndose      <- .ndose
+  .newEnv$randomType <- NA_integer_
+  .newEnv$canResize  <- FALSE
+  if (length(.newEnv$IDs) > 1L) .newEnv$show["id"] <- TRUE
+  structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
 }
 #' Combining event tables
 #'
@@ -940,17 +1002,60 @@ etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), 
 #' @template etExamples
 #'
 #' @export
-etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii"),
+etRbind <- function(..., samples = c("use", "clear"),
+                    waitII = c("smart", "+ii"),
                     id = c("merge", "unique")) {
-  .sampleIx <- c(clear = 0L, use = 1L)
-  .waitIx <- c(smart = 0L, `+ii` = 1L)
-  .idIx <- c(merge = 0L, unique = 1L)
-  .collectWarnings(.Call(
-    `_rxode2_etSeq_`, list(...), setNames(.sampleIx[match.arg(samples)], NULL),
-    setNames(.waitIx[match.arg(waitII)], NULL), as.double(0), TRUE,
-    setNames(.idIx[match.arg(id)], NULL),
-    0L, TRUE, character(0), logical(0), FALSE
-  ))
+  .samples  <- match.arg(samples)
+  .uniqueId <- match.arg(id) == "unique"
+  .ets <- list(...)
+
+  .chunks  <- list()
+  .nobs    <- 0L
+  .ndose   <- 0L
+  .units   <- NULL
+  .show    <- NULL
+  .IDs     <- integer(0)
+  .nextId  <- 0L
+
+  for (.et in .ets) {
+    if (!is.rxEt(.et)) next
+    .env <- .subset2(.et, ".env")
+    if (is.null(.units)) {
+      .units <- .env$units
+      .show  <- .env$show
+    } else {
+      .show <- .show | .env$show
+    }
+    # ID remapping for unique mode
+    if (.uniqueId) {
+      .mat    <- .etMaterialize(.et)
+      .oldIds <- sort(unique(.mat$id))
+      .map    <- seq_along(.oldIds) + .nextId
+      .nextId <- .nextId + length(.oldIds)
+      .mat$id <- .map[match(.mat$id, .oldIds)]
+      .IDs    <- c(.IDs, .map)
+      .chunks <- c(.chunks, list(.mat))
+    } else {
+      .chunks <- c(.chunks, .env$chunks)
+      .IDs    <- sort(unique(c(.IDs, .env$IDs)))
+    }
+    if (.samples == "use") {
+      .nobs  <- .nobs + .env$nobs
+    }
+    .ndose <- .ndose + .env$ndose
+  }
+
+  .newEnv <- new.env(parent = emptyenv())
+  .newEnv$chunks     <- .chunks
+  .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
+  .newEnv$show       <- if (!is.null(.show)) .show else .etDefaultShow()
+  .newEnv$IDs        <- if (length(.IDs) > 0L) .IDs else 1L
+  .newEnv$nobs       <- .nobs
+  .newEnv$ndose      <- .ndose
+  .newEnv$randomType <- NA_integer_
+  .newEnv$canResize  <- FALSE
+  if (length(.newEnv$IDs) > 1L) .newEnv$show["id"] <- TRUE
+  structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
 }
 
 #' @rdname etRbind

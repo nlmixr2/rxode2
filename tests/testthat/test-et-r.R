@@ -310,4 +310,30 @@ rxTest({
     ev <- et(amt = 100)
     expect_true(ev$show["amt"])
   })
+
+  test_that("etRbind two tables merges rows", {
+    ev1 <- et(amt = 100) |> et(time = c(0, 1, 2))
+    ev2 <- et(amt = 50)  |> et(time = c(3, 4, 5))
+    ev  <- etRbind(ev1, ev2)
+    df  <- as.data.frame(ev)
+    expect_equal(nrow(df), 8L)   # 2 doses + 6 obs
+  })
+
+  test_that("etRbind id=unique renumbers IDs", {
+    ev1 <- et(amt = 100, id = 1L) |> et(time = c(0, 1))
+    ev2 <- et(amt =  50, id = 1L) |> et(time = c(0, 1))
+    ev  <- etRbind(ev1, ev2, id = "unique")
+    df  <- as.data.frame(ev)
+    expect_equal(sort(unique(df$id)), c(1L, 2L))
+  })
+
+  test_that("etSeq offsets times of second table", {
+    ev1 <- et(amt = 100) |> et(time = c(0, 24))
+    ev2 <- et(amt = 100) |> et(time = c(0, 24))
+    ev  <- etSeq(ev1, ev2, samples = "use")
+    df  <- as.data.frame(ev)
+    # second table should start after first table's last event (at 24),
+    # so the second table's obs at time 24 becomes 24+24=48
+    expect_true(max(df$time) > 24)
+  })
 })
