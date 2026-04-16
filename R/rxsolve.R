@@ -1830,6 +1830,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (any(names(.lst) == ".setupOnly")) {
     .setupOnly <- .lst$.setupOnly
   }
+  if (is.null(events) && is.rxEt(params)) {
+    events <- params
+    params <- NULL
+  }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
