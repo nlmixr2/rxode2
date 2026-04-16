@@ -213,44 +213,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// etSeq_
-List etSeq_(List ets, int handleSamples, int waitType, double defaultIi, bool rbind, int uniqueId, int reserveLen, bool needSort, CharacterVector newUnits, LogicalVector newShow, bool isCmtIntIn);
-RcppExport SEXP _rxode2_etSeq_(SEXP etsSEXP, SEXP handleSamplesSEXP, SEXP waitTypeSEXP, SEXP defaultIiSEXP, SEXP rbindSEXP, SEXP uniqueIdSEXP, SEXP reserveLenSEXP, SEXP needSortSEXP, SEXP newUnitsSEXP, SEXP newShowSEXP, SEXP isCmtIntInSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type ets(etsSEXP);
-    Rcpp::traits::input_parameter< int >::type handleSamples(handleSamplesSEXP);
-    Rcpp::traits::input_parameter< int >::type waitType(waitTypeSEXP);
-    Rcpp::traits::input_parameter< double >::type defaultIi(defaultIiSEXP);
-    Rcpp::traits::input_parameter< bool >::type rbind(rbindSEXP);
-    Rcpp::traits::input_parameter< int >::type uniqueId(uniqueIdSEXP);
-    Rcpp::traits::input_parameter< int >::type reserveLen(reserveLenSEXP);
-    Rcpp::traits::input_parameter< bool >::type needSort(needSortSEXP);
-    Rcpp::traits::input_parameter< CharacterVector >::type newUnits(newUnitsSEXP);
-    Rcpp::traits::input_parameter< LogicalVector >::type newShow(newShowSEXP);
-    Rcpp::traits::input_parameter< bool >::type isCmtIntIn(isCmtIntInSEXP);
-    rcpp_result_gen = Rcpp::wrap(etSeq_(ets, handleSamples, waitType, defaultIi, rbind, uniqueId, reserveLen, needSort, newUnits, newShow, isCmtIntIn));
-    return rcpp_result_gen;
-END_RCPP
-}
-// etRep_
-List etRep_(RObject curEt, int times, NumericVector wait, IntegerVector ids, int handleSamples, int waitType, double ii);
-RcppExport SEXP _rxode2_etRep_(SEXP curEtSEXP, SEXP timesSEXP, SEXP waitSEXP, SEXP idsSEXP, SEXP handleSamplesSEXP, SEXP waitTypeSEXP, SEXP iiSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< RObject >::type curEt(curEtSEXP);
-    Rcpp::traits::input_parameter< int >::type times(timesSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type wait(waitSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type ids(idsSEXP);
-    Rcpp::traits::input_parameter< int >::type handleSamples(handleSamplesSEXP);
-    Rcpp::traits::input_parameter< int >::type waitType(waitTypeSEXP);
-    Rcpp::traits::input_parameter< double >::type ii(iiSEXP);
-    rcpp_result_gen = Rcpp::wrap(etRep_(curEt, times, wait, ids, handleSamples, waitType, ii));
-    return rcpp_result_gen;
-END_RCPP
-}
 // getLinInfo_
 IntegerVector getLinInfo_(List mv);
 RcppExport SEXP _rxode2_getLinInfo_(SEXP mvSEXP) {

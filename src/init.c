@@ -24,8 +24,6 @@ extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
 SEXP _rxode2_atolRtolFactor_(SEXP);
-SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
-                    SEXP, SEXP);
 SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                          SEXP, SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -336,11 +334,6 @@ SEXP _rxode2_etDollarNames(SEXP);
 SEXP _rxode2_rxIsEt2(SEXP);
 SEXP _rxode2_et_(SEXP, SEXP);
 SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
-SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
-                    SEXP, SEXP, SEXP, SEXP, SEXP,
-                    SEXP);
-SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
-                    SEXP, SEXP);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
@@ -654,8 +647,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
     {"_rxode2_parse_strncmpci",(DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
-    {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
-    {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
     {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
     {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
     {"_rxode2_rxIsEt2", (DL_FUNC) &_rxode2_rxIsEt2, 1},

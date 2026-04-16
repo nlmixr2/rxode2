@@ -1,11 +1,16 @@
 #' @importFrom utils .DollarNames
 #' @export
 .DollarNames.rxEt <- function(x, pattern) {
+  if (is.rxEt(x)) {
+    .nms <- unique(c(names(x), names(.etMaterialize(x))))
+    return(grep(pattern, .nms, value = TRUE))
+  }
   grep(pattern, .Call(`_rxode2_etDollarNames`, x), value = TRUE)
 }
 
 .isRxEt <- function(obj) {
-  .Call(`_rxode2_rxIsEt2`, obj)
+  if (!inherits(obj, "rxEt")) return(FALSE)
+  !is.environment(.subset2(obj, ".env"))
 }
 
 
@@ -605,6 +610,7 @@ simulate.rxEt <- # nolint
     if (is.null(.pipelineRx) || !.isPipe) {
       if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
       if (!is.null(seed)) set.seed(seed)
+      if (is.rxEt(object)) return(etExpand(object))
       return(.Call(`_rxode2_et_`, list(simulate = TRUE), object))
     } else {
       .ret <- list(object, ..., seed = seed, nsim = nsim)
@@ -614,8 +620,14 @@ simulate.rxEt <- # nolint
   }
 
 drop_units.rxEt <- function(x) {
-  if (requireNamespace("units", quietly = TRUE)) {
+  if (!requireNamespace("units", quietly = TRUE)) {
     stop("requires package 'units'", call. = FALSE)
+  }
+  if (is.rxEt(x)) {
+    .env <- .subset2(x, ".env")
+    .env$amountUnits <- NA_character_
+    .env$timeUnits <- NA_character_
+    return(x)
   }
   .Call(`_rxode2_et_`, list(amountUnits = NA_character_, timeUnits = NA_character_), x)
 }
@@ -636,6 +648,12 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     warning("clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
       call. = FALSE
     )
+    if (is.rxEt(x)) {
+      .env <- .subset2(x, ".env")
+      .env$amountUnits <- ""
+      .env$timeUnits <- ""
+      return(x)
+    }
     return(suppressWarnings({
       .Call(`_rxode2_et_`, list(amountUnits = "", timeUnits = ""), x)
     }))
@@ -645,9 +663,19 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
     if (inherits(.isTime, "try-error")) {
       ## Amount
+      if (is.rxEt(x)) {
+        .env <- .subset2(x, ".env")
+        .env$amountUnits <- value
+        return(x)
+      }
       return(.Call(`_rxode2_et_`, list(amountUnits = value), x))
     } else {
       ##
+      if (is.rxEt(x)) {
+        .env <- .subset2(x, ".env")
+        .env$timeUnits <- value
+        return(x)
+      }
       return(.Call(`_rxode2_et_`, list(timeUnits = value), x))
     }
   }

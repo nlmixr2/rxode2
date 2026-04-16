@@ -3245,7 +3245,6 @@ RObject et_(List input, List et__) {
 Function getRxFn(std::string name);
 
 // Sequence event tables
-//[[Rcpp::export]]
 List etSeq_(List ets, int handleSamples=0, int waitType = 0,
             double defaultIi = 0,bool rbind = false,
             int uniqueId=0,
@@ -3607,7 +3606,6 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
 }
 
 // Sequence event tables
-//[[Rcpp::export]]
 List etRep_(RObject curEt, int times, NumericVector wait, IntegerVector ids, int handleSamples, int waitType,
             double ii){
   if (wait.size() != 1){
