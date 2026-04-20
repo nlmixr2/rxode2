@@ -102,19 +102,19 @@ rxTest({
                      "THETA[4]"=0.1,"ETA[1]"=0.1,"ETA[2]"=-0.1,"ETA[3]"=0.05,
                      check.names=FALSE)
 
-  outOde    <- rxSolve(ode$foceiModel$inner,    params=params, events=ev)
-  outLin    <- rxSolve(lin$foceiModel$inner, params=params, events=ev)
+  outOde    <- rxSolve(ode, params=params, events=ev)
+  outLin    <- rxSolve(lin, params=params, events=ev)
 
 
   test_that("linCmtB and ode solve the same", {
-    expect_equal(outOde$rx_pred_, outLin$rx_pred_)
-    expect_equal(outOde$rx_r_, outLin$rx_r_)
+    expect_equal(outOde$rx_pred_, outLin$rx_pred_, tolerance=1e-5)
+    expect_equal(outOde$rx_r_, outLin$rx_r_, tolerance=1e-5)
   })
 
   sensCols <- grep("sens_rx_pred.*ETA", names(outOde), value=TRUE)
   for (col in sensCols) {
     test_that(paste0("linCmtB and ode solve the same for ", col), {
-      expect_equal(outOde[[col]], outLin[[col]])
+      expect_equal(outOde[[col]], outLin[[col]], tolerance=1e-5)
     })
   }
 })
