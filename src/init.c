@@ -69,6 +69,7 @@ SEXP _rxode2_rxSolveGet(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSolveUpdate(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP objectSEXP);
+SEXP _rxode2_rxTestParallelAssignFuns(SEXP nThreadsSEXP);
 SEXP _rxode2_dynLoad(SEXP dllSEXP);
 SEXP _rxode2_rxOptRep_(SEXP);
 SEXP _rxode2_rxIndLin_(SEXP);
@@ -693,6 +694,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSolveGet", (DL_FUNC) &_rxode2_rxSolveGet, 3},
     {"_rxode2_rxSolveUpdate", (DL_FUNC) &_rxode2_rxSolveUpdate, 3},
     {"_rxode2_rxAssignPtr", (DL_FUNC) &_rxode2_rxAssignPtr, 1},
+    {"_rxode2_rxTestParallelAssignFuns", (DL_FUNC) &_rxode2_rxTestParallelAssignFuns, 1},
     {"_rxode2_rxRmModelLib_",(DL_FUNC) &_rxode2_rxRmModelLib_, 1},
     {"_rxode2_rxDll",(DL_FUNC) &_rxode2_rxDll, 1},
     {"_rxode2_rxC",(DL_FUNC) &_rxode2_rxC, 1},

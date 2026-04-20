@@ -1510,6 +1510,40 @@ RcppExport SEXP _rxode2_rxAssignPtr(SEXP objectSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxTestParallelAssignFuns
+void rxTestParallelAssignFuns(int nThreads, int niter);
+static SEXP _rxode2_rxTestParallelAssignFuns_try(SEXP nThreadsSEXP, SEXP niterSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< int >::type nThreads(nThreadsSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    rxTestParallelAssignFuns(nThreads, niter);
+    return R_NilValue;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxTestParallelAssignFuns(SEXP nThreadsSEXP, SEXP niterSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxTestParallelAssignFuns_try(nThreadsSEXP, niterSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxDll
 std::string rxDll(RObject obj);
 static SEXP _rxode2_rxDll_try(SEXP objSEXP) {
@@ -2794,6 +2828,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxGetrxode2)(RObject)");
         signatures.insert("bool(*rxIsCurrent)(RObject)");
         signatures.insert("void(*rxAssignPtr)(SEXP)");
+        signatures.insert("void(*rxTestParallelAssignFuns)(int,int)");
         signatures.insert("std::string(*rxDll)(RObject)");
         signatures.insert("CharacterVector(*rxC)(RObject)");
         signatures.insert("bool(*rxIsLoaded)(RObject)");
@@ -2853,6 +2888,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxGetrxode2", (DL_FUNC)_rxode2_rxGetrxode2_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxIsCurrent", (DL_FUNC)_rxode2_rxIsCurrent_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxAssignPtr", (DL_FUNC)_rxode2_rxAssignPtr_try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxTestParallelAssignFuns", (DL_FUNC)_rxode2_rxTestParallelAssignFuns_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxDll", (DL_FUNC)_rxode2_rxDll_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxC", (DL_FUNC)_rxode2_rxC_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxIsLoaded", (DL_FUNC)_rxode2_rxIsLoaded_try);

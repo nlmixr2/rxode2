@@ -6310,6 +6310,46 @@ extern "C" void rxAssignPtrC(SEXP obj){
   rxAssignPtr(obj);
 }
 
+//' Stress-test assignFuns() from multiple OpenMP threads
+//'
+//' Test-only helper that exercises the thread-safety of the compiled
+//' model's `_assignFuns()` initialiser.  Under the pre-fix template,
+//' `_assignFuns()` used an unguarded double-checked-read
+//' (`if (_assign_ptr == NULL) _assignFuns0();`) which lets multiple
+//' threads race through `_assignFuns0()` — `_assignFuns0()` then calls
+//' `R_GetCCallable` many times, and R's symbol table is not
+//' thread-safe.  On noisy platforms or under ThreadSanitizer this
+//' corrupts R's internals and can crash.
+//'
+//' The caller must first point the rxode2 dispatch table at the target
+//' model via `rxAssignPtr(model)`.  This helper then spawns
+//' `nThreads` workers (via `#pragma omp parallel`) that each invoke
+//' `assignFuns()` once; the first winning thread runs
+//' `_assignFuns0()` under the new `omp critical` guard, the rest
+//' observe `_assign_ptr != NULL` and return immediately.
+//'
+//' @param nThreads integer, number of OpenMP worker threads (>= 1).
+//' @return invisible NULL.  Called for side effects.
+//' @keywords internal
+//' @noRd
+extern "C" t_assignFuns assignFuns;
+//[[Rcpp::export]]
+void rxTestParallelAssignFuns(int nThreads = 8, int niter = 1) {
+  if (assignFuns == NULL) {
+    stop(_("rxAssignPtr(model) must be called before rxTestParallelAssignFuns()"));
+  }
+  if (nThreads < 1) nThreads = 1;
+  if (niter < 1) niter = 1;
+#ifdef _OPENMP
+#pragma omp parallel num_threads(nThreads)
+#endif
+  {
+    for (int i = 0; i < niter; i++) {
+      assignFuns();
+    }
+  }
+}
+
 //' Return the DLL associated with the rxode2 object
 //'
 //' This will return the dynamic load library or shared object used to

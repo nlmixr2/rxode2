@@ -507,8 +507,33 @@ void _assignFuns0(void) {
 }
 
 void _assignFuns(void) {
-  if (_assign_ptr == NULL){
-    _assignFuns0();
+  // Thread-safe double-checked init.  _assignFuns0() calls R_GetCCallable
+  // many times to populate global function pointers (including
+  // _assign_ptr), and R's symbol table is not thread-safe.  If two
+  // threads enter this function before either has set _assign_ptr, both
+  // race into _assignFuns0() and corrupt R's internals.  Nlmixr2est's
+  // FOCEi inner loop calls ind_solve() from inside its own `#pragma omp
+  // parallel for`, exposing exactly this pattern.
+  //
+  // Fast path: a plain load of _assign_ptr.  On aligned word-sized
+  // loads (all supported platforms for rxode2) this read is atomic at
+  // the hardware level; once _assign_ptr is set by a successful
+  // _assignFuns0() call, it is never cleared, so a non-null read means
+  // initialisation has completed and every other pointer assigned by
+  // _assignFuns0() is visible after the matching critical-section
+  // release below.
+  //
+  // Slow path (init): enter an omp critical, re-check under the lock,
+  // and only the first thread actually runs _assignFuns0().  Other
+  // threads then exit with _assign_ptr non-null.  The critical-section
+  // release publishes every write _assignFuns0() performed.
+  if (_assign_ptr == NULL) {
+#ifdef _OPENMP
+#pragma omp critical(rxode2AssignFunsInit)
+#endif
+    if (_assign_ptr == NULL) {
+      _assignFuns0();
+    }
   }
 }
 

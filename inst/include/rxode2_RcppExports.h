@@ -633,6 +633,26 @@ namespace rxode2 {
             throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
     }
 
+    inline void rxTestParallelAssignFuns(int nThreads = 8, int niter = 1) {
+        typedef SEXP(*Ptr_rxTestParallelAssignFuns)(SEXP,SEXP);
+        static Ptr_rxTestParallelAssignFuns p_rxTestParallelAssignFuns = NULL;
+        if (p_rxTestParallelAssignFuns == NULL) {
+            validateSignature("void(*rxTestParallelAssignFuns)(int,int)");
+            p_rxTestParallelAssignFuns = (Ptr_rxTestParallelAssignFuns)R_GetCCallable("rxode2", "_rxode2_rxTestParallelAssignFuns");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxTestParallelAssignFuns(Shield<SEXP>(Rcpp::wrap(nThreads)), Shield<SEXP>(Rcpp::wrap(niter)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+    }
+
     inline std::string rxDll(RObject obj) {
         typedef SEXP(*Ptr_rxDll)(SEXP);
         static Ptr_rxDll p_rxDll = NULL;

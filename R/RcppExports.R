@@ -461,6 +461,30 @@ NULL
 #' @noRd
 NULL
 
+#' Stress-test assignFuns() from multiple OpenMP threads
+#'
+#' Test-only helper that exercises the thread-safety of the compiled
+#' model's `_assignFuns()` initialiser.  Under the pre-fix template,
+#' `_assignFuns()` used an unguarded double-checked-read
+#' (`if (_assign_ptr == NULL) _assignFuns0();`) which lets multiple
+#' threads race through `_assignFuns0()` — `_assignFuns0()` then calls
+#' `R_GetCCallable` many times, and R's symbol table is not
+#' thread-safe.  On noisy platforms or under ThreadSanitizer this
+#' corrupts R's internals and can crash.
+#'
+#' The caller must first point the rxode2 dispatch table at the target
+#' model via `rxAssignPtr(model)`.  This helper then spawns
+#' `nThreads` workers (via `#pragma omp parallel`) that each invoke
+#' `assignFuns()` once; the first winning thread runs
+#' `_assignFuns0()` under the new `omp critical` guard, the rest
+#' observe `_assign_ptr != NULL` and return immediately.
+#'
+#' @param nThreads integer, number of OpenMP worker threads (>= 1).
+#' @return invisible NULL.  Called for side effects.
+#' @keywords internal
+#' @noRd
+NULL
+
 #' Check the type of an object using Rcpp
 #'
 #' @param obj Object to check
@@ -710,6 +734,10 @@ rxIsCurrent <- function(obj) {
 #' @export
 rxAssignPtr <- function(object = NULL) {
     invisible(.Call(`_rxode2_rxAssignPtr`, object))
+}
+
+rxTestParallelAssignFuns <- function(nThreads = 8L, niter = 1L) {
+    invisible(.Call(`_rxode2_rxTestParallelAssignFuns`, nThreads, niter))
 }
 
 #' Return the DLL associated with the rxode2 object
