@@ -3592,6 +3592,7 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->logitHi          = 1;
   ind->isIni            = 0;
   ind->_update_par_ptr_in = 0;
+  ind->linCmtHparIndex  = -2;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
