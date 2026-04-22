@@ -439,7 +439,28 @@
   for (.col in .missing) data.table::set(.dt, j = .col, value = NA)
   data.table::setcolorder(.dt, .etColOrder)
 
-  as.data.frame(.dt)
+  .df <- as.data.frame(.dt)
+
+  # Apply units to columns so C++ solver can propagate them to output
+  .tu <- .env$units["time"]
+  .du <- .env$units["dosing"]
+  .hasTimeU <- !is.na(.tu) && nchar(.tu) > 0
+  .hasDoseU <- !is.na(.du) && nchar(.du) > 0
+  if (.hasTimeU || .hasDoseU) {
+    if (.hasTimeU) {
+      for (.col in c("time", "ii", "low", "high", "dur")) {
+        .df[[.col]] <- units::set_units(.df[[.col]], .tu, mode = "standard")
+      }
+    }
+    if (.hasDoseU) {
+      .df[["amt"]] <- units::set_units(.df[["amt"]], .du, mode = "standard")
+      if (.hasTimeU) {
+        .df[["rate"]] <- units::set_units(.df[["rate"]], paste0(.du, "/", .tu), mode = "standard")
+      }
+    }
+  }
+
+  .df
 }
 
 #' Check if object is an rxEt event table
