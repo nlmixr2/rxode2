@@ -2,8 +2,19 @@
 #' @export
 .DollarNames.rxEt <- function(x, pattern) {
   if (is.rxEt(x)) {
-    .nms <- unique(c(names(x), names(.etMaterialize(x))))
-    return(grep(pattern, .nms, value = TRUE))
+    .envProps <- c("randomType", "canResize", "IDs", "show", "ndose", "nobs")
+    .methods <- c(
+      "expand", "getSampling", "get.sampling", "getDosing", "get.dosing",
+      "get.nobs", "get.obs.rec", "getEventTable", "get.EventTable",
+      "copy", "importEventTable", "import.EventTable", "simulate",
+      "clearDosing", "clear_dosing", "clear.dosing",
+      "clearSampling", "clear_sampling", "clear.sampling",
+      "addSampling", "add_sampling", "add.sampling",
+      "addDosing", "add_dosing", "add.dosing",
+      "get_units", "getUnits", "get.units", "units"
+    )
+    .dataCols <- rev(c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur"))
+    return(grep(pattern, c(.envProps, .methods, .dataCols, "env"), value = TRUE))
   }
   grep(pattern, .Call(`_rxode2_etDollarNames`, x), value = TRUE)
 }
@@ -475,6 +486,18 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     } else if (is.data.frame(.xVal)) {
       # Import data.frame as event table
       .df <- .xVal
+      # Convert deSolve-style (var/value/method) to canonical rxEt format
+      if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
+        .df$cmt   <- .df$var;   .df$var   <- NULL
+        .df$amt   <- .df$value; .df$value <- NULL
+        if (!is.null(.df$method)) {
+          .df$evid <- ifelse(.df$method == "rep", 5L,
+                      ifelse(.df$method == "mult", 6L, 1L))
+          .df$method <- NULL
+        } else {
+          .df$evid <- 1L
+        }
+      }
       if (is.null(.df$evid)) {
         if (!is.null(.df$amt)) {
           .df$evid <- ifelse(!is.na(.df$amt) & as.numeric(.df$amt) != 0, 1L, 0L)
@@ -1294,6 +1317,13 @@ etSeq <- function(..., samples = c("clear", "use"),
       }
       .IDs <- sort(unique(c(.IDs, .env$IDs)))
       .mat <- .etMaterialize(.item)
+      # Strip units for arithmetic; units preserved in .env$units
+      if (requireNamespace("units", quietly = TRUE)) {
+        for (.tmCol in c("time", "low", "high", "ii")) {
+          if (!is.null(.mat[[.tmCol]]) && inherits(.mat[[.tmCol]], "units"))
+            .mat[[.tmCol]] <- as.numeric(.mat[[.tmCol]])
+        }
+      }
       .mat$time <- .mat$time + .timeDelta
       if (!is.null(.mat$low)  && any(!is.na(.mat$low)))  .mat$low[!is.na(.mat$low)]   <- .mat$low[!is.na(.mat$low)]   + .timeDelta
       if (!is.null(.mat$high) && any(!is.na(.mat$high))) .mat$high[!is.na(.mat$high)] <- .mat$high[!is.na(.mat$high)] + .timeDelta

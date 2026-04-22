@@ -61,13 +61,14 @@
 #' @return named list of closures
 #' @noRd
 .etBuildMethods <- function(.env) {
-  list(
+  .lst <- list(
     add.dosing = function(dose, nbr.doses = 1L, dosing.interval = 24,
                            dosing.to = 1L, rate = NULL,
                            amount.units = NA_character_,
                            start.time = 0.0, do.sampling = FALSE,
                            time.units = NA_character_,
-                           evid = NULL) {
+                           evid = NULL, strt.time = NULL) {
+      if (!is.null(strt.time)) start.time <- strt.time
       .cmt <- if (dosing.to == 1L) "(default)" else as.integer(dosing.to)
       .evidVal <- if (!is.null(evid)) as.integer(evid) else 1L
       .df <- .etDoseChunk(
@@ -199,11 +200,11 @@
         if (!inherits(.col, "units")) return(.col)
         if (requireNamespace("units", quietly = TRUE)) {
           # Only convert when et had prior units; auto-detected units just strip label
-          if (.nm %in% c("time", "ii") && .priorTimeU)
+          if (.nm %in% c("time", "ii") && .hasTimeU)
             return(as.numeric(units::set_units(.col, .tu, mode = "standard")))
-          if (.nm == "amt" && .priorDoseU)
+          if (.nm == "amt" && .hasDoseU)
             return(as.numeric(units::set_units(.col, .du, mode = "standard")))
-          if (.nm == "rate" && .priorDoseU && .priorTimeU) {
+          if (.nm == "rate" && .hasDoseU && .hasTimeU) {
             .rateU <- paste0(.du, "/", .tu)
             return(as.numeric(units::set_units(.col, .rateU, mode = "standard")))
           }
@@ -246,11 +247,9 @@
           names(df)[.i] <- .colMap[.upper[.i]]
         }
       }
-      # Convert character ID to sequential integers (warn)
+      # Convert character ID to sequential integers (silently)
       if (!is.null(df$id) && !is.numeric(df$id) && !is.integer(df$id)) {
         .uniq <- unique(df$id)
-        warning(sprintf("converting %d character ID(s) to sequential integer(s)", length(.uniq)),
-                call. = FALSE)
         df$id <- as.integer(factor(df$id, levels = .uniq))
       }
       # Drop rows with NA time (warn)
@@ -295,6 +294,19 @@
       invisible(NULL)
     }
   )
+  .lst$addDosing      <- .lst[["add.dosing"]]
+  .lst$add_dosing     <- .lst[["add.dosing"]]
+  .lst$addSampling    <- .lst[["add.sampling"]]
+  .lst$add_sampling   <- .lst[["add.sampling"]]
+  .lst$getDosing      <- .lst[["get.dosing"]]
+  .lst$getSampling    <- .lst[["get.sampling"]]
+  .lst$getEventTable  <- .lst[["get.EventTable"]]
+  .lst$clearDosing    <- .lst[["clear.dosing"]]
+  .lst$clear_dosing   <- .lst[["clear.dosing"]]
+  .lst$clearSampling  <- .lst[["clear.sampling"]]
+  .lst$clear_sampling <- .lst[["clear.sampling"]]
+  .lst$get_units      <- .lst[["get.units"]]
+  .lst
 }
 
 #' Create a new empty rxEt object
@@ -615,7 +627,7 @@ is.rxEt <- function(x) {
     stop("'addl' > 0 requires a positive inter-dose interval ('ii')", call. = FALSE)
 
   if (ss > 0L) {
-    if (rate < -1.0)
+    if (rate < -1.0 && ii == 0.0)
       stop("cannot use duration flag (rate=-2) with steady-state dosing", call. = FALSE)
     if (ss == 2L && ii == 0.0)
       stop("ss=2 requires a positive inter-dose interval ('ii')", call. = FALSE)

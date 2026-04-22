@@ -191,3 +191,26 @@ as.data.frame.rxEtTran <- function(x, row.names = NULL, optional = FALSE, ...) {
     .mv$state[x]
   }, character(1), USE.NAMES = FALSE))
 }
+
+#' @rdname etTrans
+#' @export
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE,
+                    keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0),
+                    addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL) {
+  if (is.rxEt(inData)) {
+    .env <- unclass(inData)[[".env"]]
+    .chunks <- Filter(Negate(is.null), .env$chunks)
+    if (length(.chunks) > 0L) {
+      .raw <- as.data.frame(data.table::rbindlist(.chunks, fill = TRUE, use.names = TRUE))
+      # deSolve-style: 'value' present but no 'amt' → drop auto-added 'evid' so C++ uses method/var
+      if (!is.null(.raw[["value"]]) && is.null(.raw[["amt"]])) {
+        .raw[["evid"]] <- NULL
+      }
+      inData <- .raw
+    } else {
+      inData <- as.data.frame(inData)
+    }
+  }
+  .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly,
+        combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov)
+}
