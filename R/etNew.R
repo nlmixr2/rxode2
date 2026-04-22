@@ -353,6 +353,36 @@
 # Canonical column order matching C++ etEmpty()
 .etColOrder <- c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
 
+#' Convert character cmt column to integer for C++ solver
+#'
+#' The C++ etTran code handles integer cmt as direct compartment indices,
+#' but character cmt values are looked up as compartment NAMES. Numeric
+#' strings like "2" do NOT match compartment names ("amt2"), so they get
+#' assigned as extra compartments beyond state.size(). This function converts
+#' all-convertible character cmt columns to integer before passing to C++.
+#'
+#' "(default)" and "(obs)" map to compartment 1; NA stays NA_integer_.
+#' If any value is a non-numeric, non-sentinel string (a compartment name),
+#' the column stays character so C++ name lookup works normally.
+#' @param .df materialized data.frame from .etMaterialize()
+#' @return .df with cmt column possibly converted to integer
+#' @noRd
+.etFixCmtForSolve <- function(.df) {
+  .cmt <- .df[["cmt"]]
+  if (is.null(.cmt) || !is.character(.cmt)) return(.df)
+  .isNA      <- is.na(.cmt)
+  .isSentinel <- !.isNA & (.cmt == "(default)" | .cmt == "(obs)")
+  .numericOk  <- !.isNA & !.isSentinel & suppressWarnings(!is.na(as.integer(.cmt)))
+  if (all(.isNA | .isSentinel | .numericOk)) {
+    .int <- integer(length(.cmt))
+    .int[.isNA]       <- NA_integer_
+    .int[.isSentinel] <- 1L
+    .int[.numericOk]  <- as.integer(.cmt[.numericOk])
+    .df[["cmt"]] <- .int
+  }
+  .df
+}
+
 #' Empty data.frame skeleton matching materialized format
 #' @noRd
 .etEmptyDf <- function() {

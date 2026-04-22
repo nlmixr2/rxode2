@@ -2139,7 +2139,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
-  .eventsForSolve <- if (is.rxEt(events)) .etMaterialize(events) else events
+  .eventsForSolve <- if (is.rxEt(events)) .etFixCmtForSolve(.etMaterialize(events)) else events
   if (getOption("rxode2.debug", FALSE)) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, .eventsForSolve, inits,

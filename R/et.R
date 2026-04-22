@@ -972,8 +972,8 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     )
     if (is.rxEt(x)) {
       .env <- unclass(x)[[".env"]]
-      .env$amountUnits <- ""
-      .env$timeUnits <- ""
+      .env$units["dosing"] <- NA_character_
+      .env$units["time"]   <- NA_character_
       return(x)
     }
     return(suppressWarnings({
@@ -987,7 +987,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
       ## Amount
       if (is.rxEt(x)) {
         .env <- unclass(x)[[".env"]]
-        .env$amountUnits <- value
+        .env$units["dosing"] <- value
         return(x)
       }
       return(.Call(`_rxode2_et_`, list(amountUnits = value), x))
@@ -995,7 +995,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
       ##
       if (is.rxEt(x)) {
         .env <- unclass(x)[[".env"]]
-        .env$timeUnits <- value
+        .env$units["time"] <- value
         return(x)
       }
       return(.Call(`_rxode2_et_`, list(timeUnits = value), x))
