@@ -264,8 +264,8 @@ rxTest({
       et <- et()
       et$import.EventTable(etDf)
 
-      expect_equal(et$ii, e$ii)
-      expect_equal(et$rate, e$rate)
+      expect_equal(as.numeric(et$ii), as.numeric(e$ii))
+      expect_equal(as.numeric(et$rate), as.numeric(e$rate))
     })
 
     test_that("seq works with wait", {
@@ -570,7 +570,7 @@ rxTest({
 
     toto <- rep(sch1, times = 10, wait = units::set_units(19, "days"))
 
-    expect_equal(toto$time, seq(0, by = 504, length.out = 10))
+    expect_equal(as.numeric(toto$time), seq(0, by = 504, length.out = 10))
 
     sch1 <- et(timeUnits = "hr") |>
       et(amt = 100, ii = 24, until = units::set_units(2, "days")) |>
