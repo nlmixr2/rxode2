@@ -356,14 +356,26 @@
   .obj
 }
 
+#' Sync the materialized data.frame shell with the mutable rxEt environment
+#' @noRd
+.rxEtSyncData <- function(x) {
+  .env <- .rxEtEnv(x)
+  if (!is.environment(.env)) return(x)
+  .ret <- .etMaterialize(x)
+  attr(.ret, ".rxEtEnv") <- .env
+  .rt <- .env$randomType
+  .cls <- c("rxEt", "data.frame")
+  if (!is.null(.rt) && !is.na(.rt)) {
+    .cls <- structure(.cls, ".rxode2.lst" = list(randomType = as.integer(.rt)))
+  }
+  class(.ret) <- .cls
+  .ret
+}
+
 #' Stamp randomType into attr(class(et), ".rxode2.lst") before returning
 #' @noRd
 .rxEtFinalize <- function(et) {
-  .rt <- .rxEtEnv(et)$randomType
-  if (!is.null(.rt) && !is.na(.rt)) {
-    class(et) <- structure("rxEt", ".rxode2.lst" = list(randomType = .rt))
-  }
-  et
+  .rxEtSyncData(et)
 }
 
 #' Expand addl doses into individual records (pure R)

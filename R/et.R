@@ -452,6 +452,10 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     # Also check named from/to in ...
     if (is.null(.xVal) && !is.null(.dots[["from"]])) .xVal <- .dots[["from"]]
     .toVal <- if (!is.null(.dots[["to"]])) .dots[["to"]] else if (length(.dotsNum) >= 1L) .dotsNum[[1]] else NULL
+    if (.xIsRxEt && is.null(.xVal) && length(.dotsNum) >= 2L) {
+      .xVal <- .dotsNum[[1L]]
+      .toVal <- .dotsNum[[2L]]
+    }
     if (!is.null(.xVal) && (is.numeric(.xVal) || is.integer(.xVal)) && !is.null(.toVal)) {
       .from <- as.numeric(.xVal)
       .to   <- as.numeric(.toVal)
@@ -680,7 +684,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     if (.addlVal > 0L) .envRef$show["addl"] <- TRUE
     if (!is.null(.untilVal)) .envRef$show["addl"] <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
-    if (any(.rateVal != 0)) .envRef$show["rate"] <- TRUE
+    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
     if (!is.null(.cmtVal) && .cmtVal != "(default)") .envRef$show["cmt"] <- TRUE
 
     if (!missing(addSampling) && isTRUE(addSampling)) {
@@ -714,7 +718,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.resolvedId))
     .envRef$show["amt"]  <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
-    if (.rateVal != 0) .envRef$show["rate"] <- TRUE
+    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
     return(invisible(.rxEtFinalize(.et)))
   }
 
@@ -746,7 +750,12 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     if (length(.dotArgs) >= 1L) {
       .firstDot <- .dotArgs[[1L]]
       if (is.numeric(.firstDot) || is.integer(.firstDot)) {
-        if (inherits(.firstDot, "units") && requireNamespace("units", quietly = TRUE)) {
+        if (length(.dotArgs) >= 2L &&
+            length(.firstDot) == 1L &&
+            (is.numeric(.dotArgs[[2L]]) || is.integer(.dotArgs[[2L]])) &&
+            length(.dotArgs[[2L]]) == 1L) {
+          .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(.dotArgs[[2L]]))
+        } else if (inherits(.firstDot, "units") && requireNamespace("units", quietly = TRUE)) {
           .tu2 <- .envRef$units["time"]
           if (!is.na(.tu2) && nchar(.tu2) > 0) {
             .timeVec <- as.numeric(units::set_units(.firstDot, .tu2, mode = "standard"))
@@ -759,7 +768,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         .df <- .etObsChunk(.timeVec, cmt = .cmtVal)
         if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
         .etAddChunk(.envRef, .df, .resolvedId)
-        .envRef$nobs <- .envRef$nobs + length(.timeVec)
+        .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.resolvedId))
         return(invisible(.rxEtFinalize(.et)))
       }
     }
@@ -946,7 +955,7 @@ select.rxEt <- function(.data, ...) {
 
 #' @export
 names.rxEt <- function(x) {
-  names(as.data.frame(x))
+  names(as.data.frame(x, all = TRUE))
 }
 
 #' @export
@@ -1093,7 +1102,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
       start.time = start.time, do.sampling = do.sampling,
       time.units = time.units
     )
-    return(invisible(eventTable))
+    return(invisible(.rxEtFinalize(eventTable)))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   .lst <- list(
@@ -1126,7 +1135,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
 add.sampling <- function(eventTable, time, time.units = NA_character_) {
   if (is.rxEt(eventTable)) {
     eventTable$add.sampling(time, time.units = time.units)
-    return(invisible(eventTable))
+    return(invisible(.rxEtFinalize(eventTable)))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   .lst <- list(time = time)
