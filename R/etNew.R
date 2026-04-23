@@ -247,6 +247,8 @@
       if (sum(df$evid != 0L, na.rm = TRUE) > 0L) .env$show["amt"] <- TRUE
       if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
         .env$show["rate"] <- TRUE
+      if (!is.null(df$dur) && any(df$dur[df$evid != 0L] != 0, na.rm = TRUE))
+        .env$show["dur"] <- TRUE
       if (!is.null(df$ii) && any(df$ii != 0, na.rm = TRUE)) {
         .env$show["ii"] <- TRUE
         .env$show["addl"] <- TRUE
@@ -676,11 +678,6 @@ is.rxEt <- function(x) {
       stop("ss=2 requires a positive inter-dose interval ('ii')", call. = FALSE)
     if (rate > 0 && ii > 0 && amt == 0)
       stop("cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", call. = FALSE)
-  }
-
-  if (dur > 0 && rate == 0.0) {
-    rate <- amt / dur
-    dur  <- 0.0
   }
 
   if (is.list(time)) time <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))

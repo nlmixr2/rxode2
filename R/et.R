@@ -685,6 +685,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     if (!is.null(.untilVal)) .envRef$show["addl"] <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
     if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
+    if (!is.null(.df$dur) && any(.df$dur != 0, na.rm = TRUE)) .envRef$show["dur"] <- TRUE
     if (!is.null(.cmtVal) && .cmtVal != "(default)") .envRef$show["cmt"] <- TRUE
 
     if (!missing(addSampling) && isTRUE(addSampling)) {
@@ -1095,14 +1096,23 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
                        start.time = 0.0, do.sampling = FALSE,
                        time.units = NA_character_, ...) {
   if (is.rxEt(eventTable)) {
-    eventTable$add.dosing(
-      dose = dose, nbr.doses = nbr.doses,
-      dosing.interval = dosing.interval, dosing.to = dosing.to,
-      rate = rate, amount.units = amount.units,
-      start.time = start.time, do.sampling = do.sampling,
-      time.units = time.units
+    .lst <- list(
+      x = eventTable,
+      amt = dose,
+      time = start.time,
+      ii = if (nbr.doses > 1L) dosing.interval else 0.0,
+      addl = as.integer(nbr.doses) - 1L,
+      addSampling = do.sampling
     )
-    return(invisible(.rxEtFinalize(eventTable)))
+    if (!is.null(rate)) .lst$rate <- rate
+    if (!is.na(amount.units)) .lst$amountUnits <- amount.units
+    if (!is.na(time.units)) .lst$timeUnits <- time.units
+    .extra <- list(...)
+    if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
+        !identical(dosing.to, 1L)) {
+      .lst$cmt <- dosing.to
+    }
+    return(invisible(do.call(et, c(.lst, .extra))))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   .lst <- list(
