@@ -680,6 +680,11 @@ is.rxEt <- function(x) {
       stop("cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", call. = FALSE)
   }
 
+  if (dur > 0 && rate == 0.0) {
+    rate <- amt / dur
+    dur  <- 0.0
+  }
+
   if (is.list(time)) time <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
 
   if (length(amt) > 1L || length(time) > 1L) {

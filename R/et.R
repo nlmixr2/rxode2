@@ -677,6 +677,10 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       rate = .rateVal, dur = .durVal,
       until = .untilVal
     )
+    if (!missing(dur) && missing(rate) && any(.durVal > 0, na.rm = TRUE)) {
+      .df$rate <- rep_len(0.0, nrow(.df))
+      .df$dur <- rep_len(.durVal, nrow(.df))
+    }
     .etAddChunk(.envRef, .df, .resolvedId)
     .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.resolvedId))
     .envRef$show["amt"] <- TRUE
