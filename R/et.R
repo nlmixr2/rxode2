@@ -442,32 +442,51 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   if (!is.null(by) && !is.null(length.out))
     stop("cannot specify both 'by' and 'length.out'", call. = FALSE)
   if (!is.null(by) || !is.null(length.out)) {
+    .seqTargetIds <- if (.xIsRxEt && length(.envRef$IDs) > 0L) .envRef$IDs else NULL
+    .fromVal <- NULL
+    .toVal <- NULL
+    .seqDots <- list(...)
     if (!missing(x) && !.xIsRxEt) {
       .xVal <- eval(substitute(x), envir = envir)
     } else {
       .xVal <- NULL
     }
-    .dots <- list(...)
-    .dotsNum <- Filter(function(.v) is.numeric(.v) || is.integer(.v), .dots)
+    .dotsNum <- Filter(function(.v) is.numeric(.v) || is.integer(.v), .seqDots)
     # Also check named from/to in ...
-    if (is.null(.xVal) && !is.null(.dots[["from"]])) .xVal <- .dots[["from"]]
-    .toVal <- if (!is.null(.dots[["to"]])) .dots[["to"]] else if (length(.dotsNum) >= 1L) .dotsNum[[1]] else NULL
-    if (.xIsRxEt && is.null(.xVal) && length(.dotsNum) >= 2L) {
-      .xVal <- .dotsNum[[1L]]
+    if (!is.null(.seqDots[["from"]])) {
+      .fromVal <- .seqDots[["from"]]
+    } else if (!is.null(.xVal) && (is.numeric(.xVal) || is.integer(.xVal))) {
+      .fromVal <- .xVal
+    } else if (.xIsRxEt && length(.dotsNum) >= 1L) {
+      .fromVal <- .dotsNum[[1L]]
+    }
+    if (!is.null(.seqDots[["to"]])) {
+      .toVal <- .seqDots[["to"]]
+    } else if (!.xIsRxEt && length(.dotsNum) >= 1L) {
+      .toVal <- .dotsNum[[1L]]
+    } else if (.xIsRxEt && length(.dotsNum) >= 2L) {
       .toVal <- .dotsNum[[2L]]
     }
-    if (!is.null(.xVal) && (is.numeric(.xVal) || is.integer(.xVal)) && !is.null(.toVal)) {
-      .from <- as.numeric(.xVal)
-      .to   <- as.numeric(.toVal)
-      .resolvedTime <- if (!is.null(by)) seq(from = .from, to = .to, by = by) else seq(from = .from, to = .to, length.out = length.out)
+    if (!is.null(.fromVal) && (is.numeric(.fromVal) || is.integer(.fromVal))) {
+      .from <- as.numeric(.fromVal)
+      if (length(.from) != 1L) stop("'from' must be scalar", call. = FALSE)
+      if (!is.null(.toVal)) {
+        .to <- as.numeric(.toVal)
+        if (length(.to) != 1L) stop("'to' must be scalar", call. = FALSE)
+        .resolvedTime <- if (!is.null(by)) seq(from = .from, to = .to, by = by) else seq(from = .from, to = .to, length.out = length.out)
+      } else if (!is.null(by)) {
+        .resolvedTime <- seq(from = .from, by = by)
+      } else {
+        .resolvedTime <- seq(from = .from, length.out = length.out)
+      }
     } else if (!missing(time)) {
       stop("'by'/'length.out' requires both a 'from' and 'to' value", call. = FALSE)
     } else {
       .resolvedTime <- numeric(0)
     }
     .df <- .etObsChunk(.resolvedTime)
-    .etAddChunk(.envRef, .df, NULL)
-    .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
+    .etAddChunk(.envRef, .df, .seqTargetIds)
+    .envRef$nobs <- .envRef$nobs + length(.resolvedTime) * max(1L, length(.seqTargetIds))
     return(invisible(.et))
   }
 
@@ -478,6 +497,9 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   if (missing(time) && !missing(x) && !.xIsRxEt) {
     .xVal <- tryCatch(eval(substitute(x), envir = envir), error = function(e) NULL)
     .dots <- list(...)
+    if (length(.dots) > 1L) {
+      stop("unused positional arguments", call. = FALSE)
+    }
     if (!is.null(.xVal) && length(.xVal) == 1L &&
         (is.numeric(.xVal) || is.integer(.xVal)) &&
         length(.dots) == 1L &&
@@ -583,6 +605,10 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .envRef$show["id"] <- TRUE
     .resolvedId <- .posIds
   }
+  .targetIds <- .resolvedId
+  if (is.null(.targetIds) && .xIsRxEt && length(.envRef$IDs) > 0L) {
+    .targetIds <- .envRef$IDs
+  }
 
   # ---- Resolve evid aliases ----
   .evidVal <- NULL
@@ -616,8 +642,8 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   # ---- Deferred list obs (from positional x = list(...)) ----
   if (exists(".listObs", inherits = FALSE)) {
     .dfObs <- .etObsChunk(.listObs, cmt = .cmtVal)
-    .etAddChunk(.envRef, .dfObs, .resolvedId)
-    .envRef$nobs <- .envRef$nobs + length(.listObs)
+    .etAddChunk(.envRef, .dfObs, .targetIds)
+    .envRef$nobs <- .envRef$nobs + length(.listObs) * max(1L, length(.targetIds))
     if (missing(amt)) return(invisible(.rxEtFinalize(.et)))
   }
 
@@ -681,8 +707,16 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       .df$rate <- rep_len(0.0, nrow(.df))
       .df$dur <- rep_len(.durVal, nrow(.df))
     }
-    .etAddChunk(.envRef, .df, .resolvedId)
-    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.resolvedId))
+    .pairDoseIds <- !is.null(.resolvedId) &&
+      nrow(.df) > 1L &&
+      nrow(.df) == length(.resolvedId)
+    if (.pairDoseIds) {
+      .df$id <- as.integer(.resolvedId)
+      .envRef$chunks <- .addRowsToChunks(.envRef$chunks, .df)
+    } else {
+      .etAddChunk(.envRef, .df, .targetIds)
+    }
+    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * if (.pairDoseIds) 1L else max(1L, length(.targetIds))
     .envRef$show["amt"] <- TRUE
     if (.iiVal > 0)    .envRef$show["ii"]   <- TRUE
     if (.addlVal > 0L) .envRef$show["addl"] <- TRUE
@@ -694,8 +728,8 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
 
     if (!missing(addSampling) && isTRUE(addSampling)) {
       .obsChunk <- .etObsChunk(.timeVal)
-      .etAddChunk(.envRef, .obsChunk, .resolvedId)
-      .envRef$nobs   <- .envRef$nobs + length(.obsChunk$time) * max(1L, length(.resolvedId))
+      .etAddChunk(.envRef, .obsChunk, .targetIds)
+      .envRef$nobs   <- .envRef$nobs + length(.obsChunk$time) * max(1L, length(.targetIds))
     }
     return(invisible(.rxEtFinalize(.et)))
   }
@@ -719,8 +753,8 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       ii = .iiVal, addl = 0L, ss = .ssVal,
       rate = .rateVal, dur = .durVal
     )
-    .etAddChunk(.envRef, .df, .resolvedId)
-    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.resolvedId))
+    .etAddChunk(.envRef, .df, .targetIds)
+    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.targetIds))
     .envRef$show["amt"]  <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
     if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
@@ -744,8 +778,8 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .evid2 <- if (!is.null(.evidVal)) .evidVal else 0L
     .df <- .etObsChunk(.timeVal, cmt = .cmtVal)
     if (.evid2 != 0L) .df$evid <- as.integer(.evid2)
-    .etAddChunk(.envRef, .df, .resolvedId)
-    .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.resolvedId))
+    .etAddChunk(.envRef, .df, .targetIds)
+    .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
     if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
     return(invisible(.rxEtFinalize(.et)))
   }
@@ -753,8 +787,17 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   # ---- x is rxEt + positional numeric in ... → obs times (piping pattern) ----
   if (.xIsRxEt && missing(time) && missing(amt)) {
     if (length(.dotArgs) >= 1L) {
+      if (length(.dotArgs) > 2L) {
+        stop("unused positional arguments", call. = FALSE)
+      }
       .firstDot <- .dotArgs[[1L]]
-      if (is.numeric(.firstDot) || is.integer(.firstDot)) {
+      if (is.list(.firstDot) && !is.data.frame(.firstDot)) {
+        .df <- .etObsChunk(.firstDot, cmt = .cmtVal)
+        .etAddChunk(.envRef, .df, .targetIds)
+        .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
+        if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
+        return(invisible(.rxEtFinalize(.et)))
+      } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
         if (length(.dotArgs) >= 2L &&
             length(.firstDot) == 1L &&
             (is.numeric(.dotArgs[[2L]]) || is.integer(.dotArgs[[2L]])) &&
@@ -772,8 +815,8 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         }
         .df <- .etObsChunk(.timeVec, cmt = .cmtVal)
         if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
-        .etAddChunk(.envRef, .df, .resolvedId)
-        .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.resolvedId))
+        .etAddChunk(.envRef, .df, .targetIds)
+        .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.targetIds))
         return(invisible(.rxEtFinalize(.et)))
       }
     }
@@ -808,11 +851,11 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   if (!is.null(.evidVal)) {
     .df <- .etObsChunk(0.0, cmt = .cmtVal)
     if (.evidVal != 0L) .df$evid <- as.integer(.evidVal)
-    .etAddChunk(.envRef, .df, .resolvedId)
+    .etAddChunk(.envRef, .df, .targetIds)
     if (.evidVal == 0L) {
-      .envRef$nobs <- .envRef$nobs + 1L
+      .envRef$nobs <- .envRef$nobs + max(1L, length(.targetIds))
     } else {
-      .envRef$ndose <- .envRef$ndose + 1L
+      .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
     }
     return(invisible(.rxEtFinalize(.et)))
   }
@@ -990,7 +1033,7 @@ names.rxEt <- function(x) {
     }
     return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
   }
-  .mat <- as.data.frame(x)
+  .mat <- as.data.frame(x, all = TRUE)
   if (missing(i)) return(.mat[, j, drop = drop])
   .mat[i, j, drop = drop]
 }

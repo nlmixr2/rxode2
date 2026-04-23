@@ -3209,12 +3209,12 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       }
       NumericVector newObs(lenOut);
       // ((to - from)/(length.out - 1))
-      List et = as<List>(ev1);
       for (int i = lenOut; i--;){
         newObs[i]=by*i+from;
       }
       rx->nobs2 = lenOut;
-      ev1 = et_(List::create(newObs), as<List>(ev1));
+      Function etFun = getRxFn("et");
+      ev1 = etFun(ev1, wrap(newObs));
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {

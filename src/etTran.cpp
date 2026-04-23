@@ -1760,6 +1760,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (cevid == 3 && nobs == 0 && ndose == 0) {
       continue;
     }
+    if (cevid == 0 && flg == 30) {
+      cevid = 2;
+    }
     switch(cevid) {
     case 0:
       // Observation
