@@ -1087,6 +1087,7 @@ List etImportEventTable(List inData, bool warnings = true){
   int i, idCol = -1, evidCol=-1, timeCol=-1, amtCol=-1, cmtCol=-1,
     ssCol=-1, rateCol=-1, addlCol=-1, iiCol=-1, durCol = -1, j,
     mdvCol =-1, methodCol=-1;
+  bool amtExplicit = false;
   std::string tmpS;
   for (i = lName.size(); i--;){
     tmpS = as<std::string>(lName[i]);
@@ -1095,7 +1096,13 @@ List etImportEventTable(List inData, bool warnings = true){
     if (tmpS == "id") idCol=i;
     else if (tmpS == "evid") evidCol=i;
     else if (tmpS == "time") timeCol=i;
-    else if (tmpS == "amt" || tmpS == "value") {
+    else if (tmpS == "amt") {
+      if (amtExplicit) stop(_("can only specify either 'amt' or 'value'"));
+      amtCol=i;
+      amtExplicit = true;
+    }
+    else if (tmpS == "value" || tmpS == "dose") {
+      if (amtExplicit) continue;
       if (amtCol != -1) stop(_("can only specify either 'amt' or 'value'"));
       amtCol=i;
     }

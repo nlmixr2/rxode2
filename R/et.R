@@ -1655,7 +1655,7 @@ as.et <- function(x, ...) {
 #' @export
 as.et.default <- function(x, ...) {
   .e <- et()
-  .e$import.EventTable(as.data.frame(x))
+  .e$importEventTable(as.data.frame(x))
   return(.e)
 }
 

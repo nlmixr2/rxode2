@@ -904,6 +904,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     dvCol=-1, ssCol=-1, rateCol=-1, addlCol=-1, iiCol=-1, durCol=-1, j,
     mdvCol=-1, dvidCol=-1, censCol=-1, limitCol=-1, methodCol = -1,
     idIcovCol = -1;
+  bool amtExplicit = false;
   bool hasMixest = false;
   bool hasMixUnif = false;
   std::string tmpS;
@@ -926,7 +927,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (tmpS == "id") idCol=i;
     else if (tmpS == "evid") evidCol=i;
     else if (tmpS == "time") timeCol=i;
-    else if (tmpS == "amt" || tmpS == "value"){
+    else if (tmpS == "amt"){
+      if (amtExplicit) stop(_("can only specify either 'amt' or 'value'"));
+      amtCol=i;
+      amtExplicit = true;
+    }
+    else if (tmpS == "value" || tmpS == "dose"){
+      if (amtExplicit) continue;
       if (amtCol != -1) stop(_("can only specify either 'amt' or 'value'"));
       amtCol=i;
     }
