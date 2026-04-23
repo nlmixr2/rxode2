@@ -1464,10 +1464,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
   rxUdfUiReset()
-  if (rxIs(events, "event.data.frame")) {
-    rxUdfUiData(events)
-  } else if (rxIs(params, "event.data.frame")) {
-    rxUdfUiData(params)
+  .eventsChk <- if (is.rxEt(events)) as.data.frame(events) else events
+  .paramsChk <- if (is.rxEt(params)) as.data.frame(params) else params
+  if (rxIs(.eventsChk, "event.data.frame")) {
+    rxUdfUiData(.eventsChk)
+  } else if (rxIs(.paramsChk, "event.data.frame")) {
+    rxUdfUiData(.paramsChk)
   } else {
     stop("Cannot detect an event data frame to use while re-parsing the model",
          call.=FALSE)
@@ -1629,11 +1631,13 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   rxUdfUiReset()
   if (isTRUE(object$uiUseData)) {
     # this needs to be re-parsed
-    if (rxIs(events, "event.data.frame")) {
-      rxUdfUiData(events)
+    .eventsChk2 <- if (is.rxEt(events)) as.data.frame(events) else events
+    .paramsChk2 <- if (is.rxEt(params)) as.data.frame(params) else params
+    if (rxIs(.eventsChk2, "event.data.frame")) {
+      rxUdfUiData(.eventsChk2)
       rxUdfUiMv(rxModelVars(object))
-    } else if (rxIs(params, "event.data.frame")) {
-      rxUdfUiData(params)
+    } else if (rxIs(.paramsChk2, "event.data.frame")) {
+      rxUdfUiData(.paramsChk2)
       rxUdfUiMv(rxModelVars(object))
     } else {
       stop("Cannot detect an event data frame to use while re-parsing the model",
@@ -1985,11 +1989,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (inherits(.ctl$iCov, "data.frame")) {
       .icovId <- which(tolower(names(.ctl$iCov)) == "id")
       .useEvents <- FALSE
-      if (rxIs(events, "event.data.frame")) {
-        .events <- events
+      .eventsChk3 <- if (is.rxEt(events)) as.data.frame(events) else events
+      .paramsChk3 <- if (is.rxEt(params)) as.data.frame(params) else params
+      if (rxIs(.eventsChk3, "event.data.frame")) {
+        .events <- .eventsChk3
         .useEvents <- TRUE
-      } else if (rxIs(params, "event.data.frame")) {
-        .events <- params
+      } else if (rxIs(.paramsChk3, "event.data.frame")) {
+        .events <- .paramsChk3
       } else {
         stop("Cannot detect an event data frame to merge 'iCov'")
       }

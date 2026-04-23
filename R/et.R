@@ -21,7 +21,7 @@
 
 .isRxEt <- function(obj) {
   if (!inherits(obj, "rxEt")) return(FALSE)
-  !is.environment(unclass(obj)[[".env"]])
+  !is.environment(.rxEtEnv(obj))
 }
 
 
@@ -409,7 +409,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   } else {
     .et <- .newRxEt()
   }
-  .envRef <- unclass(.et)[[".env"]]
+  .envRef <- .rxEtEnv(.et)
 
   # ---- Conflicting alias checks ----
   .dotArgs <- list(...)
@@ -617,9 +617,9 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     if (missing(amt)) return(invisible(.rxEtFinalize(.et)))
   }
 
-  # ---- Dose record (amt supplied) ----
-  if (!missing(amt)) {
-    .amtVal  <- eval(substitute(amt), envir = envir)
+  # ---- Dose record (amt supplied or dose alias) ----
+  if (!missing(amt) || !is.null(.dotArgs[["dose"]])) {
+    .amtVal  <- if (!missing(amt)) eval(substitute(amt), envir = envir) else .dotArgs[["dose"]]
     # Convert units amt to table's dosing units if applicable
     if (inherits(.amtVal, "units") && requireNamespace("units", quietly = TRUE)) {
       .doseU <- .envRef$units["dosing"]
@@ -757,6 +757,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
           .timeVec <- as.numeric(.firstDot)
         }
         .df <- .etObsChunk(.timeVec, cmt = .cmtVal)
+        if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
         .etAddChunk(.envRef, .df, .resolvedId)
         .envRef$nobs <- .envRef$nobs + length(.timeVec)
         return(invisible(.rxEtFinalize(.et)))
@@ -789,19 +790,35 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       }
     }
   }
+  # ---- Pure-evid: no time/amt/positional → create row at time=0 ----
+  if (!is.null(.evidVal)) {
+    .df <- .etObsChunk(0.0, cmt = .cmtVal)
+    if (.evidVal != 0L) .df$evid <- as.integer(.evidVal)
+    .etAddChunk(.envRef, .df, .resolvedId)
+    if (.evidVal == 0L) {
+      .envRef$nobs <- .envRef$nobs + 1L
+    } else {
+      .envRef$ndose <- .envRef$ndose + 1L
+    }
+    return(invisible(.rxEtFinalize(.et)))
+  }
   invisible(.rxEtFinalize(.et))
 }
 
 #' @export
 `$.rxEt` <- function(obj, arg) {
   # 0. "env" is an alias for the mutable .env environment
-  if (arg == "env") return(unclass(obj)[[".env"]])
-  # 1. Check method closures / direct list slots (add.dosing, etc.)
-  .direct <- unclass(obj)[[arg]]
+  if (arg == "env") return(.rxEtEnv(obj))
+  # 1. Check method closures in .env$methods (new-style) or direct list slots (internal mini-rxEt)
+  .env <- .rxEtEnv(obj)
+  if (is.environment(.env)) {
+    .direct <- if (!is.null(.env$methods)) .env$methods[[arg]] else unclass(obj)[[arg]]
+  } else {
+    .direct <- unclass(obj)[[arg]]
+  }
   if (!is.null(.direct)) return(.direct)
 
   # 2. Check mutable env properties (nobs, ndose, units, show, IDs, chunks)
-  .env <- unclass(obj)[[".env"]]
   # "id" returns the unique sorted IDs present in the materialized table
   if (arg == "id" && !is.null(.env)) {
     .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
@@ -883,7 +900,7 @@ simulate.rxEt <- # nolint
       if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
       if (!is.null(seed)) set.seed(seed)
       if (is.rxEt(object)) {
-        .env0 <- unclass(object)[[".env"]]
+        .env0 <- .rxEtEnv(object)
         .mat <- .etMaterialize(object)
         .hasWin <- !is.na(.mat$low) & !is.na(.mat$high) & .mat$evid == 0L
         if (!any(.hasWin)) {
@@ -920,7 +937,7 @@ simulate.rxEt <- # nolint
 
 #' @export
 select.rxEt <- function(.data, ...) {
-  .env <- unclass(.data)[[".env"]]
+  .env <- .rxEtEnv(.data)
   .full <- .etMaterialize(.data)
   .show <- .env$show
   .showCols <- intersect(names(.show)[.show], names(.full))
@@ -934,7 +951,7 @@ names.rxEt <- function(x) {
 
 #' @export
 `[.rxEt` <- function(x, i, j, drop = FALSE) {
-  .env0 <- unclass(x)[[".env"]]
+  .env0 <- .rxEtEnv(x)
   if (missing(i) && missing(j)) return(x)
   if (missing(j)) {
     # Row-only subset: return rxEt
@@ -969,7 +986,7 @@ drop_units.rxEt <- function(x) {
     stop("requires package 'units'", call. = FALSE)
   }
   if (is.rxEt(x)) {
-    .env <- unclass(x)[[".env"]]
+    .env <- .rxEtEnv(x)
     .env$amountUnits <- NA_character_
     .env$timeUnits <- NA_character_
     return(x)
@@ -994,7 +1011,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
       call. = FALSE
     )
     if (is.rxEt(x)) {
-      .env <- unclass(x)[[".env"]]
+      .env <- .rxEtEnv(x)
       .env$units["dosing"] <- NA_character_
       .env$units["time"]   <- NA_character_
       return(x)
@@ -1009,7 +1026,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     if (inherits(.isTime, "try-error")) {
       ## Amount
       if (is.rxEt(x)) {
-        .env <- unclass(x)[[".env"]]
+        .env <- .rxEtEnv(x)
         .env$units["dosing"] <- value
         return(x)
       }
@@ -1017,7 +1034,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     } else {
       ##
       if (is.rxEt(x)) {
-        .env <- unclass(x)[[".env"]]
+        .env <- .rxEtEnv(x)
         .env$units["time"] <- value
         return(x)
       }
@@ -1299,7 +1316,7 @@ etSeq <- function(..., samples = c("clear", "use"),
   .etItems <- Filter(is.rxEt, .args)
   if (length(.etItems) > 1L) {
     .hasAnyIi <- any(vapply(.etItems, function(.a) {
-      isTRUE(unclass(.a)[[".env"]]$show[["ii"]])
+      isTRUE(.rxEtEnv(.a)$show[["ii"]])
     }, logical(1)))
     if (!.hasAnyIi) {
       warning("No inter-dose interval found in event tables; using ii=", ii, call. = FALSE)
@@ -1308,7 +1325,7 @@ etSeq <- function(..., samples = c("clear", "use"),
 
   for (.item in .args) {
     if (is.rxEt(.item)) {
-      .env <- unclass(.item)[[".env"]]
+      .env <- .rxEtEnv(.item)
       if (is.null(.units)) {
         .units <- .env$units
         .show  <- .env$show
@@ -1418,7 +1435,7 @@ etRbind <- function(..., samples = c("use", "clear"),
 
   for (.et in .ets) {
     if (!is.rxEt(.et)) next
-    .env <- unclass(.et)[[".env"]]
+    .env <- .rxEtEnv(.et)
     if (is.null(.units)) {
       .units <- .env$units
       .show  <- .env$show
@@ -1514,7 +1531,7 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
   if (!is.na(each))       stop("'each' makes no sense with event tables", call. = FALSE)
   if (!is.null(n)) times <- n
   if (is.rxEt(x)) {
-    .xEnv <- unclass(x)[[".env"]]
+    .xEnv <- .rxEtEnv(x)
     if (is.environment(.xEnv) && isFALSE(.xEnv$canResize)) {
       warning("event table has been expanded; rep may produce unexpected results", call. = FALSE)
     }
@@ -1525,7 +1542,7 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
       warning("'wait' has units but 'units' package not available; using numeric value", call. = FALSE)
       wait <- as.numeric(wait)
     } else {
-      .timeU <- unclass(x)[[".env"]]$units["time"]
+      .timeU <- .rxEtEnv(x)$units["time"]
       if (!is.na(.timeU) && nchar(.timeU) > 0) {
         wait <- as.numeric(units::set_units(wait, .timeU, mode = "standard"))
       } else {
@@ -1567,18 +1584,32 @@ as.et.default <- function(x, ...) {
 
 #' @export
 as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
-  if (!is.rxEt(x)) return(as.data.frame(unclass(x), ...))
-  .env  <- unclass(x)[[".env"]]
+  .env <- tryCatch(.rxEtEnv(x), error = function(e) NULL)
+  .lst <- list(...)
+  if (!is.environment(.env)) {
+    # Old-style EventTable: strip rxEt class and delegate
+    if (is.data.frame(x)) {
+      .cls <- class(x)
+      class(x) <- .cls[.cls != "rxEt"]
+      return(as.data.frame(x, ...))
+    }
+    return(data.frame())
+  }
   .show <- .env$show
   .full <- .etMaterialize(x)
-  .showCols <- names(.show)[.show]
-  .showCols <- intersect(.showCols, names(.full))
-  .full[, .showCols, drop = FALSE]
+  if (isTRUE(.lst$all)) {
+    .full
+  } else {
+    .showCols <- names(.show)[.show]
+    .showCols <- intersect(.showCols, names(.full))
+    .full[, .showCols, drop = FALSE]
+  }
+
 }
 
 #' @export
 print.rxEt <- function(x, ...) {
-  .env <- unclass(x)[[".env"]]
+  .env <- .rxEtEnv(x)
   cat(sprintf("<rxEt> [%d obs, %d doses]\n", .env$nobs, .env$ndose))
   .df <- as.data.frame(x)
   if (nrow(.df) > 0L) {
@@ -1634,7 +1665,7 @@ as_tibble.rxEt <- function(x, ...) {
 etExpand <- function(et) {
   .mat      <- .etMaterialize(et)
   .expanded <- .etExpandAddlR(.mat)
-  .env      <- unclass(et)[[".env"]]
+  .env      <- .rxEtEnv(et)
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()
   if (nrow(.expanded) > 0L) {

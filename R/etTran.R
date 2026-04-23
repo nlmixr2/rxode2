@@ -198,7 +198,7 @@ etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar =
                     keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0),
                     addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL) {
   if (is.rxEt(inData)) {
-    .env <- unclass(inData)[[".env"]]
+    .env <- .rxEtEnv(inData)
     .chunks <- Filter(Negate(is.null), .env$chunks)
     if (length(.chunks) > 0L) {
       .raw <- as.data.frame(data.table::rbindlist(.chunks, fill = TRUE, use.names = TRUE))

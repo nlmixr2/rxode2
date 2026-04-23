@@ -1,3 +1,106 @@
+#' @importFrom vctrs vec_ptype2 vec_cast
+NULL
+
+#' @export
+vec_proxy.rxEt <- function(x, ...) {
+  if (!is.rxEt(x)) {
+    # vctrs internal allocation template has class rxEt but no .env
+    return(data.frame(time = numeric(0), evid = integer(0)))
+  }
+  as.data.frame(x)
+}
+
+#' @export
+vec_restore.rxEt <- function(x, to, ...) x
+
+
+rxEtPtype2 <- function(x, y, ...) {
+  vctrs::df_ptype2(as.data.frame(x), as.data.frame(y), ...)
+}
+
+rxEtCast <- function(x, to, ...) {
+  vctrs::df_cast(as.data.frame(x), to, ...)
+}
+
+#' @export
+vec_ptype2.rxEt.rxEt <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_ptype2.data.frame.rxEt <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_ptype2.rxEt.data.frame <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_ptype2.data.table.rxEt <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_ptype2.rxEt.data.table <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_ptype2.tibble.rxEt <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_ptype2.rxEt.tibble <- function(x, y, ...) {
+  rxEtPtype2(x, y, ...)
+}
+
+#' @export
+vec_cast.rxEt.rxEt <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' @export
+vec_cast.rxEt.data.frame <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' @export
+vec_cast.data.frame.rxEt <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' @export
+vec_cast.rxEt.data.table <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' @export
+vec_cast.data.table.rxEt <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' @export
+vec_cast.rxEt.tibble <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' @export
+vec_cast.tibble.rxEt <- function(x, to, ...) {
+  rxEtCast(x, to, ...)
+}
+
+#' Extract mutable .env from either new-style (data.frame subclass + .rxEtEnv attr)
+#' or internal mini-rxEt (1-element named list where [[1L]] is the env).
+#' @noRd
+.rxEtEnv <- function(x) {
+  .e <- attr(x, ".rxEtEnv", exact = TRUE)
+  if (!is.null(.e)) return(.e)
+  unclass(x)[[1L]]
+}
+
 # Default show flags (controls which columns print/as.data.frame expose)
 .etDefaultShow <- function() {
   c(id = FALSE, low = FALSE, time = TRUE, high = FALSE, cmt = FALSE,
@@ -7,7 +110,8 @@
 
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
-#' Assigns id column and appends to chunks[[id]] for each ID in .ids.
+#' Assigns id column and appends to \code{chunks[[id]]} for each ID in
+#' .ids.
 #' @param .envRef mutable env from rxEt
 #' @param .df data.frame of rows to add (no 'id' column yet)
 #' @param .ids integer vector of IDs; NULL/empty defaults to 1L
@@ -156,7 +260,13 @@
       .newEnv$ndose      <- .env$ndose
       .newEnv$randomType <- .env$randomType
       .newEnv$canResize  <- .env$canResize
-      structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
+      .newEnv$methods <- .etBuildMethods(.newEnv)
+      .cp <- list()
+      attr(.cp, "names")     <- character(0)
+      attr(.cp, "class")     <- c("rxEt", "data.frame")
+      attr(.cp, "row.names") <- integer(0)
+      attr(.cp, ".rxEtEnv")  <- .newEnv
+      .cp
     },
     import.EventTable = function(df) {
       if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
@@ -324,13 +434,22 @@
   .env$ndose      <- 0L
   .env$randomType <- NA_integer_
   .env$canResize  <- TRUE
-  structure(c(list(.env = .env), .etBuildMethods(.env)), class = "rxEt")
+  .env$methods <- .etBuildMethods(.env)
+  .obj <- list(
+    id = integer(0), low = numeric(0), time = numeric(0), high = numeric(0),
+    cmt = integer(0), amt = numeric(0), rate = numeric(0), ii = numeric(0),
+    addl = integer(0), evid = integer(0), ss = integer(0), dur = numeric(0)
+  )
+  attr(.obj, "class")     <- c("rxEt", "data.frame")
+  attr(.obj, "row.names") <- integer(0)
+  attr(.obj, ".rxEtEnv")  <- .env
+  .obj
 }
 
 #' Stamp randomType into attr(class(et), ".rxode2.lst") before returning
 #' @noRd
 .rxEtFinalize <- function(et) {
-  .rt <- unclass(et)[[".env"]]$randomType
+  .rt <- .rxEtEnv(et)$randomType
   if (!is.null(.rt) && !is.na(.rt)) {
     class(et) <- structure("rxEt", ".rxode2.lst" = list(randomType = .rt))
   }
@@ -417,13 +536,15 @@
 
 #' Materialize all chunks into a sorted data.frame
 #'
-#' chunks is a list indexed by ID integer value; chunks[[i]] is a data.frame
-#' for ID i (with 'id' column set), or NULL if no records for that ID.
+#' chunks is a list indexed by ID integer value; \code{chunks[[i]]} is
+#' a data.frame for ID i (with 'id' column set), or NULL if no records
+#' for that ID.
 #' @param et rxEt object
-#' @return data.frame with canonical columns, sorted by (id, time, evid-adjusted)
+#' @return data.frame with canonical columns, sorted by (id, time,
+#'   evid-adjusted)
 #' @noRd
 .etMaterialize <- function(et) {
-  .env <- unclass(et)[[".env"]]
+  .env <- .rxEtEnv(et)
   .chunks <- .env$chunks
 
   if (length(.chunks) == 0L) return(.etEmptyDf())
@@ -511,7 +632,7 @@
 #' @export
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) return(FALSE)
-  .env <- unclass(x)[[".env"]]
+  .env <- .rxEtEnv(x)
   is.environment(.env)
 }
 
