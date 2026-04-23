@@ -3215,14 +3215,101 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       rx->nobs2 = lenOut;
       Function etFun = getRxFn("et");
       ev1 = etFun(ev1, wrap(newObs));
+      ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
+                             false, false, false, R_NilValue,
+                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                             R_NilValue));
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                           false, false, true, R_NilValue,
-                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                           rxControl[Rxc_iCov]));
+    List ev1k = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
+                        false, false, true, R_NilValue,
+                        rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                        rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                        R_NilValue);
+    CharacterVector tmpCk = ev1k.attr("class");
+    List tmpLk = tmpCk.attr(".rxode2.lst");
+    if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
+      int lenOut = 200;
+      double by = NA_REAL;
+      double to;
+      double from = 0.0;
+      NumericVector tmp;
+      IntegerVector tmpI;
+      rxSolveDat->labelID=true;
+      rxSolveDat->idLevels = asCv(tmpLk[RxTrans_idLvl], "idLvl");
+      List keep0 = tmpLk[RxTrans_keepL];
+      List keep = keep0[0];
+      _rxModels[".fkeep"] = keep0;
+      keepFcov=keep;
+      keepFcovType = keep0[1];
+      rx->nKeepF = keepFcov.size();
+      if (rxIsNumInt(rxControl[Rxc_from])){
+        tmp = asNv(rxControl[Rxc_from], "from");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'from' must be of length 1"));
+        }
+        from = tmp[0];
+      }
+      if (rxIsNumInt(rxControl[Rxc_to])){
+        tmp = asNv(rxControl[Rxc_to], "to");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'to' must be of length 1"));
+        }
+        to = tmp[0];
+      } else {
+        to = (max(as<NumericVector>(ev1k["TIME"]))+24);
+      }
+      if (rxIsNumInt(rxControl[Rxc_by])){
+        tmp = asNv(rxControl[Rxc_by], "by");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'by' must be of length 1"));
+        }
+        by = tmp[0];
+      }
+      if (rxIsNumInt(rxControl[Rxc_length_out])){
+        tmpI = asIv(rxControl[Rxc_length_out], "length.out");
+        if (tmpI.size() != 1){
+          rxSolveFree();
+          stop(_("'length.out' must be of length 1"));
+        }
+        lenOut = tmpI[0];
+        if (!ISNA(by)){
+          rxSolveFree();
+          stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
+        }
+        by = (to-from)/(lenOut-1);
+      } else if (ISNA(by)) {
+        lenOut=200;
+        by = (to-from)/(lenOut-1);
+      } else {
+        lenOut= (int)((to-from)/by+1.0);
+      }
+      NumericVector newObs(lenOut);
+      for (int i = lenOut; i--;){
+        newObs[i]=by*i+from;
+      }
+      rx->nobs2 = lenOut;
+      Function asEtFun = getRxFn("as.et");
+      Function etFun = getRxFn("et");
+      RObject evEt = asEtFun(ev1);
+      evEt = etFun(evEt, wrap(newObs));
+      ev1 = as<List>(etTrans(as<List>(evEt), obj, rxSolveDat->hasCmt,
+                             false, false, false, R_NilValue,
+                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                             rxControl[Rxc_iCov]));
+    } else {
+      ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
+                             false, false, true, R_NilValue,
+                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                             rxControl[Rxc_iCov]));
+    }
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");

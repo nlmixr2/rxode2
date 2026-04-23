@@ -1435,8 +1435,12 @@ etSeq <- function(..., samples = c("clear", "use"),
       }
       .ndose <- .ndose + .env$ndose
       # Advance past last dose period; also respect max obs time (for samples="use")
-      .effectiveIi <- if (.lastIi > 0) .lastIi else ii
-      .timeDelta   <- max(.maxTime, .lastDose + .effectiveIi)
+      if (.explicitIi && identical(ii, 0)) {
+        .timeDelta <- .timeDelta
+      } else {
+        .effectiveIi <- if (.lastIi > 0) .lastIi else ii
+        .timeDelta   <- max(.maxTime, .lastDose + .effectiveIi)
+      }
     } else if (is.numeric(.item) || is.integer(.item)) {
       .wait        <- as.numeric(.item)
       .effectiveIi <- if (.lastIi > 0) .lastIi else ii
