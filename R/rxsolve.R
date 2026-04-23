@@ -2216,6 +2216,31 @@ update.rxSolve <- function(object, ...) {
 
 #' @rdname rxSolve
 #' @export
+rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                            theta = NULL, eta = NULL, envir = parent.frame()) {
+  if (is.rxEt(params) && !is.rxEt(events)) {
+    .tmp <- events
+    events <- params
+    params <- .tmp
+  }
+  if (is.null(events)) {
+    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
+                           theta = theta, eta = eta, envir = envir))
+  }
+  .model <- object$model
+  if (is.null(.model)) {
+    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
+                           theta = theta, eta = eta, envir = envir))
+  }
+  .model <- as.character(.model)
+  if (is.null(params)) params <- object$.params.single
+  if (is.null(inits)) inits <- object$inits
+  rxSolve(.model, params = params, events = events, inits = inits, ...,
+          theta = theta, eta = eta, envir = envir)
+}
+
+#' @rdname rxSolve
+#' @export
 predict.rxode2 <- function(object, ...) {
   rxSolve(object, ...)
 }

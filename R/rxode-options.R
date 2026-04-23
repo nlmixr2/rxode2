@@ -50,6 +50,7 @@
     .s3register("data.table::as.data.table", "rxEt")
   }
   if (requireNamespace("dplyr", quietly=TRUE)) {
+    .s3register("dplyr::dplyr_reconstruct", "rxEt")
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
   }

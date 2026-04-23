@@ -1,19 +1,21 @@
 rxTest({
   test_that("new rxEt constructor", {
     ev <- .newRxEt()
+    .env <- .rxEtEnv(ev)
     expect_true(inherits(ev, "rxEt"))
     expect_true(is.rxEt(ev))
-    expect_equal(length(ev$.env$chunks), 0L)
-    expect_equal(ev$.env$nobs, 0L)
-    expect_equal(ev$.env$ndose, 0L)
-    expect_true(is.na(ev$.env$units["dosing"]))
-    expect_true(is.na(ev$.env$units["time"]))
+    expect_equal(length(.env$chunks), 0L)
+    expect_equal(.env$nobs, 0L)
+    expect_equal(.env$ndose, 0L)
+    expect_true(is.na(.env$units["dosing"]))
+    expect_true(is.na(.env$units["time"]))
   })
 
   test_that("new rxEt constructor with units", {
     ev <- .newRxEt(amountUnits = "mg", timeUnits = "hours")
-    expect_equal(ev$.env$units["dosing"], c(dosing = "mg"))
-    expect_equal(ev$.env$units["time"], c(time = "hours"))
+    .env <- .rxEtEnv(ev)
+    expect_equal(.env$units["dosing"], c(dosing = "mg"))
+    expect_equal(.env$units["time"], c(time = "hours"))
   })
 
   test_that("is.rxEt", {
@@ -36,7 +38,7 @@ rxTest({
 
   test_that(".etMaterialize single obs chunk", {
     ev <- .newRxEt()
-    .e <- .subset2(ev, ".env")
+    .e <- .rxEtEnv(ev)
     .e$chunks <- list(list(time = c(0, 1, 2), evid = 0L))
     .e$nobs <- 3L
     df <- .etMaterialize(ev)
@@ -47,7 +49,7 @@ rxTest({
 
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
-    .e <- .subset2(ev, ".env")
+    .e <- .rxEtEnv(ev)
     .e$chunks <- list(
       list(time = c(2, 0, 1), evid = 0L, id = 1L),
       list(time = c(0, 1), evid = 0L, id = 2L)
@@ -60,7 +62,7 @@ rxTest({
 
   test_that(".etMaterialize evid=3 sorts before others at same time", {
     ev <- .newRxEt()
-    .e <- .subset2(ev, ".env")
+    .e <- .rxEtEnv(ev)
     .e$chunks <- list(
       list(time = 0, evid = 1L, amt = 100, cmt = "(default)", ii = 0, addl = 0L, ss = 0L, rate = 0, dur = 0),
       list(time = 0, evid = 3L)
@@ -73,7 +75,7 @@ rxTest({
 
   test_that(".etMaterialize mixed dose+obs fills dose defaults correctly", {
     .ev <- .newRxEt()
-    .envRef <- .subset2(.ev, ".env")
+    .envRef <- .rxEtEnv(.ev)
     # Obs chunk (sparse — no dose columns)
     .envRef$chunks <- list(
       list(time = c(1, 2), evid = 0L),
@@ -184,14 +186,14 @@ rxTest({
   test_that("et() empty creates rxEt", {
     ev <- et()
     expect_true(is.rxEt(ev))
-    .envRef <- .subset2(ev, ".env")
+    .envRef <- .rxEtEnv(ev)
     expect_equal(.envRef$nobs, 0L)
     expect_equal(.envRef$ndose, 0L)
   })
 
   test_that("et(time) creates obs record", {
     ev <- et(time = c(0, 1, 2, 4, 8))
-    .envRef <- .subset2(ev, ".env")
+    .envRef <- .rxEtEnv(ev)
     expect_equal(.envRef$nobs, 5L)
     df <- .etMaterialize(ev)
     expect_equal(nrow(df), 5L)
@@ -213,7 +215,7 @@ rxTest({
 
   test_that("et(amt=100) dose record", {
     ev <- et(amt = 100)
-    .envRef <- .subset2(ev, ".env")
+    .envRef <- .rxEtEnv(ev)
     expect_equal(.envRef$ndose, 1L)
     df <- .etMaterialize(ev)
     expect_equal(df$amt[df$evid == 1L], 100)
@@ -221,7 +223,7 @@ rxTest({
 
   test_that("et pipe: obs then dose", {
     ev <- et(amt = 100) |> et(time = c(0, 1, 2, 4))
-    .envRef <- .subset2(ev, ".env")
+    .envRef <- .rxEtEnv(ev)
     expect_equal(.envRef$ndose, 1L)
     expect_equal(.envRef$nobs, 4L)
     df <- .etMaterialize(ev)
@@ -230,7 +232,7 @@ rxTest({
 
   test_that("et(amountUnits, timeUnits)", {
     ev <- et(amountUnits = "mg", timeUnits = "hours")
-    .envRef <- .subset2(ev, ".env")
+    .envRef <- .rxEtEnv(ev)
     expect_equal(.envRef$units["dosing"], c(dosing = "mg"))
     expect_equal(.envRef$units["time"],   c(time   = "hours"))
   })
@@ -272,7 +274,7 @@ rxTest({
 
   test_that("$.rxEt add.dosing closure", {
     ev <- et()
-    .env <- .subset2(ev, ".env")
+    .env <- .rxEtEnv(ev)
     ev$add.dosing(dose = 100, nbr.doses = 5, dosing.interval = 24)
     expect_equal(.env$ndose, 1L)
     df <- as.data.frame(ev)
@@ -283,7 +285,7 @@ rxTest({
 
   test_that("$.rxEt add.sampling closure", {
     ev <- et()
-    .env <- .subset2(ev, ".env")
+    .env <- .rxEtEnv(ev)
     ev$add.sampling(c(0, 1, 2, 4, 8))
     expect_equal(.env$nobs, 5L)
   })
@@ -330,7 +332,7 @@ rxTest({
   test_that("eventTable() creates empty rxEt with units", {
     ev <- eventTable(amount.units = "mg", time.units = "hours")
     expect_true(is.rxEt(ev))
-    .env <- .subset2(ev, ".env")
+    .env <- .rxEtEnv(ev)
     expect_equal(.env$units["dosing"], c(dosing = "mg"))
   })
 

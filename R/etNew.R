@@ -1,96 +1,3 @@
-#' @importFrom vctrs vec_ptype2 vec_cast
-NULL
-
-#' @export
-vec_proxy.rxEt <- function(x, ...) {
-  if (!is.rxEt(x)) {
-    # vctrs internal allocation template has class rxEt but no .env
-    return(data.frame(time = numeric(0), evid = integer(0)))
-  }
-  as.data.frame(x)
-}
-
-#' @export
-vec_restore.rxEt <- function(x, to, ...) x
-
-
-rxEtPtype2 <- function(x, y, ...) {
-  vctrs::df_ptype2(as.data.frame(x), as.data.frame(y), ...)
-}
-
-rxEtCast <- function(x, to, ...) {
-  vctrs::df_cast(as.data.frame(x), to, ...)
-}
-
-#' @export
-vec_ptype2.rxEt.rxEt <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_ptype2.data.frame.rxEt <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_ptype2.rxEt.data.frame <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_ptype2.data.table.rxEt <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_ptype2.rxEt.data.table <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_ptype2.tibble.rxEt <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_ptype2.rxEt.tibble <- function(x, y, ...) {
-  rxEtPtype2(x, y, ...)
-}
-
-#' @export
-vec_cast.rxEt.rxEt <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
-
-#' @export
-vec_cast.rxEt.data.frame <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
-
-#' @export
-vec_cast.data.frame.rxEt <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
-
-#' @export
-vec_cast.rxEt.data.table <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
-
-#' @export
-vec_cast.data.table.rxEt <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
-
-#' @export
-vec_cast.rxEt.tibble <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
-
-#' @export
-vec_cast.tibble.rxEt <- function(x, to, ...) {
-  rxEtCast(x, to, ...)
-}
 
 #' Extract mutable .env from either new-style (data.frame subclass + .rxEtEnv attr)
 #' or internal mini-rxEt (1-element named list where [[1L]] is the env).
@@ -98,7 +5,10 @@ vec_cast.tibble.rxEt <- function(x, to, ...) {
 .rxEtEnv <- function(x) {
   .e <- attr(x, ".rxEtEnv", exact = TRUE)
   if (!is.null(.e)) return(.e)
-  unclass(x)[[1L]]
+  .ux <- unclass(x)
+  if (is.list(.ux) && ".env" %in% names(.ux)) return(.ux[[".env"]])
+  if (length(.ux) >= 1L && is.environment(.ux[[1L]])) return(.ux[[1L]])
+  NULL
 }
 
 # Default show flags (controls which columns print/as.data.frame expose)

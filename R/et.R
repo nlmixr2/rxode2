@@ -808,7 +808,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
 #' @export
 `$.rxEt` <- function(obj, arg) {
   # 0. "env" is an alias for the mutable .env environment
-  if (arg == "env") return(.rxEtEnv(obj))
+  if (arg %in% c("env", ".env")) return(.rxEtEnv(obj))
   # 1. Check method closures in .env$methods (new-style) or direct list slots (internal mini-rxEt)
   .env <- .rxEtEnv(obj)
   if (is.environment(.env)) {
