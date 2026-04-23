@@ -981,6 +981,13 @@ names.rxEt <- function(x) {
   .mat[i, j, drop = drop]
 }
 
+#' @export
+`$<-.rxEt` <- function(x, name, value) {
+  .df <- .etMaterialize(x)
+  .df[[name]] <- value
+  .rxEtRebuildShell(x, .df)
+}
+
 drop_units.rxEt <- function(x) {
   if (!requireNamespace("units", quietly = TRUE)) {
     stop("requires package 'units'", call. = FALSE)

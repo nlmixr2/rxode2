@@ -1747,7 +1747,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   })
   .applyParams <- FALSE
   .rxParams <- NULL
-  if (rxIs(object, "rxEt")) {
+  if (is.rxEt(object)) {
     if (!is.null(events)) {
       stop("events can be pipeline or solving arguments not both",
         call. = FALSE
@@ -1761,7 +1761,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- object
       object <- rxode2::.pipeRx(NA)
     }
-  } else if (rxIs(object, "rxParams")) {
+  } else if (inherits(object, "rxParams")) {
     .applyParams <- TRUE
     if (is.null(params) && !is.null(object$params)) {
       params <- object$params

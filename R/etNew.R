@@ -662,7 +662,7 @@ is.rxEt <- function(x) {
       stop("cannot use duration flag (rate=-2) with steady-state dosing", call. = FALSE)
     if (ss == 2L && ii == 0.0)
       stop("ss=2 requires a positive inter-dose interval ('ii')", call. = FALSE)
-    if (rate > 0 && ii > 0)
+    if (rate > 0 && ii > 0 && amt == 0)
       stop("cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", call. = FALSE)
   }
 
@@ -687,4 +687,19 @@ is.rxEt <- function(x) {
     dur  = as.numeric(dur),
     stringsAsFactors = FALSE
   )
+}
+
+#' Rebuild an rxEt shell after data-frame style mutation
+#' @noRd
+.rxEtRebuildShell <- function(x, df) {
+  .env0 <- .rxEtEnv(x)
+  .et <- .newRxEt(amountUnits = .env0$units["dosing"], timeUnits = .env0$units["time"])
+  .env <- .rxEtEnv(.et)
+  if (nrow(df) > 0L) {
+    .env$methods$import.EventTable(df)
+  }
+  .env$show[names(.env0$show)] <- .env$show[names(.env0$show)] | .env0$show
+  .env$randomType <- .env0$randomType
+  .env$canResize <- .env0$canResize
+  .et
 }
