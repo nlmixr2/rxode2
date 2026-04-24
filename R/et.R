@@ -643,7 +643,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .dfObs <- .etObsChunk(.listObs, cmt = .cmtVal)
     .etAddChunk(.envRef, .dfObs, .targetIds)
     .envRef$nobs <- .envRef$nobs + length(.listObs) * max(1L, length(.targetIds))
-    if (missing(amt)) return(invisible(.rxEtFinalize(.et)))
+    if (missing(amt)) return(invisible(.rxEtSyncData(.et)))
   }
 
   # ---- Dose record (amt supplied or dose alias) ----
@@ -729,7 +729,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       .etAddChunk(.envRef, .obsChunk, .targetIds)
       .envRef$nobs   <- .envRef$nobs + length(.obsChunk$time) * max(1L, length(.targetIds))
     }
-    return(invisible(.rxEtFinalize(.et)))
+    return(invisible(.rxEtSyncData(.et)))
   }
 
   # ---- Infusion/SS dose without explicit amt (amt=0 implied) ----
@@ -756,7 +756,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .envRef$show["amt"]  <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
     if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
-    return(invisible(.rxEtFinalize(.et)))
+    return(invisible(.rxEtSyncData(.et)))
   }
 
   # ---- Observation record (time supplied) ----
@@ -779,7 +779,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .etAddChunk(.envRef, .df, .targetIds)
     .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
     if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-    return(invisible(.rxEtFinalize(.et)))
+    return(invisible(.rxEtSyncData(.et)))
   }
 
   # ---- x is rxEt + positional numeric in ... → obs times (piping pattern) ----
@@ -794,7 +794,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         .etAddChunk(.envRef, .df, .targetIds)
         .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
         if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-        return(invisible(.rxEtFinalize(.et)))
+        return(invisible(.rxEtSyncData(.et)))
       } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
         if (length(.dotArgs) >= 2L &&
             length(.firstDot) == 1L &&
@@ -815,7 +815,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
         .etAddChunk(.envRef, .df, .targetIds)
         .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.targetIds))
-        return(invisible(.rxEtFinalize(.et)))
+        return(invisible(.rxEtSyncData(.et)))
       }
     }
   }
@@ -855,9 +855,9 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     } else {
       .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
     }
-    return(invisible(.rxEtFinalize(.et)))
+    return(invisible(.rxEtSyncData(.et)))
   }
-  invisible(.rxEtFinalize(.et))
+  invisible(.rxEtSyncData(.et))
 }
 
 #' @export
@@ -1200,7 +1200,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
 add.sampling <- function(eventTable, time, time.units = NA_character_) {
   if (is.rxEt(eventTable)) {
     eventTable$add.sampling(time, time.units = time.units)
-    return(invisible(.rxEtFinalize(eventTable)))
+    return(invisible(.rxEtSyncData(eventTable)))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   .lst <- list(time = time)

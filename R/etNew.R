@@ -125,11 +125,14 @@
   .chunks
 }
 
-#' Attach method closures to an rxEt's list structure
+#' Attach method functions to an rxEt's list structure
 #'
 #' Each method captures .env by reference so mutations are shared.
+#'
 #' @param .env environment (mutable state)
-#' @return named list of closures
+#'
+#' @return named list of functions
+#'
 #' @noRd
 .etBuildMethods <- function(.env) {
   .lst <- list(
@@ -440,9 +443,13 @@
 }
 
 #' Create a new empty rxEt object
+#'
 #' @param amountUnits character dose unit, e.g. "mg"
+#'
 #' @param timeUnits character time unit, e.g. "hours"
+#'
 #' @return rxEt object
+#'
 #' @noRd
 .newRxEt <- function(amountUnits = NA_character_, timeUnits = NA_character_) {
   .env <- new.env(parent = emptyenv())
@@ -467,6 +474,12 @@
 }
 
 #' Sync the materialized data.frame shell with the mutable rxEt environment
+#'
+#' @param x rxEt object (possibly with materialized data.frame shell and .rxEtEnv)
+#'
+#' @return data.frame with materialized data and .rxEtEnv attached,
+#'   ready for C++ solver or user inspection
+#'
 #' @noRd
 .rxEtSyncData <- function(x) {
   .env <- .rxEtEnv(x)
@@ -482,11 +495,6 @@
   .ret
 }
 
-#' Stamp randomType into attr(class(et), ".rxode2.lst") before returning
-#' @noRd
-.rxEtFinalize <- function(et) {
-  .rxEtSyncData(et)
-}
 
 #' Expand addl doses into individual records (pure R)
 #' @param df materialized data.frame from .etMaterialize()
