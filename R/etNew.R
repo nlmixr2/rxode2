@@ -63,26 +63,38 @@
 #' @param .ids integer vector of IDs; NULL/empty defaults to 1L
 #'
 #' @noRd
-.etAddChunk <- function(.envRef, .df, .ids = NULL) {
-  .rt <- attr(.df, ".randomType")
+.etAddChunk <- function(envRef, df, ids = NULL) {
+  .rt <- attr(df, ".randomType")
   if (!is.null(.rt) && !is.na(.rt)) {
-    if (is.na(.envRef$randomType) || .rt > .envRef$randomType)
-      .envRef$randomType <- .rt
-    if (!isTRUE(.envRef$show["low"])) {
-      .envRef$show["low"]  <- TRUE
-      .envRef$show["high"] <- TRUE
+    if (is.na(envRef$randomType) || .rt > envRef$randomType)
+      envRef$randomType <- .rt
+    if (!isTRUE(envRef$show["low"])) {
+      envRef$show["low"]  <- TRUE
+      envRef$show["high"] <- TRUE
     }
   }
-  if (!is.data.frame(.df)) .df <- .etExpandObsChunk(.df)
-  if (nrow(.df) == 0L) return(invisible(NULL))
-  .ids <- if (is.null(.ids) || length(.ids) == 0L) 1L else as.integer(.ids)
-  .posIds <- .ids[.ids > 0L]
+  if (!is.data.frame(df)) {
+    df <- .etExpandObsChunk(df)
+  }
+  if (nrow(df) == 0L){
+    return(invisible(NULL))
+  }
+  if (is.null(ids) || length(ids) == 0L) {
+    ids <-  1L
+  } else {
+    ids <- as.integer(ids)
+  }
+  .posIds <- ids[ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
   for (.i in .posIds) {
-    .row <- .etDropUnitsForChunk(.df)
+    .row <- .etDropUnitsForChunk(df)
     .row$id <- .i
-    .existing <- if (.i <= length(.envRef$chunks)) .etDropUnitsForChunk(.envRef$chunks[[.i]]) else NULL
-    .envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .row), fill = TRUE))
+    if (.i <= length(envRef$chunks)) {
+      .cur <- envRef$chunks[[.i]] # units already dropped
+      envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.cur, .row), fill = TRUE))
+    } else {
+      envRef$chunks[[.i]] <- .row
+    }
   }
   invisible(NULL)
 }
