@@ -1736,7 +1736,7 @@ as_tibble.rxEt <- function(x, ...) {
 #' @export
 etExpand <- function(et) {
   .mat      <- .etMaterialize(et)
-  .expanded <- .etExpandAddlR(.mat)
+  .expanded <- .etExpandAddl(.mat)
   .env      <- .rxEtEnv(et)
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()

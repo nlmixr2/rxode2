@@ -389,7 +389,7 @@
     expand = function() {
       .et <- structure(list(env = env), class = "rxEt")
       .mat <- .etMaterialize(.et)
-      .expanded <- .etExpandAddlR(.mat)
+      .expanded <- .etExpandAddl(.mat)
       env$chunks <- list()
       if (nrow(.expanded) > 0L) {
         .ids <- unique(as.integer(.expanded$id))
@@ -494,11 +494,14 @@
 }
 
 
-#' Expand addl doses into individual records (pure R)
+#' Expand addl doses into individual records
+#'
 #' @param df materialized data.frame from .etMaterialize()
+#'
 #' @return data.frame with addl expanded into individual dose records
+#'
 #' @noRd
-.etExpandAddlR <- function(df) {
+.etExpandAddl <- function(df) {
   .doseRows <- df[df$evid != 0L & df$addl > 0L, , drop = FALSE]
   if (nrow(.doseRows) == 0L) return(df)
 
