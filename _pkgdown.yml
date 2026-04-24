@@ -243,7 +243,10 @@ reference:
   - .rxode2ptrs
   - .toClassicEvid
   - .vecDf
+  - as.data.table.rxEt
+  - as_tibble.rxEt
   - invWR1d
+  - is.rxEt
   - is.rxStackData
   - odeMethodToInt
   - print.rxModelVars
