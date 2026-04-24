@@ -943,4 +943,50 @@ rxTest({
     }), NA)
   })
 
+  test_that("when solving without observations, they are assumed (#858)", {
+
+    od3 <- function() {
+      ini({
+        TKA   <- 2.94E-01
+        TCL   <- 1.86E+01
+        TV2   <-4.02E+01
+        TQ    <-1.05E+01
+        TV3   <-2.97E+02
+        TKin  <- 1
+        TKout <- 1
+        TEC50 <-200
+      })
+      model({
+        KA            <- TKA
+        CL            <- TCL * (WT / 70) ^ 0.75
+        V2            <- TV2
+        Q             <- TQ
+        V3            <- TV3
+        Kin           <- TKin
+        Kout          <- TKout
+        EC50          <- TEC50
+        Tz            <- 8
+        amp           <- 0.1
+        C2            <- central/V2
+        C3            <- peri/V3
+        d/dt(depot)   <- -KA*depot
+        d/dt(central) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+        d/dt(peri)    <-                    Q*C2 - Q*C3
+        d/dt(eff)     <-  Kin - Kout*(1-C2/(EC50+C2))*eff
+        eff(0)        <- 1  ## This specifies that the effect compartment starts at 1.
+      })
+    }
+
+    ev <- et(amount.units="mg", time.units="hours") %>%
+      et(amt=10000, cmt=1) %>%
+      et(id=1:4)
+
+    set.seed(10)
+    rxSetSeed(10)
+    r1 <- solve(mod3, ev,
+                iCov=data.frame(id=1:4, WT=rnorm(4, 70, 10)))
+
+    expect_true(nrow(r1) > 0)
+  })
+
 })
