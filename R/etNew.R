@@ -493,7 +493,6 @@
   .ret
 }
 
-
 #' Expand addl doses into individual records
 #'
 #' @param df materialized data.frame from .etMaterialize()
@@ -536,12 +535,15 @@
 #' "(default)" and "(obs)" map to compartment 1; NA stays NA_integer_.
 #' If any value is a non-numeric, non-sentinel string (a compartment name),
 #' the column stays character so C++ name lookup works normally.
-#' @param .df materialized data.frame from .etMaterialize()
-#' @return .df with cmt column possibly converted to integer
+#'
+#' @param df materialized data.frame from .etMaterialize()
+#'
+#' @return df with cmt column possibly converted to integer
+#'
 #' @noRd
-.etFixCmtForSolve <- function(.df) {
-  .cmt <- .df[["cmt"]]
-  if (is.null(.cmt) || !is.character(.cmt)) return(.df)
+.etFixCmtForSolve <- function(df) {
+  .cmt <- df[["cmt"]]
+  if (is.null(.cmt) || !is.character(.cmt)) return(df)
   .isNA      <- is.na(.cmt)
   .isSentinel <- !.isNA & (.cmt == "(default)" | .cmt == "(obs)")
   .numericOk  <- !.isNA & !.isSentinel & suppressWarnings(!is.na(as.integer(.cmt)))
@@ -550,9 +552,9 @@
     .int[.isNA]       <- NA_integer_
     .int[.isSentinel] <- 1L
     .int[.numericOk]  <- as.integer(.cmt[.numericOk])
-    .df[["cmt"]] <- .int
+    df[["cmt"]] <- .int
   }
-  .df
+  df
 }
 
 #' Empty data.frame skeleton matching materialized format
