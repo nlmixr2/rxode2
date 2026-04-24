@@ -19,7 +19,6 @@
 #'
 #' This is kept here so that it can be specified once and referred to
 #' by multiple locations.
-#'
 #' @return named logical vector of default show flags
 #'
 #' @noRd
@@ -28,15 +27,16 @@
     amt = FALSE, rate = FALSE, ii = FALSE, addl = FALSE, evid = TRUE,
     ss = FALSE, dur = FALSE)
 }
-#' Convert units columns to numeric for internal use for a data.chunk
 #'
-#' @param .df data frame to consider
+#'
+#'
+#' @param .df
 #' @return this function returns NULL or the non-materialized data, or
 #'   the data.frame with units columns converted to numeric for
 #'   internal use
 #' @noRd
 #' @author Matthew L. Fidler
-.etStripUnitsFromChunk <- function(.df) {
+.etInternalChunkDf <- function(.df) {
   if (is.null(.df) || !is.data.frame(.df)) {
     return(.df)
   }
@@ -61,8 +61,7 @@
 #'
 #' @noRd
 .etAddChunk <- function(.envRef, .df, .ids = NULL) {
-  # Retain the random information as needed
-  .rt <- attr(.df, ".randomly")
+  .rt <- attr(.df, ".randomType")
   if (!is.null(.rt) && !is.na(.rt)) {
     if (is.na(.envRef$randomType) || .rt > .envRef$randomType)
       .envRef$randomType <- .rt
@@ -71,30 +70,16 @@
       .envRef$show["high"] <- TRUE
     }
   }
-  if (!is.data.frame(.df)) {
-    .df <- .etExpandObsChunk(.df)
-  }
-  if (nrow(.df) == 0L) {
-    return(invisible(NULL))
-  }
-  if (is.null(.ids) || length(.ids) == 0L) {
-    .ids <- 1L
-  } else {
-    .ids <- as.integer(.ids)
-  }
+  if (!is.data.frame(.df)) .df <- .etExpandObsChunk(.df)
+  if (nrow(.df) == 0L) return(invisible(NULL))
+  .ids <- if (is.null(.ids) || length(.ids) == 0L) 1L else as.integer(.ids)
   .posIds <- .ids[.ids > 0L]
-  if (length(.posIds) == 0L) {
-    return(invisible(NULL))
-  }
+  if (length(.posIds) == 0L) return(invisible(NULL))
   for (.i in .posIds) {
-    .row <- .etStripUnitsFromChunk(.df)
+    .row <- .etInternalChunkDf(.df)
     .row$id <- .i
-    if (.i <= length(.envRef$chunks)) {
-      .existing <- .etStripUnitsFromChunk(.envRef$chunks[[.i]])
-      .envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .row), fill = TRUE))
-    } else {
-      .envRef$chunks[[.i]] <- .row
-    }
+    .existing <- if (.i <= length(.envRef$chunks)) .etInternalChunkDf(.envRef$chunks[[.i]]) else NULL
+    .envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .row), fill = TRUE))
   }
   invisible(NULL)
 }
@@ -102,25 +87,17 @@
 #' Merge a data.frame (with id column) into an ID-indexed chunks list
 #'
 #' Used by etSeq/etRbind when accumulating materialized data.frames.
-#'
 #' @param .chunks list indexed by ID integer value
-#'
 #' @param .df data.frame with 'id' column already set
-#'
 #' @return updated .chunks
-#'
 #' @noRd
 .addRowsToChunks <- function(.chunks, .df) {
   if (nrow(.df) == 0L) return(.chunks)
   .ids <- unique(as.integer(.df$id))
   for (.i in .ids) {
-    .rows <- .etStripUnitsFromChunk(.df[.df$id == .i, , drop = FALSE])
-    if (.i <= length(.chunks)) {
-      .existing <-  .etStripUnitsFromChunk(.chunks[[.i]])
-      .chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .rows), fill = TRUE))
-    } else {
-      .chunks[[.i]] <- .rows
-    }
+    .rows <- .etInternalChunkDf(.df[.df$id == .i, , drop = FALSE])
+    .existing <- if (.i <= length(.chunks)) .etInternalChunkDf(.chunks[[.i]]) else NULL
+    .chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .rows), fill = TRUE))
   }
   .chunks
 }
@@ -218,7 +195,7 @@
     get.dosing = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .d <- .etStripUnitsFromChunk(.mat[.mat$evid != 0L, , drop = FALSE])
+      .d <- .etInternalChunkDf(.mat[.mat$evid != 0L, , drop = FALSE])
       if (nrow(.d) == 0L) {
         NULL
       } else {
@@ -229,7 +206,7 @@
     get.sampling = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .s <- .etStripUnitsFromChunk(.mat[.mat$evid == 0L, , drop = FALSE])
+      .s <- .etInternalChunkDf(.mat[.mat$evid == 0L, , drop = FALSE])
       if (nrow(.s) == 0L) {
         NULL
       } else {
