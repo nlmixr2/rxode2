@@ -19,6 +19,7 @@
 #'
 #' This is kept here so that it can be specified once and referred to
 #' by multiple locations.
+#'
 #' @return named logical vector of default show flags
 #'
 #' @noRd
@@ -27,25 +28,27 @@
     amt = FALSE, rate = FALSE, ii = FALSE, addl = FALSE, evid = TRUE,
     ss = FALSE, dur = FALSE)
 }
+#' Drop the units for the check
 #'
+#' @param df NULL, data.frame or non-data frame object.
+#'   from for internal use
 #'
-#'
-#' @param .df
 #' @return this function returns NULL or the non-materialized data, or
 #'   the data.frame with units columns converted to numeric for
 #'   internal use
+#'
 #' @noRd
 #' @author Matthew L. Fidler
-.etInternalChunkDf <- function(.df) {
-  if (is.null(.df) || !is.data.frame(.df)) {
-    return(.df)
+.etDropUnitsForChunk <- function(df) {
+  if (is.null(df) || !is.data.frame(df)) {
+    return(df)
   }
-  for (.nm in names(.df)) {
-    if (inherits(.df[[.nm]], "units")) {
-      .df[[.nm]] <- as.numeric(.df[[.nm]])
+  for (.nm in names(df)) {
+    if (inherits(df[[.nm]], "units")) {
+      df[[.nm]] <- as.numeric(df[[.nm]])
     }
   }
-  .df
+  df
 }
 
 #' Add rows of a data.frame to the ID-indexed chunks list
@@ -76,9 +79,9 @@
   .posIds <- .ids[.ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
   for (.i in .posIds) {
-    .row <- .etInternalChunkDf(.df)
+    .row <- .etDropUnitsForChunk(.df)
     .row$id <- .i
-    .existing <- if (.i <= length(.envRef$chunks)) .etInternalChunkDf(.envRef$chunks[[.i]]) else NULL
+    .existing <- if (.i <= length(.envRef$chunks)) .etDropUnitsForChunk(.envRef$chunks[[.i]]) else NULL
     .envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .row), fill = TRUE))
   }
   invisible(NULL)
@@ -95,8 +98,8 @@
   if (nrow(.df) == 0L) return(.chunks)
   .ids <- unique(as.integer(.df$id))
   for (.i in .ids) {
-    .rows <- .etInternalChunkDf(.df[.df$id == .i, , drop = FALSE])
-    .existing <- if (.i <= length(.chunks)) .etInternalChunkDf(.chunks[[.i]]) else NULL
+    .rows <- .etDropUnitsForChunk(.df[.df$id == .i, , drop = FALSE])
+    .existing <- if (.i <= length(.chunks)) .etDropUnitsForChunk(.chunks[[.i]]) else NULL
     .chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .rows), fill = TRUE))
   }
   .chunks
@@ -195,7 +198,7 @@
     get.dosing = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .d <- .etInternalChunkDf(.mat[.mat$evid != 0L, , drop = FALSE])
+      .d <- .etDropUnitsForChunk(.mat[.mat$evid != 0L, , drop = FALSE])
       if (nrow(.d) == 0L) {
         NULL
       } else {
@@ -206,7 +209,7 @@
     get.sampling = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .s <- .etInternalChunkDf(.mat[.mat$evid == 0L, , drop = FALSE])
+      .s <- .etDropUnitsForChunk(.mat[.mat$evid == 0L, , drop = FALSE])
       if (nrow(.s) == 0L) {
         NULL
       } else {
