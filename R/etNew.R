@@ -700,21 +700,45 @@ is.rxEt <- function(x) {
   if (!is.null(nbr.doses))       addl <- as.integer(nbr.doses) - 1L
 
   if (is.list(time)) {
-    time <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
+    .timeDose <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
+    .timeUntil <- vapply(time, function(.w) {
+      .w <- as.numeric(.w)
+      .w[min(length(.w), 2L)]
+    }, numeric(1L))
   } else {
-    time <- as.numeric(time)
+    .timeDose <- as.numeric(time)
+    .timeUntil <- .timeDose
   }
 
   if (!is.null(until)) {
     if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
-    addl <- as.integer(floor((until - time) / ii))
+    .tmp <- until - .timeUntil - ii
+    if (any(.tmp > 0, na.rm = TRUE)) {
+      .ratio <- .tmp / ii
+      .ceil <- ceiling(.ratio)
+      addl <- ifelse(.ceil == .ratio, .ratio + 1, .ceil)
+      addl <- as.integer(addl)
+    } else {
+      addl <- 0L
+      if (!is.list(time)) {
+        warning("'time'+'ii' is greater than 'until', no additional doses added", call. = FALSE)
+      }
+    }
     if (any(addl < 0L, na.rm = TRUE)) {
       warning("'until' is before 'time'; setting addl=0", call. = FALSE)
       addl[addl < 0L] <- 0L
     }
   }
 
-  if (addl > 0L && ii == 0.0)
+  if (ii > 0 && ss == 0L && all(addl == 0L, na.rm = TRUE)) {
+    warning(sprintf(
+      "'ii' requires non zero additional doses ('addl') or steady state dosing ('ii': %f, 'ss': %d; 'addl': %d), reset 'ii' to zero",
+      ii, ss, max(addl, na.rm = TRUE)
+    ), call. = FALSE)
+    ii <- 0.0
+  }
+
+  if (any(addl > 0L, na.rm = TRUE) && ii == 0.0)
     stop("'addl' > 0 requires a positive inter-dose interval ('ii')", call. = FALSE)
 
   if (ss > 0L) {
@@ -732,13 +756,13 @@ is.rxEt <- function(x) {
   }
 
   if (length(amt) > 1L || length(time) > 1L) {
-    if (length(time) == 1L) time <- rep(time, length(amt))
-    if (length(amt)  == 1L) amt  <- rep(amt,  length(time))
-    if (length(time) != length(amt)) stop("'time' and 'amt' must have the same length", call. = FALSE)
+    if (length(.timeDose) == 1L) .timeDose <- rep(.timeDose, length(amt))
+    if (length(amt)  == 1L) amt  <- rep(amt,  length(.timeDose))
+    if (length(.timeDose) != length(amt)) stop("'time' and 'amt' must have the same length", call. = FALSE)
   }
 
   data.frame(
-    time = as.numeric(time), amt  = as.numeric(amt),
+    time = as.numeric(.timeDose), amt  = as.numeric(amt),
     evid = as.integer(evid), cmt  = as.character(cmt),
     ii   = as.numeric(ii),   addl = as.integer(addl),
     ss   = as.integer(ss),   rate = as.numeric(rate),

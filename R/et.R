@@ -20,8 +20,7 @@
 }
 
 .isRxEt <- function(obj) {
-  if (!inherits(obj, "rxEt")) return(FALSE)
-  !is.environment(.rxEtEnv(obj))
+  inherits(obj, "rxEt")
 }
 
 
@@ -718,9 +717,8 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     }
     .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * if (.pairDoseIds) 1L else max(1L, length(.targetIds))
     .envRef$show["amt"] <- TRUE
-    if (.iiVal > 0)    .envRef$show["ii"]   <- TRUE
-    if (.addlVal > 0L) .envRef$show["addl"] <- TRUE
-    if (!is.null(.untilVal)) .envRef$show["addl"] <- TRUE
+    if (!is.null(.df$ii) && any(.df$ii > 0, na.rm = TRUE)) .envRef$show["ii"] <- TRUE
+    if (!is.null(.df$addl) && any(.df$addl > 0L, na.rm = TRUE)) .envRef$show["addl"] <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
     if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
     if (!is.null(.df$dur) && any(.df$dur != 0, na.rm = TRUE)) .envRef$show["dur"] <- TRUE
@@ -1682,19 +1680,6 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
     .full[, .showCols, drop = FALSE]
   }
 
-}
-
-#' @export
-print.rxEt <- function(x, ...) {
-  .env <- .rxEtEnv(x)
-  cat(sprintf("<rxEt> [%d obs, %d doses]\n", .env$nobs, .env$ndose))
-  .df <- as.data.frame(x)
-  if (nrow(.df) > 0L) {
-    print(.df)
-  } else {
-    cat("  (empty)\n")
-  }
-  invisible(x)
 }
 
 .datatable.aware <- TRUE

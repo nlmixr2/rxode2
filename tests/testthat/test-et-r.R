@@ -163,7 +163,12 @@ rxTest({
   test_that(".etDoseChunk windowed time works with until", {
     chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
     expect_equal(chunk$time, 0)
-    expect_equal(chunk$addl, 4L)
+    expect_equal(chunk$addl, 3L)
+  })
+
+  test_that("et until without additional doses matches main branch shape", {
+    expect_warning(ev <- et(amt = 100, ii = 24, until = 24))
+    expect_equal(names(as.data.frame(ev)), c("time", "amt", "evid"))
   })
 
   test_that(".etDoseChunk dur converts to rate", {
@@ -283,9 +288,30 @@ rxTest({
     expect_false("low"  %in% names(df))
   })
 
-  test_that("print.rxEt does not error", {
+  test_that("print.rxEt matches main branch summary output", {
+    local_options(cli.unicode = FALSE, crayon.enabled = FALSE, width = 80)
     ev <- et(amt = 100) |> et(time = c(0, 1, 2))
-    expect_output(print(ev))
+    out <- paste(capture.output(print(ev)), collapse = "\n")
+    expect_match(out, "EventTable with 4 records")
+    expect_match(out, "1 dosing records \\(see \\$get\\.dosing\\(\\); add with add\\.dosing or et\\)")
+    expect_match(out, "3 observation times \\(see \\$get\\.sampling\\(\\); add with add\\.sampling or et\\)")
+    expect_match(out, "# A tibble: 4 x 3")
+    expect_match(out, "<evid>")
+    expect_match(out, "time\\s+amt\\s+evid")
+  })
+
+  test_that("print.rxEt after piping keeps main branch columns", {
+    local_options(cli.unicode = FALSE, crayon.enabled = FALSE, width = 80)
+    ev <- et(timeUnits = "hr") |>
+      et(amt = 100, ii = 12, until = 24) |>
+      et(seq(0, 24, by = 6))
+    out <- paste(capture.output(print(ev)), collapse = "\n")
+    expect_match(out, "EventTable with 6 records")
+    expect_match(out, "multiple doses in `addl` columns, expand with \\$expand\\(\\); or etExpand\\(\\)")
+    expect_match(out, "# A tibble: 6 x 5")
+    expect_match(out, "<evid>")
+    expect_match(out, "time\\s+amt\\s+ii\\s+addl\\s+evid")
+    expect_false(grepl("\\bid\\b", out))
   })
 
   test_that("as.data.table.rxEt returns data.table", {
