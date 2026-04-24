@@ -1,6 +1,10 @@
-
 #' Extract mutable .env from either new-style (data.frame subclass + .rxEtEnv attr)
 #' or internal mini-rxEt (1-element named list where [[1L]] is the env).
+#'
+#' @param x object to extract data from
+#'
+#' @return environment or NULL if not found
+#'
 #' @noRd
 .rxEtEnv <- function(x) {
   .e <- attr(x, ".rxEtEnv", exact = TRUE)
@@ -11,15 +15,31 @@
   NULL
 }
 
-# Default show flags (controls which columns print/as.data.frame expose)
+#' Default show flags (controls which columns print/as.data.frame expose)
+#'
+#' This is kept here so that it can be specified once and referred to
+#' by multiple locations.
+#' @return named logical vector of default show flags
+#'
+#' @noRd
 .etDefaultShow <- function() {
   c(id = FALSE, low = FALSE, time = TRUE, high = FALSE, cmt = FALSE,
     amt = FALSE, rate = FALSE, ii = FALSE, addl = FALSE, evid = TRUE,
     ss = FALSE, dur = FALSE)
 }
-
+#'
+#'
+#'
+#' @param .df
+#' @return this function returns NULL or the non-materialized data, or
+#'   the data.frame with units columns converted to numeric for
+#'   internal use
+#' @noRd
+#' @author Matthew L. Fidler
 .etInternalChunkDf <- function(.df) {
-  if (is.null(.df) || !is.data.frame(.df)) return(.df)
+  if (is.null(.df) || !is.data.frame(.df)) {
+    return(.df)
+  }
   for (.nm in names(.df)) {
     if (inherits(.df[[.nm]], "units")) {
       .df[[.nm]] <- as.numeric(.df[[.nm]])
@@ -32,9 +52,13 @@
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in
 #' .ids.
+#'
 #' @param .envRef mutable env from rxEt
+#'
 #' @param .df data.frame of rows to add (no 'id' column yet)
+#'
 #' @param .ids integer vector of IDs; NULL/empty defaults to 1L
+#'
 #' @noRd
 .etAddChunk <- function(.envRef, .df, .ids = NULL) {
   .rt <- attr(.df, ".randomType")
