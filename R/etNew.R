@@ -159,8 +159,11 @@
     get.EventTable = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
+      .mat <- .etInternalChunkDf(.mat)
       .show <- .env$show
-      .mat[, names(.show)[.show], drop = FALSE]
+      .ret <- .mat[, names(.show)[.show], drop = FALSE]
+      rownames(.ret) <- seq_len(nrow(.ret))
+      .ret
     },
     get.obs.rec = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
@@ -169,14 +172,24 @@
     get.dosing = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .d <- .mat[.mat$evid != 0L, , drop = FALSE]
-      if (nrow(.d) == 0L) NULL else .d
+      .d <- .etInternalChunkDf(.mat[.mat$evid != 0L, , drop = FALSE])
+      if (nrow(.d) == 0L) {
+        NULL
+      } else {
+        rownames(.d) <- seq_len(nrow(.d))
+        .d
+      }
     },
     get.sampling = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .s <- .mat[.mat$evid == 0L, , drop = FALSE]
-      if (nrow(.s) == 0L) NULL else .s
+      .s <- .etInternalChunkDf(.mat[.mat$evid == 0L, , drop = FALSE])
+      if (nrow(.s) == 0L) {
+        NULL
+      } else {
+        rownames(.s) <- seq_len(nrow(.s))
+        .s
+      }
     },
     clear.sampling = function() {
       for (.i in seq_along(.env$chunks)) {

@@ -343,6 +343,33 @@ rxTest({
     expect_equal(ev$get.units(), c(dosing = "mg", time = "hours"))
   })
 
+  test_that("$.rxEt get.dosing matches main branch data frame shape", {
+    ev <- et(timeUnits = "hr") |>
+      et(amt = 100, ii = 12, until = 24) |>
+      et(seq(0, 24, by = 6))
+    df <- ev$get.dosing()
+    expect_equal(rownames(df), "1")
+    expect_false(inherits(df$time, "units"))
+    expect_equal(
+      names(df),
+      c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
+    )
+    expect_equal(df$ii, 12)
+    expect_equal(df$addl, 2L)
+  })
+
+  test_that("$.rxEt get.dosing reindexes rows after piping tables together", {
+    bid <- et(timeUnits = "hr") |> et(amt = 100, ii = 12, until = 24)
+    qd <- et(timeUnits = "hr") |> et(amt = 200, ii = 24, until = 24)
+    ev <- etRbind(bid, qd, id = "unique") |>
+      et(seq(0, 24, by = 12))
+    df <- ev$get.dosing()
+    expect_equal(rownames(df), c("1", "2"))
+    expect_equal(df$amt, c(100, 200))
+    expect_equal(df$ii, c(12, 0))
+    expect_equal(df$addl, c(2L, 0L))
+  })
+
   test_that("$.rxEt nobs and ndose", {
     ev <- et(amt = 100) |> et(time = c(0, 1))
     expect_equal(ev$nobs,  2L)
