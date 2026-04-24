@@ -124,13 +124,16 @@
   chunks
 }
 
-#' Attach method closures to an rxEt's list structure
+#' Attach method functions to an rxEt's list structure
 #'
-#' Each method captures .env by reference so mutations are shared.
-#' @param .env environment (mutable state)
-#' @return named list of closures
+#' Each method captures env by reference so mutations are shared.
+#'
+#' @param env environment
+#'
+#' @return named list of functions
+#'
 #' @noRd
-.etBuildMethods <- function(.env) {
+.etBuildMethods <- function(env) {
   .lst <- list(
     add.dosing = function(dose, nbr.doses = 1L, dosing.interval = 24,
                            dosing.to = 1L, rate = NULL,
@@ -139,7 +142,7 @@
                            time.units = NA_character_,
                            evid = NULL, strt.time = NULL, ...) {
       if (!is.null(strt.time)) start.time <- strt.time
-      .et <- structure(list(.env = .env), class = "rxEt")
+      .et <- structure(list(env = env), class = "rxEt")
       .args <- list(
         x = .et,
         amt = dose,
@@ -159,14 +162,14 @@
       }
       .ret <- do.call(et, c(.args, .extra))
       .retEnv <- .rxEtEnv(.ret)
-      .env$chunks <- .retEnv$chunks
-      .env$units <- .retEnv$units
-      .env$show <- .retEnv$show
-      .env$IDs <- .retEnv$IDs
-      .env$nobs <- .retEnv$nobs
-      .env$ndose <- .retEnv$ndose
-      .env$randomType <- .retEnv$randomType
-      .env$canResize <- .retEnv$canResize
+      env$chunks <- .retEnv$chunks
+      env$units <- .retEnv$units
+      env$show <- .retEnv$show
+      env$IDs <- .retEnv$IDs
+      env$nobs <- .retEnv$nobs
+      env$ndose <- .retEnv$ndose
+      env$randomType <- .retEnv$randomType
+      env$canResize <- .retEnv$canResize
       invisible(NULL)
     },
 
@@ -175,7 +178,7 @@
       if (is.list(.time)) {
         .time <- lapply(.time, function(.window) {
           if (inherits(.window, "units") && requireNamespace("units", quietly = TRUE)) {
-            .tu <- .env$units["time"]
+            .tu <- env$units["time"]
             if (!is.na(.tu) && nchar(.tu) > 0) {
               return(as.numeric(units::set_units(.window, .tu, mode = "standard")))
             }
@@ -184,7 +187,7 @@
           .window
         })
       } else if (inherits(.time, "units") && requireNamespace("units", quietly = TRUE)) {
-        .tu <- .env$units["time"]
+        .tu <- env$units["time"]
         if (!is.na(.tu) && nchar(.tu) > 0) {
           .time <- as.numeric(units::set_units(.time, .tu, mode = "standard"))
         } else {
@@ -192,30 +195,30 @@
         }
       }
       .df <- .etObsChunk(.time)
-      .etAddChunk(.env, .df, .env$IDs)
-      .env$nobs   <- .env$nobs + length(.df$time) * length(.env$IDs)
-      if (!is.na(time.units)) .env$units["time"] <- time.units
+      .etAddChunk(env, .df, env$IDs)
+      env$nobs   <- env$nobs + length(.df$time) * length(env$IDs)
+      if (!is.na(time.units)) env$units["time"] <- time.units
       invisible(NULL)
     },
 
-    get.units = function() .env$units,
-    getUnits  = function() .env$units,
+    get.units = function() env$units,
+    getUnits  = function() env$units,
 
-    get.nobs  = function() .env$nobs,
+    get.nobs  = function() env$nobs,
     get.EventTable = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .show <- .env$show
+      .show <- env$show
       .ret <- .mat[, names(.show)[.show], drop = FALSE]
       rownames(.ret) <- seq_len(nrow(.ret))
       .ret
     },
     get.obs.rec = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
       .mat$evid == 0L
     },
     get.dosing = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
       .d <- .etDropUnitsForChunk(.mat[.mat$evid != 0L, , drop = FALSE])
       if (nrow(.d) == 0L) {
@@ -226,7 +229,7 @@
       }
     },
     get.sampling = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+      .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
       .s <- .etDropUnitsForChunk(.mat[.mat$evid == 0L, , drop = FALSE])
       if (nrow(.s) == 0L) {
@@ -237,37 +240,37 @@
       }
     },
     clear.sampling = function() {
-      for (.i in seq_along(.env$chunks)) {
-        if (!is.null(.env$chunks[[.i]])) {
-          .df <- .env$chunks[[.i]]
+      for (.i in seq_along(env$chunks)) {
+        if (!is.null(env$chunks[[.i]])) {
+          .df <- env$chunks[[.i]]
           .df <- .df[.df$evid != 0L, , drop = FALSE]
-          if (nrow(.df) == 0L) .env$chunks[.i] <- list(NULL) else .env$chunks[[.i]] <- .df
+          if (nrow(.df) == 0L) env$chunks[.i] <- list(NULL) else env$chunks[[.i]] <- .df
         }
       }
-      .env$nobs <- 0L
+      env$nobs <- 0L
       invisible(NULL)
     },
     clear.dosing = function() {
-      for (.i in seq_along(.env$chunks)) {
-        if (!is.null(.env$chunks[[.i]])) {
-          .df <- .env$chunks[[.i]]
+      for (.i in seq_along(env$chunks)) {
+        if (!is.null(env$chunks[[.i]])) {
+          .df <- env$chunks[[.i]]
           .df <- .df[.df$evid == 0L, , drop = FALSE]
-          if (nrow(.df) == 0L) .env$chunks[.i] <- list(NULL) else .env$chunks[[.i]] <- .df
+          if (nrow(.df) == 0L) env$chunks[.i] <- list(NULL) else env$chunks[[.i]] <- .df
         }
       }
-      .env$ndose <- 0L
+      env$ndose <- 0L
       invisible(NULL)
     },
     copy = function() {
       .newEnv <- new.env(parent = emptyenv())
-      .newEnv$chunks     <- .env$chunks
-      .newEnv$units      <- .env$units
-      .newEnv$show       <- .env$show
-      .newEnv$IDs        <- .env$IDs
-      .newEnv$nobs       <- .env$nobs
-      .newEnv$ndose      <- .env$ndose
-      .newEnv$randomType <- .env$randomType
-      .newEnv$canResize  <- .env$canResize
+      .newEnv$chunks     <- env$chunks
+      .newEnv$units      <- env$units
+      .newEnv$show       <- env$show
+      .newEnv$IDs        <- env$IDs
+      .newEnv$nobs       <- env$nobs
+      .newEnv$ndose      <- env$ndose
+      .newEnv$randomType <- env$randomType
+      .newEnv$canResize  <- env$canResize
       .newEnv$methods <- .etBuildMethods(.newEnv)
       .cp <- list()
       attr(.cp, "names")     <- character(0)
@@ -278,8 +281,8 @@
     },
     import.EventTable = function(df) {
       if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
-      .tu <- .env$units["time"]
-      .du <- .env$units["dosing"]
+      .tu <- env$units["time"]
+      .du <- env$units["dosing"]
       .hasTimeU <- !is.na(.tu) && nchar(.tu) > 0
       .hasDoseU <- !is.na(.du) && nchar(.du) > 0
       # Save prior-units state: only convert when et already had units set
@@ -290,7 +293,7 @@
         for (.nmCheck in c("time", "ii")) {
           if (!is.null(df[[.nmCheck]]) && inherits(df[[.nmCheck]], "units")) {
             .tu <- units::deparse_unit(df[[.nmCheck]])
-            .env$units["time"] <- .tu
+            env$units["time"] <- .tu
             .hasTimeU <- TRUE
             break
           }
@@ -299,7 +302,7 @@
       if (!.hasDoseU && requireNamespace("units", quietly = TRUE)) {
         if (!is.null(df[["amt"]]) && inherits(df[["amt"]], "units")) {
           .du <- units::deparse_unit(df[["amt"]])
-          .env$units["dosing"] <- .du
+          env$units["dosing"] <- .du
           .hasDoseU <- TRUE
         } else if (!is.null(df[["rate"]]) && inherits(df[["rate"]], "units")) {
           # udunits format: "ug s-1" — amount unit has no digit exponent
@@ -308,7 +311,7 @@
           .amtParts <- .parts[!grepl("[0-9]", .parts)]
           if (length(.amtParts) >= 1L) {
             .du <- .amtParts[[1L]]
-            .env$units["dosing"] <- .du
+            env$units["dosing"] <- .du
             .hasDoseU <- TRUE
           }
         }
@@ -337,19 +340,19 @@
       df$evid <- as.integer(df$evid)
       if (is.null(df$id)) df$id <- 1L
       df$id <- as.integer(df$id)
-      .env$IDs  <- sort(unique(df$id))
-      .env$nobs  <- .env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
-      .env$ndose <- .env$ndose + sum(df$evid != 0L, na.rm = TRUE)
-      .env$chunks <- .addRowsToChunks(.env$chunks, df)
-      if (length(.env$IDs) > 1L) .env$show["id"] <- TRUE
-      if (sum(df$evid != 0L, na.rm = TRUE) > 0L) .env$show["amt"] <- TRUE
+      env$IDs  <- sort(unique(df$id))
+      env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
+      env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
+      env$chunks <- .addRowsToChunks(env$chunks, df)
+      if (length(env$IDs) > 1L) env$show["id"] <- TRUE
+      if (sum(df$evid != 0L, na.rm = TRUE) > 0L) env$show["amt"] <- TRUE
       if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
-        .env$show["rate"] <- TRUE
+        env$show["rate"] <- TRUE
       if (!is.null(df$dur) && any(df$dur[df$evid != 0L] != 0, na.rm = TRUE))
-        .env$show["dur"] <- TRUE
+        env$show["dur"] <- TRUE
       if (!is.null(df$ii) && any(df$ii != 0, na.rm = TRUE)) {
-        .env$show["ii"] <- TRUE
-        .env$show["addl"] <- TRUE
+        env$show["ii"] <- TRUE
+        env$show["addl"] <- TRUE
       }
       invisible(NULL)
     },
@@ -379,45 +382,45 @@
         df <- df[!is.na(as.numeric(df$time)), , drop = FALSE]
       }
       # Delegate to import.EventTable for units handling + storage
-      .etBuildMethods(.env)$import.EventTable(df)
+      .etBuildMethods(env)$import.EventTable(df)
       invisible(NULL)
     },
 
     expand = function() {
-      .et <- structure(list(.env = .env), class = "rxEt")
+      .et <- structure(list(env = env), class = "rxEt")
       .mat <- .etMaterialize(.et)
       .expanded <- .etExpandAddlR(.mat)
-      .env$chunks <- list()
+      env$chunks <- list()
       if (nrow(.expanded) > 0L) {
         .ids <- unique(as.integer(.expanded$id))
         for (.i in .ids) {
-          .env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+          env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
         }
-        .env$IDs <- sort(.ids)
+        env$IDs <- sort(.ids)
       } else {
-        .env$IDs <- 1L
+        env$IDs <- 1L
       }
-      .env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
-      .env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
-      .env$show["id"] <- length(.env$IDs) > 1L
-      .env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
-      .env$randomType <- NA_integer_
-      .env$canResize <- FALSE
+      env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
+      env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+      env$show["id"] <- length(env$IDs) > 1L
+      env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+      env$randomType <- NA_integer_
+      env$canResize <- FALSE
       invisible(NULL)
     },
     simulate = function(object, nsim = 1, seed = NULL, ...) {
       if (!is.null(seed)) set.seed(seed)
-      .et <- structure(list(.env = .env), class = "rxEt")
+      .et <- structure(list(env = env), class = "rxEt")
       .mat <- .etMaterialize(.et)
       .hasWin <- !is.na(.mat$low) & !is.na(.mat$high) & .mat$evid == 0L
       if (!any(.hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
       } else {
         .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-        .env$chunks <- list()
+        env$chunks <- list()
         if (nrow(.mat) > 0L) {
           .ids <- unique(as.integer(.mat$id))
-          for (.i in .ids) .env$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
+          for (.i in .ids) env$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
         }
       }
       invisible(NULL)
@@ -439,9 +442,13 @@
 }
 
 #' Create a new empty rxEt object
+#'
 #' @param amountUnits character dose unit, e.g. "mg"
+#'
 #' @param timeUnits character time unit, e.g. "hours"
+#'
 #' @return rxEt object
+#'
 #' @noRd
 .newRxEt <- function(amountUnits = NA_character_, timeUnits = NA_character_) {
   .env <- new.env(parent = emptyenv())
@@ -465,7 +472,12 @@
   .obj
 }
 
-#' Sync the materialized data.frame shell with the mutable rxEt environment
+#' Sync the materialized data.frame shell with the rxEt environment
+#'
+#' @param x rxEt object
+#'
+#' @return materialized synced rxEt data frame
+#'
 #' @noRd
 .rxEtSyncData <- function(x) {
   .env <- .rxEtEnv(x)
@@ -481,11 +493,6 @@
   .ret
 }
 
-#' Stamp randomType into attr(class(et), ".rxode2.lst") before returning
-#' @noRd
-.rxEtFinalize <- function(et) {
-  .rxEtSyncData(et)
-}
 
 #' Expand addl doses into individual records (pure R)
 #' @param df materialized data.frame from .etMaterialize()
