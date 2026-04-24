@@ -51,6 +51,8 @@
   }
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::dplyr_reconstruct", "rxEt")
+    .s3register("dplyr::filter", "rxEt")
+    .s3register("dplyr::rename", "rxEt")
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
   }

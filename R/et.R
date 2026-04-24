@@ -999,6 +999,16 @@ select.rxEt <- function(.data, ...) {
   dplyr::select(.full[, .showCols, drop = FALSE], ...)
 }
 
+filter.rxEt <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+  .data <- tibble::as_tibble(.data)
+  dplyr::filter(.data, ..., .by = {{ .by }}, .preserve = .preserve)
+}
+
+rename.rxEt <- function(.data, ...) {
+  .data <- tibble::as_tibble(.data)
+  dplyr::rename(.data)
+}
+
 #' @export
 names.rxEt <- function(x) {
   names(as.data.frame(x, all = TRUE))

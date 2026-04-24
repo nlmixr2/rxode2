@@ -320,6 +320,16 @@ rxTest({
     expect_true(inherits(dt, "data.table"))
   })
 
+  test_that("dplyr::filter.rxEt converts through tibble", {
+    skip_if_not_installed("dplyr")
+    ev <- et(amt = 100) |> et(time = c(0, 1, 2))
+    out <- dplyr::filter(ev, evid == 1)
+    expect_s3_class(out, "tbl_df")
+    expect_equal(nrow(out), 1L)
+    expect_equal(out$amt, 100)
+    expect_equal(out$evid, 1L)
+  })
+
   test_that("$.rxEt add.dosing closure", {
     ev <- et()
     .env <- .rxEtEnv(ev)
