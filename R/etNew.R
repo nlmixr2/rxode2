@@ -81,26 +81,36 @@
                            amount.units = NA_character_,
                            start.time = 0.0, do.sampling = FALSE,
                            time.units = NA_character_,
-                           evid = NULL, strt.time = NULL) {
+                           evid = NULL, strt.time = NULL, ...) {
       if (!is.null(strt.time)) start.time <- strt.time
-      .cmt <- if (dosing.to == 1L) "(default)" else as.integer(dosing.to)
-      .evidVal <- if (!is.null(evid)) as.integer(evid) else 1L
-      .df <- .etDoseChunk(
-        time = start.time, amt = dose, cmt = .cmt,
-        evid = .evidVal,
-        ii   = if (nbr.doses > 1L) dosing.interval else 0.0,
+      .et <- structure(list(.env = .env), class = "rxEt")
+      .args <- list(
+        x = .et,
+        amt = dose,
+        time = start.time,
+        ii = if (nbr.doses > 1L) dosing.interval else 0.0,
         addl = as.integer(nbr.doses) - 1L,
-        rate = if (!is.null(rate)) rate else 0.0
+        addSampling = do.sampling
       )
-      .etAddChunk(.env, .df, .env$IDs)
-      .env$ndose  <- .env$ndose + length(.env$IDs)
-      .env$show["amt"] <- TRUE
-      if (as.integer(nbr.doses) > 1L) {
-        .env$show["ii"]   <- TRUE
-        .env$show["addl"] <- TRUE
+      if (!is.null(rate)) .args$rate <- rate
+      if (!is.na(amount.units)) .args$amountUnits <- amount.units
+      if (!is.na(time.units)) .args$timeUnits <- time.units
+      if (!is.null(evid)) .args$evid <- evid
+      .extra <- list(...)
+      if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
+          !identical(dosing.to, 1L)) {
+        .args$cmt <- dosing.to
       }
-      if (!is.na(amount.units)) .env$units["dosing"] <- amount.units
-      if (!is.na(time.units))   .env$units["time"]   <- time.units
+      .ret <- do.call(et, c(.args, .extra))
+      .retEnv <- .rxEtEnv(.ret)
+      .env$chunks <- .retEnv$chunks
+      .env$units <- .retEnv$units
+      .env$show <- .retEnv$show
+      .env$IDs <- .retEnv$IDs
+      .env$nobs <- .retEnv$nobs
+      .env$ndose <- .retEnv$ndose
+      .env$randomType <- .retEnv$randomType
+      .env$canResize <- .retEnv$canResize
       invisible(NULL)
     },
 
