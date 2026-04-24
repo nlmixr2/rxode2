@@ -1,4 +1,5 @@
 rxTest({
+  library(withr)
   test_that("new rxEt constructor", {
     ev <- .newRxEt()
     .env <- .rxEtEnv(ev)

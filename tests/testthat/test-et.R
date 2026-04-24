@@ -1,4 +1,5 @@
 rxTest({
+  library(withr)
   test_that("et import rate=-2", {
 
     d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
@@ -928,7 +929,7 @@ rxTest({
   })
 
   test_that("et can add doses per id (#725)", {
-    expet_error(rxWithSeed(100, {
+    expect_error(rxWithSeed(100, {
 
       sim.cov <- data.frame(id=1:10,
                             wt=rnorm(10, 70, 10))
@@ -945,7 +946,7 @@ rxTest({
 
   test_that("when solving without observations, they are assumed (#858)", {
 
-    od3 <- function() {
+    mod3 <- function() {
       ini({
         TKA   <- 2.94E-01
         TCL   <- 1.86E+01
