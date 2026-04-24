@@ -922,4 +922,9 @@ rxTest({
 
   })
 
+  test_that("et improper piped arguments #722", {
+    expect_error(et(amt=0, cmt=central, id=c(1:10)) |>
+                   et(c(0,1), cmt=Cc), NA)
+  })
+
 })
