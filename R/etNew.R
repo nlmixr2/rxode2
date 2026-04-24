@@ -159,7 +159,6 @@
     get.EventTable = function() {
       .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
       if (nrow(.mat) == 0L) return(NULL)
-      .mat <- .etInternalChunkDf(.mat)
       .show <- .env$show
       .ret <- .mat[, names(.show)[.show], drop = FALSE]
       rownames(.ret) <- seq_len(nrow(.ret))
