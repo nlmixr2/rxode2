@@ -1063,4 +1063,30 @@ rxTest({
                     c(0, 72))
   })
 
+  test_that("Only adds dose for subject 1, Fix for #723", {
+
+    sub_ids = c(1,2,3,4,5)
+
+    # creating observations
+    obs_times = c(0:20)
+    events = et(time=obs_times, id=sub_ids)
+
+    for(sub_id in sub_ids){
+      events = etRbind(
+        events,
+        # This does not work
+        et(cmt = "Ac", amt=c(1,1,1), time = c(0, 1, 2), id=as.character(sub_id)))
+    }
+
+    events |> dplyr::filter(id ==2 & cmt == "Ac") |> nrow() |> expect_equal(3)
+
+  })
+
+  test_that("$expand() issue #721", {
+    ev <- et()
+    ev <- ev %>%
+      et(id=1:10, amt=1:10, dosing.to=1, ii=14, addl=5, rate=(1:10)/(15/60/24))
+    expect_error(ev$expand(), NA)
+  })
+
 })
