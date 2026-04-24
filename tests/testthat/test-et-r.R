@@ -428,6 +428,16 @@ rxTest({
     expect_true(all(df$addl[df$evid == 1L] == 0L))
   })
 
+  test_that("in-place expand updates addl print metadata", {
+    local_options(cli.unicode = FALSE, crayon.enabled = FALSE, width = 80)
+    ev <- et(amt = 100, ii = 24, addl = 4)
+    ev$expand()
+    expect_equal(ev$ndose, 5L)
+    expect_false(ev$show["addl"])
+    expect_equal(names(as.data.frame(ev)), c("time", "amt", "ii", "evid"))
+    expect_false(grepl("multiple doses in `addl` columns", paste(capture.output(print(ev)), collapse = "\n"), fixed = TRUE))
+  })
+
   test_that("etRep repeats event table", {
     ev  <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 24))
     ev3 <- etRep(ev, times = 3, samples = "use")

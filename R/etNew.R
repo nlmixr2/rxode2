@@ -348,7 +348,16 @@
         for (.i in .ids) {
           .env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
         }
+        .env$IDs <- sort(.ids)
+      } else {
+        .env$IDs <- 1L
       }
+      .env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
+      .env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+      .env$show["id"] <- length(.env$IDs) > 1L
+      .env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+      .env$randomType <- NA_integer_
+      .env$canResize <- FALSE
       invisible(NULL)
     },
     simulate = function(object, nsim = 1, seed = NULL, ...) {
