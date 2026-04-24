@@ -102,19 +102,26 @@
 #' Merge a data.frame (with id column) into an ID-indexed chunks list
 #'
 #' Used by etSeq/etRbind when accumulating materialized data.frames.
-#' @param .chunks list indexed by ID integer value
-#' @param .df data.frame with 'id' column already set
-#' @return updated .chunks
+#'
+#' @param chunks list indexed by ID integer value
+#'
+#' @param df data.frame with 'id' column already set
+#'
+#' @return updated chunks
 #' @noRd
-.addRowsToChunks <- function(.chunks, .df) {
-  if (nrow(.df) == 0L) return(.chunks)
-  .ids <- unique(as.integer(.df$id))
+.addRowsToChunks <- function(chunks, df) {
+  if (nrow(df) == 0L) return(chunks)
+  .ids <- unique(as.integer(df$id))
   for (.i in .ids) {
-    .rows <- .etDropUnitsForChunk(.df[.df$id == .i, , drop = FALSE])
-    .existing <- if (.i <= length(.chunks)) .etDropUnitsForChunk(.chunks[[.i]]) else NULL
-    .chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .rows), fill = TRUE))
+    .rows <- .etDropUnitsForChunk(df[df$id == .i, , drop = FALSE])
+    if (.i <= length(chunks)) {
+      .cur <- chunks[[.i]] # units already dropped
+      chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.cur, .rows), fill = TRUE))
+    } else {
+      chunks[[.i]] <- .rows
+    }
   }
-  .chunks
+  chunks
 }
 
 #' Attach method closures to an rxEt's list structure
