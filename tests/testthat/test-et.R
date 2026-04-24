@@ -927,4 +927,20 @@ rxTest({
                    et(c(0,1), cmt=Cc), NA)
   })
 
+  test_that("et can add doses per id (#725)", {
+    expet_error(rxWithSeed(100, {
+
+      sim.cov <- data.frame(id=1:10,
+                            wt=rnorm(10, 70, 10))
+
+      e_1 <-   et(id=sim.cov$id) %>%
+        add.dosing(start.time = 0,dose = 600000*sim.cov$wt, nbr.doses = 14, dosing.interval = 8, dur=15/60) %>%
+        add.dosing(start.time = (5+9)*24,dose = 600000*sim.cov$wt, nbr.doses = 14, dosing.interval = 8, dur=15/60) %>%
+        add.sampling(seq(from = 0, to = 24*21, by = 0.25)) %>%
+        as.data.frame %>%
+        merge(sim.cov, by="id")
+
+    }), NA)
+  })
+
 })
