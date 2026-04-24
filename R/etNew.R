@@ -18,6 +18,16 @@
     ss = FALSE, dur = FALSE)
 }
 
+.etInternalChunkDf <- function(.df) {
+  if (is.null(.df) || !is.data.frame(.df)) return(.df)
+  for (.nm in names(.df)) {
+    if (inherits(.df[[.nm]], "units")) {
+      .df[[.nm]] <- as.numeric(.df[[.nm]])
+    }
+  }
+  .df
+}
+
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in
@@ -42,9 +52,9 @@
   .posIds <- .ids[.ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
   for (.i in .posIds) {
-    .row <- .df
+    .row <- .etInternalChunkDf(.df)
     .row$id <- .i
-    .existing <- if (.i <= length(.envRef$chunks)) .envRef$chunks[[.i]] else NULL
+    .existing <- if (.i <= length(.envRef$chunks)) .etInternalChunkDf(.envRef$chunks[[.i]]) else NULL
     .envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .row), fill = TRUE))
   }
   invisible(NULL)
@@ -61,8 +71,8 @@
   if (nrow(.df) == 0L) return(.chunks)
   .ids <- unique(as.integer(.df$id))
   for (.i in .ids) {
-    .rows <- .df[.df$id == .i, , drop = FALSE]
-    .existing <- if (.i <= length(.chunks)) .chunks[[.i]] else NULL
+    .rows <- .etInternalChunkDf(.df[.df$id == .i, , drop = FALSE])
+    .existing <- if (.i <= length(.chunks)) .etInternalChunkDf(.chunks[[.i]]) else NULL
     .chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .rows), fill = TRUE))
   }
   .chunks
@@ -115,7 +125,27 @@
     },
 
     add.sampling = function(time, time.units = NA_character_) {
-      .df <- .etObsChunk(time)
+      .time <- time
+      if (is.list(.time)) {
+        .time <- lapply(.time, function(.window) {
+          if (inherits(.window, "units") && requireNamespace("units", quietly = TRUE)) {
+            .tu <- .env$units["time"]
+            if (!is.na(.tu) && nchar(.tu) > 0) {
+              return(as.numeric(units::set_units(.window, .tu, mode = "standard")))
+            }
+            return(as.numeric(.window))
+          }
+          .window
+        })
+      } else if (inherits(.time, "units") && requireNamespace("units", quietly = TRUE)) {
+        .tu <- .env$units["time"]
+        if (!is.na(.tu) && nchar(.tu) > 0) {
+          .time <- as.numeric(units::set_units(.time, .tu, mode = "standard"))
+        } else {
+          .time <- as.numeric(.time)
+        }
+      }
+      .df <- .etObsChunk(.time)
       .etAddChunk(.env, .df, .env$IDs)
       .env$nobs   <- .env$nobs + length(.df$time) * length(.env$IDs)
       if (!is.na(time.units)) .env$units["time"] <- time.units
@@ -669,12 +699,18 @@ is.rxEt <- function(x) {
   if (!is.null(dosing.interval)) ii <- as.numeric(dosing.interval)
   if (!is.null(nbr.doses))       addl <- as.integer(nbr.doses) - 1L
 
+  if (is.list(time)) {
+    time <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
+  } else {
+    time <- as.numeric(time)
+  }
+
   if (!is.null(until)) {
     if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
     addl <- as.integer(floor((until - time) / ii))
-    if (addl < 0L) {
+    if (any(addl < 0L, na.rm = TRUE)) {
       warning("'until' is before 'time'; setting addl=0", call. = FALSE)
-      addl <- 0L
+      addl[addl < 0L] <- 0L
     }
   }
 
@@ -694,8 +730,6 @@ is.rxEt <- function(x) {
     rate <- amt / dur
     dur  <- 0.0
   }
-
-  if (is.list(time)) time <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
 
   if (length(amt) > 1L || length(time) > 1L) {
     if (length(time) == 1L) time <- rep(time, length(amt))

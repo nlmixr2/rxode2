@@ -160,6 +160,12 @@ rxTest({
     expect_equal(chunk$addl, 5L)
   })
 
+  test_that(".etDoseChunk windowed time works with until", {
+    chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
+    expect_equal(chunk$time, 0)
+    expect_equal(chunk$addl, 4L)
+  })
+
   test_that(".etDoseChunk dur converts to rate", {
     chunk <- .etDoseChunk(time = 0, amt = 100, dur = 2)
     expect_equal(chunk$rate, 50)
@@ -199,6 +205,22 @@ rxTest({
     expect_equal(nrow(df), 5L)
     expect_equal(df$time, c(0, 1, 2, 4, 8))
     expect_true(all(df$evid == 0L))
+  })
+
+  test_that("add.sampling converts unit-valued times to event table units", {
+    ev <- eventTable(time.units = "hr")
+    ev$add.sampling(units::set_units(c(1, 2), days))
+    df <- as.data.frame(ev)
+    expect_equal(as.numeric(df$time), c(24, 48))
+  })
+
+  test_that("etRbind unique can append observation times", {
+    bid <- et(timeUnits = "hr") |> et(amt = 10000, ii = 12, until = units::set_units(1, days))
+    qd <- et(timeUnits = "hr") |> et(amt = 20000, ii = 24, until = units::set_units(1, days))
+    ev <- etRbind(bid, qd, id = "unique") |> et(seq(0, 24, length.out = 5))
+    df <- as.data.frame(ev)
+    expect_equal(sort(unique(df$id)), 1:2)
+    expect_true(any(df$evid == 0L))
   })
 
   test_that("et(0, 24) two-arg sequence", {
