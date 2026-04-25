@@ -643,7 +643,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .dfObs <- .etObsChunk(.listObs, cmt = .cmtVal)
     .etAddChunk(.envRef, .dfObs, .targetIds)
     .envRef$nobs <- .envRef$nobs + length(.listObs) * max(1L, length(.targetIds))
-    if (missing(amt)) return(invisible(.rxEtSyncData(.et)))
+    if (missing(amt)) return(.rxEtSyncData(.et))
   }
 
   # ---- Dose record (amt supplied or dose alias) ----
@@ -729,7 +729,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       .etAddChunk(.envRef, .obsChunk, .targetIds)
       .envRef$nobs   <- .envRef$nobs + length(.obsChunk$time) * max(1L, length(.targetIds))
     }
-    return(invisible(.rxEtSyncData(.et)))
+    return(.rxEtSyncData(.et))
   }
 
   # ---- Infusion/SS dose without explicit amt (amt=0 implied) ----
@@ -756,7 +756,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .envRef$show["amt"]  <- TRUE
     if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
     if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
-    return(invisible(.rxEtSyncData(.et)))
+    return(.rxEtSyncData(.et))
   }
 
   # ---- Observation record (time supplied) ----
@@ -779,7 +779,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     .etAddChunk(.envRef, .df, .targetIds)
     .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
     if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-    return(invisible(.rxEtSyncData(.et)))
+    return(.rxEtSyncData(.et))
   }
 
   # ---- x is rxEt + positional numeric in ... → obs times (piping pattern) ----
@@ -794,7 +794,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         .etAddChunk(.envRef, .df, .targetIds)
         .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
         if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-        return(invisible(.rxEtSyncData(.et)))
+        return(.rxEtSyncData(.et))
       } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
         if (length(.dotArgs) >= 2L &&
             length(.firstDot) == 1L &&
@@ -815,7 +815,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
         .etAddChunk(.envRef, .df, .targetIds)
         .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.targetIds))
-        return(invisible(.rxEtSyncData(.et)))
+        return(.rxEtSyncData(.et))
       }
     }
   }
@@ -855,9 +855,9 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
     } else {
       .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
     }
-    return(invisible(.rxEtSyncData(.et)))
+    return(.rxEtSyncData(.et))
   }
-  invisible(.rxEtSyncData(.et))
+  .rxEtSyncData(.et)
 }
 
 #' @export
@@ -931,8 +931,7 @@ rxEtDispatchSolve.default <- function(x, ...) {
 }
 
 #' @export
-simulate.rxEt <- # nolint
-  function(object, nsim = 1, seed = NULL, ...) {
+simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
     .isPipe <- as.character(substitute(object))
     if (length(.isPipe) == 1 && .isPipe == ".") {
       .isPipe <- TRUE
@@ -962,13 +961,12 @@ simulate.rxEt <- # nolint
           warning("simulating event table without windows returns identical event table", call. = FALSE)
         } else {
           .rt <- .env0$randomType
-          if (!is.null(.rt) && !is.na(.rt) && .rt == 1L) {
-            warning("triangular distribution not implemented; using uniform sampling between low and high", call. = FALSE)
-          }
           if (!is.na(.rt) && .rt == 3L) {
             .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-          } else {
+          } else if (!is.na(.rt) && .rt == 2L) {
             .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+          } else {
+            warning("unclear windows, identical event table", call. = FALSE)
           }
         }
         .newEnv <- new.env(parent = emptyenv())
@@ -1740,7 +1738,7 @@ as_tibble.rxEt <- function(x, ...) {
 #' @export
 etExpand <- function(et) {
   .mat      <- .etMaterialize(et)
-  .expanded <- .etExpandAddl(.mat)
+  .expanded <- .etExpandAddl(.mat, .rxEtEnv(et))
   .env      <- .rxEtEnv(et)
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()

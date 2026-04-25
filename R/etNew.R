@@ -390,7 +390,7 @@
     expand = function() {
       .et <- structure(list(env = env), class = "rxEt")
       .mat <- .etMaterialize(.et)
-      .expanded <- .etExpandAddl(.mat)
+      .expanded <- .etExpandAddl(.mat, env)
       env$chunks <- list()
       if (nrow(.expanded) > 0L) {
         .ids <- unique(as.integer(.expanded$id))
@@ -502,19 +502,54 @@
 #'
 #' @param df materialized data.frame from .etMaterialize()
 #'
+#' @param env environment for randomType and show flags
+#'
+#' @param windows logical; if TRUE, only expand windows (low/high) by
+#'   ii on each subsequent dose based on random type in env
+#'
 #' @return data.frame with addl expanded into individual dose records
 #'
 #' @noRd
-.etExpandAddl <- function(df) {
-  .doseRows <- df[df$evid != 0L & df$addl > 0L, , drop = FALSE]
+.etExpandAddl <- function(df, env=NULL, windows=FALSE) {
+  if (windows) {
+    .doseRows <- df[df$evid != 0L & df$addl > 0L & !is.na(df$low), , drop = FALSE]
+  } else {
+    .doseRows <- df[df$evid != 0L & df$addl > 0L, , drop = FALSE]
+  }
   if (nrow(.doseRows) == 0L) return(df)
-
+  if (is.environment(env) &&
+        exists("randomType", envir = env, inherits = FALSE)) {
+    .rt <- env$randomType
+    if (is.na(.rt)) .rt <- 1L
+  } else {
+    .rt <- 1
+  }
   .extras <- vector("list", nrow(.doseRows))
   for (.i in seq_len(nrow(.doseRows))) {
     .row   <- .doseRows[.i, ]
     .n     <- .row$addl
     .extra <- .row[rep(1L, .n), , drop = FALSE]
-    .extra$time <- .row$time + seq_len(.n) * .row$ii
+    # This works for normal and uniform cases
+    if (!is.na(.row$low)) {
+      .extra$low <- .row$low + seq_len(.n) * .row$ii
+    }
+    if (.rt == 3) {
+      # normal; sd remains the same on expansion
+      .extra$time <- vapply(seq_len(.n), function(i) {
+        stats::rnorm(1L, .extra$low[i], .extra$high[i])
+      }, numeric(1), USE.NAMES = FALSE)
+    } else if (!is.na(.row$high)) {
+      # uniform or window expand window by ii on each subsequent dose
+      .extra$high <- .row$high + seq_len(.n) * .row$ii
+      .extra$time <- vapply(seq_len(.n), function(i) {
+        stats::runif(1L, .extra$low[i], .extra$high[i])
+      }, numeric(1), USE.NAMES = FALSE)
+    } else {
+      .extra$time <- .row$time + seq_len(.n) * .row$ii
+    }
+
+
+    .extra$high <- .row$high + seq_len(.n) * .row$ii
     .extra$addl <- 0L
     .extra$ii   <- 0.0
     .extras[[.i]] <- .extra
@@ -660,6 +695,7 @@
   data.table::setcolorder(.dt, .etColOrder)
 
   .df <- as.data.frame(.dt)
+  .df <- .etExpandAddl(.df, env = .env, windows = TRUE)
   # message(paste0("randomType: ", .env$randomType))
 
   # Apply units to columns so C++ solver can propagate them to output
@@ -731,26 +767,24 @@ is.rxEt <- function(x) {
     for (.i in seq_len(.nw)) {
       .w <- time[[.i]]
       if (length(.w) == 2L) {
-        if (.hasNormal || .has3) {
-          # This is the half-window case
-          if (.w[2L] < 0) {
-            stop("window half-width must be non-negative", call. = FALSE)
-          }
-          .low[.i]  <- .w[1L] - .w[2L]
-          .mid[.i]  <- .w[1L]
-          .high[.i] <- .w[1L] + .w[2L]
+        if (.hasNormal) {
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- stats::rnorm(1, .w[1], .w[2])
+          .high[.i] <- .w[2]
+        } else if (.has3) {
+          stop("Cannot mix 2 and 3 element windows", call. = FALSE)
         } else {
           if (.w[1] > .w[2]) {
             stop("window bounds must be ordered c(low, high)", call. = FALSE)
           }
           .low[.i]  <- .w[1]
-          .mid[.i]  <- (.w[1] + .w[2]) / 2
+          .mid[.i]  <- stats::runif(1, .w[1], .w[2])
           .high[.i] <- .w[2]
         }
       } else if (length(.w) == 3L) {
         if (is.na(.w[3L])) {
           .low[.i]  <- .w[1L]
-          .mid[.i]  <- .w[1L]
+          .mid[.i]  <- stats::rnorm(1, .w[1L], .w[2L])
           .high[.i] <- .w[2L]
         } else {
           if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
@@ -762,7 +796,13 @@ is.rxEt <- function(x) {
         stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
       }
     }
-    .randomType <- if (.hasNormal) 3L else if (.has3) 1L else 2L
+    if (.hasNormal) {
+      .randomType <- 3L
+    } else if (.has3) {
+      .randomType <- 1L
+    } else {
+      .randomType <- 2L
+    }
     .df <- list(evid = 0L, time = .mid, low = .low, high = .high)
   } else {
     .df <- list(evid = 0L, time = as.numeric(time))
@@ -831,17 +871,25 @@ is.rxEt <- function(x) {
         .mid[.i]  <- as.numeric(.w)
         .high[.i] <- NA_real_
       } else if (length(.w) == 2L) {
-        if (.w[1] > .w[2]) {
-          stop("window bounds must be ordered c(low, high)", call. = FALSE)
+        if (.hasNormal) {
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- stats::rnorm(1, .w[1], .w[2])
+          .high[.i] <- .w[2]
+        } else if (.has3) {
+          stop("Cannot mix 2 and 3 element windows", call. = FALSE)
+        } else {
+          if (.w[1] > .w[2]) {
+            stop("window bounds must be ordered c(low, high)", call. = FALSE)
+          }
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- stats::runif(1, .w[1], .w[2])
+          .high[.i] <- .w[2]
         }
-        .low[.i]  <- .w[1]
-        .mid[.i]  <- (.w[1] + .w[2]) / 2
-        .high[.i] <- .w[2]
       } else if (length(.w) == 3L) {
         if (is.na(.w[3L])) {
-          .low[.i]  <- .w[1L]
-          .mid[.i]  <- .w[1L]
-          .high[.i] <- .w[2L]
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- stats::rnorm(1, .w[1], .w[2])
+          .high[.i] <- .w[2]
         } else {
           if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
           .low[.i]  <- .w[1]
@@ -852,7 +900,13 @@ is.rxEt <- function(x) {
         stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
       }
     }
-    .randomType <- if (.hasNormal) 3L else if (.has3) 1L else 2L
+    if (.hasNormal) {
+      .randomType <- 3L
+    } else if (.has3) {
+      .randomType <- 1L
+    } else {
+      .randomType <- 2L
+    }
     .timeDose <- .mid
     .timeUntil <- .mid
     .lowDose <- .low

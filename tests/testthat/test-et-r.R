@@ -163,7 +163,9 @@ rxTest({
 
   test_that(".etDoseChunk windowed time works with until", {
     chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
-    expect_equal(chunk$time, 0)
+    expect_equal(chunk$low, 0)
+    expect_equal(chunk$high, 6)
+    expect_equal(chunk$time, 6)
     expect_equal(chunk$addl, 3L)
   })
 
