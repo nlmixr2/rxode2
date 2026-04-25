@@ -2541,10 +2541,11 @@ extern RObject evCur;
 List getEtRxsolve(Environment e) {
   if (!e.exists(".et")) {
     RObject eventso = e[".args.events"];
-    List emptyLst(0);
-    RObject et = et_(emptyLst, emptyLst);
+    Function newRxEt = getRxFn(".newRxEt");
+    RObject et = newRxEt();
     evCur = et;
-    et_(List::create(_["data"] = eventso), List::create("importQuiet"));
+    Function etR = getRxFn("et");
+    et = etR(et, _["data"] = eventso);
     e[".et"] = et;
     Function parse2("parse", R_BaseNamespace);
     Function eval2("eval", R_BaseNamespace);

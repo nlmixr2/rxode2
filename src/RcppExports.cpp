@@ -176,43 +176,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// etDollarNames
-CharacterVector etDollarNames(RObject obj);
-RcppExport SEXP _rxode2_etDollarNames(SEXP objSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< RObject >::type obj(objSEXP);
-    rcpp_result_gen = Rcpp::wrap(etDollarNames(obj));
-    return rcpp_result_gen;
-END_RCPP
-}
-// etUpdate
-RObject etUpdate(RObject obj, RObject arg, RObject value, LogicalVector exact);
-RcppExport SEXP _rxode2_etUpdate(SEXP objSEXP, SEXP argSEXP, SEXP valueSEXP, SEXP exactSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< RObject >::type obj(objSEXP);
-    Rcpp::traits::input_parameter< RObject >::type arg(argSEXP);
-    Rcpp::traits::input_parameter< RObject >::type value(valueSEXP);
-    Rcpp::traits::input_parameter< LogicalVector >::type exact(exactSEXP);
-    rcpp_result_gen = Rcpp::wrap(etUpdate(obj, arg, value, exact));
-    return rcpp_result_gen;
-END_RCPP
-}
-// et_
-RObject et_(List input, List et__);
-RcppExport SEXP _rxode2_et_(SEXP inputSEXP, SEXP et__SEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type input(inputSEXP);
-    Rcpp::traits::input_parameter< List >::type et__(et__SEXP);
-    rcpp_result_gen = Rcpp::wrap(et_(input, et__));
-    return rcpp_result_gen;
-END_RCPP
-}
 // getLinInfo_
 IntegerVector getLinInfo_(List mv);
 RcppExport SEXP _rxode2_getLinInfo_(SEXP mvSEXP) {

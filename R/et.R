@@ -16,7 +16,7 @@
     .dataCols <- rev(c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur"))
     return(grep(pattern, c(.envProps, .methods, .dataCols, "env"), value = TRUE))
   }
-  grep(pattern, .Call(`_rxode2_etDollarNames`, x), value = TRUE)
+  character(0)
 }
 
 .isRxEt <- function(obj) {
@@ -595,7 +595,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   }
 
   # 4. Old-style C++ EventTable: delegate to C++ etUpdate handler
-  .Call(`_rxode2_etUpdate`, obj, arg, NULL, TRUE)
+  NULL
 }
 
 #' @export
@@ -671,7 +671,7 @@ drop_units.rxEt <- function(x) {
     .env$units["time"]   <- NA_character_
     return(x)
   }
-  .Call(`_rxode2_et_`, list(amountUnits = NA_character_, timeUnits = NA_character_), x)
+  stop("invalid event table", call. = FALSE)
 }
 
 #' @export
@@ -697,9 +697,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
       .env$units["time"]   <- NA_character_
       return(x)
     }
-    return(suppressWarnings({
-      .Call(`_rxode2_et_`, list(amountUnits = "", timeUnits = ""), x)
-    }))
+    stop("invalid event table", call. = FALSE)
   } else {
     if (!inherits(value, "character")) value <- deparse(value)
     .tUnit <- units::set_units(1, "sec", mode = "standard")
@@ -711,7 +709,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
         .env$units["dosing"] <- value
         return(x)
       }
-      return(.Call(`_rxode2_et_`, list(amountUnits = value), x))
+      stop("invalid event table", call. = FALSE)
     } else {
       ##
       if (is.rxEt(x)) {
@@ -719,7 +717,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
         .env$units["time"] <- value
         return(x)
       }
-      return(.Call(`_rxode2_et_`, list(timeUnits = value), x))
+      stop("invalid event table", call. = FALSE)
     }
   }
 }
@@ -795,7 +793,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
         }
         return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
       }
-      return(.Call(`_rxode2_et_`, list(simulate = TRUE), object))
+      stop("invalid event table", call. = FALSE)
     } else {
       .ret <- list(object, ..., seed = seed, nsim = nsim)
       class(.ret) <- "rxode2et"
@@ -858,16 +856,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
     return(invisible(do.call(et, c(.lst, .extra))))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
-  .lst <- list(
-    dose = dose, nbr.doses = nbr.doses, start.time = start.time,
-    do.sampling = do.sampling, ...
-  )
-  if (!is.na(amount.units)) .lst$amount.units <- amount.units
-  if (!is.na(time.units))   .lst$time.units   <- time.units
-  if (dosing.to != 1) .lst$dosing.to <- dosing.to
-  if (!is.null(rate)) .lst$rate <- rate
-  .lst$dosing.interval <- if (nbr.doses > 1L) dosing.interval else 0.0
-  .Call(`_rxode2_et_`, .lst, eventTable)
+  stop("invalid event table", call. = FALSE)
 }
 
 #' Add sampling to eventTable
@@ -891,9 +880,7 @@ add.sampling <- function(eventTable, time, time.units = NA_character_) {
     return(invisible(.rxEtSyncData(eventTable)))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
-  .lst <- list(time = time)
-  if (!is.na(time.units)) .lst$time.units <- time.units
-  .Call(`_rxode2_et_`, .lst, eventTable)
+  stop("invalid event table", call. = FALSE)
 }
 
 
