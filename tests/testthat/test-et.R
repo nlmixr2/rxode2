@@ -897,21 +897,40 @@ rxTest({
 
     expect_warning(simulate(e2), NA)
 
-    e3 <- et(list(c(1, .1, NA),
-                  c(2, .1),
-                  c(3, .1),
-                  c(4, .1),
-                  c(5, .1),
-                  c(6, .1),
-                  c(7, .1),
-                  c(8, .1))) |>
+    e3 <- et(list(c(0.9, 1.1),
+                  c(1.9, 2.1),
+                  c(2.9, 3.1),
+                  c(3.9, 4.1),
+                  c(4.9, 5.1),
+                  c(5.9, 6.1),
+                  c(6.9, 7.1),
+                  c(7.9, 8.1))) |>
       et(amt=100)
 
-    expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
+    expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 2L)
 
-    expect_warning(simulate(e3), NA)
+    e4 <- et(list(c(4, 0.5, NA))) |>
+      et(id=1:10000)
 
+    expect_equal(attr(class(e4), ".rxode2.lst")$randomType, 3L)
+    df4 <- as.data.frame(e4)
+    expect_equal(df4$low[1], 4)
+    expect_equal(df4$high[1], 0.5)
 
+    e5 <- simulate(e4, seed=42)
+    expect_equal(mean(as.numeric(e5$time)), 4, tolerance=0.1)
+    expect_equal(sd(as.numeric(e5$time)), 0.5, tolerance=0.1)
+
+    e6 <- et(list(c(4, 2, NA))) |>
+      et(id=1:10000)
+    expect_equal(attr(class(e6), ".rxode2.lst")$randomType, 3L)
+    df6 <- as.data.frame(e6)
+    expect_equal(df6$low[1], 4)
+    expect_equal(df6$high[1], 2)
+
+    e7 <- simulate(e6, seed=42)
+    expect_equal(mean(as.numeric(e7$time)), 4, tolerance=0.1)
+    expect_equal(sd(as.numeric(e7$time)), 2, tolerance=0.1)
   })
 
   test_that("adding an ID in the improper order will not cause an issue", {

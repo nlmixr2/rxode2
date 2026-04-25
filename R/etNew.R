@@ -108,6 +108,7 @@
 #' @param df data.frame with 'id' column already set
 #'
 #' @return updated chunks
+#'
 #' @noRd
 .addRowsToChunks <- function(chunks, df) {
   if (nrow(df) == 0L) return(chunks)
@@ -416,7 +417,11 @@
       if (!any(.hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
       } else {
-        .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+        if (!is.na(env$randomType) && env$randomType == 3L) {
+          .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+        } else {
+          .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+        }
         env$chunks <- list()
         if (nrow(.mat) > 0L) {
           .ids <- unique(as.integer(.mat$id))
@@ -558,6 +563,8 @@
 }
 
 #' Empty data.frame skeleton matching materialized format
+#'
+#' @return empty data.frame with canonical columns and types
 #' @noRd
 .etEmptyDf <- function() {
   data.frame(
@@ -579,12 +586,15 @@
 
 #' Materialize all chunks into a sorted data.frame
 #'
-#' chunks is a list indexed by ID integer value; \code{chunks[[i]]} is
+#' Chunks is a list indexed by ID integer value; \code{chunks[[i]]} is
 #' a data.frame for ID i (with 'id' column set), or NULL if no records
 #' for that ID.
+#'
 #' @param et rxEt object
+#'
 #' @return data.frame with canonical columns, sorted by (id, time,
 #'   evid-adjusted)
+#'
 #' @noRd
 .etMaterialize <- function(et) {
   .env <- .rxEtEnv(et)
@@ -646,6 +656,7 @@
   data.table::setcolorder(.dt, .etColOrder)
 
   .df <- as.data.frame(.dt)
+  # message(paste0("randomType: ", .env$randomType))
 
   # Apply units to columns so C++ solver can propagate them to output
   .tu <- .env$units["time"]
@@ -665,13 +676,15 @@
       }
     }
   }
-
   .df
 }
 
 #' Check if object is an rxEt event table
+#'
 #' @param x object to test
+#'
 #' @return logical
+#'
 #' @export
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) return(FALSE)
@@ -687,9 +700,13 @@ is.rxEt <- function(x) {
 #'
 #' @param time numeric vector of sample times, OR a list of c(low,high)
 #'   or c(low,mid,high) windows.
+#'
 #' @param cmt compartment name or number (optional scalar)
+#'
 #' @param id integer vector of IDs to attach (optional)
+#'
 #' @return sparse named list with evid=0L scalar and time vector
+#'
 #' @noRd
 .etObsChunk <- function(time, cmt = NULL, id = NULL) {
   .randomType <- NA_integer_
@@ -698,30 +715,40 @@ is.rxEt <- function(x) {
     .low  <- numeric(.nw)
     .mid  <- numeric(.nw)
     .high <- numeric(.nw)
-    .hasNaHw <- any(vapply(time, function(.w) length(.w) == 3L && is.na(.w[3L]), logical(1L)))
-    .has3    <- FALSE
+    # This is for the normal variability case that is list(c(4, 2, NA))
+    .hasNormal <- any(vapply(time,
+                           function(.w) {
+                             length(.w) == 3L && is.na(.w[3L])
+                           }, logical(1L)))
+    .has3 <- any(vapply(time,
+                        function(.w) {
+                          length(.w) == 3L && !is.na(.w[3L])
+                        }, logical(1L)))
     for (.i in seq_len(.nw)) {
       .w <- time[[.i]]
       if (length(.w) == 2L) {
-        if (.hasNaHw) {
-          if (.w[2L] < 0) stop("window half-width must be non-negative", call. = FALSE)
+        if (.hasNormal || .has3) {
+          # This is the half-window case
+          if (.w[2L] < 0) {
+            stop("window half-width must be non-negative", call. = FALSE)
+          }
           .low[.i]  <- .w[1L] - .w[2L]
           .mid[.i]  <- .w[1L]
           .high[.i] <- .w[1L] + .w[2L]
         } else {
-          if (.w[1] > .w[2]) stop("window bounds must be ordered c(low, high)", call. = FALSE)
+          if (.w[1] > .w[2]) {
+            stop("window bounds must be ordered c(low, high)", call. = FALSE)
+          }
           .low[.i]  <- .w[1]
           .mid[.i]  <- (.w[1] + .w[2]) / 2
           .high[.i] <- .w[2]
         }
       } else if (length(.w) == 3L) {
         if (is.na(.w[3L])) {
-          if (.w[2L] < 0) stop("window half-width must be non-negative", call. = FALSE)
-          .low[.i]  <- .w[1L] - .w[2L]
+          .low[.i]  <- .w[1L]
           .mid[.i]  <- .w[1L]
-          .high[.i] <- .w[1L] + .w[2L]
+          .high[.i] <- .w[2L]
         } else {
-          .has3 <- TRUE
           if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
           .low[.i]  <- .w[1]
           .mid[.i]  <- .w[2]
@@ -731,7 +758,7 @@ is.rxEt <- function(x) {
         stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
       }
     }
-    .randomType <- if (.hasNaHw) 3L else if (.has3) 1L else 2L
+    .randomType <- if (.hasNormal) 3L else if (.has3) 1L else 2L
     .df <- list(evid = 0L, time = .mid, low = .low, high = .high)
   } else {
     .df <- list(evid = 0L, time = as.numeric(time))

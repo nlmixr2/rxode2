@@ -965,7 +965,11 @@ simulate.rxEt <- # nolint
           if (!is.null(.rt) && !is.na(.rt) && .rt == 1L) {
             warning("triangular distribution not implemented; using uniform sampling between low and high", call. = FALSE)
           }
-          .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+          if (!is.na(.rt) && .rt == 3L) {
+            .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+          } else {
+            .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+          }
         }
         .newEnv <- new.env(parent = emptyenv())
         .newEnv$units      <- .env0$units
