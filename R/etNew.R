@@ -984,6 +984,11 @@ is.rxEt <- function(x) {
 }
 
 #' Rebuild an rxEt shell after data-frame style mutation
+#'
+#' @param x rxEt object
+#'
+#' @param df materialized data.frame from .etMaterialize() after mutation
+#'
 #' @noRd
 .rxEtRebuildShell <- function(x, df) {
   .env0 <- .rxEtEnv(x)
