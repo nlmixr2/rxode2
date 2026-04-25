@@ -982,86 +982,85 @@ rxTest({
       et(amt=10000, cmt=1) %>%
       et(id=1:4)
 
-    set.seed(10)
-    rxSetSeed(10)
-    r1 <- solve(mod3, ev,
-                iCov=data.frame(id=1:4, WT=rnorm(4, 70, 10)))
+    rxWithSeed(10, {
+      r1 <- solve(mod3, ev,
+                  iCov=data.frame(id=1:4, WT=rnorm(4, 70, 10)))
+    }, rxseed = 10)
 
     expect_true(nrow(r1) > 0)
   })
 
   test_that("Fix for #732", {
 
-    set.seed(123)
-    rxSetSeed(123)
-
-    # Setup the rxode2 event table
-    eventTable <- et(amt=320, evid=1, cmt=1, time = 0) |> # nolint: object_name_linter.
-      et(amt =  320, evid=1, cmt=2, time = 0) |>
-      et(list(c(0.1, 0.4), # sampling windows for first profile
-              c(0.3, 0.9),
-              c(0.7, 1.5),
-              c(1.5, 2.5),
-              c(2.5, 4),
-              c(4, 6),
-              c(6, 8.5),
-              c(8.75, 10),
-              c( 10, 12),
-              c(23, 27))) |>
-      et(amt=320, evid=4, time=72, cmt=1) |> # reset & dose
-      et(amt=320, evid=1, time=72, cmt=2) |> # dose afterward
-      et(list(c(72.1, 72.4),
-              c(72.3, 72.9),
-              c(72.7, 73.5),
-              c(73.5, 74.5),
-              c(74.5, 78.5),
-              c(76, 78),
-              c(78, 80.5),
-              c(80.75, 82),
-              c(82, 84),
-              c(95, 100))) |>
-      et(id=1:14) # Number of subjects to sample
+    rxWithSeed(123, {
+      # Setup the rxode2 event table
+      eventTable <- et(amt=320, evid=1, cmt=1, time = 0) |> # nolint: object_name_linter.
+        et(amt =  320, evid=1, cmt=2, time = 0) |>
+        et(list(c(0.1, 0.4), # sampling windows for first profile
+                c(0.3, 0.9),
+                c(0.7, 1.5),
+                c(1.5, 2.5),
+                c(2.5, 4),
+                c(4, 6),
+                c(6, 8.5),
+                c(8.75, 10),
+                c( 10, 12),
+                c(23, 27))) |>
+        et(amt=320, evid=4, time=72, cmt=1) |> # reset & dose
+        et(amt=320, evid=1, time=72, cmt=2) |> # dose afterward
+        et(list(c(72.1, 72.4),
+                c(72.3, 72.9),
+                c(72.7, 73.5),
+                c(73.5, 74.5),
+                c(74.5, 78.5),
+                c(76, 78),
+                c(78, 80.5),
+                c(80.75, 82),
+                c(82, 84),
+                c(95, 100))) |>
+        et(id=1:14) # Number of subjects to sample
 
 
-      # Now define the nlmixr2/rxode2 model used for both estimation and simulation
-      mod <- function() {
-        # Parameters
-        ini({
-          tka <- 0.45; label("Ka (first order absorption)")
-          trate <- 0.4 ; label("Zero order rate")
-          tcl <- 1; label("Cl")
-          tv <- 3.45; label("V")
-          fDepot <- logit(0.5) ; label("amount of dose in first order absorption")
-          eta.ka ~ 0.6
-          eta.cl ~ 0.3
-          eta.v ~ 0.1
-          add.sd <- 0.7
-        })
-        # and a model block with the error specification and model specification
-        model({
-          ka <- exp(tka + eta.ka)
-          cl <- exp(tcl + eta.cl)
-          v <- exp(tv + eta.v)
-          d/dt(depot) = -ka * depot
-          d/dt(center) = ka * depot - cl / v * center
+        # Now define the nlmixr2/rxode2 model used for both estimation and simulation
+        mod <- function() {
+          # Parameters
+          ini({
+            tka <- 0.45; label("Ka (first order absorption)")
+            trate <- 0.4 ; label("Zero order rate")
+            tcl <- 1; label("Cl")
+            tv <- 3.45; label("V")
+            fDepot <- logit(0.5) ; label("amount of dose in first order absorption")
+            eta.ka ~ 0.6
+            eta.cl ~ 0.3
+            eta.v ~ 0.1
+            add.sd <- 0.7
+          })
+          # and a model block with the error specification and model specification
+          model({
+            ka <- exp(tka + eta.ka)
+            cl <- exp(tcl + eta.cl)
+            v <- exp(tv + eta.v)
+            d/dt(depot) = -ka * depot
+            d/dt(center) = ka * depot - cl / v * center
 
-          f(depot) <- expit(fDepot)
-          f(center) <- 1-expit(fDepot)
-          rate(center) <- exp(trate)
+            f(depot) <- expit(fDepot)
+            f(center) <- 1-expit(fDepot)
+            rate(center) <- exp(trate)
 
-          cp = center / v
-          cp ~ add(add.sd)
-        })
-      }
+            cp = center / v
+            cp ~ add(add.sd)
+          })
+        }
 
-      mod <- mod()
+        mod <- mod()
 
-      # Simulate the data
-      d <- rxSolve(mod, eventTable, addDosing = TRUE)
+        # Simulate the data
+        d <- rxSolve(mod, eventTable, addDosing = TRUE)
 
-      expect_equal(d |>
-                     dplyr::filter(evid==1 & cmt==2) |> dplyr::pull(time) |> unique(),
-                    c(0, 72))
+        expect_equal(d |>
+                       dplyr::filter(evid==1 & cmt==2) |> dplyr::pull(time) |> unique(),
+                      c(0, 72))
+    }, rxseed = 123)
   })
 
   test_that("Only adds dose for subject 1, Fix for #723", {
