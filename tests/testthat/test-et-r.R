@@ -121,8 +121,6 @@ rxTest({
       expect_equal(chunk$low,  c(0, 4))
       expect_equal(chunk$high, c(2, 8))
       expect_equal(chunk$evid, 0L)
-      # chunk$time is randomized
-      #expect_equal(chunk$time, c(1, 6))  # midpoints
     })
   })
 
