@@ -395,14 +395,32 @@ et.rxParams <- function(x, ..., envir = parent.frame()) {
 
 #' @rdname et
 #' @export
-et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
-                        ss, rate, dur, until, id,
-                        amountUnits, timeUnits, addSampling,
+et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
+                        ii = NULL, addl = NULL, ss = NULL, rate = NULL, dur = NULL,
+                        until = NULL, id = NULL,
+                        amountUnits = NULL, timeUnits = NULL, addSampling = NULL,
                         envir = parent.frame(),
                         by = NULL, length.out = NULL) {
 
+  # ---- Capture missing status ----
+  .xMissing <- missing(x)
+  .timeMissing <- missing(time)
+  .amtMissing <- missing(amt)
+  .evidMissing <- missing(evid)
+  .cmtMissing <- missing(cmt)
+  .iiMissing <- missing(ii)
+  .addlMissing <- missing(addl)
+  .ssMissing <- missing(ss)
+  .rateMissing <- missing(rate)
+  .durMissing <- missing(dur)
+  .untilMissing <- missing(until)
+  .idMissing <- missing(id)
+  .amountUnitsMissing <- missing(amountUnits)
+  .timeUnitsMissing <- missing(timeUnits)
+  .addSamplingMissing <- missing(addSampling)
+
   # ---- Determine base rxEt object ----
-  .xIsRxEt <- !missing(x) && is.rxEt(x)
+  .xIsRxEt <- !.xMissing && is.rxEt(x)
   if (.xIsRxEt) {
     .et <- x$copy()  # always copy: et() returns a new object, never mutates x
   } else {
@@ -412,420 +430,88 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
 
   # ---- Conflicting alias checks ----
   .dotArgs <- list(...)
-  # Uppercase ID alias → id
-  if (!is.null(.dotArgs[["ID"]]) && missing(id)) {
-    id <- .dotArgs[["ID"]]
-  }
-  if (!is.null(.dotArgs[["dosing.interval"]]) && !missing(ii))
-    stop("cannot specify both 'ii' and 'dosing.interval'", call. = FALSE)
-  if (!is.null(.dotArgs[["dose"]]) && !missing(amt))
-    stop("cannot specify both 'amt' and 'dose'", call. = FALSE)
-  if (!is.null(.dotArgs[["dosing.to"]]) && !missing(cmt))
-    stop("cannot specify both 'cmt' and 'dosing.to'", call. = FALSE)
-  if (!is.null(.dotArgs[["dose.to"]]) && !missing(cmt))
-    stop("cannot specify both 'cmt' and 'dose.to'", call. = FALSE)
-  if (!is.null(.dotArgs[["state"]]) && !missing(cmt))
-    stop("cannot specify both 'cmt' and 'state'", call. = FALSE)
-  if (!is.null(.dotArgs[["amt.units"]]) && !is.null(.dotArgs[["dose.units"]]))
-    stop("cannot specify both 'amt.units' and 'dose.units'", call. = FALSE)
-  if (!is.null(.dotArgs[["time.units"]]) && !missing(timeUnits))
-    stop("cannot specify both 'time.units' and 'timeUnits'", call. = FALSE)
-  if (!is.null(.dotArgs[["start.time"]]) && !missing(time))
-    stop("cannot specify both 'time' and 'start.time'", call. = FALSE)
-  if (!is.null(.dotArgs[["nbr.doses"]]) && !is.null(.dotArgs[["nbrDoses"]]))
-    stop("cannot specify both 'nbr.doses' and 'nbrDoses'", call. = FALSE)
-  if (!is.null(.dotArgs[["duration"]]) && !missing(dur))
-    stop("cannot specify both 'dur' and 'duration'", call. = FALSE)
+  id <- .etHandleAliases(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
+                         .idMissing, .iiMissing, .amtMissing, .cmtMissing,
+                         .timeUnitsMissing, .timeMissing, .durMissing)
 
   # ---- seq helpers: by / length.out ----
-  if (!is.null(by) && !is.null(length.out))
-    stop("cannot specify both 'by' and 'length.out'", call. = FALSE)
-  if (!is.null(by) || !is.null(length.out)) {
-    .seqTargetIds <- if (.xIsRxEt && length(.envRef$IDs) > 0L) .envRef$IDs else NULL
-    .fromVal <- NULL
-    .toVal <- NULL
-    .seqDots <- list(...)
-    if (!missing(x) && !.xIsRxEt) {
-      .xVal <- eval(substitute(x), envir = envir)
-    } else {
-      .xVal <- NULL
-    }
-    .dotsNum <- Filter(function(.v) is.numeric(.v) || is.integer(.v), .seqDots)
-    # Also check named from/to in ...
-    if (!is.null(.seqDots[["from"]])) {
-      .fromVal <- .seqDots[["from"]]
-    } else if (!is.null(.xVal) && (is.numeric(.xVal) || is.integer(.xVal))) {
-      .fromVal <- .xVal
-    } else if (.xIsRxEt && length(.dotsNum) >= 1L) {
-      .fromVal <- .dotsNum[[1L]]
-    }
-    if (!is.null(.seqDots[["to"]])) {
-      .toVal <- .seqDots[["to"]]
-    } else if (!.xIsRxEt && length(.dotsNum) >= 1L) {
-      .toVal <- .dotsNum[[1L]]
-    } else if (.xIsRxEt && length(.dotsNum) >= 2L) {
-      .toVal <- .dotsNum[[2L]]
-    }
-    if (!is.null(.fromVal) && (is.numeric(.fromVal) || is.integer(.fromVal))) {
-      .from <- as.numeric(.fromVal)
-      if (length(.from) != 1L) stop("'from' must be scalar", call. = FALSE)
-      if (!is.null(.toVal)) {
-        .to <- as.numeric(.toVal)
-        if (length(.to) != 1L) stop("'to' must be scalar", call. = FALSE)
-        .resolvedTime <- if (!is.null(by)) seq(from = .from, to = .to, by = by) else seq(from = .from, to = .to, length.out = length.out)
-      } else if (!is.null(by)) {
-        .resolvedTime <- seq(from = .from, by = by)
-      } else {
-        .resolvedTime <- seq(from = .from, length.out = length.out)
-      }
-    } else if (!missing(time)) {
-      stop("'by'/'length.out' requires both a 'from' and 'to' value", call. = FALSE)
-    } else {
-      .resolvedTime <- numeric(0)
-    }
-    .df <- .etObsChunk(.resolvedTime)
-    .etAddChunk(.envRef, .df, .seqTargetIds)
-    .envRef$nobs <- .envRef$nobs + length(.resolvedTime) * max(1L, length(.seqTargetIds))
-    return(invisible(.et))
-  }
+  .res <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, .et = .et,
+                       .xMissing = .xMissing, .timeMissing = .timeMissing)
+  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
-  .posCmt <- NULL  # positional cmt from second ... arg (old API compat)
-
-  # ---- Two positional numeric args → from/to range ----
-  # Must check BEFORE assigning time from x, so we can detect the from/to pattern
-  if (missing(time) && !missing(x) && !.xIsRxEt) {
-    .xVal <- tryCatch(eval(substitute(x), envir = envir), error = function(e) NULL)
-    .dots <- list(...)
-    if (length(.dots) > 1L) {
-      stop("unused positional arguments", call. = FALSE)
-    }
-    if (!is.null(.xVal) && length(.xVal) == 1L &&
-        (is.numeric(.xVal) || is.integer(.xVal)) &&
-        length(.dots) == 1L &&
-        (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
-      .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
-      .df <- .etObsChunk(.resolvedTime)
-      .etAddChunk(.envRef, .df, NULL)
-      .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
-      return(invisible(.et))
-    } else if (is.data.frame(.xVal)) {
-      # Import data.frame as event table
-      .df <- .xVal
-      # Convert deSolve-style (var/value/method) to canonical rxEt format
-      if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
-        .df$cmt   <- .df$var;   .df$var   <- NULL
-        .df$amt   <- .df$value; .df$value <- NULL
-        if (!is.null(.df$method)) {
-          .df$evid <- ifelse(.df$method == "rep", 5L,
-                      ifelse(.df$method == "mult", 6L, 1L))
-          .df$method <- NULL
-        } else {
-          .df$evid <- 1L
-        }
-      }
-      if (is.null(.df$evid)) {
-        if (!is.null(.df$amt)) {
-          .df$evid <- ifelse(!is.na(.df$amt) & as.numeric(.df$amt) != 0, 1L, 0L)
-        } else {
-          .df$evid <- 0L
-        }
-      }
-      .df$evid <- as.integer(.df$evid)
-      if (is.null(.df$id)) .df$id <- 1L
-      .df$id <- as.integer(.df$id)
-      .obsIdx <- .df$evid == 0L
-      if (any(.obsIdx)) {
-        if (!is.null(.df$rate)) .df$rate[.obsIdx] <- NA_real_
-        if (!is.null(.df$amt))  .df$amt[.obsIdx]  <- NA_real_
-      }
-      .envRef$IDs    <- sort(unique(.df$id))
-      .envRef$nobs   <- .envRef$nobs  + sum(.obsIdx)
-      .envRef$ndose  <- .envRef$ndose + sum(!.obsIdx)
-      if (length(.envRef$IDs) > 1L) .envRef$show["id"] <- TRUE
-      if (sum(!.obsIdx) > 0L) .envRef$show["amt"] <- TRUE
-      if (!is.null(.df$rate) && any(.df$rate[!.obsIdx] != 0, na.rm = TRUE))
-        .envRef$show["rate"] <- TRUE
-      if (!is.null(.df$ii) && any(.df$ii != 0, na.rm = TRUE)) {
-        .envRef$show["ii"]   <- TRUE
-        .envRef$show["addl"] <- TRUE
-      }
-      .envRef$chunks <- .addRowsToChunks(.envRef$chunks, .df)
-      return(invisible(.et))
-    } else if (is.list(.xVal) && !is.data.frame(.xVal)) {
-      .listObs <- .xVal  # deferred: process after cmt/id resolved
-    } else if (!is.null(.xVal)) {
-      # single positional arg becomes time
-      time <- .xVal
-      # Second positional arg in ... treated as compartment (old API compat)
-      .dots2 <- list(...)
-      if (length(.dots2) == 1L && (is.character(.dots2[[1]]) || is.numeric(.dots2[[1]]))) {
-        .posCmt <- .dots2[[1]]
-      }
-    }
-  }
+  # ---- Positional args / data.frame import ----
+  .res <- .etHandlePositional(x, ..., time = time, .xIsRxEt = .xIsRxEt, envir = envir, .envRef = .envRef, .et = .et,
+                              .xMissing = .xMissing, .timeMissing = .timeMissing)
+  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
+  .posCmt  <- .res$posCmt
+  .listObs <- .res$listObs
+  time     <- .res$time
 
   # ---- Units ----
-  if (!missing(amountUnits)) .envRef$units["dosing"] <- amountUnits
-  if (!missing(timeUnits))   .envRef$units["time"]   <- timeUnits
-  # Handle dot-style and underscore aliases from ...
-  if (!is.null(.dotArgs[["amount.units"]]) && missing(amountUnits))
-    .envRef$units["dosing"] <- .dotArgs[["amount.units"]]
-  if (!is.null(.dotArgs[["time.units"]]) && missing(timeUnits))
-    .envRef$units["time"] <- .dotArgs[["time.units"]]
-  if (!is.null(.dotArgs[["time_units"]]) && missing(timeUnits) && is.null(.dotArgs[["time.units"]]))
-    .envRef$units["time"] <- .dotArgs[["time_units"]]
-  if (!is.null(.dotArgs[["amount_units"]]) && missing(amountUnits) && is.null(.dotArgs[["amount.units"]]))
-    .envRef$units["dosing"] <- .dotArgs[["amount_units"]]
+  .etHandleUnits(.envRef, amountUnits, timeUnits, .dotArgs, .amountUnitsMissing, .timeUnitsMissing)
 
   # ---- ID expansion ----
-  .resolvedId  <- NULL
-  .addedIds    <- integer(0)
-  .removedIds  <- integer(0)
-  .existingIds <- integer(0)
-  .doResize    <- FALSE
-  if (!missing(id)) {
-    .idVal       <- as.integer(eval(substitute(id), envir = envir))
-    .posIds      <- .idVal[.idVal > 0L]
-    .negIds      <- abs(.idVal[.idVal < 0L])
-    .existingIds <- .envRef$IDs
-    if (length(.posIds) > 0L && .xIsRxEt && .envRef$canResize) {
-      # canResize mode: positive IDs define the exact target set, replacing existing
-      .removedIds <- setdiff(.existingIds, .posIds)
-      .addedIds   <- setdiff(.posIds, .existingIds)
-      .envRef$IDs <- sort(.posIds)
-      .doResize   <- length(.addedIds) > 0L || length(.removedIds) > 0L
-    } else {
-      .addedIds   <- setdiff(.posIds, .existingIds)
-      .removedIds <- intersect(.negIds, .existingIds)
-      if (length(.posIds) > 0L) .envRef$IDs <- sort(unique(c(.envRef$IDs, .posIds)))
-      if (length(.negIds) > 0L) .envRef$IDs <- setdiff(.envRef$IDs, .negIds)
-      .doResize   <- .xIsRxEt && (length(.addedIds) > 0L || length(.removedIds) > 0L)
-    }
-    .envRef$show["id"] <- TRUE
-    .resolvedId <- .posIds
-  }
-  .targetIds <- .resolvedId
-  if (is.null(.targetIds) && .xIsRxEt && length(.envRef$IDs) > 0L) {
-    .targetIds <- .envRef$IDs
-  }
+  .res <- .etHandleId(id, .envRef, .xIsRxEt, envir)
+  .resolvedId  <- .res$resolvedId
+  .targetIds   <- .res$targetIds
+  .doResize    <- .res$doResize
+  .addedIds    <- .res$addedIds
+  .removedIds  <- .res$removedIds
+  .existingIds <- .res$existingIds
 
-  # ---- Resolve evid aliases ----
-  .evidVal <- NULL
-  if (!missing(evid)) {
-    .evidSym <- as.character(substitute(evid))
-    .evidVal <- switch(.evidSym,
-      obs       = 0L,
-      `0`       = 0L,
-      dose      = 1L,
-      `1`       = 1L,
-      other     = 2L,
-      `2`       = 2L,
-      reset     = 3L,
-      `3`       = 3L,
-      doseReset = 4L,
-      resetDose = 4L,
-      `4`       = 4L,
-      as.integer(tryCatch(eval(substitute(evid), envir = envir),
-                          error = function(e) as.integer(.evidSym)))
-    )
-  }
+  # ---- Resolve evid / cmt ----
+  .evidExpr <- substitute(evid)
+  .evidSym <- as.character(.evidExpr)
+  .evidVal <- .etHandleEvid(.evidExpr, .evidSym, envir, .evidMissing)
 
-  # ---- Resolve cmt ----
-  .cmtVal <- .posCmt
-  if (!missing(cmt)) {
-    .cmtSym <- as.character(substitute(cmt))
-    .cmtTry <- tryCatch(eval(substitute(cmt), envir = envir), error = function(e) .cmtSym)
-    .cmtVal <- if (is.character(.cmtTry) || is.numeric(.cmtTry)) .cmtTry else .cmtSym
-  }
+  .cmtExpr <- substitute(cmt)
+  .cmtSym <- as.character(.cmtExpr)
+  .cmtVal  <- .etHandleCmt(.cmtExpr, .cmtSym, .posCmt, envir, .cmtMissing)
 
-  # ---- Deferred list obs (from positional x = list(...)) ----
-  if (exists(".listObs", inherits = FALSE)) {
+  # ---- Deferred list obs ----
+  if (!is.null(.listObs)) {
     .dfObs <- .etObsChunk(.listObs, cmt = .cmtVal)
     .etAddChunk(.envRef, .dfObs, .targetIds)
     .envRef$nobs <- .envRef$nobs + length(.listObs) * max(1L, length(.targetIds))
-    if (missing(amt)) return(.rxEtSyncData(.et))
+    if (.amtMissing && is.null(amt)) return(invisible(.rxEtSyncData(.et)))
   }
 
-  # ---- Dose record (amt supplied or dose alias) ----
-  if (!missing(amt) || !is.null(.dotArgs[["dose"]])) {
-    .amtVal  <- if (!missing(amt)) eval(substitute(amt), envir = envir) else .dotArgs[["dose"]]
-    # Convert units amt to table's dosing units if applicable
-    if (inherits(.amtVal, "units") && requireNamespace("units", quietly = TRUE)) {
-      .doseU <- .envRef$units["dosing"]
-      if (!is.na(.doseU) && nchar(.doseU) > 0) {
-        .amtVal <- as.numeric(units::set_units(.amtVal, .doseU, mode = "standard"))
-      } else {
-        .amtVal <- as.numeric(.amtVal)
-      }
-    }
-    .timeVal <- if (!missing(time)) eval(substitute(time), envir = envir) else 0.0
-    .iiVal <- if (!missing(ii)) {
-      .iv <- eval(substitute(ii), envir = envir)
-      if (inherits(.iv, "units") && requireNamespace("units", quietly = TRUE)) {
-        .tu <- .envRef$units["time"]
-        if (!is.na(.tu) && nchar(.tu) > 0) as.numeric(units::set_units(.iv, .tu, mode = "standard"))
-        else as.numeric(.iv)
-      } else as.numeric(.iv)
-    } else 0.0
-    .addlVal <- if (!missing(addl)) as.integer(eval(substitute(addl), envir = envir)) else 0L
-    .ssVal   <- if (!missing(ss))   as.integer(eval(substitute(ss), envir = envir))   else 0L
-    .rateVal <- if (!missing(rate)) {
-      .rateSym <- deparse(substitute(rate))
-      if (.rateSym == "model") -1.0
-      else if (.rateSym == "dur") -2.0
-      else {
-        .rv <- eval(substitute(rate), envir = envir)
-        if (inherits(.rv, "units") && requireNamespace("units", quietly = TRUE)) {
-          .du <- .envRef$units["dosing"]
-          .tu <- .envRef$units["time"]
-          if (!is.na(.du) && nchar(.du) > 0 && !is.na(.tu) && nchar(.tu) > 0) {
-            as.numeric(units::set_units(.rv, paste0(.du, "/", .tu), mode = "standard"))
-          } else as.numeric(.rv)
-        } else as.numeric(.rv)
-      }
-    } else 0.0
-    .durVal  <- if (!missing(dur))  as.numeric(eval(substitute(dur), envir = envir))  else 0.0
-    .untilVal <- if (!missing(until)) {
-      .uv <- eval(substitute(until), envir = envir)
-      if (inherits(.uv, "units") && requireNamespace("units", quietly = TRUE)) {
-        .tu <- .envRef$units["time"]
-        if (!is.na(.tu) && nchar(.tu) > 0) as.numeric(units::set_units(.uv, .tu, mode = "standard"))
-        else as.numeric(.uv)
-      } else as.numeric(.uv)
-    } else NULL
+  # ---- Dose record ----
+  .amtExpr <- substitute(amt)
+  .timeExpr <- substitute(time)
+  .iiExpr <- substitute(ii)
+  .addlExpr <- substitute(addl)
+  .ssExpr <- substitute(ss)
+  .rateExpr <- substitute(rate)
+  .durExpr <- substitute(dur)
+  .untilExpr <- substitute(until)
+  .rateSym <- deparse(.rateExpr)
 
-    .df <- .etDoseChunk(
-      time = .timeVal, amt = .amtVal,
-      evid = if (!is.null(.evidVal)) .evidVal else 1L,
-      cmt  = if (!is.null(.cmtVal))  .cmtVal  else "(default)",
-      ii   = .iiVal, addl = .addlVal, ss = .ssVal,
-      rate = .rateVal, dur = .durVal,
-      until = .untilVal
-    )
-    if (!missing(dur) && missing(rate) && any(.durVal > 0, na.rm = TRUE)) {
-      .df$rate <- rep_len(0.0, nrow(.df))
-      .df$dur <- rep_len(.durVal, nrow(.df))
-    }
-    .pairDoseIds <- !is.null(.resolvedId) &&
-      nrow(.df) > 1L &&
-      nrow(.df) == length(.resolvedId)
-    if (.pairDoseIds) {
-      .df$id <- as.integer(.resolvedId)
-      .envRef$chunks <- .addRowsToChunks(.envRef$chunks, .df)
-    } else {
-      .etAddChunk(.envRef, .df, .targetIds)
-    }
-    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * if (.pairDoseIds) 1L else max(1L, length(.targetIds))
-    .envRef$show["amt"] <- TRUE
-    if (!is.null(.df$ii) && any(.df$ii > 0, na.rm = TRUE)) .envRef$show["ii"] <- TRUE
-    if (!is.null(.df$addl) && any(.df$addl > 0L, na.rm = TRUE)) .envRef$show["addl"] <- TRUE
-    if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
-    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
-    if (!is.null(.df$dur) && any(.df$dur != 0, na.rm = TRUE)) .envRef$show["dur"] <- TRUE
-    if (!is.null(.cmtVal) && .cmtVal != "(default)") .envRef$show["cmt"] <- TRUE
+  .res <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr, .iiExpr, .addlExpr, .ssExpr, .rateExpr, .durExpr, .untilExpr,
+                        .evidVal, .cmtVal, .resolvedId, .targetIds, addSampling, .et, .rateSym,
+                        .amtMissing, .timeMissing, .iiMissing, .addlMissing,
+                        .ssMissing, .rateMissing, .durMissing, .untilMissing,
+                        .addSamplingMissing)
+  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
-    if (!missing(addSampling) && isTRUE(addSampling)) {
-      .obsChunk <- .etObsChunk(.timeVal)
-      .etAddChunk(.envRef, .obsChunk, .targetIds)
-      .envRef$nobs   <- .envRef$nobs + length(.obsChunk$time) * max(1L, length(.targetIds))
-    }
-    return(.rxEtSyncData(.et))
-  }
+  # ---- Infusion/SS dose without explicit amt ----
+  .res <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr, .iiExpr, .durExpr, .evidVal, .cmtVal, .targetIds, .et, .rateSym,
+                                 .amtMissing, .rateMissing, .ssMissing, .timeMissing, .iiMissing, .durMissing)
+  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
-  # ---- Infusion/SS dose without explicit amt (amt=0 implied) ----
-  if (missing(amt) && (!missing(rate) || !missing(ss))) {
-    .timeVal <- if (!missing(time)) eval(substitute(time), envir = envir) else 0.0
-    .iiVal   <- if (!missing(ii))   as.numeric(eval(substitute(ii), envir = envir))   else 0.0
-    .ssVal   <- if (!missing(ss))   as.integer(eval(substitute(ss), envir = envir))   else 0L
-    .rateVal <- if (!missing(rate)) {
-      .rateSym <- deparse(substitute(rate))
-      if (.rateSym == "model") -1.0
-      else if (.rateSym == "dur") -2.0
-      else as.numeric(eval(substitute(rate), envir = envir))
-    } else 0.0
-    .durVal  <- if (!missing(dur)) as.numeric(eval(substitute(dur), envir = envir)) else 0.0
-    .df <- .etDoseChunk(
-      time = .timeVal, amt = 0.0,
-      evid = if (!is.null(.evidVal)) .evidVal else 1L,
-      cmt  = if (!is.null(.cmtVal))  .cmtVal  else "(default)",
-      ii = .iiVal, addl = 0L, ss = .ssVal,
-      rate = .rateVal, dur = .durVal
-    )
-    .etAddChunk(.envRef, .df, .targetIds)
-    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.targetIds))
-    .envRef$show["amt"]  <- TRUE
-    if (.ssVal > 0L)   .envRef$show["ss"]   <- TRUE
-    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
-    return(.rxEtSyncData(.et))
-  }
+  # ---- Observation record ----
+  .res <- .etHandleObs(time, .timeExpr, envir, .envRef, .evidVal, .cmtVal, .targetIds, .et, .timeMissing)
+  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
-  # ---- Observation record (time supplied) ----
-  if (!missing(time)) {
-    .timeVal <- tryCatch(
-      eval(substitute(time), envir = envir),
-      error = function(e) time
-    )
-    if (!is.list(.timeVal) && inherits(.timeVal, "units") && requireNamespace("units", quietly = TRUE)) {
-      .tu2 <- .envRef$units["time"]
-      if (!is.na(.tu2) && nchar(.tu2) > 0) {
-        .timeVal <- as.numeric(units::set_units(.timeVal, .tu2, mode = "standard"))
-      } else {
-        .timeVal <- as.numeric(.timeVal)
-      }
-    }
-    .evid2 <- if (!is.null(.evidVal)) .evidVal else 0L
-    .df <- .etObsChunk(.timeVal, cmt = .cmtVal)
-    if (.evid2 != 0L) .df$evid <- as.integer(.evid2)
-    .etAddChunk(.envRef, .df, .targetIds)
-    .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
-    if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-    return(.rxEtSyncData(.et))
-  }
+  # ---- Piping pattern ----
+  .res <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal, .targetIds, .evidVal, .envRef, .et, .timeMissing, .amtMissing, envir)
+  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
-  # ---- x is rxEt + positional numeric in ... → obs times (piping pattern) ----
-  if (.xIsRxEt && missing(time) && missing(amt)) {
-    if (length(.dotArgs) >= 1L) {
-      if (length(.dotArgs) > 2L) {
-        stop("unused positional arguments", call. = FALSE)
-      }
-      .firstDot <- .dotArgs[[1L]]
-      if (is.list(.firstDot) && !is.data.frame(.firstDot)) {
-        .df <- .etObsChunk(.firstDot, cmt = .cmtVal)
-        .etAddChunk(.envRef, .df, .targetIds)
-        .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
-        if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-        return(.rxEtSyncData(.et))
-      } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
-        if (length(.dotArgs) >= 2L &&
-            length(.firstDot) == 1L &&
-            (is.numeric(.dotArgs[[2L]]) || is.integer(.dotArgs[[2L]])) &&
-            length(.dotArgs[[2L]]) == 1L) {
-          .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(.dotArgs[[2L]]))
-        } else if (inherits(.firstDot, "units") && requireNamespace("units", quietly = TRUE)) {
-          .tu2 <- .envRef$units["time"]
-          if (!is.na(.tu2) && nchar(.tu2) > 0) {
-            .timeVec <- as.numeric(units::set_units(.firstDot, .tu2, mode = "standard"))
-          } else {
-            .timeVec <- as.numeric(.firstDot)
-          }
-        } else {
-          .timeVec <- as.numeric(.firstDot)
-        }
-        .df <- .etObsChunk(.timeVec, cmt = .cmtVal)
-        if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
-        .etAddChunk(.envRef, .df, .targetIds)
-        .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.targetIds))
-        return(.rxEtSyncData(.et))
-      }
-    }
-  }
-
-  # ---- ID-only resize (no time/amt): replicate/remove per-ID chunk data ----
+  # ---- ID-only resize ----
   if (.doResize) {
-    # Copy template to new IDs BEFORE removing (template must still be in chunks)
     if (length(.addedIds) > 0L) {
       .tid <- if (length(.existingIds) > 0L) .existingIds[1L] else NA_integer_
-      if (!is.na(.tid) && .tid <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.tid]])) {
+      if (!is.na(.tid) && !is.null(.envRef$chunks[[.tid]])) {
         .template <- .envRef$chunks[[.tid]]
         for (.newId in .addedIds) {
           .newChunk <- .template
@@ -845,19 +531,18 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
       }
     }
   }
-  # ---- Pure-evid: no time/amt/positional → create row at time=0 ----
+
+  # ---- Pure-evid ----
   if (!is.null(.evidVal)) {
     .df <- .etObsChunk(0.0, cmt = .cmtVal)
     if (.evidVal != 0L) .df$evid <- as.integer(.evidVal)
     .etAddChunk(.envRef, .df, .targetIds)
-    if (.evidVal == 0L) {
-      .envRef$nobs <- .envRef$nobs + max(1L, length(.targetIds))
-    } else {
-      .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
-    }
-    return(.rxEtSyncData(.et))
+    if (.evidVal == 0L) .envRef$nobs <- .envRef$nobs + max(1L, length(.targetIds))
+    else .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
+    return(invisible(.rxEtSyncData(.et)))
   }
-  .rxEtSyncData(.et)
+
+  invisible(.rxEtSyncData(.et))
 }
 
 #' @export
@@ -911,6 +596,132 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
 
   # 4. Old-style C++ EventTable: delegate to C++ etUpdate handler
   .Call(`_rxode2_etUpdate`, obj, arg, NULL, TRUE)
+}
+
+#' @export
+select.rxEt <- function(.data, ...) {
+  .full <- as.data.frame(.data, all = TRUE)
+  dplyr::select(.full, ...)
+}
+
+#' @export
+filter.rxEt <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+  .full <- as.data.frame(.data, all = TRUE)
+  dplyr::filter(.full, ..., .by = {{ .by }}, .preserve = .preserve)
+}
+
+#' @export
+rename.rxEt <- function(.data, ...) {
+  .full <- as.data.frame(.data, all = TRUE)
+  dplyr::rename(.full, ...)
+}
+
+#' @export
+names.rxEt <- function(x) {
+  names(as.data.frame(x, all = TRUE))
+}
+
+#' @export
+`[.rxEt` <- function(x, i, j, drop = FALSE) {
+  .env0 <- .rxEtEnv(x)
+  if (missing(i) && missing(j)) return(x)
+  if (missing(j)) {
+    # Row-only subset: return rxEt
+    .full <- .etMaterialize(x)
+    .sub  <- if (missing(i)) .full else .full[i, , drop = FALSE]
+    .newEnv <- new.env(parent = emptyenv())
+    .newEnv$units      <- .env0$units
+    .newEnv$show       <- .env0$show
+    .newEnv$randomType <- .env0$randomType
+    .newEnv$canResize  <- FALSE
+    .newEnv$chunks     <- list()
+    if (nrow(.sub) > 0L) {
+      .newEnv$IDs  <- sort(unique(as.integer(.sub$id)))
+      .newEnv$nobs  <- sum(.sub$evid == 0L, na.rm = TRUE)
+      .newEnv$ndose <- sum(.sub$evid != 0L, na.rm = TRUE)
+      for (.ii in .newEnv$IDs)
+        .newEnv$chunks[[.ii]] <- .sub[.sub$id == .ii, , drop = FALSE]
+    } else {
+      .newEnv$IDs   <- 1L
+      .newEnv$nobs  <- 0L
+      .newEnv$ndose <- 0L
+    }
+    return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
+  }
+  .mat <- as.data.frame(x, all = TRUE)
+  if (missing(i)) return(.mat[, j, drop = drop])
+  .mat[i, j, drop = drop]
+}
+
+#' @export
+`$<-.rxEt` <- function(x, name, value) {
+  .df <- .etMaterialize(x)
+  .df[[name]] <- value
+  .rxEtRebuildShell(x, .df)
+}
+
+#' @export
+drop_units.rxEt <- function(x) {
+  if (!requireNamespace("units", quietly = TRUE)) {
+    stop("requires package 'units'", call. = FALSE)
+  }
+  if (is.rxEt(x)) {
+    .env <- .rxEtEnv(x)
+    .env$units["dosing"] <- NA_character_
+    .env$units["time"]   <- NA_character_
+    return(x)
+  }
+  .Call(`_rxode2_et_`, list(amountUnits = NA_character_, timeUnits = NA_character_), x)
+}
+
+#' @export
+set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
+  if (is.null(mode)) {
+    stop("requires package 'units'", call. = FALSE)
+  }
+  if (missing(value)) {
+    value <- .unitless()
+  } else if (mode == "symbols") {
+    value <- substitute(value)
+    if (is.numeric(value) && !identical(value, 1) && !identical(value, 1L)) {
+      stop("the only valid number defining a unit is '1', signifying a unitless unit", call. = FALSE)
+    }
+  }
+  if (identical(value, .unitless())) {
+    warning("clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
+      call. = FALSE
+    )
+    if (is.rxEt(x)) {
+      .env <- .rxEtEnv(x)
+      .env$units["dosing"] <- NA_character_
+      .env$units["time"]   <- NA_character_
+      return(x)
+    }
+    return(suppressWarnings({
+      .Call(`_rxode2_et_`, list(amountUnits = "", timeUnits = ""), x)
+    }))
+  } else {
+    if (!inherits(value, "character")) value <- deparse(value)
+    .tUnit <- units::set_units(1, "sec", mode = "standard")
+    .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
+    if (inherits(.isTime, "try-error")) {
+      ## Amount
+      if (is.rxEt(x)) {
+        .env <- .rxEtEnv(x)
+        .env$units["dosing"] <- value
+        return(x)
+      }
+      return(.Call(`_rxode2_et_`, list(amountUnits = value), x))
+    } else {
+      ##
+      if (is.rxEt(x)) {
+        .env <- .rxEtEnv(x)
+        .env$units["time"] <- value
+        return(x)
+      }
+      return(.Call(`_rxode2_et_`, list(timeUnits = value), x))
+    }
+  }
 }
 #' Dispatch solve to 'rxode2' solve
 #'
@@ -990,131 +801,6 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       class(.ret) <- "rxode2et"
       return(rxEtDispatchSolve(.ret))
     }
-  }
-
-#' @export
-select.rxEt <- function(.data, ...) {
-  .env <- .rxEtEnv(.data)
-  .full <- .etMaterialize(.data)
-  .show <- .env$show
-  .showCols <- intersect(names(.show)[.show], names(.full))
-  dplyr::select(.full[, .showCols, drop = FALSE], ...)
-}
-
-filter.rxEt <- function(.data, ..., .by = NULL, .preserve = FALSE) {
-  .data <- tibble::as_tibble(.data)
-  dplyr::filter(.data, ..., .by = {{ .by }}, .preserve = .preserve)
-}
-
-rename.rxEt <- function(.data, ...) {
-  .data <- tibble::as_tibble(.data)
-  dplyr::rename(.data)
-}
-
-#' @export
-names.rxEt <- function(x) {
-  names(as.data.frame(x, all = TRUE))
-}
-
-#' @export
-`[.rxEt` <- function(x, i, j, drop = FALSE) {
-  .env0 <- .rxEtEnv(x)
-  if (missing(i) && missing(j)) return(x)
-  if (missing(j)) {
-    # Row-only subset: return rxEt
-    .full <- .etMaterialize(x)
-    .sub  <- if (missing(i)) .full else .full[i, , drop = FALSE]
-    .newEnv <- new.env(parent = emptyenv())
-    .newEnv$units      <- .env0$units
-    .newEnv$show       <- .env0$show
-    .newEnv$randomType <- .env0$randomType
-    .newEnv$canResize  <- FALSE
-    .newEnv$chunks     <- list()
-    if (nrow(.sub) > 0L) {
-      .newEnv$IDs  <- sort(unique(as.integer(.sub$id)))
-      .newEnv$nobs  <- sum(.sub$evid == 0L, na.rm = TRUE)
-      .newEnv$ndose <- sum(.sub$evid != 0L, na.rm = TRUE)
-      for (.ii in .newEnv$IDs)
-        .newEnv$chunks[[.ii]] <- .sub[.sub$id == .ii, , drop = FALSE]
-    } else {
-      .newEnv$IDs   <- 1L
-      .newEnv$nobs  <- 0L
-      .newEnv$ndose <- 0L
-    }
-    return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
-  }
-  .mat <- as.data.frame(x, all = TRUE)
-  if (missing(i)) return(.mat[, j, drop = drop])
-  .mat[i, j, drop = drop]
-}
-
-#' @export
-`$<-.rxEt` <- function(x, name, value) {
-  .df <- .etMaterialize(x)
-  .df[[name]] <- value
-  .rxEtRebuildShell(x, .df)
-}
-
-drop_units.rxEt <- function(x) {
-  if (!requireNamespace("units", quietly = TRUE)) {
-    stop("requires package 'units'", call. = FALSE)
-  }
-  if (is.rxEt(x)) {
-    .env <- .rxEtEnv(x)
-    .env$amountUnits <- NA_character_
-    .env$timeUnits <- NA_character_
-    return(x)
-  }
-  .Call(`_rxode2_et_`, list(amountUnits = NA_character_, timeUnits = NA_character_), x)
-}
-
-set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
-  if (is.null(mode)) {
-    stop("requires package 'units'", call. = FALSE)
-  }
-  if (missing(value)) {
-    value <- .unitless()
-  } else if (mode == "symbols") {
-    value <- substitute(value)
-    if (is.numeric(value) && !identical(value, 1) && !identical(value, 1L)) {
-      stop("the only valid number defining a unit is '1', signifying a unitless unit", call. = FALSE)
-    }
-  }
-  if (identical(value, .unitless())) {
-    warning("clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
-      call. = FALSE
-    )
-    if (is.rxEt(x)) {
-      .env <- .rxEtEnv(x)
-      .env$units["dosing"] <- NA_character_
-      .env$units["time"]   <- NA_character_
-      return(x)
-    }
-    return(suppressWarnings({
-      .Call(`_rxode2_et_`, list(amountUnits = "", timeUnits = ""), x)
-    }))
-  } else {
-    if (!inherits(value, "character")) value <- deparse(value)
-    .tUnit <- units::set_units(1, "sec", mode = "standard")
-    .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
-    if (inherits(.isTime, "try-error")) {
-      ## Amount
-      if (is.rxEt(x)) {
-        .env <- .rxEtEnv(x)
-        .env$units["dosing"] <- value
-        return(x)
-      }
-      return(.Call(`_rxode2_et_`, list(amountUnits = value), x))
-    } else {
-      ##
-      if (is.rxEt(x)) {
-        .env <- .rxEtEnv(x)
-        .env$units["time"] <- value
-        return(x)
-      }
-      return(.Call(`_rxode2_et_`, list(timeUnits = value), x))
-    }
-  }
 }
 
 #' Add dosing to eventTable
