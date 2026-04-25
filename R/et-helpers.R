@@ -97,19 +97,14 @@
     }
     if (length(.dots) == 1L && !is.null(names(.dots)) && any(names(.dots) != "")) {
        # Has named dots, let standard handler take it
-    } else if (length(.dots) == 1L) {
-       # One positional dot. Check if it's numeric range et(1, 2)
-       if (!is.null(.xVal) && length(.xVal) == 1L && (is.numeric(.xVal) || is.integer(.xVal)) &&
-           (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
-           # range: et(1, 2)
-           .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
-           .df <- .etObsChunk(.resolvedTime)
-           .etAddChunk(.envRef, .df, NULL)
-           .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
-           return(list(done = TRUE, et = .et))
-       } else {
-         stop("unused positional arguments", call. = FALSE)
-       }
+    } else if (length(.dots) == 1L && !is.null(.xVal) && length(.xVal) == 1L && (is.numeric(.xVal) || is.integer(.xVal)) &&
+               (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
+        # range: et(1, 2)
+        .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
+        .df <- .etObsChunk(.resolvedTime)
+        .etAddChunk(.envRef, .df, NULL)
+        .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
+        return(list(done = TRUE, et = .et))
     } else if (is.data.frame(.xVal)) {
       # Import data.frame as event table
       .df <- .xVal
