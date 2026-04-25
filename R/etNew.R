@@ -831,22 +831,12 @@ is.rxEt <- function(x) {
         .mid[.i]  <- as.numeric(.w)
         .high[.i] <- NA_real_
       } else if (length(.w) == 2L) {
-        if (.hasNormal || .has3) {
-          # This is the half-window case
-          if (.w[2L] < 0) {
-            stop("window half-width must be non-negative", call. = FALSE)
-          }
-          .low[.i]  <- .w[1L] - .w[2L]
-          .mid[.i]  <- .w[1L]
-          .high[.i] <- .w[1L] + .w[2L]
-        } else {
-          if (.w[1] > .w[2]) {
-            stop("window bounds must be ordered c(low, high)", call. = FALSE)
-          }
-          .low[.i]  <- .w[1]
-          .mid[.i]  <- (.w[1] + .w[2]) / 2
-          .high[.i] <- .w[2]
+        if (.w[1] > .w[2]) {
+          stop("window bounds must be ordered c(low, high)", call. = FALSE)
         }
+        .low[.i]  <- .w[1]
+        .mid[.i]  <- (.w[1] + .w[2]) / 2
+        .high[.i] <- .w[2]
       } else if (length(.w) == 3L) {
         if (is.na(.w[3L])) {
           .low[.i]  <- .w[1L]
