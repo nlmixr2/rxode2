@@ -13,6 +13,10 @@
 
 - Change mtime state-based dosing to use less memory
 
+- Refactored et() to be in R, fixing many issues and allowing
+  dosing/sampling windows to use `ii`, `addl` and `until` (realized
+  immediately)
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now

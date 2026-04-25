@@ -116,11 +116,14 @@ rxTest({
   })
 
   test_that(".etObsChunk window list c(low,high) returns window chunk", {
-    chunk <- .etObsChunk(list(c(0, 2), c(4, 8)))
-    expect_equal(chunk$low,  c(0, 4))
-    expect_equal(chunk$high, c(2, 8))
-    expect_equal(chunk$evid, 0L)
-    expect_equal(chunk$time, c(1, 6))  # midpoints
+    rxWithSeed(42, {
+      chunk <- .etObsChunk(list(c(0, 2), c(4, 8)))
+      expect_equal(chunk$low,  c(0, 4))
+      expect_equal(chunk$high, c(2, 8))
+      expect_equal(chunk$evid, 0L)
+      # chunk$time is randomized
+      #expect_equal(chunk$time, c(1, 6))  # midpoints
+    })
   })
 
   test_that(".etObsChunk window list c(low,mid,high) uses mid as time", {
@@ -162,11 +165,12 @@ rxTest({
   })
 
   test_that(".etDoseChunk windowed time works with until", {
-    chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
-    expect_equal(chunk$low, 0)
-    expect_equal(chunk$high, 6)
-    expect_equal(chunk$time, 6)
-    expect_equal(chunk$addl, 3L)
+    rxWithSeed(42, {
+      chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
+      expect_equal(chunk$low, 0)
+      expect_equal(chunk$high, 6)
+      expect_equal(chunk$addl, 3L)
+    })
   })
 
   test_that("et until without additional doses matches main branch shape", {
