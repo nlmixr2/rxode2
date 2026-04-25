@@ -419,6 +419,18 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .timeUnitsMissing <- missing(timeUnits)
   .addSamplingMissing <- missing(addSampling)
 
+  # ---- Positional argument checks ----
+  if (!.xMissing) {
+    if (!is.data.frame(x) && !is.rxEt(x) && !is.character(x)) {
+      # et(1, 2, 3) -> x=1, ...=list(2, 3) in et.default
+      .dots <- list(...)
+      if (length(.dots) >= 2) {
+        .dn <- names(.dots)
+        if (is.null(.dn) || any(.dn[1:2] == "")) stop("unused positional arguments", call. = FALSE)
+      }
+    }
+  }
+
   # ---- Determine base rxEt object ----
   .xIsRxEt <- !.xMissing && is.rxEt(x)
   if (.xIsRxEt) {
@@ -854,6 +866,13 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
       .lst$cmt <- dosing.to
     }
     return(invisible(do.call(et, c(.lst, .extra))))
+  } else if (inherits(eventTable, "rxSolve")) {
+    .et <- eventTable$get.EventTable()
+    .newEt <- et(x = .et, amt = dose, time = start.time,
+                 ii = if (nbr.doses > 1L) dosing.interval else 0.0,
+                 addl = as.integer(nbr.doses) - 1L,
+                 addSampling = do.sampling, ...)
+    return(invisible(rxSolve(eventTable, events = .newEt, updateObject = FALSE)))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   stop("invalid event table", call. = FALSE)
@@ -878,6 +897,10 @@ add.sampling <- function(eventTable, time, time.units = NA_character_) {
   if (is.rxEt(eventTable)) {
     eventTable$add.sampling(time, time.units = time.units)
     return(invisible(.rxEtSyncData(eventTable)))
+  } else if (inherits(eventTable, "rxSolve")) {
+    .et <- eventTable$get.EventTable()
+    .newEt <- et(x = .et, time = time, timeUnits = time.units)
+    return(invisible(rxSolve(eventTable, events = .newEt, updateObject = FALSE)))
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   stop("invalid event table", call. = FALSE)

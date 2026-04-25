@@ -2346,6 +2346,13 @@ solve.rxEt <- solve.rxSolve
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
   if (arg == "rxModelVars") return(rxModelVars(obj))
+  .cls <- attr(obj, "class")
+  .env <- attr(.cls, ".rxode2.env")
+  if (is.environment(.env) && exists(arg, envir = .env, inherits = FALSE)) {
+    .val <- get(arg, envir = .env, inherits = FALSE)
+    if (is.function(.val)) return(.val)
+    return(.val)
+  }
   return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 

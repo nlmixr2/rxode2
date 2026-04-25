@@ -2541,35 +2541,33 @@ extern RObject evCur;
 List getEtRxsolve(Environment e) {
   if (!e.exists(".et")) {
     RObject eventso = e[".args.events"];
-    Function newRxEt = getRxFn(".newRxEt");
-    RObject et = newRxEt();
-    evCur = et;
-    Function etR = getRxFn("et");
-    et = etR(et, _["data"] = eventso);
+    Function asEt = getRxFn("as.et");
+    RObject et = asEt(eventso);
     e[".et"] = et;
+    evCur = et;
     Function parse2("parse", R_BaseNamespace);
     Function eval2("eval", R_BaseNamespace);
     // eventTable style methods
-    e["get.EventTable"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.EventTable()"),
+    e["get.EventTable"] = eval2(_["expr"]   = parse2(_["text"]="function() .et"),
                                 _["envir"]  = e);
     e["get.obs.rec"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.obs.rec()"),
                              _["envir"]  = e);
     e["get.nobs"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.nobs()"),
                           _["envir"]  = e);
-    e["add.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$add.dosing(...); invisible(rxSolve(.args.object,events=.newEt, updateObject=TRUE))}"),
+    e["add.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$add.dosing(...); invisible(rxSolve(.args.object,events=.et, updateObject=TRUE))}"),
                             _["envir"]  = e);
-    e["clear.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.dosing(...); invisible(rxSolve(.args.object,events=.newEt, updateObject=TRUE))}"),
+    e["clear.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.dosing(...); invisible(rxSolve(.args.object,events=.et, updateObject=TRUE))}"),
                               _["envir"]  = e);
     e["get.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.dosing()"),
                             _["envir"]  = e);
 
-    e["add.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
+    e["add.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                               _["envir"]  = e);
 
-    e["clear.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.sampling(...); invisible(rxSolve(.args.object,events=.newEt,updateObject=TRUE))}"),
+    e["clear.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                                 _["envir"]  = e);
 
-    e[".replace.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.sampling(); .newEt$add.sampling(...); invisible(rxSolve(.args.object,events=.newEt,updateObject=TRUE))}"),
+    e[".replace.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.sampling(); .et$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                                    _["envir"]  = e);
 
     e["get.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.sampling()"),
