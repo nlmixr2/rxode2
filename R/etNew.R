@@ -413,7 +413,7 @@
       if (!is.null(seed)) set.seed(seed)
       .et <- structure(list(env = env), class = "rxEt")
       .mat <- .etMaterialize(.et)
-      .hasWin <- !is.na(.mat$low) & !is.na(.mat$high) & .mat$evid == 0L
+      .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
       if (!any(.hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
       } else {
@@ -628,19 +628,23 @@
   .doseIdx <- which(.dt$evid != 0L)
   if (length(.doseIdx) > 0L) {
     for (.col in c("rate", "ii", "dur")) {
-      .vals <- .dt[[.col]]
-      .naInDose <- is.na(.vals[.doseIdx])
-      if (any(.naInDose)) {
-        .vals[.doseIdx[.naInDose]] <- 0.0
-        data.table::set(.dt, j = .col, value = .vals)
+      if (.col %in% names(.dt)) {
+        .vals <- .dt[[.col]]
+        .naInDose <- is.na(.vals[.doseIdx])
+        if (any(.naInDose)) {
+          .vals[.doseIdx[.naInDose]] <- 0.0
+          data.table::set(.dt, j = .col, value = .vals)
+        }
       }
     }
     for (.col in c("addl", "ss")) {
-      .vals <- .dt[[.col]]
-      .naInDose <- is.na(.vals[.doseIdx])
-      if (any(.naInDose)) {
-        .vals[.doseIdx[.naInDose]] <- 0L
-        data.table::set(.dt, j = .col, value = .vals)
+      if (.col %in% names(.dt)) {
+        .vals <- .dt[[.col]]
+        .naInDose <- is.na(.vals[.doseIdx])
+        if (any(.naInDose)) {
+          .vals[.doseIdx[.naInDose]] <- 0L
+          data.table::set(.dt, j = .col, value = .vals)
+        }
       }
     }
   }
@@ -805,15 +809,69 @@ is.rxEt <- function(x) {
   if (!is.null(dosing.interval)) ii <- as.numeric(dosing.interval)
   if (!is.null(nbr.doses))       addl <- as.integer(nbr.doses) - 1L
 
+  .randomType <- NA_integer_
   if (is.list(time)) {
-    .timeDose <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
-    .timeUntil <- vapply(time, function(.w) {
-      .w <- as.numeric(.w)
-      .w[min(length(.w), 2L)]
-    }, numeric(1L))
+    .nw <- length(time)
+    .low  <- numeric(.nw)
+    .mid  <- numeric(.nw)
+    .high <- numeric(.nw)
+    # This is for the normal variability case that is list(c(4, 2, NA))
+    .hasNormal <- any(vapply(time,
+                           function(.w) {
+                             length(.w) == 3L && is.na(.w[3L])
+                           }, logical(1L)))
+    .has3 <- any(vapply(time,
+                        function(.w) {
+                          length(.w) == 3L && !is.na(.w[3L])
+                        }, logical(1L)))
+    for (.i in seq_len(.nw)) {
+      .w <- time[[.i]]
+      if (length(.w) == 1L) {
+        .low[.i]  <- NA_real_
+        .mid[.i]  <- as.numeric(.w)
+        .high[.i] <- NA_real_
+      } else if (length(.w) == 2L) {
+        if (.hasNormal || .has3) {
+          # This is the half-window case
+          if (.w[2L] < 0) {
+            stop("window half-width must be non-negative", call. = FALSE)
+          }
+          .low[.i]  <- .w[1L] - .w[2L]
+          .mid[.i]  <- .w[1L]
+          .high[.i] <- .w[1L] + .w[2L]
+        } else {
+          if (.w[1] > .w[2]) {
+            stop("window bounds must be ordered c(low, high)", call. = FALSE)
+          }
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- (.w[1] + .w[2]) / 2
+          .high[.i] <- .w[2]
+        }
+      } else if (length(.w) == 3L) {
+        if (is.na(.w[3L])) {
+          .low[.i]  <- .w[1L]
+          .mid[.i]  <- .w[1L]
+          .high[.i] <- .w[2L]
+        } else {
+          if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- .w[2]
+          .high[.i] <- .w[3]
+        }
+      } else {
+        stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
+      }
+    }
+    .randomType <- if (.hasNormal) 3L else if (.has3) 1L else 2L
+    .timeDose <- .mid
+    .timeUntil <- .mid
+    .lowDose <- .low
+    .highDose <- .high
   } else {
     .timeDose <- as.numeric(time)
     .timeUntil <- .timeDose
+    .lowDose <- NA_real_
+    .highDose <- NA_real_
   }
 
   if (!is.null(until)) {
@@ -867,14 +925,18 @@ is.rxEt <- function(x) {
     if (length(.timeDose) != length(amt)) stop("'time' and 'amt' must have the same length", call. = FALSE)
   }
 
-  data.frame(
+  .res <- data.frame(
     time = as.numeric(.timeDose), amt  = as.numeric(amt),
     evid = as.integer(evid), cmt  = as.character(cmt),
     ii   = as.numeric(ii),   addl = as.integer(addl),
     ss   = as.integer(ss),   rate = as.numeric(rate),
     dur  = as.numeric(dur),
+    low  = as.numeric(.lowDose),
+    high = as.numeric(.highDose),
     stringsAsFactors = FALSE
   )
+  attr(.res, ".randomType") <- .randomType
+  .res
 }
 
 #' Rebuild an rxEt shell after data-frame style mutation

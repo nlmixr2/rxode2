@@ -931,7 +931,27 @@ rxTest({
     e7 <- simulate(e6, seed=42)
     expect_equal(mean(as.numeric(e7$time)), 4, tolerance=0.1)
     expect_equal(sd(as.numeric(e7$time)), 2, tolerance=0.1)
+
   })
+
+  test_that("dosing window simulation", {
+
+    e1 <- et(amt=100, time=list(c(0, 1))) |>
+      et(id=1:10000)
+    e2 <- simulate(e1, seed=42)
+    df <- as.data.frame(e2)
+    expect_equal(mean(df$time), 0.5, tolerance=0.1)
+    expect_equal(sd(df$time), sqrt(1/12), tolerance=0.1)
+
+    e3 <- et(amt=100, time=list(c(4, 0.5, NA))) |>
+      et(id=1:10000)
+    e4 <- simulate(e3, seed=42)
+    df <- as.data.frame(e4)
+    expect_equal(mean(df$time), 4, tolerance=0.1)
+    expect_equal(sd(df$time), 0.5, tolerance=0.1)
+
+  })
+
 
   test_that("adding an ID in the improper order will not cause an issue", {
 
@@ -1078,7 +1098,7 @@ rxTest({
 
         expect_equal(d |>
                        dplyr::filter(evid==1 & cmt==2) |> dplyr::pull(time) |> unique(),
-                      c(0, 72))
+                     c(0, 72))
     }, rxseed = 123)
   })
 

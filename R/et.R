@@ -957,7 +957,7 @@ simulate.rxEt <- # nolint
       if (is.rxEt(object)) {
         .env0 <- .rxEtEnv(object)
         .mat <- .etMaterialize(object)
-        .hasWin <- !is.na(.mat$low) & !is.na(.mat$high) & .mat$evid == 0L
+        .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
         if (!any(.hasWin)) {
           warning("simulating event table without windows returns identical event table", call. = FALSE)
         } else {
