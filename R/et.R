@@ -600,19 +600,19 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
 #' @export
 select.rxEt <- function(.data, ...) {
-  .full <- as.data.frame(.data, all = TRUE)
+  .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::select(.full, ...)
 }
 
 #' @export
 filter.rxEt <- function(.data, ..., .by = NULL, .preserve = FALSE) {
-  .full <- as.data.frame(.data, all = TRUE)
+  .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::filter(.full, ..., .by = {{ .by }}, .preserve = .preserve)
 }
 
 #' @export
 rename.rxEt <- function(.data, ...) {
-  .full <- as.data.frame(.data, all = TRUE)
+  .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::rename(.full, ...)
 }
 
