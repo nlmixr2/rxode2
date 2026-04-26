@@ -246,9 +246,12 @@
     }
     if (length(.dots) == 1L && !is.null(names(.dots)) && any(names(.dots) != "")) {
        # Has named dots, let standard handler take it
-    } else if (length(.dots) == 1L && !is.null(.xVal) && length(.xVal) == 1L && (is.numeric(.xVal) || is.integer(.xVal)) &&
+    } else if (length(.dots) == 1 &&
+                 !is.null(.xVal) &&
+                 length(.xVal) == 1 &&
+                 (is.numeric(.xVal) || is.integer(.xVal)) &&
                  (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
-      ## .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
+      #et(1, 20) add obs at times 1 and 20
       .resolvedTime <- c(as.numeric(.xVal), as.numeric(.dots[[1]]))
       .df <- .etObsChunk(.resolvedTime)
       .etAddChunk(envRef, .df, NULL)
@@ -259,14 +262,16 @@
       .df <- .xVal
       # Convert deSolve-style (var/value/method) to canonical rxEt format
       if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
-        .df$cmt   <- .df$var;   .df$var   <- NULL
-        .df$amt   <- .df$value; .df$value <- NULL
+        .df$cmt   <- .df$var
+        .df$var   <- NULL
+        .df$amt   <- .df$value
+        .df$value <- NULL
         if (!is.null(.df$method)) {
           .df$evid <- ifelse(.df$method == "rep", 5L,
                       ifelse(.df$method == "mult", 6L, 1L))
           .df$method <- NULL
         } else {
-          .df$evid <- 1L
+          .df$evid <- 1
         }
       }
       if (is.null(.df$evid)) {
@@ -281,30 +286,43 @@
       .df$id <- as.integer(.df$id)
       .obsIdx <- .df$evid == 0L
       if (any(.obsIdx)) {
-        if (!is.null(.df$rate)) .df$rate[.obsIdx] <- NA_real_
-        if (!is.null(.df$amt))  .df$amt[.obsIdx]  <- NA_real_
+        if (!is.null(.df$rate)) {
+          .df$rate[.obsIdx] <- NA_real_
+        }
+        if (!is.null(.df$amt))  {
+          .df$amt[.obsIdx]  <- NA_real_
+        }
       }
       envRef$IDs    <- sort(unique(.df$id))
       envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
       envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
-      if (length(envRef$IDs) > 1L) envRef$show["id"] <- TRUE
-      if (sum(!.obsIdx) > 0L) envRef$show["amt"] <- TRUE
-      if (!is.null(.df$rate) && any(.df$rate[!.obsIdx] != 0, na.rm = TRUE))
+      if (length(envRef$IDs) > 1L) {
+        envRef$show["id"] <- TRUE
+      }
+      if (sum(!.obsIdx) > 0L) {
+        envRef$show["amt"] <- TRUE
+      }
+      if (!is.null(.df$rate) &&
+            any(.df$rate[!.obsIdx] != 0, na.rm = TRUE)) {
         envRef$show["rate"] <- TRUE
+      }
       if (!is.null(.df$ii) && any(.df$ii != 0, na.rm = TRUE)) {
         envRef$show["ii"]   <- TRUE
         envRef$show["addl"] <- TRUE
       }
       envRef$chunks <- .addRowsToChunks(envRef$chunks, .df)
       return(list(done = TRUE, et = et))
-    } else if (is.list(.xVal) && !is.data.frame(.xVal)) {
-      .listObs <- .xVal  # deferred: process after cmt/id resolved
+    } else if (is.list(.xVal) &&
+                 !is.data.frame(.xVal)) {
+      # deferred: process after cmt/id resolved
+      .listObs <- .xVal
     } else if (!is.null(.xVal)) {
       # single positional arg becomes time
       time <- .xVal
       # Second positional arg in ... treated as compartment (old API compat)
       .dots2 <- list(...)
-      if (length(.dots2) == 1L && (is.character(.dots2[[1]]) || is.numeric(.dots2[[1]]))) {
+      if (length(.dots2) == 1L && is.character(.dots2[[1]])) {
+        # This only occurs et(1, "matt") but not with et(1, 2)
         .posCmt <- .dots2[[1]]
       }
     }
