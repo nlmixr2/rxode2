@@ -68,40 +68,112 @@
     stop("cannot specify both 'dur' and 'duration'", call. = FALSE)
   id
 }
-
-.etHandleSeq <- function(by, length.out, .xIsRxEt, .envRef, x, ..., envir, time, .et, .xMissing, .timeMissing) {
+#' This function handles the sequence type of arguments
+#'
+#' @param by the by argument passed to et(), used to specify the
+#'   increment for a sequence of observation times.
+#'
+#' @param length.out the length.out argument passed to et(), used to specify the number
+#'  of points in a sequence of observation times.
+#'
+#' @param xIsRxEt a logical indicating whether the x argument is an
+#'   rxEt object, which affects how the from/to values for the
+#'   sequence are resolved.
+#'
+#' @param envRef a reference to the internal environment of the rxEt
+#'   object being constructed, used to access and modify the current
+#'   state of the event table as new chunks are added.
+#'
+#' @param x the x argument passed to et(), which may be used to
+#'   resolve the from/to values for the sequence if xIsRxEt is FALSE
+#'
+#' @param ... the ... arguments passed to et(), which may contain
+#'   named or unnamed arguments used to resolve the from/to values for
+#'   the sequence, such as from/to or the first two unnamed numeric
+#'   arguments.
+#'
+#' @param envir the environment in which to evaluate any expressions needed to
+#'  resolve the from/to values for the sequence.
+#'
+#' @param time the time argument passed to et(), which is used to
+#'   check for conflicts with the sequence arguments.
+#'
+#' @param et the current state of the event table being constructed,
+#'   which may be modified by adding a new chunk of observation times
+#'   if the sequence arguments are successfully resolved.
+#'
+#' @param xMissing a logical indicating whether the x argument was
+#'   missing, which affects how the from/to values for the sequence
+#'   are resolved.
+#'
+#' @param timeMissing a logical indicating whether the time argument
+#'   was missing, which is used to check for conflicts with the
+#'   sequence arguments.
+#'
+#' @return a list with components done (a logical indicating whether
+#'   the sequence was successfully handled and the main et() function
+#'   should return immediately) and et (the possibly modified event
+#'   table after handling the sequence arguments)
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+#'
+.etHandleSeq <- function(by, length.out, xIsRxEt, envRef, x, ..., envir, time, et, xMissing, timeMissing) {
   if (!is.null(by) && !is.null(length.out))
     stop("cannot specify both 'by' and 'length.out'", call. = FALSE)
   if (!is.null(by) || !is.null(length.out)) {
-    .seqTargetIds <- if (.xIsRxEt && length(.envRef$IDs) > 0L) .envRef$IDs else NULL
+    if (xIsRxEt && length(envRef$IDs) > 0L) {
+      .seqTargetIds <- envRef$IDs
+    } else {
+      .seqTargetIds <- NULL
+    }
     .fromVal <- NULL
     .toVal <- NULL
     .seqDots <- list(...)
-    .xVal <- if (!.xMissing && !.xIsRxEt) x else NULL
 
-    .dotsNum <- Filter(function(.v) is.numeric(.v) || is.integer(.v), .seqDots)
+    if (!xMissing && !xIsRxEt) {
+      .xVal <- x
+    } else {
+      .xVal <- NULL
+    }
+    .dotsNum <- Filter(function(.v) {
+      is.numeric(.v) || is.integer(.v)
+    }, .seqDots)
+
     # Also check named from/to in ...
     if (!is.null(.seqDots[["from"]])) {
       .fromVal <- .seqDots[["from"]]
     } else if (!is.null(.xVal) && (is.numeric(.xVal) || is.integer(.xVal))) {
       .fromVal <- .xVal
-    } else if (.xIsRxEt && length(.dotsNum) >= 1L) {
+    } else if (xIsRxEt && length(.dotsNum) >= 1L) {
       .fromVal <- .dotsNum[[1L]]
     }
+
     if (!is.null(.seqDots[["to"]])) {
       .toVal <- .seqDots[["to"]]
-    } else if (!.xMissing && !.xIsRxEt && length(.dotsNum) >= 1L) {
+    } else if (!xMissing && !xIsRxEt && length(.dotsNum) >= 1L) {
       .toVal <- .dotsNum[[1L]]
-    } else if (.xIsRxEt && length(.dotsNum) >= 2L) {
+    } else if (xIsRxEt && length(.dotsNum) >= 2L) {
       .toVal <- .dotsNum[[2L]]
     }
-    if (!is.null(.fromVal) && (is.numeric(.fromVal) || is.integer(.fromVal))) {
+
+    if (!is.null(.fromVal) &&
+          (is.numeric(.fromVal) || is.integer(.fromVal))) {
       .from <- as.numeric(.fromVal)
-      if (length(.from) != 1L) stop("'from' must be scalar", call. = FALSE)
+      if (length(.from) != 1L) {
+        stop("'from' must be scalar", call. = FALSE)
+      }
       if (!is.null(.toVal)) {
         .to <- as.numeric(.toVal)
-        if (length(.to) != 1L) stop("'to' must be scalar", call. = FALSE)
-        .resolvedTime <- if (!is.null(by)) seq(from = .from, to = .to, by = by) else seq(from = .from, to = .to, length.out = length.out)
+        if (length(.to) != 1L) {
+          stop("'to' must be scalar", call. = FALSE)
+        }
+        if (!is.null(by)) {
+          .resolvedTime <- seq(from = .from, to = .to, by = by)
+        } else {
+          seq(from = .from, to = .to, length.out = length.out)
+        }
       } else if (!is.null(by)) {
         .resolvedTime <- seq(from = .from, by = by)
       } else {
@@ -113,9 +185,9 @@
       .resolvedTime <- numeric(0)
     }
     .df <- .etObsChunk(.resolvedTime)
-    .etAddChunk(.envRef, .df, .seqTargetIds)
-    .envRef$nobs <- .envRef$nobs + length(.resolvedTime) * max(1L, length(.seqTargetIds))
-    return(list(done = TRUE, et = .et))
+    .etAddChunk(envRef, .df, .seqTargetIds)
+    envRef$nobs <- envRef$nobs + length(.resolvedTime) * max(1L, length(.seqTargetIds))
+    return(list(done = TRUE, et = et))
   }
   list(done = FALSE)
 }
