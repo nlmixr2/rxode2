@@ -447,8 +447,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
                                 .timeUnitsMissing, .timeMissing, .durMissing)
 
   # ---- seq helpers: by / length.out ----
-  .res <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, .et = .et,
-                       .xMissing = .xMissing, .timeMissing = .timeMissing)
+  .res <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, et = .et,
+                       xMissing = .xMissing, timeMissing = .timeMissing)
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
   # ---- Positional args / data.frame import ----
