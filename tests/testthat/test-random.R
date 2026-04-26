@@ -828,7 +828,7 @@ rxTest({
       i <- 0
     })
 
-    e <- et(0, 10)
+    e <- et(0, 10, by = 1)
 
     rxWithSeed(10, {
 
