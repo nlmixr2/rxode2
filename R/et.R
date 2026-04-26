@@ -442,9 +442,9 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- Conflicting alias checks ----
   .dotArgs <- list(...)
-  id <- .etHandleAliases(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
-                         .idMissing, .iiMissing, .amtMissing, .cmtMissing,
-                         .timeUnitsMissing, .timeMissing, .durMissing)
+  id <- .etAssertArgsAndReturnId(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
+                                .idMissing, .iiMissing, .amtMissing, .cmtMissing,
+                                .timeUnitsMissing, .timeMissing, .durMissing)
 
   # ---- seq helpers: by / length.out ----
   .res <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, .et = .et,

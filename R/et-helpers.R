@@ -1,30 +1,70 @@
-
-.etHandleAliases <- function(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
-                            .idMissing, .iiMissing, .amtMissing, .cmtMissing,
-                            .timeUnitsMissing, .timeMissing, .durMissing) {
+#' This asserts arguments that should not be used together and returns the resolved ID
+#'
+#' @param dotArgs The list of the ... arguments passed to the main
+#'   et() function, used to check for deprecated or alias arguments
+#'
+#' @param id the id argument passed to et(), which may be modified if
+#'   an uppercase "ID" is found in dotArgs
+#'
+#' @param ii the ii argument passed to et()
+#'
+#' @param amt the amt argument passed to et()
+#'
+#' @param timeUnits the timeUnits argument passed to et()
+#'
+#' @param time the time argument passed to et()
+#'
+#' @param dur the dur argument passed to et()
+#'
+#' @param idMissing a logical indicating whether the id argument was
+#'   missing
+#'
+#' @param iiMissing a logical indicating whether the ii argument was
+#'   missing
+#'
+#' @param amtMissing a logical indicating whether the amt argument was
+#'   missing
+#'
+#' @param cmtMissing a logical indicating whether the cmt argument was
+#'   missing
+#'
+#' @param timeUnitsMissing a logical indicating whether the timeUnits
+#'   argument was missing
+#'
+#' @param timeMissing a logical indicating whether the time argument
+#'   was missing
+#'
+#' @param durMissing a logical indicating whether the dur argument was
+#'   missing
+#'
+#' @return the resolved id value after checking for aliases and conflicts
+#' @noRd
+.etAssertArgsAndReturnId <- function(dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
+                            idMissing, iiMissing, amtMissing, cmtMissing,
+                            timeUnitsMissing, timeMissing, durMissing) {
   # Uppercase ID alias -> id
-  if (!is.null(.dotArgs[["ID"]]) && .idMissing) {
-    id <- .dotArgs[["ID"]]
+  if (!is.null(dotArgs[["ID"]]) && idMissing) {
+    id <- dotArgs[["ID"]]
   }
-  if (!is.null(.dotArgs[["dosing.interval"]]) && !.iiMissing)
+  if (!is.null(dotArgs[["dosing.interval"]]) && !iiMissing)
     stop("cannot specify both 'ii' and 'dosing.interval'", call. = FALSE)
-  if (!is.null(.dotArgs[["dose"]]) && !.amtMissing)
+  if (!is.null(dotArgs[["dose"]]) && !amtMissing)
     stop("cannot specify both 'amt' and 'dose'", call. = FALSE)
-  if (!is.null(.dotArgs[["dosing.to"]]) && !.cmtMissing)
+  if (!is.null(dotArgs[["dosing.to"]]) && !cmtMissing)
     stop("cannot specify both 'cmt' and 'dosing.to'", call. = FALSE)
-  if (!is.null(.dotArgs[["dose.to"]]) && !.cmtMissing)
+  if (!is.null(dotArgs[["dose.to"]]) && !cmtMissing)
     stop("cannot specify both 'cmt' and 'dose.to'", call. = FALSE)
-  if (!is.null(.dotArgs[["state"]]) && !.cmtMissing)
+  if (!is.null(dotArgs[["state"]]) && !cmtMissing)
     stop("cannot specify both 'cmt' and 'state'", call. = FALSE)
-  if (!is.null(.dotArgs[["amt.units"]]) && !is.null(.dotArgs[["dose.units"]]))
+  if (!is.null(dotArgs[["amt.units"]]) && !is.null(dotArgs[["dose.units"]]))
     stop("cannot specify both 'amt.units' and 'dose.units'", call. = FALSE)
-  if (!is.null(.dotArgs[["time.units"]]) && !.timeUnitsMissing)
+  if (!is.null(dotArgs[["time.units"]]) && !timeUnitsMissing)
     stop("cannot specify both 'time.units' and 'timeUnits'", call. = FALSE)
-  if (!is.null(.dotArgs[["start.time"]]) && !.timeMissing)
+  if (!is.null(dotArgs[["start.time"]]) && !timeMissing)
     stop("cannot specify both 'time' and 'start.time'", call. = FALSE)
-  if (!is.null(.dotArgs[["nbr.doses"]]) && !is.null(.dotArgs[["nbrDoses"]]))
+  if (!is.null(dotArgs[["nbr.doses"]]) && !is.null(dotArgs[["nbrDoses"]]))
     stop("cannot specify both 'nbr.doses' and 'nbrDoses'", call. = FALSE)
-  if (!is.null(.dotArgs[["duration"]]) && !.durMissing)
+  if (!is.null(dotArgs[["duration"]]) && !durMissing)
     stop("cannot specify both 'dur' and 'duration'", call. = FALSE)
   id
 }
