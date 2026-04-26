@@ -717,6 +717,11 @@ rxUnloadAll <- function(set=TRUE) {
   }
   # First slice down on the keep
   .nKeep <- getOption("rxode2.dontUnload", 10)
+  if (checkmate::testIntegerish(.nKeep, lower = 0, len = 1)) {
+    .nKeep <- as.integer(.nKeep)
+  } else {
+    .nKeep <- 10L
+  }
   .nKeep <- as.integer(.nKeep)
   if (.nKeep <= 0L) {
     .rxLastModels <- NULL
