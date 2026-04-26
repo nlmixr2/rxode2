@@ -1,24 +1,20 @@
 linters: with_defaults(
-    infix_spaces_linter = NULL, # 8541
-    line_length_linter = NULL, # 2386
-    object_name_linter = NULL, #("camelCase"),
-    commas_linter = NULL, # 2242
-    paren_brace_linter = NULL, # 1947
-    assignment_linter = NULL, # 1424
-    commented_code_linter = NULL, # 420
-    single_quotes_linter = NULL, # 217
-    spaces_left_parentheses_linter = NULL, # 216
-    open_curly_linter = NULL, # 116
-    spaces_inside_linter = NULL, # 105
-    pipe_continuation_linter = NULL, # 68
-    cyclocomp_linter(50), # 35
-    object_usage_linter = NULL, # 30
-    closed_curly_linter = NULL, # 28
-    trailing_blank_lines_linter = NULL, # 28
-    function_left_parentheses = NULL, # 27
-    trailing_whitespace_linter = NULL, # 23
-    seq_linter = NULL, # 2
-    dummy_linter = NULL
+    object_name_linter(
+      styles = "camelCase",
+      regexes = c(
+        internal = "^\\.[a-z][a-zA-Z0-9]*$",
+        s3 = "^[a-z][a-z0-9_]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+      )
+    ),
+    assignment_linter(allow_left_assign = TRUE, allow_right_assign = FALSE),
+    line_length_linter(120),
+    no_tab_linter(),
+    non_ascii_linter(),
+    pipe_continuation_linter(),
+    T_and_F_symbol_linter(),
+    infix_spaces_linter = NULL, # Keep disabled for now due to high violation count (8541)
+    commas_linter = NULL, # Keep disabled for now (2242)
+    cyclocomp_linter(50)
   )
 exclusions: list(
     "tests/testthat.R",
