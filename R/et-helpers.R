@@ -192,10 +192,10 @@
   list(done = FALSE)
 }
 
-.etHandlePositional <- function(x, ..., time, .xIsRxEt, envir, .envRef, .et, .xMissing, .timeMissing) {
+.etHandlePositional <- function(x, ..., time, xIsRxEt, envir, envRef, et, xMissing, timeMissing) {
   .posCmt <- NULL
   .listObs <- NULL
-  if (is.null(time) && !.xMissing && !.xIsRxEt) {
+  if (is.null(time) && !xMissing && !xIsRxEt) {
     .xVal <- x
     .dots <- list(...)
     .dotsPos <- Filter(function(x) is.null(names(x)) || all(names(x) == ""), .dots)
@@ -210,13 +210,13 @@
     if (length(.dots) == 1L && !is.null(names(.dots)) && any(names(.dots) != "")) {
        # Has named dots, let standard handler take it
     } else if (length(.dots) == 1L && !is.null(.xVal) && length(.xVal) == 1L && (is.numeric(.xVal) || is.integer(.xVal)) &&
-               (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
-        # range: et(1, 2)
-        .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
-        .df <- .etObsChunk(.resolvedTime)
-        .etAddChunk(.envRef, .df, NULL)
-        .envRef$nobs <- .envRef$nobs + length(.resolvedTime)
-        return(list(done = TRUE, et = .et))
+                 (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
+      ## .resolvedTime <- seq(from = as.numeric(.xVal), to = as.numeric(.dots[[1]]))
+      .resolvedTime <- c(as.numeric(.xVal), as.numeric(.dots[[1]]))
+      .df <- .etObsChunk(.resolvedTime)
+      .etAddChunk(envRef, .df, NULL)
+      envRef$nobs <- envRef$nobs + length(.resolvedTime)
+      return(list(done = TRUE, et = et))
     } else if (is.data.frame(.xVal)) {
       # Import data.frame as event table
       .df <- .xVal
@@ -247,19 +247,19 @@
         if (!is.null(.df$rate)) .df$rate[.obsIdx] <- NA_real_
         if (!is.null(.df$amt))  .df$amt[.obsIdx]  <- NA_real_
       }
-      .envRef$IDs    <- sort(unique(.df$id))
-      .envRef$nobs   <- .envRef$nobs  + sum(.obsIdx)
-      .envRef$ndose  <- .envRef$ndose + sum(!.obsIdx)
-      if (length(.envRef$IDs) > 1L) .envRef$show["id"] <- TRUE
-      if (sum(!.obsIdx) > 0L) .envRef$show["amt"] <- TRUE
+      envRef$IDs    <- sort(unique(.df$id))
+      envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
+      envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
+      if (length(envRef$IDs) > 1L) envRef$show["id"] <- TRUE
+      if (sum(!.obsIdx) > 0L) envRef$show["amt"] <- TRUE
       if (!is.null(.df$rate) && any(.df$rate[!.obsIdx] != 0, na.rm = TRUE))
-        .envRef$show["rate"] <- TRUE
+        envRef$show["rate"] <- TRUE
       if (!is.null(.df$ii) && any(.df$ii != 0, na.rm = TRUE)) {
-        .envRef$show["ii"]   <- TRUE
-        .envRef$show["addl"] <- TRUE
+        envRef$show["ii"]   <- TRUE
+        envRef$show["addl"] <- TRUE
       }
-      .envRef$chunks <- .addRowsToChunks(.envRef$chunks, .df)
-      return(list(done = TRUE, et = .et))
+      envRef$chunks <- .addRowsToChunks(envRef$chunks, .df)
+      return(list(done = TRUE, et = et))
     } else if (is.list(.xVal) && !is.data.frame(.xVal)) {
       .listObs <- .xVal  # deferred: process after cmt/id resolved
     } else if (!is.null(.xVal)) {

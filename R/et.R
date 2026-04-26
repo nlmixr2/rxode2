@@ -452,8 +452,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
   # ---- Positional args / data.frame import ----
-  .res <- .etHandlePositional(x, ..., time = time, .xIsRxEt = .xIsRxEt, envir = envir, .envRef = .envRef, .et = .et,
-                              .xMissing = .xMissing, .timeMissing = .timeMissing)
+  .res <- .etHandlePositional(x, ..., time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
+                              xMissing = .xMissing, timeMissing = .timeMissing)
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
   .posCmt  <- .res$posCmt
   .listObs <- .res$listObs
