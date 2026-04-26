@@ -172,7 +172,7 @@
         if (!is.null(by)) {
           .resolvedTime <- seq(from = .from, to = .to, by = by)
         } else {
-          seq(from = .from, to = .to, length.out = length.out)
+          .resolvedTime <- seq(from = .from, to = .to, length.out = length.out)
         }
       } else if (!is.null(by)) {
         .resolvedTime <- seq(from = .from, by = by)
