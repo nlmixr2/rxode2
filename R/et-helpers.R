@@ -574,6 +574,7 @@
             length(.firstDot) == 1L &&
             (is.numeric(.dotArgs[[2L]]) || is.integer(.dotArgs[[2L]])) &&
             length(.dotArgs[[2L]]) == 1L) {
+          # et(0, 10) add obs at times 0, 1, ..., 10
           .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(.dotArgs[[2L]]))
         } else if (inherits(.firstDot, "units") && requireNamespace("units", quietly = TRUE)) {
           .tu2 <- .envRef$units["time"]

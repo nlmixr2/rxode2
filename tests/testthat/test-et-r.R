@@ -236,7 +236,7 @@ rxTest({
   test_that("et(0, 24) two-arg sequence", {
     ev <- et(0, 24)
     df <- .etMaterialize(ev)
-    expect_equal(df$time, c(0,24))
+    expect_equal(df$time, as.numeric(0:24))
   })
 
   test_that("et(0, 24, by=4) generates seq", {
