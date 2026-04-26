@@ -191,7 +191,44 @@
   }
   list(done = FALSE)
 }
-
+#' Handle the position arguments (ie ...)
+#'
+#'
+#' @param x the x argument passed to et(), which may be used to
+#'   resolve the from/to values for a sequence of observation times if
+#'   xIsRxEt is FALSE
+#'
+#' @param ... the ... arguments passed to et(), to be resolved
+#'
+#' @param time the time argument passed to et()
+#'
+#' @param xIsRxEt a logical indicating whether the x argument is an
+#'   rxEt object
+#'
+#' @param envir the environment in which to evaluate any expressions
+#'   needed to
+#'
+#' @param envRef the reference to the internal environment of the rxEt
+#'   object being constructed
+#'
+#' @param et the current state of the event table being constructed,
+#'   which may be modified by adding a new chunk of observation times
+#'   if the sequence arguments are successfully resolved.
+#'
+#' @param xMissing Is the x argument missing?
+#'
+#' @param timeMissing Is the time argument missing?
+#'
+#' @return list with components done (a logical indicating whether the
+#'   position arguments were successfully handled and the main et()
+#'   function should return immediately), posCmt (the resolved cmt
+#'   value from the position arguments, if any), listObs (a list of
+#'   observation times from the position arguments, if any), time (the
+#'   resolved time value from the position arguments, if any), and et
+#'   (the possibly modified event table after handling the position
+#'   arguments)
+#' @noRd
+#' @author Matthew L. Fidler
 .etHandlePositional <- function(x, ..., time, xIsRxEt, envir, envRef, et, xMissing, timeMissing) {
   .posCmt <- NULL
   .listObs <- NULL
