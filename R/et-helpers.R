@@ -228,7 +228,9 @@
 #'   resolved time value from the position arguments, if any), and et
 #'   (the possibly modified event table after handling the position
 #'   arguments)
+#'
 #' @noRd
+#'
 #' @author Matthew L. Fidler
 .etHandlePositional <- function(x, ..., time, xIsRxEt, envir, envRef, et,
                                 xMissing, timeMissing) {
@@ -410,10 +412,23 @@
        addedIds = .addedIds, removedIds = .removedIds, existingIds = .existingIds)
 }
 
-.etHandleEvid <- function(evidExpr, .evidSym, envir, .evidMissing) {
+#' Handle the EVID expression
+#'
+#' @param evidExpr The evid expression generated from `substitute(evid)`
+#'
+#' @param evidSym The evid symbol generated from `as.character(evidExpr)`
+#'
+#' @param envir environment where the evaluation occurs
+#'
+#' @param evidMissing Is the `evid` argument to `et()` missing
+#'
+#' @return evid value or NULL
+#' @noRd
+#' @author Matthew L. Fidler
+.etHandleEvid <- function(evidExpr, evidSym, envir, evidMissing) {
   .evidVal <- NULL
-  if (!.evidMissing) {
-    .evidVal <- switch(.evidSym,
+  if (!evidMissing) {
+    .evidVal <- switch(evidSym,
       obs       = 0L,
       `0`       = 0L,
       dose      = 1L,
@@ -426,17 +441,35 @@
       resetDose = 4L,
       `4`       = 4L,
       as.integer(tryCatch(eval(evidExpr, envir = envir),
-                          error = function(e) as.integer(.evidSym)))
+                          error = function(e) as.integer(evidSym)))
     )
   }
   .evidVal
 }
-
-.etHandleCmt <- function(cmtExpr, .cmtSym, .posCmt, envir, .cmtMissing) {
-  .cmtVal <- .posCmt
-  if (!.cmtMissing) {
-    .cmtTry <- tryCatch(eval(cmtExpr, envir = envir), error = function(e) .cmtSym)
-    .cmtVal <- if (is.character(.cmtTry) || is.numeric(.cmtTry)) .cmtTry else .cmtSym
+#' Handle cmt in et(cmt=...)
+#'
+#' @param cmtExpr Compartment expression (from `substitute(cmt)`)
+#'
+#' @param cmtSym Compartment symbol (from `as.character(cmtExpr)`)
+#'
+#' @param posCmt When et(1, "cmt") this is the position of the cmt
+#'   argument
+#'
+#' @param envir environment where evaluations are made
+#'
+#' @param cmtMissing logical value that tells if the cmt argument of
+#'   `et()` is missing
+#'
+#' @return The compartment value
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+.etHandleCmt <- function(cmtExpr, cmtSym, posCmt, envir, cmtMissing) {
+  .cmtVal <- posCmt
+  if (!cmtMissing) {
+    .cmtTry <- tryCatch(eval(cmtExpr, envir = envir), error = function(e) cmtSym)
+    .cmtVal <- if (is.character(.cmtTry) || is.numeric(.cmtTry)) .cmtTry else cmtSym
   }
   .cmtVal
 }
