@@ -867,23 +867,8 @@ is.rxEt <- function(x) {
   is.environment(.env)
 }
 
-#' Build an observation chunk sparse list (no id column; caller uses .etAddChunk)
-#'
-#' Returns a sparse named list where scalar fields (evid) are stored once and
-#' vector fields (time) hold per-row values. Callers use length(.df$time) for
-#' row count, not nrow().
-#'
-#' @param time numeric vector of sample times, OR a list of c(low,high)
-#'   or c(low,mid,high) windows.
-#'
-#' @param cmt compartment name or number (optional scalar)
-#'
-#' @param id integer vector of IDs to attach (optional)
-#'
-#' @return sparse named list with evid=0L scalar and time vector
-#'
 #' @noRd
-.etObsChunk <- function(time, cmt = NULL, id = NULL) {
+.etWindowTime <- function(time, allow1 = FALSE) {
   .randomType <- NA_integer_
   if (inherits(time, "list")) {
     .nw <- length(time)
@@ -901,107 +886,8 @@ is.rxEt <- function(x) {
                         }, logical(1L)))
     for (.i in seq_len(.nw)) {
       .w <- time[[.i]]
-      if (length(.w) == 2L) {
-        if (.hasNormal) {
-          .low[.i]  <- .w[1]
-          .mid[.i]  <- stats::rnorm(1, .w[1], .w[2])
-          .high[.i] <- .w[2]
-        } else if (.has3) {
-          stop("Cannot mix 2 and 3 element windows", call. = FALSE)
-        } else {
-          if (.w[1] > .w[2]) {
-            stop("window bounds must be ordered c(low, high)", call. = FALSE)
-          }
-          .low[.i]  <- .w[1]
-          .mid[.i]  <- stats::runif(1, .w[1], .w[2])
-          .high[.i] <- .w[2]
-        }
-      } else if (length(.w) == 3L) {
-        if (is.na(.w[3L])) {
-          .low[.i]  <- .w[1L]
-          .mid[.i]  <- stats::rnorm(1, .w[1L], .w[2L])
-          .high[.i] <- .w[2L]
-        } else {
-          if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
-          .low[.i]  <- .w[1]
-          .mid[.i]  <- .w[2]
-          .high[.i] <- .w[3]
-        }
-      } else {
-        stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
-      }
-    }
-    if (.hasNormal) {
-      .randomType <- 3L
-    } else if (.has3) {
-      .randomType <- 1L
-    } else {
-      .randomType <- 2L
-    }
-    .df <- list(evid = 0L, time = .mid, low = .low, high = .high)
-  } else {
-    .df <- list(evid = 0L, time = as.numeric(time))
-  }
-  if (!is.null(cmt)) .df$cmt <- cmt
-  if (!is.null(id))  .df$id  <- as.integer(id)
-  attr(.df, ".randomType") <- .randomType
-  .df
-}
-
-#' Expand a sparse obs chunk list to a full data.frame
-#'
-#' Replicates scalar fields to match the length of the time vector.
-#' @param .sparse sparse list from .etObsChunk
-#' @return data.frame with all columns same length
-#' @noRd
-.etExpandObsChunk <- function(.sparse) {
-  .n <- length(.sparse$time)
-  as.data.frame(
-    lapply(.sparse, function(.v) if (length(.v) == 1L) rep(.v, .n) else .v),
-    stringsAsFactors = FALSE
-  )
-}
-
-#' Build a dosing chunk data.frame (no id column; caller uses .etAddChunk)
-#'
-#' @param time numeric start time(s)
-#' @param amt numeric dose amount(s)
-#' @param evid integer event ID (default 1L)
-#' @param cmt compartment name/number (default "(default)")
-#' @param ii inter-dose interval (default 0)
-#' @param addl additional doses (default 0L)
-#' @param ss steady-state flag (default 0L)
-#' @param rate infusion rate (default 0)
-#' @param dur infusion duration (default 0.0)
-#' @param until time of last dose; overrides addl
-#' @param nbr.doses number of doses (legacy); sets addl = nbr.doses - 1
-#' @param dosing.interval inter-dose interval (legacy alias for ii)
-#' @return data.frame
-#' @noRd
-.etDoseChunk <- function(time = 0, amt, evid = 1L, cmt = "(default)",
-                         ii = 0.0, addl = 0L, ss = 0L, rate = 0.0, dur = 0.0,
-                         until = NULL, nbr.doses = NULL, dosing.interval = NULL) {
-  if (!is.null(dosing.interval)) ii <- as.numeric(dosing.interval)
-  if (!is.null(nbr.doses))       addl <- as.integer(nbr.doses) - 1L
-
-  .randomType <- NA_integer_
-  if (is.list(time)) {
-    .nw <- length(time)
-    .low  <- numeric(.nw)
-    .mid  <- numeric(.nw)
-    .high <- numeric(.nw)
-    # This is for the normal variability case that is list(c(4, 2, NA))
-    .hasNormal <- any(vapply(time,
-                             function(.w) {
-                               length(.w) == 3L && is.na(.w[3L])
-                             }, logical(1L)))
-    .has3 <- any(vapply(time,
-                        function(.w) {
-                          length(.w) == 3L && !is.na(.w[3L])
-                        }, logical(1L)))
-    for (.i in seq_len(.nw)) {
-      .w <- time[[.i]]
       if (length(.w) == 1L) {
+        if (!allow1) stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
         .low[.i]  <- NA_real_
         .mid[.i]  <- as.numeric(.w)
         .high[.i] <- NA_real_
@@ -1042,37 +928,36 @@ is.rxEt <- function(x) {
     } else {
       .randomType <- 2L
     }
-    .timeDose <- .mid
-    .timeUntil <- .mid
-    .lowDose <- .low
-    .highDose <- .high
+    return(list(time = .mid, low = .low, high = .high, randomType = .randomType))
+  }
+  list(time = as.numeric(time), low = NA_real_, high = NA_real_, randomType = NA_integer_)
+}
+
+#' @noRd
+.etDoseUntil <- function(until, time, ii, addl, isList) {
+  if (is.null(until)) return(addl)
+  if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
+  .tmp <- until - time - ii
+  if (any(.tmp > 0, na.rm = TRUE)) {
+    .ratio <- .tmp / ii
+    .ceil <- ceiling(.ratio)
+    addl <- ifelse(.ceil == .ratio, .ratio + 1, .ceil)
+    addl <- as.integer(addl)
   } else {
-    .timeDose <- as.numeric(time)
-    .timeUntil <- .timeDose
-    .lowDose <- NA_real_
-    .highDose <- NA_real_
-  }
-
-  if (!is.null(until)) {
-    if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
-    .tmp <- until - .timeUntil - ii
-    if (any(.tmp > 0, na.rm = TRUE)) {
-      .ratio <- .tmp / ii
-      .ceil <- ceiling(.ratio)
-      addl <- ifelse(.ceil == .ratio, .ratio + 1, .ceil)
-      addl <- as.integer(addl)
-    } else {
-      addl <- 0L
-      if (!is.list(time)) {
-        warning("'time'+'ii' is greater than 'until', no additional doses added", call. = FALSE)
-      }
-    }
-    if (any(addl < 0L, na.rm = TRUE)) {
-      warning("'until' is before 'time'; setting addl=0", call. = FALSE)
-      addl[addl < 0L] <- 0L
+    addl <- 0L
+    if (!isList) {
+      warning("'time'+'ii' is greater than 'until', no additional doses added", call. = FALSE)
     }
   }
+  if (any(addl < 0L, na.rm = TRUE)) {
+    warning("'until' is before 'time'; setting addl=0", call. = FALSE)
+    addl[addl < 0L] <- 0L
+  }
+  addl
+}
 
+#' @noRd
+.etDoseValidate <- function(amt, ii, addl, ss, rate) {
   if (ii > 0 && ss == 0L && all(addl == 0L, na.rm = TRUE)) {
     warning(sprintf(
       "'ii' requires non zero additional doses ('addl') or steady state dosing ('ii': %f, 'ss': %d; 'addl': %d), reset 'ii' to zero", # nolint
@@ -1092,6 +977,79 @@ is.rxEt <- function(x) {
     if (rate > 0 && ii > 0 && amt == 0)
       stop("cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", call. = FALSE) # nolint
   }
+  ii
+}
+
+#' Build an observation chunk list (no id column; caller uses .etAddChunk)
+
+#'
+#' Returns a sparse named list where scalar fields (evid) are stored once and
+#' vector fields (time) hold per-row values. Callers use length(.df$time) for
+#' row count, not nrow().
+#'
+#' @param time numeric vector of sample times, OR a list of c(low,high)
+#'   or c(low,mid,high) windows.
+#'
+#' @param cmt compartment name or number (optional scalar)
+#'
+#' @param id integer vector of IDs to attach (optional)
+#'
+#' @return sparse named list with evid=0L scalar and time vector
+#'
+#' @noRd
+.etObsChunk <- function(time, cmt = NULL, id = NULL) {
+  .time <- .etWindowTime(time)
+  .df <- list(evid = 0L, time = .time$time, low = .time$low, high = .time$high)
+  if (!is.null(cmt)) .df$cmt <- cmt
+  if (!is.null(id))  .df$id  <- as.integer(id)
+  attr(.df, ".randomType") <- .time$randomType
+  .df
+}
+
+#' Expand a sparse obs chunk list to a full data.frame
+#'
+#' Replicates scalar fields to match the length of the time vector.
+#' @param .sparse sparse list from .etObsChunk
+#' @return data.frame with all columns same length
+#' @noRd
+.etExpandObsChunk <- function(.sparse) {
+  .n <- length(.sparse$time)
+  as.data.frame(
+    lapply(.sparse, function(.v) if (length(.v) == 1L) rep(.v, .n) else .v),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Build a dosing chunk data.frame (no id column; caller uses .etAddChunk)
+#'
+#' @param time numeric start time(s)
+#' @param amt numeric dose amount(s)
+#' @param evid integer event ID (default 1L)
+#' @param cmt compartment name/number (default "(default)")
+#' @param ii inter-dose interval (default 0)
+#' @param addl additional doses (default 0L)
+#' @param ss steady-state flag (default 0L)
+#' @param rate infusion rate (default 0)
+#' @param dur infusion duration (default 0.0)
+#' @param until time of last dose; overrides addl
+#' @param nbr.doses number of doses (legacy); sets addl = nbr.doses - 1
+#' @param dosing.interval inter-dose interval (legacy alias for ii)
+#' @return data.frame
+#' @noRd
+.etDoseChunk <- function(time = 0, amt, evid = 1L, cmt = "(default)",
+                         ii = 0.0, addl = 0L, ss = 0L, rate = 0.0, dur = 0.0,
+                         until = NULL, nbr.doses = NULL, dosing.interval = NULL) {
+  if (!is.null(dosing.interval)) ii <- as.numeric(dosing.interval)
+  if (!is.null(nbr.doses))       addl <- as.integer(nbr.doses) - 1L
+
+  .time <- .etWindowTime(time, allow1 = TRUE)
+  .timeDose <- .time$time
+  .lowDose <- .time$low
+  .highDose <- .time$high
+  .randomType <- .time$randomType
+
+  addl <- .etDoseUntil(until, .timeDose, ii, addl, inherits(time, "list"))
+  ii <- .etDoseValidate(amt, ii, addl, ss, rate)
 
   if (dur > 0 && rate == 0.0) {
     rate <- amt / dur
