@@ -88,6 +88,10 @@ rxTest({
         eff(0) <- theta1 + eta1
       })
 
+      # This should flag that the ini state has been used.
+      expect_equal(rxModelVars(fini)$stateProp,
+                   c(depot = 0L, centr = 0L, peri = 0L, eff = 1L))
+
       theta <-
         c(
           KA = 2.94E-01, CL = 1.86E+01, V2 = 4.02E+01, # central
