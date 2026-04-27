@@ -68,9 +68,9 @@ static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_P
     if (new_de(v, fromCMTprop)) {
       add_de(ni, name, v, isCmtLhsStatement(ni, name, v), fromCMTprop);
       aProp(tb.de.n);
-      if ((tb.dprop[tb.id] & prop0) == 0) {
-        tb.dprop[tb.id] += prop0;
-      }
+    }
+    if ((tb.dprop[tb.id] & prop0) == 0) {
+      tb.dprop[tb.id] += prop0;
     }
     new_or_ith(v);
     if (tb.lh[tb.ix] == isLHSstr || tb.lh[tb.ix] == isSuppressedLHSstr) {

@@ -276,7 +276,9 @@ m2$state
 
 ### `$stateDf`: compartment data frame
 
-`$stateDf` returns a data frame of compartment numbers and names. For linear compartment models it also includes whether each compartment supports infusion (`Rate`) and turn-off (`Off`) events:
+`$stateDf` returns a data frame of compartment numbers and names. For
+linear compartment models it also includes whether each compartment
+supports infusion (`Rate`) and turn-off (`Off`) events:
 
 ```{r stateDf}
 m2$stateDf
@@ -284,7 +286,9 @@ m2$stateDf
 
 ### `$statePropDf`: compartment property data frame
 
-`$statePropDf` lists which compartments have special dosing properties (`ini`, `f`, `alag`, `rate`, `dur`) explicitly defined in the model. A compartment only appears when at least one property is set:
+`$statePropDf` lists which compartments have special dosing properties
+(`ini`, `f`, `alag`, `rate`, `dur`) explicitly defined in the model. A
+compartment only appears when at least one property is set:
 
 ```{r statePropDf}
 m2$statePropDf
