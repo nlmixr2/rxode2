@@ -185,8 +185,8 @@
     } else {
       .resolvedTime <- numeric(0)
     }
-    .df <- .etObsChunk(.resolvedTime)
-    .etAddChunk(envRef, .df, .seqTargetIds)
+    .df <- .etObsChunk(.resolvedTime) # nolint
+    .etAddChunk(envRef, .df, .seqTargetIds) # nolint
     envRef$nobs <- envRef$nobs + length(.resolvedTime) * max(1L, length(.seqTargetIds))
     return(list(done = TRUE, et = et))
   }
@@ -376,8 +376,23 @@
         is.null(dotArgs[["amount.units"]]))
     envRef$units["dosing"] <- dotArgs[["amount_units"]]
 }
-
-.etHandleId <- function(id, .envRef, .xIsRxEt, envir) {
+#' `et(id=)` handling
+#'
+#' @param id The id argument
+#'
+#' @param envRef The `et()` environment
+#'
+#' @param xIsRxEt Is the object a rxode2 et object?
+#'
+#' @param envir evaluation environment
+#'
+#' @return id value for the event table object
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+#'
+.etHandleId <- function(id, envRef, xIsRxEt, envir) {
   .resolvedId  <- NULL
   .addedIds    <- integer(0)
   .removedIds  <- integer(0)
@@ -387,26 +402,30 @@
     .idVal       <- as.integer(id)
     .posIds      <- .idVal[.idVal > 0L]
     .negIds      <- abs(.idVal[.idVal < 0L])
-    .existingIds <- .envRef$ids
-    if (length(.posIds) > 0L && .xIsRxEt && .envRef$canResize) {
+    .existingIds <- envRef$ids
+    if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)
-      .envRef$ids <- sort(.posIds)
+      envRef$ids <- sort(.posIds)
       .doResize   <- length(.addedIds) > 0L || length(.removedIds) > 0L
     } else {
       .addedIds   <- setdiff(.posIds, .existingIds)
       .removedIds <- intersect(.negIds, .existingIds)
-      if (length(.posIds) > 0L) .envRef$ids <- sort(unique(c(.envRef$ids, .posIds)))
-      if (length(.negIds) > 0L) .envRef$ids <- setdiff(.envRef$ids, .negIds)
-      .doResize   <- .xIsRxEt && (length(.addedIds) > 0L || length(.removedIds) > 0L)
+      if (length(.posIds) > 0L) {
+        envRef$ids <- sort(unique(c(envRef$ids, .posIds)))
+      }
+      if (length(.negIds) > 0L) {
+        envRef$ids <- setdiff(envRef$ids, .negIds)
+      }
+      .doResize   <- xIsRxEt && (length(.addedIds) > 0L || length(.removedIds) > 0L)
     }
-    .envRef$show["id"] <- TRUE
+    envRef$show["id"] <- TRUE
     .resolvedId <- .posIds
   }
   .targetIds <- .resolvedId
-  if (is.null(.targetIds) && .xIsRxEt && length(.envRef$ids) > 0L) {
-    .targetIds <- .envRef$ids
+  if (is.null(.targetIds) && xIsRxEt && length(envRef$ids) > 0L) {
+    .targetIds <- envRef$ids
   }
   list(resolvedId = .resolvedId, targetIds = .targetIds, doResize = .doResize,
        addedIds = .addedIds, removedIds = .removedIds, existingIds = .existingIds)
@@ -473,101 +492,228 @@
   }
   .cmtVal
 }
-
-.etHandleDose <- function(amt, amtExpr, .dotArgs, .envRef, envir, time,
+#' Handle dose and related arguments
+#'
+#' @param amt Amount argument
+#'
+#' @param amtExpr Amount expression
+#'
+#' @param dotArgs the ... args (list)
+#'
+#' @param envRef the rxEt environment
+#'
+#' @param envir the evaluation environment
+#'
+#' @param time the time argument
+#'
+#' @param timeExpr the time expression
+#'
+#' @param iiExpr the ii expression
+#'
+#' @param addlExpr the addl expression
+#'
+#' @param ssExpr the ss expression
+#'
+#' @param rateExpr the rate expression
+#'
+#' @param durExpr the dur expression
+#'
+#' @param untilExpr the until expression
+#'
+#' @param evidVal the evid value
+#'
+#' @param cmtVal the cmt value
+#'
+#' @param resolvedId the resolved id value. When missing it defaults
+#'   to the ids present in the id environment
+#'
+#' @param targetIds The target ids
+#'
+#' @param addSampling the add sampling argument
+#'
+#' @param et the current state of the event table being constructed,
+#'   which may be modified by adding a new chunk of observation times
+#'   if the sequence arguments are successfully resolved.
+#'
+#' @param rateSym rate symbol (ie character)
+#'
+#' @param amtMissing is the amt argument missing
+#'
+#' @param timeMissing is the time argument missing
+#'
+#' @param iiMissing is the ii argument missing
+#'
+#' @param addlMissing is the addl argument missing
+#'
+#' @param ssMissing is the ss argument missing
+#'
+#' @param rateMissing is the rate argument missing
+#'
+#' @param durMissing is the duration argument missing?
+#'
+#' @param untilMissing is the until argument missing?
+#'
+#' @param addSamplingMissing is the addSampling argument missing?
+#'
+#' @return A list with components done (a logical indicating whether
+#'   the dose handling was successful and the main et() function
+#'   should return immediately) and et (the possibly modified event
+#'   table after handling the dose arguments)
+#' @export
+#' @author Matthew L. Fidler
+.etHandleDose <- function(amt, amtExpr, dotArgs, envRef, envir, time,
                           timeExpr, iiExpr, addlExpr, ssExpr, rateExpr,
-                          durExpr, untilExpr, .evidVal, .cmtVal, .resolvedId,
-                          .targetIds, addSampling, .et, .rateSym, .amtMissing,
-                          .timeMissing, .iiMissing, .addlMissing, .ssMissing,
-                          .rateMissing, .durMissing, .untilMissing,
-                          .addSamplingMissing) {
-  if (!is.null(amt) || !is.null(.dotArgs[["dose"]])) {
-    .amtVal  <- if (!is.null(amt)) amt else .dotArgs[["dose"]]
+                          durExpr, untilExpr, evidVal, cmtVal, resolvedId,
+                          targetIds, addSampling, et, rateSym, amtMissing,
+                          timeMissing, iiMissing, addlMissing, ssMissing,
+                          rateMissing, durMissing, untilMissing,
+                          addSamplingMissing) {
+  if (!is.null(amt) || !is.null(dotArgs[["dose"]])) {
+    if (!is.null(amt)) {
+      .amtVal  <-  amt
+    } else {
+      .amtVal  <-  dotArgs[["dose"]]
+    }
     # Convert units amt to table's dosing units if applicable
     if (inherits(.amtVal, "units") && requireNamespace("units", quietly = TRUE)) {
-      .doseU <- .envRef$units["dosing"]
+      .doseU <- envRef$units["dosing"]
       if (!is.na(.doseU) && nchar(.doseU) > 0) {
         .amtVal <- as.numeric(units::set_units(.amtVal, .doseU, mode = "standard"))
       } else {
         .amtVal <- as.numeric(.amtVal)
       }
     }
-    .timeVal <- if (!is.null(time)) time else 0.0
-    .iiVal <- if (!.iiMissing) {
-      .iv <- eval(iiExpr, envir = envir)
-      if (inherits(.iv, "units") && requireNamespace("units", quietly = TRUE)) {
-        .tu <- .envRef$units["time"]
-        if (!is.na(.tu) && nchar(.tu) > 0) as.numeric(units::set_units(.iv, .tu, mode = "standard"))
-        else as.numeric(.iv)
-      } else as.numeric(.iv)
-    } else 0.0
-    .addlVal <- if (!.addlMissing) as.integer(eval(addlExpr, envir = envir)) else 0L
-    .ssVal   <- if (!.ssMissing)   as.integer(eval(ssExpr, envir = envir))   else 0L
-    .rateVal <- if (!.rateMissing) {
-      if (.rateSym == "model") -1.0
-      else if (.rateSym == "dur") -2.0
-      else {
+    if (!is.null(time)) {
+      .timeVal <- time
+    } else {
+      .timeVal <-0.0
+    }
+    if (!iiMissing) {
+      .tmp <- eval(iiExpr, envir = envir)
+      if (inherits(.tmp, "units") && requireNamespace("units", quietly = TRUE)) {
+        .tu <- envRef$units["time"]
+        if (!is.na(.tu) && nchar(.tu) > 0) {
+          .iiVal <- as.numeric(units::set_units(.tmp, .tu, mode = "standard"))
+        } else {
+          .iiVal <- as.numeric(.tmp)
+        }
+      } else {
+        .iiVal <- as.numeric(.tmp)
+      }
+    } else {
+      .iiVal <- 0.0
+    }
+    if (!addlMissing) {
+      .addlVal <-  as.integer(eval(addlExpr, envir = envir))
+    } else {
+      .addlVal <-  0L
+    }
+    if (!ssMissing)  {
+      .ssVal   <- as.integer(eval(ssExpr, envir = envir))
+    } else {
+      .ssVal   <- 0L
+    }
+    if (!rateMissing) {
+      if (rateSym == "model") {
+        .rateVal <- -1.0 # model -> -1, matching NONMEM conventions
+      } else if (rateSym == "dur") {
+        .rateVal <- -2.0 # dur -> -2, matching NONMEM conventions
+      } else {
         .rv <- eval(rateExpr, envir = envir)
         if (inherits(.rv, "units") && requireNamespace("units", quietly = TRUE)) {
-          .du <- .envRef$units["dosing"]
-          .tu <- .envRef$units["time"]
+          .du <- envRef$units["dosing"]
+          .tu <- envRef$units["time"]
           if (!is.na(.du) && nchar(.du) > 0 && !is.na(.tu) && nchar(.tu) > 0) {
-            as.numeric(units::set_units(.rv, paste0(.du, "/", .tu), mode = "standard"))
-          } else as.numeric(.rv)
-        } else as.numeric(.rv)
+            .rateVal <- as.numeric(units::set_units(.rv, paste0(.du, "/", .tu), mode = "standard"))
+          } else {
+            .rateVal <- as.numeric(.rv)
+          }
+        } else {
+          .rateVal <- as.numeric(.rv)
+        }
       }
-    } else 0.0
-    .durVal  <- if (!.durMissing)  as.numeric(eval(durExpr, envir = envir))  else 0.0
-    .untilVal <- if (!.untilMissing) {
+    } else {
+      .rateVal <- 0.0
+    }
+    if (!durMissing) {
+      .durVal  <- as.numeric(eval(durExpr, envir = envir))
+    } else {
+      .durVal  <- 0
+    }
+
+    if (!untilMissing) {
       .uv <- eval(untilExpr, envir = envir)
       if (inherits(.uv, "units") && requireNamespace("units", quietly = TRUE)) {
-        .tu <- .envRef$units["time"]
-        if (!is.na(.tu) && nchar(.tu) > 0) as.numeric(units::set_units(.uv, .tu, mode = "standard"))
-        else as.numeric(.uv)
-      } else as.numeric(.uv)
-    } else NULL
+        .tu <- envRef$units["time"]
+        if (!is.na(.tu) && nchar(.tu) > 0) {
+          .untilVal <- as.numeric(units::set_units(.uv, .tu, mode = "standard"))
+        } else {
+          .untilVal <- as.numeric(.uv)
+        }
+      } else {
+        .untilVal <- as.numeric(.uv)
+      }
+    } else {
+      .untilVal <- NULL
+    }
 
     .df <- .etDoseChunk(
       time = .timeVal, amt = .amtVal,
-      evid = if (!is.null(.evidVal)) .evidVal else 1L,
-      cmt  = if (!is.null(.cmtVal))  .cmtVal  else "(default)",
+      evid = if (!is.null(evidVal)) evidVal else 1L,
+      cmt  = if (!is.null(cmtVal))  cmtVal  else "(default)",
       ii   = .iiVal, addl = .addlVal, ss = .ssVal,
       rate = .rateVal, dur = .durVal,
-      until = .untilVal
-    )
-    if (!.durMissing && .rateMissing && any(.durVal > 0, na.rm = TRUE)) {
+      until = .untilVal)
+
+    if (!durMissing && rateMissing && any(.durVal > 0, na.rm = TRUE)) {
       .df$rate <- rep_len(0.0, nrow(.df))
       .df$dur <- rep_len(.durVal, nrow(.df))
     }
-    .pairDoseIds <- !is.null(.resolvedId) &&
+    .pairDoseIds <- !is.null(resolvedId) &&
       nrow(.df) > 1L &&
-      nrow(.df) == length(.resolvedId)
+      nrow(.df) == length(resolvedId)
     if (.pairDoseIds) {
-      .df$id <- as.integer(.resolvedId)
-      .envRef$chunks <- .addRowsToChunks(.envRef$chunks, .df)
+      .df$id <- as.integer(resolvedId)
+      envRef$chunks <- .addRowsToChunks(envRef$chunks, .df)
     } else {
-      .etAddChunk(.envRef, .df, .targetIds)
+      .etAddChunk(envRef, .df, targetIds)
     }
-    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * if (.pairDoseIds) 1L else max(1L, length(.targetIds))
-    .envRef$show["amt"] <- TRUE
-    if (!is.null(.df$ii) && any(.df$ii > 0, na.rm = TRUE)) .envRef$show["ii"] <- TRUE
-    if (!is.null(.df$addl) && any(.df$addl > 0L, na.rm = TRUE)) .envRef$show["addl"] <- TRUE
-    if (!is.null(.ssVal) && .ssVal > 0L)   .envRef$show["ss"]   <- TRUE
-    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
-    if (!is.null(.df$dur) && any(.df$dur != 0, na.rm = TRUE)) .envRef$show["dur"] <- TRUE
-    if (!is.null(.cmtVal) && .cmtVal != "(default)") .envRef$show["cmt"] <- TRUE
+    .pairIdsN <- 1L
+    if (.pairDoseIds) {
+      .pairIdsN <- max(1L, length(targetIds))
+    }
+    envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * .pairIdsN
+    envRef$show["amt"] <- TRUE
+    if (!is.null(.df$ii) && any(.df$ii > 0, na.rm = TRUE)) {
+      envRef$show["ii"] <- TRUE
+    }
+    if (!is.null(.df$addl) && any(.df$addl > 0L, na.rm = TRUE)) {
+      envRef$show["addl"] <- TRUE
+    }
+    if (!is.null(.ssVal) && .ssVal > 0L) {
+      envRef$show["ss"]   <- TRUE
+    }
+    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) {
+      envRef$show["rate"] <- TRUE
+    }
+    if (!is.null(.df$dur) && any(.df$dur != 0, na.rm = TRUE)) {
+      envRef$show["dur"] <- TRUE
+    }
+    if (!is.null(cmtVal) && cmtVal != "(default)") {
+      envRef$show["cmt"] <- TRUE
+    }
 
-    if (!.addSamplingMissing && isTRUE(addSampling)) {
+    if (!addSamplingMissing && isTRUE(addSampling)) {
       .obsChunk <- .etObsChunk(.timeVal)
-      .etAddChunk(.envRef, .obsChunk, .targetIds)
-      .envRef$nobs   <- .envRef$nobs + length(.obsChunk$time) * max(1L, length(.targetIds))
+      .etAddChunk(envRef, .obsChunk, targetIds)
+      envRef$nobs   <- envRef$nobs + length(.obsChunk$time) * max(1L, length(targetIds))
     }
-    return(list(done = TRUE, et = .et))
+    return(list(done = TRUE, et = et))
   }
   list(done = FALSE)
 }
 
-.etHandleInfusionNoAmt <- function(amt, amtExpr, rateExpr, ssExpr, .envRef, envir,
+.etHandleInfusionNoAmt <- function(amt, amtExpr, rateExpr, ssExpr, envRef, envir,
                                    time, timeExpr, iiExpr, durExpr, .evidVal,
                                    .cmtVal, .targetIds, .et, .rateSym,
                                    .amtMissing, .rateMissing, .ssMissing,
@@ -589,11 +735,11 @@
       ii = .iiVal, addl = 0L, ss = .ssVal,
       rate = .rateVal, dur = .durVal
     )
-    .etAddChunk(.envRef, .df, .targetIds)
-    .envRef$ndose  <- .envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.targetIds))
-    .envRef$show["amt"]  <- TRUE
-    if (!is.null(.ssVal) && .ssVal > 0L)   .envRef$show["ss"]   <- TRUE
-    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) .envRef$show["rate"] <- TRUE
+    .etAddChunk(envRef, .df, .targetIds)
+    envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.targetIds))
+    envRef$show["amt"]  <- TRUE
+    if (!is.null(.ssVal) && .ssVal > 0L)   envRef$show["ss"]   <- TRUE
+    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) envRef$show["rate"] <- TRUE
     return(list(done = TRUE, et = .et))
   }
   list(done = FALSE)
