@@ -60,9 +60,18 @@ NULL
     return(x)
   }
   if (!identical(unname(x), unname(y))) {
-    stop(sprintf("cannot combine rxEt objects with different %s units ('%s' vs '%s')",
-                 what, x, y),
-         call. = FALSE)
+    if (requireNamespace("units", quietly = TRUE)) {
+      .canConvert <- try(units::ud_are_convertible(x, y), silent = TRUE)
+      if (inherits(.canConvert, "try-error") || !.canConvert) {
+        stop(sprintf("cannot combine rxEt objects with incompatible %s units ('%s' vs '%s')",
+                     what, x, y),
+             call. = FALSE)
+      }
+    } else {
+      stop(sprintf("cannot combine rxEt objects with different %s units ('%s' vs '%s')",
+                   what, x, y),
+           call. = FALSE)
+    }
   }
   x
 }
@@ -179,8 +188,11 @@ vec_restore.rxEt <- function(x, to, ...) {
 
 #' @export
 vec_ptype2.rxEt.rxEt <- function(x, y, ...) {
+  .rxEtMetaCombine(x, y)
   vec_ptype2(.rxEtAsFullDataFrame(x), .rxEtAsFullDataFrame(y), ...)
 }
+
+
 
 #' @export
 vec_ptype2.rxEt.data.frame <- function(x, y, ...) {
