@@ -396,11 +396,11 @@ et.rxParams <- function(x, ..., envir = parent.frame()) {
 #' @rdname et
 #' @export
 et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
-                        ii = NULL, addl = NULL, ss = NULL, rate = NULL, dur = NULL,
-                        until = NULL, id = NULL,
-                        amountUnits = NULL, timeUnits = NULL, addSampling = NULL,
-                        envir = parent.frame(),
-                        by = NULL, length.out = NULL) {
+                       ii = NULL, addl = NULL, ss = NULL, rate = NULL, dur = NULL,
+                       until = NULL, id = NULL,
+                       amountUnits = NULL, timeUnits = NULL, addSampling = NULL,
+                       envir = parent.frame(),
+                       by = NULL, length.out = NULL) {
 
   # ---- Capture missing status ----
   .xMissing <- missing(x)
@@ -443,8 +443,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # ---- Conflicting alias checks ----
   .dotArgs <- list(...)
   id <- .etAssertArgsAndReturnId(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
-                                .idMissing, .iiMissing, .amtMissing, .cmtMissing,
-                                .timeUnitsMissing, .timeMissing, .durMissing)
+                                 .idMissing, .iiMissing, .amtMissing, .cmtMissing,
+                                 .timeUnitsMissing, .timeMissing, .durMissing)
 
   # ---- seq helpers: by / length.out ----
   .res <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, et = .et,
@@ -499,7 +499,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .untilExpr <- substitute(until)
   .rateSym <- deparse(.rateExpr)
 
-  .res <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr, .iiExpr, .addlExpr, .ssExpr, .rateExpr, .durExpr, .untilExpr,
+  .res <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr,
+                        .iiExpr, .addlExpr, .ssExpr, .rateExpr, .durExpr, .untilExpr,
                         .evidVal, .cmtVal, .resolvedId, .targetIds, addSampling, .et, .rateSym,
                         .amtMissing, .timeMissing, .iiMissing, .addlMissing,
                         .ssMissing, .rateMissing, .durMissing, .untilMissing,
@@ -507,7 +508,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
   # ---- Infusion/SS dose without explicit amt ----
-  .res <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr, .iiExpr, .durExpr, .evidVal, .cmtVal, .targetIds, .et, .rateSym,
+  .res <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr,
+                                 .iiExpr, .durExpr, .evidVal, .cmtVal, .targetIds, .et, .rateSym,
                                  .amtMissing, .rateMissing, .ssMissing, .timeMissing, .iiMissing, .durMissing)
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
@@ -516,7 +518,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
   # ---- Piping pattern ----
-  .res <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal, .targetIds, .evidVal, .envRef, .et, .timeMissing, .amtMissing, envir)
+  .res <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal,
+                          .targetIds, .evidVal, .envRef, .et, .timeMissing, .amtMissing, envir)
   if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
 
   # ---- ID-only resize ----
@@ -700,7 +703,8 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     }
   }
   if (identical(value, .unitless())) {
-    warning("clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
+    warning("clearing both amount and time units\n",
+      "for more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
       call. = FALSE
     )
     if (is.rxEt(x)) {
@@ -712,7 +716,6 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     stop("invalid event table", call. = FALSE)
   } else {
     if (!inherits(value, "character")) value <- deparse(value)
-    .tUnit <- units::set_units(1, "sec", mode = "standard")
     .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
     if (inherits(.isTime, "try-error")) {
       ## Amount
@@ -753,64 +756,64 @@ rxEtDispatchSolve.default <- function(x, ...) {
 
 #' @export
 simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
-    .isPipe <- as.character(substitute(object))
-    if (length(.isPipe) == 1 && .isPipe == ".") {
+  .isPipe <- as.character(substitute(object))
+  if (length(.isPipe) == 1 && .isPipe == ".") {
+    .isPipe <- TRUE
+  } else if (missing(object)) {
+    .isPipe <- FALSE
+  } else {
+    .isPipe <- substitute(object)
+    if (is.call(.isPipe) && length(.isPipe) >= 1L) {
+      # This will assume the input is going to be an et compatible object
       .isPipe <- TRUE
-    } else if (missing(object)) {
-      .isPipe <- FALSE
     } else {
-      .isPipe <- substitute(object)
-      if (is.call(.isPipe) && length(.isPipe) >= 1L) {
-        # This will assume the input is going to be an et compatible object
+      if (is.symbol(.isPipe)) {
         .isPipe <- TRUE
       } else {
-        if (is.symbol(.isPipe)) {
-          .isPipe <- TRUE
-        } else {
-          .isPipe <- FALSE
-        }
+        .isPipe <- FALSE
       }
     }
-    if (is.null(.pipelineRx) || !.isPipe) {
-      if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
-      if (!is.null(seed)) set.seed(seed)
-      if (is.rxEt(object)) {
-        .env0 <- .rxEtEnv(object)
-        .mat <- .etMaterialize(object)
-        .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
-        if (!any(.hasWin)) {
-          warning("simulating event table without windows returns identical event table", call. = FALSE)
+  }
+  if (is.null(.pipelineRx) || !.isPipe) {
+    if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
+    if (!is.null(seed)) set.seed(seed)
+    if (is.rxEt(object)) {
+      .env0 <- .rxEtEnv(object)
+      .mat <- .etMaterialize(object)
+      .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
+      if (!any(.hasWin)) {
+        warning("simulating event table without windows returns identical event table", call. = FALSE)
+      } else {
+        .rt <- .env0$randomType
+        if (!is.na(.rt) && .rt == 3L) {
+          .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+        } else if (!is.na(.rt) && .rt == 2L) {
+          .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
         } else {
-          .rt <- .env0$randomType
-          if (!is.na(.rt) && .rt == 3L) {
-            .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-          } else if (!is.na(.rt) && .rt == 2L) {
-            .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-          } else {
-            warning("unclear windows, identical event table", call. = FALSE)
-          }
+          warning("unclear windows, identical event table", call. = FALSE)
         }
-        .newEnv <- new.env(parent = emptyenv())
-        .newEnv$units      <- .env0$units
-        .newEnv$show       <- .env0$show
-        .newEnv$IDs        <- .env0$IDs
-        .newEnv$nobs       <- .env0$nobs
-        .newEnv$ndose      <- .env0$ndose
-        .newEnv$randomType <- NA_integer_
-        .newEnv$canResize  <- FALSE
-        .newEnv$chunks     <- list()
-        if (nrow(.mat) > 0L) {
-          .ids <- unique(as.integer(.mat$id))
-          for (.i in .ids) .newEnv$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
-        }
-        return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
       }
-      stop("invalid event table", call. = FALSE)
-    } else {
-      .ret <- list(object, ..., seed = seed, nsim = nsim)
-      class(.ret) <- "rxode2et"
-      return(rxEtDispatchSolve(.ret))
+      .newEnv <- new.env(parent = emptyenv())
+      .newEnv$units      <- .env0$units
+      .newEnv$show       <- .env0$show
+      .newEnv$IDs        <- .env0$IDs
+      .newEnv$nobs       <- .env0$nobs
+      .newEnv$ndose      <- .env0$ndose
+      .newEnv$randomType <- NA_integer_
+      .newEnv$canResize  <- FALSE
+      .newEnv$chunks     <- list()
+      if (nrow(.mat) > 0L) {
+        .ids <- unique(as.integer(.mat$id))
+        for (.i in .ids) .newEnv$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
+      }
+      return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
     }
+    stop("invalid event table", call. = FALSE)
+  } else {
+    .ret <- list(object, ..., seed = seed, nsim = nsim)
+    class(.ret) <- "rxode2et"
+    return(rxEtDispatchSolve(.ret))
+  }
 }
 
 #' Add dosing to eventTable
@@ -862,7 +865,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
     if (!is.na(time.units)) .lst$timeUnits <- time.units
     .extra <- list(...)
     if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
-        !identical(dosing.to, 1L)) {
+          !identical(dosing.to, 1L)) {
       .lst$cmt <- dosing.to
     }
     return(invisible(do.call(et, c(.lst, .extra))))
@@ -1086,7 +1089,7 @@ etSeq <- function(..., samples = c("clear", "use"),
   .ndose     <- 0L
   .units     <- NULL
   .show      <- NULL
-  .IDs       <- integer(0)
+  .ids       <- integer(0)
   .timeDelta <- 0.0
   .lastIi    <- 0.0
   .lastDose  <- 0.0
@@ -1104,61 +1107,19 @@ etSeq <- function(..., samples = c("clear", "use"),
 
   for (.item in .args) {
     if (is.rxEt(.item)) {
-      .env <- .rxEtEnv(.item)
-      if (is.null(.units)) {
-        .units <- .env$units
-        .show  <- .env$show
-      } else {
-        .show <- .show | .env$show
-      }
-      .IDs <- sort(unique(c(.IDs, .env$IDs)))
-      .mat <- .etMaterialize(.item)
-      # Strip units for arithmetic; units preserved in .env$units
-      if (requireNamespace("units", quietly = TRUE)) {
-        for (.tmCol in c("time", "low", "high", "ii")) {
-          if (!is.null(.mat[[.tmCol]]) && inherits(.mat[[.tmCol]], "units"))
-            .mat[[.tmCol]] <- as.numeric(.mat[[.tmCol]])
-        }
-      }
-      .mat$time <- .mat$time + .timeDelta
-      if (!is.null(.mat$low)  && any(!is.na(.mat$low)))  .mat$low[!is.na(.mat$low)]   <- .mat$low[!is.na(.mat$low)]   + .timeDelta
-      if (!is.null(.mat$high) && any(!is.na(.mat$high))) .mat$high[!is.na(.mat$high)] <- .mat$high[!is.na(.mat$high)] + .timeDelta
-      if (!is.null(.mat$ii)) .mat$ii[is.na(.mat$ii)] <- 0.0
-      .doseRows <- .mat[.mat$evid != 0L, , drop = FALSE]
-      if (nrow(.doseRows) > 0L) {
-        .lastDoseRow <- .doseRows[nrow(.doseRows), ]
-        .addlVal <- if (is.null(.lastDoseRow$addl) || is.na(.lastDoseRow$addl)) 0L else as.integer(.lastDoseRow$addl)
-        if (.addlVal > 0L) .lastIi <- .lastDoseRow$ii
-        .lastDose <- .lastDoseRow$time + .addlVal * .lastIi
-      }
-      .maxTime <- max(.mat$time, na.rm = TRUE)
-      if (.samples == "use") {
-        .chunks <- .addRowsToChunks(.chunks, .mat)
-        .nobs   <- .nobs + .env$nobs
-      } else {
-        .doseOnly <- .mat[.mat$evid != 0L, , drop = FALSE]
-        .chunks <- .addRowsToChunks(.chunks, .doseOnly)
-      }
-      .ndose <- .ndose + .env$ndose
-      # Advance past last dose period; also respect max obs time (for samples="use")
-      if (.explicitIi && identical(ii, 0)) {
-        .timeDelta <- .timeDelta
-      } else {
-        .effectiveIi <- if (.lastIi > 0) .lastIi else ii
-        .timeDelta   <- max(.maxTime, .lastDose + .effectiveIi)
-      }
+      .res <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples,
+                               .chunks, .nobs, .ndose, .explicitIi, ii)
+      .units     <- .res$units
+      .show      <- .res$show
+      .ids       <- .res$ids
+      .chunks    <- .res$chunks
+      .nobs      <- .res$nobs
+      .ndose     <- .res$ndose
+      .timeDelta <- .res$timeDelta
+      .lastIi    <- .res$lastIi
+      .lastDose  <- .res$lastDose
     } else if (is.numeric(.item) || is.integer(.item)) {
-      .wait        <- as.numeric(.item)
-      .effectiveIi <- if (.lastIi > 0) .lastIi else ii
-      if (.waitType == "+ii") {
-        .timeDelta <- .lastDose + .effectiveIi + .wait
-      } else {  # smart
-        if (.wait < .effectiveIi) {
-          .timeDelta <- .lastDose + .effectiveIi
-        } else {
-          .timeDelta <- .lastDose + .wait
-        }
-      }
+      .timeDelta <- .etSeqHandleWait(.item, .waitType, .lastDose, .lastIi, ii, .timeDelta)
     }
   }
 
@@ -1171,7 +1132,7 @@ etSeq <- function(..., samples = c("clear", "use"),
     .newShow["addl"] <- TRUE
   }
   .newEnv$show       <- .newShow
-  .newEnv$IDs        <- if (length(.IDs) > 0L) .IDs else 1L
+  .newEnv$IDs        <- if (length(.ids) > 0L) .ids else 1L
   .newEnv$nobs       <- .nobs
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
@@ -1213,7 +1174,7 @@ etRbind <- function(..., samples = c("use", "clear"),
   .ndose   <- 0L
   .units   <- NULL
   .show    <- NULL
-  .IDs     <- integer(0)
+  .ids     <- integer(0)
   .nextId  <- 0L
 
   for (.et in .ets) {
@@ -1233,9 +1194,9 @@ etRbind <- function(..., samples = c("use", "clear"),
         .map    <- seq_along(.oldIds) + .nextId
         .nextId <- .nextId + length(.oldIds)
         .mat$id <- .map[match(.mat$id, .oldIds)]
-        .IDs    <- c(.IDs, .map)
+        .ids    <- c(.ids, .map)
       } else {
-        .IDs <- sort(unique(c(.IDs, .env$IDs)))
+        .ids <- sort(unique(c(.ids, .env$IDs)))
       }
       if (.samples == "clear") {
         .mat <- .mat[.mat$evid != 0L, , drop = FALSE]
@@ -1251,7 +1212,7 @@ etRbind <- function(..., samples = c("use", "clear"),
           )
         }
       }
-      .IDs    <- sort(unique(c(.IDs, .env$IDs)))
+      .ids    <- sort(unique(c(.ids, .env$IDs)))
     }
     if (.samples == "use") {
       .nobs  <- .nobs + .env$nobs
@@ -1263,7 +1224,7 @@ etRbind <- function(..., samples = c("use", "clear"),
   .newEnv$chunks     <- .chunks
   .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
   .newEnv$show       <- if (!is.null(.show)) .show else .etDefaultShow()
-  .newEnv$IDs        <- if (length(.IDs) > 0L) .IDs else 1L
+  .newEnv$IDs        <- if (length(.ids) > 0L) .ids else 1L
   .newEnv$nobs       <- .nobs
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
