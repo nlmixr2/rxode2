@@ -439,7 +439,7 @@ gammapInva <- function(x, p) {
         length(inverse) > 1) {
     .df <- data.frame(x = x, lambda = lambda, low = low, high = high,
                       transform=transform, inverse=inverse)
-    vapply(1:nrow(.df),
+    vapply(seq_len(nrow(.df)),
            function(i) {
              .rxTransform(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
                           .df$transform[i], .df$inverse[i])
@@ -898,10 +898,8 @@ rxUnloadAll <- function(set=TRUE) {
   if (inherits(.val, "try-error")) {
     return(attr(.val, "condition")$message)
   }
-  return("")
+  ""
 }
-
-
 
 use.utf <- function() {
   opt <- getOption("cli.unicode", NULL)
@@ -1225,7 +1223,7 @@ binomProbs <- function(x, ...) {
 binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
                                names=TRUE, onlyProbs=TRUE, n=0L, m=0L,
                                pred=FALSE,
-                               piMethod=c("lim"), M=500000,
+                               piMethod="lim", M=500000,
                                tol=.Machine$double.eps^0.25,
                                ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"), ...) {
   checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
