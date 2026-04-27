@@ -1729,6 +1729,47 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+#' Add the id column when missing but sim.id is present and nSub > 1;
+#' splitting sim.id into id and sim.id
+#'
+#' @param .ret the output from rxSolve to be modified
+#' @param .nSub the number of subjects per study (nSub)
+#' @return the modified output with id column added and sim.id modified (if needed)
+#' @noRd
+#' @author Matthew L. Fidler
+.addSimId <- function(.ret, .nSub) {
+  if (.nSub <= 1L) return(.ret)
+  if (!"sim.id" %in% names(.ret)) return(.ret)
+  if ("id" %in% names(.ret)) return(.ret)
+  .simId <- as.integer(.ret[["sim.id"]])
+  .id <- ((.simId - 1L) %% .nSub) + 1L
+  .newSimId <- ((.simId - 1L) %/% .nSub) + 1L
+  # Save class (carries .rxode2.env with structure-integrity checks)
+  .cls <- class(.ret)
+  .envir <- attr(.cls, ".rxode2.env")
+  # Modify sim.id in-place and append id at the end
+  .ret[["sim.id"]] <- .newSimId
+  .ret[["id"]] <- .id
+  # Reorder: move id to immediately after sim.id
+  .allNames <- names(.ret)
+  .simPos <- match("sim.id", .allNames)
+  .idPos  <- match("id", .allNames)
+  .tailIdx <- if (.simPos < length(.allNames)) {
+    seq.int(.simPos + 1L, length(.allNames))
+  } else {
+    integer(0)
+  }
+  .newOrder <- c(seq_len(.simPos), .idPos,
+                 setdiff(.tailIdx, .idPos))
+  .ret <- .ret[, .newOrder, drop = FALSE]
+  # Update the structure-integrity checks in the rxode2 environment
+  .envir$.check.ncol  <- ncol(.ret)
+  .envir$.check.names <- names(.ret)
+  # Restore rxSolve class (which carries .rxode2.env with the updated checks)
+  class(.ret) <- .cls
+  .ret
+}
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -2188,6 +2229,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))
   .ret <- .ret[[1]]
+  .ret <- .addSimId(.ret, .ctl$nSub)
   if (.ctl$returnType == 4L) {
     data.table::setDT(.ret)
   } else if (.ctl$returnType == 5L) {
