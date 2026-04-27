@@ -192,6 +192,112 @@
   }
   list(done = FALSE)
 }
+
+#' Get the range sequence with et(1, 20) to seq(1, 20)
+#'
+#'
+#' @param xVal x value
+#'
+#' @param dots the dots arguments
+#'
+#' @param envRef the environmental reference for the rxEt
+#'
+#' @param et event table that may be modified
+#'
+#' @return Either NULL or a list with `done` and `et` components
+#'
+#' @noRd
+#' @author Matthew L. Fidler
+.etHandlePositionalRange <- function(xVal, dots, envRef, et) {
+  if (length(dots) == 1 &&
+        !is.null(xVal) &&
+        length(xVal) == 1 &&
+        (is.numeric(xVal) || is.integer(xVal)) &&
+        (is.numeric(dots[[1]]) || is.integer(dots[[1]]))) {
+    #et(1, 20) add obs seq(1, 20)
+    .resolvedTime <- seq(from = as.numeric(xVal), to = as.numeric(dots[[1]]))
+    .df <- .etObsChunk(.resolvedTime) # nolint
+    .etAddChunk(envRef, .df, NULL) # nolint
+    envRef$nobs <- envRef$nobs + length(.resolvedTime)
+    return(list(done = TRUE, et = et))
+  }
+  NULL
+}
+#' Handle the positional data.frame arguments
+#'
+#' This includes modifying deSolve event data frames to their proper
+#' value
+#'
+#' @param xVal the xVal is the data frame
+#'
+#' @param envRef environment reference
+#'
+#' @param et event table
+#'
+#' @return list of done and et events
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+#'
+.etHandlePositionalDataFrame <- function(xVal, envRef, et) {
+  .df <- xVal
+  # Convert deSolve-style (var/value/method) to canonical rxEt format
+  if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
+    .df$cmt   <- .df$var
+    .df$var   <- NULL
+    .df$amt   <- .df$value
+    .df$value <- NULL
+    if (!is.null(.df$method)) {
+      .df$evid <- ifelse(.df$method == "rep", 5L,
+                         ifelse(.df$method == "mult", 6L, 1L))
+      .df$method <- NULL
+    } else {
+      .df$evid <- 1L
+    }
+  }
+  if (is.null(.df$evid)) {
+    if (!is.null(.df$amt)) {
+      .df$evid <- ifelse(!is.na(.df$amt) & as.numeric(.df$amt) != 0, 1L, 0L)
+    } else {
+      .df$evid <- 0L
+    }
+  }
+  .df$evid <- as.integer(.df$evid)
+  if (is.null(.df$id)) {
+    .df$id <- 1L
+  }
+  .df$id <- as.integer(.df$id)
+  .obsIdx <- .df$evid == 0L
+  if (any(.obsIdx)) {
+    if (!is.null(.df$rate)) {
+      .df$rate[.obsIdx] <- NA_real_
+    }
+    if (!is.null(.df$amt)) {
+      .df$amt[.obsIdx]  <- NA_real_
+    }
+  }
+  envRef$ids    <- sort(unique(.df$id))
+  envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
+  envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
+  if (length(envRef$ids) > 1L) {
+    envRef$show["id"] <- TRUE
+  }
+  if (sum(!.obsIdx) > 0L) {
+    envRef$show["amt"] <- TRUE
+  }
+  if (!is.null(.df$rate) &&
+        any(.df$rate[!.obsIdx] != 0, na.rm = TRUE)) {
+    envRef$show["rate"] <- TRUE
+  }
+  if (!is.null(.df$ii) && any(.df$ii != 0, na.rm = TRUE)) {
+    envRef$show["ii"]   <- TRUE
+    envRef$show["addl"] <- TRUE
+  }
+  envRef$chunks <- .addRowsToChunks(envRef$chunks, .df) # nolint
+  list(done = TRUE, et = et)
+}
+
 #' Handle the position arguments (ie ...)
 #'
 #'
@@ -239,101 +345,36 @@
   if (is.null(time) && !xMissing && !xIsRxEt) {
     .xVal <- x
     .dots <- list(...)
-    .dotsPos <- Filter(function(x) is.null(names(x)) || all(names(x) == ""), .dots)
     if (length(.dots) >= 2L) {
       # possibly sequence of event tables or waiting times
-      if (any(vapply(.dots, is.rxEt, logical(1L))) || any(vapply(.dots, is.numeric, logical(1L)))) {
-         # defer to etSeq handled in HandlePiping
-         return(list(done = FALSE, posCmt = NULL, listObs = NULL, time = NULL))
+      if (any(vapply(.dots, is.rxEt, logical(1))) || # nolint
+            any(vapply(.dots, is.numeric, logical(1)))) {
+        # defer to etSeq handled in HandlePiping
+        return(list(done = FALSE, posCmt = NULL, listObs = NULL, time = NULL))
       }
       stop("unused positional arguments", call. = FALSE)
     }
     if (length(.dots) == 1L && !is.null(names(.dots)) && any(names(.dots) != "")) {
-       # Has named dots, let standard handler take it
-    } else if (length(.dots) == 1 &&
-                 !is.null(.xVal) &&
-                 length(.xVal) == 1 &&
-                 (is.numeric(.xVal) || is.integer(.xVal)) &&
-                 (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
-      #et(1, 20) add obs seq(1, 20)
-      .resolvedTime <- seq(from=as.numeric(.xVal), to=as.numeric(.dots[[1]]))
-      .df <- .etObsChunk(.resolvedTime)
-      .etAddChunk(envRef, .df, NULL)
-      envRef$nobs <- envRef$nobs + length(.resolvedTime)
-      return(list(done = TRUE, et = et))
-    } else if (is.data.frame(.xVal)) {
-      # Import data.frame as event table
-      .df <- .xVal
-      # Convert deSolve-style (var/value/method) to canonical rxEt format
-      if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
-        .df$cmt   <- .df$var
-        .df$var   <- NULL
-        .df$amt   <- .df$value
-        .df$value <- NULL
-        if (!is.null(.df$method)) {
-          .df$evid <- ifelse(.df$method == "rep", 5L,
-                      ifelse(.df$method == "mult",
-                             6L, 1L))
-          .df$method <- NULL
-        } else {
-          .df$evid <- 1
+      # Has named dots, let standard handler take it
+    } else {
+      .res <- .etHandlePositionalRange(.xVal, .dots, envRef, et)
+      if (!is.null(.res)) return(.res)
+      if (is.data.frame(.xVal)) return(.etHandlePositionalDataFrame(.xVal, envRef, et))
+      if (is.list(.xVal)) {
+        .listObs <- .xVal
+      } else if (!is.null(.xVal)) {
+        # single positional arg becomes time
+        time <- .xVal
+        # Second positional arg in ... treated as compartment (old API compat)
+        if (length(.dots) == 1L && is.character(.dots[[1]])) {
+          .posCmt <- .dots[[1]]
         }
-      }
-      if (is.null(.df$evid)) {
-        if (!is.null(.df$amt)) {
-          .df$evid <- ifelse(!is.na(.df$amt) & as.numeric(.df$amt) != 0, 1L, 0L)
-        } else {
-          .df$evid <- 0L
-        }
-      }
-      .df$evid <- as.integer(.df$evid)
-      if (is.null(.df$id)) .df$id <- 1L
-      .df$id <- as.integer(.df$id)
-      .obsIdx <- .df$evid == 0L
-      if (any(.obsIdx)) {
-        if (!is.null(.df$rate)) {
-          .df$rate[.obsIdx] <- NA_real_
-        }
-        if (!is.null(.df$amt))  {
-          .df$amt[.obsIdx]  <- NA_real_
-        }
-      }
-      envRef$ids    <- sort(unique(.df$id))
-      envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
-      envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
-      if (length(envRef$ids) > 1L) {
-        envRef$show["id"] <- TRUE
-      }
-      if (sum(!.obsIdx) > 0L) {
-        envRef$show["amt"] <- TRUE
-      }
-      if (!is.null(.df$rate) &&
-            any(.df$rate[!.obsIdx] != 0, na.rm = TRUE)) {
-        envRef$show["rate"] <- TRUE
-      }
-      if (!is.null(.df$ii) && any(.df$ii != 0, na.rm = TRUE)) {
-        envRef$show["ii"]   <- TRUE
-        envRef$show["addl"] <- TRUE
-      }
-      envRef$chunks <- .addRowsToChunks(envRef$chunks, .df)
-      return(list(done = TRUE, et = et))
-    } else if (is.list(.xVal) &&
-                 !is.data.frame(.xVal)) {
-      # deferred: process after cmt/id resolved
-      .listObs <- .xVal
-    } else if (!is.null(.xVal)) {
-      # single positional arg becomes time
-      time <- .xVal
-      # Second positional arg in ... treated as compartment (old API compat)
-      .dots2 <- list(...)
-      if (length(.dots2) == 1L && is.character(.dots2[[1]])) {
-        # This only occurs et(1, "matt") but not with et(1, 2)
-        .posCmt <- .dots2[[1]]
       }
     }
   }
   list(done = FALSE, posCmt = .posCmt, listObs = .listObs, time = time)
 }
+
 #' This function handles any units sent to the et() function.
 #'
 #'

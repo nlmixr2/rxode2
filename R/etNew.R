@@ -199,7 +199,12 @@
   env$canResize <- .retEnv$canResize
   invisible(NULL)
 }
-
+#' $get.EventTable()
+#'
+#' @param env environment to get the event table
+#' @return event table
+#' @noRd
+#' @author Matthew L. Fidler
 .etMethodGetEventTable <- function(env) {
   .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
   if (nrow(.mat) == 0L) return(NULL)
