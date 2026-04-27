@@ -251,8 +251,8 @@
                  length(.xVal) == 1 &&
                  (is.numeric(.xVal) || is.integer(.xVal)) &&
                  (is.numeric(.dots[[1]]) || is.integer(.dots[[1]]))) {
-      #et(1, 20) add obs at times 1 and 20
-      .resolvedTime <- c(as.numeric(.xVal), as.numeric(.dots[[1]]))
+      #et(1, 20) add obs seq(1, 20)
+      .resolvedTime <- seq(from=as.numeric(.xVal), to=as.numeric(.dots[[1]]))
       .df <- .etObsChunk(.resolvedTime)
       .etAddChunk(envRef, .df, NULL)
       envRef$nobs <- envRef$nobs + length(.resolvedTime)

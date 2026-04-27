@@ -769,7 +769,7 @@ rxUnloadAll <- function(set=TRUE) {
       }
     }
     .nKeep <- .nKeep - .n
-    if (length(.orphans) > .nKeep){
+    if (length(.orphans) > .nKeep && .nKeep >= 0L) {
       # If there are more orphans than the number of models to keep,
       # then we will remove the last nKeep orphans
       .orphans <- .orphans[-seq_len(.nKeep)]
