@@ -124,8 +124,8 @@
   if (!is.null(by) && !is.null(length.out))
     stop("cannot specify both 'by' and 'length.out'", call. = FALSE)
   if (!is.null(by) || !is.null(length.out)) {
-    if (xIsRxEt && length(envRef$IDs) > 0L) {
-      .seqTargetIds <- envRef$IDs
+    if (xIsRxEt && length(envRef$ids) > 0L) {
+      .seqTargetIds <- envRef$ids
     } else {
       .seqTargetIds <- NULL
     }
@@ -296,10 +296,10 @@
           .df$amt[.obsIdx]  <- NA_real_
         }
       }
-      envRef$IDs    <- sort(unique(.df$id))
+      envRef$ids    <- sort(unique(.df$id))
       envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
       envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
-      if (length(envRef$IDs) > 1L) {
+      if (length(envRef$ids) > 1L) {
         envRef$show["id"] <- TRUE
       }
       if (sum(!.obsIdx) > 0L) {
@@ -385,26 +385,26 @@
     .idVal       <- as.integer(id)
     .posIds      <- .idVal[.idVal > 0L]
     .negIds      <- abs(.idVal[.idVal < 0L])
-    .existingIds <- .envRef$IDs
+    .existingIds <- .envRef$ids
     if (length(.posIds) > 0L && .xIsRxEt && .envRef$canResize) {
       # canResize mode: positive IDs define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)
-      .envRef$IDs <- sort(.posIds)
+      .envRef$ids <- sort(.posIds)
       .doResize   <- length(.addedIds) > 0L || length(.removedIds) > 0L
     } else {
       .addedIds   <- setdiff(.posIds, .existingIds)
       .removedIds <- intersect(.negIds, .existingIds)
-      if (length(.posIds) > 0L) .envRef$IDs <- sort(unique(c(.envRef$IDs, .posIds)))
-      if (length(.negIds) > 0L) .envRef$IDs <- setdiff(.envRef$IDs, .negIds)
+      if (length(.posIds) > 0L) .envRef$ids <- sort(unique(c(.envRef$ids, .posIds)))
+      if (length(.negIds) > 0L) .envRef$ids <- setdiff(.envRef$ids, .negIds)
       .doResize   <- .xIsRxEt && (length(.addedIds) > 0L || length(.removedIds) > 0L)
     }
     .envRef$show["id"] <- TRUE
     .resolvedId <- .posIds
   }
   .targetIds <- .resolvedId
-  if (is.null(.targetIds) && .xIsRxEt && length(.envRef$IDs) > 0L) {
-    .targetIds <- .envRef$IDs
+  if (is.null(.targetIds) && .xIsRxEt && length(.envRef$ids) > 0L) {
+    .targetIds <- .envRef$ids
   }
   list(resolvedId = .resolvedId, targetIds = .targetIds, doResize = .doResize,
        addedIds = .addedIds, removedIds = .removedIds, existingIds = .existingIds)
@@ -639,12 +639,12 @@
 .etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, nobs, ndose, explicitIi, ii) {
   env <- .rxEtEnv(item)
   if (is.null(units)) {
-    units <- env
-    show  <- env
+    units <- env$units
+    show  <- env$show
   } else {
-    show <- show | env
+    show <- show | env$show
   }
-  ids <- sort(unique(c(ids, env)))
+  ids <- sort(unique(c(ids, env$ids)))
   mat <- .etMaterialize(item)
   # Strip units for arithmetic; units preserved in env$units
   if (requireNamespace("units", quietly = TRUE)) {

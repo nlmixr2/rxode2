@@ -166,7 +166,7 @@
       env$chunks <- .retEnv$chunks
       env$units <- .retEnv$units
       env$show <- .retEnv$show
-      env$IDs <- .retEnv$IDs
+      env$ids <- .retEnv$ids
       env$nobs <- .retEnv$nobs
       env$ndose <- .retEnv$ndose
       env$randomType <- .retEnv$randomType
@@ -196,8 +196,8 @@
         }
       }
       .df <- .etObsChunk(.time)
-      .etAddChunk(env, .df, env$IDs)
-      env$nobs   <- env$nobs + length(.df$time) * length(env$IDs)
+      .etAddChunk(env, .df, env$ids)
+      env$nobs   <- env$nobs + length(.df$time) * length(env$ids)
       if (!is.na(time.units)) env$units["time"] <- time.units
       invisible(NULL)
     },
@@ -267,7 +267,7 @@
       .newEnv$chunks     <- env$chunks
       .newEnv$units      <- env$units
       .newEnv$show       <- env$show
-      .newEnv$IDs        <- env$IDs
+      .newEnv$ids        <- env$ids
       .newEnv$nobs       <- env$nobs
       .newEnv$ndose      <- env$ndose
       .newEnv$randomType <- env$randomType
@@ -341,11 +341,11 @@
       df$evid <- as.integer(df$evid)
       if (is.null(df$id)) df$id <- 1L
       df$id <- as.integer(df$id)
-      env$IDs  <- sort(unique(df$id))
+      env$ids  <- sort(unique(df$id))
       env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
       env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
       env$chunks <- .addRowsToChunks(env$chunks, df)
-      if (length(env$IDs) > 1L) env$show["id"] <- TRUE
+      if (length(env$ids) > 1L) env$show["id"] <- TRUE
       if (sum(df$evid != 0L, na.rm = TRUE) > 0L) env$show["amt"] <- TRUE
       if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
         env$show["rate"] <- TRUE
@@ -397,13 +397,13 @@
         for (.i in .ids) {
           env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
         }
-        env$IDs <- sort(.ids)
+        env$ids <- sort(.ids)
       } else {
-        env$IDs <- 1L
+        env$ids <- 1L
       }
       env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
       env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
-      env$show["id"] <- length(env$IDs) > 1L
+      env$show["id"] <- length(env$ids) > 1L
       env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
       env$randomType <- NA_integer_
       env$canResize <- FALSE
@@ -460,7 +460,7 @@
   .env$chunks     <- list()
   .env$units      <- c(dosing = amountUnits, time = timeUnits)
   .env$show       <- .etDefaultShow()
-  .env$IDs        <- 1L
+  .env$ids        <- 1L
   .env$nobs       <- 0L
   .env$ndose      <- 0L
   .env$randomType <- NA_integer_

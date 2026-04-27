@@ -2,7 +2,7 @@
 #' @export
 .DollarNames.rxEt <- function(x, pattern) {
   if (is.rxEt(x)) {
-    .envProps <- c("randomType", "canResize", "IDs", "show", "ndose", "nobs")
+    .envProps <- c("randomType", "canResize", "ids", "show", "ndose", "nobs")
     .methods <- c(
       "expand", "getSampling", "get.sampling", "getDosing", "get.dosing",
       "get.nobs", "get.obs.rec", "getEventTable", "get.EventTable",
@@ -648,13 +648,13 @@ names.rxEt <- function(x) {
     .newEnv$canResize  <- FALSE
     .newEnv$chunks     <- list()
     if (nrow(.sub) > 0L) {
-      .newEnv$IDs  <- sort(unique(as.integer(.sub$id)))
+      .newEnv$ids  <- sort(unique(as.integer(.sub$id)))
       .newEnv$nobs  <- sum(.sub$evid == 0L, na.rm = TRUE)
       .newEnv$ndose <- sum(.sub$evid != 0L, na.rm = TRUE)
-      for (.ii in .newEnv$IDs)
+      for (.ii in .newEnv$ids)
         .newEnv$chunks[[.ii]] <- .sub[.sub$id == .ii, , drop = FALSE]
     } else {
-      .newEnv$IDs   <- 1L
+      .newEnv$ids   <- 1L
       .newEnv$nobs  <- 0L
       .newEnv$ndose <- 0L
     }
@@ -793,7 +793,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       .newEnv <- new.env(parent = emptyenv())
       .newEnv$units      <- .env0$units
       .newEnv$show       <- .env0$show
-      .newEnv$IDs        <- .env0$IDs
+      .newEnv$ids        <- .env0$ids
       .newEnv$nobs       <- .env0$nobs
       .newEnv$ndose      <- .env0$ndose
       .newEnv$randomType <- NA_integer_
@@ -1129,12 +1129,12 @@ etSeq <- function(..., samples = c("clear", "use"),
     .newShow["addl"] <- TRUE
   }
   .newEnv$show       <- .newShow
-  .newEnv$IDs        <- if (length(.ids) > 0L) .ids else 1L
+  .newEnv$ids        <- if (length(.ids) > 0L) .ids else 1L
   .newEnv$nobs       <- .nobs
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
-  if (length(.newEnv$IDs) > 1L) .newEnv$show["id"] <- TRUE
+  if (length(.newEnv$ids) > 1L) .newEnv$show["id"] <- TRUE
   structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
 }
 #' Combining event tables
@@ -1193,7 +1193,7 @@ etRbind <- function(..., samples = c("use", "clear"),
         .mat$id <- .map[match(.mat$id, .oldIds)]
         .ids    <- c(.ids, .map)
       } else {
-        .ids <- sort(unique(c(.ids, .env$IDs)))
+        .ids <- sort(unique(c(.ids, .env$ids)))
       }
       if (.samples == "clear") {
         .mat <- .mat[.mat$evid != 0L, , drop = FALSE]
@@ -1209,7 +1209,7 @@ etRbind <- function(..., samples = c("use", "clear"),
           )
         }
       }
-      .ids    <- sort(unique(c(.ids, .env$IDs)))
+      .ids    <- sort(unique(c(.ids, .env$ids)))
     }
     if (.samples == "use") {
       .nobs  <- .nobs + .env$nobs
@@ -1221,12 +1221,12 @@ etRbind <- function(..., samples = c("use", "clear"),
   .newEnv$chunks     <- .chunks
   .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
   .newEnv$show       <- if (!is.null(.show)) .show else .etDefaultShow()
-  .newEnv$IDs        <- if (length(.ids) > 0L) .ids else 1L
+  .newEnv$ids        <- if (length(.ids) > 0L) .ids else 1L
   .newEnv$nobs       <- .nobs
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
-  if (length(.newEnv$IDs) > 1L) .newEnv$show["id"] <- TRUE
+  if (length(.newEnv$ids) > 1L) .newEnv$show["id"] <- TRUE
   structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
 }
 
@@ -1404,7 +1404,7 @@ etExpand <- function(et) {
   }
   .newEnv$units      <- .env$units
   .newEnv$show       <- .env$show
-  .newEnv$IDs        <- .env$IDs
+  .newEnv$ids        <- .env$ids
   .newEnv$nobs       <- sum(.expanded$evid == 0L)
   .newEnv$ndose      <- sum(.expanded$evid != 0L)
   .newEnv$randomType <- NA_integer_
