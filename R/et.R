@@ -1445,7 +1445,7 @@ c.rxEvid <- function(x, ...) {
 #' @rdname rxEvid
 #' @export
 `[.rxEvid` <- function(x, ...) {
-  return(as.rxEvid(NextMethod()))
+  as.rxEvid(NextMethod())
 }
 .colorFmt.rxEvid <- function(x, ...) {
   .x <- unclass(x)
