@@ -60,6 +60,9 @@ rxTest({
       eff(0) <- theta1 + eta1
     })
 
+    expect_equal(c(depot = 0L, centr = 0L, peri = 0L, eff = 1L),
+                 rxModelVars(fini)$stateProp)
+
     theta <-
       c(
         KA = 2.94E-01, CL = 1.86E+01, V2 = 4.02E+01, # central
