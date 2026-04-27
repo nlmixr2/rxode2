@@ -1429,7 +1429,7 @@ etExpand <- function(et) {
 #' rxEvid(1:7)
 #' @export
 rxEvid <- function(x) {
-  return(structure(x, class = "rxEvid"))
+  structure(x, class = "rxEvid")
 }
 
 #' @rdname rxEvid
@@ -1447,6 +1447,7 @@ c.rxEvid <- function(x, ...) {
 `[.rxEvid` <- function(x, ...) {
   as.rxEvid(NextMethod())
 }
+
 .colorFmt.rxEvid <- function(x, ...) {
   .x <- unclass(x)
   if (is.numeric(.x)) {
