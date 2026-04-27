@@ -233,70 +233,78 @@
   invisible(NULL)
 }
 
-.etMethodImportEventTable <- function(env, df) {
-  if (!is.data.frame(df)) {
-    stop("'df' must be a data.frame", call. = FALSE)
-  }
+.etImportAutoUnits <- function(env, df) {
   .tu <- env$units["time"]
   .du <- env$units["dosing"]
   .hasTimeU <- !is.na(.tu) && nchar(.tu) > 0
   .hasDoseU <- !is.na(.du) && nchar(.du) > 0
   # Auto-detect units from columns if not already set
-  if (!.hasTimeU && requireNamespace("units", quietly = TRUE)) {
-    for (.nmCheck in c("time", "ii")) {
-      if (!is.null(df[[.nmCheck]]) && inherits(df[[.nmCheck]], "units")) {
-        .tu <- units::deparse_unit(df[[.nmCheck]])
-        env$units["time"] <- .tu
-        .hasTimeU <- TRUE
-        break
+  if (requireNamespace("units", quietly = TRUE)) {
+    if (!.hasTimeU) {
+      for (.nmCheck in c("time", "ii")) {
+        if (!is.null(df[[.nmCheck]]) && inherits(df[[.nmCheck]], "units")) {
+          .tu <- units::deparse_unit(df[[.nmCheck]])
+          env$units["time"] <- .tu
+          .hasTimeU <- TRUE
+          break
+        }
       }
     }
-  }
-  if (!.hasDoseU && requireNamespace("units", quietly = TRUE)) {
-    if (!is.null(df[["amt"]]) && inherits(df[["amt"]], "units")) {
-      .du <- units::deparse_unit(df[["amt"]])
-      env$units["dosing"] <- .du
-      .hasDoseU <- TRUE
-    } else if (!is.null(df[["rate"]]) && inherits(df[["rate"]], "units")) {
-      # udunits format: "ug s-1" — amount unit has no digit exponent
-      .rateStr <- units::deparse_unit(df[["rate"]])
-      .parts <- strsplit(trimws(.rateStr), "\\s+")[[1L]]
-      .amtParts <- .parts[!grepl("[0-9]", .parts)]
-      if (length(.amtParts) >= 1L) {
-        .du <- .amtParts[[1L]]
+    if (!.hasDoseU) {
+      if (!is.null(df[["amt"]]) && inherits(df[["amt"]], "units")) {
+        .du <- units::deparse_unit(df[["amt"]])
         env$units["dosing"] <- .du
         .hasDoseU <- TRUE
+      } else if (!is.null(df[["rate"]]) && inherits(df[["rate"]], "units")) {
+        # udunits format: "ug s-1" — amount unit has no digit exponent
+        .rateStr <- units::deparse_unit(df[["rate"]])
+        .parts <- strsplit(trimws(.rateStr), "\\s+")[[1L]]
+        .amtParts <- .parts[!grepl("[0-9]", .parts)]
+        if (length(.amtParts) >= 1L) {
+          .du <- .amtParts[[1L]]
+          env$units["dosing"] <- .du
+          .hasDoseU <- TRUE
+        }
       }
     }
   }
+  list(tu = .tu, du = .du, hasTimeU = .hasTimeU, hasDoseU = .hasDoseU)
+}
+
+.etImportConvertUnits <- function(df, tu, du, hasTimeU, hasDoseU) {
   .cols <- lapply(names(df), function(.nm) {
     .col <- df[[.nm]]
     if (!inherits(.col, "units")) return(.col)
     if (requireNamespace("units", quietly = TRUE)) {
       # Only convert when et had prior units; auto-detected units just strip label
-      if (.nm %in% c("time", "ii") && .hasTimeU)
-        return(as.numeric(units::set_units(.col, .tu, mode = "standard")))
-      if (.nm == "amt" && .hasDoseU)
-        return(as.numeric(units::set_units(.col, .du, mode = "standard")))
-      if (.nm == "rate" && .hasDoseU && .hasTimeU) {
-        .rateU <- paste0(.du, "/", .tu)
+      if (.nm %in% c("time", "ii") && hasTimeU) {
+        return(as.numeric(units::set_units(.col, tu, mode = "standard")))
+      }
+      if (.nm == "amt" && hasDoseU) {
+        return(as.numeric(units::set_units(.col, du, mode = "standard")))
+      }
+      if (.nm == "rate" && hasDoseU && hasTimeU) {
+        .rateU <- paste0(du, "/", tu)
         return(as.numeric(units::set_units(.col, .rateU, mode = "standard")))
       }
     }
     as.numeric(.col)
   })
   names(.cols) <- names(df)
-  df <- as.data.frame(.cols, stringsAsFactors = FALSE)
+  as.data.frame(.cols, stringsAsFactors = FALSE)
+}
+
+.etImportStandardizeIdEvid <- function(df) {
   if (is.null(df$evid)) {
     df$evid <- if (!is.null(df$amt)) ifelse(!is.na(df$amt) & as.numeric(df$amt) != 0, 1L, 0L) else 0L
   }
   df$evid <- as.integer(df$evid)
   if (is.null(df$id)) df$id <- 1L
   df$id <- as.integer(df$id)
-  env$ids  <- sort(unique(df$id))
-  env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
-  env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
-  env$chunks <- .addRowsToChunks(env$chunks, df)
+  df
+}
+
+.etImportUpdateShow <- function(env, df) {
   if (length(env$ids) > 1L) env$show["id"] <- TRUE
   if (sum(df$evid != 0L, na.rm = TRUE) > 0L) env$show["amt"] <- TRUE
   if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
@@ -307,11 +315,17 @@
     env$show["ii"] <- TRUE
     env$show["addl"] <- TRUE
   }
-  invisible(NULL)
 }
 
-.etMethodImportEventTable2 <- function(env, df, ...) {
-  if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+.etImportUpdateEnv <- function(env, df) {
+  env$ids  <- sort(unique(df$id))
+  env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
+  env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
+  env$chunks <- .addRowsToChunks(env$chunks, df)
+  .etImportUpdateShow(env, df)
+}
+
+.etImportNormalizeNames <- function(df) {
   # Normalize UPPERCASE/mixed-case NONMEM-style column names to lowercase
   .colMap <- c(ID="id", TIME="time", CMT="cmt", AMT="amt", EVID="evid",
                RATE="rate", II="ii", ADDL="addl", SS="ss", DUR="dur",
@@ -323,17 +337,44 @@
       names(df)[.i] <- .colMap[.upper[.i]]
     }
   }
+  df
+}
+
+.etImportIdToInteger <- function(df) {
   # Convert character ID to sequential integers (silently)
   if (!is.null(df$id) && !is.numeric(df$id) && !is.integer(df$id)) {
     .uniq <- unique(df$id)
     df$id <- as.integer(factor(df$id, levels = .uniq))
   }
+  df
+}
+
+.etImportDropNaTime <- function(df) {
   # Drop rows with NA time (warn)
   if (!is.null(df$time) && any(is.na(as.numeric(df$time)))) {
     .nDrop <- sum(is.na(as.numeric(df$time)))
     warning(sprintf("dropping %d row(s) with NA time", .nDrop), call. = FALSE)
     df <- df[!is.na(as.numeric(df$time)), , drop = FALSE]
   }
+  df
+}
+
+.etMethodImportEventTable <- function(env, df) {
+  if (!is.data.frame(df)) {
+    stop("'df' must be a data.frame", call. = FALSE)
+  }
+  .u <- .etImportAutoUnits(env, df)
+  df <- .etImportConvertUnits(df, .u$tu, .u$du, .u$hasTimeU, .u$hasDoseU)
+  df <- .etImportStandardizeIdEvid(df)
+  .etImportUpdateEnv(env, df)
+  invisible(NULL)
+}
+
+.etMethodImportEventTable2 <- function(env, df, ...) {
+  if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+  df <- .etImportNormalizeNames(df)
+  df <- .etImportIdToInteger(df)
+  df <- .etImportDropNaTime(df)
   # Delegate to import.EventTable for units handling + storage
   .etMethodImportEventTable(env, df)
   invisible(NULL)
