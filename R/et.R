@@ -44,12 +44,12 @@
       }
       .x[["dur"]] <- .tmp
       class(.x) <- .cls
-      return(.x)
+      .x
     } else {
-      return(x)
+      x
     }
   } else {
-    return(x)
+    x
   }
 }
 #' Event Table Function
@@ -205,7 +205,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeRx <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineRx))
   assignInMyNamespace(".pipelineRx", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -213,7 +213,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeInits <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineInits))
   assignInMyNamespace(".pipelineInits", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -221,7 +221,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeEvents <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineEvents))
   assignInMyNamespace(".pipelineEvents", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -229,7 +229,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeParams <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineParams))
   assignInMyNamespace(".pipelineParams", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -237,7 +237,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeKeep <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineKeep))
   assignInMyNamespace(".pipelineKeep", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -245,7 +245,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeThetaMat <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineThetaMat))
   assignInMyNamespace(".pipelineThetaMat", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -253,7 +253,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeOmega <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineOmega))
   assignInMyNamespace(".pipelineOmega", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -261,7 +261,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeSigma <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineSigma))
   assignInMyNamespace(".pipelineSigma", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -269,7 +269,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeDfObs <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineDfObs))
   assignInMyNamespace(".pipelineDfObs", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -277,7 +277,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeDfSub <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineDfSub))
   assignInMyNamespace(".pipelineDfSub", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' @rdname dot-pipeRx
@@ -285,7 +285,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeNSub <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineNSub))
   assignInMyNamespace(".pipelineNSub", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 
@@ -294,7 +294,7 @@ et <- function(x, ..., envir = parent.frame()) {
 .pipeNStud <- function(obj) {
   if (.isNa1(obj)) return(invisible(.pipelineNStud))
   assignInMyNamespace(".pipelineNStud", obj)
-  return(invisible(obj))
+  invisible(obj)
 }
 
 #' Clear/Set pipeline
@@ -606,10 +606,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
       }
       return(.val)
     }
-    return(NULL)
   }
-
-  # 4. Old-style C++ EventTable: delegate to C++ etUpdate handler
   NULL
 }
 
@@ -812,7 +809,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
   } else {
     .ret <- list(object, ..., seed = seed, nsim = nsim)
     class(.ret) <- "rxode2et"
-    return(rxEtDispatchSolve(.ret))
+    rxEtDispatchSolve(.ret)
   }
 }
 
@@ -1323,7 +1320,7 @@ as.et <- function(x, ...) {
 as.et.default <- function(x, ...) {
   .e <- et()
   .e$importEventTable(as.data.frame(x))
-  return(.e)
+  .e
 }
 
 #' @export
@@ -1442,7 +1439,7 @@ as.rxEvid <- rxEvid
 #' @rdname rxEvid
 #' @export
 c.rxEvid <- function(x, ...) {
-  return(as.rxEvid(NextMethod()))
+  as.rxEvid(NextMethod())
 }
 
 #' @rdname rxEvid
@@ -1539,13 +1536,13 @@ as.data.frame.rxEvid <- base::as.data.frame.difftime
 #'
 #' @export
 rxRateDur <- function(x) {
-  return(structure(x, class = "rxRateDur"))
+  structure(x, class = "rxRateDur")
 }
 
 #' @rdname rxRateDur
 #' @export
 `[.rxRateDur` <- function(x, ...) {
-  return(as.rxRateDur(NextMethod()))
+  as.rxRateDur(NextMethod())
 }
 
 #' @rdname rxRateDur
@@ -1554,7 +1551,7 @@ as.rxRateDur <- rxRateDur
 #' @rdname rxEvid
 #' @export
 c.rxRateDur <- function(x, ...) {
-  return(as.rxRateDur(NextMethod()))
+  as.rxRateDur(NextMethod())
 }
 
 #' @rdname rxRateDur
@@ -1569,7 +1566,7 @@ as.character.rxRateDur <- function(x, ...) {
         )
       )
     )
-  return(.x)
+  .x
 }
 
 .fmt <- function(x, width = 9) {
@@ -1580,7 +1577,7 @@ as.character.rxRateDur <- function(x, ...) {
   .ret <- ifelse(.ncg == width, .g,
     ifelse(.ncf == width, .f, .g)
   )
-  return(.ret)
+  .ret
 }
 
 
@@ -1594,7 +1591,7 @@ as.character.rxRateDur <- function(x, ...) {
         )
       )
     )
-  return(.x)
+  .x
 }
 
 #' @rdname rxRateDur
@@ -1614,9 +1611,9 @@ type_sum.rxRateDur <- function(x) {
   if (!is.null(.unit)) {
     .tmp <- x
     class(.tmp) <- "units"
-    return(pillar::type_sum(.tmp))
+    pillar::type_sum(.tmp)
   } else {
-    return("rate/dur")
+    "rate/dur"
   }
 }
 
@@ -1645,12 +1642,12 @@ set_units.rxRateDur <- function(x, value, ..., mode = .setUnitsMode()) {
     if (length(.w1) > 0) .ret[.w1] <- -1
     if (length(.w2) > 0) .ret[.w2] <- -2
     class(.ret) <- c("rxRateDur", "units")
-    return(.ret)
+    .ret
   } else {
     .lst <- as.list(match.call())[-1]
     .lst[[1]] <- unclass(x)
     .ret <- do.call(units::set_units, .lst)
     class(.ret) <- c("rxRateDur", "units")
-    return(.ret)
+    .ret
   }
 }
