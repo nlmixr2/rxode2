@@ -1259,7 +1259,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
     if (!names) {
       names(.ret) <- NULL
     }
-    return(.ret)
+    .ret
   } else {
     ciMethod <- match.arg(ciMethod)
     ciMethod <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3L, "wald"=2L, "ac"=3L, "wc"=0L)[ciMethod], NULL)
@@ -1497,7 +1497,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
       verbose
     )$str
     .env <- environment()
-    return(eval(parse(text = .linCmt), envir = .env))
+    eval(parse(text = .linCmt), envir = .env)
   } else {
     stop("cannot figure out PK parameters to convert", call. = FALSE)
   }

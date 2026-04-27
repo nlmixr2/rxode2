@@ -43,7 +43,7 @@
       stop("dates formatted as MONTH-DAY or DAY alone are not supported in this conversion",
            call. = FALSE)
     }
-    return(d)
+    d
   }
   if (any(.colNames == "DATE")) {
     ##  Month Day Year
@@ -146,10 +146,10 @@
     d <- d[order(d$ID, d$DATE.TIME, -d$EVID), ]
     d$TIME <- as.vector(unlist(sapply(unique(d$ID), function(id) {
       d0 <- d[d$ID == id, ]
-      return(as.numeric(difftime(d0$DATE.TIME,
-                                 d0$DATE.TIME[1],
-                                 units = "hours"
-                                 )))
+      as.numeric(difftime(d0$DATE.TIME,
+                          d0$DATE.TIME[1],
+                          units = "hours"
+                          ))
     })))
     d <- d[, -which(names(d) == "DATE.TIME")]
   }
