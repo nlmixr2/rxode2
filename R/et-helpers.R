@@ -329,19 +329,46 @@
   }
   list(done = FALSE, posCmt = .posCmt, listObs = .listObs, time = time)
 }
-
-.etHandleUnits <- function(.envRef, amountUnits, timeUnits, .dotArgs, .amountUnitsMissing, .timeUnitsMissing) {
-  if (!is.null(amountUnits)) .envRef$units["dosing"] <- amountUnits
-  if (!is.null(timeUnits))   .envRef$units["time"]   <- timeUnits
+#' This function handles any units sent to the et() function.
+#'
+#'
+#' @param envRef this is the reference to the internal environment of
+#'   the rxEt object being constructed
+#'
+#' @param amountUnits the amountUnits argument passed to et()
+#'
+#' @param timeUnits the timeUnits argument passed to et()
+#'
+#' @param dotArgs The .. arguments passed to et(), which may contain
+#'   named or unnamed arguments
+#'
+#' @param amountUnitsMissing a logical indicating whether the
+#'   amountUnits argument was missing
+#'
+#' @param timeUnitsMissing a logical indicating whether the timeUnits
+#'   argument was missing
+#'
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.etHandleUnits <- function(envRef, amountUnits, timeUnits, dotArgs, amountUnitsMissing, timeUnitsMissing) {
+  if (!is.null(amountUnits)) envRef$units["dosing"] <- amountUnits
+  if (!is.null(timeUnits))   envRef$units["time"]   <- timeUnits
   # Handle dot-style and underscore aliases from ...
-  if (!is.null(.dotArgs[["amount.units"]]) && is.null(amountUnits))
-    .envRef$units["dosing"] <- .dotArgs[["amount.units"]]
-  if (!is.null(.dotArgs[["time.units"]]) && is.null(timeUnits))
-    .envRef$units["time"] <- .dotArgs[["time.units"]]
-  if (!is.null(.dotArgs[["time_units"]]) && is.null(timeUnits) && is.null(.dotArgs[["time.units"]]))
-    .envRef$units["time"] <- .dotArgs[["time_units"]]
-  if (!is.null(.dotArgs[["amount_units"]]) && is.null(amountUnits) && is.null(.dotArgs[["amount.units"]]))
-    .envRef$units["dosing"] <- .dotArgs[["amount_units"]]
+  if (!is.null(dotArgs[["amount.units"]]) &&
+        is.null(amountUnits))
+    envRef$units["dosing"] <- dotArgs[["amount.units"]]
+  if (!is.null(dotArgs[["time.units"]]) &&
+        is.null(timeUnits))
+    envRef$units["time"] <- dotArgs[["time.units"]]
+  if (!is.null(dotArgs[["time_units"]]) &&
+        is.null(timeUnits) &&
+        is.null(dotArgs[["time.units"]]))
+    envRef$units["time"] <- dotArgs[["time_units"]]
+  if (!is.null(dotArgs[["amount_units"]]) &&
+        is.null(amountUnits) &&
+        is.null(dotArgs[["amount.units"]]))
+    envRef$units["dosing"] <- dotArgs[["amount_units"]]
 }
 
 .etHandleId <- function(id, .envRef, .xIsRxEt, envir) {
