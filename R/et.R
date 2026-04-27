@@ -136,10 +136,10 @@
 #'     be an easier way to figure out how many additional doses are
 #'     needed over your sampling period.
 #'
-#' @param id A integer vector of IDs to add or remove from the event
+#' @param id A integer vector of ids to add or remove from the event
 #'     table.  If the event table is identical for each ID, then you
-#'     may expand it to include all the IDs in this vector.  All the
-#'     negative IDs in this vector will be removed.
+#'     may expand it to include all the ids in this vector.  All the
+#'     negative ids in this vector will be removed.
 #'
 #' @param amountUnits The units for the dosing records (`amt`)
 #'
@@ -573,8 +573,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   }
   if (!is.null(.direct)) return(.direct)
 
-  # 2. Check mutable env properties (nobs, ndose, units, show, IDs, chunks)
-  # "id" returns the unique sorted IDs present in the materialized table
+  # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
+  # "id" returns the unique sorted ids present in the materialized table
   if (arg == "id" && !is.null(.env)) {
     .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
     return(sort(unique(as.integer(.mat$id))))
@@ -1140,13 +1140,13 @@ etSeq <- function(..., samples = c("clear", "use"),
 #' Combining event tables
 #'
 #' @inheritParams etSeq
-#' @param id This is how rbind will handle IDs.  There are two different types of options:
+#' @param id This is how rbind will handle ids.  There are two different types of options:
 #'
-#' * `merge` with `id="merge"`, the IDs are merged together,
-#' overlapping IDs would be merged into a single event table.
+#' * `merge` with `id="merge"`, the ids are merged together,
+#' overlapping ids would be merged into a single event table.
 #'
-#' * `unique` with `id="unique"`, the IDs will be renumbered
-#' so that the IDs in all the event tables are not overlapping.
+#' * `unique` with `id="unique"`, the ids will be renumbered
+#' so that the ids in all the event tables are not overlapping.
 #'
 #' @param
 #' deparse.level The `deparse.level` of a traditional

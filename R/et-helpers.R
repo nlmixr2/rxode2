@@ -387,7 +387,7 @@
     .negIds      <- abs(.idVal[.idVal < 0L])
     .existingIds <- .envRef$ids
     if (length(.posIds) > 0L && .xIsRxEt && .envRef$canResize) {
-      # canResize mode: positive IDs define the exact target set, replacing existing
+      # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)
       .envRef$ids <- sort(.posIds)

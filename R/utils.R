@@ -653,14 +653,14 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 #'   more time are solved first, this wait is less likely to have an
 #'   impact on the overall solving time.
 #'
-#'   In rxode2 the IDs are sorted by the individual number of solving
+#'   In rxode2 the ids are sorted by the individual number of solving
 #'   points (largest first). It also has a C interface that allows
-#'   these IDs to be resorted by total time spent solving the
+#'   these ids to be resorted by total time spent solving the
 #'   equation.  This allows packages like nlmixr to sort by solving
 #'   time if needed.
 #'
 #'   Overall the the number of threads is throttled (restricted) for
-#'   small tasks and sorting for IDs are suppressed.
+#'   small tasks and sorting for ids are suppressed.
 #'
 #' @param verbose Display the value of relevant OpenMP settings
 #' @return number of threads that rxode2 uses

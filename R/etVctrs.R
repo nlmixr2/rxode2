@@ -5,6 +5,7 @@
 #' through a canonical materialized data set and rebuild a valid env-backed
 #' object on restore instead of copying stale attributes onto a plain frame.
 #'
+#' @noRd
 #' @keywords internal
 #' @importFrom vctrs vec_cast vec_ptype2 vec_proxy vec_restore
 NULL
@@ -19,11 +20,11 @@ NULL
 .rxEtMeta <- function(x) {
   .meta <- list(
     units = c(dosing = NA_character_, time = NA_character_),
-    show = .etDefaultShow(),
+    show = .etDefaultShow(), # nolint
     randomType = NA_integer_,
     canResize = TRUE
   )
-  .env <- tryCatch(.rxEtEnv(x), error = function(e) NULL)
+  .env <- tryCatch(.rxEtEnv(x), error = function(e) NULL) # nolint
   if (is.environment(.env)) {
     .meta$units <- .env$units
     .meta$show <- .env$show
@@ -45,12 +46,17 @@ NULL
 #' identical, an error will be thrown.
 #'
 #' @param x The first `rxEt` object (or its meta data)
+#'
 #' @param y The second `rxEt` object (or its meta data)
+#'
 #' @param what A string indicating whether we are combining "dose" or
 #'   "time" units, used for error messages
+#'
 #' @return The combined units, which will be the non-missing units if one is
 #'  missing, or the common units if both are non-missing and identical
+#'
 #' @noRd
+#'
 #' @author Matthew L. Fidler
 .rxEtMetaCombineUnits <- function(x, y, what) {
   if (is.null(x) || length(x) == 0L || isTRUE(is.na(x)) || identical(x, "")) {
@@ -79,14 +85,16 @@ NULL
 #'
 #'
 #' @param x The first `rxEt` object (or its meta data)
+#'
 #' @param y The second `rxEt` object (or its meta data)
+#'
 #' @return A list containing the combined meta data, where the units
 #'   are combined using `.rxEtMetaCombineUnits`, the show settings are
 #'   combined using a logical OR, the randomType is the maximum of the
 #'   two (ignoring NA), and canResize is TRUE only if both are TRUE.
+#'
 #' @noRd
 #' @author Matthew L. Fidler
-#' @examples
 .rxEtMetaCombine <- function(x, y) {
   .x <- .rxEtMeta(x)
   .y <- .rxEtMeta(y)
@@ -109,8 +117,11 @@ NULL
 #'
 #' @param meta A list containing meta data fields such as units, show,
 #'   randomType, and canResize.
+#'
 #' @return normalized meta data list with all expected fields and types
+#'
 #' @noRd
+#'
 #' @author Matthew L. Fidler
 .rxEtNormalizeMeta <- function(meta) {
   .ret <- list(
@@ -129,54 +140,71 @@ NULL
   if (is.infinite(.ret$randomType)) .ret$randomType <- NA_integer_
   .ret
 }
-
-.rxEtPrototype <- function(.meta = NULL) {
-  .meta <- .rxEtNormalizeMeta(.meta)
-  .et <- .newRxEt(amountUnits = .meta$units["dosing"], timeUnits = .meta$units["time"])
-  .env <- .rxEtEnv(.et)
-  .env$show[names(.meta$show)] <- .meta$show
-  .env$randomType <- .meta$randomType
-  .env$canResize <- .meta$canResize
-  .proxy <- .etEmptyDf()
-  attr(.proxy, "class") <- c("rxEt", "data.frame")
-  attr(.proxy, ".rxEtEnv") <- .env
-  .proxy
-}
-
+#' Convert the `rxEt` object to a full data frame with all expected columns.
+#'
+#' @param x An `rxEt` object or a data frame that can be coerced to one.
+#'
+#' @return data.frame
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
 .rxEtAsFullDataFrame <- function(x) {
-  if (is.rxEt(x)) return(as.data.frame(x, all = TRUE))
+  if (is.rxEt(x)) { # nolint
+    return(as.data.frame(x, all = TRUE))
+  }
   as.data.frame(x, stringsAsFactors = FALSE)
 }
 
+#' Rebuild the `rxEt` object from a data frame and meta data,
+#' restoring the environment and class attributes.
+#'
+#' @param x A data frame containing the event table data, with columns like id, time, amt, etc.
+#' @param to An `rxEt` object or its class attribute, used to extract the meta data for rebuilding.
+#' @return An `rxEt` object with the data from `x` and the meta data from `to`.
+#' @noRd
+#' @author Matthew L. Fidler
 .rxEtRebuild <- function(x, to) {
   .meta <- .rxEtNormalizeMeta(.rxEtMeta(to))
   .df <- .rxEtAsFullDataFrame(x)
-  .et <- .newRxEt(amountUnits = .meta$units["dosing"], timeUnits = .meta$units["time"])
-  .env <- .rxEtEnv(.et)
+  .et <- .newRxEt(amountUnits = .meta$units["dosing"], timeUnits = .meta$units["time"]) # nolint
+  .env <- .rxEtEnv(.et) # nolint
   if (nrow(.df) > 0L) {
     .env$methods$import.EventTable(.df)
   }
   .env$show[names(.meta$show)] <- .env$show[names(.meta$show)] | .meta$show
-  if (!is.na(.meta$randomType)) .env$randomType <- .meta$randomType
+  if (!is.na(.meta$randomType)) {
+    .env$randomType <- .meta$randomType
+  }
   .env$canResize <- .meta$canResize
-  .proxy <- .etMaterialize(.et)
+  .proxy <- .etMaterialize(.et) # nolint
   attr(.proxy, "class") <- c("rxEt", "data.frame")
   attr(.proxy, ".rxEtEnv") <- .env
   .proxy
 }
-
+#' Convert to data.table
+#'
+#' @param x rxEt object
+#' @return data.table
+#' @noRd
+#' @author Matthew L. Fidler
 .rxEtAsDataTable <- function(x) {
   data.table::as.data.table(.rxEtAsFullDataFrame(x))
 }
-
+#' Convert to tibble
+#'
+#' @param x rxEt object
+#' @return tibble
+#' @noRd
+#' @author Matthew L. Fidler
 .rxEtAsTibble <- function(x) {
-  rxReq("tibble")
+  rxReq("tibble") # nolint
   tibble::as_tibble(.rxEtAsFullDataFrame(x))
 }
 
 #' @export
 vec_proxy.rxEt <- function(x, ...) {
-  .df <- .etMaterialize(x)
+  .df <- .etMaterialize(x) # nolint
   attr(.df, ".rxEtMeta") <- .rxEtMeta(x)
   .df
 }
@@ -189,49 +217,47 @@ vec_restore.rxEt <- function(x, to, ...) {
 #' @export
 vec_ptype2.rxEt.rxEt <- function(x, y, ...) {
   .rxEtMetaCombine(x, y)
-  vec_ptype2(.rxEtAsFullDataFrame(x), .rxEtAsFullDataFrame(y), ...)
+  vctrs::vec_ptype2(.rxEtAsFullDataFrame(x), .rxEtAsFullDataFrame(y), ...)
 }
-
-
 
 #' @export
 vec_ptype2.rxEt.data.frame <- function(x, y, ...) {
-  vec_ptype2(.rxEtAsFullDataFrame(x), y, ...)
+  vctrs::vec_ptype2(.rxEtAsFullDataFrame(x), y, ...)
 }
 
 #' @export
 vec_ptype2.data.frame.rxEt <- function(x, y, ...) {
-  vec_ptype2(x, .rxEtAsFullDataFrame(y), ...)
+  vctrs::vec_ptype2(x, .rxEtAsFullDataFrame(y), ...)
 }
 
 #' @export
 vec_ptype2.rxEt.data.table <- function(x, y, ...) {
-  vec_ptype2(.rxEtAsDataTable(x), y, ...)
+  vctrs::vec_ptype2(.rxEtAsDataTable(x), y, ...)
 }
 
 #' @export
 vec_ptype2.data.table.rxEt <- function(x, y, ...) {
-  vec_ptype2(x, .rxEtAsDataTable(y), ...)
+  vctrs::vec_ptype2(x, .rxEtAsDataTable(y), ...)
 }
 
 #' @export
 vec_ptype2.rxEt.tbl_df <- function(x, y, ...) {
-  vec_ptype2(.rxEtAsTibble(x), y, ...)
+  vctrs::vec_ptype2(.rxEtAsTibble(x), y, ...)
 }
 
 #' @export
 vec_ptype2.tbl_df.rxEt <- function(x, y, ...) {
-  vec_ptype2(x, .rxEtAsTibble(y), ...)
+  vctrs::vec_ptype2(x, .rxEtAsTibble(y), ...)
 }
 
 #' @export
 vec_ptype2.rxEt.tibble <- function(x, y, ...) {
-  vec_ptype2.rxEt.tbl_df(x, y, ...)
+  vctrs::vec_ptype2.rxEt.tbl_df(x, y, ...)
 }
 
 #' @export
 vec_ptype2.tibble.rxEt <- function(x, y, ...) {
-  vec_ptype2.tbl_df.rxEt(x, y, ...)
+  vctrs::vec_ptype2.tbl_df.rxEt(x, y, ...)
 }
 
 #' @export
@@ -246,7 +272,7 @@ vec_cast.rxEt.data.frame <- function(x, to, ...) {
 
 #' @export
 vec_cast.data.frame.rxEt <- function(x, to, ...) {
-  vec_cast(.rxEtAsFullDataFrame(x), to, ...)
+  vctrs::vec_cast(.rxEtAsFullDataFrame(x), to, ...)
 }
 
 #' @export
@@ -256,7 +282,7 @@ vec_cast.rxEt.data.table <- function(x, to, ...) {
 
 #' @export
 vec_cast.data.table.rxEt <- function(x, to, ...) {
-  vec_cast(.rxEtAsDataTable(x), to, ...)
+  vctrs::vec_cast(.rxEtAsDataTable(x), to, ...)
 }
 
 #' @export
@@ -266,7 +292,7 @@ vec_cast.rxEt.tbl_df <- function(x, to, ...) {
 
 #' @export
 vec_cast.tbl_df.rxEt <- function(x, to, ...) {
-  vec_cast(.rxEtAsTibble(x), to, ...)
+  vctrs::vec_cast(.rxEtAsTibble(x), to, ...)
 }
 
 #' @export

@@ -60,7 +60,7 @@
 #'
 #' @param .df data.frame of rows to add (no 'id' column yet)
 #'
-#' @param .ids integer vector of IDs; NULL/empty defaults to 1L
+#' @param .ids integer vector of ids; NULL/empty defaults to 1L
 #'
 #' @noRd
 .etAddChunk <- function(envRef, df, ids = NULL) {
@@ -992,7 +992,7 @@ is.rxEt <- function(x) {
 #'
 #' @param cmt compartment name or number (optional scalar)
 #'
-#' @param id integer vector of IDs to attach (optional)
+#' @param id integer vector of ids to attach (optional)
 #'
 #' @return sparse named list with evid=0L scalar and time vector
 #'

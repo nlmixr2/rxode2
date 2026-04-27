@@ -42,7 +42,7 @@ print.rxEt <- function(x, ...) {
     .et1 <- paste0("EventTable with ", x$nobs + x$ndose, " records")
     .et2 <- NULL
     .units <- x$.units
-    .maxId <- length(x$IDs)
+    .maxId <- length(x$ids)
     if (.maxId != 1) {
       .et2 <- sprintf("   %s individuals", .maxId)
     }

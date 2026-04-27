@@ -2012,7 +2012,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         }
         .ctl$iCov$id <- .id
       } else if (length(.icovId) > 1) {
-        stop("iCov has duplicate IDs, cannot continue")
+        stop("iCov has duplicate ids, cannot continue")
       }
       names(.ctl$iCov)[.icovId] <- .by
       if (.useEvents) {
