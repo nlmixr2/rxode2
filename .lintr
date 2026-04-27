@@ -1,4 +1,4 @@
-linters: with_defaults(
+linters: linters_with_defaults(
     object_name_linter(
       styles = "camelCase",
       regexes = c(
@@ -6,10 +6,9 @@ linters: with_defaults(
         s3 = "^[a-z][a-z0-9_]*\\.[a-zA-Z][a-zA-Z0-9]*$"
       )
     ),
-    assignment_linter(allow_left_assign = TRUE, allow_right_assign = FALSE),
+    assignment_linter(),
     line_length_linter(120),
-    no_tab_linter(),
-    non_ascii_linter(),
+    whitespace_linter(),
     pipe_continuation_linter(),
     T_and_F_symbol_linter(),
     infix_spaces_linter = NULL, # Keep disabled for now due to high violation count (8541)
