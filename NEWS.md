@@ -3,6 +3,8 @@
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
+- Add `%%` operator to valid rxode2 syntax
+
 - Create per-individual ODE solving tolerances for use in focei.
 
 - Fix potential security and memory-management issues that could lead
@@ -12,6 +14,7 @@
   like `liblsoda`.
 
 - Change mtime state-based dosing to use less memory
+
 
 # rxode2 5.0.2
 
