@@ -322,6 +322,13 @@ rxTest({
 
   })
 
+  test_that("mod", {
+    expect_equal(rxFromSE("rxMod(a,b)"), "(a%%b)")
+    expect_equal(rxToSE("a%%b"), "rxMod(a,b)")
+    expect_equal(rxFromSE("Derivative(rxMod(a,b), a)"), "1")
+    expect_equal(rxFromSE("Derivative(rxMod(a,b), b)"), "0")
+  })
+
   test_that("logic tests", {
     expect_equal(rxFromSE("rxEq(a,b)"), "(a==b)")
     expect_equal(rxFromSE("rxNeq(a,b)"), "(a!=b)")

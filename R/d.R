@@ -400,6 +400,18 @@
 
 .rxD$..k <- 10
 .rxD$..tol <- 1e-4
+
+.rxD$rxMod <- list(
+  # fmod(x, y) = x - y*trunc(x/y)
+  # the trunc() doesn't exist at integers; this gives the derivative at non-integer values
+  function(a, b) {
+    paste0("1")
+  },
+  function(a, b) {
+    paste0("0")
+  }
+)
+
 ## Approx a==b by
 ## (1-tanh(k*(a-b))^2)
 .rxD$rxEq <- list(
@@ -417,6 +429,8 @@
     ))
   }
 )
+
+
 
 .rxD$rxGeq <- list(
   function(a, b) {

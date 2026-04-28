@@ -217,6 +217,7 @@ typedef struct nodeInfo {
   int evid_statement;
   int relational_op;
   int string;
+  int mod_expression;
 } nodeInfo;
 
 static inline void niReset(nodeInfo *ni){
@@ -280,6 +281,7 @@ static inline void niReset(nodeInfo *ni){
   ni->evid_statement = -1;
   ni->relational_op = -1;
   ni->string = -1;
+  ni->mod_expression = -1;
 }
 
 #define STRINGIFY(...) STRINGIFY_AUX(__VA_ARGS__)
