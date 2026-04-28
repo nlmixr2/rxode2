@@ -1739,14 +1739,11 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
 }
 void gparsCovSetup(int npars, int nPopPar, uint32_t nsub, RObject ev1,rx_solve* rx){
   if (_globals.gpars != NULL) free(_globals.gpars);
-  // _globals.gpars = (double*)malloc(npars*max2(nsub, nPopPar)*sizeof(double));
-  _globals.gpars = (double*)malloc(npars*max2(nsub, nPopPar)*sizeof(double));
+  _globals.gpars = (double*)calloc(npars*max2(nsub, nPopPar), sizeof(double));
   if (_globals.gpars == NULL){
     rxSolveFree();
     stop(_("could not allocate memory for solving parameters"));
   }
-  // Fill the parameters with NA.
-  // std::fill_n(&_globals.gpars[0], npars*max2(nsub, nPopPar), NA_REAL);
   gparsCovSetupConstant(ev1, npars);
 }
 
@@ -4690,18 +4687,20 @@ static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   for (unsigned int j = 0; j < (unsigned int)rxSolveDat->nPopPar; j++){
     for (unsigned int k = 0; k < (unsigned int)rx->npars; k++){
       i = k+rx->npars*j;
-      if (_globals.gParPos[k] == 0) {
-        // Unset param: keep NA_REAL so conditional populate in generated code skips it,
-        // allowing sticky lhs vars to carry their accumulated value forward.
-        _globals.gpars[i] = NA_REAL;
-      } else if (ISNA(_globals.gpars[i])) {
-        if (_globals.gParPos[k] > 0){
-          // posPar[i] = j + 1;
-          _globals.gpars[i] = rxSolveDat->parMat(j, _globals.gParPos[k]-1);
-        } else {
-          // posPar[i] = -j - 1;
-          _globals.gpars[i] = rxSolveDat->mvIni[-_globals.gParPos[k]-1];
-        }
+      if (_globals.gParPos[k] > 0){
+        // posPar[i] = j + 1;
+        _globals.gpars[i] = rxSolveDat->parMat(j, _globals.gParPos[k]-1);
+      } else if (_globals.gParPos[k] < 0) {
+        // posPar[i] = -j - 1;
+        _globals.gpars[i] = rxSolveDat->mvIni[-_globals.gParPos[k]-1];
+      } else {
+        // Unset param or covariate: keep 0.0 for now.
+        // If it is a covariate, it will be updated by _update_par_ptr.
+        // If it is a simulated parameter (ovar/svar), it will be updated in par_solve.cpp.
+        //
+        // NOTE: we want it to be NA_REAL for sticky variables so they are not overwritten.
+        // Unset parameters (gParPos == 0) that are NOT simulated or covariates should be NA_REAL.
+        // But identifying them here is tricky without more info.
       }
     }
   }
