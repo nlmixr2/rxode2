@@ -439,7 +439,7 @@ gammapInva <- function(x, p) {
         length(inverse) > 1) {
     .df <- data.frame(x = x, lambda = lambda, low = low, high = high,
                       transform=transform, inverse=inverse)
-    vapply(1:nrow(.df),
+    vapply(seq_len(nrow(.df)),
            function(i) {
              .rxTransform(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
                           .df$transform[i], .df$inverse[i])
@@ -653,14 +653,14 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 #'   more time are solved first, this wait is less likely to have an
 #'   impact on the overall solving time.
 #'
-#'   In rxode2 the IDs are sorted by the individual number of solving
+#'   In rxode2 the ids are sorted by the individual number of solving
 #'   points (largest first). It also has a C interface that allows
-#'   these IDs to be resorted by total time spent solving the
+#'   these ids to be resorted by total time spent solving the
 #'   equation.  This allows packages like nlmixr to sort by solving
 #'   time if needed.
 #'
 #'   Overall the the number of threads is throttled (restricted) for
-#'   small tasks and sorting for IDs are suppressed.
+#'   small tasks and sorting for ids are suppressed.
 #'
 #' @param verbose Display the value of relevant OpenMP settings
 #' @return number of threads that rxode2 uses
@@ -717,6 +717,11 @@ rxUnloadAll <- function(set=TRUE) {
   }
   # First slice down on the keep
   .nKeep <- getOption("rxode2.dontUnload", 10)
+  if (checkmate::testIntegerish(.nKeep, lower = 0, len = 1)) {
+    .nKeep <- as.integer(.nKeep)
+  } else {
+    .nKeep <- 10L
+  }
   .nKeep <- as.integer(.nKeep)
   if (.nKeep <= 0L) {
     .rxLastModels <- NULL
@@ -764,7 +769,7 @@ rxUnloadAll <- function(set=TRUE) {
       }
     }
     .nKeep <- .nKeep - .n
-    if (length(.orphans) > .nKeep){
+    if (length(.orphans) > .nKeep && .nKeep >= 0L) {
       # If there are more orphans than the number of models to keep,
       # then we will remove the last nKeep orphans
       .orphans <- .orphans[-seq_len(.nKeep)]
@@ -893,10 +898,8 @@ rxUnloadAll <- function(set=TRUE) {
   if (inherits(.val, "try-error")) {
     return(attr(.val, "condition")$message)
   }
-  return("")
+  ""
 }
-
-
 
 use.utf <- function() {
   opt <- getOption("cli.unicode", NULL)
@@ -1220,7 +1223,7 @@ binomProbs <- function(x, ...) {
 binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
                                names=TRUE, onlyProbs=TRUE, n=0L, m=0L,
                                pred=FALSE,
-                               piMethod=c("lim"), M=500000,
+                               piMethod="lim", M=500000,
                                tol=.Machine$double.eps^0.25,
                                ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"), ...) {
   checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
@@ -1256,7 +1259,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
     if (!names) {
       names(.ret) <- NULL
     }
-    return(.ret)
+    .ret
   } else {
     ciMethod <- match.arg(ciMethod)
     ciMethod <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3L, "wald"=2L, "ac"=3L, "wc"=0L)[ciMethod], NULL)
@@ -1494,7 +1497,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
       verbose
     )$str
     .env <- environment()
-    return(eval(parse(text = .linCmt), envir = .env))
+    eval(parse(text = .linCmt), envir = .env)
   } else {
     stop("cannot figure out PK parameters to convert", call. = FALSE)
   }

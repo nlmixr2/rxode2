@@ -19,6 +19,7 @@
 #'
 #' This is kept here so that it can be specified once and referred to
 #' by multiple locations.
+#'
 #' @return named logical vector of default show flags
 #'
 #' @noRd
@@ -27,25 +28,27 @@
     amt = FALSE, rate = FALSE, ii = FALSE, addl = FALSE, evid = TRUE,
     ss = FALSE, dur = FALSE)
 }
+#' Drop the units for the check
 #'
+#' @param df NULL, data.frame or non-data frame object.
+#'   from for internal use
 #'
-#'
-#' @param .df
 #' @return this function returns NULL or the non-materialized data, or
 #'   the data.frame with units columns converted to numeric for
 #'   internal use
+#'
 #' @noRd
 #' @author Matthew L. Fidler
-.etInternalChunkDf <- function(.df) {
-  if (is.null(.df) || !is.data.frame(.df)) {
-    return(.df)
+.etDropUnitsForChunk <- function(df) {
+  if (is.null(df) || !is.data.frame(df)) {
+    return(df)
   }
-  for (.nm in names(.df)) {
-    if (inherits(.df[[.nm]], "units")) {
-      .df[[.nm]] <- as.numeric(.df[[.nm]])
+  for (.nm in names(df)) {
+    if (inherits(df[[.nm]], "units")) {
+      df[[.nm]] <- as.numeric(df[[.nm]])
     }
   }
-  .df
+  df
 }
 
 #' Add rows of a data.frame to the ID-indexed chunks list
@@ -57,29 +60,41 @@
 #'
 #' @param .df data.frame of rows to add (no 'id' column yet)
 #'
-#' @param .ids integer vector of IDs; NULL/empty defaults to 1L
+#' @param .ids integer vector of ids; NULL/empty defaults to 1L
 #'
 #' @noRd
-.etAddChunk <- function(.envRef, .df, .ids = NULL) {
-  .rt <- attr(.df, ".randomType")
+.etAddChunk <- function(envRef, df, ids = NULL) {
+  .rt <- attr(df, ".randomType")
   if (!is.null(.rt) && !is.na(.rt)) {
-    if (is.na(.envRef$randomType) || .rt > .envRef$randomType)
-      .envRef$randomType <- .rt
-    if (!isTRUE(.envRef$show["low"])) {
-      .envRef$show["low"]  <- TRUE
-      .envRef$show["high"] <- TRUE
+    if (is.na(envRef$randomType) || .rt > envRef$randomType)
+      envRef$randomType <- .rt
+    if (!isTRUE(envRef$show["low"])) {
+      envRef$show["low"]  <- TRUE
+      envRef$show["high"] <- TRUE
     }
   }
-  if (!is.data.frame(.df)) .df <- .etExpandObsChunk(.df)
-  if (nrow(.df) == 0L) return(invisible(NULL))
-  .ids <- if (is.null(.ids) || length(.ids) == 0L) 1L else as.integer(.ids)
-  .posIds <- .ids[.ids > 0L]
+  if (!is.data.frame(df)) {
+    df <- .etExpandObsChunk(df)
+  }
+  if (nrow(df) == 0) {
+    return(invisible(NULL))
+  }
+  if (is.null(ids) || length(ids) == 0L) {
+    ids <-  1L
+  } else {
+    ids <- as.integer(ids)
+  }
+  .posIds <- ids[ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
   for (.i in .posIds) {
-    .row <- .etInternalChunkDf(.df)
+    .row <- .etDropUnitsForChunk(df)
     .row$id <- .i
-    .existing <- if (.i <= length(.envRef$chunks)) .etInternalChunkDf(.envRef$chunks[[.i]]) else NULL
-    .envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .row), fill = TRUE))
+    if (.i <= length(envRef$chunks)) {
+      .cur <- envRef$chunks[[.i]] # units already dropped
+      envRef$chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.cur, .row), fill = TRUE))
+    } else {
+      envRef$chunks[[.i]] <- .row
+    }
   }
   invisible(NULL)
 }
@@ -87,318 +102,474 @@
 #' Merge a data.frame (with id column) into an ID-indexed chunks list
 #'
 #' Used by etSeq/etRbind when accumulating materialized data.frames.
-#' @param .chunks list indexed by ID integer value
-#' @param .df data.frame with 'id' column already set
-#' @return updated .chunks
+#'
+#' @param chunks list indexed by ID integer value
+#'
+#' @param df data.frame with 'id' column already set
+#'
+#' @return updated chunks
+#'
 #' @noRd
-.addRowsToChunks <- function(.chunks, .df) {
-  if (nrow(.df) == 0L) return(.chunks)
-  .ids <- unique(as.integer(.df$id))
+.addRowsToChunks <- function(chunks, df) {
+  if (nrow(df) == 0L) return(chunks)
+  .ids <- unique(as.integer(df$id))
   for (.i in .ids) {
-    .rows <- .etInternalChunkDf(.df[.df$id == .i, , drop = FALSE])
-    .existing <- if (.i <= length(.chunks)) .etInternalChunkDf(.chunks[[.i]]) else NULL
-    .chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.existing, .rows), fill = TRUE))
+    .rows <- .etDropUnitsForChunk(df[df$id == .i, , drop = FALSE])
+    if (.i <= length(chunks)) {
+      .cur <- chunks[[.i]] # units already dropped
+      chunks[[.i]] <- as.data.frame(data.table::rbindlist(list(.cur, .rows), fill = TRUE))
+    } else {
+      chunks[[.i]] <- .rows
+    }
   }
-  .chunks
+  chunks
+}
+#' This is the $add.dosing type of argument to the event tables
+#'
+#' @param env The metadata environment for the event table, which is
+#'   modified by reference
+#'
+#' @param dose numeric dose amount
+#'
+#' @param nbr.doses number of doses (1 means just the initial dose at
+#'   start.time)
+#'
+#' @param dosing.interval dosing interval in time units (ignored if
+#'   nbr.doses is 1)
+#'
+#' @param dosing.to compartment number to dose to (default 1); ignored
+#'   if cmt column is provided in ...
+#'
+#' @param rate numeric infusion rate (amount/time); if provided, dur is ignored and
+#'  dur is calculated as amt/rate
+#'
+#' @param amount.units character dose unit, e.g. "mg"; if provided,
+#'   overrides existing amount unit
+#'
+#' @param start.time numeric time of first dose (default 0)
+#'
+#' @param do.sampling logical; if TRUE, adds sampling records at each
+#'   dosing time (default FALSE)
+#'
+#' @param time.units character time unit, e.g. "hours"; if provided,
+#'   overrides existing time unit
+#'
+#' @param evid integer event ID to use for dosing records; if NULL,
+#'   defaults to 1 for non-zero dose and 0 for zero dose
+#' @param strt.time deprecated alias for start.time
+#' @param ... additional arguments passed to et() when creating the dosing records
+#'
+#' @return nothing, called for side effect of modifying env by reference
+#' @noRd
+#' @author Matthew L. Fidler
+.etMethodAddDosing <- function(env, dose, nbr.doses = 1L, dosing.interval = 24,
+                               dosing.to = 1L, rate = NULL,
+                               amount.units = NA_character_,
+                               start.time = 0.0, do.sampling = FALSE,
+                               time.units = NA_character_,
+                               evid = NULL, strt.time = NULL, ...) {
+  if (!is.null(strt.time)) start.time <- strt.time
+  .et <- structure(list(env = env), class = "rxEt")
+  .args <- list(
+    x = .et,
+    amt = dose,
+    time = start.time,
+    ii = if (nbr.doses > 1L) dosing.interval else 0.0,
+    addl = as.integer(nbr.doses) - 1L,
+    addSampling = do.sampling
+  )
+  if (!is.null(rate)) .args$rate <- rate
+  if (!is.na(amount.units)) .args$amountUnits <- amount.units
+  if (!is.na(time.units)) .args$timeUnits <- time.units
+  if (!is.null(evid)) .args$evid <- evid
+  .extra <- list(...)
+  if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
+        !identical(dosing.to, 1L)) {
+    .args$cmt <- dosing.to
+  }
+  .ret <- do.call(et, c(.args, .extra)) # nolint
+  .retEnv <- .rxEtEnv(.ret)
+  env$chunks <- .retEnv$chunks
+  env$units <- .retEnv$units
+  env$show <- .retEnv$show
+  env$ids <- .retEnv$ids
+  env$nobs <- .retEnv$nobs
+  env$ndose <- .retEnv$ndose
+  env$randomType <- .retEnv$randomType
+  env$canResize <- .retEnv$canResize
+  invisible(NULL)
+}
+#' $get.EventTable()
+#'
+#' @param env environment to get the event table
+#' @return event table
+#' @noRd
+#' @author Matthew L. Fidler
+.etMethodGetEventTable <- function(env) {
+  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
+  if (nrow(.mat) == 0L) return(NULL)
+  .show <- env$show
+  .ret <- .mat[, names(.show)[.show], drop = FALSE]
+  rownames(.ret) <- seq_len(nrow(.ret))
+  .ret
 }
 
-#' Attach method closures to an rxEt's list structure
+.etMethodGetDosing <- function(env) {
+  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
+  if (nrow(.mat) == 0L) return(NULL)
+  .d <- .etDropUnitsForChunk(.mat[.mat$evid != 0L, , drop = FALSE])
+  if (nrow(.d) == 0L) {
+    NULL
+  } else {
+    rownames(.d) <- seq_len(nrow(.d))
+    .d
+  }
+}
+
+.etMethodClearSampling <- function(env) {
+  for (.i in seq_along(env$chunks)) {
+    if (!is.null(env$chunks[[.i]])) {
+      .df <- env$chunks[[.i]]
+      .df <- .df[.df$evid != 0L, , drop = FALSE]
+      if (nrow(.df) == 0L) env$chunks[.i] <- list(NULL) else env$chunks[[.i]] <- .df
+    }
+  }
+  env$nobs <- 0L
+  invisible(NULL)
+}
+
+.etImportAutoUnits <- function(env, df) {
+  .tu <- env$units["time"]
+  .du <- env$units["dosing"]
+  .hasTimeU <- !is.na(.tu) && nchar(.tu) > 0
+  .hasDoseU <- !is.na(.du) && nchar(.du) > 0
+  # Auto-detect units from columns if not already set
+  if (requireNamespace("units", quietly = TRUE)) {
+    if (!.hasTimeU) {
+      for (.nmCheck in c("time", "ii")) {
+        if (!is.null(df[[.nmCheck]]) && inherits(df[[.nmCheck]], "units")) {
+          .tu <- units::deparse_unit(df[[.nmCheck]])
+          env$units["time"] <- .tu
+          .hasTimeU <- TRUE
+          break
+        }
+      }
+    }
+    if (!.hasDoseU) {
+      if (!is.null(df[["amt"]]) && inherits(df[["amt"]], "units")) {
+        .du <- units::deparse_unit(df[["amt"]])
+        env$units["dosing"] <- .du
+        .hasDoseU <- TRUE
+      } else if (!is.null(df[["rate"]]) && inherits(df[["rate"]], "units")) {
+        # udunits format: "ug s-1" — amount unit has no digit exponent
+        .rateStr <- units::deparse_unit(df[["rate"]])
+        .parts <- strsplit(trimws(.rateStr), "\\s+")[[1L]]
+        .amtParts <- .parts[!grepl("[0-9]", .parts)]
+        if (length(.amtParts) >= 1L) {
+          .du <- .amtParts[[1L]]
+          env$units["dosing"] <- .du
+          .hasDoseU <- TRUE
+        }
+      }
+    }
+  }
+  list(tu = .tu, du = .du, hasTimeU = .hasTimeU, hasDoseU = .hasDoseU)
+}
+
+.etImportConvertUnits <- function(df, tu, du, hasTimeU, hasDoseU) {
+  .cols <- lapply(names(df), function(.nm) {
+    .col <- df[[.nm]]
+    if (!inherits(.col, "units")) return(.col)
+    if (requireNamespace("units", quietly = TRUE)) {
+      # Only convert when et had prior units; auto-detected units just strip label
+      if (.nm %in% c("time", "ii") && hasTimeU) {
+        return(as.numeric(units::set_units(.col, tu, mode = "standard")))
+      }
+      if (.nm == "amt" && hasDoseU) {
+        return(as.numeric(units::set_units(.col, du, mode = "standard")))
+      }
+      if (.nm == "rate" && hasDoseU && hasTimeU) {
+        .rateU <- paste0(du, "/", tu)
+        return(as.numeric(units::set_units(.col, .rateU, mode = "standard")))
+      }
+    }
+    as.numeric(.col)
+  })
+  names(.cols) <- names(df)
+  as.data.frame(.cols, stringsAsFactors = FALSE)
+}
+
+.etImportStandardizeIdEvid <- function(df) {
+  if (is.null(df$evid)) {
+    df$evid <- if (!is.null(df$amt)) ifelse(!is.na(df$amt) & as.numeric(df$amt) != 0, 1L, 0L) else 0L
+  }
+  df$evid <- as.integer(df$evid)
+  if (is.null(df$id)) df$id <- 1L
+  df$id <- as.integer(df$id)
+  df
+}
+
+.etImportUpdateShow <- function(env, df) {
+  if (length(env$ids) > 1L) env$show["id"] <- TRUE
+  if (sum(df$evid != 0L, na.rm = TRUE) > 0L) env$show["amt"] <- TRUE
+  if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
+    env$show["rate"] <- TRUE
+  if (!is.null(df$dur) && any(df$dur[df$evid != 0L] != 0, na.rm = TRUE))
+    env$show["dur"] <- TRUE
+  if (!is.null(df$ii) && any(df$ii != 0, na.rm = TRUE)) {
+    env$show["ii"] <- TRUE
+    env$show["addl"] <- TRUE
+  }
+}
+
+.etImportUpdateEnv <- function(env, df) {
+  env$ids  <- sort(unique(df$id))
+  env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
+  env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
+  env$chunks <- .addRowsToChunks(env$chunks, df)
+  .etImportUpdateShow(env, df)
+}
+
+.etImportNormalizeNames <- function(df) {
+  # Normalize UPPERCASE/mixed-case NONMEM-style column names to lowercase
+  .colMap <- c(ID="id", TIME="time", CMT="cmt", AMT="amt", EVID="evid",
+               RATE="rate", II="ii", ADDL="addl", SS="ss", DUR="dur",
+               LOW="low", HIGH="high")
+  .nms <- names(df)
+  .upper <- toupper(.nms)
+  for (.i in seq_along(.nms)) {
+    if (.upper[.i] %in% names(.colMap) && .nms[.i] != .colMap[.upper[.i]]) {
+      names(df)[.i] <- .colMap[.upper[.i]]
+    }
+  }
+  df
+}
+
+.etImportIdToInteger <- function(df) {
+  # Convert character ID to sequential integers (silently)
+  if (!is.null(df$id) && !is.numeric(df$id) && !is.integer(df$id)) {
+    .uniq <- unique(df$id)
+    df$id <- as.integer(factor(df$id, levels = .uniq))
+  }
+  df
+}
+
+.etImportDropNaTime <- function(df) {
+  # Drop rows with NA time (warn)
+  if (!is.null(df$time) && any(is.na(as.numeric(df$time)))) {
+    .nDrop <- sum(is.na(as.numeric(df$time)))
+    warning(sprintf("dropping %d row(s) with NA time", .nDrop), call. = FALSE)
+    df <- df[!is.na(as.numeric(df$time)), , drop = FALSE]
+  }
+  df
+}
+
+.etMethodImportEventTable <- function(env, df) {
+  if (!is.data.frame(df)) {
+    stop("'df' must be a data.frame", call. = FALSE)
+  }
+  .u <- .etImportAutoUnits(env, df)
+  df <- .etImportConvertUnits(df, .u$tu, .u$du, .u$hasTimeU, .u$hasDoseU)
+  df <- .etImportStandardizeIdEvid(df)
+  .etImportUpdateEnv(env, df)
+  invisible(NULL)
+}
+
+.etMethodImportEventTable2 <- function(env, df, ...) {
+  if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+  df <- .etImportNormalizeNames(df)
+  df <- .etImportIdToInteger(df)
+  df <- .etImportDropNaTime(df)
+  # Delegate to import.EventTable for units handling + storage
+  .etMethodImportEventTable(env, df)
+  invisible(NULL)
+}
+
+.etMethodExpand <- function(env) {
+  .et <- structure(list(env = env), class = "rxEt")
+  .mat <- .etMaterialize(.et)
+  .expanded <- .etExpandAddl(.mat, env)
+  env$chunks <- list()
+  if (nrow(.expanded) > 0L) {
+    .ids <- unique(as.integer(.expanded$id))
+    for (.i in .ids) {
+      env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+    }
+    env$ids <- sort(.ids)
+  } else {
+    env$ids <- 1L
+  }
+  env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
+  env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+  env$show["id"] <- length(env$ids) > 1L
+  env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  env$randomType <- NA_integer_
+  env$canResize <- FALSE
+  invisible(NULL)
+}
+
+.etMethodGetObsRec <- function(env) {
+  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
+  .mat$evid == 0L
+}
+
+.etMethodCopy <- function(env) {
+  .newEnv <- new.env(parent = emptyenv())
+  .newEnv$chunks     <- env$chunks
+  .newEnv$units      <- env$units
+  .newEnv$show       <- env$show
+  .newEnv$ids        <- env$ids
+  .newEnv$nobs       <- env$nobs
+  .newEnv$ndose      <- env$ndose
+  .newEnv$randomType <- env$randomType
+  .newEnv$canResize  <- env$canResize
+  .newEnv$methods <- .etBuildMethods(.newEnv)
+  .cp <- list()
+  attr(.cp, "names")     <- character(0)
+  attr(.cp, "class")     <- c("rxEt", "data.frame")
+  attr(.cp, "row.names") <- integer(0)
+  attr(.cp, ".rxEtEnv")  <- .newEnv
+  .cp
+}
+
+.etMethodSimulate <- function(env, object, nsim = 1, seed = NULL, ...) {
+  if (!is.null(seed)) set.seed(seed)
+  .et <- structure(list(env = env), class = "rxEt")
+  .mat <- .etMaterialize(.et)
+  .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
+  if (!any(.hasWin)) {
+    warning("simulating event table without windows returns identical event table", call. = FALSE)
+  } else {
+    if (!is.na(env$randomType) && env$randomType == 3L) {
+      .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+    } else {
+      .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
+    }
+    env$chunks <- list()
+    if (nrow(.mat) > 0L) {
+      .ids <- unique(as.integer(.mat$id))
+      for (.i in .ids) env$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
+    }
+  }
+  invisible(NULL)
+}
+
+.etMethodClearDosing <- function(env) {
+  for (.i in seq_along(env$chunks)) {
+    if (!is.null(env$chunks[[.i]])) {
+      .df <- env$chunks[[.i]]
+      .df <- .df[.df$evid == 0L, , drop = FALSE]
+      if (nrow(.df) == 0L) env$chunks[.i] <- list(NULL) else env$chunks[[.i]] <- .df
+    }
+  }
+  env$ndose <- 0L
+  invisible(NULL)
+}
+
+.etMethodGetSampling <- function(env) {
+  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
+  if (nrow(.mat) == 0L) return(NULL)
+  .s <- .etDropUnitsForChunk(.mat[.mat$evid == 0L, , drop = FALSE])
+  if (nrow(.s) == 0L) {
+    NULL
+  } else {
+    rownames(.s) <- seq_len(nrow(.s))
+    .s
+  }
+}
+
+.etMethodAddSampling <- function(env, time, time.units = NA_character_) {
+  .time <- time
+  if (is.list(.time)) {
+    .time <- lapply(.time, function(.window) {
+      if (inherits(.window, "units") && requireNamespace("units", quietly = TRUE)) {
+        .tu <- env$units["time"]
+        if (!is.na(.tu) && nchar(.tu) > 0) {
+          return(as.numeric(units::set_units(.window, .tu, mode = "standard")))
+        }
+        return(as.numeric(.window))
+      }
+      .window
+    })
+  } else if (inherits(.time, "units") && requireNamespace("units", quietly = TRUE)) {
+    .tu <- env$units["time"]
+    if (!is.na(.tu) && nchar(.tu) > 0) {
+      .time <- as.numeric(units::set_units(.time, .tu, mode = "standard"))
+    } else {
+      .time <- as.numeric(.time)
+    }
+  }
+  .df <- .etObsChunk(.time)
+  .etAddChunk(env, .df, env$ids)
+  env$nobs   <- env$nobs + length(.df$time) * length(env$ids)
+  if (!is.na(time.units)) env$units["time"] <- time.units
+  invisible(NULL)
+}
+
+#' Attach method functions to an rxEt\'s list structure
 #'
-#' Each method captures .env by reference so mutations are shared.
-#' @param .env environment (mutable state)
-#' @return named list of closures
+#' Each method captures env by reference so mutations are shared.
+#'
+#' @param env environment
+#'
+#' @return named list of functions
+#'
 #' @noRd
-.etBuildMethods <- function(.env) {
+.etBuildMethods <- function(env) {
   .lst <- list(
     add.dosing = function(dose, nbr.doses = 1L, dosing.interval = 24,
-                           dosing.to = 1L, rate = NULL,
-                           amount.units = NA_character_,
-                           start.time = 0.0, do.sampling = FALSE,
-                           time.units = NA_character_,
-                           evid = NULL, strt.time = NULL, ...) {
-      if (!is.null(strt.time)) start.time <- strt.time
-      .et <- structure(list(.env = .env), class = "rxEt")
-      .args <- list(
-        x = .et,
-        amt = dose,
-        time = start.time,
-        ii = if (nbr.doses > 1L) dosing.interval else 0.0,
-        addl = as.integer(nbr.doses) - 1L,
-        addSampling = do.sampling
-      )
-      if (!is.null(rate)) .args$rate <- rate
-      if (!is.na(amount.units)) .args$amountUnits <- amount.units
-      if (!is.na(time.units)) .args$timeUnits <- time.units
-      if (!is.null(evid)) .args$evid <- evid
-      .extra <- list(...)
-      if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
-          !identical(dosing.to, 1L)) {
-        .args$cmt <- dosing.to
-      }
-      .ret <- do.call(et, c(.args, .extra))
-      .retEnv <- .rxEtEnv(.ret)
-      .env$chunks <- .retEnv$chunks
-      .env$units <- .retEnv$units
-      .env$show <- .retEnv$show
-      .env$IDs <- .retEnv$IDs
-      .env$nobs <- .retEnv$nobs
-      .env$ndose <- .retEnv$ndose
-      .env$randomType <- .retEnv$randomType
-      .env$canResize <- .retEnv$canResize
-      invisible(NULL)
+                          dosing.to = 1L, rate = NULL,
+                          amount.units = NA_character_,
+                          start.time = 0.0, do.sampling = FALSE,
+                          time.units = NA_character_,
+                          evid = NULL, strt.time = NULL, ...) {
+      .etMethodAddDosing(env, dose, nbr.doses, dosing.interval, dosing.to, rate,
+                         amount.units, start.time, do.sampling, time.units,
+                         evid, strt.time, ...)
     },
 
     add.sampling = function(time, time.units = NA_character_) {
-      .time <- time
-      if (is.list(.time)) {
-        .time <- lapply(.time, function(.window) {
-          if (inherits(.window, "units") && requireNamespace("units", quietly = TRUE)) {
-            .tu <- .env$units["time"]
-            if (!is.na(.tu) && nchar(.tu) > 0) {
-              return(as.numeric(units::set_units(.window, .tu, mode = "standard")))
-            }
-            return(as.numeric(.window))
-          }
-          .window
-        })
-      } else if (inherits(.time, "units") && requireNamespace("units", quietly = TRUE)) {
-        .tu <- .env$units["time"]
-        if (!is.na(.tu) && nchar(.tu) > 0) {
-          .time <- as.numeric(units::set_units(.time, .tu, mode = "standard"))
-        } else {
-          .time <- as.numeric(.time)
-        }
-      }
-      .df <- .etObsChunk(.time)
-      .etAddChunk(.env, .df, .env$IDs)
-      .env$nobs   <- .env$nobs + length(.df$time) * length(.env$IDs)
-      if (!is.na(time.units)) .env$units["time"] <- time.units
-      invisible(NULL)
+      .etMethodAddSampling(env, time, time.units)
     },
 
-    get.units = function() .env$units,
-    getUnits  = function() .env$units,
+    get.units = function() env$units,
+    getUnits  = function() env$units,
 
-    get.nobs  = function() .env$nobs,
+    get.nobs  = function() env$nobs,
     get.EventTable = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
-      if (nrow(.mat) == 0L) return(NULL)
-      .show <- .env$show
-      .ret <- .mat[, names(.show)[.show], drop = FALSE]
-      rownames(.ret) <- seq_len(nrow(.ret))
-      .ret
+      .etMethodGetEventTable(env)
     },
     get.obs.rec = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
-      .mat$evid == 0L
+      .etMethodGetObsRec(env)
     },
     get.dosing = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
-      if (nrow(.mat) == 0L) return(NULL)
-      .d <- .etInternalChunkDf(.mat[.mat$evid != 0L, , drop = FALSE])
-      if (nrow(.d) == 0L) {
-        NULL
-      } else {
-        rownames(.d) <- seq_len(nrow(.d))
-        .d
-      }
+      .etMethodGetDosing(env)
     },
     get.sampling = function() {
-      .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
-      if (nrow(.mat) == 0L) return(NULL)
-      .s <- .etInternalChunkDf(.mat[.mat$evid == 0L, , drop = FALSE])
-      if (nrow(.s) == 0L) {
-        NULL
-      } else {
-        rownames(.s) <- seq_len(nrow(.s))
-        .s
-      }
+      .etMethodGetSampling(env)
     },
     clear.sampling = function() {
-      for (.i in seq_along(.env$chunks)) {
-        if (!is.null(.env$chunks[[.i]])) {
-          .df <- .env$chunks[[.i]]
-          .df <- .df[.df$evid != 0L, , drop = FALSE]
-          if (nrow(.df) == 0L) .env$chunks[.i] <- list(NULL) else .env$chunks[[.i]] <- .df
-        }
-      }
-      .env$nobs <- 0L
-      invisible(NULL)
+      .etMethodClearSampling(env)
     },
     clear.dosing = function() {
-      for (.i in seq_along(.env$chunks)) {
-        if (!is.null(.env$chunks[[.i]])) {
-          .df <- .env$chunks[[.i]]
-          .df <- .df[.df$evid == 0L, , drop = FALSE]
-          if (nrow(.df) == 0L) .env$chunks[.i] <- list(NULL) else .env$chunks[[.i]] <- .df
-        }
-      }
-      .env$ndose <- 0L
-      invisible(NULL)
+      .etMethodClearDosing(env)
     },
     copy = function() {
-      .newEnv <- new.env(parent = emptyenv())
-      .newEnv$chunks     <- .env$chunks
-      .newEnv$units      <- .env$units
-      .newEnv$show       <- .env$show
-      .newEnv$IDs        <- .env$IDs
-      .newEnv$nobs       <- .env$nobs
-      .newEnv$ndose      <- .env$ndose
-      .newEnv$randomType <- .env$randomType
-      .newEnv$canResize  <- .env$canResize
-      .newEnv$methods <- .etBuildMethods(.newEnv)
-      .cp <- list()
-      attr(.cp, "names")     <- character(0)
-      attr(.cp, "class")     <- c("rxEt", "data.frame")
-      attr(.cp, "row.names") <- integer(0)
-      attr(.cp, ".rxEtEnv")  <- .newEnv
-      .cp
+      .etMethodCopy(env)
     },
     import.EventTable = function(df) {
-      if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
-      .tu <- .env$units["time"]
-      .du <- .env$units["dosing"]
-      .hasTimeU <- !is.na(.tu) && nchar(.tu) > 0
-      .hasDoseU <- !is.na(.du) && nchar(.du) > 0
-      # Save prior-units state: only convert when et already had units set
-      .priorTimeU <- .hasTimeU
-      .priorDoseU <- .hasDoseU
-      # Auto-detect units from columns if not already set
-      if (!.hasTimeU && requireNamespace("units", quietly = TRUE)) {
-        for (.nmCheck in c("time", "ii")) {
-          if (!is.null(df[[.nmCheck]]) && inherits(df[[.nmCheck]], "units")) {
-            .tu <- units::deparse_unit(df[[.nmCheck]])
-            .env$units["time"] <- .tu
-            .hasTimeU <- TRUE
-            break
-          }
-        }
-      }
-      if (!.hasDoseU && requireNamespace("units", quietly = TRUE)) {
-        if (!is.null(df[["amt"]]) && inherits(df[["amt"]], "units")) {
-          .du <- units::deparse_unit(df[["amt"]])
-          .env$units["dosing"] <- .du
-          .hasDoseU <- TRUE
-        } else if (!is.null(df[["rate"]]) && inherits(df[["rate"]], "units")) {
-          # udunits format: "ug s-1" — amount unit has no digit exponent
-          .rateStr <- units::deparse_unit(df[["rate"]])
-          .parts <- strsplit(trimws(.rateStr), "\\s+")[[1L]]
-          .amtParts <- .parts[!grepl("[0-9]", .parts)]
-          if (length(.amtParts) >= 1L) {
-            .du <- .amtParts[[1L]]
-            .env$units["dosing"] <- .du
-            .hasDoseU <- TRUE
-          }
-        }
-      }
-      .cols <- lapply(names(df), function(.nm) {
-        .col <- df[[.nm]]
-        if (!inherits(.col, "units")) return(.col)
-        if (requireNamespace("units", quietly = TRUE)) {
-          # Only convert when et had prior units; auto-detected units just strip label
-          if (.nm %in% c("time", "ii") && .hasTimeU)
-            return(as.numeric(units::set_units(.col, .tu, mode = "standard")))
-          if (.nm == "amt" && .hasDoseU)
-            return(as.numeric(units::set_units(.col, .du, mode = "standard")))
-          if (.nm == "rate" && .hasDoseU && .hasTimeU) {
-            .rateU <- paste0(.du, "/", .tu)
-            return(as.numeric(units::set_units(.col, .rateU, mode = "standard")))
-          }
-        }
-        as.numeric(.col)
-      })
-      names(.cols) <- names(df)
-      df <- as.data.frame(.cols, stringsAsFactors = FALSE)
-      if (is.null(df$evid)) {
-        df$evid <- if (!is.null(df$amt)) ifelse(!is.na(df$amt) & as.numeric(df$amt) != 0, 1L, 0L) else 0L
-      }
-      df$evid <- as.integer(df$evid)
-      if (is.null(df$id)) df$id <- 1L
-      df$id <- as.integer(df$id)
-      .env$IDs  <- sort(unique(df$id))
-      .env$nobs  <- .env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
-      .env$ndose <- .env$ndose + sum(df$evid != 0L, na.rm = TRUE)
-      .env$chunks <- .addRowsToChunks(.env$chunks, df)
-      if (length(.env$IDs) > 1L) .env$show["id"] <- TRUE
-      if (sum(df$evid != 0L, na.rm = TRUE) > 0L) .env$show["amt"] <- TRUE
-      if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
-        .env$show["rate"] <- TRUE
-      if (!is.null(df$dur) && any(df$dur[df$evid != 0L] != 0, na.rm = TRUE))
-        .env$show["dur"] <- TRUE
-      if (!is.null(df$ii) && any(df$ii != 0, na.rm = TRUE)) {
-        .env$show["ii"] <- TRUE
-        .env$show["addl"] <- TRUE
-      }
-      invisible(NULL)
+      .etMethodImportEventTable(env, df)
     },
 
     importEventTable = function(df, ...) {
-      if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
-      # Normalize UPPERCASE/mixed-case NONMEM-style column names to lowercase
-      .colMap <- c(ID="id", TIME="time", CMT="cmt", AMT="amt", EVID="evid",
-                   RATE="rate", II="ii", ADDL="addl", SS="ss", DUR="dur",
-                   LOW="low", HIGH="high")
-      .nms <- names(df)
-      .upper <- toupper(.nms)
-      for (.i in seq_along(.nms)) {
-        if (.upper[.i] %in% names(.colMap) && .nms[.i] != .colMap[.upper[.i]]) {
-          names(df)[.i] <- .colMap[.upper[.i]]
-        }
-      }
-      # Convert character ID to sequential integers (silently)
-      if (!is.null(df$id) && !is.numeric(df$id) && !is.integer(df$id)) {
-        .uniq <- unique(df$id)
-        df$id <- as.integer(factor(df$id, levels = .uniq))
-      }
-      # Drop rows with NA time (warn)
-      if (!is.null(df$time) && any(is.na(as.numeric(df$time)))) {
-        .nDrop <- sum(is.na(as.numeric(df$time)))
-        warning(sprintf("dropping %d row(s) with NA time", .nDrop), call. = FALSE)
-        df <- df[!is.na(as.numeric(df$time)), , drop = FALSE]
-      }
-      # Delegate to import.EventTable for units handling + storage
-      .etBuildMethods(.env)$import.EventTable(df)
-      invisible(NULL)
+      .etMethodImportEventTable2(env, df, ...)
     },
 
     expand = function() {
-      .et <- structure(list(.env = .env), class = "rxEt")
-      .mat <- .etMaterialize(.et)
-      .expanded <- .etExpandAddlR(.mat)
-      .env$chunks <- list()
-      if (nrow(.expanded) > 0L) {
-        .ids <- unique(as.integer(.expanded$id))
-        for (.i in .ids) {
-          .env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
-        }
-        .env$IDs <- sort(.ids)
-      } else {
-        .env$IDs <- 1L
-      }
-      .env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
-      .env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
-      .env$show["id"] <- length(.env$IDs) > 1L
-      .env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
-      .env$randomType <- NA_integer_
-      .env$canResize <- FALSE
-      invisible(NULL)
+      .etMethodExpand(env)
     },
     simulate = function(object, nsim = 1, seed = NULL, ...) {
-      if (!is.null(seed)) set.seed(seed)
-      .et <- structure(list(.env = .env), class = "rxEt")
-      .mat <- .etMaterialize(.et)
-      .hasWin <- !is.na(.mat$low) & !is.na(.mat$high) & .mat$evid == 0L
-      if (!any(.hasWin)) {
-        warning("simulating event table without windows returns identical event table", call. = FALSE)
-      } else {
-        .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-        .env$chunks <- list()
-        if (nrow(.mat) > 0L) {
-          .ids <- unique(as.integer(.mat$id))
-          for (.i in .ids) .env$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
-        }
-      }
-      invisible(NULL)
+      .etMethodSimulate(env, object, nsim, seed, ...)
     }
   )
   .lst$addDosing      <- .lst[["add.dosing"]]
@@ -417,16 +588,20 @@
 }
 
 #' Create a new empty rxEt object
+#'
 #' @param amountUnits character dose unit, e.g. "mg"
+#'
 #' @param timeUnits character time unit, e.g. "hours"
+#'
 #' @return rxEt object
+#'
 #' @noRd
 .newRxEt <- function(amountUnits = NA_character_, timeUnits = NA_character_) {
   .env <- new.env(parent = emptyenv())
   .env$chunks     <- list()
   .env$units      <- c(dosing = amountUnits, time = timeUnits)
   .env$show       <- .etDefaultShow()
-  .env$IDs        <- 1L
+  .env$ids        <- 1L
   .env$nobs       <- 0L
   .env$ndose      <- 0L
   .env$randomType <- NA_integer_
@@ -443,7 +618,12 @@
   .obj
 }
 
-#' Sync the materialized data.frame shell with the mutable rxEt environment
+#' Sync the materialized data.frame shell with the rxEt environment
+#'
+#' @param x rxEt object
+#'
+#' @return materialized synced rxEt data frame
+#'
 #' @noRd
 .rxEtSyncData <- function(x) {
   .env <- .rxEtEnv(x)
@@ -459,26 +639,58 @@
   .ret
 }
 
-#' Stamp randomType into attr(class(et), ".rxode2.lst") before returning
-#' @noRd
-.rxEtFinalize <- function(et) {
-  .rxEtSyncData(et)
-}
-
-#' Expand addl doses into individual records (pure R)
+#' Expand addl doses into individual records
+#'
 #' @param df materialized data.frame from .etMaterialize()
+#'
+#' @param env environment for randomType and show flags
+#'
+#' @param windows logical; if TRUE, only expand windows (low/high) by
+#'   ii on each subsequent dose based on random type in env
+#'
 #' @return data.frame with addl expanded into individual dose records
+#'
 #' @noRd
-.etExpandAddlR <- function(df) {
-  .doseRows <- df[df$evid != 0L & df$addl > 0L, , drop = FALSE]
+.etExpandAddl <- function(df, env=NULL, windows=FALSE) {
+  if (windows) {
+    .doseRows <- df[df$evid != 0L & df$addl > 0L & !is.na(df$low), , drop = FALSE]
+  } else {
+    .doseRows <- df[df$evid != 0L & df$addl > 0L, , drop = FALSE]
+  }
   if (nrow(.doseRows) == 0L) return(df)
-
+  if (is.environment(env) &&
+        exists("randomType", envir = env, inherits = FALSE)) {
+    .rt <- env$randomType
+    if (is.na(.rt)) .rt <- 1L
+  } else {
+    .rt <- 1
+  }
   .extras <- vector("list", nrow(.doseRows))
   for (.i in seq_len(nrow(.doseRows))) {
     .row   <- .doseRows[.i, ]
     .n     <- .row$addl
     .extra <- .row[rep(1L, .n), , drop = FALSE]
-    .extra$time <- .row$time + seq_len(.n) * .row$ii
+    # This works for normal and uniform cases
+    if (!is.na(.row$low)) {
+      .extra$low <- .row$low + seq_len(.n) * .row$ii
+    }
+    if (.rt == 3) {
+      # normal; sd remains the same on expansion
+      .extra$time <- vapply(seq_len(.n), function(i) {
+        stats::rnorm(1L, .extra$low[i], .extra$high[i])
+      }, numeric(1), USE.NAMES = FALSE)
+    } else if (!is.na(.row$high)) {
+      # uniform or window expand window by ii on each subsequent dose
+      .extra$high <- .row$high + seq_len(.n) * .row$ii
+      .extra$time <- vapply(seq_len(.n), function(i) {
+        stats::runif(1L, .extra$low[i], .extra$high[i])
+      }, numeric(1), USE.NAMES = FALSE)
+    } else {
+      .extra$time <- .row$time + seq_len(.n) * .row$ii
+    }
+
+
+    .extra$high <- .row$high + seq_len(.n) * .row$ii
     .extra$addl <- 0L
     .extra$ii   <- 0.0
     .extras[[.i]] <- .extra
@@ -487,7 +699,7 @@
   df$ii[df$evid   != 0L] <- 0.0
   .combined <- do.call(rbind, c(list(df), .extras))
   .evidSort <- ifelse(.combined$evid == 3L, -1L, as.integer(.combined$evid))
-  .combined[.order3(.combined$id, .combined$time, .evidSort), ]
+  .combined[.order3(.combined$id, .combined$time, .evidSort), ] # nolint
 }
 
 # Canonical column order matching C++ etEmpty()
@@ -504,12 +716,15 @@
 #' "(default)" and "(obs)" map to compartment 1; NA stays NA_integer_.
 #' If any value is a non-numeric, non-sentinel string (a compartment name),
 #' the column stays character so C++ name lookup works normally.
-#' @param .df materialized data.frame from .etMaterialize()
-#' @return .df with cmt column possibly converted to integer
+#'
+#' @param df materialized data.frame from .etMaterialize()
+#'
+#' @return df with cmt column possibly converted to integer
+#'
 #' @noRd
-.etFixCmtForSolve <- function(.df) {
-  .cmt <- .df[["cmt"]]
-  if (is.null(.cmt) || !is.character(.cmt)) return(.df)
+.etFixCmtForSolve <- function(df) {
+  .cmt <- df[["cmt"]]
+  if (is.null(.cmt) || !is.character(.cmt)) return(df)
   .isNA      <- is.na(.cmt)
   .isSentinel <- !.isNA & (.cmt == "(default)" | .cmt == "(obs)")
   .numericOk  <- !.isNA & !.isSentinel & suppressWarnings(!is.na(as.integer(.cmt)))
@@ -518,12 +733,14 @@
     .int[.isNA]       <- NA_integer_
     .int[.isSentinel] <- 1L
     .int[.numericOk]  <- as.integer(.cmt[.numericOk])
-    .df[["cmt"]] <- .int
+    df[["cmt"]] <- .int
   }
-  .df
+  df
 }
 
 #' Empty data.frame skeleton matching materialized format
+#'
+#' @return empty data.frame with canonical columns and types
 #' @noRd
 .etEmptyDf <- function() {
   data.frame(
@@ -545,12 +762,15 @@
 
 #' Materialize all chunks into a sorted data.frame
 #'
-#' chunks is a list indexed by ID integer value; \code{chunks[[i]]} is
+#' Chunks is a list indexed by ID integer value; \code{chunks[[i]]} is
 #' a data.frame for ID i (with 'id' column set), or NULL if no records
 #' for that ID.
+#'
 #' @param et rxEt object
+#'
 #' @return data.frame with canonical columns, sorted by (id, time,
 #'   evid-adjusted)
+#'
 #' @noRd
 .etMaterialize <- function(et) {
   .env <- .rxEtEnv(et)
@@ -584,26 +804,30 @@
   .doseIdx <- which(.dt$evid != 0L)
   if (length(.doseIdx) > 0L) {
     for (.col in c("rate", "ii", "dur")) {
-      .vals <- .dt[[.col]]
-      .naInDose <- is.na(.vals[.doseIdx])
-      if (any(.naInDose)) {
-        .vals[.doseIdx[.naInDose]] <- 0.0
-        data.table::set(.dt, j = .col, value = .vals)
+      if (.col %in% names(.dt)) {
+        .vals <- .dt[[.col]]
+        .naInDose <- is.na(.vals[.doseIdx])
+        if (any(.naInDose)) {
+          .vals[.doseIdx[.naInDose]] <- 0.0
+          data.table::set(.dt, j = .col, value = .vals)
+        }
       }
     }
     for (.col in c("addl", "ss")) {
-      .vals <- .dt[[.col]]
-      .naInDose <- is.na(.vals[.doseIdx])
-      if (any(.naInDose)) {
-        .vals[.doseIdx[.naInDose]] <- 0L
-        data.table::set(.dt, j = .col, value = .vals)
+      if (.col %in% names(.dt)) {
+        .vals <- .dt[[.col]]
+        .naInDose <- is.na(.vals[.doseIdx])
+        if (any(.naInDose)) {
+          .vals[.doseIdx[.naInDose]] <- 0L
+          data.table::set(.dt, j = .col, value = .vals)
+        }
       }
     }
   }
 
   # Sort: id ASC, time ASC, evid=3 sorts before others at same (id, time)
   .evidSort <- ifelse(.dt$evid == 3L, -1L, as.integer(.dt$evid))
-  .ord <- .order3(.dt$id, .dt$time, .evidSort)
+  .ord <- .order3(.dt$id, .dt$time, .evidSort) # nolint
   .dt <- .dt[.ord, ]
 
   # Ensure canonical column order
@@ -612,6 +836,7 @@
   data.table::setcolorder(.dt, .etColOrder)
 
   .df <- as.data.frame(.dt)
+  .df <- .etExpandAddl(.df, env = .env, windows = TRUE)
 
   # Apply units to columns so C++ solver can propagate them to output
   .tu <- .env$units["time"]
@@ -631,13 +856,15 @@
       }
     }
   }
-
   .df
 }
 
 #' Check if object is an rxEt event table
+#'
 #' @param x object to test
+#'
 #' @return logical
+#'
 #' @export
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) return(FALSE)
@@ -645,49 +872,51 @@ is.rxEt <- function(x) {
   is.environment(.env)
 }
 
-#' Build an observation chunk sparse list (no id column; caller uses .etAddChunk)
-#'
-#' Returns a sparse named list where scalar fields (evid) are stored once and
-#' vector fields (time) hold per-row values. Callers use length(.df$time) for
-#' row count, not nrow().
-#'
-#' @param time numeric vector of sample times, OR a list of c(low,high)
-#'   or c(low,mid,high) windows.
-#' @param cmt compartment name or number (optional scalar)
-#' @param id integer vector of IDs to attach (optional)
-#' @return sparse named list with evid=0L scalar and time vector
 #' @noRd
-.etObsChunk <- function(time, cmt = NULL, id = NULL) {
+.etWindowTime <- function(time, allow1 = FALSE) {
   .randomType <- NA_integer_
   if (inherits(time, "list")) {
     .nw <- length(time)
     .low  <- numeric(.nw)
     .mid  <- numeric(.nw)
     .high <- numeric(.nw)
-    .hasNaHw <- any(vapply(time, function(.w) length(.w) == 3L && is.na(.w[3L]), logical(1L)))
-    .has3    <- FALSE
+    # This is for the normal variability case that is list(c(4, 2, NA))
+    .hasNormal <- any(vapply(time,
+                             function(.w) {
+                               length(.w) == 3L && is.na(.w[3L])
+                             }, logical(1L)))
+    .has3 <- any(vapply(time,
+                        function(.w) {
+                          length(.w) == 3L && !is.na(.w[3L])
+                        }, logical(1L)))
     for (.i in seq_len(.nw)) {
       .w <- time[[.i]]
-      if (length(.w) == 2L) {
-        if (.hasNaHw) {
-          if (.w[2L] < 0) stop("window half-width must be non-negative", call. = FALSE)
-          .low[.i]  <- .w[1L] - .w[2L]
-          .mid[.i]  <- .w[1L]
-          .high[.i] <- .w[1L] + .w[2L]
-        } else {
-          if (.w[1] > .w[2]) stop("window bounds must be ordered c(low, high)", call. = FALSE)
+      if (length(.w) == 1L) {
+        if (!allow1) stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
+        .low[.i]  <- NA_real_
+        .mid[.i]  <- as.numeric(.w)
+        .high[.i] <- NA_real_
+      } else if (length(.w) == 2L) {
+        if (.hasNormal) {
           .low[.i]  <- .w[1]
-          .mid[.i]  <- (.w[1] + .w[2]) / 2
+          .mid[.i]  <- stats::rnorm(1, .w[1], .w[2])
+          .high[.i] <- .w[2]
+        } else if (.has3) {
+          stop("Cannot mix 2 and 3 element windows", call. = FALSE)
+        } else {
+          if (.w[1] > .w[2]) {
+            stop("window bounds must be ordered c(low, high)", call. = FALSE)
+          }
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- stats::runif(1, .w[1], .w[2])
           .high[.i] <- .w[2]
         }
       } else if (length(.w) == 3L) {
         if (is.na(.w[3L])) {
-          if (.w[2L] < 0) stop("window half-width must be non-negative", call. = FALSE)
-          .low[.i]  <- .w[1L] - .w[2L]
-          .mid[.i]  <- .w[1L]
-          .high[.i] <- .w[1L] + .w[2L]
+          .low[.i]  <- .w[1]
+          .mid[.i]  <- stats::rnorm(1, .w[1], .w[2])
+          .high[.i] <- .w[2]
         } else {
-          .has3 <- TRUE
           if (.w[1] > .w[2] || .w[2] > .w[3]) stop("window bounds must be ordered c(low, mid, high)", call. = FALSE)
           .low[.i]  <- .w[1]
           .mid[.i]  <- .w[2]
@@ -697,14 +926,88 @@ is.rxEt <- function(x) {
         stop("each window must be c(low, high) or c(low, mid, high)", call. = FALSE)
       }
     }
-    .randomType <- if (.hasNaHw) 3L else if (.has3) 1L else 2L
-    .df <- list(evid = 0L, time = .mid, low = .low, high = .high)
-  } else {
-    .df <- list(evid = 0L, time = as.numeric(time))
+    if (.hasNormal) {
+      .randomType <- 3L
+    } else if (.has3) {
+      .randomType <- 1L
+    } else {
+      .randomType <- 2L
+    }
+    return(list(time = .mid, low = .low, high = .high, randomType = .randomType))
   }
+  list(time = as.numeric(time), low = NA_real_, high = NA_real_, randomType = NA_integer_)
+}
+
+#' @noRd
+.etDoseUntil <- function(until, time, ii, addl, isList) {
+  if (is.null(until)) return(addl)
+  if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
+  .tmp <- until - time - ii
+  if (any(.tmp > 0, na.rm = TRUE)) {
+    .ratio <- .tmp / ii
+    .ceil <- ceiling(.ratio)
+    addl <- ifelse(.ceil == .ratio, .ratio + 1, .ceil)
+    addl <- as.integer(addl)
+  } else {
+    addl <- 0L
+    if (!isList) {
+      warning("'time'+'ii' is greater than 'until', no additional doses added", call. = FALSE)
+    }
+  }
+  if (any(addl < 0L, na.rm = TRUE)) {
+    warning("'until' is before 'time'; setting addl=0", call. = FALSE)
+    addl[addl < 0L] <- 0L
+  }
+  addl
+}
+
+#' @noRd
+.etDoseValidate <- function(amt, ii, addl, ss, rate) {
+  if (ii > 0 && ss == 0L && all(addl == 0L, na.rm = TRUE)) {
+    warning(sprintf(
+      "'ii' requires non zero additional doses ('addl') or steady state dosing ('ii': %f, 'ss': %d; 'addl': %d), reset 'ii' to zero", # nolint
+      ii, ss, max(addl, na.rm = TRUE)
+    ), call. = FALSE)
+    ii <- 0.0
+  }
+
+  if (any(addl > 0L, na.rm = TRUE) && ii == 0.0)
+    stop("'addl' > 0 requires a positive inter-dose interval ('ii')", call. = FALSE)
+
+  if (ss > 0L) {
+    if (rate < -1.0 && ii == 0.0)
+      stop("cannot use duration flag (rate=-2) with steady-state dosing", call. = FALSE)
+    if (ss == 2L && ii == 0.0)
+      stop("ss=2 requires a positive inter-dose interval ('ii')", call. = FALSE)
+    if (rate > 0 && ii > 0 && amt == 0)
+      stop("cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", call. = FALSE) # nolint
+  }
+  ii
+}
+
+#' Build an observation chunk list (no id column; caller uses .etAddChunk)
+
+#'
+#' Returns a sparse named list where scalar fields (evid) are stored once and
+#' vector fields (time) hold per-row values. Callers use length(.df$time) for
+#' row count, not nrow().
+#'
+#' @param time numeric vector of sample times, OR a list of c(low,high)
+#'   or c(low,mid,high) windows.
+#'
+#' @param cmt compartment name or number (optional scalar)
+#'
+#' @param id integer vector of ids to attach (optional)
+#'
+#' @return sparse named list with evid=0L scalar and time vector
+#'
+#' @noRd
+.etObsChunk <- function(time, cmt = NULL, id = NULL) {
+  .time <- .etWindowTime(time)
+  .df <- list(evid = 0L, time = .time$time, low = .time$low, high = .time$high)
   if (!is.null(cmt)) .df$cmt <- cmt
   if (!is.null(id))  .df$id  <- as.integer(id)
-  attr(.df, ".randomType") <- .randomType
+  attr(.df, ".randomType") <- .time$randomType
   .df
 }
 
@@ -739,61 +1042,19 @@ is.rxEt <- function(x) {
 #' @return data.frame
 #' @noRd
 .etDoseChunk <- function(time = 0, amt, evid = 1L, cmt = "(default)",
-                          ii = 0.0, addl = 0L, ss = 0L, rate = 0.0, dur = 0.0,
-                          until = NULL, nbr.doses = NULL, dosing.interval = NULL) {
+                         ii = 0.0, addl = 0L, ss = 0L, rate = 0.0, dur = 0.0,
+                         until = NULL, nbr.doses = NULL, dosing.interval = NULL) {
   if (!is.null(dosing.interval)) ii <- as.numeric(dosing.interval)
   if (!is.null(nbr.doses))       addl <- as.integer(nbr.doses) - 1L
 
-  if (is.list(time)) {
-    .timeDose <- vapply(time, function(.w) as.numeric(.w[1L]), numeric(1L))
-    .timeUntil <- vapply(time, function(.w) {
-      .w <- as.numeric(.w)
-      .w[min(length(.w), 2L)]
-    }, numeric(1L))
-  } else {
-    .timeDose <- as.numeric(time)
-    .timeUntil <- .timeDose
-  }
+  .time <- .etWindowTime(time, allow1 = TRUE)
+  .timeDose <- .time$time
+  .lowDose <- .time$low
+  .highDose <- .time$high
+  .randomType <- .time$randomType
 
-  if (!is.null(until)) {
-    if (ii <= 0) stop("'until' requires a positive 'ii'", call. = FALSE)
-    .tmp <- until - .timeUntil - ii
-    if (any(.tmp > 0, na.rm = TRUE)) {
-      .ratio <- .tmp / ii
-      .ceil <- ceiling(.ratio)
-      addl <- ifelse(.ceil == .ratio, .ratio + 1, .ceil)
-      addl <- as.integer(addl)
-    } else {
-      addl <- 0L
-      if (!is.list(time)) {
-        warning("'time'+'ii' is greater than 'until', no additional doses added", call. = FALSE)
-      }
-    }
-    if (any(addl < 0L, na.rm = TRUE)) {
-      warning("'until' is before 'time'; setting addl=0", call. = FALSE)
-      addl[addl < 0L] <- 0L
-    }
-  }
-
-  if (ii > 0 && ss == 0L && all(addl == 0L, na.rm = TRUE)) {
-    warning(sprintf(
-      "'ii' requires non zero additional doses ('addl') or steady state dosing ('ii': %f, 'ss': %d; 'addl': %d), reset 'ii' to zero",
-      ii, ss, max(addl, na.rm = TRUE)
-    ), call. = FALSE)
-    ii <- 0.0
-  }
-
-  if (any(addl > 0L, na.rm = TRUE) && ii == 0.0)
-    stop("'addl' > 0 requires a positive inter-dose interval ('ii')", call. = FALSE)
-
-  if (ss > 0L) {
-    if (rate < -1.0 && ii == 0.0)
-      stop("cannot use duration flag (rate=-2) with steady-state dosing", call. = FALSE)
-    if (ss == 2L && ii == 0.0)
-      stop("ss=2 requires a positive inter-dose interval ('ii')", call. = FALSE)
-    if (rate > 0 && ii > 0 && amt == 0)
-      stop("cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", call. = FALSE)
-  }
+  addl <- .etDoseUntil(until, .timeDose, ii, addl, inherits(time, "list"))
+  ii <- .etDoseValidate(amt, ii, addl, ss, rate)
 
   if (dur > 0 && rate == 0.0) {
     rate <- amt / dur
@@ -806,17 +1067,26 @@ is.rxEt <- function(x) {
     if (length(.timeDose) != length(amt)) stop("'time' and 'amt' must have the same length", call. = FALSE)
   }
 
-  data.frame(
+  .res <- data.frame(
     time = as.numeric(.timeDose), amt  = as.numeric(amt),
     evid = as.integer(evid), cmt  = as.character(cmt),
     ii   = as.numeric(ii),   addl = as.integer(addl),
     ss   = as.integer(ss),   rate = as.numeric(rate),
     dur  = as.numeric(dur),
+    low  = as.numeric(.lowDose),
+    high = as.numeric(.highDose),
     stringsAsFactors = FALSE
   )
+  attr(.res, ".randomType") <- .randomType
+  .res
 }
 
 #' Rebuild an rxEt shell after data-frame style mutation
+#'
+#' @param x rxEt object
+#'
+#' @param df materialized data.frame from .etMaterialize() after mutation
+#'
 #' @noRd
 .rxEtRebuildShell <- function(x, df) {
   .env0 <- .rxEtEnv(x)

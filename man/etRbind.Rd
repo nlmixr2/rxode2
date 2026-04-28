@@ -40,12 +40,12 @@ inter-dose interval no matter the length of the wait time or
 inter-dose interval
 }}
 
-\item{id}{This is how rbind will handle IDs.  There are two different types of options:
+\item{id}{This is how rbind will handle ids.  There are two different types of options:
 \itemize{
-\item \code{merge} with \code{id="merge"}, the IDs are merged together,
-overlapping IDs would be merged into a single event table.
-\item \code{unique} with \code{id="unique"}, the IDs will be renumbered
-so that the IDs in all the event tables are not overlapping.
+\item \code{merge} with \code{id="merge"}, the ids are merged together,
+overlapping ids would be merged into a single event table.
+\item \code{unique} with \code{id="unique"}, the ids will be renumbered
+so that the ids in all the event tables are not overlapping.
 }}
 
 \item{deparse.level}{The \code{deparse.level} of a traditional

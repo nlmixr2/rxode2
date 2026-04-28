@@ -52,7 +52,7 @@ happens in R:
 - `.newRxEt()` creates the new object
 - `.etBuildMethods()` attaches the attached backward compatible
   methods like `$add.sampling()`.
-- `.etExpandAddlR()` expands `addl` records in R
+- `.etExpandAddl()` expands `addl` records in R
 - `etSeq()`, `etRbind()`, and `etRep()` are implemented in R instead of
   depending on the older exported Rcpp helpers
 
@@ -113,7 +113,7 @@ main_functions <- data.frame(
     ".etBuildMethods()",
     "et.default()",
     ".etMaterialize()",
-    ".etExpandAddlR()",
+    ".etExpandAddl()",
     "etSeq() / etRbind() / etRep()",
     ".etFixCmtForSolve()",
     "vec_proxy.rxEt() / vec_restore.rxEt()"

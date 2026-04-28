@@ -96,18 +96,6 @@ omegaListRse <- function(omegaIn) {
     .Call(`_rxode2_omegaListRse`, omegaIn)
 }
 
-etDollarNames <- function(obj) {
-    .Call(`_rxode2_etDollarNames`, obj)
-}
-
-etUpdate <- function(obj, arg = NULL, value = NULL, exact = TRUE) {
-    .Call(`_rxode2_etUpdate`, obj, arg, value, exact)
-}
-
-et_ <- function(input, et__) {
-    .Call(`_rxode2_et_`, input, et__)
-}
-
 #' Get the Linear Compartment Information based on the model variables
 #'
 #' @param obj The model variables object

@@ -1,7 +1,7 @@
 #' @importFrom utils .DollarNames
 #' @export
 .DollarNames.rxEt <- function(x, pattern) {
-  .envProps <- c("randomType", "canResize", "IDs", "show", "ndose", "nobs")
+  .envProps <- c("randomType", "canResize", "ids", "show", "ndose", "nobs")
   .methods <- c(
     "expand", "getSampling", "get.sampling", "getDosing", "get.dosing",
     "get.nobs", "get.obs.rec", "getEventTable", "get.EventTable",

@@ -41,15 +41,16 @@
     d <- paste(d)
     if (any(unlist(lapply(strsplit(d, "[^0-9]+"), length)) != 3)) {
       stop("dates formatted as MONTH-DAY or DAY alone are not supported in this conversion",
-           call. = FALSE
-           )
+           call. = FALSE)
     }
-    return(d)
+    d
   }
   if (any(.colNames == "DATE")) {
     ##  Month Day Year
-    .datReg2 <- rex::rex(start, any_spaces, capture(numbers), non_numbers, capture(numbers), non_numbers, capture(number, number), any_spaces, end)
-    .datReg4 <- rex::rex(start, any_spaces, capture(numbers), non_numbers, capture(numbers), non_numbers, capture(number, number, number, number), any_spaces, end)
+    .datReg2 <- rex::rex(start, any_spaces, capture(numbers), non_numbers,
+                         capture(numbers), non_numbers, capture(number, number), any_spaces, end)
+    .datReg4 <- rex::rex(start, any_spaces, capture(numbers), non_numbers,
+                         capture(numbers), non_numbers, capture(number, number, number, number), any_spaces, end)
     dt <- .checkBad(d$DATE)
     d$DATE.TIME <- as.POSIXct(NA)
     w <- which(regexpr(.datReg2, dt) != -1)
@@ -68,8 +69,10 @@
       stop(.dupDate, call. = FALSE)
     }
     ## DAT1   day month year
-    .datReg2 <- rex::rex(start, any_spaces, capture(numbers), non_numbers, capture(numbers), non_numbers, capture(number, number), any_spaces, end)
-    .datReg4 <- rex::rex(start, any_spaces, capture(numbers), non_numbers, capture(numbers), non_numbers, capture(number, number, number, number), any_spaces, end)
+    .datReg2 <- rex::rex(start, any_spaces, capture(numbers), non_numbers,
+                         capture(numbers), non_numbers, capture(number, number), any_spaces, end)
+    .datReg4 <- rex::rex(start, any_spaces, capture(numbers), non_numbers,
+                         capture(numbers), non_numbers, capture(number, number, number, number), any_spaces, end)
     dt <- .checkBad(d$DAT1)
     d$DATE.TIME <- as.POSIXct(NA)
     w <- which(regexpr(.datReg2, dt) != -1)
@@ -88,8 +91,10 @@
     if (.doDate) {
       stop(.dupDate, call. = FALSE)
     }
-    .datReg2 <- rex::rex(start, any_spaces, capture(number, number), non_numbers, capture(numbers), non_numbers, capture(numbers), any_spaces, end)
-    .datReg4 <- rex::rex(start, any_spaces, capture(number, number, number, number), non_numbers, capture(numbers), non_numbers, capture(numbers), any_spaces, end)
+    .datReg2 <- rex::rex(start, any_spaces, capture(number, number), non_numbers,
+                         capture(numbers), non_numbers, capture(numbers), any_spaces, end)
+    .datReg4 <- rex::rex(start, any_spaces, capture(number, number, number, number), non_numbers,
+                         capture(numbers), non_numbers, capture(numbers), any_spaces, end)
     dt <- .checkBad(d$DAT2)
     d$DATE.TIME <- as.POSIXct(NA)
     w <- which(regexpr(.datReg2, dt) != -1)
@@ -108,8 +113,10 @@
     if (.doDate) {
       stop(.dupDate, call. = FALSE)
     }
-    .datReg2 <- rex::rex(start, any_spaces, capture(number, number), non_numbers, capture(numbers), non_numbers, capture(numbers), any_spaces, end)
-    .datReg4 <- rex::rex(start, any_spaces, capture(number, number, number, number), non_numbers, capture(numbers), non_numbers, capture(numbers), any_spaces, end)
+    .datReg2 <- rex::rex(start, any_spaces, capture(number, number), non_numbers,
+                         capture(numbers), non_numbers, capture(numbers), any_spaces, end)
+    .datReg4 <- rex::rex(start, any_spaces, capture(number, number, number, number), non_numbers,
+                         capture(numbers), non_numbers, capture(numbers), any_spaces, end)
     dt <- .checkBad(d$DAT3)
     d$DATE.TIME <- as.POSIXct(NA)
     w <- which(regexpr(.datReg2, dt) != -1)
@@ -139,10 +146,10 @@
     d <- d[order(d$ID, d$DATE.TIME, -d$EVID), ]
     d$TIME <- as.vector(unlist(sapply(unique(d$ID), function(id) {
       d0 <- d[d$ID == id, ]
-      return(as.numeric(difftime(d0$DATE.TIME,
-                                 d0$DATE.TIME[1],
-                                 units = "hours"
-                                 )))
+      as.numeric(difftime(d0$DATE.TIME,
+                          d0$DATE.TIME[1],
+                          units = "hours"
+                          ))
     })))
     d <- d[, -which(names(d) == "DATE.TIME")]
   }

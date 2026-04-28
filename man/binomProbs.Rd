@@ -16,7 +16,7 @@ binomProbs(x, ...)
   n = 0L,
   m = 0L,
   pred = FALSE,
-  piMethod = c("lim"),
+  piMethod = "lim",
   M = 5e+05,
   tol = .Machine$double.eps^0.25,
   ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"),

@@ -1503,46 +1503,46 @@ d/dt(blood)     = a*intestine - b*blood
         )
 
         max_sub <- 0
-        set.seed(5447)
-        rxSetSeed(5447)
-        ev   <- et()
-        iCov <- NULL
-        for(scen in names(scens)){
-          # Generating subject IDs
-          scen_subs      <- c(1:nsub)+max_sub
+        rxWithSeed(5447, {
+          ev   <- et()
+          iCov <- NULL
+          for(scen in names(scens)){
+            # Generating subject IDs
+            scen_subs      <- c(1:nsub)+max_sub
 
-          # Generating covariates
-          scen_sex       <- sample(c(0,1),nsub,replace=TRUE)
-          scen_subtype   <- sample(c(0,1),nsub,replace=TRUE)
-          scen_wt        <- exp(rnorm(nsub, 0, sd=.1))*70
-          for(tmp_sub_idx in 1:length(scen_subs)){
-            tmp_ev <-
-              et(id   = scen_subs[tmp_sub_idx],
-                 amt  = scens[[scen]][["damts"]]*conv,
-                 time = scens[[scen]][["dtimes"]],
-                 cmt  = scens[[scen]][["cmt"]]
-                 ) |>
-              et(id   = scen_subs[tmp_sub_idx],
-                 time = unique(c(scens[[scen]][["tsam"]])),
-                 cmt   = "C_ng_ml"
-                 ) |>
-              et(id   = scen_subs[tmp_sub_idx],
-                 time = unique(c(scens[[scen]][["tsam"]])),
-                 cmt   = "BM_obs"
-                 )
-            ev <- etRbind(ev, tmp_ev)
-            iCov <- rbind(iCov,
-                         data.frame(
-                           id      = scen_subs[tmp_sub_idx],
-                           sex     = scen_sex[[tmp_sub_idx]],
-                           wt      = scen_wt[[tmp_sub_idx]],
-                           subtype = scen_subtype[[tmp_sub_idx]]))
+            # Generating covariates
+            scen_sex       <- sample(c(0,1),nsub,replace=TRUE)
+            scen_subtype   <- sample(c(0,1),nsub,replace=TRUE)
+            scen_wt        <- exp(rnorm(nsub, 0, sd=.1))*70
+            for(tmp_sub_idx in 1:length(scen_subs)){
+              tmp_ev <-
+                et(id   = scen_subs[tmp_sub_idx],
+                   amt  = scens[[scen]][["damts"]]*conv,
+                   time = scens[[scen]][["dtimes"]],
+                   cmt  = scens[[scen]][["cmt"]]
+                   ) |>
+                et(id   = scen_subs[tmp_sub_idx],
+                   time = unique(c(scens[[scen]][["tsam"]])),
+                   cmt   = "C_ng_ml"
+                   ) |>
+                et(id   = scen_subs[tmp_sub_idx],
+                   time = unique(c(scens[[scen]][["tsam"]])),
+                   cmt   = "BM_obs"
+                   )
+              ev <- etRbind(ev, tmp_ev)
+              iCov <- rbind(iCov,
+                           data.frame(
+                             id      = scen_subs[tmp_sub_idx],
+                             sex     = scen_sex[[tmp_sub_idx]],
+                             wt      = scen_wt[[tmp_sub_idx]],
+                             subtype = scen_subtype[[tmp_sub_idx]]))
+            }
+            max_sub <- max(scen_subs)
           }
-          max_sub <- max(scen_subs)
-        }
-        sim <- rxSolve(my_model, events=ev, iCov=iCov)
+          sim <- rxSolve(my_model, events=ev, iCov=iCov)
 
-        expect_true(!any(is.na(sim$ipredSim)))
+          expect_true(!any(is.na(sim$ipredSim)))
+        }, rxseed = 5447)
 
       })
     })

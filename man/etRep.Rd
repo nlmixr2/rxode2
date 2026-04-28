@@ -37,10 +37,10 @@ if used.}
 \item{wait}{Waiting time between each repeated event table.  By
 default there is no waiting, or wait=0}
 
-\item{id}{A integer vector of IDs to add or remove from the event
+\item{id}{A integer vector of ids to add or remove from the event
 table.  If the event table is identical for each ID, then you
-may expand it to include all the IDs in this vector.  All the
-negative IDs in this vector will be removed.}
+may expand it to include all the ids in this vector.  All the
+negative ids in this vector will be removed.}
 
 \item{samples}{How to handle samples when repeating an event
 table.  The options are:

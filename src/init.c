@@ -330,10 +330,6 @@ extern void rxModelsAssignC(const char *str0, SEXP assign);
 
 SEXP _rxode2_rxSolveSetup(void);
 
-SEXP _rxode2_etDollarNames(SEXP);
-SEXP _rxode2_rxIsEt2(SEXP);
-SEXP _rxode2_et_(SEXP, SEXP);
-SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
@@ -344,6 +340,7 @@ SEXP _rxode2_rxQr(SEXP);
 
 SEXP _rxode2_parse_strncmpci(void);
 
+SEXP _rxode2_rxIsEt2(SEXP);
 SEXP _rxode2_etTransEvidIsObs(SEXP);
 SEXP _rxode2_rxSetIni0(SEXP ini0SEXP);
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP);
@@ -647,10 +644,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
     {"_rxode2_parse_strncmpci",(DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
-    {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
-    {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
     {"_rxode2_rxIsEt2", (DL_FUNC) &_rxode2_rxIsEt2, 1},
-    {"_rxode2_etDollarNames", (DL_FUNC) &_rxode2_etDollarNames, 1},
     {"_rxode2_rxSolveSetup", (DL_FUNC) &_rxode2_rxSolveSetup, 0},
     {"_rxode2_isIntel", (DL_FUNC) &_rxode2_isIntel, 0},
     {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},

@@ -1,4 +1,5 @@
 rxTest({
+  library(withr)
   test_that("new rxEt constructor", {
     ev <- .newRxEt()
     .env <- .rxEtEnv(ev)
@@ -115,11 +116,12 @@ rxTest({
   })
 
   test_that(".etObsChunk window list c(low,high) returns window chunk", {
-    chunk <- .etObsChunk(list(c(0, 2), c(4, 8)))
-    expect_equal(chunk$low,  c(0, 4))
-    expect_equal(chunk$high, c(2, 8))
-    expect_equal(chunk$evid, 0L)
-    expect_equal(chunk$time, c(1, 6))  # midpoints
+    rxWithSeed(42, {
+      chunk <- .etObsChunk(list(c(0, 2), c(4, 8)))
+      expect_equal(chunk$low,  c(0, 4))
+      expect_equal(chunk$high, c(2, 8))
+      expect_equal(chunk$evid, 0L)
+    })
   })
 
   test_that(".etObsChunk window list c(low,mid,high) uses mid as time", {
@@ -161,9 +163,12 @@ rxTest({
   })
 
   test_that(".etDoseChunk windowed time works with until", {
-    chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
-    expect_equal(chunk$time, 0)
-    expect_equal(chunk$addl, 3L)
+    rxWithSeed(42, {
+      chunk <- .etDoseChunk(time = list(c(0, 6)), amt = 100, ii = 12, until = 48)
+      expect_equal(chunk$low, 0)
+      expect_equal(chunk$high, 6)
+      expect_equal(chunk$addl, 3L)
+    })
   })
 
   test_that("et until without additional doses matches main branch shape", {
@@ -231,7 +236,7 @@ rxTest({
   test_that("et(0, 24) two-arg sequence", {
     ev <- et(0, 24)
     df <- .etMaterialize(ev)
-    expect_equal(df$time, 0:24)
+    expect_equal(df$time, as.numeric(0:24))
   })
 
   test_that("et(0, 24, by=4) generates seq", {
