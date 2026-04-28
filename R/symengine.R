@@ -55,7 +55,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "&&" = c("rxAnd(", ",", ")"),
   "||" = c("rxOr(", ",", ")"),
   "&" = c("rxAnd(", ",", ")"),
-  "|" = c("rxOr(", ",", ")")
+  "|" = c("rxOr(", ",", ")"),
+  "%%" = c("rxMod(", ",", ")")
 )
 
 .SEdouble <- list(
