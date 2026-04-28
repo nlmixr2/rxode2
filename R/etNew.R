@@ -225,7 +225,15 @@
     .d
   }
 }
-
+#' This clears the sampling in the attached event table
+#'
+#' Called with $clear.sampling()
+#'
+#'
+#' @param env environment for clearing the samples
+#' @return nothing, called for side effect of modifying env by reference
+#' @noRd
+#' @author Matthew L. Fidler
 .etMethodClearSampling <- function(env) {
   for (.i in seq_along(env$chunks)) {
     if (!is.null(env$chunks[[.i]])) {
@@ -237,7 +245,16 @@
   env$nobs <- 0L
   invisible(NULL)
 }
-
+#' Auto-detect time and dosing units from columns with units class
+#'
+#' @param env environment to update with detected units (modified by reference)
+#' @param df data.frame to check for units columns
+#'
+#' @return list with detected time and dosing units and flags
+#'   indicating if they were already set in env or auto-detected from
+#'   columns
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportAutoUnits <- function(env, df) {
   .tu <- env$units["time"]
   .du <- env$units["dosing"]
@@ -275,7 +292,25 @@
   }
   list(tu = .tu, du = .du, hasTimeU = .hasTimeU, hasDoseU = .hasDoseU)
 }
-
+#' Import an event table from a data.frame, converting units if needed
+#'
+#' @param df data.frame to import; may have units class on time, ii,
+#'   amt, and/or rate columns
+#'
+#' @param tu time unit to convert to (if df has time/ii columns with units class)
+#'
+#' @param du dose unit to convert to (if df has amt and/or rate columns with units class)
+#'
+#' @param hasTimeU logical indicating if time unit was already set in
+#'   env or auto-detected from df
+#'
+#' @param hasDoseU logical indicating if dose unit was already set in
+#'   env or auto-detected from df
+#'
+#' @return data.frame with units columns converted to numeric and time/amt/rate
+#'
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportConvertUnits <- function(df, tu, du, hasTimeU, hasDoseU) {
   .cols <- lapply(names(df), function(.nm) {
     .col <- df[[.nm]]
@@ -298,7 +333,12 @@
   names(.cols) <- names(df)
   as.data.frame(.cols, stringsAsFactors = FALSE)
 }
-
+#' This standardizes the id and evid columns in the imported data.frame
+#'
+#' @param df input data.frame
+#' @return data.frame with standardized id and evid columns
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportStandardizeIdEvid <- function(df) {
   if (is.null(df$evid)) {
     df$evid <- if (!is.null(df$amt)) ifelse(!is.na(df$amt) & as.numeric(df$amt) != 0, 1L, 0L) else 0L
@@ -308,7 +348,18 @@
   df$id <- as.integer(df$id)
   df
 }
-
+#' Import, updating which columns are shown
+#'
+#' @param env environment to update with new data and show flags (modified by reference)
+#'
+#' @param df data.frame to import, with standardized id and evid columns
+#'
+#' @return nothing, called for side effect of modifying env by reference
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+#'
 .etImportUpdateShow <- function(env, df) {
   if (length(env$ids) > 1L) env$show["id"] <- TRUE
   if (sum(df$evid != 0L, na.rm = TRUE) > 0L) env$show["amt"] <- TRUE
@@ -321,7 +372,15 @@
     env$show["addl"] <- TRUE
   }
 }
-
+#' Import and update the environment
+#'
+#' @param env environment to update with new data and show flags
+#'   (modified by reference)
+#' @param df data.frame to import, with standardized id and evid
+#'   columns and units converted to numeric
+#' @return nothing, called for side effect of modifying env by reference
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportUpdateEnv <- function(env, df) {
   env$ids  <- sort(unique(df$id))
   env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
@@ -330,6 +389,14 @@
   .etImportUpdateShow(env, df)
 }
 
+#' Import the event tables and normalize column names to lowercase,
+#' converting NONMEM-style uppercase
+#'
+#'
+#' @param df data.frame to normalize column names
+#' @return normalized data frame
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportNormalizeNames <- function(df) {
   # Normalize UPPERCASE/mixed-case NONMEM-style column names to lowercase
   .colMap <- c(ID="id", TIME="time", CMT="cmt", AMT="amt", EVID="evid",
@@ -344,7 +411,13 @@
   }
   df
 }
-
+#' Import ID column as integer, converting from character if needed
+#'
+#'
+#' @param df data.frame to import the ID column from
+#' @return data.frame with ID column converted to integer if it was character
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportIdToInteger <- function(df) {
   # Convert character ID to sequential integers (silently)
   if (!is.null(df$id) && !is.numeric(df$id) && !is.integer(df$id)) {
@@ -353,7 +426,13 @@
   }
   df
 }
-
+#' Drop rows with NA time, warning about how many were dropped
+#'
+#'
+#' @param df input data frame
+#' @return data frame with NA time dropped
+#' @noRd
+#' @author Matthew L. Fidler
 .etImportDropNaTime <- function(df) {
   # Drop rows with NA time (warn)
   if (!is.null(df$time) && any(is.na(as.numeric(df$time)))) {
@@ -363,7 +442,19 @@
   }
   df
 }
-
+#' Import a data frame
+#'
+#' @param env environment to update with new data and show flags
+#'   (modified by reference)
+#'
+#' @param df data.frame to import, with standardized id and evid
+#'   columns and units converted to numeric
+#'
+#' @return nothing, called for side effects
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
 .etMethodImportEventTable <- function(env, df) {
   if (!is.data.frame(df)) {
     stop("'df' must be a data.frame", call. = FALSE)
@@ -375,6 +466,24 @@
   invisible(NULL)
 }
 
+#'  Import an event table from a data.frame.
+#'
+#' This method auto-detects units and normalization of column names
+#' and id/evid columns; delegates to .etMethodImportEventTable after
+#' processing
+#'
+#' @param env environment to update with new data and show flags
+#'   (modified by reference)
+#'
+#' @param df data.frame to import
+#'
+#' @param ... additional arguments (ignored)
+#'
+#' @return nothing, called for side effects
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
 .etMethodImportEventTable2 <- function(env, df, ...) {
   if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
   df <- .etImportNormalizeNames(df)
@@ -384,7 +493,16 @@
   .etMethodImportEventTable(env, df)
   invisible(NULL)
 }
-
+#' $expand() method
+#'
+#' @param env environment to update with expanded data and show flags
+#'   (modified by reference)
+#'
+#' @return nothing, called for side effect of modifying env by reference
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
 .etMethodExpand <- function(env) {
   .et <- structure(list(env = env), class = "rxEt")
   .mat <- .etMaterialize(.et)
@@ -408,11 +526,26 @@
   invisible(NULL)
 }
 
+#' This get the observation records (evid == 0) from the event table
+#'
+#' @param env  environment to get the observation records from
+#' @return data.frame of observation records (evid == 0)
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
 .etMethodGetObsRec <- function(env) {
   .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  .mat$evid == 0L
+  .mat[.mat$evid == 0L,]
 }
-
+#' $copy() method
+#'
+#' Creates a new rxEt object with a copy of the environment and methods, so
+#' that mutations to the new copy do not affect the original.
+#'
+#' @param env environment to copy from
+#' @return new rxEt object with copied environment and methods
+#' @noRd
+#' @author Matthew L. Fidler
 .etMethodCopy <- function(env) {
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- env$chunks
@@ -431,8 +564,26 @@
   attr(.cp, ".rxEtEnv")  <- .newEnv
   .cp
 }
-
-.etMethodSimulate <- function(env, object, nsim = 1, seed = NULL, ...) {
+#'  $simulate() method
+#'
+#'
+#' @param env environment to update with simulated data (modified by
+#'   reference)
+#'
+#' @param seed random seed for reproducibility (currently ignored, as
+#'   simulation is done in-place on the event table)
+#'
+#' @param ... additional arguments passed to the simulation method
+#'   (currently ignored, as simulation is done in-place on the event
+#'   table)
+#'
+#' @return nothing, called for side effects
+#'
+#' @noRd
+#' @author Matthew L. Fidler
+#'
+#' @examples
+.etMethodSimulate <- function(env, seed = NULL, ...) {
   if (!is.null(seed)) set.seed(seed)
   .et <- structure(list(env = env), class = "rxEt")
   .mat <- .etMaterialize(.et)
@@ -569,7 +720,7 @@
       .etMethodExpand(env)
     },
     simulate = function(object, nsim = 1, seed = NULL, ...) {
-      .etMethodSimulate(env, object, nsim, seed, ...)
+      .etMethodSimulate(env, seed, ...)
     }
   )
   .lst$addDosing      <- .lst[["add.dosing"]]
