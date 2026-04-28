@@ -232,8 +232,14 @@ static inline void printVoidDeclaration(char *buf) {
   sAppendN(&sbOut, ";\n", 2);
 }
 
-static inline void printPopulateParameters(char *buf, int *j) {
-  sAppend(&sbOut, "  if (!ISNA(_PP[%d])) ", *j);
+static inline void printPopulateParameters(char *buf, int *j, int i) {
+  if (tb.lh[i] == isLHSparam) {
+    sAppend(&sbOut, "  if (ISNA(");
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, ") && !ISNA(_PP[%d])) ", *j);
+  } else {
+    sAppend(&sbOut, "  if (!ISNA(_PP[%d])) ", *j);
+  }
   doDot(&sbOut, buf);
   sAppend(&sbOut, " = _PP[%d];\n", *j);
   j[0] = j[0]+1;

@@ -222,6 +222,11 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
         }
       } else if (tb.lh[tb.ix] == notLHS){
         tb.lh[tb.ix] = isLHSparam;
+        if (tb.ini[tb.ix] == 0) {
+          tb.ini[tb.ix] = 1;
+          tb.iniv[tb.ix] = NA_REAL;
+          tb.ini_i++;
+        }
         if (tb.lho[tb.ix] == 0) tb.lho[tb.ix] = tb.lhi++;
       } else {
         tb.lh[tb.ix] = isLHS;
@@ -314,7 +319,7 @@ static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name,
         // There is more than one call to this variable, it is a
         // conditional variable
         /* Rprintf("Duplicate %s; %d %d\n", v, tb.lh[tb.ix], tb.ini0[tb.ix]); */
-        if (tb.lh[tb.ix] != isLHS){
+        if (tb.lh[tb.ix] != isLHS && tb.lh[tb.ix] != isLHSparam){
           tb.lh[tb.ix] = isLHS;
 
           if (!strcmp(v, "rxdummyLhs")) {

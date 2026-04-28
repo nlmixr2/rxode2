@@ -1739,13 +1739,14 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
 }
 void gparsCovSetup(int npars, int nPopPar, uint32_t nsub, RObject ev1,rx_solve* rx){
   if (_globals.gpars != NULL) free(_globals.gpars);
-  _globals.gpars = (double*)calloc(npars*max2(nsub, nPopPar), sizeof(double));
+  // _globals.gpars = (double*)malloc(npars*max2(nsub, nPopPar)*sizeof(double));
+  _globals.gpars = (double*)malloc(npars*max2(nsub, nPopPar)*sizeof(double));
   if (_globals.gpars == NULL){
     rxSolveFree();
     stop(_("could not allocate memory for solving parameters"));
   }
   // Fill the parameters with NA.
-  // std::fill_n(&_globals.gpars[0], npars*nPopPar, NA_REAL);
+  // std::fill_n(&_globals.gpars[0], npars*max2(nsub, nPopPar), NA_REAL);
   gparsCovSetupConstant(ev1, npars);
 }
 

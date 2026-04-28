@@ -105,7 +105,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
       break;
     case print_populateParameters:
       // Case 1 is for declaring the par_ptr.
-      printPopulateParameters(buf, &j);
+      printPopulateParameters(buf, &j, i);
       break;
     case print_simeps:
       // Case 15 is for declaring eps the sync parameters

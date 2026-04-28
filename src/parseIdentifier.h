@@ -19,6 +19,11 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
         tb.lh[tb.ix] = notLHS;
       } else {
         tb.lh[tb.ix] = isLHSparam;
+        if (tb.ini[tb.ix] == 0) {
+          tb.ini[tb.ix] = 1;
+          tb.iniv[tb.ix] = NA_REAL;
+          tb.ini_i++;
+        }
         if (tb.lho[tb.ix] == 0) {
           tb.lho[tb.ix] = tb.lhi++;
         }

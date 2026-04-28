@@ -81,11 +81,9 @@ extern "C" {
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {
         ind->lhs[j] = 1.0; // default is first string defined
+      } else {
+        ind->lhs[j] = NA_REAL;
       }
-      // Non-string lhs vars intentionally not reset: sticky lhs vars (isLHSparam)
-      // carry their accumulated value forward across subjects within a solve call.
-      // The thread-local glhs buffer is initialized to NA_REAL at solve start so
-      // the very first subject fires is.na() checks on the first observation.
     }
 		if ((inLhs == 0 && op->neq > 0) ||
 				(inLhs == 1 && op->neq == 0 && (rx->nIndSim > 0 || (rx->simflg & 1) != 0 ))) {
