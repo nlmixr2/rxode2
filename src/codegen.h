@@ -233,7 +233,7 @@ static inline void printVoidDeclaration(char *buf) {
 }
 
 static inline void printPopulateParameters(char *buf, int *j, int *i) {
-  if (tb.lh[*i] != isLHSparam && tb.lh[*i] != isLHS) {
+  if (tb.lh[*i] != isLHS) {
     sAppendN(&sbOut,"  ", 2);
     doDot(&sbOut, buf);
     sAppend(&sbOut, " = _PP[%d];\n", *j);

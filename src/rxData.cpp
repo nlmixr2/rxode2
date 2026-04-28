@@ -4053,6 +4053,21 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
         }
       }
     }
+    // Next, check event-derived covariates before falling back to model ini
+    // defaults so dual lhs/param variables like `Nominal = Nominal` use the
+    // data value when it is present.
+    if (!curPar){
+      for (j = 1; j < mvCov1N.size(); j++) {
+        const char *p1 = CHAR(mvCov1N[j]);
+        if (!strcmp(p0, p1)){
+          // These are setup once and don't need to be updated
+          _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
+          curPar = true;
+          rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+          break;
+        }
+      }
+    }
     // last, check for $ini values
     if (!curPar){
       for (j = mvIniN.size(); j--;){
@@ -4062,17 +4077,6 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
           _globals.gParPos[i] = -j - 1;
           rxSolveDat->eGparPos[i]=_globals.gParPos[i];
           break;
-        }
-      }
-    }
-    if (!curPar){
-      for (j = 1; j < mvCov1N.size(); j++) {
-        const char *p1 = CHAR(mvCov1N[j]);
-        if (!strcmp(p0, p1)){
-          // These are setup once and don't need to be updated
-          _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
-          curPar = true;
-          rxSolveDat->eGparPos[i]=_globals.gParPos[i];
         }
       }
     }
