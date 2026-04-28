@@ -68,9 +68,9 @@ static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_P
     if (new_de(v, fromCMTprop)) {
       add_de(ni, name, v, isCmtLhsStatement(ni, name, v), fromCMTprop);
       aProp(tb.de.n);
-      if ((tb.dprop[tb.id] & prop0) == 0) {
-        tb.dprop[tb.id] += prop0;
-      }
+    }
+    if ((tb.dprop[tb.id] & prop0) == 0) {
+      tb.dprop[tb.id] += prop0;
     }
     new_or_ith(v);
     if (tb.lh[tb.ix] == isLHSstr || tb.lh[tb.ix] == isSuppressedLHSstr) {
@@ -193,6 +193,14 @@ static inline int finalizeLinePower(nodeInfo ni, char *name) {
   return 0;
 }
 
+static inline int finalizeLineMod(nodeInfo ni, char *name) {
+  if (nodeHas(mod_expression)) {
+    aAppendN(")", 1);
+    return 1;
+  }
+  return 0;
+}
+
 static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int isWhile, int i) {
   if (isWhile) {
     tb.nwhile--;
@@ -203,6 +211,7 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLineParam(ni, name) ||
     finalizeLineSelectionStatement(ni, name, isWhile) ||
     finalizeLinePower(ni, name) ||
+    finalizeLineMod(ni, name) ||
     finalizeLineInterp(ni, name) ||
     finalizeLineStrAssign(ni, name) ||
     finalizeLineLevelStr(ni, name)
