@@ -38,14 +38,17 @@ rxTest({
                    eta.ka ~ 0.01
                  }))
 
-    cmax <- max(s$cp)
-    w <- which(s$cp == cmax)
-    tmax <- s$time[w[length(w)]]
+    for (i in unique(s$id)) {
+      si <- s[s$id == i, ]
+      cmax <- max(si$cp)
+      w <- which(si$cp == cmax)
+      tmax <- si$time[w[length(w)]]
 
-    expect_equal(cmax, s$C_max[length(s$C_max)])
-    expect_equal(tmax, s$T_max[length(s$T_max)])
-    expect_equal(s$T_min[length(s$time)], s$time[length(s$time)])
-    expect_equal(s$C_min[length(s$time)], s$cp[length(s$cp)])
+      expect_equal(cmax, si$C_max[nrow(si)])
+      expect_equal(tmax, si$T_max[nrow(si)])
+      expect_equal(si$T_min[nrow(si)], si$time[nrow(si)])
+      expect_equal(si$C_min[nrow(si)], si$cp[nrow(si)])
+    }
 
   })
 
