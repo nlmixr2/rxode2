@@ -1,31 +1,31 @@
 rxTest({
 
-  test_that("sticky vars work", {
+  m <- rxode2({
+    v  <- exp(tv+eta.v)
+    cl <- exp(tcl+eta.cl)
+    ka <- exp(tka+eta.ka)
+    d/dt(depot) <- -ka*depot
+    d/dt(centr) <- ka*depot - cl/v*centr
+    cp <- centr/v
+    if (is.na(C_max)) {
+      C_max <- 0
+      C_min <- Inf
+      T_max <- 0
+      T_min <- Inf
+    }
+    if (cp > C_max) {
+      C_max <- cp
+      T_max <- time
+      # Needs to be after C_max is acheived
+      C_min <- Inf
+      T_min <- Inf
+    } else if (cp < C_min || C_min == 0) {
+      C_min <- cp
+      T_min <- time
+    }
+  })
 
-    m <- rxode2({
-      v  <- exp(tv+eta.v)
-      cl <- exp(tcl+eta.cl)
-      ka <- exp(tka+eta.ka)
-      d/dt(depot) <- -ka*depot
-      d/dt(centr) <- ka*depot - cl/v*centr
-      cp <- centr/v
-      if (is.na(C_max)) {
-        C_max <- 0
-        C_min <- Inf
-        T_max <- 0
-        T_min <- Inf
-      }
-      if (cp > C_max) {
-        C_max <- cp
-        T_max <- time
-        # Needs to be after C_max is acheived
-        C_min <- Inf
-        T_min <- Inf
-      } else if (cp < C_min || C_min == 0) {
-        C_min <- cp
-        T_min <- time
-      }
-    })
+  test_that("sticky vars work", {
 
     ev <- et(amt=100) |>
       et(seq(0, 24)) |>
@@ -46,6 +46,28 @@ rxTest({
     expect_equal(tmax, s$T_max[length(s$T_max)])
     expect_equal(s$T_min[length(s$time)], s$time[length(s$time)])
     expect_equal(s$C_min[length(s$time)], s$cp[length(s$cp)])
+
+  })
+
+  test_that("sticky vars do not accumulate across separate rxSolve calls", {
+
+    # First solve: large dose — C_max ~100 (amt=1000, V=10)
+    ev_large <- et(amt=1000) |> et(seq(0, 24))
+    s1 <- rxSolve(m, ev_large,
+                  param=c(tv=log(10), tcl=log(1), tka=log(1),
+                          eta.v=0, eta.cl=0, eta.ka=0))
+
+    # Second solve: small dose — C_max ~1 (amt=10)
+    ev_small <- et(amt=10) |> et(seq(0, 24))
+    s2 <- rxSolve(m, ev_small,
+                  param=c(tv=log(10), tcl=log(1), tka=log(1),
+                          eta.v=0, eta.cl=0, eta.ka=0))
+
+    # If thread-local lhs bleeds across calls, s2$C_max would start at ~100
+    # (from s1) instead of NA, producing wrong final C_max.
+    expect_equal(s2$C_max[length(s2$C_max)], max(s2$cp))
+    # Sanity: the two C_max values differ by ~100x (linear PK, 100x dose ratio)
+    expect_true(s1$C_max[length(s1$C_max)] > s2$C_max[length(s2$C_max)] * 50)
 
   })
 
