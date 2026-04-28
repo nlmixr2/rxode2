@@ -4689,10 +4689,12 @@ static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   for (unsigned int j = 0; j < (unsigned int)rxSolveDat->nPopPar; j++){
     for (unsigned int k = 0; k < (unsigned int)rx->npars; k++){
       i = k+rx->npars*j;
-      if (ISNA(_globals.gpars[i])){
-        if (_globals.gParPos[k] == 0){
-          _globals.gpars[i] = 0;
-        } else if (_globals.gParPos[k] > 0){
+      if (_globals.gParPos[k] == 0) {
+        // Unset param: keep NA_REAL so conditional populate in generated code skips it,
+        // allowing sticky lhs vars to carry their accumulated value forward.
+        _globals.gpars[i] = NA_REAL;
+      } else if (ISNA(_globals.gpars[i])) {
+        if (_globals.gParPos[k] > 0){
           // posPar[i] = j + 1;
           _globals.gpars[i] = rxSolveDat->parMat(j, _globals.gParPos[k]-1);
         } else {
@@ -5542,8 +5544,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
     _globals.glhs = _globals.ginits + n4; // [n5_c]
-    // initially NA_REAL
-    //std::fill_n(_globals.glhs,n5, NA_REAL); // TOO slow
+    // Reset glhs to NA_REAL at the start of each rxSolve call so that separate
+    // solve calls start fresh (sticky lhs vars see is.na() == TRUE on first obs).
+    std::fill_n(_globals.glhs, n5_c, NA_REAL);
     _globals.gscale = _globals.glhs + n5_c; //[n6]
     std::copy(scaleC.begin(),scaleC.end(),&_globals.gscale[0]);
     op->scale = &_globals.gscale[0];

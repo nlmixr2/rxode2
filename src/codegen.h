@@ -207,7 +207,7 @@ static inline void printLhsLag(char *buf, int *j) {
 static inline void printLastLhsValue(char *buf, int *j) {
   sAppendN(&sbOut, "  ", 2);
   doDot(&sbOut, buf);
-  sAppend(&sbOut, " = _PL[%d];\n", *j);
+  sAppend(&sbOut, " = _PL[_LHS_%d_];\n", *j);
   j[0] = j[0]+1;
 }
 
@@ -233,7 +233,7 @@ static inline void printVoidDeclaration(char *buf) {
 }
 
 static inline void printPopulateParameters(char *buf, int *j) {
-  sAppendN(&sbOut,"  ", 2);
+  sAppend(&sbOut, "  if (!ISNA(_PP[%d])) ", *j);
   doDot(&sbOut, buf);
   sAppend(&sbOut, " = _PP[%d];\n", *j);
   j[0] = j[0]+1;
