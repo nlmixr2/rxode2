@@ -61,6 +61,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 
 .SEdouble <- list(
   "lbeta" = c("lbeta(", ",", ")"),
+  "rxMod" = c("(", "%%", ")"),
   "rxEq" = c("(", "==", ")"),
   "rxNeq" = c("(", "!=", ")"),
   "rxGeq" = c("(", ">=", ")"),
