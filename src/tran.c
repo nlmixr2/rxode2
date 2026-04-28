@@ -196,6 +196,9 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
   if (*i==0 && nodeHas(power_expression)) {
     aAppendN(",", 1);
     sAppendN(&sbt, "^", 1);
+  } else if (*i==0 && nodeHas(mod_expression)) {
+    aAppendN(",", 1);
+    sAppendN(&sbt, "%%", 2);
   }
   handleRemainingAssignments(ni, name, *i, pn, xpn);
   return 0;
@@ -218,6 +221,8 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
     int isWhile=0;
     if (nodeHas(power_expression)) {
       aAppendN("Rx_pow(", 7);
+    } else if (nodeHas(mod_expression)) {
+      aAppendN("fmod(", 5);
     }
     for (i = 0; i < nch; i++) {
       D_ParseNode *xpn = d_get_child(pn, i);

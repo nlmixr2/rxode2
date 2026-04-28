@@ -149,13 +149,17 @@ multiplicative_expression : unary_expression
 
 mult_part : ('*' | '/') unary_expression ;
 
-unary_expression : ('+' | '-')? (theta0 | theta | eta | primary_expression | power_expression );
+unary_expression : ('+' | '-')? (theta0 | theta | eta | primary_expression | power_expression | mod_expression );
 
 exponent_expression : ('+' | '-')? (theta0 | theta | eta | primary_expression );
 
 power_expression : primary_expression power_operator exponent_expression;
 
 power_operator   : ('^' | '**');
+
+mod_expression : primary_expression mod_operator exponent_expression;
+
+mod_operator : '%%';
 
 primary_expression
   : constant
