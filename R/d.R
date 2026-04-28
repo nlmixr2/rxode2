@@ -405,7 +405,7 @@
   # fmod(x, y) = x - y*trunc(x/y)
   # the trunc() doesn't exist at integers; this gives the derivative at non-integer values
   function(a, b) {
-    paste0("(", a, ")")
+    paste0("1")
   },
   function(a, b) {
     paste0("0")
