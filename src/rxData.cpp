@@ -817,59 +817,58 @@ List rxModelVars_blank() {
   ret[19] = CharacterVector::create();
   retN[19] = "alag";
 
-  ret[20] = IntegerVector::create(0); // splitBolus
-  retN[20] = "splitBolus";
-
-  ret[21] = IntegerVector::create(0); // udf
-  retN[21] = "udf";
+  ret[20] = IntegerVector::create(0); // udf
+  retN[20] = "udf";
 
   IntegerVector interp = IntegerVector::create();
   interp.attr("names") = CharacterVector::create();
   interp.attr("levels") = CharacterVector::create("default", "linear", "locf", "nocb", "midpoint");
   interp.attr("class") = "factor";
-  ret[22] = interp;
-  retN[22] = "interp";
+  ret[21] = interp;
+  retN[21] = "interp";
 
   List strAssign;
   strAssign.attr("names") = CharacterVector::create();
-  ret[23] = strAssign; // strAssign
-  retN[23] = "strAssign";
+  ret[22] = strAssign; // strAssign
+  retN[22] = "strAssign";
 
   LogicalVector lhsStr = LogicalVector::create();
   lhsStr.attr("names") = CharacterVector::create();
-  ret[24] = lhsStr; // lhsStr
-  retN[24] = "lhsStr";
+  ret[23] = lhsStr; // lhsStr
+  retN[23] = "lhsStr";
 
   IntegerVector stateProp = IntegerVector::create();
   stateProp.attr("names") = CharacterVector::create();
-  ret[25] = stateProp; // stateProp
-  retN[25] = "stateProp";
+  ret[24] = stateProp; // stateProp
+  retN[24] = "stateProp";
 
   IntegerVector sensProp = IntegerVector::create();
   sensProp.attr("names") = CharacterVector::create();
-  ret[26] = sensProp; // sensProp
-  retN[26] = "sensProp";
+  ret[25] = sensProp; // sensProp
+  retN[25] = "sensProp";
 
   IntegerVector normProp = IntegerVector::create();
   normProp.attr("names") = CharacterVector::create();
-  ret[27] = normProp; // normProp
-  retN[27] = "normProp";
+  ret[26] = normProp; // normProp
+  retN[26] = "normProp";
 
   IntegerVector stateOrd = IntegerVector::create();
   normProp.attr("names") = CharacterVector::create();
-  ret[28] = stateOrd;
-  retN[28] = "stateOrd";
+  ret[27] = stateOrd;
+  retN[27] = "stateOrd";
 
   IntegerVector lhsOrd = IntegerVector::create();
   normProp.attr("names") = CharacterVector::create();
-  ret[29] = lhsOrd;
-  retN[29] = "lhsOrd";
+  ret[28] = lhsOrd;
+  retN[28] = "lhsOrd";
 
+  ret[29] = IntegerVector::create(0); // splitBolus
+  retN[29] = "splitBolus";
 
   ret[30] = IntegerVector::create(0); // timeId
   retN[30] = "timeId";
 
-  ret[31] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  ret[31] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
   retN[31] = "md5";
 
   ret.attr("names") = retN;
