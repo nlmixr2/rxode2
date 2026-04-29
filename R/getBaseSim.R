@@ -93,9 +93,12 @@ getBaseIniSimModel.default <- function(obj) {
   if (identical(.params, str2lang("params()"))) {
     .params <- NULL
   }
-  # now filter out the interpolation methods
+  # now filter out directive lines; simulation model generation adds
+  # back the normalized declarations explicitly.
   .mod <- .rxFilterOutPropsAndAdjustPredDf(.ui, predDf=NULL, lstExpr=.mod)
   .interp <- rxUiGet.interpLines(list(.ui))
+  .splitDose <- rxUiGet.splitDoseLines(list(.ui))
   as.call(c(list(quote(`rxode2`)),
-            as.call(c(list(quote(`{`)), .params, .interp, .sigma, .ini, .mod))))
+            as.call(c(list(quote(`{`)), .params, .interp, .splitDose,
+                      .sigma, .ini, .mod))))
 }

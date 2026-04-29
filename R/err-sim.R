@@ -253,6 +253,29 @@ rxUiGet.interpLines <- function(x, ...){
 attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for model"
 attr(rxUiGet.interpLines, "rstudio") <- quote(linear(CP)) # for rstudio completion
 
+#' @rdname rxUiGet
+rxUiGet.splitDose <- function(x, ...) {
+  .ui <- x[[1]]
+  .splitBolus <- rxModelVars(.ui)$splitBolus
+  if (length(.splitBolus) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (length(.state) == 0L ||
+        any(.splitBolus < 1L | .splitBolus > length(.state))) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`splitBolus`)),
+                 lapply(.state[.splitBolus], as.name))))
+}
+attr(rxUiGet.splitDose, "desc") <- "split dose declaration line(s) for model"
+attr(rxUiGet.splitDose, "rstudio") <- quote(splitBolus(depot, central))
+
+#' @rdname rxUiGet
+rxUiGet.splitDoseLines <- rxUiGet.splitDose
+attr(rxUiGet.splitDoseLines, "desc") <- attr(rxUiGet.splitDose, "desc")
+attr(rxUiGet.splitDoseLines, "rstudio") <- attr(rxUiGet.splitDose, "rstudio")
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.simulationSigma <- function(x, ...) {
@@ -393,14 +416,16 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
   } else {
     .expr <- lstExpr
   }
-  ## remove interpolation lines from .expr
+  ## remove directive lines from .expr; these are re-added in a
+  ## normalized position for simulation models.
   .f <- vapply(seq_along(.expr), function(i) {
     .e <- .expr[[i]]
     if (is.call(.e)) {
       identical(.e[[1]], quote(`linear`)) ||
         identical(.e[[1]], quote(`locf`)) ||
         identical(.e[[1]], quote(`nocb`)) ||
-        identical(.e[[1]], quote(`midpoint`))
+        identical(.e[[1]], quote(`midpoint`)) ||
+        identical(.e[[1]], quote(`splitBolus`))
     } else {
       FALSE
     }
@@ -438,6 +463,7 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 #'   `uiModel$lstExpr`.
 #' @param useIf Use an `if (CMT == X)` for endpoints
 #' @param interpLines Interpolation lines, if not present
+#' @param splitDoseLines Split dose lines, if not present
 #' @param levelLines Levels lines for assigned strings.  If not
 #'   present, use the interpolation lines from the current model.
 #' @return quoted expression that can be evaluated to compiled rxode2
@@ -552,7 +578,8 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
                                 modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
                                 lstExpr=NULL,
                                 useIf=TRUE,
-                                interpLines=NULL, levelLines=NULL) {
+                                interpLines=NULL, splitDoseLines=NULL,
+                                levelLines=NULL) {
   if(!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
@@ -616,6 +643,17 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .lenLines <- .lenLines - length(.interpLines)
     .k <- .k + length(.interpLines)
   }
+  if (is.null(splitDoseLines)) {
+    .splitDoseLines <- rxUiGet.splitDoseLines(list(uiModel))
+    .lenLines <- .lenLines - length(.splitDoseLines)
+    .k <- .k + length(.splitDoseLines)
+  } else if (is.na(splitDoseLines)) {
+    .splitDoseLines <- list()
+  } else {
+    .splitDoseLines <- splitDoseLines
+    .lenLines <- .lenLines - length(.splitDoseLines)
+    .k <- .k + length(.splitDoseLines)
+  }
   .ret <- vector("list", .lenLines + .k)
   .curErrLine <- 1
   .ret[[1]] <- quote(`{`)
@@ -636,6 +674,12 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   if (length(.interpLines) > 0) {
     for (.i in seq_along(.interpLines)) {
       .ret[[.k]] <- .interpLines[[.i]]
+      .k <- .k + 1
+    }
+  }
+  if (length(.splitDoseLines) > 0) {
+    for (.i in seq_along(.splitDoseLines)) {
+      .ret[[.k]] <- .splitDoseLines[[.i]]
       .k <- .k + 1
     }
   }

@@ -346,6 +346,75 @@ rxTest({
                  "splitBolus(depot,central);\n")
   })
 
+  test_that("splitBolus() exposes split dose lines on the ui", {
+    f <- function() {
+      ini({
+        ka <- 1
+        cl <- 1
+        v <- 10
+      })
+      model({
+        splitBolus(depot, depot, central, peripheral)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        d/dt(peripheral) <- 0
+        cp <- central / v
+      })
+    }
+
+    ui <- rxode(f)
+
+    expect_equal(rxUiGet.splitDose(list(ui)),
+                 list(str2lang("splitBolus(depot, depot, central, peripheral)")))
+    expect_equal(ui$splitDoseLines,
+                 list(str2lang("splitBolus(depot, depot, central, peripheral)")))
+
+    f <- function() {
+      ini({
+        ka <- 1
+        cl <- 1
+        v <- 10
+      })
+      model({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+    }
+
+    ui <- rxode(f)
+
+    expect_null(rxUiGet.splitDose(list(ui)))
+    expect_null(ui$splitDoseLines)
+  })
+
+  test_that("splitBolus() is preserved in simulation models", {
+    f <- function() {
+      ini({
+        ka <- 1
+        cl <- 1
+        v <- 10
+      })
+      model({
+        splitBolus(depot, depot, central, peripheral)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        d/dt(peripheral) <- 0
+        cp <- central / v
+      })
+    }
+
+    ui <- rxode(f)
+
+    expect_error(ui$simulationModel, NA)
+    mod <- ui$simulationModel
+    expect_equal(unname(rxModelVars(mod)$splitBolus), c(1L, 1L, 2L, 3L))
+
+    expect_error(ui$simulationIniModel, NA)
+    mod <- ui$simulationIniModel
+    expect_equal(unname(rxModelVars(mod)$splitBolus), c(1L, 1L, 2L, 3L))
+  })
+
   test_that("splitBolus applies to a one-target bolus pushed by evid_()", {
     for (meth in c("dop853", "liblsoda")) {
       mSplit <- rxode2({
