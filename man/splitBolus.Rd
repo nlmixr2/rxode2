@@ -2,12 +2,9 @@
 % Please edit documentation in R/splitBolus.R
 \name{splitBolus}
 \alias{splitBolus}
-\alias{rxUdfUi.splitBolus}
-\title{Split bolus doses across two compartments inside an rxode2 model}
+\title{Split bolus doses across compartments inside an rxode2 model}
 \usage{
 splitBolus(cmt, ...)
-
-\method{rxUdfUi}{splitBolus}(fun)
 }
 \arguments{
 \item{cmt}{Source compartment name.}
@@ -27,5 +24,7 @@ source-compartment bolus is replaced, not retained.
 
 This rewrite applies both to event tables translated by \code{\link[=etTrans]{etTrans()}}
 and to future doses scheduled during solving with \code{\link[=evid_]{evid_()}}.
+
+The source compartment may also appear in the target list, but the
+target compartments in \code{...} must be unique.
 }
-\keyword{internal}

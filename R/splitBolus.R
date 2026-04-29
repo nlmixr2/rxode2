@@ -23,11 +23,3 @@
 splitBolus <- function(cmt, ...) {
   stop("'splitBolus()' can only be used inside an rxode2 model block", call. = FALSE)
 }
-
-#' @export
-#' @keywords internal
-#' @rdname splitBolus
-rxUdfUi.splitBolus <- function(fun) {
-  .args <- vapply(as.list(fun)[-1], deparse1, character(1), USE.NAMES = FALSE)
-  list(replace = paste0("splitBolus(", paste(.args, collapse = ","), ")"))
-}
