@@ -732,8 +732,22 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
                                                    _amt, _doseIi, _doseSs, _rate);
     if (ev.n == 0) continue;
 
+    int splitDoseEvent = -1;
+    if (rx->splitBolus != NULL && rx->splitBolusN >= 3 && _cmt == rx->splitBolus[0]) {
+      for (int _k = 0; _k < ev.n; _k++) {
+        if (_rxShouldSplitTranslatedBolus(ev.evid[_k], _cmt, _amt, rx->splitBolus[0])) {
+          splitDoseEvent = _k;
+          break;
+        }
+      }
+    }
+
     int nDose = 0;
-    for (int _k = 0; _k < ev.n; _k++) if (ev.isDose[_k]) nDose++;
+    for (int _k = 0; _k < ev.n; _k++) {
+      if (ev.isDose[_k]) {
+        nDose += (_k == splitDoseEvent) ? rx->splitBolusN - 1 : 1;
+      }
+    }
 
     // Check per-individual push limit (maxExtra > 0 enables the guard).
     _ind->nPushedExtra++;
@@ -800,16 +814,24 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     // Append the translated events
     int doseSuffix = _ind->ndoses; // idose sort start
     for (int _k = 0; _k < ev.n; _k++) {
-      int rawIdx = _ind->n_all_times;
-      _ind->all_times[rawIdx]  = ev.time[_k];
-      _ind->dose[rawIdx]       = ev.amt[_k];
-      _ind->ii[rawIdx]         = ev.ii[_k];
-      _ind->evid[rawIdx]       = ev.evid[_k];
-      _ind->timeThread[rawIdx] = ev.time[_k];
-      _ind->ix[rawIdx]         = rawIdx;
-      _ind->n_all_times++;
-      if (ev.isDose[_k]) {
-        _ind->idose[_ind->ndoses++] = rawIdx;
+      int splitStart = (_k == splitDoseEvent) ? 1 : 0;
+      int splitEnd = (_k == splitDoseEvent) ? rx->splitBolusN : 1;
+      for (int _s = splitStart; _s < splitEnd; _s++) {
+        int rawIdx = _ind->n_all_times;
+        int curEvid = ev.evid[_k];
+        if (_k == splitDoseEvent) {
+          curEvid = _rxEncodeEventCmt(ev.evid[_k], rx->splitBolus[_s]);
+        }
+        _ind->all_times[rawIdx]  = ev.time[_k];
+        _ind->dose[rawIdx]       = ev.amt[_k];
+        _ind->ii[rawIdx]         = ev.ii[_k];
+        _ind->evid[rawIdx]       = curEvid;
+        _ind->timeThread[rawIdx] = ev.time[_k];
+        _ind->ix[rawIdx]         = rawIdx;
+        _ind->n_all_times++;
+        if (ev.isDose[_k]) {
+          _ind->idose[_ind->ndoses++] = rawIdx;
+        }
       }
     }
 

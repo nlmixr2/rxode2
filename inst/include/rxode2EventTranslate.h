@@ -17,6 +17,29 @@ typedef struct {
   int    isDose[2];    /* 1 if this event contributes an idose entry */
 } rx_translated_event;
 
+static inline int _rxEventRateI(int evid) {
+  return (evid / 10000) % 10;
+}
+
+static inline int _rxEventFlag(int evid) {
+  return evid % 100;
+}
+
+static inline int _rxEncodeEventCmt(int evid, int cmt) {
+  int cmt100 = cmt / 100;
+  int cmt99 = cmt % 100;
+  return cmt100*100000 + _rxEventRateI(evid)*10000 + cmt99*100 + _rxEventFlag(evid);
+}
+
+static inline int _rxIsSplitBolusFlag(int flg) {
+  return flg == 1 || flg == 9 || flg == 10 || flg == 19 || flg == 20;
+}
+
+static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
+  if (splitCmt <= 0 || cmt != splitCmt || evid < 100 || amt <= 0.0) return 0;
+  return _rxEventRateI(evid) == 0 && _rxIsSplitBolusFlag(_rxEventFlag(evid));
+}
+
 /* Translate one NONMEM-style (evid 0-7) or classic rxode2 internal (evid>=100) event
  * into the rxode2 internal representation.
  *

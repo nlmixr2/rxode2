@@ -2800,6 +2800,9 @@ LogicalVector rxSolveFree(){
   // Free the solve id order
   if (rx->par_sample != NULL) free(rx->par_sample);
   rx->par_sample=NULL;
+  if (rx->splitBolus != NULL) free(rx->splitBolus);
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
   // Free the omega info
@@ -4852,6 +4855,8 @@ static inline void iniRx(rx_solve* rx) {
   rx->whileexit= 0;
   rx->maxExtra = 100;
   rx->extraPushAbort = 0;
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
@@ -5064,6 +5069,16 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    SEXP splitBolus = Rf_getAttrib(rxSolveDat->mv[RxMv_flags], Rf_install("splitBolus"));
+    if (TYPEOF(splitBolus) == INTSXP && Rf_length(splitBolus) >= 3) {
+      rx->splitBolusN = Rf_length(splitBolus);
+      rx->splitBolus = (int*)malloc(rx->splitBolusN * sizeof(int));
+      if (rx->splitBolus == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      std::copy(INTEGER(splitBolus), INTEGER(splitBolus) + rx->splitBolusN, rx->splitBolus);
+    }
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     return rxSolve_update(object, rxControl, specParams,
@@ -5095,6 +5110,16 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    SEXP splitBolus = Rf_getAttrib(rxSolveDat->mv[RxMv_flags], Rf_install("splitBolus"));
+    if (TYPEOF(splitBolus) == INTSXP && Rf_length(splitBolus) >= 3) {
+      rx->splitBolusN = Rf_length(splitBolus);
+      rx->splitBolus = (int*)malloc(rx->splitBolusN * sizeof(int));
+      if (rx->splitBolus == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      std::copy(INTEGER(splitBolus), INTEGER(splitBolus) + rx->splitBolusN, rx->splitBolus);
+    }
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
     op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");
