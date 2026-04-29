@@ -213,7 +213,12 @@
   rownames(.ret) <- seq_len(nrow(.ret))
   .ret
 }
-
+#' Clear dosing method
+#'
+#' @param env environment to clear dosing from
+#' @return data frame with dosing cleared
+#' @noRd
+#' @author Matthew L. Fidler
 .etMethodGetDosing <- function(env) {
   .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
   if (nrow(.mat) == 0L) return(NULL)
@@ -529,12 +534,12 @@
 #' This get the observation records (evid == 0) from the event table
 #'
 #' @param env  environment to get the observation records from
-#' @return data.frame of observation records (evid == 0)
+#' @return logical of observation records (evid == 0)
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetObsRec <- function(env) {
   .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  .mat[.mat$evid == 0L,]
+  .mat$evid == 0L
 }
 #' $copy() method
 #'
