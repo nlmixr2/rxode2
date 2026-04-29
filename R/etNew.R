@@ -530,9 +530,8 @@
 #'
 #' @param env  environment to get the observation records from
 #' @return data.frame of observation records (evid == 0)
-#' @export
+#' @noRd
 #' @author Matthew L. Fidler
-#' @examples
 .etMethodGetObsRec <- function(env) {
   .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
   .mat[.mat$evid == 0L,]
@@ -581,8 +580,6 @@
 #'
 #' @noRd
 #' @author Matthew L. Fidler
-#'
-#' @examples
 .etMethodSimulate <- function(env, seed = NULL, ...) {
   if (!is.null(seed)) set.seed(seed)
   .et <- structure(list(env = env), class = "rxEt")

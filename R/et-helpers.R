@@ -1028,7 +1028,44 @@
   }
   list(done = FALSE)
 }
-
+#' Handle etSeq() calls
+#'
+#'
+#' @param item the item argument passed to etSeq(), which is expected
+#'   to be an rxEt object
+#'
+#' @param units the units argument passed to etSeq(), which may be NULL
+#'
+#' @param show the show argument passed to etSeq(), which may be NULL
+#'
+#' @param ids the ids argument passed to etSeq(), which may be NULL
+#'
+#' @param timeDelta the timeDelta argument passed to etSeq(), which is
+#'   expected to be a numeric value
+#'
+#' @param samples the samples argument passed to etSeq(), which is
+#'   expected to be a character value of either "use" or "dose"
+#'
+#' @param chunks the chunks argument passed to etSeq(), which is
+#'   expected to be a list of data frames
+#'
+#' @param nobs the nobs argument passed to etSeq(), which is expected
+#'   to be an integer value
+#'
+#' @param ndose the ndose argument passed to etSeq(), which is expected to be an
+#'   integer value
+#'
+#' @param explicitIi the explicitIi argument passed to etSeq(), which
+#'   is expected to be a logical value
+#'
+#' @param ii the ii argument passed to etSeq(), which is expected to be a numeric value
+#'
+#' @return a list with components units, show, ids, chunks, nobs, ndose, timeDelta,
+#'  lastIi, and lastDose, which represent the updated state of the event
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
 .etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, nobs, ndose, explicitIi, ii) {
   env <- .rxEtEnv(item)
   if (is.null(units)) {
@@ -1058,8 +1095,14 @@
   doseRows <- mat[mat$evid != 0L, , drop = FALSE]
   if (nrow(doseRows) > 0L) {
     lastDoseRow <- doseRows[nrow(doseRows), ]
-    addlVal <- if (is.null(lastDoseRow$addl) || is.na(lastDoseRow$addl)) 0L else as.integer(lastDoseRow$addl)
-    if (addlVal > 0L) lastIi <- lastDoseRow$ii
+    if (is.null(lastDoseRow$addl) || is.na(lastDoseRow$addl)) {
+      addlVal <- 0L
+    } else {
+      addlVal <- as.integer(lastDoseRow$addl)
+    }
+    if (addlVal > 0L) {
+      lastIi <- lastDoseRow$ii
+    }
     lastDose <- lastDoseRow$time + addlVal * lastIi
   }
   maxTime <- max(mat$time, na.rm = TRUE)
@@ -1075,14 +1118,43 @@
   if (explicitIi && identical(ii, 0)) {
     timeDelta <- timeDelta
   } else {
-    effectiveIi <- if (lastIi > 0) lastIi else ii
+    if (lastIi > 0) {
+      effectiveIi <-  lastIi
+    } else {
+      effectiveIi <-  ii
+    }
     timeDelta   <- max(maxTime, lastDose + effectiveIi)
   }
   list(units = units, show = show, ids = ids, chunks = chunks,
        nobs = nobs, ndose = ndose, timeDelta = timeDelta,
        lastIi = lastIi, lastDose = lastDose)
 }
-
+#' Handle wait
+#'
+#'
+#' @param item the item argument passed to etSeq(), which is expected
+#'   to be a numeric value representing the wait time
+#'
+#' @param waitType the waitType argument passed to etSeq(), which is
+#'   expected to be a character value of either "+ii" or "smart"
+#'
+#' @param lastDose the lastDose value from the previous item in the
+#'   etSeq() sequence
+#'
+#' @param lastIi the lastIi value from the previous item in the
+#'   etSeq() sequence
+#'
+#' @param ii the ii argument passed to etSeq(), which is expected to
+#'   be a numeric value representing the inter-dose interval
+#'
+#' @param timeDelta the current timeDelta value in the etSeq() sequence, which may be
+#'   updated by this function to reflect the wait time
+#'
+#' @return the updated timeDelta value after applying the wait time
+#'   according to the specified waitType
+#' @noRd
+#'
+#' @author Matthew L. Fidler
 .etSeqHandleWait <- function(item, waitType, lastDose, lastIi, ii, timeDelta) {
   wait        <- as.numeric(item)
   effectiveIi <- if (lastIi > 0) lastIi else ii
