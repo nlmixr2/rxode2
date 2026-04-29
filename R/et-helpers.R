@@ -858,25 +858,58 @@
   }
   list(done = FALSE)
 }
-
-.etHandleObs <- function(time, timeExpr, envir, .envRef, .evidVal, .cmtVal, .targetIds, .et, .timeMissing) {
-  if (!is.null(time) || !.timeMissing) {
+#' Handle observation times specified in the position arguments or time
+#'
+#'
+#' @param time the time argument passed to et(), which may be used as
+#'   the observation time if not NULL
+#'
+#' @param timeExpr the expression for the time argument, generated
+#'   from `substitute(time)`, which may be evaluated to get the
+#'   observation time if time is NULL
+#'
+#' @param envir the environment in which to evaluate any expressions
+#'
+#' @param envRef the reference to the internal environment of the rxEt
+#'   object
+#'
+#' @param evidVal the evid value to use for the observation events,
+#'   which may be NULL
+#'
+#' @param cmtVal the cmt value to use for the observation events,
+#'   which may be NULL
+#'
+#' @param targetIds the target ids for the observation events, which may be NULL to
+#'  indicate all ids
+#'
+#' @param et the current state of the event table being constructed, which may
+#'  be modified by adding a new chunk for the observation events
+#'
+#' @param timeMissing is the time argument missing?
+#'
+#' @return A list with components done
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+.etHandleObs <- function(time, timeExpr, envir, envRef, evidVal, cmtVal, targetIds, et, timeMissing) {
+  if (!is.null(time) || !timeMissing) {
     .timeVal <- if (!is.null(time)) time else eval(timeExpr, envir = envir)
     if (!is.list(.timeVal) && inherits(.timeVal, "units") && requireNamespace("units", quietly = TRUE)) {
-      .tu2 <- .envRef$units["time"]
+      .tu2 <- envRef$units["time"]
       if (!is.na(.tu2) && nchar(.tu2) > 0) {
         .timeVal <- as.numeric(units::set_units(.timeVal, .tu2, mode = "standard"))
       } else {
         .timeVal <- as.numeric(.timeVal)
       }
     }
-    .evid2 <- if (!is.null(.evidVal)) .evidVal else 0L
-    .df <- .etObsChunk(.timeVal, cmt = .cmtVal)
+    .evid2 <- if (!is.null(evidVal)) evidVal else 0L
+    .df <- .etObsChunk(.timeVal, cmt = cmtVal)
     if (.evid2 != 0L) .df$evid <- as.integer(.evid2)
-    .etAddChunk(.envRef, .df, .targetIds)
-    .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
-    if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-    return(list(done = TRUE, et = .et))
+    .etAddChunk(envRef, .df, targetIds)
+    envRef$nobs <- envRef$nobs + length(.df$time) * max(1L, length(targetIds))
+    if (!is.null(cmtVal)) envRef$show["cmt"] <- TRUE
+    return(list(done = TRUE, et = et))
   }
   list(done = FALSE)
 }
