@@ -150,6 +150,14 @@ SEXP generateModelVars(void) {
   int *alagVar = INTEGER(alagVarSexp);
   int *ordFI = INTEGER(ordF);
 
+  if (tb.splitBolusN != 0) {
+    SEXP splitBolus = PROTECT(Rf_allocVector(INTSXP, tb.splitBolusN)); pro++;
+    for (int i = 0; i < tb.splitBolusN; ++i) {
+      INTEGER(splitBolus)[i] = ordFI[tb.splitBolus[i]-1];
+    }
+    Rf_setAttrib(sLinCmt, Rf_install("splitBolus"), splitBolus);
+  }
+
   for (int i = 0; i < tb.alagn; ++i) {
     alagVar[i] = ordFI[tb.alag[i]-1];
   }

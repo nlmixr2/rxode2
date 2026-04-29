@@ -113,6 +113,8 @@ lhs symbols?
   int dummyLhs;
   int hasMix; // Has mixture function
   int evid_; // pushing evid_() flag
+  int *splitBolus; // source then target de indexes (+1)
+  int splitBolusN;
 } symtab;
 
 extern symtab tb;
@@ -204,6 +206,7 @@ typedef struct nodeInfo {
   int theta0_noout;
   int theta;
   int cmt_statement;
+  int splitBolus_statement;
   int param_statement;
   int interp_statement;
   int dvid_statementI;
@@ -268,6 +271,7 @@ static inline void niReset(nodeInfo *ni){
   ni->theta0 = -1;
   ni->theta0_noout = -1;
   ni->cmt_statement = -1;
+  ni->splitBolus_statement = -1;
   ni->param_statement = -1;
   ni->interp_statement = -1;
   ni->dvid_statementI = -1;
