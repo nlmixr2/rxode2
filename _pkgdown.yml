@@ -369,6 +369,8 @@ navbar:
           href: articles/rxode2-stiff.html
         - text: "Weight-based dosing"
           href: articles/rxode2-wt.html
+        - text: "Sticky variables"
+          href: articles/rxode2-sticky.html
         - text: "--------------------------"
         - text: "Output and performance"
         - text: "Adaptive data frames"
