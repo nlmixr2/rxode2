@@ -763,35 +763,98 @@
   }
   list(done = FALSE)
 }
-
+#' This handles infusions where amount isn't specified
+#'
+#' @param amt the amount argument passed to et(), which is expected to
+#'   be NULL for this handler to do anything
+#'
+#' @param amtExpr the expression for the amount argument, generated
+#'   from `substitute(amt)`
+#'
+#' @param rateExpr the expression for the rate argument, generated
+#'   from `substitute(rate)`
+#'
+#' @param ssExpr the expression for the ss argument, generated from
+#'   `substitute(ss)`
+#'
+#' @param envRef the reference to the internal environment of the rxEt
+#'   object being constructed, used to access unit information for
+#'   conversion
+#'
+#' @param envir the environment in which to evaluate any expressions
+#'   needed to handle the infusion dose
+#'
+#' @param time the time argument passed to `et()`, which may be used as
+#'   the time for the infusion dose
+#'
+#' @param timeExpr the expression for the time argument, generated
+#'   from `substitute(time)`
+#'
+#' @param iiExpr the expression for the ii argument, generated from
+#'   `substitute(ii)`
+#'
+#' @param durExpr the expression for the dur argument, generated from
+#'   `substitute(dur)`
+#'
+#' @param evidVal the evid value to use for the infusion dose, which
+#'   may be NULL
+#'
+#' @param cmtVal the cmt value to use for the infusion dose, which may
+#'   be NULL
+#'
+#' @param targetIds the target ids for the infusion dose, which may be
+#'   NULL to indicate
+#'
+#' @param et the current state of the event table being constructed, which may
+#'  be modified by adding a new chunk for the infusion dose if the
+#' handling is successful
+#'
+#' @param rateSym the rate symbol (ie character) for the infusion dose
+#'
+#' @param amtMissing is the amt argument missing?
+#'
+#' @param rateMissing is the rate argument missing?
+#'
+#' @param ssMissing is the ss argument missing?
+#'
+#' @param timeMissing is the time argument missing?
+#'
+#' @param iiMissing is the ii argument missing?
+#'
+#' @param durMissing is the dur argument missing?
+#'
+#' @return A list with components done
+#'
+#' @noRd
+#' @author Matthew L. Fidler
 .etHandleInfusionNoAmt <- function(amt, amtExpr, rateExpr, ssExpr, envRef, envir,
-                                   time, timeExpr, iiExpr, durExpr, .evidVal,
-                                   .cmtVal, .targetIds, .et, .rateSym,
-                                   .amtMissing, .rateMissing, .ssMissing,
-                                   .timeMissing, .iiMissing, .durMissing) {
-  if (is.null(amt) && (!.rateMissing || !.ssMissing)) {
+                                   time, timeExpr, iiExpr, durExpr, evidVal,
+                                   cmtVal, targetIds, et, rateSym,
+                                   amtMissing, rateMissing, ssMissing,
+                                   timeMissing, iiMissing, durMissing) {
+  if (is.null(amt) && (!rateMissing || !ssMissing)) {
     .timeVal <- if (!is.null(time)) time else 0.0
-    .iiVal   <- if (!.iiMissing)   as.numeric(eval(iiExpr, envir = envir))   else 0.0
-    .ssVal   <- if (!.ssMissing)   as.integer(eval(ssExpr, envir = envir))   else 0L
-    .rateVal <- if (!.rateMissing) {
-      if (.rateSym == "model") -1.0
-      else if (.rateSym == "dur") -2.0
+    .iiVal   <- if (!iiMissing)   as.numeric(eval(iiExpr, envir = envir))   else 0.0
+    .ssVal   <- if (!ssMissing)   as.integer(eval(ssExpr, envir = envir))   else 0L
+    .rateVal <- if (!rateMissing) {
+      if (rateSym == "model") -1.0
+      else if (rateSym == "dur") -2.0
       else as.numeric(eval(rateExpr, envir = envir))
     } else 0.0
-    .durVal  <- if (!.durMissing) as.numeric(eval(durExpr, envir = envir)) else 0.0
+    .durVal  <- if (!durMissing) as.numeric(eval(durExpr, envir = envir)) else 0.0
     .df <- .etDoseChunk(
       time = .timeVal, amt = 0.0,
-      evid = if (!is.null(.evidVal)) .evidVal else 1L,
-      cmt  = if (!is.null(.cmtVal))  .cmtVal  else "(default)",
+      evid = if (!is.null(evidVal)) evidVal else 1L,
+      cmt  = if (!is.null(cmtVal))  cmtVal  else "(default)",
       ii = .iiVal, addl = 0L, ss = .ssVal,
       rate = .rateVal, dur = .durVal
     )
-    .etAddChunk(envRef, .df, .targetIds)
-    envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * max(1L, length(.targetIds))
+    .etAddChunk(envRef, .df, targetIds)
+    envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * max(1L, length(targetIds))
     envRef$show["amt"]  <- TRUE
     if (!is.null(.ssVal) && .ssVal > 0L)   envRef$show["ss"]   <- TRUE
     if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) envRef$show["rate"] <- TRUE
-    return(list(done = TRUE, et = .et))
+    return(list(done = TRUE, et = et))
   }
   list(done = FALSE)
 }
