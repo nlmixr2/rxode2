@@ -447,29 +447,29 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
                                  .timeUnitsMissing, .timeMissing, .durMissing)
 
   # ---- seq helpers: by / length.out ----
-  .res <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, et = .et,
+  .ret <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, et = .et,
                        xMissing = .xMissing, timeMissing = .timeMissing)
-  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
+  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
 
   # ---- Positional args / data.frame import ----
-  .res <- .etHandlePositional(x, ..., time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
+  .ret <- .etHandlePositional(x, ..., time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
                               xMissing = .xMissing, timeMissing = .timeMissing)
-  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
-  .posCmt  <- .res$posCmt
-  .listObs <- .res$listObs
-  time     <- .res$time
+  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  .posCmt  <- .ret$posCmt
+  .listObs <- .ret$listObs
+  time     <- .ret$time
 
   # ---- Units ----
   .etHandleUnits(.envRef, amountUnits, timeUnits, .dotArgs, .amountUnitsMissing, .timeUnitsMissing)
 
   # ---- ID expansion ----
-  .res <- .etHandleId(id, .envRef, .xIsRxEt, envir)
-  .resolvedId  <- .res$resolvedId
-  .targetIds   <- .res$targetIds
-  .doResize    <- .res$doResize
-  .addedIds    <- .res$addedIds
-  .removedIds  <- .res$removedIds
-  .existingIds <- .res$existingIds
+  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir)
+  .resolvedId  <- .ret$resolvedId
+  .targetIds   <- .ret$targetIds
+  .doResize    <- .ret$doResize
+  .addedIds    <- .ret$addedIds
+  .removedIds  <- .ret$removedIds
+  .existingIds <- .ret$existingIds
 
   # ---- Resolve evid / cmt ----
   .evidExpr <- substitute(evid)
@@ -499,28 +499,28 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .untilExpr <- substitute(until)
   .rateSym <- deparse(.rateExpr)
 
-  .res <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr,
+  .ret <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr,
                         .iiExpr, .addlExpr, .ssExpr, .rateExpr, .durExpr, .untilExpr,
                         .evidVal, .cmtVal, .resolvedId, .targetIds, addSampling, .et, .rateSym,
                         .amtMissing, .timeMissing, .iiMissing, .addlMissing,
                         .ssMissing, .rateMissing, .durMissing, .untilMissing,
                         .addSamplingMissing)
-  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
+  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
 
   # ---- Infusion/SS dose without explicit amt ----
-  .res <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr,
+  .ret <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr,
                                  .iiExpr, .durExpr, .evidVal, .cmtVal, .targetIds, .et, .rateSym,
                                  .amtMissing, .rateMissing, .ssMissing, .timeMissing, .iiMissing, .durMissing)
-  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
+  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
 
   # ---- Observation record ----
-  .res <- .etHandleObs(time, .timeExpr, envir, .envRef, .evidVal, .cmtVal, .targetIds, .et, .timeMissing)
-  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
+  .ret <- .etHandleObs(time, .timeExpr, envir, .envRef, .evidVal, .cmtVal, .targetIds, .et, .timeMissing)
+  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
 
   # ---- Piping pattern ----
-  .res <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal,
+  .ret <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal,
                           .targetIds, .evidVal, .envRef, .et, .timeMissing, .amtMissing, envir)
-  if (.res$done) return(invisible(.rxEtSyncData(.res$et)))
+  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
 
   # ---- ID-only resize ----
   if (.doResize) {
@@ -1104,17 +1104,17 @@ etSeq <- function(..., samples = c("clear", "use"),
 
   for (.item in .args) {
     if (is.rxEt(.item)) {
-      .res <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples,
+      .ret <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples,
                                .chunks, .nobs, .ndose, .explicitIi, ii)
-      .units     <- .res$units
-      .show      <- .res$show
-      .ids       <- .res$ids
-      .chunks    <- .res$chunks
-      .nobs      <- .res$nobs
-      .ndose     <- .res$ndose
-      .timeDelta <- .res$timeDelta
-      .lastIi    <- .res$lastIi
-      .lastDose  <- .res$lastDose
+      .units     <- .ret$units
+      .show      <- .ret$show
+      .ids       <- .ret$ids
+      .chunks    <- .ret$chunks
+      .nobs      <- .ret$nobs
+      .ndose     <- .ret$ndose
+      .timeDelta <- .ret$timeDelta
+      .lastIi    <- .ret$lastIi
+      .lastDose  <- .ret$lastDose
     } else if (is.numeric(.item) || is.integer(.item)) {
       .timeDelta <- .etSeqHandleWait(.item, .waitType, .lastDose, .lastIi, ii, .timeDelta)
     }

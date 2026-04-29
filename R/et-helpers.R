@@ -892,10 +892,18 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etHandleObs <- function(time, timeExpr, envir, envRef, evidVal, cmtVal, targetIds, et, timeMissing) {
+.etHandleObs <- function(time, timeExpr, envir, envRef, evidVal, cmtVal,
+                         targetIds, et, timeMissing) {
   if (!is.null(time) || !timeMissing) {
-    .timeVal <- if (!is.null(time)) time else eval(timeExpr, envir = envir)
-    if (!is.list(.timeVal) && inherits(.timeVal, "units") && requireNamespace("units", quietly = TRUE)) {
+    if (!is.null(time)) {
+      .timeVal <-  time
+    } else {
+      .timeVal <- eval(timeExpr, envir = envir)
+    }
+
+    if (!is.list(.timeVal) &&
+          inherits(.timeVal, "units") &&
+          requireNamespace("units", quietly = TRUE)) {
       .tu2 <- envRef$units["time"]
       if (!is.na(.tu2) && nchar(.tu2) > 0) {
         .timeVal <- as.numeric(units::set_units(.timeVal, .tu2, mode = "standard"))
@@ -903,46 +911,103 @@
         .timeVal <- as.numeric(.timeVal)
       }
     }
-    .evid2 <- if (!is.null(evidVal)) evidVal else 0L
+    if (!is.null(evidVal)) {
+      .evid2 <- evidVal
+    } else {
+      .evid2 <- 0L
+    }
     .df <- .etObsChunk(.timeVal, cmt = cmtVal)
-    if (.evid2 != 0L) .df$evid <- as.integer(.evid2)
+    if (.evid2 != 0L) {
+      .df$evid <- as.integer(.evid2)
+    }
     .etAddChunk(envRef, .df, targetIds)
     envRef$nobs <- envRef$nobs + length(.df$time) * max(1L, length(targetIds))
-    if (!is.null(cmtVal)) envRef$show["cmt"] <- TRUE
+    if (!is.null(cmtVal)) {
+      envRef$show["cmt"] <- TRUE
+    }
     return(list(done = TRUE, et = et))
   }
   list(done = FALSE)
 }
-
-.etHandlePiping <- function(.xIsRxEt, x, time, timeExpr, amt, amtExpr,
-                            .dotArgs, .cmtVal, .targetIds, .evidVal,
-                            .envRef, .et, .timeMissing, .amtMissing, envir) {
-  if (.xIsRxEt && is.null(time) && is.null(amt) && .timeMissing && .amtMissing) {
-    if (length(.dotArgs) >= 1L) {
-      .firstDot <- .dotArgs[[1L]]
-      if (is.rxEt(.firstDot) || any(vapply(.dotArgs, is.rxEt, logical(1L)))) {
+#' Handle piping types of calls
+#'
+#'
+#' @param xIsRxEt is the x argument an rxEt object, implying piping of some sort
+#'
+#' @param x the x argument passed to et()
+#'
+#' @param time the time argument passed to et()
+#'
+#' @param timeExpr the expression for the time argument, generated from `substitute(time)`
+#'
+#' @param amt the amt argument passed to et()
+#'
+#' @param amtExpr the expression for the amt argument, generated from `substitute(amt)`
+#'
+#' @param dotArgs the ... arguments passed to et(), which may contain
+#'   named or unnamed arguments
+#'
+#' @param cmtVal the cmt value to use for any events created from the
+#'   piping arguments, which may be NULL
+#'
+#' @param targetIds the target ids for any events created from the
+#'   piping arguments, which may be NULL to indicate all ids
+#'
+#' @param evidVal the evid value to use for any events created from the piping
+#'
+#' @param envRef the reference to the internal environment of the rxEt object
+#'
+#' @param et the current state of the event table
+#'
+#' @param timeMissing is the time argument missing?
+#'
+#' @param amtMissing is the amt argument missing?
+#'
+#' @param envir the environment in which to evaluate any expressions needed to handle
+#'   the piping arguments
+#'
+#' @return A list with components done and et, where done is a logical
+#'   indicating whether the piping arguments were successfully handled
+#'   and the main et()
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+.etHandlePiping <- function(xIsRxEt, x, time, timeExpr, amt, amtExpr,
+                            dotArgs, cmtVal, targetIds, evidVal,
+                            envRef, et, timeMissing, amtMissing, envir) {
+  if (xIsRxEt &&
+        is.null(time) &&
+        is.null(amt) && timeMissing && amtMissing) {
+    if (length(dotArgs) >= 1) {
+      .firstDot <- dotArgs[[1]]
+      if (is.rxEt(.firstDot) ||
+            any(vapply(dotArgs, is.rxEt, logical(1)))) {
         # Sequence of event tables
-        .ret <- do.call(etSeq, c(list(x), .dotArgs))
+        .ret <- do.call(etSeq, c(list(x), dotArgs))
         return(list(done = TRUE, et = .ret))
       }
-      if (length(.dotArgs) > 2L) {
+      if (length(dotArgs) > 2) {
         stop("unused positional arguments", call. = FALSE)
       }
       if (is.list(.firstDot) && !is.data.frame(.firstDot)) {
-        .df <- .etObsChunk(.firstDot, cmt = .cmtVal)
-        .etAddChunk(.envRef, .df, .targetIds)
-        .envRef$nobs <- .envRef$nobs + length(.df$time) * max(1L, length(.targetIds))
-        if (!is.null(.cmtVal)) .envRef$show["cmt"] <- TRUE
-        return(list(done = TRUE, et = .et))
+        .df <- .etObsChunk(.firstDot, cmt = cmtVal)
+        .etAddChunk(envRef, .df, targetIds)
+        envRef$nobs <- envRef$nobs + length(.df$time) * max(1L, length(targetIds))
+        if (!is.null(cmtVal)) {
+          envRef$show["cmt"] <- TRUE
+        }
+        return(list(done = TRUE, et = et))
       } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
-        if (length(.dotArgs) >= 2L &&
+        if (length(dotArgs) >= 2L &&
             length(.firstDot) == 1L &&
-            (is.numeric(.dotArgs[[2L]]) || is.integer(.dotArgs[[2L]])) &&
-            length(.dotArgs[[2L]]) == 1L) {
+            (is.numeric(dotArgs[[2]]) || is.integer(dotArgs[[2]])) &&
+            length(dotArgs[[2]]) == 1L) {
           # et(0, 10) add obs at times 0, 1, ..., 10
-          .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(.dotArgs[[2L]]))
-        } else if (inherits(.firstDot, "units") && requireNamespace("units", quietly = TRUE)) {
-          .tu2 <- .envRef$units["time"]
+          .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(dotArgs[[2]]))
+        } else if (inherits(.firstDot, "units") &&
+                     requireNamespace("units", quietly = TRUE)) {
+          .tu2 <- envRef$units["time"]
           if (!is.na(.tu2) && nchar(.tu2) > 0) {
             .timeVec <- as.numeric(units::set_units(.firstDot, .tu2, mode = "standard"))
           } else {
@@ -951,11 +1016,13 @@
         } else {
           .timeVec <- as.numeric(.firstDot)
         }
-        .df <- .etObsChunk(.timeVec, cmt = .cmtVal)
-        if (!is.null(.evidVal) && .evidVal != 0L) .df$evid <- as.integer(.evidVal)
-        .etAddChunk(.envRef, .df, .targetIds)
-        .envRef$nobs <- .envRef$nobs + length(.timeVec) * max(1L, length(.targetIds))
-        return(list(done = TRUE, et = .et))
+        .df <- .etObsChunk(.timeVec, cmt = cmtVal)
+        if (!is.null(evidVal) && evidVal != 0L) {
+          .df$evid <- as.integer(evidVal)
+        }
+        .etAddChunk(envRef, .df, targetIds)
+        envRef$nobs <- envRef$nobs + length(.timeVec) * max(1L, length(targetIds))
+        return(list(done = TRUE, et = et))
       }
     }
   }
