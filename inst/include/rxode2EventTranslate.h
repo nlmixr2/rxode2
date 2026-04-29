@@ -28,18 +28,6 @@ static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int 
   *wh0   = evid - *wh100 * 100000 - *whI * 10000 - *wh0 * 100;
 }
 
-static inline int _rxEventRateI(int evid) {
-  int wh, cmt, wh100, whI, wh0;
-  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-  return whI;
-}
-
-static inline int _rxEventFlag(int evid) {
-  int wh, cmt, wh100, whI, wh0;
-  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-  return wh0;
-}
-
 static inline int _rxEncodeEventCmt(int evid, int cmt) {
   int wh, oldCmt, wh100, whI, wh0;
   getWh(evid, &wh, &oldCmt, &wh100, &whI, &wh0);
@@ -49,15 +37,11 @@ static inline int _rxEncodeEventCmt(int evid, int cmt) {
   return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + wh0;
 }
 
-static inline int _rxIsSplitBolusFlag(int flg) {
-  return flg == 1 || flg == 9 || flg == 10 || flg == 19 || flg == 20;
-}
-
 static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
   int wh, eventCmt, wh100, whI, wh0;
   getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);
   if (splitCmt <= 0 || cmt != splitCmt || eventCmt + 1 != splitCmt || evid < 100 || amt <= 0.0) return 0;
-  return _rxEventRateI(evid) == 0 && _rxIsSplitBolusFlag(_rxEventFlag(evid));
+  return whI == 0 && (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
 }
 
 /* Translate one NONMEM-style (evid 0-7) or classic rxode2 internal (evid>=100) event
