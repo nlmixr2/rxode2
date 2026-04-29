@@ -326,6 +326,7 @@ rxTest({
     }
 
     f <- f()
+    expect_equal(unname(rxModelVars(f)$splitBolus), c(1L, 1L, 2L, 3L))
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "splitBolus(depot,depot,central,peripheral);\n")
   })

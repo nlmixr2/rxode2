@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 29));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 29));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 30));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 30));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -147,15 +147,13 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,   18, slhs);
 
   SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
+  SEXP splitBolusSexp = PROTECT(Rf_allocVector(INTSXP, tb.splitBolusN));pro++;
   int *alagVar = INTEGER(alagVarSexp);
+  int *splitBolus = INTEGER(splitBolusSexp);
   int *ordFI = INTEGER(ordF);
 
-  if (tb.splitBolusN != 0) {
-    SEXP splitBolus = PROTECT(Rf_allocVector(INTSXP, tb.splitBolusN)); pro++;
-    for (int i = 0; i < tb.splitBolusN; ++i) {
-      INTEGER(splitBolus)[i] = ordFI[tb.splitBolus[i]-1];
-    }
-    Rf_setAttrib(sLinCmt, Rf_install("splitBolus"), splitBolus);
+  for (int i = 0; i < tb.splitBolusN; ++i) {
+    splitBolus[i] = ordFI[tb.splitBolus[i]-1];
   }
 
   for (int i = 0; i < tb.alagn; ++i) {
@@ -164,7 +162,10 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(names, 19, Rf_mkChar("alag"));
   SET_VECTOR_ELT(lst,   19, alagVarSexp);
 
-  sPrint(&_bufw,"%.*s", (int)strlen(model_prefix)-1, model_prefix);
+  SET_STRING_ELT(names, 20, Rf_mkChar("splitBolus"));
+  SET_VECTOR_ELT(lst,   20, splitBolusSexp);
+
+   sPrint(&_bufw,"%.*s", (int)strlen(model_prefix)-1, model_prefix);
 
   SET_STRING_ELT(trann,0,Rf_mkChar("lib.name"));
   SET_STRING_ELT(tran,0,Rf_mkChar(_bufw.s));
@@ -261,9 +262,9 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(modeln,1,Rf_mkChar("indLin"));
   SET_STRING_ELT(model,1,Rf_mkChar(me_code));
 
-  SET_STRING_ELT(names, 20, Rf_mkChar("udf"));
+  SET_STRING_ELT(names, 21, Rf_mkChar("udf"));
   SEXP udf = PROTECT(_rxode2parse_getUdf());pro++;
-  SET_VECTOR_ELT(lst,   20, udf);
+  SET_VECTOR_ELT(lst,   21, udf);
 
   Rf_setAttrib(interp, R_NamesSymbol, params);
   SEXP clsInterp = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
@@ -278,8 +279,8 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(lvlInterp, 4, Rf_mkChar("midpoint"));
   Rf_setAttrib(interp, R_LevelsSymbol, lvlInterp);
 
-  SET_VECTOR_ELT(lst, 21, interp);
-  SET_STRING_ELT(names, 21, Rf_mkChar("interp"));
+  SET_VECTOR_ELT(lst, 22, interp);
+  SET_STRING_ELT(names, 22, Rf_mkChar("interp"));
 
   SEXP strAssign = PROTECT(Rf_allocVector(VECSXP, tb.str.n));pro++;
   SEXP strAssignN = PROTECT(Rf_allocVector(STRSXP, tb.str.n));pro++;
@@ -299,32 +300,32 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(lhsStr, R_NamesSymbol, lhs);
 
 
-  SET_VECTOR_ELT(lst, 22, strAssign);
-  SET_STRING_ELT(names, 22, Rf_mkChar("strAssign"));
+  SET_VECTOR_ELT(lst, 23, strAssign);
+  SET_STRING_ELT(names, 23, Rf_mkChar("strAssign"));
 
-  SET_VECTOR_ELT(lst, 23, lhsStr);
-  SET_STRING_ELT(names, 23, Rf_mkChar("lhsStr"));
+  SET_VECTOR_ELT(lst, 24, lhsStr);
+  SET_STRING_ELT(names, 24, Rf_mkChar("lhsStr"));
 
   Rf_setAttrib(stateProp, R_NamesSymbol, state);
-  SET_VECTOR_ELT(lst, 24, stateProp);
-  SET_STRING_ELT(names, 24, Rf_mkChar("stateProp"));
+  SET_VECTOR_ELT(lst, 25, stateProp);
+  SET_STRING_ELT(names, 25, Rf_mkChar("stateProp"));
 
   Rf_setAttrib(sensProp, R_NamesSymbol, sens);
-  SET_VECTOR_ELT(lst, 25, sensProp);
-  SET_STRING_ELT(names, 25, Rf_mkChar("sensProp"));
+  SET_VECTOR_ELT(lst, 26, sensProp);
+  SET_STRING_ELT(names, 26, Rf_mkChar("sensProp"));
 
   Rf_setAttrib(normProp, R_NamesSymbol, normState);
-  SET_VECTOR_ELT(lst, 26, normProp);
-  SET_STRING_ELT(names, 26, Rf_mkChar("normProp"));
+  SET_VECTOR_ELT(lst, 27, normProp);
+  SET_STRING_ELT(names, 27, Rf_mkChar("normProp"));
 
   Rf_setAttrib(ordF, R_NamesSymbol, state);
-  SET_VECTOR_ELT(lst, 27, ordF);
-  SET_STRING_ELT(names, 27, Rf_mkChar("stateOrd"));
+  SET_VECTOR_ELT(lst, 28, ordF);
+  SET_STRING_ELT(names, 28, Rf_mkChar("stateOrd"));
 
   Rf_setAttrib(lhsOrdFS, R_NamesSymbol, lhs);
 
-  SET_VECTOR_ELT(lst, 28, lhsOrdFS);
-  SET_STRING_ELT(names, 28, Rf_mkChar("lhsOrd"));
+  SET_VECTOR_ELT(lst, 29, lhsOrdFS);
+  SET_STRING_ELT(names, 29, Rf_mkChar("lhsOrd"));
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

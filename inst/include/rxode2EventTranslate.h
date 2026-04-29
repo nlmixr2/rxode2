@@ -17,18 +17,36 @@ typedef struct {
   int    isDose[2];    /* 1 if this event contributes an idose entry */
 } rx_translated_event;
 
+static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0) {
+  *wh = evid;
+  *cmt = 0;
+  *wh100 = *wh / 100000;
+  *whI   = *wh / 10000 - *wh100 * 10;
+  *wh    = *wh - *wh100 * 100000 - (*whI - 1) * 10000;
+  *wh0   = (*wh % 10000) / 100;
+  *cmt   = *wh0 - 1 + *wh100 * 100;
+  *wh0   = evid - *wh100 * 100000 - *whI * 10000 - *wh0 * 100;
+}
+
 static inline int _rxEventRateI(int evid) {
-  return (evid / 10000) % 10;
+  int wh, cmt, wh100, whI, wh0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  return whI;
 }
 
 static inline int _rxEventFlag(int evid) {
-  return evid % 100;
+  int wh, cmt, wh100, whI, wh0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  return wh0;
 }
 
 static inline int _rxEncodeEventCmt(int evid, int cmt) {
-  int cmt100 = cmt / 100;
-  int cmt99 = cmt % 100;
-  return cmt100*100000 + _rxEventRateI(evid)*10000 + cmt99*100 + _rxEventFlag(evid);
+  int wh, oldCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &oldCmt, &wh100, &whI, &wh0);
+  int cmt0 = cmt - 1;
+  int cmt100 = cmt0 / 100;
+  int cmt01 = cmt0 % 100 + 1;
+  return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + wh0;
 }
 
 static inline int _rxIsSplitBolusFlag(int flg) {
@@ -36,7 +54,9 @@ static inline int _rxIsSplitBolusFlag(int flg) {
 }
 
 static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
-  if (splitCmt <= 0 || cmt != splitCmt || evid < 100 || amt <= 0.0) return 0;
+  int wh, eventCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);
+  if (splitCmt <= 0 || cmt != splitCmt || eventCmt + 1 != splitCmt || evid < 100 || amt <= 0.0) return 0;
   return _rxEventRateI(evid) == 0 && _rxIsSplitBolusFlag(_rxEventFlag(evid));
 }
 

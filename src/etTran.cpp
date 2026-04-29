@@ -847,13 +847,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   IntegerVector curDvid = clone(as<IntegerVector>(mv[RxMv_dvid]));
   IntegerVector curAlag = clone(as<IntegerVector>(mv[RxMv_alag]));
-  IntegerVector splitBolus;
-  int splitBolusN = 0;
-  SEXP splitBolusS = Rf_getAttrib(mv[RxMv_flags], Rf_install("splitBolus"));
-  if (TYPEOF(splitBolusS) == INTSXP && Rf_length(splitBolusS) >= 3) {
-    splitBolus = as<IntegerVector>(splitBolusS);
-    splitBolusN = splitBolus.size();
-  }
+  IntegerVector splitBolus = clone(as<IntegerVector>(mv[RxMv_splitBolus]));
+  int splitBolusN = splitBolus.size();
   CharacterVector trans = mv[RxMv_trans];
   if (Rf_inherits(inData,"rxEtTran")){
     CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);

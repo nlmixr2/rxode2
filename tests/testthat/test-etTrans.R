@@ -133,6 +133,15 @@ d/dt(blood)     = a*intestine - b*blood
     "), silent = TRUE), "try-error"))
   })
 
+  test_that("model vars expose empty splitBolus when unused", {
+    mod <- rxode2parse("
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    ")
+
+    expect_equal(length(rxModelVars(mod)$splitBolus), 0)
+  })
+
   .Call(`_rxode2_etTransEvidIsObs`, FALSE)
   for (radi in 1:2) {
 
