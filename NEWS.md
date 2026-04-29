@@ -3,6 +3,11 @@
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
+- Add `splitBolus()` function to split or relocate doses in the final
+  output.  This is done at translation time (but is respected by
+  `evid_()`) so in general is a bit faster then arbitrary doses in an
+  estimation step for `nlmixr2`
+
 - Add `%%` operator to valid rxode2 syntax
 
 - Create per-individual ODE solving tolerances for use in focei.
