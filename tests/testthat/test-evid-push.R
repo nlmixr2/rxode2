@@ -267,6 +267,43 @@ rxTest({
     expect_true(cp14 > cp12)
   })
 
+  test_that("splitBolus applies to boluses pushed by evid_()", {
+    for (meth in c("dop853", "liblsoda")) {
+      mSplit <- rxode2({
+        splitBolus(depot, depot, central)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t < 1) {
+          evid_(t + 6, 1, 50, 1, 0, 12, 1, 0)
+        }
+      })
+
+      mBase <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+
+      e <- et(amt = 100, time = 0) |>
+        et(seq(0, 30, by = 1))
+      eBase <- e |>
+        et(amt = 100, time = 0, cmt = 2) |>
+        et(amt = 50, time = 6, cmt = 1) |>
+        et(amt = 50, time = 6, cmt = 2) |>
+        et(amt = 50, time = 18, cmt = 1) |>
+        et(amt = 50, time = 18, cmt = 2)
+
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      rSplit <- rxSolve(mSplit, p, e, method = meth)
+      rBase <- rxSolve(mBase, p, eBase, method = meth)
+
+      expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
+      expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
+      expect_equal(rSplit$cp, rBase$cp, tolerance = 1e-5)
+    }
+  })
+
   test_that("evid_() ui changes work", {
 
     f <- function() {
@@ -279,5 +316,17 @@ rxTest({
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "evid_(t + 12, 101, 50, 1, 0, 0, 0, 0);\n")
 
+  })
+
+  test_that("splitBolus() ui changes work", {
+    f <- function() {
+      model({
+        splitBolus(depot, depot, central, peripheral)
+      })
+    }
+
+    f <- f()
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
+                 "splitBolus(depot,depot,central,peripheral);\n")
   })
 })

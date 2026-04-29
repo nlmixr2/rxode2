@@ -87,8 +87,50 @@ d/dt(blood)     = a*intestine - b*blood
                     row.names = c(NA,-6L))
     skip_on_cran()
 
-    expect_warning(expect_false(any(is.na(etTrans(et, mod)$TIME))))
+  expect_warning(expect_false(any(is.na(etTrans(et, mod)$TIME))))
 
+  })
+
+  test_that("splitBolus expands source bolus doses to all target compartments", {
+    modSplit <- rxode2parse("
+      splitBolus(depot, depot, central, peripheral)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    ")
+
+    modBase <- rxode2parse("
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    ")
+
+    eSplit <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, cmt = "peripheral", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitBolus allows source repeats but rejects duplicate targets", {
+    expect_no_error(rxode2parse("
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "))
+
+    expect_true(inherits(try(rxode2parse("
+      splitBolus(depot, central, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "), silent = TRUE), "try-error"))
   })
 
   .Call(`_rxode2_etTransEvidIsObs`, FALSE)
