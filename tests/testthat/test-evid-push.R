@@ -364,10 +364,8 @@ rxTest({
         cp <- central / v
       })
 
-      e <- et(amt = 100, time = 0) |>
-        et(seq(0, 30, by = 1))
+      e <- et(seq(0, 30, by = 1))
       eBase <- e |>
-        et(amt = 100, time = 0, cmt = 2) |>
         et(amt = 50, time = 6, cmt = 2) |>
         et(amt = 50, time = 18, cmt = 2)
 
