@@ -65,7 +65,7 @@ splitBolus_statement
     : 'splitBolus' '('
       identifier_r_no_output ','
       identifier_r_no_output
-      (',' identifier_r_no_output)+
+      (',' identifier_r_no_output)*
       ')';
 
 param_statement

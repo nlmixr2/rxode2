@@ -13,8 +13,8 @@
 #' target compartments in `...` must be unique.
 #'
 #' @param cmt Source compartment name.
-#' @param ... Target compartment names. Provide at least two target
-#'   compartments.
+#' @param ... Target compartment names. Provide at least one target
+#'   compartment.
 #'
 #' @return This function is only meaningful inside an rxode2 model; it
 #'   errors when called directly from R.

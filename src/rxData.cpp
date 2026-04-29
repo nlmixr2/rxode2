@@ -4921,7 +4921,7 @@ static inline void iniRx(rx_solve* rx) {
 
 static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
   IntegerVector splitBolus = mv[RxMv_splitBolus];
-  if (splitBolus.size() < 3) return;
+  if (splitBolus.size() < 2) return;
   rx->splitBolusN = splitBolus.size();
   rx->splitBolus = (int*)malloc(rx->splitBolusN * sizeof(int));
   if (rx->splitBolus == NULL) {

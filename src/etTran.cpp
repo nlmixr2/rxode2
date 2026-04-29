@@ -2354,7 +2354,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
   }
-  if (splitBolusN >= 3) {
+  if (splitBolusN >= 2) {
     std::vector<int> id2;
     std::vector<int> evid2;
     std::vector<int> cmtF2;

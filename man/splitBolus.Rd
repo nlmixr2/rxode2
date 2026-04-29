@@ -9,8 +9,8 @@ splitBolus(cmt, ...)
 \arguments{
 \item{cmt}{Source compartment name.}
 
-\item{...}{Target compartment names. Provide at least two target
-compartments.}
+\item{...}{Target compartment names. Provide at least one target
+compartment.}
 }
 \value{
 This function is only meaningful inside an rxode2 model; it

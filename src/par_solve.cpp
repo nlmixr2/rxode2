@@ -733,7 +733,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     if (ev.n == 0) continue;
 
     int splitDoseEvent = -1;
-    if (rx->splitBolus != NULL && rx->splitBolusN >= 3 && _cmt == rx->splitBolus[0]) {
+    if (rx->splitBolus != NULL && rx->splitBolusN >= 2 && _cmt == rx->splitBolus[0]) {
       for (int _k = 0; _k < ev.n; _k++) {
         if (_rxShouldSplitTranslatedBolus(ev.evid[_k], _cmt, _amt, rx->splitBolus[0])) {
           splitDoseEvent = _k;

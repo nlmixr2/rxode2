@@ -119,7 +119,37 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(got, want)
   })
 
+  test_that("splitBolus can transfer a source bolus to one target compartment", {
+    modSplit <- rxode2parse("
+      splitBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    ")
+
+    modBase <- rxode2parse("
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    ")
+
+    eSplit <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
   test_that("splitBolus allows source repeats but rejects duplicate targets", {
+    expect_no_error(rxode2parse("
+      splitBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "))
+
     expect_no_error(rxode2parse("
       splitBolus(depot, depot, central)
       d/dt(depot) <- -ka * depot
