@@ -47,7 +47,10 @@ plogis <- function(q, location = 0, scale = 1, lower.tail = TRUE, log.p = FALSE)
 
 .plogisIsValue <- function(expr, value, env = baseenv()) {
   .val <- try(eval(expr, envir = env), silent = TRUE)
-  if (inherits(.val, "try-error") || length(.val) != 1L || is.na(.val)) {
+  if (inherits(.val, "try-error") ||
+      length(.val) != 1L ||
+      (!is.numeric(.val) && !is.logical(.val)) ||
+      is.na(.val)) {
     return(FALSE)
   }
   identical(as.numeric(.val), as.numeric(value))
@@ -81,17 +84,34 @@ plogis <- function(q, location = 0, scale = 1, lower.tail = TRUE, log.p = FALSE)
     .ret <- call("-", .ret, location)
   }
   if (!.plogisIsValue(scale, 1, env = env)) {
+    if (is.call(.ret) && identical(.ret[[1]], quote(`-`)) && length(.ret) == 3L) {
+      .ret <- str2lang(paste0("(", deparse1(.ret), ")"))
+    }
+    .ret <- call("/", .ret, scale)
+  }
+  .ret
+}
+
+.plogisNegZLang <- function(q, location, scale, env = baseenv()) {
+  if (.plogisIsValue(location, 0, env = env)) {
+    .ret <- call("-", q)
+  } else {
+    .ret <- call("-", location, q)
+  }
+  if (!.plogisIsValue(scale, 1, env = env)) {
+    if (is.call(.ret) && identical(.ret[[1]], quote(`-`)) && length(.ret) == 3L) {
+      .ret <- str2lang(paste0("(", deparse1(.ret), ")"))
+    }
     .ret <- call("/", .ret, scale)
   }
   .ret
 }
 
 .plogisRxLang <- function(q, location, scale, lower.tail, log.p, env = baseenv()) {
-  .z <- .plogisZLang(q, location, scale, env = env)
   if (isTRUE(lower.tail)) {
-    .ret <- call("expit", .z)
+    .ret <- call("expit", .plogisZLang(q, location, scale, env = env))
   } else {
-    .ret <- call("expit", call("-", .z))
+    .ret <- call("expit", .plogisNegZLang(q, location, scale, env = env))
   }
   if (isTRUE(log.p)) {
     .ret <- call("log", .ret)

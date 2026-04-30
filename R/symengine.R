@@ -1462,7 +1462,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .logP <- .plogisFlag(.args$log.p, "log.p")
   .ret <- .plogisRxLang(.args$q, .args$location, .args$scale,
                         .lowerTail, .logP)
-  .ret <- .rxToSE(.ret, envir = envir, progress = progress, isEnv = isEnv)
+  .ret <- .rxToSE(.ret, envir = envir, progress = progress)
   if (isEnv) envir$..curCall <- .lastCall
   .ret
 }
