@@ -5,6 +5,8 @@
 \alias{rxUiGet.dvidLine}
 \alias{rxUiGet.paramsLine}
 \alias{rxUiGet.interpLines}
+\alias{rxUiGet.splitDose}
+\alias{rxUiGet.splitDoseLines}
 \alias{rxUiGet.simulationSigma}
 \alias{rxUiGet.simulationModel}
 \alias{rxUiGet.symengineModelNoPrune}
@@ -54,6 +56,10 @@
 \method{rxUiGet}{paramsLine}(x, ...)
 
 \method{rxUiGet}{interpLines}(x, ...)
+
+\method{rxUiGet}{splitDose}(x, ...)
+
+\method{rxUiGet}{splitDoseLines}(x, ...)
 
 \method{rxUiGet}{simulationSigma}(x, ...)
 

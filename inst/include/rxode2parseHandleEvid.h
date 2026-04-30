@@ -3,6 +3,7 @@
 #define __RXODE2PARSEHANDLEVID_H___
 
 #include "rxode2parse.h"
+#include "rxode2EventTranslate.h"
 //#include "rxThreadData.h"
 #include "rxode2dataErr.h"
 #include "needSortDefines.h"
@@ -89,17 +90,6 @@ extern "C" {
 #define EVID0_SSINF 40
 #define EVID0_PHANTOM 50
 #define EVID0_ONDOSE 60
-
-static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0) {
-  *wh = evid;
-  *cmt = 0;
-  *wh100 = FLOOR(*wh/1e5L);
-  *whI   = FLOOR(*wh/1e4L-*wh100*10);
-  *wh    = *wh - *wh100*1e5 - (*whI-1)*1e4;
-  *wh0 = FLOOR((*wh%10000)/100);
-  *cmt = *wh0 - 1 + *wh100*100;
-  *wh0 = evid - *wh100*1e5 - *whI*1e4 - *wh0*100;
-}
 
 static inline double getDoseNumber(rx_solving_options_ind *ind, int i) {
   return getDose(ind, ind->idose[i]);

@@ -142,3 +142,4 @@ tests/testthat/test-lincmt-parse.R
 ^CRAN-SUBMISSION$
 ^revdep$
 ^vignettes/articles$
+^LICENSE\.md$

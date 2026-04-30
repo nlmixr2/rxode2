@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 29));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 29));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 30));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 30));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -147,8 +147,14 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,   18, slhs);
 
   SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
+  SEXP splitBolusSexp = PROTECT(Rf_allocVector(INTSXP, tb.splitBolusN));pro++;
   int *alagVar = INTEGER(alagVarSexp);
+  int *splitBolus = INTEGER(splitBolusSexp);
   int *ordFI = INTEGER(ordF);
+
+  for (int i = 0; i < tb.splitBolusN; ++i) {
+    splitBolus[i] = ordFI[tb.splitBolus[i]-1];
+  }
 
   for (int i = 0; i < tb.alagn; ++i) {
     alagVar[i] = ordFI[tb.alag[i]-1];
@@ -156,7 +162,7 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(names, 19, Rf_mkChar("alag"));
   SET_VECTOR_ELT(lst,   19, alagVarSexp);
 
-  sPrint(&_bufw,"%.*s", (int)strlen(model_prefix)-1, model_prefix);
+   sPrint(&_bufw,"%.*s", (int)strlen(model_prefix)-1, model_prefix);
 
   SET_STRING_ELT(trann,0,Rf_mkChar("lib.name"));
   SET_STRING_ELT(tran,0,Rf_mkChar(_bufw.s));
@@ -317,6 +323,9 @@ SEXP generateModelVars(void) {
 
   SET_VECTOR_ELT(lst, 28, lhsOrdFS);
   SET_STRING_ELT(names, 28, Rf_mkChar("lhsOrd"));
+
+  SET_STRING_ELT(names, 29, Rf_mkChar("splitBolus"));
+  SET_VECTOR_ELT(lst,   29, splitBolusSexp);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

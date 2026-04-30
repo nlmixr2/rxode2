@@ -15,6 +15,7 @@ rxCombineErrorLines(
   lstExpr = NULL,
   useIf = TRUE,
   interpLines = NULL,
+  splitDoseLines = NULL,
   levelLines = NULL
 )
 }
@@ -41,6 +42,8 @@ defaults to the model expressions accessible by
 \item{useIf}{Use an \verb{if (CMT == X)} for endpoints}
 
 \item{interpLines}{Interpolation lines, if not present}
+
+\item{splitDoseLines}{Split dose lines, if not present}
 
 \item{levelLines}{Levels lines for assigned strings.  If not
 present, use the interpolation lines from the current model.}

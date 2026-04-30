@@ -17,6 +17,33 @@ typedef struct {
   int    isDose[2];    /* 1 if this event contributes an idose entry */
 } rx_translated_event;
 
+static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0) {
+  *wh = evid;
+  *cmt = 0;
+  *wh100 = *wh / 100000;
+  *whI   = *wh / 10000 - *wh100 * 10;
+  *wh    = *wh - *wh100 * 100000 - (*whI - 1) * 10000;
+  *wh0   = (*wh % 10000) / 100;
+  *cmt   = *wh0 - 1 + *wh100 * 100;
+  *wh0   = evid - *wh100 * 100000 - *whI * 10000 - *wh0 * 100;
+}
+
+static inline int _rxEncodeEventCmt(int evid, int cmt) {
+  int wh, oldCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &oldCmt, &wh100, &whI, &wh0);
+  int cmt0 = cmt - 1;
+  int cmt100 = cmt0 / 100;
+  int cmt01 = cmt0 % 100 + 1;
+  return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + wh0;
+}
+
+static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
+  int wh, eventCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);
+  if (splitCmt <= 0 || cmt != splitCmt || eventCmt + 1 != splitCmt || evid < 100 || amt <= 0.0) return 0;
+  return whI == 0 && (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
+}
+
 /* Translate one NONMEM-style (evid 0-7) or classic rxode2 internal (evid>=100) event
  * into the rxode2 internal representation.
  *
