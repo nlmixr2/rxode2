@@ -47,4 +47,20 @@ rxTest({
       a <- plogis(x, log.p = x)
     }), "log.p")
   })
+
+  test_that("plogis translates through symengine using expit expressions", {
+    expect_equal(rxToSE("plogis(a)"), rxToSE("expit(a)"))
+    expect_equal(
+      rxToSE("plogis(a, location = b, scale = c, lower.tail = FALSE)"),
+      rxToSE("expit(-((a - b)/c))")
+    )
+    expect_equal(
+      rxToSE("plogis(a, b, c, FALSE, TRUE)"),
+      rxToSE("log(expit(-((a - b)/c)))")
+    )
+    .se <- rxToSE("plogis(a, b, c, FALSE, TRUE)")
+    expect_equal(rxToSE(rxFromSE(.se)), .se)
+    expect_error(rxToSE("plogis(a, lower.tail = x)"), "lower.tail")
+    expect_error(rxToSE("plogis(a, log.p = x)"), "log.p")
+  })
 })

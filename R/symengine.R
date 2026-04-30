@@ -1452,6 +1452,21 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
+.rxToSEPlogis <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .args <- .plogisMatchCall(x)
+  if (isEnv) {
+    .lastCall <- envir$..curCall
+    envir$..curCall <- c(envir$..curCall, "plogis")
+  }
+  .lowerTail <- .plogisFlag(.args$lower.tail, "lower.tail")
+  .logP <- .plogisFlag(.args$log.p, "log.p")
+  .ret <- .plogisRxLang(.args$q, .args$location, .args$scale,
+                        .lowerTail, .logP)
+  .ret <- .rxToSE(.ret, envir = envir, progress = progress, isEnv = isEnv)
+  if (isEnv) envir$..curCall <- .lastCall
+  .ret
+}
+
 .rxToSEd4GELU <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
   if (length(x) == 2) {
     if (isEnv) {
@@ -1817,6 +1832,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                (identical(x[[1]], quote(`normcdf`))) ||
                (identical(x[[1]], quote(`phi`)))) {
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`plogis`))) {
+    return(.rxToSEPlogis(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`mix`))) {
