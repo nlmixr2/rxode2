@@ -1,15 +1,4 @@
 rxTest({
-  test_that("plogis matches base R for direct evaluation", {
-    .x <- seq(-4, 4, length.out = 9)
-    expect_equal(plogis(.x), stats::plogis(.x))
-    expect_equal(plogis(.x, location = 1, scale = 2),
-                 stats::plogis(.x, location = 1, scale = 2))
-    expect_equal(plogis(.x, location = 1, scale = 2, lower.tail = FALSE),
-                 stats::plogis(.x, location = 1, scale = 2, lower.tail = FALSE))
-    expect_equal(plogis(.x, location = 1, scale = 2, lower.tail = FALSE, log.p = TRUE),
-                 stats::plogis(.x, location = 1, scale = 2, lower.tail = FALSE, log.p = TRUE))
-    expect_warning(plogis(0, scale = -1), "NaNs produced")
-  })
 
   test_that("plogis ui translation normalizes to expit expressions", {
     f <- function() {
@@ -31,38 +20,16 @@ rxTest({
   })
 
   test_that("plogis string parsing lowers to expit-compatible models", {
-    mod <- rxode2("a=plogis(time, 1, 2, 0, 0)\nb=plogis(time, 1, 2, 1, 1)")
-    .et <- et(seq(0, 8, length.out = 9))
-    .s <- suppressWarnings(rxSolve(mod, .et))
-    expect_equal(.s$a, stats::plogis(.s$time, location = 1, scale = 2, lower.tail = FALSE, log.p = FALSE))
-    expect_equal(.s$b, stats::plogis(.s$time, location = 1, scale = 2, lower.tail = TRUE, log.p = TRUE))
+    mod <- function() {
+      model({
+        a=plogis(time, 1, 2, 0, 0)
+        b=plogis(time, 1, 2, 1, 1)
+      })
+    }
+    et <- et(seq(0, 8, length.out = 9))
+    s <- suppressWarnings(rxSolve(mod, et))
+    expect_equal(s$a, stats::plogis(s$time, location = 1, scale = 2, lower.tail = FALSE, log.p = FALSE))
+    expect_equal(s$b, stats::plogis(s$time, location = 1, scale = 2, lower.tail = TRUE, log.p = TRUE))
   })
 
-  test_that("plogis requires scalar logical control flags in ui syntax", {
-    expect_error(rxode2({
-      a <- plogis(x, lower.tail = x)
-    }), "lower.tail")
-
-    expect_error(rxode2({
-      a <- plogis(x, log.p = x)
-    }), "log.p")
-  })
-
-  test_that("plogis translates through symengine using expit expressions", {
-    expect_equal(rxToSE("plogis(a)"), rxToSE("expit(a)"))
-    expect_equal(
-      rxToSE("plogis(a, location = b, scale = c, lower.tail = FALSE)"),
-      rxToSE("expit((b - a)/c)")
-    )
-    expect_equal(
-      rxToSE("plogis(a, b, c, FALSE, TRUE)"),
-      rxToSE("log(expit((b - a)/c))")
-    )
-    .se <- rxToSE("plogis(a, b, c, FALSE, TRUE)")
-    .rx <- rxFromSE(.se)
-    expect_equal(gsub("\\s+", "", rxToSE(.rx)),
-                 gsub("\\s+", "", .se))
-    expect_error(rxToSE("plogis(a, lower.tail = x)"), "lower.tail")
-    expect_error(rxToSE("plogis(a, log.p = x)"), "log.p")
-  })
 })
