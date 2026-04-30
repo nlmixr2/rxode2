@@ -22,17 +22,18 @@ reference:
 - title: Event Tables & Dosing
   desc: Construct and manipulate dosing/sampling event tables.
   contents:
+  - add.dosing
+  - add.sampling
+  - as.et
   - et
-  - toTrialDuration
+  - etExpand
   - etRbind
   - etRep
   - etSeq
-  - etExpand
-  - as.et
   - eventTable
-  - add.dosing
-  - add.sampling
   - evid_
+  - splitBolus
+  - toTrialDuration
 - title: Solving & Simulation
   desc: Solve ODEs and simulate populations.
   contents:
