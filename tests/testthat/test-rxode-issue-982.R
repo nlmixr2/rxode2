@@ -39,16 +39,16 @@ rxTest({
     ev$occ[ev$time > 25] <- 2
     ev$occ[ev$time > 24 * 5 + 1] <- 3
 
-    set.seed(982)
-    rxSetSeed(982)
+    rxWithSeed(982, {
+      sol <- suppressWarnings(rxSolve(two.compartment.tacro.test.Polimorf, ev))
 
-    sol <- suppressWarnings(rxSolve(two.compartment.tacro.test.Polimorf, ev))
+      expect_s3_class(sol, "rxSolve")
+      expect_true(any(names(sol) == "iov.cl"))
+      expect_true(any(names(sol) == "sim"))
+      expect_equal(as.character(sort(unique(sol$occ))), c("1", "2", "3"))
+      expect_true(all(is.finite(sol$iov.cl)))
+      expect_true(any(!is.na(sol$sim)))
 
-    expect_s3_class(sol, "rxSolve")
-    expect_true(any(names(sol) == "iov.cl"))
-    expect_true(any(names(sol) == "sim"))
-    expect_equal(as.character(sort(unique(sol$occ))), c("1", "2", "3"))
-    expect_true(all(is.finite(sol$iov.cl)))
-    expect_true(any(!is.na(sol$sim)))
+    })
   })
 })
