@@ -183,8 +183,11 @@ reference:
   - rxUdfUiControl
   - rxUdfUiData
   - rxUdfUiEst
+  - rxUdfUiExpr
+  - rxUdfUiFlag
   - rxUdfUiIniDf
   - rxUdfUiIniLhs
+  - rxUdfUiIsValue
   - rxUdfUiMv
   - rxUdfUiNum
   - rxUdfUiParsing
