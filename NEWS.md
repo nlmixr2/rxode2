@@ -18,7 +18,10 @@
 - Change `dop853` to allow per state tolerances and parallel solving
   like `liblsoda`.
 
-- Change mtime state-based dosing to use less memory
+- Change mtime state-based dosing to use less memory.
+
+- Add `plogis()` translation inside `rxode2` to it's c-based `expit()`
+  functions
 
 
 # rxode2 5.0.2
