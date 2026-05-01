@@ -465,16 +465,6 @@ t_get_solve get_solve = NULL;
 
 t_assignFuns assignFuns=NULL;
 
-t_F AMT = NULL;
-t_LAG LAG = NULL;
-t_RATE RATE = NULL;
-t_DUR DUR = NULL;
-t_calc_mtime calc_mtime = NULL;
-
-t_ME ME = NULL;
-t_IndF IndF = NULL;
-
-
 static inline void copyLinCmt(int *neq,
                               rx_solving_options_ind *ind, rx_solving_options *op,
                               double *yp) {
@@ -623,14 +613,14 @@ void rxUpdateFuns(SEXP trans){
   set_solve = (t_set_solve)R_GetCCallable(lib, s_ode_solver_solvedata);
   get_solve = (t_get_solve)R_GetCCallable(lib, s_ode_solver_get_solvedata);
   dydt_liblsoda = (t_dydt_liblsoda)R_GetCCallable(lib, s_dydt_liblsoda);
-  AMT = (t_F)R_GetCCallable(lib, s_AMT);
-  LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
-  RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
-  DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
-  ME  = (t_ME) R_GetCCallable(lib, s_ME);
-  IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
-  calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
-  assignFuns = R_GetCCallable(lib, s_assignFuns);
+  t_F AMT = (t_F)R_GetCCallable(lib, s_AMT);
+  t_LAG LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
+  t_RATE RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
+  t_DUR DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
+  t_ME ME  = (t_ME) R_GetCCallable(lib, s_ME);
+  t_IndF IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
+  t_calc_mtime calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
+  assignFuns = (t_assignFuns)R_GetCCallable(lib, s_assignFuns);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx_solving_options *op = &op_global;
@@ -639,7 +629,7 @@ void rxUpdateFuns(SEXP trans){
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
   rxode2_assignFuns2_t assignFuns2 = (rxode2_assignFuns2_t)R_GetCCallable(lib, s_assignFuns2);
   if (assignFuns2 != NULL) {
-    assignFuns2(*rx, *op, AMT, LAG, RATE, DUR, calc_mtime, ME, IndF, getTime, _locateTimeIndex, handle_evidL, _getDur);
+    assignFuns2(rx_global, op_global, AMT, LAG, RATE, DUR, calc_mtime, ME, IndF, getTime, _locateTimeIndex, handle_evidL, _getDur);
   } else {
     rx->fns.f = AMT;
     rx->fns.lag = LAG;
@@ -665,6 +655,17 @@ extern "C" void rxClearFuns(){
   set_solve		= NULL;
   get_solve		= NULL;
   dydt_liblsoda		= NULL;
+  rx_global.fns.f = NULL;
+  rx_global.fns.lag = NULL;
+  rx_global.fns.rate = NULL;
+  rx_global.fns.dur = NULL;
+  rx_global.fns.mtime = NULL;
+  rx_global.fns.me = NULL;
+  rx_global.fns.indf = NULL;
+  rx_global.fns.gettime = NULL;
+  rx_global.fns.timeindex = NULL;
+  rx_global.fns.handleEvid = NULL;
+  rx_global.fns.getdur = NULL;
 }
 
 extern "C" void F77_NAME(dlsoda)(
@@ -1091,7 +1092,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         idid = indLin(ind->id, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
-                      ME, IndF);
+                      ind->fns->me, ind->fns->indf);
       }
       if (idid <= 0) {
         /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
