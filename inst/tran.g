@@ -22,6 +22,7 @@ statement
   | param_statement end_statement
   | interp_statement end_statement
   | cmt_statement end_statement
+  | splitBolus_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
@@ -59,6 +60,13 @@ evid_statement
 
 cmt_statement
     : 'cmt' '(' identifier_r_no_output ')';
+
+splitBolus_statement
+    : 'splitBolus' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
 
 param_statement
     : "params?" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )*  ')';
@@ -149,13 +157,17 @@ multiplicative_expression : unary_expression
 
 mult_part : ('*' | '/') unary_expression ;
 
-unary_expression : ('+' | '-')? (theta0 | theta | eta | primary_expression | power_expression );
+unary_expression : ('+' | '-')? (theta0 | theta | eta | primary_expression | power_expression | mod_expression );
 
 exponent_expression : ('+' | '-')? (theta0 | theta | eta | primary_expression );
 
 power_expression : primary_expression power_operator exponent_expression;
 
 power_operator   : ('^' | '**');
+
+mod_expression : primary_expression mod_operator exponent_expression;
+
+mod_operator : '%%';
 
 primary_expression
   : constant

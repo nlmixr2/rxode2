@@ -51,7 +51,7 @@ rxTest({
 
   test_that("seq test for et", {
     expect_error(et(1, 2, 3))
-    expect_equal(et(1, 10)$time, seq(1, 10))
+    expect_equal(et(1, 10)$time, as.numeric(1:10))
     expect_equal(et(1)$time, seq(1))
     expect_equal(et(1, length.out = 4)$time, seq(1, length.out = 4))
     expect_equal(et(1, by = 0.1)$time, seq(1, length.out = 0.1))

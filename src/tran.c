@@ -169,6 +169,7 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
   if (handleIfElse(ni, name, *i) ||
       // simeta()/simeps()
       handleSimFunctions(ni, name, i, nch, pn) ||
+      handleSplitBolusStatement(ni, name, i, nch, pn) ||
       // evid_() dose-push
       handleEvidStatement(ni, name, i, nch, pn) ||
       handleStringEqualityStatements(ni, name, *i, xpn) ||
@@ -196,6 +197,9 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
   if (*i==0 && nodeHas(power_expression)) {
     aAppendN(",", 1);
     sAppendN(&sbt, "^", 1);
+  } else if (*i==0 && nodeHas(mod_expression)) {
+    aAppendN(",", 1);
+    sAppendN(&sbt, "%%", 2);
   }
   handleRemainingAssignments(ni, name, *i, pn, xpn);
   return 0;
@@ -218,6 +222,8 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
     int isWhile=0;
     if (nodeHas(power_expression)) {
       aAppendN("Rx_pow(", 7);
+    } else if (nodeHas(mod_expression)) {
+      aAppendN("fmod(", 5);
     }
     for (i = 0; i < nch; i++) {
       D_ParseNode *xpn = d_get_child(pn, i);
@@ -283,6 +289,7 @@ void parseFree(int last) {
   R_Free(tb.interp);
   R_Free(tb.lag);
   R_Free(tb.alag);
+  R_Free(tb.splitBolus);
   R_Free(tb.ini);
   R_Free(tb.mtime);
   R_Free(tb.iniv);
@@ -379,6 +386,8 @@ void reset(void) {
   tb.lag	= R_Calloc(MXSYM, int);
   tb.alag   = R_Calloc(MXSYM, int);
   tb.alagn  = 0;
+  tb.splitBolus = R_Calloc(MXSYM, int);
+  tb.splitBolusN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.dvidn      = 0;

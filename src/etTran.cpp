@@ -6,6 +6,7 @@
 #include <Rcpp.h>
 #include <algorithm>
 #include "../inst/include/rxode2parse.h"
+#include "../inst/include/rxode2EventTranslate.h"
 #include "timsort.h"
 #include "strncmpi.h"
 #include "../inst/include/needSortDefines.h"
@@ -846,6 +847,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   IntegerVector curDvid = clone(as<IntegerVector>(mv[RxMv_dvid]));
   IntegerVector curAlag = clone(as<IntegerVector>(mv[RxMv_alag]));
+  IntegerVector splitBolus = clone(as<IntegerVector>(mv[RxMv_splitBolus]));
+  int splitBolusN = splitBolus.size();
   CharacterVector trans = mv[RxMv_trans];
   if (Rf_inherits(inData,"rxEtTran")){
     CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);
@@ -904,6 +907,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     dvCol=-1, ssCol=-1, rateCol=-1, addlCol=-1, iiCol=-1, durCol=-1, j,
     mdvCol=-1, dvidCol=-1, censCol=-1, limitCol=-1, methodCol = -1,
     idIcovCol = -1;
+  bool amtExplicit = false;
   bool hasMixest = false;
   bool hasMixUnif = false;
   std::string tmpS;
@@ -926,7 +930,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (tmpS == "id") idCol=i;
     else if (tmpS == "evid") evidCol=i;
     else if (tmpS == "time") timeCol=i;
-    else if (tmpS == "amt" || tmpS == "value"){
+    else if (tmpS == "amt"){
+      if (amtExplicit) stop(_("can only specify either 'amt' or 'value'"));
+      amtCol=i;
+      amtExplicit = true;
+    }
+    else if (tmpS == "value" || tmpS == "dose"){
+      if (amtExplicit) continue;
       if (amtCol != -1) stop(_("can only specify either 'amt' or 'value'"));
       amtCol=i;
     }
@@ -1760,6 +1770,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (cevid == 3 && nobs == 0 && ndose == 0) {
       continue;
     }
+    if (cevid == 0 && flg == 30) {
+      cevid = 2;
+    }
     switch(cevid) {
     case 0:
       // Observation
@@ -2350,6 +2363,74 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     }
+  }
+  if (splitBolusN >= 2) {
+    std::vector<int> id2;
+    std::vector<int> evid2;
+    std::vector<int> cmtF2;
+    std::vector<double> time2;
+    std::vector<double> amt2;
+    std::vector<double> ii2;
+    std::vector<double> dv2;
+    std::vector<double> limit2;
+    std::vector<int> cens2;
+    std::vector<int> idxInput2;
+    id2.reserve(id.size());
+    evid2.reserve(evid.size());
+    cmtF2.reserve(cmtF.size());
+    time2.reserve(time.size());
+    amt2.reserve(amt.size());
+    ii2.reserve(ii.size());
+    dv2.reserve(dv.size());
+    limit2.reserve(limit.size());
+    cens2.reserve(cens.size());
+    idxInput2.reserve(idxInput.size());
+    ndose = 0;
+    nobs = 0;
+    mxCmt = 0;
+    for (int j = 0; j < (int)evid.size(); ++j) {
+      bool splitDose = _rxShouldSplitTranslatedBolus(evid[j], cmtF[j], amt[j], splitBolus[0]);
+      if (isDose(evid[j])) ndose += splitDose ? splitBolusN - 1 : 1;
+      else if (isObs(evid[j])) nobs++;
+      if (!splitDose) {
+        id2.push_back(id[j]);
+        evid2.push_back(evid[j]);
+        cmtF2.push_back(cmtF[j]);
+        time2.push_back(time[j]);
+        amt2.push_back(amt[j]);
+        ii2.push_back(ii[j]);
+        dv2.push_back(dv[j]);
+        limit2.push_back(limit[j]);
+        cens2.push_back(cens[j]);
+        idxInput2.push_back(idxInput[j]);
+        mxCmt = max2(mxCmt, cmtF[j]);
+        continue;
+      }
+      for (int k = 1; k < splitBolusN; ++k) {
+        int curCmt = splitBolus[k];
+        id2.push_back(id[j]);
+        evid2.push_back(_rxEncodeEventCmt(evid[j], curCmt));
+        cmtF2.push_back(curCmt);
+        time2.push_back(time[j]);
+        amt2.push_back(amt[j]);
+        ii2.push_back(ii[j]);
+        dv2.push_back(dv[j]);
+        limit2.push_back(limit[j]);
+        cens2.push_back(cens[j]);
+        idxInput2.push_back(idxInput[j]);
+        mxCmt = max2(mxCmt, curCmt);
+      }
+    }
+    id.swap(id2);
+    evid.swap(evid2);
+    cmtF.swap(cmtF2);
+    time.swap(time2);
+    amt.swap(amt2);
+    ii.swap(ii2);
+    dv.swap(dv2);
+    limit.swap(limit2);
+    cens.swap(cens2);
+    idxInput.swap(idxInput2);
   }
   if (hasReset && isSorted) {
     // Here EVID=3 resets time

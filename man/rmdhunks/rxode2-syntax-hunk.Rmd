@@ -92,7 +92,7 @@ An example model is shown below:
 Expressions in assignment and `if` statements can be numeric or logical.
 
 Numeric expressions can include the following numeric operators
-`+, -, *, /, ^` and those mathematical functions defined in the C or the
+`+, -, *, /, ^, %%` and those mathematical functions defined in the C or the
 R math libraries (e.g., `fabs`, `exp`, `log`, `sin`, `abs`).
 
 You may also access the R's functions in the [R math

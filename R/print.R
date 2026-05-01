@@ -42,7 +42,7 @@ print.rxEt <- function(x, ...) {
     .et1 <- paste0("EventTable with ", x$nobs + x$ndose, " records")
     .et2 <- NULL
     .units <- x$.units
-    .maxId <- length(x$IDs)
+    .maxId <- length(x$ids)
     if (.maxId != 1) {
       .et2 <- sprintf("   %s individuals", .maxId)
     }
@@ -102,7 +102,16 @@ print.rxEt <- function(x, ...) {
           .h2(paste0("First part of ", crayon::yellow(bound), ":"))
         }), sep = "\n")
       }
-      print(tibble::as_tibble(data.frame(.etAddCls(x))))
+      .preview <- as.data.frame(x)
+      if (!is.null(.preview[["evid"]])) {
+        class(.preview[["evid"]]) <- c("rxEvid", class(.preview[["evid"]]))
+      }
+      for (.nm in c("rate", "dur")) {
+        if (!is.null(.preview[[.nm]])) {
+          class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
+        }
+      }
+      print(tibble::as_tibble(.preview))
     }
     invisible(x)
   } else {

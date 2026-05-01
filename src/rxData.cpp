@@ -759,8 +759,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(31);
-  CharacterVector retN(31);
+  List ret(32);
+  CharacterVector retN(32);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -817,7 +817,7 @@ List rxModelVars_blank() {
   ret[19] = CharacterVector::create();
   retN[19] = "alag";
 
-  ret[20] = IntegerVector::create(0); // timeId
+  ret[20] = IntegerVector::create(0); // udf
   retN[20] = "udf";
 
   IntegerVector interp = IntegerVector::create();
@@ -834,7 +834,7 @@ List rxModelVars_blank() {
 
   LogicalVector lhsStr = LogicalVector::create();
   lhsStr.attr("names") = CharacterVector::create();
-  ret[23] = lhsStr; // md5
+  ret[23] = lhsStr; // lhsStr
   retN[23] = "lhsStr";
 
   IntegerVector stateProp = IntegerVector::create();
@@ -862,12 +862,14 @@ List rxModelVars_blank() {
   ret[28] = lhsOrd;
   retN[28] = "lhsOrd";
 
+  ret[29] = IntegerVector::create(0); // splitBolus
+  retN[29] = "splitBolus";
 
-  ret[29] = IntegerVector::create(0); // timeId
-  retN[29] = "timeId";
+  ret[30] = IntegerVector::create(0); // timeId
+  retN[30] = "timeId";
 
-  ret[30] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[30] = "md5";
+  ret[31] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[31] = "md5";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
@@ -2541,34 +2543,33 @@ extern RObject evCur;
 List getEtRxsolve(Environment e) {
   if (!e.exists(".et")) {
     RObject eventso = e[".args.events"];
-    List emptyLst(0);
-    RObject et = et_(emptyLst, emptyLst);
-    evCur = et;
-    et_(List::create(_["data"] = eventso), List::create("importQuiet"));
+    Function asEt = getRxFn("as.et");
+    RObject et = asEt(eventso);
     e[".et"] = et;
+    evCur = et;
     Function parse2("parse", R_BaseNamespace);
     Function eval2("eval", R_BaseNamespace);
     // eventTable style methods
-    e["get.EventTable"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.EventTable()"),
+    e["get.EventTable"] = eval2(_["expr"]   = parse2(_["text"]="function() .et"),
                                 _["envir"]  = e);
     e["get.obs.rec"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.obs.rec()"),
                              _["envir"]  = e);
     e["get.nobs"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.nobs()"),
                           _["envir"]  = e);
-    e["add.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$add.dosing(...); invisible(rxSolve(.args.object,events=.newEt, updateObject=TRUE))}"),
+    e["add.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$add.dosing(...); invisible(rxSolve(.args.object,events=.et, updateObject=TRUE))}"),
                             _["envir"]  = e);
-    e["clear.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.dosing(...); invisible(rxSolve(.args.object,events=.newEt, updateObject=TRUE))}"),
+    e["clear.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.dosing(...); invisible(rxSolve(.args.object,events=.et, updateObject=TRUE))}"),
                               _["envir"]  = e);
     e["get.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.dosing()"),
                             _["envir"]  = e);
 
-    e["add.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
+    e["add.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                               _["envir"]  = e);
 
-    e["clear.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.sampling(...); invisible(rxSolve(.args.object,events=.newEt,updateObject=TRUE))}"),
+    e["clear.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                                 _["envir"]  = e);
 
-    e[".replace.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.sampling(); .newEt$add.sampling(...); invisible(rxSolve(.args.object,events=.newEt,updateObject=TRUE))}"),
+    e[".replace.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.sampling(); .et$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                                    _["envir"]  = e);
 
     e["get.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.sampling()"),
@@ -2800,6 +2801,9 @@ LogicalVector rxSolveFree(){
   // Free the solve id order
   if (rx->par_sample != NULL) free(rx->par_sample);
   rx->par_sample=NULL;
+  if (rx->splitBolus != NULL) free(rx->splitBolus);
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
   // Free the omega info
@@ -3209,20 +3213,107 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       }
       NumericVector newObs(lenOut);
       // ((to - from)/(length.out - 1))
-      List et = as<List>(ev1);
       for (int i = lenOut; i--;){
         newObs[i]=by*i+from;
       }
       rx->nobs2 = lenOut;
-      ev1 = et_(List::create(newObs), as<List>(ev1));
+      Function etFun = getRxFn("et");
+      ev1 = etFun(ev1, wrap(newObs));
+      ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
+                             false, false, false, R_NilValue,
+                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                             R_NilValue));
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                           false, false, true, R_NilValue,
-                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                           rxControl[Rxc_iCov]));
+    List ev1k = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
+                        false, false, true, R_NilValue,
+                        rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                        rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                        R_NilValue);
+    CharacterVector tmpCk = ev1k.attr("class");
+    List tmpLk = tmpCk.attr(".rxode2.lst");
+    if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
+      int lenOut = 200;
+      double by = NA_REAL;
+      double to;
+      double from = 0.0;
+      NumericVector tmp;
+      IntegerVector tmpI;
+      rxSolveDat->labelID=true;
+      rxSolveDat->idLevels = asCv(tmpLk[RxTrans_idLvl], "idLvl");
+      List keep0 = tmpLk[RxTrans_keepL];
+      List keep = keep0[0];
+      _rxModels[".fkeep"] = keep0;
+      keepFcov=keep;
+      keepFcovType = keep0[1];
+      rx->nKeepF = keepFcov.size();
+      if (rxIsNumInt(rxControl[Rxc_from])){
+        tmp = asNv(rxControl[Rxc_from], "from");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'from' must be of length 1"));
+        }
+        from = tmp[0];
+      }
+      if (rxIsNumInt(rxControl[Rxc_to])){
+        tmp = asNv(rxControl[Rxc_to], "to");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'to' must be of length 1"));
+        }
+        to = tmp[0];
+      } else {
+        to = (max(as<NumericVector>(ev1k["TIME"]))+24);
+      }
+      if (rxIsNumInt(rxControl[Rxc_by])){
+        tmp = asNv(rxControl[Rxc_by], "by");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'by' must be of length 1"));
+        }
+        by = tmp[0];
+      }
+      if (rxIsNumInt(rxControl[Rxc_length_out])){
+        tmpI = asIv(rxControl[Rxc_length_out], "length.out");
+        if (tmpI.size() != 1){
+          rxSolveFree();
+          stop(_("'length.out' must be of length 1"));
+        }
+        lenOut = tmpI[0];
+        if (!ISNA(by)){
+          rxSolveFree();
+          stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
+        }
+        by = (to-from)/(lenOut-1);
+      } else if (ISNA(by)) {
+        lenOut=200;
+        by = (to-from)/(lenOut-1);
+      } else {
+        lenOut= (int)((to-from)/by+1.0);
+      }
+      NumericVector newObs(lenOut);
+      for (int i = lenOut; i--;){
+        newObs[i]=by*i+from;
+      }
+      rx->nobs2 = lenOut;
+      Function asEtFun = getRxFn("as.et");
+      Function etFun = getRxFn("et");
+      RObject evEt = asEtFun(ev1);
+      evEt = etFun(evEt, wrap(newObs));
+      ev1 = as<List>(etTrans(as<List>(evEt), obj, rxSolveDat->hasCmt,
+                             false, false, false, R_NilValue,
+                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                             rxControl[Rxc_iCov]));
+    } else {
+      ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
+                             false, false, true, R_NilValue,
+                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                             rxControl[Rxc_iCov]));
+    }
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
@@ -3592,6 +3683,7 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->logitHi          = 1;
   ind->isIni            = 0;
   ind->_update_par_ptr_in = 0;
+  ind->linCmtHparIndex  = -2;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
@@ -4052,6 +4144,21 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
         }
       }
     }
+    // Next, check event-derived covariates before falling back to model ini
+    // defaults so dual lhs/param variables like `Nominal = Nominal` use the
+    // data value when it is present.
+    if (!curPar){
+      for (j = 1; j < mvCov1N.size(); j++) {
+        const char *p1 = CHAR(mvCov1N[j]);
+        if (!strcmp(p0, p1)){
+          // These are setup once and don't need to be updated
+          _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
+          curPar = true;
+          rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+          break;
+        }
+      }
+    }
     // last, check for $ini values
     if (!curPar){
       for (j = mvIniN.size(); j--;){
@@ -4061,17 +4168,6 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
           _globals.gParPos[i] = -j - 1;
           rxSolveDat->eGparPos[i]=_globals.gParPos[i];
           break;
-        }
-      }
-    }
-    if (!curPar){
-      for (j = 1; j < mvCov1N.size(); j++) {
-        const char *p1 = CHAR(mvCov1N[j]);
-        if (!strcmp(p0, p1)){
-          // These are setup once and don't need to be updated
-          _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
-          curPar = true;
-          rxSolveDat->eGparPos[i]=_globals.gParPos[i];
         }
       }
     }
@@ -4847,6 +4943,8 @@ static inline void iniRx(rx_solve* rx) {
   rx->whileexit= 0;
   rx->maxExtra = 100;
   rx->extraPushAbort = 0;
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
@@ -4905,6 +5003,18 @@ static inline void iniRx(rx_solve* rx) {
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
+}
+
+static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
+  IntegerVector splitBolus = mv[RxMv_splitBolus];
+  if (splitBolus.size() < 2) return;
+  rx->splitBolusN = splitBolus.size();
+  rx->splitBolus = (int*)malloc(rx->splitBolusN * sizeof(int));
+  if (rx->splitBolus == NULL) {
+    rxSolveFree();
+    stop(_("ran out of memory"));
+  }
+  std::copy(INTEGER(splitBolus), INTEGER(splitBolus) + rx->splitBolusN, rx->splitBolus);
 }
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
@@ -5059,6 +5169,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     return rxSolve_update(object, rxControl, specParams,
@@ -5090,6 +5201,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
     op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");

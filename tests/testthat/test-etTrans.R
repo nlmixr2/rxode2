@@ -87,8 +87,89 @@ d/dt(blood)     = a*intestine - b*blood
                     row.names = c(NA,-6L))
     skip_on_cran()
 
-    expect_warning(expect_false(any(is.na(etTrans(et, mod)$TIME))))
+  expect_warning(expect_false(any(is.na(etTrans(et, mod)$TIME))))
 
+  })
+
+  test_that("splitBolus expands source bolus doses to all target compartments", {
+    modSplit <- rxode2parse("
+      splitBolus(depot, depot, central, peripheral)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    ")
+
+    modBase <- rxode2parse("
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    ")
+
+    eSplit <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, cmt = "peripheral", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitBolus can transfer a source bolus to one target compartment", {
+    modSplit <- rxode2parse("
+      splitBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    ")
+
+    modBase <- rxode2parse("
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    ")
+
+    eSplit <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitBolus allows source repeats but rejects duplicate targets", {
+    expect_no_error(rxode2parse("
+      splitBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "))
+
+    expect_no_error(rxode2parse("
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "))
+
+    expect_true(inherits(try(rxode2parse("
+      splitBolus(depot, central, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "), silent = TRUE), "try-error"))
+  })
+
+  test_that("model vars expose empty splitBolus when unused", {
+    mod <- rxode2parse("
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    ")
+
+    expect_equal(length(rxModelVars(mod)$splitBolus), 0)
   })
 
   .Call(`_rxode2_etTransEvidIsObs`, FALSE)
@@ -1503,46 +1584,46 @@ d/dt(blood)     = a*intestine - b*blood
         )
 
         max_sub <- 0
-        set.seed(5447)
-        rxSetSeed(5447)
-        ev   <- et()
-        iCov <- NULL
-        for(scen in names(scens)){
-          # Generating subject IDs
-          scen_subs      <- c(1:nsub)+max_sub
+        rxWithSeed(5447, {
+          ev   <- et()
+          iCov <- NULL
+          for(scen in names(scens)){
+            # Generating subject IDs
+            scen_subs      <- c(1:nsub)+max_sub
 
-          # Generating covariates
-          scen_sex       <- sample(c(0,1),nsub,replace=TRUE)
-          scen_subtype   <- sample(c(0,1),nsub,replace=TRUE)
-          scen_wt        <- exp(rnorm(nsub, 0, sd=.1))*70
-          for(tmp_sub_idx in 1:length(scen_subs)){
-            tmp_ev <-
-              et(id   = scen_subs[tmp_sub_idx],
-                 amt  = scens[[scen]][["damts"]]*conv,
-                 time = scens[[scen]][["dtimes"]],
-                 cmt  = scens[[scen]][["cmt"]]
-                 ) |>
-              et(id   = scen_subs[tmp_sub_idx],
-                 time = unique(c(scens[[scen]][["tsam"]])),
-                 cmt   = "C_ng_ml"
-                 ) |>
-              et(id   = scen_subs[tmp_sub_idx],
-                 time = unique(c(scens[[scen]][["tsam"]])),
-                 cmt   = "BM_obs"
-                 )
-            ev <- etRbind(ev, tmp_ev)
-            iCov <- rbind(iCov,
-                         data.frame(
-                           id      = scen_subs[tmp_sub_idx],
-                           sex     = scen_sex[[tmp_sub_idx]],
-                           wt      = scen_wt[[tmp_sub_idx]],
-                           subtype = scen_subtype[[tmp_sub_idx]]))
+            # Generating covariates
+            scen_sex       <- sample(c(0,1),nsub,replace=TRUE)
+            scen_subtype   <- sample(c(0,1),nsub,replace=TRUE)
+            scen_wt        <- exp(rnorm(nsub, 0, sd=.1))*70
+            for(tmp_sub_idx in 1:length(scen_subs)){
+              tmp_ev <-
+                et(id   = scen_subs[tmp_sub_idx],
+                   amt  = scens[[scen]][["damts"]]*conv,
+                   time = scens[[scen]][["dtimes"]],
+                   cmt  = scens[[scen]][["cmt"]]
+                   ) |>
+                et(id   = scen_subs[tmp_sub_idx],
+                   time = unique(c(scens[[scen]][["tsam"]])),
+                   cmt   = "C_ng_ml"
+                   ) |>
+                et(id   = scen_subs[tmp_sub_idx],
+                   time = unique(c(scens[[scen]][["tsam"]])),
+                   cmt   = "BM_obs"
+                   )
+              ev <- etRbind(ev, tmp_ev)
+              iCov <- rbind(iCov,
+                           data.frame(
+                             id      = scen_subs[tmp_sub_idx],
+                             sex     = scen_sex[[tmp_sub_idx]],
+                             wt      = scen_wt[[tmp_sub_idx]],
+                             subtype = scen_subtype[[tmp_sub_idx]]))
+            }
+            max_sub <- max(scen_subs)
           }
-          max_sub <- max(scen_subs)
-        }
-        sim <- rxSolve(my_model, events=ev, iCov=iCov)
+          sim <- rxSolve(my_model, events=ev, iCov=iCov)
 
-        expect_true(!any(is.na(sim$ipredSim)))
+          expect_true(!any(is.na(sim$ipredSim)))
+        }, rxseed = 5447)
 
       })
     })
