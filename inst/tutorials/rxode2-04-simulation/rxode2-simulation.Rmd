@@ -37,6 +37,36 @@ pkModel <- function() {
 }
 ```
 
+## Review: Model Functions and Piping
+
+Before we simulate, let's make sure we can set up and modify a model.
+
+### Exercise: Modify and Prepare a Model
+
+Start with `pkModel` and:
+1. Update `tka` to `log(2.0)`.
+2. Remove the random effect `eta.ka` from the `ka` equation using `model()`.
+
+```{r simulation_review, exercise=TRUE}
+# Start with pkModel
+# 1. Update tka to log(2.0)
+# 2. Remove eta.ka from ka <- exp(tka + eta.ka)
+
+my_mod <- pkModel |>
+  ini(tka = log(2.0)) |>
+  model(ka <- exp(tka))
+
+print(my_mod)
+```
+
+```{r simulation_review-solution}
+my_mod <- pkModel |>
+  ini(tka = log(2.0)) |>
+  model(ka <- exp(tka))
+
+print(my_mod)
+```
+
 ## Introduction to `rxSolve()`
 
 Once you have defined a model, you use `rxSolve()` to calculate the predicted values over time. To solve a model, you need:
@@ -123,3 +153,7 @@ plot(ci)
 - `nSub` controls the number of subjects (BSV).
 - `nStud` and `thetaMat` control the number of parameter draws (Uncertainty).
 - Resulting objects can be easily plotted or summarized with `confint()`.
+
+## What's Next?
+
+Great progress! You can now run simulations for individuals and populations. But often, individual characteristics like weight or age affect drug behavior. In the next tutorial, **[rxode2 covariates and data](rxode2-covariates.Rmd)**, you'll learn how to incorporate these factors into your models and simulations.

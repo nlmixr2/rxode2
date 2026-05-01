@@ -16,6 +16,48 @@ library(ggplot2)
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+## Review: Putting it all Together
+
+We've come a long way! From basic syntax to complex population simulations with covariates. Let's do one final review exercise that combines several concepts.
+
+### Exercise: A Complete Workflow
+
+1.  Define a one-compartment model function `final_mod` with:
+    *   `tka = 0.5`, `tcl = 1`, `tv = 10`.
+    *   `eta.cl ~ 0.1`.
+    *   Additive error `add.sd = 0.1`.
+    *   Include a weight effect on `cl`: `cl <- exp(tcl + eta.cl) * (WT/70)^0.75`.
+2.  Create an event table for 100 mg dose at time 0, sampling 0-24h.
+3.  Simulate 10 subjects with weights ranging from 50 to 100 kg.
+
+```{r final_review, exercise=TRUE}
+# 1. Define final_mod
+final_mod <- function() {
+  ini({
+    tka <- 0.5; tcl <- 1; tv <- 10
+    eta.cl ~ 0.1
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl) * (WT/70)^0.75
+    v  <- exp(tv)
+    d/dt(center) <- - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+
+# 2. Create event table
+ev <- et(amt = 100) |> et(0:24)
+
+# 3. Define iCov and solve
+my_covs <- data.frame(id = 1:10, WT = seq(50, 100, length.out = 10))
+res <- rxSolve(final_mod, ev, iCov = my_covs)
+
+plot(res, cp)
+```
+
 ## Introduction
 
 While `rxode2` is primarily an ODE solver, it also supports:
@@ -121,3 +163,14 @@ plot(res, cp)
 - `linCmt()` provides fast, analytical solutions for standard PK models.
 - You can mix analytical PK with numerical PD ODEs.
 - `transit()` simplifies the implementation of transit compartment models.
+
+## Congratulations!
+
+You have completed the `rxode2` tutorial series! You now have the skills to:
+- Write and modify `rxode2` models.
+- Create complex dosing schedules and sampling plans with event tables.
+- Perform individual and population simulations.
+- Incorporate covariates and handle parameter uncertainty.
+- Use advanced features like `linCmt()` and transit compartments.
+
+For more information and advanced topics, visit the [rxode2 documentation](https://nlmixr2.github.io/rxode2/).

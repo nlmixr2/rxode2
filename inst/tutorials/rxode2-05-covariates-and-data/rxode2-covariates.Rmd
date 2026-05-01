@@ -31,6 +31,27 @@ mod_cov <- function() {
 }
 ```
 
+## Review: Simulation and Model Functions
+
+Before we add covariates, let's review how to run a basic population simulation.
+
+### Exercise: Population Simulation
+
+Using the `mod_cov` model (ignoring the `WT` part for a moment by setting it to 70), simulate 50 subjects with a 100 mg bolus dose.
+
+```{r simulation_review_cov, exercise=TRUE}
+# Set up event table ev (100 mg dose, 0-24h sampling)
+ev <- et(amt = 100) |> et(0:24)
+
+# Set WT to 70 in the event table to ignore the covariate effect for now
+ev$WT <- 70
+
+# Solve for 50 subjects
+res <- rxSolve(mod_cov, ev, nSub = 50)
+
+plot(res, cp)
+```
+
 ## Introduction to Covariates
 
 Covariates are external variables that influence your model parameters (e.g., body weight, age, or smoking status). In `rxode2`, any variable in your model that is NOT defined as a parameter in `ini()` and NOT calculated as a LHS variable is assumed to be a **covariate**.
@@ -100,3 +121,7 @@ plot(res_linear, cp)
 - Use `iCov` for subject-level constants.
 - Include columns in your event table for time-varying covariates.
 - Choose an interpolation method (`linear`, `locf`, `nocb`) that suits your data.
+
+## What's Next?
+
+You've now covered the core workflow of `rxode2`: defining, modifying, simulating, and adding data to models. In the final tutorial, **[rxode2 advanced features](rxode2-advanced.Rmd)**, we'll explore some specialized tools that can speed up your work, such as analytical solutions for standard PK models.

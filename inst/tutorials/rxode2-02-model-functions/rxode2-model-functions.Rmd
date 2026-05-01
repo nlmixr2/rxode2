@@ -16,6 +16,41 @@ library(ggplot2)
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+## Review: Syntax and Events
+
+Before we explore the `rxode2` UI syntax, let's refresh our memory on model syntax and event tables.
+
+### Exercise: A Simple Simulation
+
+Try to create an event table `ev` for a 100 mg dose at time 0, with sampling every hour for 24 hours. Then solve the provided model `m1_syntax`.
+
+```{r review_ex, exercise=TRUE}
+m1_syntax <- rxode2({
+  ka <- 0.5; cl <- 1; v <- 10
+  d/dt(depot) <- -ka * depot
+  d/dt(center) <- ka * depot - cl/v * center
+  cp <- center/v
+})
+
+# Create event table ev here
+
+# Solve the model here
+
+```
+
+```{r review_ex-solution}
+m1_syntax <- rxode2({
+  ka <- 0.5; cl <- 1; v <- 10
+  d/dt(depot) <- -ka * depot
+  d/dt(center) <- ka * depot - cl/v * center
+  cp <- center/v
+})
+
+ev <- et(amt = 100) |> et(0:24)
+res <- rxSolve(m1_syntax, ev)
+plot(res, cp)
+```
+
 ## Introduction to Model Functions
 
 In `rxode2`, you can define a model using a standard R function. This approach is powerful because it allows you to package the model equations together with their initial parameter estimates and residual error models.
@@ -231,3 +266,7 @@ In this tutorial, you learned:
 - How to specify parameters, bounds, and random effects in `ini()`.
 - How to write ODEs and residual error models in `model()`.
 - How to create and inspect a `rxode2` UI object.
+
+## What's Next?
+
+Excellent! You now know how to define models using the `rxode2` function syntax. This is the foundation for building more complex and realistic models. In the next tutorial, **[rxode2 piping and modifying](rxode2-piping.Rmd)**, you'll learn how to easily adjust and extend these models without starting from scratch.

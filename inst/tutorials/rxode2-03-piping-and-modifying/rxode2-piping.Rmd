@@ -37,6 +37,29 @@ one.compartment <- function() {
 }
 ```
 
+## Review: Model Functions
+
+Before we learn about piping, let's review the `ini()` and `model()` blocks in a model function.
+
+### Quiz
+
+```{r modelFunctionsReview, echo=FALSE}
+quiz(
+  question("Which block is used to define initial estimates and random effect variances?",
+    answer("`model({})`"),
+    answer("`ini({})`", correct = TRUE),
+    answer("`params({})`"),
+    answer("`vars({})`")
+  ),
+  question("Which operator is used to define a residual error model in the `model({})` block?",
+    answer("`<-`"),
+    answer("`=`"),
+    answer("`~`", correct = TRUE),
+    answer("`+`")
+  )
+)
+```
+
 ## Introduction to Piping
 
 In `rxode2`, you can modify an existing model using the R pipe operator (`|>`). This is extremely useful for:
@@ -143,3 +166,7 @@ Piping allows for a flexible, iterative workflow:
 - `model(...)` updates equations.
 - `ini(...)` updates parameters.
 - `rxode2` automatically manages the internal structure of the UI object.
+
+## What's Next?
+
+Well done! You've learned how to iteratively build and modify models using piping. Now that you can create and modify models, let's focus on running simulations. In the next tutorial, **[rxode2 simulation](rxode2-simulation.Rmd)**, you will learn how to use `rxSolve()` to perform population simulations and handle parameter uncertainty.
