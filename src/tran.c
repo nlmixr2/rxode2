@@ -723,7 +723,20 @@ SEXP _rxode2_isLinCmt(void) {
 // Taken from dparser and changed to use R_Calloc
 char * rc_dup_str(const char *s, const char *e) {
   lastStr=s;
-  int l = e ? e-s : (int)strlen(s);
+  int l;
+  if (e) {
+    ptrdiff_t diff = e - s;
+    if (diff < 0 || diff > (ptrdiff_t)INT_MAX) {
+      (Rf_error)(_("string segment too long in rc_dup_str"));
+    }
+    l = (int)diff;
+  } else {
+    size_t sLen = strlen(s);
+    if (sLen > (size_t)INT_MAX) {
+      (Rf_error)(_("string too long in rc_dup_str"));
+    }
+    l = (int)sLen;
+  }
   syntaxErrorExtra=min(l-1, 40);
   addLine(&_dupStrs, "%.*s", l, s);
   return _dupStrs.line[_dupStrs.n-1];

@@ -1,5 +1,11 @@
 # rxode2 (development)
 
+- Range-check the length in `rc_dup_str` (`src/tran.c`).  Pointer
+  differences and `strlen` results are now validated against `INT_MAX`
+  before being cast to `int`, preventing silent truncation of long
+  source segments which previously could lead to out-of-range
+  `addLine(&_dupStrs, "%.*s", l, s)` calls.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
