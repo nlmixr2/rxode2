@@ -168,6 +168,28 @@ Common error models include:
 - `add(sd)`: Additive error.
 - `prop(sd)`: Proportional error.
 - `add(add.sd) + prop(prop.sd)`: Combined additive and proportional error.
+- `lnorm(sd)`: Log-normal error (constant error on log-transformed data).
+
+### Transformations
+
+`rxode2` also supports transformations of the response variable directly in the error model line. These are important for:
+- **Normalizing data**: Making skewed distributions more symmetrical (closer to a normal distribution).
+- **Stabilizing variance**: Handling heteroscedasticity (where the error increases as the predicted value increases).
+
+The available transformations are:
+
+- **Box-Cox**: `boxCox(lambda)`
+  - **$\lambda = 1$**: Represents a **Normal distribution** (no transformation needed).
+  - **$\lambda = 0$**: Represents a **Log-normal distribution** (log-transformation).
+  - Box-Cox requires the response variable to be strictly positive ($y > 0$).
+
+- **Yeo-Johnson**: `yeoJohnson(lambda)`
+  - A generalization of Box-Cox that can handle **zero and negative values**.
+
+Example with transformation and additive error:
+```r
+cp ~ boxCox(lambda) + add(add.sd)
+```
 
 ### Combined Error Models
 
