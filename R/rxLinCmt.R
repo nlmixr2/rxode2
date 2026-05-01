@@ -54,7 +54,15 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     return(model)
   }
 }
-
+#' Check if an expression is a linCmt call
+#'
+#' @param expr expression to check (a line in the model)
+#'
+#' @return `TRUE` if the expression is a linCmt call, `FALSE`
+#'   otherwise
+#'
+#' @noRd
+#' @author Matthew L. Fidler
 .isLinCmtCall <- function(expr) {
   if (!is.call(expr)) {
     return(FALSE)
@@ -65,95 +73,124 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     return(FALSE)
   }
   .rhs <- expr[[3]]
-  is.call(.rhs) && as.character(.rhs[[1]]) %in% c("linCmtA", "linCmtB")
+  is.call(.rhs) && (as.character(.rhs[[1]]) %in% c("linCmtA", "linCmtB"))
 }
-
+#' Linear compartment model to ODE model expression conversion
+#'
+#' @param ui rxUi model object
+#'
+#' @return list of R expressions representing the ODE model equivalent to the linCmt model
+#' @noRd
+#' @author Matthew L. Fidler
 .linToOdeLinExpr <- function(ui) {
   if (is.null(ui$mvL)) {
     return(list())
   }
-  .mvLExpr <- as.list(str2lang(paste0("{", rxNorm(ui$mvL), "}")))[-1]
+  # the mvL gives the linear compartment translation
+  .mvLExpr <- as.list(str2lang(paste0("{",
+                                      rxNorm(ui$mvL), # nolint
+                                      "}")))[-1]
   .mvLExpr <- Filter(function(expr) {
     is.call(expr)
   }, .mvLExpr)
   Filter(.isLinCmtCall, .mvLExpr)
 }
-
+#' This converts the linCmtA/linCmtB
+#'
+#' @param expr the actual linCmtA or linCmtB expression, which is used
+#'   to extract the parameters for the ODE translation
+#' @return list of parameters for the ODE translation
+#' @noRd
+#' @author Matthew L. Fidler
 .linToOdeArgs <- function(expr) {
   .rhs <- expr[[3]]
   .args <- as.list(.rhs)[-1]
-  list(
-    ncmt = as.integer(eval(.args[[4]], envir = baseenv())),
-    oral0 = as.integer(eval(.args[[5]], envir = baseenv())),
-    trans = as.integer(eval(.args[[7]], envir = baseenv())),
-    p1 = .args[[8]],
-    v1 = .args[[9]],
-    p2 = .args[[10]],
-    p3 = .args[[11]],
-    p4 = .args[[12]],
-    p5 = .args[[13]],
-    ka = .args[[14]]
-  )
+  list(ncmt = as.integer(eval(.args[[4]], envir = baseenv())),
+       oral0 = as.integer(eval(.args[[5]], envir = baseenv())),
+       trans = as.integer(eval(.args[[7]], envir = baseenv())),
+       p1 = .args[[8]],
+       v1 = .args[[9]],
+       p2 = .args[[10]],
+       p3 = .args[[11]],
+       p4 = .args[[12]],
+       p5 = .args[[13]],
+       ka = .args[[14]])
 }
-
-.linToOdeBuildMicro1 <- function(.args) {
-  .ret <- list(ncmt = 1L, oral0 = .args$oral0, ka = .args$ka)
-  if (.args$trans == 1L) {
-    .ret$v <- .args$v1
-    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
-  } else if (.args$trans %in% c(2L, 11L)) {
-    .ret$v <- .args$v1
-    .ret$k <- .args$p1
-  } else if (.args$trans == 10L) {
-    .ret$v <- bquote(1 / .(.args$v1))
-    .ret$k <- .args$p1
+#' This builds the micro parameters for the one compartment model
+#'
+#' @param args arguments extracted from the linCmtA/linCmtB
+#'   expression, which are used
+#' @return list of parameters for the ODE translation
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeBuildMicro1 <- function(args) {
+  .ret <- list(ncmt = 1L, oral0 = args$oral0, ka = args$ka)
+  if (args$trans == 1L) {
+    .ret$v <- args$v1
+    .ret$k <- bquote(.(args$p1) / .(args$v1))
+  } else if (args$trans %in% c(2L, 11L)) {
+    .ret$v <- args$v1
+    .ret$k <- args$p1
+  } else if (args$trans == 10L) {
+    .ret$v <- bquote(1 / .(args$v1))
+    .ret$k <- args$p1
   } else {
     stop("unsupported 1-cmt linCmt translation", call. = FALSE)
   }
   .ret
 }
-
-.linToOdeBuildMicro2 <- function(.args) {
-  .ret <- list(ncmt = 2L, oral0 = .args$oral0, ka = .args$ka)
-  if (.args$trans == 1L) {
-    .ret$v <- .args$v1
-    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
-    .ret$k12 <- bquote(.(.args$p2) / .(.args$v1))
-    .ret$k21 <- bquote(.(.args$p2) / .(.args$p3))
-  } else if (.args$trans == 2L) {
-    .ret$v <- .args$v1
-    .ret$k <- .args$p1
-    .ret$k12 <- .args$p2
-    .ret$k21 <- .args$p3
-  } else if (.args$trans == 3L) {
-    .ret$v <- .args$v1
-    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
-    .ret$k12 <- bquote(.(.args$p2) / .(.args$v1))
-    .ret$k21 <- bquote(.(.args$p2) / (.(.args$p3) - .(.args$v1)))
-  } else if (.args$trans == 4L) {
-    .ret$v <- .args$v1
-    .ret$k21 <- .args$p3
-    .ret$k <- bquote((.(.args$p1) * .(.args$p2)) / .(.ret$k21))
-    .ret$k12 <- bquote(.(.args$p1) + .(.args$p2) - .(.ret$k21) - .(.ret$k))
-  } else if (.args$trans == 5L) {
-    .ret$v <- .args$v1
-    .ret$k21 <- bquote((.(.args$p3) * .(.args$p2) + .(.args$p1)) / (.(.args$p3) + 1))
-    .ret$k <- bquote((.(.args$p1) * .(.args$p2)) / .(.ret$k21))
-    .ret$k12 <- bquote(.(.args$p1) + .(.args$p2) - .(.ret$k21) - .(.ret$k))
-  } else if (.args$trans == 11L) {
-    .A <- bquote(1 / .(.args$v1))
-    .B <- .args$p3
-    .alpha <- .args$p1
-    .beta <- .args$p2
+#' This builds the micro parameters for the 2 compartment model
+#'
+#' @param the actual linCmtA or linCmtB expression, which is used
+#'   to extract the parameters for the ODE translation
+#'
+#' @return list of parameters for the ODE translation
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+#'
+.linToOdeBuildMicro2 <- function(args) {
+  .ret <- list(ncmt = 2L, oral0 = args$oral0, ka = args$ka)
+  if (args$trans == 1L) {
+    .ret$v <- args$v1
+    .ret$k <- bquote(.(args$p1) / .(args$v1))
+    .ret$k12 <- bquote(.(args$p2) / .(args$v1))
+    .ret$k21 <- bquote(.(args$p2) / .(args$p3))
+  } else if (args$trans == 2L) {
+    .ret$v <- args$v1
+    .ret$k <- args$p1
+    .ret$k12 <- args$p2
+    .ret$k21 <- args$p3
+  } else if (args$trans == 3L) {
+    .ret$v <- args$v1
+    .ret$k <- bquote(.(args$p1) / .(args$v1))
+    .ret$k12 <- bquote(.(args$p2) / .(args$v1))
+    .ret$k21 <- bquote(.(args$p2) / (.(args$p3) - .(args$v1)))
+  } else if (args$trans == 4L) {
+    .ret$v <- args$v1
+    .ret$k21 <- args$p3
+    .ret$k <- bquote((.(args$p1) * .(args$p2)) / .(.ret$k21))
+    .ret$k12 <- bquote(.(args$p1) + .(args$p2) - .(.ret$k21) - .(.ret$k))
+  } else if (args$trans == 5L) {
+    .ret$v <- args$v1
+    .ret$k21 <- bquote((.(args$p3) * .(args$p2) + .(args$p1)) / (.(args$p3) + 1))
+    .ret$k <- bquote((.(args$p1) * .(args$p2)) / .(.ret$k21))
+    .ret$k12 <- bquote(.(args$p1) + .(args$p2) - .(.ret$k21) - .(.ret$k))
+  } else if (args$trans == 11L) {
+    .A <- bquote(1 / .(args$v1)) # nolint
+    .B <- args$p3 # nolint
+    .alpha <- args$p1
+    .beta <- args$p2
     .ret$v <- bquote(1 / (.(.A) + .(.B)))
     .ret$k21 <- bquote((.(.A) * .(.beta) + .(.B) * .(.alpha)) * .(.ret$v))
     .ret$k <- bquote((.(.alpha) * .(.beta)) / .(.ret$k21))
     .ret$k12 <- bquote(.(.alpha) + .(.beta) - .(.ret$k21) - .(.ret$k))
-  } else if (.args$trans == 10L) {
-    .A <- .args$v1
-    .B <- .args$p3
-    .alpha <- .args$p1
-    .beta <- .args$p2
+  } else if (args$trans == 10L) {
+    .A <- args$v1 # nolint
+    .B <- args$p3 # nolint
+    .alpha <- args$p1
+    .beta <- args$p2
     .ret$v <- bquote(1 / (.(.A) + .(.B)))
     .ret$k21 <- bquote((.(.A) * .(.beta) + .(.B) * .(.alpha)) * .(.ret$v))
     .ret$k <- bquote((.(.alpha) * .(.beta)) / .(.ret$k21))
@@ -163,53 +200,72 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
   }
   .ret
 }
-
-.linToOdeBuildMicro3 <- function(.args) {
-  .ret <- list(ncmt = 3L, oral0 = .args$oral0, ka = .args$ka)
-  if (.args$trans == 1L) {
-    .ret$v <- .args$v1
-    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
-    .ret$k12 <- bquote(.(.args$p2) / .(.args$v1))
-    .ret$k21 <- bquote(.(.args$p2) / .(.args$p3))
-    .ret$k13 <- bquote(.(.args$p4) / .(.args$v1))
-    .ret$k31 <- bquote(.(.args$p4) / .(.args$p5))
-  } else if (.args$trans == 2L) {
-    .ret$v <- .args$v1
-    .ret$k <- .args$p1
-    .ret$k12 <- .args$p2
-    .ret$k21 <- .args$p3
-    .ret$k13 <- .args$p4
-    .ret$k31 <- .args$p5
-  } else if (.args$trans %in% c(10L, 11L)) {
-    .A <- if (.args$trans == 11L) bquote(1 / .(.args$v1)) else .args$v1
-    .B <- .args$p3
-    .C <- .args$p5
-    .alpha <- .args$p1
-    .beta <- .args$p2
-    .gamma <- .args$p4
+#' Build the micro parameters for the 3 compartment model
+#'
+#' @param args arguments extracted from the linCmtA/linCmtB
+#'   expression, which are used
+#'
+#' @return list of parameters for the ODE translation
+#'
+#' @noRd
+#'
+#' @author Matthew L. Fidler
+.linToOdeBuildMicro3 <- function(args) {
+  .ret <- list(ncmt = 3L, oral0 = args$oral0, ka = args$ka)
+  if (args$trans == 1L) {
+    .ret$v <- args$v1
+    .ret$k <- bquote(.(args$p1) / .(args$v1))
+    .ret$k12 <- bquote(.(args$p2) / .(args$v1))
+    .ret$k21 <- bquote(.(args$p2) / .(args$p3))
+    .ret$k13 <- bquote(.(args$p4) / .(args$v1))
+    .ret$k31 <- bquote(.(args$p4) / .(args$p5))
+  } else if (args$trans == 2L) {
+    .ret$v <- args$v1
+    .ret$k <- args$p1
+    .ret$k12 <- args$p2
+    .ret$k21 <- args$p3
+    .ret$k13 <- args$p4
+    .ret$k31 <- args$p5
+  } else if (args$trans %in% c(10L, 11L)) {
+    if (args$trans == 11) {
+      .A <- bquote(1 / .(args$v1)) # nolint
+    } else {
+      .A <- args$v1 # nolint
+    }
+    .B <- args$p3 # nolint
+    .C <- args$p5 # nolint
+    .alpha <- args$p1
+    .beta <- args$p2
+    .gamma <- args$p4
     .ret$v <- bquote(1 / (.(.A) + .(.B) + .(.C)))
     .btemp <- bquote(-(.(.alpha) * .(.C) + .(.alpha) * .(.B) +
-                      .(.gamma) * .(.A) + .(.gamma) * .(.B) +
-                      .(.beta) * .(.A) + .(.beta) * .(.C)) * .(.ret$v))
+                         .(.gamma) * .(.A) + .(.gamma) * .(.B) +
+                         .(.beta) * .(.A) + .(.beta) * .(.C)) * .(.ret$v))
     .ctemp <- bquote((.(.alpha) * .(.beta) * .(.C) +
-                      .(.alpha) * .(.gamma) * .(.B) +
-                      .(.beta) * .(.gamma) * .(.A)) * .(.ret$v))
+                        .(.alpha) * .(.gamma) * .(.B) +
+                        .(.beta) * .(.gamma) * .(.A)) * .(.ret$v))
     .dtemp <- bquote(sqrt((.(.btemp)) * (.(.btemp)) - 4 * (.(.ctemp))))
     .ret$k21 <- bquote(0.5 * (-(.(.btemp)) + .(.dtemp)))
     .ret$k31 <- bquote(0.5 * (-(.(.btemp)) - .(.dtemp)))
     .ret$k <- bquote((.(.alpha) * .(.beta) * .(.gamma)) / .(.ret$k21) / .(.ret$k31))
     .ret$k12 <- bquote(((.(.beta) * .(.gamma) + .(.alpha) * .(.beta) + .(.alpha) * .(.gamma)) -
-                        .(.ret$k21) * (.(.alpha) + .(.beta) + .(.gamma)) -
-                        .(.ret$k) * .(.ret$k31) + .(.ret$k21) * .(.ret$k21)) /
+                          .(.ret$k21) * (.(.alpha) + .(.beta) + .(.gamma)) -
+                          .(.ret$k) * .(.ret$k31) + .(.ret$k21) * .(.ret$k21)) /
                          (.(.ret$k31) - .(.ret$k21)))
     .ret$k13 <- bquote(.(.alpha) + .(.beta) + .(.gamma) -
-                       (.(.ret$k) + .(.ret$k12) + .(.ret$k21) + .(.ret$k31)))
+                         (.(.ret$k) + .(.ret$k12) + .(.ret$k21) + .(.ret$k31)))
   } else {
     stop("unsupported 3-cmt linCmt translation", call. = FALSE)
   }
   .ret
 }
-
+#' Return the micro-constants for the ODE translation of a linCmt model
+#'
+#' @param expr the actual linCmtA or linCmtB expression, which is used
+#'
+#' @return list of micro-constants for the ODE translation
+#' @noRd
+#' @author Matthew L. Fidler
 .linToOdeBuildMicro <- function(expr) {
   .args <- .linToOdeArgs(expr)
   if (.args$ncmt == 1L) {
@@ -222,7 +278,13 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     stop("unsupported linCmt compartment count", call. = FALSE)
   }
 }
-
+#' convert the predDf linCmt() line to the ODE equivalent
+#'
+#' @param ui rxode2 ui model
+#' @param i line number to check for linCmt() call
+#' @return data frame row with the ODE equivalent of the linCmt() call, or `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
 .linToOdePredLine <- function(ui, i) {
   if (is.null(ui$predDf)) {
     return(NULL)
@@ -239,12 +301,12 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
   .ret <- list()
   .input <- "0"
   .kTxt <- paste0("(", deparse1(.micro$k), ")")
-  if (.micro$oral0 == 1L) {
+  if (.micro$oral0 == 1) {
     .kaTxt <- paste0("(", deparse1(.micro$ka), ")")
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(depot) <- -", .kaTxt, " * depot"))
     .input <- paste0(.kaTxt, " * depot")
   }
-  if (.micro$ncmt == 1L) {
+  if (.micro$ncmt == 1) {
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
                                                  " - ", .kTxt, " * central"))
   } else if (.micro$ncmt == 2L) {
