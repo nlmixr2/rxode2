@@ -569,7 +569,7 @@ void trans_internal(const char* parse_file, int isStr){
   lineIni(&depotLines);
   lineIni(&centralLines);
 
-  _pn= dparse(curP, gBuf, (int)strlen(gBuf));
+  _pn = udparse(curP, gBuf, (unsigned int)strlen(gBuf));
   if (!_pn || curP->syntax_errors) {
     rx_syntax_error = 1;
   } else {

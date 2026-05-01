@@ -1,5 +1,11 @@
 # rxode2 (development)
 
+- Switch `tran.c` parser entry from `dparse(curP, gBuf, (int)strlen(gBuf))`
+  to `udparse(curP, gBuf, (unsigned int)strlen(gBuf))`.  The new
+  `udparse` API in dparser >= 1.3.2 accepts an `unsigned int` length,
+  removing the silent truncation that the previous `(int)` cast caused
+  on inputs near or above `INT_MAX` bytes.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
