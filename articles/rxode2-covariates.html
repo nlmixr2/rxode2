@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -137,7 +142,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Covariates</h1>
             
-            <h4 data-toc-skip class="date">2026-04-05</h4>
+            <h4 data-toc-skip class="date">2026-05-01</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-covariates.Rmd" class="external-link"><code>vignettes/rxode2-covariates.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-covariates.Rmd</code></div>
@@ -284,7 +289,8 @@ be solved by combining the dataset and the model:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.94  0.294  18.6  40.2  10.5   297     1   200  54.8  1.09 2.56   <span style="text-decoration: underline;">5</span>654.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 2.42  0.294  18.6  40.2  10.5   297     1   200  54.6  1.08 3.45   <span style="text-decoration: underline;">4</span>903.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 94 more rows</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, ctime [h], WT &lt;dbl&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, ctime &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   WT &lt;dbl&gt;</span></span></span></code></pre></div>
 <p>When solving ODE equations, the solver may sample times outside of
 the data. When this happens, this ODE solver can use linear
 interpolation between the covariate values. It is equivalent to R’s
@@ -327,7 +333,8 @@ approximation. This is equivalent to R’s <code>approxfun</code> with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.94  0.294  18.6  40.2  10.5   297     1   200  54.8  1.09 2.56   <span style="text-decoration: underline;">5</span>654.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 2.42  0.294  18.6  40.2  10.5   297     1   200  54.6  1.08 3.45   <span style="text-decoration: underline;">4</span>903.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 94 more rows</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, ctime [h], WT &lt;dbl&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, ctime &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   WT &lt;dbl&gt;</span></span></span></code></pre></div>
 <p>which gives the following plots:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>,<span class="va">C2</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span>, xlab<span class="op">=</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
@@ -361,7 +368,8 @@ observation carried backward (NOCB):</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.94  0.294  18.6  40.2  10.5   297     1   200  54.8  1.09 2.56   <span style="text-decoration: underline;">5</span>654.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 2.42  0.294  18.6  40.2  10.5   297     1   200  54.6  1.08 3.45   <span style="text-decoration: underline;">4</span>903.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 94 more rows</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, ctime [h], WT &lt;dbl&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, ctime &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   WT &lt;dbl&gt;</span></span></span></code></pre></div>
 <p>which gives the following plots:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>,<span class="va">C2</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span>, xlab<span class="op">=</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>

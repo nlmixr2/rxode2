@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -137,7 +142,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Easy rxode2 Event Tables</h1>
             
-            <h4 data-toc-skip class="date">2026-04-05</h4>
+            <h4 data-toc-skip class="date">2026-05-01</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-event-table.Rmd" class="external-link"><code>vignettes/rxode2-event-table.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-table.Rmd</code></div>
@@ -494,29 +499,30 @@ window:</p>
 <span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 16 records --</span></span></span>
-<span><span class="co">#&gt; 0 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span></span>
-<span><span class="co">#&gt; 16 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 4 records --</span></span></span>
+<span><span class="co">#&gt; 4 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span></span>
+<span><span class="co">#&gt; 0 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
+<span><span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 16 x 6</span></span></span>
-<span><span class="co">#&gt;       id low   time high   amt evid        </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494;">[h]</span>    <span style="color: #949494;">[h]</span>  <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1   0  5.49     6 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1  12 17.0     18 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1  24 25.7     30 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1  36 41.6     42 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     2   0  4.31     6 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     2  12 14.7     18 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     2  24 28.2     30 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     2  36 39.9     42 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     3   0  0.808    6 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     3  12 16.4     18 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span>     3  24 27.1     30 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">12</span>     3  36 39.9     42 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">13</span>     4   0  4.98     6 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">14</span>     4  12 13.7     18 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">15</span>     4  24 29.6     30 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">16</span>     4  36 41.5     42 <span style="text-decoration: underline;">10</span>000 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 16 x 8</span></span></span>
+<span><span class="co">#&gt;       id low  time high   amt  ii  addl evid        </span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494;">[h]</span>   <span style="color: #949494;">[h]</span>  <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1  12 14.7    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1  24 29.0    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1  36 40.4    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     2   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     2  12 16.9    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     2  24 26.3    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     2  36 40.1    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     3   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     3  12 12.0    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span>     3  24 29.0    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">12</span>     3  36 36.0    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">13</span>     4   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">14</span>     4  12 13.2    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">15</span>     4  24 29.4    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">16</span>     4  36 39.7    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
 <p>You can clearly see different dosing times in the following
 simulation:</p>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
@@ -761,17 +767,18 @@ modifying the original data frame:</p>
 <pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 7 records --</span></span></span>
 <span><span class="co">#&gt; 7 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span></span>
 <span><span class="co">#&gt; 0 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
+<span><span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 x 4</span></span></span>
-<span><span class="co">#&gt;    time   amt    ii evid        </span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     0    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     8    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    16    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    24    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    32    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    40    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>    48    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 x 5</span></span></span>
+<span><span class="co">#&gt;    time   amt    ii  addl evid        </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     0    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     8    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    16    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    24    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    32    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    40    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>    48    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
 <p>You can see the <code>addl</code> events were expanded, however the
 original data frame remained intact:</p>
 <div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">

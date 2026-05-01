@@ -64,6 +64,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -73,12 +74,16 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-compare"><li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $$SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul></li>
@@ -140,8 +145,8 @@
 <li><p>Add orphan <code>rxode2</code> model unloading when using <code><a href="../reference/rxUnloadAll.html">rxUnloadAll()</a></code>, and change the return type to always be a boolean.</p></li>
 <li><p>Add <code>assertRxUiIovNoCor</code> to assert IOVs have no correlations in them.</p></li>
 <li><p>Handle the levels for inter-occasion variability in the ui better (<a href="https://github.com/nlmixr2/rxode2/issues/614" class="external-link">#614</a>)</p></li>
-<li><p>Create a new function <code><a href="../reference/mix.html">mix()</a></code> that will allow mixture models to be simulated in preparation of mixture support in <code>nlmixr2</code>. This allows mixture models to be specified as: <code>v = mix(v1, p1, v2, p2,     v3)</code> where the probability of having <code>v=v1</code> is modeled by <code>p1</code>, <code>v=v2</code> is modeled by <code>p2</code>, and <code>v=v3</code> is modeled by probability <code>1-p1-p2</code>.</p></li>
-<li><p>Created new functions <code><a href="../reference/mlogit.html">mlogit()</a></code> and <code><a href="../reference/mexpit.html">mexpit()</a></code> to convert probabilities used in mixture models to log-scaled values. <code><a href="../reference/mlogit.html">mlogit()</a></code> converts the probabilities to log-scaled values (using root-finding) and <code><a href="../reference/mexpit.html">mexpit()</a></code> converts the log values into probabilities. The equation for the conversion of log to probabilities is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>i</mi></msub><mo>=</mo><mfrac><mrow><mi>e</mi><mi>x</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mn>1</mn><mo>+</mo><msubsup><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></msubsup><mi>e</mi><mi>x</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">p_i = \frac{exp(x_i)}{1+\sum_{j=1}^{N-1}exp(x_j)}</annotation></semantics></math></p></li>
+<li><p>Create a new function <code><a href="../reference/mix.html">mix()</a></code> that will allow mixture models to be simulated in preparation of mixture support in <code>nlmixr2</code>. This allows mixture models to be specified as: <code>v = mix(v1, p1, v2, p2,   v3)</code> where the probability of having <code>v=v1</code> is modeled by <code>p1</code>, <code>v=v2</code> is modeled by <code>p2</code>, and <code>v=v3</code> is modeled by probability <code>1-p1-p2</code>.</p></li>
+<li><p>Created new functions <code><a href="../reference/mlogit.html">mlogit()</a></code> and <code><a href="../reference/mexpit.html">mexpit()</a></code> to convert probabilities used in mixture models to log-scaled values. <code><a href="../reference/mlogit.html">mlogit()</a></code> converts the probabilities to log-scaled values (using root-finding) and <code><a href="../reference/mexpit.html">mexpit()</a></code> converts the log values into probabilities. The equation for the conversion of log to probabilities is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>i</mi></msub><mo>=</mo><mfrac><mrow><mi>e</mi><mi>x</mi><mi>p</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><mrow><mn>1</mn><mo>+</mo><msubsup><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></msubsup><mi>e</mi><mi>x</mi><mi>p</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">p_i = \frac{exp(x_i)}{1+\sum_{j=1}^{N-1}exp(x_j)}</annotation></semantics></math></p></li>
 <li><p>Added new assertion <code>assertRxUiNoMix</code> which throws an error when a mixture model is present (ie <code><a href="../reference/mix.html">mix()</a></code>)</p></li>
 <li><p>Fix for label processing when calling <code>rxode2(uiModel)</code></p></li>
 </ul></div>
@@ -238,7 +243,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="new-features-3-0-0">New features<a class="anchor" aria-label="anchor" href="#new-features-3-0-0"></a></h3>
-<ul><li><p>You can remove covariances for every omega by piping with <code>%&gt;%   ini(diag())</code> you can be a bit more granular by removing all covariances that have either <code>eta.ka</code> or <code>eta.cl</code> by: <code>%&gt;%   ini(diag(eta.ka, eta.cl))</code> or anything with correlations with <code>eta.cl</code> with <code>%&gt;% ini(diag(eta.cl))</code></p></li>
+<ul><li><p>You can remove covariances for every omega by piping with <code>%&gt;% ini(diag())</code> you can be a bit more granular by removing all covariances that have either <code>eta.ka</code> or <code>eta.cl</code> by: <code>%&gt;% ini(diag(eta.ka, eta.cl))</code> or anything with correlations with <code>eta.cl</code> with <code>%&gt;% ini(diag(eta.cl))</code></p></li>
 <li><p>You can also remove individual covariances by <code>%&gt;% ini(-cov(a, b))</code> or <code>%&gt;% ini(-cor(a,b))</code>.</p></li>
 <li>
 <p>You can specify the type of interpolation applied for added dosing records (or other added records) for columns that are kept with the <code>keep=</code> option in <code><a href="../reference/rxSolve.html">rxSolve()</a></code>. This new option is <code>keepInterpolation</code> and can be <code>locf</code> for last observation carried forward, <code>nocb</code> which is the next observation carried backward, as well as <code>NA</code> which puts a <code>NA</code> in all imputed data rows. See <a href="https://github.com/nlmixr2/rxode2/issues/756" class="external-link">#756</a>.</p>
@@ -465,7 +470,7 @@
 <li><p>Steady state infusions with a duration of infusions greater than the inter-dose interval are now supported.</p></li>
 <li><p>Added <code>$symengineModelNoPrune</code> and <code>$symengineModelPrune</code> for loading models into rxode2 with <code><a href="../reference/rxS.html">rxS()</a></code></p></li>
 <li>
-<p>When plotting and creating confidence intervals for multiple endpoint models simulated from a rxode2 ui model, you can plot/summarize each endpoint with <code>sim</code>. (ie. <code>confint(model,   "sim")</code> or <code>plot(model, sim)</code>).</p>
+<p>When plotting and creating confidence intervals for multiple endpoint models simulated from a rxode2 ui model, you can plot/summarize each endpoint with <code>sim</code>. (ie. <code>confint(model, "sim")</code> or <code>plot(model, sim)</code>).</p>
 <p>If you only want to summarize a subset of endpoints, you can focus on the endpoint by pre-pending the endpoint with <code>sim.</code> For example if you wanted to plot/summarize only the endpoint <code>eff</code> you would use <code>sim.eff</code>. (ie <code>confint(model, "sim.eff")</code> or <code>plot(model, sim.eff)</code>)</p>
 </li>
 <li><p>Added <code>model$simulationIniModel</code> which prepend the initial conditions in the <code>ini({})</code> block to the classic <code>rxode2({})</code> model.</p></li>
@@ -482,8 +487,8 @@
 <ul><li><p>Allow steady state infusions with a duration of infusion greater than the inter-dose interval to be solved.</p></li>
 <li><p>Solves will now possibly print more information when issuing a “could not solve the system” error</p></li>
 <li><p>The function <code><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto()</a></code> is now exported to change the way you affect piping in your individual setup</p></li>
-<li><p>Allow covariates to be specified in the model piping, that is <code>mod   %&gt;% model(a=var+3, cov="var")</code> will add <code>"var"</code> as a covariate.</p></li>
-<li><p>When calculating confidence intervals for <code>rxode2</code> simulated objects you can now use <code>by</code> to stratify the simulation summary. For example you can now stratify by gender and race by: <code>confint(sim,   "sim", by=c("race", "gender"))</code></p></li>
+<li><p>Allow covariates to be specified in the model piping, that is <code>mod %&gt;% model(a=var+3, cov="var")</code> will add <code>"var"</code> as a covariate.</p></li>
+<li><p>When calculating confidence intervals for <code>rxode2</code> simulated objects you can now use <code>by</code> to stratify the simulation summary. For example you can now stratify by gender and race by: <code>confint(sim, "sim", by=c("race", "gender"))</code></p></li>
 <li><p>When calculating the intervals for <code>rxode2</code> simulated objects you can now use <code>ci=FALSE</code> so that it only calculates the default intervals without bands on each of the percentiles; You can also choose not to match the secondary bands limits with <code>levels</code> but use your own <code>ci=0.99</code> for instance</p></li>
 <li><p>A new function was introduced <code><a href="../reference/meanProbs.html">meanProbs()</a></code> which calculates the mean and expected confidence bands under either the normal or t distribution</p></li>
 <li><p>A related new function was introduced that calculates the mean and confidence bands under the Bernoulli/Binomial distribution (<code><a href="../reference/binomProbs.html">binomProbs()</a></code>)</p></li>
@@ -501,7 +506,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="internal-new-features-2-1-0">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-2-1-0"></a></h3>
-<ul><li><p>Add <code><a href="../reference/as.model.html">as.model()</a></code> for list expressions, which implies <code>model(ui) &lt;-   ui$lstExpr</code> will assign model components. It will also more robustly work with character vectors</p></li>
+<ul><li><p>Add <code><a href="../reference/as.model.html">as.model()</a></code> for list expressions, which implies <code>model(ui) &lt;- ui$lstExpr</code> will assign model components. It will also more robustly work with character vectors</p></li>
 <li><p>Simulated objects from <code>rxSolve</code> now can access the model variables with <code>$rxModelVars</code></p></li>
 <li><p>Simulation models from the UI now use <code>rxerr.endpoint</code> instead of <code>err.endpoint</code> for the <code>sigma</code> residual error. This is to align with the convention that internally generated variables start with <code>rx</code> or <code>nlmixr</code></p></li>
 <li><p>Sorting only uses timsort now, and was upgraded to the latest version from Morwenn</p></li>
@@ -538,7 +543,7 @@
 <ul><li><p>A new function <code><a href="../reference/zeroRe.html">zeroRe()</a></code> allows simple setting of omega and/or sigma values to zero for a model (<a href="https://github.com/nlmixr2/rxode2/issues/456" class="external-link">#456</a>)</p></li>
 <li><p>Diagonal zeros in the <code>omega</code> and <code>sigma</code> matrices are treated as zeros in the model. The corresponding <code>omega</code> and <code>sigma</code> matrices drop columns/rows where the diagonals are zero to create a new <code>omega</code> and <code>sigma</code> matrix for simulation. This is the same idiom that NONMEM uses for simulation from these matrices.</p></li>
 <li><p>Add the ability to pipe model estimates from another model by <code>parentModel %&gt;% ini(modelWithNewEsts)</code></p></li>
-<li><p>Add the ability to append model statements with piping using <code>%&gt;%   model(x=3, append=d/dt(depot))</code>, still supports appending with <code>append=TRUE</code> and pre-pending with <code>append=NA</code> (the default is to replace lines with <code>append=FALSE</code>)</p></li>
+<li><p>Add the ability to append model statements with piping using <code>%&gt;% model(x=3, append=d/dt(depot))</code>, still supports appending with <code>append=TRUE</code> and pre-pending with <code>append=NA</code> (the default is to replace lines with <code>append=FALSE</code>)</p></li>
 <li><p>rxSolve’s keep argument will now maintain character and factor classes from input data with the same class (<a href="https://github.com/nlmixr2/rxode2/issues/190" class="external-link">#190</a>)</p></li>
 <li><p>Parameter labels may now be modified via <code>ini(param = label("text"))</code> (<a href="https://github.com/nlmixr2/rxode2/issues/351" class="external-link">#351</a>).</p></li>
 <li><p>Parameter order may be modified via the <code>append</code> argument to <code><a href="../reference/ini.html">ini()</a></code> when piping a model. For example, <code>ini(param = 1, append = 0)</code> or <code>ini(param = label("text"), append = "param2")</code> (<a href="https://github.com/nlmixr2/rxode2/issues/352" class="external-link">#352</a>).</p></li>
@@ -552,7 +557,7 @@
 <li><p><code>rxode2</code> now supports <code>addl</code> with <code>ss</code> doses</p></li>
 <li><p>Moved <code>rxDerived</code> to <code>rxode2parse</code> (and re-exported it here).</p></li>
 <li><p>Added test for transit compartment solving in absence of dosing to the transit compartment (fixed in <code>rxode2parse</code> but solving tested here)</p></li>
-<li><p>Using <code><a href="../reference/ini.html">ini()</a></code> without any arguments on a <code>rxode2</code> type function will return the <code><a href="../reference/ini.html">ini()</a></code> block. Also added a method <code>ini(mod) &lt;-   iniBlock</code> to modify the <code>ini</code> block is you wish. <code>iniBlock</code> should be an expression.</p></li>
+<li><p>Using <code><a href="../reference/ini.html">ini()</a></code> without any arguments on a <code>rxode2</code> type function will return the <code><a href="../reference/ini.html">ini()</a></code> block. Also added a method <code>ini(mod) &lt;- iniBlock</code> to modify the <code>ini</code> block is you wish. <code>iniBlock</code> should be an expression.</p></li>
 <li><p>Using <code><a href="../reference/model.html">model()</a></code> without any arguments on a <code>rxode2</code> type function will return the <code><a href="../reference/model.html">model()</a></code> block. Also added a new method <code>model(mod) &lt;- modelBlock</code></p></li>
 <li><p>Added a new method <code>rxode2(mod) &lt;- modFunction</code> which allows replacing the function with a new function while maintaining the meta information about the ui (like information that comes from <code>nonmem2rx</code> models). The <code>modFunction</code> should be the body of the new function, the new function, or a new <code>rxode2</code> ui.</p></li>
 <li><p><code>rxode2</code> ui objects now have a <code>$sticky</code> item inside the internal (compressed) environment. This <code>$sticky</code> tells what variables to keep if there is a “significant” change in the ui during piping or other sort of model change. This is respected during model piping, or modifying the model with <code>ini(mod)&lt;-</code>, <code>model(mod)&lt;-</code>, <code>rxode2(mod)&lt;-</code>. A significant change is a change in the model block, a change in the number of estimates, or a change to the value of the estimates. Estimate bounds, weather an estimate is fixed or estimate label changes are not considered significant.</p></li>
@@ -654,8 +659,8 @@
 <ul><li><p>The UI functions of <code>nlmixr</code> have been ported to work in <code>rxode2</code> directly.</p></li>
 <li><p><code>rxModelVars({})</code> is now supported.</p></li>
 <li><p>You may now combine 2 models in <code>rxode2</code> with <code><a href="../reference/rxAppendModel.html">rxAppendModel()</a></code>. In fact, as long as the first value is a rxode2 evaluated ui model, you can use <code>c</code>/<code>rbind</code> to bind 2 or more models together.</p></li>
-<li><p>You may now append model lines with piping using <code>%&gt;% model(lines,   append=TRUE)</code> you can also pre-pend lines by <code>%&gt;% model(lines,   append=NA)</code></p></li>
-<li><p>You may now rename model variables, states and defined parameters with <code>%&gt;% rxRename(new=old)</code> or if <code>dplyr</code> is loaded: <code>%&gt;%   rename(new=old)</code></p></li>
+<li><p>You may now append model lines with piping using <code>%&gt;% model(lines, append=TRUE)</code> you can also pre-pend lines by <code>%&gt;% model(lines, append=NA)</code></p></li>
+<li><p>You may now rename model variables, states and defined parameters with <code>%&gt;% rxRename(new=old)</code> or if <code>dplyr</code> is loaded: <code>%&gt;% rename(new=old)</code></p></li>
 <li><p>You can fix parameters with <code>%&gt;% ini(tcl=fix)</code> or <code>%&gt;% ini(fix(tcl))</code> as well as unfix parameters with <code>%&gt;% ini(tcl=unfix)</code> or <code>%&gt;% ini(unfix(tcl))</code></p></li>
 </ul></div>
 <div class="section level3">

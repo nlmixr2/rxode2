@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -160,7 +165,7 @@ optimization works without falling back to finite differences.</li>
 </ul>
 <p>The worked example uses a package named <code>mm</code> that
 implements a simple Michaelis-Menten saturable-elimination function</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">mm</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>C</mi><mo>,</mo><msub><mi>V</mi><mo>max</mo></msub><mo>,</mo><msub><mi>K</mi><mi>m</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><msub><mi>V</mi><mo>max</mo></msub><mo>⋅</mo><mi>C</mi></mrow><mrow><msub><mi>K</mi><mi>m</mi></msub><mo>+</mo><mi>C</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">mm</mtext><mo stretchy="false" form="prefix">(</mo><mi>C</mi><mo>,</mo><msub><mi>V</mi><mi mathvariant="normal">max</mi></msub><mo>,</mo><msub><mi>K</mi><mi>m</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mfrac><mrow><msub><mi>V</mi><mi mathvariant="normal">max</mi></msub><mo>⋅</mo><mi>C</mi></mrow><mrow><msub><mi>K</mi><mi>m</mi></msub><mo>+</mo><mi>C</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">
 \text{mm}(C, V_{\max}, K_m) = \frac{V_{\max} \cdot C}{K_m + C}
 </annotation></semantics></math></p>
 <p>along with its first- and second-order partial derivatives.</p>
@@ -824,13 +829,34 @@ the scalars</td>
 <tr class="even">
 <td>6</td>
 <td><code>R/mm.R</code></td>
-<td>Write thin R wrappers using <code>.Call(\</code>_pkg_fun`,
-…)<code>with roxygen docs | | 6b |</code>R/mm.R<code>| Optionally add</code>rxUdfUi.mm<code>to support named / reordered arguments in ui models | | 7 |</code>R/zzz.R<code>| Call</code>rxode2parseAssignTranslation(rbind(old,
-newRows))<code>in</code>.onAttach<code>| | 8 |</code>R/zzz.R<code>| Call</code>rxD(“fun”,
-list(…))<code>referencing C functions for 1st-order | | 9 |</code>R/zzz.R<code>| Call</code>rxD(“fun_dArg”,
-list(…))<code>with expression strings for 2nd-order | | 10 |</code>R/zzz.R<code>| Filter out rows where</code>package
-==
-“mm”<code>+ call</code>rxRmFun<code>for all names in</code>.onUnload`</td>
+<td>Write thin R wrappers using <code>.Call(`_pkg_fun`, ...)</code> with
+roxygen docs</td>
+</tr>
+<tr class="odd">
+<td>6b</td>
+<td><code>R/mm.R</code></td>
+<td>Optionally add <code>rxUdfUi.mm</code> to support named / reordered
+arguments in ui models</td>
+</tr>
+<tr class="even">
+<td>7</td>
+<td><code>R/zzz.R</code></td>
+<td>Call <code>rxode2parseAssignTranslation(rbind(old, newRows))</code>
+in <code>.onAttach</code>
+</td>
+</tr>
+<tr class="odd">
+<td>8</td>
+<td><code>R/zzz.R</code></td>
+<td>Call <code>rxD("fun", list(...))</code> for derivative
+registration</td>
+</tr>
+<tr class="even">
+<td>9</td>
+<td><code>R/zzz.R</code></td>
+<td>Filter out rows where <code>package == "mm"</code> + call
+<code>rxRmFun</code> for all names in <code>.onUnload</code>
+</td>
 </tr>
 </tbody>
 </table>

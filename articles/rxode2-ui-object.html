@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -1176,7 +1181,7 @@ assignments, then the <code><a href="../reference/ini.html">ini()</a></code> blo
 <span><span class="co">#&gt;         eff ~ add(eff.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x557e3dc5b5e8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x563ae3bae5b0&gt;</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1208,7 +1213,7 @@ object that appends the error-sampling code to the base ODE model, ready
 for stochastic simulation:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_b1e4b4a5b09ee480a10f05bfdc6da620</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_6a6a4c336f91396b7b6b3eaf0eb1823a</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, CMT, rxerr.C2, rxerr.eff</span></span>
@@ -1225,7 +1230,7 @@ prepended as parameter assignments, so the model is self-contained and
 can be run without supplying a parameter vector:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_ba738626ca8e152a08356f19a1a25427</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_f0e7a70dd215a40fa3c2ac7c631df487</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, rxerr.C2, rxerr.eff, CMT</span></span>
@@ -1241,11 +1246,11 @@ rxode2 version) and are suitable for caching or comparing models:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># MD5 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">md5</span></span>
-<span><span class="co">#&gt; [1] "f1118e64ff45f8eba7164f4c6ff27606"</span></span>
+<span><span class="co">#&gt; [1] "df20c39172e0f9c49a47a88787ffd308"</span></span>
 <span></span>
 <span><span class="co"># SHA-1 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">sha1</span></span>
-<span><span class="co">#&gt; [1] "29ff50b25a6c451ae4cdb393b78c3efc657d3689"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "695bdeb71ed39f4dcf7a33f80df21265b95cb06b"</span></span></code></pre></div>
 <p>These hashes change whenever the model equations, initial estimates,
 or error specification change, but are insensitive to label or comment
 differences.</p>
@@ -1349,6 +1354,8 @@ properties:</p>
 <span><span class="co">#&gt;  $ simulationIniModel:  simulation model with the ini values prepended (from UI)</span></span>
 <span><span class="co">#&gt;  $ simulationModel:  simulation model from UI</span></span>
 <span><span class="co">#&gt;  $ simulationSigma:  simulation sigma</span></span>
+<span><span class="co">#&gt;  $ splitDose :  split dose declaration line(s) for model</span></span>
+<span><span class="co">#&gt;  $ splitDoseLines:  split dose declaration line(s) for model</span></span>
 <span><span class="co">#&gt;  $ state     :  states associated with the model (in order)</span></span>
 <span><span class="co">#&gt;  $ stateDf   :  states and cmt number data.frame</span></span>
 <span><span class="co">#&gt;  $ statePropDf:   </span></span>

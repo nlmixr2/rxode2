@@ -70,6 +70,7 @@ some-times optional params and inits."><meta property="og:image" content="https:
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -79,12 +80,16 @@ some-times optional params and inits."><meta property="og:image" content="https:
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-compare"><li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $$SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul></li>
@@ -236,6 +241,8 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  linCmtHmeanO <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"geometric"</span>, <span class="st">"arithmetic"</span>, <span class="st">"harmonic"</span><span class="op">)</span>,</span>
 <span>  linCmtSuspect <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  linCmtForwardMax <span class="op">=</span> <span class="fl">2L</span>,</span>
+<span>  indOwnAlloc <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  maxExtra <span class="op">=</span> <span class="fl">1000L</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -306,6 +313,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
+<span>  indOwnAlloc <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -313,6 +321,18 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span></span>
 <span><span class="co"># S3 method for class 'rxSolve'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'rxSolve'</span></span>
+<span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'rxode2'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
@@ -1250,6 +1270,29 @@ integer from 1 to 3.  There is at least 1 extra point taken for
 gradient calculation, if the gradient is suspect another is taken
 (if this value is 2), and finally a third is calculated if the
 gradient is still suspect.</p></dd>
+
+
+<dt id="arg-indownalloc">indOwnAlloc<a class="anchor" aria-label="anchor" href="#arg-indownalloc"></a></dt>
+<dd><p>Logical; when <code>TRUE</code> each individual's <code>dose</code>,
+<code>ii</code>, <code>all_times</code>, and <code>solve</code> arrays are allocated independently
+via <code>malloc</code>/<code>calloc</code> rather than as pointers into a single
+global buffer.  This enables per-individual reallocation for dose
+and observation-pushing with <code><a href="evid_.html">evid_()</a></code> and related
+functions. When <code>FALSE</code> these arrays are allocated as a single
+global buffer, which is slightly faster and slightly more memory
+efficient but does not allow for dynamic dosing/observations.  By
+default this is <code>NA</code> which automatically decides based on if
+there is any dosing or observation pushing in the model.</p></dd>
+
+
+<dt id="arg-maxextra">maxExtra<a class="anchor" aria-label="anchor" href="#arg-maxextra"></a></dt>
+<dd><p>Integer; maximum number of events (doses and
+observations) that <code><a href="evid_.html">evid_()</a></code> may push per individual per solve.
+When an individual exceeds this limit the solve is aborted for
+that individual (output filled with <code>NA</code>) and an error is raised
+after the full parallel solve completes.  Set to <code>0L</code> to allow
+unlimited pushes (use with care — cascading <code><a href="evid_.html">evid_()</a></code> calls can
+grow without bound).  Default is <code>100L</code>.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>

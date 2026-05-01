@@ -64,6 +64,7 @@
     <li><a class="dropdown-item" href="articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -73,12 +74,16 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-compare"><li><a class="dropdown-item" href="articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $$SIMULATION</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul></li>
@@ -121,19 +126,15 @@
 </div>
 <div class="section level3">
 <h3 id="run-all-tests">Run All Tests<a class="anchor" aria-label="anchor" href="#run-all-tests"></a></h3>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># From within R (sets up proper environment)</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">lapply</span>(<span class="fu">list.files</span>(<span class="st">"src"</span>, <span class="st">"[.]s?o$"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>), unlink));devtools<span class="sc">::</span><span class="fu">test</span>()</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Or from shell</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>NOT_CRAN<span class="ot">=</span>true Rscript <span class="sc">-</span>e <span class="st">"invisible(lapply(list.files('src', '[.]s?o$', full.names = TRUE), unlink));devtools::test()"</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># From shell</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">find</span> src <span class="at">-name</span> <span class="st">"*.so"</span> <span class="at">-o</span> <span class="at">-name</span> <span class="st">"*.o"</span> <span class="kw">|</span> <span class="fu">xargs</span> rm <span class="at">-f</span> <span class="dv">2</span><span class="op">&gt;</span>/dev/null<span class="kw">;</span> <span class="va">NOT_CRAN</span><span class="op">=</span>true <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test()"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-a-single-test-file">Run a Single Test File<a class="anchor" aria-label="anchor" href="#run-a-single-test-file"></a></h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Filter by test file name (without "test-" prefix and ".R" suffix)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="st">"src"</span>, <span class="st">"\\.s?o$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="va">unlink</span><span class="op">)</span><span class="op">)</span>;<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span>filter<span class="op">=</span><span class="st">"basic"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="st">"src"</span>, <span class="st">"\\.s?o$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="va">unlink</span><span class="op">)</span><span class="op">)</span>;<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span>filter<span class="op">=</span><span class="st">"ui"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="st">"src"</span>, <span class="st">"\\.s?o$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="va">unlink</span><span class="op">)</span><span class="op">)</span>;<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span>filter<span class="op">=</span><span class="st">"linCmt"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># Filter by test file name (without "test-" prefix and ".R" suffix)</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">find</span> src <span class="at">-name</span> <span class="st">"*.so"</span> <span class="at">-o</span> <span class="at">-name</span> <span class="st">"*.o"</span> <span class="kw">|</span> <span class="fu">xargs</span> rm <span class="at">-f</span> <span class="dv">2</span><span class="op">&gt;</span>/dev/null<span class="kw">;</span> <span class="va">NOT_CRAN</span><span class="op">=</span>true <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test(filter='basic')"</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="fu">find</span> src <span class="at">-name</span> <span class="st">"*.so"</span> <span class="at">-o</span> <span class="at">-name</span> <span class="st">"*.o"</span> <span class="kw">|</span> <span class="fu">xargs</span> rm <span class="at">-f</span> <span class="dv">2</span><span class="op">&gt;</span>/dev/null<span class="kw">;</span> <span class="va">NOT_CRAN</span><span class="op">=</span>true <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test(filter='ui')"</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="fu">find</span> src <span class="at">-name</span> <span class="st">"*.so"</span> <span class="at">-o</span> <span class="at">-name</span> <span class="st">"*.o"</span> <span class="kw">|</span> <span class="fu">xargs</span> rm <span class="at">-f</span> <span class="dv">2</span><span class="op">&gt;</span>/dev/null<span class="kw">;</span> <span class="va">NOT_CRAN</span><span class="op">=</span>true <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test(filter='linCmt')"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-tests-from-installed-package">Run Tests from Installed Package<a class="anchor" aria-label="anchor" href="#run-tests-from-installed-package"></a></h3>
@@ -151,17 +152,26 @@
 <span><span class="co"># Or: R CMD check .</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="get-generated-c-code-from-model">Get generated C code from model<a class="anchor" aria-label="anchor" href="#get-generated-c-code-from-model"></a></h3>
+<h3 id="get-generated-c-code-and-c-code-errors-from-model">Get generated C code and C code errors from model<a class="anchor" aria-label="anchor" href="#get-generated-c-code-and-c-code-errors-from-model"></a></h3>
 <p>When trying to get the underlying generated code from a model that compiled successfully, you can have it echo to the console with:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="reference/rxC.html">rxC</a></span><span class="op">(</span><span class="va">rxode2model</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>With a model that did not compile successfully, you can get the code by:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="reference/rxLastCompile.html">rxLastCompile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">c</span><span class="op">)</span></span></code></pre></div>
+<p>To get the compile error you can use:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="reference/rxLastCompile.html">rxLastCompile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">stderr</span><span class="op">)</span></span></code></pre></div>
+<p>If you need stout too you can get that with</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="reference/rxLastCompile.html">rxLastCompile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">stderr</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="regenerate-grammar-and-build-artifacts">Regenerate Grammar and Build Artifacts<a class="anchor" aria-label="anchor" href="#regenerate-grammar-and-build-artifacts"></a></h3>
+<h3 id="regenerate-grammar-documentation-and-build-artifacts">Regenerate Grammar, Documentation and Build Artifacts<a class="anchor" aria-label="anchor" href="#regenerate-grammar-documentation-and-build-artifacts"></a></h3>
 <p>When modifying <code>inst/tran.g</code> (the dparser grammar) or needing to regenerate generated files:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Regenerates: src/tran.g.d_parser.h, R/rxrandomui.R, inst/include/*.h</span></span>
-<span><span class="fu">.rxodeBuildCode</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -175,7 +185,6 @@
 <li>
 <p><strong>Solving</strong> (<code>src/par_solve.cpp</code>): <code><a href="reference/rxSolve.html">rxSolve()</a></code> drives the numerical ODE solving using the compiled model. Supports multiple backends:</p>
 <ul><li>LSODA (<code>src/lsoda.c</code>, <code>src/dlsoda.f</code>) — stiff/non-stiff adaptive</li>
-<li>VODE (<code>src/call_dvode.c</code>) — stiff solver</li>
 <li>DOP853 (<code>src/dop853.c</code>) — non-stiff Runge-Kutta</li>
 <li>Parallel solving via OpenMP across subjects</li>
 </ul></li>
@@ -193,35 +202,35 @@
 </div>
 <div class="section level3">
 <h3 id="important-files">Important Files<a class="anchor" aria-label="anchor" href="#important-files"></a></h3>
-<table class="table"><thead><tr class="header"><th>File</th>
+<table class="table"><thead><tr><th>File</th>
 <th>Purpose</th>
-</tr></thead><tbody><tr class="odd"><td><code>inst/tran.g</code></td>
+</tr></thead><tbody><tr><td><code>inst/tran.g</code></td>
 <td>dparser grammar for the rxode2 mini-language</td>
-</tr><tr class="even"><td><code>src/tran.c</code></td>
+</tr><tr><td><code>src/tran.c</code></td>
 <td>Grammar-based parser entry point</td>
-</tr><tr class="odd"><td><code>src/codegen.c</code></td>
+</tr><tr><td><code>src/codegen.c</code></td>
 <td>C code generation from parsed AST</td>
-</tr><tr class="even"><td><code>src/par_solve.cpp</code></td>
+</tr><tr><td><code>src/par_solve.cpp</code></td>
 <td>Main parallel ODE solver (OpenMP)</td>
-</tr><tr class="odd"><td><code>src/rxData.cpp</code></td>
+</tr><tr><td><code>src/rxData.cpp</code></td>
 <td>rx_solve data structure management</td>
-</tr><tr class="even"><td><code>src/linCmt.cpp</code></td>
+</tr><tr><td><code>src/linCmt.cpp</code></td>
 <td>Analytical PK compartment solutions</td>
-</tr><tr class="odd"><td><code>src/et.cpp</code></td>
+</tr><tr><td><code>src/et.cpp</code></td>
 <td>Event table construction</td>
-</tr><tr class="even"><td><code>R/rxode2.R</code></td>
+</tr><tr><td><code>R/rxode2.R</code></td>
 <td>
 <code><a href="reference/rxode2.html">rxode2()</a></code> function entry point</td>
-</tr><tr class="odd"><td><code>R/rxsolve.R</code></td>
+</tr><tr><td><code>R/rxsolve.R</code></td>
 <td>
 <code><a href="reference/rxSolve.html">rxSolve()</a></code> function</td>
-</tr><tr class="even"><td><code>R/ui.R</code></td>
+</tr><tr><td><code>R/ui.R</code></td>
 <td>Model function parsing (ini/model blocks)</td>
-</tr><tr class="odd"><td><code>R/rxUiGet.R</code></td>
+</tr><tr><td><code>R/rxUiGet.R</code></td>
 <td>S3 dispatch for <code>ui$property</code> access</td>
-</tr><tr class="even"><td><code>R/build.R</code></td>
+</tr><tr><td><code>R/build.R</code></td>
 <td>Code generation helpers (run during development)</td>
-</tr><tr class="odd"><td><code>inst/include/rxode2.h</code></td>
+</tr><tr><td><code>inst/include/rxode2.h</code></td>
 <td>Main C header for generated model code</td>
 </tr></tbody></table></div>
 </div>

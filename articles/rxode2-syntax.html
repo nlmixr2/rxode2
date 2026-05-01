@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -143,7 +148,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 ODE solving syntax</h1>
             
-            <h4 data-toc-skip class="date">2026-04-05</h4>
+            <h4 data-toc-skip class="date">2026-05-01</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-syntax.Rmd" class="external-link"><code>vignettes/rxode2-syntax.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-syntax.Rmd</code></div>
@@ -333,11 +338,11 @@ parameter order the same when using 2 different ODE models. These are
 specified by <code>param(par1, par2,...)</code></p></li>
 <li><p><strong>Variable interpolation statements</strong>, which tells
 the interpolation for specific covariates. These include
-<code>locf(cov1,     cov2, ...)</code> for last observation carried
-forward, <code>nocb(cov1,     cov2, ...)</code> for next observation
-carried backward, <code>linear(cov1,     cov2, ...)</code> for linear
-interpolation and <code>midpoint(cov1, cov2,     ...)</code> for
-midpoint interpolation.</p></li>
+<code>locf(cov1, cov2, ...)</code> for last observation carried forward,
+<code>nocb(cov1, cov2, ...)</code> for next observation carried
+backward, <code>linear(cov1, cov2, ...)</code> for linear interpolation
+and <code>midpoint(cov1, cov2, ...)</code> for midpoint
+interpolation.</p></li>
 </ul>
 <p>An example model is shown below:</p>
 <pre><code><span>   <span class="co"># simple assignment</span></span>
@@ -348,8 +353,8 @@ midpoint interpolation.</p></li>
 <p>Expressions in assignment and <code>if</code> statements can be
 numeric or logical.</p>
 <p>Numeric expressions can include the following numeric operators
-<code>+, -, *, /, ^</code> and those mathematical functions defined in
-the C or the R math libraries (e.g., <code>fabs</code>,
+<code>+, -, *, /, ^, %%</code> and those mathematical functions defined
+in the C or the R math libraries (e.g., <code>fabs</code>,
 <code>exp</code>, <code>log</code>, <code>sin</code>,
 <code>abs</code>).</p>
 <p>You may also access the R’s functions in the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines" class="external-link">R
@@ -526,7 +531,7 @@ proportional differences are on the standard deviation scale, or:</p>
 <p>y=f+(a+b* f^c)*err</p>
 <p>The second, <strong>combined2</strong>, assumes that the additive and
 proportional differences are combined on a variance scale:</p>
-<p>y=f+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>q</mi><mi>r</mi><mi>t</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>a</mi><mn>2</mn></msup><mo>+</mo><msup><mi>b</mi><mn>2</mn></msup><mo>*</mo><msup><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">sqrt(a^2+b^2 *f^(2c))</annotation></semantics></math>*err</p>
+<p>y=f+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>q</mi><mi>r</mi><mi>t</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>a</mi><mn>2</mn></msup><mo>+</mo><msup><mi>b</mi><mn>2</mn></msup><mo>*</mo><msup><mi>f</mi><mo stretchy="false" form="prefix">(</mo></msup><mn>2</mn><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">sqrt(a^2+b^2 *f^(2c))</annotation></semantics></math>*err</p>
 <p>The default in <code>nlmixr2</code>/<code>rxode2</code> if not
 otherwise specified is <strong>combined2</strong> since it mirrors how
 adding 2 normal distributions in statistics will add their variances
@@ -670,13 +675,6 @@ to give you better control of this:</p>
 numbers in each variable for <code>tAPGAR</code>. These
 <code><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels()</a></code> statements need to be declared before the variable
 occurs to ensure the numbering is consistent with what is declared.</p>
-<div class="section level3">
-<h3 id="bugs-andor-deficiencies">Bugs and/or deficiencies<a class="anchor" aria-label="anchor" href="#bugs-andor-deficiencies"></a>
-</h3>
-<ul>
-<li>The modulo operator <code>%%</code> is currently unsupported.</li>
-</ul>
-</div>
 <div class="section level3">
 <h3 id="note">Note<a class="anchor" aria-label="anchor" href="#note"></a>
 </h3>

@@ -1,4 +1,4 @@
-pandoc: 3.1.11
+pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
@@ -9,6 +9,7 @@ articles:
   rxode2-covariates: rxode2-covariates.html
   rxode2-data-frame: rxode2-data-frame.html
   articles/rxode2-desolve-comparison: rxode2-desolve-comparison.html
+  articles/rxode2-et-refactor: rxode2-et-refactor.html
   articles/rxode2-eta-eps-resampling: rxode2-eta-eps-resampling.html
   rxode2-event-table: rxode2-event-table.html
   rxode2-event-types: rxode2-event-types.html
@@ -19,6 +20,7 @@ articles:
   articles/rxode2-mrgsolve-comparison: rxode2-mrgsolve-comparison.html
   rxode2-nesting: rxode2-nesting.html
   articles/rxode2-nmsim-comparison: rxode2-nmsim-comparison.html
+  articles/rxode2-nonmem-sim-comparison: rxode2-nonmem-sim-comparison.html
   articles/rxode2-parameter-uncertainty: rxode2-parameter-uncertainty.html
   rxode2-pipeline: rxode2-pipeline.html
   articles/rxode2-pkg-exported-funs: rxode2-pkg-exported-funs.html
@@ -31,6 +33,7 @@ articles:
   articles/rxode2-simulx-comparison: rxode2-simulx-comparison.html
   rxode2-single-subject: rxode2-single-subject.html
   rxode2-speed: rxode2-speed.html
+  articles/rxode2-sticky: rxode2-sticky.html
   rxode2-stiff: rxode2-stiff.html
   rxode2-syntax: rxode2-syntax.html
   rxode2-transit-compartments: rxode2-transit-compartments.html
@@ -38,7 +41,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-04-05T23:26Z
+last_built: 2026-05-01T15:39Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

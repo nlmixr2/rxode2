@@ -10,6 +10,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-desolve-comparison.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-et-refactor.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-eta-eps-resampling.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html</loc></url>
@@ -20,6 +21,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-mrgsolve-comparison.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-nesting.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-nmsim-comparison.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-nonmem-sim-comparison.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-parameter-uncertainty.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-pipeline.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-pkg-exported-funs.html</loc></url>
@@ -32,6 +34,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-simulx-comparison.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-single-subject.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-speed.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-sticky.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-stiff.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-transit-compartments.html</loc></url>
@@ -50,10 +53,12 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/Swish.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/add.dosing.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/add.sampling.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/as.data.table.rxEt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/as.et.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/as.ini.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/as.model.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/as.rxUi.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/as_tibble.rxEt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/assertCompartmentExists.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/assertCompartmentName.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/assertCompartmentNew.html</loc></url>
@@ -144,6 +149,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/etSeq.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/etTrans.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/eventTable.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/evid_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/findLhs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/forderForceBase.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/gammap.html</loc></url>
@@ -329,8 +335,11 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiControl.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiData.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiEst.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiExpr.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiFlag.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiIniDf.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiIniLhs.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiIsValue.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiMv.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiNum.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiParsing.html</loc></url>
@@ -369,6 +378,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxunif.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxweibull.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/softplus.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/splitBolus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/stat_amt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/stat_cens.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/summary.rxDll.html</loc></url>

@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -137,7 +142,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 in a pipeline</h1>
             
-            <h4 data-toc-skip class="date">2026-04-05</h4>
+            <h4 data-toc-skip class="date">2026-05-01</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-pipeline.Rmd" class="external-link"><code>vignettes/rxode2-pipeline.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-pipeline.Rmd</code></div>
@@ -317,15 +322,6 @@ variability.</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
 <span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="700"></p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
@@ -356,15 +352,6 @@ matrix would be <code>95</code>, and the degrees of freedom of the
 <span>  <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, nStud<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span>,</span>
 <span>          dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="co"># Solve the simulation</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">sim</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
@@ -447,15 +434,6 @@ or a numeric vector matching the number of parameters specified in the
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
 <span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="700"></p>
 </div>
@@ -481,15 +459,6 @@ or a numeric vector matching the number of parameters specified in the
 <span>          thetaLower<span class="op">=</span><span class="fl">0</span>, <span class="co"># Make sure the rates are reasonable</span></span>
 <span>          dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="co"># Solve the simulation</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pt"</span>,<span class="st">"q"</span>,<span class="st">"qp"</span>,<span class="st">"sim"</span><span class="op">)</span>,level<span class="op">=</span><span class="fl">0.90</span><span class="op">)</span>; <span class="co"># Create Simulation intervals</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>

@@ -95,6 +95,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -104,6 +105,9 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -112,6 +116,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -137,7 +142,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Simulation</h1>
             
-            <h4 data-toc-skip class="date">2026-04-05</h4>
+            <h4 data-toc-skip class="date">2026-05-01</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-sim-var.Rmd" class="external-link"><code>vignettes/rxode2-sim-var.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-sim-var.Rmd</code></div>
@@ -593,18 +598,18 @@ covariance matrix is to use <code><a href="https://nlmixr2.github.io/lotri/refer
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10,000 × 9</span></span></span>
-<span><span class="co">#&gt;    sim.id id      tcl crcl.cl  eta.cl    tv    eta.v   tka eta.ka</span></span>
-<span><span class="co">#&gt;     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>      1 1      27.0   0.995  0.489   1.45  0.975    4.51 -<span style="color: #BB0000;">0.186</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>      1 2      27.0   0.995 -<span style="color: #BB0000;">0.770</span>   1.45  0.029<span style="text-decoration: underline;">4</span>   4.51 -<span style="color: #BB0000;">0.116</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>      1 3      27.0   0.995 -<span style="color: #BB0000;">2.13</span>    1.45  0.187    4.51  0.941</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>      1 4      27.0   0.995  0.333   1.45 -<span style="color: #BB0000;">0.346</span>    4.51 -<span style="color: #BB0000;">0.686</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>      1 5      27.0   0.995  1.01    1.45  0.978    4.51  1.69 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>      1 6      27.0   0.995 -<span style="color: #BB0000;">0.474</span>   1.45  1.06     4.51 -<span style="color: #BB0000;">0.641</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>      1 7      27.0   0.995 -<span style="color: #BB0000;">0.048</span><span style="color: #BB0000; text-decoration: underline;">8</span>  1.45  1.18     4.51  0.395</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>      1 8      27.0   0.995  0.267   1.45  0.164    4.51  1.41 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>      1 9      27.0   0.995 -<span style="color: #BB0000;">1.19</span>    1.45  1.24     4.51 -<span style="color: #BB0000;">0.726</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>      1 10     27.0   0.995 -<span style="color: #BB0000;">0.163</span>   1.45 -<span style="color: #BB0000;">0.007</span><span style="color: #BB0000; text-decoration: underline;">41</span>  4.51 -<span style="color: #BB0000;">0.799</span></span></span>
+<span><span class="co">#&gt;    sim.id id      tcl crcl.cl  eta.cl    tv   eta.v   tka  eta.ka</span></span>
+<span><span class="co">#&gt;     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>      1 1      27.0   0.995  0.489   1.45  0.897   4.51 -<span style="color: #BB0000;">0.013</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>      1 2      27.0   0.995 -<span style="color: #BB0000;">0.770</span>   1.45  0.163   4.51 -<span style="color: #BB0000;">0.119</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>      1 3      27.0   0.995 -<span style="color: #BB0000;">2.13</span>    1.45  0.558   4.51  0.962 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>      1 4      27.0   0.995  0.333   1.45 -<span style="color: #BB0000;">0.406</span>   4.51 -<span style="color: #BB0000;">0.750</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>      1 5      27.0   0.995  1.01    1.45  0.808   4.51  1.89  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>      1 6      27.0   0.995 -<span style="color: #BB0000;">0.474</span>   1.45  1.15    4.51 -<span style="color: #BB0000;">0.469</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>      1 7      27.0   0.995 -<span style="color: #BB0000;">0.048</span><span style="color: #BB0000; text-decoration: underline;">8</span>  1.45  1.20    4.51  0.604 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>      1 8      27.0   0.995  0.267   1.45  0.119   4.51  1.45  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>      1 9      27.0   0.995 -<span style="color: #BB0000;">1.19</span>    1.45  1.45    4.51 -<span style="color: #BB0000;">0.530</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>      1 10     27.0   0.995 -<span style="color: #BB0000;">0.163</span>   1.45  0.020<span style="text-decoration: underline;">8</span>  4.51 -<span style="color: #BB0000;">0.810</span> </span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 9,990 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt;   depot central </span></span>
@@ -617,14 +622,14 @@ covariance matrix is to use <code><a href="https://nlmixr2.github.io/lotri/refer
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 50,000 × 12</span></span></span>
-<span><span class="co">#&gt;   sim.id    id   time    cl     v    ka   ipred    obs   depot central    WT</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      1     1 0.151   230. 240.   3.74 0.167   1.21   5.68<span style="color: #949494;">e</span>+1  39.9    62.2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>      1     1 0.568   230. 240.   3.74 0.258   0.700  1.19<span style="color: #949494;">e</span>+1  61.9    62.2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>      1     1 1.02    230. 240.   3.74 0.198   0.044<span style="text-decoration: underline;">3</span> 2.18<span style="color: #949494;">e</span>+0  47.5    62.2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>      1     1 4.49    230. 240.   3.74 0.007<span style="text-decoration: underline;">53</span> 0.261  5.01<span style="color: #949494;">e</span><span style="color: #BB0000;">-6</span>   1.80   62.2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>      1     1 6.19    230. 240.   3.74 0.001<span style="text-decoration: underline;">48</span> 1.21   8.84<span style="color: #949494;">e</span><span style="color: #BB0000;">-9</span>   0.355  62.2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>      1     2 0.083<span style="text-decoration: underline;">3</span>  515.  53.3  4.01 0.358   0.620  7.16<span style="color: #949494;">e</span>+1  19.1    35.7</span></span>
+<span><span class="co">#&gt;   sim.id    id  time     cl     v    ka    ipred      obs    depot central    WT</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494;">[h]</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      1     1 0.151 -<span style="color: #BB0000; text-decoration: underline;">1</span><span style="color: #BB0000;">075.</span>  140.  4.45 7.03<span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span> 1.73<span style="color: #949494;">e</span>+ 0 5.11<span style="color: #949494;">e</span>+ 1 9.83<span style="color: #949494;">e</span> 1  39.3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>      1     1 0.568 -<span style="color: #BB0000; text-decoration: underline;">1</span><span style="color: #BB0000;">075.</span>  140.  4.45 2.07<span style="color: #949494;">e</span>+ 1 2.28<span style="color: #949494;">e</span>+ 1 8.00<span style="color: #949494;">e</span>+ 0 2.89<span style="color: #949494;">e</span> 3  39.3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>      1     1 1.02  -<span style="color: #BB0000; text-decoration: underline;">1</span><span style="color: #BB0000;">075.</span>  140.  4.45 6.78<span style="color: #949494;">e</span>+ 2 6.60<span style="color: #949494;">e</span>+ 2 1.06<span style="color: #949494;">e</span>+ 0 9.48<span style="color: #949494;">e</span> 4  39.3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>      1     1 4.49  -<span style="color: #BB0000; text-decoration: underline;">1</span><span style="color: #BB0000;">075.</span>  140.  4.45 2.62<span style="color: #949494;">e</span>+14 2.66<span style="color: #949494;">e</span>+14 2.12<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span> 3.66<span style="color: #949494;">e</span>16  39.3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>      1     1 6.19  -<span style="color: #BB0000; text-decoration: underline;">1</span><span style="color: #BB0000;">075.</span>  140.  4.45 1.19<span style="color: #949494;">e</span>+20 1.17<span style="color: #949494;">e</span>+20 1.14<span style="color: #949494;">e</span><span style="color: #BB0000;">-10</span> 1.66<span style="color: #949494;">e</span>22  39.3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>      1     2 0.151  -<span style="color: #BB0000;">303.</span>  162.  4.00 3.29<span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span> 5.64<span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span> 5.46<span style="color: #949494;">e</span>+ 1 5.32<span style="color: #949494;">e</span> 1  94.5</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 49,994 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: CLCR &lt;dbl&gt;</span></span></span>
 <span><span class="co">## Notice that the simulation time-points change for the individual</span></span>
