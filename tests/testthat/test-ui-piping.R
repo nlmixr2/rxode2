@@ -1446,7 +1446,7 @@ rxTest({
 
       f2 <- trans(f)
 
-      expect_true(!any(f2$iniDf$name %in% c("f2")))
+      expect_true(!any(f2$iniDf$name %in% "f2"))
 
     })
 

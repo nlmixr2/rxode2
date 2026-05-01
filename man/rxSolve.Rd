@@ -9,6 +9,7 @@
 \alias{rxSolve.nlmixr2FitCore}
 \alias{rxSolve.default}
 \alias{update.rxSolve}
+\alias{rxSolve.rxSolve}
 \alias{predict.rxode2}
 \alias{predict.function}
 \alias{predict.rxUi}
@@ -223,6 +224,17 @@ rxSolve(
 )
 
 \method{update}{rxSolve}(object, ...)
+
+\method{rxSolve}{rxSolve}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+)
 
 \method{predict}{rxode2}(object, ...)
 

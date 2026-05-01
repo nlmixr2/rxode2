@@ -1,0 +1,406 @@
+---
+title: "Event Tables after 5.0.2: Architecture and Benchmark"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE)
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+## Overview
+
+This vignette compares the current event table handling with the old
+event table in 5.0.2.  The focus is the event table layer (`rxEt`),
+because that is where the branch makes its largest architectural
+change.
+
+At a high level, the old 5.0.2 event table handling keeps more of the
+event table implementation in compiled code, especially for
+sequence/repeat style operations.  The new architecture moves a
+large part of event table construction and manipulation into R, keeps
+the solver and event translation in C/C++, and uses a lazy,
+environment-backed `rxEt` object as a data-frame proxy that defers
+full materialization until it is needed.  By contrast, `main` works
+much more like an actual realized data frame throughout the
+event-table workflow.
+
+The comparison below reflects:
+
+- new event table handling (at commit `6164e13cf`)
+- old event table handling (at commit `c46571d84`)
+
+## Architectural decisions on new event table structure
+
+The branch makes five important design choices.
+
+### 1. Pure-R event table construction
+
+The public `et()` API remains the same, but much more of the work now
+happens in R:
+
+- `et.default()` resolves event-table arguments and compatibility aliases
+- `.newRxEt()` creates the new object
+- `.etBuildMethods()` attaches the attached backward compatible
+  methods like `$add.sampling()`.
+- `.etExpandAddl()` expands `addl` records in R
+- `etSeq()`, `etRbind()`, and `etRep()` are implemented in R instead of
+  depending on the older exported Rcpp helpers
+
+This reduces the amount of cross-language glue needed for ordinary event
+table authoring. For maintainability, these R-based methods are
+extracted into focused internal files: `R/et-helpers.R`,
+`R/et-methods.R`, `R/etNew.R`, and `R/etVctrs.R`.
+
+### 2. Lazy, environment-backed state
+
+The new `rxEt` object is a data-frame subclass with its mutable state
+in an attached environment accessed through `.rxEtEnv()`.  Internally
+the branch stores event data as ID-indexed chunks and only creates the
+full canonical data frame when `as.data.frame()`, printing, or solver
+handoff requires it.  This saves time in the common multi-subject
+solving scenarios seen in pharmacometrics.
+
+That design intentionally shifts work away from repeated construction
+and combination and toward materialization.  In other words, the old
+5.0.2 event handling is a realized data frame with methods attached,
+while the new event handling behaves more like a data-frame proxy that
+eventually materializes to a realized event table.
+
+### 3. Materialize only when needed
+
+`.etMaterialize()` is the key function creating the full event table.
+It converts the chunked representation into the canonical event-table
+data frame, applies defaults, sorts records, and restores units.  The
+branch uses `data.table::rbindlist` for high-performance binding of
+the internal chunks during this materialization step.
+
+This makes behavior easier to reason about, but it also means the
+first forced materialization can be more expensive than having the
+whole event table as a data.frame object in the first place.  However
+there is a speed-up by not having to sort by id and time, instead
+materializng the chunks of IDs that are stored in the event table.
+
+### 4. Using data-frame/vctrs/dplyr methods for data-like behavior
+
+`R/etVctrs.R` adds `vec_proxy()`, `vec_restore()`, `vec_cast()`, and
+related helpers for `rxEt`.  That is a significant shift in
+philosophy: the event table becomes a better-behaved data-frame
+subtype instead of a proper data-frame. This allows `rxEt` to work
+seamlessly with `dplyr`, `tidyr`, and other modern R tools while
+retaining its specialized internal state.
+
+### 5. Keep C/C++ where it still matters
+
+The new event handling does **not** move everything into R.  Event
+translation and solver preparation still flow through the C/C++ side,
+especially `src/etTran.cpp` and `src/rxData.cpp`.  In other words,
+this is not a "remove compiled code" rewrite; it is a "move
+authoring/manipulation logic into R and keep translation/solve logic
+compiled" rewrite for the new event system.
+
+## Main functions in the new event system
+
+```{r}
+main_functions <- data.frame(
+  function_name = c(
+    ".newRxEt()",
+    ".rxEtEnv()",
+    ".etBuildMethods()",
+    "et.default()",
+    ".etMaterialize()",
+    ".etExpandAddl()",
+    "etSeq() / etRbind() / etRep()",
+    ".etFixCmtForSolve()",
+    "vec_proxy.rxEt() / vec_restore.rxEt()"
+  ),
+  role = c(
+    "Create the new env-backed rxEt shell.",
+    "Recover the mutable event-table environment.",
+    "Implement the mutable method API such as add.dosing() and add.sampling().",
+    "Resolve public et() calls, aliases, seq()-style forms, IDs, and imports.",
+    "Materialize the lazy chunk store into canonical event-table rows.",
+    "Expand addl dosing records in pure R.",
+    "Compose, bind, and repeat event tables without the older Rcpp sequence helpers.",
+    "Normalize character cmt values before solver handoff.",
+    "Round-trip rxEt through vctrs/dplyr-style reconstruction."
+  ),
+  old_equivalent = c(
+    "No direct equivalent; builds older rxEt/EventTable state through the C++ path.",
+    "relies on compiled rxEt detection/state access more heavily.",
+    "More behavior lived in the older EventTable/Rcpp implementation.",
+    "Same public entry point, but with a more eager and more compiled implementation.",
+    "reaches a realized table earlier in the workflow.",
+    "relied more on compiled event helpers.",
+    "used exported Rcpp helpers such as etSeq_ and etRep_.",
+    "Not needed in the same way before the new lazy/data-frame path exposed more mixed input cases.",
+    "No comparable vctrs restore layer on main."
+  ),
+  stringsAsFactors = FALSE
+)
+knitr::kable(main_functions, col.names = c("Current branch function", "Role", "Rough equivalent on `main`"))
+```
+
+## Motivation compared with old event handling
+
+The branch makes sense if the goal is to optimize for correctness,
+maintainability, and interoperability of the event-table layer.
+
+Compared with the old event table handling, the motivations are:
+
+1. **Shrink the Rcpp surface area for event authoring.**  Fewer exported
+   compiled helpers makes debugging and incremental fixes easier.
+2. **Represent event tables as a data-frame subtype.**  That
+   makes `rxEt` behave more naturally with modern R tooling.
+3. **Delay work until the user actually needs a realized table.**  This
+   favors construction-heavy pipelines.
+4. **Keep the solver path compiled.**  The branch does not give up the
+   performance benefits of compiled translation and solving where they
+   matter most.
+5. **Fix complex edge cases and bugs.** The refactor directly
+   addressed several reported issues including #721, #722, #723, #724,
+   #725, #732, and #858.
+
+In practice, that is why the branch has been able to absorb many bug
+fixes in the event-table layer without changing the public tests.
+
+## Relative strengths and weaknesses
+
+```{r}
+strengths <- data.frame(
+  aspect = c(
+    "Construction model",
+    "Composability",
+    "Interoperability",
+    "Maintainability",
+    "Materialization cost",
+    "Repeat-heavy workflows",
+    "Solve handoff overhead"
+  ),
+  new = c(
+    "Lazy chunked representation is well suited to pipelines that keep appending or combining events.",
+    "Pure-R etSeq()/etRbind() are easier to reason about and modify.",
+    "Much stronger vctrs/data.frame/tibble behavior.",
+    "More logic is visible and testable in R.",
+    "Usually slower because full rows are built later and in one step.",
+    "Currently slower in the benchmark below.",
+    "Slightly slower after warm-up in the benchmark below."
+  ),
+  old = c(
+    "More eager/compiled representation; less lazy bookkeeping.",
+    "Compiled helpers are fast when the operation already matches the older model well.",
+    "Weaker integration with newer data-frame reconstruction patterns.",
+    "Harder to debug because more behavior crosses the R/C++ boundary.",
+    "Usually faster because the table is already closer to realized form.",
+    "Currently faster in the benchmark below.",
+    "Currently a little faster in the benchmark below."
+  ),
+  stringsAsFactors = FALSE
+)
+knitr::kable(strengths, col.names = c("Aspect", "new", "old"))
+```
+
+In short:
+
+- The new implementation is stronger when event tables are still being
+  *built* or *combined* which is the most common use-case for `et()` event
+  tables.
+
+## Benchmark design
+
+The benchmark intentionally measures common event-table workflows instead
+of isolated micro-ops:
+
+- `add_dosing_sampling`: build with the mutable method API
+- `vector_build`: build large event tables from vectorized `et()` calls
+- `sequence_tables`: combine many event tables with `c()`
+- `repeat_table`: repeat a regimen with `rep()`
+- `materialize_table`: force a full `as.data.frame(..., all=TRUE)`
+- `solve_handoff`: solve a simple PK model after the event table is built
+- `issue_724_large_sampling`: append sampling records for a large
+  subject-by-dose dataset based on Issue #724
+
+The measurements below were collected in the same Linux environment from
+which this vignette was written, after warming the package once in each
+branch.  They should be read as *relative* comparisons, not absolute
+promises for every machine or every regimen.
+
+```{r}
+benchmark_results <- data.frame(
+  scenario = c(
+    "add_dosing_sampling",
+    "vector_build",
+    "sequence_tables",
+    "repeat_table",
+    "materialize_table",
+    "solve_handoff",
+    "issue_724_large_sampling"
+  ),
+   new_median_s = c(0.1275, 0.0104, 0.3130, 0.4240, 0.00199, 0.0260, 1.9210),
+   old_median_s = c(0.1055, 0.1396, 0.6485, 0.1640, 0.00003, 0.0200, 80.2900),
+   stringsAsFactors = FALSE
+)
+
+benchmark_results$winner <- ifelse(
+  benchmark_results$new_median_s < benchmark_results$old_median_s,
+  "refactor-et",
+  "main"
+)
+benchmark_results$relative_result <- c(
+  "old ~1.2x faster",
+  "new ~13.4x faster",
+  "new ~2.1x faster",
+  "old ~2.6x faster",
+  "old ~66x faster",
+  "old ~1.3x faster",
+  "new ~41.8x faster"
+)
+
+knitr::kable(
+  benchmark_results,
+  col.names = c("Scenario", "`refactor-et` median (s)", "`main` median (s)", "Winner", "Relative result")
+)
+```
+
+## Interpreting the benchmark
+
+The benchmark is consistent with the architectural choices:
+
+### Where the new event table performs better
+
+1. **Large vectorized construction**
+
+   The lazy chunk-based representation is very effective when many event
+   rows are appended before the table is forced into canonical form.
+
+2. **Sequencing many tables**
+
+   The pure-R sequence/bind logic avoids some of the overhead of the
+   older compiled sequence path and seems to benefit from operating on
+   chunked event-table state.
+
+3. **Large appended datasets (Issue #724)**
+
+   This is one of the clearest cases motivating the branch.  The
+   workload in [Issue #724](https://github.com/nlmixr2/rxode2/issues/724)
+   constructs a large subject-by-dose dataset and then appends a dense
+   sampling schedule.  On `main`, the event table behaves more like an
+   already-realized data frame, so repeatedly growing it becomes very
+   expensive at larger sizes.  On `refactor-et`, the event table remains
+   a proxy backed by chunked state until later, so the same workflow is
+   much cheaper.
+
+### Where the old method performs better
+
+1. **Mutable method API (`add.dosing()`/`add.sampling()`)**
+
+   The branch keeps compatibility, but the new path currently pays a
+   small overhead relative to the older implementation.
+
+2. **`rep()`**
+
+   Repetition is still a strong case for the older compiled approach.
+
+3. **Forced materialization**
+
+   This is the clearest cost of the branch.  Since `refactor-et`
+   postpones realization, the eventual `as.data.frame(..., all=TRUE)`
+   step is much more expensive.
+
+4. **Final solve handoff**
+
+   Once the event table is already built, `main` retains a modest edge in
+   the benchmarked solve path.
+
+## Large-scale benchmark from Issue #724
+
+[Issue #724](https://github.com/nlmixr2/rxode2/issues/724) is especially
+useful because it shows the effect of event-table architecture on a
+workload that becomes much larger than the smaller benchmark scenarios
+above.
+
+The reported workload is:
+
+1. Build a subject-by-dose data set with 3 dose groups
+2. Create one event table row per subject for dosing
+3. Append a dense sampling grid from 0 to 168 hours by 0.5 hours
+
+On the original `main`-branch implementation, the elapsed time rose
+rapidly with subject count:
+
+```{r}
+issue_724_scaling <- data.frame(
+  n_subj = c(100, 200, 300, 400, 500, 600, 800, 1000),
+  old_elapsed_s = c(0.31, 2.28, 7.38, 13.1, 20.1, 28.7, 51.0, 80.29)
+)
+
+knitr::kable(
+  issue_724_scaling,
+  col.names = c("Subjects per dose group", "`main` elapsed (s)")
+)
+```
+
+For the exact 1000-subject case from the issue, a later run on this
+new event table code reported:
+
+```{r}
+issue_724_comparison <- data.frame(
+  branch = c("old", "new"),
+  elapsed_s = c(80.29, 1.921),
+  source = c(
+    "Issue #724 original report",
+    "Issue #724 follow-up comment after the et() rewrite"
+  ),
+  stringsAsFactors = FALSE
+)
+
+issue_724_comparison$relative <- c(
+  "baseline",
+  "about 41.8x faster than main"
+)
+
+knitr::kable(
+  issue_724_comparison,
+  col.names = c("Branch", "Elapsed (s)", "Source", "Relative result")
+)
+```
+
+This benchmark is more compelling than a small microbenchmark because it
+exercises exactly the pattern that motivated the refactor:
+
+- The old event table keeps the event table closer to a realized data frame, so very
+  large repeated row growth becomes increasingly expensive
+
+- The new event table keeps the event table as a proxy backed by chunked state
+  and delays full data-frame realization until a boundary like printing,
+  `as.data.frame()`, or solver handoff
+
+That does **not** mean the new event table wins every benchmark.  The earlier
+table still shows that forced materialization and some final execution
+paths can remain faster on the old event table.  But Issue #724 demonstrates why the
+branch architecture can produce very large wins on bigger event-table
+authoring workloads.
+
+## Overall assessment
+
+Since the goal is **a cleaner, more maintainable, more interoperable event
+table architecture**, the new event handling code is a stronger design.  The
+branch makes the event-table layer easier to understand in R, easier to
+test, and faster in the construction/composition workloads that fit its
+lazy design.
+
+
+## Session information
+
+```{r}
+sessionInfo()
+```

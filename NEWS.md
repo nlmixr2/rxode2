@@ -23,6 +23,9 @@
 - Add `plogis()` translation inside `rxode2` to it's c-based `expit()`
   functions
 
+- Refactored `et()` to be mostly in R, fixing many issues (#722 , #725, #858,
+  #732, #723, #721, and #724) and allowing dosing/sampling windows to
+  use `ii`, `addl` and `until` (realized immediately)
 
 # rxode2 5.0.2
 

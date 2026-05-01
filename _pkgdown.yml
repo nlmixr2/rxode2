@@ -247,7 +247,10 @@ reference:
   - .rxode2ptrs
   - .toClassicEvid
   - .vecDf
+  - as.data.table.rxEt
+  - as_tibble.rxEt
   - invWR1d
+  - is.rxEt
   - is.rxStackData
   - odeMethodToInt
   - print.rxModelVars
@@ -389,6 +392,10 @@ navbar:
           href: articles/rxode2-shiny.html
         - text: "Adding compiled models to a package"
           href: articles/rxode2-rxUse.html
+        - text: "--------------------------"
+        - text: "Understanding Internal Code"
+        - text: "Event Tables after 5.0.2: Architecture and Benchmark"
+          href: articles/rxode2-et-refactor.html
   - text: "Compare"
     icon: fas fa-balance-scale
     menu:
@@ -398,7 +405,7 @@ navbar:
           href: articles/rxode2-mrgsolve-comparison.html
         - text: "rxode2 vs NMsim"
           href: articles/rxode2-nmsim-comparison.html
-        - text: "rxode2 vs NONMEM $SIMULATION"
+        - text: "rxode2 vs NONMEM $$SIMULATION"
           href: articles/rxode2-nonmem-sim-comparison.html
         - text: "rxode2 vs Simulx"
           href: articles/rxode2-simulx-comparison.html
