@@ -917,7 +917,7 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
   // can selectively apply only the slot(s) whose trigger time has arrived.
   double newMtime[90];
   for (int k = 0; k < nm; k++) newMtime[k] = ind->mtime[k];
-  calc_mtime(ind->id, newMtime, yp);
+  if (ind->fns->mtime) ind->fns->mtime(ind->id, newMtime, yp);
   int changed = 0;
   double *time = ind->timeThread;
   for (int k = 0; k < nm; k++) {
@@ -2580,7 +2580,7 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
 //================================================================================
 // Inductive linearization routines
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
-                            t_update_inis u_inis, t_ME ME, t_IndF IndF) {
+                            t_update_inis u_inis) {
   clock_t t0 = clock();
   assignFuns();
   int i;
@@ -2635,7 +2635,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       } else {
         preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, ind, xoutp, yp, xout, ind->InfusionRate, ind->on,
-                      ME, IndF);
+                      ind->fns->me, ind->fns->indf);
         xoutp=xout;
         postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
       }
@@ -2676,10 +2676,10 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
 }
 
 extern "C" void ind_indLin(rx_solve *rx,
-                           int solveid, t_update_inis u_inis, t_ME ME, t_IndF IndF){
+                           int solveid, t_update_inis u_inis){
   assignFuns();
   rx_solving_options *op = &op_global;
-  ind_indLin0(rx, op, solveid, u_inis, ME, IndF);
+  ind_indLin0(rx, op, solveid, u_inis);
 }
 
 
@@ -2704,7 +2704,7 @@ extern "C" void par_indLin(rx_solve *rx){
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
-      ind_indLin(rx, solveid, update_inis, ME, IndF);
+      ind_indLin(rx, solveid, update_inis);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
       }
@@ -4812,7 +4812,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
     } else {
       switch (op->stiff){
       case 3:
-        ind_indLin(rx, cid, u_inis, ME, IndF);
+        ind_indLin(rx, cid, u_inis);
         break;
       case 2:
         ind_liblsoda(rx, cid, dydt_lls, u_inis);

@@ -106,7 +106,7 @@ extern "C" {
         // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
         // Compute mtime with actual initial state → mtime_init[k].
         double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
-        calc_mtime(solveid, ind->mtime, _initState);
+        if (ind->fns->mtime) ind->fns->mtime(solveid, ind->mtime, _initState);
 
         // Compute mtime with zero state → base (state-independent) time mtime_base[k].
         // If base <= init, place event at base so the solver is forced to visit base,
@@ -118,10 +118,10 @@ extern "C" {
         double _baseMtime[90];
         if (op->neq > 0) {
           double *_zeroState = new double[op->neq]();  // zero-initialised
-          calc_mtime(solveid, _baseMtime, _zeroState);
+          if (ind->fns->mtime) ind->fns->mtime(solveid, _baseMtime, _zeroState);
           delete[] _zeroState;
         } else {
-          calc_mtime(solveid, _baseMtime, _initState);
+          if (ind->fns->mtime) ind->fns->mtime(solveid, _baseMtime, _initState);
         }
         std::fill_n(ind->mtime0, rx->nMtime, R_NegInf);
         for (int k = 0; k < rx->nMtime; k++) {
