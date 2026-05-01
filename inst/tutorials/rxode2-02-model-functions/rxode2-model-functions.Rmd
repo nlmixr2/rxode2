@@ -165,11 +165,20 @@ One of the modern features of `rxode2` is the ability to specify residual error 
 Common error models include:
 - `add(sd)`: Additive error.
 - `prop(sd)`: Proportional error.
-- `combined(add.sd, prop.sd)`: Combined additive and proportional error.
+- `add(add.sd) + prop(prop.sd)`: Combined additive and proportional error.
+
+### Combined Error Models
+
+When you combine additive and proportional error, there are two common ways to represent the variance. You can specify which one to use by adding `combined1()` or `combined2()` to your error model:
+
+- **`combined1()`**: Represents the form $(SD_{add} + Pred \cdot SD_{prop})^2$.
+- **`combined2()`**: Represents the "standard" form $SD_{add}^2 + (Pred \cdot SD_{prop})^2$.
+
+If neither is specified, `rxode2` uses a default (usually `combined2()`).
 
 Example:
 ```r
-cp ~ add(add.sd) + prop(prop.sd)
+cp ~ add(add.sd) + prop(prop.sd) + combined2()
 ```
 
 ### Exercise: Complete the Model
