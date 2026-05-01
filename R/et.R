@@ -1,3 +1,5 @@
+# rxEt public helpers -----------------------------------------------------
+
 #' @importFrom utils .DollarNames
 #' @export
 .DollarNames.rxEt <- function(x, pattern) { # nolint
@@ -52,6 +54,9 @@
     x
   }
 }
+
+# et generic and pipeline state ------------------------------------------
+
 #' Event Table Function
 #'
 #' @param ... Times or event tables.  They can also be one of the named arguments below.
@@ -326,6 +331,8 @@ et <- function(x, ..., envir = parent.frame()) {
   .etInfo$pipelineNStud <- nStud
 }
 
+# et dispatch methods -----------------------------------------------------
+
 #' @rdname et
 #' @export
 et.rxode2 <- function(x, ..., envir = parent.frame()) {
@@ -584,6 +591,8 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .rxEtSyncData(.et) # nolint
 }
 
+# rxEt object access and mutation ----------------------------------------
+
 #' @export
 `$.rxEt` <- function(obj, arg) {
   # 0. "env" is an alias for the mutable .env environment
@@ -663,6 +672,8 @@ rename.rxEt <- function(.data, ...) {
 names.rxEt <- function(x) {
   names(as.data.frame(x, all = TRUE))
 }
+
+# rxEt data-frame methods -------------------------------------------------
 
 #' @export
 `[.rxEt` <- function(x, i, j, drop = FALSE) {
@@ -764,6 +775,9 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) { # nolint
     }
   }
 }
+
+# Event-table solve dispatch and piping helpers ---------------------------
+
 #' Dispatch solve to 'rxode2' solve
 #'
 #'
@@ -845,6 +859,8 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
     rxEtDispatchSolve(.ret)
   }
 }
+
+# Public event-table constructors and combinators -------------------------
 
 #' Add dosing to eventTable
 #'
@@ -1369,6 +1385,9 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
 rep.rxEt <- function(x, ...) {
   do.call(etRep, list(x = x, ...))
 }
+
+# rxEt coercion and data conversion --------------------------------------
+
 #' Coerce object to data.frame
 #'
 #' @param x Object to coerce to et.
@@ -1476,6 +1495,8 @@ etExpand <- function(et) {
               .etBuildMethods(.newEnv)), # nolint
             class = "rxEt")
 }
+
+# Event-table display helper classes -------------------------------------
 
 #' EVID formatting for tibble and other places.
 #'
