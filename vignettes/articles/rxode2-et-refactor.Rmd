@@ -36,8 +36,8 @@ event-table workflow.
 
 The comparison below reflects:
 
-- new event table handling (at commit `3ee936842`)
-- old event table handling (at commit `3b8b35cce`)
+- new event table handling (at commit `6164e13cf`)
+- old event table handling (at commit `c46571d84`)
 
 ## Architectural decisions on new event table structure
 
@@ -57,7 +57,9 @@ happens in R:
   depending on the older exported Rcpp helpers
 
 This reduces the amount of cross-language glue needed for ordinary event
-table authoring.
+table authoring. For maintainability, these R-based methods are
+extracted into focused internal files: `R/et-helpers.R`,
+`R/et-methods.R`, `R/etNew.R`, and `R/etVctrs.R`.
 
 ### 2. Lazy, environment-backed state
 
@@ -79,7 +81,8 @@ eventually materializes to a realized event table.
 `.etMaterialize()` is the key function creating the full event table.
 It converts the chunked representation into the canonical event-table
 data frame, applies defaults, sorts records, and restores units.  The
-branch uses this as a single place where lazy state becomes concrete.
+branch uses `data.table::rbindlist` for high-performance binding of
+the internal chunks during this materialization step.
 
 This makes behavior easier to reason about, but it also means the
 first forced materialization can be more expensive than having the
@@ -92,7 +95,9 @@ materializng the chunks of IDs that are stored in the event table.
 `R/etVctrs.R` adds `vec_proxy()`, `vec_restore()`, `vec_cast()`, and
 related helpers for `rxEt`.  That is a significant shift in
 philosophy: the event table becomes a better-behaved data-frame
-subtype instead of a proper data-frame.
+subtype instead of a proper data-frame. This allows `rxEt` to work
+seamlessly with `dplyr`, `tidyr`, and other modern R tools while
+retaining its specialized internal state.
 
 ### 5. Keep C/C++ where it still matters
 
@@ -101,7 +106,7 @@ translation and solver preparation still flow through the C/C++ side,
 especially `src/etTran.cpp` and `src/rxData.cpp`.  In other words,
 this is not a "remove compiled code" rewrite; it is a "move
 authoring/manipulation logic into R and keep translation/solve logic
-compiled" rewrite for the new event system
+compiled" rewrite for the new event system.
 
 ## Main functions in the new event system
 
@@ -161,6 +166,9 @@ Compared with the old event table handling, the motivations are:
 4. **Keep the solver path compiled.**  The branch does not give up the
    performance benefits of compiled translation and solving where they
    matter most.
+5. **Fix complex edge cases and bugs.** The refactor directly
+   addressed several reported issues including #721, #722, #723, #724,
+   #725, #732, and #858.
 
 In practice, that is why the branch has been able to absorb many bug
 fixes in the event-table layer without changing the public tests.

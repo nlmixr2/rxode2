@@ -392,6 +392,10 @@ navbar:
           href: articles/rxode2-shiny.html
         - text: "Adding compiled models to a package"
           href: articles/rxode2-rxUse.html
+        - text: "--------------------------"
+        - text: "Understanding Internal Code"
+        - text: "Event Tables after 5.0.2: Architecture and Benchmark"
+          href: articles/rxode2-et-refactor.html
   - text: "Compare"
     icon: fas fa-balance-scale
     menu:
