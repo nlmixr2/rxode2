@@ -428,6 +428,73 @@ rxTest({
 
   })
 
+  test_that("linCmt ui normalization expands to ode systems", {
+    pure.cmt <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- log(2.7)
+        tv <- 3.45
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl)
+        v <- exp(tv)
+        linCmt() ~ add(add.sd) | tmp
+      })
+    }
+
+    mixed.cmt <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- log(2.7)
+        tv <- 3.45
+        kin <- 1
+        kout <- 1
+        ec50 <- 2
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl)
+        v <- exp(tv)
+        cp <- linCmt()
+        eff(0) <- 1
+        d/dt(eff) <- kin - kout * (1 - cp/(ec50 + cp)) * eff
+        cp ~ add(add.sd)
+      })
+    }
+
+    pure.ui <- suppressMessages(pure.cmt())
+    expect_true(any(pure.ui$predDf$linCmt))
+    expect_true(grepl("linCmt\\s*\\(", paste(deparse(as.function(pure.ui)), collapse = "\n")))
+    pure.ode <- suppressMessages(linToOde(pure.ui))
+    pure.fun <- paste(deparse(as.function(pure.ode)), collapse = "\n")
+
+    expect_false(grepl("linCmt\\s*\\(", pure.fun))
+    expect_true(grepl("d/dt\\(depot\\)", pure.fun))
+    expect_true(grepl("d/dt\\(central\\)", pure.fun))
+    expect_true(grepl("rxLinCmt <- central/", pure.fun, fixed = TRUE))
+    expect_true(grepl("rxLinCmt ~ add\\(add\\.sd\\) \\| tmp", pure.fun))
+
+    pure.ui2 <- suppressMessages(as.function(pure.ode)())
+    expect_false(any(pure.ui2$predDf$linCmt))
+
+    mixed.ui <- suppressMessages(mixed.cmt())
+    expect_true(any(mixed.ui$predDf$linCmt == FALSE))
+    mixed.ode <- suppressMessages(linToOde(mixed.ui))
+    mixed.fun <- paste(deparse(as.function(mixed.ode)), collapse = "\n")
+
+    expect_false(grepl("linCmt\\s*\\(", mixed.fun))
+    expect_true(grepl("d/dt\\(depot\\)", mixed.fun))
+    expect_true(grepl("d/dt\\(central\\)", mixed.fun))
+    expect_true(grepl("cp <- central/", mixed.fun, fixed = TRUE))
+    expect_true(grepl("d/dt\\(eff\\) <- kin - kout \\* \\(1 - cp/\\(ec50 \\+ cp\\)\\) \\* eff", mixed.fun))
+
+    mixed.ui2 <- suppressMessages(as.function(mixed.ode)())
+    expect_false(any(mixed.ui2$predDf$linCmt))
+  })
+
   test_that("iov covariates handled correctly", {
 
     one.cmt <- function() {

@@ -54,3 +54,294 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     return(model)
   }
 }
+
+.isLinCmtCall <- function(expr) {
+  if (!is.call(expr)) {
+    return(FALSE)
+  }
+  if (!identical(expr[[1]], quote(`=`)) &&
+      !identical(expr[[1]], quote(`<-`)) &&
+      !identical(expr[[1]], quote(`~`))) {
+    return(FALSE)
+  }
+  .rhs <- expr[[3]]
+  is.call(.rhs) && as.character(.rhs[[1]]) %in% c("linCmtA", "linCmtB")
+}
+
+.linToOdeLinExpr <- function(ui) {
+  if (is.null(ui$mvL)) {
+    return(list())
+  }
+  .mvLExpr <- as.list(str2lang(paste0("{", rxNorm(ui$mvL), "}")))[-1]
+  .mvLExpr <- Filter(function(expr) {
+    is.call(expr)
+  }, .mvLExpr)
+  Filter(.isLinCmtCall, .mvLExpr)
+}
+
+.linToOdeArgs <- function(expr) {
+  .rhs <- expr[[3]]
+  .args <- as.list(.rhs)[-1]
+  list(
+    ncmt = as.integer(eval(.args[[4]], envir = baseenv())),
+    oral0 = as.integer(eval(.args[[5]], envir = baseenv())),
+    trans = as.integer(eval(.args[[7]], envir = baseenv())),
+    p1 = .args[[8]],
+    v1 = .args[[9]],
+    p2 = .args[[10]],
+    p3 = .args[[11]],
+    p4 = .args[[12]],
+    p5 = .args[[13]],
+    ka = .args[[14]]
+  )
+}
+
+.linToOdeBuildMicro1 <- function(.args) {
+  .ret <- list(ncmt = 1L, oral0 = .args$oral0, ka = .args$ka)
+  if (.args$trans == 1L) {
+    .ret$v <- .args$v1
+    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
+  } else if (.args$trans %in% c(2L, 11L)) {
+    .ret$v <- .args$v1
+    .ret$k <- .args$p1
+  } else if (.args$trans == 10L) {
+    .ret$v <- bquote(1 / .(.args$v1))
+    .ret$k <- .args$p1
+  } else {
+    stop("unsupported 1-cmt linCmt translation", call. = FALSE)
+  }
+  .ret
+}
+
+.linToOdeBuildMicro2 <- function(.args) {
+  .ret <- list(ncmt = 2L, oral0 = .args$oral0, ka = .args$ka)
+  if (.args$trans == 1L) {
+    .ret$v <- .args$v1
+    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
+    .ret$k12 <- bquote(.(.args$p2) / .(.args$v1))
+    .ret$k21 <- bquote(.(.args$p2) / .(.args$p3))
+  } else if (.args$trans == 2L) {
+    .ret$v <- .args$v1
+    .ret$k <- .args$p1
+    .ret$k12 <- .args$p2
+    .ret$k21 <- .args$p3
+  } else if (.args$trans == 3L) {
+    .ret$v <- .args$v1
+    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
+    .ret$k12 <- bquote(.(.args$p2) / .(.args$v1))
+    .ret$k21 <- bquote(.(.args$p2) / (.(.args$p3) - .(.args$v1)))
+  } else if (.args$trans == 4L) {
+    .ret$v <- .args$v1
+    .ret$k21 <- .args$p3
+    .ret$k <- bquote((.(.args$p1) * .(.args$p2)) / .(.ret$k21))
+    .ret$k12 <- bquote(.(.args$p1) + .(.args$p2) - .(.ret$k21) - .(.ret$k))
+  } else if (.args$trans == 5L) {
+    .ret$v <- .args$v1
+    .ret$k21 <- bquote((.(.args$p3) * .(.args$p2) + .(.args$p1)) / (.(.args$p3) + 1))
+    .ret$k <- bquote((.(.args$p1) * .(.args$p2)) / .(.ret$k21))
+    .ret$k12 <- bquote(.(.args$p1) + .(.args$p2) - .(.ret$k21) - .(.ret$k))
+  } else if (.args$trans == 11L) {
+    .A <- bquote(1 / .(.args$v1))
+    .B <- .args$p3
+    .alpha <- .args$p1
+    .beta <- .args$p2
+    .ret$v <- bquote(1 / (.(.A) + .(.B)))
+    .ret$k21 <- bquote((.(.A) * .(.beta) + .(.B) * .(.alpha)) * .(.ret$v))
+    .ret$k <- bquote((.(.alpha) * .(.beta)) / .(.ret$k21))
+    .ret$k12 <- bquote(.(.alpha) + .(.beta) - .(.ret$k21) - .(.ret$k))
+  } else if (.args$trans == 10L) {
+    .A <- .args$v1
+    .B <- .args$p3
+    .alpha <- .args$p1
+    .beta <- .args$p2
+    .ret$v <- bquote(1 / (.(.A) + .(.B)))
+    .ret$k21 <- bquote((.(.A) * .(.beta) + .(.B) * .(.alpha)) * .(.ret$v))
+    .ret$k <- bquote((.(.alpha) * .(.beta)) / .(.ret$k21))
+    .ret$k12 <- bquote(.(.alpha) + .(.beta) - .(.ret$k21) - .(.ret$k))
+  } else {
+    stop("unsupported 2-cmt linCmt translation", call. = FALSE)
+  }
+  .ret
+}
+
+.linToOdeBuildMicro3 <- function(.args) {
+  .ret <- list(ncmt = 3L, oral0 = .args$oral0, ka = .args$ka)
+  if (.args$trans == 1L) {
+    .ret$v <- .args$v1
+    .ret$k <- bquote(.(.args$p1) / .(.args$v1))
+    .ret$k12 <- bquote(.(.args$p2) / .(.args$v1))
+    .ret$k21 <- bquote(.(.args$p2) / .(.args$p3))
+    .ret$k13 <- bquote(.(.args$p4) / .(.args$v1))
+    .ret$k31 <- bquote(.(.args$p4) / .(.args$p5))
+  } else if (.args$trans == 2L) {
+    .ret$v <- .args$v1
+    .ret$k <- .args$p1
+    .ret$k12 <- .args$p2
+    .ret$k21 <- .args$p3
+    .ret$k13 <- .args$p4
+    .ret$k31 <- .args$p5
+  } else if (.args$trans %in% c(10L, 11L)) {
+    .A <- if (.args$trans == 11L) bquote(1 / .(.args$v1)) else .args$v1
+    .B <- .args$p3
+    .C <- .args$p5
+    .alpha <- .args$p1
+    .beta <- .args$p2
+    .gamma <- .args$p4
+    .ret$v <- bquote(1 / (.(.A) + .(.B) + .(.C)))
+    .btemp <- bquote(-(.(.alpha) * .(.C) + .(.alpha) * .(.B) +
+                      .(.gamma) * .(.A) + .(.gamma) * .(.B) +
+                      .(.beta) * .(.A) + .(.beta) * .(.C)) * .(.ret$v))
+    .ctemp <- bquote((.(.alpha) * .(.beta) * .(.C) +
+                      .(.alpha) * .(.gamma) * .(.B) +
+                      .(.beta) * .(.gamma) * .(.A)) * .(.ret$v))
+    .dtemp <- bquote(sqrt((.(.btemp)) * (.(.btemp)) - 4 * (.(.ctemp))))
+    .ret$k21 <- bquote(0.5 * (-(.(.btemp)) + .(.dtemp)))
+    .ret$k31 <- bquote(0.5 * (-(.(.btemp)) - .(.dtemp)))
+    .ret$k <- bquote((.(.alpha) * .(.beta) * .(.gamma)) / .(.ret$k21) / .(.ret$k31))
+    .ret$k12 <- bquote(((.(.beta) * .(.gamma) + .(.alpha) * .(.beta) + .(.alpha) * .(.gamma)) -
+                        .(.ret$k21) * (.(.alpha) + .(.beta) + .(.gamma)) -
+                        .(.ret$k) * .(.ret$k31) + .(.ret$k21) * .(.ret$k21)) /
+                         (.(.ret$k31) - .(.ret$k21)))
+    .ret$k13 <- bquote(.(.alpha) + .(.beta) + .(.gamma) -
+                       (.(.ret$k) + .(.ret$k12) + .(.ret$k21) + .(.ret$k31)))
+  } else {
+    stop("unsupported 3-cmt linCmt translation", call. = FALSE)
+  }
+  .ret
+}
+
+.linToOdeBuildMicro <- function(expr) {
+  .args <- .linToOdeArgs(expr)
+  if (.args$ncmt == 1L) {
+    .linToOdeBuildMicro1(.args)
+  } else if (.args$ncmt == 2L) {
+    .linToOdeBuildMicro2(.args)
+  } else if (.args$ncmt == 3L) {
+    .linToOdeBuildMicro3(.args)
+  } else {
+    stop("unsupported linCmt compartment count", call. = FALSE)
+  }
+}
+
+.linToOdePredLine <- function(ui, i) {
+  if (is.null(ui$predDf)) {
+    return(NULL)
+  }
+  .w <- which(ui$predDf$line == i)
+  if (length(.w) == 1L) {
+    ui$predDf[.w, , drop = FALSE]
+  } else {
+    NULL
+  }
+}
+
+.linToOdeOdeLines <- function(.micro) {
+  .ret <- list()
+  .input <- "0"
+  .kTxt <- paste0("(", deparse1(.micro$k), ")")
+  if (.micro$oral0 == 1L) {
+    .kaTxt <- paste0("(", deparse1(.micro$ka), ")")
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(depot) <- -", .kaTxt, " * depot"))
+    .input <- paste0(.kaTxt, " * depot")
+  }
+  if (.micro$ncmt == 1L) {
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
+                                                 " - ", .kTxt, " * central"))
+  } else if (.micro$ncmt == 2L) {
+    .k12Txt <- paste0("(", deparse1(.micro$k12), ")")
+    .k21Txt <- paste0("(", deparse1(.micro$k21), ")")
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
+                                                 " - ", .kTxt, " * central - ", .k12Txt,
+                                                 " * central + ", .k21Txt, " * peripheral1"))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral1) <- ", .k12Txt,
+                                                 " * central - ", .k21Txt, " * peripheral1"))
+  } else if (.micro$ncmt == 3L) {
+    .k12Txt <- paste0("(", deparse1(.micro$k12), ")")
+    .k21Txt <- paste0("(", deparse1(.micro$k21), ")")
+    .k13Txt <- paste0("(", deparse1(.micro$k13), ")")
+    .k31Txt <- paste0("(", deparse1(.micro$k31), ")")
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
+                                                 " - ", .kTxt, " * central - ", .k12Txt,
+                                                 " * central + ", .k21Txt, " * peripheral1 - ",
+                                                 .k13Txt, " * central + ", .k31Txt, " * peripheral2"))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral1) <- ", .k12Txt,
+                                                 " * central - ", .k21Txt, " * peripheral1"))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral2) <- ", .k13Txt,
+                                                 " * central - ", .k31Txt, " * peripheral2"))
+  }
+  .ret
+}
+
+.linToOdeLhsLines <- function(expr, predLine, .micro) {
+  .lhs <- if (!is.null(predLine) && isTRUE(predLine$linCmt)) predLine$var else as.character(expr[[2]])
+  .lhsExpr <- str2lang(.lhs)
+  .vExpr <- str2lang(paste0("(", deparse1(.micro$v), ")"))
+  .ret <- list(call("<-", .lhsExpr, call("/", str2lang("central"), .vExpr)))
+  if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
+    .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)",
+                                              .lhs, deparse1(expr), perl = TRUE))
+  }
+  .ret
+}
+
+.linToOdeRender <- function(expr, predLine, mvExpr) {
+  .micro <- .linToOdeBuildMicro(mvExpr)
+  c(.linToOdeOdeLines(.micro), .linToOdeLhsLines(expr, predLine, .micro))
+}
+
+.linToOdeExpr <- function(ui) {
+  .linExpr <- .linToOdeLinExpr(ui)
+  if (length(.linExpr) == 0L) {
+    return(ui$lstExpr)
+  }
+  .linCur <- 1L
+  .ret <- list()
+  for (i in seq_along(ui$lstExpr)) {
+    .expr <- ui$lstExpr[[i]]
+    .predLine <- .linToOdePredLine(ui, i)
+    if (regexpr("linCmt\\s*\\(", deparse1(.expr), perl = TRUE) != -1) {
+      .ret <- c(.ret, .linToOdeRender(.expr, .predLine, .linExpr[[.linCur]]))
+      .linCur <- .linCur + 1L
+    } else {
+      .ret[[length(.ret) + 1L]] <- .expr
+    }
+  }
+  .ret
+}
+
+#' Convert linCmt rxUi models to ODE rxUi models
+#'
+#' @param ui rxUi-like model object
+#'
+#' @return rxUi model with `linCmt()` translated to explicit ODEs
+#' @author Matthew Fidler
+#' @export
+linToOde <- function(ui) {
+  .ui <- as.rxUi(ui)
+  .ui <- rxUiDecompress(.ui)
+  .expr <- .linToOdeExpr(.ui)
+  if (identical(.expr, .ui$lstExpr)) {
+    return(rxUiCompress(.ui))
+  }
+  .ls <- ls(.ui$meta, all.names=TRUE)
+  .ret <- vector("list", length(.ls) + ifelse(length(.ui$iniDf$cond) > 0, 3, 2))
+  .ret[[1]] <- quote(`{`)
+  for (.i in seq_along(.ls)) {
+    .var <- .ls[.i]
+    .ret[[.i + 1]] <- rxUiDeparse(.ui$meta[[.var]], .var)
+  }
+  .len <- length(.ls)
+  if (length(.ui$iniDf$cond) > 0) {
+    .ret[[.len + 2]] <- .ui$iniFun
+    .ret[[.len + 3]] <- bquote(model(.(as.call(c(quote(`{`), .expr)))))
+  } else {
+    .ret[[.len + 2]] <- bquote(model(.(as.call(c(quote(`{`), .expr)))))
+  }
+  .fun <- function() {
+  }
+  body(.fun) <- as.call(.ret)
+  if (is.function(.ui$model)) {
+    environment(.fun) <- environment(.ui$model)
+  }
+  suppressMessages(as.rxUi(.fun))
+}
