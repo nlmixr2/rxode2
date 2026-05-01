@@ -401,7 +401,7 @@ navbar:
           href: articles/rxode2-mrgsolve-comparison.html
         - text: "rxode2 vs NMsim"
           href: articles/rxode2-nmsim-comparison.html
-        - text: "rxode2 vs NONMEM $SIMULATION"
+        - text: "rxode2 vs NONMEM $$SIMULATION"
           href: articles/rxode2-nonmem-sim-comparison.html
         - text: "rxode2 vs Simulx"
           href: articles/rxode2-simulx-comparison.html
