@@ -11,9 +11,9 @@ findLhs <- function(x) {
     character()
   } else if (is.call(x)) {
     if ((identical(x[[1]], quote(`<-`)) ||
-      identical(x[[1]], quote(`=`)) ||
-      identical(x[[1]], quote(`~`))) &&
-      is.name(x[[2]])) {
+           identical(x[[1]], quote(`=`)) ||
+           identical(x[[1]], quote(`~`))) &&
+          is.name(x[[2]])) {
       .lhs <- as.character(x[[2]])
     } else {
       .lhs <- character()
@@ -36,11 +36,11 @@ findLhs <- function(x) {
 #' @export
 rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
                      verbose = FALSE) {
-  .mv <- rxGetModel(model)
-  if (.Call(`_rxode2_isLinCmt`) == 1L) {
+  .mv <- rxGetModel(model) # nolint
+  if (.Call(`_rxode2_isLinCmt`) == 1L) { # nolint
     .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
-    return(.Call(
-      `_rxode2_linCmtGen`,
+    .Call(
+      `_rxode2_linCmtGen`, # nolint
       length(.mv$state),
       .vars,
       setNames(
@@ -48,10 +48,9 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
           "linCmtA" = 1L, "linCmtB" = 2L
         )[match.arg(linCmtSens)],
         NULL
-      ), verbose
-    ))
+      ), verbose)
   } else {
-    return(model)
+    model
   }
 }
 #' Check if an expression is a linCmt call
@@ -68,8 +67,8 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     return(FALSE)
   }
   if (!identical(expr[[1]], quote(`=`)) &&
-      !identical(expr[[1]], quote(`<-`)) &&
-      !identical(expr[[1]], quote(`~`))) {
+        !identical(expr[[1]], quote(`<-`)) &&
+        !identical(expr[[1]], quote(`~`))) {
     return(FALSE)
   }
   .rhs <- expr[[3]]
@@ -296,32 +295,37 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     NULL
   }
 }
-
-.linToOdeOdeLines <- function(.micro) {
+#' Convert the micro-constants to ODE lines for the ODE translation of a linCmt model
+#'
+#' @param micro list of the micro constant
+#' @return a list of R expressions for the ode model
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeOdeLines <- function(micro) {
   .ret <- list()
   .input <- "0"
-  .kTxt <- paste0("(", deparse1(.micro$k), ")")
-  if (.micro$oral0 == 1) {
-    .kaTxt <- paste0("(", deparse1(.micro$ka), ")")
+  .kTxt <- paste0("(", deparse1(micro$k), ")")
+  if (micro$oral0 == 1) {
+    .kaTxt <- paste0("(", deparse1(micro$ka), ")")
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(depot) <- -", .kaTxt, " * depot"))
     .input <- paste0(.kaTxt, " * depot")
   }
-  if (.micro$ncmt == 1) {
+  if (micro$ncmt == 1) {
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
                                                  " - ", .kTxt, " * central"))
-  } else if (.micro$ncmt == 2L) {
-    .k12Txt <- paste0("(", deparse1(.micro$k12), ")")
-    .k21Txt <- paste0("(", deparse1(.micro$k21), ")")
+  } else if (micro$ncmt == 2L) {
+    .k12Txt <- paste0("(", deparse1(micro$k12), ")")
+    .k21Txt <- paste0("(", deparse1(micro$k21), ")")
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
                                                  " - ", .kTxt, " * central - ", .k12Txt,
                                                  " * central + ", .k21Txt, " * peripheral1"))
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral1) <- ", .k12Txt,
                                                  " * central - ", .k21Txt, " * peripheral1"))
-  } else if (.micro$ncmt == 3L) {
-    .k12Txt <- paste0("(", deparse1(.micro$k12), ")")
-    .k21Txt <- paste0("(", deparse1(.micro$k21), ")")
-    .k13Txt <- paste0("(", deparse1(.micro$k13), ")")
-    .k31Txt <- paste0("(", deparse1(.micro$k31), ")")
+  } else if (micro$ncmt == 3L) {
+    .k12Txt <- paste0("(", deparse1(micro$k12), ")")
+    .k21Txt <- paste0("(", deparse1(micro$k21), ")")
+    .k13Txt <- paste0("(", deparse1(micro$k13), ")")
+    .k31Txt <- paste0("(", deparse1(micro$k31), ")")
     .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
                                                  " - ", .kTxt, " * central - ", .k12Txt,
                                                  " * central + ", .k21Txt, " * peripheral1 - ",
@@ -333,11 +337,22 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
   }
   .ret
 }
-
-.linToOdeLhsLines <- function(expr, predLine, .micro) {
-  .lhs <- if (!is.null(predLine) && isTRUE(predLine$linCmt)) predLine$var else as.character(expr[[2]])
+#' Convert the micro expressions to lhs values for ode solving
+#'
+#' @param expr linCmt expression
+#' @param predLine the pred line for the linCmt() model
+#' @param micro list of micro constants
+#' @return a list of lhs expressions for ode conversion
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeLhsLines <- function(expr, predLine, micro) {
+  if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
+    .lhs <- predLine$var
+  } else {
+    .lhs <- as.character(expr[[2]])
+  }
   .lhsExpr <- str2lang(.lhs)
-  .vExpr <- str2lang(paste0("(", deparse1(.micro$v), ")"))
+  .vExpr <- str2lang(paste0("(", deparse1(micro$v), ")"))
   .ret <- list(call("<-", .lhsExpr, call("/", str2lang("central"), .vExpr)))
   if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
     .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)",
@@ -345,12 +360,24 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
   }
   .ret
 }
-
+#' Render the linCmt() system as an ode system
+#'
+#' @param expr  linCmt expression
+#' @param predLine predicion line data frame
+#' @param mvExpr linCmtA/linCmtB expression
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
 .linToOdeRender <- function(expr, predLine, mvExpr) {
   .micro <- .linToOdeBuildMicro(mvExpr)
   c(.linToOdeOdeLines(.micro), .linToOdeLhsLines(expr, predLine, .micro))
 }
-
+#' Convert the linear compartment models to ode expressions.
+#'
+#' @param ui rxUi model object
+#' @return list of R expressions representing the ODE model equivalent to the linCmt model
+#' @noRd
+#' @author Matthew L. Fidler
 .linToOdeExpr <- function(ui) {
   .linExpr <- .linToOdeLinExpr(ui)
   if (length(.linExpr) == 0L) {
@@ -376,21 +403,60 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
 #' @param ui rxUi-like model object
 #'
 #' @return rxUi model with `linCmt()` translated to explicit ODEs
+#' @examples
+#' oneCmt <- function() {
+#'   ini({
+#'     tka <- 0.45
+#'     tcl <- log(2.7)
+#'     tv <- 3.45
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     cp <- linCmt()
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#'
+#' oneCmtOde <- linToOde(oneCmt)
+#'
+#'
+#'
+#' pkpd <- function() {
+#'   ini({
+#'     ka <- 1
+#'     cl <- 2
+#'     v <- 20
+#'     kin <- 1
+#'     kout <- 1
+#'     ec50 <- 2
+#'   })
+#'   model({
+#'     cp <- linCmt(ka, cl, v)
+#'     eff(0) <- 1
+#'     d/dt(eff) <- kin - kout * (1 - cp/(ec50 + cp)) * eff
+#'   })
+#' }
+#'
+#' pkpdOde <- linToOde(pkpd)
+#'
 #' @author Matthew Fidler
 #' @export
 linToOde <- function(ui) {
-  .ui <- as.rxUi(ui)
-  .ui <- rxUiDecompress(.ui)
+  .ui <- as.rxUi(ui) # nolint
+  .ui <- rxUiDecompress(.ui) # nolint
   .expr <- .linToOdeExpr(.ui)
   if (identical(.expr, .ui$lstExpr)) {
-    return(rxUiCompress(.ui))
+    return(rxUiCompress(.ui)) # nolint
   }
   .ls <- ls(.ui$meta, all.names=TRUE)
   .ret <- vector("list", length(.ls) + ifelse(length(.ui$iniDf$cond) > 0, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
     .var <- .ls[.i]
-    .ret[[.i + 1]] <- rxUiDeparse(.ui$meta[[.var]], .var)
+    .ret[[.i + 1]] <- rxUiDeparse(.ui$meta[[.var]], .var) # nolint
   }
   .len <- length(.ls)
   if (length(.ui$iniDf$cond) > 0) {
@@ -405,5 +471,5 @@ linToOde <- function(ui) {
   if (is.function(.ui$model)) {
     environment(.fun) <- environment(.ui$model)
   }
-  suppressMessages(as.rxUi(.fun))
+  suppressMessages(as.rxUi(.fun)) # nolint
 }
