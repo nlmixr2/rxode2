@@ -807,7 +807,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
     if (!is.null(seed)) set.seed(seed)
     if (is.rxEt(object)) { # nolint
       .env0 <- .rxEtEnv(object) # nolint
-      .mat <- .etMaterialize(object)
+      .mat <- .etMaterialize(object) # nolint
       .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
       if (!any(.hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
@@ -834,7 +834,9 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
         .ids <- unique(as.integer(.mat$id))
         for (.i in .ids) .newEnv$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
       }
-      return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
+      return(structure(c(list(.env = .newEnv),
+                         .etBuildMethods(.newEnv)), # nolint
+                       class = "rxEt"))
     }
     stop("invalid event table", call. = FALSE)
   } else {
@@ -879,7 +881,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
                        rate = NULL, amount.units = NA_character_,
                        start.time = 0.0, do.sampling = FALSE,
                        time.units = NA_character_, ...) {
-  if (is.rxEt(eventTable)) {
+  if (is.rxEt(eventTable)) { # nolint
     .lst <- list(
       x = eventTable,
       amt = dose,
@@ -903,7 +905,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
                  ii = if (nbr.doses > 1L) dosing.interval else 0.0,
                  addl = as.integer(nbr.doses) - 1L,
                  addSampling = do.sampling, ...)
-    return(invisible(rxSolve(eventTable, events = .newEt, updateObject = FALSE)))
+    return(rxSolve(eventTable, events = .newEt, updateObject = FALSE)) # nolint
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   stop("invalid event table", call. = FALSE)
@@ -925,13 +927,13 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
 #' @template etExamples
 #' @export
 add.sampling <- function(eventTable, time, time.units = NA_character_) {
-  if (is.rxEt(eventTable)) {
+  if (is.rxEt(eventTable)) { # nolint
     eventTable$add.sampling(time, time.units = time.units)
-    return(invisible(.rxEtSyncData(eventTable)))
+    return(.rxEtSyncData(eventTable)) # nolint
   } else if (inherits(eventTable, "rxSolve")) {
     .et <- eventTable$get.EventTable()
     .newEt <- et(x = .et, time = time, timeUnits = time.units)
-    return(invisible(rxSolve(eventTable, events = .newEt, updateObject = FALSE)))
+    return(rxSolve(eventTable, events = .newEt, updateObject = FALSE)) # nolint
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
   stop("invalid event table", call. = FALSE)
@@ -1054,7 +1056,7 @@ add.sampling <- function(eventTable, time, time.units = NA_character_) {
 eventTable <- function(amount.units = NA, time.units = NA) {
   .amtU <- if (!missing(amount.units)) as.character(amount.units) else NA_character_
   .timU <- if (!missing(time.units))   as.character(time.units)   else NA_character_
-  .newRxEt(amountUnits = .amtU, timeUnits = .timU)
+  .newRxEt(amountUnits = .amtU, timeUnits = .timU) # nolint
 }
 # nolint end
 
@@ -1123,10 +1125,10 @@ etSeq <- function(..., samples = c("clear", "use"),
   .lastDose  <- 0.0
 
   # Pre-scan: warn once if no event table has an inter-dose interval
-  .etItems <- Filter(is.rxEt, .args)
+  .etItems <- Filter(is.rxEt, .args) # nolint
   if (length(.etItems) > 1L) {
     .hasAnyIi <- any(vapply(.etItems, function(.a) {
-      isTRUE(.rxEtEnv(.a)$show[["ii"]])
+      isTRUE(.rxEtEnv(.a)$show[["ii"]]) # nolint
     }, logical(1)))
     if (!.hasAnyIi) {
       warning("No inter-dose interval found in event tables; using ii=", ii, call. = FALSE)
@@ -1134,8 +1136,8 @@ etSeq <- function(..., samples = c("clear", "use"),
   }
 
   for (.item in .args) {
-    if (is.rxEt(.item)) {
-      .ret <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples,
+    if (is.rxEt(.item)) { # nolint
+      .ret <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples, # nolint
                                .chunks, .nobs, .ndose, .explicitIi, ii)
       .units     <- .ret$units
       .show      <- .ret$show
@@ -1147,26 +1149,40 @@ etSeq <- function(..., samples = c("clear", "use"),
       .lastIi    <- .ret$lastIi
       .lastDose  <- .ret$lastDose
     } else if (is.numeric(.item) || is.integer(.item)) {
-      .timeDelta <- .etSeqHandleWait(.item, .waitType, .lastDose, .lastIi, ii, .timeDelta)
+      .timeDelta <- .etSeqHandleWait(.item, .waitType, .lastDose, .lastIi, ii, .timeDelta) # nolint
     }
   }
 
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- .chunks
   .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
-  .newShow <- if (!is.null(.show)) .show else .etDefaultShow()
+  if (!is.null(.show)) {
+    .newShow <-  .show
+  } else {
+    .newShow <-  .etDefaultShow() # nolint
+  }
+
   if (.explicitIi || .ndose > 0L) {
     .newShow["ii"]   <- TRUE
     .newShow["addl"] <- TRUE
   }
   .newEnv$show       <- .newShow
-  .newEnv$ids        <- if (length(.ids) > 0L) .ids else 1L
+  if (length(.ids) > 1L) {
+    .newEnv$ids        <- .ids
+  } else {
+    .newEnv$ids        <- 1L
+  }
+
   .newEnv$nobs       <- .nobs
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
-  if (length(.newEnv$ids) > 1L) .newEnv$show["id"] <- TRUE
-  structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
+  if (length(.newEnv$ids) > 1L) {
+    .newEnv$show["id"] <- TRUE
+  }
+  structure(c(list(.env = .newEnv),
+              .etBuildMethods(.newEnv) # nolint
+             ), class = "rxEt")
 }
 #' Combining event tables
 #'
@@ -1206,8 +1222,8 @@ etRbind <- function(..., samples = c("use", "clear"),
   .nextId  <- 0L
 
   for (.et in .ets) {
-    if (!is.rxEt(.et)) next
-    .env <- .rxEtEnv(.et)
+    if (!is.rxEt(.et)) next # nolint
+    .env <- .rxEtEnv(.et) # nolint
     if (is.null(.units)) {
       .units <- .env$units
       .show  <- .env$show
@@ -1216,7 +1232,7 @@ etRbind <- function(..., samples = c("use", "clear"),
     }
     # ID remapping for unique mode (always materializes)
     if (.uniqueId || .samples == "clear") {
-      .mat    <- .etMaterialize(.et)
+      .mat    <- .etMaterialize(.et) # nolint
       if (.uniqueId) {
         .oldIds <- sort(unique(.mat$id))
         .map    <- seq_along(.oldIds) + .nextId
@@ -1229,7 +1245,7 @@ etRbind <- function(..., samples = c("use", "clear"),
       if (.samples == "clear") {
         .mat <- .mat[.mat$evid != 0L, , drop = FALSE]
       }
-      .chunks <- .addRowsToChunks(.chunks, .mat)
+      .chunks <- .addRowsToChunks(.chunks, .mat) # nolint
     } else {
       # Merge indexed chunks directly
       for (.ci in seq_along(.env$chunks)) {
@@ -1250,15 +1266,31 @@ etRbind <- function(..., samples = c("use", "clear"),
 
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- .chunks
-  .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
-  .newEnv$show       <- if (!is.null(.show)) .show else .etDefaultShow()
-  .newEnv$ids        <- if (length(.ids) > 0L) .ids else 1L
+  if (!is.null(.units)) {
+    .newEnv$units      <-  .units
+  } else {
+    .newEnv$units      <- c(dosing = NA_character_, time = NA_character_)
+  }
+  if (!is.null(.show))  {
+    .newEnv$show       <- .show
+  } else {
+    .newEnv$show       <- .etDefaultShow() # nolint
+  }
+  if (length(.ids) > 1L) {
+    .newEnv$ids        <- .ids
+  } else {
+    .newEnv$ids        <- 1L
+  }
   .newEnv$nobs       <- .nobs
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
-  if (length(.newEnv$ids) > 1L) .newEnv$show["id"] <- TRUE
-  structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
+  if (length(.newEnv$ids) > 1L) {
+    .newEnv$show["id"] <- TRUE
+  }
+  structure(c(list(.env = .newEnv),
+              .etBuildMethods(.newEnv)), # nolint
+            class = "rxEt")
 }
 
 #' @rdname etRbind
@@ -1302,8 +1334,8 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
   if (!is.na(length.out)) stop("'length.out' makes no sense with event tables", call. = FALSE)
   if (!is.na(each))       stop("'each' makes no sense with event tables", call. = FALSE)
   if (!is.null(n)) times <- n
-  if (is.rxEt(x)) {
-    .xEnv <- .rxEtEnv(x)
+  if (is.rxEt(x)) { # nolint
+    .xEnv <- .rxEtEnv(x) # nolint
     if (is.environment(.xEnv) && isFALSE(.xEnv$canResize)) {
       warning("event table has been expanded; rep may produce unexpected results", call. = FALSE)
     }
@@ -1314,7 +1346,7 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
       warning("'wait' has units but 'units' package not available; using numeric value", call. = FALSE)
       wait <- as.numeric(wait)
     } else {
-      .timeU <- .rxEtEnv(x)$units["time"]
+      .timeU <- .rxEtEnv(x)$units["time"] # nolint
       if (!is.na(.timeU) && nchar(.timeU) > 0) {
         wait <- as.numeric(units::set_units(wait, .timeU, mode = "standard"))
       } else {
@@ -1356,7 +1388,7 @@ as.et.default <- function(x, ...) {
 
 #' @export
 as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
-  .env <- tryCatch(.rxEtEnv(x), error = function(e) NULL)
+  .env <- tryCatch(.rxEtEnv(x), error = function(e) NULL) # nolint
   .lst <- list(...)
   if (!is.environment(.env)) {
     # Old-style EventTable: strip rxEt class and delegate
@@ -1368,7 +1400,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
     return(data.frame())
   }
   .show <- .env$show
-  .full <- .etMaterialize(x)
+  .full <- .etMaterialize(x) # nolint
   if (isTRUE(.lst$all)) {
     .full
   } else {
@@ -1379,7 +1411,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 
 }
 
-.datatable.aware <- TRUE
+.datatable.aware <- TRUE # nolint
 #' Convert an event table to a data.table
 #'
 #' @inheritParams data.table::as.data.table
@@ -1387,8 +1419,8 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' @return data.table of event table
 #'
 #' @export
-as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
-  rxReq("data.table")
+as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) { # nolint
+  rxReq("data.table") # nolint
   data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames)
 }
 
@@ -1402,7 +1434,7 @@ as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
 #'
 #' @export
 as_tibble.rxEt <- function(x, ...) {
-  rxReq("tibble")
+  rxReq("tibble") # nolint
   tibble::as_tibble(as.data.frame.rxEt(x, ...), ...)
 }
 
@@ -1422,9 +1454,9 @@ as_tibble.rxEt <- function(x, ...) {
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
 etExpand <- function(et) {
-  .mat      <- .etMaterialize(et)
-  .expanded <- .etExpandAddl(.mat, .rxEtEnv(et))
-  .env      <- .rxEtEnv(et)
+  .mat      <- .etMaterialize(et) # nolint
+  .expanded <- .etExpandAddl(.mat, .rxEtEnv(et)) # nolint
+  .env      <- .rxEtEnv(et) # nolint
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()
   if (nrow(.expanded) > 0L) {
@@ -1440,7 +1472,9 @@ etExpand <- function(et) {
   .newEnv$ndose      <- sum(.expanded$evid != 0L)
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
-  structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")
+  structure(c(list(.env = .newEnv),
+              .etBuildMethods(.newEnv)), # nolint
+            class = "rxEt")
 }
 
 #' EVID formatting for tibble and other places.
@@ -1476,10 +1510,10 @@ c.rxEvid <- function(x, ...) {
 #' @rdname rxEvid
 #' @export
 `[.rxEvid` <- function(x, ...) {
-  as.rxEvid(NextMethod())
+  as.rxEvid(NextMethod()) # nolint
 }
 
-.colorFmt.rxEvid <- function(x, ...) {
+.colorFmt.rxEvid <- function(x, ...) { # nolint
   .x <- unclass(x)
   if (is.numeric(.x)) {
     .x <-
@@ -1613,7 +1647,7 @@ as.character.rxRateDur <- function(x, ...) {
 }
 
 
-.colorFmt.rxRateDur <- function(x, ...) {
+.colorFmt.rxRateDur <- function(x, ...) { # nolint
   .x <- unclass(x)
   .x <-
     ifelse(.x == -1, paste0(crayon::red("-1"), ":", crayon::yellow("rate")),
@@ -1658,7 +1692,9 @@ pillar_shaft.rxRateDur <- function(x, ...) {
 #' @export
 as.data.frame.rxRateDur <- base::as.data.frame.difftime
 
-set_units.rxRateDur <- function(x, value, ..., mode = .setUnitsMode()) {
+set_units.rxRateDur <- function(x, value, ...,
+                                mode = .setUnitsMode() # nolint
+                                ) {
   if (is.null(mode)) {
     stop("requires package 'units'", call. = FALSE)
   }
