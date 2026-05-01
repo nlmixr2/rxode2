@@ -495,6 +495,87 @@ rxTest({
     expect_false(any(mixed.ui2$predDf$linCmt))
   })
 
+  test_that("linToOde covers all supported linCmt translations", {
+    .makeLinToOdeUi <- function(params, withDepot=FALSE) {
+      .params <- params
+      if (withDepot) {
+        .params <- c(.params, "ka")
+      }
+      .lines <- c(vapply(seq_along(.params), function(i) {
+        sprintf("%s <- %s", .params[i], i)
+      }, character(1), USE.NAMES = FALSE),
+      "add.sd <- 0.7")
+      .txt <- paste(c(
+        "function() {",
+        "  model({",
+        paste0("    ", .lines),
+        "    cp <- linCmt()",
+        "    cp ~ add(add.sd)",
+        "  })",
+        "}"
+      ), collapse = "\n")
+      suppressMessages(eval(parse(text=.txt))())
+    }
+
+    .linMeta <- function(ui) {
+      .expr <- as.list(str2lang(paste0("{", rxNorm(ui$mvL), "}")))[-1]
+      .w <- which(vapply(.expr, function(x) {
+        is.call(x) &&
+          (identical(x[[1]], quote(`=`)) || identical(x[[1]], quote(`<-`))) &&
+          is.call(x[[3]]) &&
+          as.character(x[[3]][[1]]) %in% c("linCmtA", "linCmtB")
+      }, logical(1), USE.NAMES = FALSE))
+      expect_length(.w, 1)
+      .rhs <- .expr[[.w]][[3]]
+      list(
+        ncmt = as.integer(eval(.rhs[[5]], envir=baseenv())),
+        oral0 = as.integer(eval(.rhs[[6]], envir=baseenv())),
+        trans = as.integer(eval(.rhs[[8]], envir=baseenv()))
+      )
+    }
+
+    .cases <- list(
+      list(name="1c trans1", ncmt=1L, trans=1L, params=c("cl", "v")),
+      list(name="1c trans2", ncmt=1L, trans=2L, params=c("k", "v")),
+      list(name="1c trans10", ncmt=1L, trans=10L, params=c("alpha", "a")),
+      list(name="1c trans11", ncmt=1L, trans=11L, params=c("alpha", "v")),
+      list(name="2c trans1", ncmt=2L, trans=1L, params=c("cl", "v", "q", "vp")),
+      list(name="2c trans2", ncmt=2L, trans=2L, params=c("k", "v", "k12", "k21")),
+      list(name="2c trans3", ncmt=2L, trans=3L, params=c("cl", "v", "q", "vss")),
+      list(name="2c trans4", ncmt=2L, trans=4L, params=c("alpha", "v", "beta", "k21")),
+      list(name="2c trans5", ncmt=2L, trans=5L, params=c("alpha", "v", "beta", "aob")),
+      list(name="2c trans10", ncmt=2L, trans=10L, params=c("alpha", "a", "beta", "b")),
+      list(name="2c trans11", ncmt=2L, trans=11L, params=c("alpha", "v", "beta", "b")),
+      list(name="3c trans1", ncmt=3L, trans=1L, params=c("cl", "v", "q", "vp", "q2", "vp2")),
+      list(name="3c trans2", ncmt=3L, trans=2L, params=c("k", "v", "k12", "k21", "k13", "k31")),
+      list(name="3c trans10", ncmt=3L, trans=10L, params=c("alpha", "a", "beta", "b", "gamma", "c")),
+      list(name="3c trans11", ncmt=3L, trans=11L, params=c("alpha", "v", "beta", "b", "gamma", "c"))
+    )
+
+    for (.case in .cases) {
+      for (.depot in c(FALSE, TRUE)) {
+        .lbl <- sprintf("%s %s", .case$name, ifelse(.depot, "with depot", "without depot"))
+        .ui <- .makeLinToOdeUi(.case$params, withDepot=.depot)
+        .meta <- .linMeta(.ui)
+        expect_identical(.meta$ncmt, .case$ncmt, info=.lbl)
+        expect_identical(.meta$trans, .case$trans, info=.lbl)
+        expect_identical(.meta$oral0, as.integer(.depot), info=.lbl)
+
+        .ode <- suppressMessages(linToOde(.ui))
+        .fun <- paste(deparse(as.function(.ode)), collapse = "\n")
+        .odeUi <- suppressMessages(as.function(.ode)())
+
+        expect_false(grepl("linCmt\\s*\\(", .fun), info=.lbl)
+        expect_true(grepl("cp <- central/", .fun, fixed = TRUE), info=.lbl)
+        expect_true(grepl("d/dt\\(central\\)", .fun), info=.lbl)
+        expect_identical(grepl("d/dt\\(depot\\)", .fun), .depot, info=.lbl)
+        expect_identical(grepl("d/dt\\(peripheral1\\)", .fun), .case$ncmt >= 2L, info=.lbl)
+        expect_identical(grepl("d/dt\\(peripheral2\\)", .fun), .case$ncmt >= 3L, info=.lbl)
+        expect_false(any(.odeUi$predDf$linCmt), info=.lbl)
+      }
+    }
+  })
+
   test_that("iov covariates handled correctly", {
 
     one.cmt <- function() {
