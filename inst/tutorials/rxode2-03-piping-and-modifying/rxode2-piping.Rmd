@@ -1,0 +1,145 @@
+---
+title: "rxode2 piping and modifying"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  Learn how to use the R pipe operator ( |> ) to modify rxode2 models,
+  adding covariates, changing parameters, and updating equations.
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE)
+
+one.compartment <- function() {
+  ini({
+    tka <- 0.45; label("Ka")
+    tcl <- 1; label("Cl")
+    tv <- 3.45; label("V")
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+## Introduction to Piping
+
+In `rxode2`, you can modify an existing model using the R pipe operator (`|>`). This is extremely useful for:
+- Adding or removing covariate effects.
+- Changing initial estimates without rewriting the whole model.
+- Fixing or unfixing parameters.
+- Experimenting with different model structures.
+
+The two main functions used for piping are:
+- `ini()`: To modify the initial estimates and parameters.
+- `model()`: To modify the model equations.
+
+## Modifying the Model with `model()`
+
+When you use `model()` in a pipe, `rxode2` looks at the equations you provide and compares them to the existing model.
+
+### Replacing a Line
+
+If you provide a line that already exists (the left-hand side is the same), `rxode2` will replace that line.
+
+```r
+mod <- one.compartment |>
+  model(ka <- exp(tka))
+```
+In the example above, `ka` was originally `exp(tka + eta.ka)`. After piping, the `eta.ka` term is removed.
+
+### Adding a Line
+
+If you provide a new line, it is typically appended to the model.
+
+### Exercise: Modify a Model Line
+
+Start with the `one.compartment` model and remove the between-subject variability from the volume `v`.
+
+```{r model_pipe_ex, exercise=TRUE}
+# Current v is: v <- exp(tv + eta.v)
+# Modify it to be: v <- exp(tv)
+new_mod <- one.compartment |>
+  model(v <- exp(tv))
+
+print(new_mod)
+```
+
+## Modifying Parameters with `ini()`
+
+The `ini()` function in a pipe allows you to update parameter values, bounds, and labels.
+
+### Changing Values
+
+```r
+mod <- one.compartment |>
+  ini(tka = 0.5)
+```
+
+### Fixing and Unfixing
+
+You can fix a parameter using `fix()` or by passing a logical value.
+
+```r
+mod <- one.compartment |>
+  ini(tcl = fix(1.2))
+```
+
+### Exercise: Update Initial Estimates
+
+Update the `one.compartment` model to set `tka` to 0.8 and fix `tv` at 3.5.
+
+```{r ini_pipe_ex, exercise=TRUE}
+new_mod <- one.compartment |>
+  ini(tka = 0.8, tv = fix(3.5))
+
+print(new_mod$iniDf)
+```
+
+## Automatic Detection and Covariates
+
+`rxode2` tries to be smart about the variables you add:
+- Names starting with `t`, `tv`, `pop`, `err` are assumed to be **population parameters**.
+- Names starting with `eta`, `iiv`, `bsv` are assumed to be **random effects**.
+- Other names are often assumed to be **covariates**.
+
+### Adding a Covariate
+
+```r
+mod <- one.compartment |>
+  model(cl <- exp(tcl + eta.cl + covClWt * WT))
+```
+In this case, `WT` is recognized as a covariate and `covClWt` as a new parameter.
+
+### Exercise: Add a Weight Effect
+
+Add a weight effect on clearance (`cl`) using the covariate `WT` and a new parameter `tcl_wt`.
+
+```{r cov_pipe_ex, exercise=TRUE}
+mod <- one.compartment |>
+  model(cl <- exp(tcl + eta.cl + tcl_wt * log(WT/70)))
+
+print(mod)
+```
+
+## Summary
+
+Piping allows for a flexible, iterative workflow:
+- `model(...)` updates equations.
+- `ini(...)` updates parameters.
+- `rxode2` automatically manages the internal structure of the UI object.

@@ -1,0 +1,233 @@
+---
+title: "rxode2 model functions"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  Learn how to define rxode2 models using the modern model function (UI) syntax,
+  including initial estimates and model equations.
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction to Model Functions
+
+In `rxode2`, you can define a model using a standard R function. This approach is powerful because it allows you to package the model equations together with their initial parameter estimates and residual error models.
+
+A `rxode2` model function typically consists of two main blocks:
+- `ini({})`: Where you define the initial estimates for your parameters.
+- `model({})`: Where you define the model equations (ODEs, algebraic equations, and residual error models).
+
+### A Simple Example
+
+Here is a simple one-compartment model defined as a function:
+
+```r
+m1 <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(1.0)
+    tv  <- log(10)
+    eta.ka ~ 0.1
+    eta.cl ~ 0.1
+    eta.v ~ 0.1
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+## The `ini()` Block
+
+The `ini()` block is used to specify the parameters of your model. This includes "fixed effects" (population parameters) and "random effects" (between-subject variability).
+
+### Defining Fixed Effects
+
+Fixed effects can be defined in several ways:
+- Simple assignment: `tcl <- log(1.0)`
+- With bounds: `tcl <- c(0, log(1.0), 5)` (lower, estimate, upper)
+- Fixed values: `tcl <- fix(log(1.0))` or `tcl <- c(0, log(1.0), 5, fixed=TRUE)`
+
+### Defining Random Effects
+
+Random effects (variances) are defined using the `~` operator:
+- `eta.cl ~ 0.1` specifies that `eta.cl` has a variance of 0.1.
+- You can also specify correlations/covariances by defining a matrix.
+
+### Exercise: Define Parameters
+
+Try to complete the `ini()` block for a model with:
+- `ka` (on log scale `tka`) with an initial estimate of 0.5.
+- `cl` (on log scale `tcl`) with an initial estimate of 1.0, fixed to this value.
+- A variance for `eta.ka` of 0.05.
+
+```{r ini_ex, exercise=TRUE}
+my_model <- function() {
+  ini({
+    # Add tka here
+    
+    # Add tcl here (fixed)
+    
+    # Add eta.ka variance here
+    
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl)
+    d/dt(depot) <- -ka * depot
+    cp <- depot / 10
+    cp ~ add(0.1)
+  })
+}
+rxode2(my_model)
+```
+
+```{r ini_ex-solution}
+my_model <- function() {
+  ini({
+    tka <- 0.5
+    tcl <- fix(1.0)
+    eta.ka ~ 0.05
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl)
+    d/dt(depot) <- -ka * depot
+    cp <- depot / 10
+    cp ~ add(0.1)
+  })
+}
+rxode2(my_model)
+```
+
+## The `model()` Block
+
+The `model()` block contains the mathematical description of your system.
+
+### ODEs and LHS Assignments
+
+- **ODEs**: Use Leibniz notation `d/dt(variable) <- ...`.
+- **LHS (Left-Hand Side)**: Ordinary assignments like `cp <- center / v`. These variables will be calculated at each time point.
+
+### Residual Error Models
+
+One of the modern features of `rxode2` is the ability to specify residual error models directly in the `model()` block using the `~` operator.
+
+Common error models include:
+- `add(sd)`: Additive error.
+- `prop(sd)`: Proportional error.
+- `combined(add.sd, prop.sd)`: Combined additive and proportional error.
+
+Example:
+```r
+cp ~ add(add.sd) + prop(prop.sd)
+```
+
+### Exercise: Complete the Model
+
+Complete the `model()` block below. Define the concentration `cp` and an additive residual error model for it.
+
+```{r model_ex, exercise=TRUE}
+my_model <- function() {
+  ini({
+    tka <- log(0.5); tcl <- log(1.0); tv <- log(10)
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v  <- exp(tv)
+    d/dt(center) <- - cl / v * center
+    
+    # Define cp here
+    
+    # Define residual error for cp here
+    
+  })
+}
+rxode2(my_model)
+```
+
+```{r model_ex-solution}
+my_model <- function() {
+  ini({
+    tka <- log(0.5); tcl <- log(1.0); tv <- log(10)
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v  <- exp(tv)
+    d/dt(center) <- - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+rxode2(my_model)
+```
+
+## The UI Object
+
+When you pass your function to `rxode2()`, it creates a "UI object". This object contains all the information about your model in a structured format.
+
+### Inspecting the UI
+
+You can access different parts of the UI object using the `$` operator:
+- `$iniDf`: A data frame of the initial estimates.
+- `$model`: The model equations.
+- `$predDf`: A data frame describing the residual error models (predictions).
+- `$lstExpr`: The model expressed as a list of R expressions.
+
+### Exercise: Inspect a UI Object
+
+Run the following code to create a UI object and inspect its initial estimates data frame.
+
+```{r inspect_ui, exercise=TRUE}
+m1 <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(1.0)
+    tv  <- log(10)
+    eta.cl ~ 0.1
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv)
+    d/dt(center) <- - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
+ui <- rxode2(m1)
+
+# Inspect the initial estimates
+print(ui$iniDf)
+
+# Inspect the prediction data frame
+print(ui$predDf)
+```
+
+## Summary
+
+In this tutorial, you learned:
+- How to define a `rxode2` model as an R function with `ini()` and `model()` blocks.
+- How to specify parameters, bounds, and random effects in `ini()`.
+- How to write ODEs and residual error models in `model()`.
+- How to create and inspect a `rxode2` UI object.
