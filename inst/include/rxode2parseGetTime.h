@@ -7,12 +7,6 @@
 
 #include "rxode2parse.h"
 
-extern t_F AMT;
-extern t_LAG LAG;
-extern t_RATE RATE;
-extern t_DUR DUR;
-extern t_calc_mtime calc_mtime;
-
 #ifndef __DOINIT__
 
 #define returnBadTime(time)                         \
@@ -29,14 +23,14 @@ extern t_calc_mtime calc_mtime;
     }                                               \
   }
 
-
 static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double time, double *y) {
   rx_solving_options *op = &op_global;
   returnBadTime(time);
   if (ind->wh0 == EVID0_SS0 || ind->wh0 == EVID0_SS20) {
     return time;
   }
-  double ret = LAG(id, cmt, time, y);
+  if (ind->fns->lag == NULL) return time;
+  double ret = ind->fns->lag(id, cmt, time, y);
   if (ISNA(ret)) {
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -51,7 +45,8 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
 static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
   rx_solving_options *op = &op_global;
   returnBadTime(t);
-  double ret = RATE(id, cmt, dose, t, y);
+  if (ind->fns->rate == NULL) return 0.0;
+  double ret = ind->fns->rate(id, cmt, dose, t, y);
   if (ISNA(ret)){
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -67,7 +62,8 @@ static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double
   rx_solving_options *op = &op_global;
   returnBadTime(t);
   if (ISNA(t)) return t;
-  double ret = DUR(id, cmt, dose, t, y);
+  if (ind->fns->dur == NULL) return 0.0;
+  double ret = ind->fns->dur(id, cmt, dose, t, y);
   if (ISNA(ret)){
     int newBadSolve = 1;
 #pragma omp atomic write

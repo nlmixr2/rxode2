@@ -551,6 +551,36 @@ double *global_rwork(unsigned int mx){
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
+extern "C" int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
+extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+
+extern "C" void _rxode2_assignFuns2(rx_solve rx,
+                                   rx_solving_options op,
+                                   t_F f,
+                                   t_LAG lag,
+                                   t_RATE rate,
+                                   t_DUR dur,
+                                   t_calc_mtime mtime,
+                                   t_ME me,
+                                   t_IndF indf,
+                                   t_getTime gettime,
+                                   t_locateTimeIndex timeindex,
+                                   t_handle_evidL handleEvid,
+                                   t_getDur getdur) {
+  rx_solve *rxp = getRxSolve_();
+  rxp->fns.f = f;
+  rxp->fns.lag = lag;
+  rxp->fns.rate = rate;
+  rxp->fns.dur = dur;
+  rxp->fns.mtime = mtime;
+  rxp->fns.me = me;
+  rxp->fns.indf = indf;
+  rxp->fns.gettime = gettime;
+  rxp->fns.timeindex = timeindex;
+  rxp->fns.handleEvid = handleEvid;
+  rxp->fns.getdur = getdur;
+}
+
 void rxUpdateFuns(SEXP trans){
   const char *lib, *s_dydt, *s_calc_jac, *s_calc_lhs, *s_inis, *s_dydt_lsoda_dum, *s_dydt_jdum_lsoda,
     *s_ode_solver_solvedata, *s_ode_solver_get_solvedata, *s_dydt_liblsoda, *s_AMT, *s_LAG, *s_RATE,
@@ -607,6 +637,22 @@ void rxUpdateFuns(SEXP trans){
   rx->op = op;
   char s_assignFuns2[300];
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
+  rxode2_assignFuns2_t assignFuns2 = (rxode2_assignFuns2_t)R_GetCCallable(lib, s_assignFuns2);
+  if (assignFuns2 != NULL) {
+    assignFuns2(*rx, *op, AMT, LAG, RATE, DUR, calc_mtime, ME, IndF, getTime, _locateTimeIndex, handle_evidL, _getDur);
+  } else {
+    rx->fns.f = AMT;
+    rx->fns.lag = LAG;
+    rx->fns.rate = RATE;
+    rx->fns.dur = DUR;
+    rx->fns.mtime = calc_mtime;
+    rx->fns.me = ME;
+    rx->fns.indf = IndF;
+    rx->fns.gettime = getTime;
+    rx->fns.timeindex = _locateTimeIndex;
+    rx->fns.handleEvid = handle_evidL;
+    rx->fns.getdur = _getDur;
+  }
 }
 
 extern "C" void rxClearFuns(){

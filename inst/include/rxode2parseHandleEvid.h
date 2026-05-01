@@ -267,12 +267,10 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
   return 1;
 }
 
-extern t_F AMT;
-
-
 static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
                             double dose, double t, double *y) {
-  double ret = AMT(id, cmt, dose, t, y);
+  if (ind->fns->f == NULL) return dose;
+  double ret = ind->fns->f(id, cmt, dose, t, y);
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
     int newBadSolve = 1;
