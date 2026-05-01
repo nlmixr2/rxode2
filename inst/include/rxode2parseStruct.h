@@ -260,9 +260,39 @@ typedef struct {
   int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
 } rx_solving_options_ind;
 
+typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
+typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
+typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
+typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
+
+typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
+
+typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
+typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
+
+typedef double (*t_getTime)(int idx, rx_solving_options_ind *ind);
+typedef int (*t_locateTimeIndex)(double obs_time,  rx_solving_options_ind *ind);
+typedef int (*t_handle_evidL)(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) ;
+typedef double (*t_getDur)(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+
+typedef struct {
+  t_F f;
+  t_LAG lag;
+  t_RATE rate;
+  t_DUR dur;
+  t_calc_mtime mtime;
+  t_ME me;
+  t_IndF indf;
+  t_getTime gettime;
+  t_locateTimeIndex timeindex;
+  t_handle_evidL handleEvid;
+  t_getDur getdur;
+} rx_fn_pointers;
+
 typedef struct {
   rx_solving_options_ind *subjects;
   rx_solving_options *op;
+  rx_fn_pointers fns;
   uint32_t nsub;
   uint32_t nsim;
   int neta;
@@ -368,18 +398,3 @@ static inline void lineNull(vLines *sbb) {
   sbb->n  = 0;
   sbb->o  = 0;
 }
-
-typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
-typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
-
-typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
-
-typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
-
-typedef double (*t_getTime)(int idx, rx_solving_options_ind *ind);
-typedef int (*t_locateTimeIndex)(double obs_time,  rx_solving_options_ind *ind);
-typedef int (*t_handle_evidL)(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) ;
-typedef double (*t_getDur)(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
