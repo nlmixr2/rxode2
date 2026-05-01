@@ -650,19 +650,16 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   NULL
 }
 
-#' @export
 select.rxEt <- function(.data, ...) {
   .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::select(.full, ...)
 }
 
-#' @export
 filter.rxEt <- function(.data, ..., .by = NULL, .preserve = FALSE) {
   .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::filter(.full, ..., .by = {{ .by }}, .preserve = .preserve)
 }
 
-#' @export
 rename.rxEt <- function(.data, ...) {
   .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::rename(.full, ...)
@@ -714,7 +711,6 @@ names.rxEt <- function(x) {
   .rxEtRebuildShell(x, .df) # nolint
 }
 
-#' @export
 drop_units.rxEt <- function(x) {
   if (!requireNamespace("units", quietly = TRUE)) {
     stop("requires package 'units'", call. = FALSE)
@@ -728,7 +724,6 @@ drop_units.rxEt <- function(x) {
   stop("invalid event table", call. = FALSE)
 }
 
-#' @export
 set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) { # nolint
   if (is.null(mode)) {
     stop("requires package 'units'", call. = FALSE)

@@ -251,16 +251,6 @@ vec_ptype2.tbl_df.rxEt <- function(x, y, ...) {
 }
 
 #' @export
-vec_ptype2.rxEt.tibble <- function(x, y, ...) {
-  vctrs::vec_ptype2.rxEt.tbl_df(x, y, ...)
-}
-
-#' @export
-vec_ptype2.tibble.rxEt <- function(x, y, ...) {
-  vctrs::vec_ptype2.tbl_df.rxEt(x, y, ...)
-}
-
-#' @export
 vec_cast.rxEt.rxEt <- function(x, to, ...) {
   .rxEtRebuild(.rxEtAsFullDataFrame(x), to)
 }

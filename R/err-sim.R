@@ -254,6 +254,7 @@ attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for mode
 attr(rxUiGet.interpLines, "rstudio") <- quote(linear(CP)) # for rstudio completion
 
 #' @rdname rxUiGet
+#' @export
 rxUiGet.splitDose <- function(x, ...) {
   .ui <- x[[1]]
   .splitBolus <- rxModelVars(.ui)$splitBolus
@@ -272,6 +273,7 @@ attr(rxUiGet.splitDose, "desc") <- "split dose declaration line(s) for model"
 attr(rxUiGet.splitDose, "rstudio") <- quote(splitBolus(depot, central))
 
 #' @rdname rxUiGet
+#' @export
 rxUiGet.splitDoseLines <- rxUiGet.splitDose
 attr(rxUiGet.splitDoseLines, "desc") <- attr(rxUiGet.splitDose, "desc")
 attr(rxUiGet.splitDoseLines, "rstudio") <- attr(rxUiGet.splitDose, "rstudio")
