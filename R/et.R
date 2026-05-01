@@ -1,7 +1,7 @@
 #' @importFrom utils .DollarNames
 #' @export
-.DollarNames.rxEt <- function(x, pattern) {
-  if (is.rxEt(x)) {
+.DollarNames.rxEt <- function(x, pattern) { # nolint
+  if (is.rxEt(x)) { # nolint
     .envProps <- c("randomType", "canResize", "ids", "show", "ndose", "nobs")
     .methods <- c(
       "expand", "getSampling", "get.sampling", "getDosing", "get.dosing",
@@ -421,7 +421,9 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- Positional argument checks ----
   if (!.xMissing) {
-    if (!is.data.frame(x) && !is.rxEt(x) && !is.character(x)) {
+    if (!is.data.frame(x) &&
+          !is.rxEt(x) && # nolint
+          !is.character(x)) {
       # et(1, 2, 3) -> x=1, ...=list(2, 3) in et.default
       .dots <- list(...)
       if (length(.dots) >= 2) {
@@ -432,27 +434,30 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   }
 
   # ---- Determine base rxEt object ----
-  .xIsRxEt <- !.xMissing && is.rxEt(x)
+  .xIsRxEt <- !.xMissing && is.rxEt(x) # nolint
   if (.xIsRxEt) {
     .et <- x$copy()  # always copy: et() returns a new object, never mutates x
   } else {
-    .et <- .newRxEt()
+    .et <- .newRxEt() # nolint
   }
-  .envRef <- .rxEtEnv(.et)
+  .envRef <- .rxEtEnv(.et) # nolint
 
   # ---- Conflicting alias checks ----
   .dotArgs <- list(...)
-  id <- .etAssertArgsAndReturnId(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
+  id <- .etAssertArgsAndReturnId(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur, # nolint
                                  .idMissing, .iiMissing, .amtMissing, .cmtMissing,
                                  .timeUnitsMissing, .timeMissing, .durMissing)
 
   # ---- seq helpers: by / length.out ----
-  .ret <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, time = time, et = .et,
-                       xMissing = .xMissing, timeMissing = .timeMissing)
-  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  .ret <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, # nolint
+                       time = time, et = .et,  xMissing = .xMissing, timeMissing = .timeMissing)
+  if (.ret$done) {
+    return(invisible(.rxEtSyncData(.ret$et))) # nolint
+  }
 
   # ---- Positional args / data.frame import ----
-  .ret <- .etHandlePositional(x, ..., time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
+  .ret <- .etHandlePositional(x, ..., # nolint
+                              time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
                               xMissing = .xMissing, timeMissing = .timeMissing)
   if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
   .posCmt  <- .ret$posCmt

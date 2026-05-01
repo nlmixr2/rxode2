@@ -836,20 +836,38 @@
     .timeVal <- if (!is.null(time)) time else 0.0
     .iiVal   <- if (!iiMissing)   as.numeric(eval(iiExpr, envir = envir))   else 0.0
     .ssVal   <- if (!ssMissing)   as.integer(eval(ssExpr, envir = envir))   else 0L
-    .rateVal <- if (!rateMissing) {
-      if (rateSym == "model") -1.0
-      else if (rateSym == "dur") -2.0
-      else as.numeric(eval(rateExpr, envir = envir))
-    } else 0.0
-    .durVal  <- if (!durMissing) as.numeric(eval(durExpr, envir = envir)) else 0.0
-    .df <- .etDoseChunk(
+    if (!rateMissing) {
+      .rateVal <- switch(rateSym,
+        model = -1.0,
+        dur   = -2.0,
+        as.numeric(eval(rateExpr, envir = envir))
+      )
+    } else {
+      .rateVal <- 0.0
+    }
+    if (!durMissing) {
+      .durVal <- as.numeric(eval(durExpr, envir = envir))
+    } else {
+      .durVal <- 0.0
+    }
+    if (!is.null(evidVal)) {
+      .evid2 <- evidVal
+    } else {
+      .evid2 <- 1L
+    }
+    if (!is.null(cmtVal)) {
+      .cmtVal <- cmtVal
+    } else {
+      .cmtVal <- "(default)"
+    }
+    .df <- .etDoseChunk( # nolint
       time = .timeVal, amt = 0.0,
-      evid = if (!is.null(evidVal)) evidVal else 1L,
-      cmt  = if (!is.null(cmtVal))  cmtVal  else "(default)",
+      evid = .evid2,
+      cmt  = .cmtVal,
       ii = .iiVal, addl = 0L, ss = .ssVal,
       rate = .rateVal, dur = .durVal
     )
-    .etAddChunk(envRef, .df, targetIds)
+    .etAddChunk(envRef, .df, targetIds) # nolint
     envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * max(1L, length(targetIds))
     envRef$show["amt"]  <- TRUE
     if (!is.null(.ssVal) && .ssVal > 0L)   envRef$show["ss"]   <- TRUE
@@ -916,11 +934,11 @@
     } else {
       .evid2 <- 0L
     }
-    .df <- .etObsChunk(.timeVal, cmt = cmtVal)
+    .df <- .etObsChunk(.timeVal, cmt = cmtVal) # nolint
     if (.evid2 != 0L) {
       .df$evid <- as.integer(.evid2)
     }
-    .etAddChunk(envRef, .df, targetIds)
+    .etAddChunk(envRef, .df, targetIds) # nolint
     envRef$nobs <- envRef$nobs + length(.df$time) * max(1L, length(targetIds))
     if (!is.null(cmtVal)) {
       envRef$show["cmt"] <- TRUE
@@ -973,7 +991,7 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etHandlePiping <- function(xIsRxEt, x, time, timeExpr, amt, amtExpr,
+.etHandlePiping <- function(xIsRxEt, x, time, timeExpr, amt, amtExpr, # nolint
                             dotArgs, cmtVal, targetIds, evidVal,
                             envRef, et, timeMissing, amtMissing, envir) {
   if (xIsRxEt &&
@@ -981,18 +999,18 @@
         is.null(amt) && timeMissing && amtMissing) {
     if (length(dotArgs) >= 1) {
       .firstDot <- dotArgs[[1]]
-      if (is.rxEt(.firstDot) ||
+      if (is.rxEt(.firstDot) || # nolint
             any(vapply(dotArgs, is.rxEt, logical(1)))) {
         # Sequence of event tables
-        .ret <- do.call(etSeq, c(list(x), dotArgs))
+        .ret <- do.call(etSeq, c(list(x), dotArgs)) # nolint
         return(list(done = TRUE, et = .ret))
       }
       if (length(dotArgs) > 2) {
         stop("unused positional arguments", call. = FALSE)
       }
       if (is.list(.firstDot) && !is.data.frame(.firstDot)) {
-        .df <- .etObsChunk(.firstDot, cmt = cmtVal)
-        .etAddChunk(envRef, .df, targetIds)
+        .df <- .etObsChunk(.firstDot, cmt = cmtVal) # nolint
+        .etAddChunk(envRef, .df, targetIds) # nolint
         envRef$nobs <- envRef$nobs + length(.df$time) * max(1L, length(targetIds))
         if (!is.null(cmtVal)) {
           envRef$show["cmt"] <- TRUE
@@ -1000,9 +1018,9 @@
         return(list(done = TRUE, et = et))
       } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
         if (length(dotArgs) >= 2L &&
-            length(.firstDot) == 1L &&
-            (is.numeric(dotArgs[[2]]) || is.integer(dotArgs[[2]])) &&
-            length(dotArgs[[2]]) == 1L) {
+              length(.firstDot) == 1L &&
+              (is.numeric(dotArgs[[2]]) || is.integer(dotArgs[[2]])) &&
+              length(dotArgs[[2]]) == 1L) {
           # et(0, 10) add obs at times 0, 1, ..., 10
           .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(dotArgs[[2]]))
         } else if (inherits(.firstDot, "units") &&
@@ -1016,11 +1034,11 @@
         } else {
           .timeVec <- as.numeric(.firstDot)
         }
-        .df <- .etObsChunk(.timeVec, cmt = cmtVal)
+        .df <- .etObsChunk(.timeVec, cmt = cmtVal) # nolint
         if (!is.null(evidVal) && evidVal != 0L) {
           .df$evid <- as.integer(evidVal)
         }
-        .etAddChunk(envRef, .df, targetIds)
+        .etAddChunk(envRef, .df, targetIds) # nolint
         envRef$nobs <- envRef$nobs + length(.timeVec) * max(1L, length(targetIds))
         return(list(done = TRUE, et = et))
       }
@@ -1067,7 +1085,7 @@
 #'
 #' @author Matthew L. Fidler
 .etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, nobs, ndose, explicitIi, ii) {
-  env <- .rxEtEnv(item)
+  env <- .rxEtEnv(item) # nolint
   if (is.null(units)) {
     units <- env$units
     show  <- env$show
@@ -1075,7 +1093,7 @@
     show <- show | env$show
   }
   ids <- sort(unique(c(ids, env$ids)))
-  mat <- .etMaterialize(item)
+  mat <- .etMaterialize(item) # nolint
   # Strip units for arithmetic; units preserved in env$units
   if (requireNamespace("units", quietly = TRUE)) {
     for (tmCol in c("time", "low", "high", "ii")) {
@@ -1107,11 +1125,11 @@
   }
   maxTime <- max(mat$time, na.rm = TRUE)
   if (samples == "use") {
-    chunks <- .addRowsToChunks(chunks, mat)
+    chunks <- .addRowsToChunks(chunks, mat) # nolint
     nobs   <- nobs + env$nobs
   } else {
     doseOnly <- mat[mat$evid != 0L, , drop = FALSE]
-    chunks <- .addRowsToChunks(chunks, doseOnly)
+    chunks <- .addRowsToChunks(chunks, doseOnly) # nolint
   }
   ndose <- ndose + env$ndose
   # Advance past last dose period; also respect max obs time (for samples=\"use\")
