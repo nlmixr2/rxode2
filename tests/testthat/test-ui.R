@@ -577,6 +577,75 @@ rxTest({
     }
   })
 
+  test_that("linToOde handles assigned oral linCmt ui forms", {
+    .makeAssignedLinUi <- function(linCmtLine) {
+      .txt <- paste(c(
+        "function() {",
+        "  ini({",
+        "    tka <- 0.45",
+        "    tcl <- log(2.7)",
+        "    tv <- 3.45",
+        "    add.sd <- 0.7",
+        "  })",
+        "  model({",
+        "    ka <- exp(tka)",
+        "    cl <- exp(tcl)",
+        "    v <- exp(tv)",
+        paste0("    ", linCmtLine),
+        "    cp ~ add(add.sd)",
+        "  })",
+        "}"
+      ), collapse = "\n")
+      suppressMessages(eval(parse(text=.txt))())
+    }
+
+    .cases <- c("cp <- linCmt()", "cp <- linCmt(ka, cl, v)")
+
+    for (case in .cases) {
+      .ui <- .makeAssignedLinUi(case)
+      .uiFun <- paste(deparse(as.function(.ui)), collapse = "\n")
+      .ode <- suppressMessages(linToOde(.ui))
+      .odeFun <- paste(deparse(as.function(.ode)), collapse = "\n")
+      .odeUi <- suppressMessages(as.function(.ode)())
+
+      expect_true(grepl(case, .uiFun, fixed = TRUE), info=case)
+      expect_false(grepl("linCmt\\s*\\(", .odeFun), info=case)
+      expect_true(grepl("d/dt\\(depot\\)", .odeFun), info=case)
+      expect_true(grepl("d/dt\\(central\\)", .odeFun), info=case)
+      expect_true(grepl("cp <- central/", .odeFun, fixed = TRUE), info=case)
+      expect_false(any(.odeUi$predDf$linCmt), info=case)
+    }
+  })
+
+  test_that("linToOde handles assigned oral linCmt ui with ini parameters", {
+    .ui <- suppressMessages(eval(parse(text = paste(c(
+      "function() {",
+      "  ini({",
+      "    ka <- 1",
+      "    cl <- 2",
+      "    v <- 3",
+      "    add.sd <- 0.7",
+      "  })",
+      "  model({",
+      "    cp <- linCmt(ka, cl, v)",
+      "    cp ~ add(add.sd)",
+      "  })",
+      "}"
+    ), collapse = "\n")))())
+
+    .uiFun <- paste(deparse(as.function(.ui)), collapse = "\n")
+    .ode <- suppressMessages(linToOde(.ui))
+    .odeFun <- paste(deparse(as.function(.ode)), collapse = "\n")
+    .odeUi <- suppressMessages(as.function(.ode)())
+
+    expect_true(grepl("cp <- linCmt\\(ka, cl, v\\)", .uiFun), info="ini oral params")
+    expect_false(grepl("linCmt\\s*\\(", .odeFun), info="ini oral params")
+    expect_true(grepl("d/dt\\(depot\\)", .odeFun), info="ini oral params")
+    expect_true(grepl("d/dt\\(central\\)", .odeFun), info="ini oral params")
+    expect_true(grepl("cp <- central/", .odeFun, fixed = TRUE), info="ini oral params")
+    expect_false(any(.odeUi$predDf$linCmt), info="ini oral params")
+  })
+
   test_that("iov covariates handled correctly", {
 
     one.cmt <- function() {
