@@ -474,6 +474,58 @@ t_calc_mtime calc_mtime = NULL;
 t_ME ME = NULL;
 t_IndF IndF = NULL;
 
+typedef void (*t_assignFuns2)(rx_solve, rx_solving_options,
+                               t_F, t_LAG, t_RATE, t_DUR, t_calc_mtime,
+                               t_ME, t_IndF, t_getTime, t_locateTimeIndex,
+                               t_handle_evidL, t_getDur);
+t_assignFuns2 assignFuns2_fn = NULL;
+
+// Set to 1 by rxUpdateFuns; cleared by the first ind_solve / par_solve that
+// calls assignFuns2_fn after the model switch.
+static volatile int _rxode2_assignFuns2_needed = 0;
+
+extern "C" int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
+extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+extern "C" double getTime(int idx, rx_solving_options_ind *ind);
+extern "C" int _locateTimeIndex(double obs_time, rx_solving_options_ind *ind);
+
+// Called from every compiled model's __assignFuns2 to propagate function
+// pointers back into rxode2's global dispatch table.  The rx and op
+// parameters (passed by value so the caller owns a snapshot) are intentionally
+// unused here; downstream packages (e.g. nlmixr2est) may use them.
+extern "C" void _rxode2_assignFuns2(rx_solve rx, rx_solving_options op,
+                                     t_F f, t_LAG lag, t_RATE rate, t_DUR dur,
+                                     t_calc_mtime mtime, t_ME me, t_IndF indf,
+                                     t_getTime gettime, t_locateTimeIndex timeindex,
+                                     t_handle_evidL handleEvid, t_getDur getdur) {
+  (void)rx; (void)op; (void)gettime; (void)timeindex; (void)handleEvid; (void)getdur;
+  AMT        = f;
+  LAG        = lag;
+  RATE       = rate;
+  DUR        = dur;
+  calc_mtime = mtime;
+  ME         = me;
+  IndF       = indf;
+}
+
+// Thread-safe helper: propagate the current global function pointers to the
+// compiled model's __assignFuns2 exactly once after each model switch.
+// Double-checked locking keeps the hot path (flag already 0) branch-predicted
+// to a single volatile read with no lock.
+static inline void _rxode2_callAssignFuns2IfNeeded(rx_solve *rx) {
+  if (_rxode2_assignFuns2_needed && assignFuns2_fn != NULL) {
+#ifdef _OPENMP
+#pragma omp critical(rxode2CallAssignFuns2)
+#endif
+    {
+      if (_rxode2_assignFuns2_needed) {
+        assignFuns2_fn(*rx, op_global, AMT, LAG, RATE, DUR, calc_mtime, ME, IndF,
+                       getTime, _locateTimeIndex, handle_evidL, _getDur);
+        _rxode2_assignFuns2_needed = 0;
+      }
+    }
+  }
+}
 
 static inline void copyLinCmt(int *neq,
                               rx_solving_options_ind *ind, rx_solving_options *op,
@@ -607,6 +659,10 @@ void rxUpdateFuns(SEXP trans){
   rx->op = op;
   char s_assignFuns2[300];
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
+  assignFuns2_fn = (t_assignFuns2) R_GetCCallable(lib, s_assignFuns2);
+  // Signal that per-solve pointer propagation (assignFuns2_fn) is pending.
+  // The flag is consumed by the next ind_solve / par_solve call.
+  _rxode2_assignFuns2_needed = 1;
 }
 
 extern "C" void rxClearFuns(){
@@ -4753,6 +4809,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
+  _rxode2_callAssignFuns2IfNeeded(rx);
   rx_solving_options *op = &op_global;
   if (op->neq !=  0) {
     if (rx->linB == 1) {
@@ -4794,6 +4851,7 @@ extern "C" void par_solve(rx_solve *rx) {
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
+  _rxode2_callAssignFuns2IfNeeded(rx);
   rx_solving_options *op = &op_global;
   if (op->neq != 0) {
     if (rx->linB == 1) {

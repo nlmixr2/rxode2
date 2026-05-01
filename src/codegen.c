@@ -208,8 +208,13 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       for (int i = Rf_length(_rxode2parse_packages); i--;) {
         const char* cur = R_CHAR(STRING_ELT(_rxode2parse_packages, i));
         sAppend(&sbOut,"    static rxode2_assignFuns2_t %s_assignFuns2 = NULL;\n", cur);
-        sAppend(&sbOut,"    if (%s_assignFuns2 == NULL) %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
+        sAppend(&sbOut,"    if (%s_assignFuns2 == NULL) {\n", cur);
+        sAppendN(&sbOut,"#ifdef _OPENMP\n", 15);
+        sAppendN(&sbOut,"#pragma omp critical(rxode2AssignFuns2Init)\n", 44);
+        sAppendN(&sbOut,"#endif\n", 7);
+        sAppend(&sbOut,"      if (%s_assignFuns2 == NULL) %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
                 cur, cur, cur, cur);
+        sAppendN(&sbOut,"    }\n", 6);
         sAppend(&sbOut,"    %s_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);\n",
                 cur);
       }

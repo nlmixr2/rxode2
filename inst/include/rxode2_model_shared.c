@@ -551,8 +551,15 @@ void __assignFuns2(rx_solve rx,
                    t_handle_evidL handleEvid,
                    t_getDur getdur) {
   // assign start
-  static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
-  if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
+  static rxode2_assignFuns2_t rxode2parse_assignFuns2 = NULL;
+  if (rxode2parse_assignFuns2 == NULL) {
+#ifdef _OPENMP
+#pragma omp critical(rxode2AssignFuns2Init)
+#endif
+    if (rxode2parse_assignFuns2 == NULL) {
+      rxode2parse_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
+    }
+  }
   rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
 }
