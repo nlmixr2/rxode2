@@ -27,6 +27,16 @@
   #732, #723, #721, and #724) and allowing dosing/sampling windows to
   use `ii`, `addl` and `until` (realized immediately)
 
+- Add `linToOde()` convert `linCmt()` models to ODEs.
+
+- Fix IOV simulation issue observed in #982.
+
+- Fix sticky variable calculation (#1013, #1025)
+
+- More easily identify initial conditions (#948)
+
+- Fix sensitivities in the linCmt() that did not match the ODE (#1018, #1012)
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
