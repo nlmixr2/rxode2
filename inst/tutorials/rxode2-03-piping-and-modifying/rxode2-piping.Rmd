@@ -116,7 +116,7 @@ mod <- one.compartment |>
 
 ### Fixing and Unfixing
 
-You can fix a parameter using `fix()` or by passing a logical value.
+You can fix a parameter using `fix()` or `fixed()`.
 
 ```r
 mod <- one.compartment |>

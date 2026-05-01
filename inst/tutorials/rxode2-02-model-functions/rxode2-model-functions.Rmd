@@ -95,7 +95,9 @@ The `ini()` block is used to specify the parameters of your model. This includes
 Fixed effects can be defined in several ways:
 - Simple assignment: `tcl <- log(1.0)`
 - With bounds: `tcl <- c(0, log(1.0), 5)` (lower, estimate, upper)
-- Fixed values: `tcl <- fix(log(1.0))` or `tcl <- c(0, log(1.0), 5, fixed=TRUE)`
+- Fixed values: `tcl <- fix(log(1.0))` or `tcl <- fix(0, log(1.0), 5)`
+
+Note: Fixed parameters must use `fix()` or `fixed()`. The syntax `fixed=TRUE` within `c()` is not supported.
 
 ### Defining Random Effects
 
