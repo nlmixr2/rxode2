@@ -22,7 +22,7 @@ We've come a long way! From basic syntax to complex population simulations with 
 
 ### Exercise: A Complete Workflow
 
-1.  Define a one-compartment model function `final_mod` with:
+1.  Define a one-compartment model function `finalMod` with:
     *   `tka = 0.5`, `tcl = 1`, `tv = 10`.
     *   `eta.cl ~ 0.1`.
     *   Additive error `add.sd = 0.1`.
@@ -30,9 +30,9 @@ We've come a long way! From basic syntax to complex population simulations with 
 2.  Create an event table for 100 mg dose at time 0, sampling 0-24h.
 3.  Simulate 10 subjects with weights ranging from 50 to 100 kg.
 
-```{r final_review, exercise=TRUE}
-# 1. Define final_mod
-final_mod <- function() {
+```{r finalReview, exercise=TRUE}
+# 1. Define finalMod
+finalMod <- function() {
   ini({
     tka <- 0.5; tcl <- 1; tv <- 10
     eta.cl ~ 0.1
@@ -52,8 +52,8 @@ final_mod <- function() {
 ev <- et(amt = 100) |> et(0:24)
 
 # 3. Define iCov and solve
-my_covs <- data.frame(id = 1:10, WT = seq(50, 100, length.out = 10))
-res <- rxSolve(final_mod, ev, iCov = my_covs)
+myCovs <- data.frame(id = 1:10, WT = seq(50, 100, length.out = 10))
+res <- rxSolve(finalMod, ev, iCov = myCovs)
 
 plot(res, cp)
 ```
@@ -90,7 +90,7 @@ mod <- function() {
 
 Define a 2-compartment model using `linCmt()` with parameters `cl`, `v`, `q`, and `v2`.
 
-```{r lincmt_ex, exercise=TRUE}
+```{r linCmtEx, exercise=TRUE}
 mod <- function() {
   ini({
     tcl <- log(1); tv <- log(10)
@@ -136,8 +136,8 @@ mod_mixed <- function() {
 
 Use the `transit()` function to define a model with a transit delay.
 
-```{r transit_ex, exercise=TRUE}
-mod_transit <- function() {
+```{r transitEx, exercise=TRUE}
+modTransit <- function() {
   ini({
     tka <- log(0.5); tcl <- log(1); tv <- log(10)
     ktr <- log(1); n <- log(3)
@@ -154,7 +154,7 @@ mod_transit <- function() {
 }
 
 ev <- et(amt = 100) |> et(0:24)
-res <- rxSolve(mod_transit, ev)
+res <- rxSolve(modTransit, ev)
 plot(res, cp)
 ```
 

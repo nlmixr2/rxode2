@@ -15,7 +15,7 @@ library(rxode2)
 library(ggplot2)
 knitr::opts_chunk$set(echo = FALSE)
 
-mod_cov <- function() {
+modCov <- function() {
   ini({
     tka <- 0.5; tcl <- 1; tv <- 10
     add.sd <- 0.1
@@ -37,9 +37,9 @@ Before we add covariates, let's review how to run a basic population simulation.
 
 ### Exercise: Population Simulation
 
-Using the `mod_cov` model (ignoring the `WT` part for a moment by setting it to 70), simulate 50 subjects with a 100 mg bolus dose.
+Using the `modCov` model (ignoring the `WT` part for a moment by setting it to 70), simulate 50 subjects with a 100 mg bolus dose.
 
-```{r simulation_review_cov, exercise=TRUE}
+```{r simulationReviewCov, exercise=TRUE}
 # Set up event table ev (100 mg dose, 0-24h sampling)
 ev <- et(amt = 100) |> et(0:24)
 
@@ -47,7 +47,7 @@ ev <- et(amt = 100) |> et(0:24)
 ev$WT <- 70
 
 # Solve for 50 subjects
-res <- rxSolve(mod_cov, ev, nSub = 50)
+res <- rxSolve(modCov, ev, nSub = 50)
 
 plot(res, cp)
 ```
@@ -62,22 +62,22 @@ If you have covariates that are constant for each individual (like baseline weig
 
 ```r
 # Create individual covariate data frame
-my_covs <- data.frame(id = 1:5, WT = c(60, 70, 80, 90, 100))
+myCovs <- data.frame(id = 1:5, WT = c(60, 70, 80, 90, 100))
 
 # Solve with iCov
-res <- rxSolve(mod_cov, ev, iCov = my_covs)
+res <- rxSolve(modCov, ev, iCov = myCovs)
 ```
 
 ### Exercise: Simulate with Weight Covariate
 
 Simulate 4 subjects with weights 60, 70, 80, and 90 kg.
 
-```{r icov_ex, exercise=TRUE}
+```{r icovEx, exercise=TRUE}
 ev <- et(amt = 100) |> et(0:24)
 
-my_covs <- data.frame(id = 1:4, WT = c(60, 70, 80, 90))
+myCovs <- data.frame(id = 1:4, WT = c(60, 70, 80, 90))
 
-res <- rxSolve(mod_cov, ev, iCov = my_covs)
+res <- rxSolve(modCov, ev, iCov = myCovs)
 
 plot(res, cp)
 ```
@@ -102,7 +102,7 @@ When the solver needs a value for a covariate at a time point that is not in you
 
 Suppose a subject starts at 70 kg and gains 10 kg over 24 hours.
 
-```{r tv_cov_ex, exercise=TRUE}
+```{r tvCovEx, exercise=TRUE}
 ev <- et(amt = 100) |>
   et(0) |>
   et(24)
@@ -111,8 +111,8 @@ ev <- et(amt = 100) |>
 ev$WT <- c(70, 80)
 
 # Solve with linear interpolation
-res_linear <- rxSolve(mod_cov, ev, covsInterpolation = "linear")
-plot(res_linear, cp)
+resLinear <- rxSolve(modCov, ev, covsInterpolation = "linear")
+plot(resLinear, cp)
 ```
 
 ## Summary

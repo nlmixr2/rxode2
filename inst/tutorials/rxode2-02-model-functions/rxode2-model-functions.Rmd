@@ -97,34 +97,57 @@ Fixed effects can be defined in several ways:
 - With bounds: `tcl <- c(0, log(1.0), 5)` (lower, estimate, upper)
 - Fixed values: `tcl <- fix(log(1.0))` or `tcl <- fix(0, log(1.0), 5)`
 
+#### Labels and Back-Transformations
+
+You can add human-readable labels and specify back-transformations for better reporting:
+
+- **`label("text")`**: Adds a description to a parameter.
+- **`backTransform(fun)`**: Explicitly defines how a parameter should be transformed for display (e.g., `exp()` for log-estimated parameters).
+
+```r
+tcl <- 1; label("Typical Value of Clearance (L/hr)"); backTransform(exp())
+```
+
 Note: Fixed parameters must use `fix()` or `fixed()`. The syntax `fixed=TRUE` within `c()` is not supported.
 
 ### Defining Random Effects
 
-Random effects (variances) are defined using the `~` operator:
-- `eta.cl ~ 0.1` specifies that `eta.cl` has a variance of 0.1.
-- You can also specify correlations/covariances by defining a matrix.
+Random effects (variances) represent between-subject variability (BSV) and are defined using the `~` operator. `rxode2` uses the `lotri` package under the hood to handle these matrices.
 
-### Exercise: Define Parameters
+- **Simple Variance**: `etaCl ~ 0.1` specifies a variance of 0.1 for `etaCl`.
+- **Covariance Matrix**: You can define multiple variabilities and their covariances using a lower-triangular vector:
+  ```r
+  etaKa + etaCl ~ c(0.5,   # Variance of etaKa
+                    0.05,  # Covariance between etaKa and etaCl
+                    0.1)   # Variance of etaCl
+  ```
+- **Correlation Matrix**: Use `cor()` to specify **standard deviations** on the diagonal and **correlations** on the off-diagonal:
+  ```r
+  etaKa + etaCl ~ cor(0.7,   # SD of etaKa
+                      0.3,   # Correlation between etaKa and etaCl
+                      0.3)   # SD of etaCl
+  ```
+
+### Exercise: Define Advanced Parameters
 
 Try to complete the `ini()` block for a model with:
-- `ka` (on log scale `tka`) with an initial estimate of 0.5.
-- `cl` (on log scale `tcl`) with an initial estimate of 1.0, fixed to this value.
-- A variance for `eta.ka` of 0.05.
+- `ka` (log scale `tka`) with an estimate of 0.5 and a label "Absorption rate".
+- `cl` (log scale `tcl`) fixed to 1.0.
+- A covariance matrix for `etaKa` and `etaCl` with variances 0.2 and 0.1, and a covariance of 0.01.
 
 ```{r iniEx, exercise=TRUE}
 myModel <- function() {
   ini({
-    # Add tka here
+    # Add tka with label here
     
     # Add tcl here (fixed)
     
-    # Add eta.ka variance here
+    # Add etaKa and etaCl covariance matrix here
     
   })
   model({
-    ka <- exp(tka + eta.ka)
-    cl <- exp(tcl)
+    ka <- exp(tka + etaKa)
+    cl <- exp(tcl + etaCl)
     d/dt(depot) <- -ka * depot
     cp <- depot / 10
     cp ~ add(0.1)
@@ -136,13 +159,13 @@ rxode2(myModel)
 ```{r iniEx-solution}
 myModel <- function() {
   ini({
-    tka <- 0.5
+    tka <- 0.5; label("Absorption rate")
     tcl <- fix(1.0)
-    eta.ka ~ 0.05
+    etaKa + etaCl ~ c(0.2, 0.01, 0.1)
   })
   model({
-    ka <- exp(tka + eta.ka)
-    cl <- exp(tcl)
+    ka <- exp(tka + etaKa)
+    cl <- exp(tcl + etaCl)
     d/dt(depot) <- -ka * depot
     cp <- depot / 10
     cp ~ add(0.1)
