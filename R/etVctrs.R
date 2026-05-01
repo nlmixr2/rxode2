@@ -240,12 +240,12 @@ vec_ptype2.data.table.rxEt <- function(x, y, ...) {
   vctrs::vec_ptype2(x, .rxEtAsDataTable(y), ...)
 }
 
-#' @export
+#' @exportS3Method vctrs::vec_ptype2 rxEt.tbl_df
 vec_ptype2.rxEt.tbl_df <- function(x, y, ...) {
   vctrs::vec_ptype2(.rxEtAsTibble(x), y, ...)
 }
 
-#' @export
+#' @exportS3Method vctrs::vec_ptype2 tbl_df.rxEt
 vec_ptype2.tbl_df.rxEt <- function(x, y, ...) {
   vctrs::vec_ptype2(x, .rxEtAsTibble(y), ...)
 }
@@ -275,12 +275,12 @@ vec_cast.data.table.rxEt <- function(x, to, ...) {
   vctrs::vec_cast(.rxEtAsDataTable(x), to, ...)
 }
 
-#' @export
+#' @exportS3Method vctrs::vec_cast rxEt.tbl_df
 vec_cast.rxEt.tbl_df <- function(x, to, ...) {
   .rxEtRebuild(as.data.frame(x), to)
 }
 
-#' @export
+#' @exportS3Method vctrs::vec_cast tbl_df.rxEt
 vec_cast.tbl_df.rxEt <- function(x, to, ...) {
   vctrs::vec_cast(.rxEtAsTibble(x), to, ...)
 }
