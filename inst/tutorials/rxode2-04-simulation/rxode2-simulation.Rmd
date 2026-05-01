@@ -47,24 +47,24 @@ Start with `pkModel` and:
 1. Update `tka` to `log(2.0)`.
 2. Remove the random effect `eta.ka` from the `ka` equation using `model()`.
 
-```{r simulation_review, exercise=TRUE}
+```{r simulationReview, exercise=TRUE}
 # Start with pkModel
 # 1. Update tka to log(2.0)
 # 2. Remove eta.ka from ka <- exp(tka + eta.ka)
 
-my_mod <- pkModel |>
+myMod <- pkModel |>
   ini(tka = log(2.0)) |>
   model(ka <- exp(tka))
 
-print(my_mod)
+print(myMod)
 ```
 
-```{r simulation_review-solution}
-my_mod <- pkModel |>
+```{r simulationReview-solution}
+myMod <- pkModel |>
   ini(tka = log(2.0)) |>
   model(ka <- exp(tka))
 
-print(my_mod)
+print(myMod)
 ```
 
 ## Introduction to `rxSolve()`
@@ -88,7 +88,7 @@ Create an event table with:
 - A dose of 250 mg at time 0.
 - Observations every hour for 48 hours.
 
-```{r et_ex, exercise=TRUE}
+```{r etEx, exercise=TRUE}
 ev <- et(amt = 250) |>
   et(0:48)
 
@@ -99,7 +99,7 @@ print(ev)
 
 By default, if you don't specify between-subject variability, `rxode2` solves for a single subject using the initial estimates.
 
-```{r solve_single, exercise=TRUE}
+```{r solveSingle, exercise=TRUE}
 ev <- et(amt = 100) |> et(0:24)
 res <- rxSolve(pkModel, ev)
 plot(res, cp)
@@ -113,7 +113,7 @@ If your model has random effects (`eta` parameters), you can simulate a populati
 
 Simulate the `pkModel` for 100 subjects and plot the results.
 
-```{r solve_pop, exercise=TRUE}
+```{r solvePop, exercise=TRUE}
 ev <- et(amt = 100) |> et(0:24)
 
 # Use nSub = 100
@@ -128,7 +128,7 @@ In addition to between-subject variability, you can also simulate **parameter un
 
 You provide a variance-covariance matrix for the parameters (`thetaMat`) and specify the number of "studies" (`nStud`).
 
-```{r solve_uncert, exercise=TRUE}
+```{r solveUncert, exercise=TRUE}
 # Example Theta Variance-Covariance matrix
 thetaVcov <- lotri::lotri({
   tka ~ 0.04

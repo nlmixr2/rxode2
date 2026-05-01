@@ -94,13 +94,13 @@ If you provide a new line, it is typically appended to the model.
 
 Start with the `one.compartment` model and remove the between-subject variability from the volume `v`.
 
-```{r model_pipe_ex, exercise=TRUE}
+```{r modelPipeEx, exercise=TRUE}
 # Current v is: v <- exp(tv + eta.v)
 # Modify it to be: v <- exp(tv)
-new_mod <- one.compartment |>
+newMod <- one.compartment |>
   model(v <- exp(tv))
 
-print(new_mod)
+print(newMod)
 ```
 
 ## Modifying Parameters with `ini()`
@@ -127,11 +127,11 @@ mod <- one.compartment |>
 
 Update the `one.compartment` model to set `tka` to 0.8 and fix `tv` at 3.5.
 
-```{r ini_pipe_ex, exercise=TRUE}
-new_mod <- one.compartment |>
+```{r iniPipeEx, exercise=TRUE}
+newMod <- one.compartment |>
   ini(tka = 0.8, tv = fix(3.5))
 
-print(new_mod$iniDf)
+print(newMod$iniDf)
 ```
 
 ## Automatic Detection and Covariates
@@ -151,11 +151,11 @@ In this case, `WT` is recognized as a covariate and `covClWt` as a new parameter
 
 ### Exercise: Add a Weight Effect
 
-Add a weight effect on clearance (`cl`) using the covariate `WT` and a new parameter `tcl_wt`.
+Add a weight effect on clearance (`cl`) using the covariate `WT` and a new parameter `tclWt`.
 
-```{r cov_pipe_ex, exercise=TRUE}
+```{r covPipeEx, exercise=TRUE}
 mod <- one.compartment |>
-  model(cl <- exp(tcl + eta.cl + tcl_wt * log(WT/70)))
+  model(cl <- exp(tcl + eta.cl + tclWt * log(WT/70)))
 
 print(mod)
 ```

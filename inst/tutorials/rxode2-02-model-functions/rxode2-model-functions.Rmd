@@ -22,10 +22,10 @@ Before we explore the `rxode2` UI syntax, let's refresh our memory on model synt
 
 ### Exercise: A Simple Simulation
 
-Try to create an event table `ev` for a 100 mg dose at time 0, with sampling every hour for 24 hours. Then solve the provided model `m1_syntax`.
+Try to create an event table `ev` for a 100 mg dose at time 0, with sampling every hour for 24 hours. Then solve the provided model `m1Syntax`.
 
-```{r review_ex, exercise=TRUE}
-m1_syntax <- rxode2({
+```{r reviewEx, exercise=TRUE}
+m1Syntax <- rxode2({
   ka <- 0.5; cl <- 1; v <- 10
   d/dt(depot) <- -ka * depot
   d/dt(center) <- ka * depot - cl/v * center
@@ -38,8 +38,8 @@ m1_syntax <- rxode2({
 
 ```
 
-```{r review_ex-solution}
-m1_syntax <- rxode2({
+```{r reviewEx-solution}
+m1Syntax <- rxode2({
   ka <- 0.5; cl <- 1; v <- 10
   d/dt(depot) <- -ka * depot
   d/dt(center) <- ka * depot - cl/v * center
@@ -47,7 +47,7 @@ m1_syntax <- rxode2({
 })
 
 ev <- et(amt = 100) |> et(0:24)
-res <- rxSolve(m1_syntax, ev)
+res <- rxSolve(m1Syntax, ev)
 plot(res, cp)
 ```
 
@@ -112,8 +112,8 @@ Try to complete the `ini()` block for a model with:
 - `cl` (on log scale `tcl`) with an initial estimate of 1.0, fixed to this value.
 - A variance for `eta.ka` of 0.05.
 
-```{r ini_ex, exercise=TRUE}
-my_model <- function() {
+```{r iniEx, exercise=TRUE}
+myModel <- function() {
   ini({
     # Add tka here
     
@@ -130,11 +130,11 @@ my_model <- function() {
     cp ~ add(0.1)
   })
 }
-rxode2(my_model)
+rxode2(myModel)
 ```
 
-```{r ini_ex-solution}
-my_model <- function() {
+```{r iniEx-solution}
+myModel <- function() {
   ini({
     tka <- 0.5
     tcl <- fix(1.0)
@@ -148,7 +148,7 @@ my_model <- function() {
     cp ~ add(0.1)
   })
 }
-rxode2(my_model)
+rxode2(myModel)
 ```
 
 ## The `model()` Block
@@ -209,8 +209,8 @@ cp ~ add(add.sd) + prop(prop.sd) + combined2()
 
 Complete the `model()` block below. Define the concentration `cp` and an additive residual error model for it.
 
-```{r model_ex, exercise=TRUE}
-my_model <- function() {
+```{r modelEx, exercise=TRUE}
+myModel <- function() {
   ini({
     tka <- log(0.5); tcl <- log(1.0); tv <- log(10)
     add.sd <- 0.1
@@ -227,11 +227,11 @@ my_model <- function() {
     
   })
 }
-rxode2(my_model)
+rxode2(myModel)
 ```
 
-```{r model_ex-solution}
-my_model <- function() {
+```{r modelEx-solution}
+myModel <- function() {
   ini({
     tka <- log(0.5); tcl <- log(1.0); tv <- log(10)
     add.sd <- 0.1
@@ -245,7 +245,7 @@ my_model <- function() {
     cp ~ add(add.sd)
   })
 }
-rxode2(my_model)
+rxode2(myModel)
 ```
 
 ## The UI Object
@@ -264,7 +264,7 @@ You can access different parts of the UI object using the `$` operator:
 
 Run the following code to create a UI object and inspect its initial estimates data frame.
 
-```{r inspect_ui, exercise=TRUE}
+```{r inspectUi, exercise=TRUE}
 m1 <- function() {
   ini({
     tka <- log(0.5)
