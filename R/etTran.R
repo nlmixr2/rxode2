@@ -159,10 +159,8 @@
   stop("cannot figure out numeric time", call. = FALSE)
 }
 
-.lastIdLvl <- NULL
-
 .setLastIdLvl <- function(idLvl) {
-  assignInMyNamespace(".lastIdLvl", idLvl)
+  .etInfo$lastIdLvl <- idLvl
 }
 #' Get the last `idLvl`
 #'
@@ -173,7 +171,7 @@
 #' .getLastIdLvl()
 #' @export
 .getLastIdLvl <- function() {
-  .lastIdLvl
+  .etInfo$lastIdLvl
 }
 
 #' @export

@@ -160,26 +160,27 @@
 #' @template etExamples
 #' @importFrom Rcpp evalCpp
 #' @importFrom stats simulate end setNames start
-#' @importFrom utils assignInMyNamespace
 #' @importFrom methods is
 #' @export
 et <- function(x, ..., envir = parent.frame()) {
   UseMethod("et")
 }
 
-.pipelineRx <- NULL
-.pipelineInits <- NULL
-.pipelineEvents <- NULL
-.pipelineParams <- NULL
-.pipelineICov <- NULL
-.pipelineKeep <- NULL
-.pipelineThetaMat <- NULL
-.pipelineOmega <- NULL
-.pipelineIov <- NULL
-.pipelineSigma <- NULL
-.pipelineDfObs <- NULL
-.pipelineDfSub <- NULL
-.pipelineNSub <- NULL
+.etInfo <- new.env(parent = emptyenv())
+.etInfo$pipelineRx <- NULL
+.etInfo$pipelineInits <- NULL
+.etInfo$pipelineEvents <- NULL
+.etInfo$pipelineParams <- NULL
+.etInfo$pipelineICov <- NULL
+.etInfo$pipelineKeep <- NULL
+.etInfo$pipelineThetaMat <- NULL
+.etInfo$pipelineOmega <- NULL
+.etInfo$pipelineIov <- NULL
+.etInfo$pipelineSigma <- NULL
+.etInfo$pipelineDfObs <- NULL
+.etInfo$pipelineDfSub <- NULL
+.etInfo$pipelineNSub <- NULL
+.etInfo$lastIdLvl <- NULL
 
 .isNa1 <- function(x) {
   if (inherits(x, "logical") ||
@@ -192,7 +193,7 @@ et <- function(x, ..., envir = parent.frame()) {
   FALSE
 }
 
-.pipelineNStud <- NULL
+.etInfo$pipelineNStud <- NULL
 
 #' Assign in the rxode2 pipeline
 #'
@@ -203,88 +204,88 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @export
 #' @keywords internal
 .pipeRx <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineRx))
-  assignInMyNamespace(".pipelineRx", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineRx))
+  .etInfo$pipelineRx <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeInits <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineInits))
-  assignInMyNamespace(".pipelineInits", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineInits))
+  .etInfo$pipelineInits <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeEvents <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineEvents))
-  assignInMyNamespace(".pipelineEvents", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineEvents))
+  .etInfo$pipelineEvents <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeParams <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineParams))
-  assignInMyNamespace(".pipelineParams", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineParams))
+  .etInfo$pipelineParams <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeKeep <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineKeep))
-  assignInMyNamespace(".pipelineKeep", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineKeep))
+  .etInfo$pipelineKeep <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeThetaMat <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineThetaMat))
-  assignInMyNamespace(".pipelineThetaMat", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineThetaMat))
+  .etInfo$pipelineThetaMat <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeOmega <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineOmega))
-  assignInMyNamespace(".pipelineOmega", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineOmega))
+  .etInfo$pipelineOmega <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeSigma <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineSigma))
-  assignInMyNamespace(".pipelineSigma", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineSigma))
+  .etInfo$pipelineSigma <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeDfObs <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineDfObs))
-  assignInMyNamespace(".pipelineDfObs", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineDfObs))
+  .etInfo$pipelineDfObs <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeDfSub <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineDfSub))
-  assignInMyNamespace(".pipelineDfSub", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineDfSub))
+  .etInfo$pipelineDfSub <- obj
   invisible(obj)
 }
 
 #' @rdname dot-pipeRx
 #' @export
 .pipeNSub <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineNSub))
-  assignInMyNamespace(".pipelineNSub", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineNSub))
+  .etInfo$pipelineNSub <- obj
   invisible(obj)
 }
 
@@ -292,8 +293,8 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeNStud <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.pipelineNStud))
-  assignInMyNamespace(".pipelineNStud", obj)
+  if (.isNa1(obj)) return(invisible(.etInfo$pipelineNStud))
+  .etInfo$pipelineNStud <- obj
   invisible(obj)
 }
 
@@ -310,26 +311,26 @@ et <- function(x, ..., envir = parent.frame()) {
                        sigma = NULL, dfObs = NULL,
                        dfSub = NULL, nSub = NULL,
                        nStud = NULL) {
-  assignInMyNamespace(".pipelineRx", rx)
-  assignInMyNamespace(".pipelineInits", inits)
-  assignInMyNamespace(".pipelineEvents", events)
-  assignInMyNamespace(".pipelineParams", params)
-  assignInMyNamespace(".pipelineICov", iCov)
-  assignInMyNamespace(".pipelineKeep", keep)
-  assignInMyNamespace(".pipelineThetaMat", thetaMat)
-  assignInMyNamespace(".pipelineOmega", omega)
-  assignInMyNamespace(".pipelineSigma", sigma)
-  assignInMyNamespace(".pipelineDfObs", dfObs)
-  assignInMyNamespace(".pipelineDfSub", dfSub)
-  assignInMyNamespace(".pipelineNSub", nSub)
-  assignInMyNamespace(".pipelineNStud", nStud)
+  .etInfo$pipelineRx <- rx
+  .etInfo$pipelineInits <- inits
+  .etInfo$pipelineEvents <- events
+  .etInfo$pipelineParams <- params
+  .etInfo$pipelineICov <- iCov
+  .etInfo$pipelineKeep <- keep
+  .etInfo$pipelineThetaMat <- thetaMat
+  .etInfo$pipelineOmega <- omega
+  .etInfo$pipelineSigma <- sigma
+  .etInfo$pipelineDfObs <- dfObs
+  .etInfo$pipelineDfSub <- dfSub
+  .etInfo$pipelineNSub <- nSub
+  .etInfo$pipelineNStud <- nStud
 }
 
 #' @rdname et
 #' @export
 et.rxode2 <- function(x, ..., envir = parent.frame()) {
   .clearPipe()
-  assignInMyNamespace(".pipelineRx", x)
+  .etInfo$pipelineRx <- x
   do.call(et, c(list(...), list(envir = envir)), envir = envir)
 }
 
@@ -346,23 +347,23 @@ et.rxUi <- et.rxode2
 et.rxSolve <- function(x, ..., envir = parent.frame()) {
   ## Need to extract:
   ## 1. rxode2 model
-  assignInMyNamespace(".pipelineRx", x$.args.object)
+  .etInfo$pipelineRx <- x$.args.object
   ## 2. rxode2 parameters
-  assignInMyNamespace(".pipelineParams", x$.args.par0)
-  assignInMyNamespace(".pipelineICov", x$.args$iCov)
-  assignInMyNamespace(".pipelineKeep", x$.args$keep)
+  .etInfo$pipelineParams <- x$.args.par0
+  .etInfo$pipelineICov <- x$.args$iCov
+  .etInfo$pipelineKeep <- x$.args$keep
   ## 3. rxode2 inits
-  assignInMyNamespace(".pipelineInits", x$.args.inits)
+  .etInfo$pipelineInits <- x$.args.inits
   ## 4. rxode2 thetaMat
-  assignInMyNamespace(".pipelineThetaMat", x$.args$thetaMat)
+  .etInfo$pipelineThetaMat <- x$.args$thetaMat
   ## 5. rxode2 omega
-  assignInMyNamespace(".pipelineOmega", x$.args$omega)
+  .etInfo$pipelineOmega <- x$.args$omega
   ## 6. rxode2 sigma
-  assignInMyNamespace(".pipelineSigma", x$.args$sigma)
+  .etInfo$pipelineSigma <- x$.args$sigma
   ## 7. rxode2 dfObs
-  assignInMyNamespace(".pipelineDfObs", x$env$.args$dfObs)
+  .etInfo$pipelineDfObs <- x$env$.args$dfObs
   ## 8. rxode2 dfSub
-  assignInMyNamespace(".pipelineDfSub", x$env$.args$dfSub)
+  .etInfo$pipelineDfSub <- x$env$.args$dfSub
   do.call(et, c(list(...), list(envir = envir)), envir = envir)
 }
 
@@ -372,23 +373,23 @@ et.rxParams <- function(x, ..., envir = parent.frame()) {
   ## Need to extract:
   ## 1. rxode2 model
   ## 2. rxode2 parameters
-  if (!is.null(x$params)) assignInMyNamespace(".pipelineParams", x$params)
-  if (!is.null(x$iCov)) assignInMyNamespace(".pipelineICov", x$iCov)
-  if (!is.null(x$keep)) assignInMyNamespace(".pipelineKeep", x$keep)
+  if (!is.null(x$params)) .etInfo$pipelineParams <- x$params
+  if (!is.null(x$iCov)) .etInfo$pipelineICov <- x$iCov
+  if (!is.null(x$keep)) .etInfo$pipelineKeep <- x$keep
   ## 3. rxode2 inits
-  if (!is.null(x$inits)) assignInMyNamespace(".pipelineInits", x$inits)
+  if (!is.null(x$inits)) .etInfo$pipelineInits <- x$inits
   ## 4. rxode2 thetaMat
-  if (!is.null(x$thetaMat)) assignInMyNamespace(".pipelineThetaMat", x$thetaMat)
+  if (!is.null(x$thetaMat)) .etInfo$pipelineThetaMat <- x$thetaMat
   ## 5. rxode2 omega
-  if (!is.null(x$omega)) assignInMyNamespace(".pipelineOmega", x$omega)
+  if (!is.null(x$omega)) .etInfo$pipelineOmega <- x$omega
   ## 6. rxode2 sigma
-  if (!is.null(x$sigma)) assignInMyNamespace(".pipelineSigma", x$sigma)
+  if (!is.null(x$sigma)) .etInfo$pipelineSigma <- x$sigma
   ## 7. rxode2 dfObs
-  if (!is.null(x$dfObs)) assignInMyNamespace(".pipelineDfObs", x$dfObs)
+  if (!is.null(x$dfObs)) .etInfo$pipelineDfObs <- x$dfObs
   ## 8. rxode2 dfSub
-  if (!is.null(x$dfSub)) assignInMyNamespace(".pipelineDfSub", x$dfSub)
-  if (!is.null(x$nSub)) assignInMyNamespace(".pipelineNSub", x$nSub)
-  if (!is.null(x$nStud)) assignInMyNamespace(".pipelineNStud", x$nStud)
+  if (!is.null(x$dfSub)) .etInfo$pipelineDfSub <- x$dfSub
+  if (!is.null(x$nSub)) .etInfo$pipelineNSub <- x$nSub
+  if (!is.null(x$nStud)) .etInfo$pipelineNStud <- x$nStud
 
   do.call(et, c(list(...), list(envir = envir)), envir = envir)
 }
@@ -801,7 +802,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       }
     }
   }
-  if (is.null(.pipelineRx) || !.isPipe) {
+  if (is.null(.etInfo$pipelineRx) || !.isPipe) {
     if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
     if (!is.null(seed)) set.seed(seed)
     if (is.rxEt(object)) { # nolint
