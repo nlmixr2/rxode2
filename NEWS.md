@@ -1,5 +1,14 @@
 # rxode2 (development)
 
+- Fix `int col` overflow in `getLine` (`src/parseSyntaxErrors.h`).  When
+  reporting a syntax error, `getLine` walks the source string to locate
+  the offending line.  The column accumulator was a signed `int` that
+  could wrap on lines wider than `INT_MAX` bytes; the subsequent
+  `R_Calloc(col + 1, char)` would then receive a tiny (or negative)
+  size and the following `memcpy` would write past the allocation.
+  The fix uses `size_t` for the accumulator and adds explicit bounds
+  checks before the cast back to `int`.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
