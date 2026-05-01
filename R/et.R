@@ -452,23 +452,26 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .ret <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, # nolint
                        time = time, et = .et,  xMissing = .xMissing, timeMissing = .timeMissing)
   if (.ret$done) {
-    return(invisible(.rxEtSyncData(.ret$et))) # nolint
+    return(.rxEtSyncData(.ret$et)) # nolint
   }
 
   # ---- Positional args / data.frame import ----
   .ret <- .etHandlePositional(x, ..., # nolint
                               time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
                               xMissing = .xMissing, timeMissing = .timeMissing)
-  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  if (.ret$done) {
+    return(.rxEtSyncData(.ret$et)) # nolint
+  }
   .posCmt  <- .ret$posCmt
   .listObs <- .ret$listObs
   time     <- .ret$time
 
   # ---- Units ----
-  .etHandleUnits(.envRef, amountUnits, timeUnits, .dotArgs, .amountUnitsMissing, .timeUnitsMissing)
+  .etHandleUnits(.envRef, amountUnits, timeUnits, .dotArgs, # nolint
+                 .amountUnitsMissing, .timeUnitsMissing)
 
   # ---- ID expansion ----
-  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir)
+  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir) # nolint
   .resolvedId  <- .ret$resolvedId
   .targetIds   <- .ret$targetIds
   .doResize    <- .ret$doResize
@@ -479,18 +482,20 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # ---- Resolve evid / cmt ----
   .evidExpr <- substitute(evid)
   .evidSym <- as.character(.evidExpr)
-  .evidVal <- .etHandleEvid(.evidExpr, .evidSym, envir, .evidMissing)
+  .evidVal <- .etHandleEvid(.evidExpr, .evidSym, envir, .evidMissing) # nolint
 
   .cmtExpr <- substitute(cmt)
   .cmtSym <- as.character(.cmtExpr)
-  .cmtVal  <- .etHandleCmt(.cmtExpr, .cmtSym, .posCmt, envir, .cmtMissing)
+  .cmtVal  <- .etHandleCmt(.cmtExpr, .cmtSym, .posCmt, envir, .cmtMissing) # nolint
 
   # ---- Deferred list obs ----
   if (!is.null(.listObs)) {
-    .dfObs <- .etObsChunk(.listObs, cmt = .cmtVal)
-    .etAddChunk(.envRef, .dfObs, .targetIds)
+    .dfObs <- .etObsChunk(.listObs, cmt = .cmtVal) # nolint
+    .etAddChunk(.envRef, .dfObs, .targetIds) # nolint
     .envRef$nobs <- .envRef$nobs + length(.listObs) * max(1L, length(.targetIds))
-    if (.amtMissing && is.null(amt)) return(invisible(.rxEtSyncData(.et)))
+    if (.amtMissing && is.null(amt)) {
+      return(.rxEtSyncData(.et)) # nolint
+    }
   }
 
   # ---- Dose record ----
@@ -504,33 +509,46 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .untilExpr <- substitute(until)
   .rateSym <- deparse(.rateExpr)
 
-  .ret <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr,
+  .ret <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr, # nolint
                         .iiExpr, .addlExpr, .ssExpr, .rateExpr, .durExpr, .untilExpr,
                         .evidVal, .cmtVal, .resolvedId, .targetIds, addSampling, .et, .rateSym,
                         .amtMissing, .timeMissing, .iiMissing, .addlMissing,
                         .ssMissing, .rateMissing, .durMissing, .untilMissing,
                         .addSamplingMissing)
-  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  if (.ret$done) {
+    return(.rxEtSyncData(.ret$et)) # nolint
+  }
 
   # ---- Infusion/SS dose without explicit amt ----
-  .ret <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr,
+  .ret <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr, # nolint
                                  .iiExpr, .durExpr, .evidVal, .cmtVal, .targetIds, .et, .rateSym,
                                  .amtMissing, .rateMissing, .ssMissing, .timeMissing, .iiMissing, .durMissing)
-  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  if (.ret$done) {
+    return(.rxEtSyncData(.ret$et)) # nolint
+  }
 
   # ---- Observation record ----
-  .ret <- .etHandleObs(time, .timeExpr, envir, .envRef, .evidVal, .cmtVal, .targetIds, .et, .timeMissing)
-  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  .ret <- .etHandleObs(time, .timeExpr, envir, .envRef, .evidVal, # nolint
+                       .cmtVal, .targetIds, .et, .timeMissing)
+  if (.ret$done) {
+    return(.rxEtSyncData(.ret$et)) # nolint
+  }
 
   # ---- Piping pattern ----
-  .ret <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal,
+  .ret <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal, # nolint
                           .targetIds, .evidVal, .envRef, .et, .timeMissing, .amtMissing, envir)
-  if (.ret$done) return(invisible(.rxEtSyncData(.ret$et)))
+  if (.ret$done) {
+    return(.rxEtSyncData(.ret$et)) # nolint
+  }
 
   # ---- ID-only resize ----
   if (.doResize) {
     if (length(.addedIds) > 0L) {
-      .tid <- if (length(.existingIds) > 0L) .existingIds[1L] else NA_integer_
+      if (length(.existingIds) > 0) {
+        .tid <- .existingIds[1]
+      } else {
+        .tid <- NA_integer_
+      }
       if (!is.na(.tid) && !is.null(.envRef$chunks[[.tid]])) {
         .template <- .envRef$chunks[[.tid]]
         for (.newId in .addedIds) {
@@ -554,25 +572,32 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- Pure-evid ----
   if (!is.null(.evidVal)) {
-    .df <- .etObsChunk(0.0, cmt = .cmtVal)
+    .df <- .etObsChunk(0.0, cmt = .cmtVal) # nolint
     if (.evidVal != 0L) .df$evid <- as.integer(.evidVal)
-    .etAddChunk(.envRef, .df, .targetIds)
+    .etAddChunk(.envRef, .df, .targetIds) # nolint
     if (.evidVal == 0L) .envRef$nobs <- .envRef$nobs + max(1L, length(.targetIds))
     else .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
-    return(invisible(.rxEtSyncData(.et)))
+    return(.rxEtSyncData(.et)) # nolint
   }
 
-  invisible(.rxEtSyncData(.et))
+  .rxEtSyncData(.et) # nolint
 }
 
 #' @export
 `$.rxEt` <- function(obj, arg) {
   # 0. "env" is an alias for the mutable .env environment
-  if (arg %in% c("env", ".env")) return(.rxEtEnv(obj))
-  # 1. Check method closures in .env$methods (new-style) or direct list slots (internal mini-rxEt)
-  .env <- .rxEtEnv(obj)
+  if (arg %in% c("env", ".env")) {
+    return(.rxEtEnv(obj)) # nolint
+  }
+  # 1. Check method functions in .env$methods (new-style) or direct list slots (internal mini-rxEt)
+  .env <- .rxEtEnv(obj) # nolint
   if (is.environment(.env)) {
-    .direct <- if (!is.null(.env$methods)) .env$methods[[arg]] else unclass(obj)[[arg]]
+    if (!is.null(.env$methods)) {
+      .direct <- .env$methods[[arg]]
+    } else {
+      .direct <- unclass(obj)[[arg]]
+    }
+
   } else {
     .direct <- unclass(obj)[[arg]]
   }
@@ -581,7 +606,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
   # "id" returns the unique sorted ids present in the materialized table
   if (arg == "id" && !is.null(.env)) {
-    .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt"))
+    .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt")) # nolint
     return(sort(unique(as.integer(.mat$id))))
   }
   if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
@@ -590,7 +615,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # 3. Materialize and return data column (time, amt, evid, etc.)
   if (!is.null(.env)) {
-    .mat <- .etMaterialize(obj)
+    .mat <- .etMaterialize(obj) # nolint
     if (arg %in% names(.mat)) {
       .val <- .mat[[arg]]
       if (requireNamespace("units", quietly = TRUE)) {
@@ -640,11 +665,11 @@ names.rxEt <- function(x) {
 
 #' @export
 `[.rxEt` <- function(x, i, j, drop = FALSE) {
-  .env0 <- .rxEtEnv(x)
+  .env0 <- .rxEtEnv(x) # nolint
   if (missing(i) && missing(j)) return(x)
   if (missing(j)) {
     # Row-only subset: return rxEt
-    .full <- .etMaterialize(x)
+    .full <- .etMaterialize(x) # nolint
     .sub  <- if (missing(i)) .full else .full[i, , drop = FALSE]
     .newEnv <- new.env(parent = emptyenv())
     .newEnv$units      <- .env0$units
@@ -663,7 +688,7 @@ names.rxEt <- function(x) {
       .newEnv$nobs  <- 0L
       .newEnv$ndose <- 0L
     }
-    return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt"))
+    return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")) # nolint
   }
   .mat <- as.data.frame(x, all = TRUE)
   if (missing(i)) return(.mat[, j, drop = drop])
@@ -672,9 +697,9 @@ names.rxEt <- function(x) {
 
 #' @export
 `$<-.rxEt` <- function(x, name, value) {
-  .df <- .etMaterialize(x)
+  .df <- .etMaterialize(x) # nolint
   .df[[name]] <- value
-  .rxEtRebuildShell(x, .df)
+  .rxEtRebuildShell(x, .df) # nolint
 }
 
 #' @export
@@ -682,8 +707,8 @@ drop_units.rxEt <- function(x) {
   if (!requireNamespace("units", quietly = TRUE)) {
     stop("requires package 'units'", call. = FALSE)
   }
-  if (is.rxEt(x)) {
-    .env <- .rxEtEnv(x)
+  if (is.rxEt(x)) { # nolint
+    .env <- .rxEtEnv(x) # nolint
     .env$units["dosing"] <- NA_character_
     .env$units["time"]   <- NA_character_
     return(x)
@@ -692,25 +717,25 @@ drop_units.rxEt <- function(x) {
 }
 
 #' @export
-set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
+set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) { # nolint
   if (is.null(mode)) {
     stop("requires package 'units'", call. = FALSE)
   }
   if (missing(value)) {
-    value <- .unitless()
+    value <- .unitless() # nolint
   } else if (mode == "symbols") {
     value <- substitute(value)
     if (is.numeric(value) && !identical(value, 1) && !identical(value, 1L)) {
       stop("the only valid number defining a unit is '1', signifying a unitless unit", call. = FALSE)
     }
   }
-  if (identical(value, .unitless())) {
+  if (identical(value, .unitless())) { # nolint
     warning("clearing both amount and time units\n",
       "for more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
       call. = FALSE
     )
-    if (is.rxEt(x)) {
-      .env <- .rxEtEnv(x)
+    if (is.rxEt(x)) { # nolint
+      .env <- .rxEtEnv(x) # nolint
       .env$units["dosing"] <- NA_character_
       .env$units["time"]   <- NA_character_
       return(x)
@@ -721,16 +746,16 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
     if (inherits(.isTime, "try-error")) {
       ## Amount
-      if (is.rxEt(x)) {
-        .env <- .rxEtEnv(x)
+      if (is.rxEt(x)) { # nolint
+        .env <- .rxEtEnv(x) # nolint
         .env$units["dosing"] <- value
         return(x)
       }
       stop("invalid event table", call. = FALSE)
     } else {
       ##
-      if (is.rxEt(x)) {
-        .env <- .rxEtEnv(x)
+      if (is.rxEt(x)) { # nolint
+        .env <- .rxEtEnv(x) # nolint
         .env$units["time"] <- value
         return(x)
       }
@@ -779,8 +804,8 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
   if (is.null(.pipelineRx) || !.isPipe) {
     if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
     if (!is.null(seed)) set.seed(seed)
-    if (is.rxEt(object)) {
-      .env0 <- .rxEtEnv(object)
+    if (is.rxEt(object)) { # nolint
+      .env0 <- .rxEtEnv(object) # nolint
       .mat <- .etMaterialize(object)
       .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
       if (!any(.hasWin)) {
