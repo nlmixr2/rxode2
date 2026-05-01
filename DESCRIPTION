@@ -95,7 +95,8 @@ Imports:
     rxode2ll (>= 2.0.9),
     data.table (>= 1.12.4),
     qs2,
-    vctrs
+    vctrs,
+    stats,
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other
     compartmental models.  A compilation manager translates the ODE model

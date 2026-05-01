@@ -46,12 +46,53 @@ rxUdfUiNum <- function() {
   }
 }
 
+#' Is the expression actually a flag that can be used in the rxUdfUi
+#' functions?
+#'
+#' This is useful when writing replacement
+#' UI functions
+#'
+#' @param expr expression to evaluate
+#'
+#' @param arg argument name for error messages for the argument name
+#'   in the `rxUdfUi` extension when the expression is not logical
+#'
+#' @param funName function name for the error message for the argument
+#'   name in the `rxUdfUi` extension when the expression is not
+#'   logical.
+#'
+#' @param env the environment in which to evaluate the expression (in case it is numeric)
+#'
+#' @return logical value of the expression if it can be evaluated to a
+#'   scalar `TRUE`/`FALSE` value, otherwise an error is thrown.
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+#'
+rxUdfUiFlag <- function(expr, arg="arg", funName="fun", env = baseenv()) {
+  checkmate::assertCharacter(arg, len=1L, any.missing=FALSE)
+  checkmate::assertCharacter(funName, len=1L, any.missing=FALSE)
+  .val <- suppressWarnings(try(eval(expr, envir = env), silent = TRUE))
+  if (inherits(.val, "try-error") ||
+        !(checkmate::testLogical(.val, len=1L, any.missing=FALSE) ||
+            checkmate::testIntegerish(.val, len=1L, any.missing=FALSE, min=0, max=1))) {
+    stop(sprintf("'%s' requires '%s' to be a scalar TRUE/FALSE value in rxode2 model syntax",
+                 funName,
+                 arg),
+         call. = FALSE)
+  }
+  as.logical(.val)
+}
+
 #' Get the rxode2 iniDf of the current UI being processed (or return NULL)
 #'
 #' @return Initial `data.frame` being processed or `NULL` for nothing.
 #'
 #' @export
+#'
 #' @author Matthew L. Fidler
+#'
 #' @examples
 #'
 #' rxUdfUiIniDf()
@@ -80,7 +121,31 @@ rxUdfUiIniLhs <- function() {
     NULL
   }
 }
-
+#' Is the expression actually equal to a value?
+#'
+#' This is used to determine if the location and scale parameters are
+#' actually equal to their default values, which allows for more
+#' efficient translation to expit expressions when possible.
+#'
+#' @param expr the R language expression to evaluate
+#' @param value the value to compare against
+#' @param env the environment in which to evaluate the expression
+#' @return TRUE if the expression evaluates to a scalar value equal to
+#'   the specified value, FALSE otherwise
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+rxUdfUiIsValue <- function(expr, value, env = baseenv()) {
+  .val <- try(eval(expr, envir = env), silent = TRUE)
+  if (inherits(.val, "try-error") ||
+        length(.val) != 1L ||
+        (!is.numeric(.val) && !is.logical(.val)) ||
+        is.na(.val)) {
+    return(FALSE)
+  }
+  identical(as.numeric(.val), as.numeric(value))
+}
 #' Return the model variables that is being processed or setup model
 #' variables for processing
 #'
@@ -134,6 +199,31 @@ rxUdfUiData <- function(value) {
     stop("rxUdfUiData must be called with a data.frame, NULL, or without any arguments",
          call.=FALSE)
   }
+}
+
+
+#' Give the expression as a compressed model or expression
+#'
+#' Here it means that it evaluates to a variable or a number.
+#'
+#' @param expr the R language expression to evaluate
+#'
+#' @param env the environment in which to evaluate the expression
+#'
+#' @return expression
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+#'
+rxUdfUiExpr <- function(expr, env = parent.frame()) {
+  .val <- suppressWarnings(try(eval(expr, envir = env), silent = TRUE))
+  if (!inherits(.val, "try-error") &&
+        length(.val) == 1L &&
+         (is.numeric(.val) || is.character(.val))) {
+    return(str2lang(as.character(.val)))
+  }
+  expr
 }
 
 #' Return the control that is being processed or setup control for processing

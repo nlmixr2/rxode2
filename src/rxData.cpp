@@ -759,8 +759,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(31);
-  CharacterVector retN(31);
+  List ret(32);
+  CharacterVector retN(32);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -817,7 +817,7 @@ List rxModelVars_blank() {
   ret[19] = CharacterVector::create();
   retN[19] = "alag";
 
-  ret[20] = IntegerVector::create(0); // timeId
+  ret[20] = IntegerVector::create(0); // udf
   retN[20] = "udf";
 
   IntegerVector interp = IntegerVector::create();
@@ -834,7 +834,7 @@ List rxModelVars_blank() {
 
   LogicalVector lhsStr = LogicalVector::create();
   lhsStr.attr("names") = CharacterVector::create();
-  ret[23] = lhsStr; // md5
+  ret[23] = lhsStr; // lhsStr
   retN[23] = "lhsStr";
 
   IntegerVector stateProp = IntegerVector::create();
@@ -862,12 +862,14 @@ List rxModelVars_blank() {
   ret[28] = lhsOrd;
   retN[28] = "lhsOrd";
 
+  ret[29] = IntegerVector::create(0); // splitBolus
+  retN[29] = "splitBolus";
 
-  ret[29] = IntegerVector::create(0); // timeId
-  retN[29] = "timeId";
+  ret[30] = IntegerVector::create(0); // timeId
+  retN[30] = "timeId";
 
-  ret[30] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[30] = "md5";
+  ret[31] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[31] = "md5";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
@@ -2799,6 +2801,9 @@ LogicalVector rxSolveFree(){
   // Free the solve id order
   if (rx->par_sample != NULL) free(rx->par_sample);
   rx->par_sample=NULL;
+  if (rx->splitBolus != NULL) free(rx->splitBolus);
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
   // Free the omega info
@@ -4938,6 +4943,8 @@ static inline void iniRx(rx_solve* rx) {
   rx->whileexit= 0;
   rx->maxExtra = 100;
   rx->extraPushAbort = 0;
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
@@ -4996,6 +5003,18 @@ static inline void iniRx(rx_solve* rx) {
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
+}
+
+static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
+  IntegerVector splitBolus = mv[RxMv_splitBolus];
+  if (splitBolus.size() < 2) return;
+  rx->splitBolusN = splitBolus.size();
+  rx->splitBolus = (int*)malloc(rx->splitBolusN * sizeof(int));
+  if (rx->splitBolus == NULL) {
+    rxSolveFree();
+    stop(_("ran out of memory"));
+  }
+  std::copy(INTEGER(splitBolus), INTEGER(splitBolus) + rx->splitBolusN, rx->splitBolus);
 }
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
@@ -5150,6 +5169,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     return rxSolve_update(object, rxControl, specParams,
@@ -5181,6 +5201,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
     op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");

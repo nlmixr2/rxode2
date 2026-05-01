@@ -61,6 +61,60 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
   return 0;
 }
 
+static inline int handleSplitBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                            D_ParseNode *pn) {
+  if (nodeHas(splitBolus_statement) && *i == 0) {
+    if (tb.splitBolusN != 0) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("only one 'splitBolus()' statement is supported per model"));
+    }
+    *i = nch;
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    D_ParseNode *cSrc = d_get_child(pn, 2);
+    D_ParseNode *c1 = d_get_child(pn, 4);
+    D_ParseNode *rest = d_get_child(pn, 5);
+    int nTargets = d_get_number_of_children(rest) + 1;
+    int nCmts = nTargets + 1;
+    char **vals = (char**)R_Calloc(nCmts, char*);
+    vals[0] = (char*)rc_dup_str(cSrc->start_loc.s, cSrc->end);
+    vals[1] = (char*)rc_dup_str(c1->start_loc.s, c1->end);
+    for (int j = 0; j < nTargets - 1; ++j) {
+      char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
+                                    d_get_child(rest, j)->end);
+      vals[j + 2] = cur + 1;
+      while (*vals[j + 2] == ' ' || *vals[j + 2] == '\t') vals[j + 2]++;
+    }
+    for (int j = 1; j < nCmts; ++j) {
+      for (int k = j + 1; k < nCmts; ++k) {
+        if (!strcmp(vals[j], vals[k])) {
+          updateSyntaxCol();
+          trans_syntax_error_report_fn(_("'splitBolus()' target compartments must all be different"));
+        }
+      }
+    }
+    for (int j = 0; j < nCmts; ++j) {
+      int hasLhs = isCmtLhsStatement(ni, name, vals[j]);
+      if (new_de(vals[j], fromCMTprop)) {
+        add_de(ni, name, vals[j], hasLhs, fromCMTprop);
+      } else {
+        new_or_ith(vals[j]);
+      }
+      tb.splitBolus[j] = tb.id + 1;
+    }
+    tb.splitBolusN = nCmts;
+    sAppend(&sbt, "splitBolus(%s", vals[0]);
+    for (int j = 1; j < nCmts; ++j) {
+      sAppend(&sbt, ",%s", vals[j]);
+    }
+    sAppend(&sbt, ");");
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    R_Free(vals);
+    return 1;
+  }
+  return 0;
+}
+
 typedef struct transFunctions {
   int isNorm;
   int isExp;

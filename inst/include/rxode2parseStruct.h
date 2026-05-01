@@ -347,6 +347,8 @@ typedef struct {
   // Set to 1 (atomically) when any individual exceeds maxExtra; checked after
   // the solve completes to emit an error.
   int extraPushAbort;
+  int *splitBolus;
+  int splitBolusN;
 } rx_solve;
 
 static inline void sNull(sbuf *sbb) {
