@@ -96,26 +96,6 @@ omegaListRse <- function(omegaIn) {
     .Call(`_rxode2_omegaListRse`, omegaIn)
 }
 
-etDollarNames <- function(obj) {
-    .Call(`_rxode2_etDollarNames`, obj)
-}
-
-etUpdate <- function(obj, arg = NULL, value = NULL, exact = TRUE) {
-    .Call(`_rxode2_etUpdate`, obj, arg, value, exact)
-}
-
-et_ <- function(input, et__) {
-    .Call(`_rxode2_et_`, input, et__)
-}
-
-etSeq_ <- function(ets, handleSamples = 0L, waitType = 0L, defaultIi = 0, rbind = FALSE, uniqueId = 0L, reserveLen = 0L, needSort = TRUE, newUnits = as.character( c()), newShow = as.logical( c()), isCmtIntIn = FALSE) {
-    .Call(`_rxode2_etSeq_`, ets, handleSamples, waitType, defaultIi, rbind, uniqueId, reserveLen, needSort, newUnits, newShow, isCmtIntIn)
-}
-
-etRep_ <- function(curEt, times, wait, ids, handleSamples, waitType, ii) {
-    .Call(`_rxode2_etRep_`, curEt, times, wait, ids, handleSamples, waitType, ii)
-}
-
 #' Get the Linear Compartment Information based on the model variables
 #'
 #' @param obj The model variables object

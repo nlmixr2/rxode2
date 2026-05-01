@@ -408,7 +408,7 @@ rxTest({
       cp ~ logitNorm(NA) + pow(pow.sd, pow) + boxCox(lambda) | cond
     }), lmat) -> mod
 
-    expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
+    expect_equal(mod$predDf$errType, testCombine("pow")$errType)
 
     .errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
@@ -421,7 +421,7 @@ rxTest({
       cp ~ lnorm(NA) + pow(pow.sd, pow) | cond
     }), lmat) -> mod
 
-    expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
+    expect_equal(mod$predDf$errType, testCombine("pow")$errType)
 
     .errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
@@ -447,7 +447,7 @@ rxTest({
       cp ~ probitNorm(NA) + pow(pow.sd, pow) + boxCox(lambda) | cond
     }), lmat) -> mod
 
-    expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
+    expect_equal(mod$predDf$errType, testCombine("pow")$errType)
 
     .errProcessExpression(quote({
       ka <- exp(tka + eta.ka)

@@ -246,9 +246,10 @@ rxUiGet.omega <- function(x, ...) {
     class(.lotri) <- NULL
   } else {
     attr(.lotri, "lotriEst") <- NULL
-    class(.lotri) <- class(.lotri)[-1]
     if (length(.lotri) == 0) {
       .lotri <- NULL
+    } else if (!inherits(.lotri, "lotri")) {
+      class(.lotri) <- c("lotri", class(.lotri))
     }
   }
   .lotri

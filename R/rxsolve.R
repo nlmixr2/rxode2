@@ -1464,10 +1464,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
   rxUdfUiReset()
-  if (rxIs(events, "event.data.frame")) {
-    rxUdfUiData(events)
-  } else if (rxIs(params, "event.data.frame")) {
-    rxUdfUiData(params)
+  .eventsChk <- if (is.rxEt(events)) as.data.frame(events) else events
+  .paramsChk <- if (is.rxEt(params)) as.data.frame(params) else params
+  if (rxIs(.eventsChk, "event.data.frame")) {
+    rxUdfUiData(.eventsChk)
+  } else if (rxIs(.paramsChk, "event.data.frame")) {
+    rxUdfUiData(.paramsChk)
   } else {
     stop("Cannot detect an event data frame to use while re-parsing the model",
          call.=FALSE)
@@ -1629,11 +1631,13 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   rxUdfUiReset()
   if (isTRUE(object$uiUseData)) {
     # this needs to be re-parsed
-    if (rxIs(events, "event.data.frame")) {
-      rxUdfUiData(events)
+    .eventsChk2 <- if (is.rxEt(events)) as.data.frame(events) else events
+    .paramsChk2 <- if (is.rxEt(params)) as.data.frame(params) else params
+    if (rxIs(.eventsChk2, "event.data.frame")) {
+      rxUdfUiData(.eventsChk2)
       rxUdfUiMv(rxModelVars(object))
-    } else if (rxIs(params, "event.data.frame")) {
-      rxUdfUiData(params)
+    } else if (rxIs(.paramsChk2, "event.data.frame")) {
+      rxUdfUiData(.paramsChk2)
       rxUdfUiMv(rxModelVars(object))
     } else {
       stop("Cannot detect an event data frame to use while re-parsing the model",
@@ -1743,7 +1747,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   })
   .applyParams <- FALSE
   .rxParams <- NULL
-  if (rxIs(object, "rxEt")) {
+  if (is.rxEt(object)) {
     if (!is.null(events)) {
       stop("events can be pipeline or solving arguments not both",
         call. = FALSE
@@ -1757,7 +1761,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- object
       object <- rxode2::.pipeRx(NA)
     }
-  } else if (rxIs(object, "rxParams")) {
+  } else if (inherits(object, "rxParams")) {
     .applyParams <- TRUE
     if (is.null(params) && !is.null(object$params)) {
       params <- object$params
@@ -1829,6 +1833,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .setupOnly <- 0L
   if (any(names(.lst) == ".setupOnly")) {
     .setupOnly <- .lst$.setupOnly
+  }
+  if (is.rxEt(params) && !is.rxEt(events)) {
+    .tmp <- events
+    events <- params
+    params <- .tmp
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (.ctl$addCov && length(.ctl$keep) > 0) {
@@ -1980,11 +1989,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (inherits(.ctl$iCov, "data.frame")) {
       .icovId <- which(tolower(names(.ctl$iCov)) == "id")
       .useEvents <- FALSE
-      if (rxIs(events, "event.data.frame")) {
-        .events <- events
+      .eventsChk3 <- if (is.rxEt(events)) as.data.frame(events) else events
+      .paramsChk3 <- if (is.rxEt(params)) as.data.frame(params) else params
+      if (rxIs(.eventsChk3, "event.data.frame")) {
+        .events <- .eventsChk3
         .useEvents <- TRUE
-      } else if (rxIs(params, "event.data.frame")) {
-        .events <- params
+      } else if (rxIs(.paramsChk3, "event.data.frame")) {
+        .events <- .paramsChk3
       } else {
         stop("Cannot detect an event data frame to merge 'iCov'")
       }
@@ -2001,7 +2012,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         }
         .ctl$iCov$id <- .id
       } else if (length(.icovId) > 1) {
-        stop("iCov has duplicate IDs, cannot continue")
+        stop("iCov has duplicate ids, cannot continue")
       }
       names(.ctl$iCov)[.icovId] <- .by
       if (.useEvents) {
@@ -2134,9 +2145,16 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
+  .eventsForSolve <- if (is.rxEt(events)) {
+    .etFixCmtForSolve(.etMaterialize(events))
+  } else if (inherits(events, "data.frame")) {
+    .etFixCmtForSolve(events)
+  } else {
+    events
+  }
   if (getOption("rxode2.debug", FALSE)) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-                                                  params, events, inits,
+                                                  params, .eventsForSolve, inits,
                                                   setupOnlyS = .setupOnly
                                                   ), lst = TRUE)
   } else {
@@ -2144,7 +2162,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .envReset$reset <- FALSE
       tryCatch({
         .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-                                                      params, events, inits,
+                                                      params, .eventsForSolve, inits,
                                                       setupOnlyS = .setupOnly
                                                       ), lst = TRUE)
       },
@@ -2200,6 +2218,31 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
 #' @export
 update.rxSolve <- function(object, ...) {
   rxSolve(object, ...)
+}
+
+#' @rdname rxSolve
+#' @export
+rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                            theta = NULL, eta = NULL, envir = parent.frame()) {
+  if (is.rxEt(params) && !is.rxEt(events)) {
+    .tmp <- events
+    events <- params
+    params <- .tmp
+  }
+  if (is.null(events)) {
+    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
+                           theta = theta, eta = eta, envir = envir))
+  }
+  .model <- object$model
+  if (is.null(.model)) {
+    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
+                           theta = theta, eta = eta, envir = envir))
+  }
+  .model <- as.character(.model)
+  if (is.null(params)) params <- object$.params.single
+  if (is.null(inits)) inits <- object$inits
+  rxSolve(.model, params = params, events = events, inits = inits, ...,
+          theta = theta, eta = eta, envir = envir)
 }
 
 #' @rdname rxSolve
@@ -2303,6 +2346,13 @@ solve.rxEt <- solve.rxSolve
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
   if (arg == "rxModelVars") return(rxModelVars(obj))
+  .cls <- attr(obj, "class")
+  .env <- attr(.cls, ".rxode2.env")
+  if (is.environment(.env) && exists(arg, envir = .env, inherits = FALSE)) {
+    .val <- get(arg, envir = .env, inherits = FALSE)
+    if (is.function(.val)) return(.val)
+    return(.val)
+  }
   return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
