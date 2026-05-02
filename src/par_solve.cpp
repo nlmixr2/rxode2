@@ -918,7 +918,7 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
   // can selectively apply only the slot(s) whose trigger time has arrived.
   double newMtime[90];
   for (int k = 0; k < nm; k++) newMtime[k] = ind->mtime[k];
-  if (ind->fns->mtime) ind->fns->mtime(ind->id, newMtime, yp);
+  if (ind->fns && ind->fns->mtime) ind->fns->mtime(ind->id, newMtime, yp);
   int changed = 0;
   double *time = ind->timeThread;
   for (int k = 0; k < nm; k++) {
@@ -1092,7 +1092,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         idid = indLin(ind->id, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
-                      ind->fns->me, ind->fns->indf);
+                      (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
       }
       if (idid <= 0) {
         /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
@@ -2337,7 +2337,7 @@ void handleSS(int *neq,
         dur2 = curIi-dur;
         if (isModeled && isSsLag) {
           // adjust start time for modeled w/ssLag
-          startTimeD = ind->fns->gettime(ind->idose[infFixds],ind);
+          startTimeD = (ind->fns ? ind->fns->gettime(ind->idose[infFixds],ind) : getTime(ind->idose[infFixds],ind));
         }
         solveSSinf(neq,
                    BadDose,
@@ -2636,7 +2636,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       } else {
         preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, ind, xoutp, yp, xout, ind->InfusionRate, ind->on,
-                      ind->fns->me, ind->fns->indf);
+                      (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
         xoutp=xout;
         postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
       }

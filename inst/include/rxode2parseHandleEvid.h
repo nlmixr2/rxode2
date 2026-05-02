@@ -273,7 +273,7 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
   if (ind->fns->f == NULL) return dose;
   double ret = ind->fns->f(id, cmt, dose, t, y);
   if (ISNA(ret)){
-    rx_solving_options *op = ind->op;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int newBadSolve = 1;
 #pragma omp atomic write
     op->badSolve = newBadSolve;
@@ -301,7 +301,7 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
     if (ind->ignoredDoses[i] == doseIdx) return 0;
   }
   if (ind->ignoredDosesN[0]+1 >= ind->ignoredDosesAllocN[0]) {
-    rx_solving_options *op = ind->op;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;
 #pragma omp critical
     {
@@ -328,7 +328,7 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->pendingDosesN[0]+1 >= ind->pendingDosesAllocN[0]) {
-    rx_solving_options *op = ind->op;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;
 #pragma omp critical
     {
@@ -357,7 +357,7 @@ static inline int pushDosingEvent(double time, double amt, int evid,
                                    rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
-    rx_solving_options *op = ind->op;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;  // 0=ok, 1=partial alloc, -1=first alloc failed
 #pragma omp critical
     {
@@ -412,7 +412,7 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
                                         rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
-    rx_solving_options *op = ind->op;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;  // 0=ok, 1=partial alloc, -1=first alloc failed
 #pragma omp critical
     {
@@ -527,7 +527,7 @@ static inline int handle_evid(int evid, int neq,
       ind->nBadDose++;
     }
   } else {
-    rx_solving_options *op = ind->op;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     //if (syncIdx(ind) == 0) return 0;
     if (ind->wh0 == EVID0_OFF) {
       yp[cmt]=op->inits[cmt];
@@ -552,7 +552,7 @@ static inline int handle_evid(int evid, int neq,
         // all_times/dose index.  For extra-dose events (ind->idx < 0) the
         // negative value IS the direct index.
         {
-          rx_solve *rx = ind->rx;
+          rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
           int _directIdx = (ind->idx >= 0) ? ind->ix[ind->idx] : ind->idx;
           if (ind->whI == EVIDF_MODEL_RATE_ON && (rx->needSort & needSortRate)) {
             updateRate(_directIdx, ind, yp);

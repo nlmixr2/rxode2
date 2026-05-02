@@ -301,7 +301,6 @@ struct rx_solving_options_ind_s {
 typedef struct rx_solve_s {
   rx_solving_options_ind *subjects;
   rx_solving_options *op;
-  rx_fn_pointers fns;
   uint32_t nsub;
   uint32_t nsim;
   int neta;
@@ -388,6 +387,7 @@ typedef struct rx_solve_s {
   int extraPushAbort;
   int *splitBolus;
   int splitBolusN;
+  rx_fn_pointers fns;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

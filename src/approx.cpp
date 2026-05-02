@@ -35,25 +35,25 @@ extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   int i, j, ij;
   i = 0;
   j = ind->n_all_times - 1;
-  if (obs_time < ind->fns->gettime(ind->ix[i], ind)){
+  if (obs_time < (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind))){
     return i;
   }
-  if (obs_time > ind->fns->gettime(ind->ix[j], ind)){
+  if (obs_time > (ind->fns ? ind->fns->gettime(ind->ix[j], ind) : getTime(ind->ix[j], ind))){
     return j;
   }
   while(i < j - 1) { /* x[i] <= obs_time <= x[j] */
     ij = (i + j)/2; /* i+1 <= ij <= j-1 */
-    if(obs_time < ind->fns->gettime(ind->ix[ij], ind))
+    if(obs_time < (ind->fns ? ind->fns->gettime(ind->ix[ij], ind) : getTime(ind->ix[ij], ind)))
       j = ij;
     else
       i = ij;
   }
   /* if (i == 0) return 0; */
-  while(i != 0 && obs_time == ind->fns->gettime(ind->ix[i], ind)){
+  while(i != 0 && obs_time == (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind))){
     i--;
   }
   if (i == 0){
-    while(i < ind->ndoses-2 && fabs(obs_time  - ind->fns->gettime(ind->ix[i+1], ind))<= sqrt(DBL_EPSILON)){
+    while(i < ind->ndoses-2 && fabs(obs_time  - (ind->fns ? ind->fns->gettime(ind->ix[i+1], ind) : getTime(ind->ix[i+1], ind)))<= sqrt(DBL_EPSILON)){
       i++;
     }
   }
@@ -125,17 +125,15 @@ static inline double getValue(int idx, double *y, int is_locf,
   }
   return ret;
 }
-#define T(i) id->fns->gettime(id->ix[i], id)
+#define T(i) (id->fns ? id->fns->gettime(id->ix[i], id) : getTime(id->ix[i], id))
 #define V(i, lh) getValue(i, y, is_locf, id, Meth, lh)
 extern "C" double rx_approxP(double v, double *y, int is_locf, int n,
                              rx_solving_options *Meth, rx_solving_options_ind *id){
   /* Approximate  y(v),  given (x,y)[i], i = 0,..,n-1 */
   int i, j, ij;
-
   if(!n) return R_NaN;
 
-  i = 0;
-  j = n - 1;
+  i = 0; j = n - 1;
 
   /* handle out-of-domain points */
   if(v < T(i)) return id->ylow;
@@ -232,28 +230,28 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
       idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
     }
     // extra dose time, find the closest index
-    double v = ind->fns->gettime(idxIn, ind);
+    double v = (ind->fns ? ind->fns->gettime(idxIn, ind) : getTime(idxIn, ind));
     int i, j, ij, n = ind->n_all_times;
     i = 0;
     j = n - 1;
-    if (v < ind->fns->gettime(ind->ix[i], ind)) {
+    if (v < (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind))) {
       idx = i;
-    } else if (v > ind->fns->gettime(ind->ix[j], ind)) {
+    } else if (v > (ind->fns ? ind->fns->gettime(ind->ix[j], ind) : getTime(ind->ix[j], ind))) {
       idx = j;
     } else {
       /* find the correct interval by bisection */
       while(i < j - 1) { /* T(i) <= v <= T(j) */
         ij = (i + j)/2; /* i+1 <= ij <= j-1 */
-        if (v < ind->fns->gettime(ind->ix[ij], ind)) {
+        if (v < (ind->fns ? ind->fns->gettime(ind->ix[ij], ind) : getTime(ind->ix[ij], ind))) {
           j = ij;
         } else  {
           i = ij;
         }
       }
       // Pick best match
-      if (isSameTimeOp(v, ind->fns->gettime(ind->ix[j], ind))) {
+      if (isSameTimeOp(v, (ind->fns ? ind->fns->gettime(ind->ix[j], ind) : getTime(ind->ix[j], ind)))) {
         idx = j;
-      } else if (isSameTimeOp(v, ind->fns->gettime(ind->ix[i], ind))) {
+      } else if (isSameTimeOp(v, (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind)))) {
         idx = i;
       } else if (op->instant_backward == 0) {
         // use instant_backward to change the idx too; it does not
@@ -342,11 +340,11 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
           if (idxSample == 0 &&
-              isSameTimeOp(t, indSample->fns->gettime(ind->ix[idxSample], indSample))) {
+              isSameTimeOp(t, (indSample->fns ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, indSample->fns->gettime(ind->ix[idxSample], indSample))) {
+                     isSameTimeOp(t, (indSample->fns ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,
