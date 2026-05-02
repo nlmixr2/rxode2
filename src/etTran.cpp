@@ -1508,6 +1508,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   for (int i = 0; i < inTime.size(); i++) {
     if (idCol == -1) cid = 1;
     else cid = inId[i];
+    /* Guard: reject NA IDs here, before any idLvl[cid-1] access.
+     * cid == NA_INTEGER causes idLvl[cid-1] to overflow and read
+     * out-of-bounds memory in every error-message path below.        */
+    if (cid == NA_INTEGER) stop(_("'id' cannot be 'NA'"));
     if (dvCol == -1) cdv = NA_REAL;
     else cdv = inDv[i];
     if (censCol == -1) ccens = NA_INTEGER;
@@ -1553,7 +1557,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else cii = inIi[i];
     if (ISNA(cii)) cii=0.0;
 
-    if (cid == NA_INTEGER) stop(_("'id' cannot be 'NA'"));
     if (std::find(allId.begin(), allId.end(), cid) == allId.end()) {
       allId.push_back(cid);
       // New ID
