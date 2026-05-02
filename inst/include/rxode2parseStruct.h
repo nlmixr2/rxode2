@@ -29,6 +29,9 @@ typedef struct vLines {
 struct rx_solving_options_ind_s;
 typedef struct rx_solving_options_ind_s rx_solving_options_ind;
 
+struct rx_solve_s;
+typedef struct rx_solve_s rx_solve;
+
 typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
 typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
@@ -295,7 +298,7 @@ struct rx_solving_options_ind_s {
   rx_solve *rx;
 };
 
-typedef struct {
+typedef struct rx_solve_s {
   rx_solving_options_ind *subjects;
   rx_solving_options *op;
   rx_fn_pointers fns;
