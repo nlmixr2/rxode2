@@ -2337,7 +2337,7 @@ void handleSS(int *neq,
         dur2 = curIi-dur;
         if (isModeled && isSsLag) {
           // adjust start time for modeled w/ssLag
-          startTimeD = getTime(ind->idose[infFixds],ind);
+          startTimeD = ind->fns->gettime(ind->idose[infFixds],ind);
         }
         solveSSinf(neq,
                    BadDose,

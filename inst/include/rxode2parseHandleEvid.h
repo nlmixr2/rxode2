@@ -167,7 +167,8 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
       return 0;
     } else {
       // The amt in rxode2 is the infusion rate, but we need the amt
-      tinf[0] = _getDur(ind->ixds, ind, 2, &p);
+      if (ind->fns->getdur) tinf[0] = ind->fns->getdur(ind->ixds, ind, 2, &p);
+      else tinf[0] = _getDur(ind->ixds, ind, 2, &p);
       if (!ISNA(tinf[0])) {
         curDose[0] = tinf[0] * curDose[0];
         return 1;
