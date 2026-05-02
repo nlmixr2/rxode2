@@ -1,5 +1,13 @@
 # rxode2 (development)
 
+- Fix out-of-bounds read in `convertDvid_` (`src/etTran.cpp`).  When
+  `inCmt` was an empty integer vector (e.g., from `rxSolve()` with a
+  zero-row event table containing a `DVID` column), the code accessed
+  `udvid[udvid.size()-1]` which is `udvid[-1]` and reads past the
+  start of the buffer.  UBSan reports a misaligned-address load and
+  the call SIGSEGVs.  Added an empty-input check that returns the
+  empty vector unchanged.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
