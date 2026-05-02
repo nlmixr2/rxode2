@@ -17,7 +17,7 @@
 extern "C" int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) {
   if (ind->inLhs) {
     // In this case dosing to the extra compartments is OK so add it
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = ind->op;
     return handle_evid(evid, op->neq + op->extraCmt, ind->BadDose,
                        ind->InfusionRate, ind->dose, yp,
                        xout, id, ind);
@@ -40,7 +40,7 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
   double dose = getDoseNumber(ind, l);
   if (backward==1 && l != 0){
     if (l <= 0) {
-      rx_solving_options *op = &op_global;
+      rx_solving_options *op = ind->op;
       if (omp_in_parallel()) {
         int newBadSolve = 1;
 #pragma omp atomic write
@@ -54,7 +54,7 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
       p[0]--;
     }
     if (getDoseNumber(ind, p[0]) != -dose){
-      rx_solving_options *op = &op_global;
+      rx_solving_options *op = ind->op;
       if (omp_in_parallel()) {
         int newBadSolve = 1;
 #pragma omp atomic write
@@ -67,7 +67,7 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
   } else {
     if (l >= ind->ndoses) {
       if (backward==2) return(NA_REAL);
-      rx_solving_options *op = &op_global;
+      rx_solving_options *op = ind->op;
       if (omp_in_parallel()) {
         int newBadSolve = 1;
 #pragma omp atomic write
@@ -82,7 +82,7 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
     }
     if (getDoseNumber(ind, p[0]) != -dose){
       if (backward==2) return(NA_REAL);
-      rx_solving_options *op = &op_global;
+      rx_solving_options *op = ind->op;
       if (omp_in_parallel()) {
         int newBadSolve = 1;
 #pragma omp atomic write

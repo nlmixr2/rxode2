@@ -30,6 +30,8 @@ extern "C" {
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
     ind->fns = &(rx->fns);
+    ind->op = op;
+    ind->rx = rx;
     ind->linSS=0;
     ind->linSScmt=0;
     ind->linSSvar=0.0;

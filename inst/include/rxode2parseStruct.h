@@ -291,6 +291,8 @@ struct rx_solving_options_ind_s {
   int _atEventTime;     // set before each event-table interval; consumed once in dydt
   int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
   rx_fn_pointers *fns;
+  rx_solving_options *op;
+  rx_solve *rx;
 };
 
 typedef struct {
@@ -384,6 +386,8 @@ typedef struct {
   int *splitBolus;
   int splitBolusN;
 } rx_solve;
+
+typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 static inline void sNull(sbuf *sbb) {
   sbb->s = NULL;

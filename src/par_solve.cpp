@@ -2897,7 +2897,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
 
 extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
                              t_dydt_liblsoda dydt, t_update_inis u_inis){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   struct lsoda_opt_t opt = {0};
   opt.ixpr = 0; // No extra printing...
   // Unlike traditional lsoda, these are vectors.
@@ -3426,8 +3426,9 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 extern "C" void ind_lsoda(rx_solve *rx, int solveid,
                           t_dydt_lsoda_dum dydt_ls, t_update_inis u_inis, t_jdum_lsoda jdum,
                           int cjt) {
+  rx_solving_options *op = rx->op;
   int neq[2];
-  neq[0] = op_global.neq;
+  neq[0] = op->neq;
   neq[1] = 0;
 
   // Set jt to 1 if full is specified.
@@ -3438,17 +3439,18 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
     RSprintf("JT: %d\n",cjt);
   rwork = global_rwork(lrw+1);
   iwork = global_iwork(liw+1);
-  ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, cjt,
+  ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, cjt,
              dydt_ls, u_inis, jdum);
 }
 
 extern "C" void par_lsoda(rx_solve *rx) {
   uint32_t nsub = rx->nsub, nsim = rx->nsim;
   int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
-  int displayProgress = (op_global.nDisplayProgress <= nsolve);
+  rx_solving_options *op = rx->op;
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   int neq[2];
-  neq[0] = op_global.neq;
+  neq[0] = op->neq;
   neq[1] = 0;
   /* yp = global_yp(neq[0]); */
 
@@ -3456,8 +3458,6 @@ extern "C" void par_lsoda(rx_solve *rx) {
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0], jt = global_jt;
   double *rwork;
   int *iwork;
-
-
   if (global_debug)
     RSprintf("JT: %d\n",jt);
   rwork = global_rwork(lrw+1);
@@ -3469,7 +3469,7 @@ extern "C" void par_lsoda(rx_solve *rx) {
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
-      ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
+      ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
@@ -3482,11 +3482,12 @@ extern "C" void par_lsoda(rx_solve *rx) {
   }
   setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
-    op_global.abort = 1;
+    op->abort = 1;
   } else {
     if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
   }
 }
+
 
 extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                                t_dydt c_dydt, t_update_inis u_inis) {
@@ -4106,15 +4107,15 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
 
 extern "C" void ind_dop(rx_solve *rx, int solveid,
                         t_dydt c_dydt, t_update_inis u_inis){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  ind_dop0(rx, &op_global, solveid, neq, c_dydt, u_inis);
+  ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
 }
 
 void par_dop(rx_solve *rx){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
 #ifdef _OPENMP
   int cores = op->cores;
 #else
@@ -4141,7 +4142,7 @@ void par_dop(rx_solve *rx){
     localAbort = abort;
     if (localAbort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_dop0(rx, &op_global, solveid, neq, dydt, update_inis);
+      ind_dop0(rx, op, solveid, neq, dydt, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
@@ -4168,6 +4169,7 @@ void par_dop(rx_solve *rx){
   if (abort == 1){
     op->abort = 1;
     par_progress(cur, nsolve, curTick, cores, t0, 1);
+
   } else {
     if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
@@ -4800,7 +4802,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   if (op->neq !=  0) {
     if (rx->linB == 1) {
       // Setup H
@@ -4841,7 +4843,7 @@ extern "C" void par_solve(rx_solve *rx) {
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   if (op->neq != 0) {
     if (rx->linB == 1) {
       // Setup H
