@@ -153,6 +153,7 @@ rxSolve(
   linCmtForwardMax = 2L,
   indOwnAlloc = NA,
   maxExtra = 1000L,
+  tolFactor = NULL,
   envir = parent.frame()
 )
 
@@ -984,6 +985,29 @@ that individual (output filled with \code{NA}) and an error is raised
 after the full parallel solve completes.  Set to \code{0L} to allow
 unlimited pushes (use with care — cascading \code{evid_()} calls can
 grow without bound).  Default is \code{100L}.}
+
+\item{tolFactor}{A per-individual tolerance multiplier (>= 1.0, or
+\code{NULL} for no effect).  When supplied, each individual's
+\code{atol}, \code{rtol}, \code{ssAtol}, and \code{ssRtol} are multiplied by
+this factor before the ODE solver is called, loosening the
+tolerances for that individual.  This is useful when a small
+number of subjects are numerically stiff and would otherwise
+cause solve failures: pass a larger factor for the
+problematic subjects and leave the rest at 1.0 (or omit them).
+The effective tolerance is always capped at \code{maxAtolRtolFactor}.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{`tolFactor` may be:
+* `NULL` (default) — no adjustment applied.
+* A single numeric value — the same factor is applied to
+  the first `length(tolFactor)` subjects in order.
+* A numeric vector — applied element-wise to subjects in
+  the order they appear.
+* A **named** numeric vector — names are matched to subject
+  IDs; unmatched subjects retain `tolFactor = 1.0`.
+
+The per-subject factors used (after matching) are stored back
+in the solved object and accessible via `$tolFactor`.
+}\if{html}{\out{</div>}}}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

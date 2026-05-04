@@ -154,6 +154,28 @@
 #' @param maxAtolRtolFactor The maximum `atol`/`rtol` that
 #'     FOCEi and other routines may adjust to.  By default 0.1
 #'
+#' @param tolFactor A per-individual tolerance multiplier (>= 1.0, or
+#'     `NULL` for no effect).  When supplied, each individual's
+#'     `atol`, `rtol`, `ssAtol`, and `ssRtol` are multiplied by
+#'     this factor before the ODE solver is called, loosening the
+#'     tolerances for that individual.  This is useful when a small
+#'     number of subjects are numerically stiff and would otherwise
+#'     cause solve failures: pass a larger factor for the
+#'     problematic subjects and leave the rest at 1.0 (or omit them).
+#'     The effective tolerance is always capped at `maxAtolRtolFactor`.
+#'
+#'     `tolFactor` may be:
+#'     * `NULL` (default) — no adjustment applied.
+#'     * A single numeric value — the same factor is applied to
+#'       the first `length(tolFactor)` subjects in order.
+#'     * A numeric vector — applied element-wise to subjects in
+#'       the order they appear.
+#'     * A **named** numeric vector — names are matched to subject
+#'       IDs; unmatched subjects retain `tolFactor = 1.0`.
+#'
+#'     The per-subject factors used (after matching) are stored back
+#'     in the solved object and accessible via `$tolFactor`.
+#'
 #' @param stateTrim When amounts/concentrations in one of the states
 #'     are above this value, trim them to be this value. By default
 #'     Inf.  Also trims to -stateTrim for large negative
