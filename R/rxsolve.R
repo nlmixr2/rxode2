@@ -903,6 +903,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtForwardMax=2L,
                     indOwnAlloc=NA,
                     maxExtra=1000L,
+                    tolFactor=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1221,6 +1222,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (maxSS <= minSS) stop("'maxSS' must be larger than 'minSS'", call.=FALSE)
     checkmate::assertNumeric(infSSstep, lower=6, any.missing=FALSE, len=1)
     checkmate::assertNumeric(maxAtolRtolFactor, lower=0.01, any.missing=FALSE, finite=TRUE, null.ok=FALSE, len=1)
+    if (!is.null(tolFactor))
+      checkmate::assertNumeric(tolFactor, lower=1.0, finite=TRUE, any.missing=FALSE, .var.name="tolFactor")
     checkmate::assertNumeric(from, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(to, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(by, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
@@ -1451,6 +1454,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtForwardMax=linCmtForwardMax,
       indOwnAlloc=as.integer(indOwnAlloc),
       maxExtra=maxExtra,
+      tolFactor=tolFactor,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
