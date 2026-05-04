@@ -1604,7 +1604,7 @@ static inline double *getCurDoseSThread() {
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  inds_thread[rx_get_thread(op_global.cores)] = *ind;
+  inds_thread[rx_get_thread(op->cores)] = *ind;
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
     ind->InfusionRate = getInfusionRateThread();
@@ -3693,6 +3693,10 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
     // on subsequent calls (first == 0) so that stiff individuals retain
     // their loosened tolerances across re-solves.
     ind->tolFactor = 1.0;
+    // neqOverride = -1 means "use op->neq".  Reset on first allocation
+    // only; downstream callers (e.g. nlmixr2est) set/restore this
+    // per-call and we do not want to clobber an in-flight override.
+    ind->neqOverride = -1;
   }
 }
 
