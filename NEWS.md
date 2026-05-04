@@ -1,5 +1,13 @@
 # rxode2 (development)
 
+- Fix out-of-bounds read when an event table contains `NA` IDs: the
+  main event-processing loop in `etTran.cpp` used `idLvl[cid-1]` in
+  error messages before checking `cid == NA_INTEGER`.  With
+  `cid = NA_INTEGER`, `cid - 1` overflows signed `int` and the
+  `CharacterVector[]` access reads past the end of the ID-levels
+  vector, causing heap corruption or a crash.  The guard is now at the
+  top of the per-row loop so all error paths are protected.
+
 - Add `getIndNeqOverride()` / `setIndNeqOverride()` C-API at pointer
   table slots 56 and 57 (and as `R_RegisterCCallable` entries).  This
   allows downstream packages (e.g. nlmixr2est) to mark a per-individual
