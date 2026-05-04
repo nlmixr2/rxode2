@@ -465,16 +465,6 @@ t_get_solve get_solve = NULL;
 
 t_assignFuns assignFuns=NULL;
 
-t_F AMT = NULL;
-t_LAG LAG = NULL;
-t_RATE RATE = NULL;
-t_DUR DUR = NULL;
-t_calc_mtime calc_mtime = NULL;
-
-t_ME ME = NULL;
-t_IndF IndF = NULL;
-
-
 static inline void copyLinCmt(int *neq,
                               rx_solving_options_ind *ind, rx_solving_options *op,
                               double *yp) {
@@ -551,6 +541,36 @@ double *global_rwork(unsigned int mx){
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
+extern "C" int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
+extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+
+extern "C" void _rxode2_assignFuns2(rx_solve rx,
+                                   rx_solving_options op,
+                                   t_F f,
+                                   t_LAG lag,
+                                   t_RATE rate,
+                                   t_DUR dur,
+                                   t_calc_mtime mtime,
+                                   t_ME me,
+                                   t_IndF indf,
+                                   t_getTime gettime,
+                                   t_locateTimeIndex timeindex,
+                                   t_handle_evidL handleEvid,
+                                   t_getDur getdur) {
+  rx_solve *rxp = getRxSolve_();
+  rxp->fns.f = f;
+  rxp->fns.lag = lag;
+  rxp->fns.rate = rate;
+  rxp->fns.dur = dur;
+  rxp->fns.mtime = mtime;
+  rxp->fns.me = me;
+  rxp->fns.indf = indf;
+  rxp->fns.gettime = gettime;
+  rxp->fns.timeindex = timeindex;
+  rxp->fns.handleEvid = handleEvid;
+  rxp->fns.getdur = getdur;
+}
+
 void rxUpdateFuns(SEXP trans){
   const char *lib, *s_dydt, *s_calc_jac, *s_calc_lhs, *s_inis, *s_dydt_lsoda_dum, *s_dydt_jdum_lsoda,
     *s_ode_solver_solvedata, *s_ode_solver_get_solvedata, *s_dydt_liblsoda, *s_AMT, *s_LAG, *s_RATE,
@@ -593,20 +613,36 @@ void rxUpdateFuns(SEXP trans){
   set_solve = (t_set_solve)R_GetCCallable(lib, s_ode_solver_solvedata);
   get_solve = (t_get_solve)R_GetCCallable(lib, s_ode_solver_get_solvedata);
   dydt_liblsoda = (t_dydt_liblsoda)R_GetCCallable(lib, s_dydt_liblsoda);
-  AMT = (t_F)R_GetCCallable(lib, s_AMT);
-  LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
-  RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
-  DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
-  ME  = (t_ME) R_GetCCallable(lib, s_ME);
-  IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
-  calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
-  assignFuns = R_GetCCallable(lib, s_assignFuns);
+  t_F AMT = (t_F)R_GetCCallable(lib, s_AMT);
+  t_LAG LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
+  t_RATE RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
+  t_DUR DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
+  t_ME ME  = (t_ME) R_GetCCallable(lib, s_ME);
+  t_IndF IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
+  t_calc_mtime calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
+  assignFuns = (t_assignFuns)R_GetCCallable(lib, s_assignFuns);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx_solving_options *op = &op_global;
   rx->op = op;
   char s_assignFuns2[300];
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
+  rxode2_assignFuns2_t assignFuns2 = (rxode2_assignFuns2_t)R_GetCCallable(lib, s_assignFuns2);
+  if (assignFuns2 != NULL) {
+    assignFuns2(rx_global, op_global, AMT, LAG, RATE, DUR, calc_mtime, ME, IndF, getTime, _locateTimeIndex, handle_evidL, _getDur);
+  } else {
+    rx->fns.f = AMT;
+    rx->fns.lag = LAG;
+    rx->fns.rate = RATE;
+    rx->fns.dur = DUR;
+    rx->fns.mtime = calc_mtime;
+    rx->fns.me = ME;
+    rx->fns.indf = IndF;
+    rx->fns.gettime = getTime;
+    rx->fns.timeindex = _locateTimeIndex;
+    rx->fns.handleEvid = handle_evidL;
+    rx->fns.getdur = _getDur;
+  }
 }
 
 extern "C" void rxClearFuns(){
@@ -619,6 +655,17 @@ extern "C" void rxClearFuns(){
   set_solve		= NULL;
   get_solve		= NULL;
   dydt_liblsoda		= NULL;
+  rx_global.fns.f = NULL;
+  rx_global.fns.lag = NULL;
+  rx_global.fns.rate = NULL;
+  rx_global.fns.dur = NULL;
+  rx_global.fns.mtime = NULL;
+  rx_global.fns.me = NULL;
+  rx_global.fns.indf = NULL;
+  rx_global.fns.gettime = NULL;
+  rx_global.fns.timeindex = NULL;
+  rx_global.fns.handleEvid = NULL;
+  rx_global.fns.getdur = NULL;
 }
 
 extern "C" void F77_NAME(dlsoda)(
@@ -871,7 +918,7 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
   // can selectively apply only the slot(s) whose trigger time has arrived.
   double newMtime[90];
   for (int k = 0; k < nm; k++) newMtime[k] = ind->mtime[k];
-  calc_mtime(ind->id, newMtime, yp);
+  if (ind->fns && ind->fns->mtime) ind->fns->mtime(ind->id, newMtime, yp);
   int changed = 0;
   double *time = ind->timeThread;
   for (int k = 0; k < nm; k++) {
@@ -1045,7 +1092,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         idid = indLin(ind->id, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
-                      ME, IndF);
+                      (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
       }
       if (idid <= 0) {
         /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
@@ -2290,7 +2337,7 @@ void handleSS(int *neq,
         dur2 = curIi-dur;
         if (isModeled && isSsLag) {
           // adjust start time for modeled w/ssLag
-          startTimeD = getTime(ind->idose[infFixds],ind);
+          startTimeD = (ind->fns ? ind->fns->gettime(ind->idose[infFixds],ind) : getTime(ind->idose[infFixds],ind));
         }
         solveSSinf(neq,
                    BadDose,
@@ -2534,7 +2581,7 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
 //================================================================================
 // Inductive linearization routines
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
-                            t_update_inis u_inis, t_ME ME, t_IndF IndF) {
+                            t_update_inis u_inis) {
   clock_t t0 = clock();
   assignFuns();
   int i;
@@ -2589,7 +2636,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       } else {
         preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, ind, xoutp, yp, xout, ind->InfusionRate, ind->on,
-                      ME, IndF);
+                      (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
         xoutp=xout;
         postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
       }
@@ -2630,10 +2677,10 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
 }
 
 extern "C" void ind_indLin(rx_solve *rx,
-                           int solveid, t_update_inis u_inis, t_ME ME, t_IndF IndF){
+                           int solveid, t_update_inis u_inis){
   assignFuns();
   rx_solving_options *op = &op_global;
-  ind_indLin0(rx, op, solveid, u_inis, ME, IndF);
+  ind_indLin0(rx, op, solveid, u_inis);
 }
 
 
@@ -2658,7 +2705,7 @@ extern "C" void par_indLin(rx_solve *rx){
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
-      ind_indLin(rx, solveid, update_inis, ME, IndF);
+      ind_indLin(rx, solveid, update_inis);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
       }
@@ -2850,7 +2897,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
 
 extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
                              t_dydt_liblsoda dydt, t_update_inis u_inis){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   struct lsoda_opt_t opt = {0};
   opt.ixpr = 0; // No extra printing...
   // Unlike traditional lsoda, these are vectors.
@@ -3379,8 +3426,9 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 extern "C" void ind_lsoda(rx_solve *rx, int solveid,
                           t_dydt_lsoda_dum dydt_ls, t_update_inis u_inis, t_jdum_lsoda jdum,
                           int cjt) {
+  rx_solving_options *op = rx->op;
   int neq[2];
-  neq[0] = op_global.neq;
+  neq[0] = op->neq;
   neq[1] = 0;
 
   // Set jt to 1 if full is specified.
@@ -3391,17 +3439,18 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
     RSprintf("JT: %d\n",cjt);
   rwork = global_rwork(lrw+1);
   iwork = global_iwork(liw+1);
-  ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, cjt,
+  ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, cjt,
              dydt_ls, u_inis, jdum);
 }
 
 extern "C" void par_lsoda(rx_solve *rx) {
   uint32_t nsub = rx->nsub, nsim = rx->nsim;
   int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
-  int displayProgress = (op_global.nDisplayProgress <= nsolve);
+  rx_solving_options *op = rx->op;
+  int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
   int neq[2];
-  neq[0] = op_global.neq;
+  neq[0] = op->neq;
   neq[1] = 0;
   /* yp = global_yp(neq[0]); */
 
@@ -3409,8 +3458,6 @@ extern "C" void par_lsoda(rx_solve *rx) {
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0], jt = global_jt;
   double *rwork;
   int *iwork;
-
-
   if (global_debug)
     RSprintf("JT: %d\n",jt);
   rwork = global_rwork(lrw+1);
@@ -3422,7 +3469,7 @@ extern "C" void par_lsoda(rx_solve *rx) {
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
       setSeedEng1(seed0 + solveid - 1 );
-      ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
+      ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
@@ -3435,11 +3482,12 @@ extern "C" void par_lsoda(rx_solve *rx) {
   }
   setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
-    op_global.abort = 1;
+    op->abort = 1;
   } else {
     if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
   }
 }
+
 
 extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                                t_dydt c_dydt, t_update_inis u_inis) {
@@ -4059,15 +4107,15 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
 
 extern "C" void ind_dop(rx_solve *rx, int solveid,
                         t_dydt c_dydt, t_update_inis u_inis){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  ind_dop0(rx, &op_global, solveid, neq, c_dydt, u_inis);
+  ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
 }
 
 void par_dop(rx_solve *rx){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
 #ifdef _OPENMP
   int cores = op->cores;
 #else
@@ -4094,7 +4142,7 @@ void par_dop(rx_solve *rx){
     localAbort = abort;
     if (localAbort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_dop0(rx, &op_global, solveid, neq, dydt, update_inis);
+      ind_dop0(rx, op, solveid, neq, dydt, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
@@ -4121,6 +4169,7 @@ void par_dop(rx_solve *rx){
   if (abort == 1){
     op->abort = 1;
     par_progress(cur, nsolve, curTick, cores, t0, 1);
+
   } else {
     if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
   }
@@ -4753,7 +4802,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   if (op->neq !=  0) {
     if (rx->linB == 1) {
       // Setup H
@@ -4766,7 +4815,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
     } else {
       switch (op->stiff){
       case 3:
-        ind_indLin(rx, cid, u_inis, ME, IndF);
+        ind_indLin(rx, cid, u_inis);
         break;
       case 2:
         ind_liblsoda(rx, cid, dydt_lls, u_inis);
@@ -4794,7 +4843,7 @@ extern "C" void par_solve(rx_solve *rx) {
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = rx->op;
   if (op->neq != 0) {
     if (rx->linB == 1) {
       // Setup H

@@ -98,6 +98,14 @@ void setIndTolFactor(rx_solving_options_ind *ind, double tolFactor) {
   ind->tolFactor = tolFactor;
 }
 
+int getIndNeqOverride(rx_solving_options_ind *ind) {
+  return ind->neqOverride;
+}
+
+void setIndNeqOverride(rx_solving_options_ind *ind, int neq) {
+  ind->neqOverride = neq;
+}
+
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
@@ -240,5 +248,5 @@ double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int 
   if (idx  < 0 || idx >= ind->n_all_times) {
     Rf_error("[getOpIndSolve]: the individual should be between [0, %d); neq: %d", ind->n_all_times, op->neq);
   }
-  return ind->solve + (op->neq)*(idx);
+  return ind->solve + (rxEffNeq(ind, op))*(idx);
 }
