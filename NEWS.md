@@ -1,5 +1,12 @@
 # rxode2 (development)
 
+- Add `getIndNeqOverride()` / `setIndNeqOverride()` C-API at pointer
+  table slots 56 and 57 (and as `R_RegisterCCallable` entries).  This
+  allows downstream packages (e.g. nlmixr2est) to mark a per-individual
+  effective neq for parallel-FOCEi pred/inner alternation without
+  mutating the shared `op->neq` from a parallel worker thread.  Default
+  value is -1 (use `op->neq`).
+
 - Range-check the length in `rc_dup_str` (`src/tran.c`).  Pointer
   differences and `strlen` results are now validated against `INT_MAX`
   before being cast to `int`, preventing silent truncation of long
@@ -11,7 +18,6 @@
   passed to `dparse()`.  A long-term fix will switch the call site to
   `udparse()` once dparser-R ships that symbol to CRAN.  No application-level
   guard is added here as the fix belongs in dparser-R itself.
-
 
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
