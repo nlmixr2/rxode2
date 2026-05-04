@@ -167,7 +167,8 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
       return 0;
     } else {
       // The amt in rxode2 is the infusion rate, but we need the amt
-      tinf[0] = _getDur(ind->ixds, ind, 2, &p);
+      if (ind->fns->getdur) tinf[0] = ind->fns->getdur(ind->ixds, ind, 2, &p);
+      else tinf[0] = _getDur(ind->ixds, ind, 2, &p);
       if (!ISNA(tinf[0])) {
         curDose[0] = tinf[0] * curDose[0];
         return 1;
@@ -267,14 +268,12 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
   return 1;
 }
 
-extern t_F AMT;
-
-
 static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
                             double dose, double t, double *y) {
-  double ret = AMT(id, cmt, dose, t, y);
+  if (ind->fns->f == NULL) return dose;
+  double ret = ind->fns->f(id, cmt, dose, t, y);
   if (ISNA(ret)){
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int newBadSolve = 1;
 #pragma omp atomic write
     op->badSolve = newBadSolve;
@@ -302,7 +301,7 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
     if (ind->ignoredDoses[i] == doseIdx) return 0;
   }
   if (ind->ignoredDosesN[0]+1 >= ind->ignoredDosesAllocN[0]) {
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;
 #pragma omp critical
     {
@@ -329,7 +328,7 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->pendingDosesN[0]+1 >= ind->pendingDosesAllocN[0]) {
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;
 #pragma omp critical
     {
@@ -358,7 +357,7 @@ static inline int pushDosingEvent(double time, double amt, int evid,
                                    rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;  // 0=ok, 1=partial alloc, -1=first alloc failed
 #pragma omp critical
     {
@@ -413,7 +412,7 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
                                         rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     int allocFailed = 0;  // 0=ok, 1=partial alloc, -1=first alloc failed
 #pragma omp critical
     {
@@ -528,10 +527,10 @@ static inline int handle_evid(int evid, int neq,
       ind->nBadDose++;
     }
   } else {
-    rx_solving_options *op = &op_global;
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     //if (syncIdx(ind) == 0) return 0;
     if (ind->wh0 == EVID0_OFF) {
-      yp[cmt]=op_global.inits[cmt];
+      yp[cmt]=op->inits[cmt];
       InfusionRate[cmt] = 0;
       ind->cacheME=0;
       ind->on[cmt] = 0;
@@ -553,7 +552,7 @@ static inline int handle_evid(int evid, int neq,
         // all_times/dose index.  For extra-dose events (ind->idx < 0) the
         // negative value IS the direct index.
         {
-          rx_solve *rx = &rx_global;
+          rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
           int _directIdx = (ind->idx >= 0) ? ind->ix[ind->idx] : ind->idx;
           if (ind->whI == EVIDF_MODEL_RATE_ON && (rx->needSort & needSortRate)) {
             updateRate(_directIdx, ind, yp);
