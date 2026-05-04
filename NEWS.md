@@ -8,6 +8,18 @@
   vector, causing heap corruption or a crash.  The guard is now at the
   top of the per-row loop so all error paths are protected.
 
+- Range-check the length in `rc_dup_str` (`src/tran.c`).  Pointer
+  differences and `strlen` results are now validated against `INT_MAX`
+  before being cast to `int`, preventing silent truncation of long
+  source segments which previously could lead to out-of-range
+  `addLine(&_dupStrs, "%.*s", l, s)` calls.
+
+- Document known `(int)strlen(gBuf)` cast in `tran.c` parser entry-point.
+  Inputs at or above `INT_MAX` bytes cause silent truncation of the length
+  passed to `dparse()`.  A long-term fix will switch the call site to
+  `udparse()` once dparser-R ships that symbol to CRAN.  No application-level
+  guard is added here as the fix belongs in dparser-R itself.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
