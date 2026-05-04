@@ -7,6 +7,21 @@
   mutating the shared `op->neq` from a parallel worker thread.  Default
   value is -1 (use `op->neq`).
 
+- Plumb `ind->neqOverride` through the per-subject solve loop via a new
+  `rxEffNeq(ind, op)` inline helper (`inst/include/rxode2.h`).
+  `getSolve()` / `getAdvan()` macros, `getOpIndSolve()`, the LSODA /
+  liblsoda / dop853 entry points (`ind_lsoda0`, `ind_liblsoda0`,
+  `ind_dop0`, `ind_indLin0`), `iniSubject()`'s init memcpy, and the
+  inductive-linearization helper (`indLin`/`meOnly`) all consult
+  `rxEffNeq` so a per-individual pred-mode solve writes and reads at
+  the same compact stride.  `ind_solve` dispatch skips the pure-linCmt
+  fast path when an override is active (the predNoLhs model is ODE-
+  based and does not match the rxInner linCmt structure).  Allocations
+  remain sized for `op->neq`; the override is constrained to
+  `<= op->neq` by caller contract.  Fixes parallel-FOCEi crashes
+  ("ewt[1] = 0 <= 0", "double free or corruption") on models whose
+  `f()` / `dur()` / `rate()` / `alag()` depend on ETAs.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 

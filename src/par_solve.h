@@ -90,12 +90,16 @@ extern "C" {
       if (u_inis != NULL) {
         ind->isIni = 1;
         // Also can update individual random variables (if needed)
-        if (inLhs == 0) memcpy(ind->solve, op->inits, op->neq*sizeof(double));
+        // Use rxEffNeq() for the memcpy length: under a per-individual
+        // neqOverride (predNeq < op->neq), the per-event buffer stride is
+        // predNeq, so writing op->neq doubles into slot 0 would clobber the
+        // start of slot 1 (which sits at offset predNeq, not op->neq).
+        if (inLhs == 0) memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
         u_inis(solveid, ind->solve); // Update initial conditions @ current time
         ind->isIni = 0;
       } else if (rx->nMtime && inLhs == 0 && op->neq > 0) {
         // No u_inis but state-dep mtime needs initial values in ind->solve
-        memcpy(ind->solve, op->inits, op->neq*sizeof(double));
+        memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
       }
 		}
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
