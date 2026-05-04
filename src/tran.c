@@ -569,6 +569,10 @@ void trans_internal(const char* parse_file, int isStr){
   lineIni(&depotLines);
   lineIni(&centralLines);
 
+  /* TODO(long-term): switch to udparse() once dparser-R ships a version that
+   * exports that symbol to CRAN.  udparse() accepts an unsigned int for
+   * buf_len, eliminating the silent (int)strlen truncation on inputs >= INT_MAX
+   * bytes.  Track at https://github.com/nlmixr2/dparser-R */
   _pn= dparse(curP, gBuf, (int)strlen(gBuf));
   if (!_pn || curP->syntax_errors) {
     rx_syntax_error = 1;
@@ -723,7 +727,20 @@ SEXP _rxode2_isLinCmt(void) {
 // Taken from dparser and changed to use R_Calloc
 char * rc_dup_str(const char *s, const char *e) {
   lastStr=s;
-  int l = e ? e-s : (int)strlen(s);
+  int l;
+  if (e) {
+    ptrdiff_t diff = e - s;
+    if (diff < 0 || diff > (ptrdiff_t)INT_MAX) {
+      (Rf_error)(_("string segment too long in rc_dup_str"));
+    }
+    l = (int)diff;
+  } else {
+    size_t sLen = strlen(s);
+    if (sLen > (size_t)INT_MAX) {
+      (Rf_error)(_("string too long in rc_dup_str"));
+    }
+    l = (int)sLen;
+  }
   syntaxErrorExtra=min(l-1, 40);
   addLine(&_dupStrs, "%.*s", l, s);
   return _dupStrs.line[_dupStrs.n-1];

@@ -7,12 +7,6 @@
 
 #include "rxode2parse.h"
 
-extern t_F AMT;
-extern t_LAG LAG;
-extern t_RATE RATE;
-extern t_DUR DUR;
-extern t_calc_mtime calc_mtime;
-
 #ifndef __DOINIT__
 
 #define returnBadTime(time)                         \
@@ -29,14 +23,14 @@ extern t_calc_mtime calc_mtime;
     }                                               \
   }
 
-
 static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double time, double *y) {
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
   returnBadTime(time);
   if (ind->wh0 == EVID0_SS0 || ind->wh0 == EVID0_SS20) {
     return time;
   }
-  double ret = LAG(id, cmt, time, y);
+  if (ind->fns == NULL || ind->fns->lag == NULL) return time;
+  double ret = ind->fns->lag(id, cmt, time, y);
   if (ISNA(ret)) {
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -49,9 +43,10 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
 }
 
 static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
   returnBadTime(t);
-  double ret = RATE(id, cmt, dose, t, y);
+  if (ind->fns == NULL || ind->fns->rate == NULL) return 0.0;
+  double ret = ind->fns->rate(id, cmt, dose, t, y);
   if (ISNA(ret)){
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -64,10 +59,11 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
 }
 
 static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y){
-  rx_solving_options *op = &op_global;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
   returnBadTime(t);
   if (ISNA(t)) return t;
-  double ret = DUR(id, cmt, dose, t, y);
+  if (ind->fns == NULL || ind->fns->dur == NULL) return 0.0;
+  double ret = ind->fns->dur(id, cmt, dose, t, y);
   if (ISNA(ret)){
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -107,8 +103,8 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
       setAllTimesP1(ind, idx, (ISNA(_laggedStart) ? t : _laggedStart) + dur);
     }
   } else if (dur == 0 && ind->whI == EVIDF_MODEL_DUR_ON) {
-    rx_solve *rx = &rx_global;
-    rx_solving_options *op = &op_global;
+    rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     if (rx->needSort & needSortDur) {
       setDoseP1(ind, idx, 0.0);
       {
@@ -122,8 +118,8 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
       return;
     }
   } else {
-    rx_solve *rx = &rx_global;
-    rx_solving_options *op = &op_global;
+    rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     if (ind->cmt < op->neq) {
       if (rx->needSort & needSortDur) {
         if (!(ind->err & rxErrDurNeg0)){
@@ -156,9 +152,8 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
     }
     ind->idx=oldIdx;
   } else {
-    rx_solve *rx;
-    rx = &rx_global;
-    rx_solving_options *op = &op_global;
+    rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
     if (ind->cmt < op->neq){
       if (rx->needSort & needSortRate) {
         if (!(ind->err & rxErrRate0)){
@@ -348,20 +343,20 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     int infBidx;
     handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &idx, rx, op, ind);
     if (infBidx == -1) return 0.0;
-    rx_solve *rx = &rx_global;
+    rx_solve *rxp = (ind->rx ? ind->rx : &rx_global);
     int oIdx = ind->idx;
     ind->idx = ind->idose[infBidx];
     double f = getAmt(ind, ind->id, ind->cmt, 1.0,
-                      getAllTimes(ind, ind->idose[infBidx]), rx->ypNA);
+                      getAllTimes(ind, ind->idose[infBidx]), rxp->ypNA);
     ind->idx = oIdx;
     if (ISNA(f)){
-      rx_solving_options *op = &op_global;
+      rx_solving_options *opp = ind->op;
       int newBadSolve = 1;
 #pragma omp atomic write
-      op->badSolve = newBadSolve;
+      opp->badSolve = newBadSolve;
       int newNaTime = 4 + 10*ind->cmt;
 #pragma omp critical
-      { if (op->naTime == 0) op->naTime = newNaTime; }
+      { if (opp->naTime == 0) opp->naTime = newNaTime; }
     }
     double durOld = (getAllTimes(ind, ind->idose[infEidx]) -
                      getAllTimes(ind, ind->idose[infBidx]));
@@ -407,8 +402,8 @@ static inline double getTimeCalculateInfusionTimes(int idx, rx_solve *rx, rx_sol
 }
 
 static inline double getTime__(int idx, rx_solving_options_ind *ind, int update) {
-  rx_solving_options *op = &op_global;
-  rx_solve *rx = &rx_global;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
+  rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
   int evid = getEvid(ind, idx);
   if (evid == 9) return 0.0;
   if (evid == 3) return getAllTimes(ind, idx);

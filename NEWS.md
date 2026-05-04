@@ -1,12 +1,38 @@
 # rxode2 (development)
 
+- Fix `int col` overflow in `getLine` (`src/parseSyntaxErrors.h`).  When
+  reporting a syntax error, `getLine` walks the source string to locate
+  the offending line.  The column accumulator was a signed `int` that
+  could wrap on lines wider than `INT_MAX` bytes; the subsequent
+  `R_Calloc(col + 1, char)` would then receive a tiny (or negative)
+  size and the following `memcpy` would write past the allocation.
+  The fix uses `size_t` for the accumulator and adds explicit bounds
+  checks before the cast back to `int`.
+
+- Add integer overflow guards in the C-level string buffer
+  (`inst/include/sbuf.c`).  `sAppendN`, `sAppend`, `sPrint`, and
+  `addLine` previously computed the new allocation size as
+  `sbb->o + 2 + n + SBUF_MXBUF` (or analogous expression).  When the
+  user-controlled `n` was large enough this expression overflowed `int`
+  to a negative value, which `R_Realloc` then converted to a huge
+  unsigned size and crashed.  The guard converts this into a clean
+  R error.
+
+- Fix out-of-bounds read when an event table contains `NA` IDs: the
+  main event-processing loop in `etTran.cpp` used `idLvl[cid-1]` in
+  error messages before checking `cid == NA_INTEGER`.  With
+  `cid = NA_INTEGER`, `cid - 1` overflows signed `int` and the
+  `CharacterVector[]` access reads past the end of the ID-levels
+  vector, causing heap corruption or a crash.  The guard is now at the
+  top of the per-row loop so all error paths are protected.
+
 - Add `getIndNeqOverride()` / `setIndNeqOverride()` C-API at pointer
   table slots 56 and 57 (and as `R_RegisterCCallable` entries).  This
   allows downstream packages (e.g. nlmixr2est) to mark a per-individual
   effective neq for parallel-FOCEi pred/inner alternation without
   mutating the shared `op->neq` from a parallel worker thread.  Default
   value is -1 (use `op->neq`).
-
+  
 - Plumb `ind->neqOverride` through the per-subject solve loop via a new
   `rxEffNeq(ind, op)` inline helper (`inst/include/rxode2.h`).
   `getSolve()` / `getAdvan()` macros, `getOpIndSolve()`, the LSODA /
@@ -21,6 +47,18 @@
   `<= op->neq` by caller contract.  Fixes parallel-FOCEi crashes
   ("ewt[1] = 0 <= 0", "double free or corruption") on models whose
   `f()` / `dur()` / `rate()` / `alag()` depend on ETAs.
+
+- Range-check the length in `rc_dup_str` (`src/tran.c`).  Pointer
+  differences and `strlen` results are now validated against `INT_MAX`
+  before being cast to `int`, preventing silent truncation of long
+  source segments which previously could lead to out-of-range
+  `addLine(&_dupStrs, "%.*s", l, s)` calls.
+
+- Document known `(int)strlen(gBuf)` cast in `tran.c` parser entry-point.
+  Inputs at or above `INT_MAX` bytes cause silent truncation of the length
+  passed to `dparse()`.  A long-term fix will switch the call site to
+  `udparse()` once dparser-R ships that symbol to CRAN.  No application-level
+  guard is added here as the fix belongs in dparser-R itself.
 
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.

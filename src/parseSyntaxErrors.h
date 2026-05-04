@@ -1,11 +1,19 @@
 char *getLine (char *src, int line, int *lloc) {
-  int cur = 1, col=0, i;
+  int cur = 1, i;
+  size_t col = 0;
   for(i = 0; src[i] != '\0' && cur != line; i++){
     if(src[i] == '\n') cur++;
   }
-  for(col = 0; src[i + col] != '\n' && src[i + col] != '\0'; col++);
-  *lloc=i+col;
-  char *buf = R_Calloc(col + 1, char);
+  for(col = 0; src[i + col] != '\n' && src[i + col] != '\0'; col++){
+    if (col == (size_t)INT_MAX) {
+      (Rf_error)(_("line too long in getLine"));
+    }
+  }
+  if ((size_t)i + col > (size_t)INT_MAX) {
+    (Rf_error)(_("source offset overflow in getLine"));
+  }
+  *lloc = i + (int)col;
+  char *buf = R_Calloc((int)col + 1, char);
   memcpy(buf, src + i, col);
   buf[col] = '\0';
   return buf;

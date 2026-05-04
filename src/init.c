@@ -166,6 +166,7 @@ extern double rxode2_sum(double *input, int len);
 extern double rxode2_prod(double *input, int len);
 
 extern void rxode2_assign_fn_pointers(SEXP mv);
+extern void _rxode2_assignFuns2(rx_solve rx, rx_solving_options op, t_F f, t_LAG lag, t_RATE rate, t_DUR dur, t_calc_mtime mtime, t_ME me, t_IndF indf, t_getTime gettime, t_locateTimeIndex timeindex, t_handle_evidL handleEvid, t_getDur getdur);
 
 
 // Need to change to remove global variables
@@ -847,6 +848,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2","rxode2_prod",               (DL_FUNC) &rxode2_prod);
 
   R_RegisterCCallable("rxode2","rxode2_assign_fn_pointers", (DL_FUNC) &rxode2_assign_fn_pointers);
+  R_RegisterCCallable("rxode2","_rxode2_assignFuns2", (DL_FUNC) &_rxode2_assignFuns2);
 
   R_RegisterCCallable("rxode2","_rxode2_rxAssignPtr",       (DL_FUNC) _rxode2_rxAssignPtr);
   R_RegisterCCallable("rxode2", "rxIsCurrentC", (DL_FUNC) rxIsCurrentC);
