@@ -3693,6 +3693,10 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
     // on subsequent calls (first == 0) so that stiff individuals retain
     // their loosened tolerances across re-solves.
     ind->tolFactor = 1.0;
+    // neqOverride = -1 means "use op->neq".  Reset on first allocation
+    // only; downstream callers (e.g. nlmixr2est) set/restore this
+    // per-call and we do not want to clobber an in-flight override.
+    ind->neqOverride = -1;
   }
 }
 

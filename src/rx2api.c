@@ -98,6 +98,14 @@ void setIndTolFactor(rx_solving_options_ind *ind, double tolFactor) {
   ind->tolFactor = tolFactor;
 }
 
+int getIndNeqOverride(rx_solving_options_ind *ind) {
+  return ind->neqOverride;
+}
+
+void setIndNeqOverride(rx_solving_options_ind *ind, int neq) {
+  ind->neqOverride = neq;
+}
+
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);

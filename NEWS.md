@@ -1,5 +1,12 @@
 # rxode2 (development)
 
+- Add `getIndNeqOverride()` / `setIndNeqOverride()` C-API at pointer
+  table slots 56 and 57 (and as `R_RegisterCCallable` entries).  This
+  allows downstream packages (e.g. nlmixr2est) to mark a per-individual
+  effective neq for parallel-FOCEi pred/inner alternation without
+  mutating the shared `op->neq` from a parallel worker thread.  Default
+  value is -1 (use `op->neq`).
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 

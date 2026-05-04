@@ -441,8 +441,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setRxMixnum = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setRxMixnum, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndTolFactor = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndTolFactor, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndTolFactor = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndTolFactor, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndNeqOverride, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNeqOverride, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 56
+#define nVec 58
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -500,6 +502,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 53, rxode2setRxMixnum);
   SET_VECTOR_ELT(ret, 54, rxode2getIndTolFactor);
   SET_VECTOR_ELT(ret, 55, rxode2setIndTolFactor);
+  SET_VECTOR_ELT(ret, 56, rxode2getIndNeqOverride);
+  SET_VECTOR_ELT(ret, 57, rxode2setIndNeqOverride);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -558,6 +562,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 53, Rf_mkChar("rxode2setRxMixnum"));
   SET_STRING_ELT(retN, 54, Rf_mkChar("rxode2getIndTolFactor"));
   SET_STRING_ELT(retN, 55, Rf_mkChar("rxode2setIndTolFactor"));
+  SET_STRING_ELT(retN, 56, Rf_mkChar("rxode2getIndNeqOverride"));
+  SET_STRING_ELT(retN, 57, Rf_mkChar("rxode2setIndNeqOverride"));
 
 #undef nVec
 
@@ -896,6 +902,8 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
   R_RegisterCCallable("rxode2", "getIndTolFactor", (DL_FUNC) &getIndTolFactor);
   R_RegisterCCallable("rxode2", "setIndTolFactor", (DL_FUNC) &setIndTolFactor);
+  R_RegisterCCallable("rxode2", "getIndNeqOverride", (DL_FUNC) &getIndNeqOverride);
+  R_RegisterCCallable("rxode2", "setIndNeqOverride", (DL_FUNC) &setIndNeqOverride);
   // log likelihoods used in calculations
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

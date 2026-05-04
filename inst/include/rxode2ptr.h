@@ -190,6 +190,14 @@ extern "C" {
   typedef void (*setIndTolFactor_t)(rx_solving_options_ind *ind, double tolFactor);
   extern setIndTolFactor_t setIndTolFactor;
 
+  // Get the per-individual neq override (-1 = use op->neq)
+  typedef int (*getIndNeqOverride_t)(rx_solving_options_ind *ind);
+  extern getIndNeqOverride_t getIndNeqOverride;
+
+  // Set the per-individual neq override (pass -1 to clear)
+  typedef void (*setIndNeqOverride_t)(rx_solving_options_ind *ind, int neq);
+  extern setIndNeqOverride_t setIndNeqOverride;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -248,6 +256,8 @@ extern "C" {
       setRxMixnum = (setRxMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 53));
       getIndTolFactor = (getIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 54));
       setIndTolFactor = (setIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 55));
+      getIndNeqOverride = (getIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 56));
+      setIndNeqOverride = (setIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 57));
     }
     return R_NilValue;
   }
@@ -309,6 +319,8 @@ extern "C" {
   setRxMixnum_t setRxMixnum = NULL;                     \
   getIndTolFactor_t getIndTolFactor = NULL;             \
   setIndTolFactor_t setIndTolFactor = NULL;             \
+  getIndNeqOverride_t getIndNeqOverride = NULL;         \
+  setIndNeqOverride_t setIndNeqOverride = NULL;         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

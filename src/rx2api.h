@@ -147,6 +147,17 @@ extern "C" {
   // requested tolerance so the factor persists across re-solves.
   void setIndTolFactor(rx_solving_options_ind *ind, double tolFactor);
 
+  // Get the per-individual neq override.  Returns -1 when no override
+  // is in effect (caller should fall back to op->neq).  Use to solve
+  // a single individual with a different effective neq without
+  // mutating the shared op->neq from a parallel worker thread.
+  int getIndNeqOverride(rx_solving_options_ind *ind);
+
+  // Set the per-individual neq override.  Pass -1 to clear the
+  // override.  Caller is responsible for restoring the prior value
+  // (RAII guard in nlmixr2est).
+  void setIndNeqOverride(rx_solving_options_ind *ind, int neq);
+
 #if defined(__cplusplus)
 }
 #endif

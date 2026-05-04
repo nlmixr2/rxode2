@@ -250,6 +250,14 @@ typedef struct {
   // or setIndTolFactor() persists across re-solves for stiff individuals.
   double tolFactor;
 
+  // Per-individual neq override; -1 means use op->neq (default).  Set
+  // via setIndNeqOverride()/getIndNeqOverride() so that downstream
+  // packages (e.g. nlmixr2est's predOde / shi21EtaGeneral) can solve
+  // with a different neq for a single individual without mutating the
+  // shared op->neq from a parallel worker thread.  Cleared by
+  // restoring -1.
+  int neqOverride;
+
   // When 1, this individual owns its dose/ii/all_times/solve arrays
   // (independently malloc'd, not pointers into the global buffer)
   int indOwnAlloc;
