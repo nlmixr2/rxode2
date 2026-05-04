@@ -569,6 +569,10 @@ void trans_internal(const char* parse_file, int isStr){
   lineIni(&depotLines);
   lineIni(&centralLines);
 
+  /* TODO(long-term): switch to udparse() once dparser-R ships a version that
+   * exports that symbol to CRAN.  udparse() accepts an unsigned int for
+   * buf_len, eliminating the silent (int)strlen truncation on inputs >= INT_MAX
+   * bytes.  Track at https://github.com/nlmixr2/dparser-R */
   _pn= dparse(curP, gBuf, (int)strlen(gBuf));
   if (!_pn || curP->syntax_errors) {
     rx_syntax_error = 1;

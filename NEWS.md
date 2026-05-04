@@ -1,5 +1,11 @@
 # rxode2 (development)
 
+- Document known `(int)strlen(gBuf)` cast in `tran.c` parser entry-point.
+  Inputs at or above `INT_MAX` bytes cause silent truncation of the length
+  passed to `dparse()`.  A long-term fix will switch the call site to
+  `udparse()` once dparser-R ships that symbol to CRAN.  No application-level
+  guard is added here as the fix belongs in dparser-R itself.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
