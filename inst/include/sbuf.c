@@ -70,6 +70,9 @@ void sFreeIni(sbuf *sbb) {
 void sAppendN(sbuf *sbb, const char *what, int n) {
   if (sbb->sN == 0) sIni(sbb);
   if (sbb->sN <= 2 + n + sbb->o){
+    if (n > INT_MAX - sbb->o - 2 - SBUF_MXBUF) {
+      (Rf_error)("string buffer size overflow: input too large");
+    }
     int mx = sbb->o + 2 + n + SBUF_MXBUF;
     sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
@@ -93,6 +96,9 @@ void sAppend(sbuf *sbb, const char *format, ...) {
 #endif
   va_end(copy);
   if (sbb->sN <= sbb->o + n + 1) {
+    if (n > INT_MAX - sbb->o - 1 - SBUF_MXBUF) {
+      (Rf_error)("string buffer size overflow: input too large");
+    }
     int mx = sbb->o + n + 1 + SBUF_MXBUF;
     sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
@@ -118,6 +124,9 @@ void sPrint(sbuf *sbb, const char *format, ...) {
 #endif
   va_end(copy);
   if (sbb->sN <= sbb->o + n + 1){
+    if (n > INT_MAX - sbb->o - 1 - SBUF_MXBUF) {
+      (Rf_error)("string buffer size overflow: input too large");
+    }
     int mx = sbb->o + n + 1 + SBUF_MXBUF;
     sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
@@ -177,6 +186,10 @@ void addLine(vLines *sbb, const char *format, ...) {
   }
   va_end(copy);
   if (sbb->sN <= sbb->o + n){
+    if (n > INT_MAX - sbb->sN - 2 - SBUF_MXBUF) {
+      parseFree(0);
+      (Rf_error)("string buffer size overflow: input too large");
+    }
     int mx = sbb->sN + n + 2 + SBUF_MXBUF;
     sbb->s = R_Realloc(sbb->s, mx, char);
     // The sbb->line are not correct any longer because the pointer for sbb->s has been updated;
@@ -189,6 +202,10 @@ void addLine(vLines *sbb, const char *format, ...) {
   vsnprintf(sbb->s + sbb->o, sbb->sN - sbb->o, format, argptr);
   va_end(argptr);
   if (sbb->n + 2 >= sbb->nL){
+    if (n > INT_MAX - sbb->nL - 2 - SBUF_MXLINE) {
+      parseFree(0);
+      (Rf_error)("line array size overflow: too many lines");
+    }
     int mx = sbb->nL + n + 2 + SBUF_MXLINE;
     sbb->lProp = R_Realloc(sbb->lProp, mx, int);
     sbb->lType = R_Realloc(sbb->lType, mx, int);

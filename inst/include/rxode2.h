@@ -27,8 +27,22 @@
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 
 #ifndef __RXODE2PTR_H__  // directly refer to abi need to be excluded
-#define getSolve(idx) ind->solve + (op->neq)*(idx)
-#define getAdvan(idx) ind->solve + op->linOffset + op->neq*(idx)
+// Effective neq for the SOLVE LOOP and per-event SOLVE BUFFER stride.
+// Returns ind->neqOverride when set in [0, op->neq], else op->neq.
+// Allocations remain sized for op->neq; the override is always <= op->neq
+// (caller's contract).  Used by getSolve()/getAdvan() so that a per-
+// individual pred-mode solve writes and reads at the same compact stride
+// without mutating shared op->neq from a parallel worker thread.
+// NOTE: getAdvan() + neqOverride is unsupported when op->numLin > 0
+// (op->linOffset is computed from the full neq layout).  In nlmixr2est's
+// FOCEi flow the predNoLhs model has numLin == 0, so this is fine.
+static inline int rxEffNeq(const rx_solving_options_ind *ind,
+                           const rx_solving_options *op) {
+  int o = ind->neqOverride;
+  return (o >= 0 && o <= op->neq) ? o : op->neq;
+}
+#define getSolve(idx) ind->solve + (rxEffNeq(ind, op))*(idx)
+#define getAdvan(idx) ind->solve + op->linOffset + (rxEffNeq(ind, op))*(idx)
 #endif
 
 #ifdef _isrxode2_
