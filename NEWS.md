@@ -6,6 +6,13 @@
   source segments which previously could lead to out-of-range
   `addLine(&_dupStrs, "%.*s", l, s)` calls.
 
+- Document known `(int)strlen(gBuf)` cast in `tran.c` parser entry-point.
+  Inputs at or above `INT_MAX` bytes cause silent truncation of the length
+  passed to `dparse()`.  A long-term fix will switch the call site to
+  `udparse()` once dparser-R ships that symbol to CRAN.  No application-level
+  guard is added here as the fix belongs in dparser-R itself.
+
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 
@@ -32,6 +39,16 @@
 - Refactored `et()` to be mostly in R, fixing many issues (#722 , #725, #858,
   #732, #723, #721, and #724) and allowing dosing/sampling windows to
   use `ii`, `addl` and `until` (realized immediately)
+
+- Add `linToOde()` convert `linCmt()` models to ODEs.
+
+- Fix IOV simulation issue observed in #982.
+
+- Fix sticky variable calculation (#1013, #1025)
+
+- More easily identify initial conditions (#948)
+
+- Fix sensitivities in the linCmt() that did not match the ODE (#1018, #1012)
 
 # rxode2 5.0.2
 

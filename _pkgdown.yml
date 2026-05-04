@@ -45,8 +45,16 @@ reference:
   - as.ini
   - as.model
   - as.rxUi
+  - assertCompartmentExists
+  - assertCompartmentName
+  - assertCompartmentNew
+  - assertRxUi
+  - assertRxUiIovNoCor
+  - assertVariableExists
+  - assertVariableNew
   - ini
   - ini<-
+  - linToOde
   - model
   - model<-
   - modelExtract
@@ -59,18 +67,11 @@ reference:
   - rxUiCompress
   - rxUiDecompress
   - rxode2<-
-  - update.rxUi
-  - zeroRe
-  - assertCompartmentExists
-  - assertCompartmentName
-  - assertCompartmentNew
-  - assertRxUi
-  - assertRxUiIovNoCor
-  - assertVariableExists
-  - assertVariableNew
   - testIniDf
   - testRxLinCmt
   - testRxUnbounded
+  - update.rxUi
+  - zeroRe
 - title: Population Variability & Uncertainty
   desc: Simulate between-subject variability and parameter uncertainty.
   contents:
