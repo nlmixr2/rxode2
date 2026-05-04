@@ -1,5 +1,14 @@
 # rxode2 (development)
 
+- Add integer overflow guards in the C-level string buffer
+  (`inst/include/sbuf.c`).  `sAppendN`, `sAppend`, `sPrint`, and
+  `addLine` previously computed the new allocation size as
+  `sbb->o + 2 + n + SBUF_MXBUF` (or analogous expression).  When the
+  user-controlled `n` was large enough this expression overflowed `int`
+  to a negative value, which `R_Realloc` then converted to a huge
+  unsigned size and crashed.  The guard converts this into a clean
+  R error.
+
 - Fix out-of-bounds read when an event table contains `NA` IDs: the
   main event-processing loop in `etTran.cpp` used `idLvl[cid-1]` in
   error messages before checking `cid == NA_INTEGER`.  With
