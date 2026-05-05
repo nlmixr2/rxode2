@@ -1,5 +1,14 @@
 # rxode2 (development)
 
+
+- Fix out-of-bounds read in `convertDvid_` (`src/etTran.cpp`).  When
+  `inCmt` was an empty integer vector (e.g., from `rxSolve()` with a
+  zero-row event table containing a `DVID` column), the code accessed
+  `udvid[udvid.size()-1]` which is `udvid[-1]` and reads past the
+  start of the buffer.  UBSan reports a misaligned-address load and
+  the call SIGSEGVs.  Added an empty-input check that returns the
+  empty vector unchanged.
+
 - Fix `int col` overflow in `getLine` (`src/parseSyntaxErrors.h`).  When
   reporting a syntax error, `getLine` walks the source string to locate
   the offending line.  The column accumulator was a signed `int` that

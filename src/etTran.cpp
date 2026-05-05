@@ -119,6 +119,9 @@ Environment rxode2env();
 IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   IntegerVector id = asIv(inCmt, "inCmt");
   IntegerVector udvid = sort_unique(id);
+  if (udvid.size() == 0) {
+    return id;  // nothing to convert; preserves the empty/zero-row case
+  }
   int mDvid = udvid[udvid.size()-1];
   if (mDvid > maxDvid) {
     return Rcpp::match(id, udvid);
