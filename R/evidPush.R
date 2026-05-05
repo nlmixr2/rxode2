@@ -147,3 +147,34 @@ rxUdfUi.evid_ <- function(fun) {
   list(replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt,
                         ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")"))
 }
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.bolus <- function(fun) {
+  .dummy <- function(amt, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt   <- deparse1(.mc$amt)
+
+  .cmt  <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") {
+    .cmt <- "1"
+  }
+
+  .ii   <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+
+  .addl   <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+
+  .ss   <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+
+  list(replace = paste0("bolus(", .amt, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
