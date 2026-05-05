@@ -17,12 +17,12 @@ object.
 Return Jacobain and parameter derivatives
 }
 \seealso{
-Other Query model information: 
-\code{\link{rxInits}()},
-\code{\link{rxLhs}()},
-\code{\link{rxModelVars}()},
-\code{\link{rxParams}()},
-\code{\link{rxState}()}
+Other Query model information:
+\code{\link[=rxInits]{rxInits()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxModelVars]{rxModelVars()}},
+\code{\link[=rxParams]{rxParams()}},
+\code{\link[=rxState]{rxState()}}
 }
 \author{
 Matthew L. Fidler

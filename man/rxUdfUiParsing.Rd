@@ -16,14 +16,14 @@ Returns if the current ui function is being parsed
 rxUdfUiParsing()
 }
 \seealso{
-Other User functions: 
-\code{\link{linMod}()},
-\code{\link{rxUdfUiControl}()},
-\code{\link{rxUdfUiData}()},
-\code{\link{rxUdfUiEst}()},
-\code{\link{rxUdfUiIniLhs}()},
-\code{\link{rxUdfUiMv}()},
-\code{\link{rxUdfUiNum}()}
+Other User functions:
+\code{\link[=linMod]{linMod()}},
+\code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
+\code{\link[=rxUdfUiData]{rxUdfUiData()}},
+\code{\link[=rxUdfUiEst]{rxUdfUiEst()}},
+\code{\link[=rxUdfUiIniLhs]{rxUdfUiIniLhs()}},
+\code{\link[=rxUdfUiMv]{rxUdfUiMv()}},
+\code{\link[=rxUdfUiNum]{rxUdfUiNum()}}
 }
 \author{
 Matthew L. Fidler

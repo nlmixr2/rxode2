@@ -172,6 +172,7 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
       handleSplitBolusStatement(ni, name, i, nch, pn) ||
       // evid_() dose-push
       handleEvidStatement(ni, name, i, nch, pn) ||
+      handleBolusStatement(ni, name, i, nch, pn) ||
       handleStringEqualityStatements(ni, name, *i, xpn) ||
       handleDvidStatement(ni, name, xpn, pn) ||
       handleStartInterpStatement(ni, name, i, xpn, pn) ||

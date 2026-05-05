@@ -361,8 +361,8 @@ default value is determined by the solver (when \code{hini = 0})}
 method.  The default value is 5.  This can be between 1 and 5.}
 
 \item{...}{Other arguments including scaling factors for each
-compartment.  This includes S# = numeric will scale a compartment
-# by a dividing the compartment amount by the scale factor,
+compartment.  This includes S# = numeric will scale a compartmentby a dividing the compartment amount by the scale factor,
+
 like NONMEM.}
 
 \item{cores}{Number of cores used in parallel ODE solving.  This

@@ -66,8 +66,8 @@ rxParam(obj, ...)
 \item{obj}{rxode2 family of objects}
 
 \item{...}{Other arguments including scaling factors for each
-compartment.  This includes S# = numeric will scale a compartment
-# by a dividing the compartment amount by the scale factor,
+compartment.  This includes S# = numeric will scale a compartmentby a dividing the compartment amount by the scale factor,
+
 like NONMEM.}
 
 \item{constants}{is a boolean indicting if constants should be
@@ -130,12 +130,12 @@ This returns the model's parameters that are required to solve the
 ODE system, and can be used to pipe parameters into an rxode2 solve
 }
 \seealso{
-Other Query model information: 
-\code{\link{rxDfdy}()},
-\code{\link{rxInits}()},
-\code{\link{rxLhs}()},
-\code{\link{rxModelVars}()},
-\code{\link{rxState}()}
+Other Query model information:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxInits]{rxInits()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxModelVars]{rxModelVars()}},
+\code{\link[=rxState]{rxState()}}
 }
 \author{
 Matthew L.Fidler

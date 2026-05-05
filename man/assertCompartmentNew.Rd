@@ -18,14 +18,14 @@ The value or an error
 Verify that a compartment would be new to the model
 }
 \seealso{
-Other Assertions: 
-\code{\link{assertCompartmentExists}()},
-\code{\link{assertCompartmentName}()},
-\code{\link{assertRxUi}()},
-\code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()},
-\code{\link{testIniDf}()},
-\code{\link{testRxUnbounded}()}
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{
 Matthew Fidler & Bill Denney

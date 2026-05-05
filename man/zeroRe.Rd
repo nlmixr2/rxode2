@@ -43,8 +43,8 @@ one.compartment <- function() {
 zeroRe(one.compartment)
 }
 \seealso{
-Other Initial conditions: 
-\code{\link{ini.rxUi}()}
+Other Initial conditions:
+\code{\link[=ini.rxUi]{ini.rxUi()}}
 }
 \author{
 Bill Denney

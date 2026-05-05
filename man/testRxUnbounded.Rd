@@ -59,14 +59,14 @@ try(assertRxUnbounded(one.cmt))
 warnRxBounded(one.cmt)
 }
 \seealso{
-Other Assertions: 
-\code{\link{assertCompartmentExists}()},
-\code{\link{assertCompartmentName}()},
-\code{\link{assertCompartmentNew}()},
-\code{\link{assertRxUi}()},
-\code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()},
-\code{\link{testIniDf}()}
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=testIniDf]{testIniDf()}}
 }
 \author{
 Matthew L. Fidler

@@ -991,7 +991,7 @@ In general all the that are supported are in the following table
 }
 }
 \section{Creating rxode2 models}{
-NA
+
 }
 
 \section{Note on strings in rxode2}{

@@ -44,12 +44,12 @@ built-into the rxode2 compiled DLL.
 To allow extension, an s3 hook is added in the function \code{rxModelVarsS3}.
 }
 \seealso{
-Other Query model information: 
-\code{\link{rxDfdy}()},
-\code{\link{rxInits}()},
-\code{\link{rxLhs}()},
-\code{\link{rxParams}()},
-\code{\link{rxState}()}
+Other Query model information:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxInits]{rxInits()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxParams]{rxParams()}},
+\code{\link[=rxState]{rxState()}}
 }
 \author{
 Matthew L. Fidler

@@ -46,12 +46,12 @@ Initial values of the rxDll object
 Returns the initial values of the rxDll object
 }
 \seealso{
-Other Query model information: 
-\code{\link{rxDfdy}()},
-\code{\link{rxLhs}()},
-\code{\link{rxModelVars}()},
-\code{\link{rxParams}()},
-\code{\link{rxState}()}
+Other Query model information:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxModelVars]{rxModelVars()}},
+\code{\link[=rxParams]{rxParams()}},
+\code{\link[=rxState]{rxState()}}
 }
 \author{
 Matthew L.Fidler

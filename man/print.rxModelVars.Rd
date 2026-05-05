@@ -65,9 +65,10 @@ print.table(T[,2:8] * 1e9, digits=3, zero.print = ".")
 table(1, NA) # < table of extent 1 x 0 >
 }
 \references{
-Chambers, J. M. and Hastie, T. J. (1992)
-  \emph{Statistical Models in S.}
-  Wadsworth & Brooks/Cole.
+{\if{html}{\out{<span id="reference+print.Rd+R+3AChambers+2BHastie+3A1992"></span>}}Chambers JM, Hastie TJ (1992).
+\emph{Statistical Models in S}.
+Chapman & Hall, London.
+ISBN 9780412830402.}
 }
 \seealso{
 The default method \code{\link[base]{print.default}}, and help for the
