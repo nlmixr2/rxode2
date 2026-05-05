@@ -239,8 +239,12 @@ bool expm_assign=false;
 SEXP expm_s;
 
 int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov,
-	   double *InfusionRate_, int *on_, t_ME ME, rx_solving_options *op){
-  int neq = op->neq;
+	   double *InfusionRate_, int *on_, t_ME ME, rx_solving_options *op,
+	   rx_solving_options_ind *ind){
+  // Honor per-individual neqOverride when ind is available; otherwise fall
+  // back to op->neq.  Keeps allocations / loops consistent with what the
+  // outer indLin solver wrote.
+  int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
   arma::mat m0(neq, neq);
@@ -314,7 +318,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
                       double tp, double *yp_, double tf,
 		      double *InfusionRate_, int *on_,
 		      t_ME ME, t_IndF  IndF){
-  int neq = op->neq;
+  int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   // Use per-individual tolerance arrays when available (set by
   // _setIndPointersByThread + iniSubject), falling back to op->rtol2/atol2.
   double *rtol = (ind != NULL && ind->rtol2 != NULL) ? ind->rtol2 : op->rtol2;
@@ -332,7 +336,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   if (locf) tcov = tp;
   switch(doIndLin){
   case 1: {
-    return meOnly(cSub, yp_, yp_, tp, tf, tcov, InfusionRate_, on_, ME, op);
+    return meOnly(cSub, yp_, yp_, tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
   }
   case 3: {
     // Matrix exponential  +  inductive linearzation
@@ -340,10 +344,10 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
     arma::vec w(yp_, neq);
     arma::vec y0 = w;
     // Update first value
-    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op);
+    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
     // Don't update rest
     wLast = w;
-    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op);
+    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
     bool converge = false;
     for (int i = 0; i < maxsteps; ++i){
       converge=true;
@@ -358,7 +362,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
     	break;
       }
       wLast = w;
-      meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op);
+      meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
     }
     std::copy(w.begin(), w.begin()+neq, yp_);
     return 1;

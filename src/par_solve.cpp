@@ -35,7 +35,7 @@ extern "C" {
 }
 #include "par_solve.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-#define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
+#define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
   }                                                                     \
   _Pragma("omp atomic write")                                           \
@@ -504,13 +504,13 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
   } else {
     if (R_FINITE(rx->stateTrimU)){
       double top=fabs(rx->stateTrimU);
-      for (int j = op->neq; j--;) {
+      for (int j = rxEffNeq(ind, op); j--;) {
         yp[j]= min(top,yp[j]);
       }
     }
     if (R_FINITE(rx->stateTrimL)){
       double bottom=rx->stateTrimL;
-      for (int j = op->neq; j--;) {
+      for (int j = rxEffNeq(ind, op); j--;) {
         yp[j]= max(bottom,yp[j]);
       }
     }
@@ -1080,8 +1080,11 @@ static inline void solveWith1Pt(int *neq,
                                 t_update_inis u_inis,
                                 void *ctx){
   int idid, itol=0;
-  int neqOde = op->neq - op->numLin - op->numLinSens;
-  if (neqOde == 0 && op->neq > 0) {
+  // Per-individual effective neq under neqOverride; allocations are still
+  // sized for op->neq, only stepping uses the smaller stride.
+  int eff = rxEffNeq(ind, op);
+  int neqOde = eff - op->numLin - op->numLinSens;
+  if (neqOde == 0 && eff > 0) {
     if (!isSameTime(xout, xp)) {
       preSolve(op, ind, xp, xout, yp);
       linSolve(neq, ind, yp, &xp, xout);
@@ -1126,12 +1129,12 @@ static inline void solveWith1Pt(int *neq,
     case 1:
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
-        neq[0] = op->neq - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens;
         F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
                          &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                          istate, &giopt, global_rworkp,
                          &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
-        neq[0] = op->neq;
+        neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -1148,7 +1151,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTimeDop(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         // change to real ODE num
-        neq[0] = op->neq - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens;
         idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                       dydt,         /* function computing the value of f(x,y) */
                       xp,           /* initial x-value */
@@ -1175,7 +1178,7 @@ static inline void solveWith1Pt(int *neq,
                       0                       /* declared length of icon */
                       );
         // switch to overall states
-        neq[0] = op->neq;
+        neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
       }
       if (idid < 0) {
@@ -1310,7 +1313,7 @@ extern "C" void handleSSbolus(int *neq,
         badSolveExit(*i);
         break;
       }
-      for (int k = op->neq; k--;) {
+      for (int k = rxEffNeq(ind, op); k--;) {
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
@@ -2573,7 +2576,7 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   // Grow if needed before accessing getSolve(i) and optionally getSolve(i+1).
   _growSolveIfNeeded(ind, op, i, (i + 1 != nx));
   if (i+1 != nx) {
-    std::copy(getSolve(i), getSolve(i) + op->neq, getSolve(i+1));
+    std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
   }
   calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
 }
@@ -2586,7 +2589,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   assignFuns();
   int i;
   int neq[2];
-  neq[0] = op->neq;
   neq[1] = solveid;
   /* double *yp = &yp0[neq[1]*neq[0]]; */
   int nx;
@@ -2597,6 +2599,8 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   int idid = 0;
   int localBadSolve = 0;
   ind = &(rx->subjects[neq[1]]);
+  // Per-individual effective neq (rxEffNeq) needs ind in scope.
+  neq[0] = rxEffNeq(ind, op);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   nx = ind->n_all_times;
   rc= ind->rc;
@@ -2731,7 +2735,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   clock_t t0 = clock();
   int i;
   int neq[2];
-  neq[0] = op->neq;
   // Here we pick the sorted solveid
   // rx->ordId[solveid]-1
   // This -1 is because R is 1 indexed and C/C++ is 0 indexed
@@ -2743,7 +2746,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   //
   neq[1] = rx->ordId[solveid]-1;
   /* double *yp = &yp0[neq[1]*neq[0]]; */
-  rx_solving_options_ind *ind;
+  rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+  // Per-individual effective neq honors ind->neqOverride (rxEffNeq); under
+  // a parallel inner-pred alternation in nlmixr2est this is the predNeq
+  // for this thread's subject, while op->neq remains the full neq.
+  neq[0] = rxEffNeq(ind, op);
   double xout;
   int *rc;
   double *yp;
@@ -2759,7 +2766,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   ctx->neq = neqOde;
   ctx->state = 1;
   ctx->error=NULL;
-  ind = &(rx->subjects[neq[1]]);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) {
     free(ctx);
     ctx = NULL;
@@ -3285,6 +3291,9 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   neq[1] = solveid;
 
   ind = &(rx->subjects[neq[1]]);
+  // Per-individual effective neq honors ind->neqOverride; allocations are
+  // sized for op->neq, only stepping uses the smaller stride.
+  int eff = rxEffNeq(ind, op);
 
   rwork[4] = op->H0; // H0
   rwork[5] = ind->HMAX; // Hmax
@@ -3337,10 +3346,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = op->neq - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            neq[0] = op->neq;
+            neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
             if (*(ind->rc) < 0) localBadSolve = 1;
@@ -3358,10 +3367,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->idxExtra++;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              neq[0] = op->neq - op->numLin - op->numLinSens;
+              neq[0] = eff - op->numLin - op->numLinSens;
               F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                                &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-              neq[0] = op->neq;
+              neq[0] = eff;
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
               if (*(ind->rc) < 0) localBadSolve = 1;
@@ -3371,14 +3380,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = op->neq - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &gitol,
                            &(op->RTOL),
                            &(op->ATOL),
                            &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-          neq[0] = op->neq;
+          neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           if (*(ind->rc) < 0) localBadSolve = 1;
@@ -3506,9 +3515,10 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   const char **err_msg = NULL;
   int nx;
   int neq[2];
-  neq[0] = op->neq;
   neq[1] = rx->ordId[solveid]-1;
   ind = &(rx->subjects[neq[1]]);
+  // Per-individual effective neq (rxEffNeq) — see ind_liblsoda0 for context.
+  neq[0] = rxEffNeq(ind, op);
 
   double ret = 0.0;
   double cur = 0.0;
@@ -3916,6 +3926,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   int nx;
   neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
+  // Per-individual effective neq (rxEffNeq) honors ind->neqOverride; under
+  // override the dop853 stepping uses the smaller stride.  Caller (ind_dop /
+  // par_dop) initialises neq[0] from op->neq before this function runs;
+  // update it now that ind is known so handle_evid / postSolve / etc. see
+  // the per-individual effective stride for the current subject.
+  int eff = rxEffNeq(ind, op);
+  neq[0] = eff;
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   nx = ind->n_all_times;
   inits = op->inits;
@@ -3961,7 +3978,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = op->neq - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           xp,           /* initial x-value */
@@ -3987,7 +4004,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
-            neq[0] = op->neq;
+            neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             xp = ind->extraDoseNewXout;
@@ -4004,7 +4021,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           ind->idxExtra++;
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            neq[0] = op->neq - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           ind->extraDoseNewXout,           /* initial x-value */
@@ -4030,7 +4047,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
-            neq[0] = op->neq;
+            neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             xp = ind->extraDoseNewXout;
@@ -4038,7 +4055,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         if (!isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = op->neq - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens;
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
@@ -4064,7 +4081,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
                         0                       /* declared length of icon */
                         );
-          neq[0] = op->neq;
+          neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
@@ -4808,7 +4825,16 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       // Setup H
       setupLinH(rx, cid, c_dydt, u_inis);
     }
-    if (op->neq == op->numLinSens + op->numLin) {
+    // Per-individual neqOverride: when set (e.g. nlmixr2est's predOde from
+    // shi21EtaGeneral / likInner0 doFD path), force dispatch through the
+    // ODE-solver branch.  The pure-linCmt fast path assumes the full
+    // op->neq state layout and shares op->numLin / op->numLinSens with the
+    // rxInner sensitivity model; under override the caller is solving the
+    // smaller predNoLhs ODE model, which by construction has numLin == 0,
+    // so the linCmt fast path is not the right dispatch.
+    rx_solving_options_ind *_ind = &(rx->subjects[cid]);
+    int _eff = rxEffNeq(_ind, op);
+    if (_eff == op->neq && op->neq == op->numLinSens + op->numLin) {
       // This only is linear compartment solving
       ind_linCmt(rx, cid, c_dydt, u_inis);
       return;

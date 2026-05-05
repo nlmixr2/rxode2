@@ -4678,6 +4678,15 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".jac.counter"] = jac_counterIv;
   e[".nsub"] = (int)rx->nsub;
   e[".nsim"] = (int)rx->nsim;
+  {
+    NumericVector _tf((int)rx->nsub);
+    CharacterVector _idLevels = as<CharacterVector>(rxSolveDat->idLevels);
+    for (uint32_t _si = 0; _si < rx->nsub; _si++) {
+      _tf[_si] = rx->subjects[_si].tolFactor;
+    }
+    if ((int)_idLevels.size() == (int)rx->nsub) _tf.names() = _idLevels;
+    e[".tolFactor"] = _tf;
+  }
   e[".init.dat"] = rxSolveDat->initsC;
   CharacterVector units = CharacterVector::create(amountUnits[0], timeUnits[0]);
   units.names() = CharacterVector::create("dosing","time");
@@ -4827,6 +4836,33 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   }
   if (_globals.zeroSigma) {
     cliAlert(_("zero 'sigma', no unexplained variability"));
+  }
+  {
+    SEXP _tfSEXP = rxControl[Rxc_tolFactor];
+    if (!Rf_isNull(_tfSEXP) && (TYPEOF(_tfSEXP) == REALSXP || TYPEOF(_tfSEXP) == INTSXP)) {
+      NumericVector _tf = as<NumericVector>(_tfSEXP);
+      SEXP _tfNames = Rf_getAttrib(_tfSEXP, R_NamesSymbol);
+      bool _named = (!Rf_isNull(_tfNames)) && (Rf_length(_tfNames) == (int)_tf.size());
+      if (_named) {
+        CharacterVector _ids = as<CharacterVector>(rxSolveDat->idLevels);
+        CharacterVector _tfn = as<CharacterVector>(_tfNames);
+        int _tnSize = (int)_tfn.size();
+        for (uint32_t _si = 0; _si < rx->nsub; _si++) {
+          std::string _sid = as<std::string>(_ids[_si]);
+          for (int _j = 0; _j < _tnSize; _j++) {
+            if (as<std::string>(_tfn[_j]) == _sid) {
+              rx->subjects[_si].tolFactor = _tf[_j];
+              break;
+            }
+          }
+        }
+      } else {
+        uint32_t _n = std::min((uint32_t)_tf.size(), rx->nsub);
+        for (uint32_t _si = 0; _si < _n; _si++) {
+          rx->subjects[_si].tolFactor = _tf[_si];
+        }
+      }
+    }
   }
   par_solve(rx);
 #ifdef rxSolveT
@@ -5829,6 +5865,9 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     return e[".sigmaL"];
   } else if ((sarg == "omega.list" || sarg == "omegaList") && e.exists(".omegaL")){
     return e[".omegaL"];
+  } else if (sarg == "tolFactor") {
+    if (e.exists(".tolFactor")) return e[".tolFactor"];
+    return R_NilValue;
   } else if ((sarg == "theta.list" || sarg == "thetaList")) {
     return e[".thetaL"];
   }
@@ -5938,7 +5977,7 @@ CharacterVector rxSolveDollarNames(RObject obj){
   CharacterVector cls = lst.attr("class");
   Environment e = as<Environment>(cls.attr(".rxode2.env"));
   updateSolveEnvPost(e);
-  int nExtra = 6;
+  int nExtra = 7;
   if (e.exists(".theta")) nExtra++;
   if (e.exists(".sigmaL")) nExtra++;
   if (e.exists(".thetaL")) nExtra++;
@@ -5983,6 +6022,7 @@ CharacterVector rxSolveDollarNames(RObject obj){
   ret[j++] = "inits";
   ret[j++] = "t";
   ret[j++] = "rxode2";
+  ret[j++] = "tolFactor";
   if (e.exists(".theta")) ret[j++] = "thetaMat";
   if (e.exists(".sigmaL")) ret[j++] = "sigmaList";
   if (e.exists(".thetaL")) ret[j++] = "thetaList";

@@ -154,6 +154,28 @@
 #' @param maxAtolRtolFactor The maximum `atol`/`rtol` that
 #'     FOCEi and other routines may adjust to.  By default 0.1
 #'
+#' @param tolFactor A per-individual tolerance multiplier (>= 1.0, or
+#'     `NULL` for no effect).  When supplied, each individual's
+#'     `atol`, `rtol`, `ssAtol`, and `ssRtol` are multiplied by
+#'     this factor before the ODE solver is called, loosening the
+#'     tolerances for that individual.  This is useful when a small
+#'     number of subjects are numerically stiff and would otherwise
+#'     cause solve failures: pass a larger factor for the
+#'     problematic subjects and leave the rest at 1.0 (or omit them).
+#'     The effective tolerance is always capped at `maxAtolRtolFactor`.
+#'
+#'     `tolFactor` may be:
+#'     * `NULL` (default) — no adjustment applied.
+#'     * A single numeric value — the same factor is applied to
+#'       the first `length(tolFactor)` subjects in order.
+#'     * A numeric vector — applied element-wise to subjects in
+#'       the order they appear.
+#'     * A **named** numeric vector — names are matched to subject
+#'       IDs; unmatched subjects retain `tolFactor = 1.0`.
+#'
+#'     The per-subject factors used (after matching) are stored back
+#'     in the solved object and accessible via `$tolFactor`.
+#'
 #' @param stateTrim When amounts/concentrations in one of the states
 #'     are above this value, trim them to be this value. By default
 #'     Inf.  Also trims to -stateTrim for large negative
@@ -903,6 +925,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtForwardMax=2L,
                     indOwnAlloc=NA,
                     maxExtra=1000L,
+                    tolFactor=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1221,6 +1244,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (maxSS <= minSS) stop("'maxSS' must be larger than 'minSS'", call.=FALSE)
     checkmate::assertNumeric(infSSstep, lower=6, any.missing=FALSE, len=1)
     checkmate::assertNumeric(maxAtolRtolFactor, lower=0.01, any.missing=FALSE, finite=TRUE, null.ok=FALSE, len=1)
+    if (!is.null(tolFactor))
+      checkmate::assertNumeric(tolFactor, lower=1.0, finite=TRUE, any.missing=FALSE, .var.name="tolFactor")
     checkmate::assertNumeric(from, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(to, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(by, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
@@ -1451,6 +1476,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtForwardMax=linCmtForwardMax,
       indOwnAlloc=as.integer(indOwnAlloc),
       maxExtra=maxExtra,
+      tolFactor=tolFactor,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

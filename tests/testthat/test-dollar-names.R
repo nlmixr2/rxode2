@@ -61,7 +61,7 @@ rxTest({
                         "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
                         "inits", "KA", "Kin", "Kout", "model", "nobs", "omegaList", "params",
                         "peripheral1", "peripheral10", "pk", "Q", "resp", "rxode2", "sigmaList",
-                        "sim.id", "sim.id", "t", "TCL", "thetaMat", "time", "units",
+                        "sim.id", "sim.id", "t", "TCL", "thetaMat", "time", "tolFactor", "units",
                         "V2", "V3")))
 
 
@@ -83,7 +83,7 @@ rxTest({
                         "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
                         "inits", "KA", "Kin", "Kout", "model", "nobs", "omegaList", "params",
                         "peripheral1", "peripheral10", "pk", "Q", "resp", "rxode2", "sim.id",
-                        "sim.id", "t", "TCL", "thetaMat", "time", "units", "V2", "V3")))
+                        "sim.id", "t", "TCL", "thetaMat", "time", "tolFactor", "units", "V2", "V3")))
 
     pk4 <-
       suppressWarnings(rxSolve(
@@ -103,7 +103,7 @@ rxTest({
                         "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
                         "inits", "KA", "Kin", "Kout", "model", "nobs", "params", "peripheral1",
                         "peripheral10", "pk", "Q", "resp", "rxode2", "sim.id", "sim.id",
-                        "t", "TCL", "thetaMat", "time", "units", "V2", "V3")))
+                        "t", "TCL", "thetaMat", "time", "tolFactor", "units", "V2", "V3")))
 
     pk4 <-
       suppressWarnings(rxSolve(
@@ -122,6 +122,6 @@ rxTest({
                    "get.obs.rec", "get.sampling", "get.units", "import.EventTable",
                    "inits", "KA", "Kin", "Kout", "model", "nobs", "params", "peripheral1",
                    "peripheral10", "pk", "Q", "resp", "rxode2", "sim.id", "sim.id",
-                   "t", "TCL", "time", "units", "V2", "V3")))
+                   "t", "TCL", "time", "tolFactor", "units", "V2", "V3")))
   })
 })
