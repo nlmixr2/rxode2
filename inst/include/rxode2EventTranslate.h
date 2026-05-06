@@ -58,7 +58,7 @@ static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, i
  */
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
-                     double ii_val, int ss, double rate) {
+                     double ii_val, int ss, double rate, int isDur) {
   rx_translated_event out;
   out.n = 0;
   out.evid[0] = 0; out.evid[1] = 0;
@@ -86,7 +86,18 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
   /* rateI encoding (mirrors etTran.cpp) */
   int rateI = 0;
   double dur = 0.0, useRate = 0.0;
-  if (rate > 0.0)        { rateI = 1; useRate = rate; dur = amt / rate; }
+  if (rate > 0.0) {
+    /* If isDur=1 and rate>0, rate carries fixed duration. */
+    if (isDur) {
+      rateI = 2;
+      dur = rate;
+      useRate = amt / dur;
+    } else {
+      rateI = 1;
+      useRate = rate;
+      dur = amt / rate;
+    }
+  }
   else if (rate == -1.0) { rateI = 9; }
   else if (rate == -2.0) { rateI = 8; }
 
@@ -112,11 +123,11 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     /* Dose: bolus, phantom or infusion */
     out.evid[0]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
     out.time[0]   = time;
-    out.amt[0]    = (rateI == 1) ? useRate : amt;
+    out.amt[0]    = (rateI == 1 || rateI == 2) ? useRate : amt;
     out.ii[0]     = ii_val;
     out.isDose[0] = 1;
     out.n         = 1;
-    if (rateI == 1 && flg != 40) {
+    if ((rateI == 1 || rateI == 2) && flg != 40) {
       /* Infusion stop event */
       out.evid[1]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
       out.time[1]   = time + dur;
@@ -147,7 +158,7 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.isDose[0] = 0;
     out.evid[1]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
     out.time[1]   = time;
-    out.amt[1]    = (rateI == 1) ? useRate : amt;
+    out.amt[1]    = (rateI == 1 || rateI == 2) ? useRate : amt;
     out.ii[1]     = ii_val;
     out.isDose[1] = 1;
     break;

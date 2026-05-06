@@ -750,8 +750,9 @@ static inline void _rxSortIdoseSuffix(rx_solving_options_ind *ind, int startDose
 // _curTime: current ODE model time (for past-time guard).
 // Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
 extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
-                            double _time, int _evid, double _amt, int _cmt,
-                            double _rate, double _ii, int _addl, int _ss) {
+                           double _time, int _evid, double _amt, int _cmt,
+                           double _rate, double _ii, int _addl, int _ss,
+                           int _isDur) {
   rx_solving_options *op = &op_global;
 
   if (!_ind->indOwnAlloc) return 0; // safety: only works with owned arrays
@@ -776,7 +777,8 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     // pass the original _ii so flg is set correctly; for all others ii=0.
     double _doseIi = (_rep == 0 && _doseSs != 0) ? _ii : 0.0;
     rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _evid, _cmt,
-                                                   _amt, _doseIi, _doseSs, _rate);
+                                                  _amt, _doseIi, _doseSs,
+                                                  _rate, _isDur);
     if (ev.n == 0) continue;
 
     int splitDoseEvent = -1;
