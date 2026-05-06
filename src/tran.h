@@ -219,6 +219,9 @@ typedef struct nodeInfo {
   int simfun_statement;
   int evid_statement;
   int bolus_statement;
+  int infuse_statement;
+  int infuseDur_statement;
+  int reset_statement;
   int relational_op;
   int string;
   int mod_expression;
@@ -285,6 +288,9 @@ static inline void niReset(nodeInfo *ni){
   ni->simfun_statement = -1;
   ni->evid_statement = -1;
   ni->bolus_statement = -1;
+  ni->infuse_statement = -1;
+  ni->infuseDur_statement = -1;
+  ni->reset_statement = -1;
   ni->relational_op = -1;
   ni->string = -1;
   ni->mod_expression = -1;

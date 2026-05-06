@@ -28,6 +28,9 @@ statement
   | simfun_statement end_statement
   | evid_statement end_statement
   | bolus_statement end_statement
+  | infuse_statement end_statement
+  | infuseDur_statement end_statement
+  | reset_statement end_statement
   | compound_statement
   | selection_statement
   | ifelse_statement
@@ -70,6 +73,31 @@ bolus_statement
             ssVal                       /* ss    */
             ')' ;
 
+infuse_statement
+    : 'infuse' '('
+            logical_or_expression ','   /* amt   */
+            logical_or_expression ','   /* rate  */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                      /* ss    */
+            ')' ;
+
+infuseDur_statement
+    : 'infuseDur' '('
+            logical_or_expression ','   /* amt   */
+            logical_or_expression ','   /* dur  */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                      /* ss    */
+            ')' ;
+
+reset_statement
+    : 'reset' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid  /* cmt   */
+            ')' ;
 
 cmt_statement
     : 'cmt' '(' identifier_r_no_output ')';

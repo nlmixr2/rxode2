@@ -515,6 +515,8 @@ static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt)
     new_or_ith(vCmt);
     aProp(tb.ix);
   }
+  // while DDT# is 0-indexed, the _rxPushDose() is 1-indexed, so add 1
+  // to the DDT# for the _rxPushDose() call
   sPrint(&_gbuf, "(__DDT%d__ + 1)", tb.id);
   return _gbuf.s;
 }
@@ -559,6 +561,55 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
   return 0;
 }
 
+static inline int handleInfuseStatement(nodeInfo ni, char *name, int *i, int nch,
+                                        D_ParseNode *pn) {
+  if (nodeHas(infuse_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
+    //           6=cmt, 7=',', 8=ii, 9=',', 10=addl, 11=','
+    //           12=ss, 13=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cRate = d_get_child(pn, 4);
+    D_ParseNode *cCmt  = d_get_child(pn, 6);
+    D_ParseNode *cIi   = d_get_child(pn, 8);
+    D_ParseNode *cAddl = d_get_child(pn, 10);
+    D_ParseNode *cSs   = d_get_child(pn, 12);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vRate = (char*)rc_dup_str(cRate->start_loc.s,  cRate->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    //                                        amt,cmt,
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s));\n",
+            vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s));\n",
+            vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+
+    // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
+    //           6=cmt, 7=',', 8=ii, 9=',', 10=addl, 11=','
+    //           12=ss, 13=')'
+    sAppend(&sbt, "infuse(%s, %s, %s, %s, %s, %s);",
+            vAmt, vRate, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
 
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
