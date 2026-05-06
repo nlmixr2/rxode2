@@ -269,6 +269,50 @@ rxTest({
     expect_true(cp31 > cp28)
   })
 
+  test_that("evid_() with 'depot'", {
+    # evid_(t+6, 1, 50, 1, 0, 12, 2, 0) pushes 3 boluses: t+6, t+18, t+30
+    m6 <- rxode2({
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <- ka * depot - cl / vd * central
+      cp <- central / vd
+      if (t < 1) {
+        evid_(t + 6, 1, 50, 'depot', 0, 12, 2, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 36, by = 1))
+    p <- c(ka = 0.5, cl = 1, vd = 10)
+    r <- rxSolve(m6, p, e)
+    expect_true(nrow(r) > 0)
+    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
+    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    cp28 <- r$cp[r$time == 28]
+    cp31 <- r$cp[r$time == 31]
+    expect_true(length(cp28) > 0 && length(cp31) > 0)
+    expect_true(cp31 > cp28)
+  })
+
+  test_that("evid_() with \"depot\"", {
+    # evid_(t+6, 1, 50, 1, 0, 12, 2, 0) pushes 3 boluses: t+6, t+18, t+30
+    m6 <- rxode2({
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <- ka * depot - cl / vd * central
+      cp <- central / vd
+      if (t < 1) {
+        evid_(t + 6, 1, 50, 'depot', 0, 12, 2, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 36, by = 1))
+    p <- c(ka = 0.5, cl = 1, vd = 10)
+    r <- rxSolve(m6, p, e)
+    expect_true(nrow(r) > 0)
+    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
+    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    cp28 <- r$cp[r$time == 28]
+    cp31 <- r$cp[r$time == 31]
+    expect_true(length(cp28) > 0 && length(cp31) > 0)
+    expect_true(cp31 > cp28)
+  })
+
   test_that("classic rxode2 internal evid >= 100 passes through verbatim", {
     # internal evid for a bolus to cmt 1: cmt100=0, rateI=0, cmt99=1, flg=1 => evid=101
     m5 <- rxode2({
