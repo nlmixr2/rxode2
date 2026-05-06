@@ -492,6 +492,33 @@ static inline int isStrInteger(const char *s) {
   return 1;
 }
 
+static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt) {
+  while (*vCmt == ' ' || *vCmt == '\t') vCmt++;
+  if (isStrInteger(vCmt)) {
+    sPrint(&_gbuf, "(int)(%s)", vCmt);
+    return _gbuf.s;
+  }
+  if (*vCmt == '\'' || *vCmt == '"') {
+    char quote = *vCmt;
+    vCmt++;
+    char *tmp = vCmt;
+    while (*tmp && *tmp != '\0') tmp++;
+    while (tmp > vCmt && (tmp[-1] == ' ' || tmp[-1] == '\t')) tmp--;
+    if (tmp > vCmt && tmp[-1] == quote) tmp--;
+    tmp[0] = '\0';
+  }
+  int hasLhs = isCmtLhsStatement(ni, name, vCmt);
+  if (new_de(vCmt, fromCMTprop)) {
+    add_de(ni, name, vCmt, hasLhs, fromCMTprop);
+    aProp(tb.de.n);
+  } else {
+    new_or_ith(vCmt);
+    aProp(tb.ix);
+  }
+  sPrint(&_gbuf, "(__DDT%d__ + 1)", tb.id);
+  return _gbuf.s;
+}
+
 static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
   if (nodeHas(bolus_statement) && *i == 0) {
@@ -515,35 +542,11 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
     // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
     //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
     //           16=ss, 17=')'
-
-    if (isStrInteger(vCmt)) {
-      sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, (int)(%s), %s, 0.0, (int)(%s), (int)(%s));\n",
-              vAmt, vCmt, vIi, vAddl, vSs);
-      sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, (int)(%s), %s, 0.0, (int)(%s), (int)(%s));\n",
-              vAmt, vCmt, vIi, vAddl, vSs);
-    } else {
-      // Here we push the string value, but we need to remove any
-      // quotes first
-      if (*vCmt == '\'' || *vCmt == '"') {
-        vCmt++;
-        char *tmp = vCmt;
-        while (*tmp && *tmp != '\0') tmp++;
-        tmp--;
-        tmp[0] = '\0';
-      }
-      int hasLhs = isCmtLhsStatement(ni, name, vCmt);
-      if (new_de(vCmt, fromCMTprop)) {
-        add_de(ni, name, vCmt, hasLhs, fromCMTprop);
-        aProp(tb.de.n);
-      } else {
-        new_or_ith(vCmt);
-        aProp(tb.ix);
-      }
-      sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, (__DDT%d__ + 1), %s, 0.0, (int)(%s), (int)(%s));\n",
-              vAmt, tb.id, vIi, vAddl, vSs);
-      sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, (__DDT%d__ + 1), %s, 0.0, (int)(%s), (int)(%s));\n",
-              vAmt, tb.id, vIi, vAddl, vSs);
-    }
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, 0.0, (int)(%s), (int)(%s));\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, 0.0, (int)(%s), (int)(%s));\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
     sAppend(&sbt, "bolus(%s, %s, %s, %s, %s);",
             vAmt, vCmt, vIi, vAddl, vSs);
     addLine(&sbPm,   "%s\n", sb.s);
@@ -584,38 +587,11 @@ static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
-    if (isStrInteger(vCmt)) {
-      // Here we push the integer value
-      sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
-              vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
-      sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
-              vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
-    } else {
-      // Here we push the string value, but we need to remove any
-      // quotes first
-      if (*vCmt == '\'' || *vCmt == '"') {
-        vCmt++;
-        char *tmp = vCmt;
-        while (*tmp && *tmp != '\0') tmp++;
-        tmp--;
-        tmp[0] = '\0';
-      }
-      // Here we get the DDT# for use later
-      int hasLhs=isCmtLhsStatement(ni, name, vCmt);
-      if (new_de(vCmt, fromCMTprop)) {
-        add_de(ni, name, vCmt, hasLhs, fromCMTprop);
-        aProp(tb.de.n);
-      } else {
-        new_or_ith(vCmt);
-        aProp(tb.ix);
-        /* printf("de[%d]->%s[%d]\n",tb.id,v,tb.ix); */
-      }
-      // Note that the DDT# is 0-based, BUT _rxPushDose() is 1-based.
-      sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, (__DDT%d__ + 1), %s, %s, (int)(%s), (int)(%s));\n",
-              vTime, vEvid, vAmt, tb.id, vRate, vIi, vAddl, vSs);
-      sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, (__DDT%d__ + 1), %s, %s, (int)(%s), (int)(%s));\n",
-              vTime, vEvid, vAmt, tb.id, vRate, vIi, vAddl, vSs);
-    }
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s));\n",
+            vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s));\n",
+            vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
     sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s, %s);",
             vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
     addLine(&sbPm,   "%s\n", sb.s);
