@@ -447,7 +447,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNeqOverride, R_NilValue, R_NilValue)); pro++;
   SEXP rxote2rxSetSilentErr =  PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setSilentErr, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 59
+#define nVec 60
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
