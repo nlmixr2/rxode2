@@ -591,9 +591,9 @@ static inline int handleInfuseStatement(nodeInfo ni, char *name, int *i, int nch
     //           16=ss, 17=')'
     const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
     //                                        amt,cmt,
-    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 2);\n",
             vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
-    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 2);\n",
             vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
 
     // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
@@ -634,9 +634,9 @@ static inline int handleInfuseDurStatement(nodeInfo ni, char *name, int *i, int 
     aType(TEVID);
 
     const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
-    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 1);\n",
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
             vAmt, cmtExpr, vDur, vIi, vAddl, vSs);
-    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 1);\n",
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
             vAmt, cmtExpr, vDur, vIi, vAddl, vSs);
     sAppend(&sbt, "infuseDur(%s, %s, %s, %s, %s, %s);",
             vAmt, vDur, vCmt, vIi, vAddl, vSs);

@@ -3,6 +3,8 @@
 \name{rxUdfUi.evid_}
 \alias{rxUdfUi.evid_}
 \alias{rxUdfUi.bolus}
+\alias{rxUdfUi.infuse}
+\alias{rxUdfUi.infuseDur}
 \alias{rxUdfUi}
 \alias{rxUdfUi.rinbinom}
 \title{This function is called when processing rxode2 user functions from
@@ -11,6 +13,10 @@ the models}
 \method{rxUdfUi}{evid_}(fun)
 
 \method{rxUdfUi}{bolus}(fun)
+
+\method{rxUdfUi}{infuse}(fun)
+
+\method{rxUdfUi}{infuseDur}(fun)
 
 rxUdfUi(fun)
 

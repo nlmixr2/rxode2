@@ -147,6 +147,36 @@ rxUdfUi.evid_ <- function(fun) {
   list(replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt,
                         ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")"))
 }
+#' Administer a bolus dose inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `bolus()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+
+#' @export
+#' @author Matthew L. Fidler
+bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'bolus()' can only be used inside an rxode2 model block", call. = FALSE)
+}
 
 #' @export
 #' @keywords internal
@@ -177,4 +207,101 @@ rxUdfUi.bolus <- function(fun) {
   }
 
   list(replace = paste0("bolus(", .amt, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
+#' Administer a infusion (with rate being fixed) inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `infuse()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+infuse <- function(amt, rate, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'infuse()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.infuse <- function(fun) {
+  .dummy <- function(amt, rate, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .rate <- deparse1(.mc$rate)
+  .cmt <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") .cmt <- "1"
+  .ii <- deparse1(.mc$ii)
+  if (.ii == "NULL") .ii <- "0"
+  .addl <- deparse1(.mc$addl)
+  if (.addl == "NULL") .addl <- "0"
+  .ss <- deparse1(.mc$ss)
+  if (.ss == "NULL") .ss <- "0"
+  list(replace = paste0("infuse(", .amt, ",", .rate, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
+
+#' Administer a infusion (with duration being fixed) inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `infuseDur()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+infuseDur <- function(amt, dur, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'infuseDur()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.infuseDur <- function(fun) {
+  .dummy <- function(amt, dur, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .dur <- deparse1(.mc$dur)
+  .cmt <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") .cmt <- "1"
+  .ii <- deparse1(.mc$ii)
+  if (.ii == "NULL") .ii <- "0"
+  .addl <- deparse1(.mc$addl)
+  if (.addl == "NULL") .addl <- "0"
+  .ss <- deparse1(.mc$ss)
+  if (.ss == "NULL") .ss <- "0"
+  list(replace = paste0("infuseDur(", .amt, ",", .dur, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
 }

@@ -197,6 +197,58 @@ rxTest({
     }
   })
 
+  test_that("in-model infuse() changes duration with bioavailability", {
+    obs <- c(0, 1e-8, seq(0.5, 12, by = 0.5))
+    ref <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        d/dt(central) <- -cl / v * central
+        f(central) <- fc
+        cp <- central / v
+        if (t < 1e-8) {
+          infuse(100, 10, 1, 0, 0, 0)
+        }
+      })
+      p <- c(cl = 1, v = 10, fc = 0.5)
+      got <- rxSolve(mod, p, et(obs), method = meth)
+      want <- rxSolve(ref, c(cl = 1, v = 10),
+                      et(amt = 50, time = 0, rate = 10) |> et(obs),
+                      method = meth)
+      expect_equal(got$time, want$time)
+      expect_equal(got$cp, want$cp, tolerance = 1e-5)
+    }
+  })
+
+  test_that("in-model infuseDur() changes rate with bioavailability", {
+    obs <- c(0, 1e-8, seq(0.5, 12, by = 0.5))
+    ref <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        d/dt(central) <- -cl / v * central
+        f(central) <- fc
+        cp <- central / v
+        if (t < 1e-8) {
+          infuseDur(100, 10, 1, 0, 0, 0)
+        }
+      })
+      p <- c(cl = 1, v = 10, fc = 0.5)
+      got <- rxSolve(mod, p, et(obs), method = meth)
+      want <- rxSolve(ref, c(cl = 1, v = 10),
+                      et(amt = 50, time = 0, dur = 10) |> et(obs),
+                      method = meth)
+      expect_equal(got$time, want$time)
+      expect_equal(got$cp, want$cp, tolerance = 1e-5)
+    }
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x

@@ -746,14 +746,15 @@ static inline void _rxSortIdoseSuffix(rx_solving_options_ind *ind, int startDose
        });
 }
 
-// Push a future event into the individual's own event arrays during ODE solving.
-// _curTime: current ODE model time (for past-time guard).
+// Push a current/future event into the individual's own event arrays during ODE solving.
+// _curTime: current ODE model time (for past-time guard with solver tolerance).
 // Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
 extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
                            double _time, int _evid, double _amt, int _cmt,
                            double _rate, double _ii, int _addl, int _ss,
                            int _isDur) {
   rx_solving_options *op = &op_global;
+  int _isDurFlag = _isDur & 1;
 
   if (!_ind->indOwnAlloc) return 0; // safety: only works with owned arrays
 
@@ -766,7 +767,13 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     double _doseTime = _time + _rep * _ii;
     int    _doseSs   = (_rep == 0) ? _ss : 0;
 
-    if (_doseTime <= _curTime) {
+    if (isSameTimeOp(_doseTime, _curTime)) {
+      if (_doseTime < _curTime) {
+        // Dose at same time as current time, BUT marginally before curTime;
+        // assign to be the same.
+        _doseTime = _curTime;
+      }
+    } else if (_doseTime < _curTime) {
 #pragma omp atomic
       nPastEvid_global++;
       continue;
@@ -778,7 +785,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     double _doseIi = (_rep == 0 && _doseSs != 0) ? _ii : 0.0;
     rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _evid, _cmt,
                                                   _amt, _doseIi, _doseSs,
-                                                  _rate, _isDur);
+                                                  _rate, _isDurFlag);
     if (ev.n == 0) continue;
 
     int splitDoseEvent = -1;
@@ -862,6 +869,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
 
     // Append the translated events
     int doseSuffix = _ind->ndoses; // idose sort start
+    int rawStart = _ind->n_all_times;
     for (int _k = 0; _k < ev.n; _k++) {
       int splitStart = (_k == splitDoseEvent) ? 1 : 0;
       int splitEnd = (_k == splitDoseEvent) ? rx->splitBolusN : 1;
@@ -883,6 +891,17 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
         }
       }
     }
+
+    int savedIdx = _ind->idx;
+    int savedWh = _ind->wh, savedCmt = _ind->cmt, savedWh100 = _ind->wh100,
+      savedWhI = _ind->whI, savedWh0 = _ind->wh0;
+    for (int rawIdx = rawStart; rawIdx < _ind->n_all_times; rawIdx++) {
+      _ind->idx = rawIdx;
+      _ind->timeThread[rawIdx] = getTime__(rawIdx, _ind, 1);
+    }
+    _ind->idx = savedIdx;
+    _ind->wh = savedWh; _ind->cmt = savedCmt; _ind->wh100 = savedWh100;
+    _ind->whI = savedWhI; _ind->wh0 = savedWh0;
 
     // Re-sort ix from current event forward so new events land in the right slots
     int sortStart = (_ind->idx >= 0 && _ind->idx < _ind->n_all_times)
