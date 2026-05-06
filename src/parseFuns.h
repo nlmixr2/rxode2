@@ -522,6 +522,15 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
       sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, (int)(%s), %s, 0.0, (int)(%s), (int)(%s));\n",
               vAmt, vCmt, vIi, vAddl, vSs);
     } else {
+      // Here we push the string value, but we need to remove any
+      // quotes first
+      if (*vCmt == '\'' || *vCmt == '"') {
+        vCmt++;
+        char *tmp = vCmt;
+        while (*tmp && *tmp != '\0') tmp++;
+        tmp--;
+        tmp[0] = '\0';
+      }
       int hasLhs = isCmtLhsStatement(ni, name, vCmt);
       if (new_de(vCmt, fromCMTprop)) {
         add_de(ni, name, vCmt, hasLhs, fromCMTprop);
@@ -535,7 +544,6 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
       sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, (__DDT%d__ + 1), %s, 0.0, (int)(%s), (int)(%s));\n",
               vAmt, tb.id, vIi, vAddl, vSs);
     }
-
     sAppend(&sbt, "bolus(%s, %s, %s, %s, %s);",
             vAmt, vCmt, vIi, vAddl, vSs);
     addLine(&sbPm,   "%s\n", sb.s);
