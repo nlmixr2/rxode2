@@ -47,25 +47,27 @@ break_statement
 
 simfun_statement : "(simeps|simeta)" '(' ')' ;
 
+cmt_evid: string |  identifier_r_no_output | decimalintNo0 ;
+
 evid_statement
   : 'evid_' '('
     logical_or_expression ','   /* time  */
     logical_or_expression ','   /* evid  */
     logical_or_expression ','   /* amt   */
-    logical_or_expression ','   /* cmt   */
+    cmt_evid              ','   /* cmt   */
     logical_or_expression ','   /* rate  */
     logical_or_expression ','   /* ii    */
-    logical_or_expression ','   /* addl  */
-    logical_or_expression       /* ss    */
+    decimalint            ','   /* addl  */
+    ssVal                      /* ss    */
     ')' ;
 
 bolus_statement
     : 'bolus' '('
             logical_or_expression ','   /* amt   */
-            logical_or_expression ','   /* cmt   */
+            cmt_evid              ','   /* cmt   */
             logical_or_expression ','   /* ii    */
-            logical_or_expression ','   /* addl  */
-            logical_or_expression       /* ss    */
+            decimalint            ','   /* addl  */
+            ssVal                       /* ss    */
             ')' ;
 
 
@@ -218,7 +220,7 @@ theta_noout: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta_noout: ('ETA' | 'eta') '[' decimalintNo0 ']';
 theta0_noout: ('THETA' | 'theta' | 'ETA' | 'eta');
 
-
+ssVal: "0|1|2|3" $term -1;
 decimalintNo0: "([1-9][0-9]*)" $term -1;
 decimalint: "0|([1-9][0-9]*)" $term -1;
 string: string1 | string2;

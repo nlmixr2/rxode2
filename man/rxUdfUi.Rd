@@ -2,12 +2,15 @@
 % Please edit documentation in R/evidPush.R, R/rudfui.R, R/rxrandom.R
 \name{rxUdfUi.evid_}
 \alias{rxUdfUi.evid_}
+\alias{rxUdfUi.bolus}
 \alias{rxUdfUi}
 \alias{rxUdfUi.rinbinom}
 \title{This function is called when processing rxode2 user functions from
 the models}
 \usage{
 \method{rxUdfUi}{evid_}(fun)
+
+\method{rxUdfUi}{bolus}(fun)
 
 rxUdfUi(fun)
 

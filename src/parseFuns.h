@@ -2,6 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // rxode2 parsing function routines
 
+#include <ctype.h>
 #include "threadSafeConstants.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
@@ -505,9 +506,9 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
     //           16=ss, 17=')'
 
     sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, (int)(%s), %s, 0.0, (int)(%s), (int)(%s));\n",
-            vAmt, vCmt, vRate, vIi, vAddl, vSs);
+            vAmt, vCmt, vIi, vAddl, vSs);
     sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, (int)(%s), %s, 0.0, (int)(%s), (int)(%s));\n",
-            vAmt, vCmt, vRate, vIi, vAddl, vSs);
+            vAmt, vCmt, vIi, vAddl, vSs);
 
     sAppend(&sbt, "bolus(%s, %s, %s, %s, %s);",
             vAmt, vCmt, vIi, vAddl, vSs);
@@ -520,6 +521,18 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
   }
   return 0;
 }
+
+static inline int isStrInteger(const char *s) {
+  if (!s || *s == '\0') return 0;
+  if (*s == '+' || *s == '-') s++;
+  if (!isdigit((unsigned char)*s)) return 0;
+  while (*s) {
+    if (!isdigit((unsigned char)*s)) return 0;
+    s++;
+  }
+  return 1;
+}
+
 
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
@@ -548,10 +561,37 @@ static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
-    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
-            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
-    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
-            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+    if (isStrInteger(vCmt)) {
+      // Here we push the integer value
+      sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
+              vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+      sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
+              vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+    } else {
+      // Here we push the string value, but we need to remove any
+      // quotes first
+      if (*vCmt == '\'' || *vCmt == '"') {
+        vCmt++;
+        char *tmp = vCmt;
+        while (*tmp && *tmp != '\0') tmp++;
+        tmp--;
+        tmp[0] = '\0';
+      }
+      // Here we get the DDT# for use later
+      int hasLhs=isCmtLhsStatement(ni, name, vCmt);
+      if (new_de(vCmt, fromCMTprop)) {
+        add_de(ni, name, vCmt, 0, fromCMTprop);
+        aProp(tb.de.n);
+      } else {
+        new_or_ith(vCmt);
+        aProp(tb.ix);
+        /* printf("de[%d]->%s[%d]\n",tb.id,v,tb.ix); */
+      }
+      sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, __DDT%d__, %s, %s, (int)(%s), (int)(%s));\n",
+              vTime, vEvid, vAmt, tb.id, vRate, vIi, vAddl, vSs);
+      sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, __DDT%d__, %s, %s, (int)(%s), (int)(%s));\n",
+              vTime, vEvid, vAmt, tb.id, vRate, vIi, vAddl, vSs);
+    }
     sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s, %s);",
             vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
     addLine(&sbPm,   "%s\n", sb.s);
