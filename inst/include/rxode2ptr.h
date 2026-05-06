@@ -198,6 +198,9 @@ extern "C" {
   typedef void (*setIndNeqOverride_t)(rx_solving_options_ind *ind, int neq);
   extern setIndNeqOverride_t setIndNeqOverride;
 
+  typedef void (*rxSetSilentErr_t)(int silent);
+  extern rxSetSilentErr_t rxSetSilentErr;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -258,6 +261,7 @@ extern "C" {
       setIndTolFactor = (setIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 55));
       getIndNeqOverride = (getIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 56));
       setIndNeqOverride = (setIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 57));
+      rxSetSilentErr = (rxSetSilentErr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 58));
     }
     return R_NilValue;
   }
@@ -321,6 +325,7 @@ extern "C" {
   setIndTolFactor_t setIndTolFactor = NULL;             \
   getIndNeqOverride_t getIndNeqOverride = NULL;         \
   setIndNeqOverride_t setIndNeqOverride = NULL;         \
+  rxSetSilentErr_t rxSetSilentErr = NULL;               \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
