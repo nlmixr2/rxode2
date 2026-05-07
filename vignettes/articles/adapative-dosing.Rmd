@@ -1,0 +1,330 @@
+---
+title: "Adaptive Dosing with rxode2"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+## Overview
+
+`rxode2` can modify an individual's event history while the model is
+being solved.  This allows adaptive dosing strategies such as:
+
+- response-guided titration
+- rescue doses
+- infusion starts with fixed rate or fixed duration
+- compartment reset, replacement, or proportional adjustment
+- phantom/transit doses that update `podo()` and `tad()` without
+  adding mass to the compartment
+- adaptive observation scheduling
+
+The examples in `tests/testthat/test-evid-push.R` cover the core
+building blocks for these workflows.  This article shows how those
+pieces fit together for pharmacometric tasks such as titration,
+exposure matching, treatment interruption, and transit absorption.
+
+## General pattern
+
+Adaptive dosing in `rxode2` follows a simple pattern:
+
+1. Put the decision logic inside the `model({})` block.
+2. Make sure the solver visits the decision times.
+3. Push a new event when the condition is met.
+
+The push functions are evaluated at scheduled output times.  In
+practice, this means you should include the assessment times in the
+event table, often with `et(seq(...))`, and use `mtime()` when you want
+the model to react at a specific planned time.
+
+```{r adaptive-table, echo=FALSE}
+paradigms <- data.frame(
+  helper = c("evid_()", "bolus()", "infuse()", "infuseDur()", "reset()",
+             "replace()", "multiply()", "phantom()"),
+  evid = c("0, 1, 3, 4, 5, 6, 7, >=100", "1", "1", "1", "3", "5", "6", "7"),
+  use = c(
+    "General low-level interface for any supported pushed event",
+    "Push bolus doses, optionally with ii/addl/ss",
+    "Push fixed-rate infusions",
+    "Push fixed-duration infusions",
+    "Reset all compartments",
+    "Set a compartment to a new amount",
+    "Scale a compartment by a factor",
+    "Start transit or phantom dosing without adding mass directly"
+  ),
+  check.names = FALSE
+)
+
+knitr::kable(paradigms, align = "lcl")
+```
+
+For portability, the examples below pass the full helper argument list
+explicitly when the helper supports `ii`, `addl`, or `ss`.
+
+## A simple titration example with `bolus()`
+
+The most common adaptive dosing use case is titration: assess response,
+then add another dose if the current exposure is too low.
+
+```{r bolus-titration}
+titrateModel <- rxode2({
+  mtime(visit1) <- 24
+  mtime(visit2) <- 48
+
+  d/dt(depot) <- -ka * depot
+  d/dt(central) <- ka * depot - cl / v * central
+  cp <- central / v
+
+  if (t >= visit1 && t < visit1 + 0.5 && cp < 2) {
+    bolus(50, depot, 0, 0, 0)
+  }
+  if (t >= visit2 && t < visit2 + 0.5 && cp < 2) {
+    bolus(50, depot, 0, 0, 0)
+  }
+})
+
+titrateEvents <- et(amt = 100, time = 0) |>
+  et(seq(0, 72, by = 1))
+
+titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
+titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+
+subset(as.data.frame(titrateSolve), time %in% c(0, 24, 25, 48, 49, 72),
+       select = c(time, depot, central, cp))
+```
+
+This pattern is useful for:
+
+- therapeutic drug monitoring
+- concentration-guided rescue dosing
+- model-informed dose escalation rules
+
+If you need a repeating pushed regimen instead of a single titration
+step, `bolus()` also supports `ii`, `addl`, and `ss`.
+
+## Starting adaptive infusions
+
+Two helper functions support adaptive infusion starts:
+
+- `infuse(amt, rate, cmt, ii, addl, ss)` for fixed-rate infusions
+- `infuseDur(amt, dur, cmt, ii, addl, ss)` for fixed-duration infusions
+
+The next example starts a rescue infusion when concentration falls below
+target at a planned decision time.
+
+```{r infusion-titration}
+infusionModel <- rxode2({
+  mtime(rescueAt) <- 24
+
+  d/dt(central) <- -cl / v * central
+  cp <- central / v
+
+  if (t >= rescueAt && t < rescueAt + 0.5 && cp < 1) {
+    infuse(50, 5, central, 0, 0, 0)
+  }
+})
+
+infusionEvents <- et(amt = 100, time = 0, cmt = 1) |>
+  et(seq(0, 48, by = 1))
+
+infusionPars <- c(cl = 1, v = 20)
+infusionSolve <- rxSolve(infusionModel, infusionPars, infusionEvents)
+
+subset(as.data.frame(infusionSolve), time %in% c(23, 24, 25, 30, 35, 40),
+       select = c(time, central, cp))
+```
+
+Use `infuse()` when the infusion pump rate is fixed and duration should
+follow from `amt / rate`.  Use `infuseDur()` when the administration
+window is fixed and the effective rate should be computed from the total
+amount and duration.
+
+## Reset, replace, and multiply
+
+Not every adaptive intervention is a new dose.  Sometimes the state
+itself needs to be reset or adjusted.
+
+### `reset()`
+
+`reset()` clears the system state.  This is useful for:
+
+- washout periods
+- treatment restarts
+- restarting a simulation after protocol-defined interruption
+
+### `replace(amt, cmt)`
+
+`replace()` sets a compartment to a new amount.  This is useful for:
+
+- forcing a compartment to a therapeutic target
+- modeling device fills or reservoir changes
+- imposing a measured value as a new state
+
+### `multiply(amt, cmt)`
+
+`multiply()` scales a compartment amount by a factor.  This is useful
+for:
+
+- proportional dose reduction or escalation
+- dialysis-like fractional removal
+- immediate bioavailability or depot scaling rules
+
+```{r replace-multiply}
+adjustModel <- rxode2({
+  mtime(replaceAt) <- 12
+  mtime(multAt) <- 24
+
+  d/dt(depot) <- -ka * depot
+  d/dt(central) <- ka * depot - cl / v * central
+  cp <- central / v
+
+  if (t >= replaceAt && t < replaceAt + 0.5 && depot > 0) {
+    replace(25, depot)
+  }
+  if (t >= multAt && t < multAt + 0.5 && depot > 0) {
+    multiply(0.5, depot)
+  }
+})
+
+adjustEvents <- et(amt = 100, time = 0) |>
+  et(seq(0, 36, by = 1))
+
+adjustPars <- c(ka = 0.5, cl = 1, v = 10)
+adjustSolve <- rxSolve(adjustModel, adjustPars, adjustEvents)
+
+subset(as.data.frame(adjustSolve), time %in% c(11, 12, 13, 23, 24, 25, 36),
+       select = c(time, depot, central, cp))
+```
+
+## Transit and phantom dosing with `phantom()`
+
+`phantom()` is the adaptive analogue of `evid = 7`.  It updates
+transit-related bookkeeping such as `podo()` and `tad()` without adding
+the dose directly to the state variable as a bolus.
+
+This is especially useful for transit absorption models, delayed onset
+models, or situations where dose timing should update the model clock
+without depositing mass immediately.
+
+```{r phantom-example}
+phantomModel <- rxode2({
+  mtime(startTransit) <- 12
+
+  d/dt(depot) <- 0
+  d/dt(x) <- -k * x
+  pd <- podo(depot)
+  td <- tad(depot)
+
+  if (t >= startTransit && t < startTransit + 0.5) {
+    phantom(20, depot, 0, 0, 0)
+  }
+})
+
+phantomEvents <- et(seq(0, 20, by = 1))
+phantomPars <- c(k = 0.1)
+phantomSolve <- rxSolve(phantomModel, phantomPars, phantomEvents,
+                        inits = c(depot = 0, x = 1))
+
+subset(as.data.frame(phantomSolve), time %in% 11:16,
+       select = c(time, depot, x, pd, td))
+```
+
+Notice that `pd` and `td` update after the phantom event while the
+depot state is not handled like an ordinary bolus dose.
+
+## Direct control with `evid_()`
+
+When one of the convenience helpers does not match the exact event you
+need, use `evid_()` directly.  This gives full access to the
+NONMEM-style event fields:
+
+```{r evid-direct}
+directModel <- rxode2({
+  mtime(extraSample) <- 8
+  d/dt(x) <- -k * x
+
+  if (t >= extraSample && t < extraSample + 0.5) {
+    evid_(t + 0.5, 0, 0, 1, 0, 0, 0, 0)
+  }
+})
+
+directEvents <- et(amt = 1, time = 0) |>
+  et(c(0, 8, 12))
+
+directSolve <- rxSolve(directModel, c(k = 0.2), directEvents, inits = c(x = 1))
+directSolve[, c("time", "x")]
+```
+
+The low-level `evid_()` interface is appropriate when you need:
+
+- adaptive observation rows (`evid = 0`)
+- explicit resets or reset-then-dose logic
+- direct control over `rate`, `ii`, `addl`, and `ss`
+- classic internal rxode2 evids
+
+## Practical advice for titration workflows
+
+### 1. Put decision times in the event table
+
+Adaptive logic only runs when the solver is at a scheduled event or
+output time.  If a titration visit is supposed to happen at 24 hours,
+make sure the event table contains 24 hours.
+
+### 2. Use `mtime()` for planned decision points
+
+`mtime()` is a convenient way to mark protocol decision times inside the
+model and makes the logic easier to read than repeating literal times.
+
+### 3. Guard against repeated firing
+
+A condition such as `if (cp < target)` can remain true across many
+times.  Anchor it to a visit window or other one-time trigger so the
+same adaptive action is not pushed repeatedly by accident.
+
+### 4. Monitor `maxExtra`
+
+Each pushed event counts against the `maxExtra` limit in `rxSolve()`.
+If you accidentally create an event cascade, `rxode2` will stop with a
+`maxExtra` error instead of silently generating an unbounded event
+history.
+
+### 5. Pick the helper that matches the pharmacology
+
+- use `bolus()` for added doses
+- use `infuse()` or `infuseDur()` for infusion starts
+- use `reset()` for clearing the system
+- use `replace()` when you know the new compartment amount
+- use `multiply()` for proportional adjustment
+- use `phantom()` for transit bookkeeping without direct deposition
+
+## Common pharmacometric applications
+
+These adaptive dosing tools are useful in many pharmacometric settings:
+
+- oncology dose holds, dose reductions, and re-escalation
+- anti-infective therapeutic drug monitoring
+- target-controlled rescue dosing
+- model-based switching from loading dose to maintenance infusion
+- transit absorption and delayed onset models
+- protocol simulation with response-based dosing rules
+
+## Summary
+
+The adaptive event tools in `rxode2` let the model create new events at
+solve time.  Together, `evid_()`, `bolus()`, `infuse()`,
+`infuseDur()`, `reset()`, `replace()`, `multiply()`, and `phantom()`
+cover the main adaptive dosing paradigms needed for titration,
+interruption, rescue therapy, transit models, and protocol simulation.
+
+The tests in `tests/testthat/test-evid-push.R` provide concrete
+regression coverage for these event types, and the same patterns can be
+used in practical pharmacometric workflows.
