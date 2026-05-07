@@ -2,6 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // rxode2 parsing function routines
 
+#include <ctype.h>
 #include "threadSafeConstants.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
@@ -55,6 +56,49 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     sAppend(&sbNrm, "%s\n", sbt.s);
     addLine(&sbNrmL, "%s\n", sbt.s);
     /* Free(v); */
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
+                                     D_ParseNode *pn) {
+  if (nodeHas(obs_statement) && *i == 0) {
+    D_ParseNode *fPn = d_get_child(pn, 0);
+    D_ParseNode *xpn = d_get_child(fPn, 0);
+    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (strcmp(v, "obs")) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("only 'obs()' can be used as a standalone function statement"));
+    }
+    *i = nch;
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    tb.evid_ = 1;
+    aType(TEVID);
+    int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+    D_ParseNode *xpn0 = d_get_child(fPn, 2);
+    char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
+    sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
+    sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
+    sAppend(&sbt, "obs(%s", v0);
+    D_ParseNode *rest = d_get_child(fPn, 3);
+    for (int j = 0; j < ii - 1; ++j) {
+      char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
+                                    d_get_child(rest, j)->end);
+      char *arg = cur + 1;
+      while (*arg == ' ' || *arg == '\t') arg++;
+      sAppend(&sb, ", (double) %s", arg);
+      sAppend(&sbDt, ", (double) %s", arg);
+      sAppend(&sbt, ", %s", arg);
+    }
+    sAppendN(&sb, ");", 2);
+    sAppendN(&sbDt, ");", 2);
+    sAppendN(&sbt, ");", 2);
+    addLine(&sbPm, "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
     ENDLINE;
     return 1;
   }
@@ -251,7 +295,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v) ||
-      !strcmp("mix", tf->v)) {
+      !strcmp("mix", tf->v) || !strcmp("obs", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -287,6 +331,10 @@ static inline int handleFunctionSum(transFunctions *tf) {
         /* Free(v2); */
         trans_syntax_error_report_fn(_gbuf.s);
       }
+    } else if (!strcmp("obs", tf->v)) {
+      sAppend(&sb, "_obs(_cSub, t, %d, (double) ", ii);
+      sAppend(&sbDt, "_obs(_cSub, t, %d, (double) ", ii);
+      tb.evid_ = 1;
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);
@@ -480,6 +528,314 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
   return 0;
 }
 
+static inline int isStrInteger(const char *s) {
+  if (!s || *s == '\0') return 0;
+  if (*s == '+' || *s == '-') s++;
+  if (!isdigit((unsigned char)*s)) return 0;
+  while (*s) {
+    if (!isdigit((unsigned char)*s)) return 0;
+    s++;
+  }
+  return 1;
+}
+
+static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt) {
+  while (*vCmt == ' ' || *vCmt == '\t') vCmt++;
+  if (isStrInteger(vCmt)) {
+    sPrint(&_gbuf, "(int)(%s)", vCmt);
+    return _gbuf.s;
+  }
+  if (*vCmt == '\'' || *vCmt == '"') {
+    char quote = *vCmt;
+    vCmt++;
+    char *tmp = vCmt;
+    while (*tmp && *tmp != '\0') tmp++;
+    while (tmp > vCmt && (tmp[-1] == ' ' || tmp[-1] == '\t')) tmp--;
+    if (tmp > vCmt && tmp[-1] == quote) tmp--;
+    tmp[0] = '\0';
+  }
+  int hasLhs = isCmtLhsStatement(ni, name, vCmt);
+  if (new_de(vCmt, fromCMTprop)) {
+    add_de(ni, name, vCmt, hasLhs, fromCMTprop);
+    aProp(tb.de.n);
+  } else {
+    new_or_ith(vCmt);
+    aProp(tb.ix);
+  }
+  // while DDT# is 0-indexed, the _rxPushDose() is 1-indexed, so add 1
+  // to the DDT# for the _rxPushDose() call
+  sPrint(&_gbuf, "(__DDT%d__ + 1)", tb.id);
+  return _gbuf.s;
+}
+
+static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(bolus_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Children: 0='bolus', 1='(', 2=amt, 3=',', 4=cmt, 5=',',
+    //           6=ii, 7=',', 8=addl, 9=',', 10=ss, 11=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt  = d_get_child(pn, 4);
+    D_ParseNode *cIi   = d_get_child(pn, 6);
+    D_ParseNode *cAddl = d_get_child(pn, 8);
+    D_ParseNode *cSs   = d_get_child(pn, 10);
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbt, "bolus(%s, %s, %s, %s, %s);",
+            vAmt, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleInfuseStatement(nodeInfo ni, char *name, int *i, int nch,
+                                        D_ParseNode *pn) {
+  if (nodeHas(infuse_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
+    //           6=cmt, 7=',', 8=ii, 9=',', 10=addl, 11=','
+    //           12=ss, 13=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cRate = d_get_child(pn, 4);
+    D_ParseNode *cCmt  = d_get_child(pn, 6);
+    D_ParseNode *cIi   = d_get_child(pn, 8);
+    D_ParseNode *cAddl = d_get_child(pn, 10);
+    D_ParseNode *cSs   = d_get_child(pn, 12);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vRate = (char*)rc_dup_str(cRate->start_loc.s,  cRate->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    //                                        amt,cmt,
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 2);\n",
+            vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 2);\n",
+            vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+
+    // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
+    //           6=cmt, 7=',', 8=ii, 9=',', 10=addl, 11=','
+    //           12=ss, 13=')'
+    sAppend(&sbt, "infuse(%s, %s, %s, %s, %s, %s);",
+            vAmt, vRate, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleInfuseDurStatement(nodeInfo ni, char *name, int *i, int nch,
+                                           D_ParseNode *pn) {
+  if (nodeHas(infuseDur_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cDur  = d_get_child(pn, 4);
+    D_ParseNode *cCmt  = d_get_child(pn, 6);
+    D_ParseNode *cIi   = d_get_child(pn, 8);
+    D_ParseNode *cAddl = d_get_child(pn, 10);
+    D_ParseNode *cSs   = d_get_child(pn, 12);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vDur  = (char*)rc_dup_str(cDur->start_loc.s,  cDur->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
+            vAmt, cmtExpr, vDur, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
+            vAmt, cmtExpr, vDur, vIi, vAddl, vSs);
+    sAppend(&sbt, "infuseDur(%s, %s, %s, %s, %s, %s);",
+            vAmt, vDur, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleReplaceStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(replace_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0= 'replace', 1='(', 2=amt, 3=',', 4=cmt, 5=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt = d_get_child(pn, 4);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    sAppend(&sb,   "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbt,  "replace(%s, %s);", vAmt, vCmt);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleMultiplyStatement(nodeInfo ni, char *name, int *i, int nch,
+                                         D_ParseNode *pn) {
+  if (nodeHas(multiply_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0= 'replace', 1='(', 2=amt, 3=',', 4=cmt, 5=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt = d_get_child(pn, 4);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    sAppend(&sb,   "_rxPushDose(_ind, t, t, 6, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, t, 6, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbt,  "multiply(%s, %s);", vAmt, vCmt);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+
+static inline int handlePhantomStatement(nodeInfo ni, char *name, int *i, int nch,
+                                         D_ParseNode *pn) {
+  if (nodeHas(phantom_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Children: 0='bolus', 1='(', 2=amt, 3=',', 4=cmt, 5=',',
+    //           6=ii, 7=',', 8=addl, 9=',', 10=ss, 11=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt  = d_get_child(pn, 4);
+    D_ParseNode *cIi   = d_get_child(pn, 6);
+    D_ParseNode *cAddl = d_get_child(pn, 8);
+    D_ParseNode *cSs   = d_get_child(pn, 10);
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 7, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 7, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbt, "phantom(%s, %s, %s, %s, %s);",
+            vAmt, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
+                                            D_ParseNode *pn) {
+  if (nodeHas(reset_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    sAppendN(&sb,   "_rxPushDose(_ind, t, t, 3, 0, 1, 0, 0, 0, 0, 0);\n", 49);
+    sAppendN(&sbDt, "_rxPushDose(_ind, t, t, 3, 0, 1, 0, 0, 0, 0, 0);\n", 49);
+    sAppendN(&sbt,  "reset();", 8);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
   if (nodeHas(evid_statement) && *i == 0) {
@@ -507,10 +863,11 @@ static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
-    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
-            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
-    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, (int)(%s), %s, %s, (int)(%s), (int)(%s));\n",
-            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
+            vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
+            vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
     sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s, %s);",
             vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
     addLine(&sbPm,   "%s\n", sb.s);

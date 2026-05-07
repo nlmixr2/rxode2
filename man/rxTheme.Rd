@@ -31,7 +31,7 @@ ggplot2 theme used in rxode2
 rxTheme is the ggplot2 theme for rxode2 plots
 }
 \seealso{
-Other rxode2 plotting: 
-\code{\link{plot.rxSolve}()}
+Other rxode2 plotting:
+\code{\link[=plot.rxSolve]{plot.rxSolve()}}
 }
 \concept{rxode2 plotting}

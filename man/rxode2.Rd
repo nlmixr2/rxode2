@@ -215,6 +215,8 @@ suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.
 
+\subsection{Creating rxode2 models}{
+
 The ODE-based model specification may be coded inside four places:
 \itemize{
 \item Inside a \code{rxode2({})} block statements:
@@ -319,6 +321,7 @@ mod$simulationIniModel
 This is the same type of function required for \code{nlmixr2} estimation and
 can be extended and modified by model piping. For this reason will be
 focused on in the documentation.
+}
 
 This basic model specification consists of one or more statements
 optionally terminated by semi-colons \verb{;} and optional comments (comments
@@ -990,10 +993,6 @@ In general all the that are supported are in the following table
 
 }
 }
-\section{Creating rxode2 models}{
-NA
-}
-
 \section{Note on strings in rxode2}{
 Strings are converted to double values inside of \code{rxode2}, hence you can
 refer to them as an integer corresponding to the string value or the
