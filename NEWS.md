@@ -111,6 +111,9 @@
   `multiply()`, and phantom/transit compartment events `phantom()`.
   For more granular control you can also use `evid_()`.
 
+- Refactored string comparison in rxode2 to use integers to make it
+  faster than using the internal `strcmp()` from C.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
