@@ -31,6 +31,7 @@ statement
   | infuse_statement end_statement
   | infuseDur_statement end_statement
   | replace_statement end_statement
+  | multiply_statement end_statement
   | reset_statement end_statement
   | compound_statement
   | selection_statement
@@ -99,6 +100,13 @@ replace_statement
             logical_or_expression ','   /* amt   */
             cmt_evid   /* cmt   */
             ')' ;
+
+multiply_statement
+    : 'multiply' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid   /* cmt   */
+            ')' ;
+
 
 reset_statement
     : 'reset' '(' ')' ;

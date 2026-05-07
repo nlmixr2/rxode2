@@ -357,6 +357,47 @@ rxTest({
     }
   })
 
+  test_that("in-model multiply() pushes a multiplication event", {
+    obs <- seq(0, 24, by = 1)
+    e <- et(amt = 100, time = 0) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+    eRef <- et(amt = 100, time = 0) |>
+      et(time = 13, amt = 2, cmt = 1, evid = 6) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        mtime(multAt) <- 12
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t >= multAt && t < multAt + 0.5 && depot > 0) {
+          multiply(2, depot)
+        }
+      })
+
+      ref <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      got <- rxSolve(mod, p, e, method = meth)
+      want <- rxSolve(ref, p, eRef, method = meth)
+      gotMult <- got[got$time >= 13, ]
+      wantMult <- want[want$time >= 13, ]
+
+      expect_equal(sum(got$time == 12), 2)
+      expect_equal(gotMult$time, wantMult$time)
+      expect_equal(gotMult$depot, wantMult$depot, tolerance = 1e-5)
+      expect_equal(gotMult$central, wantMult$central, tolerance = 1e-5)
+      expect_equal(gotMult$cp, wantMult$cp, tolerance = 1e-5)
+    }
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
@@ -569,6 +610,20 @@ rxTest({
     f <- f()
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "replace(10, depot);\n")
+
+  })
+
+  test_that("multiply() ui changes work", {
+
+    f <- function() {
+      model({
+        multiply(10, depot)
+      })
+    }
+
+    f <- f()
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
+                 "multiply(10, depot);\n")
 
   })
 

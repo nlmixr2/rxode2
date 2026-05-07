@@ -335,7 +335,7 @@ reset <- function() {
   stop("'reset()' can only be used inside an rxode2 model block", call. = FALSE)
 }
 
-#' Reset the rxode2 system in the model
+#' Replace dose the rxode2 system in the model
 #'
 #' @inheritParams evid_
 #'
@@ -374,4 +374,46 @@ rxUdfUi.replace <- function(fun) {
   .cmt <- deparse1(.mc$cmt)
   if (.cmt == "NULL") .cmt <- "1"
   list(replace = paste0("replace(", .amt, ",", .cmt, ")"))
+}
+
+
+#' Multiply dose the rxode2 system in the model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `multiply()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+multiply <- function(amt, cmt = 1) {
+  stop("'multiply()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.multiply <- function(fun) {
+  .dummy <- function(amt, cmt=1) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .cmt <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") .cmt <- "1"
+  list(replace = paste0("multiply(", .amt, ",", .cmt, ")"))
 }

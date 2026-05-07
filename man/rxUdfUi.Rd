@@ -6,6 +6,7 @@
 \alias{rxUdfUi.infuse}
 \alias{rxUdfUi.infuseDur}
 \alias{rxUdfUi.replace}
+\alias{rxUdfUi.multiply}
 \alias{rxUdfUi}
 \alias{rxUdfUi.rinbinom}
 \title{This function is called when processing rxode2 user functions from
@@ -20,6 +21,8 @@ the models}
 \method{rxUdfUi}{infuseDur}(fun)
 
 \method{rxUdfUi}{replace}(fun)
+
+\method{rxUdfUi}{multiply}(fun)
 
 rxUdfUi(fun)
 
