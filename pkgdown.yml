@@ -2,6 +2,7 @@ pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
+  articles/adapative-dosing: adapative-dosing.html
   articles/Integrating-User-Defined-Functions-into-rxode2: Integrating-User-Defined-Functions-into-rxode2.html
   articles/Modifying-Models: Modifying-Models.html
   articles/rxode2-clinical-trial-sim: rxode2-clinical-trial-sim.html
@@ -41,7 +42,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-05-06T14:25Z
+last_built: 2026-05-07T20:02Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

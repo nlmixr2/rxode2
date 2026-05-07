@@ -4,6 +4,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/LICENSE-text.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/Integrating-User-Defined-Functions-into-rxode2.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/Modifying-Models.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/adapative-dosing.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/index.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-clinical-trial-sim.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-cmt.html</loc></url>
@@ -66,6 +67,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/assertVariableExists.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/assertVariableNew.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/binomProbs.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/bolus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/boxCox.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/coef.rxode2.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/cvPost.html</loc></url>
@@ -164,6 +166,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/getRxThreads.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/guide_none.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/index.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/infuse.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/infuseDur.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/ini-set.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/ini.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/invWR1d.html</loc></url>
@@ -197,7 +201,10 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/model-set.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/model.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/modelExtract.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/multiply.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/obs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/odeMethodToInt.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/phantom.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/phi.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/plot.rxSolve.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/plus-.rxSolve.html</loc></url>
@@ -208,6 +215,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/probit.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rLKJ1.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/reexports.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/replace.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/reset.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rinvchisq.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxAllowUnload.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxAppendModel.html</loc></url>

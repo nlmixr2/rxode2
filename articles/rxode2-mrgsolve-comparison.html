@@ -44,8 +44,8 @@
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-model-def-" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model Def.</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-model-def-">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-model" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-model">
 <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types (linCmt, ODEs, mixed)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">rxode2 UI object reference</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Model piping with |&gt;</a></li>
@@ -78,8 +78,8 @@
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-applications" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Applications</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-applications">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Examples</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
 <li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-clinical-trial-sim.html">Clinical trial simulation</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks (VPC)</a></li>
@@ -91,11 +91,12 @@
 <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
+    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Adaptive rxode2 dosing</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -113,10 +114,10 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-compare">
-<li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs desolve</a></li>
+<li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs deSolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM $SIMULATION</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM simulation</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
   </ul>
@@ -173,6 +174,8 @@ differs)</li>
 <li>Between-subject variability (omega) and residual variability
 (sigma)</li>
 <li>Event tables with complex dosing regimens</li>
+<li>Adaptive / dynamic dosing from inside the model (mrgsolve via
+<code>evtools</code>; rxode2 in versions after 5.0.2)</li>
 <li>
 <code>simeta()</code> / <code>simeps()</code> for within-model
 ETA/EPS resampling</li>
@@ -183,6 +186,80 @@ ETA/EPS resampling</li>
 <li>Population simulation across many subjects</li>
 <li>Parallel execution (OpenMP or otherwise)</li>
 </ul>
+<div class="section level3">
+<h3 id="adaptive-dosing-inside-the-model">Adaptive dosing inside the model<a class="anchor" aria-label="anchor" href="#adaptive-dosing-inside-the-model"></a>
+</h3>
+<p>Both tools now support model-driven adaptive dosing, but the
+user-facing API is different.</p>
+<p>mrgsolve implements this through the <code>evtools</code> plugin (<a href="https://mrgsolve.org/dynamic-dosing/evtools.html" class="external-link uri">https://mrgsolve.org/dynamic-dosing/evtools.html</a>, <a href="https://mrgsolve.org/blog/posts/evtools.html" class="external-link uri">https://mrgsolve.org/blog/posts/evtools.html</a>, <a href="https://mrgsolve.org/blog/posts/2024-new-1-4-0-evtools.html" class="external-link uri">https://mrgsolve.org/blog/posts/2024-new-1-4-0-evtools.html</a>).
+The workflow is C++-oriented: enable <code>$PLUGIN evtools</code>, write
+event logic in <code>$EVENT</code>, and call helpers such as
+<code>evt::bolus(self, amt, cmt)</code>,
+<code>evt::infuse(self, amt, cmt, rate)</code>,
+<code>evt::replace(self, amt, cmt)</code>, or
+<code>evt::reset(self)</code>. For more complex workflows, mrgsolve also
+provides mutable event objects plus an <code>evt::regimen</code> class
+that can change dose amount, rate, interval, and duration as the
+simulation progresses.</p>
+<p>rxode2 now provides the same general capability directly in the
+rxode2 model language. This is newer than rxode2 5.0.2. Instead of a
+separate plugin and a C++ event block, adaptive actions are written
+inside <code>model({})</code> using native statements such as
+<code><a href="../reference/evid_.html">evid_()</a></code>, <code><a href="../reference/bolus.html">bolus()</a></code>, <code><a href="../reference/infuse.html">infuse()</a></code>,
+<code><a href="../reference/infuseDur.html">infuseDur()</a></code>, <code><a href="../reference/reset.html">reset()</a></code>, <code><a href="../reference/replace.html">replace()</a></code>,
+<code><a href="../reference/multiply.html">multiply()</a></code>, <code><a href="../reference/phantom.html">phantom()</a></code>, and
+<code><a href="../reference/obs.html">obs()</a></code>.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Topic</th>
+<th>rxode2</th>
+<th>mrgsolve</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Activation</td>
+<td>built into the model syntax</td>
+<td>opt in with <code>$PLUGIN evtools</code>
+</td>
+</tr>
+<tr class="even">
+<td>Where logic lives</td>
+<td><code>model({})</code></td>
+<td>
+<code>$EVENT</code> (preferred) or other model blocks</td>
+</tr>
+<tr class="odd">
+<td>Event API style</td>
+<td>domain-specific rxode2 statements</td>
+<td>C++ helpers in <code>evt::</code> namespace</td>
+</tr>
+<tr class="even">
+<td>Adaptive observation rows</td>
+<td>
+<code><a href="../reference/obs.html">obs()</a></code> or <code>evid_(..., 0, ...)</code>
+</td>
+<td>handled through event objects / event API rather than a dedicated
+<code><a href="../reference/obs.html">obs()</a></code> helper</td>
+</tr>
+<tr class="odd">
+<td>Regimen mutation</td>
+<td>explicit push statements when conditions are met</td>
+<td>event objects and <code>evt::regimen</code> support mutable ongoing
+regimens</td>
+</tr>
+</tbody>
+</table>
+<p>In practice, rxode2’s interface is usually shorter and closer to the
+pharmacometric intent, while mrgsolve’s evtools framework is lower-level
+and more programmable from the C++ side. Both approaches can express
+titration, rescue doses, dose holds, delayed starts, interval changes,
+replacement/reset operations, and other dynamic regimen updates.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="features-rxode2-has-that-mrgsolve-does-not">Features rxode2 has that mrgsolve does not<a class="anchor" aria-label="anchor" href="#features-rxode2-has-that-mrgsolve-does-not"></a>
@@ -395,8 +472,11 @@ them.</p>
 <p>mrgsolve’s <code>$EVENT</code> block (v1.5.2+) executes just before
 <code>$TABLE</code>, allowing programmatic dose creation inside the
 model file with the result visible in output on the same record. rxode2
-handles modeled events through the event table API outside the model
-definition.</p>
+now also supports modeled adaptive dosing, but it does not use a
+separate <code>$EVENT</code> block; instead, event-push statements are
+written directly in <code>model({})</code>. So the difference is the
+presence of a dedicated block and a C++ event-object API, not the
+existence of adaptive dosing itself.</p>
 </div>
 <div class="section level3">
 <h3 id="nm-vars-plugin-for-verbatim-nonmem-style-ode-syntax">
