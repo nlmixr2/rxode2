@@ -79,7 +79,30 @@ simDat <- rxSolve(
 )
 ```
 
-## Computing prediction intervals
+## Using the `vpc` package
+
+The `vpc` CRAN package provides a purpose-built VPC function that
+handles binning, confidence intervals on the prediction intervals, and
+several plot options.
+
+```{r vpcPkg, eval=FALSE}
+library(vpc)
+
+vpc(
+  sim  = simDat,
+  obs  = obs[obs$EVID == 0, ],
+  obs_cols = list(id = "ID", dv = "DV", idv = "TIME"),
+  sim_cols = list(id = "id",  dv = "sim", idv = "time"),
+  pi   = c(0.05, 0.95),
+  ci   = c(0.05, 0.95)
+)
+```
+
+You can also calculate this yourself, if needed.
+
+## Manual calculation
+
+### Computing prediction intervals
 
 Compute the 5th, 50th, and 95th percentiles of `cp` at each nominal
 time point across all replicates:
@@ -105,7 +128,7 @@ simPctl <- simDT[, .(
 setnames(simPctl, "time", "TIME")
 ```
 
-## Plotting the VPC
+### Plotting the VPC
 
 ```{r vpcPlot, fig.width=7, fig.height=4}
 ggplot() +
@@ -137,7 +160,7 @@ ggplot() +
   theme_bw()
 ```
 
-## Stratified VPC
+### Stratified VPC
 
 For covariate-stratified VPCs, split both observed and simulated data
 by the covariate before computing percentiles, then use `facet_wrap()`:
@@ -183,26 +206,8 @@ ggplot() +
   theme_bw()
 ```
 
-## Using the `vpc` package
 
-The `vpc` CRAN package provides a purpose-built VPC function that
-handles binning, confidence intervals on the prediction intervals, and
-several plot options.
-
-```{r vpcPkg, eval=FALSE}
-library(vpc)
-
-vpc(
-  sim  = simDat,
-  obs  = obs[obs$EVID == 0, ],
-  obs_cols = list(id = "ID", dv = "DV", idv = "TIME"),
-  sim_cols = list(id = "id",  dv = "sim", idv = "time"),
-  pi   = c(0.05, 0.95),
-  ci   = c(0.05, 0.95)
-)
-```
-
-## Tips
+### Tips
 
 - Use at least 500 replicates for stable 5th/95th percentile estimates.
 - For log-scale PK data add `scale_y_log10()` to the ggplot.
