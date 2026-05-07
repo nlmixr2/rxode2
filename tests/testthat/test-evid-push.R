@@ -316,6 +316,47 @@ rxTest({
     expect_equal(gotLinReset$cp, wantLinReset$cp, tolerance = 1e-5)
   })
 
+  test_that("in-model replace() pushes a replacement event", {
+    obs <- seq(0, 24, by = 1)
+    e <- et(amt = 100, time = 0) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+    eRef <- et(amt = 100, time = 0) |>
+      et(time = 13, amt = 25, cmt = 1, evid = 5) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        mtime(replaceAt) <- 12
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t >= replaceAt && t < replaceAt + 0.5 && depot > 0) {
+          replace(25, depot)
+        }
+      })
+
+      ref <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      got <- rxSolve(mod, p, e, method = meth)
+      want <- rxSolve(ref, p, eRef, method = meth)
+      gotReplace <- got[got$time >= 13, ]
+      wantReplace <- want[want$time >= 13, ]
+
+      expect_equal(sum(got$time == 12), 2)
+      expect_equal(gotReplace$time, wantReplace$time)
+      expect_equal(gotReplace$depot, wantReplace$depot, tolerance = 1e-5)
+      expect_equal(gotReplace$central, wantReplace$central, tolerance = 1e-5)
+      expect_equal(gotReplace$cp, wantReplace$cp, tolerance = 1e-5)
+    }
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
@@ -514,6 +555,20 @@ rxTest({
     f <- f()
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "reset();\n")
+
+  })
+
+  test_that("replace() ui changes work", {
+
+    f <- function() {
+      model({
+        replace(10, depot)
+      })
+    }
+
+    f <- f()
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
+                 "replace(10, depot);\n")
 
   })
 

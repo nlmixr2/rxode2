@@ -118,5 +118,8 @@ m2 <- rxode2({
 
 }
 \seealso{
-\code{\link[=rxSolve]{rxSolve()}} for the \code{maxExtra} control argument.
+\code{\link[=rxSolve]{rxSolve()}} for the \code{maxExtra} control argument.  Other
+more convenient ways to interact with adaptive observations and
+events include \code{\link[=bolus]{bolus()}} \code{\link[=infuse]{infuse()}}, \code{\link[=infuseDur]{infuseDur()}},
+\code{\link[=reset]{reset()}}.
 }

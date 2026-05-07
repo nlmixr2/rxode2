@@ -79,7 +79,10 @@
 #' The argument order and names mirror the standard NONMEM dataset
 #' columns: `TIME`, `EVID`, `AMT`, `CMT`, `RATE`, `II`, `ADDL`, `SS`.
 #'
-#' @seealso [rxSolve()] for the `maxExtra` control argument.
+#' @seealso [rxSolve()] for the `maxExtra` control argument.  Other
+#'   more convenient ways to interact with adaptive observations and
+#'   events include [bolus()] [infuse()], [infuseDur()],
+#'   [reset()].
 #'
 #' @examples
 #' \donttest{
@@ -332,4 +335,32 @@ rxUdfUi.infuseDur <- function(fun) {
 #'
 reset <- function() {
   stop("'reset()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' Reset the rxode2 system in the model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `replace()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+replace <- function(amt, cmt = 1) {
+  stop("'replace()' can only be used inside an rxode2 model block", call. = FALSE)
 }

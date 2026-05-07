@@ -650,6 +650,45 @@ static inline int handleInfuseDurStatement(nodeInfo ni, char *name, int *i, int 
   return 0;
 }
 
+static inline int handleReplaceStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(replace_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0= 'replace', 1='(', 2=amt, 3=',', 4=cmt, 5=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt = d_get_child(pn, 4);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    sAppend(&sb,   "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbt,  "replace(%s, %s);", vAmt, vCmt);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
                                            D_ParseNode *pn) {
   if (nodeHas(reset_statement) && *i == 0) {
@@ -669,7 +708,6 @@ static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
   }
   return 0;
 }
-
 
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
