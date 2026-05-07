@@ -380,16 +380,18 @@ navbar:
         - text: "Model features"
         - text: "Covariates and covariate models"
           href: articles/rxode2-covariates.html
-        - text: "Transit compartment models"
-          href: articles/rxode2-transit-compartments.html
+        - text: "Adaptive rxode2 dosing"
+          href: articles/adaptive-dosing.html
         - text: "Multiple levels of nesting (IOV, between-study)"
           href: articles/rxode2-nesting.html
-        - text: "Stiff systems and Jacobian specification"
-          href: articles/rxode2-stiff.html
-        - text: "Weight-based dosing"
-          href: articles/rxode2-wt.html
         - text: "Sticky variables"
           href: articles/rxode2-sticky.html
+        - text: "Weight-based dosing"
+          href: articles/rxode2-wt.html
+        - text: "Transit compartment models"
+          href: articles/rxode2-transit-compartments.html
+        - text: "Stiff systems and Jacobian specification"
+          href: articles/rxode2-stiff.html
         - text: "--------------------------"
         - text: "Output and performance"
         - text: "Adaptive data frames"
