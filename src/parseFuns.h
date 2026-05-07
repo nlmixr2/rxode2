@@ -62,6 +62,49 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
   return 0;
 }
 
+static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
+                                     D_ParseNode *pn) {
+  if (nodeHas(obs_statement) && *i == 0) {
+    D_ParseNode *fPn = d_get_child(pn, 0);
+    D_ParseNode *xpn = d_get_child(fPn, 0);
+    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (strcmp(v, "obs")) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("only 'obs()' can be used as a standalone function statement"));
+    }
+    *i = nch;
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    tb.evid_ = 1;
+    aType(TEVID);
+    int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+    D_ParseNode *xpn0 = d_get_child(fPn, 2);
+    char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
+    sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
+    sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
+    sAppend(&sbt, "obs(%s", v0);
+    D_ParseNode *rest = d_get_child(fPn, 3);
+    for (int j = 0; j < ii - 1; ++j) {
+      char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
+                                    d_get_child(rest, j)->end);
+      char *arg = cur + 1;
+      while (*arg == ' ' || *arg == '\t') arg++;
+      sAppend(&sb, ", (double) %s", arg);
+      sAppend(&sbDt, ", (double) %s", arg);
+      sAppend(&sbt, ", %s", arg);
+    }
+    sAppendN(&sb, ");", 2);
+    sAppendN(&sbDt, ");", 2);
+    sAppendN(&sbt, ");", 2);
+    addLine(&sbPm, "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleSplitBolusStatement(nodeInfo ni, char *name, int *i, int nch,
                                             D_ParseNode *pn) {
   if (nodeHas(splitBolus_statement) && *i == 0) {
@@ -252,7 +295,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v) ||
-      !strcmp("mix", tf->v)) {
+      !strcmp("mix", tf->v) || !strcmp("obs", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -288,6 +331,10 @@ static inline int handleFunctionSum(transFunctions *tf) {
         /* Free(v2); */
         trans_syntax_error_report_fn(_gbuf.s);
       }
+    } else if (!strcmp("obs", tf->v)) {
+      sAppend(&sb, "_obs(_cSub, t, %d, (double) ", ii);
+      sAppend(&sbDt, "_obs(_cSub, t, %d, (double) ", ii);
+      tb.evid_ = 1;
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);
@@ -770,7 +817,7 @@ static inline int handlePhantomStatement(nodeInfo ni, char *name, int *i, int nc
 }
 
 static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
-                                           D_ParseNode *pn) {
+                                            D_ParseNode *pn) {
   if (nodeHas(reset_statement) && *i == 0) {
     tb.evid_ = 1;
     *i = nch; // skip all children; we process the whole statement at once

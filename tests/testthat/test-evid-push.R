@@ -507,6 +507,21 @@ rxTest({
     expect_equal(nrow(r), 5) # 5 observations should be in the output
   })
 
+  test_that("obs() pushes multiple observation rows", {
+    mObs <- rxode2({
+      d/dt(central) <- -cl / vd * central
+      cp <- central / vd
+      if (t < 1) {
+        obs(0, 1, 2, 4, 6)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(c(0, 12))
+    p <- c(cl = 1, vd = 10)
+    r <- rxSolve(mObs, p, e)
+    expect_equal(nrow(r), 7)
+    expect_equal(sort(unique(r$time)), c(0, 1, 2, 4, 6, 12))
+  })
+
   test_that("addl doses via evid_() push multiple doses at ii intervals", {
     # evid_(t+6, 1, 50, 1, 0, 12, 2, 0) pushes 3 boluses: t+6, t+18, t+30
     m6 <- rxode2({

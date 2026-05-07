@@ -217,6 +217,7 @@ typedef struct nodeInfo {
   int equality_str1;
   int equality_str2;
   int simfun_statement;
+  int obs_statement;
   int evid_statement;
   int bolus_statement;
   int infuse_statement;
@@ -289,6 +290,7 @@ static inline void niReset(nodeInfo *ni){
   ni->equality_str1 = -1;
   ni->equality_str2 = -1;
   ni->simfun_statement = -1;
+  ni->obs_statement = -1;
   ni->evid_statement = -1;
   ni->bolus_statement = -1;
   ni->infuse_statement = -1;

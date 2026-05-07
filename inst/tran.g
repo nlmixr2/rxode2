@@ -26,6 +26,7 @@ statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
+  | obs_statement end_statement
   | evid_statement end_statement
   | bolus_statement end_statement
   | infuse_statement end_statement
@@ -52,6 +53,8 @@ break_statement
     : 'break';
 
 simfun_statement : "(simeps|simeta)" '(' ')' ;
+
+obs_statement : function ;
 
 cmt_evid: string |  identifier_r_no_output | decimalintNo0 ;
 
