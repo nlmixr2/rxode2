@@ -49,8 +49,8 @@ the model to react at a specific planned time.
 ```{r adaptive-table, echo=FALSE}
 paradigms <- data.frame(
   helper = c("evid_()", "bolus()", "infuse()", "infuseDur()", "reset()",
-             "replace()", "multiply()", "phantom()"),
-  evid = c("0, 1, 3, 4, 5, 6, 7, >=100", "1", "1", "1", "3", "5", "6", "7"),
+             "replace()", "multiply()", "phantom()", "obs()"),
+  evid = c("0, 1, 3, 4, 5, 6, 7, >=100", "1", "1", "1", "3", "5", "6", "7", "0"),
   use = c(
     "General low-level interface for any supported pushed event",
     "Push bolus doses, optionally with ii/addl/ss",
@@ -59,7 +59,8 @@ paradigms <- data.frame(
     "Reset all compartments",
     "Set a compartment to a new amount",
     "Scale a compartment by a factor",
-    "Start transit or phantom dosing without adding mass directly"
+    "Start transit or phantom dosing without adding mass directly",
+    "Push one or more observation rows after the current solve time"
   ),
   check.names = FALSE
 )
@@ -271,6 +272,35 @@ The low-level `evid_()` interface is appropriate when you need:
 - direct control over `rate`, `ii`, `addl`, and `ss`
 - classic internal rxode2 evids
 
+## Adaptive observation scheduling with `obs()`
+
+When the goal is simply to add future observation rows, `obs()` is a
+more concise interface than `evid_(..., evid = 0, ...)`. Each argument
+is interpreted as a time offset from the current solve time.
+
+```{r obs-direct}
+obsModel <- rxode2({
+  mtime(extraSample) <- 8
+  d/dt(x) <- -k * x
+
+  if (t >= extraSample && t < extraSample + 0.5) {
+    obs(0.5, 1, 2)
+  }
+})
+
+obsEvents <- et(amt = 1, time = 0) |>
+  et(c(0, 8, 12))
+
+obsSolve <- rxSolve(obsModel, c(k = 0.2), obsEvents, inits = c(x = 1))
+obsSolve[, c("time", "x")]
+```
+
+Use `obs()` when you want:
+
+- adaptive follow-up sampling after a decision point
+- multiple future observation rows from one trigger
+- a simpler alternative to `evid_()` for observation-only pushes
+
 ## Practical advice for titration workflows
 
 ### 1. Put decision times in the event table
@@ -305,6 +335,7 @@ history.
 - use `replace()` when you know the new compartment amount
 - use `multiply()` for proportional adjustment
 - use `phantom()` for transit bookkeeping without direct deposition
+- use `obs()` for observation-only follow-up rows
 
 ## Common pharmacometric applications
 
@@ -321,9 +352,10 @@ These adaptive dosing tools are useful in many pharmacometric settings:
 
 The adaptive event tools in `rxode2` let the model create new events at
 solve time.  Together, `evid_()`, `bolus()`, `infuse()`,
-`infuseDur()`, `reset()`, `replace()`, `multiply()`, and `phantom()`
-cover the main adaptive dosing paradigms needed for titration,
-interruption, rescue therapy, transit models, and protocol simulation.
+`infuseDur()`, `reset()`, `replace()`, `multiply()`, `phantom()`, and
+`obs()` cover the main adaptive dosing paradigms needed for titration,
+interruption, rescue therapy, adaptive sampling, transit models, and
+protocol simulation.
 
 The tests in `tests/testthat/test-evid-push.R` provide concrete
 regression coverage for these event types, and the same patterns can be
