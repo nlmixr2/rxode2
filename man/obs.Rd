@@ -11,7 +11,11 @@ obs(...)
 current time \code{t}.  They would be added as events with \code{evid = 0}
 and \code{amt = 0} at the specified future time points.  The time
 points are relative to the current model time \code{t} (i.e.,
-\code{obs(12)} adds an observation at \code{t + 12}).}
+\code{obs(12)} adds an observation at \code{t + 12}).  If this is a ui
+model, you can also specify observations with obs(seq(0, 24,
+by=0.5)) to add observations every 0.5 time units from t to t+24
+since it will resolve to the obs() inside of the final rxode2
+model.}
 }
 \value{
 This function is only meaningful inside an rxode2 model; it

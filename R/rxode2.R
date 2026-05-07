@@ -93,7 +93,6 @@ NA_LOGICAL <- NA # nolint
 #' pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 #' drug-disease modeling, etc.
 #'
-#' @section Creating rxode2 models
 #'
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'

@@ -66,8 +66,8 @@ rxParam(obj, ...)
 \item{obj}{rxode2 family of objects}
 
 \item{...}{Other arguments including scaling factors for each
-compartment.  This includes S# = numeric will scale a compartmentby a dividing the compartment amount by the scale factor,
-
+compartment.  This includes \code{S# =} numeric will scale a compartment
+\code{#} by a dividing the compartment amount by the scale factor,
 like NONMEM.}
 
 \item{constants}{is a boolean indicting if constants should be

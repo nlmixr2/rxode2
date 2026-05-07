@@ -11,6 +11,8 @@ infuseDur(amt, dur, cmt = 1, ii = 0, addl = 0, ss = 0)
 observations.  When \code{rate > 0} this is interpreted as the total
 infusion amount and the infusion duration is \code{amt / rate}.}
 
+\item{dur}{Numeric infusion duration.}
+
 \item{cmt}{Integer compartment number (1-based) to which the dose is
 applied.  Default is 1}
 

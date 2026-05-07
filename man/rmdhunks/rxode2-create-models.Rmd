@@ -1,3 +1,7 @@
+
+## Creating rxode2 models
+
+
 The ODE-based model specification may be coded inside four places:
 
 - Inside a `rxode2({})` block statements:

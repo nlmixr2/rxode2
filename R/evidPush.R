@@ -263,6 +263,8 @@ rxUdfUi.infuse <- function(fun) {
 #'
 #' @inheritParams evid_
 #'
+#' @param dur Numeric infusion duration.
+#'
 #' @return This function is only meaningful inside an rxode2 model; it
 #'   returns `NULL` invisibly if called from R directly (after signaling
 #'   an error).
