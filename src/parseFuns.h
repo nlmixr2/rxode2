@@ -650,6 +650,27 @@ static inline int handleInfuseDurStatement(nodeInfo ni, char *name, int *i, int 
   return 0;
 }
 
+static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
+                                           D_ParseNode *pn) {
+  if (nodeHas(reset_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    sAppendN(&sb,   "_rxPushDose(_ind, t, t, 3, 0, 1, 0, 0, 0, 0, 0);\n", 49);
+    sAppendN(&sbDt, "_rxPushDose(_ind, t, t, 3, 0, 1, 0, 0, 0, 0, 0);\n", 49);
+    sAppendN(&sbt,  "reset();", 8);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
   if (nodeHas(evid_statement) && *i == 0) {

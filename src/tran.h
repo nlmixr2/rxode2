@@ -222,6 +222,7 @@ typedef struct nodeInfo {
   int infuse_statement;
   int infuseDur_statement;
   int reset_statement;
+  int replace_statement;
   int relational_op;
   int string;
   int mod_expression;
@@ -291,6 +292,7 @@ static inline void niReset(nodeInfo *ni){
   ni->infuse_statement = -1;
   ni->infuseDur_statement = -1;
   ni->reset_statement = -1;
+  ni->replace_statement = -1;
   ni->relational_op = -1;
   ni->string = -1;
   ni->mod_expression = -1;

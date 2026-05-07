@@ -30,6 +30,7 @@ statement
   | bolus_statement end_statement
   | infuse_statement end_statement
   | infuseDur_statement end_statement
+  | replace_statement end_statement
   | reset_statement end_statement
   | compound_statement
   | selection_statement
@@ -93,11 +94,14 @@ infuseDur_statement
             ssVal                      /* ss    */
             ')' ;
 
-reset_statement
-    : 'reset' '('
+replace_statement
+    : 'replace' '('
             logical_or_expression ','   /* amt   */
-            cmt_evid  /* cmt   */
+            cmt_evid   /* cmt   */
             ')' ;
+
+reset_statement
+    : 'reset' '(' ')' ;
 
 cmt_statement
     : 'cmt' '(' identifier_r_no_output ')';
@@ -239,7 +243,8 @@ identifier_r: identifier_r_extra | identifier_r_1 | identifier_r_2 ;
 identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | identifier_r_extra;
 
 identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' |
-  'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus';
+  'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'replace' |
+  'reset';
 
 theta: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta: ('ETA' | 'eta') '[' decimalintNo0 ']';

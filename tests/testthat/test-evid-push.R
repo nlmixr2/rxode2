@@ -249,6 +249,73 @@ rxTest({
     }
   })
 
+  test_that("in-model reset() matches an evid=3 reset event", {
+    obs <- seq(0, 24, by = 1)
+    e <- et(amt = 100, time = 0) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+    eRef <- et(amt = 100, time = 0) |>
+      et(time = 12, evid = 3) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        mtime(resetAt) <- 12
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t >= resetAt && t < resetAt + 0.5 && cp > 0) {
+          reset()
+        }
+      })
+
+      ref <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      got <- rxSolve(mod, p, e, method = meth)
+      want <- rxSolve(ref, p, eRef, method = meth)
+      gotReset <- got[got$time >= 13, ]
+      wantReset <- want[want$time >= 13, ]
+
+      expect_equal(sum(got$time == 12), 2)
+      expect_true(all(got$cp[got$time == 12] > 0))
+      expect_true(all(gotReset$cp[gotReset$time < 18] == 0))
+      expect_equal(gotReset$time, wantReset$time)
+      expect_equal(gotReset$depot, wantReset$depot, tolerance = 1e-5)
+      expect_equal(gotReset$central, wantReset$central, tolerance = 1e-5)
+      expect_equal(gotReset$cp, wantReset$cp, tolerance = 1e-5)
+    }
+
+    modLin <- rxode2({
+      mtime(resetAt) <- 12
+      cp <- linCmt(ka, cl, v)
+      if (t >= resetAt && t < resetAt + 0.5 && cp > 0) {
+        reset()
+      }
+    })
+
+    refLin <- rxode2({
+      cp <- linCmt(ka, cl, v)
+    })
+
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    gotLin <- rxSolve(modLin, p, e)
+    wantLin <- rxSolve(refLin, p, eRef)
+    gotLinReset <- gotLin[gotLin$time >= 13, ]
+    wantLinReset <- wantLin[wantLin$time >= 13, ]
+
+    expect_equal(sum(gotLin$time == 12), 2)
+    expect_true(all(gotLin$cp[gotLin$time == 12] == 0))
+    expect_true(all(gotLinReset$cp[gotLinReset$time < 18] == 0))
+    expect_equal(gotLinReset$time, wantLinReset$time)
+    expect_equal(gotLinReset$cp, wantLinReset$cp, tolerance = 1e-5)
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
@@ -433,6 +500,20 @@ rxTest({
     f <- f()
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "evid_(t + 12, 101, 50, 1, 0, 0, 0, 0);\n")
+
+  })
+
+  test_that("reset() ui changes work", {
+
+    f <- function() {
+      model({
+        reset()
+      })
+    }
+
+    f <- f()
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
+                 "reset();\n")
 
   })
 
