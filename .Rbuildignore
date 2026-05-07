@@ -1,3 +1,4 @@
+^.gemini/$
 ^CLAUDE.md$
 ^test.R$
 ^rxode2\.smproj$
