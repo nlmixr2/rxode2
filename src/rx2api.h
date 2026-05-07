@@ -158,6 +158,8 @@ extern "C" {
   // (RAII guard in nlmixr2est).
   void setIndNeqOverride(rx_solving_options_ind *ind, int neq);
 
+  void rxSetSilentErr(int silent);
+
 #if defined(__cplusplus)
 }
 #endif
