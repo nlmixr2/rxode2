@@ -311,8 +311,6 @@ rxUdfUi.infuseDur <- function(fun) {
 
 #' Reset the rxode2 system in the model
 #'
-#' @inheritParams evid_
-#'
 #' @return This function is only meaningful inside an rxode2 model; it
 #'   returns `NULL` invisibly if called from R directly (after signaling
 #'   an error).
@@ -363,4 +361,17 @@ reset <- function() {
 #'
 replace <- function(amt, cmt = 1) {
   stop("'replace()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.replace <- function(fun) {
+  .dummy <- function(amt, cmt=1) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .cmt <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") .cmt <- "1"
+  list(replace = paste0("replace(", .amt, ",", .cmt, ")"))
 }
