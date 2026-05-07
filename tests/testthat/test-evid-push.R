@@ -443,7 +443,9 @@ rxTest({
     e <- et(amt = 100, time = 0) |>
       et(obs)
     eRef <- et(amt = 100, time = 0) |>
-      et(time = 13, amt = 50, cmt = 1, ii = 12, addl = 2, evid = 1) |>
+      et(time = 13, amt = 50, cmt = 1, evid = 1) |>
+      et(time = 24, amt = 50, cmt = 1, evid = 1) |>
+      et(time = 36, amt = 50, cmt = 1, evid = 1) |>
       et(obs)
 
     for (meth in c("dop853", "liblsoda")) {
