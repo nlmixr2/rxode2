@@ -681,6 +681,20 @@ rxTest({
 
   })
 
+  test_that("obs() ui expands seq() inputs", {
+
+    f <- function() {
+      model({
+        obs(seq(0, 6, by = 2))
+      })
+    }
+
+    f <- f()
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
+                 "obs(0, 2, 4, 6);\n")
+
+  })
+
   test_that("reset() ui changes work", {
 
     f <- function() {

@@ -8,6 +8,7 @@
 \alias{rxUdfUi.replace}
 \alias{rxUdfUi.multiply}
 \alias{rxUdfUi.phantom}
+\alias{rxUdfUi.obs}
 \alias{rxUdfUi}
 \alias{rxUdfUi.rinbinom}
 \title{This function is called when processing rxode2 user functions from
@@ -26,6 +27,8 @@ the models}
 \method{rxUdfUi}{multiply}(fun)
 
 \method{rxUdfUi}{phantom}(fun)
+
+\method{rxUdfUi}{obs}(fun)
 
 rxUdfUi(fun)
 
