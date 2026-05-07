@@ -197,6 +197,19 @@ static inline void recordStringCompare(const char *var, const char *cmpValue) {
   get_cmp_str_int(tb.cid, cmpValue);
 }
 
+static inline int getStringCompareCode(const char *var, const char *cmpValue) {
+  if (cmpValue == NULL) {
+    return 0;
+  }
+  if (new_or_ith(var)) {
+    addSymbolStr((char*)var);
+  }
+  if (new_cmp_var(var)) {
+    add_cmp_var((char*)var);
+  }
+  return get_cmp_str_int(tb.cid, cmpValue);
+}
+
 static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
   if (nodeHas(equality_str1)){
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
@@ -205,34 +218,34 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
       // string
       tb.cmpStrQuoted = v;
       tb.cmpStr = dupUnquotedStringLiteral(v);
-      aAppendN("_cmp1(", 6);
-      sAppend(&sb, "%s, ", v);
-      sAppend(&sbDt, "%s, ", v);
       sAppend(&sbt, "%s", v);
       /* Free(v); */
       return 1;
     case 1:
       tb.cmpEq = !strcmp(v, "==");
-      if (!strcmp(v, "==")) {
-	aAppendN("1, ", 3);
-      } else {
-	aAppendN("0, ", 3);
-      }
       sAppend(&sbt, "%s", v);
       /* Free(v); */
       return 1;
     case 2:
       // identifier_r
       // val, valstr
-      recordStringCompare(v, tb.cmpStr);
       if (isStringCompareIdVar(v)){
-	aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\")", 45);
-	sAppendN(&sbt, "ID", 2);
+        sAppend(&sb, "_cmp1(%s, %d, (&_solveData->subjects[_cSub])->idReal, \"ID\")",
+                tb.cmpStrQuoted, tb.cmpEq);
+        sAppend(&sbDt, "_cmp1(%s, %d, (&_solveData->subjects[_cSub])->idReal, \"ID\")",
+                tb.cmpStrQuoted, tb.cmpEq);
+        sAppendN(&sbt, "ID", 2);
+      } else if (isStringCompareSpecialVar(v)) {
+        sAppend(&sb, "_cmp1(%s, %d, %s, \"%s\")",
+                tb.cmpStrQuoted, tb.cmpEq, v, v);
+        sAppend(&sbDt, "_cmp1(%s, %d, %s, \"%s\")",
+                tb.cmpStrQuoted, tb.cmpEq, v, v);
+        sAppend(&sbt, "%s", v);
       } else {
-	if (new_or_ith(v)) addSymbolStr(v);
-	sAppend(&sb, "%s, \"%s\")", v, v);
-	sAppend(&sbDt, "%s, \"%s\")", v, v);
-	sAppend(&sbt, "%s", v);
+        int code = getStringCompareCode(v, tb.cmpStr);
+        sAppend(&sb, "%d%s%s", code, tb.cmpEq ? "==" : "!=", v);
+        sAppend(&sbDt, "%d%s%s", code, tb.cmpEq ? "==" : "!=", v);
+        sAppend(&sbt, "%s", v);
       }
       return 1;
     }
@@ -246,32 +259,34 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
     switch(i) {
     case 0:
       tb.cmpVar = v;
-      aAppendN("_cmp2(", 6);
       if (isStringCompareIdVar(v)){
-        aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\", ", 46);
         sAppendN(&sbt, "ID", 2);
       } else {
-        if (new_or_ith(v)) addSymbolStr(v);
-        sAppend(&sb, "%s, \"%s\", ", v, v);
-        sAppend(&sbDt, "%s, \"%s\", ", v, v);
         sAppend(&sbt, "%s", v);
       }
       return 1;
     case 1:
       tb.cmpEq = !strcmp(v, "==");
-      if (!strcmp(v, "==")) {
-        aAppendN("1, ", 3);
-      } else {
-        aAppendN("0, ", 3);
-      }
       sAppend(&sbt, "%s", v);
       return 1;
     case 2:
       tb.cmpStrQuoted = v;
       tb.cmpStr = dupUnquotedStringLiteral(v);
-      recordStringCompare(tb.cmpVar, tb.cmpStr);
-      sAppend(&sb, "%s)", v);
-      sAppend(&sbDt, "%s)", v);
+      if (isStringCompareIdVar(tb.cmpVar)) {
+        sAppend(&sb, "_cmp2((&_solveData->subjects[_cSub])->idReal, \"ID\", %d, %s)",
+                tb.cmpEq, v);
+        sAppend(&sbDt, "_cmp2((&_solveData->subjects[_cSub])->idReal, \"ID\", %d, %s)",
+                tb.cmpEq, v);
+      } else if (isStringCompareSpecialVar(tb.cmpVar)) {
+        sAppend(&sb, "_cmp2(%s, \"%s\", %d, %s)",
+                tb.cmpVar, tb.cmpVar, tb.cmpEq, v);
+        sAppend(&sbDt, "_cmp2(%s, \"%s\", %d, %s)",
+                tb.cmpVar, tb.cmpVar, tb.cmpEq, v);
+      } else {
+        int code = getStringCompareCode(tb.cmpVar, tb.cmpStr);
+        sAppend(&sb, "%s%s%d", tb.cmpVar, tb.cmpEq ? "==" : "!=", code);
+        sAppend(&sbDt, "%s%s%d", tb.cmpVar, tb.cmpEq ? "==" : "!=", code);
+      }
       sAppend(&sbt, "%s", v);
       return 1;
     }
