@@ -82,6 +82,42 @@ c <- other != ""
                  c("cov", "other"))
   })
 
+  test_that("string compare covariates use model integer levels", {
+    rx <- rxode2({
+      a <- 0
+      if (SEX == "M") {
+        a <- a + 1
+      }
+      if ("M" == SEX) {
+        a <- a + 1
+      }
+      if (SEX != "") {
+        a <- a + 1
+      }
+      if ("" != SEX) {
+        a <- a + 1
+      }
+    })
+
+    ev <- data.frame(id = c(1L, 1L),
+                     time = c(0, 1),
+                     SEX = c("M", ""))
+    tr <- etTrans(ev, rx)
+    trLst <- attr(class(tr), ".rxode2.lst")
+    expect_equal(trLst$levelInfo$sex, c("M", ""))
+
+    s <- rxSolve(rx, ev, returnType = "data.frame")
+    expect_equal(s$a, c(4, 0))
+
+    iCov <- data.frame(id = 1:2,
+                       SEX = factor(c("M", ""), levels = c("", "M")))
+    ev2 <- data.frame(id = 1:2, time = 0)
+    tr2 <- etTrans(ev2, rx, iCov = iCov)
+    trLst2 <- attr(class(tr2), ".rxode2.lst")
+    expect_equal(trLst2$levelInfo$sex, c("M", ""))
+    expect_equal(as.numeric(trLst2$cov1$SEX), c(1, 2))
+  })
+
 
   f <- function() {
     expect_error(rxode2parse('a <- "matt"; a<- 2'))

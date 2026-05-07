@@ -612,6 +612,84 @@ RObject etTranGetAttrKeep(SEXP in) {
   return as<RObject>(ret);
 }
 
+static inline SEXP getNamedListElement(const List &lst, const std::string &name) {
+  CharacterVector lstNames = lst.names();
+  for (int i = 0; i < lst.size(); ++i) {
+    if (as<std::string>(lstNames[i]) == name) {
+      return lst[i];
+    }
+  }
+  return R_NilValue;
+}
+
+static inline int getStringCompareLevelCode(const CharacterVector &modelLevels,
+                                            const std::string &value) {
+  for (int i = 0; i < modelLevels.size(); ++i) {
+    if (value == as<std::string>(modelLevels[i])) {
+      return i + 1;
+    }
+  }
+  return NA_INTEGER;
+}
+
+static inline void stopUnknownStringCompareValue(const std::string &varName,
+                                                 const std::string &value) {
+  stop(_("string covariate '%s' has value '%s' not defined in the model"),
+       varName.c_str(), value.c_str());
+}
+
+static inline RObject recodeStringCompareCovariate(SEXP cur,
+                                                   const CharacterVector &modelLevels,
+                                                   const std::string &varName) {
+  if (TYPEOF(cur) == STRSXP) {
+    CharacterVector in = as<CharacterVector>(cur);
+    IntegerVector out(in.size());
+    for (int i = 0; i < in.size(); ++i) {
+      if (in[i] == NA_STRING) {
+        out[i] = NA_INTEGER;
+        continue;
+      }
+      std::string curValue = as<std::string>(in[i]);
+      int code = getStringCompareLevelCode(modelLevels, curValue);
+      if (code == NA_INTEGER) {
+        stopUnknownStringCompareValue(varName, curValue);
+      }
+      out[i] = code;
+    }
+    out.attr("levels") = modelLevels;
+    out.attr("class") = "factor";
+    return out;
+  }
+  if (TYPEOF(cur) == INTSXP) {
+    RObject curObj = as<RObject>(cur);
+    if (!Rf_isNull(curObj.attr("levels"))) {
+      IntegerVector in = as<IntegerVector>(cur);
+      CharacterVector inLevels = curObj.attr("levels");
+      IntegerVector out(in.size());
+      for (int i = 0; i < in.size(); ++i) {
+        if (in[i] == NA_INTEGER) {
+          out[i] = NA_INTEGER;
+          continue;
+        }
+        if (in[i] < 1 || in[i] > inLevels.size()) {
+          stop(_("string covariate '%s' has factor code %d outside its level range"),
+               varName.c_str(), in[i]);
+        }
+        std::string curValue = as<std::string>(inLevels[in[i]-1]);
+        int code = getStringCompareLevelCode(modelLevels, curValue);
+        if (code == NA_INTEGER) {
+          stopUnknownStringCompareValue(varName, curValue);
+        }
+        out[i] = code;
+      }
+      out.attr("levels") = modelLevels;
+      out.attr("class") = "factor";
+      return out;
+    }
+  }
+  return as<RObject>(cur);
+}
+
 
 /*
  * Determine if actual compartment number supports infusions
@@ -823,6 +901,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #endif
   List mv = rxModelVars_(obj);
   CharacterVector pars = as<CharacterVector>(mv[RxMv_params]);
+  LogicalVector paramStrCmp = mv[RxMv_paramStrCmp];
   int parn = pars.size();
   IntegerVector flags = mv[RxMv_flags];
   int nmix = flags[RxMvFlag_mix];
@@ -1132,12 +1211,26 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool hasCmt = false;
   int cmtI =0;
   List strAssign = mv[RxMv_strAssign];
+  List strCmp = mv[RxMv_strCmp];
   List strAssignN = strAssign.names();
   List inDataF(covCol.size());
   List inDataLvlN(covCol.size()+strAssign.size());
   List inDataLvl(covCol.size()+strAssign.size());
   for (i = covCol.size(); i--;) {
     int covColi = covCol[i];
+    bool hasStringCompare = covParPos[i] < paramStrCmp.size() &&
+      paramStrCmp[covParPos[i]];
+    std::string curParName = hasStringCompare ?
+      as<std::string>(pars[covParPos[i]]) : "";
+    CharacterVector modelLevels;
+    if (hasStringCompare) {
+      SEXP curLevels = getNamedListElement(strCmp, curParName);
+      if (!Rf_isNull(curLevels)) {
+        modelLevels = as<CharacterVector>(curLevels);
+      } else {
+        hasStringCompare = false;
+      }
+    }
     if (covColi >= 0) {
       inDataLvlN[i] = covUnitsN[i] = lName[covColi];
     } else {
@@ -1149,7 +1242,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       inDataLvlN[i] = covUnitsN[i] = liName[-covColi-1];
     }
     nvTmp2 = NumericVector::create(1.0);
-    if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt") {
+    if (hasCmt || covColi < 0 ||
+        (covColi >= 0 && as<std::string>(lName[covColi]) != "cmt")) {
       RObject cur;
       if (covColi >= 0) {
         cur = inData[covColi];
@@ -1158,14 +1252,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
       if (TYPEOF(cur) == INTSXP){
         RObject lvls = cur.attr("levels");
-        if (!Rf_isNull(lvls)){
+        if (hasStringCompare && !Rf_isNull(lvls)) {
+          cur = recodeStringCompareCovariate(cur, modelLevels, curParName);
+          inDataF[i] = cur;
+          inDataLvl[i] = modelLevels;
+        } else if (!Rf_isNull(lvls)){
           inDataLvl[i] = lvls;
         }
       } else if (TYPEOF(cur) == STRSXP) {
-        cur = convertId_(cur);
+        if (hasStringCompare) {
+          cur = recodeStringCompareCovariate(cur, modelLevels, curParName);
+          inDataLvl[i] = modelLevels;
+        } else {
+          cur = convertId_(cur);
+          RObject lvls = cur.attr("levels");
+          inDataLvl[i] = lvls;
+        }
         inDataF[i] = cur;
-        RObject lvls = cur.attr("levels");
-        inDataLvl[i] = lvls;
+      } else if (hasStringCompare) {
+        inDataLvl[i] = modelLevels;
       }
       nvTmp = as<NumericVector>(cur);
       if (!dropUnits && Rf_inherits(nvTmp, "units")) {
@@ -2685,7 +2790,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           lst[baseSize+j] = NumericVector(0);
         }
-        NumericVector curNV = iCov_[-covColj-1];
+        NumericVector curNV;
+        if (!Rf_isNull(inDataF[j])) {
+          curNV = as<NumericVector>(inDataF[j]);
+        } else {
+          curNV = iCov_[-covColj-1];
+        }
         for (int idx1c=curNV.size(); idx1c--;) {
           double vcur = curNV[idxIcov[idx1c]];
           fPars[idx1c*pars.size()+covParPos[j]] = vcur;
@@ -2952,8 +3062,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               // this comes from the individual covariate table
               cur = iCov_[-covColj-1];
             }
-            if (TYPEOF(cur) == STRSXP) {
-              // Strings are converted to numbers
+            if (!Rf_isNull(inDataF[j])) {
               cur = inDataF[j];
             }
             nvTmp2   = as<NumericVector>(cur);
