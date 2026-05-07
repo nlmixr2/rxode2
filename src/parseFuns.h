@@ -545,9 +545,9 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
     //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
     //           16=ss, 17=')'
     const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
-    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, 0.0, (int)(%s), (int)(%s), 0);\n",
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
             vAmt, cmtExpr, vIi, vAddl, vSs);
-    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, 0.0, (int)(%s), (int)(%s), 0);\n",
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
             vAmt, cmtExpr, vIi, vAddl, vSs);
     sAppend(&sbt, "bolus(%s, %s, %s, %s, %s);",
             vAmt, vCmt, vIi, vAddl, vSs);

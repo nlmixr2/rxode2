@@ -438,6 +438,45 @@ rxTest({
     }
   })
 
+  test_that("in-model bolus() passes ii to repeated bolus events", {
+    obs <- seq(0, 40, by = 1)
+    e <- et(amt = 100, time = 0) |>
+      et(obs)
+    eRef <- et(amt = 100, time = 0) |>
+      et(time = 13, amt = 50, cmt = 1, ii = 12, addl = 2, evid = 1) |>
+      et(obs)
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        mtime(bolusAt) <- 12
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t >= bolusAt && t < bolusAt + 0.5 && depot > 0) {
+          bolus(50, depot, 12, 2, 0)
+        }
+      })
+
+      ref <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      got <- rxSolve(mod, p, e, method = meth)
+      want <- rxSolve(ref, p, eRef, method = meth)
+      gotBolus <- got[got$time >= 13, ]
+      wantBolus <- want[want$time >= 13, ]
+
+      expect_equal(sum(got$time == 12), 2)
+      expect_equal(gotBolus$time, wantBolus$time)
+      expect_equal(gotBolus$depot, wantBolus$depot, tolerance = 1e-5)
+      expect_equal(gotBolus$central, wantBolus$central, tolerance = 1e-5)
+      expect_equal(gotBolus$cp, wantBolus$cp, tolerance = 1e-5)
+    }
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
