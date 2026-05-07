@@ -41,7 +41,7 @@
   effective neq for parallel-FOCEi pred/inner alternation without
   mutating the shared `op->neq` from a parallel worker thread.  Default
   value is -1 (use `op->neq`).
-  
+
 - Plumb `ind->neqOverride` through the per-subject solve loop via a new
   `rxEffNeq(ind, op)` inline helper (`inst/include/rxode2.h`).
   `getSolve()` / `getAdvan()` macros, `getOpIndSolve()`, the LSODA /
@@ -105,6 +105,12 @@
 - More easily identify initial conditions (#948)
 
 - Fix sensitivities in the linCmt() that did not match the ODE (#1018, #1012)
+
+- Added in-solve addition of observations (`obs()`), bolus doses
+  `bolus()`, infusion doses `infuse()` or `infuseDur()`, system resets
+  `reset()`, compartment replacement `replace()`, multiplicaton events
+  `multiply()`, and phantom/transit compartment events `phantom()`.
+  For more granular control you can also use `evid_()`.
 
 # rxode2 5.0.2
 
