@@ -31,9 +31,20 @@ reference:
   - etRep
   - etSeq
   - eventTable
-  - evid_
   - splitBolus
   - toTrialDuration
+- title: Model based addition of events
+  desc: Construct adaptive dosing/sampling inside rxode2 model
+  contents:
+  - bolus
+  - evid_
+  - infuse
+  - infuseDur
+  - multiply
+  - obs
+  - phantom
+  - replace
+  - reset
 - title: Solving & Simulation
   desc: Solve ODEs and simulate populations.
   contents:
