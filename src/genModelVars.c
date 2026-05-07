@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 30));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 30));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 32));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 32));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -279,6 +279,34 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst, 21, interp);
   SET_STRING_ELT(names, 21, Rf_mkChar("interp"));
 
+  SEXP strCmp = PROTECT(Rf_allocVector(VECSXP, tb.strCmp.n));pro++;
+  SEXP strCmpN = PROTECT(Rf_allocVector(STRSXP, tb.strCmp.n));pro++;
+  for (int i = 0; i < tb.strCmp.n; i++) {
+    SEXP cur = PROTECT(Rf_allocVector(STRSXP, tb.scn[i]));pro++;
+    int k = 0;
+    for (int j = 0; j < tb.strCmpVal.n; j++) {
+      if (tb.strCmpValI[j] == i) {
+        SET_STRING_ELT(cur, k, Rf_mkChar(tb.strCmpVal.line[j]));
+        k++;
+      }
+    }
+    SET_VECTOR_ELT(strCmp, i, cur);
+    SET_STRING_ELT(strCmpN, i, Rf_mkChar(tb.strCmp.line[i]));
+  }
+  Rf_setAttrib(strCmp, R_NamesSymbol, strCmpN);
+
+  SEXP paramStrCmp = PROTECT(Rf_allocVector(LGLSXP, tb.pi));pro++;
+  for (int i = 0; i < tb.pi; i++) {
+    LOGICAL(paramStrCmp)[i] = 0;
+    for (int j = 0; j < tb.strCmp.n; j++) {
+      if (!strcmp(CHAR(STRING_ELT(params, i)), tb.strCmp.line[j])) {
+        LOGICAL(paramStrCmp)[i] = 1;
+        break;
+      }
+    }
+  }
+  Rf_setAttrib(paramStrCmp, R_NamesSymbol, params);
+
   SEXP strAssign = PROTECT(Rf_allocVector(VECSXP, tb.str.n));pro++;
   SEXP strAssignN = PROTECT(Rf_allocVector(STRSXP, tb.str.n));pro++;
   for (int i = 0; i < tb.str.n; i++) {
@@ -297,35 +325,40 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(lhsStr, R_NamesSymbol, lhs);
 
 
-  SET_VECTOR_ELT(lst, 22, strAssign);
-  SET_STRING_ELT(names, 22, Rf_mkChar("strAssign"));
+  SET_VECTOR_ELT(lst, 22, strCmp);
+  SET_STRING_ELT(names, 22, Rf_mkChar("strCmp"));
 
-  SET_VECTOR_ELT(lst, 23, lhsStr);
-  SET_STRING_ELT(names, 23, Rf_mkChar("lhsStr"));
+  SET_VECTOR_ELT(lst, 23, paramStrCmp);
+  SET_STRING_ELT(names, 23, Rf_mkChar("paramStrCmp"));
+
+  SET_VECTOR_ELT(lst, 24, strAssign);
+  SET_STRING_ELT(names, 24, Rf_mkChar("strAssign"));
+
+  SET_VECTOR_ELT(lst, 25, lhsStr);
+  SET_STRING_ELT(names, 25, Rf_mkChar("lhsStr"));
 
   Rf_setAttrib(stateProp, R_NamesSymbol, state);
-  SET_VECTOR_ELT(lst, 24, stateProp);
-  SET_STRING_ELT(names, 24, Rf_mkChar("stateProp"));
+  SET_VECTOR_ELT(lst, 26, stateProp);
+  SET_STRING_ELT(names, 26, Rf_mkChar("stateProp"));
 
   Rf_setAttrib(sensProp, R_NamesSymbol, sens);
-  SET_VECTOR_ELT(lst, 25, sensProp);
-  SET_STRING_ELT(names, 25, Rf_mkChar("sensProp"));
+  SET_VECTOR_ELT(lst, 27, sensProp);
+  SET_STRING_ELT(names, 27, Rf_mkChar("sensProp"));
 
   Rf_setAttrib(normProp, R_NamesSymbol, normState);
-  SET_VECTOR_ELT(lst, 26, normProp);
-  SET_STRING_ELT(names, 26, Rf_mkChar("normProp"));
+  SET_VECTOR_ELT(lst, 28, normProp);
+  SET_STRING_ELT(names, 28, Rf_mkChar("normProp"));
 
   Rf_setAttrib(ordF, R_NamesSymbol, state);
-  SET_VECTOR_ELT(lst, 27, ordF);
-  SET_STRING_ELT(names, 27, Rf_mkChar("stateOrd"));
+  SET_VECTOR_ELT(lst, 29, ordF);
+  SET_STRING_ELT(names, 29, Rf_mkChar("stateOrd"));
 
   Rf_setAttrib(lhsOrdFS, R_NamesSymbol, lhs);
+  SET_VECTOR_ELT(lst, 30, lhsOrdFS);
+  SET_STRING_ELT(names, 30, Rf_mkChar("lhsOrd"));
 
-  SET_VECTOR_ELT(lst, 28, lhsOrdFS);
-  SET_STRING_ELT(names, 28, Rf_mkChar("lhsOrd"));
-
-  SET_STRING_ELT(names, 29, Rf_mkChar("splitBolus"));
-  SET_VECTOR_ELT(lst,   29, splitBolusSexp);
+  SET_STRING_ELT(names, 31, Rf_mkChar("splitBolus"));
+  SET_VECTOR_ELT(lst,   31, splitBolusSexp);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

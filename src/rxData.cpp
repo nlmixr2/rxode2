@@ -759,8 +759,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(32);
-  CharacterVector retN(32);
+  List ret(34);
+  CharacterVector retN(34);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -827,49 +827,59 @@ List rxModelVars_blank() {
   ret[21] = interp;
   retN[21] = "interp";
 
+  List strCmp;
+  strCmp.attr("names") = CharacterVector::create();
+  ret[22] = strCmp; // strCmp
+  retN[22] = "strCmp";
+
+  LogicalVector paramStrCmp = LogicalVector::create();
+  paramStrCmp.attr("names") = CharacterVector::create();
+  ret[23] = paramStrCmp; // paramStrCmp
+  retN[23] = "paramStrCmp";
+
   List strAssign;
   strAssign.attr("names") = CharacterVector::create();
-  ret[22] = strAssign; // strAssign
-  retN[22] = "strAssign";
+  ret[24] = strAssign; // strAssign
+  retN[24] = "strAssign";
 
   LogicalVector lhsStr = LogicalVector::create();
   lhsStr.attr("names") = CharacterVector::create();
-  ret[23] = lhsStr; // lhsStr
-  retN[23] = "lhsStr";
+  ret[25] = lhsStr; // lhsStr
+  retN[25] = "lhsStr";
 
   IntegerVector stateProp = IntegerVector::create();
   stateProp.attr("names") = CharacterVector::create();
-  ret[24] = stateProp; // stateProp
-  retN[24] = "stateProp";
+  ret[26] = stateProp; // stateProp
+  retN[26] = "stateProp";
 
   IntegerVector sensProp = IntegerVector::create();
   sensProp.attr("names") = CharacterVector::create();
-  ret[25] = sensProp; // sensProp
-  retN[25] = "sensProp";
+  ret[27] = sensProp; // sensProp
+  retN[27] = "sensProp";
 
   IntegerVector normProp = IntegerVector::create();
   normProp.attr("names") = CharacterVector::create();
-  ret[26] = normProp; // normProp
-  retN[26] = "normProp";
+  ret[28] = normProp; // normProp
+  retN[28] = "normProp";
 
   IntegerVector stateOrd = IntegerVector::create();
-  normProp.attr("names") = CharacterVector::create();
-  ret[27] = stateOrd;
-  retN[27] = "stateOrd";
+  stateOrd.attr("names") = CharacterVector::create();
+  ret[29] = stateOrd;
+  retN[29] = "stateOrd";
 
   IntegerVector lhsOrd = IntegerVector::create();
-  normProp.attr("names") = CharacterVector::create();
-  ret[28] = lhsOrd;
-  retN[28] = "lhsOrd";
+  lhsOrd.attr("names") = CharacterVector::create();
+  ret[30] = lhsOrd;
+  retN[30] = "lhsOrd";
 
-  ret[29] = IntegerVector::create(0); // splitBolus
-  retN[29] = "splitBolus";
+  ret[31] = IntegerVector::create(0); // splitBolus
+  retN[31] = "splitBolus";
 
-  ret[30] = IntegerVector::create(0); // timeId
-  retN[30] = "timeId";
+  ret[32] = IntegerVector::create(0); // timeId
+  retN[32] = "timeId";
 
-  ret[31] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[31] = "md5";
+  ret[33] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[33] = "md5";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";

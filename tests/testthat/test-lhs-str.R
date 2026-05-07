@@ -66,6 +66,22 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
   })
 
+  test_that("string comparisons are tracked in model variables", {
+    p <- rxode2parse('
+a <- cov == "high"
+b <- "low" != cov
+c <- other != ""
+')
+
+    expect_equal(p$strCmp,
+                 list(cov = c("high", "low"),
+                      other = c("")))
+    expect_equal(p$paramStrCmp,
+                 c(cov = TRUE, other = TRUE))
+    expect_equal(p$params,
+                 c("cov", "other"))
+  })
+
 
   f <- function() {
     expect_error(rxode2parse('a <- "matt"; a<- 2'))

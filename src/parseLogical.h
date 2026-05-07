@@ -124,12 +124,87 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
   return 0;
 }
 
+static inline int isStringCompareIdVar(const char *value) {
+  return !strcmp(value, "id") || !strcmp(value, "ID") || !strcmp(value, "Id");
+}
+
+static inline int isStringCompareSpecialVar(const char *value) {
+  return isStringCompareIdVar(value) || !rxstrcmpi("cmt", value);
+}
+
+static inline char *dupUnquotedStringLiteral(const char *value) {
+  char *ret = (char*)rc_dup_str(value, 0);
+  size_t len = strlen(ret);
+  if (len >= 2) {
+    ret++;
+    ret[len-2] = 0;
+  }
+  return ret;
+}
+
+static inline int new_cmp_var(const char *s) {
+  for (int i = 0; i < tb.strCmp.n; i++) {
+    if (!strcmp(tb.strCmp.line[i], s)) {
+      tb.cid = i;
+      return 0;
+    }
+  }
+  if (tb.strCmp.n + 1 > tb.allocSC) {
+    tb.allocSC += MXDER;
+    tb.sci = R_Realloc(tb.sci, tb.allocSC, int);
+    tb.scn = R_Realloc(tb.scn, tb.allocSC, int);
+  }
+  return 1;
+}
+
+static inline void add_cmp_var(char *v) {
+  tb.cid = tb.strCmp.n;
+  tb.sci[tb.strCmp.n] = tb.ix;
+  tb.scn[tb.strCmp.n] = 0;
+  addLine(&(tb.strCmp), "%s", v);
+}
+
+static inline int get_cmp_str_int(int val, const char *s) {
+  for (int i = 0; i < tb.strCmpVal.n; i++) {
+    if (tb.strCmpValI[i] == val && !strcmp(tb.strCmpVal.line[i], s)) {
+      return tb.strCmpValII[i];
+    }
+  }
+  if (tb.strCmpVal.n + 1 > tb.allocSCV) {
+    tb.allocSCV += MXDER;
+    tb.strCmpValI = R_Realloc(tb.strCmpValI, tb.allocSCV, int);
+    tb.strCmpValII = R_Realloc(tb.strCmpValII, tb.allocSCV, int);
+  }
+  int n = tb.scn[tb.cid];
+  n++;
+  tb.strCmpValI[tb.strCmpVal.n] = val;
+  tb.strCmpValII[tb.strCmpVal.n] = n;
+  tb.scn[tb.cid] = n;
+  addLine(&(tb.strCmpVal), "%s", s);
+  return n;
+}
+
+static inline void recordStringCompare(const char *var, const char *cmpValue) {
+  if (cmpValue == NULL || isStringCompareSpecialVar(var)) {
+    return;
+  }
+  if (new_or_ith(var)) {
+    addSymbolStr((char*)var);
+  }
+  if (new_cmp_var(var)) {
+    add_cmp_var((char*)var);
+  }
+  get_cmp_str_int(tb.cid, cmpValue);
+}
+
 static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
   if (nodeHas(equality_str1)){
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     switch(i) {
     case 0:
       // string
+      tb.cmpStrQuoted = v;
+      tb.cmpStr = dupUnquotedStringLiteral(v);
       aAppendN("_cmp1(", 6);
       sAppend(&sb, "%s, ", v);
       sAppend(&sbDt, "%s, ", v);
@@ -137,6 +212,7 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
       /* Free(v); */
       return 1;
     case 1:
+      tb.cmpEq = !strcmp(v, "==");
       if (!strcmp(v, "==")) {
 	aAppendN("1, ", 3);
       } else {
@@ -148,7 +224,8 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
     case 2:
       // identifier_r
       // val, valstr
-      if (!strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id")){
+      recordStringCompare(v, tb.cmpStr);
+      if (isStringCompareIdVar(v)){
 	aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\")", 45);
 	sAppendN(&sbt, "ID", 2);
       } else {
@@ -168,8 +245,9 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     switch(i) {
     case 0:
+      tb.cmpVar = v;
       aAppendN("_cmp2(", 6);
-      if (!strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id")){
+      if (isStringCompareIdVar(v)){
         aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\", ", 46);
         sAppendN(&sbt, "ID", 2);
       } else {
@@ -180,6 +258,7 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
       }
       return 1;
     case 1:
+      tb.cmpEq = !strcmp(v, "==");
       if (!strcmp(v, "==")) {
         aAppendN("1, ", 3);
       } else {
@@ -188,6 +267,9 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
       sAppend(&sbt, "%s", v);
       return 1;
     case 2:
+      tb.cmpStrQuoted = v;
+      tb.cmpStr = dupUnquotedStringLiteral(v);
+      recordStringCompare(tb.cmpVar, tb.cmpStr);
       sAppend(&sb, "%s)", v);
       sAppend(&sbDt, "%s)", v);
       sAppend(&sbt, "%s", v);

@@ -18,8 +18,12 @@ typedef struct symtab {
   vLines de;             /* symbol string: all Des*/
   vLines str; /* symbol string: all assigned string variables*/
   vLines strVal; /* symbol string for rxode2 assigned strings */
+  vLines strCmp; /* symbol string for compared string covariates */
+  vLines strCmpVal; /* symbol strings used in comparisons */
   int *strValI; /* which variable is assigned a string */
   int *strValII; /* The number that the string is assigned (what C sees) */
+  int *strCmpValI; /* which compare variable uses the string */
+  int *strCmpValII; /* The integer code for the compared string */
   int lhi; // ith for lhs
   int *lho; /* lhs order */
   int *lh;        /*
@@ -50,6 +54,8 @@ lhs symbols?
   int didxn; /* nth of declared states */
   int *si;      /* ith of string vars */
   int *sin;      /* n values in each string var */
+  int *sci;      /* ith of compared string vars */
+  int *scn;      /* n values in each compared string var */
   int *idi;       /* should ith state variable be ignored 0/1 */
   int *isi;      /* should ith string variable be ignored 0/1 */
   int *idu;       /* Has the ith state been used in a derivative expression? */
@@ -60,6 +66,7 @@ lhs symbols?
   int dvidn;
   int ix;                       /* ith of curr symbol */
   int id;                       /* ith of curr symbol */
+  int cid;                      /* ith of current compared string symbol */
   int fn;                     /* curr symbol a fn?*/
   int ixL;// New assignment index
   int didEq;
@@ -92,6 +99,8 @@ lhs symbols?
   int hasKa;
   int allocS;
   int allocSV;
+  int allocSC;
+  int allocSCV;
   int allocD;
   int matn;
   int matnf;
@@ -115,6 +124,10 @@ lhs symbols?
   int evid_; // pushing evid_() flag
   int *splitBolus; // source then target de indexes (+1)
   int splitBolusN;
+  char *cmpStr;
+  char *cmpStrQuoted;
+  char *cmpVar;
+  int cmpEq;
 } symtab;
 
 extern symtab tb;
