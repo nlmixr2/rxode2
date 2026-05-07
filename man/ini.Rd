@@ -152,8 +152,8 @@ one.compartment |> ini(tka <- label("Absorption rate, Ka (1/hr)"), append = "tv"
 one.compartment |> ini("tka <- log(2)")
 }
 \seealso{
-Other Initial conditions: 
-\code{\link{zeroRe}()}
+Other Initial conditions:
+\code{\link[=zeroRe]{zeroRe()}}
 }
 \author{
 Matthew Fidler

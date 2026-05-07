@@ -31,9 +31,20 @@ reference:
   - etRep
   - etSeq
   - eventTable
-  - evid_
   - splitBolus
   - toTrialDuration
+- title: Model based addition of events
+  desc: Construct adaptive dosing/sampling inside rxode2 model
+  contents:
+  - bolus
+  - evid_
+  - infuse
+  - infuseDur
+  - multiply
+  - obs
+  - phantom
+  - replace
+  - reset
 - title: Solving & Simulation
   desc: Solve ODEs and simulate populations.
   contents:
@@ -310,7 +321,7 @@ navbar:
           href: articles/rxode2-syntax.html
         - text: "Interactive tutorials"
           href: articles/rxode2-tutorials.html
-  - text: "Model Def."
+  - text: "Model"
     icon: fas fa-code
     menu:
         - text: "Model types (linCmt, ODEs, mixed)"
@@ -353,7 +364,7 @@ navbar:
           href: articles/rxode2-parameter-uncertainty.html
         - text: "ETA/EPS resampling"
           href: articles/rxode2-eta-eps-resampling.html
-  - text: "Applications"
+  - text: "Examples"
     icon: fas fa-hospital
     menu:
         - text: "Exposure-response simulation"
@@ -369,16 +380,18 @@ navbar:
         - text: "Model features"
         - text: "Covariates and covariate models"
           href: articles/rxode2-covariates.html
-        - text: "Transit compartment models"
-          href: articles/rxode2-transit-compartments.html
+        - text: "Adaptive rxode2 dosing"
+          href: articles/adaptive-dosing.html
         - text: "Multiple levels of nesting (IOV, between-study)"
           href: articles/rxode2-nesting.html
-        - text: "Stiff systems and Jacobian specification"
-          href: articles/rxode2-stiff.html
-        - text: "Weight-based dosing"
-          href: articles/rxode2-wt.html
         - text: "Sticky variables"
           href: articles/rxode2-sticky.html
+        - text: "Weight-based dosing"
+          href: articles/rxode2-wt.html
+        - text: "Transit compartment models"
+          href: articles/rxode2-transit-compartments.html
+        - text: "Stiff systems and Jacobian specification"
+          href: articles/rxode2-stiff.html
         - text: "--------------------------"
         - text: "Output and performance"
         - text: "Adaptive data frames"
@@ -400,13 +413,13 @@ navbar:
   - text: "Compare"
     icon: fas fa-balance-scale
     menu:
-        - text: "rxode2 vs desolve"
+        - text: "rxode2 vs deSolve"
           href: articles/rxode2-desolve-comparison.html
         - text: "rxode2 vs mrgsolve"
           href: articles/rxode2-mrgsolve-comparison.html
         - text: "rxode2 vs NMsim"
           href: articles/rxode2-nmsim-comparison.html
-        - text: "rxode2 vs NONMEM $$SIMULATION"
+        - text: "rxode2 vs NONMEM simulation"
           href: articles/rxode2-nonmem-sim-comparison.html
         - text: "rxode2 vs Simulx"
           href: articles/rxode2-simulx-comparison.html

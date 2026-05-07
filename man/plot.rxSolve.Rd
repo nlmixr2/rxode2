@@ -32,8 +32,8 @@ A ggplot2 object
 Plot rxode2 objects
 }
 \seealso{
-Other rxode2 plotting: 
-\code{\link{rxTheme}()}
+Other rxode2 plotting:
+\code{\link[=rxTheme]{rxTheme()}}
 }
 \concept{rxode2 plotting}
 \keyword{Internal}

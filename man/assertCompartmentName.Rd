@@ -43,14 +43,14 @@ nlmixr2 parameter value
 
 }}
 \seealso{
-Other Assertions: 
-\code{\link{assertCompartmentExists}()},
-\code{\link{assertCompartmentNew}()},
-\code{\link{assertRxUi}()},
-\code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()},
-\code{\link{testIniDf}()},
-\code{\link{testRxUnbounded}()}
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{
 Bill Denney

@@ -579,8 +579,8 @@
 #'   When `NA` (default) this is determined by the solver.
 #'
 #' @param ... Other arguments including scaling factors for each
-#'     compartment.  This includes S# = numeric will scale a compartment
-#'     # by a dividing the compartment amount by the scale factor,
+#'     compartment.  This includes \code{S# =} numeric will scale a compartment
+#'     \code{#} by a dividing the compartment amount by the scale factor,
 #'     like NONMEM.
 #'
 #' @param a when using `solve()`, this is equivalent to the

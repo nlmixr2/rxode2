@@ -23,12 +23,12 @@ This returns the model's compartments or states.
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
 
-Other Query model information: 
-\code{\link{rxDfdy}()},
-\code{\link{rxInits}()},
-\code{\link{rxLhs}()},
-\code{\link{rxModelVars}()},
-\code{\link{rxParams}()}
+Other Query model information:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxInits]{rxInits()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxModelVars]{rxModelVars()}},
+\code{\link[=rxParams]{rxParams()}}
 }
 \author{
 Matthew L.Fidler

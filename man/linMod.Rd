@@ -103,14 +103,14 @@ Linear model to replace in rxode2 ui model
 linMod(x, 3)
 }
 \seealso{
-Other User functions: 
-\code{\link{rxUdfUiControl}()},
-\code{\link{rxUdfUiData}()},
-\code{\link{rxUdfUiEst}()},
-\code{\link{rxUdfUiIniLhs}()},
-\code{\link{rxUdfUiMv}()},
-\code{\link{rxUdfUiNum}()},
-\code{\link{rxUdfUiParsing}()}
+Other User functions:
+\code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
+\code{\link[=rxUdfUiData]{rxUdfUiData()}},
+\code{\link[=rxUdfUiEst]{rxUdfUiEst()}},
+\code{\link[=rxUdfUiIniLhs]{rxUdfUiIniLhs()}},
+\code{\link[=rxUdfUiMv]{rxUdfUiMv()}},
+\code{\link[=rxUdfUiNum]{rxUdfUiNum()}},
+\code{\link[=rxUdfUiParsing]{rxUdfUiParsing()}}
 }
 \author{
 Matthew L. Fidler

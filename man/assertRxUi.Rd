@@ -105,14 +105,14 @@ assertRxUiSingleEndpoint(one.cmt)
 }
 }
 \seealso{
-Other Assertions: 
-\code{\link{assertCompartmentExists}()},
-\code{\link{assertCompartmentName}()},
-\code{\link{assertCompartmentNew}()},
-\code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()},
-\code{\link{testIniDf}()},
-\code{\link{testRxUnbounded}()}
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{
 Matthew L. Fidler

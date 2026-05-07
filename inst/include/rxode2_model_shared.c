@@ -328,6 +328,24 @@ double _min(unsigned int n, ...){
   return mn;
 }
 
+void _obs(int _cSub, double _curTime, unsigned int n,  ...) {
+  rx_solving_options_ind* _ind = &(_solveData->subjects[_cSub]);
+  if (_ind->inLhs) {
+    return; // only push observations in ode solving
+  }
+  va_list valist;
+  va_start(valist, n);
+  double _t;
+  for (unsigned int i = 0; i < n; i++) {
+    _t = va_arg(valist, double);
+    // push observations after time
+    _rxPushDose(_ind, _curTime,
+                _curTime + _t, 0, 0, 1, 0, 0, 0, 0, 0);
+  }
+  va_end(valist);
+  return;
+}
+
 double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, double bio){
   double nd = (double) n;
   double ktr = (nd+1)/mtt;

@@ -30,6 +30,8 @@ tools have in common:
 - Analytical PK compartment models (though parameterization differs)
 - Between-subject variability (omega) and residual variability (sigma)
 - Event tables with complex dosing regimens
+- Adaptive / dynamic dosing from inside the model (mrgsolve via
+  `evtools`; rxode2 in versions after 5.0.2)
 - `simeta()` / `simeps()` for within-model ETA/EPS resampling
 - Custom C/C++ functions registered at the R or package level
 - Custom header files included in the compiled model
@@ -37,6 +39,43 @@ tools have in common:
 - NONMEM dataset translation tooling
 - Population simulation across many subjects
 - Parallel execution (OpenMP or otherwise)
+
+### Adaptive dosing inside the model
+
+Both tools now support model-driven adaptive dosing, but the user-facing
+API is different.
+
+mrgsolve implements this through the `evtools` plugin
+(<https://mrgsolve.org/dynamic-dosing/evtools.html>,
+<https://mrgsolve.org/blog/posts/evtools.html>,
+<https://mrgsolve.org/blog/posts/2024-new-1-4-0-evtools.html>).  The
+workflow is C++-oriented: enable `$PLUGIN evtools`, write event logic in
+`$EVENT`, and call helpers such as `evt::bolus(self, amt, cmt)`,
+`evt::infuse(self, amt, cmt, rate)`, `evt::replace(self, amt, cmt)`, or
+`evt::reset(self)`.  For more complex workflows, mrgsolve also provides
+mutable event objects plus an `evt::regimen` class that can change dose
+amount, rate, interval, and duration as the simulation progresses.
+
+rxode2 now provides the same general capability directly in the rxode2
+model language.  This is newer than rxode2 5.0.2.  Instead of a
+separate plugin and a C++ event block, adaptive actions are written
+inside `model({})` using native statements such as `evid_()`,
+`bolus()`, `infuse()`, `infuseDur()`, `reset()`, `replace()`,
+`multiply()`, `phantom()`, and `obs()`.
+
+| Topic | rxode2 | mrgsolve |
+|------|------|------|
+| Activation | built into the model syntax | opt in with `$PLUGIN evtools` |
+| Where logic lives | `model({})` | `$EVENT` (preferred) or other model blocks |
+| Event API style | domain-specific rxode2 statements | C++ helpers in `evt::` namespace |
+| Adaptive observation rows | `obs()` or `evid_(..., 0, ...)` | handled through event objects / event API rather than a dedicated `obs()` helper |
+| Regimen mutation | explicit push statements when conditions are met | event objects and `evt::regimen` support mutable ongoing regimens |
+
+In practice, rxode2's interface is usually shorter and closer to the
+pharmacometric intent, while mrgsolve's evtools framework is lower-level
+and more programmable from the C++ side.  Both approaches can express
+titration, rescue doses, dose holds, delayed starts, interval changes,
+replacement/reset operations, and other dynamic regimen updates.
 
 ## Features rxode2 has that mrgsolve does not
 
@@ -229,9 +268,11 @@ also be used as functions and then Rcpp can call them.
 
 mrgsolve's `$EVENT` block (v1.5.2+) executes just before `$TABLE`,
 allowing programmatic dose creation inside the model file with the
-result visible in output on the same record.  rxode2 handles
-modeled events through the event table API outside the model
-definition.
+result visible in output on the same record.  rxode2 now also supports
+modeled adaptive dosing, but it does not use a separate `$EVENT` block;
+instead, event-push statements are written directly in `model({})`.
+So the difference is the presence of a dedicated block and a C++
+event-object API, not the existence of adaptive dosing itself.
 
 
 
