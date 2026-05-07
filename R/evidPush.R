@@ -174,7 +174,6 @@ rxUdfUi.evid_ <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
-
 #' @export
 #' @author Matthew L. Fidler
 bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
@@ -416,4 +415,65 @@ rxUdfUi.multiply <- function(fun) {
   .cmt <- deparse1(.mc$cmt)
   if (.cmt == "NULL") .cmt <- "1"
   list(replace = paste0("multiply(", .amt, ",", .cmt, ")"))
+}
+
+#' Administer a phantom/transit dose inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `phantom()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'phantom()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.phantom <- function(fun) {
+  .dummy <- function(amt, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt   <- deparse1(.mc$amt)
+
+  .cmt  <- deparse1(.mc$cmt)
+  if (.cmt == "NULL") {
+    .cmt <- "1"
+  }
+
+  .ii   <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+
+  .addl   <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+
+  .ss   <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+
+  list(replace = paste0("phantom(", .amt, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
 }

@@ -398,6 +398,46 @@ rxTest({
     }
   })
 
+  test_that("in-model phantom() pushes a phantom event", {
+    obs <- seq(0, 20, by = 1)
+    e <- et(obs)
+    eRef <- et(time = 12, amt = 20, cmt = 1, evid = 7) |>
+      et(obs)
+
+    for (meth in c("dop853", "liblsoda")) {
+      mod <- rxode2({
+        mtime(phantomAt) <- 12
+        d/dt(depot) <- 0
+        d/dt(x) <- -k * x
+        pd <- podo(depot)
+        td <- tad(depot)
+        if (t >= phantomAt && t < phantomAt + 0.5) {
+          phantom(20, depot, 0, 0, 0)
+        }
+      })
+
+      ref <- rxode2({
+        d/dt(depot) <- 0
+        d/dt(x) <- -k * x
+        pd <- podo(depot)
+        td <- tad(depot)
+      })
+
+      p <- c(k = 0.1)
+      got <- rxSolve(mod, p, e, inits = c(depot = 0, x = 1), method = meth)
+      want <- rxSolve(ref, p, eRef, inits = c(depot = 0, x = 1), method = meth)
+      gotPhantom <- got[got$time >= 13, ]
+      wantPhantom <- want[want$time >= 13, ]
+
+      expect_equal(sum(got$time == 12), 2)
+      expect_equal(gotPhantom$time, wantPhantom$time)
+      expect_equal(gotPhantom$depot, wantPhantom$depot, tolerance = 1e-5)
+      expect_equal(gotPhantom$x, wantPhantom$x, tolerance = 1e-5)
+      expect_equal(gotPhantom$pd, wantPhantom$pd, tolerance = 1e-5)
+      expect_equal(gotPhantom$td, wantPhantom$td, tolerance = 1e-5)
+    }
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
@@ -624,6 +664,20 @@ rxTest({
     f <- f()
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "multiply(10, depot);\n")
+
+  })
+
+  test_that("phantom() ui changes work", {
+
+    f <- function() {
+      model({
+        phantom(10, depot, 0, 0, 0)
+      })
+    }
+
+    f <- f()
+    expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
+                 "phantom(10, depot, 0, 0, 0);\n")
 
   })
 

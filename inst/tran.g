@@ -32,6 +32,7 @@ statement
   | infuseDur_statement end_statement
   | replace_statement end_statement
   | multiply_statement end_statement
+  | phantom_statement end_statement
   | reset_statement end_statement
   | compound_statement
   | selection_statement
@@ -107,6 +108,14 @@ multiply_statement
             cmt_evid   /* cmt   */
             ')' ;
 
+phantom_statement
+    : 'phantom' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                       /* ss    */
+            ')' ;
 
 reset_statement
     : 'reset' '(' ')' ;

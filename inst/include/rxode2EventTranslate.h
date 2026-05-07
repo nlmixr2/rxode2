@@ -119,8 +119,8 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.isDose[0] = 0;
     break;
 
-  case 1: case 7:
-    /* Dose: bolus, phantom or infusion */
+  case 1:
+    /* Dose: bolus or infusion */
     out.evid[0]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
     out.time[0]   = time;
     out.amt[0]    = (rateI == 1 || rateI == 2) ? useRate : amt;
@@ -136,6 +136,16 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
       out.isDose[1] = 1;
       out.n         = 2;
     }
+    break;
+
+  case 7:
+    /* Phantom/transit event */
+    out.evid[0]   = cmt100*100000 + 0*10000 + cmt99*100 + 50;
+    out.time[0]   = time;
+    out.amt[0]    = amt;
+    out.ii[0]     = ii_val;
+    out.isDose[0] = 1;
+    out.n         = 1;
     break;
 
   case 3:
