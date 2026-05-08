@@ -26,6 +26,7 @@ typedef struct symtab {
   int *strCmpValI; /* which covariate index each compared string belongs to */
   const char *strCmpCurCov; /* current comparison covariate while parsing */
   const char *strCmpCurStr; /* current comparison string while parsing */
+  int strCmpCurType; /* current string comparison operator while parsing */
   int lhi; // ith for lhs
   int *lho; /* lhs order */
   int *lh;        /*

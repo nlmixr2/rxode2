@@ -460,6 +460,7 @@ void reset(void) {
   tb.evid_      = 0;
   tb.strCmpCurCov = NULL;
   tb.strCmpCurStr = NULL;
+  tb.strCmpCurType = -1;
 
   // Reset Arrays
   // Reset integers

@@ -31,8 +31,24 @@ rxTest({
       expect_equal(p$strCmpParams,
                    list(cov2 = factor(c("str3", "str4"),
                                       levels = c("str3", "str4")),
-                        cov = factor(c("str1", "str2"),
-                                     levels = c("str1", "str2"))))
+                         cov = factor(c("str1", "str2"),
+                                      levels = c("str1", "str2"))))
+    })
+
+    test_that("string comparisons use integer helpers for non-ID covariates", {
+      rxode2parse(paste(
+        "x=1",
+        "if (cov == \"alpha\" || \"beta\" != cov || id == \"skip\" || \"skip2\" != ID){x=0}",
+        sep = ";"
+      ))
+      parsed <- rxode2:::.rxGetParseModel()
+
+      expect_true(grepl('_cmp2d(cov, "cov", 1, 1)', parsed, fixed = TRUE))
+      expect_true(grepl('_cmp1d("beta", 0, cov, 2)', parsed, fixed = TRUE))
+      expect_true(grepl('_cmp2((&_solveData->subjects[_cSub])->idReal, "ID", 1, "skip")',
+                        parsed, fixed = TRUE))
+      expect_true(grepl('_cmp1("skip2", 0, (&_solveData->subjects[_cSub])->idReal, "ID")',
+                        parsed, fixed = TRUE))
     })
   }
 })

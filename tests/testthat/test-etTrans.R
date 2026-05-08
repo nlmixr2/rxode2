@@ -91,6 +91,25 @@ d/dt(blood)     = a*intestine - b*blood
 
   })
 
+  test_that("etTrans uses model string comparison ordering for event data covariates", {
+    mod <- rxode2parse('c = cov == "alpha"; d = "beta" == cov')
+
+    dat <- data.frame(
+      id = c(1, 1, 2, 2, 3, 3),
+      time = c(0, 1, 0, 1, 0, 1),
+      amt = c(1, NA, 1, NA, 1, NA),
+      evid = c(1, 0, 1, 0, 1, 0),
+      cov = c("beta", "beta", "gamma", "gamma", "alpha", "alpha")
+    )
+
+    tmp <- etTrans(dat, mod, keep = "cov")
+    tmp2 <- attr(class(tmp), ".rxode2.lst")
+    class(tmp2) <- NULL
+
+    expect_equal(tmp2$levelInfo$cov, c("alpha", "beta", "gamma"))
+    expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)
