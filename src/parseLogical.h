@@ -40,8 +40,8 @@ static inline int isOperatorOrPrintingIdentifier(nodeInfo ni, const char *name){
 
 static inline int isSkipChild(nodeInfo ni, const char *name, int i) {
   return ((i == 3 || i == 4 || i < 2) &&
-	  (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
-	   nodeHas(rate) || nodeHas(dur))) ||
+          (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
+           nodeHas(rate) || nodeHas(dur))) ||
     ((i == 3 || i < 2) && nodeHas(der_rhs)) ||
     (nodeHas(dfdy)     && i< 2)  ||
     (nodeHas(dfdy_rhs) && i< 2) ||
@@ -197,9 +197,9 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
       return 1;
     case 1:
       if (!strcmp(v, "==")) {
-	tb.strCmpCurType = 1;
+        tb.strCmpCurType = 1;
       } else {
-	tb.strCmpCurType = 0;
+        tb.strCmpCurType = 0;
       }
       sAppend(&sbt, "%s", v);
       /* Free(v); */
@@ -214,18 +214,18 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
                 tb.strCmpCurStr, tb.strCmpCurType);
         sAppend(&sbDt, "%s, %d, (&_solveData->subjects[_cSub])->idReal, \"ID\")",
                 tb.strCmpCurStr, tb.strCmpCurType);
-	sAppendN(&sbt, "ID", 2);
+        sAppendN(&sbt, "ID", 2);
         clearStringCmpCurrent();
       } else {
-	if (new_or_ith(v)) addSymbolStr(v);
+        if (new_or_ith(v)) addSymbolStr(v);
         int cmpInt = 0;
         if (tb.strCmpCurStr != NULL) {
           cmpInt = addStringCmpValue(tb.strCmpCurCov, (char*)tb.strCmpCurStr);
         }
         aAppendN("_cmp1d(", 7);
-	sAppend(&sb, "%s, %d, %s, %d)", tb.strCmpCurStr, tb.strCmpCurType, v, cmpInt);
-	sAppend(&sbDt, "%s, %d, %s, %d)", tb.strCmpCurStr, tb.strCmpCurType, v, cmpInt);
-	sAppend(&sbt, "%s", v);
+        sAppend(&sb, "%s, %d, %s, %d)", tb.strCmpCurStr, tb.strCmpCurType, v, cmpInt);
+        sAppend(&sbDt, "%s, %d, %s, %d)", tb.strCmpCurStr, tb.strCmpCurType, v, cmpInt);
+        sAppend(&sbt, "%s", v);
         clearStringCmpCurrent();
       }
       return 1;
@@ -298,8 +298,8 @@ static inline int assertLogicalNoWhileElse(nodeInfo ni, char *name, int i, D_Par
       v = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       if (v[0] == 0) {
       } else {
-	updateSyntaxCol();
-	trans_syntax_error_report_fn(_("'while' cannot be followed by 'else' (did you mean 'if'/'else')"));
+        updateSyntaxCol();
+        trans_syntax_error_report_fn(_("'while' cannot be followed by 'else' (did you mean 'if'/'else')"));
       }
     }
     return 1;
