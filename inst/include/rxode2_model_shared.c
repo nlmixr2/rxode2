@@ -159,6 +159,7 @@ rxode2_llikCauchyFun _llikCauchyDscale;
 
 
 rxode2_compareFactorVal_fn _compareFactorVal;
+rxode2_compareFactorInt_fn _compareFactorInt;
 
 double _prod(double *input, double *p, int type, int n, ...){
   va_list valist;
@@ -385,6 +386,7 @@ void _assignFuns0(void) {
   _sumType=(rxode2_fn0i)R_GetCCallable("PreciseSums", "PreciseSums_sum_get");
   _ptrid=(rxode2_fn0i)R_GetCCallable("rxode2", "rxode2_current_fn_pointer_id");
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
+  _compareFactorInt=(rxode2_compareFactorInt_fn) R_GetCCallable("rxode2", "compareFactorInt");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   _setThreadInd = (_setThreadInd_t) R_GetCCallable("rxode2","_setThreadInd");

@@ -20,6 +20,13 @@ typedef struct symtab {
   vLines strVal; /* symbol string for rxode2 assigned strings */
   int *strValI; /* which variable is assigned a string */
   int *strValII; /* The number that the string is assigned (what C sees) */
+  vLines strCmp; /* symbol string: compared covariates in first-seen order */
+  vLines strCmpVal; /* compared strings in first-seen order */
+  int *strCmpN; /* number of compared strings per covariate */
+  int *strCmpValI; /* which covariate index each compared string belongs to */
+  const char *strCmpCurCov; /* current comparison covariate while parsing */
+  const char *strCmpCurStr; /* current comparison string while parsing */
+  int strCmpCurType; /* current string comparison operator while parsing */
   int lhi; // ith for lhs
   int *lho; /* lhs order */
   int *lh;        /*
@@ -92,6 +99,8 @@ lhs symbols?
   int hasKa;
   int allocS;
   int allocSV;
+  int allocSC;
+  int allocSCV;
   int allocD;
   int matn;
   int matnf;

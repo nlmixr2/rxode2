@@ -289,6 +289,8 @@ void parseFree(int last) {
   lineFree(&(tb.de));
   lineFree(&(tb.str));
   lineFree(&(tb.strVal));
+  lineFree(&(tb.strCmp));
+  lineFree(&(tb.strCmpVal));
   lineFree(&depotLines);
   lineFree(&centralLines);
   lineFree(&_dupStrs);
@@ -309,6 +311,8 @@ void parseFree(int last) {
   R_Free(tb.sin);
   R_Free(tb.strValI);
   R_Free(tb.strValII);
+  R_Free(tb.strCmpN);
+  R_Free(tb.strCmpValI);
   R_Free(tb.idi);
   R_Free(tb.isi);
   R_Free(tb.idu);
@@ -389,6 +393,8 @@ void reset(void) {
   tb.idi	= R_Calloc(MXDER, int);
   tb.strValI= R_Calloc(MXDER, int);
   tb.strValII= R_Calloc(MXDER, int);
+  tb.strCmpN= R_Calloc(MXDER, int);
+  tb.strCmpValI= R_Calloc(MXDER, int);
   tb.isi    = R_Calloc(MXDER, int);
   tb.idu	= R_Calloc(MXDER, int);
   tb.lag	= R_Calloc(MXSYM, int);
@@ -434,6 +440,8 @@ void reset(void) {
   tb.allocD	= MXDER;
   tb.allocS = MXDER;
   tb.allocSV = MXDER;
+  tb.allocSC = MXDER;
+  tb.allocSCV = MXDER;
   tb.matn	= 0;
   tb.matnf	= 0;
   tb.ncmt	= 0;
@@ -450,6 +458,9 @@ void reset(void) {
   tb.nLlik      = 0;
   tb.hasMix     = 0;
   tb.evid_      = 0;
+  tb.strCmpCurCov = NULL;
+  tb.strCmpCurStr = NULL;
+  tb.strCmpCurType = -1;
 
   // Reset Arrays
   // Reset integers
@@ -760,6 +771,8 @@ void transIniNull(void) {
   lineNull(&(tb.de));
   lineNull(&(tb.str));
   lineNull(&(tb.strVal));
+  lineNull(&(tb.strCmp));
+  lineNull(&(tb.strCmpVal));
   sNull(&(sb));
   sNull(&(sbDt));
   sNull(&(sbt));

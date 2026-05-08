@@ -129,6 +129,44 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
+static inline int getStrCmpParamIndex(CharacterVector strCmpNames,
+                                      std::string cov) {
+  std::string covLower = cov;
+  std::string covUpper = cov;
+  std::transform(covLower.begin(), covLower.end(), covLower.begin(), ::tolower);
+  std::transform(covUpper.begin(), covUpper.end(), covUpper.begin(), ::toupper);
+  for (int i = 0; i < strCmpNames.size(); ++i) {
+    std::string cur = as<std::string>(strCmpNames[i]);
+    if (cur == cov || cur == covLower || cur == covUpper) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+static inline SEXP refactorStrCmpCovariate(SEXP cur, CharacterVector modelLevels) {
+  Function asCharacter("as.character", R_BaseNamespace);
+  Function factor2("factor", R_BaseNamespace);
+  CharacterVector curChr = as<CharacterVector>(asCharacter(cur));
+  std::vector<std::string> levels;
+  levels.reserve(modelLevels.size() + curChr.size());
+  for (int i = 0; i < modelLevels.size(); ++i) {
+    levels.push_back(as<std::string>(modelLevels[i]));
+  }
+  for (int i = 0; i < curChr.size(); ++i) {
+    if (curChr[i] == NA_STRING) continue;
+    std::string val = as<std::string>(curChr[i]);
+    if (std::find(levels.begin(), levels.end(), val) == levels.end()) {
+      levels.push_back(val);
+    }
+  }
+  CharacterVector fullLevels(levels.size());
+  for (size_t i = 0; i < levels.size(); ++i) {
+    fullLevels[i] = levels[i];
+  }
+  return factor2(curChr, _["levels"] = fullLevels);
+}
+
 /*
  * Get the linear compartment information from the model variables
  *
@@ -1131,6 +1169,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   NumericVector nvTmp, nvTmp2;
   bool hasCmt = false;
   int cmtI =0;
+  List strCmpParams = mv[RxMv_strCmpParams];
+  CharacterVector strCmpParamNames = strCmpParams.names();
   List strAssign = mv[RxMv_strAssign];
   List strAssignN = strAssign.names();
   List inDataF(covCol.size());
@@ -1149,12 +1189,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       inDataLvlN[i] = covUnitsN[i] = liName[-covColi-1];
     }
     nvTmp2 = NumericVector::create(1.0);
-    if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt") {
+    if (hasCmt || covColi < 0 || as<std::string>(lName[covColi]) != "cmt") {
       RObject cur;
       if (covColi >= 0) {
         cur = inData[covColi];
       } else {
         cur = iCov_[-covColi-1];
+      }
+      int strCmpIdx = getStrCmpParamIndex(strCmpParamNames,
+                                          as<std::string>(inDataLvlN[i]));
+      if (strCmpIdx != -1 && (TYPEOF(cur) == STRSXP || Rf_inherits(cur, "factor"))) {
+        CharacterVector modelLevels = Rf_getAttrib(strCmpParams[strCmpIdx], R_LevelsSymbol);
+        cur = refactorStrCmpCovariate(cur, modelLevels);
+        inDataF[i] = cur;
       }
       if (TYPEOF(cur) == INTSXP){
         RObject lvls = cur.attr("levels");
@@ -2685,7 +2732,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           lst[baseSize+j] = NumericVector(0);
         }
-        NumericVector curNV = iCov_[-covColj-1];
+        SEXP curCov = iCov_[-covColj-1];
+        if (!Rf_isNull(inDataF[j])) {
+          curCov = inDataF[j];
+        }
+        NumericVector curNV = curCov;
         for (int idx1c=curNV.size(); idx1c--;) {
           double vcur = curNV[idxIcov[idx1c]];
           fPars[idx1c*pars.size()+covParPos[j]] = vcur;
@@ -2952,8 +3003,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               // this comes from the individual covariate table
               cur = iCov_[-covColj-1];
             }
-            if (TYPEOF(cur) == STRSXP) {
-              // Strings are converted to numbers
+            if (!Rf_isNull(inDataF[j])) {
               cur = inDataF[j];
             }
             nvTmp2   = as<NumericVector>(cur);

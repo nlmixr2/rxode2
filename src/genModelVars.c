@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 30));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 30));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 31));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 31));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -148,13 +148,36 @@ SEXP generateModelVars(void) {
 
   SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
   SEXP splitBolusSexp = PROTECT(Rf_allocVector(INTSXP, tb.splitBolusN));pro++;
+  SEXP strCmpParams = PROTECT(Rf_allocVector(VECSXP, tb.strCmp.n));pro++;
+  SEXP strCmpParamsN = PROTECT(Rf_allocVector(STRSXP, tb.strCmp.n));pro++;
+  SEXP factorCls = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
   int *alagVar = INTEGER(alagVarSexp);
   int *splitBolus = INTEGER(splitBolusSexp);
   int *ordFI = INTEGER(ordF);
+  SET_STRING_ELT(factorCls, 0, Rf_mkChar("factor"));
 
   for (int i = 0; i < tb.splitBolusN; ++i) {
     splitBolus[i] = ordFI[tb.splitBolus[i]-1];
   }
+
+  for (int i = 0; i < tb.strCmp.n; ++i) {
+    SEXP cur = PROTECT(Rf_allocVector(INTSXP, tb.strCmpN[i]));pro++;
+    SEXP curLvl = PROTECT(Rf_allocVector(STRSXP, tb.strCmpN[i]));pro++;
+    int *curI = INTEGER(cur);
+    int k = 0;
+    for (int j = 0; j < tb.strCmpVal.n; ++j) {
+      if (tb.strCmpValI[j] == i) {
+        curI[k] = k + 1;
+        SET_STRING_ELT(curLvl, k, Rf_mkChar(tb.strCmpVal.line[j]));
+        k++;
+      }
+    }
+    Rf_classgets(cur, factorCls);
+    Rf_setAttrib(cur, R_LevelsSymbol, curLvl);
+    SET_VECTOR_ELT(strCmpParams, i, cur);
+    SET_STRING_ELT(strCmpParamsN, i, Rf_mkChar(tb.strCmp.line[i]));
+  }
+  Rf_setAttrib(strCmpParams, R_NamesSymbol, strCmpParamsN);
 
   for (int i = 0; i < tb.alagn; ++i) {
     alagVar[i] = ordFI[tb.alag[i]-1];
@@ -326,6 +349,9 @@ SEXP generateModelVars(void) {
 
   SET_STRING_ELT(names, 29, Rf_mkChar("splitBolus"));
   SET_VECTOR_ELT(lst,   29, splitBolusSexp);
+
+  SET_STRING_ELT(names, 30, Rf_mkChar("strCmpParams"));
+  SET_VECTOR_ELT(lst,   30, strCmpParams);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

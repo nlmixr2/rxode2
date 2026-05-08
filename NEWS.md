@@ -112,6 +112,11 @@
   `multiply()`, and phantom/transit compartment events `phantom()`.
   For more granular control you can also use `evid_()`.
 
+- Refactor string comparison in `rxode2` so that it is actually doing
+  an integer comparison when running the ODE solving routine
+  (simulation and estimation) instead of using a string comparison.
+  It makes using strings like (sex == "male") run faster.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
