@@ -394,6 +394,15 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores) {
 
 extern "C" int rxstrcmpi(const char * str1, const char * str2);
 
+extern "C" int compareFactorInt(int val,
+                                const char *valStr,
+                                int value) {
+  if (val <= 0) {
+    return 0; // Bad value
+  }
+  return (val == value);
+}
+
 extern "C" int compareFactorVal(int val,
                                 const char *valStr,
                                 const char *cmpValue){

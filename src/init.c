@@ -289,6 +289,7 @@ double gamma_q_inva(double a, double q);
 double gamma_p_inva(double a, double p);
 
 int compareFactorVal(int val, const char *factor, const char *value);
+int compareFactorInt(int val, const char *factor, int value);
 SEXP _rxode2_rxSolve_(SEXP, SEXP, SEXP, SEXP, SEXP,
                       SEXP, SEXP, SEXP);
 
@@ -872,6 +873,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "gammaqInv", (DL_FUNC) &gamma_q_inv);
   R_RegisterCCallable("rxode2", "gammaqInva", (DL_FUNC) &gamma_q_inva);
   R_RegisterCCallable("rxode2", "compareFactorVal", (DL_FUNC) &compareFactorVal);
+  R_RegisterCCallable("rxode2", "compareFactorInt", (DL_FUNC) &compareFactorInt);
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);

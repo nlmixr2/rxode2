@@ -272,11 +272,14 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define CmT CMT
 #define cMT CMT
 #define _cmp2(val, valStr, type, cmpStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
+#define _cmp2d(val, valStr, type, cmpInt) (type ? _compareFactorInt(val, valStr, cmpInt) : !_compareFactorInt(val, valStr, cmpInt))
 // equality_str1 : string ('!=' | '==' ) identifier_r; //type=1 is equal, type=0 not equal
 #define _cmp1(cmpStr, type, val, valStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
+#define _cmp1d(cmpStr, type, val, valStr) (type ? _compareFactorInt(val, valStr, cmpInt) : !_compareFactorInt(val, valStr, cmpInt))
 
 // Types for par pointers.r
 typedef int (*rxode2_compareFactorVal_fn)(int val, const char *factor, const char *value);
+typedef int (*rxode2_compareFactorInt_fn)(int val, const char *factor, int value);
 typedef double (*rxode2_fn) (double x);
 typedef double (*rxode2_ifn) (double x);
 typedef double (*rxode2_fn2) (double x, double y);
