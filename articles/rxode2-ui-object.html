@@ -1182,7 +1182,7 @@ assignments, then the <code><a href="../reference/ini.html">ini()</a></code> blo
 <span><span class="co">#&gt;         eff ~ add(eff.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55cf56e209b8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x55a175b751e8&gt;</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1214,7 +1214,7 @@ object that appends the error-sampling code to the base ODE model, ready
 for stochastic simulation:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_5e1858b7b99f54b5a8176d76ee505a9c</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_051fb471857206948654a7c84f47228a</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, CMT, rxerr.C2, rxerr.eff</span></span>
@@ -1231,7 +1231,7 @@ prepended as parameter assignments, so the model is self-contained and
 can be run without supplying a parameter vector:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_e73b5256d2ca803727ecab4af798aa5f</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_13cbbea8e53a11bb3eead159c4399c9d</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, rxerr.C2, rxerr.eff, CMT</span></span>
@@ -1247,11 +1247,11 @@ rxode2 version) and are suitable for caching or comparing models:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># MD5 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">md5</span></span>
-<span><span class="co">#&gt; [1] "0ed9e63c8139055ecaadce572320738f"</span></span>
+<span><span class="co">#&gt; [1] "beca1323513a7b0f0563b871bda2864e"</span></span>
 <span></span>
 <span><span class="co"># SHA-1 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">sha1</span></span>
-<span><span class="co">#&gt; [1] "97392568f8da32d7b76a8466d23e79e7b41ea931"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "46c3a6456a9487819304992e34cda42171de17fe"</span></span></code></pre></div>
 <p>These hashes change whenever the model equations, initial estimates,
 or error specification change, but are insensitive to label or comment
 differences.</p>
