@@ -124,12 +124,64 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
   return 0;
 }
 
+static inline void clearStringCmpCurrent(void) {
+  tb.strCmpCurCov = NULL;
+  tb.strCmpCurStr = NULL;
+}
+
+static inline int isStringCmpId(const char *v) {
+  return !strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id");
+}
+
+static inline void normalizeStringCmpValue(char *v) {
+  size_t n = strlen(v);
+  if (n >= 2 && ((v[0] == '"' && v[n-1] == '"') ||
+                 (v[0] == '\'' && v[n-1] == '\''))) {
+    memmove(v, v+1, n-2);
+    v[n-2] = 0;
+  }
+}
+
+static inline int getStringCmpCovIndex(const char *cov) {
+  for (int i = 0; i < tb.strCmp.n; ++i) {
+    if (!strcmp(tb.strCmp.line[i], cov)) {
+      return i;
+    }
+  }
+  if (tb.strCmp.n + 1 > tb.allocSC) {
+    tb.allocSC += MXDER;
+    tb.strCmpN = R_Realloc(tb.strCmpN, tb.allocSC, int);
+  }
+  addLine(&(tb.strCmp), "%s", cov);
+  tb.strCmpN[tb.strCmp.n-1] = 0;
+  return tb.strCmp.n-1;
+}
+
+static inline void addStringCmpValue(const char *cov, char *val) {
+  int covIndex = getStringCmpCovIndex(cov);
+  normalizeStringCmpValue(val);
+  for (int i = 0; i < tb.strCmpVal.n; ++i) {
+    if (tb.strCmpValI[i] == covIndex && !strcmp(tb.strCmpVal.line[i], val)) {
+      return;
+    }
+  }
+  if (tb.strCmpVal.n + 1 > tb.allocSCV) {
+    tb.allocSCV += MXDER;
+    tb.strCmpValI = R_Realloc(tb.strCmpValI, tb.allocSCV, int);
+  }
+  tb.strCmpValI[tb.strCmpVal.n] = covIndex;
+  tb.strCmpN[covIndex] += 1;
+  addLine(&(tb.strCmpVal), "%s", val);
+}
+
 static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
   if (nodeHas(equality_str1)){
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     switch(i) {
     case 0:
       // string
+      clearStringCmpCurrent();
+      tb.strCmpCurStr = v;
       aAppendN("_cmp1(", 6);
       sAppend(&sb, "%s, ", v);
       sAppend(&sbDt, "%s, ", v);
@@ -148,14 +200,18 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
     case 2:
       // identifier_r
       // val, valstr
-      if (!strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id")){
+      tb.strCmpCurCov = v;
+      if (isStringCmpId(v)){
+        clearStringCmpCurrent();
 	aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\")", 45);
 	sAppendN(&sbt, "ID", 2);
       } else {
 	if (new_or_ith(v)) addSymbolStr(v);
+        if (tb.strCmpCurStr != NULL) addStringCmpValue(tb.strCmpCurCov, (char*)tb.strCmpCurStr);
 	sAppend(&sb, "%s, \"%s\")", v, v);
 	sAppend(&sbDt, "%s, \"%s\")", v, v);
 	sAppend(&sbt, "%s", v);
+        clearStringCmpCurrent();
       }
       return 1;
     }
@@ -168,8 +224,11 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     switch(i) {
     case 0:
+      clearStringCmpCurrent();
+      tb.strCmpCurCov = v;
       aAppendN("_cmp2(", 6);
-      if (!strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id")){
+      if (isStringCmpId(v)){
+        clearStringCmpCurrent();
         aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\", ", 46);
         sAppendN(&sbt, "ID", 2);
       } else {
@@ -188,9 +247,12 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
       sAppend(&sbt, "%s", v);
       return 1;
     case 2:
+      tb.strCmpCurStr = v;
       sAppend(&sb, "%s)", v);
       sAppend(&sbDt, "%s)", v);
       sAppend(&sbt, "%s", v);
+      if (tb.strCmpCurCov != NULL) addStringCmpValue(tb.strCmpCurCov, v);
+      clearStringCmpCurrent();
       return 1;
     }
   }

@@ -759,8 +759,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(32);
-  CharacterVector retN(32);
+  List ret(33);
+  CharacterVector retN(33);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -865,11 +865,16 @@ List rxModelVars_blank() {
   ret[29] = IntegerVector::create(0); // splitBolus
   retN[29] = "splitBolus";
 
-  ret[30] = IntegerVector::create(0); // timeId
-  retN[30] = "timeId";
+  List strCmpParams;
+  strCmpParams.attr("names") = CharacterVector::create();
+  ret[30] = strCmpParams; // strCmpParams
+  retN[30] = "strCmpParams";
 
-  ret[31] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[31] = "md5";
+  ret[31] = IntegerVector::create(0); // timeId
+  retN[31] = "timeId";
+
+  ret[32] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[32] = "md5";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";

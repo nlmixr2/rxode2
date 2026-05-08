@@ -37,5 +37,9 @@ d/dt(y3) = a3*y1*y2
     blank <- rxModelVars("")
     full <-  rxModelVars("y = 1")
     expect_equal(length(rxModelVars(blank)), length(full))
+    expect_length(blank$strCmpParams, 0)
+    expect_equal(names(blank$strCmpParams), character(0))
+    expect_equal(tail(names(full), 5),
+                 c("lhsOrd", "splitBolus", "strCmpParams", "timeId", "md5"))
   })
 })
