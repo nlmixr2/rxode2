@@ -117,6 +117,10 @@
   (simulation and estimation) instead of using a string comparison.
   It makes using strings like (sex == "male") run faster.
 
+- Add `tolFactor`, a per individual change of the tolerances to be
+  used in solving. This is used have individualized tolerances from
+  `nlmixr2est`.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
