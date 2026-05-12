@@ -204,6 +204,9 @@ extern "C" {
   typedef int (*getOrdId)(rx_solve *rx, int solveid);
   extern getOrdId getOrdId;
 
+  typedef int (*solveMethodThreadSafe_t)(rx_solving_options* op);
+  extern solveMethodThreadSafe_t solveMethodThreadSafe;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -266,6 +269,7 @@ extern "C" {
       setIndNeqOverride = (setIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 57));
       rxSetSilentErr = (rxSetSilentErr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 58));
       getOrdId       = (getOrdId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 59));
+      solveMethodThreadSafe = (solveMethodThreadSafe_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 60));
     }
     return R_NilValue;
   }
@@ -331,6 +335,7 @@ extern "C" {
   setIndNeqOverride_t setIndNeqOverride = NULL;         \
   rxSetSilentErr_t rxSetSilentErr = NULL;               \
   getOrdId_t getOrdId = NULL;                           \
+  solveMethodThreadSafe_t solveMethodThreadSafe = NULL; \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

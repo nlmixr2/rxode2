@@ -448,11 +448,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndNeqOverride, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNeqOverride, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxSetSilentErr =  PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setSilentErr, R_NilValue, R_NilValue)); pro++;
-
   SEXP rxode2getOrdId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getOrdId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2solveMethodThreadSafe = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&solveMethodThreadSafe, R_NilValue, R_NilValue)); pro++;
 
 
-#define nVec 61
+#define nVec 62
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -515,6 +515,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 58, rxode2setIndNeqOverride);
   SET_VECTOR_ELT(ret, 59, rxode2rxSetSilentErr);
   SET_VECTOR_ELT(ret, 60, rxode2getOrdId);
+  SET_VECTOR_ELT(ret, 61, rxode2solveMethodThreadSafe);
+
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -577,6 +579,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 57, Rf_mkChar("rxode2setIndNeqOverride"));
   SET_STRING_ELT(retN, 58, Rf_mkChar("rxode2rxSetSilentErr"));
   SET_STRING_ELT(retN, 59, Rf_mkChar("rxode2getOrdId"));
+  SET_STRING_ELT(retN, 60, Rf_mkChar("rxode2solveMethodThreadSafe"));
 
 #undef nVec
 

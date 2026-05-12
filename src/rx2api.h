@@ -162,6 +162,8 @@ extern "C" {
 
   int getOrdId(rx_solve *rx, int solveid);
 
+  int solveMethodThreadSafe(rx_solving_options* op);
+
 #if defined(__cplusplus)
 }
 #endif
