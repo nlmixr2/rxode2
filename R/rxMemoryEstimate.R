@@ -19,25 +19,19 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 }
 
 .rxMemSummarizeDat <- function(dat) {
-  .evidCol <- "evid"
-  .idCol   <- grep("^id$", names(dat), ignore.case = TRUE, value = TRUE)[1]
+  .dt    <- data.table::as.data.table(dat)
+  .idCol <- grep("^id$", names(.dt), ignore.case = TRUE, value = TRUE)[1]
 
   if (is.na(.idCol)) {
     .ret <- rxMemSummary(
-      nobs   = sum(dat[[.evidCol]] == 0L, na.rm = TRUE),
-      ndoses = sum(dat[[.evidCol]] != 0L, na.rm = TRUE)
+      nobs   = sum(.dt[["evid"]] == 0L, na.rm = TRUE),
+      ndoses = sum(.dt[["evid"]] != 0L, na.rm = TRUE)
     )
   } else {
-    .ids <- unique(dat[[.idCol]])
-    .ret <- do.call(rbind, lapply(.ids, function(id) {
-      .sub <- dat[dat[[.idCol]] == id, ]
-      rxMemSummary(
-        id     = id,
-        nobs   = sum(.sub[[.evidCol]] == 0L, na.rm = TRUE),
-        ndoses = sum(.sub[[.evidCol]] != 0L, na.rm = TRUE)
-      )
-    }))
-    class(.ret) <- c("rxMemSummary", "data.frame")
+    .agg <- .dt[, .(nobs = sum(evid == 0L, na.rm = TRUE),
+                    ndoses = sum(evid != 0L, na.rm = TRUE)),
+                by = .idCol]
+    .ret <- rxMemSummary(id = .agg[[.idCol]], nobs = .agg$nobs, ndoses = .agg$ndoses)
   }
   .ret
 }
