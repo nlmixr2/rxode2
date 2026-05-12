@@ -144,6 +144,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @examples
 #'
 #' \donttest{
+#'
 #' mod <- rxode2::rxode2({
 #'   d/dt(depot)  <- -ka * depot
 #'   d/dt(center) <- ka * depot - cl / v * center
@@ -154,6 +155,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   rxode2::et(seq(0, 168, by = 1))
 #'
 #' rxMemoryEstimate(as.data.frame(ev), model = mod)
+#'
 #' }
 rxMemoryEstimate <- function(
   dat,

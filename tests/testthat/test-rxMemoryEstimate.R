@@ -20,20 +20,11 @@ rxTest({
   })
 
   test_that("rxMemoryEstimate total equals sum of components", {
-    .s    <- rxMemSummary(nobs = 100L, ndoses = 20L)
-    .est  <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
-    .meta <- c("total", "sizeofInd", "rxLlikSaveSize")
+    .s     <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .est   <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
+    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize")
     .comps <- .est[!names(.est) %in% .meta]
-    .sumBytes <- function(v) {
-      if (inherits(v, "memuse")) {
-        as.numeric(memuse::mu(v, unit = "B"))
-      } else {
-        as.numeric(v)
-      }
-    }
-    .compTotal <- Reduce(`+`, lapply(.comps, .sumBytes))
-    .estTotal  <- .sumBytes(.est$total)
-    expect_equal(.estTotal, .compTotal)
+    expect_equal(.est$total, sum(vapply(.comps, as.numeric, numeric(1))))
   })
 
   test_that("rxMemoryEstimate accepts nobs/ndoses data.frame", {
@@ -68,14 +59,11 @@ rxTest({
   })
 
   test_that("rxMemoryEstimate scales with subject count", {
-    .s1  <- rxMemSummary(nobs = rep(50L, 10L),  ndoses = rep(5L, 10L))
-    .s2  <- rxMemSummary(nobs = rep(50L, 100L), ndoses = rep(5L, 100L))
-    .e1  <- rxMemoryEstimate(.s1,  neq = 2L, npars = 3L)
-    .e2  <- rxMemoryEstimate(.s2,  neq = 2L, npars = 3L)
-    .toNum <- function(v) {
-      if (inherits(v, "memuse")) as.numeric(memuse::mu(v, unit = "B")) else as.numeric(v)
-    }
-    expect_gt(.toNum(.e2$total), .toNum(.e1$total))
+    .s1 <- rxMemSummary(nobs = rep(50L, 10L),  ndoses = rep(5L, 10L))
+    .s2 <- rxMemSummary(nobs = rep(50L, 100L), ndoses = rep(5L, 100L))
+    .e1 <- rxMemoryEstimate(.s1, neq = 2L, npars = 3L)
+    .e2 <- rxMemoryEstimate(.s2, neq = 2L, npars = 3L)
+    expect_gt(.e2$total, .e1$total)
   })
 
   test_that("rxMemoryEstimate with compiled model", {
