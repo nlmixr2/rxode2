@@ -83,6 +83,51 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nIndSim   = as.integer(.flags["nIndSim"])
   )
 }
+#' Extract memory-relevant options from an rxControl object
+#'
+#' @param ctrl An \code{rxControl} object.
+#' @return A list with \code{cores}, \code{nsim}, \code{neta}, \code{neps},
+#'   and \code{nLlikAlloc}.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemExtractControl <- function(ctrl) {
+  .cores <- max(1L, as.integer(ctrl$cores))
+  .nsim  <- if (is.null(ctrl$nsim)) 1L else as.integer(ctrl$nsim)
+  .neta  <- if (is.matrix(ctrl$omega)) nrow(ctrl$omega) else 0L
+  .neps  <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
+  list(
+    cores      = .cores,
+    nsim       = .nsim,
+    neta       = as.integer(.neta),
+    neps       = as.integer(.neps),
+    nLlikAlloc = ctrl$nLlikAlloc
+  )
+}
+#' Detect total physical RAM in bytes
+#'
+#' @return Numeric bytes of total RAM, or \code{NA_real_} if unavailable.
+#' @noRd
+#' @author Matthew L. Fidler
+.getRamBytes <- function() {
+  if (requireNamespace("memuse", quietly = TRUE)) {
+    .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
+    if (!is.null(.info)) {
+      return(as.numeric(memuse::mu(.info$totalram, unit = "B")))
+    }
+  }
+  tryCatch({
+    if (file.exists("/proc/meminfo")) {
+      .m <- grep("^MemTotal:", readLines("/proc/meminfo", n = 10L), value = TRUE)
+      if (length(.m)) return(as.numeric(gsub("\\D", "", .m[1L])) * 1024)
+    }
+    if (.Platform$OS.type == "windows") {
+      return(utils::memory.limit() * 1024^2)
+    }
+    .out <- system("sysctl -n hw.memsize", intern = TRUE, ignore.stderr = TRUE)
+    if (length(.out) && nzchar(.out[1L])) return(as.numeric(.out[1L]))
+    NA_real_
+  }, error = function(e) NA_real_)
+}
 #' Convert raw byte counts to memuse objects if memuse is available
 #'
 #'
@@ -116,6 +161,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param model      Optional rxode2 model object.  When supplied, \code{neq},
 #'   \code{nlhs}, \code{npars}, \code{extraCmt}, \code{linB}, \code{nMtime},
 #'   \code{nLlik}, and \code{nIndSim} are extracted automatically.
+#' @param control    Optional \code{\link{rxControl}} object.  When supplied,
+#'   \code{cores}, \code{nsim}, \code{neta} (from \code{omega}), \code{neps}
+#'   (from \code{sigma}), and \code{nLlik} (adjusted by \code{nLlikAlloc})
+#'   are overridden automatically.
 #' @param neq        Number of ODE states.
 #' @param stateSize  Effective \code{state.size()} seen by the solver.  Equals
 #'   \code{neq} for pure ODE models; may differ for linCmt-only models.
@@ -154,12 +203,21 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' ev <- rxode2::et(amt = 100, ii = 24, until = 168) |>
 #'   rxode2::et(seq(0, 168, by = 1))
 #'
+#' # Basic estimate from event table and model
 #' rxMemoryEstimate(as.data.frame(ev), model = mod)
+#'
+#' # With rxControl: population simulation with omega and 4 cores
+#' ctrl <- rxode2::rxControl(
+#'   cores = 4L,
+#'   omega = lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+#' )
+#' rxMemoryEstimate(as.data.frame(ev), model = mod, control = ctrl)
 #'
 #' }
 rxMemoryEstimate <- function(
   dat,
   model     = NULL,
+  control   = NULL,
   neq       = 1L,
   stateSize = neq,
   nlhs      = 0L,
@@ -175,8 +233,7 @@ rxMemoryEstimate <- function(
   nLlik     = 0L,
   nIndSim   = NULL,
   numLinSens = 0L,
-  numLin    = 0L
-) {
+  numLin    = 0L) {
   if (.isRxMemSummary(dat)) {
     .summary <- dat
     if (!inherits(.summary, "rxMemSummary")) {
@@ -200,6 +257,15 @@ rxMemoryEstimate <- function(
     nMtime    <- .mi$nMtime
     nLlik     <- .mi$nLlik
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
+  }
+
+  if (!is.null(control)) {
+    .ci   <- .rxMemExtractControl(control)
+    cores <- .ci$cores
+    nsim  <- .ci$nsim
+    if (.ci$neta > 0L) neta <- .ci$neta
+    if (.ci$neps > 0L) neps <- .ci$neps
+    if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
   }
 
   if (is.null(nIndSim)) nIndSim <- neta + neps
@@ -238,7 +304,8 @@ rxMemoryEstimate <- function(
 
   .ret <- c(list(total = .total), .wrapped,
             list(sizeofInd     = .raw[["sizeofInd"]],
-                 rxLlikSaveSize = .raw[["rxLlikSaveSize"]]))
+                 rxLlikSaveSize = .raw[["rxLlikSaveSize"]],
+                 ramBytes       = .getRamBytes()))
   class(.ret) <- "rxMemoryEstimate"
   attr(.ret, "summary") <- .summary
   .ret
@@ -246,7 +313,7 @@ rxMemoryEstimate <- function(
 
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
-  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize")
+  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes")
   .comps <- x[!names(x) %in% .meta]
 
   .hasMem <- requireNamespace("memuse", quietly = TRUE)
@@ -307,15 +374,15 @@ print.rxMemoryEstimate <- function(x, ...) {
   cat(sprintf("\n  Subjects: %d  |  sizeof(rx_solving_options_ind): %d B",
               .nsub, as.integer(x$sizeofInd)))
 
-  if (.hasMem) {
-    .avail <- tryCatch(memuse::Sys.meminfo()$totalram, error = function(e) NULL)
-    if (!is.null(.avail)) {
-      .pct <- 100 * as.numeric(memuse::mu(x$total, unit = "B")) /
-        as.numeric(memuse::mu(.avail, unit = "B"))
-      cat(sprintf("  |  %.1f%% of RAM (%s)\n", .pct, format(.avail)))
+  .ramBytes <- x$ramBytes
+  if (!is.null(.ramBytes) && !is.na(.ramBytes) && .ramBytes > 0) {
+    .totalBytes <- if (.hasMem && inherits(x$total, "memuse")) {
+      as.numeric(memuse::mu(x$total, unit = "B"))
     } else {
-      cat("\n")
+      as.numeric(x$total)
     }
+    cat(sprintf("  |  %.1f%% of RAM (%s)\n",
+                100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
   } else {
     cat("\n")
   }

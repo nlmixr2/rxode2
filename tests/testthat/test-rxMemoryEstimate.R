@@ -22,9 +22,18 @@ rxTest({
   test_that("rxMemoryEstimate total equals sum of components", {
     .s     <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est   <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
-    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize")
+    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes")
     .comps <- .est[!names(.est) %in% .meta]
-    expect_equal(.est$total, sum(vapply(.comps, as.numeric, numeric(1))))
+    expect_equal(as.numeric(.est$total), sum(vapply(.comps, as.numeric, numeric(1))))
+  })
+
+  test_that("rxMemoryEstimate contains ramBytes", {
+    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .est <- rxMemoryEstimate(.s, neq = 1L)
+    expect_true("ramBytes" %in% names(.est))
+    .rb <- .est$ramBytes
+    expect_true(is.numeric(.rb))
+    if (!is.na(.rb)) expect_gt(.rb, 0)
   })
 
   test_that("rxMemoryEstimate accepts nobs/ndoses data.frame", {
@@ -76,5 +85,30 @@ rxTest({
     .est <- rxMemoryEstimate(.s, model = .mod)
     expect_s3_class(.est, "rxMemoryEstimate")
     expect_gt(as.integer(.est$sizeofInd), 0L)
+  })
+
+  test_that("rxControl cores and nsim increase memory estimate", {
+    .s     <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L)
+    .ctrl4 <- rxControl(cores = 4L)
+    .est4  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl4)
+    expect_gt(.est4$total, .base$total)
+  })
+
+  test_that("rxControl omega sets neta, sigma sets neps", {
+    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .ctrl <- rxControl(
+      omega = lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+    )
+    .est  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl)
+    expect_gt(.est$gomega, 0)
+  })
+
+  test_that("rxControl nLlikAlloc raises nLlik floor", {
+    .s     <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base  <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L)
+    .ctrl  <- rxControl(nLlikAlloc = 5L)
+    .est   <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L, control = .ctrl)
+    expect_gt(.est$total, .base$total)
   })
 })
