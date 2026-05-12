@@ -96,15 +96,16 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .nsim  <- if (is.null(ctrl$nsim)) 1L else as.integer(ctrl$nsim)
   .neta  <- if (is.matrix(ctrl$omega)) nrow(ctrl$omega) else 0L
   .neps  <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
-  .nSub  <- if (is.null(ctrl$nSub)  || ctrl$nSub  <= 1L) 0L else as.integer(ctrl$nSub)
-  .nStud <- if (is.null(ctrl$nStud) || ctrl$nStud <= 1L) 1L else as.integer(ctrl$nStud)
+  .nSub  <- if (is.null(ctrl$nSub))  1L else as.integer(ctrl$nSub)
+  .nStud <- if (is.null(ctrl$nStud)) 1L else as.integer(ctrl$nStud)
   list(
     cores      = .cores,
     nsim       = .nsim,
     neta       = as.integer(.neta),
     neps       = as.integer(.neps),
     nLlikAlloc = ctrl$nLlikAlloc,
-    nSubEff    = .nSub * .nStud
+    nSub       = .nSub,
+    nStud      = .nStud
   )
 }
 #' Detect total physical RAM in bytes
@@ -268,9 +269,11 @@ rxMemoryEstimate <- function(
   .nallTotal   <- sum(.nallVec)
   .maxAllTimes <- max(.nallVec)
 
-  if (!is.null(.ci) && .ci$nSubEff > 0L) {
-    .nallTotal <- (.nallTotal / .nsub) * .ci$nSubEff
-    .nsub      <- .ci$nSubEff
+  if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
+    .subPerStudy <- if (.ci$nSub > 1L) .ci$nSub else .nsub
+    .meanAllTimes <- .nallTotal / .nsub
+    .nsub      <- .subPerStudy * .ci$nStud
+    .nallTotal <- .meanAllTimes * .nsub
   }
 
   .raw <- rxMemoryComponents_(

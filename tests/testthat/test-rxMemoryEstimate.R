@@ -112,17 +112,16 @@ rxTest({
     expect_gt(.est$total, .base$total)
   })
 
-  test_that("rxControl nSub scales memory beyond data subject count", {
-    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+  test_that("rxControl nSub overrides data subject count per study", {
+    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
     .base <- rxMemoryEstimate(.s, neq = 2L)
     .ctrl <- rxControl(nSub = 50L)
     .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
-    expect_gt(.est$total, .base$total)
     expect_equal(.est$effectiveSubs, 50L)
   })
 
-  test_that("rxControl nStud multiplies nSub for effective subject count", {
-    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+  test_that("rxControl nSub and nStud multiply: nSub overrides data subjects", {
+    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
     .ctrl <- rxControl(nSub = 10L, nStud = 5L)
     .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 50L)
@@ -133,5 +132,23 @@ rxTest({
     .ctrl <- rxControl(nSub = 1L)
     .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 5L)
+  })
+
+  test_that("rxControl nStud multiplies data subject count", {
+    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .base <- rxMemoryEstimate(.s, neq = 2L)
+    .ctrl <- rxControl(nStud = 100L)
+    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    expect_equal(.est$effectiveSubs, 500L)
+    expect_gt(.est$total, .base$total)
+  })
+
+  test_that("rxControl nStud with 1-subject dataset scales correctly", {
+    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base <- rxMemoryEstimate(.s, neq = 2L)
+    .ctrl <- rxControl(nStud = 100L)
+    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    expect_equal(.est$effectiveSubs, 100L)
+    expect_gt(.est$total, .base$total)
   })
 })
