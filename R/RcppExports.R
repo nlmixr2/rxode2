@@ -938,7 +938,7 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #' @param nallTotal Total events across all subjects (sum of obs + doses).
 #' @param maxAllTimes Maximum events for any single subject.
 #' @return Named numeric vector; each element is bytes for that allocation.
-#'   Also includes \code{sizeof_ind} (bytes per \code{rx_solving_options_ind}
+#'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
 #' @export
 rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes) {

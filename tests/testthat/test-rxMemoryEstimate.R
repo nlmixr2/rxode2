@@ -22,7 +22,7 @@ rxTest({
   test_that("rxMemoryEstimate total equals sum of components", {
     .s    <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est  <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
-    .meta <- c("total", "sizeof_ind", "rxLlikSaveSize")
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize")
     .comps <- .est[!names(.est) %in% .meta]
     .sumBytes <- function(v) {
       if (inherits(v, "memuse")) {
@@ -87,6 +87,6 @@ rxTest({
     .s   <- rxMemSummary(nobs = 100L, ndoses = 10L)
     .est <- rxMemoryEstimate(.s, model = .mod)
     expect_s3_class(.est, "rxMemoryEstimate")
-    expect_gt(as.integer(.est$sizeof_ind), 0L)
+    expect_gt(as.integer(.est$sizeofInd), 0L)
   })
 })

@@ -99,7 +99,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param numLin     Number of linear compartment terms (FOCEi + linCmt).
 #' @return A named list of class \code{"rxMemoryEstimate"} whose elements are
 #'   \code{memuse} objects (or raw byte counts if \pkg{memuse} is not
-#'   installed) plus \code{total}, \code{sizeof_ind}, and
+#'   installed) plus \code{total}, \code{sizeofInd}, and
 #'   \code{rxLlikSaveSize}.
 #' @export
 rxMemoryEstimate <- function(
@@ -176,13 +176,13 @@ rxMemoryEstimate <- function(
     maxAllTimes = as.double(.maxAllTimes)
   )
 
-  .meta    <- c("sizeof_ind", "rxLlikSaveSize")
+  .meta    <- c("sizeofInd", "rxLlikSaveSize")
   .sizes   <- .raw[!names(.raw) %in% .meta]
   .wrapped <- lapply(.sizes, .toMemuse)
   .total   <- Reduce(`+`, .wrapped)
 
   .ret <- c(list(total = .total), .wrapped,
-            list(sizeof_ind     = .raw[["sizeof_ind"]],
+            list(sizeofInd     = .raw[["sizeofInd"]],
                  rxLlikSaveSize = .raw[["rxLlikSaveSize"]]))
   class(.ret) <- "rxMemoryEstimate"
   attr(.ret, "summary") <- .summary
@@ -191,7 +191,7 @@ rxMemoryEstimate <- function(
 
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
-  .meta  <- c("total", "sizeof_ind", "rxLlikSaveSize")
+  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize")
   .comps <- x[!names(x) %in% .meta]
 
   .hasMem <- requireNamespace("memuse", quietly = TRUE)
@@ -250,7 +250,7 @@ print.rxMemoryEstimate <- function(x, ...) {
 
   .nsub <- nrow(attr(x, "summary"))
   cat(sprintf("\n  Subjects: %d  |  sizeof(rx_solving_options_ind): %d B",
-              .nsub, as.integer(x$sizeof_ind)))
+              .nsub, as.integer(x$sizeofInd)))
 
   if (.hasMem) {
     .avail <- tryCatch(memuse::Sys.meminfo()$totalram, error = function(e) NULL)

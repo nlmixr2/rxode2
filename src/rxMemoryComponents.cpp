@@ -39,7 +39,7 @@ using namespace Rcpp;
 //' @param nallTotal Total events across all subjects (sum of obs + doses).
 //' @param maxAllTimes Maximum events for any single subject.
 //' @return Named numeric vector; each element is bytes for that allocation.
-//'   Also includes \code{sizeof_ind} (bytes per \code{rx_solving_options_ind}
+//'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 //'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
 //' @export
 // [[Rcpp::export]]
@@ -113,7 +113,7 @@ NumericVector rxMemoryComponents_(
     Named("ordId")         = b_ordId,
     Named("gInfusionRate") = b_gInfRate,
     Named("inds_global")   = b_inds,
-    Named("sizeof_ind")    = (double)sizeof(rx_solving_options_ind),
+    Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 
   return out;
