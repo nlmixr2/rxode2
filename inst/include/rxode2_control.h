@@ -115,5 +115,6 @@
 #define Rxc_indOwnAlloc 110
 #define Rxc_maxExtra 111
 #define Rxc_tolFactor 112
-#define Rxc__zeros 113
+#define Rxc_serializeFile 113
+#define Rxc__zeros 114
 #endif // __rxode2_control_H__
