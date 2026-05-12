@@ -926,6 +926,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indOwnAlloc=NA,
                     maxExtra=1000L,
                     tolFactor=NULL,
+                    serializeFile=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1309,6 +1310,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
     checkmate::assertIntegerish(maxExtra, lower=0, len=1)
+    if (!is.null(serializeFile)) {
+      checkmate::assertCharacter(serializeFile, len=1, any.missing=FALSE)
+    }
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1477,6 +1481,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       indOwnAlloc=as.integer(indOwnAlloc),
       maxExtra=maxExtra,
       tolFactor=tolFactor,
+      serializeFile=serializeFile,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
