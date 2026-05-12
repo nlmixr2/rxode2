@@ -29,19 +29,24 @@ extern "C" int getSilentErr(void){return _setSilentErr;}
 extern "C" int getRstudioPrint(void){return _isRstudio2;}
 
 extern "C" void RSprintf(const char *format, ...) {
-  if (_setSilentErr == 0) {
-    if(_isRstudio2){
-      va_list args;
-      va_start(args, format);
-      REvprintf(format, args);
-      va_end(args);
-    } else{
-      va_list args;
-      va_start(args, format);
-      Rvprintf(format, args);
-      va_end(args);
+#ifdef _OPENMP
+  if (omp_get_thread_num() == 0) // only in master thread!
+#endif
+    {
+      if (_setSilentErr == 0) {
+        if(_isRstudio2){
+          va_list args;
+          va_start(args, format);
+          REvprintf(format, args);
+          va_end(args);
+        } else{
+          va_list args;
+          va_start(args, format);
+          Rvprintf(format, args);
+          va_end(args);
+        }
+      }
     }
-  }
 }
 
 #if defined(__INTEL_LLVM_COMPILER) || defined(__INTEL_COMPILER__)

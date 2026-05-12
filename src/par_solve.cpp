@@ -4840,15 +4840,15 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
                           t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
                           t_dydt c_dydt, t_update_inis u_inis,
                           int jt) {
-  par_progress_1=0;
-  _isRstudio = isRstudio();
-  setRstudioPrint(_isRstudio);
-  rxt.t0 = clock();
-  rxt.cores = 1;
-  rxt.n = 100;
-  rxt.d = 0;
-  rxt.cur = 0;
-  assignFuns();
+  // par_progress_1=0;
+  // _isRstudio = isRstudio();
+  // setRstudioPrint(_isRstudio);
+  // rxt.t0 = clock();
+  // rxt.cores = 1;
+  // rxt.n = 100;
+  // rxt.d = 0;
+  // rxt.cur = 0;
+  // assignFuns();
   rx_solving_options *op = rx->op;
   if (op->neq !=  0) {
     if (rx->linB == 1) {
