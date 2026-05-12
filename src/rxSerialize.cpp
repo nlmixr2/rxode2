@@ -460,3 +460,15 @@ bool rxIsSerializeFile_(SEXP pathSexp) {
   fclose(f);
   return ok;
 }
+
+//' Restore a pre-integration rxode2 solver state from binary file
+//'
+//' @param path File path written by rxSaveState_().
+//' @return Invisibly TRUE.
+//' @noRd
+// [[Rcpp::export]]
+SEXP rxRestoreState_(SEXP pathSexp) {
+  // Placeholder — full implementation in next commit
+  (Rf_error)("rxRestoreState_: not yet implemented");
+  return R_NilValue;
+}

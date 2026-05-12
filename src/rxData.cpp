@@ -54,6 +54,9 @@ extern "C" void ensureLinCmtB(int nCores);
 #include "threadSafeConstants.h"
 //#include "seed.h"
 
+SEXP rxSaveState_(SEXP pathSexp);         // defined in rxSerialize.cpp
+SEXP rxRestoreState_(SEXP pathSexp);      // defined in rxSerialize.cpp
+bool rxIsSerializeFile_(SEXP pathSexp);   // defined in rxSerialize.cpp
 extern "C" void RSprintf(const char *format, ...);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
@@ -4966,6 +4969,37 @@ void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
 static int _rxSolveCallN = 0;
 
+// Restore serialized state then run integration + build output data frame.
+static SEXP rxSolveFromFile_(const RObject &obj, const std::string &path,
+                              const List &rxControl,
+                              const Nullable<CharacterVector> &specParams,
+                              const Nullable<List> &extraArgs,
+                              const RObject &params, const RObject &events,
+                              const RObject &inits) {
+  // Load compiled model and assign function pointers
+  if (!rxDynLoad(obj)) {
+    (Rf_error)(_("rxSolve: cannot load rxode2 dll for model"));
+  }
+  rxode2_assign_fn_pointers(obj);
+
+  // Restore the pre-integration solve state from binary file
+  SEXP _pathSexp = PROTECT(Rf_mkString(path.c_str()));
+  rxRestoreState_(_pathSexp);
+  UNPROTECT(1);
+
+  // Run integration + build result using the finalize path.
+  // rxSolveDat is not needed for the post-restore finalize path —
+  // we build a minimal one with NULL fields (finalize only uses it for
+  // zeroTheta/zeroOmega/zeroSigma warnings and rxSolveSaveRxSolve).
+  rxSolve_t rxSolveDat;
+  memset(&rxSolveDat, 0, sizeof(rxSolveDat));
+  rxSolveDat.isRxSolve = false;
+  rxSolveDat.isEnvironment = false;
+
+  return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
+                          params, events, inits, &rxSolveDat);
+}
+
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
@@ -4977,6 +5011,22 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveFree();
   }
   rxDropB = false;
+
+  // Solve-from-file dispatch: if params is a single string pointing to a
+  // serialization file, restore state and integrate without any setup.
+  if (setupOnly == 0 && !rxIsNull(params) && Rf_isString(params) &&
+      LENGTH(params) == 1) {
+    SEXP _ps = STRING_ELT(params, 0);
+    if (_ps != NA_STRING) {
+      SEXP _pathSexp = PROTECT(Rf_ScalarString(_ps));
+      bool _isSer = rxIsSerializeFile_(_pathSexp);
+      UNPROTECT(1);
+      if (_isSer) {
+        return rxSolveFromFile_(obj, CHAR(_ps), rxControl, specParams, extraArgs,
+                                params, events, inits);
+      }
+    }
+  }
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -5707,6 +5757,19 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolve_normalizeParms(object, rxControl, specParams, extraArgs,
                            pars, ev1, inits, rxSolveDat);
     sortIds(rx, 1);
+
+    // Serialization hook: write pre-integration state if serializeFile is set
+    {
+      RObject _sf = rxControl[Rxc_serializeFile];
+      if (!rxIsNull(_sf) && Rf_isString(_sf) && LENGTH(_sf) == 1) {
+        SEXP _sfSexp = STRING_ELT(_sf, 0);
+        if (_sfSexp != NA_STRING) {
+          SEXP _pathSexp = PROTECT(Rf_ScalarString(_sfSexp));
+          rxSaveState_(_pathSexp);
+          UNPROTECT(1);
+        }
+      }
+    }
 
     if (setupOnly){
       setupOnlyObj = obj;
