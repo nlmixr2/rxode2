@@ -117,6 +117,9 @@
   (simulation and estimation) instead of using a string comparison.
   It makes using strings like (sex == "male") run faster.
 
+- Add `rxMemoryEstimate()` and `rxMemSummary()` to estimate the amount
+  of memory that is required for a rxode2 solve.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
