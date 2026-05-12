@@ -2086,6 +2086,58 @@ RcppExport SEXP _rxode2_rxSymInvCholEnvCalculate(SEXP objSEXP, SEXP whatSEXP, SE
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxMemoryComponents_
+NumericVector rxMemoryComponents_(int neq, int state_size, int nlhs, int npars, int neta, int neps, int ncov, int nsim, int cores, int nMtime, int extraCmt, int linB, int nLlik, int nIndSim, int numLinSens, int numLin, int nsub, double nall_total, double maxAllTimes);
+static SEXP _rxode2_rxMemoryComponents__try(SEXP neqSEXP, SEXP state_sizeSEXP, SEXP nlhsSEXP, SEXP nparsSEXP, SEXP netaSEXP, SEXP nepsSEXP, SEXP ncovSEXP, SEXP nsimSEXP, SEXP coresSEXP, SEXP nMtimeSEXP, SEXP extraCmtSEXP, SEXP linBSEXP, SEXP nLlikSEXP, SEXP nIndSimSEXP, SEXP numLinSensSEXP, SEXP numLinSEXP, SEXP nsubSEXP, SEXP nall_totalSEXP, SEXP maxAllTimesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type neq(neqSEXP);
+    Rcpp::traits::input_parameter< int >::type state_size(state_sizeSEXP);
+    Rcpp::traits::input_parameter< int >::type nlhs(nlhsSEXP);
+    Rcpp::traits::input_parameter< int >::type npars(nparsSEXP);
+    Rcpp::traits::input_parameter< int >::type neta(netaSEXP);
+    Rcpp::traits::input_parameter< int >::type neps(nepsSEXP);
+    Rcpp::traits::input_parameter< int >::type ncov(ncovSEXP);
+    Rcpp::traits::input_parameter< int >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< int >::type cores(coresSEXP);
+    Rcpp::traits::input_parameter< int >::type nMtime(nMtimeSEXP);
+    Rcpp::traits::input_parameter< int >::type extraCmt(extraCmtSEXP);
+    Rcpp::traits::input_parameter< int >::type linB(linBSEXP);
+    Rcpp::traits::input_parameter< int >::type nLlik(nLlikSEXP);
+    Rcpp::traits::input_parameter< int >::type nIndSim(nIndSimSEXP);
+    Rcpp::traits::input_parameter< int >::type numLinSens(numLinSensSEXP);
+    Rcpp::traits::input_parameter< int >::type numLin(numLinSEXP);
+    Rcpp::traits::input_parameter< int >::type nsub(nsubSEXP);
+    Rcpp::traits::input_parameter< double >::type nall_total(nall_totalSEXP);
+    Rcpp::traits::input_parameter< double >::type maxAllTimes(maxAllTimesSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxMemoryComponents_(neq, state_size, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nall_total, maxAllTimes));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxMemoryComponents_(SEXP neqSEXP, SEXP state_sizeSEXP, SEXP nlhsSEXP, SEXP nparsSEXP, SEXP netaSEXP, SEXP nepsSEXP, SEXP ncovSEXP, SEXP nsimSEXP, SEXP coresSEXP, SEXP nMtimeSEXP, SEXP extraCmtSEXP, SEXP linBSEXP, SEXP nLlikSEXP, SEXP nIndSimSEXP, SEXP numLinSensSEXP, SEXP numLinSEXP, SEXP nsubSEXP, SEXP nall_totalSEXP, SEXP maxAllTimesSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxMemoryComponents__try(neqSEXP, state_sizeSEXP, nlhsSEXP, nparsSEXP, netaSEXP, nepsSEXP, ncovSEXP, nsimSEXP, coresSEXP, nMtimeSEXP, extraCmtSEXP, linBSEXP, nLlikSEXP, nIndSimSEXP, numLinSensSEXP, numLinSEXP, nsubSEXP, nall_totalSEXP, maxAllTimesSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxOptRep_
 RObject rxOptRep_(RObject input);
 RcppExport SEXP _rxode2_rxOptRep_(SEXP inputSEXP) {
@@ -2738,6 +2790,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("NumericVector(*rxInv)(SEXP)");
         signatures.insert("RObject(*rxSymInvChol)(RObject,Nullable<NumericVector>,std::string,int)");
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
+        signatures.insert("NumericVector(*rxMemoryComponents_)(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,double,double)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
         signatures.insert("NumericVector(*rxErf)(NumericVector)");
         signatures.insert("NumericVector(*binomProbsPredVec_)(int,int,int,int,bool,double)");
@@ -2797,6 +2850,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxInv", (DL_FUNC)_rxode2_rxInv_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvChol", (DL_FUNC)_rxode2_rxSymInvChol_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC)_rxode2_rxSymInvCholEnvCalculate_try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxMemoryComponents_", (DL_FUNC)_rxode2_rxMemoryComponents__try);
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxErf", (DL_FUNC)_rxode2_rxErf_try);
     R_RegisterCCallable("rxode2", "_rxode2_binomProbsPredVec_", (DL_FUNC)_rxode2_binomProbsPredVec__try);

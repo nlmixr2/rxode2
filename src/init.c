@@ -615,6 +615,7 @@ SEXP _rxode2_mexpit(SEXP p);
 SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
+SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
 
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
@@ -787,6 +788,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxSetSeed", (DL_FUNC) _rxode2_rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
+    {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 19},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
