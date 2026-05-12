@@ -940,7 +940,7 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #' @return Named numeric vector; each element is bytes for that allocation.
 #'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
-#' @export
+#' @noRd
 rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes) {
     .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes)
 }

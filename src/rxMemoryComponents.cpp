@@ -41,7 +41,7 @@ using namespace Rcpp;
 //' @return Named numeric vector; each element is bytes for that allocation.
 //'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 //'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
-//' @export
+//' @noRd
 // [[Rcpp::export]]
 NumericVector rxMemoryComponents_(
   int    neq,

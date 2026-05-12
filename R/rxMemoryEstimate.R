@@ -17,13 +17,28 @@
 #' @param nobs Integer vector of observation counts per ID.
 #' @param ndoses Integer vector of dose event counts per ID.
 #' @return A data.frame with class \code{"rxMemSummary"}.
+#' @examples
+#'
+#' # Three subjects with known observation and dose counts
+#' rxMemSummary(nobs = c(48L, 96L, 48L), ndoses = c(7L, 14L, 7L))
+#'
+#' # Explicit subject IDs
+#' rxMemSummary(nobs = c(10L, 20L), ndoses = c(5L, 5L), id = c(101L, 102L))
 #' @export
 rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .ret <- data.frame(id = id, nobs = as.integer(nobs), ndoses = as.integer(ndoses))
   class(.ret) <- c("rxMemSummary", "data.frame")
   .ret
 }
-
+#' Summarize data for memory estimation from an event-table dataset
+#'
+#' It will be sent rxMemSummarizeDat()
+#'
+#' @param dat data to summarize
+#' @return An \code{rxMemSummary} data.frame with columns \code{id}, \code{nobs}, and
+#'  \code{ndoses}.
+#' @noRd
+#' @author Matthew L. Fidler
 .rxMemSummarizeDat <- function(dat) {
   .dt    <- data.table::as.data.table(dat)
   .idCol <- grep("^id$", names(.dt), ignore.case = TRUE, value = TRUE)[1]
@@ -74,9 +89,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param bytes bytes to convert
 #' @return A memuse object if memuse is available, otherwise the
 #'   original byte count with class "rxRawBytes".
-#' @export
+#' @noRd
 #' @author Matthew L. Fidler
-#' @examples
 .toMemuse <- function(bytes) {
   if (requireNamespace("memuse", quietly = TRUE)) {
     memuse::mu(bytes, unit = "B", unit.names = "short")
@@ -126,6 +140,21 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   installed) plus \code{total}, \code{sizeofInd}, and
 #'   \code{rxLlikSaveSize}.
 #' @export
+#'
+#' @examples
+#'
+#' \donttest{
+#' mod <- rxode2::rxode2({
+#'   d/dt(depot)  <- -ka * depot
+#'   d/dt(center) <- ka * depot - cl / v * center
+#'   cp           <- center / v
+#' })
+#'
+#' ev <- rxode2::et(amt = 100, ii = 24, until = 168) |>
+#'   rxode2::et(seq(0, 168, by = 1))
+#'
+#' rxMemoryEstimate(as.data.frame(ev), model = mod)
+#' }
 rxMemoryEstimate <- function(
   dat,
   model     = NULL,
