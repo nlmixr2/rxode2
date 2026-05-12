@@ -87,7 +87,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'
 #' @param ctrl An \code{rxControl} object.
 #' @return A list with \code{cores}, \code{nsim}, \code{neta}, \code{neps},
-#'   and \code{nLlikAlloc}.
+#'   \code{nLlikAlloc}, and \code{nSubEff} (effective subject count;
+#'   0 means use the data-derived count).
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemExtractControl <- function(ctrl) {
@@ -95,12 +96,15 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .nsim  <- if (is.null(ctrl$nsim)) 1L else as.integer(ctrl$nsim)
   .neta  <- if (is.matrix(ctrl$omega)) nrow(ctrl$omega) else 0L
   .neps  <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
+  .nSub  <- if (is.null(ctrl$nSub)  || ctrl$nSub  <= 1L) 0L else as.integer(ctrl$nSub)
+  .nStud <- if (is.null(ctrl$nStud) || ctrl$nStud <= 1L) 1L else as.integer(ctrl$nStud)
   list(
     cores      = .cores,
     nsim       = .nsim,
     neta       = as.integer(.neta),
     neps       = as.integer(.neps),
-    nLlikAlloc = ctrl$nLlikAlloc
+    nLlikAlloc = ctrl$nLlikAlloc,
+    nSubEff    = .nSub * .nStud
   )
 }
 #' Detect total physical RAM in bytes
@@ -247,6 +251,7 @@ rxMemoryEstimate <- function(
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
   }
 
+  .ci <- NULL
   if (!is.null(control)) {
     .ci   <- .rxMemExtractControl(control)
     cores <- .ci$cores
@@ -258,10 +263,15 @@ rxMemoryEstimate <- function(
 
   if (is.null(nIndSim)) nIndSim <- neta + neps
 
-  .nsub        <- nrow(.summary)
   .nallVec     <- .summary$nobs + .summary$ndoses
+  .nsub        <- nrow(.summary)
   .nallTotal   <- sum(.nallVec)
   .maxAllTimes <- max(.nallVec)
+
+  if (!is.null(.ci) && .ci$nSubEff > 0L) {
+    .nallTotal <- (.nallTotal / .nsub) * .ci$nSubEff
+    .nsub      <- .ci$nSubEff
+  }
 
   .raw <- rxMemoryComponents_(
     neq        = as.integer(neq),
@@ -293,9 +303,10 @@ rxMemoryEstimate <- function(
   .total   <- Reduce(`+`, .wrapped)
 
   .ret <- c(list(total = .total), .wrapped,
-            list(sizeofInd     = .raw[["sizeofInd"]],
+            list(sizeofInd      = .raw[["sizeofInd"]],
                  rxLlikSaveSize = .raw[["rxLlikSaveSize"]],
-                 ramBytes       = .getRamBytes()))
+                 ramBytes       = .getRamBytes(),
+                 effectiveSubs  = .nsub))
   class(.ret) <- "rxMemoryEstimate"
   attr(.ret, "summary") <- .summary
   .ret
@@ -303,7 +314,7 @@ rxMemoryEstimate <- function(
 
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
-  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes")
+  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "effectiveSubs")
   .comps <- x[!names(x) %in% .meta]
 
   .hasMem <- requireNamespace("memuse", quietly = TRUE)
@@ -360,7 +371,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     cat(sprintf("  %-42s %s%s\n", .lab, .fmtSize(.comps[[.n]]), .pct))
   }
 
-  .nsub <- nrow(attr(x, "summary"))
+  .nsub <- if (!is.null(x$effectiveSubs)) as.integer(x$effectiveSubs) else nrow(attr(x, "summary"))
   cat(sprintf("\n  Subjects: %d  |  sizeof(rx_solving_options_ind): %d B",
               .nsub, as.integer(x$sizeofInd)))
 

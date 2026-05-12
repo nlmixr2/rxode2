@@ -22,7 +22,7 @@ rxTest({
   test_that("rxMemoryEstimate total equals sum of components", {
     .s     <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est   <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
-    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes")
+    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "effectiveSubs")
     .comps <- .est[!names(.est) %in% .meta]
     expect_equal(as.numeric(.est$total), sum(vapply(.comps, as.numeric, numeric(1))))
   })
@@ -110,5 +110,28 @@ rxTest({
     .ctrl  <- rxControl(nLlikAlloc = 5L)
     .est   <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L, control = .ctrl)
     expect_gt(.est$total, .base$total)
+  })
+
+  test_that("rxControl nSub scales memory beyond data subject count", {
+    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base <- rxMemoryEstimate(.s, neq = 2L)
+    .ctrl <- rxControl(nSub = 50L)
+    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    expect_gt(.est$total, .base$total)
+    expect_equal(.est$effectiveSubs, 50L)
+  })
+
+  test_that("rxControl nStud multiplies nSub for effective subject count", {
+    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .ctrl <- rxControl(nSub = 10L, nStud = 5L)
+    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    expect_equal(.est$effectiveSubs, 50L)
+  })
+
+  test_that("rxControl nSub=1 leaves subject count data-derived", {
+    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .ctrl <- rxControl(nSub = 1L)
+    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    expect_equal(.est$effectiveSubs, 5L)
   })
 })
