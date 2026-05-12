@@ -1,3 +1,9 @@
+#' Is the dataset a memory summary?'
+#'
+#' @param dat data set
+#' @return TRUE if the dataset is an \code{rxMemSummary}, FALSE otherwise
+#' @noRd
+#' @author Matthew L. Fidler
 .isRxMemSummary <- function(dat) {
   inherits(dat, "rxMemSummary") ||
     (is.data.frame(dat) &&
@@ -35,7 +41,17 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   }
   .ret
 }
-
+#' Extract model dimensions from model variables
+#'
+#'
+#' @param model model variables to extract dimensions from
+#'
+#' @return A list with elements \code{neq}, \code{stateSize},
+#'   \code{nlhs}, \code{npars}, \code{extraCmt}, \code{linB},
+#'   \code{nMtime}, \code{nLlik}, and \code{nIndSim}. All are used to
+#'   calculate memory useage.
+#' @noRd
+#' @author Matthew L. Fidler
 .rxMemExtractModel <- function(model) {
   .mv    <- rxModelVars(model)
   .flags <- .mv[["flags"]]
@@ -52,7 +68,15 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nIndSim   = as.integer(.flags["nIndSim"])
   )
 }
-
+#' Convert raw byte counts to memuse objects if memuse is available
+#'
+#'
+#' @param bytes bytes to convert
+#' @return A memuse object if memuse is available, otherwise the
+#'   original byte count with class "rxRawBytes".
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
 .toMemuse <- function(bytes) {
   if (requireNamespace("memuse", quietly = TRUE)) {
     memuse::mu(bytes, unit = "B", unit.names = "short")
