@@ -103,6 +103,7 @@
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
+
 <div id="claudemd" class="section level1">
 
 <p>This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.</p>
@@ -269,6 +270,75 @@
 </ul></div>
 </div>
 </div>
+<div class="section level1">
+<h1 id="context-mode--mandatory-routing-rules">context-mode — MANDATORY routing rules<a class="anchor" aria-label="anchor" href="#context-mode--mandatory-routing-rules"></a></h1>
+<p>You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.</p>
+<div class="section level2">
+<h2 id="blocked-commands--do-not-attempt-these">BLOCKED commands — do NOT attempt these<a class="anchor" aria-label="anchor" href="#blocked-commands--do-not-attempt-these"></a></h2>
+<div class="section level3">
+<h3 id="curl--wget--blocked">curl / wget — BLOCKED<a class="anchor" aria-label="anchor" href="#curl--wget--blocked"></a></h3>
+<p>Any Bash command containing <code>curl</code> or <code>wget</code> is intercepted and replaced with an error message. Do NOT retry. Instead use: - <code>ctx_fetch_and_index(url, source)</code> to fetch and index web pages - <code>ctx_execute(language: "javascript", code: "const r = await fetch(...)")</code> to run HTTP calls in sandbox</p>
+</div>
+<div class="section level3">
+<h3 id="inline-http--blocked">Inline HTTP — BLOCKED<a class="anchor" aria-label="anchor" href="#inline-http--blocked"></a></h3>
+<p>Any Bash command containing <code>fetch('http</code>, <code>requests.get(</code>, <code>requests.post(</code>, <code>http.get(</code>, or <code>http.request(</code> is intercepted and replaced with an error message. Do NOT retry with Bash. Instead use: - <code>ctx_execute(language, code)</code> to run HTTP calls in sandbox — only stdout enters context</p>
+</div>
+<div class="section level3">
+<h3 id="webfetch--blocked">WebFetch — BLOCKED<a class="anchor" aria-label="anchor" href="#webfetch--blocked"></a></h3>
+<p>WebFetch calls are denied entirely. The URL is extracted and you are told to use <code>ctx_fetch_and_index</code> instead. Instead use: - <code>ctx_fetch_and_index(url, source)</code> then <code>ctx_search(queries)</code> to query the indexed content</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="redirected-tools--use-sandbox-equivalents">REDIRECTED tools — use sandbox equivalents<a class="anchor" aria-label="anchor" href="#redirected-tools--use-sandbox-equivalents"></a></h2>
+<div class="section level3">
+<h3 id="bash-20-lines-output">Bash (&gt;20 lines output)<a class="anchor" aria-label="anchor" href="#bash-20-lines-output"></a></h3>
+<p>Bash is ONLY for: <code>git</code>, <code>mkdir</code>, <code>rm</code>, <code>mv</code>, <code>cd</code>, <code>ls</code>, <code>npm install</code>, <code>pip install</code>, and other short-output commands. For everything else, use: - <code>ctx_batch_execute(commands, queries)</code> — run multiple commands + search in ONE call - <code>ctx_execute(language: "shell", code: "...")</code> — run in sandbox, only stdout enters context</p>
+</div>
+<div class="section level3">
+<h3 id="read-for-analysis">Read (for analysis)<a class="anchor" aria-label="anchor" href="#read-for-analysis"></a></h3>
+<p>If you are reading a file to <strong>Edit</strong> it → Read is correct (Edit needs content in context). If you are reading to <strong>analyze, explore, or summarize</strong> → use <code>ctx_execute_file(path, language, code)</code> instead. Only your printed summary enters context. The raw file content stays in the sandbox.</p>
+</div>
+<div class="section level3">
+<h3 id="grep-large-results">Grep (large results)<a class="anchor" aria-label="anchor" href="#grep-large-results"></a></h3>
+<p>Grep results can flood context. Use <code>ctx_execute(language: "shell", code: "grep ...")</code> to run searches in sandbox. Only your printed summary enters context.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="tool-selection-hierarchy">Tool selection hierarchy<a class="anchor" aria-label="anchor" href="#tool-selection-hierarchy"></a></h2>
+<ol style="list-style-type: decimal"><li>
+<strong>GATHER</strong>: <code>ctx_batch_execute(commands, queries)</code> — Primary tool. Runs all commands, auto-indexes output, returns search results. ONE call replaces 30+ individual calls.</li>
+<li>
+<strong>FOLLOW-UP</strong>: <code>ctx_search(queries: ["q1", "q2", ...])</code> — Query indexed content. Pass ALL questions as array in ONE call.</li>
+<li>
+<strong>PROCESSING</strong>: <code>ctx_execute(language, code)</code> | <code>ctx_execute_file(path, language, code)</code> — Sandbox execution. Only stdout enters context.</li>
+<li>
+<strong>WEB</strong>: <code>ctx_fetch_and_index(url, source)</code> then <code>ctx_search(queries)</code> — Fetch, chunk, index, query. Raw HTML never enters context.</li>
+<li>
+<strong>INDEX</strong>: <code>ctx_index(content, source)</code> — Store content in FTS5 knowledge base for later search.</li>
+</ol></div>
+<div class="section level2">
+<h2 id="subagent-routing">Subagent routing<a class="anchor" aria-label="anchor" href="#subagent-routing"></a></h2>
+<p>When spawning subagents (Agent/Task tool), the routing block is automatically injected into their prompt. Bash-type subagents are upgraded to general-purpose so they have access to MCP tools. You do NOT need to manually instruct subagents about context-mode.</p>
+</div>
+<div class="section level2">
+<h2 id="output-constraints">Output constraints<a class="anchor" aria-label="anchor" href="#output-constraints"></a></h2>
+<ul><li>Keep responses under 500 words.</li>
+<li>Write artifacts (code, configs, PRDs) to FILES — never return them as inline text. Return only: file path + 1-line description.</li>
+<li>When indexing content, use descriptive source labels so others can <code>ctx_search(source: "label")</code> later.</li>
+</ul></div>
+<div class="section level2">
+<h2 id="ctx-commands">ctx commands<a class="anchor" aria-label="anchor" href="#ctx-commands"></a></h2>
+<table class="table"><colgroup><col width="52%"><col width="47%"></colgroup><thead><tr><th>Command</th>
+<th>Action</th>
+</tr></thead><tbody><tr><td><code>ctx stats</code></td>
+<td>Call the <code>ctx_stats</code> MCP tool and display the full output verbatim</td>
+</tr><tr><td><code>ctx doctor</code></td>
+<td>Call the <code>ctx_doctor</code> MCP tool, run the returned shell command, display as checklist</td>
+</tr><tr><td><code>ctx upgrade</code></td>
+<td>Call the <code>ctx_upgrade</code> MCP tool, run the returned shell command, display as checklist</td>
+</tr></tbody></table></div>
+</div>
+
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
