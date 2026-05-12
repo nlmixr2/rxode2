@@ -18,7 +18,7 @@ using namespace Rcpp;
 //' automatically changes the estimate.
 //'
 //' @param neq       Number of ODE states (\code{length(rxModelVars(model)$state)}).
-//' @param state_size Effective \code{state.size()} passed to the solver.
+//' @param stateSize Effective \code{state.size()} passed to the solver.
 //'   For pure ODE models this equals \code{neq}; for linCmt-only models it
 //'   may be 0.  Use \code{neq} when in doubt.
 //' @param nlhs      Number of LHS (calculated) outputs.
@@ -36,7 +36,7 @@ using namespace Rcpp;
 //' @param numLinSens Number of linear sensitivity parameters (FOCEi mixed models).
 //' @param numLin    Number of linear compartment terms (FOCEi mixed models).
 //' @param nsub      Number of subjects.
-//' @param nall_total Total events across all subjects (sum of obs + doses).
+//' @param nallTotal Total events across all subjects (sum of obs + doses).
 //' @param maxAllTimes Maximum events for any single subject.
 //' @return Named numeric vector; each element is bytes for that allocation.
 //'   Also includes \code{sizeof_ind} (bytes per \code{rx_solving_options_ind}
@@ -45,7 +45,7 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 NumericVector rxMemoryComponents_(
   int    neq,
-  int    state_size,
+  int    stateSize,
   int    nlhs,
   int    npars,
   int    neta,
@@ -61,13 +61,13 @@ NumericVector rxMemoryComponents_(
   int    numLinSens,
   int    numLin,
   int    nsub,
-  double nall_total,
+  double nallTotal,
   double maxAllTimes)
 {
   rx_mem_layout _mem;
   rxFillMemLayout(
     neq,
-    state_size,
+    stateSize,
     nlhs,
     nsim,
     cores,
@@ -77,7 +77,7 @@ NumericVector rxMemoryComponents_(
     nLlik,
     nIndSim,
     nsub,
-    (int64_t)nall_total,
+    (int64_t)nallTotal,
     (int)maxAllTimes,
     numLinSens,
     numLin,
@@ -86,16 +86,16 @@ NumericVector rxMemoryComponents_(
     &_mem);
 
   /* Byte counts for allocations outside gsolve/gon */
-  double b_gall_times  = 5.0  * nall_total * sizeof(double);
-  double b_gevid       = 3.0  * nall_total * sizeof(int);
-  double b_gcov        = (double)ncov * nall_total * sizeof(double);
+  double b_gall_times  = 5.0  * nallTotal * sizeof(double);
+  double b_gevid       = 3.0  * nallTotal * sizeof(int);
+  double b_gcov        = (double)ncov * nallTotal * sizeof(double);
   double b_gpars       = (double)npars * nsub * sizeof(double);
   double b_gomega      = (double)(2 * neta + neta * neta) * sizeof(double);
   double b_gsigma      = (double)(2 * neps + neps * neps) * sizeof(double);
   double b_gall_timesS = (nsim > 1)
-                           ? 2.0 * (nsim - 1) * nall_total * sizeof(double)
+                           ? 2.0 * (nsim - 1) * nallTotal * sizeof(double)
                            : 0.0;
-  double b_ordId       = nall_total * sizeof(int);
+  double b_ordId       = nallTotal * sizeof(int);
   double b_gInfRate    = (double)cores * (neq + extraCmt) * sizeof(double);
   double b_inds        = (double)nsub  * sizeof(rx_solving_options_ind);
 

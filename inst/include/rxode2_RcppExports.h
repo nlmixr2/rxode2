@@ -1032,7 +1032,7 @@ namespace rxode2 {
         return Rcpp::as<RObject >(rcpp_result_gen);
     }
 
-    inline NumericVector rxMemoryComponents_(int neq, int state_size, int nlhs, int npars, int neta, int neps, int ncov, int nsim, int cores, int nMtime, int extraCmt, int linB, int nLlik, int nIndSim, int numLinSens, int numLin, int nsub, double nall_total, double maxAllTimes) {
+    inline NumericVector rxMemoryComponents_(int neq, int stateSize, int nlhs, int npars, int neta, int neps, int ncov, int nsim, int cores, int nMtime, int extraCmt, int linB, int nLlik, int nIndSim, int numLinSens, int numLin, int nsub, double nallTotal, double maxAllTimes) {
         typedef SEXP(*Ptr_rxMemoryComponents_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxMemoryComponents_ p_rxMemoryComponents_ = NULL;
         if (p_rxMemoryComponents_ == NULL) {
@@ -1042,7 +1042,7 @@ namespace rxode2 {
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_rxMemoryComponents_(Shield<SEXP>(Rcpp::wrap(neq)), Shield<SEXP>(Rcpp::wrap(state_size)), Shield<SEXP>(Rcpp::wrap(nlhs)), Shield<SEXP>(Rcpp::wrap(npars)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(neps)), Shield<SEXP>(Rcpp::wrap(ncov)), Shield<SEXP>(Rcpp::wrap(nsim)), Shield<SEXP>(Rcpp::wrap(cores)), Shield<SEXP>(Rcpp::wrap(nMtime)), Shield<SEXP>(Rcpp::wrap(extraCmt)), Shield<SEXP>(Rcpp::wrap(linB)), Shield<SEXP>(Rcpp::wrap(nLlik)), Shield<SEXP>(Rcpp::wrap(nIndSim)), Shield<SEXP>(Rcpp::wrap(numLinSens)), Shield<SEXP>(Rcpp::wrap(numLin)), Shield<SEXP>(Rcpp::wrap(nsub)), Shield<SEXP>(Rcpp::wrap(nall_total)), Shield<SEXP>(Rcpp::wrap(maxAllTimes)));
+            rcpp_result_gen = p_rxMemoryComponents_(Shield<SEXP>(Rcpp::wrap(neq)), Shield<SEXP>(Rcpp::wrap(stateSize)), Shield<SEXP>(Rcpp::wrap(nlhs)), Shield<SEXP>(Rcpp::wrap(npars)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(neps)), Shield<SEXP>(Rcpp::wrap(ncov)), Shield<SEXP>(Rcpp::wrap(nsim)), Shield<SEXP>(Rcpp::wrap(cores)), Shield<SEXP>(Rcpp::wrap(nMtime)), Shield<SEXP>(Rcpp::wrap(extraCmt)), Shield<SEXP>(Rcpp::wrap(linB)), Shield<SEXP>(Rcpp::wrap(nLlik)), Shield<SEXP>(Rcpp::wrap(nIndSim)), Shield<SEXP>(Rcpp::wrap(numLinSens)), Shield<SEXP>(Rcpp::wrap(numLin)), Shield<SEXP>(Rcpp::wrap(nsub)), Shield<SEXP>(Rcpp::wrap(nallTotal)), Shield<SEXP>(Rcpp::wrap(maxAllTimes)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

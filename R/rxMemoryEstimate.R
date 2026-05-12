@@ -1,24 +1,9 @@
-## Memory estimation for rxSolve()
-##
-## Public surface:
-##   rxMemSummary()       — constructor for per-ID summary data
-##   rxMemoryEstimate()   — main estimation function
-##   print.rxMemoryEstimate()
-
-# -------------------------------------------------------------------------
-# Detection helpers
-# -------------------------------------------------------------------------
-
-.isRxMemSummary <- function(.dat) {
-  inherits(.dat, "rxMemSummary") ||
-    (is.data.frame(.dat) &&
-       all(c("nobs", "ndoses") %in% names(.dat)) &&
-       !("evid" %in% names(.dat)))
+.isRxMemSummary <- function(dat) {
+  inherits(dat, "rxMemSummary") ||
+    (is.data.frame(dat) &&
+       all(c("nobs", "ndoses") %in% names(dat)) &&
+       !("evid" %in% names(dat)))
 }
-
-# -------------------------------------------------------------------------
-# rxMemSummary constructor
-# -------------------------------------------------------------------------
 
 #' Create a per-ID event summary for memory estimation
 #'
@@ -33,25 +18,21 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .ret
 }
 
-# -------------------------------------------------------------------------
-# Internal: summarise a raw event table → rxMemSummary
-# -------------------------------------------------------------------------
-
-.rxMemSummarizeDat <- function(.dat) {
+.rxMemSummarizeDat <- function(dat) {
   .evidCol <- "evid"
-  .idCol   <- grep("^id$", names(.dat), ignore.case = TRUE, value = TRUE)[1]
+  .idCol   <- grep("^id$", names(dat), ignore.case = TRUE, value = TRUE)[1]
 
   if (is.na(.idCol)) {
     .ret <- rxMemSummary(
-      nobs   = sum(.dat[[.evidCol]] == 0L, na.rm = TRUE),
-      ndoses = sum(.dat[[.evidCol]] != 0L, na.rm = TRUE)
+      nobs   = sum(dat[[.evidCol]] == 0L, na.rm = TRUE),
+      ndoses = sum(dat[[.evidCol]] != 0L, na.rm = TRUE)
     )
   } else {
-    .ids <- unique(.dat[[.idCol]])
-    .ret <- do.call(rbind, lapply(.ids, function(.id) {
-      .sub <- .dat[.dat[[.idCol]] == .id, ]
+    .ids <- unique(dat[[.idCol]])
+    .ret <- do.call(rbind, lapply(.ids, function(id) {
+      .sub <- dat[dat[[.idCol]] == id, ]
       rxMemSummary(
-        id     = .id,
+        id     = id,
         nobs   = sum(.sub[[.evidCol]] == 0L, na.rm = TRUE),
         ndoses = sum(.sub[[.evidCol]] != 0L, na.rm = TRUE)
       )
@@ -61,42 +42,30 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .ret
 }
 
-# -------------------------------------------------------------------------
-# Internal: extract model dimensions from an rxode2 model object
-# -------------------------------------------------------------------------
-
-.rxMemExtractModel <- function(.model) {
-  .mv    <- rxModelVars(.model)
-  .flags <- .mv[["flags"]]  # integer vector; positions are RxMvFlag_* (0-indexed)
+.rxMemExtractModel <- function(model) {
+  .mv    <- rxModelVars(model)
+  .flags <- .mv[["flags"]]
 
   list(
-    neq        = length(.mv[["state"]]),
-    state_size = length(.mv[["state"]]),   # equals neq for pure ODE models
-    nlhs       = length(.mv[["lhs"]]),
-    npars      = length(.mv[["params"]]),
-    extraCmt   = as.integer(.mv[["extraCmt"]]),
-    linB       = as.integer(.flags[3L]),   # RxMvFlag_linB = 2
-    nMtime     = as.integer(.mv[["nMtime"]]),
-    nLlik      = as.integer(.flags[12L]),  # RxMvFlag_nLlik = 11
-    nIndSim    = as.integer(.flags[9L])    # RxMvFlag_nIndSim = 8
+    neq       = length(.mv[["state"]]),
+    stateSize = length(.mv[["state"]]),
+    nlhs      = length(.mv[["lhs"]]),
+    npars     = length(.mv[["params"]]),
+    extraCmt  = as.integer(.mv[["extraCmt"]]),
+    linB      = as.integer(.flags[3L]),
+    nMtime    = as.integer(.mv[["nMtime"]]),
+    nLlik     = as.integer(.flags[12L]),
+    nIndSim   = as.integer(.flags[9L])
   )
 }
 
-# -------------------------------------------------------------------------
-# Internal: wrap raw bytes in memuse objects when the package is available
-# -------------------------------------------------------------------------
-
-.toMemuse <- function(.bytes) {
+.toMemuse <- function(bytes) {
   if (requireNamespace("memuse", quietly = TRUE)) {
-    memuse::mu(.bytes, unit = "B", unit.names = "short")
+    memuse::mu(bytes, unit = "B", unit.names = "short")
   } else {
-    structure(.bytes, class = "rxRawBytes")
+    structure(bytes, class = "rxRawBytes")
   }
 }
-
-# -------------------------------------------------------------------------
-# rxMemoryEstimate
-# -------------------------------------------------------------------------
 
 #' Estimate memory required by rxSolve() for a given dataset and model
 #'
@@ -116,7 +85,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   \code{nlhs}, \code{npars}, \code{extraCmt}, \code{linB}, \code{nMtime},
 #'   \code{nLlik}, and \code{nIndSim} are extracted automatically.
 #' @param neq        Number of ODE states.
-#' @param state_size Effective \code{state.size()} seen by the solver.  Equals
+#' @param stateSize  Effective \code{state.size()} seen by the solver.  Equals
 #'   \code{neq} for pure ODE models; may differ for linCmt-only models.
 #'   Defaults to \code{neq}.
 #' @param nlhs       Number of LHS (calculated) output variables.
@@ -141,28 +110,24 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @export
 rxMemoryEstimate <- function(
   dat,
-  model      = NULL,
-  neq        = 1L,
-  state_size = neq,
-  nlhs       = 0L,
-  npars      = neq,
-  neta       = 0L,
-  neps       = 0L,
-  ncov       = 0L,
-  nsim       = 1L,
-  cores      = 1L,
-  nMtime     = 0L,
-  extraCmt   = 0L,
-  linB       = FALSE,
-  nLlik      = 0L,
-  nIndSim    = NULL,
+  model     = NULL,
+  neq       = 1L,
+  stateSize = neq,
+  nlhs      = 0L,
+  npars     = neq,
+  neta      = 0L,
+  neps      = 0L,
+  ncov      = 0L,
+  nsim      = 1L,
+  cores     = 1L,
+  nMtime    = 0L,
+  extraCmt  = 0L,
+  linB      = FALSE,
+  nLlik     = 0L,
+  nIndSim   = NULL,
   numLinSens = 0L,
-  numLin     = 0L
+  numLin    = 0L
 ) {
-
-  # ------------------------------------------------------------------
-  # 1. Resolve dat → rxMemSummary
-  # ------------------------------------------------------------------
   if (.isRxMemSummary(dat)) {
     .summary <- dat
     if (!inherits(.summary, "rxMemSummary")) {
@@ -175,41 +140,29 @@ rxMemoryEstimate <- function(
          "columns, or a data.frame with an 'evid' column")
   }
 
-  # ------------------------------------------------------------------
-  # 2. Extract model dimensions (overrides manual args)
-  # ------------------------------------------------------------------
   if (!is.null(model)) {
-    .mi        <- .rxMemExtractModel(model)
-    neq        <- .mi$neq
-    state_size <- .mi$state_size
-    nlhs       <- .mi$nlhs
-    npars      <- .mi$npars
-    extraCmt   <- .mi$extraCmt
-    linB       <- .mi$linB
-    nMtime     <- .mi$nMtime
-    nLlik      <- .mi$nLlik
+    .mi       <- .rxMemExtractModel(model)
+    neq       <- .mi$neq
+    stateSize <- .mi$stateSize
+    nlhs      <- .mi$nlhs
+    npars     <- .mi$npars
+    extraCmt  <- .mi$extraCmt
+    linB      <- .mi$linB
+    nMtime    <- .mi$nMtime
+    nLlik     <- .mi$nLlik
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
   }
 
-  # ------------------------------------------------------------------
-  # 3. Auto-default nIndSim
-  # ------------------------------------------------------------------
   if (is.null(nIndSim)) nIndSim <- neta + neps
 
-  # ------------------------------------------------------------------
-  # 4. Summary statistics
-  # ------------------------------------------------------------------
   .nsub        <- nrow(.summary)
-  .nall_vec    <- .summary$nobs + .summary$ndoses
-  .nall_total  <- sum(.nall_vec)
-  .maxAllTimes <- max(.nall_vec)
+  .nallVec     <- .summary$nobs + .summary$ndoses
+  .nallTotal   <- sum(.nallVec)
+  .maxAllTimes <- max(.nallVec)
 
-  # ------------------------------------------------------------------
-  # 5. Byte counts via C (same formulas as the allocator)
-  # ------------------------------------------------------------------
   .raw <- rxMemoryComponents_(
     neq        = as.integer(neq),
-    state_size = as.integer(state_size),
+    stateSize  = as.integer(stateSize),
     nlhs       = as.integer(nlhs),
     npars      = as.integer(npars),
     neta       = as.integer(neta),
@@ -225,30 +178,22 @@ rxMemoryEstimate <- function(
     numLinSens = as.integer(numLinSens),
     numLin     = as.integer(numLin),
     nsub       = as.integer(.nsub),
-    nall_total = as.double(.nall_total),
+    nallTotal  = as.double(.nallTotal),
     maxAllTimes = as.double(.maxAllTimes)
   )
 
-  # ------------------------------------------------------------------
-  # 6. Wrap in memuse objects
-  # ------------------------------------------------------------------
-  .meta <- c("sizeof_ind", "rxLlikSaveSize")
-  .sizes <- .raw[!names(.raw) %in% .meta]
-
+  .meta    <- c("sizeof_ind", "rxLlikSaveSize")
+  .sizes   <- .raw[!names(.raw) %in% .meta]
   .wrapped <- lapply(.sizes, .toMemuse)
   .total   <- Reduce(`+`, .wrapped)
 
   .ret <- c(list(total = .total), .wrapped,
-            list(sizeof_ind      = .raw[["sizeof_ind"]],
-                 rxLlikSaveSize  = .raw[["rxLlikSaveSize"]]))
+            list(sizeof_ind     = .raw[["sizeof_ind"]],
+                 rxLlikSaveSize = .raw[["rxLlikSaveSize"]]))
   class(.ret) <- "rxMemoryEstimate"
   attr(.ret, "summary") <- .summary
   .ret
 }
-
-# -------------------------------------------------------------------------
-# print method
-# -------------------------------------------------------------------------
 
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
@@ -257,11 +202,11 @@ print.rxMemoryEstimate <- function(x, ...) {
 
   .hasMem <- requireNamespace("memuse", quietly = TRUE)
 
-  .fmtSize <- function(.v) {
-    if (.hasMem && inherits(.v, "memuse")) {
-      format(.v, ...)
+  .fmtSize <- function(v) {
+    if (.hasMem && inherits(v, "memuse")) {
+      format(v, ...)
     } else {
-      .b <- if (is.numeric(.v)) .v else unclass(.v)
+      .b <- if (is.numeric(v)) v else unclass(v)
       if (.b >= 1e9)       sprintf("%.2f GB", .b / 1e9)
       else if (.b >= 1e6)  sprintf("%.2f MB", .b / 1e6)
       else if (.b >= 1e3)  sprintf("%.2f KB", .b / 1e3)
@@ -272,12 +217,12 @@ print.rxMemoryEstimate <- function(x, ...) {
   cat("rxSolve() memory estimate\n")
   cat(sprintf("  Total: %s\n\n", .fmtSize(x$total)))
 
-  .bytes <- vapply(.comps, function(.v) {
-    if (.hasMem && inherits(.v, "memuse")) {
-      .obj <- memuse::mu(.v, unit = "B", unit.names = "short")
+  .bytes <- vapply(.comps, function(v) {
+    if (.hasMem && inherits(v, "memuse")) {
+      .obj <- memuse::mu(v, unit = "B", unit.names = "short")
       as.numeric(format(.obj, unit = "B"))
     } else {
-      as.numeric(.v)
+      as.numeric(v)
     }
   }, numeric(1))
 
