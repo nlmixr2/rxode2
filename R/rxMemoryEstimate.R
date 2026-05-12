@@ -219,7 +219,7 @@ rxMemoryEstimate <- function(
   neps      = 0L,
   ncov      = 0L,
   nsim      = 1L,
-  cores     = 1L,
+  cores     = 0L,
   nMtime    = 0L,
   extraCmt  = 0L,
   linB      = FALSE,
@@ -261,7 +261,9 @@ rxMemoryEstimate <- function(
     if (.ci$neps > 0L) neps <- .ci$neps
     if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
   }
-
+  if (cores == 0) {
+    cores <- getRxThreads()
+  }
   if (is.null(nIndSim)) nIndSim <- neta + neps
 
   .nallVec     <- .summary$nobs + .summary$ndoses
