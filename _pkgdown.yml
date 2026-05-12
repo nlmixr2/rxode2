@@ -235,6 +235,8 @@ reference:
   - rxStateOde
   - rxSymInvChol
   - swapMatListWithCube
+  - rxMemSummary
+  - rxMemoryEstimate
   - forderForceBase
 - title: Testing & Validation
   desc: Run unit tests and validate rxode2 installations.

@@ -128,21 +128,6 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     NA_real_
   }, error = function(e) NA_real_)
 }
-#' Convert raw byte counts to memuse objects if memuse is available
-#'
-#'
-#' @param bytes bytes to convert
-#' @return A memuse object if memuse is available, otherwise the
-#'   original byte count with class "rxRawBytes".
-#' @noRd
-#' @author Matthew L. Fidler
-.toMemuse <- function(bytes) {
-  if (requireNamespace("memuse", quietly = TRUE)) {
-    memuse::mu(bytes, unit = "B", unit.names = "short")
-  } else {
-    structure(bytes, class = "rxRawBytes")
-  }
-}
 
 #' Estimate memory required by rxSolve() for a given dataset and model
 #'
@@ -155,39 +140,42 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' the same \code{rxFillMemLayout()} used by the real allocator, so any
 #' change to the allocation formulas propagates here automatically.
 #'
-#' @param dat        A \code{\link{rxMemSummary}}, a data.frame with
-#'   \code{nobs}/\code{ndoses} columns, or a full event-table data.frame
-#'   with an \code{evid} column.
-#' @param model      Optional rxode2 model object.  When supplied, \code{neq},
-#'   \code{nlhs}, \code{npars}, \code{extraCmt}, \code{linB}, \code{nMtime},
-#'   \code{nLlik}, and \code{nIndSim} are extracted automatically.
-#' @param control    Optional \code{\link{rxControl}} object.  When supplied,
-#'   \code{cores}, \code{nsim}, \code{neta} (from \code{omega}), \code{neps}
-#'   (from \code{sigma}), and \code{nLlik} (adjusted by \code{nLlikAlloc})
-#'   are overridden automatically.
-#' @param neq        Number of ODE states.
-#' @param stateSize  Effective \code{state.size()} seen by the solver.  Equals
-#'   \code{neq} for pure ODE models; may differ for linCmt-only models.
-#'   Defaults to \code{neq}.
-#' @param nlhs       Number of LHS (calculated) output variables.
-#' @param npars      Number of model parameters (drives \code{gpars} size).
-#' @param neta       Number of random effects (etas).
-#' @param neps       Number of residual-error levels (epsilons).
-#' @param ncov       Number of time-varying covariates.
-#' @param nsim       Number of simulations.
-#' @param cores      Number of parallel OMP threads.
-#' @param nMtime     Number of model measurement times.
-#' @param extraCmt   Extra compartments (0, 1 = depot, 2 = depot+central).
-#' @param linB       \code{TRUE}/\code{1} if using a linear-compartment model.
-#' @param nLlik      Number of log-likelihood terms (FOCEi use).
-#' @param nIndSim    Per-individual simulation count.  Defaults to
+#' @param dat A \code{\link{rxMemSummary}}, a data.frame with
+#'   \code{nobs}/\code{ndoses} columns, or a full event-table
+#'   data.frame with an \code{evid} column.
+#' @param model Optional rxode2 model object.  When supplied,
+#'   \code{neq}, \code{nlhs}, \code{npars}, \code{extraCmt},
+#'   \code{linB}, \code{nMtime}, \code{nLlik}, and \code{nIndSim} are
+#'   extracted automatically.
+#' @param control Optional \code{\link{rxControl}} object.  When
+#'   supplied, \code{cores}, \code{nsim}, \code{neta} (from
+#'   \code{omega}), \code{neps} (from \code{sigma}), and \code{nLlik}
+#'   (adjusted by \code{nLlikAlloc}) are overridden automatically.
+#' @param neq Number of ODE states.
+#' @param stateSize Effective \code{state.size()} seen by the solver.
+#'   Equals \code{neq} for pure ODE models; may differ for linCmt-only
+#'   models.  Defaults to \code{neq}.
+#' @param nlhs Number of LHS (calculated) output variables.
+#' @param npars Number of model parameters (drives \code{gpars} size).
+#' @param neta Number of random effects (etas).
+#' @param neps Number of residual-error levels (epsilons).
+#' @param ncov Number of time-varying covariates.
+#' @param nsim Number of simulations.
+#' @param cores Number of parallel OMP threads.
+#' @param nMtime Number of model measurement times.
+#' @param extraCmt Extra compartments (0, 1 = depot, 2 =
+#'   depot+central).
+#' @param linB \code{TRUE}/\code{1} if using a linear-compartment
+#'   model.
+#' @param nLlik Number of log-likelihood terms (FOCEi use).
+#' @param nIndSim Per-individual simulation count.  Defaults to
 #'   \code{neta + neps} when not supplied explicitly.
-#' @param numLinSens Number of linear sensitivity parameters (FOCEi + linCmt).
-#' @param numLin     Number of linear compartment terms (FOCEi + linCmt).
-#' @return A named list of class \code{"rxMemoryEstimate"} whose elements are
-#'   \code{memuse} objects (or raw byte counts if \pkg{memuse} is not
-#'   installed) plus \code{total}, \code{sizeofInd}, and
-#'   \code{rxLlikSaveSize}.
+#' @param numLinSens Number of linear sensitivity parameters (FOCEi +
+#'   linCmt).
+#' @param numLin Number of linear compartment terms (FOCEi + linCmt).
+#' @return A named list of class \code{"rxMemoryEstimate"} whose
+#'   elements are raw byte counts plus \code{ramBytes}, \code{total},
+#'   \code{sizeofInd}, and \code{rxLlikSaveSize}.
 #' @export
 #'
 #' @examples
@@ -299,7 +287,9 @@ rxMemoryEstimate <- function(
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
   .sizes   <- .raw[!names(.raw) %in% .meta]
-  .wrapped <- lapply(.sizes, .toMemuse)
+  .wrapped <- lapply(.sizes, function(bytes) {
+    structure(bytes, class = "rxRawBytes")
+  })
   .total   <- Reduce(`+`, .wrapped)
 
   .ret <- c(list(total = .total), .wrapped,
@@ -376,11 +366,7 @@ print.rxMemoryEstimate <- function(x, ...) {
 
   .ramBytes <- x$ramBytes
   if (!is.null(.ramBytes) && !is.na(.ramBytes) && .ramBytes > 0) {
-    .totalBytes <- if (.hasMem && inherits(x$total, "memuse")) {
-      as.numeric(memuse::mu(x$total, unit = "B"))
-    } else {
-      as.numeric(x$total)
-    }
+    .totalBytes <- as.numeric(x$total)
     cat(sprintf("  |  %.1f%% of RAM (%s)\n",
                 100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
   } else {
