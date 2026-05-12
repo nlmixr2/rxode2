@@ -949,6 +949,33 @@ rxOptRep_ <- function(input) {
     .Call(`_rxode2_rxOptRep_`, input)
 }
 
+#' Save the pre-integration rxode2 solver state to a binary file
+#'
+#' Called internally after event-table and parameter setup but before ODE
+#' integration.  The file can later be restored with rxRestoreState_().
+#'
+#' @param path File path to write (created/overwritten).
+#' @return Invisibly TRUE.
+#' @noRd
+rxSaveState_ <- function(pathSexp) {
+    .Call(`_rxode2_rxSaveState_`, pathSexp)
+}
+
+#' Check whether a file was written by rxSaveState_
+#' @noRd
+rxIsSerializeFile_ <- function(pathSexp) {
+    .Call(`_rxode2_rxIsSerializeFile_`, pathSexp)
+}
+
+#' Restore a pre-integration rxode2 solver state from binary file
+#'
+#' @param path File path written by rxSaveState_().
+#' @return Invisibly TRUE.
+#' @noRd
+rxRestoreState_ <- function(pathSexp) {
+    .Call(`_rxode2_rxRestoreState_`, pathSexp)
+}
+
 rxStack_ <- function(Data, vars = NULL) {
     .Call(`_rxode2_rxStack_`, Data, vars)
 }
