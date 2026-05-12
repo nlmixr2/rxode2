@@ -46,10 +46,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nlhs      = length(.mv[["lhs"]]),
     npars     = length(.mv[["params"]]),
     extraCmt  = as.integer(.mv[["extraCmt"]]),
-    linB      = as.integer(.flags[3L]),
+    linB      = as.integer(.flags["linB"]),
     nMtime    = as.integer(.mv[["nMtime"]]),
-    nLlik     = as.integer(.flags[12L]),
-    nIndSim   = as.integer(.flags[9L])
+    nLlik     = as.integer(.flags["nLlik"]),
+    nIndSim   = as.integer(.flags["nIndSim"])
   )
 }
 
