@@ -908,6 +908,43 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
     .Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, what, theta)
 }
 
+#' Report the byte sizes of every rxode2 solver memory allocation
+#'
+#' Returns a named numeric vector of byte counts for every buffer rxode2
+#' allocates during \code{rxSolve()}.  Values are computed with the same
+#' formulas used by the actual allocator in \code{rxData.cpp} via the shared
+#' \code{rxFillMemLayout()} function, so any change to the allocator
+#' automatically changes the estimate.
+#'
+#' @param neq       Number of ODE states (\code{length(rxModelVars(model)$state)}).
+#' @param stateSize Effective \code{state.size()} passed to the solver.
+#'   For pure ODE models this equals \code{neq}; for linCmt-only models it
+#'   may be 0.  Use \code{neq} when in doubt.
+#' @param nlhs      Number of LHS (calculated) outputs.
+#' @param npars     Number of model parameters (for \code{gpars} estimate).
+#' @param neta      Number of random effects (etas).
+#' @param neps      Number of residual-error levels (epsilons).
+#' @param ncov      Number of time-varying covariates.
+#' @param nsim      Number of simulations.
+#' @param cores     Number of parallel OMP threads.
+#' @param nMtime    Number of model measurement times.
+#' @param extraCmt  Extra compartments (0, 1 = depot, 2 = depot+central).
+#' @param linB      1 if using an analytical linear-compartment model, else 0.
+#' @param nLlik     Number of log-likelihood terms (FOCEi).
+#' @param nIndSim   Per-individual simulation count (typically \code{neta+neps}).
+#' @param numLinSens Number of linear sensitivity parameters (FOCEi mixed models).
+#' @param numLin    Number of linear compartment terms (FOCEi mixed models).
+#' @param nsub      Number of subjects.
+#' @param nallTotal Total events across all subjects (sum of obs + doses).
+#' @param maxAllTimes Maximum events for any single subject.
+#' @return Named numeric vector; each element is bytes for that allocation.
+#'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
+#'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
+#' @noRd
+rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes) {
+    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes)
+}
+
 rxOptRep_ <- function(input) {
     .Call(`_rxode2_rxOptRep_`, input)
 }

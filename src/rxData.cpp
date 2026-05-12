@@ -34,6 +34,7 @@
 #include "rxomp.h"
 #include "rxMemAvail.h"
 #include "strncmp.h"
+#include "../inst/include/rxMemoryCalc.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -5616,53 +5617,57 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
            rx->nsim);
     }
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
-    int64_t n0 = rx->nall*state.size()*rx->nsim;
-    int64_t nsave = op->neq*op->cores;
-    int64_t n2  = (int64_t)rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
-    int64_t n3  = op->neq*rxSolveDat->nSize;
-    int64_t n3a_c = ((int64_t)op->neq + op->extraCmt) * op->cores;
-    //REprintf("n3a_c: %d, cores: %d\n", op->cores);
+
+    // Compute inits and scale first so their actual sizes feed into the layout.
 #ifdef rxSolveT
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-
     rxSolveDat->initsC = rxInits(object, inits, state, 0.0);
-
 #ifdef rxSolveT
     RSprintf("Time12b: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-
-    int64_t n4 = rxSolveDat->initsC.size();
-    int64_t n5_c = (int64_t)lhs.size()*op->cores;
-    int64_t nllik_c = (int64_t)rxLlikSaveSize*op->nLlik*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
-    int64_t n6 = scaleC.size();
-    int64_t nIndSim = rx->nIndSim;
-    int64_t n7 =  nIndSim * (int64_t)rx->nsub * rx->nsim;
-    int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
-    int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
-    int64_t n10 = (int64_t)(op->neq)*op->cores;
-    int64_t n11 = 4 * op->neq * op->cores; // per-thread tolerance arrays (atol2, rtol2, ssAtol, ssRtol)
-    int64_t nmtime0_c = (int64_t)rx->nMtime * op->cores;
-    int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
+
+    // Fill layout using the single formula source (inst/include/rxMemoryCalc.h).
+    // All element counts and the two calloc totals (gsolve_total, gon_total)
+    // are computed here; nothing is duplicated below.
+    rx_mem_layout _mem;
+    rxFillMemLayout(
+      op->neq,
+      (int)state.size(),                      /* state_size: exact, not neq proxy */
+      (int)lhs.size(),                         /* nlhs */
+      (int)rx->nsim,
+      op->cores,
+      rx->nMtime,
+      op->extraCmt,
+      rx->linB,
+      op->nLlik,
+      rx->nIndSim,
+      (int)rx->nsub,
+      (int64_t)rx->nall,
+      rx->maxAllTimes,
+      op->numLinSens,
+      op->numLin,
+      (int64_t)rxSolveDat->initsC.size(),     /* n4_actual */
+      (int64_t)scaleC.size(),                 /* n6_actual */
+      &_mem);
+
     // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
     // Portable, zero-cost backstop that catches the dominant overflow path.
-    if (n0 > (int64_t)INT_MAX) {
+    if (_mem.n0 > (int64_t)INT_MAX) {
       rxSolveFree();
       stop(_("the solver buffer (%lld elements, %.1f GB) is too large for rxSolve to handle; "
              "reduce the number of timepoints or simulations"),
-           (long long)n0, (double)n0 * sizeof(double) / 1e9);
+           (long long)_mem.n0, (double)_mem.n0 * sizeof(double) / 1e9);
     }
     // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
-      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
-      uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
+      uint64_t _needed = (uint64_t)_mem.gsolve_total * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
         rxSolveFree();
@@ -5672,55 +5677,49 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 + n11 + nmtime0_c +
-                                      5*op->neq + 4*n3a_c + nllik_c,
-                                      sizeof(double));// [n0]
+    _globals.gsolve = (double*)calloc(_mem.gsolve_total, sizeof(double));
 #ifdef rxSolveT
-    RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
+    RSprintf("Time12c (double alloc): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    if (_globals.gsolve == NULL){
+    if (_globals.gsolve == NULL) {
       rxSolveFree();
-      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
-           (double)_totalElems * sizeof(double) / 1e9);
+           (double)_mem.gsolve_total * sizeof(double) / 1e9);
     }
-    _globals.gLin = _globals.gsolve + n0; // [nlin]
-    _globals.gLlikSave = _globals.gLin + nlin; // [nllik_c]
-    _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
-    _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
-    _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
-    _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
+    // Pointer layout within gsolve — field names match rx_mem_layout members.
+    _globals.gLin        = _globals.gsolve     + _mem.n0;
+    _globals.gLlikSave   = _globals.gLin        + _mem.nlin;
+    _globals.gSolveSave  = _globals.gLlikSave   + _mem.nllik_c;
+    _globals.gSolveLast  = _globals.gSolveSave  + _mem.nsave;
+    _globals.gSolveLast2 = _globals.gSolveLast  + _mem.nsave;
+    _globals.gmtime      = _globals.gSolveLast2 + _mem.nsave;
     // gInfusionRate is now allocated per-thread independently (see below)
-    _globals.ginits = _globals.gmtime + n2; // [n4]
+    _globals.ginits      = _globals.gmtime      + _mem.n2;
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
-    _globals.glhs = _globals.ginits + n4; // [n5_c]
-    // initially NA_REAL
-    //std::fill_n(_globals.glhs,n5, NA_REAL); // TOO slow
-    _globals.gscale = _globals.glhs + n5_c; //[n6]
-    std::copy(scaleC.begin(),scaleC.end(),&_globals.gscale[0]);
+    _globals.glhs        = _globals.ginits      + _mem.n4;
+    _globals.gscale      = _globals.glhs        + _mem.n5_c;
+    std::copy(scaleC.begin(), scaleC.end(), &_globals.gscale[0]);
     op->scale = &_globals.gscale[0];
-    _globals.gatol2=_globals.gscale   + n6; //[op->neq]
-    _globals.grtol2=_globals.gatol2   + op->neq;  //[op->neq]
-    _globals.gssRtol=_globals.grtol2  + op->neq; //[op->neq]
-    _globals.gssAtol=_globals.gssRtol + op->neq; //[op->neq]
-    // All NA_REAL fill are below;  one statement to initialize them all
-    rx->ypNA = _globals.gssAtol + op->neq; // [op->neq]
-    _globals.gTlastS = rx->ypNA + op->neq; // [n3a_c]
-    _globals.gTfirstS  = _globals.gTlastS + n3a_c; // [n3a]
-    _globals.gCurDoseS = _globals.gTfirstS + n3a_c; // [n3a]
-    _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
-    _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
-    _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
-    _globals.timeThread = _globals.gLinDummy + n10;
-    _globals.gatol2Thread  = _globals.timeThread + n8; // [op->neq * op->cores]
+    _globals.gatol2      = _globals.gscale      + _mem.n6;
+    _globals.grtol2      = _globals.gatol2      + op->neq;
+    _globals.gssRtol     = _globals.grtol2      + op->neq;
+    _globals.gssAtol     = _globals.gssRtol     + op->neq;
+    // All NA_REAL fill are below; one statement to initialize them all
+    rx->ypNA             = _globals.gssAtol     + op->neq;
+    _globals.gTlastS     = rx->ypNA             + op->neq;
+    _globals.gTfirstS    = _globals.gTlastS     + _mem.n3a_c;
+    _globals.gCurDoseS   = _globals.gTfirstS    + _mem.n3a_c;
+    _globals.gIndSim     = _globals.gCurDoseS   + _mem.n3a_c;
+    _globals.gLinSave    = _globals.gIndSim     + _mem.n7;
+    _globals.gLinDummy   = _globals.gLinSave    + _mem.n9;
+    _globals.timeThread  = _globals.gLinDummy   + _mem.n10;
+    _globals.gatol2Thread  = _globals.timeThread  + _mem.n8;
     _globals.grtol2Thread  = _globals.gatol2Thread  + op->neq * op->cores;
     _globals.gssAtolThread = _globals.grtol2Thread  + op->neq * op->cores;
     _globals.gssRtolThread = _globals.gssAtolThread + op->neq * op->cores;
-    _globals.gmtime0       = _globals.gssRtolThread + op->neq * op->cores; // [nmtime0_c]
+    _globals.gmtime0       = _globals.gssRtolThread + op->neq * op->cores;
 
     // Allocate gInfusionRate per-thread independently so each thread's buffer
     // can be realloc'd without disturbing others
@@ -5786,22 +5785,21 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n3a_c + n3 + (uint64_t)4*rxSolveDat->nSize + (uint64_t)rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
+    _globals.gon = (int*)calloc(_mem.gon_total, sizeof(int));
 #ifdef rxSolveT
-    RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
+    RSprintf("Time12e (int alloc): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    if (_globals.gon == NULL){
+    if (_globals.gon == NULL) {
       rxSolveFree();
       stop(_("could not allocate enough memory for solving (gon)"));
     }
-    //std::fill_n(&_globals.gon[0], n, 1);
-    _globals.gBadDose = _globals.gon + n3a_c; // [n3]
-    _globals.grc = _globals.gBadDose + n3; //[nSize]; needs to match the whole dataset
-    _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
-    _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
-    _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
-    _globals.gix = _globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
+    _globals.gBadDose    = _globals.gon          + _mem.n3a_c;
+    _globals.grc         = _globals.gBadDose     + _mem.n3;
+    _globals.slvr_counter = _globals.grc         + rxSolveDat->nSize;
+    _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize;
+    _globals.jac_counter  = _globals.dadt_counter + rxSolveDat->nSize;
+    _globals.gix          = _globals.jac_counter  + rxSolveDat->nSize;
 
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);

@@ -51,6 +51,9 @@
   (simulation and estimation) instead of using a string comparison.
   It makes using strings like (sex == "male") run faster.
 
+- Add `rxMemoryEstimate()` and `rxMemSummary()` to estimate the amount
+  of memory that is required for a rxode2 solve.
+
 - Add `tolFactor`, a per individual change of the tolerances to be
   used in solving. This is used have individualized tolerances from
   `nlmixr2est`.
