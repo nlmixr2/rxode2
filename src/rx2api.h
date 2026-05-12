@@ -160,6 +160,8 @@ extern "C" {
 
   void rxSetSilentErr(int silent);
 
+  int getOrdId(rx_solve *rx, int solveid);
+
 #if defined(__cplusplus)
 }
 #endif

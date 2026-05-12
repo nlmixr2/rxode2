@@ -241,6 +241,10 @@ int getRxNobs2(rx_solve *rx) {
 int getRxNpars(rx_solve *rx) {
   return rx->npars;
 }
+
+int getOrdId(rx_solve *rx, int solveid) {
+  return rx->ordId[solveid];
+}
 ////////////////////////////////////////////////////////////////////////
 // Get solve vector for ith solve
 ////////////////////////////////////////////////////////////////////////
