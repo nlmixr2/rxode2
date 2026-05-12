@@ -201,8 +201,8 @@ extern "C" {
   typedef void (*rxSetSilentErr_t)(int silent);
   extern rxSetSilentErr_t rxSetSilentErr;
 
-  typedef int (*getOrdId)(rx_solve *rx, int solveid);
-  extern getOrdId getOrdId;
+  typedef int (*getOrdId_t)(rx_solve *rx, int solveid);
+  extern getOrdId_t getOrdId;
 
   typedef int (*solveMethodThreadSafe_t)(rx_solving_options* op);
   extern solveMethodThreadSafe_t solveMethodThreadSafe;
