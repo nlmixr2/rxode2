@@ -513,7 +513,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 56, rxode2getIndNeqOverride);
   SET_VECTOR_ELT(ret, 57, rxode2setIndNeqOverride);
   SET_VECTOR_ELT(ret, 58, rxode2rxSetSilentErr);
-  SET_VECTOR_ELT(ret, 69, rxode2getOrdId);
+  SET_VECTOR_ELT(ret, 59, rxode2getOrdId);
   SET_VECTOR_ELT(ret, 60, rxode2solveMethodThreadSafe);
 
 
