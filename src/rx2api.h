@@ -160,6 +160,12 @@ extern "C" {
 
   void rxSetSilentErr(int silent);
 
+  int getOrdId(rx_solve *rx, int solveid);
+
+  int solveMethodThreadSafe(rx_solving_options* op);
+
+  void atolRtolFactor_(double factor);
+
 #if defined(__cplusplus)
 }
 #endif

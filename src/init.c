@@ -24,7 +24,6 @@ extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
 
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
-SEXP _rxode2_atolRtolFactor_(SEXP);
 SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                          SEXP, SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -447,9 +446,12 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setIndTolFactor = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndTolFactor, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndNeqOverride, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndNeqOverride = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNeqOverride, R_NilValue, R_NilValue)); pro++;
-  SEXP rxote2rxSetSilentErr =  PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setSilentErr, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxSetSilentErr =  PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setSilentErr, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getOrdId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getOrdId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2solveMethodThreadSafe = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&solveMethodThreadSafe, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2atolRtolFactor_ = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&atolRtolFactor_, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 60
+#define nVec 62
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -509,8 +511,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 55, rxode2setIndTolFactor);
   SET_VECTOR_ELT(ret, 56, rxode2getIndNeqOverride);
   SET_VECTOR_ELT(ret, 57, rxode2setIndNeqOverride);
-  SET_VECTOR_ELT(ret, 58, rxode2setIndNeqOverride);
-  SET_VECTOR_ELT(ret, 59, rxote2rxSetSilentErr);
+  SET_VECTOR_ELT(ret, 58, rxode2rxSetSilentErr);
+  SET_VECTOR_ELT(ret, 59, rxode2getOrdId);
+  SET_VECTOR_ELT(ret, 60, rxode2solveMethodThreadSafe);
+  SET_VECTOR_ELT(ret, 61, rxode2atolRtolFactor_);
+
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -571,7 +576,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 55, Rf_mkChar("rxode2setIndTolFactor"));
   SET_STRING_ELT(retN, 56, Rf_mkChar("rxode2getIndNeqOverride"));
   SET_STRING_ELT(retN, 57, Rf_mkChar("rxode2setIndNeqOverride"));
-  SET_STRING_ELT(retN, 58, Rf_mkChar("rxote2rxSetSilentErr"));
+  SET_STRING_ELT(retN, 58, Rf_mkChar("rxode2rxSetSilentErr"));
+  SET_STRING_ELT(retN, 59, Rf_mkChar("rxode2getOrdId"));
+  SET_STRING_ELT(retN, 60, Rf_mkChar("rxode2solveMethodThreadSafe"));
+  SET_STRING_ELT(retN, 61, Rf_mkChar("rxode2atolRtolFactor_"));
 
 #undef nVec
 
@@ -714,7 +722,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 12},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
-    {"_rxode2_atolRtolFactor_", (DL_FUNC) &_rxode2_atolRtolFactor_, 1},
     {"_rxode2_rxExpandGrid_", (DL_FUNC) &_rxode2_rxExpandGrid_, 3},
     {"_rxode2_rxExpandSens_", (DL_FUNC) &_rxode2_rxExpandSens_, 2},
     {"_rxode2_rxExpandSens2_",(DL_FUNC) &_rxode2_rxExpandSens2_, 3},

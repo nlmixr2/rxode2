@@ -1593,8 +1593,7 @@ extern "C" void setZeroMatrix(int which) {
 
 double maxAtolRtolFactor = 0.1;
 
-//[[Rcpp::export]]
-void atolRtolFactor_(double factor) {
+extern "C" void atolRtolFactor_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
@@ -2859,6 +2858,7 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
   }
   uint32_t nall = rx->nsub*rx->nsim;
   // Perhaps throttle this to nall*X
+  if (ini == 2 && rx->ordId != NULL) return;
   if (ini) {
     if (_globals.ordId != NULL) free(_globals.ordId);
     _globals.ordId=NULL;
@@ -4999,6 +4999,11 @@ static SEXP rxSolveFromFile_(const RObject &obj, const std::string &path,
   return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
                           params, events, inits, &rxSolveDat);
 }
+extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
+  int stiff = op->stiff;
+  return stiff == 2 || stiff == 0;
+}
+
 
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
@@ -5262,7 +5267,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->stiff = method;
 
     rxSolveDat->throttle = false;
-    if (method != 2 && method != 0) { // dop853 and liblsoda should be thread safe
+    if (!solveMethodThreadSafe(op)) { // dop853 and liblsoda should be thread safe
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");

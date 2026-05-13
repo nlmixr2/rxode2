@@ -201,6 +201,15 @@ extern "C" {
   typedef void (*rxSetSilentErr_t)(int silent);
   extern rxSetSilentErr_t rxSetSilentErr;
 
+  typedef int (*getOrdId_t)(rx_solve *rx, int solveid);
+  extern getOrdId_t getOrdId;
+
+  typedef int (*solveMethodThreadSafe_t)(rx_solving_options* op);
+  extern solveMethodThreadSafe_t solveMethodThreadSafe;
+  // Thread-safe C-level tolerance adjustment — no Rcpp/PROTECT overhead, safe from OMP threads
+  typedef void (*atolRtolFactor_t)(double factor);
+  extern atolRtolFactor_t atolRtolFactor_;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -262,6 +271,9 @@ extern "C" {
       getIndNeqOverride = (getIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 56));
       setIndNeqOverride = (setIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 57));
       rxSetSilentErr = (rxSetSilentErr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 58));
+      getOrdId       = (getOrdId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 59));
+      solveMethodThreadSafe = (solveMethodThreadSafe_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 60));
+      atolRtolFactor_ = (atolRtolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 61));
     }
     return R_NilValue;
   }
@@ -326,6 +338,9 @@ extern "C" {
   getIndNeqOverride_t getIndNeqOverride = NULL;         \
   setIndNeqOverride_t setIndNeqOverride = NULL;         \
   rxSetSilentErr_t rxSetSilentErr = NULL;               \
+  getOrdId_t getOrdId = NULL;                           \
+  solveMethodThreadSafe_t solveMethodThreadSafe = NULL; \
+  atolRtolFactor_t atolRtolFactor_ = NULL;              \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
