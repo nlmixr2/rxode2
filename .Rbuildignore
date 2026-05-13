@@ -1,3 +1,7 @@
+^.antigravity/$
+^.claude$
+^.vexp$
+^.vscode$
 ^.gemini/$
 ^CLAUDE.md$
 ^test.R$
