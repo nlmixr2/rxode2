@@ -2957,6 +2957,7 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
   }
   uint32_t nall = rx->nsub*rx->nsim;
   // Perhaps throttle this to nall*X
+  if (ini == 2 && rx->ordId != NULL) return;
   if (ini) {
     if (_globals.ordId != NULL) free(_globals.ordId);
     _globals.ordId=NULL;
