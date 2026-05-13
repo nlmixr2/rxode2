@@ -3512,10 +3512,17 @@ extern "C" void par_lsoda(rx_solve *rx) {
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
+#ifdef _OPENMP
+        if (omp_get_thread_num() == 0) {// only in master thread!
+#endif
         if (checkInterrupt()){
           abort =1;
           break;
         }
+#ifdef _OPENMP
+        }
+#endif
+
       }
     }
   }
