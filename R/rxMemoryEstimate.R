@@ -117,7 +117,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   if (requireNamespace("memuse", quietly = TRUE)) {
     .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
     if (!is.null(.info)) {
-      return(as.numeric(memuse::mu(.info$totalram, unit = "B")))
+      # as.numeric gives in bytes
+      return(as.numeric(.info$totalram))
     }
   }
   tryCatch({
