@@ -164,6 +164,8 @@ extern "C" {
 
   int solveMethodThreadSafe(rx_solving_options* op);
 
+  void atolRtolFactor_(double factor);
+
 #if defined(__cplusplus)
 }
 #endif

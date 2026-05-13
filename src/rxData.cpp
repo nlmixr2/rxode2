@@ -1691,8 +1691,7 @@ extern "C" void setZeroMatrix(int which) {
 
 double maxAtolRtolFactor = 0.1;
 
-//[[Rcpp::export]]
-void atolRtolFactor_(double factor) {
+extern "C" void atolRtolFactor_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
