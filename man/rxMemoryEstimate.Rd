@@ -81,8 +81,9 @@ linCmt).}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose
-elements are raw byte counts plus \code{ramBytes}, \code{total},
-\code{sizeofInd}, and \code{rxLlikSaveSize}.
+elements are raw byte counts plus \code{ramBytes},
+\code{freeRamBytes}, \code{total}, \code{sizeofInd}, and
+\code{rxLlikSaveSize}.
 }
 \description{
 Accepts either a pre-summarised per-ID table (an \code{\link{rxMemSummary}}
