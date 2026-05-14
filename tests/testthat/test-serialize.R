@@ -30,7 +30,7 @@ rxTest({
       expect_gt(file.size(stateFile), 0)
     })
 
-    test_that("If serailization file exists, rxSolve throws error with too many arguments", {
+    test_that("If file exists, rxSolve throws error with too many arguments", {
       expect_error(rxSolve(mod, theta, ev, serializeFile = stateFile))
     })
 
@@ -38,6 +38,15 @@ rxTest({
     test_that("rxIsSerializeFile detects magic bytes", {
       expect_true(.rxIsSerializeFile(stateFile))
       expect_false(.rxIsSerializeFile(tempfile()))  # non-existent → FALSE
+    })
+
+    mod2 <- rxode2({
+      d/dt(centr) = cl / v * centr
+      cp = centr / v
+    })
+
+    test_that("solve from wrong model throws error", {
+      expect_error(rxSolve(mod2, stateFile))
     })
 
     # Solve from file — dispatch via rxSolve(mod, stateFile)
