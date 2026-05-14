@@ -326,6 +326,34 @@
   .nonNull <- Filter(Negate(is.null), .chunks)
   if (length(.nonNull) == 0L) return(.etEmptyDf())
 
+  # --- Homogeneous detection ---
+  # When N subjects all have identical events and no dosing windows (randomized
+  # low/high times), materialize only 1 subject and tag the result so the C
+  # solver can treat it as N identical subjects without duplicating event arrays.
+  .nHomogeneous <- 0L
+  if (length(.nonNull) > 1L) {
+    .ref <- .nonNull[[1L]]
+    .hasWin <- (!is.null(.ref[["low"]])  && any(!is.na(.ref[["low"]]))) ||
+               (!is.null(.ref[["high"]]) && any(!is.na(.ref[["high"]])))
+    if (!.hasWin) {
+      .refCols <- setdiff(names(.ref), "id")
+      .refSub  <- .ref[, .refCols, drop = FALSE]
+      .allSame <- all(vapply(.nonNull[-1L], function(.chunk) {
+        .cols <- intersect(.refCols, names(.chunk))
+        if (length(.cols) != length(.refCols)) return(FALSE)
+        identical(.refSub, .chunk[, .cols, drop = FALSE])
+      }, logical(1L)))
+      if (.allSame) {
+        .nHomogeneous <- length(.nonNull)
+        .homoIds <- vapply(.nonNull, function(.chunk) {
+          .id <- .chunk[["id"]]
+          if (is.null(.id) || length(.id) == 0L) "1" else as.character(.id[1L])
+        }, character(1L))
+        .nonNull <- .nonNull[1L]
+      }
+    }
+  }
+
   # rbindlist: fast sparse bind across ID data.frames
   .dt <- data.table::rbindlist(.nonNull, fill = TRUE, use.names = TRUE)
 
@@ -399,6 +427,10 @@
         .df[["rate"]] <- units::set_units(.df[["rate"]], paste0(.du, "/", .tu), mode = "standard")
       }
     }
+  }
+  if (.nHomogeneous > 0L) {
+    attr(.df, "nHomogeneous") <- .nHomogeneous
+    attr(.df, "homogeneousIds") <- .homoIds
   }
   .df
 }

@@ -241,10 +241,10 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   }
   // Mutiple ID data?
   int md = 0;
-  if (rx->nsub > 1) md = 1;
+  if (rx->nsub > 1 || (rx->isHomogeneous && rx->nHomogeneous > 1)) md = 1;
   // Multiple simulation data?
   int sm = 0;
-  if (rx->nsim > 1) sm = 1;
+  if (rx->nsim > 1 && !(rx->isHomogeneous && rx->nHomogeneous > 1)) sm = 1;
   int ncols =1+nPrnState + nlhs;
   int ncols2 = add_cov*(ncov+ncov0)+nkeep;
   int doseCols = 0;
@@ -501,7 +501,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           // id
           if (md){
             dfi = INTEGER(VECTOR_ELT(df, jj));
-            dfi[ii] = csub+1;
+            dfi[ii] = (rx->isHomogeneous && rx->nHomogeneous > 1) ? csim+1 : csub+1;
             jj++;
           }
           if (ms) {

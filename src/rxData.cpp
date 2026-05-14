@@ -2937,6 +2937,8 @@ struct rxSolve_t {
   bool throttle = false;
   int maxItemsPerId = 0;
   bool hasICov = false;
+  int nHomogeneous = 0; // N from attr(events, "nHomogeneous"); 0 = not homogeneous
+  CharacterVector homogeneousIds; // subject IDs for all N homogeneous subjects
 };
 
 SEXP rxSolve_(const RObject &obj, const List &rxControl, const Nullable<CharacterVector> &specParams,
@@ -3989,6 +3991,15 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       ind->HMAX = hmax0;
     }
   }
+  // Store homogeneous-subjects info when the R side reduced N identical event
+  // chunks to 1 and tagged the result with attr(events, "nHomogeneous") = N.
+  // The solve itself uses the existing nsim path (nsub stays 1, nsim = N/1),
+  // but these fields are needed for serialization and future C-side sharing.
+  if (rxSolveDat->nHomogeneous > 1 && rx->nsub == 1) {
+    rx->isHomogeneous  = 1;
+    rx->nHomogeneous   = (uint32_t)rxSolveDat->nHomogeneous;
+    rx->nall_per_sub   = (int64_t)rx->nall;
+  }
 }
 
 // Setup the parameter order and covariate from the dataset and input parameters
@@ -4474,12 +4485,13 @@ List rxSolve_df(const RObject &obj,
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
-  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
+  bool _isHomo = rx->isHomogeneous && rx->nHomogeneous > 1;
+  if (rxSolveDat->idFactor && rxSolveDat->labelID && (rx->nsub > 1 || _isHomo)){
     IntegerVector did = as<IntegerVector>(dat["id"]);
     did.attr("levels") = rxSolveDat->idLevels;
     did.attr("class") = "factor";
   }
-  if (rxSolveDat->convertInt && rx->nsub > 1){
+  if (rxSolveDat->convertInt && (rx->nsub > 1 || _isHomo)){
     CharacterVector lvlC = rxSolveDat->idLevels;
     IntegerVector lvlI(lvlC.size());
     for (int j = lvlC.size(); j--;) {
@@ -4598,15 +4610,30 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".slvr.counter"] = slvr_counterIv;
   e[".dadt.counter"] = dadt_counterIv;
   e[".jac.counter"] = jac_counterIv;
-  e[".nsub"] = (int)rx->nsub;
-  e[".nsim"] = (int)rx->nsim;
+  // For isHomogeneous solves the actual nsub=1/nsim=N but we want the output
+  // to look like nsub=N/nsim=1 (matching non-homogeneous N-subject behavior).
+  int _outNsub = (int)rx->nsub;
+  int _outNsim = (int)rx->nsim;
+  if (rx->isHomogeneous && rx->nHomogeneous > 1) {
+    _outNsub = (int)rx->nHomogeneous;
+    _outNsim = (int)rx->nsim / (int)rx->nHomogeneous;
+    if (_outNsim < 1) _outNsim = 1;
+  }
+  e[".nsub"] = _outNsub;
+  e[".nsim"] = _outNsim;
   {
-    NumericVector _tf((int)rx->nsub);
+    NumericVector _tf(_outNsub);
     CharacterVector _idLevels = as<CharacterVector>(rxSolveDat->idLevels);
-    for (uint32_t _si = 0; _si < rx->nsub; _si++) {
-      _tf[_si] = rx->subjects[_si].tolFactor;
+    if (rx->isHomogeneous && rx->nHomogeneous > 1) {
+      // All homogeneous subjects share subjects[0]'s tolFactor
+      double _tf0 = rx->subjects[0].tolFactor;
+      for (int _si = 0; _si < _outNsub; _si++) _tf[_si] = _tf0;
+    } else {
+      for (uint32_t _si = 0; _si < rx->nsub; _si++) {
+        _tf[_si] = rx->subjects[_si].tolFactor;
+      }
     }
-    if ((int)_idLevels.size() == (int)rx->nsub) _tf.names() = _idLevels;
+    if ((int)_idLevels.size() == _outNsub) _tf.names() = _idLevels;
     e[".tolFactor"] = _tf;
   }
   e[".init.dat"] = rxSolveDat->initsC;
@@ -5407,6 +5434,16 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->par1=rxInits(obj);
       rxSolveDat->fromIni=true;
     }
+    // Read homogeneous-subjects count before ev1Update converts to rxEtTran
+    rxSolveDat->nHomogeneous = 0;
+    rxSolveDat->homogeneousIds = CharacterVector(0);
+    if (ev1.hasAttribute("nHomogeneous")) {
+      rxSolveDat->nHomogeneous = Rf_asInteger(ev1.attr("nHomogeneous"));
+      if (rxSolveDat->nHomogeneous < 2) rxSolveDat->nHomogeneous = 0;
+    }
+    if (rxSolveDat->nHomogeneous > 1 && ev1.hasAttribute("homogeneousIds")) {
+      rxSolveDat->homogeneousIds = as<CharacterVector>(ev1.attr("homogeneousIds"));
+    }
 #ifdef rxSolveT
     RSprintf("Time5: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -5414,6 +5451,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Update event table with observations if they are missing
     rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
                       ev1, inits, rxSolveDat);
+    // ev1Update overwrites idLevels with single-subject levels; restore the N subject IDs
+    if (rxSolveDat->nHomogeneous > 1 &&
+        rxSolveDat->homogeneousIds.size() == rxSolveDat->nHomogeneous) {
+      rxSolveDat->idLevels = rxSolveDat->homogeneousIds;
+    }
 
 #ifdef rxSolveT
     RSprintf("Time6: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
