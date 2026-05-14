@@ -154,6 +154,7 @@ rxSolve(
   indOwnAlloc = NA,
   maxExtra = 1000L,
   tolFactor = NULL,
+  serializeFile = NULL,
   envir = parent.frame()
 )
 

@@ -54,7 +54,7 @@ extern "C" void ensureLinCmtB(int nCores);
 #include "threadSafeConstants.h"
 //#include "seed.h"
 
-SEXP rxSaveState_(SEXP pathSexp);         // defined in rxSerialize.cpp
+SEXP rxSaveState_();         // defined in rxSerialize.cpp
 SEXP rxRestoreState_(SEXP pathSexp);      // defined in rxSerialize.cpp
 bool rxIsSerializeFile_(SEXP pathSexp);   // defined in rxSerialize.cpp
 extern "C" void RSprintf(const char *format, ...);
@@ -1764,6 +1764,10 @@ extern "C" void gFree(){
   _globals.gpars=NULL;
   if (_globals.gParPos != NULL) free(_globals.gParPos);
   _globals.gParPos=NULL;
+  // gParPos2, gsvar, govar are sub-pointers within gParPos slab; null after free
+  _globals.gParPos2=NULL;
+  _globals.gsvar=NULL;
+  _globals.govar=NULL;
   if (_globals.gevid != NULL) free(_globals.gevid);
   _globals.gevid=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
@@ -2711,6 +2715,8 @@ LogicalVector rxSolveFree(){
   if (rx->splitBolus != NULL) free(rx->splitBolus);
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
+  // linCmtScale points into an R vector (via REAL()), never malloc'd — just null it
+  rx->linCmtScale = NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
   // Free the omega info
@@ -2742,6 +2748,8 @@ LogicalVector rxSolveFree(){
 
   if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
   _globals.gall_timesS = NULL;
+  // gamtS is a sub-pointer within gall_timesS; null after free
+  _globals.gamtS = NULL;
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
@@ -2845,7 +2853,13 @@ extern "C" SEXP get_fkeepChar(int col, double val) {
 }
 
 extern "C" SEXP get_fkeepn() {
-  return as<SEXP>(keepFcov.attr("names"));
+  SEXP names = keepFcov.attr("names");
+  if (Rf_isNull(names)) {
+    SEXP ret = PROTECT(Rf_allocVector(STRSXP, 0));
+    UNPROTECT(1);
+    return ret;
+  }
+  return names;
 }
 
 extern "C" void sortIds(rx_solve* rx, int ini) {
@@ -4731,7 +4745,9 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
+  Rprintf("DBG2: rxSolve_finalize entered\n");
   rxSolveSaveRxSolve(rxSolveDat);
+  Rprintf("DBG3: after rxSolveSaveRxSolve\n");
   rx_solve* rx = getRxSolve_();
   // if (rxSolveDat->throttle){
   //   rx->op->cores = getRxThreads(rx->nsim*rx->nsub, true);
@@ -4772,14 +4788,18 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
       }
     }
   }
+  Rprintf("DBG4: before par_solve nsub=%u nsim=%u neq=%d matrix=%d\n", rx->nsub, rx->nsim, rx->op->neq, rx->matrix);
   par_solve(rx);
+  Rprintf("DBG5: after par_solve\n");
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif// rxSolveT
 
+  Rprintf("DBG6: before rxSolve_df\n");
   List dat = rxSolve_df(obj, rxControl, specParams, extraArgs,
                         params, events, inits, rxSolveDat);
+  Rprintf("DBG7: after rxSolve_df\n");
 #ifdef rxSolveT
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -4970,7 +4990,8 @@ void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 static int _rxSolveCallN = 0;
 
 // Restore serialized state then run integration + build output data frame.
-static SEXP rxSolveFromFile_(const RObject &obj, const std::string &path,
+// [[Rcpp::export]]
+SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
                               const List &rxControl,
                               const Nullable<CharacterVector> &specParams,
                               const Nullable<List> &extraArgs,
@@ -4980,21 +5001,38 @@ static SEXP rxSolveFromFile_(const RObject &obj, const std::string &path,
   if (!rxDynLoad(obj)) {
     (Rf_error)(_("rxSolve: cannot load rxode2 dll for model"));
   }
-  rxode2_assign_fn_pointers(obj);
 
-  // Restore the pre-integration solve state from binary file
-  SEXP _pathSexp = PROTECT(Rf_mkString(path.c_str()));
-  rxRestoreState_(_pathSexp);
-  UNPROTECT(1);
+  // Restore the pre-integration solve state from binary file.
+  // rxRestoreState_ calls rxSolveFreeC() (which clears ODE function pointers),
+  // then rebuilds inds_global via rxOptionsIniEnsure and populates per-subject data.
+  rxRestoreState_(rawObj);
+  // Re-assign ODE function pointers cleared by rxSolveFreeC inside rxRestoreState_.
+  // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
+  rxAssignPtr(SEXP(obj));
+  Rprintf("DBG1: after rxAssignPtr\n");
+  // Force plain data.frame return: rxSolve_genenv calls rxDll() which does
+  // VECTOR_ELT on e["rxDll"] — if that slot is an environment (not a list),
+  // the R API aborts.  matrix=2 causes rxSolve_finalize to return early with
+  // a plain data.frame, bypassing rxSolve_genenv entirely.
+  getRxSolve_()->matrix = 2;
 
-  // Run integration + build result using the finalize path.
-  // rxSolveDat is not needed for the post-restore finalize path —
-  // we build a minimal one with NULL fields (finalize only uses it for
-  // zeroTheta/zeroOmega/zeroSigma warnings and rxSolveSaveRxSolve).
+  // Build a minimal rxSolveDat for the finalize path.
+  // DO NOT memset — rxSolve_t contains Rcpp objects (List, RObject, etc.)
+  // whose constructors initialize internal SEXP to R_NilValue; memset would
+  // corrupt those to NULL pointer, causing VECTOR_ELT crashes.
   rxSolve_t rxSolveDat;
-  memset(&rxSolveDat, 0, sizeof(rxSolveDat));
-  rxSolveDat.isRxSolve = false;
+  rxSolveDat.updateObject  = false;
+  rxSolveDat.isRxSolve     = false;
   rxSolveDat.isEnvironment = false;
+  rxSolveDat.hasCmt        = false;
+  rxSolveDat.addTimeUnits  = false;
+  rxSolveDat.nSize         = 0;
+  rxSolveDat.nsvar         = 0;
+  rxSolveDat.idFactor      = false;
+  rxSolveDat.labelID       = false;
+  rxSolveDat.warnIdSort    = false;
+  // Propagate addDosing from rxControl so dosing rows appear in output.
+  rxSolveDat.addDosing = as<Nullable<LogicalVector>>(rxControl[Rxc_addDosing]);
 
   return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
                           params, events, inits, &rxSolveDat);
@@ -5017,21 +5055,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   }
   rxDropB = false;
 
-  // Solve-from-file dispatch: if params is a single string pointing to a
-  // serialization file, restore state and integrate without any setup.
-  if (setupOnly == 0 && !rxIsNull(params) && Rf_isString(params) &&
-      LENGTH(params) == 1) {
-    SEXP _ps = STRING_ELT(params, 0);
-    if (_ps != NA_STRING) {
-      SEXP _pathSexp = PROTECT(Rf_ScalarString(_ps));
-      bool _isSer = rxIsSerializeFile_(_pathSexp);
-      UNPROTECT(1);
-      if (_isSer) {
-        return rxSolveFromFile_(obj, CHAR(_ps), rxControl, specParams, extraArgs,
-                                params, events, inits);
-      }
-    }
-  }
+  // Solve-from-file dispatch has been moved to R (rxSolve.default).
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -5770,8 +5794,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         SEXP _sfSexp = STRING_ELT(_sf, 0);
         if (_sfSexp != NA_STRING) {
           SEXP _pathSexp = PROTECT(Rf_ScalarString(_sfSexp));
-          rxSaveState_(_pathSexp);
-          UNPROTECT(1);
+          SEXP cState = PROTECT(rxSaveState_());
+          Environment rxenv = Environment::namespace_env("rxode2");
+          if (rxenv.exists(".rxSaveStateBundle")) {
+            Function saveFn = rxenv[".rxSaveStateBundle"];
+            saveFn(_pathSexp, cState);
+          } else {
+            Language call(Rf_install("get"), ".rxSaveStateBundle", Language(Rf_install("asNamespace"), "rxode2"));
+            Function saveFn = call.eval();
+            saveFn(_pathSexp, cState);
+          }
+          UNPROTECT(2);
         }
       }
     }
@@ -6436,6 +6469,14 @@ extern "C" void rxAssignPtrC(SEXP obj){
   rxAssignPtr(obj);
 }
 
+static inline std::string rxDllFromSlot(SEXP rxDllSlot) {
+  if (TYPEOF(rxDllSlot) == ENVSXP) {
+    Environment rxDllEnv = as<Environment>(rxDllSlot);
+    return as<std::string>(rxDllEnv["dll"]);
+  }
+  return as<std::string>((as<List>(rxDllSlot))["dll"]);
+}
+
 //' Return the DLL associated with the rxode2 object
 //'
 //' This will return the dynamic load library or shared object used to
@@ -6450,7 +6491,7 @@ extern "C" void rxAssignPtrC(SEXP obj){
 //' @keywords internal
 //' @author Matthew L.Fidler
 //' @export
-//[[Rcpp::export]]
+// [[Rcpp::export]]
 std::string rxDll(RObject obj){
   if (rxIs(obj,"rxode2")){
     Environment e = as<Environment>(obj);
@@ -6459,7 +6500,7 @@ std::string rxDll(RObject obj){
       Function rxPkgDll = getRxFn(".rxPkgDll");
       return(as<std::string>(rxPkgDll(wrap(obj))));
     }
-    return as<std::string>((as<List>(e["rxDll"]))["dll"]);
+    return rxDllFromSlot(e["rxDll"]);
   } else if (rxIs(obj,"rxSolve")) {
     CharacterVector cls = obj.attr("class");
     Environment e = as<Environment>(cls.attr(".rxode2.env"));
@@ -6478,7 +6519,7 @@ std::string rxDll(RObject obj){
       stop(_("can not figure out the DLL for this object"));
     } else {
       Environment e = as<Environment>(en);
-      return as<std::string>((as<List>(e["rxDll"]))["dll"]);
+      return rxDllFromSlot(e["rxDll"]);
     }
   }
 }

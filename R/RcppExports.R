@@ -637,6 +637,10 @@ rxSolveSetup <- function() {
     .Call(`_rxode2_rxSolveSetup`)
 }
 
+rxSolveFromRaw_ <- function(obj, rawObj, rxControl, specParams, extraArgs, params, events, inits) {
+    .Call(`_rxode2_rxSolveFromRaw_`, obj, rawObj, rxControl, specParams, extraArgs, params, events, inits)
+}
+
 rxSolve_ <- function(obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly) {
     .Call(`_rxode2_rxSolve_`, obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly)
 }
@@ -953,14 +957,14 @@ rxOptRep_ <- function(input) {
 #' @param path File path to write (created/overwritten).
 #' @return Invisibly TRUE.
 #' @noRd
-rxSaveState_ <- function(pathSexp) {
-    .Call(`_rxode2_rxSaveState_`, pathSexp)
+rxSaveState_ <- function() {
+    .Call(`_rxode2_rxSaveState_`)
 }
 
 #' Check whether a file was written by rxSaveState_
 #' @noRd
-rxIsSerializeFile_ <- function(pathSexp) {
-    .Call(`_rxode2_rxIsSerializeFile_`, pathSexp)
+rxIsSerializeFile_ <- function(rawSexp) {
+    .Call(`_rxode2_rxIsSerializeFile_`, rawSexp)
 }
 
 #' Restore a pre-integration rxode2 solver state from binary file
@@ -968,8 +972,8 @@ rxIsSerializeFile_ <- function(pathSexp) {
 #' @param path File path written by rxSaveState_().
 #' @return Invisibly TRUE.
 #' @noRd
-rxRestoreState_ <- function(pathSexp) {
-    .Call(`_rxode2_rxRestoreState_`, pathSexp)
+rxRestoreState_ <- function(rawSexp) {
+    .Call(`_rxode2_rxRestoreState_`, rawSexp)
 }
 
 rxStack_ <- function(Data, vars = NULL) {

@@ -16,6 +16,7 @@
 using namespace Rcpp;
 
 extern "C" rx_solve *getRxSolve_(void);
+extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
@@ -25,37 +26,37 @@ static const uint32_t rxSerializeFormatVer = 1u;
 // Low-level write helpers — all abort via Rf_error on failure
 // ---------------------------------------------------------------------------
 
-static void sWrite(FILE *f, const void *buf, size_t n, const char *what) {
-  if (fwrite(buf, 1, n, f) != n)
-    (Rf_error)("rxSaveState: write error writing %s", what);
+static void sWrite(std::vector<uint8_t> *f, const void *buf, size_t n, const char *what) {
+  const uint8_t *ptr = (const uint8_t *)buf;
+  f->insert(f->end(), ptr, ptr + n);
 }
 
-static void sWriteU32(FILE *f, uint32_t v, const char *what) {
+static void sWriteU32(std::vector<uint8_t> *f, uint32_t v, const char *what) {
   sWrite(f, &v, sizeof(v), what);
 }
 
-static void sWriteU64(FILE *f, uint64_t v, const char *what) {
+static void sWriteU64(std::vector<uint8_t> *f, uint64_t v, const char *what) {
   sWrite(f, &v, sizeof(v), what);
 }
 
-static void sWriteI32(FILE *f, int32_t v, const char *what) {
+static void sWriteI32(std::vector<uint8_t> *f, int32_t v, const char *what) {
   sWrite(f, &v, sizeof(v), what);
 }
 
 // Write a size-prefixed blob: uint64_t count then count elements of width w.
-static void sWriteBlob(FILE *f, const void *data, uint64_t count, size_t w,
+static void sWriteBlob(std::vector<uint8_t> *f, const void *data, uint64_t count, size_t w,
                        const char *what) {
   sWriteU64(f, count, what);
   if (count > 0 && data != NULL)
     sWrite(f, data, count * w, what);
 }
 
-static void sWriteDoubleBlob(FILE *f, const double *data, uint64_t n,
+static void sWriteDoubleBlob(std::vector<uint8_t> *f, const double *data, uint64_t n,
                              const char *what) {
   sWriteBlob(f, data, n, sizeof(double), what);
 }
 
-static void sWriteIntBlob(FILE *f, const int *data, uint64_t n,
+static void sWriteIntBlob(std::vector<uint8_t> *f, const int *data, uint64_t n,
                           const char *what) {
   sWriteBlob(f, data, n, sizeof(int), what);
 }
@@ -64,7 +65,7 @@ static void sWriteIntBlob(FILE *f, const int *data, uint64_t n,
 // vLines serialization
 // ---------------------------------------------------------------------------
 
-static void sWriteVLines(FILE *f, const vLines *vl, const char *what) {
+static void sWriteVLines(std::vector<uint8_t> *f, const vLines *vl, const char *what) {
   uint32_t n = (uint32_t)(vl->n > 0 ? vl->n : 0);
   sWriteU32(f, n, what);
   for (uint32_t i = 0; i < n; i++) {
@@ -94,11 +95,9 @@ static void sWriteVLines(FILE *f, const vLines *vl, const char *what) {
 //' @return Invisibly TRUE.
 //' @noRd
 // [[Rcpp::export]]
-SEXP rxSaveState_(SEXP pathSexp) {
-  const char *path = CHAR(STRING_ELT(pathSexp, 0));
-
-  FILE *f = fopen(path, "wb");
-  if (!f) (Rf_error)("rxSaveState: cannot open '%s' for writing", path);
+SEXP rxSaveState_() {
+  std::vector<uint8_t> vec;
+  std::vector<uint8_t> *f = &vec;
 
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
@@ -282,9 +281,10 @@ SEXP rxSaveState_(SEXP pathSexp) {
   sWriteDoubleBlob(f, _globals.gall_times, 5u * nall, "gall_times_slab");
 
   // gevid slab: allocated as 3*nall + dfN*2 + strLhs.size() ints.
-  // We save from gevid start to gcens end (3*nall ints covering evid+gidose+gcens).
-  // The remainder (gpar_cov, glhs_str etc.) is reconstructed from R on restore.
-  sWriteIntBlob(f, _globals.gevid, 3u * nall, "gevid_slab");
+  // We save from gevid start to glhs_str end in one contiguous block.
+  uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
+  uint64_t gevid_n = 3u * nall + dfN * 2 + (uint64_t)op->nlhs;
+  sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
 
   // gcov: ncov * nall doubles
   sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall, "gcov");
@@ -439,8 +439,9 @@ SEXP rxSaveState_(SEXP pathSexp) {
     sWriteDoubleBlob(f, ind->linH, (uint64_t)(rx->linB ? 7 : 0), "linH");
   }
 
-  fclose(f);
-  return Rf_ScalarLogical(1);
+  RawVector ret(vec.size());
+  std::copy(vec.begin(), vec.end(), ret.begin());
+  return ret;
 }
 
 // ---------------------------------------------------------------------------
@@ -450,49 +451,51 @@ SEXP rxSaveState_(SEXP pathSexp) {
 //' Check whether a file was written by rxSaveState_
 //' @noRd
 // [[Rcpp::export]]
-bool rxIsSerializeFile_(SEXP pathSexp) {
-  const char *path = CHAR(STRING_ELT(pathSexp, 0));
-  FILE *f = fopen(path, "rb");
-  if (!f) return false;
-  char magic[8];
-  bool ok = (fread(magic, 1, 8, f) == 8) &&
-             (memcmp(magic, rxSerializeMagic, 8) == 0);
-  fclose(f);
-  return ok;
+bool rxIsSerializeFile_(SEXP rawSexp) {
+  if (TYPEOF(rawSexp) != RAWSXP || Rf_length(rawSexp) < 8) return false;
+  uint8_t *data = RAW(rawSexp);
+  return memcmp(data, rxSerializeMagic, 8) == 0;
 }
 
 // ---------------------------------------------------------------------------
 // Low-level read helpers
 // ---------------------------------------------------------------------------
+struct MemReader {
+  const uint8_t *data;
+  size_t size;
+  size_t pos;
+};
 
-static void sRead(FILE *f, void *buf, size_t n, const char *what) {
-  if (fread(buf, 1, n, f) != n)
-    (Rf_error)("rxRestoreState: read error reading %s", what);
+static void sRead(MemReader *f, void *buf, size_t n, const char *what) {
+  if (f->pos + n > f->size)
+    (Rf_error)("rxRestoreState: read error reading %s (EOF)", what);
+  memcpy(buf, f->data + f->pos, n);
+  f->pos += n;
 }
 
-static uint32_t sReadU32(FILE *f, const char *what) {
+static uint32_t sReadU32(MemReader *f, const char *what) {
   uint32_t v; sRead(f, &v, sizeof(v), what); return v;
 }
 
-static uint64_t sReadU64(FILE *f, const char *what) {
+static uint64_t sReadU64(MemReader *f, const char *what) {
   uint64_t v; sRead(f, &v, sizeof(v), what); return v;
 }
 
-static int32_t sReadI32(FILE *f, const char *what) {
+static int32_t sReadI32(MemReader *f, const char *what) {
   int32_t v; sRead(f, &v, sizeof(v), what); return v;
 }
 
-static double sReadDbl(FILE *f, const char *what) {
+static double sReadDbl(MemReader *f, const char *what) {
   double v; sRead(f, &v, sizeof(v), what); return v;
 }
 
-static uint8_t sReadU8(FILE *f, const char *what) {
+static uint8_t sReadU8(MemReader *f, const char *what) {
   uint8_t v; sRead(f, &v, sizeof(v), what); return v;
 }
 
 // Read a size-prefixed blob: allocates with calloc, returns count via *n_out.
 // Caller must free(). Returns NULL when count == 0.
-static void *sReadBlob(FILE *f, uint64_t *n_out, size_t w, const char *what) {
+static void *sReadBlob(MemReader *f, uint64_t *n_out, size_t w, const char *what) {
   *n_out = sReadU64(f, what);
   if (*n_out == 0) return NULL;
   void *buf = calloc((size_t)(*n_out), w);
@@ -501,11 +504,11 @@ static void *sReadBlob(FILE *f, uint64_t *n_out, size_t w, const char *what) {
   return buf;
 }
 
-static double *sReadDoubleBlob(FILE *f, uint64_t *n_out, const char *what) {
+static double *sReadDoubleBlob(MemReader *f, uint64_t *n_out, const char *what) {
   return (double *)sReadBlob(f, n_out, sizeof(double), what);
 }
 
-static int *sReadIntBlob(FILE *f, uint64_t *n_out, const char *what) {
+static int *sReadIntBlob(MemReader *f, uint64_t *n_out, const char *what) {
   return (int *)sReadBlob(f, n_out, sizeof(int), what);
 }
 
@@ -513,7 +516,7 @@ static int *sReadIntBlob(FILE *f, uint64_t *n_out, const char *what) {
 // vLines restore
 // ---------------------------------------------------------------------------
 
-static void sReadVLines(FILE *f, vLines *vl, const char *what) {
+static void sReadVLines(MemReader *f, vLines *vl, const char *what) {
   lineNull(vl);
   uint32_t n = sReadU32(f, what);
   for (uint32_t i = 0; i < n; i++) {
@@ -543,22 +546,26 @@ extern "C" void rxSolveFreeC(void);
 //' @return Invisibly TRUE.
 //' @noRd
 // [[Rcpp::export]]
-SEXP rxRestoreState_(SEXP pathSexp) {
-  const char *path = CHAR(STRING_ELT(pathSexp, 0));
-
-  FILE *f = fopen(path, "rb");
-  if (!f) (Rf_error)("rxRestoreState: cannot open '%s'", path);
+SEXP rxRestoreState_(SEXP rawSexp) {
+  if (TYPEOF(rawSexp) != RAWSXP) {
+    (Rf_error)("rxRestoreState_: expected a raw vector");
+  }
+  MemReader _reader;
+  _reader.data = RAW(rawSexp);
+  _reader.size = Rf_length(rawSexp);
+  _reader.pos = 0;
+  MemReader *f = &_reader;
 
   // ── Section 1: Header validation ─────────────────────────────────────────
   char magic[8];
   sRead(f, magic, 8, "magic");
   if (memcmp(magic, rxSerializeMagic, 8) != 0) {
-    fclose(f);
-    (Rf_error)("rxRestoreState: '%s' is not a valid rxode2 state file", path);
+    
+    (Rf_error)("rxRestoreState: object is not a valid rxode2 state file");
   }
   uint32_t fmt = sReadU32(f, "format_ver");
   if (fmt > rxSerializeFormatVer) {
-    fclose(f);
+    
     (Rf_error)("rxRestoreState: file format version %u > supported %u",
                fmt, rxSerializeFormatVer);
   }
@@ -587,7 +594,7 @@ SEXP rxRestoreState_(SEXP pathSexp) {
   if (sz_opts  != (uint32_t)sizeof(rx_solving_options) ||
       sz_ind   != (uint32_t)sizeof(rx_solving_options_ind) ||
       sz_solve != (uint32_t)sizeof(rx_solve)) {
-    fclose(f);
+    
     (Rf_error)("rxRestoreState: struct size mismatch — file was built against a "
                "different rxode2 ABI (opts %u vs %u, ind %u vs %u, solve %u vs %u)",
                sz_opts,  (uint32_t)sizeof(rx_solving_options),
@@ -715,7 +722,7 @@ SEXP rxRestoreState_(SEXP pathSexp) {
   if (_globals.gsolve != NULL) free(_globals.gsolve);
   _globals.gsolve = (double *)calloc(_mem.gsolve_total, sizeof(double));
   if (!_globals.gsolve) {
-    fclose(f);
+    
     (Rf_error)("rxRestoreState: out of memory for gsolve");
   }
 
@@ -829,7 +836,7 @@ SEXP rxRestoreState_(SEXP pathSexp) {
   if (_globals.gon != NULL) free(_globals.gon);
   _globals.gon = (int *)calloc(_mem.gon_total, sizeof(int));
   if (!_globals.gon) {
-    fclose(f);
+    
     (Rf_error)("rxRestoreState: out of memory for gon");
   }
   int64_t nSize = (int64_t)rx->nsim * rx->nsub;
@@ -856,7 +863,7 @@ SEXP rxRestoreState_(SEXP pathSexp) {
       if (_ncmt > 0) {
         _globals.gInfusionRate[_t] = (double *)calloc(_ncmt, sizeof(double));
         if (!_globals.gInfusionRate[_t]) {
-          fclose(f);
+          
           (Rf_error)("rxRestoreState: out of memory for InfusionRate thread %d", _t);
         }
       }
@@ -881,7 +888,7 @@ SEXP rxRestoreState_(SEXP pathSexp) {
     _globals.glimit = _globals.gii        + nall_saved;
   }
 
-  // gevid slab (3*nall ints: evid, gidose, gcens)
+  // gevid slab (3*nall ints + dfN*2 ints + nlhs ints)
   {
     uint64_t n;
     int *buf = sReadIntBlob(f, &n, "gevid_slab");
@@ -891,6 +898,10 @@ SEXP rxRestoreState_(SEXP pathSexp) {
     _globals.gcens  = _globals.gidose + nall_saved;
     // gpar_cov shares offset with gcens (as in rxData.cpp line 3786)
     _globals.gpar_cov = _globals.gcens;
+    
+    uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
+    _globals.gpar_covInterp = _globals.gpar_cov + dfN;
+    _globals.glhs_str = _globals.gpar_covInterp + dfN;
   }
 
   // gcov
@@ -966,10 +977,14 @@ SEXP rxRestoreState_(SEXP pathSexp) {
 
   // ── Section 9: Per-subject blocks ─────────────────────────────────────────
   uint32_t nsub = rx->nsub;
-  // Allocate inds_global (the subjects array)
-  rx_solving_options_ind *inds = (rx_solving_options_ind *)
-    R_Calloc(nsub, rx_solving_options_ind);
-  rx->subjects = inds;
+  // rxOptionsIniEnsure resets rx->ordId = NULL; save the restored pointer first.
+  int *savedOrdId = rx->ordId;
+  // Allocate via rxOptionsIniEnsure so inds_global is properly set up.
+  // All solve functions in par_solve.cpp use inds_global directly.
+  rxOptionsIniEnsure((int)(nsub * rx->nsim), op->cores);
+  // Restore ordId that rxOptionsIniEnsure nulled out.
+  rx->ordId = _globals.ordId = savedOrdId;
+  rx_solving_options_ind *inds = rx->subjects; // == inds_global
 
   for (uint32_t si = 0; si < nsub; si++) {
     rx_solving_options_ind *ind = &inds[si];
@@ -1045,7 +1060,7 @@ SEXP rxRestoreState_(SEXP pathSexp) {
       int solveN = nat + EVID_EXTRA_SIZE;
       ind->solve = (double *)calloc((int64_t)neq * solveN, sizeof(double));
       if (!ind->solve) {
-        fclose(f);
+        
         (Rf_error)("rxRestoreState: out of memory for ind->solve subject %u", si);
       }
       double *solve_init = sReadDoubleBlob(f, &n, "solve_init");
@@ -1103,6 +1118,5 @@ SEXP rxRestoreState_(SEXP pathSexp) {
   }
 
   _globals.alloc = true;
-  fclose(f);
-  return Rf_ScalarLogical(1);
+  return R_NilValue;
 }

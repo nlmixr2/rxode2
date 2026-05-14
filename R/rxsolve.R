@@ -2183,19 +2183,41 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     events
   }
+  .isSer <- FALSE
+  if (is.character(params) && length(params) == 1 && file.exists(params)) {
+     if (.rxIsSerializeFile(params)) {
+        .isSer <- TRUE
+     }
+  }
+
+  .callSolve <- function() {
+    if (.isSer) {
+      .sz <- file.info(params)$size
+      .rawDat <- readBin(params, "raw", .sz)
+      .decompressed <- memDecompress(.rawDat, type = "xz")
+      .bundle <- unserialize(.decompressed)
+      
+      .rxm <- rxModels_()
+      if (!is.null(.bundle$keepFcov)) assign("keepFcov", .bundle$keepFcov, envir = .rxm) else assign("keepFcov", NULL, envir = .rxm)
+      if (!is.null(.bundle$keepFcovType)) assign("keepFcovType", .bundle$keepFcovType, envir = .rxm) else assign("keepFcovType", NULL, envir = .rxm)
+      if (!is.null(.bundle$idLevels)) assign("idLevels", .bundle$idLevels, envir = .rxm) else assign("idLevels", NULL, envir = .rxm)
+
+      rxSolveFromRaw_(object, .bundle$cState, .ctl, .nms, .xtra,
+                      params, .eventsForSolve, inits)
+    } else {
+      rxSolveSEXP(object, .ctl, .nms, .xtra,
+                  params, .eventsForSolve, inits,
+                  setupOnlyS = .setupOnly)
+    }
+  }
+
   if (getOption("rxode2.debug", FALSE)) {
-    .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-                                                  params, .eventsForSolve, inits,
-                                                  setupOnlyS = .setupOnly
-                                                  ), lst = TRUE)
+    .envReset$ret <- .collectWarnings(.callSolve(), lst = TRUE)
   } else {
     while (.envReset$reset) {
       .envReset$reset <- FALSE
       tryCatch({
-        .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-                                                      params, .eventsForSolve, inits,
-                                                      setupOnlyS = .setupOnly
-                                                      ), lst = TRUE)
+        .envReset$ret <- .collectWarnings(.callSolve(), lst = TRUE)
       },
       error=function(e) {
         if (regexpr("not provided by package", e$message) != -1) {
