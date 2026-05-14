@@ -125,8 +125,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   rx_solve *rx;
   rx = &rx_global;
   rx_solving_options *op = &op_global;
-  Rprintf("DBGDF1: rxode2_df entered doDose0=%d nobs=%d nall=%d nobs2=%d nsub=%u nsim=%u\n",
-          doDose0, rx->nobs, rx->nall, rx->nobs2, rx->nsub, rx->nsim);
+
   int add_cov = rx->add_cov;
   int ncov = op->ncov;
   int ncov0 = rx->nCov0;
@@ -137,8 +136,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int nall = rx->nall - rx->nevid9;
   int errNcol = rxGetErrsNcol();
   int errNrow = rxGetErrsNrow();
-  Rprintf("DBGDF2: nsvar=%d errNcol=%d add_cov=%d ncov=%d nlhs=%d\n",
-          op->nsvar, errNcol, add_cov, ncov, nlhs);
+
   if (op->nsvar != errNcol) {
     rxSolveFreeC();
     (Rf_errorcall)(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);
@@ -176,9 +174,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     dullSS=1, dullIi=1;
   int csub = 0, evid = 0;
   int nsub = (int)rx->nsub;
-  Rprintf("DBGDF3: before rxStateIgnore modNamePtr='%s'\n", op->modNamePtr);
   IntegerVector rmState = rxStateIgnore(op->modNamePtr);
-  Rprintf("DBGDF4: after rxStateIgnore rmState.size=%d\n", rmState.size());
   int nPrnState =0;
   int i, j;
   int neq[2];
@@ -346,15 +342,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     df[i++] = IntegerVector((R_xlen_t)rx->nr);
   }
   doseCols += nevid2col;
-  Rprintf("DBGDF5: before rxParamNames\n");
   CharacterVector paramNames = rxParamNames(op->modNamePtr);
-  Rprintf("DBGDF6: before rxLhsNames\n");
   CharacterVector fkeepNames = get_fkeepn();
   // time comes in here
   df[md + sm +ms + doseCols + 2*nmevid] = NumericVector((R_xlen_t)rx->nr);
-  Rprintf("DBGDF7: before lhsNames\n");
   CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
-  Rprintf("DBGDF8: after lhsNames\n");
   // time
   int i0 = md + sm + ms + doseCols + 2*nmevid;
   df[i0] = NumericVector((R_xlen_t)rx->nr);

@@ -4897,7 +4897,6 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
 }
 
 extern "C" void par_solve(rx_solve *rx) {
-  Rprintf("DBGPS1: par_solve, assignFuns=%p subjects=%p\n", (void*)assignFuns, (void*)rx->subjects);
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);
   par_progress_1=0;
@@ -4907,7 +4906,6 @@ extern "C" void par_solve(rx_solve *rx) {
   rxt.d = 0;
   rxt.cur = 0;
   assignFuns();
-  Rprintf("DBGPS2: after assignFuns, stiff=%d neq=%d\n", rx->op->stiff, rx->op->neq);
   rx_solving_options *op = rx->op;
   if (op->neq != 0) {
     if (rx->linB == 1) {

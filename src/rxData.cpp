@@ -4745,9 +4745,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
-  Rprintf("DBG2: rxSolve_finalize entered\n");
   rxSolveSaveRxSolve(rxSolveDat);
-  Rprintf("DBG3: after rxSolveSaveRxSolve\n");
   rx_solve* rx = getRxSolve_();
   // if (rxSolveDat->throttle){
   //   rx->op->cores = getRxThreads(rx->nsim*rx->nsub, true);
@@ -4788,18 +4786,14 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
       }
     }
   }
-  Rprintf("DBG4: before par_solve nsub=%u nsim=%u neq=%d matrix=%d\n", rx->nsub, rx->nsim, rx->op->neq, rx->matrix);
   par_solve(rx);
-  Rprintf("DBG5: after par_solve\n");
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif// rxSolveT
 
-  Rprintf("DBG6: before rxSolve_df\n");
   List dat = rxSolve_df(obj, rxControl, specParams, extraArgs,
                         params, events, inits, rxSolveDat);
-  Rprintf("DBG7: after rxSolve_df\n");
 #ifdef rxSolveT
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -5009,7 +5003,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   // Re-assign ODE function pointers cleared by rxSolveFreeC inside rxRestoreState_.
   // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
   rxAssignPtr(SEXP(obj));
-  Rprintf("DBG1: after rxAssignPtr\n");
+
   // Force plain data.frame return: rxSolve_genenv calls rxDll() which does
   // VECTOR_ELT on e["rxDll"] — if that slot is an environment (not a list),
   // the R API aborts.  matrix=2 causes rxSolve_finalize to return early with
