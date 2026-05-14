@@ -1311,7 +1311,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
     checkmate::assertIntegerish(maxExtra, lower=0, len=1)
     if (!is.null(serializeFile)) {
-      checkmate::assertCharacter(serializeFile, len=1, any.missing=FALSE)
+      if (isTRUE(serializeFile)) {
+      } else if (checkmate::testCharacter(serializeFile, len = 1, any.missing = FALSE)) {
+      } else {
+        stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
+      }
     }
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
@@ -1494,6 +1498,17 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
+  if (.rxIsSerializedSolvePath(params)) {
+    .xtra <- list(...)
+    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
+                                 initsMissing = missing(inits), inits = inits,
+                                 dots = .xtra,
+                                 thetaMissing = missing(theta),
+                                 etaMissing = missing(eta),
+                                 file = params)
+    .object <- rxode2(object)
+    return(rxSolve.default(.object, params = params, envir = envir))
+  }
   rxUdfUiReset()
   .eventsChk <- if (is.rxEt(events)) as.data.frame(events) else events
   .paramsChk <- if (is.rxEt(params)) as.data.frame(params) else params
@@ -1541,6 +1556,73 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
                      .lst, .extra,
                      list(theta=theta, eta=eta)))
+}
+
+.rxIsSerializedSolvePath <- function(params) {
+  is.character(params) && length(params) == 1L &&
+    file.exists(params) && .rxIsSerializeFile(params)
+}
+
+.rxSerializedSolveArgNames <- function(eventsMissing = TRUE,
+                                       events = NULL,
+                                       initsMissing = TRUE,
+                                       inits = NULL,
+                                       dots = list(),
+                                       thetaMissing = TRUE,
+                                       etaMissing = TRUE,
+                                       indOwnAllocMissing = TRUE,
+                                       extras = NULL) {
+  .bad <- character(0)
+  if (!eventsMissing && !is.null(events)) {
+    .bad <- c(.bad, "events")
+  }
+  if (!initsMissing && !is.null(inits)) {
+    .bad <- c(.bad, "inits")
+  }
+  if (!thetaMissing) {
+    .bad <- c(.bad, "theta")
+  }
+  if (!etaMissing) {
+    .bad <- c(.bad, "eta")
+  }
+  if (!indOwnAllocMissing) {
+    .bad <- c(.bad, "indOwnAlloc")
+  }
+  if (length(dots) > 0) {
+    .dotNames <- names(dots)
+    if (is.null(.dotNames)) {
+      .dotNames <- rep.int("", length(dots))
+    }
+    .dotNames[.dotNames == ""] <- "<unnamed>"
+    .bad <- c(.bad, .dotNames)
+  }
+  if (!is.null(extras) && length(extras) > 0) {
+    .bad <- c(.bad, extras)
+  }
+  unique(.bad)
+}
+
+.rxAssertSerializedSolveArgs <- function(..., file) {
+  .bad <- .rxSerializedSolveArgNames(...)
+  if (length(.bad) > 0) {
+    stop(sprintf(
+      "Serialized solve '%s' only accepts the model and serialization file; disallowed inputs: %s",
+      file, paste(sprintf("'%s'", .bad), collapse = ", ")
+    ), call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+.rxSerializedSolvePipeArgs <- function() {
+  .bad <- character(0)
+  .pipeChecks <- c("ThetaMat", "Omega", "Sigma", "DfObs", "DfSub", "NSub", "NStud", "Keep")
+  for (.nm in .pipeChecks) {
+    .fn <- get(paste0(".pipe", .nm), envir = asNamespace("rxode2"))
+    if (!is.null(.fn(NA))) {
+      .bad <- c(.bad, substring(.nm, 1, 1) |> tolower() |> paste0(substring(.nm, 2)))
+    }
+  }
+  .bad
 }
 
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -1659,6 +1741,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
+  if (.rxIsSerializedSolvePath(params)) {
+    .xtra <- list(...)
+    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
+                                 initsMissing = missing(inits), inits = inits,
+                                 dots = .xtra,
+                                 thetaMissing = missing(theta),
+                                 etaMissing = missing(eta),
+                                 file = params)
+    if (inherits(object, "rxUi")) {
+      object <- rxUiDecompress(object)
+    }
+    return(rxSolve.default(object$simulationModel, params = params, envir = envir))
+  }
   rxUdfUiReset()
   if (isTRUE(object$uiUseData)) {
     # this needs to be re-parsed
@@ -1730,6 +1825,16 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL, envir=parent.frame()) {
+  if (.rxIsSerializedSolvePath(params)) {
+    .xtra <- list(...)
+    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
+                                 initsMissing = missing(inits), inits = inits,
+                                 dots = .xtra,
+                                 thetaMissing = missing(theta),
+                                 etaMissing = missing(eta),
+                                 file = params)
+    return(rxSolve.default(object$simulationModel, params = params, envir = envir))
+  }
   rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
@@ -1849,6 +1954,16 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
   }
   .xtra <- list(...)
+  .serializeInput <- .rxIsSerializedSolvePath(params)
+  if (.serializeInput) {
+    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
+                                 initsMissing = missing(inits), inits = inits,
+                                 dots = .xtra,
+                                 thetaMissing = missing(theta),
+                                 etaMissing = missing(eta),
+                                 indOwnAllocMissing = missing(indOwnAlloc),
+                                 file = params)
+  }
   if (any(duplicated(names(.xtra)))) {
     stop("duplicate arguments do not make sense",
       call. = FALSE
@@ -1896,33 +2011,63 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     ), call. = FALSE)
   }
   if (!is.null(rxode2::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "thetaMat", file = params)
+    }
     .ctl$thetaMat <- rxode2::.pipeThetaMat(NA)
   }
   if (!is.null(rxode2::.pipeOmega(NA)) && is.null(.ctl$omega)) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "omega", file = params)
+    }
     .ctl$omega <- rxode2::.pipeOmega(NA)
   }
   if (!is.null(rxode2::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "sigma", file = params)
+    }
     .ctl$sigma <- rxode2::.pipeSigma(NA)
   }
   if (!is.null(rxode2::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "sigma", file = params)
+    }
     .ctl$sigma <- rxode2::.pipeSigma(NA)
   }
   if (!is.null(rxode2::.pipeDfObs(NA)) && .ctl$dfObs == 0) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "dfObs", file = params)
+    }
     .ctl$dfObs <- rxode2::.pipeDfObs(NA)
   }
   if (!is.null(rxode2::.pipeDfSub(NA)) && .ctl$dfSub == 0) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "dfSub", file = params)
+    }
     .ctl$dfSub <- rxode2::.pipeDfSub(NA)
   }
   if (!is.null(rxode2::.pipeNSub(NA)) && .ctl$nSub == 1) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "nSub", file = params)
+    }
     .ctl$nSub <- rxode2::.pipeNSub(NA)
   }
   if (!is.null(rxode2::.pipeNStud(NA)) && .ctl$nStud == 1) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "nStud", file = params)
+    }
     .ctl$nStud <- rxode2::.pipeNStud(NA)
   }
   if (!is.null(rxode2::.pipeKeep(NA)) && is.null(.ctl$keep)) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "keep", file = params)
+    }
     .ctl$keep <- rxode2::.pipeKeep(NA)
   }
   if (.applyParams) {
+    if (.serializeInput) {
+      .rxAssertSerializedSolveArgs(extras = "rxParams", file = params)
+    }
     if (!is.null(.rxParams$thetaMat) && is.null(.ctl$thetaMat)) {
       .ctl$thetaMat <- .rxParams$thetaMat
     }
@@ -2015,6 +2160,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         call. = FALSE
       )
     }
+  }
+  if (.serializeInput) {
+    .rxAssertSerializedSolveArgs(eventsMissing = is.null(events), events = events,
+                                 initsMissing = is.null(inits), inits = inits,
+                                 extras = c(.rxSerializedSolvePipeArgs(),
+                                            if (.applyParams) "rxParams"),
+                                 file = params)
   }
   if (!is.null(.ctl$iCov)) {
     if (inherits(.ctl$iCov, "data.frame")) {
@@ -2183,24 +2335,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     events
   }
-  .isSer <- FALSE
-  if (is.character(params) && length(params) == 1 && file.exists(params)) {
-     if (.rxIsSerializeFile(params)) {
-        .isSer <- TRUE
-     }
+  .isSer <- .serializeInput
+  .serializeMode <- if (isTRUE(.ctl$serializeFile)) {
+    "temp"
+  } else if (is.character(.ctl$serializeFile) && length(.ctl$serializeFile) == 1L) {
+    "file"
+  } else {
+    "none"
+  }
+  if (.isSer && .serializeMode != "none") {
+    .rxAssertSerializedSolveArgs(extras = "serializeFile", file = params)
   }
 
   .callSolve <- function() {
     if (.isSer) {
-      .sz <- file.info(params)$size
-      .rawDat <- readBin(params, "raw", .sz)
-      .decompressed <- memDecompress(.rawDat, type = "xz")
-      .bundle <- unserialize(.decompressed)
-      
-      .rxm <- rxModels_()
-      if (!is.null(.bundle$keepFcov)) assign("keepFcov", .bundle$keepFcov, envir = .rxm) else assign("keepFcov", NULL, envir = .rxm)
-      if (!is.null(.bundle$keepFcovType)) assign("keepFcovType", .bundle$keepFcovType, envir = .rxm) else assign("keepFcovType", NULL, envir = .rxm)
-      if (!is.null(.bundle$idLevels)) assign("idLevels", .bundle$idLevels, envir = .rxm) else assign("idLevels", NULL, envir = .rxm)
+      .bundle <- .rxReadStateBundle(params)
+      .rxValidateStateBundleModel(object, .bundle, params)
+      .rxRestoreStateBundle(.bundle)
 
       rxSolveFromRaw_(object, .bundle$cState, .ctl, .nms, .xtra,
                       params, .eventsForSolve, inits)
@@ -2209,6 +2360,29 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
                   params, .eventsForSolve, inits,
                   setupOnlyS = .setupOnly)
     }
+  }
+
+  .callSerializeOnly <- function(file) {
+    .saveCtl <- .ctl
+    .saveCtl$serializeFile <- file
+    on.exit(rxUnlock(object), add = TRUE)
+    .collectWarnings(
+      rxSolveSEXP(object, .saveCtl, .nms, .xtra,
+                  params, .eventsForSolve, inits,
+                  setupOnlyS = 1L)
+    )
+    invisible(file)
+  }
+
+  if (.serializeMode == "file") {
+    return(.callSerializeOnly(.ctl$serializeFile))
+  } else if (.serializeMode == "temp") {
+    .tmpSerializeFile <- tempfile(fileext = ".rxbin")
+    on.exit(unlink(.tmpSerializeFile), add = TRUE)
+    .callSerializeOnly(.tmpSerializeFile)
+    params <- .tmpSerializeFile
+    .isSer <- TRUE
+    .ctl$serializeFile <- NULL
   }
 
   if (getOption("rxode2.debug", FALSE)) {

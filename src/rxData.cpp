@@ -5792,11 +5792,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           Environment rxenv = Environment::namespace_env("rxode2");
           if (rxenv.exists(".rxSaveStateBundle")) {
             Function saveFn = rxenv[".rxSaveStateBundle"];
-            saveFn(_pathSexp, cState);
+            saveFn(_pathSexp, cState, object);
           } else {
             Language call(Rf_install("get"), ".rxSaveStateBundle", Language(Rf_install("asNamespace"), "rxode2"));
             Function saveFn = call.eval();
-            saveFn(_pathSexp, cState);
+            saveFn(_pathSexp, cState, object);
           }
           UNPROTECT(2);
         }

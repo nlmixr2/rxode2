@@ -15,13 +15,13 @@ rxTest({
     set.seed(42)
     ref <- rxSolve(mod, theta, ev)
 
-    # Solve with serialization — saves state before integration
     stateFile <- tempfile(fileext = ".rxbin")
-    set.seed(42)
-    ser <- rxSolve(mod, theta, ev, serializeFile = stateFile)
+    .save <- withVisible(rxSolve(mod, theta, ev, serializeFile = stateFile))
 
-    test_that("rxControl(serializeFile) produces identical output", {
-      expect_equal(ref$cp, ser$cp, tolerance = 1e-10)
+    test_that("serializeFile path saves state and exits without solving", {
+      expect_false(.save$visible)
+      expect_identical(.save$value, stateFile)
+      expect_true(rxModels_()[[rxDll(mod)]] == 0L)
     })
 
     test_that("serialization file is created", {
@@ -45,6 +45,33 @@ rxTest({
     test_that("serialized solve has same dimensions", {
       expect_equal(nrow(ref), nrow(fromFile))
       expect_equal(ncol(ref), ncol(fromFile))
+    })
+
+    test_that("serialized solve rejects extra solve inputs and controls", {
+      expect_error(rxSolve(mod, stateFile, events = ev),
+                   "only accepts the model and serialization file")
+      expect_error(rxSolve(mod, stateFile, atol = 1e-8),
+                   "disallowed inputs: 'atol'")
+    })
+
+    test_that("serialized solve validates the supplied model", {
+      otherMod <- rxode2({
+        d/dt(depot) = -ka * depot
+        d/dt(centr) = ka * depot - cl / v * centr
+        d/dt(effect) = cp - effect
+        cp = centr / v
+      })
+      expect_error(rxSolve(otherMod, stateFile),
+                   "does not match the supplied model")
+    })
+
+    test_that("serializeFile=TRUE solves from a temporary serialization file", {
+      .before <- sort(list.files(tempdir(), pattern = "\\.rxbin$", full.names = TRUE))
+      set.seed(42)
+      .tmpSer <- rxSolve(mod, theta, ev, serializeFile = TRUE)
+      .after <- sort(list.files(tempdir(), pattern = "\\.rxbin$", full.names = TRUE))
+      expect_equal(ref$cp, .tmpSer$cp, tolerance = 1e-10)
+      expect_equal(.after, .before)
     })
   })
 })
