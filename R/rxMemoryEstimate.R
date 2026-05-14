@@ -92,7 +92,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemExtractControl <- function(ctrl) {
-  .cores <- max(1L, as.integer(ctrl$cores))
+  .cores <- as.integer(ctrl$cores)
+  if (.cores <= 0L) .cores <- getRxThreads()
   .nsim  <- if (is.null(ctrl$nsim)) 1L else as.integer(ctrl$nsim)
   .neta  <- if (is.matrix(ctrl$omega)) nrow(ctrl$omega) else 0L
   .neps  <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
@@ -305,8 +306,8 @@ rxMemoryEstimate <- function(
     if (.ci$neps > 0L) neps <- .ci$neps
     if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
   }
-  if (cores == 0) {
-    cores <- getRxThreads()
+  if (cores <= 0L) {
+    cores <- 1L
   }
   if (is.null(nIndSim)) nIndSim <- neta + neps
 

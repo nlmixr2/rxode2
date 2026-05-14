@@ -154,6 +154,7 @@ rxSolve(
   indOwnAlloc = NA,
   maxExtra = 1000L,
   tolFactor = NULL,
+  serializeFile = NULL,
   envir = parent.frame()
 )
 
@@ -1008,6 +1009,17 @@ The effective tolerance is always capped at \code{maxAtolRtolFactor}.
 The per-subject factors used (after matching) are stored back
 in the solved object and accessible via `$tolFactor`.
 }\if{html}{\out{</div>}}}
+
+\item{serializeFile}{Controls serialization-driven solves. When this
+is a file path, \code{rxSolve()} writes the pre-integration serialized
+state to that file and returns the file path invisibly without
+running the solve. When this is \code{TRUE}, \code{rxSolve()} writes the
+serialized state to a temporary \code{.rxbin} file, solves by reloading
+from that file, returns the solve result, and then removes the
+temporary file. When solving from an existing serialization file via
+\code{rxSolve(model, "state.rxbin")}, only the model and serialization
+file are allowed because the file already stores the solve inputs
+and controls.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

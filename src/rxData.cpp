@@ -54,6 +54,9 @@ extern "C" void ensureLinCmtB(int nCores);
 #include "threadSafeConstants.h"
 //#include "seed.h"
 
+SEXP rxSaveState_();         // defined in rxSerialize.cpp
+SEXP rxRestoreState_(SEXP pathSexp);      // defined in rxSerialize.cpp
+bool rxIsSerializeFile_(SEXP pathSexp);   // defined in rxSerialize.cpp
 extern "C" void RSprintf(const char *format, ...);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
@@ -1467,108 +1470,7 @@ NumericVector rxSetupScale(const RObject &obj,
   return ret;
 }
 
-struct rx_globals {
-  double *gLin;
-  double *gLlikSave;
-  double *gSolveLast2;
-  double *gSolveLast;
-  double *gSolveSave;
-  int *gon;
-  double *gIndSim;
-  double *gsolve;
-  double **gInfusionRate;    // per-thread independently allocated buffers
-  int    *gInfusionRateN;    // allocation count per thread (neq + extraCmt)
-  int     nInfusionRateThreads; // number of threads allocated
-  double *gTlastS;
-  double *gTfirstS;
-  double *gCurDoseS;
-  double *gall_times;
-  double *gall_timesS;
-  int *gix;
-  double *gdv;
-  double *glimit;
-  int *gcens;
-  double *gamt;
-  double *gamtS;
-  double *gii;
-  double *glhs;
-  double *gcov;
-  double *ginits;
-  double *gscale;
-  double *gatol2;
-  double *grtol2;
-  double *gssAtol;
-  double *gssRtol;
-  double *gpars;
-  double *gLinSave;
-  double *gLinDummy;
-  //ints
-  int *gevid;
-  int *gBadDose;
-  int *grc;
-  int *gidose;
-  int *gpar_cov;
-  int *gpar_covInterp;
-  int *glhs_str;
-
-  int *gParPos;
-  int *gParPos2;
-
-  int *gsvar;
-  int *govar;
-  int *gsiV;
-  int *gsi;
-  //
-  int *slvr_counter;
-  int *dadt_counter;
-  int *jac_counter;
-  int *gSampleCov;
-  double *gmtime;
-  double *gmtime0;
-  double *gsigma = NULL;
-  int nSigma = 0;
-  double *gomega = NULL;
-  int nOmega = 0;
-  int *ordId = NULL;
-  bool zeroTheta = false;
-  bool zeroOmega = false;
-  bool zeroSigma = false;
-  int *gindLin = NULL;
-
-  // extra dosing information
-  int ** pendingDoses = NULL;
-  int *  nPendingDoses = NULL;
-  int *  nAllocPendingDoses = NULL;
-  int ** ignoredDoses = NULL;
-  int *  nIgnoredDoses = NULL;
-  int *  nAllocIgnoredDoses = NULL;
-
-  // new dosing information
-
-  int    **extraDoseTimeIdx = NULL;
-  double **extraDoseTime    = NULL;
-  int    **extraDoseEvid    = NULL;
-  double **extraDoseDose    = NULL;
-  int     *extraDoseN       = NULL;
-  int     *extraDoseAllocN  = NULL;
-
-  int extraDoseCores = 0;
-
-  // time per thread
-  double *timeThread = NULL;
-
-  // Per-thread tolerance arrays for thread-safe atolRtolFactor_().
-  // Each thread gets its own slice of size op->neq so modifications
-  // in atolRtolFactor_() never race between threads.
-  double *gatol2Thread = NULL;
-  double *grtol2Thread = NULL;
-  double *gssAtolThread = NULL;
-  double *gssRtolThread = NULL;
-
-  bool alloc=false;
-};
-
-
+#include "rxGlobals.h"
 rx_globals _globals;
 
 #include "extraDosing.h"
@@ -1862,6 +1764,10 @@ extern "C" void gFree(){
   _globals.gpars=NULL;
   if (_globals.gParPos != NULL) free(_globals.gParPos);
   _globals.gParPos=NULL;
+  // gParPos2, gsvar, govar are sub-pointers within gParPos slab; null after free
+  _globals.gParPos2=NULL;
+  _globals.gsvar=NULL;
+  _globals.govar=NULL;
   if (_globals.gevid != NULL) free(_globals.gevid);
   _globals.gevid=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
@@ -2809,6 +2715,8 @@ LogicalVector rxSolveFree(){
   if (rx->splitBolus != NULL) free(rx->splitBolus);
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
+  // linCmtScale points into an R vector (via REAL()), never malloc'd — just null it
+  rx->linCmtScale = NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
   // Free the omega info
@@ -2840,6 +2748,8 @@ LogicalVector rxSolveFree(){
 
   if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
   _globals.gall_timesS = NULL;
+  // gamtS is a sub-pointer within gall_timesS; null after free
+  _globals.gamtS = NULL;
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
@@ -2943,7 +2853,13 @@ extern "C" SEXP get_fkeepChar(int col, double val) {
 }
 
 extern "C" SEXP get_fkeepn() {
-  return as<SEXP>(keepFcov.attr("names"));
+  SEXP names = keepFcov.attr("names");
+  if (Rf_isNull(names)) {
+    SEXP ret = PROTECT(Rf_allocVector(STRSXP, 0));
+    UNPROTECT(1);
+    return ret;
+  }
+  return names;
 }
 
 extern "C" void sortIds(rx_solve* rx, int ini) {
@@ -4775,6 +4691,58 @@ int getNRows(RObject obj){
 
 rxSolve_t rxSolveDatLast;
 
+static inline List rxSolveDatState(rxSolve_t* rxSolveDat){
+  return List::create(
+    _["addDosing"] = rxSolveDat->addDosing,
+    _["timeUnitsU"] = rxSolveDat->timeUnitsU,
+    _["addTimeUnits"] = rxSolveDat->addTimeUnits,
+    _["covUnits"] = rxSolveDat->covUnits,
+    _["par1"] = rxSolveDat->par1,
+    _["usePar1"] = rxSolveDat->usePar1,
+    _["par1cbind"] = rxSolveDat->par1cbind,
+    _["swappedEvents"] = rxSolveDat->swappedEvents,
+    _["par1ini"] = rxSolveDat->par1ini,
+    _["initsC"] = rxSolveDat->initsC,
+    _["nSize"] = rxSolveDat->nSize,
+    _["fromIni"] = rxSolveDat->fromIni,
+    _["eGparPos"] = rxSolveDat->eGparPos,
+    _["idFactor"] = rxSolveDat->idFactor,
+    _["labelID"] = rxSolveDat->labelID,
+    _["idLevels"] = rxSolveDat->idLevels,
+    _["convertInt"] = rxSolveDat->convertInt
+  );
+}
+
+static inline void rxSolveDatLoadState(rxSolve_t* rxSolveDat, SEXP stateSEXP){
+  if (Rf_isNull(stateSEXP)) return;
+  List state(stateSEXP);
+  SEXP tmp = state["addDosing"];
+  rxSolveDat->addDosing = as<Nullable<LogicalVector>>(tmp);
+  tmp = state["timeUnitsU"];
+  if (!Rf_isNull(tmp)) rxSolveDat->timeUnitsU = tmp;
+  rxSolveDat->addTimeUnits = as<bool>(state["addTimeUnits"]);
+  tmp = state["covUnits"];
+  if (!Rf_isNull(tmp)) rxSolveDat->covUnits = as<List>(tmp);
+  tmp = state["par1"];
+  if (!Rf_isNull(tmp)) rxSolveDat->par1 = tmp;
+  rxSolveDat->usePar1 = as<bool>(state["usePar1"]);
+  rxSolveDat->par1cbind = as<bool>(state["par1cbind"]);
+  rxSolveDat->swappedEvents = as<bool>(state["swappedEvents"]);
+  tmp = state["par1ini"];
+  if (!Rf_isNull(tmp)) rxSolveDat->par1ini = tmp;
+  tmp = state["initsC"];
+  if (!Rf_isNull(tmp)) rxSolveDat->initsC = as<NumericVector>(tmp);
+  rxSolveDat->nSize = as<uint32_t>(state["nSize"]);
+  rxSolveDat->fromIni = as<bool>(state["fromIni"]);
+  tmp = state["eGparPos"];
+  if (!Rf_isNull(tmp)) rxSolveDat->eGparPos = as<IntegerVector>(tmp);
+  rxSolveDat->idFactor = as<bool>(state["idFactor"]);
+  rxSolveDat->labelID = as<bool>(state["labelID"]);
+  tmp = state["idLevels"];
+  if (!Rf_isNull(tmp)) rxSolveDat->idLevels = as<CharacterVector>(tmp);
+  rxSolveDat->convertInt = as<bool>(state["convertInt"]);
+}
+
 static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
   rxSolveDatLast = rxSolveDat[0];
   // Assigned as a precaution against R's gc()
@@ -5067,10 +5035,51 @@ void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
 static int _rxSolveCallN = 0;
 
+// Restore serialized state then run integration + build output data frame.
+// [[Rcpp::export]]
+SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
+                              const RObject &solveState,
+                              const List &rxControl,
+                              const Nullable<CharacterVector> &specParams,
+                              const Nullable<List> &extraArgs,
+                              const RObject &params, const RObject &events,
+                              const RObject &inits) {
+  // Load compiled model and assign function pointers
+  if (!rxDynLoad(obj)) {
+    (Rf_error)(_("rxSolve: cannot load rxode2 dll for model"));
+  }
+
+  // Restore the pre-integration solve state from binary file.
+  // rxRestoreState_ calls rxSolveFreeC() (which clears ODE function pointers),
+  // then rebuilds inds_global via rxOptionsIniEnsure and populates per-subject data.
+  rxRestoreState_(rawObj);
+  // Re-assign ODE function pointers cleared by rxSolveFreeC inside rxRestoreState_.
+  // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
+  rxAssignPtr(SEXP(obj));
+
+  // Build a minimal rxSolveDat for the finalize path.
+  // DO NOT memset — rxSolve_t contains Rcpp objects (List, RObject, etc.)
+  // whose constructors initialize internal SEXP to R_NilValue; memset would
+  // corrupt those to NULL pointer, causing VECTOR_ELT crashes.
+  rxSolve_t rxSolveDat{};
+  rxSolveDat.updateObject  = false;
+  rxSolveDat.isRxSolve     = false;
+  rxSolveDat.isEnvironment = false;
+  rxSolveDat.hasCmt        = false;
+  rxSolveDat.addDosing = as<Nullable<LogicalVector>>(rxControl[Rxc_addDosing]);
+  rxSolveDatLoadState(&rxSolveDat, solveState);
+  if (Rf_isNull(solveState)) {
+    getRxSolve_()->matrix = 2;
+  }
+
+  return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
+                          params, events, inits, &rxSolveDat);
+}
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
   return stiff == 2 || stiff == 0;
 }
+
 
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
@@ -5083,6 +5092,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveFree();
   }
   rxDropB = false;
+
+  // Solve-from-file dispatch has been moved to R (rxSolve.default).
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -5814,6 +5825,30 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
                            pars, ev1, inits, rxSolveDat);
     sortIds(rx, 1);
 
+    // Serialization hook: write pre-integration state if serializeFile is set
+    {
+      RObject _sf = rxControl[Rxc_serializeFile];
+      if (!rxIsNull(_sf) && Rf_isString(_sf) && LENGTH(_sf) == 1) {
+        SEXP _sfSexp = STRING_ELT(_sf, 0);
+        if (_sfSexp != NA_STRING) {
+          SEXP _pathSexp = PROTECT(Rf_ScalarString(_sfSexp));
+          SEXP cState = PROTECT(rxSaveState_());
+          Environment rxenv = Environment::namespace_env("rxode2");
+          if (rxenv.exists(".rxSaveStateBundle")) {
+            Function saveFn = rxenv[".rxSaveStateBundle"];
+            saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
+                   params, events, inits);
+          } else {
+            Language call(Rf_install("get"), ".rxSaveStateBundle", Language(Rf_install("asNamespace"), "rxode2"));
+            Function saveFn = call.eval();
+            saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
+                   params, events, inits);
+          }
+          UNPROTECT(2);
+        }
+      }
+    }
+
     if (setupOnly){
       setupOnlyObj = obj;
       return as<SEXP>(LogicalVector::create(true));
@@ -6474,6 +6509,14 @@ extern "C" void rxAssignPtrC(SEXP obj){
   rxAssignPtr(obj);
 }
 
+static inline std::string rxDllFromSlot(SEXP rxDllSlot) {
+  if (TYPEOF(rxDllSlot) == ENVSXP) {
+    Environment rxDllEnv = as<Environment>(rxDllSlot);
+    return as<std::string>(rxDllEnv["dll"]);
+  }
+  return as<std::string>((as<List>(rxDllSlot))["dll"]);
+}
+
 //' Return the DLL associated with the rxode2 object
 //'
 //' This will return the dynamic load library or shared object used to
@@ -6488,7 +6531,7 @@ extern "C" void rxAssignPtrC(SEXP obj){
 //' @keywords internal
 //' @author Matthew L.Fidler
 //' @export
-//[[Rcpp::export]]
+// [[Rcpp::export]]
 std::string rxDll(RObject obj){
   if (rxIs(obj,"rxode2")){
     Environment e = as<Environment>(obj);
@@ -6497,7 +6540,7 @@ std::string rxDll(RObject obj){
       Function rxPkgDll = getRxFn(".rxPkgDll");
       return(as<std::string>(rxPkgDll(wrap(obj))));
     }
-    return as<std::string>((as<List>(e["rxDll"]))["dll"]);
+    return rxDllFromSlot(e["rxDll"]);
   } else if (rxIs(obj,"rxSolve")) {
     CharacterVector cls = obj.attr("class");
     Environment e = as<Environment>(cls.attr(".rxode2.env"));
@@ -6516,7 +6559,7 @@ std::string rxDll(RObject obj){
       stop(_("can not figure out the DLL for this object"));
     } else {
       Environment e = as<Environment>(en);
-      return as<std::string>((as<List>(e["rxDll"]))["dll"]);
+      return rxDllFromSlot(e["rxDll"]);
     }
   }
 }
