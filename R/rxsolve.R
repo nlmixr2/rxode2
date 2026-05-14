@@ -1624,6 +1624,16 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   invisible(TRUE)
 }
 
+.rxAssertSerializeFileWritable <- function(file) {
+  if (file.exists(file)) {
+    stop(sprintf(
+      "Serialization file '%s' already exists; either delete the serialization file or solve without the file specified",
+      file
+    ), call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 .rxSerializedSolvePipeArgs <- function() {
   .bad <- character(0)
   .pipeChecks <- c("ThetaMat", "Omega", "Sigma", "DfObs", "DfSub", "NSub", "NStud", "Keep")
@@ -2374,6 +2384,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   .callSerializeOnly <- function(file) {
+    .rxAssertSerializeFileWritable(file)
     .saveCtl <- .ctl
     .saveCtl$serializeFile <- file
     on.exit(rxUnlock(object), add = TRUE)
