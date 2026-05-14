@@ -81,7 +81,8 @@ linCmt).}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose
-elements are raw byte counts plus \code{ramBytes}, \code{total},
+elements are raw byte counts plus \code{outputData},
+\code{ramBytes}, \code{total},
 \code{sizeofInd}, and \code{rxLlikSaveSize}.
 }
 \description{

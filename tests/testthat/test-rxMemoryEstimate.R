@@ -30,6 +30,8 @@ rxTest({
   test_that("rxMemoryEstimate contains ramBytes", {
     .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 1L)
+    expect_true("outputData" %in% names(.est))
+    expect_gt(as.numeric(.est$outputData), 0)
     expect_true("ramBytes" %in% names(.est))
     .rb <- .est$ramBytes
     expect_true(is.numeric(.rb))
@@ -93,6 +95,14 @@ rxTest({
     .ctrl4 <- rxControl(cores = 4L)
     .est4  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl4)
     expect_gt(.est4$total, .base$total)
+  })
+
+  test_that("addDosing increases estimated output data memory", {
+    .s       <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base    <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L)
+    .ctrl    <- rxControl(addDosing = TRUE)
+    .dosing  <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, control = .ctrl)
+    expect_gt(as.numeric(.dosing$outputData), as.numeric(.base$outputData))
   })
 
   test_that("rxControl omega sets neta, sigma sets neps", {

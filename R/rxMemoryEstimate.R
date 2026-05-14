@@ -135,6 +135,92 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   }, error = function(e) NA_real_)
 }
 
+.rxMemEstimateOutputData <- function(dat, summary, control, neq, nlhs, ncov,
+                                     nsim, nsub, nobsTotal, nallTotal) {
+  .addCov       <- TRUE
+  .addDosing    <- FALSE
+  .subsetNonmem <- TRUE
+  .returnType   <- "rxSolve"
+  .nkeep        <- 0L
+  .ncov0        <- 0L
+  .hasEvid2     <- FALSE
+  .ptrBytes     <- .Machine$sizeof.pointer
+
+  if (!is.null(control)) {
+    if (!is.null(control$addCov)) {
+      .addCov <- isTRUE(control$addCov)
+    }
+    if ("addDosing" %in% names(control)) {
+      .addDosing <- control$addDosing
+    }
+    if (!is.null(control$subsetNonmem)) {
+      .subsetNonmem <- isTRUE(control$subsetNonmem)
+    }
+    if (!is.null(control$returnType) && length(control$returnType) > 0L) {
+      .returnType <- control$returnType[[1L]]
+    }
+    if (!is.null(control$keep)) {
+      .nkeep <- length(control$keep)
+    }
+    if (!is.null(control$iCov)) {
+      .ncov0 <- ncol(control$iCov)
+    }
+  }
+
+  if (is.data.frame(dat) && "evid" %in% names(dat)) {
+    .hasEvid2 <- any(dat$evid == 2L, na.rm = TRUE)
+  }
+
+  .doDose0 <- 0L
+  if (is.null(.addDosing)) {
+    .doDose0 <- -1L
+  } else if (length(.addDosing) > 0L && isTRUE(is.na(.addDosing[[1L]]))) {
+    .doDose0 <- 1L
+  } else if (length(.addDosing) > 0L && isTRUE(.addDosing[[1L]])) {
+    .doDose0 <- if (.subsetNonmem) 3L else 2L
+  }
+
+  .doDose <- as.integer(.doDose0 > 0L)
+  .nmevid <- as.integer(.doDose0 %in% c(2L, 3L))
+  .doTBS  <- as.integer(identical(.returnType, "data.frame.TBS"))
+  .nidCols <- as.integer(nsub > 1L) + as.integer(nsim > 1L)
+  .nevid2col <- as.integer(.doDose0 == 0L && .hasEvid2)
+
+  .nr <- if (.doDose0 > 0L) {
+    nallTotal * nsim
+  } else {
+    nobsTotal * nsim
+  }
+
+  .nIntCols <- .nidCols + .nevid2col + .doDose + 2L * .nmevid
+  .nDblCols <- 1L + as.integer(neq) + as.integer(nlhs) +
+    .doDose + 3L * .nmevid + .doTBS * 4L +
+    as.integer(.addCov) * (as.integer(ncov) + .ncov0)
+
+  .keepBytes <- 0
+  if (.nkeep > 0L) {
+    .keepNames <- control$keep
+    .keepBytes <- sum(vapply(.keepNames, function(.nm) {
+      if (!is.data.frame(dat) || !(.nm %in% names(dat))) {
+        return(.nr * 8)
+      }
+      .col <- dat[[.nm]]
+      if (is.character(.col)) {
+        .nr * .ptrBytes
+      } else if (is.logical(.col) || is.factor(.col) || is.integer(.col)) {
+        .nr * 4
+      } else {
+        .nr * 8
+      }
+    }, numeric(1)))
+  }
+
+  .dataBytes <- .nr * (.nIntCols * 4 + .nDblCols * 8) + .keepBytes
+  .listBytes <- (.nIntCols + .nDblCols + .nkeep) * .ptrBytes * 2
+
+  .dataBytes + .listBytes
+}
+
 #' Estimate memory required by rxSolve() for a given dataset and model
 #'
 #' Accepts either a pre-summarised per-ID table (an \code{\link{rxMemSummary}}
@@ -180,7 +266,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   linCmt).
 #' @param numLin Number of linear compartment terms (FOCEi + linCmt).
 #' @return A named list of class \code{"rxMemoryEstimate"} whose
-#'   elements are raw byte counts plus \code{ramBytes}, \code{total},
+#'   elements are raw byte counts plus \code{outputData},
+#'   \code{ramBytes}, \code{total},
 #'   \code{sizeofInd}, and \code{rxLlikSaveSize}.
 #' @export
 #'
@@ -269,13 +356,16 @@ rxMemoryEstimate <- function(
 
   .nallVec     <- .summary$nobs + .summary$ndoses
   .nsub        <- nrow(.summary)
+  .nobsTotal   <- sum(.summary$nobs)
   .nallTotal   <- sum(.nallVec)
   .maxAllTimes <- max(.nallVec)
 
   if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
     .subPerStudy <- if (.ci$nSub > 1L) .ci$nSub else .nsub
+    .meanObsTimes <- .nobsTotal / .nsub
     .meanAllTimes <- .nallTotal / .nsub
     .nsub      <- .subPerStudy * .ci$nStud
+    .nobsTotal <- .meanObsTimes * .nsub
     .nallTotal <- .meanAllTimes * .nsub
   }
 
@@ -303,6 +393,19 @@ rxMemoryEstimate <- function(
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
   .sizes   <- .raw[!names(.raw) %in% .meta]
+  .outputData <- .rxMemEstimateOutputData(
+    dat       = dat,
+    summary   = .summary,
+    control   = control,
+    neq       = neq,
+    nlhs      = nlhs,
+    ncov      = ncov,
+    nsim      = nsim,
+    nsub      = .nsub,
+    nobsTotal = .nobsTotal,
+    nallTotal = .nallTotal
+  )
+  .sizes   <- c(.sizes, outputData = .outputData)
   .wrapped <- lapply(.sizes, function(bytes) {
     structure(bytes, class = "rxRawBytes")
   })
@@ -367,7 +470,8 @@ print.rxMemoryEstimate <- function(x, ...) {
     gall_timesS   = "gall_timesS (extra sim times)",
     ordId         = "ordId (subject ordering)",
     gInfusionRate = "gInfusionRate (per-thread infusion)",
-    inds_global   = "inds_global (per-subject structs)"
+    inds_global   = "inds_global (per-subject structs)",
+    outputData    = "outputData (estimated returned data)"
   )
 
   for (.i in seq_along(.nm)) {
