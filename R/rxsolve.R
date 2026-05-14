@@ -2365,18 +2365,40 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     "none"
   }
-  if (.isSer && .serializeMode != "none") {
+  .tempSerializedReplay <- FALSE
+  if (.isSer && .serializeMode == "file") {
     .rxAssertSerializedSolveArgs(extras = "serializeFile", file = params)
+  } else if (.isSer && .serializeMode == "temp") {
+    .serializeMode <- "none"
+    .ctl$serializeFile <- NULL
   }
 
   .callSolve <- function() {
     if (.isSer) {
       .bundle <- .rxReadStateBundle(params)
-      .rxValidateStateBundleModel(object, .bundle, params)
+      if (!.tempSerializedReplay) {
+        .rxValidateStateBundleModel(object, .bundle, params)
+      }
       .rxRestoreStateBundle(.bundle)
+      .bundleParams <- if (!is.null(.bundle$params)) .bundle$params else params
+      .bundleEvents <- if (!is.null(.bundle$events)) .bundle$events else .eventsForSolve
+      .bundleInits <- if (!is.null(.bundle$inits)) .bundle$inits else inits
+      .bundleEventsForSolve <- if (is.rxEt(.bundleEvents)) {
+        .etFixCmtForSolve(.etMaterialize(.bundleEvents))
+      } else if (inherits(.bundleEvents, "data.frame")) {
+        .etFixCmtForSolve(.bundleEvents)
+      } else {
+        .bundleEvents
+      }
 
-      rxSolveFromRaw_(object, .bundle$cState, .ctl, .nms, .xtra,
-                      params, .eventsForSolve, inits)
+      if (!is.null(.bundle$params) || !is.null(.bundle$events) || !is.null(.bundle$inits)) {
+        rxSolveSEXP(object, .ctl, .nms, .xtra,
+                    .bundleParams, .bundleEventsForSolve, .bundleInits,
+                    setupOnlyS = .setupOnly)
+      } else {
+        rxSolveFromRaw_(object, .bundle$cState, .bundle$solveState, .ctl, .nms, .xtra,
+                        .bundleParams, .bundleEventsForSolve, .bundleInits)
+      }
     } else {
       rxSolveSEXP(object, .ctl, .nms, .xtra,
                   params, .eventsForSolve, inits,
@@ -2405,6 +2427,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .callSerializeOnly(.tmpSerializeFile)
     params <- .tmpSerializeFile
     .isSer <- TRUE
+    .tempSerializedReplay <- TRUE
     .ctl$serializeFile <- NULL
   }
 
@@ -2593,6 +2616,107 @@ solve.rxEt <- solve.rxSolve
   return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
+.rxSolveUpdateParNames <- function(parNames, .env) {
+  .ret <- parNames
+  for (.what in c(".nestTheta", ".nestEta")) {
+    if (exists(.what, envir = .env, inherits = FALSE)) {
+      .map <- get(.what, envir = .env, inherits = FALSE)
+      .mapNames <- names(.map)
+      if (!is.null(.mapNames)) {
+        for (.i in seq_along(.ret)) {
+          .w <- match(.ret[[.i]], .mapNames)
+          if (!is.na(.w)) {
+            .ret[[.i]] <- .map[[.w]]
+          }
+        }
+      }
+    }
+  }
+  .ret
+}
+
+.rxSolveMaterializeParams <- function(obj, .env) {
+  if (exists(".params.dat", envir = .env, inherits = FALSE)) {
+    return(invisible(TRUE))
+  }
+  .mv <- rxModelVars(obj)
+  .mvIni <- .mv$ini
+  .pars <- .mv$params
+  .parso <- get(".args.params", envir = .env, inherits = FALSE)
+  .ppos <- get(".par.pos", envir = .env, inherits = FALSE)
+  .isIni <- isTRUE(get(".par.pos.ini", envir = .env, inherits = FALSE))
+  .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
+  if (is.null(.parso) ||
+      ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))) {
+    .parNumeric <- if (is.null(.parso)) numeric(0) else as.numeric(.parso)
+    .vals <- numeric(0)
+    .nms <- character(0)
+    for (.i in seq_along(.ppos)) {
+      if (.ppos[[.i]] > 0) {
+        .vals <- c(.vals, if (.isIni) .mvIni[[.ppos[[.i]]]] else .parNumeric[[.ppos[[.i]]]])
+        .nms <- c(.nms, .pars[[.i]])
+      } else if (.ppos[[.i]] < 0) {
+        .vals <- c(.vals, .mvIni[[-.ppos[[.i]]]])
+        .nms <- c(.nms, .pars[[.i]])
+      }
+    }
+    .nms <- .rxSolveUpdateParNames(.nms, .env)
+    .single <- stats::setNames(.vals, .nms)
+    .dat <- as.data.frame(as.list(.single), check.names = FALSE)
+    assign(".params.single", .single, envir = .env)
+    assign(".params.dat", .dat, envir = .env)
+  } else {
+    .parsDf <- as.data.frame(.parso, check.names = FALSE)
+    .nsub <- get(".nsub", envir = .env, inherits = FALSE)
+    .nsim <- get(".nsim", envir = .env, inherits = FALSE)
+    .dat <- as.data.frame(matrix(nrow = nrow(.parsDf), ncol = 0))
+    if (.nsim > 1) {
+      .dat[["sim.id"]] <- (seq_len(nrow(.parsDf)) - 1L) %/% .nsub + 1L
+    }
+    if (.nsub > 1) {
+      .id <- (seq_len(nrow(.parsDf)) - 1L) %% .nsub + 1L
+      if (length(.idLevels) > 0) {
+        .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
+      }
+      .dat[["id"]] <- .id
+    }
+    for (.i in seq_along(.ppos)) {
+      if (.ppos[[.i]] > 0) {
+        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- .parsDf[[.ppos[[.i]]]]
+      } else if (.ppos[[.i]] < 0) {
+        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- rep(.mvIni[[-.ppos[[.i]]]], nrow(.parsDf))
+      }
+    }
+    assign(".params.dat", .dat, envir = .env)
+    if (nrow(.dat) == 1L) {
+      .single <- stats::setNames(as.numeric(.dat[1, , drop = TRUE]), names(.dat))
+      assign(".params.single", .single, envir = .env)
+    } else {
+      assign(".params.single", NULL, envir = .env)
+    }
+  }
+  assign("counts", data.frame(
+    slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
+    dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
+    jac = get(".jac.counter", envir = .env, inherits = FALSE)
+  ), envir = .env)
+  invisible(TRUE)
+}
+
+.rxSolveGetInit <- function(.env, arg) {
+  .ini <- get(".init.dat", envir = .env, inherits = FALSE)
+  if (arg %in% c("inits", "init")) {
+    return(.ini)
+  }
+  for (.nm in names(.ini)) {
+    if (arg %in% c(paste0(.nm, "0"), paste0(.nm, ".0"), paste0(.nm, "_0"),
+                   paste0(.nm, "(0)"), paste0(.nm, "[0]"), paste0(.nm, "{0}"))) {
+      return(unname(.ini[[.nm]]))
+    }
+  }
+  NULL
+}
+
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
   if (arg == "rxModelVars") return(rxModelVars(obj))
@@ -2602,6 +2726,16 @@ solve.rxEt <- solve.rxSolve
     .val <- get(arg, envir = .env, inherits = FALSE)
     if (is.function(.val)) return(.val)
     return(.val)
+  }
+  if (is.environment(.env)) {
+    if (arg %in% c("params", "par", "pars", "param")) {
+      .rxSolveMaterializeParams(obj, .env)
+      return(get(".params.dat", envir = .env, inherits = FALSE))
+    }
+    .init <- .rxSolveGetInit(.env, arg)
+    if (!is.null(.init)) {
+      return(.init)
+    }
   }
   return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }

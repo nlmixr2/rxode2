@@ -21,14 +21,19 @@ rxSaveState <- function(file) {
 #' @param cState The raw vector from C++
 #' @param object Optional rxode2 model object used to persist model identity
 #' @noRd
-.rxSaveStateBundle <- function(file, cState, object = NULL) {
+.rxSaveStateBundle <- function(file, cState, object = NULL, solveState = NULL,
+                               params = NULL, events = NULL, inits = NULL) {
   .model <- rxModels_()
   .bundle <- list(
     cState = cState,
     keepFcov = .model$keepFcov,
     keepFcovType = .model$keepFcovType,
     idLevels = .model$idLevels,
-    modelId = .rxSerializeModelId(object)
+    modelId = .rxSerializeModelId(object),
+    solveState = solveState,
+    params = params,
+    events = events,
+    inits = inits
   )
   .rawBundle <- serialize(.bundle, NULL)
   .compressedBundle <- memCompress(.rawBundle, type = "xz")

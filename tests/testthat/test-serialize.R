@@ -14,7 +14,7 @@ rxTest({
 
     # Solve normally (reference)
     set.seed(42)
-    ref <- rxSolve(mod, theta, ev)
+    ref <- rxSolve(mod, theta, ev, serializeFile = NULL)
 
     # Solve with serialization — saves state before integration
     stateFile <- tempfile(fileext = ".rxbin")
@@ -47,6 +47,10 @@ rxTest({
 
     test_that("solve from wrong model throws error", {
       expect_error(rxSolve(mod2, stateFile))
+    })
+
+    test_that("serialized solve rejects explicit serializeFile override", {
+      expect_error(rxSolve(mod, stateFile, serializeFile = tempfile(fileext = ".rxbin")))
     })
 
     # Solve from file — dispatch via rxSolve(mod, stateFile)

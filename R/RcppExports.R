@@ -637,8 +637,8 @@ rxSolveSetup <- function() {
     .Call(`_rxode2_rxSolveSetup`)
 }
 
-rxSolveFromRaw_ <- function(obj, rawObj, rxControl, specParams, extraArgs, params, events, inits) {
-    .Call(`_rxode2_rxSolveFromRaw_`, obj, rawObj, rxControl, specParams, extraArgs, params, events, inits)
+rxSolveFromRaw_ <- function(obj, rawObj, solveState, rxControl, specParams, extraArgs, params, events, inits) {
+    .Call(`_rxode2_rxSolveFromRaw_`, obj, rawObj, solveState, rxControl, specParams, extraArgs, params, events, inits)
 }
 
 rxSolve_ <- function(obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly) {

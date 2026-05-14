@@ -1081,27 +1081,28 @@ RcppExport SEXP _rxode2_rxSolveSetup() {
     return rcpp_result_gen;
 }
 // rxSolveFromRaw_
-SEXP rxSolveFromRaw_(const RObject& obj, const RObject& rawObj, const List& rxControl, const Nullable<CharacterVector>& specParams, const Nullable<List>& extraArgs, const RObject& params, const RObject& events, const RObject& inits);
-static SEXP _rxode2_rxSolveFromRaw__try(SEXP objSEXP, SEXP rawObjSEXP, SEXP rxControlSEXP, SEXP specParamsSEXP, SEXP extraArgsSEXP, SEXP paramsSEXP, SEXP eventsSEXP, SEXP initsSEXP) {
+SEXP rxSolveFromRaw_(const RObject& obj, const RObject& rawObj, const RObject& solveState, const List& rxControl, const Nullable<CharacterVector>& specParams, const Nullable<List>& extraArgs, const RObject& params, const RObject& events, const RObject& inits);
+static SEXP _rxode2_rxSolveFromRaw__try(SEXP objSEXP, SEXP rawObjSEXP, SEXP solveStateSEXP, SEXP rxControlSEXP, SEXP specParamsSEXP, SEXP extraArgsSEXP, SEXP paramsSEXP, SEXP eventsSEXP, SEXP initsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< const RObject& >::type obj(objSEXP);
     Rcpp::traits::input_parameter< const RObject& >::type rawObj(rawObjSEXP);
+    Rcpp::traits::input_parameter< const RObject& >::type solveState(solveStateSEXP);
     Rcpp::traits::input_parameter< const List& >::type rxControl(rxControlSEXP);
     Rcpp::traits::input_parameter< const Nullable<CharacterVector>& >::type specParams(specParamsSEXP);
     Rcpp::traits::input_parameter< const Nullable<List>& >::type extraArgs(extraArgsSEXP);
     Rcpp::traits::input_parameter< const RObject& >::type params(paramsSEXP);
     Rcpp::traits::input_parameter< const RObject& >::type events(eventsSEXP);
     Rcpp::traits::input_parameter< const RObject& >::type inits(initsSEXP);
-    rcpp_result_gen = Rcpp::wrap(rxSolveFromRaw_(obj, rawObj, rxControl, specParams, extraArgs, params, events, inits));
+    rcpp_result_gen = Rcpp::wrap(rxSolveFromRaw_(obj, rawObj, solveState, rxControl, specParams, extraArgs, params, events, inits));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _rxode2_rxSolveFromRaw_(SEXP objSEXP, SEXP rawObjSEXP, SEXP rxControlSEXP, SEXP specParamsSEXP, SEXP extraArgsSEXP, SEXP paramsSEXP, SEXP eventsSEXP, SEXP initsSEXP) {
+RcppExport SEXP _rxode2_rxSolveFromRaw_(SEXP objSEXP, SEXP rawObjSEXP, SEXP solveStateSEXP, SEXP rxControlSEXP, SEXP specParamsSEXP, SEXP extraArgsSEXP, SEXP paramsSEXP, SEXP eventsSEXP, SEXP initsSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_rxSolveFromRaw__try(objSEXP, rawObjSEXP, rxControlSEXP, specParamsSEXP, extraArgsSEXP, paramsSEXP, eventsSEXP, initsSEXP));
+        rcpp_result_gen = PROTECT(_rxode2_rxSolveFromRaw__try(objSEXP, rawObjSEXP, solveStateSEXP, rxControlSEXP, specParamsSEXP, extraArgsSEXP, paramsSEXP, eventsSEXP, initsSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -2870,7 +2871,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("List(*rxSimThetaOmega)(const Nullable<NumericVector>&,const RObject&,const Nullable<NumericVector>&,const NumericVector&,const NumericVector&,const bool&,std::string,const int,int,const Nullable<NumericMatrix>&,const NumericVector&,const NumericVector&,const Nullable<NumericVector>&,const bool&,int,const RObject,const NumericVector&,const NumericVector&,const Nullable<NumericVector>&,const bool&,std::string,const int,int,int,double,double,bool,const LogicalVector&)");
         signatures.insert("LogicalVector(*rxSolveFree)()");
         signatures.insert("LogicalVector(*rxSolveSetup)()");
-        signatures.insert("SEXP(*rxSolveFromRaw_)(const RObject&,const RObject&,const List&,const Nullable<CharacterVector>&,const Nullable<List>&,const RObject&,const RObject&,const RObject&)");
+        signatures.insert("SEXP(*rxSolveFromRaw_)(const RObject&,const RObject&,const RObject&,const List&,const Nullable<CharacterVector>&,const Nullable<List>&,const RObject&,const RObject&,const RObject&)");
         signatures.insert("SEXP(*rxSolve_)(const RObject&,const List&,const Nullable<CharacterVector>&,const Nullable<List>&,const RObject&,const RObject&,const RObject&,const int)");
         signatures.insert("CharacterVector(*rxSolveDollarNames)(RObject)");
         signatures.insert("RObject(*rxSolveGet)(RObject,RObject,LogicalVector)");

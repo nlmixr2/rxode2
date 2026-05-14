@@ -4691,6 +4691,58 @@ int getNRows(RObject obj){
 
 rxSolve_t rxSolveDatLast;
 
+static inline List rxSolveDatState(rxSolve_t* rxSolveDat){
+  return List::create(
+    _["addDosing"] = rxSolveDat->addDosing,
+    _["timeUnitsU"] = rxSolveDat->timeUnitsU,
+    _["addTimeUnits"] = rxSolveDat->addTimeUnits,
+    _["covUnits"] = rxSolveDat->covUnits,
+    _["par1"] = rxSolveDat->par1,
+    _["usePar1"] = rxSolveDat->usePar1,
+    _["par1cbind"] = rxSolveDat->par1cbind,
+    _["swappedEvents"] = rxSolveDat->swappedEvents,
+    _["par1ini"] = rxSolveDat->par1ini,
+    _["initsC"] = rxSolveDat->initsC,
+    _["nSize"] = rxSolveDat->nSize,
+    _["fromIni"] = rxSolveDat->fromIni,
+    _["eGparPos"] = rxSolveDat->eGparPos,
+    _["idFactor"] = rxSolveDat->idFactor,
+    _["labelID"] = rxSolveDat->labelID,
+    _["idLevels"] = rxSolveDat->idLevels,
+    _["convertInt"] = rxSolveDat->convertInt
+  );
+}
+
+static inline void rxSolveDatLoadState(rxSolve_t* rxSolveDat, SEXP stateSEXP){
+  if (Rf_isNull(stateSEXP)) return;
+  List state(stateSEXP);
+  SEXP tmp = state["addDosing"];
+  rxSolveDat->addDosing = as<Nullable<LogicalVector>>(tmp);
+  tmp = state["timeUnitsU"];
+  if (!Rf_isNull(tmp)) rxSolveDat->timeUnitsU = tmp;
+  rxSolveDat->addTimeUnits = as<bool>(state["addTimeUnits"]);
+  tmp = state["covUnits"];
+  if (!Rf_isNull(tmp)) rxSolveDat->covUnits = as<List>(tmp);
+  tmp = state["par1"];
+  if (!Rf_isNull(tmp)) rxSolveDat->par1 = tmp;
+  rxSolveDat->usePar1 = as<bool>(state["usePar1"]);
+  rxSolveDat->par1cbind = as<bool>(state["par1cbind"]);
+  rxSolveDat->swappedEvents = as<bool>(state["swappedEvents"]);
+  tmp = state["par1ini"];
+  if (!Rf_isNull(tmp)) rxSolveDat->par1ini = tmp;
+  tmp = state["initsC"];
+  if (!Rf_isNull(tmp)) rxSolveDat->initsC = as<NumericVector>(tmp);
+  rxSolveDat->nSize = as<uint32_t>(state["nSize"]);
+  rxSolveDat->fromIni = as<bool>(state["fromIni"]);
+  tmp = state["eGparPos"];
+  if (!Rf_isNull(tmp)) rxSolveDat->eGparPos = as<IntegerVector>(tmp);
+  rxSolveDat->idFactor = as<bool>(state["idFactor"]);
+  rxSolveDat->labelID = as<bool>(state["labelID"]);
+  tmp = state["idLevels"];
+  if (!Rf_isNull(tmp)) rxSolveDat->idLevels = as<CharacterVector>(tmp);
+  rxSolveDat->convertInt = as<bool>(state["convertInt"]);
+}
+
 static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
   rxSolveDatLast = rxSolveDat[0];
   // Assigned as a precaution against R's gc()
@@ -4986,6 +5038,7 @@ static int _rxSolveCallN = 0;
 // Restore serialized state then run integration + build output data frame.
 // [[Rcpp::export]]
 SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
+                              const RObject &solveState,
                               const List &rxControl,
                               const Nullable<CharacterVector> &specParams,
                               const Nullable<List> &extraArgs,
@@ -5004,29 +5057,20 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
   rxAssignPtr(SEXP(obj));
 
-  // Force plain data.frame return: rxSolve_genenv calls rxDll() which does
-  // VECTOR_ELT on e["rxDll"] — if that slot is an environment (not a list),
-  // the R API aborts.  matrix=2 causes rxSolve_finalize to return early with
-  // a plain data.frame, bypassing rxSolve_genenv entirely.
-  getRxSolve_()->matrix = 2;
-
   // Build a minimal rxSolveDat for the finalize path.
   // DO NOT memset — rxSolve_t contains Rcpp objects (List, RObject, etc.)
   // whose constructors initialize internal SEXP to R_NilValue; memset would
   // corrupt those to NULL pointer, causing VECTOR_ELT crashes.
-  rxSolve_t rxSolveDat;
+  rxSolve_t rxSolveDat{};
   rxSolveDat.updateObject  = false;
   rxSolveDat.isRxSolve     = false;
   rxSolveDat.isEnvironment = false;
   rxSolveDat.hasCmt        = false;
-  rxSolveDat.addTimeUnits  = false;
-  rxSolveDat.nSize         = 0;
-  rxSolveDat.nsvar         = 0;
-  rxSolveDat.idFactor      = false;
-  rxSolveDat.labelID       = false;
-  rxSolveDat.warnIdSort    = false;
-  // Propagate addDosing from rxControl so dosing rows appear in output.
   rxSolveDat.addDosing = as<Nullable<LogicalVector>>(rxControl[Rxc_addDosing]);
+  rxSolveDatLoadState(&rxSolveDat, solveState);
+  if (Rf_isNull(solveState)) {
+    getRxSolve_()->matrix = 2;
+  }
 
   return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
                           params, events, inits, &rxSolveDat);
@@ -5792,11 +5836,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           Environment rxenv = Environment::namespace_env("rxode2");
           if (rxenv.exists(".rxSaveStateBundle")) {
             Function saveFn = rxenv[".rxSaveStateBundle"];
-            saveFn(_pathSexp, cState, object);
+            saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
+                   params, events, inits);
           } else {
             Language call(Rf_install("get"), ".rxSaveStateBundle", Language(Rf_install("asNamespace"), "rxode2"));
             Function saveFn = call.eval();
-            saveFn(_pathSexp, cState, object);
+            saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
+                   params, events, inits);
           }
           UNPROTECT(2);
         }

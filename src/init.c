@@ -292,7 +292,7 @@ int compareFactorInt(int val, const char *factor, int value);
 SEXP _rxode2_rxSolve_(SEXP, SEXP, SEXP, SEXP, SEXP,
                       SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSolveFromRaw_(SEXP, SEXP, SEXP, SEXP, SEXP,
-                             SEXP, SEXP, SEXP);
+                             SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSaveState_(void);
 SEXP _rxode2_rxIsSerializeFile_(SEXP);
 SEXP _rxode2_rxRestoreState_(SEXP);
@@ -804,7 +804,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
     {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},
     {"_rxode2_rxRestoreState_", (DL_FUNC) _rxode2_rxRestoreState_, 1},
-    {"_rxode2_rxSolveFromRaw_", (DL_FUNC) _rxode2_rxSolveFromRaw_, 8},
+    {"_rxode2_rxSolveFromRaw_", (DL_FUNC) _rxode2_rxSolveFromRaw_, 9},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
