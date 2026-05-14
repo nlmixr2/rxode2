@@ -316,7 +316,7 @@
 #'   evid-adjusted)
 #'
 #' @noRd
-.etMaterialize <- function(et) {
+.etMaterialize <- function(et, forSolve = FALSE) {
   .env <- .rxEtEnv(et)
   .chunks <- .env$chunks
 
@@ -335,7 +335,7 @@
     .ref <- .nonNull[[1L]]
     .hasWin <- (!is.null(.ref[["low"]])  && any(!is.na(.ref[["low"]]))) ||
                (!is.null(.ref[["high"]]) && any(!is.na(.ref[["high"]])))
-    if (!.hasWin) {
+    if (!.hasWin && is.data.frame(.ref)) {
       .refCols <- setdiff(names(.ref), "id")
       .refSub  <- .ref[, .refCols, drop = FALSE]
       .allSame <- all(vapply(.nonNull[-1L], function(.chunk) {
@@ -343,7 +343,7 @@
         if (length(.cols) != length(.refCols)) return(FALSE)
         identical(.refSub, .chunk[, .cols, drop = FALSE])
       }, logical(1L)))
-      if (.allSame) {
+      if (.allSame && forSolve) {
         .nHomogeneous <- length(.nonNull)
         .homoIds <- vapply(.nonNull, function(.chunk) {
           .id <- .chunk[["id"]]
