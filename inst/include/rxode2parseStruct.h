@@ -396,6 +396,11 @@ typedef struct rx_solve_s {
   int *splitBolus;
   int splitBolusN;
   rx_fn_pointers fns;
+
+  // Homogeneous-subjects optimization: all subjects share read-only event arrays
+  int isHomogeneous;      // 1 = all subjects share read-only event arrays
+  uint32_t nHomogeneous;  // number of subjects in the homogeneous group
+  int64_t nall_per_sub;   // events per subject (= K) for homogeneous gall_times slab
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

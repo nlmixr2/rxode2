@@ -77,6 +77,7 @@ struct rx_globals {
   int     *extraDoseAllocN  = NULL;
   int extraDoseCores = 0;
   double *timeThread = NULL;
+  int *gix_thread = NULL;   // per-thread ix buffer: ncores * maxAllTimes ints
   double *gatol2Thread = NULL;
   double *grtol2Thread = NULL;
   double *gssAtolThread = NULL;
