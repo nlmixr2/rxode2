@@ -785,16 +785,17 @@
 #'   default this is `NA` which automatically decides based on if
 #'   there is any dosing or observation pushing in the model.
 #'
-#' @param serializeFile Controls serialization-driven solves. When this
-#'   is a file path, `rxSolve()` writes the pre-integration serialized
-#'   state to that file and returns the file path invisibly without
-#'   running the solve. When this is `TRUE`, `rxSolve()` writes the
-#'   serialized state to a temporary `.rxbin` file, solves by reloading
-#'   from that file, returns the solve result, and then removes the
-#'   temporary file. When solving from an existing serialization file via
-#'   `rxSolve(model, "state.rxbin")`, only the model and serialization
-#'   file are allowed because the file already stores the solve inputs
-#'   and controls.
+#' @param serializeFile Controls serialization-driven solves. When
+#'   this is a file path, `rxSolve()` writes the pre-integration
+#'   serialized state to that file and returns the file path invisibly
+#'   without running the solve. When this is `TRUE`, `rxSolve()`
+#'   writes the serialized state to a temporary `.rxbin` file, solves
+#'   by reloading from that file, returns the solve result, and then
+#'   removes the temporary file (mostly for testing). When solving
+#'   from an existing serialization file via `rxSolve(model,
+#'   "state.rxbin")`, only the model and serialization file are
+#'   allowed because the file already stores the solve inputs and
+#'   controls.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -937,7 +938,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indOwnAlloc=NA,
                     maxExtra=1000L,
                     tolFactor=NULL,
-                    serializeFile=NULL,
+                    serializeFile=TRUE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
