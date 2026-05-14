@@ -259,17 +259,11 @@ list explicitly when the helper supports <code>ii</code>,
 response, then add another dose if the current exposure is too low.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">titrateModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">visit1</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">24</span></span>
-<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">visit2</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">48</span></span>
-<span></span>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
 <span>  <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
-<span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">visit1</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">visit1</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">2</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/bolus.html">bolus</a></span><span class="op">(</span><span class="fl">50</span>, <span class="va">depot</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">visit2</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">visit2</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">2</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Check every 24 hours, add a bolus dose if needed</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">24</span> <span class="op">==</span> <span class="fl">0</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="../reference/bolus.html">bolus</a></span><span class="op">(</span><span class="fl">50</span>, <span class="va">depot</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -280,18 +274,96 @@ response, then add another dose if the current exposure is too low.</p>
 <span><span class="va">titratePars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">0.5</span>, cl <span class="op">=</span> <span class="fl">1.2</span>, v <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="va">titrateSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">titrateModel</span>, <span class="va">titratePars</span>, <span class="va">titrateEvents</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">titrateSolve</span><span class="op">)</span>, <span class="va">time</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, <span class="fl">25</span>, <span class="fl">48</span>, <span class="fl">49</span>, <span class="fl">72</span><span class="op">)</span>,</span>
-<span>       select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">depot</span>, <span class="va">central</span>, <span class="va">cp</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    time        depot  central        cp</span></span>
-<span><span class="co">#&gt; 1     0 1.000000e+02  0.00000 0.0000000</span></span>
-<span><span class="co">#&gt; 25   24 6.144153e-04 26.92291 1.3461455</span></span>
-<span><span class="co">#&gt; 26   24 6.144153e-04 26.92291 1.3461455</span></span>
-<span><span class="co">#&gt; 27   25 5.000037e+01 25.35528 1.2677638</span></span>
-<span><span class="co">#&gt; 50   48 5.065048e-04 20.67261 1.0336305</span></span>
-<span><span class="co">#&gt; 51   48 5.065048e-04 20.67261 1.0336305</span></span>
-<span><span class="co">#&gt; 52   49 5.000031e+01 19.46892 0.9734462</span></span>
-<span><span class="co">#&gt; 75   72 5.065041e-04 19.19171 0.9595856</span></span></code></pre></div>
-<p>This pattern is useful for:</p>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">titrateSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/bolus-titration-1.png" class="r-plt" alt="" width="700"></p>
+<p>Note that this patient is dosed at time zero, but not at 24 hours
+since the concentration was not below 1. However by 48 hours the
+concentration fell below 1 so a dose of 50 is added.</p>
+<p>As a word of caution, to administer a dose at time 48 that needs to
+be seen by the solver. For example:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="va">titrateEvents</span> <span class="op">&lt;-</span> <span class="va">titrateEvents</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">!=</span> <span class="fl">48</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">titratePars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">0.5</span>, cl <span class="op">=</span> <span class="fl">1.2</span>, v <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
+<span><span class="va">titrateSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">titrateModel</span>, <span class="va">titratePars</span>, <span class="va">titrateEvents</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">titrateSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/bad-titration-unseen-1.png" class="r-plt" alt="" width="700"></p>
+<p>One way to overcome this is to use <code>mtime()</code></p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">titrateModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">time48</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">48</span> <span class="co"># always visit 48 hours</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
+<span>  <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>  <span class="co"># Check every 24 hours, add a bolus dose if needed</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">24</span> <span class="op">==</span> <span class="fl">0</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/bolus.html">bolus</a></span><span class="op">(</span><span class="fl">50</span>, <span class="va">depot</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">titratePars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">0.5</span>, cl <span class="op">=</span> <span class="fl">1.2</span>, v <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
+<span><span class="va">titrateSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">titrateModel</span>, <span class="va">titratePars</span>, <span class="va">titrateEvents</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">titrateSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/missing-time-but-still-dosed-1.png" class="r-plt" alt="" width="700"></p>
+<p>Of course the other is to include the sampling times in the solver
+(as shown above). You can also expose the events using the
+<code><a href="../reference/obs.html">obs()</a></code> adaptive sampling helper:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">titrateModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/obs.html">obs</a></span><span class="op">(</span><span class="fl">48</span><span class="op">)</span> <span class="co"># only schedule at time 0 so that it doesn't schedule</span></span>
+<span>            <span class="co"># multiple observations at 48 hours</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
+<span>  <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>  <span class="co"># Check every 24 hours, add a bolus dose if needed</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">24</span> <span class="op">==</span> <span class="fl">0</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/bolus.html">bolus</a></span><span class="op">(</span><span class="fl">50</span>, <span class="va">depot</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">titrateSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">titrateModel</span>, <span class="va">titratePars</span>, <span class="va">titrateEvents</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">titrateSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/MissingWithObs-1.png" class="r-plt" alt="" width="700"></p>
+<p>As a note, there are many required arguments for the
+<code><a href="../reference/bolus.html">bolus()</a></code> dose when using the <code>rxode2({})</code> solving
+form of the model. However, these are not required when you use the
+functional model:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">titrateModel</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="../reference/obs.html">obs</a></span><span class="op">(</span><span class="fl">48</span><span class="op">)</span> <span class="co"># only schedule at time 0 so that it doesn't schedule</span></span>
+<span>      <span class="co"># multiple observations at 48 hours</span></span>
+<span>    <span class="op">}</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>    <span class="co"># Check every 24 hours, add a bolus dose if needed</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">24</span> <span class="op">==</span> <span class="fl">0</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="../reference/bolus.html">bolus</a></span><span class="op">(</span><span class="fl">50</span><span class="op">)</span> <span class="co"># or bolus(50, depot); default is cmt 1</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">titrateSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">titrateModel</span>, <span class="va">titrateEvents</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">titrateSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/funModel-1.png" class="r-plt" alt="" width="700"></p>
+<p>Overall, this pattern is useful for:</p>
 <ul>
 <li>therapeutic drug monitoring</li>
 <li>concentration-guided rescue dosing</li>
@@ -315,39 +387,51 @@ fixed-duration infusions</li>
 </ul>
 <p>The next example starts a rescue infusion when concentration falls
 below target at a planned decision time.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">infusionModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">rescueAt</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">24</span></span>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">infusionModel</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">mtime</span><span class="op">(</span><span class="va">rescueAt</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">24</span></span>
 <span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
-<span>  <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
 <span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">rescueAt</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">rescueAt</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/infuse.html">infuse</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">5</span>, <span class="va">central</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">==</span> <span class="va">rescueAt</span> <span class="op">&amp;&amp;</span> <span class="va">cp</span> <span class="op">&lt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="../reference/infuse.html">infuse</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">50</span>, rate<span class="op">=</span><span class="fl">5</span>, cmt<span class="op">=</span><span class="va">central</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">infusionEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span>, time <span class="op">=</span> <span class="fl">0</span>, cmt <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">48</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">infusionPars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>cl <span class="op">=</span> <span class="fl">1</span>, v <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
-<span><span class="va">infusionSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">infusionModel</span>, <span class="va">infusionPars</span>, <span class="va">infusionEvents</span><span class="op">)</span></span>
+<span><span class="co"># Here an infusion rescue is performed</span></span>
+<span><span class="va">infusionSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">infusionModel</span>, <span class="va">infusionEvents</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">infusionSolve</span><span class="op">)</span>, <span class="va">time</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">23</span>, <span class="fl">24</span>, <span class="fl">25</span>, <span class="fl">30</span>, <span class="fl">35</span>, <span class="fl">40</span><span class="op">)</span>,</span>
-<span>       select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">central</span>, <span class="va">cp</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    time  central        cp</span></span>
-<span><span class="co">#&gt; 24   23 31.66371 1.5831853</span></span>
-<span><span class="co">#&gt; 25   24 30.11945 1.5059724</span></span>
-<span><span class="co">#&gt; 26   24 30.11945 1.5059724</span></span>
-<span><span class="co">#&gt; 27   25 28.65051 1.4325253</span></span>
-<span><span class="co">#&gt; 32   30 22.31304 1.1156518</span></span>
-<span><span class="co">#&gt; 37   35 17.37741 0.8688705</span></span>
-<span><span class="co">#&gt; 42   40 13.53354 0.6766770</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">infusionSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/infusion-titration-1.png" class="r-plt" alt="" width="700"></p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># Here the bolus was high enough that there was no infusion rescue</span></span>
+<span><span class="va">infusionEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">1000</span>, time <span class="op">=</span> <span class="fl">0</span>, cmt <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">48</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">infusionSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">infusionModel</span>, <span class="va">infusionEvents</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">infusionSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/infusion-titration-2.png" class="r-plt" alt="" width="700"></p>
 <p>Use <code><a href="../reference/infuse.html">infuse()</a></code> when the infusion pump rate is fixed and
 duration should follow from <code>amt / rate</code>. Use
 <code><a href="../reference/infuseDur.html">infuseDur()</a></code> when the administration window is fixed and the
-effective rate should be computed from the total amount and
+effective rate should be computed from the realized drug amount and
 duration.</p>
+<p>The real impact of the <code><a href="../reference/infuse.html">infuse()</a></code> is that when
+<code>f</code> changes the amount available (realized drug amount), the
+infusion duration increases. When using <code><a href="../reference/infuseDur.html">infuseDur()</a></code> the
+infusion rate changes, but not the duration.</p>
 </div>
 <div class="section level2">
 <h2 id="reset-replace-and-multiply">Reset, replace, and multiply<a class="anchor" aria-label="anchor" href="#reset-replace-and-multiply"></a>
@@ -388,8 +472,9 @@ is useful for:</p>
 <li>dialysis-like fractional removal</li>
 <li>immediate bioavailability or depot scaling rules</li>
 </ul>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">adjustModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">adjustModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">replaceAt</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">12</span></span>
 <span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">multAt</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">24</span></span>
 <span></span>
@@ -397,32 +482,22 @@ is useful for:</p>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">central</span></span>
 <span>  <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
 <span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">replaceAt</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">replaceAt</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">&amp;&amp;</span> <span class="va">depot</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">==</span> <span class="va">replaceAt</span> <span class="op">&amp;&amp;</span> <span class="va">depot</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="../reference/replace.html">replace</a></span><span class="op">(</span><span class="fl">25</span>, <span class="va">depot</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">multAt</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">multAt</span> <span class="op">+</span> <span class="fl">0.5</span> <span class="op">&amp;&amp;</span> <span class="va">depot</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">==</span> <span class="va">multAt</span> <span class="op">&amp;&amp;</span> <span class="va">depot</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="../reference/multiply.html">multiply</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="va">depot</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">adjustEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span>, time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">36</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">36</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">adjustPars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">0.5</span>, cl <span class="op">=</span> <span class="fl">1</span>, v <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">adjustSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">adjustModel</span>, <span class="va">adjustPars</span>, <span class="va">adjustEvents</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">adjustSolve</span><span class="op">)</span>, <span class="va">time</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">11</span>, <span class="fl">12</span>, <span class="fl">13</span>, <span class="fl">23</span>, <span class="fl">24</span>, <span class="fl">25</span>, <span class="fl">36</span><span class="op">)</span>,</span>
-<span>       select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">depot</span>, <span class="va">central</span>, <span class="va">cp</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    time        depot   central        cp</span></span>
-<span><span class="co">#&gt; 12   11 4.086765e-01 41.098040 4.1098040</span></span>
-<span><span class="co">#&gt; 13   12 2.478747e-01 37.339433 3.7339433</span></span>
-<span><span class="co">#&gt; 14   12 2.478747e-01 37.339433 3.7339433</span></span>
-<span><span class="co">#&gt; 15   13 2.500000e+01 33.878545 3.3878545</span></span>
-<span><span class="co">#&gt; 25   23 1.684489e-01 23.748893 2.3748893</span></span>
-<span><span class="co">#&gt; 26   24 1.021694e-01 21.551699 2.1551699</span></span>
-<span><span class="co">#&gt; 27   24 1.021694e-01 21.551699 2.1551699</span></span>
-<span><span class="co">#&gt; 28   25 3.098441e-02 19.538881 1.9538881</span></span>
-<span><span class="co">#&gt; 39   36 1.266265e-04  6.516663 0.6516663</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">adjustSolve</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/replace-multiply-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 </div>
 <div class="section level2">
@@ -435,76 +510,46 @@ directly to the state variable as a bolus.</p>
 <p>This is especially useful for transit absorption models, delayed
 onset models, or situations where dose timing should update the model
 clock without depositing mass immediately.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">phantomModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">startTransit</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">12</span></span>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">phantomModel</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">k</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">mtime</span><span class="op">(</span><span class="va">startTransit</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">12</span></span>
 <span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">k</span> <span class="op">*</span> <span class="va">x</span></span>
-<span>  <span class="va">pd</span> <span class="op">&lt;-</span> <span class="fu">podo</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
-<span>  <span class="va">td</span> <span class="op">&lt;-</span> <span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">k</span> <span class="op">*</span> <span class="va">x</span></span>
+<span>    <span class="fu">x</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">pd</span> <span class="op">&lt;-</span> <span class="fu">podo</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
+<span>    <span class="va">td</span> <span class="op">&lt;-</span> <span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">startTransit</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">startTransit</span> <span class="op">+</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/phantom.html">phantom</a></span><span class="op">(</span><span class="fl">20</span>, <span class="va">depot</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">==</span> <span class="va">startTransit</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="../reference/phantom.html">phantom</a></span><span class="op">(</span><span class="fl">20</span>, <span class="va">depot</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">phantomEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">20</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">phantomPars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span>
-<span><span class="va">phantomSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">phantomModel</span>, <span class="va">phantomPars</span>, <span class="va">phantomEvents</span>,</span>
-<span>                        inits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>depot <span class="op">=</span> <span class="fl">0</span>, x <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">phantomEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">20</span>, by <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">phantomSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">phantomModel</span>, <span class="va">phantomEvents</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">phantomSolve</span><span class="op">)</span>, <span class="va">time</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fl">11</span><span class="op">:</span><span class="fl">16</span>,</span>
-<span>       select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">depot</span>, <span class="va">x</span>, <span class="va">pd</span>, <span class="va">td</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    time depot         x pd td</span></span>
-<span><span class="co">#&gt; 12   11     0 0.3328713 NA NA</span></span>
-<span><span class="co">#&gt; 13   12     0 0.3011944 NA NA</span></span>
-<span><span class="co">#&gt; 14   12     0 0.3011944 NA NA</span></span>
-<span><span class="co">#&gt; 15   13     0 0.2725320 20  1</span></span>
-<span><span class="co">#&gt; 16   14     0 0.2465975 20  2</span></span>
-<span><span class="co">#&gt; 17   15     0 0.2231307 20  3</span></span>
-<span><span class="co">#&gt; 18   16     0 0.2018971 20  4</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">phantomSolve</span><span class="op">)</span>, <span class="va">time</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fl">11</span><span class="op">:</span><span class="fl">16</span>,</span>
+<span>             select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">depot</span>, <span class="va">x</span>, <span class="va">pd</span>, <span class="va">td</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    time depot          x pd td</span></span>
+<span><span class="co">#&gt; 23   11     0 0.11080323 NA NA</span></span>
+<span><span class="co">#&gt; 25   12     0 0.09071801 NA NA</span></span>
+<span><span class="co">#&gt; 26   12     0 0.09071801 NA NA</span></span>
+<span><span class="co">#&gt; 28   13     0 0.07427378 20  1</span></span>
+<span><span class="co">#&gt; 30   14     0 0.06081025 20  2</span></span>
+<span><span class="co">#&gt; 32   15     0 0.04978719 20  3</span></span>
+<span><span class="co">#&gt; 34   16     0 0.04076229 20  4</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">phantomSolve</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<p><img src="adaptive-dosing_files/figure-html/phantom-example-1.png" class="r-plt" alt="" width="700"></p>
 <p>Notice that <code>pd</code> and <code>td</code> update after the
 phantom event while the depot state is not handled like an ordinary
 bolus dose.</p>
-</div>
-<div class="section level2">
-<h2 id="direct-control-with-evid_">Direct control with <code>evid_()</code><a class="anchor" aria-label="anchor" href="#direct-control-with-evid_"></a>
-</h2>
-<p>When one of the convenience helpers does not match the exact event
-you need, use <code><a href="../reference/evid_.html">evid_()</a></code> directly. This gives full access to
-the NONMEM-style event fields:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">directModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">extraSample</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">k</span> <span class="op">*</span> <span class="va">x</span></span>
-<span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">extraSample</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">extraSample</span> <span class="op">+</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/evid_.html">evid_</a></span><span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">0.5</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">directEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">1</span>, time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">8</span>, <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">directSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">directModel</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span>, <span class="va">directEvents</span>, inits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">directSolve</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"time"</span>, <span class="st">"x"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;   time         x</span></span>
-<span><span class="co">#&gt; 1  0.0 2.0000000</span></span>
-<span><span class="co">#&gt; 2  8.0 0.4037945</span></span>
-<span><span class="co">#&gt; 3  8.0 0.4037945</span></span>
-<span><span class="co">#&gt; 4  8.5 0.1814365</span></span>
-<span><span class="co">#&gt; 5 12.0 0.1814365</span></span></code></pre></div>
-<p>The low-level <code><a href="../reference/evid_.html">evid_()</a></code> interface is appropriate when you
-need:</p>
-<ul>
-<li>adaptive observation rows (<code>evid = 0</code>)</li>
-<li>explicit resets or reset-then-dose logic</li>
-<li>direct control over <code>rate</code>, <code>ii</code>,
-<code>addl</code>, and <code>ss</code>
-</li>
-<li>classic internal rxode2 evids</li>
-</ul>
 </div>
 <div class="section level2">
 <h2 id="adaptive-observation-scheduling-with-obs">Adaptive observation scheduling with <code>obs()</code><a class="anchor" aria-label="anchor" href="#adaptive-observation-scheduling-with-obs"></a>
@@ -513,7 +558,7 @@ need:</p>
 <code><a href="../reference/obs.html">obs()</a></code> is a more concise interface than
 <code>evid_(..., evid = 0, ...)</code>. Each argument is interpreted as
 a time offset from the current solve time.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">obsModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">extraSample</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">k</span> <span class="op">*</span> <span class="va">x</span></span>
@@ -549,6 +594,44 @@ pushes</li>
 </ul>
 </div>
 <div class="section level2">
+<h2 id="direct-control-with-evid_">Direct control with <code>evid_()</code><a class="anchor" aria-label="anchor" href="#direct-control-with-evid_"></a>
+</h2>
+<p>When one of the convenience helpers does not match the exact event
+you need, use <code><a href="../reference/evid_.html">evid_()</a></code> directly. This gives full access to
+the NONMEM-style event fields:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">directModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu">mtime</span><span class="op">(</span><span class="va">extraSample</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">k</span> <span class="op">*</span> <span class="va">x</span></span>
+<span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="va">extraSample</span> <span class="op">&amp;&amp;</span> <span class="va">t</span> <span class="op">&lt;</span> <span class="va">extraSample</span> <span class="op">+</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/evid_.html">evid_</a></span><span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">0.5</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">directEvents</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">1</span>, time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">8</span>, <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">directSolve</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">directModel</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span>, <span class="va">directEvents</span>, inits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">directSolve</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"time"</span>, <span class="st">"x"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;   time         x</span></span>
+<span><span class="co">#&gt; 1  0.0 2.0000000</span></span>
+<span><span class="co">#&gt; 2  8.0 0.4037945</span></span>
+<span><span class="co">#&gt; 3  8.0 0.4037945</span></span>
+<span><span class="co">#&gt; 4  8.5 0.1814365</span></span>
+<span><span class="co">#&gt; 5 12.0 0.1814365</span></span></code></pre></div>
+<p>The low-level <code><a href="../reference/evid_.html">evid_()</a></code> interface is appropriate when you
+need:</p>
+<ul>
+<li>adaptive observation rows (<code>evid = 0</code>)</li>
+<li>explicit resets or reset-then-dose logic</li>
+<li>direct control over <code>rate</code>, <code>ii</code>,
+<code>addl</code>, and <code>ss</code>
+</li>
+<li>classic internal rxode2 evids</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="practical-advice-for-titration-workflows">Practical advice for titration workflows<a class="anchor" aria-label="anchor" href="#practical-advice-for-titration-workflows"></a>
 </h2>
 <div class="section level3">
@@ -556,14 +639,20 @@ pushes</li>
 </h3>
 <p>Adaptive logic only runs when the solver is at a scheduled event or
 output time. If a titration visit is supposed to happen at 24 hours,
-make sure the event table contains 24 hours.</p>
+make sure the event table contains 24 hours. For dosing regimens every
+24 hours you can use the modulo operator to check for dosing times, that
+is <code>(time %% 24) == 0</code>.</p>
 </div>
 <div class="section level3">
-<h3 id="use-mtime-for-planned-decision-points">2. Use <code>mtime()</code> for planned decision points<a class="anchor" aria-label="anchor" href="#use-mtime-for-planned-decision-points"></a>
+<h3 id="use-mtime-or-obs-for-planned-decision-points">2. Use <code>mtime()</code> or <code>obs()</code> for planned
+decision points<a class="anchor" aria-label="anchor" href="#use-mtime-or-obs-for-planned-decision-points"></a>
 </h3>
 <p><code>mtime()</code> is a convenient way to mark protocol decision
 times inside the model and makes the logic easier to read than repeating
 literal times.</p>
+<p>The <code>mtime()</code> framework will only be observed once, while
+if you use <code><a href="../reference/obs.html">obs()</a></code> make sure to add observations at the
+appropriate times.</p>
 </div>
 <div class="section level3">
 <h3 id="guard-against-repeated-firing">3. Guard against repeated firing<a class="anchor" aria-label="anchor" href="#guard-against-repeated-firing"></a>
@@ -588,8 +677,8 @@ of silently generating an unbounded event history.</p>
 <li>use <code><a href="../reference/infuse.html">infuse()</a></code> or <code><a href="../reference/infuseDur.html">infuseDur()</a></code> for infusion
 starts</li>
 <li>use <code><a href="../reference/reset.html">reset()</a></code> for clearing the system</li>
-<li>use <code><a href="../reference/replace.html">replace()</a></code> when you know the new compartment
-amount</li>
+<li>use <code><a href="../reference/replace.html">replace()</a></code> when you know the new compartment amount.
+Helpful for calculating AUCs.</li>
 <li>use <code><a href="../reference/multiply.html">multiply()</a></code> for proportional adjustment</li>
 <li>use <code><a href="../reference/phantom.html">phantom()</a></code> for transit bookkeeping without direct
 deposition</li>
