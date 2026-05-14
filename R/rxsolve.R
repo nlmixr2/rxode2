@@ -938,7 +938,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indOwnAlloc=NA,
                     maxExtra=1000L,
                     tolFactor=NULL,
-                    serializeFile=TRUE,
+                    serializeFile=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
