@@ -2357,6 +2357,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     events
   }
+  .replayFallbackParams <- params
+  .replayFallbackEvents <- .eventsForSolve
+  .replayFallbackInits <- inits
   .isSer <- .serializeInput
   .serializeMode <- if (isTRUE(.ctl$serializeFile)) {
     "temp"
@@ -2380,9 +2383,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         .rxValidateStateBundleModel(object, .bundle, params)
       }
       .rxRestoreStateBundle(.bundle)
-      .bundleParams <- if (!is.null(.bundle$params)) .bundle$params else params
-      .bundleEvents <- if (!is.null(.bundle$events)) .bundle$events else .eventsForSolve
-      .bundleInits <- if (!is.null(.bundle$inits)) .bundle$inits else inits
+      .bundleParams <- if (!is.null(.bundle$params)) .bundle$params else .replayFallbackParams
+      .bundleEvents <- if (!is.null(.bundle$events)) .bundle$events else .replayFallbackEvents
+      .bundleInits <- if (!is.null(.bundle$inits)) .bundle$inits else .replayFallbackInits
       .bundleEventsForSolve <- if (is.rxEt(.bundleEvents)) {
         .etFixCmtForSolve(.etMaterialize(.bundleEvents))
       } else if (inherits(.bundleEvents, "data.frame")) {
