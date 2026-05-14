@@ -20,7 +20,8 @@ checkpoint.
 }
 \details{
 This function is called automatically when \code{rxSolve(mod, "state.rxbin")}
-detects a serialization file by its magic bytes.
+detects a serialization file by its magic bytes and validates that the file
+matches the supplied model.
 }
 \seealso{
 \code{\link{rxSaveState}}

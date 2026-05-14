@@ -2,7 +2,8 @@
 ##'
 ##' This is called automatically when \code{rxControl(serializeFile="path")} is
 ##' supplied to \code{rxSolve()}.  The file can be reloaded later by passing it
-##' as the \code{params} argument of \code{rxSolve()}.
+##' as the \code{params} argument of \code{rxSolve()} together with the matching
+##' model object.
 ##'
 ##' @param file Character(1).  Path of the file to write.
 ##' @return Invisibly \code{TRUE}.
@@ -145,7 +146,8 @@ rxSaveState <- function(file) {
 ##' checkpoint.
 ##'
 ##' This function is called automatically when \code{rxSolve(mod, "state.rxbin")}
-##' detects a serialization file by its magic bytes.
+##' detects a serialization file by its magic bytes and validates that the file
+##' matches the supplied model.
 ##'
 ##' @param file Character(1).  Path of a file written by \code{\link{rxSaveState}}.
 ##' @return Invisibly \code{TRUE}.

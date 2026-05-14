@@ -15,7 +15,8 @@ Invisibly \code{TRUE}.
 \description{
 This is called automatically when \code{rxControl(serializeFile="path")} is
 supplied to \code{rxSolve()}.  The file can be reloaded later by passing it
-as the \code{params} argument of \code{rxSolve()}.
+as the \code{params} argument of \code{rxSolve()} together with the matching
+model object.
 }
 \seealso{
 \code{\link{rxLoadState}}
