@@ -2571,6 +2571,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   .ret <- .envReset$ret
   .ws <- .ret[[2]]
+  if (length(.ws) > 0L &&
+      inherits(.ctl$iCov, "data.frame") &&
+      length(names(.ctl$iCov)) > 0L) {
+    .iCovNames <- tolower(names(.ctl$iCov))
+    .ws <- Filter(function(.w) {
+      if (!startsWith(.w, "Cannot keep missing columns:")) {
+        return(TRUE)
+      }
+      .miss <- sub("^Cannot keep missing columns:\\s*", "", .w)
+      .miss <- strsplit(.miss, "\\s+")[[1]]
+      .miss <- tolower(.miss[nzchar(.miss)])
+      if (length(.miss) == 0L) {
+        return(TRUE)
+      }
+      !all(.miss %in% .iCovNames)
+    }, .ws)
+  }
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))
   .ret <- .ret[[1]]

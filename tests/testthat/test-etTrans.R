@@ -460,6 +460,29 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(prep$iCov$WT, 70)
   })
 
+  test_that("keep from iCov is case-insensitive and does not warn missing", {
+    mod <- rxode2({
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V * centr
+      cp <- centr / V
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:2)
+    iCov <- data.frame(id = 1:2, wt = c(70, 80), sex = c("M", "F"))
+
+    expect_no_warning(
+      .sol <- rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40),
+                      iCov = iCov, keep = c("WT", "SEX"))
+    )
+
+    .nm <- tolower(names(as.data.frame(.sol)))
+    expect_true("wt" %in% .nm)
+    expect_true("sex" %in% .nm)
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)

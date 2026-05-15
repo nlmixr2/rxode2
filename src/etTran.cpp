@@ -965,6 +965,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool allInf = true;
   int mxCmt = 0;
   std::vector<int> keepI(keep.size(), 0);
+  CharacterVector keepNameLc = clone(keep);
+  for (j = keepNameLc.size(); j--;) {
+    std::string keepS = as<std::string>(keepNameLc[j]);
+    std::transform(keepS.begin(), keepS.end(), keepS.begin(), ::tolower);
+    keepNameLc[j] = keepS;
+  }
   bool needCmt = false;
   // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
@@ -1047,7 +1053,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     for (j = keep.size(); j--;) {
-      if (as<std::string>(dName[i]) == as<std::string>(keep[j])){
+      if (as<std::string>(lName[i]) == as<std::string>(keepNameLc[j])){
         if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing=TRUE'"));
         keepCol.push_back(i);
         keepI[j] = 1;
@@ -1144,7 +1150,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       for (j = keep.size(); j--;) {
-        if (as<std::string>(diName[i]) == as<std::string>(keep[j])) {
+        if (as<std::string>(liName[i]) == as<std::string>(keepNameLc[j])) {
           keepCol.push_back(-i-1);
           keepI[j] = 2;
           break;
