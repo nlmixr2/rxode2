@@ -1288,6 +1288,13 @@ etRbind <- function(..., samples = c("use", "clear"),
         .groups <- c(.groups, lapply(.etGroupsIn, function(.g) {
           list(ids = as.integer(.g$ids), data = .g$data)
         }))
+      } else if (length(.chunks) == 0L &&
+                 length(.groups) == 1L &&
+                 length(.etGroupsIn) == 1L &&
+                 .etGroupIdsEqual(.groups[[1]]$ids, .etGroupsIn[[1]]$ids)) {
+        .groups[[1]]$data <- as.data.frame(
+          data.table::rbindlist(list(.groups[[1]]$data, .etGroupsIn[[1]]$data), fill = TRUE)
+        )
       } else {
         if (length(.groups) > 0L) {
           for (.g in .groups) {

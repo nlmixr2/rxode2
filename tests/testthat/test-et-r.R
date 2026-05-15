@@ -108,6 +108,29 @@ rxTest({
     expect_match(out, "group 2: 2 individuals")
   })
 
+  test_that("etRbind keeps matching homogeneous ids compressed", {
+    e1 <- et(amt = 100, id = 1:3)
+    e2 <- et(amt = 50, time = 24, id = 1:3)
+    e3 <- rbind(e1, e2)
+    .e <- .rxEtEnv(e3)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:3)
+
+    dosing <- e3$get.dosing()
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_equal(nrow(dosing), 2L)
+    expect_false("id" %in% names(dosing))
+    expect_equal(dosing$time, c(0, 24))
+    expect_equal(dosing$amt, c(100, 50))
+
+    df <- as.data.frame(e3, all = TRUE)
+    expect_equal(nrow(df), 6L)
+    expect_equal(df$time[df$id == 1], c(0, 24))
+    expect_equal(df$amt[df$id == 1], c(100, 50))
+  })
+
   test_that("etSeq keeps same-id homogeneous groups compressed", {
     e1 <- et(amt = 100, ii = 24, addl = 1, id = 1:3)
     e2 <- et(amt = 50, id = 1:3)
