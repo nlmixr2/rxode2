@@ -117,6 +117,17 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodClearSampling <- function(env) {
+  .groups <- .etGetGroups(env) # nolint
+  if (length(.groups) > 0L) {
+    .groups <- Filter(Negate(is.null), lapply(.groups, function(.g) {
+      .df <- .g$data[.g$data$evid != 0L, , drop = FALSE]
+      if (nrow(.df) == 0L) return(NULL)
+      list(ids = .g$ids, data = .df)
+    }))
+    .etSetGroups(env, .groups) # nolint
+    .etResetCountsFromGroups(env) # nolint
+    return(invisible(NULL))
+  }
   for (.i in seq_along(env$chunks)) {
     if (!is.null(env$chunks[[.i]])) {
       .df <- env$chunks[[.i]]
@@ -516,6 +527,20 @@
 }
 
 .etMethodClearDosing <- function(env) {
+  .groups <- .etGetGroups(env) # nolint
+  if (length(.groups) > 0L) {
+    .groups <- Filter(Negate(is.null), lapply(.groups, function(.g) {
+      .df <- .g$data[.g$data$evid == 0L, , drop = FALSE]
+      if (nrow(.df) == 0L) return(NULL)
+      list(ids = .g$ids, data = .df)
+    }))
+    .etSetGroups(env, .groups) # nolint
+    .etResetCountsFromGroups(env) # nolint
+    if (env$ndose == 0L) {
+      env$show[c("amt", "rate", "ii", "addl", "ss", "dur")] <- FALSE
+    }
+    return(invisible(NULL))
+  }
   for (.i in seq_along(env$chunks)) {
     if (!is.null(env$chunks[[.i]])) {
       .df <- env$chunks[[.i]]
@@ -524,6 +549,7 @@
     }
   }
   env$ndose <- 0L
+  env$show[c("amt", "rate", "ii", "addl", "ss", "dur")] <- FALSE
   invisible(NULL)
 }
 

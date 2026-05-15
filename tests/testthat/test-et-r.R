@@ -618,6 +618,49 @@ rxTest({
     expect_equal(df$time[df$id == 1], c(0, 24, 48))
   })
 
+  test_that("clear.dosing updates grouped homogeneous tables", {
+    ev <- et(amt = 10, ii = 24, addl = 1, id = 1:3) |>
+      et(seq(0, 24, by = 24))
+    ev$clear.dosing()
+    .e <- .rxEtEnv(ev)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$ndose, 0L)
+    expect_equal(.e$nobs, 6L)
+    expect_false(ev$show["addl"])
+
+    sampling <- ev$get.sampling()
+    expect_s3_class(sampling, "rxEtPreview")
+    expect_equal(nrow(sampling), 2L)
+    expect_equal(ev$get.dosing(), NULL)
+
+    df <- as.data.frame(ev, all = TRUE)
+    expect_equal(nrow(df), 6L)
+    expect_true(all(df$evid == 0L))
+  })
+
+  test_that("clear.sampling updates grouped homogeneous tables", {
+    ev <- et(amt = 10, ii = 24, addl = 1, id = 1:3) |>
+      et(seq(0, 24, by = 24))
+    ev$clear.sampling()
+    .e <- .rxEtEnv(ev)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$ndose, 3L)
+    expect_equal(.e$nobs, 0L)
+    expect_equal(ev$get.sampling(), NULL)
+
+    dosing <- ev$get.dosing()
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_equal(nrow(dosing), 1L)
+
+    df <- as.data.frame(ev, all = TRUE)
+    expect_equal(nrow(df), 3L)
+    expect_true(all(df$evid != 0L))
+  })
+
   test_that("etRep repeats event table", {
     ev  <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 24))
     ev3 <- etRep(ev, times = 3, samples = "use")
