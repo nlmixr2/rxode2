@@ -46,6 +46,8 @@ using namespace arma;
 extern "C" void seedEng(int ncores);
 extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
+extern "C" void ensureLsodaCtxPool(int nCores);
+extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -5381,6 +5383,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
+    ensureLsodaCtxPool((int)op->cores);
+    {
+      int _bneq = (int)op->neq;
+      int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      int _liw = 20 + _bneq;
+      ensureRworkPool((int)op->cores, _lrw, _liw);
+    }
 
     // Now set up events and parameters
     RObject par0 = params;

@@ -1533,7 +1533,7 @@ rxCompile.rxModelVars <- function(model, # Model
         }
         .defs <- ""
         .ret <- sprintf(
-          "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
+          "#rxode2 Makevars\nPKG_CFLAGS=-O%s -fno-math-errno %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "2"),
           .defs, .getIncludeDir(),
           system.file("include", package = "rxode2")
