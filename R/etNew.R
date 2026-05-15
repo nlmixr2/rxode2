@@ -696,7 +696,7 @@
     .split <- split(seq_len(nrow(.subIc)), .splitKey, drop = TRUE)
     .df <- events[events$id == .i, , drop = FALSE]
     if (!is.data.frame(.df) || nrow(.df) == 0L) {
-      next
+      return(NULL)
     }
     for (.grpIdx in .split) {
       .ids <- as.integer(.idsInGroup[.grpIdx])

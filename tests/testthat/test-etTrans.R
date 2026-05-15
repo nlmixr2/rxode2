@@ -516,6 +516,17 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(prep$iCov$WT, 70)
   })
 
+  test_that("grouped iCov split aborts on incomplete representative groups", {
+    ev <- data.frame(id = 1L, time = 0, evid = 1L, amt = 100)
+    attr(ev, "rxHomGroups") <- list(1:2, 3:4)
+    attr(ev, "rxHomIdLevels") <- c("1", "2", "3", "4")
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
   test_that("keep from iCov is case-insensitive and does not warn missing", {
     mod <- rxode2({
       d/dt(depot) <- -KA * depot
