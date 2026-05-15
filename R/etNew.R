@@ -641,6 +641,75 @@
   .out
 }
 
+.etGroupedSolveSplitKey <- function(df) {
+  if (!is.data.frame(df) || ncol(df) == 0L) {
+    return(rep.int("1", if (is.data.frame(df)) nrow(df) else 0L))
+  }
+  do.call(interaction, c(unname(df), list(drop = TRUE, lex.order = TRUE)))
+}
+
+.etGroupedSolveDataICov <- function(x, iCov, keep = NULL, modelParams = character(0)) {
+  .env <- .rxEtEnv(x)
+  .groups <- .etGetGroups(.env)
+  if (length(.groups) == 0L || !inherits(iCov, "data.frame")) {
+    return(NULL)
+  }
+  .idCol <- which(tolower(names(iCov)) == "id")
+  if (length(.idCol) != 1L) {
+    return(NULL)
+  }
+  .idName <- names(iCov)[.idCol]
+  .keep <- as.character(keep)
+  .extraKeep <- intersect(.keep, setdiff(names(iCov), c(.idName, modelParams)))
+  if (length(.extraKeep) > 0L) {
+    return(NULL)
+  }
+  .icovId <- iCov[[.idName]]
+  .eventRows <- vector("list", 0L)
+  .icovRows <- vector("list", 0L)
+  .outGroups <- vector("list", 0L)
+  .outId <- 1L
+  for (.g in .groups) {
+    .idx <- match(.g$ids, .icovId)
+    if (anyNA(.idx)) {
+      return(NULL)
+    }
+    .subIc <- iCov[.idx, , drop = FALSE]
+    .splitCols <- setdiff(names(.subIc), .idName)
+    .splitKey <- if (length(.splitCols) == 0L) {
+      factor(rep.int("1", nrow(.subIc)))
+    } else {
+      .etGroupedSolveSplitKey(.subIc[.splitCols])
+    }
+    .split <- split(seq_len(nrow(.subIc)), .splitKey, drop = TRUE)
+    .df <- .etFixCmtForSolve(.etDropUnitsForChunk(.g$data))
+    if (!is.data.frame(.df) || nrow(.df) == 0L) {
+      next
+    }
+    for (.grpIdx in .split) {
+      .ids <- as.integer(.g$ids[.grpIdx])
+      .row <- .df
+      .row$id <- rep.int(.outId, nrow(.row))
+      .eventRows[[length(.eventRows) + 1L]] <- .row
+      .icovRow <- .subIc[.grpIdx[1L], , drop = FALSE]
+      .icovRow[[.idName]] <- .outId
+      .icovRows[[length(.icovRows) + 1L]] <- .icovRow
+      .outGroups[[length(.outGroups) + 1L]] <- .ids
+      .outId <- .outId + 1L
+    }
+  }
+  if (length(.eventRows) == 0L) {
+    return(NULL)
+  }
+  .events <- as.data.frame(data.table::rbindlist(.eventRows, fill = TRUE, use.names = TRUE))
+  attr(.events, "rxHomGroups") <- .outGroups
+  attr(.events, "rxHomIdLevels") <- as.character(unlist(.outGroups, use.names = FALSE))
+  list(
+    events = .events,
+    iCov = as.data.frame(data.table::rbindlist(.icovRows, fill = TRUE, use.names = TRUE))
+  )
+}
+
 .etPrepareSolveEvents <- function(events, ctl = NULL) {
   if (!is.rxEt(events)) {
     return(.etFixCmtForSolve(events))

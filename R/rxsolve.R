@@ -2190,6 +2190,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
                                             if (.applyParams) "rxParams"),
                                  file = params)
   }
+  .origEvents <- events
   if (!is.null(.ctl$iCov)) {
     if (inherits(.ctl$iCov, "data.frame")) {
       .icovId <- which(tolower(names(.ctl$iCov)) == "id")
@@ -2210,8 +2211,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         stop("to use 'iCov' you must have an id in your event table")
       }
       .by <- names(.events)[.eventId]
+      .id <- unique(.events[[.by]])
       if (length(.icovId) == 0) {
-        .id <- unique(events[[.by]])
         if (length(.ctl$iCov[, 1]) != length(.id)) {
           stop("'iCov' and 'id' mismatch")
         }
@@ -2227,6 +2228,16 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       }
     } else {
       stop("'iCov' must be an input dataset")
+    }
+  }
+  if (is.rxEt(.origEvents) && !is.null(.ctl$iCov) && length(.etGroups(.rxEtEnv(.origEvents))) > 0L) {
+    .mv <- rxModelVars(object)
+    .groupedSolve <- .etGroupedSolveDataICov(.origEvents, .ctl$iCov,
+                                             keep = .ctl$keep,
+                                             modelParams = .mv$params)
+    if (!is.null(.groupedSolve)) {
+      events <- .groupedSolve$events
+      .ctl$iCov <- .groupedSolve$iCov
     }
   }
   if (getOption("rxode2.debug", FALSE)) {
