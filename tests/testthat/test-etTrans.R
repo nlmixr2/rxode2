@@ -195,6 +195,18 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(sum(prep$evid == 0L), 3L)
   })
 
+  test_that("grouped solve prep handles empty grouped data frames", {
+    ev <- data.frame(id = integer(0), time = numeric(0), evid = integer(0))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+
+    prep <- .etPrepareGroupedSolveData(ev, rxControl())
+
+    expect_true(is.data.frame(prep))
+    expect_equal(nrow(prep), 0L)
+    expect_equal(attr(prep, "rxHomGroups"), list(1:2))
+  })
+
   test_that("homogeneous grouped dose-only solve prep supports model iCov compression", {
     mod <- rxode2({
       WT2 <- WT/70

@@ -749,7 +749,11 @@
   }
   .to <- .etSolveObsValue(ctl$to, "to")
   if (is.null(.to)) {
-    .to <- as.numeric(max(events$time)) + 24
+    .maxTime <- suppressWarnings(max(as.numeric(events$time), na.rm = TRUE))
+    if (!is.finite(.maxTime)) {
+      .maxTime <- .from
+    }
+    .to <- .maxTime + 24
   }
   .by <- .etSolveObsValue(ctl$by, "by")
   .lengthOut <- .etSolveObsValue(ctl$length.out, "length.out")
@@ -796,6 +800,9 @@
   .groups <- attr(events, "rxHomGroups", exact = TRUE)
   .events <- .etFixCmtForSolve(events)
   if (is.null(.groups)) {
+    return(.events)
+  }
+  if (nrow(.events) == 0L) {
     return(.events)
   }
   if ("evid" %in% names(.events) && any(.events$evid == 0L, na.rm = TRUE)) {
