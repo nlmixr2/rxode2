@@ -454,6 +454,11 @@
       .addedIds   <- setdiff(.posIds, .existingIds)
       .removedIds <- setdiff(.existingIds, .posIds)
       envRef$ids  <- sort(unique(.posIds))
+    } else if (xIsRxEt && envRef$canResize && length(.idVal) == 0L) {
+      .removedIds <- .existingIds
+      .addedIds <- integer(0)
+      envRef$ids <- integer(0)
+      .doResize <- length(.removedIds) > 0L
     } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)

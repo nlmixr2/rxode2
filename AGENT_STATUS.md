@@ -43,6 +43,8 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - Apparent divergence between serialized state inputs and solve-object inputs was due to comparing different solve setups; when derived from the same solve scenario, file/bundle/solve memory estimates are consistent.
 - Added regression coverage to lock file/bundle/solve parity for dose-only grouped scenarios.
 - Added scale regression for large homogeneous ID replacement (`1:70000` -> disjoint `70001:140000`) to lock grouped storage/no-chunk-cloning behavior.
+- Fixed grouped id-only resize with `id=integer(0)` so grouped tables are truly cleared (ids/groups/chunks/counts all reset) instead of retaining stale grouped event rows.
+- Added regression coverage for the grouped clear-to-empty resize case.
 
 ## Next Step (now)
 Continue remaining solve-adjacent completion work, focusing next on residual materialization-sensitive solve/replay branches and parity tests.

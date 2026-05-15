@@ -232,6 +232,19 @@ rxTest({
     expect_equal(.actual, .template)
   })
 
+  test_that("id-only resize to empty clears grouped tables", {
+    ev <- et(amt = 10, id = 1:3) |> et(amt = 20, id = 4:5)
+    ev0 <- et(ev, id = integer(0))
+    .e0 <- .rxEtEnv(ev0)
+
+    expect_equal(length(.e0$ids), 0L)
+    expect_equal(length(.e0$groups), 0L)
+    expect_equal(sum(vapply(.e0$chunks, Negate(is.null), logical(1))), 0L)
+    expect_equal(.e0$nobs, 0L)
+    expect_equal(.e0$ndose, 0L)
+    expect_equal(nrow(as.data.frame(ev0, all = TRUE)), 0L)
+  })
+
   test_that("simulate keeps grouped homogeneous tables compressed when unchanged", {
     ev <- et(1, id = 1:5)
 
