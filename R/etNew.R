@@ -725,11 +725,16 @@
     return(NULL)
   }
   .events <- as.data.frame(data.table::rbindlist(.eventRows, fill = TRUE, use.names = TRUE))
+  .iCovOut <- as.data.frame(data.table::rbindlist(.icovRows, fill = TRUE, use.names = TRUE))
+  .iCovOut[[.idName]] <- suppressWarnings(as.integer(.iCovOut[[.idName]]))
+  if (anyNA(.iCovOut[[.idName]])) {
+    return(NULL)
+  }
   attr(.events, "rxHomGroups") <- .outGroups
   attr(.events, "rxHomIdLevels") <- as.character(unlist(.outGroups, use.names = FALSE))
   list(
     events = .events,
-    iCov = as.data.frame(data.table::rbindlist(.icovRows, fill = TRUE, use.names = TRUE))
+    iCov = .iCovOut
   )
 }
 

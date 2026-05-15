@@ -2320,7 +2320,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       stop("'iCov' must be an input dataset")
     }
   }
-  if (is.rxEt(.origEvents) && !is.null(.ctl$iCov) && length(.etGroups(.rxEtEnv(.origEvents))) > 0L) {
+  if (is.rxEt(.origEvents) && !is.null(.ctl$iCov) && length(.etGroups(.rxEtEnv(.origEvents))) > 0L &&
+      .ctl$nSub == 1L && .ctl$nStud == 1L) {
     .mv <- rxModelVars(object)
     .groupedSolve <- .etGroupedSolveDataICov(.origEvents, .ctl$iCov,
                                              keep = .ctl$keep,

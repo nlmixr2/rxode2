@@ -66,7 +66,7 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
         et1 <- et() |>
           et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) |> ## sampling
-          add.dosing(dose=300*pk["f"],dosing.to=1,nbr.dose=13,dosing.interval=28,start.time=0)  ## dosing
+          add.dosing(dose=300*pk["f"],dosing.to=1,nbr.doses=13,dosing.interval=28,start.time=0)  ## dosing
 
           res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
 

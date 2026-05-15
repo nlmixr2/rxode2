@@ -752,6 +752,13 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                       }
                     }
                   }
+                  if (curDur == 0.0 && curIi == 0.0) {
+                    // EVID0_SSINF (constant infusion) is transformed to regular
+                    // infusion by the solver; no stop event exists, so preserve
+                    // the ss and ii columns in addDosing output.
+                    dullSS = 0;
+                    dullIi = 0;
+                  }
                   // amt
                   dfp = REAL(VECTOR_ELT(df, jj++));
                   dfp[ii] = curAmt*curDur;

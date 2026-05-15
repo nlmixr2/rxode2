@@ -135,7 +135,7 @@ rxTest({
     s <- rxSolve(rx, dat, par, returnType="data.frame",
                  keep=c("nlmixrRowNums", "DV"), subsetNonmem=TRUE, addCov=TRUE)
 
-    expect_equal(sort(unique(s[s$time==0.5,"CMT"])), 3:4)
+    expect_equal(sort(unique(as.integer(s[s$time==0.5,"CMT"]))), 3:4)
 
   })
 
@@ -201,7 +201,7 @@ rxTest({
     et <- eventTable(time.units = "hr") # default time units
     et$add.sampling(seq(from = 0, to = 10, by = 0.5))
 
-    cov <- data.frame(c = et$get.EventTable()$time + units::set_units(1, h))
+    cov <- data.frame(c = et$get.EventTable()$time + 1)
 
     et0 <- et
 
@@ -428,8 +428,8 @@ rxTest({
     })
 
     cov <- data.frame(
-      c = et0$get.EventTable()$time + units::set_units(1, hr),
-      a = -et0$get.EventTable()$time / units::set_units(100, hr)
+      c = et0$get.EventTable()$time + 1,
+      a = -et0$get.EventTable()$time / 100
     )
 
     et <- cbind(et0, cov)
@@ -458,7 +458,7 @@ rxTest({
       expect_equal(cov$a[et0$get.obs.rec()], out$a)
     })
 
-    cov <- data.frame(c = et0$get.EventTable()$time + units::set_units(1, hr))
+    cov <- data.frame(c = et0$get.EventTable()$time + 1)
     et <- cbind(et0, cov)
 
     suppressWarnings(.rxWithSink(t, {
