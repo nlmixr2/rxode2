@@ -49,6 +49,8 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - Added regression coverage for duplicate-ID resize deduplication.
 - `rxMemoryEstimate(rxSolveObj)` now defaults to the solve object's stored control arguments (when `control` is not supplied), so estimates reflect the original solve configuration (e.g., `nsim`, sampling controls, threading settings) instead of only stored event rows.
 - Added regression coverage for rxSolve-control inference and updated rxSolve-object parity assertions accordingly.
+- Added regression coverage that explicit `control=` on `rxMemoryEstimate(rxSolveObj, ...)` overrides inferred solve defaults by comparing against the same stored solve events with the override applied.
+- Focused regression filters currently passing: `et-r` and `rxMemoryEstimate`.
 
 ## Next Step (now)
-Continue remaining solve-adjacent completion work, focusing next on residual materialization-sensitive solve/replay branches and parity tests.
+Continue solve-adjacent completion work by targeting the next residual materialization-sensitive grouped replay/setup branch and locking parity with expanded inputs.

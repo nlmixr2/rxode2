@@ -330,6 +330,32 @@ rxTest({
     expect_equal(as.numeric(.fromSolve$gall_times), as.numeric(.fromEvents$gall_times))
   })
 
+  test_that("rxMemoryEstimate explicit control overrides rxSolve defaults", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .solved <- rxSolve(.mod, .theta, .ev, from = 0, to = 24, by = 12, nsim = 3)
+    .env <- attr(class(.solved), ".rxode2.env")
+
+    .override <- rxControl(from = 0, to = 24, by = 12, nsim = 1)
+    .fromSolveDefault <- rxMemoryEstimate(.solved, model = .mod)
+    .fromSolveOverride <- rxMemoryEstimate(.solved, model = .mod, control = .override)
+    .fromEventsOverride <- rxMemoryEstimate(.env$.args.events, model = .mod, control = .override)
+
+    expect_equal(.fromSolveOverride$effectiveSubs, .fromEventsOverride$effectiveSubs)
+    expect_equal(as.numeric(.fromSolveOverride$total), as.numeric(.fromEventsOverride$total))
+    expect_equal(as.numeric(.fromSolveOverride$gall_times), as.numeric(.fromEventsOverride$gall_times))
+    expect_false(isTRUE(all.equal(as.numeric(.fromSolveOverride$total),
+                                  as.numeric(.fromSolveDefault$total))))
+  })
+
   test_that("rxMemoryEstimate file/bundle/rxSolve parity for same dose-only grouped solve", {
     skip_on_cran()
     .mod <- rxode2({
