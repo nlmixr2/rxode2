@@ -935,6 +935,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  SEXP homGroupsS = Rf_getAttrib(inData, Rf_install("rxHomGroups"));
+  SEXP homIdLevelsS = Rf_getAttrib(inData, Rf_install("rxHomIdLevels"));
+  bool hasHomGroups = !Rf_isNull(homGroupsS);
+  bool hasHomIdLevels = !Rf_isNull(homIdLevelsS);
   // Translates events + model into translated events
   CharacterVector dName = as<CharacterVector>(Rf_getAttrib(inData, R_NamesSymbol));
   CharacterVector lName = clone(dName);
@@ -3303,7 +3307,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   e[RxTrans_lib_name] = trans["lib.name"]; // FIXME
   e[RxTrans_addCmt] = addCmt;
   e[RxTrans_cmtInfo] = cmtInfo;
-  if (redoId){
+  if (hasHomIdLevels) {
+    e[RxTrans_idLvl] = homIdLevelsS;
+  } else if (redoId){
     e[RxTrans_idLvl] = idLvl2;
   } else {
     e[RxTrans_idLvl] = idLvl;
@@ -3347,6 +3353,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time14: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  if (hasHomGroups) {
+    Rf_setAttrib(lstF, Rf_install("rxHomGroups"), homGroupsS);
+  }
+  if (hasHomIdLevels) {
+    Rf_setAttrib(lstF, Rf_install("rxHomIdLevels"), homIdLevelsS);
+  }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);
   Rf_setAttrib(lstF, R_RowNamesSymbol, IntegerVector::create(NA_INTEGER,-idxOutput.size()+rmAmt));

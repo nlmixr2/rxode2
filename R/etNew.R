@@ -504,6 +504,45 @@
   df
 }
 
+.etGroupedSolveData <- function(x) {
+  .env <- .rxEtEnv(x)
+  .groups <- .etGetGroups(.env)
+  if (length(.groups) == 0L) {
+    return(NULL)
+  }
+  .dat <- vector("list", 0L)
+  .ids <- vector("list", 0L)
+  for (.i in seq_along(.groups)) {
+    .g <- .groups[[.i]]
+    .df <- .etFixCmtForSolve(.etDropUnitsForChunk(.g$data))
+    if (!is.data.frame(.df) || nrow(.df) == 0L || length(.g$ids) == 0L) next
+    .df$id <- rep.int(.i, nrow(.df))
+    .dat[[length(.dat) + 1L]] <- .df
+    .ids[[length(.ids) + 1L]] <- as.integer(.g$ids)
+  }
+  if (length(.dat) == 0L) {
+    return(.etEmptyDf())
+  }
+  .out <- as.data.frame(data.table::rbindlist(.dat, fill = TRUE, use.names = TRUE))
+  attr(.out, "rxHomGroups") <- .ids
+  attr(.out, "rxHomIdLevels") <- as.character(unlist(.ids, use.names = FALSE))
+  .out
+}
+
+.etPrepareSolveEvents <- function(events, ctl = NULL) {
+  if (!is.rxEt(events)) {
+    return(.etFixCmtForSolve(events))
+  }
+  .nsim <- 1L
+  if (!is.null(ctl) && !is.null(ctl$nsim)) {
+    .nsim <- as.integer(ctl$nsim)[1L]
+  }
+  if (.nsim <= 1L && is.null(ctl$iCov) && length(.etGroups(.rxEtEnv(events))) > 0L) {
+    return(.etGroupedSolveData(events))
+  }
+  .etFixCmtForSolve(.etMaterialize(events))
+}
+
 #' Empty data.frame skeleton matching materialized format
 #'
 #' @return empty data.frame with canonical columns and types

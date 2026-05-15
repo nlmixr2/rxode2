@@ -1636,9 +1636,24 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
     CharacterVector tmpCls = ev1.attr("class");
     List envCls = tmpCls.attr(".rxode2.lst");
     NumericMatrix iniPars = envCls[RxTrans_pars];
+    SEXP homGroupsS = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
     // Copy the pre-filled covariates into the parameter values.
     for (int j = (int)rx->nsim; j--; ){
-      std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+(int)rx->nsub*npars*j);
+      double *cur = &_globals.gpars[0] + (int)rx->nsub * npars * j;
+      if (!Rf_isNull(homGroupsS)) {
+        List homGroups = as<List>(homGroupsS);
+        int outCol = 0;
+        for (int hg = 0; hg < homGroups.size(); ++hg) {
+          IntegerVector ids = as<IntegerVector>(homGroups[hg]);
+          for (int rid = 0; rid < ids.size(); ++rid, ++outCol) {
+            for (int p = 0; p < npars; ++p) {
+              cur[outCol * npars + p] = iniPars(p, hg);
+            }
+          }
+        }
+      } else {
+        std::copy(iniPars.begin(), iniPars.end(), cur);
+      }
     }
     IntegerVector parPos = envCls["covParPos0"];
     std::copy(parPos.begin(), parPos.end(), &_globals.gParPos2[0]);
@@ -3687,6 +3702,16 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     DataFrame dataf = as<DataFrame>(ev1);
     CharacterVector dfNames = dataf.names();
     int dfN = dfNames.size();
+    SEXP homGroupsS = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+    bool hasHomGroups = !Rf_isNull(homGroupsS);
+    List homGroups;
+    int homNsub = 0;
+    if (hasHomGroups) {
+      homGroups = as<List>(homGroupsS);
+      for (int hg = 0; hg < homGroups.size(); ++hg) {
+        homNsub += Rf_length(homGroups[hg]);
+      }
+    }
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     IntegerVector strLhs = as<IntegerVector>(rxSolveDat->mv[RxMv_lhsStr]);
@@ -3708,12 +3733,15 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector id(evid.size(), 1);
     if (rxcId > -1){
       id    = as<IntegerVector>(dataf[rxcId]);
-      int lastid = NA_INTEGER;
-      int nid = 0;
-      for (int ii = 0; ii < id.size(); ii++){
-        if (id[ii] != lastid){
-          lastid = id[ii];
-          nid++;
+      int nid = homNsub;
+      if (!hasHomGroups) {
+        int lastid = NA_INTEGER;
+        nid = 0;
+        for (int ii = 0; ii < id.size(); ii++){
+          if (id[ii] != lastid){
+            lastid = id[ii];
+            nid++;
+          }
         }
       }
       // if (nid == 0){
@@ -3836,19 +3864,54 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     // Get the number of subjects
     // Get the number of observations
     // Get the number of doses
-    int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
-    nsub = 0;
-    ind = &(rx->subjects[0]);
-    setupRxInd(ind, 1);
-    j=0;
-    rx->maxAllTimes=0;
-    int lastId = id[0]-42;
-    for (i = 0; i < ids; i++) {
-      if (lastId != id[i]) {
-        if (nall != 0) {
-          // Finalize last solve.
-          ind->n_all_times    = ndoses+nobs;
-          ind->n_all_times_orig = ind->n_all_times;
+    if (hasHomGroups) {
+      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
+      int groupNobs2 = 0, groupNevid9 = 0, groupNevid2 = 0;
+      nsub = 0;
+      j=0;
+      rx->maxAllTimes=0;
+      int lastId = id[0]-42;
+      double groupHmax1 = 0.0, groupHmax1m = 0.0, groupHmax1mo = 0.0;
+      double groupHmax1s = 0.0, groupHmax1n = 0.0;
+      auto finalizeGroup = [&](int startRow) {
+        if (nobs + ndoses == 0) return;
+        int groupIndex = id[startRow] - 1;
+        IntegerVector curIds = as<IntegerVector>(homGroups[groupIndex]);
+        int groupNAll = ndoses + nobs;
+        double *groupCov = &(_globals.gcov[curcovi]);
+        for (ii = 0; ii < ncov; ii++){
+          NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
+          std::copy(cur.begin()+lasti, cur.begin()+lasti+groupNAll,
+                    _globals.gcov+curcovi);
+          curcovi += groupNAll;
+        }
+        double curHmax = hmax0;
+        if (doMean) {
+          groupHmax1s = groupHmax1s/(groupHmax1n-1);
+          curHmax = groupHmax1m + asDouble(rxControl[Rxc_hmaxSd], "hmaxSd")*sqrt(groupHmax1s);
+        } else if (hmax0 == 0.0) {
+          curHmax = groupHmax1;
+        }
+        if (groupNAll > rx->maxAllTimes) rx->maxAllTimes = groupNAll;
+        for (int gid = 0; gid < curIds.size(); ++gid) {
+          ind = &(rx->subjects[nsub]);
+          setupRxInd(ind, 1);
+          ind->id               = nsub+1;
+          ind->idReal           = curIds[gid];
+          ind->all_times        = &_globals.gall_times[startRow];
+          ind->dv               = &_globals.gdv[startRow];
+          ind->limit            = &_globals.glimit[startRow];
+          ind->cens             = &_globals.gcens[startRow];
+          ind->evid             = &_globals.gevid[startRow];
+          ind->idose            = &_globals.gidose[startRow];
+          ind->dose             = &_globals.gamt[startRow];
+          ind->ii               = &_globals.gii[startRow];
+          ind->cov_ptr          = groupCov;
+          ind->n_all_times      = groupNAll;
+          ind->n_all_times_orig = groupNAll;
+          ind->ndoses           = ndoses;
+          ind->nevid2           = groupNevid2;
+          ind->HMAX             = curHmax;
           if (rx->mixnum) {
             ind->mixest = 0;
             if (nsub >= mixUnif.size()) {
@@ -3857,136 +3920,243 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
               ind->mixunif = mixUnif[nsub];
             }
           }
-          if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
-          ind->cov_ptr = &(_globals.gcov[curcovi]);
-          for (ii = 0; ii < ncov; ii++){
-            NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-            std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
-                      _globals.gcov+curcovi);
-            curcovi += ind->n_all_times;
-          }
           nsub++;
-          if (doMean){
-            hmax1s = hmax1s/(hmax1n-1);
-            hmax1  = hmax1m;
-            ind->HMAX = hmax1;
-          } else if (hmax0 == 0.0){
-            ind->HMAX = hmax1;
-          } else {
-            ind->HMAX = hmax0;
-          }
-          ind = &(rx->subjects[nsub]);
-          setupRxInd(ind, 1);
         }
-        // Setup the pointers.
-        ind->id               = nsub+1;
-        ind->idReal           = id[i];
-        ind->all_times        = &_globals.gall_times[i];
-        ind->dv = &_globals.gdv[i];
-        ind->limit = &_globals.glimit[i];
-        ind->cens = &_globals.gcens[i];
-        ind->evid           = &_globals.gevid[i];
-        ind->idose          = &_globals.gidose[i];
-        ind->dose           = &_globals.gamt[i];
-        ind->ii             = &_globals.gii[i];
-        lasti = i;
-
-        hmax1m=0.0;
-        hmax1s=0.0;
-        hmax1n=0.0;
-        hmax1 = 0.0;
-        lastId=id[i];
-        j=i;
-        ind->ndoses=0;
-        ind->nevid2=0;
-        ndoses=0;
-        nobs=0;
-        tlast = NA_REAL;
-      }
-      // Create index
-      _globals.gii[i] = datIi[i];
-      _globals.gamt[i] = amt[i];
-
-      if (isDose(_globals.gevid[i])){
-        _globals.gidose[j] = i-lasti;
-        ind->ndoses++;
-        ndoses++; nall++; j++;
-        if (_globals.gevid[i] == 3) {
+        if (groupNevid2 > 0) rx->hasEvid2 = 1;
+        nall += groupNAll * curIds.size();
+        nobst += nobs * curIds.size();
+        nobs2t += groupNobs2 * curIds.size();
+        nevid9 += groupNevid9 * curIds.size();
+      };
+      ndoses=0;
+      nobs=0;
+      tlast = NA_REAL;
+      for (i = 0; i < ids; i++) {
+        if (lastId != id[i]) {
+          if (i != 0) {
+            finalizeGroup(lasti);
+          }
+          lasti = i;
+          lastId = id[i];
+          j = i;
+          ndoses = 0;
+          nobs = 0;
+          groupNobs2 = 0;
+          groupNevid9 = 0;
+          groupNevid2 = 0;
+          groupHmax1m = 0.0;
+          groupHmax1s = 0.0;
+          groupHmax1n = 0.0;
+          groupHmax1 = 0.0;
           tlast = NA_REAL;
         }
-      } else {
-        nobs++; nobst++; nall++;
-        if (_globals.gevid[i] == 2) {
-          ind->nevid2++;
-          rx->hasEvid2 = 1;
-        }
-        if (_globals.gevid[i] == 0) nobs2t++;
-        if (_globals.gevid[i] == 9) nevid9++;
-        if (!ISNA(tlast)) {
-          tmp = time0[i]-tlast;
-          if (tmp < 0){
-            rxSolveFree();
-            stop(_("data must be ordered by 'ID' and 'TIME' variables"));
+        _globals.gii[i] = datIi[i];
+        _globals.gamt[i] = amt[i];
+        if (isDose(_globals.gevid[i])){
+          _globals.gidose[j] = i-lasti;
+          ndoses++;
+          j++;
+          if (_globals.gevid[i] == 3) {
+            tlast = NA_REAL;
           }
-          hmax1n++;
-          hmax1mo = hmax1m;
-          hmax1m += (tmp-hmax1m)/hmax1n;
-          hmax1s += (tmp-hmax1m)*(tmp-hmax1mo);
-          hmax2n++;
-          hmax2mo = hmax2m;
-          hmax2m += (tmp-hmax2m)/hmax2n;
-          hmax2s += (tmp-hmax2m)*(tmp-hmax2mo);
-          if (tmp > hmax1){
-            hmax1 = tmp;
-            if (hmax1 > hmax2){
-              hmax2=hmax1;
+        } else {
+          nobs++;
+          if (_globals.gevid[i] == 2) {
+            groupNevid2++;
+          }
+          if (_globals.gevid[i] == 0) groupNobs2++;
+          if (_globals.gevid[i] == 9) groupNevid9++;
+          if (!ISNA(tlast)) {
+            tmp = time0[i]-tlast;
+            if (tmp < 0){
+              rxSolveFree();
+              stop(_("data must be ordered by 'ID' and 'TIME' variables"));
+            }
+            groupHmax1n++;
+            groupHmax1mo = groupHmax1m;
+            groupHmax1m += (tmp-groupHmax1m)/groupHmax1n;
+            groupHmax1s += (tmp-groupHmax1m)*(tmp-groupHmax1mo);
+            hmax2n++;
+            hmax2mo = hmax2m;
+            hmax2m += (tmp-hmax2m)/hmax2n;
+            hmax2s += (tmp-hmax2m)*(tmp-hmax2mo);
+            if (tmp > groupHmax1){
+              groupHmax1 = tmp;
+              if (groupHmax1 > hmax2){
+                hmax2 = groupHmax1;
+              }
             }
           }
         }
+        tlast = time0[i];
       }
-      tlast = time0[i];
-    }
-    if (doMean){
-      hmax2  = hmax2m;
-    }
-    rx->nobs = nobst;
-    rx->nobs2 = nobs2t;
-    rx->nall = nall;
-    rx->nevid9 = nevid9;
-    // Finalize the prior individual
-    ind->n_all_times    = ndoses+nobs;
-    ind->n_all_times_orig = ind->n_all_times;
-    if (rx->mixnum) {
-      ind->mixest = 0;
-      if (nsub >= mixUnif.size()) {
-        ind->mixunif = rxunifmix(ind);
+      finalizeGroup(lasti);
+      if (doMean){
+        hmax2  = hmax2m;
+      }
+      rx->nobs = nobst;
+      rx->nobs2 = nobs2t;
+      rx->nall = nall;
+      rx->nevid9 = nevid9;
+      if (doMean || hmax0 == 0.0){
+        op->hmax2 = hmax2;
       } else {
-        ind->mixunif = mixUnif[nsub];
+        op->hmax2 = hmax0;
       }
-    }
-    if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
-    ind->cov_ptr = &(_globals.gcov[curcovi]);
-    for (ii = 0; ii < ncov; ii++){
-      NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-      std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
-                _globals.gcov+curcovi);
-      curcovi += ind->n_all_times;
-    }
-    if (doMean || hmax0 == 0.0){
-      op->hmax2 = hmax2;
+      rx->nsub= nsub;
     } else {
-      op->hmax2 = hmax0;
-    }
-    nsub++;
-    rx->nsub= nsub;
-    if (doMean){
-      hmax1s = hmax1s/(hmax1n-1);
-      hmax1  = hmax1m;
-      ind->HMAX = hmax1 + asDouble(rxControl[Rxc_hmaxSd], "hmaxSd")*sqrt(hmax1s);
-    } else if (hmax0 == 0.0){
-      ind->HMAX = hmax1;
-    } else {
-      ind->HMAX = hmax0;
+      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
+      nsub = 0;
+      ind = &(rx->subjects[0]);
+      setupRxInd(ind, 1);
+      j=0;
+      rx->maxAllTimes=0;
+      int lastId = id[0]-42;
+      for (i = 0; i < ids; i++) {
+        if (lastId != id[i]) {
+          if (nall != 0) {
+            // Finalize last solve.
+            ind->n_all_times    = ndoses+nobs;
+            ind->n_all_times_orig = ind->n_all_times;
+            if (rx->mixnum) {
+              ind->mixest = 0;
+              if (nsub >= mixUnif.size()) {
+                ind->mixunif = rxunifmix(ind);
+              } else {
+                ind->mixunif = mixUnif[nsub];
+              }
+            }
+            if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
+            ind->cov_ptr = &(_globals.gcov[curcovi]);
+            for (ii = 0; ii < ncov; ii++){
+              NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
+              std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
+                        _globals.gcov+curcovi);
+              curcovi += ind->n_all_times;
+            }
+            nsub++;
+            if (doMean){
+              hmax1s = hmax1s/(hmax1n-1);
+              hmax1  = hmax1m;
+              ind->HMAX = hmax1;
+            } else if (hmax0 == 0.0){
+              ind->HMAX = hmax1;
+            } else {
+              ind->HMAX = hmax0;
+            }
+            ind = &(rx->subjects[nsub]);
+            setupRxInd(ind, 1);
+          }
+          // Setup the pointers.
+          ind->id               = nsub+1;
+          ind->idReal           = id[i];
+          ind->all_times        = &_globals.gall_times[i];
+          ind->dv = &_globals.gdv[i];
+          ind->limit = &_globals.glimit[i];
+          ind->cens = &_globals.gcens[i];
+          ind->evid           = &_globals.gevid[i];
+          ind->idose          = &_globals.gidose[i];
+          ind->dose           = &_globals.gamt[i];
+          ind->ii             = &_globals.gii[i];
+          lasti = i;
+
+          hmax1m=0.0;
+          hmax1s=0.0;
+          hmax1n=0.0;
+          hmax1 = 0.0;
+          lastId=id[i];
+          j=i;
+          ind->ndoses=0;
+          ind->nevid2=0;
+          ndoses=0;
+          nobs=0;
+          tlast = NA_REAL;
+        }
+        // Create index
+        _globals.gii[i] = datIi[i];
+        _globals.gamt[i] = amt[i];
+
+        if (isDose(_globals.gevid[i])){
+          _globals.gidose[j] = i-lasti;
+          ind->ndoses++;
+          ndoses++; nall++; j++;
+          if (_globals.gevid[i] == 3) {
+            tlast = NA_REAL;
+          }
+        } else {
+          nobs++; nobst++; nall++;
+          if (_globals.gevid[i] == 2) {
+            ind->nevid2++;
+            rx->hasEvid2 = 1;
+          }
+          if (_globals.gevid[i] == 0) nobs2t++;
+          if (_globals.gevid[i] == 9) nevid9++;
+          if (!ISNA(tlast)) {
+            tmp = time0[i]-tlast;
+            if (tmp < 0){
+              rxSolveFree();
+              stop(_("data must be ordered by 'ID' and 'TIME' variables"));
+            }
+            hmax1n++;
+            hmax1mo = hmax1m;
+            hmax1m += (tmp-hmax1m)/hmax1n;
+            hmax1s += (tmp-hmax1m)*(tmp-hmax1mo);
+            hmax2n++;
+            hmax2mo = hmax2m;
+            hmax2m += (tmp-hmax2m)/hmax2n;
+            hmax2s += (tmp-hmax2m)*(tmp-hmax2mo);
+            if (tmp > hmax1){
+              hmax1 = tmp;
+              if (hmax1 > hmax2){
+                hmax2=hmax1;
+              }
+            }
+          }
+        }
+        tlast = time0[i];
+      }
+      if (doMean){
+        hmax2  = hmax2m;
+      }
+      rx->nobs = nobst;
+      rx->nobs2 = nobs2t;
+      rx->nall = nall;
+      rx->nevid9 = nevid9;
+      // Finalize the prior individual
+      ind->n_all_times    = ndoses+nobs;
+      ind->n_all_times_orig = ind->n_all_times;
+      if (rx->mixnum) {
+        ind->mixest = 0;
+        if (nsub >= mixUnif.size()) {
+          ind->mixunif = rxunifmix(ind);
+        } else {
+          ind->mixunif = mixUnif[nsub];
+        }
+      }
+      if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
+      ind->cov_ptr = &(_globals.gcov[curcovi]);
+      for (ii = 0; ii < ncov; ii++){
+        NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
+        std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
+                  _globals.gcov+curcovi);
+        curcovi += ind->n_all_times;
+      }
+      if (doMean || hmax0 == 0.0){
+        op->hmax2 = hmax2;
+      } else {
+        op->hmax2 = hmax0;
+      }
+      nsub++;
+      rx->nsub= nsub;
+      if (doMean){
+        hmax1s = hmax1s/(hmax1n-1);
+        hmax1  = hmax1m;
+        ind->HMAX = hmax1 + asDouble(rxControl[Rxc_hmaxSd], "hmaxSd")*sqrt(hmax1s);
+      } else if (hmax0 == 0.0){
+        ind->HMAX = hmax1;
+      } else {
+        ind->HMAX = hmax0;
+      }
     }
   }
 }

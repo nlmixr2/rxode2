@@ -2351,7 +2351,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
   .eventsForSolve <- if (is.rxEt(events)) {
-    .etFixCmtForSolve(.etMaterialize(events))
+    .etPrepareSolveEvents(events, .ctl)
   } else if (inherits(events, "data.frame")) {
     .etFixCmtForSolve(events)
   } else {
@@ -2387,7 +2387,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .bundleEvents <- if (!is.null(.bundle$events)) .bundle$events else .replayFallbackEvents
       .bundleInits <- if (!is.null(.bundle$inits)) .bundle$inits else .replayFallbackInits
       .bundleEventsForSolve <- if (is.rxEt(.bundleEvents)) {
-        .etFixCmtForSolve(.etMaterialize(.bundleEvents))
+        .etPrepareSolveEvents(.bundleEvents, .ctl)
       } else if (inherits(.bundleEvents, "data.frame")) {
         .etFixCmtForSolve(.bundleEvents)
       } else {

@@ -110,6 +110,55 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
   })
 
+  test_that("homogeneous solve events stay compressed through etTrans", {
+    mod <- rxode2parse("
+      ka = 1
+      d/dt(depot) = -ka * depot
+    ")
+
+    ev <- et(time = 0, amt = 100, cmt = 1) |>
+      et(0:4) |>
+      et(id = 1:3)
+
+    prep <- .etPrepareSolveEvents(ev, rxControl())
+    grp <- .etGetGroups(.rxEtEnv(ev))
+
+    expect_equal(nrow(prep), nrow(grp[[1]]$data))
+    expect_equal(attr(prep, "rxHomIdLevels"), c("1", "2", "3"))
+
+    tr <- etTrans(prep, mod)
+    expect_equal(nrow(as.data.frame(tr)), nrow(prep))
+    expect_equal(attr(tr, "rxHomIdLevels"), c("1", "2", "3"))
+    expect_equal(as.integer(attr(tr, "rxHomGroups")[[1]]), 1:3)
+
+    trInfo <- attr(class(tr), ".rxode2.lst")
+    expect_equal(trInfo$idLvl, c("1", "2", "3"))
+  })
+
+  test_that("homogeneous grouped solve matches expanded solve output", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev)))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)
