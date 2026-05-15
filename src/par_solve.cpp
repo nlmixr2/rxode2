@@ -3629,12 +3629,9 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0];
   if (global_debug)
     RSprintf("JT: %d\n",cjt);
-  // Use per-thread pool if available; fall back to global singleton
-  bool _usePool = !__rworkPool.empty();
-  double *rwork = _usePool ? __rworkPool[rx_get_thread((int)__rworkPool.size())].rworkp
-                           : global_rwork(lrw+1);
-  int    *iwork = _usePool ? __rworkPool[rx_get_thread((int)__rworkPool.size())].iworkp
-                           : global_iwork(liw+1);
+  // Fortran dlsoda is not reentrant — always use global singleton arrays
+  double *rwork = global_rwork(lrw+1);
+  int    *iwork = global_iwork(liw+1);
   ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, cjt,
              dydt_ls, u_inis, jdum);
 }
@@ -3645,11 +3642,6 @@ extern "C" void par_lsoda(rx_solve *rx) {
   rx_solving_options *op = rx->op;
   int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
-#ifdef _OPENMP
-  int cores = op->cores;
-#else
-  int cores = 1;
-#endif
 
   int baseNeq = op->neq;
   int lrw = 22 + baseNeq * max(16, baseNeq + 9), liw = 20 + baseNeq;
@@ -3657,55 +3649,35 @@ extern "C" void par_lsoda(rx_solve *rx) {
   if (global_debug)
     RSprintf("JT: %d\n", jt);
 
-  // Ensure global arrays exist as fallback for single-core / no-pool case
+  // Fortran dlsoda uses non-reentrant COMMON blocks — must remain single-threaded.
+  // Use pool slot 0 (or global fallback) to avoid repeated malloc/free.
   bool _usePool = !__rworkPool.empty();
-  if (!_usePool) {
-    global_rwork(lrw+1);
-    global_iwork(liw+1);
-  }
+  double *rwork = _usePool ? __rworkPool[0].rworkp : global_rwork(lrw+1);
+  int    *iwork = _usePool ? __rworkPool[0].iworkp : global_iwork(liw+1);
 
   int curTick = 0;
-  int cur = 0;
   int abort = 0;
-  uint32_t seed0 = getRxSeed1(cores);
+  uint32_t seed0 = getRxSeed1(1);
+  for (int solveid = 0; solveid < nsolve; solveid++){
+    if (abort == 0){
+      setSeedEng1(seed0 + solveid - 1);
+      int neq[2];
+      neq[0] = baseNeq;
+      neq[1] = 0;
+      ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
+                 dydt_lsoda_dum, update_inis, jdum_lsoda);
+      if (displayProgress){
+        curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(cores) schedule(dynamic,1)
+        if (omp_get_thread_num() == 0) {
 #endif
-  for (int thread = 0; thread < cores; thread++) {
-    for (int solveid = thread; solveid < nsolve; solveid += cores) {
-      int localAbort;
-#pragma omp atomic read
-      localAbort = abort;
-      if (localAbort == 0) {
-        setSeedEng1(seed0 + solveid - 1);
-        // Each thread uses its own neq[2] to avoid race conditions
-        int neq[2];
-        neq[0] = baseNeq;
-        neq[1] = 0;
-        double *rwork = _usePool ? __rworkPool[thread].rworkp : global_rworkp;
-        int    *iwork = _usePool ? __rworkPool[thread].iworkp : global_iworkp;
-        ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
-                   dydt_lsoda_dum, update_inis, jdum_lsoda);
-        if (displayProgress && thread == 0) {
-#pragma omp critical
-          cur++;
-#ifdef _OPENMP
-          if (omp_get_thread_num() == 0) // only in master thread!
-#endif
-          {
-            curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
-            int localAbort2;
-#pragma omp atomic read
-            localAbort2 = abort;
-            if (localAbort2 == 0) {
-              if (checkInterrupt()) {
-                int newAbort = 1;
-#pragma omp atomic write
-                abort = newAbort;
-              }
-            }
-          }
+        if (checkInterrupt()){
+          abort = 1;
+          break;
         }
+#ifdef _OPENMP
+        }
+#endif
       }
     }
   }
@@ -3713,7 +3685,7 @@ extern "C" void par_lsoda(rx_solve *rx) {
   if (abort == 1){
     op->abort = 1;
   } else {
-    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
+    if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
   }
 }
 
