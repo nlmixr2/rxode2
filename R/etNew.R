@@ -710,16 +710,87 @@
   )
 }
 
+.etSolveObsValue <- function(x, name) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+  if (length(x) != 1L) {
+    stop(sprintf("'%s' must be of length 1", name), call. = FALSE)
+  }
+  as.numeric(x)[1L]
+}
+
+.etSolveObsTimes <- function(events, ctl = NULL) {
+  .from <- .etSolveObsValue(ctl$from, "from")
+  if (is.null(.from)) {
+    .from <- 0.0
+  }
+  .to <- .etSolveObsValue(ctl$to, "to")
+  if (is.null(.to)) {
+    .to <- max(events$time) + 24
+  }
+  .by <- .etSolveObsValue(ctl$by, "by")
+  .lengthOut <- .etSolveObsValue(ctl$length.out, "length.out")
+  if (!is.null(.lengthOut)) {
+    .lengthOut <- as.integer(.lengthOut)
+    if (!is.null(.by)) {
+      stop("cannot use both 'by' and 'length.out' for rxode2 simulations", call. = FALSE)
+    }
+    .by <- (.to - .from)/(.lengthOut - 1)
+  } else if (is.null(.by)) {
+    .lengthOut <- 200L
+    .by <- (.to - .from)/(.lengthOut - 1)
+  } else {
+    .lengthOut <- as.integer((.to - .from)/.by + 1.0)
+  }
+  .by * seq.int(0L, .lengthOut - 1L) + .from
+}
+
+.etAddSolveObsRows <- function(events, obsTimes) {
+  .groups <- attr(events, "rxHomGroups", exact = TRUE)
+  .idLevels <- attr(events, "rxHomIdLevels", exact = TRUE)
+  .events <- .etFixCmtForSolve(events)
+  .ids <- sort(unique(as.integer(.events$id)))
+  .obs <- vector("list", length(.ids))
+  for (.i in seq_along(.ids)) {
+    .obs[[.i]] <- data.frame(
+      id = rep.int(.ids[.i], length(obsTimes)),
+      time = obsTimes,
+      evid = 0L
+    )
+  }
+  .out <- as.data.frame(data.table::rbindlist(c(list(.events), .obs), fill = TRUE, use.names = TRUE))
+  if (!is.null(.groups)) {
+    attr(.out, "rxHomGroups") <- .groups
+  }
+  if (!is.null(.idLevels)) {
+    attr(.out, "rxHomIdLevels") <- .idLevels
+  }
+  .out
+}
+
+.etPrepareGroupedSolveData <- function(events, ctl = NULL) {
+  .groups <- attr(events, "rxHomGroups", exact = TRUE)
+  .events <- .etFixCmtForSolve(events)
+  if (is.null(.groups)) {
+    return(.events)
+  }
+  if ("evid" %in% names(.events) && any(.events$evid == 0L, na.rm = TRUE)) {
+    return(.events)
+  }
+  .etAddSolveObsRows(.events, .etSolveObsTimes(.events, ctl))
+}
+
 .etPrepareSolveEvents <- function(events, ctl = NULL) {
   if (!is.rxEt(events)) {
-    return(.etFixCmtForSolve(events))
+    return(.etPrepareGroupedSolveData(events, ctl))
   }
   .env <- .rxEtEnv(events)
+  if (is.null(ctl$iCov) && length(.etGroups(.env)) > 0L) {
+    return(.etPrepareGroupedSolveData(.etGroupedSolveData(events), ctl))
+  }
   if (isTRUE(.env$nobs == 0L)) {
     return(.etFixCmtForSolve(.etMaterialize(events)))
-  }
-  if (is.null(ctl$iCov) && length(.etGroups(.env)) > 0L) {
-    return(.etGroupedSolveData(events))
   }
   .etFixCmtForSolve(.etMaterialize(events))
 }

@@ -182,6 +182,48 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
+  test_that("homogeneous grouped dose-only solve prep keeps grouped attrs", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    prep <- .etPrepareSolveEvents(ev, rxControl(from = 0, to = 24, by = 12))
+
+    expect_equal(attr(prep, "rxHomGroups"), list(1:3))
+    expect_equal(attr(prep, "rxHomIdLevels"), c("1", "2", "3"))
+    expect_equal(sort(unique(prep$id)), 1L)
+    expect_equal(sum(prep$evid == 0L), 3L)
+  })
+
+  test_that("homogeneous grouped dose-only solve prep supports model iCov compression", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+    ctl <- rxControl(iCov = iCov, from = 0, to = 24, by = 12)
+    prep <- .etGroupedSolveDataICov(ev, iCov, modelParams = rxModelVars(mod)$params)
+    prepEvents <- .etPrepareSolveEvents(prep$events, ctl)
+    ctl$iCov <- prep$iCov
+
+    got <- as.data.frame(rxode2:::rxSolveSEXP(mod, ctl, NULL, list(),
+                                              c(KA = 1, CL = 7, V = 40),
+                                              prepEvents, NULL, FALSE))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V = 40), iCov = iCov,
+                                  from = 0, to = 24, by = 12))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
   test_that("homogeneous grouped solve matches expanded output when nsim is requested", {
     mod <- rxode2({
       KA <- 1
