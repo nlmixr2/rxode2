@@ -58,6 +58,10 @@ int _isRstudio = 0;
 extern "C" void setRstudioPrint(int rstudio);
 extern "C" void RSprintf(const char *format, ...);
 
+// Pre-generated eta batch draw (defined in rxthreefry.cpp)
+extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
+extern "C" void rxEtaPreDeactivate(void);
+
 extern "C" SEXP _rxHasOpenMp(){
   SEXP ret = PROTECT(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
@@ -3431,6 +3435,7 @@ extern "C" void rxOptionsIni() {
 extern "C" void rxOptionsFree(){
   freeLsodaCtxPool();
   freeRworkPool();
+  rxEtaPreFree();
 
   if (global_iworki != 0) R_Free(global_iworkp);
   global_iworki = 0;
@@ -5071,6 +5076,14 @@ extern "C" void par_solve(rx_solve *rx) {
       par_linCmt(rx);
       return;
     } else {
+#ifdef _OPENMP
+      int cores = op->cores;
+#else
+      int cores = 1;
+#endif
+      // Pre-generate all eta draws before the parallel loop.
+      // simeta() reads from the buffer instead of calling rxRmvnA() per subject.
+      rxPreGenEta(rx, cores);
       switch(op->stiff){
       case 3:
         par_indLin(rx);
@@ -5090,6 +5103,7 @@ extern "C" void par_solve(rx_solve *rx) {
         par_dop(rx);
         break;
       }
+      rxEtaPreDeactivate();
     }
   }
   par_progress_0=0;

@@ -47,6 +47,16 @@ arma::vec getLowerVec(int type, rx_solve* rx);
 arma::vec getUpperVec(int type, rx_solve* rx);
 arma::mat getArmaMat(int type, int csim, rx_solve* rx);
 
+// C accessors into rx_globals (defined in rxData.cpp)
+extern "C" {
+  double* rxEtaPreGetOrAlloc(int nsolve_neta);
+  double* rxGetEtaPre(void);
+  void    rxEtaPreDeactivate(void);
+  void    rxEtaPreFree(void);
+  int     rxGetNOmega(void);
+  int     rxIsZeroOmega(void);
+}
+
 //[[Rcpp::export]]
 SEXP rxRmvn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma,
              int ncores=1, bool isChol=false) {
@@ -1673,6 +1683,46 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
   // FIXME? allow changing of a, tol nlTol and nlMaxiter?
   rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
 }
+// ---------------------------------------------------------------------------
+// rxPreGenEta: pre-generate all nsolve × neta eta draws before the parallel
+// solve loop.  Subjects then read from the buffer in simeta() without calling
+// rxRmvnA() per subject — eliminating per-subject Cholesky + draw overhead.
+//
+// Handles two cases:
+//   nOmega == 1: single omega matrix → generate all nsolve rows in one call
+//   nOmega  > 1: per-simulation omega → generate nsub rows per simulation
+// ---------------------------------------------------------------------------
+extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
+  if (rx->neta <= 0 || rxIsZeroOmega()) return;
+
+  int nsolve = (int)((uint32_t)rx->nsim * (uint32_t)rx->nsub);
+  int neta   = rx->neta;
+
+  double *buf = rxEtaPreGetOrAlloc(nsolve * neta);
+  if (!buf) return; // allocation failure — fall back to per-subject draws
+
+  arma::vec lower = getLowerVec(1, rx);
+  arma::vec upper = getUpperVec(1, rx);
+  arma::rowvec mu(neta, arma::fill::zeros);
+
+  if (rxGetNOmega() == 1) {
+    // All subjects share the same omega — one big batch call
+    arma::mat A(buf, nsolve, neta, false, true);
+    arma::mat sigma = getArmaMat(1, 0, rx);
+    rxRmvnA(A, mu, sigma, lower, upper, ncores, false, 0.4, 2.05, 1e-10, 100);
+  } else {
+    // Per-simulation omega: generate nsub rows for each simulation
+    int nsub = (int)rx->nsub;
+    int nsim = (int)rx->nsim;
+    for (int csim = 0; csim < nsim; csim++) {
+      double *ptr = buf + (ptrdiff_t)csim * nsub * neta;
+      arma::mat A(ptr, nsub, neta, false, true);
+      arma::mat sigma = getArmaMat(1, csim, rx);
+      rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
+    }
+  }
+}
+
 extern "C" void simeps(void) {
   rx_solve* rx = &rx_global;
   rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
@@ -1696,18 +1746,22 @@ extern "C" void simeta(void) {
   rx_solve* rx = &rx_global;
   rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
   if (ind != NULL && ind->isIni == 1) { // only initialize at beginning
-    // In this case the par_ptr will be updated with the new values, but they are out of order
-    arma::mat out(1, rx->neta);
-    // ind->id  = csub+csim*nsub;
-    int csim = std::floor((double)(ind->id)/((double)rx->nsub));
-    simvar(&out[0], 1, csim, rx);
     double *par_ptr = ind->par_ptr;
-    for (int j=0; j < rx->neta; j++){
-      // The error pointer is updated if needed
-      // REprintf("j: %d\n", j );
-      // REprintf("ovar[j]: %d\n", op->ovar[j]);
-      par_ptr[rx->ovar[j]] = out[j];
-      // REprintf("out[j]: %d\n", out[j]);
+    double *pre = rxGetEtaPre();
+    if (pre) {
+      // Fast path: read pre-generated row for this subject/sim
+      double *row = pre + (ptrdiff_t)(ind->id) * rx->neta;
+      for (int j = 0; j < rx->neta; j++) {
+        par_ptr[rx->ovar[j]] = row[j];
+      }
+    } else {
+      // Fallback: draw one MVN sample on the fly (legacy path, or zeroOmega)
+      arma::mat out(1, rx->neta);
+      int csim = (int)std::floor((double)(ind->id)/((double)rx->nsub));
+      simvar(&out[0], 1, csim, rx);
+      for (int j = 0; j < rx->neta; j++) {
+        par_ptr[rx->ovar[j]] = out[j];
+      }
     }
   }
 }

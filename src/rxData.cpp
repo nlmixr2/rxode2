@@ -1567,6 +1567,12 @@ struct rx_globals {
   double *gssAtolThread = NULL;
   double *gssRtolThread = NULL;
 
+  // Pre-generated eta draws: [nsolve × neta] row-major.
+  // Populated by rxPreGenEta() before the parallel solve loop; cleared after.
+  // simeta() reads row[solveid] directly, skipping per-subject rxRmvnA().
+  double *geta_pre = NULL;
+  int     geta_pre_n = 0;   // allocated capacity in doubles (nsolve * neta)
+
   bool alloc=false;
 };
 
@@ -1574,6 +1580,42 @@ struct rx_globals {
 rx_globals _globals;
 
 #include "extraDosing.h"
+
+// ---------------------------------------------------------------------------
+// Pre-generated eta buffer accessors (C linkage for rxthreefry.cpp)
+// ---------------------------------------------------------------------------
+extern "C" {
+
+  // Ensure buffer has at least nsolve*neta doubles. Returns pointer to buffer.
+  double* rxEtaPreGetOrAlloc(int nsolve_neta) {
+    if (nsolve_neta > _globals.geta_pre_n) {
+      free(_globals.geta_pre);
+      _globals.geta_pre   = (double*)malloc((size_t)nsolve_neta * sizeof(double));
+      _globals.geta_pre_n = (_globals.geta_pre ? nsolve_neta : 0);
+    }
+    return _globals.geta_pre;
+  }
+
+  // Return current pre-gen buffer (NULL if not allocated / not active).
+  double* rxGetEtaPre(void) { return _globals.geta_pre; }
+
+  // Deactivate: set pointer to NULL without freeing (keep allocation for reuse).
+  void rxEtaPreDeactivate(void) { _globals.geta_pre = NULL; }
+
+  // Free buffer and reset counters.
+  void rxEtaPreFree(void) {
+    free(_globals.geta_pre);
+    _globals.geta_pre   = NULL;
+    _globals.geta_pre_n = 0;
+  }
+
+  // Number of omega matrices (1 = same for all sims, >1 = per-sim omega).
+  int rxGetNOmega(void) { return _globals.nOmega; }
+
+  // True when omega is zero (skip pre-gen).
+  int rxIsZeroOmega(void) { return _globals.zeroOmega ? 1 : 0; }
+
+} // extern "C"
 
 static inline double *getLinCmtSaveThread() {
   rx_solve* rx = getRxSolve_();
