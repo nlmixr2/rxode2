@@ -93,6 +93,15 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     }
     .solveDat <- .etPrepareSolveEvents(.solveInput, control)
   } else if (is.data.frame(dat) && !is.null(attr(dat, "rxHomGroups", exact = TRUE))) {
+    if (!is.null(control) && !is.null(control$iCov) && !is.null(model)) {
+      .mv <- rxModelVars(model)
+      .groupedSolve <- .etGroupedSolveDataFrameICov(dat, control$iCov,
+                                                    keep = control$keep,
+                                                    modelParams = .mv$params)
+      if (!is.null(.groupedSolve)) {
+        dat <- .groupedSolve$events
+      }
+    }
     .solveDat <- .etPrepareGroupedSolveData(dat, control)
   } else if (is.data.frame(dat) && "evid" %in% names(dat)) {
     .solveDat <- .etFixCmtForSolve(dat)

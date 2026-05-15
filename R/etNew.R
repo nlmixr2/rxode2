@@ -648,10 +648,9 @@
   do.call(interaction, c(unname(df), list(drop = TRUE, lex.order = TRUE)))
 }
 
-.etGroupedSolveDataICov <- function(x, iCov, keep = NULL, modelParams = character(0)) {
-  .env <- .rxEtEnv(x)
-  .groups <- .etGetGroups(.env)
-  if (length(.groups) == 0L || !inherits(iCov, "data.frame")) {
+.etGroupedSolveDataFrameICov <- function(events, iCov, keep = NULL, modelParams = character(0)) {
+  .groups <- attr(events, "rxHomGroups", exact = TRUE)
+  if (!is.data.frame(events) || is.null(.groups) || !inherits(iCov, "data.frame")) {
     return(NULL)
   }
   .idCol <- which(tolower(names(iCov)) == "id")
@@ -669,8 +668,9 @@
   .icovRows <- vector("list", 0L)
   .outGroups <- vector("list", 0L)
   .outId <- 1L
-  for (.g in .groups) {
-    .idx <- match(.g$ids, .icovId)
+  for (.i in seq_along(.groups)) {
+    .idsInGroup <- as.integer(.groups[[.i]])
+    .idx <- match(.idsInGroup, .icovId)
     if (anyNA(.idx)) {
       return(NULL)
     }
@@ -682,12 +682,12 @@
       .etGroupedSolveSplitKey(.subIc[.splitCols])
     }
     .split <- split(seq_len(nrow(.subIc)), .splitKey, drop = TRUE)
-    .df <- .etFixCmtForSolve(.etDropUnitsForChunk(.g$data))
+    .df <- events[events$id == .i, , drop = FALSE]
     if (!is.data.frame(.df) || nrow(.df) == 0L) {
       next
     }
     for (.grpIdx in .split) {
-      .ids <- as.integer(.g$ids[.grpIdx])
+      .ids <- as.integer(.idsInGroup[.grpIdx])
       .row <- .df
       .row$id <- rep.int(.outId, nrow(.row))
       .eventRows[[length(.eventRows) + 1L]] <- .row
@@ -708,6 +708,16 @@
     events = .events,
     iCov = as.data.frame(data.table::rbindlist(.icovRows, fill = TRUE, use.names = TRUE))
   )
+}
+
+.etGroupedSolveDataICov <- function(x, iCov, keep = NULL, modelParams = character(0)) {
+  .env <- .rxEtEnv(x)
+  .groups <- .etGetGroups(.env)
+  if (length(.groups) == 0L) {
+    return(NULL)
+  }
+  .etGroupedSolveDataFrameICov(.etGroupedSolveData(x), iCov,
+                               keep = keep, modelParams = modelParams)
 }
 
 .etSolveObsValue <- function(x, name) {

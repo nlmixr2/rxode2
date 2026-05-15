@@ -125,5 +125,32 @@ rxTest({
         as.data.frame(doseOnlyTempReplay)[, c("id", "time", "cp")]
       )
     })
+
+    modICov <- rxode2({
+      wtScale <- WT / 70
+      d/dt(depot) = -ka * depot
+      d/dt(centr) = ka * depot - cl * wtScale / v * centr
+      cp = centr / v
+    })
+    thetaICov <- c(ka = 1.5, cl = 10, v = 50)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    groupedICovEv <- eventTable()
+    groupedICovEv$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 24)
+    groupedICovEv$add.sampling(seq(0, 48, by = 12))
+    groupedICovEv <- et(groupedICovEv, id = 1:4)
+    groupedICovFile <- tempfile(fileext = ".rxbin")
+    rxSolve(mod, theta, groupedICovEv, serializeFile = groupedICovFile)
+    groupedICovBundle <- .rxReadStateBundle(groupedICovFile)
+
+    groupedICovFromBundle <- rxSolve(modICov, thetaICov, groupedICovBundle$events, iCov = iCov)
+    groupedICovExpanded <- rxSolve(modICov, thetaICov, as.data.frame(groupedICovEv), iCov = iCov)
+
+    test_that("grouped serialized event data supports direct iCov replay path", {
+      expect_equal(
+        as.data.frame(groupedICovFromBundle)[, c("id", "time", "cp")],
+        as.data.frame(groupedICovExpanded)[, c("id", "time", "cp")]
+      )
+    })
   })
 })

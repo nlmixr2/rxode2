@@ -2195,8 +2195,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (inherits(.ctl$iCov, "data.frame")) {
       .icovId <- which(tolower(names(.ctl$iCov)) == "id")
       .useEvents <- FALSE
-      .eventsChk3 <- if (is.rxEt(events)) as.data.frame(events) else events
-      .paramsChk3 <- if (is.rxEt(params)) as.data.frame(params) else params
+      .eventsChk3 <- events
+      .paramsChk3 <- params
       if (rxIs(.eventsChk3, "event.data.frame")) {
         .events <- .eventsChk3
         .useEvents <- TRUE
@@ -2205,13 +2205,21 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       } else {
         stop("Cannot detect an event data frame to merge 'iCov'")
       }
-      .events <- as.data.frame(.events)
-      .eventId <- which(tolower(names(.events)) == "id")
-      if (length(.eventId) != 1) {
+      if (is.rxEt(.events)) {
+        .by <- "id"
+        .id <- .etPresentIds(.rxEtEnv(.events))
+      } else {
+        .events <- as.data.frame(.events)
+        .eventId <- which(tolower(names(.events)) == "id")
+        if (length(.eventId) != 1) {
+          stop("to use 'iCov' you must have an id in your event table")
+        }
+        .by <- names(.events)[.eventId]
+        .id <- unique(.events[[.by]])
+      }
+      if (length(.id) == 0L) {
         stop("to use 'iCov' you must have an id in your event table")
       }
-      .by <- names(.events)[.eventId]
-      .id <- unique(.events[[.by]])
       if (length(.icovId) == 0) {
         if (length(.ctl$iCov[, 1]) != length(.id)) {
           stop("'iCov' and 'id' mismatch")
@@ -2235,6 +2243,17 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .groupedSolve <- .etGroupedSolveDataICov(.origEvents, .ctl$iCov,
                                              keep = .ctl$keep,
                                              modelParams = .mv$params)
+    if (!is.null(.groupedSolve)) {
+      events <- .groupedSolve$events
+      .ctl$iCov <- .groupedSolve$iCov
+    }
+  } else if (inherits(events, "data.frame") &&
+             !is.null(attr(events, "rxHomGroups", exact = TRUE)) &&
+             !is.null(.ctl$iCov)) {
+    .mv <- rxModelVars(object)
+    .groupedSolve <- .etGroupedSolveDataFrameICov(events, .ctl$iCov,
+                                                  keep = .ctl$keep,
+                                                  modelParams = .mv$params)
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
@@ -2397,6 +2416,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .bundleParams <- if (!is.null(.bundle$params)) .bundle$params else .replayFallbackParams
       .bundleEvents <- if (!is.null(.bundle$events)) .bundle$events else .replayFallbackEvents
       .bundleInits <- if (!is.null(.bundle$inits)) .bundle$inits else .replayFallbackInits
+      if (inherits(.bundleEvents, "data.frame") &&
+          !is.null(attr(.bundleEvents, "rxHomGroups", exact = TRUE)) &&
+          !is.null(.ctl$iCov)) {
+        .mv <- rxModelVars(object)
+        .groupedSolve <- .etGroupedSolveDataFrameICov(.bundleEvents, .ctl$iCov,
+                                                      keep = .ctl$keep,
+                                                      modelParams = .mv$params)
+        if (!is.null(.groupedSolve)) {
+          .bundleEvents <- .groupedSolve$events
+          .ctl$iCov <- .groupedSolve$iCov
+        }
+      }
       .bundleEventsForSolve <- if (is.rxEt(.bundleEvents)) {
         .etPrepareSolveEvents(.bundleEvents, .ctl)
       } else if (inherits(.bundleEvents, "data.frame")) {
