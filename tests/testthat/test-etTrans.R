@@ -248,6 +248,20 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
+  test_that("homogeneous rxEt routes nsim through nSub instead of nStud", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    groupedCtl <- rxControl(nsim = 2, events = ev)
+    expandedCtl <- rxControl(nsim = 2, events = as.data.frame(ev))
+
+    expect_equal(groupedCtl$nSub, 2L)
+    expect_equal(groupedCtl$nStud, 1L)
+    expect_equal(expandedCtl$nSub, 1L)
+    expect_equal(expandedCtl$nStud, 2L)
+  })
+
   test_that("homogeneous grouped solve supports model iCov compression", {
     mod <- rxode2({
       WT2 <- WT/70

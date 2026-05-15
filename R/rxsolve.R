@@ -1034,7 +1034,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       set.seed(seed)
     }
     if (checkmate::testIntegerish(nsim, len=1, lower=1, any.missing=FALSE)) {
-      if (rxIs(params, "eventTable") || rxIs(events, "eventTable") && nSub == 1L) {
+      if (nSub == 1L && (rxIs(params, "rxEt") || rxIs(events, "rxEt") ||
+                         rxIs(params, "eventTable") || rxIs(events, "eventTable"))) {
         nSub <- as.integer(nsim)
       } else if (nStud == 1L) {
         nStud <- as.integer(nsim)
