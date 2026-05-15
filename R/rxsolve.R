@@ -1522,11 +1522,11 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     return(rxSolve.default(.object, params = params, envir = envir))
   }
   rxUdfUiReset()
-  .eventsChk <- if (is.rxEt(events)) as.data.frame(events) else events
-  .paramsChk <- if (is.rxEt(params)) as.data.frame(params) else params
-  if (rxIs(.eventsChk, "event.data.frame")) {
+  .eventsChk <- .rxSolveUiEventData(events)
+  .paramsChk <- .rxSolveUiEventData(params)
+  if (is.data.frame(.eventsChk)) {
     rxUdfUiData(.eventsChk)
-  } else if (rxIs(.paramsChk, "event.data.frame")) {
+  } else if (is.data.frame(.paramsChk)) {
     rxUdfUiData(.paramsChk)
   } else {
     stop("Cannot detect an event data frame to use while re-parsing the model",
@@ -1541,6 +1541,30 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
                        list(theta = theta, eta = eta, envir=envir)))
+}
+
+.rxSolveUiEventData <- function(x) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+  if (is.rxEt(x)) {
+    .preview <- .etPreviewData(.rxEtEnv(x))
+    if (is.null(.preview)) {
+      return(.rxEtSyncData(x))
+    }
+    .meta <- attr(.preview, "rxEtPreviewGroups", exact = TRUE)
+    if (!is.null(.meta) && !("id" %in% names(.preview))) {
+      .preview$id <- rep.int(
+        vapply(.meta, function(.g) as.integer(.g$ids[[1L]]), integer(1)),
+        vapply(.meta, function(.g) as.integer(.g$nRow), integer(1))
+      )
+    }
+    .preview
+  } else if (rxIs(x, "event.data.frame")) {
+    as.data.frame(x)
+  } else {
+    NULL
+  }
 }
 
 .uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
@@ -1779,12 +1803,12 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   rxUdfUiReset()
   if (isTRUE(object$uiUseData)) {
     # this needs to be re-parsed
-    .eventsChk2 <- if (is.rxEt(events)) as.data.frame(events) else events
-    .paramsChk2 <- if (is.rxEt(params)) as.data.frame(params) else params
-    if (rxIs(.eventsChk2, "event.data.frame")) {
+    .eventsChk2 <- .rxSolveUiEventData(events)
+    .paramsChk2 <- .rxSolveUiEventData(params)
+    if (is.data.frame(.eventsChk2)) {
       rxUdfUiData(.eventsChk2)
       rxUdfUiMv(rxModelVars(object))
-    } else if (rxIs(.paramsChk2, "event.data.frame")) {
+    } else if (is.data.frame(.paramsChk2)) {
       rxUdfUiData(.paramsChk2)
       rxUdfUiMv(rxModelVars(object))
     } else {

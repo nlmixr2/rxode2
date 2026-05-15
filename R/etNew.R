@@ -291,7 +291,8 @@
     .ret[[length(.ret) + 1L]] <- .df
     .meta[[length(.meta) + 1L]] <- list(
       ids = as.integer(.g$ids),
-      nSub = length(.g$ids)
+      nSub = length(.g$ids),
+      nRow = nrow(.df)
     )
   }
   if (length(.ret) == 0L) return(NULL)
