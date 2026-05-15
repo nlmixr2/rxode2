@@ -186,38 +186,12 @@ bool rxIs_list(const RObject &obj, std::string cls){
       cur = as<std::string>(classattr[i]);
       if (cur == "rxEt") {
         hasEt = true;
-        if (cls == "eventTable") {
-          List ce = as<List>(classattr.attr(".rxode2.lst"));
-          List lobj = List(obj);
-          int nobs = asInt(ce["nobs"], "nobs");
-          int ndose = asInt(ce["ndose"], "ndose");
-          if (lobj.size() != 12) {
-            lobj.attr("class") = CharacterVector::create("data.frame");
-            return false;
-          }
-          if ((as<IntegerVector>(lobj[0])).size() != ndose + nobs) {
-            lobj.attr("class") = CharacterVector::create("data.frame");
-            return false;
-          }
+        if (cls == "rxEt" || cls == "eventTable") {
           return true;
         }
       }
       if (cur == cls) {
-        if (cls == "rxEt") {
-          List ce = as<List>(classattr.attr(".rxode2.lst"));
-          List lobj = List(obj);
-          int nobs = asInt(ce["nobs"], "nobs");
-          int ndose = asInt(ce["ndose"], "ndose");
-          if (lobj.size() != 12) {
-            lobj.attr("class") = CharacterVector::create("data.frame");
-            return false;
-          }
-          if ( (as<IntegerVector>(lobj[0])).size() != ndose + nobs) {
-            lobj.attr("class") = CharacterVector::create("data.frame");
-            return false;
-          }
-          return true;
-        } else if (cls == "rxSolve") {
+        if (cls == "rxSolve") {
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
           List lobj = List(obj);
           CharacterVector cls2= CharacterVector::create("data.frame");
@@ -2883,8 +2857,11 @@ extern "C" SEXP assign_fkeepAttr(int col, SEXP in) {
 extern "C" SEXP get_fkeepChar(int col, double val) {
   List cur = keepFcovType[col];
   StringVector levels = cur[1];
-  int i = (int)(val - 1.0);
   if (R_IsNA(val) || R_IsNaN(val)) {
+    return NA_STRING;
+  }
+  int i = (int)(val - 1.0);
+  if (i < 0 || i >= levels.size()) {
     return NA_STRING;
   }
   return wrap(levels[i]);
@@ -3295,6 +3272,50 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     _rxModels[".fkeep"] = keep0;
     keepFcov=keep;
     keepFcovType = keep0[1];
+    // Homogeneous/grouped event tables share representative translated rows across
+    // multiple real IDs; keep vectors must be expanded to match per-subject output order.
+    SEXP homGroupsS0 = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+    if (!Rf_isNull(homGroupsS0) && keepFcov.size() > 0) {
+      DataFrame evDf = as<DataFrame>(ev1);
+      IntegerVector idKeep = as<IntegerVector>(evDf[0]);
+      int nRowsKeep = idKeep.size();
+      List homGroups0 = as<List>(homGroupsS0);
+      int nHomGroups = homGroups0.size();
+      std::vector<int> rowStart(nHomGroups, -1);
+      std::vector<int> rowLen(nHomGroups, 0);
+      for (int _i = 0; _i < nRowsKeep; ++_i) {
+        int rid = idKeep[_i];
+        if (rid >= 1 && rid <= nHomGroups) {
+          int gi = rid - 1;
+          if (rowStart[gi] == -1) rowStart[gi] = _i;
+          rowLen[gi]++;
+        }
+      }
+      int expandedRows = 0;
+      for (int gi = 0; gi < nHomGroups; ++gi) {
+        if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+        expandedRows += rowLen[gi] * Rf_length(homGroups0[gi]);
+      }
+      if (expandedRows > 0 && expandedRows != nRowsKeep) {
+        for (int _k = 0; _k < keepFcov.size(); ++_k) {
+          NumericVector cur = as<NumericVector>(keepFcov[_k]);
+          if (cur.size() != nRowsKeep) continue;
+          NumericVector out(expandedRows, NA_REAL);
+          int at = 0;
+          for (int gi = 0; gi < nHomGroups; ++gi) {
+            if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+            int reps = Rf_length(homGroups0[gi]);
+            for (int rep = 0; rep < reps; ++rep) {
+              std::copy(cur.begin() + rowStart[gi],
+                        cur.begin() + rowStart[gi] + rowLen[gi],
+                        out.begin() + at);
+              at += rowLen[gi];
+            }
+          }
+          keepFcov[_k] = out;
+        }
+      }
+    }
     rx->nKeepF = keepFcov.size();
     rxcEvid = 2;
     rxcTime = 1;
@@ -6447,6 +6468,10 @@ RObject rxSolveUpdate(RObject obj,
                 newEvents.attr("names") = newEventsNames;
                 newEvents.attr("class") = "data.frame";
                 newEvents.attr("row.names") = IntegerVector::create(NA_INTEGER,-nc);
+                SEXP homGroupsS = Rf_getAttrib(events, Rf_install("rxHomGroups"));
+                SEXP homIdLevelsS = Rf_getAttrib(events, Rf_install("rxHomIdLevels"));
+                if (!Rf_isNull(homGroupsS)) Rf_setAttrib(newEvents, Rf_install("rxHomGroups"), homGroupsS);
+                if (!Rf_isNull(homIdLevelsS)) Rf_setAttrib(newEvents, Rf_install("rxHomIdLevels"), homIdLevelsS);
                 return rxSolve_(obj, rxControl,
                                 CharacterVector::create("params","events"),
                                 R_NilValue,
@@ -6500,6 +6525,10 @@ RObject rxSolveUpdate(RObject obj,
                 newEvents.attr("names") = newEventsNames;
                 newEvents.attr("class") = "data.frame";
                 newEvents.attr("row.names") = IntegerVector::create(NA_INTEGER,-nc);
+                SEXP homGroupsS = Rf_getAttrib(events, Rf_install("rxHomGroups"));
+                SEXP homIdLevelsS = Rf_getAttrib(events, Rf_install("rxHomIdLevels"));
+                if (!Rf_isNull(homGroupsS)) Rf_setAttrib(newEvents, Rf_install("rxHomGroups"), homGroupsS);
+                if (!Rf_isNull(homIdLevelsS)) Rf_setAttrib(newEvents, Rf_install("rxHomIdLevels"), homIdLevelsS);
                 return rxSolve_(obj,rxControl,
                                 CharacterVector::create("events", "params"),
                                 R_NilValue,

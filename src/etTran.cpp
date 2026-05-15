@@ -2821,13 +2821,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         iDf.attr("row.names") = IntegerVector::create(NA_INTEGER, -inIdCov.size());
         Function getIcovIdx = getRxFn(".getIcovIdx");
         iCovKeepIdx = getIcovIdx(inDf, iDf);
+        calcIcovKeepIdx = true;
       }
       SEXP cur2 = iCov_[-keepColj-1];
       if (TYPEOF(cur2) == STRSXP) {
         CharacterVector cur3 = as<CharacterVector>(cur2);
         CharacterVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_STRING;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         cur = wrap(cur4);
         // save attributes
@@ -2837,7 +2843,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         IntegerVector cur3 = as<IntegerVector>(cur2);
         IntegerVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_INTEGER;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         cur = wrap(cur4);
         // save attributes
@@ -2846,7 +2857,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         NumericVector cur3 = as<NumericVector>(cur2);
         NumericVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_REAL;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         // save attributes
         std::vector<std::string> attr = cur3.attributeNames();
@@ -2860,7 +2876,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         LogicalVector cur3 = as<LogicalVector>(cur2);
         LogicalVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_LOGICAL;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         cur = wrap(cur4);
         // save attributes

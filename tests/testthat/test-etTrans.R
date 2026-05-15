@@ -262,6 +262,42 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(expandedCtl$nStud, 2L)
   })
 
+  test_that("rxSolve updates preserve grouped solve event attributes", {
+    on.exit(rxClean(), add = TRUE)
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+
+    s1 <- rxSolve(mod, ev)
+    .e1 <- attr(class(s1), ".rxode2.env")
+    .ev1 <- .e1$.args.events
+    .groups <- attr(.ev1, "rxHomGroups", exact = TRUE)
+    .idLvls <- attr(.ev1, "rxHomIdLevels", exact = TRUE)
+    expect_false(is.null(.groups))
+
+    s2 <- rxSolveUpdate(s1, "KA", rep(0.5, nrow(.ev1)))
+    .e2 <- attr(class(s2), ".rxode2.env")
+    .ev2 <- .e2$.args.events
+    expect_equal(attr(.ev2, "rxHomGroups"), .groups)
+    expect_equal(attr(.ev2, "rxHomIdLevels"), .idLvls)
+
+    s3 <- rxSolveUpdate(s2, "KA", 1)
+    .e3 <- attr(class(s3), ".rxode2.env")
+    .ev3 <- .e3$.args.events
+    expect_equal(attr(.ev3, "rxHomGroups"), .groups)
+    expect_equal(attr(.ev3, "rxHomIdLevels"), .idLvls)
+  })
+
   test_that("homogeneous grouped solve supports model iCov compression", {
     mod <- rxode2({
       WT2 <- WT/70
