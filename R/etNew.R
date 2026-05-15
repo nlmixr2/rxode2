@@ -639,6 +639,10 @@
   .out <- as.data.frame(data.table::rbindlist(.dat, fill = TRUE, use.names = TRUE))
   attr(.out, "rxHomGroups") <- .ids
   attr(.out, "rxHomIdLevels") <- as.character(unlist(.ids, use.names = FALSE))
+  .tu <- .env$units["time"]
+  if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {
+    .out[["time"]] <- units::set_units(.out[["time"]], .tu, mode = "standard")
+  }
   .out
 }
 
