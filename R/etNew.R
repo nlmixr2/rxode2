@@ -677,6 +677,10 @@
   if (anyDuplicated(.icovId)) {
     return(NULL)
   }
+  .eventId <- suppressWarnings(as.integer(if (is.factor(events$id)) as.character(events$id) else events$id))
+  if (length(.eventId) != nrow(events) || anyNA(.eventId)) {
+    return(NULL)
+  }
   .eventRows <- vector("list", 0L)
   .icovRows <- vector("list", 0L)
   .outGroups <- vector("list", 0L)
@@ -697,7 +701,7 @@
       .etGroupedSolveSplitKey(.subIc[.splitCols])
     }
     .split <- split(seq_len(nrow(.subIc)), .splitKey, drop = TRUE)
-    .df <- events[events$id == .i, , drop = FALSE]
+    .df <- events[.eventId == .i, , drop = FALSE]
     if (!is.data.frame(.df) || nrow(.df) == 0L) {
       return(NULL)
     }
