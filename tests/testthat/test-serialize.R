@@ -142,6 +142,8 @@ rxTest({
     groupedICovFile <- tempfile(fileext = ".rxbin")
     rxSolve(mod, theta, groupedICovEv, serializeFile = groupedICovFile)
     groupedICovBundle <- .rxReadStateBundle(groupedICovFile)
+    groupedICovFileForModel <- tempfile(fileext = ".rxbin")
+    rxSolve(modICov, thetaICov, groupedICovEv, iCov = iCov, serializeFile = groupedICovFileForModel)
 
     groupedICovFromBundle <- rxSolve(modICov, thetaICov, groupedICovBundle$events, iCov = iCov)
     groupedICovExpanded <- rxSolve(modICov, thetaICov, as.data.frame(groupedICovEv), iCov = iCov)
@@ -177,11 +179,28 @@ rxTest({
               iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
               keep = "grp")
     )
+    groupedKeepFromFileNoId <- suppressWarnings(
+      rxSolve(modICov, groupedICovFileForModel,
+              iCov = data.frame(WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+              keep = "grp")
+    )
+    groupedKeepFromFileWithId <- suppressWarnings(
+      rxSolve(modICov, groupedICovFileForModel,
+              iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+              keep = "grp")
+    )
 
     test_that("grouped serialized bundle replay infers iCov ids when omitted", {
       expect_equal(
         as.data.frame(groupedKeepFromBundleNoId)[, c("id", "time", "cp", "grp")],
         as.data.frame(groupedKeepFromBundleWithId)[, c("id", "time", "cp", "grp")]
+      )
+    })
+
+    test_that("grouped serialized file replay accepts iCov and infers omitted ids", {
+      expect_equal(
+        as.data.frame(groupedKeepFromFileNoId)[, c("id", "time", "cp", "grp")],
+        as.data.frame(groupedKeepFromFileWithId)[, c("id", "time", "cp", "grp")]
       )
     })
 

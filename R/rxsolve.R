@@ -1539,6 +1539,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
+                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)
@@ -1629,6 +1630,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                                        initsMissing = TRUE,
                                        inits = NULL,
                                        dots = list(),
+                                       allowedDots = character(0),
                                        thetaMissing = TRUE,
                                        etaMissing = TRUE,
                                        indOwnAllocMissing = TRUE,
@@ -1655,6 +1657,9 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .dotNames <- rep.int("", length(dots))
     }
     .dotNames[.dotNames == ""] <- "<unnamed>"
+    if (length(allowedDots) > 0L) {
+      .dotNames <- .dotNames[!(.dotNames %in% allowedDots)]
+    }
     .bad <- c(.bad, .dotNames)
   }
   if (!is.null(extras) && length(extras) > 0) {
@@ -1686,7 +1691,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 
 .rxSerializedSolvePipeArgs <- function() {
   .bad <- character(0)
-  .pipeChecks <- c("ThetaMat", "Omega", "Sigma", "DfObs", "DfSub", "NSub", "NStud", "Keep")
+  .pipeChecks <- c("ThetaMat", "Omega", "Sigma", "DfObs", "DfSub", "NSub", "NStud")
   for (.nm in .pipeChecks) {
     .fn <- get(paste0(".pipe", .nm), envir = asNamespace("rxode2"))
     if (!is.null(.fn(NA))) {
@@ -1817,6 +1822,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
+                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)
@@ -1901,6 +1907,7 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
+                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)
@@ -2031,6 +2038,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
+                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  indOwnAllocMissing = missing(indOwnAlloc),
