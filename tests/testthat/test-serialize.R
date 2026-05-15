@@ -53,6 +53,23 @@ rxTest({
       expect_error(rxSolve(mod, stateFile, serializeFile = tempfile(fileext = ".rxbin")))
     })
 
+    modFn <- function() {
+      d/dt(depot) = -ka * depot
+      d/dt(centr) = ka * depot - cl / v * centr
+      cp = centr / v
+    }
+
+    test_that("serialized function-dispatch replay rejects iCov/keep overrides", {
+      expect_error(
+        rxSolve(modFn, stateFile, iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80))),
+        "disallowed inputs"
+      )
+      expect_error(
+        rxSolve(modFn, stateFile, keep = "grp"),
+        "disallowed inputs"
+      )
+    })
+
     # Solve from file — dispatch via rxSolve(mod, stateFile)
     set.seed(42)
     fromFile <- rxSolve(mod, stateFile)

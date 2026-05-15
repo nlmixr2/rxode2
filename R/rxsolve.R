@@ -1539,7 +1539,6 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
-                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)
@@ -1822,7 +1821,6 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
-                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)
@@ -1907,7 +1905,6 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
                                  dots = .xtra,
-                                 allowedDots = c("iCov", "keep"),
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)

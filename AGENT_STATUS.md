@@ -55,6 +55,7 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - Added regression coverage for grouped solve `data.frame` + no-`id` `iCov`, and locked parity against expanded-event solves.
 - Grouped serialized-bundle replay now also supports no-`id` `iCov` input by inferring IDs from homogeneous grouped metadata; regression coverage locks no-`id` vs explicit-`id` replay parity.
 - Serialized file replay now allows `iCov`/`keep` solve arguments and infers omitted `iCov` IDs from grouped metadata for homogeneous grouped serialized events; added regression coverage for no-`id` vs explicit-`id` file replay parity.
+- Preserved argument safety on serialized non-default dispatches: function/rxUi/nlmixr2FitData serialized paths now reject `iCov`/`keep` overrides (instead of accepting-and-dropping them), while default serialized replay keeps explicit `iCov`/`keep` support.
 - Focused regression filters currently passing: `etTrans`, `serialize`, `rxMemoryEstimate`, and `et-r`.
 
 ## Next Step (now)
