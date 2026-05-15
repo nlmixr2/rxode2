@@ -302,10 +302,32 @@ rxTest({
     .solved <- rxSolve(.mod, .theta, .ev)
     .env <- attr(class(.solved), ".rxode2.env")
     .fromSolve <- rxMemoryEstimate(.solved, model = .mod)
-    .fromEvents <- rxMemoryEstimate(.env$.args.events, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.env$.args.events, model = .mod, control = .env$.args)
 
     expect_equal(as.numeric(.fromSolve$total), as.numeric(.fromEvents$total))
     expect_equal(as.numeric(.fromSolve$outputData), as.numeric(.fromEvents$outputData))
+  })
+
+  test_that("rxMemoryEstimate infers control defaults from rxSolve objects", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .solved <- rxSolve(.mod, .theta, .ev, from = 0, to = 24, by = 12, nsim = 3)
+    .env <- attr(class(.solved), ".rxode2.env")
+
+    .fromSolve <- rxMemoryEstimate(.solved, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.env$.args.events, model = .mod, control = .env$.args)
+
+    expect_equal(.fromSolve$effectiveSubs, .fromEvents$effectiveSubs)
+    expect_equal(as.numeric(.fromSolve$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromSolve$gall_times), as.numeric(.fromEvents$gall_times))
   })
 
   test_that("rxMemoryEstimate file/bundle/rxSolve parity for same dose-only grouped solve", {

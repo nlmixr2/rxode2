@@ -161,11 +161,15 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   )
 }
 
-.rxMemResolveDat <- function(dat) {
+.rxMemResolveInput <- function(dat, control = NULL) {
   if (inherits(dat, "rxSolve")) {
     .env <- attr(class(dat), ".rxode2.env", exact = TRUE)
     if (is.environment(.env) && exists(".args.events", envir = .env, inherits = FALSE)) {
-      return(get(".args.events", envir = .env, inherits = FALSE))
+      .events <- get(".args.events", envir = .env, inherits = FALSE)
+      if (is.null(control) && exists(".args", envir = .env, inherits = FALSE)) {
+        control <- get(".args", envir = .env, inherits = FALSE)
+      }
+      return(list(dat = .events, control = control))
     }
   }
   if (is.character(dat) && length(dat) == 1L && .rxIsSerializedSolvePath(dat)) {
@@ -174,12 +178,12 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
       stop(sprintf("Serialized solve '%s' does not contain event data for memory estimation", dat),
            call. = FALSE)
     }
-    return(.bundle$events)
+    return(list(dat = .bundle$events, control = control))
   }
   if (is.list(dat) && !is.data.frame(dat) && !is.null(dat$events)) {
-    return(dat$events)
+    return(list(dat = dat$events, control = control))
   }
-  dat
+  list(dat = dat, control = control)
 }
 #' Extract model dimensions from model variables
 #'
@@ -486,7 +490,9 @@ rxMemoryEstimate <- function(
   nIndSim   = NULL,
   numLinSens = 0L,
   numLin    = 0L) {
-  dat <- .rxMemResolveDat(dat)
+  .resolved <- .rxMemResolveInput(dat, control)
+  dat <- .resolved$dat
+  control <- .resolved$control
   if (.isRxMemSummary(dat)) {
     .summary <- dat
     if (!inherits(.summary, "rxMemSummary")) {

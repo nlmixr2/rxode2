@@ -47,6 +47,8 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - Added regression coverage for the grouped clear-to-empty resize case.
 - Fixed canResize duplicate-ID normalization so `et(ev, id=c(2,2,3,3))` stores deduplicated IDs in `env$ids` and grouped metadata.
 - Added regression coverage for duplicate-ID resize deduplication.
+- `rxMemoryEstimate(rxSolveObj)` now defaults to the solve object's stored control arguments (when `control` is not supplied), so estimates reflect the original solve configuration (e.g., `nsim`, sampling controls, threading settings) instead of only stored event rows.
+- Added regression coverage for rxSolve-control inference and updated rxSolve-object parity assertions accordingly.
 
 ## Next Step (now)
 Continue remaining solve-adjacent completion work, focusing next on residual materialization-sensitive solve/replay branches and parity tests.
