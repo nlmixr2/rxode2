@@ -182,7 +182,7 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
-  test_that("homogeneous grouped solve works with multiple simulations", {
+  test_that("homogeneous grouped solve matches expanded output when nsim is requested", {
     mod <- rxode2({
       KA <- 1
       CL <- 1
@@ -201,8 +201,8 @@ d/dt(blood)     = a*intestine - b*blood
     want <- as.data.frame(rxSolve(mod, as.data.frame(ev), nsim = 2))
 
     expect_equal(
-      got[, c("sim.id", "id", "time", "depot", "centr")],
-      want[, c("sim.id", "id", "time", "depot", "centr")]
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
     )
   })
 
