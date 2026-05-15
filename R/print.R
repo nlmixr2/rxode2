@@ -140,10 +140,14 @@ print.rxEt <- function(x, ...) {
           class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
         }
       }
-      if (inherits(.preview, "rxEtPreview")) {
+      .show <- .rxEtEnv(x)$show
+      .showCols <- intersect(names(.show)[.show], names(.preview))
+      if (inherits(.preview, "rxEtPreview") && .maxId > 1L) {
         print(.preview)
       } else {
-        print(tibble::as_tibble(.preview))
+        .df <- .preview[, .showCols, drop = FALSE]
+        class(.df) <- "data.frame"
+        print(tibble::as_tibble(.df))
       }
     }
     invisible(x)

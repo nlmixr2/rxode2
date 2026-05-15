@@ -1,5 +1,9 @@
 # rxEt environment and chunk helpers -------------------------------------
 
+.rxGetHomogenous <- function() {
+  isTRUE(getOption("rxode2.homogenous", TRUE))
+}
+
 #' Extract mutable .env from either new-style (data.frame subclass + .rxEtEnv attr)
 #' or internal mini-rxEt (1-element named list where [[1L]] is the env).
 #'
@@ -215,6 +219,10 @@
   }
 
   if (!.hasWin) {
+    return(list(hasWin = FALSE, groups = .groups, chunks = .chunks))
+  }
+
+  if (!is.na(.randomType) && .randomType == 1L) {
     return(list(hasWin = FALSE, groups = .groups, chunks = .chunks))
   }
 

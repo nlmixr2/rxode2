@@ -84,10 +84,15 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetEventTable <- function(env) {
-  .mat <- .etPreviewData(env, "all")
+  if (.rxGetHomogenous()) { # nolint
+    .mat <- .etPreviewData(env, "all")
+  } else {
+    .mat <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
+  }
   if (is.null(.mat) || nrow(.mat) == 0L) return(NULL)
   .show <- env$show
-  .ret <- .mat[, names(.show)[.show], drop = FALSE]
+  .cols <- intersect(names(.show)[.show], names(.mat))
+  .ret <- .mat[, .cols, drop = FALSE]
   rownames(.ret) <- seq_len(nrow(.ret))
   .ret
 }
@@ -99,7 +104,13 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetDosing <- function(env) {
-  .d <- .etPreviewData(env, "dosing")
+  if (.rxGetHomogenous()) { # nolint
+    .d <- .etPreviewData(env, "dosing")
+  } else {
+    .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
+    if (is.null(.full) || nrow(.full) == 0L) return(NULL)
+    .d <- .full[.full$evid != 0L, , drop = FALSE]
+  }
   if (is.null(.d)) return(NULL)
   if (nrow(.d) == 0L) {
     NULL
@@ -551,7 +562,13 @@
 }
 
 .etMethodGetSampling <- function(env) {
-  .s <- .etPreviewData(env, "sampling")
+  if (.rxGetHomogenous()) { # nolint
+    .s <- .etPreviewData(env, "sampling")
+  } else {
+    .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
+    if (is.null(.full) || nrow(.full) == 0L) return(NULL)
+    .s <- .full[.full$evid == 0L, , drop = FALSE]
+  }
   if (is.null(.s)) return(NULL)
   if (nrow(.s) == 0L) {
     NULL
