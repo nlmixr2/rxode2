@@ -2263,13 +2263,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         .by <- "id"
         .id <- .etPresentIds(.rxEtEnv(.events))
       } else {
-        .events <- as.data.frame(.events)
+        if (!inherits(.events, "data.frame")) {
+          .events <- as.data.frame(.events)
+        }
         .eventId <- which(tolower(names(.events)) == "id")
         if (length(.eventId) != 1) {
           stop("to use 'iCov' you must have an id in your event table")
         }
         .by <- names(.events)[.eventId]
-        .id <- unique(.events[[.by]])
+        .groups <- attr(.events, "rxHomGroups", exact = TRUE)
+        .idLevels <- attr(.events, "rxHomIdLevels", exact = TRUE)
+        if (!is.null(.idLevels) && length(.idLevels) > 0L) {
+          .id <- .idLevels
+        } else if (!is.null(.groups) && length(.groups) > 0L) {
+          .id <- unlist(.groups, use.names = FALSE)
+        } else {
+          .id <- unique(.events[[.by]])
+        }
       }
       if (length(.id) == 0L) {
         stop("to use 'iCov' you must have an id in your event table")

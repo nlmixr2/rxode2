@@ -30,6 +30,7 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - `suppress-icov-keep-false-warning`
 
 ## Recent Commits
+- `53726b1f8` test: lock rxMemoryEstimate control override
 - `46fa38769` fix: keep grouped events on disjoint id resize
 - `e04edd8a7` fix: preserve added ids in grouped resize
 - `981c43f08` fix: refine iCov keep missing warnings
@@ -50,7 +51,9 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - `rxMemoryEstimate(rxSolveObj)` now defaults to the solve object's stored control arguments (when `control` is not supplied), so estimates reflect the original solve configuration (e.g., `nsim`, sampling controls, threading settings) instead of only stored event rows.
 - Added regression coverage for rxSolve-control inference and updated rxSolve-object parity assertions accordingly.
 - Added regression coverage that explicit `control=` on `rxMemoryEstimate(rxSolveObj, ...)` overrides inferred solve defaults by comparing against the same stored solve events with the override applied.
-- Focused regression filters currently passing: `et-r` and `rxMemoryEstimate`.
+- Fixed grouped solve `data.frame` setup when `iCov` omits `id`: `rxSolve()` now infers IDs from `rxHomIdLevels`/`rxHomGroups` instead of representative group IDs.
+- Added regression coverage for grouped solve `data.frame` + no-`id` `iCov`, and locked parity against expanded-event solves.
+- Focused regression filters currently passing: `etTrans`, `serialize`, `rxMemoryEstimate`, and `et-r`.
 
 ## Next Step (now)
-Continue solve-adjacent completion work by targeting the next residual materialization-sensitive grouped replay/setup branch and locking parity with expanded inputs.
+Continue solve-adjacent completion work by targeting remaining grouped replay/setup branches where covariate and ID inference can still fall back to legacy assumptions.
