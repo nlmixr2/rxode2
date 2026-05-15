@@ -439,6 +439,27 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(prep$iCov$grp, c("a", "b"))
   })
 
+  test_that("homogeneous grouped iCov split ignores unrelated iCov columns", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 70, 70), grp = c("a", "b", "c", "d"))
+
+    prep <- .etGroupedSolveDataICov(ev, iCov, modelParams = rxModelVars(mod)$params)
+
+    expect_false(is.null(prep))
+    expect_equal(attr(prep$events, "rxHomGroups"), list(1:4))
+    expect_equal(prep$iCov$id, 1L)
+    expect_equal(prep$iCov$WT, 70)
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)

@@ -672,6 +672,7 @@
   }
   .idName <- names(iCov)[.idCol]
   .keep <- as.character(keep)
+  .modelParams <- as.character(modelParams)
   .icovId <- iCov[[.idName]]
   .eventRows <- vector("list", 0L)
   .icovRows <- vector("list", 0L)
@@ -685,6 +686,8 @@
     }
     .subIc <- iCov[.idx, , drop = FALSE]
     .splitCols <- setdiff(names(.subIc), .idName)
+    .splitNeeded <- unique(c(tolower(.modelParams), tolower(.keep)))
+    .splitCols <- .splitCols[tolower(.splitCols) %in% .splitNeeded]
     .splitKey <- if (length(.splitCols) == 0L) {
       factor(rep.int("1", nrow(.subIc)))
     } else {
