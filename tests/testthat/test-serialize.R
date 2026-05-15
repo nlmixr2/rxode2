@@ -166,5 +166,31 @@ rxTest({
         as.data.frame(groupedKeepExpanded)[, c("id", "time", "cp", "grp")]
       )
     })
+
+    groupedDoseOnlyICovEv <- eventTable()
+    groupedDoseOnlyICovEv$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    groupedDoseOnlyICovEv <- et(groupedDoseOnlyICovEv, id = 1:4)
+    groupedDoseOnlyICovFile <- tempfile(fileext = ".rxbin")
+    rxSolve(mod, theta, groupedDoseOnlyICovEv, from = 0, to = 24, by = 12,
+            serializeFile = groupedDoseOnlyICovFile)
+    groupedDoseOnlyICovBundle <- .rxReadStateBundle(groupedDoseOnlyICovFile)
+
+    groupedDoseOnlyKeepFromBundle <- suppressWarnings(
+      rxSolve(modICov, thetaICov, groupedDoseOnlyICovBundle$events,
+              iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+              keep = "grp", from = 0, to = 24, by = 12)
+    )
+    groupedDoseOnlyKeepExpanded <- suppressWarnings(
+      rxSolve(modICov, thetaICov, as.data.frame(groupedDoseOnlyICovEv),
+              iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+              keep = "grp", from = 0, to = 24, by = 12)
+    )
+
+    test_that("grouped serialized dose-only events keep iCov-only keep columns on replay", {
+      expect_equal(
+        as.data.frame(groupedDoseOnlyKeepFromBundle)[, c("id", "time", "cp", "grp")],
+        as.data.frame(groupedDoseOnlyKeepExpanded)[, c("id", "time", "cp", "grp")]
+      )
+    })
   })
 })
