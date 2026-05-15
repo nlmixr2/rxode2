@@ -1518,22 +1518,40 @@ as_tibble.rxEt <- function(x, ...) {
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
 etExpand <- function(et) {
-  .mat      <- .etMaterialize(et) # nolint
-  .expanded <- .etExpandAddl(.mat, .rxEtEnv(et)) # nolint
   .env      <- .rxEtEnv(et) # nolint
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()
-  if (nrow(.expanded) > 0L) {
-    .ids <- unique(as.integer(.expanded$id))
-    for (.i in .ids) {
-      .newEnv$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+  .groups <- .etGetGroups(.env) # nolint
+  if (length(.groups) > 0L) {
+    .newEnv$groups <- lapply(.groups, function(.g) {
+      list(ids = as.integer(.g$ids), data = .etExpandGroupData(.g$data, .env)) # nolint
+    })
+  } else {
+    .mat      <- .etMaterialize(et) # nolint
+    .expanded <- .etExpandAddl(.mat, .env) # nolint
+    .newEnv$groups <- list()
+    if (nrow(.expanded) > 0L) {
+      .ids <- unique(as.integer(.expanded$id))
+      for (.i in .ids) {
+        .newEnv$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+      }
     }
   }
   .newEnv$units      <- .env$units
   .newEnv$show       <- .env$show
   .newEnv$ids        <- .env$ids
-  .newEnv$nobs       <- sum(.expanded$evid == 0L)
-  .newEnv$ndose      <- sum(.expanded$evid != 0L)
+  .etResetCountsFromGroups(.newEnv) # nolint
+  if (length(.newEnv$groups) == 0L) {
+    .newEnv$nobs       <- sum(.expanded$evid == 0L)
+    .newEnv$ndose      <- sum(.expanded$evid != 0L)
+  }
+  if (length(.newEnv$groups) > 0L) {
+    .newEnv$show["addl"] <- any(vapply(.newEnv$groups, function(.g) {
+      !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
+    }, logical(1)))
+  } else {
+    .newEnv$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  }
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
   structure(c(list(.env = .newEnv),

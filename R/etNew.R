@@ -219,6 +219,18 @@
   .df
 }
 
+.etExpandGroupData <- function(df, envRef) {
+  .df <- .etDropUnitsForChunk(df)
+  if (!is.data.frame(.df) || nrow(.df) == 0L) {
+    return(.df)
+  }
+  .tmp <- .df
+  .tmp$id <- 1L
+  .expanded <- .etExpandAddl(.tmp, envRef)
+  .expanded$id <- NULL
+  .expanded
+}
+
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in

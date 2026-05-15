@@ -571,6 +571,27 @@ rxTest({
     expect_true(all(df$addl[df$evid == 1L] == 0L))
   })
 
+  test_that("etExpand keeps homogeneous groups compressed", {
+    ev <- et(amt = 100, ii = 24, addl = 2, id = 1:3)
+    ev2 <- etExpand(ev)
+    .e <- .rxEtEnv(ev2)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:3)
+    expect_equal(.e$groups[[1]]$data$time, c(0, 24, 48))
+    expect_true(all(.e$groups[[1]]$data$addl == 0L))
+
+    dosing <- ev2$get.dosing()
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_equal(nrow(dosing), 3L)
+    expect_false("id" %in% names(dosing))
+
+    df <- as.data.frame(ev2, all = TRUE)
+    expect_equal(nrow(df), 9L)
+    expect_equal(df$time[df$id == 1], c(0, 24, 48))
+  })
+
   test_that("in-place expand updates addl print metadata", {
     local_options(cli.unicode = FALSE, crayon.enabled = FALSE, width = 80)
     ev <- et(amt = 100, ii = 24, addl = 4)
@@ -579,6 +600,22 @@ rxTest({
     expect_false(ev$show["addl"])
     expect_equal(names(as.data.frame(ev)), c("time", "amt", "ii", "evid"))
     expect_false(grepl("multiple doses in `addl` columns", paste(capture.output(print(ev)), collapse = "\n"), fixed = TRUE))
+  })
+
+  test_that("in-place expand keeps homogeneous groups compressed", {
+    ev <- et(amt = 100, ii = 24, addl = 2, id = 1:3)
+    ev$expand()
+    .e <- .rxEtEnv(ev)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$data$time, c(0, 24, 48))
+    expect_true(all(.e$groups[[1]]$data$addl == 0L))
+    expect_false(ev$show["addl"])
+
+    df <- as.data.frame(ev, all = TRUE)
+    expect_equal(nrow(df), 9L)
+    expect_equal(df$time[df$id == 1], c(0, 24, 48))
   })
 
   test_that("etRep repeats event table", {

@@ -397,23 +397,41 @@
 #'
 #' @author Matthew L. Fidler
 .etMethodExpand <- function(env) {
-  .et <- structure(list(env = env), class = "rxEt")
-  .mat <- .etMaterialize(.et)
-  .expanded <- .etExpandAddl(.mat, env)
-  env$chunks <- list()
-  if (nrow(.expanded) > 0L) {
-    .ids <- unique(as.integer(.expanded$id))
-    for (.i in .ids) {
-      env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
-    }
-    env$ids <- sort(.ids)
+  .groups <- .etGetGroups(env) # nolint
+  if (length(.groups) > 0L) {
+    env$groups <- lapply(.groups, function(.g) {
+      list(ids = as.integer(.g$ids), data = .etExpandGroupData(.g$data, env)) # nolint
+    })
+    env$chunks <- list()
   } else {
-    env$ids <- 1L
+    .et <- structure(list(env = env), class = "rxEt")
+    .mat <- .etMaterialize(.et)
+    .expanded <- .etExpandAddl(.mat, env)
+    env$groups <- list()
+    env$chunks <- list()
+    if (nrow(.expanded) > 0L) {
+      .ids <- unique(as.integer(.expanded$id))
+      for (.i in .ids) {
+        env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+      }
+      env$ids <- sort(.ids)
+    } else {
+      env$ids <- 1L
+    }
   }
-  env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
-  env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+  .etResetCountsFromGroups(env) # nolint
+  if (length(.etGroups(env)) == 0L) { # nolint
+    env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
+    env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+  }
   env$show["id"] <- length(env$ids) > 1L
-  env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  if (length(.etGroups(env)) > 0L) { # nolint
+    env$show["addl"] <- any(vapply(env$groups, function(.g) {
+      !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
+    }, logical(1)))
+  } else {
+    env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  }
   env$randomType <- NA_integer_
   env$canResize <- FALSE
   invisible(NULL)
