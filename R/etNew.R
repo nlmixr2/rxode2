@@ -674,6 +674,9 @@
   .keep <- as.character(keep)
   .modelParams <- as.character(modelParams)
   .icovId <- iCov[[.idName]]
+  if (anyDuplicated(.icovId)) {
+    return(NULL)
+  }
   .eventRows <- vector("list", 0L)
   .icovRows <- vector("list", 0L)
   .outGroups <- vector("list", 0L)

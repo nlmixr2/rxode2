@@ -60,6 +60,7 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - Fixed grouped dose-only solve prep with unit-bearing `time` by making default observation-time generation and grouped observation-row binding units-safe; added regression coverage for homogeneous grouped no-observation solves with `time.units`.
 - Hardened grouped solve-prep edge handling for empty grouped event data: no-op return for empty grouped frames, and robust default observation-time fallback when event times are empty/non-finite.
 - Hardened grouped `iCov` split prep to fail safe (fallback path) when representative grouped event rows are incomplete for declared groups, preventing silent partial group drops.
+- Hardened grouped `iCov` split prep to fail safe when `iCov` contains duplicate IDs, avoiding ambiguous representative matching in compressed-group solve setup.
 - Focused regression filters currently passing: `etTrans`, `serialize`, `rxMemoryEstimate`, and `et-r`.
 
 ## Next Step (now)
