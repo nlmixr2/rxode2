@@ -553,6 +553,12 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   if (.doResize) {
     .groups <- .etGetGroups(.envRef) # nolint
     if (length(.groups) > 0L) {
+      .templateId <- if (length(.existingIds) > 0L) .existingIds[[1L]] else NA_integer_
+      .templateGroup <- which(vapply(.groups, function(.g) .templateId %in% .g$ids, logical(1)))[1]
+      if (is.na(.templateGroup)) {
+        .templateGroup <- if (length(.groups) > 0L) 1L else NA_integer_
+      }
+      .templateData <- if (!is.na(.templateGroup)) .groups[[.templateGroup]]$data else NULL
       if (length(.groups) == 1L && .etGroupIdsEqual(.existingIds, .groups[[1]]$ids)) {
         .groups[[1]]$ids <- sort(unique(as.integer(.envRef$ids)))
       } else {
@@ -561,12 +567,19 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
         }
         .groups <- Filter(function(.g) length(.g$ids) > 0L, .groups)
         if (length(.addedIds) > 0L && length(.groups) > 0L) {
-          .templateId <- if (length(.existingIds) > 0L) .existingIds[[1L]] else NA_integer_
           .templateGroup <- which(vapply(.groups, function(.g) .templateId %in% .g$ids, logical(1)))[1]
           if (is.na(.templateGroup)) {
             .templateGroup <- 1L
           }
           .groups[[.templateGroup]]$ids <- sort(unique(c(.groups[[.templateGroup]]$ids, as.integer(.addedIds))))
+        } else if (length(.addedIds) > 0L &&
+                   length(.groups) == 0L &&
+                   is.data.frame(.templateData) &&
+                   nrow(.templateData) > 0L) {
+          .groups <- list(list(
+            ids = sort(unique(as.integer(.addedIds))),
+            data = .templateData
+          ))
         }
       }
       .etSetGroups(.envRef, .groups) # nolint

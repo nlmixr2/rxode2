@@ -195,6 +195,26 @@ rxTest({
     expect_equal(.actual, .template)
   })
 
+  test_that("id-only resize with disjoint ids keeps grouped template events", {
+    ev <- et(amt = 10, id = 1:3) |> et(amt = 20, id = 4:5)
+    .templateId <- .rxEtEnv(ev)$ids[[1L]]
+    .template <- as.data.frame(ev, all = TRUE)
+    .template <- .template[.template$id == .templateId, c("time", "evid", "amt"), drop = FALSE]
+
+    ev2 <- et(ev, id = 6:7)
+    .e2 <- .rxEtEnv(ev2)
+
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(sort(.e2$groups[[1]]$ids), 6:7)
+
+    df <- as.data.frame(ev2, all = TRUE)
+    expect_equal(sort(unique(df$id)), 6:7)
+    .actual <- df[df$id == 6L, c("time", "evid", "amt"), drop = FALSE]
+    rownames(.actual) <- NULL
+    rownames(.template) <- NULL
+    expect_equal(.actual, .template)
+  })
+
   test_that("simulate keeps grouped homogeneous tables compressed when unchanged", {
     ev <- et(1, id = 1:5)
 
