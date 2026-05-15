@@ -440,7 +440,11 @@
   .existingIds <- integer(0)
   .doResize    <- FALSE
   if (!is.null(id)) {
-    .idVal       <- as.integer(id)
+    .idInput <- if (is.factor(id)) as.character(id) else id
+    .idVal <- suppressWarnings(as.integer(.idInput))
+    if (anyNA(.idVal)) {
+      stop("'id' must contain integer-like values", call. = FALSE)
+    }
     .posIds      <- .idVal[.idVal > 0L]
     .negIds      <- abs(.idVal[.idVal < 0L])
     .existingIds <- envRef$ids

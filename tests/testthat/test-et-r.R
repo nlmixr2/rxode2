@@ -259,6 +259,20 @@ rxTest({
     expect_equal(nrow(df), 2L)
   })
 
+  test_that("id handling rejects non-integer-like values", {
+    ev <- et(1, id = 1:2)
+
+    expect_error(
+      et(ev, id = c("a", "2")),
+      "'id' must contain integer-like values"
+    )
+
+    expect_no_warning(
+      ev2 <- et(ev, id = as.character(c(3, 4)))
+    )
+    expect_equal(sort(unique(as.data.frame(ev2, all = TRUE)$id)), c(3L, 4L))
+  })
+
   test_that("simulate keeps grouped homogeneous tables compressed when unchanged", {
     ev <- et(1, id = 1:5)
 
