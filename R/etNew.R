@@ -254,20 +254,47 @@
   }
   .posIds <- ids[ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
-  if (length(.posIds) > 1L && !"id" %in% names(df)) {
+  if (!"id" %in% names(df)) {
     .groups <- .etGetGroups(envRef)
     .chunk <- .etGroupChunk(df, .posIds)
-    .match <- which(vapply(.groups, function(.g) .etGroupIdsEqual(.g$ids, .posIds), logical(1)))
-    if (length(.match) == 1L) {
-      .groups[[.match]]$data <- as.data.frame(
-        data.table::rbindlist(list(.groups[[.match]]$data, .chunk), fill = TRUE)
-      )
-    } else {
-      .groups[[length(.groups) + 1L]] <- list(ids = sort.int(as.integer(.posIds), method = "quick"),
-                                              data = .chunk)
+    if (length(.groups) > 0L) {
+      .newGroups <- vector("list", 0L)
+      .remainingIds <- sort.int(as.integer(.posIds), method = "quick")
+      for (.g in .groups) {
+        .overlap <- intersect(.g$ids, .remainingIds)
+        if (length(.overlap) == 0L) {
+          .newGroups[[length(.newGroups) + 1L]] <- .g
+          next
+        }
+        .keepIds <- setdiff(.g$ids, .overlap)
+        if (length(.keepIds) > 0L) {
+          .newGroups[[length(.newGroups) + 1L]] <- list(ids = .keepIds, data = .g$data)
+        }
+        .newGroups[[length(.newGroups) + 1L]] <- list(
+          ids = sort.int(as.integer(.overlap), method = "quick"),
+          data = as.data.frame(data.table::rbindlist(list(.g$data, .chunk), fill = TRUE))
+        )
+        .remainingIds <- setdiff(.remainingIds, .overlap)
+      }
+      if (length(.remainingIds) > 0L) {
+        .newGroups[[length(.newGroups) + 1L]] <- list(ids = .remainingIds, data = .chunk)
+      }
+      .etSetGroups(envRef, .newGroups)
+      return(invisible(NULL))
     }
-    .etSetGroups(envRef, .groups)
-    return(invisible(NULL))
+    if (length(.posIds) > 1L) {
+      .match <- which(vapply(.groups, function(.g) .etGroupIdsEqual(.g$ids, .posIds), logical(1)))
+      if (length(.match) == 1L) {
+        .groups[[.match]]$data <- as.data.frame(
+          data.table::rbindlist(list(.groups[[.match]]$data, .chunk), fill = TRUE)
+        )
+      } else {
+        .groups[[length(.groups) + 1L]] <- list(ids = sort.int(as.integer(.posIds), method = "quick"),
+                                                data = .chunk)
+      }
+      .etSetGroups(envRef, .groups)
+      return(invisible(NULL))
+    }
   }
   for (.i in .posIds) {
     .row <- .etDropUnitsForChunk(df)

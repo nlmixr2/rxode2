@@ -132,6 +132,27 @@ rxTest({
     expect_equal(df$amt[df$id == 1], c(100, 50))
   })
 
+  test_that("subset dose edits split homogeneous groups", {
+    ev <- et(amt = 10, id = 1:5) |> et(amt = 20, id = 4:5)
+    .e <- .rxEtEnv(ev)
+
+    expect_equal(length(.e$groups), 2L)
+    expect_equal(.e$groups[[1]]$ids, 1:3)
+    expect_equal(.e$groups[[2]]$ids, 4:5)
+    expect_equal(.e$groups[[1]]$data$amt, 10)
+    expect_equal(.e$groups[[2]]$data$amt, c(10, 20))
+
+    dosing <- ev$get.dosing()
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_equal(nrow(dosing), 3L)
+    expect_false("id" %in% names(dosing))
+
+    df <- as.data.frame(ev, all = TRUE)
+    expect_equal(df$amt[df$id == 1], 10)
+    expect_equal(df$amt[df$id == 4], c(10, 20))
+    expect_equal(df$amt[df$id == 5], c(10, 20))
+  })
+
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
     .e <- .rxEtEnv(ev)
