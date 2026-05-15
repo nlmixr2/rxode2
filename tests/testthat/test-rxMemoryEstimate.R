@@ -122,6 +122,22 @@ rxTest({
     expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
   })
 
+  test_that("grouped dose-only iCov keep affects solve layout without model", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .iCov <- data.frame(id = 1:4, grp = c("a", "a", "b", "b"))
+    .ctrlNoKeep <- rxControl(from = 0, to = 24, by = 12, iCov = .iCov)
+    .ctrlKeep <- rxControl(from = 0, to = 24, by = 12, iCov = .iCov, keep = "grp")
+
+    .noKeep <- rxMemoryEstimate(.ev, neq = 2L, control = .ctrlNoKeep)
+    .withKeep <- rxMemoryEstimate(.ev, neq = 2L, control = .ctrlKeep)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), neq = 2L, control = .ctrlKeep)
+
+    expect_gt(as.numeric(.withKeep$gall_times), as.numeric(.noKeep$gall_times))
+    expect_lt(as.numeric(.withKeep$gall_times), as.numeric(.expanded$gall_times))
+  })
+
   test_that("grouped homogeneous data.frame preserves subject counts in memory estimate", {
     .ev <- eventTable()
     .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)

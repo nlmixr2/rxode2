@@ -108,25 +108,27 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 
 .rxMemSolveLayoutStats <- function(dat, control = NULL, model = NULL) {
   .solveDat <- NULL
+  .modelParams <- character(0)
+  if (!is.null(model)) {
+    .modelParams <- rxModelVars(model)$params
+  }
   if (is.rxEt(dat)) {
     .solveInput <- dat
-    if (!is.null(control) && !is.null(control$iCov) && !is.null(model) &&
+    if (!is.null(control) && !is.null(control$iCov) &&
         length(.etGroups(.rxEtEnv(dat))) > 0L) {
-      .mv <- rxModelVars(model)
       .groupedSolve <- .etGroupedSolveDataICov(dat, control$iCov,
                                                keep = control$keep,
-                                               modelParams = .mv$params)
+                                               modelParams = .modelParams)
       if (!is.null(.groupedSolve)) {
         .solveInput <- .groupedSolve$events
       }
     }
     .solveDat <- .etPrepareSolveEvents(.solveInput, control)
   } else if (is.data.frame(dat) && !is.null(attr(dat, "rxHomGroups", exact = TRUE))) {
-    if (!is.null(control) && !is.null(control$iCov) && !is.null(model)) {
-      .mv <- rxModelVars(model)
+    if (!is.null(control) && !is.null(control$iCov)) {
       .groupedSolve <- .etGroupedSolveDataFrameICov(dat, control$iCov,
                                                     keep = control$keep,
-                                                    modelParams = .mv$params)
+                                                    modelParams = .modelParams)
       if (!is.null(.groupedSolve)) {
         dat <- .groupedSolve$events
       }
