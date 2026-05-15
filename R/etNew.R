@@ -537,11 +537,7 @@
   if (isTRUE(.env$nobs == 0L)) {
     return(.etFixCmtForSolve(.etMaterialize(events)))
   }
-  .nsim <- 1L
-  if (!is.null(ctl) && !is.null(ctl$nsim)) {
-    .nsim <- as.integer(ctl$nsim)[1L]
-  }
-  if (.nsim <= 1L && is.null(ctl$iCov) && length(.etGroups(.env)) > 0L) {
+  if (is.null(ctl$iCov) && length(.etGroups(.env)) > 0L) {
     return(.etGroupedSolveData(events))
   }
   .etFixCmtForSolve(.etMaterialize(events))
