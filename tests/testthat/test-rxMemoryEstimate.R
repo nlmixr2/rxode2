@@ -307,4 +307,32 @@ rxTest({
     expect_equal(as.numeric(.fromSolve$total), as.numeric(.fromEvents$total))
     expect_equal(as.numeric(.fromSolve$outputData), as.numeric(.fromEvents$outputData))
   })
+
+  test_that("rxMemoryEstimate file/bundle/rxSolve parity for same dose-only grouped solve", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .ctrl <- rxControl(from = 0, to = 24, by = 12)
+    .stateFile <- tempfile(fileext = ".rxbin")
+
+    rxSolve(.mod, .theta, .ev, serializeFile = .stateFile)
+    .bundle <- .rxReadStateBundle(.stateFile)
+    .solved <- rxSolve(.mod, .theta, .ev)
+
+    .fromFile <- rxMemoryEstimate(.stateFile, model = .mod, control = .ctrl)
+    .fromBundle <- rxMemoryEstimate(.bundle, model = .mod, control = .ctrl)
+    .fromSolve <- rxMemoryEstimate(.solved, model = .mod, control = .ctrl)
+
+    expect_equal(as.numeric(.fromFile$total), as.numeric(.fromBundle$total))
+    expect_equal(as.numeric(.fromFile$total), as.numeric(.fromSolve$total))
+    expect_equal(as.numeric(.fromFile$gall_times), as.numeric(.fromBundle$gall_times))
+    expect_equal(as.numeric(.fromFile$gall_times), as.numeric(.fromSolve$gall_times))
+  })
 })
