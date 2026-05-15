@@ -118,7 +118,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   if (requireNamespace("memuse", quietly = TRUE)) {
     .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
     if (!is.null(.info)) {
-      return(as.numeric(memuse::mu(.info$totalram, unit = "B")))
+      # as.numeric gives in bytes
+      return(as.numeric(.info$totalram))
     }
   }
   tryCatch({
@@ -221,6 +222,48 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .dataBytes + .listBytes
 }
 
+#' Detect currently available physical RAM in bytes
+#'
+#' @return Numeric bytes of available RAM, or \code{NA_real_} if unavailable.
+#' @noRd
+#' @author Matthew L. Fidler
+.getFreeRamBytes <- function() {
+  if (requireNamespace("memuse", quietly = TRUE)) {
+    .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
+    if (!is.null(.info)) {
+      .fields <- c("availram", "freeram")
+      for (.field in .fields) {
+        if (.field %in% names(.info)) {
+          return(as.numeric(.info[[.field]]))
+        }
+      }
+    }
+  }
+  tryCatch({
+    if (file.exists("/proc/meminfo")) {
+      .meminfo <- readLines("/proc/meminfo", n = 64L)
+      for (.field in c("MemAvailable", "MemFree")) {
+        .m <- grep(paste0("^", .field, ":"), .meminfo, value = TRUE)
+        if (length(.m)) return(as.numeric(gsub("\\D", "", .m[1L])) * 1024)
+      }
+    }
+    .out <- system("vm_stat", intern = TRUE, ignore.stderr = TRUE)
+    if (length(.out)) {
+      .page <- grep("page size of [0-9]+ bytes", .out, value = TRUE)
+      if (length(.page)) {
+        .pageSize <- as.numeric(sub(".*page size of ([0-9]+) bytes.*", "\\1", .page[1L]))
+        .free <- grep("^Pages free:", .out, value = TRUE)
+        .spec <- grep("^Pages speculative:", .out, value = TRUE)
+        .pages <- 0
+        if (length(.free)) .pages <- .pages + as.numeric(gsub("\\D", "", .free[1L]))
+        if (length(.spec)) .pages <- .pages + as.numeric(gsub("\\D", "", .spec[1L]))
+        if (.pages > 0) return(.pages * .pageSize)
+      }
+    }
+    NA_real_
+  }, error = function(e) NA_real_)
+}
+
 #' Estimate memory required by rxSolve() for a given dataset and model
 #'
 #' Accepts either a pre-summarised per-ID table (an \code{\link{rxMemSummary}}
@@ -267,7 +310,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param numLin Number of linear compartment terms (FOCEi + linCmt).
 #' @return A named list of class \code{"rxMemoryEstimate"} whose
 #'   elements are raw byte counts plus \code{outputData},
-#'   \code{ramBytes}, \code{total},
+#'   \code{ramBytes}, \code{freeRamBytes}, \code{total},
 #'   \code{sizeofInd}, and \code{rxLlikSaveSize}.
 #' @export
 #'
@@ -415,6 +458,7 @@ rxMemoryEstimate <- function(
             list(sizeofInd      = .raw[["sizeofInd"]],
                  rxLlikSaveSize = .raw[["rxLlikSaveSize"]],
                  ramBytes       = .getRamBytes(),
+                 freeRamBytes   = .getFreeRamBytes(),
                  effectiveSubs  = .nsub))
   class(.ret) <- "rxMemoryEstimate"
   attr(.ret, "summary") <- .summary
@@ -423,7 +467,7 @@ rxMemoryEstimate <- function(
 
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
-  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "effectiveSubs")
+  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
   .comps <- x[!names(x) %in% .meta]
 
   .hasMem <- requireNamespace("memuse", quietly = TRUE)
@@ -486,10 +530,16 @@ print.rxMemoryEstimate <- function(x, ...) {
               .nsub, as.integer(x$sizeofInd)))
 
   .ramBytes <- x$ramBytes
+  .freeRamBytes <- x$freeRamBytes
   if (!is.null(.ramBytes) && !is.na(.ramBytes) && .ramBytes > 0) {
     .totalBytes <- as.numeric(x$total)
-    cat(sprintf("  |  %.1f%% of RAM (%s)\n",
+    cat(sprintf("  |  %.1f%% of RAM (%s)",
                 100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
+    if (!is.null(.freeRamBytes) && !is.na(.freeRamBytes) && .freeRamBytes > 0) {
+      cat(sprintf("  |  %.1f%% of free RAM (%s available)",
+                  100 * .totalBytes / .freeRamBytes, .fmtSize(.freeRamBytes)))
+    }
+    cat("\n")
   } else {
     cat("\n")
   }

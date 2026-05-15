@@ -78,17 +78,11 @@ then add another dose if the current exposure is too low.
 
 ```{r bolus-titration}
 titrateModel <- rxode2({
-  mtime(visit1) <- 24
-  mtime(visit2) <- 48
-
   d/dt(depot) <- -ka * depot
   d/dt(central) <- ka * depot - cl / v * central
   cp <- central / v
-
-  if (t >= visit1 && t < visit1 + 0.5 && cp < 2) {
-    bolus(50, depot, 0, 0, 0)
-  }
-  if (t >= visit2 && t < visit2 + 0.5 && cp < 2) {
+  # Check every 24 hours, add a bolus dose if needed
+  if (t %% 24 == 0 && cp < 1) {
     bolus(50, depot, 0, 0, 0)
   }
 })
@@ -99,11 +93,105 @@ titrateEvents <- et(amt = 100, time = 0) |>
 titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
 titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
 
-subset(as.data.frame(titrateSolve), time %in% c(0, 24, 25, 48, 49, 72),
-       select = c(time, depot, central, cp))
+plot(titrateSolve, cp)
 ```
 
-This pattern is useful for:
+Note that this patient is dosed at time zero, but not at 24 hours
+since the concentration was not below 1.  However by 48 hours the
+concentration fell below 1 so a dose of 50 is added.
+
+As a word of caution, to administer a dose at time 48 that needs to be
+seen by the solver. For example:
+
+```{r bad-titration-unseen}
+library(dplyr)
+titrateEvents <- titrateEvents |>
+  filter(time != 48)
+
+titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
+titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+
+plot(titrateSolve, cp)
+```
+
+One way to overcome this is to use `mtime()`
+
+```{r missing-time-but-still-dosed}
+
+titrateModel <- rxode2({
+  mtime(time48) <- 48 # always visit 48 hours
+  d/dt(depot) <- -ka * depot
+  d/dt(central) <- ka * depot - cl / v * central
+  cp <- central / v
+  # Check every 24 hours, add a bolus dose if needed
+  if (t %% 24 == 0 && cp < 1) {
+    bolus(50, depot, 0, 0, 0)
+  }
+})
+
+titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
+titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+
+plot(titrateSolve, cp)
+```
+
+Of course the other is to include the sampling times in the solver (as
+shown above).  You can also expose the events using the `obs()`
+adaptive sampling helper:
+
+```{r MissingWithObs}
+
+titrateModel <- rxode2({
+  if (time == 0) {
+    obs(48) # only schedule at time 0 so that it doesn't schedule
+            # multiple observations at 48 hours
+  }
+  d/dt(depot) <- -ka * depot
+  d/dt(central) <- ka * depot - cl / v * central
+  cp <- central / v
+  # Check every 24 hours, add a bolus dose if needed
+  if (t %% 24 == 0 && cp < 1) {
+    bolus(50, depot, 0, 0, 0)
+  }
+})
+
+titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+
+plot(titrateSolve, cp)
+```
+
+As a note, there are many required arguments for the `bolus()` dose
+when using the `rxode2({})` solving form of the model.  However, these
+are not required when you use the functional model:
+
+```{r funModel}
+titrateModel <- function() {
+  ini({
+    ka <- 0.5
+    cl <- 1
+    v <- 10
+  })
+  model({
+    if (time == 0) {
+      obs(48) # only schedule at time 0 so that it doesn't schedule
+      # multiple observations at 48 hours
+    }
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    # Check every 24 hours, add a bolus dose if needed
+    if (t %% 24 == 0 && cp < 1) {
+      bolus(50) # or bolus(50, depot); default is cmt 1
+    }
+  })
+}
+
+titrateSolve <- rxSolve(titrateModel, titrateEvents)
+
+plot(titrateSolve, cp)
+```
+
+Overall, this pattern is useful for:
 
 - therapeutic drug monitoring
 - concentration-guided rescue dosing
@@ -123,31 +211,49 @@ The next example starts a rescue infusion when concentration falls below
 target at a planned decision time.
 
 ```{r infusion-titration}
-infusionModel <- rxode2({
-  mtime(rescueAt) <- 24
+infusionModel <- function(){
+  ini({
+    cl <- 1
+    v <- 10
+  })
+  model({
+    mtime(rescueAt) <- 24
 
-  d/dt(central) <- -cl / v * central
-  cp <- central / v
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
 
-  if (t >= rescueAt && t < rescueAt + 0.5 && cp < 1) {
-    infuse(50, 5, central, 0, 0, 0)
-  }
-})
+    if (t == rescueAt && cp < 1) {
+      infuse(amt=50, rate=5, cmt=central)
+    }
+  })
+}
 
 infusionEvents <- et(amt = 100, time = 0, cmt = 1) |>
   et(seq(0, 48, by = 1))
 
-infusionPars <- c(cl = 1, v = 20)
-infusionSolve <- rxSolve(infusionModel, infusionPars, infusionEvents)
+# Here an infusion rescue is performed
+infusionSolve <- rxSolve(infusionModel, infusionEvents)
 
-subset(as.data.frame(infusionSolve), time %in% c(23, 24, 25, 30, 35, 40),
-       select = c(time, central, cp))
+plot(infusionSolve, cp)
+
+# Here the bolus was high enough that there was no infusion rescue
+infusionEvents <- et(amt = 1000, time = 0, cmt = 1) |>
+  et(seq(0, 48, by = 1))
+
+infusionSolve <- rxSolve(infusionModel, infusionEvents)
+
+plot(infusionSolve, cp)
+
 ```
 
 Use `infuse()` when the infusion pump rate is fixed and duration should
 follow from `amt / rate`.  Use `infuseDur()` when the administration
-window is fixed and the effective rate should be computed from the total
-amount and duration.
+window is fixed and the effective rate should be computed from the realized
+drug amount and duration.
+
+The real impact of the `infuse()` is that when `f` changes the amount
+available (realized drug amount), the infusion duration increases.
+When using `infuseDur()` the infusion rate changes, but not the duration.
 
 ## Reset, replace, and multiply
 
@@ -180,6 +286,7 @@ for:
 - immediate bioavailability or depot scaling rules
 
 ```{r replace-multiply}
+
 adjustModel <- rxode2({
   mtime(replaceAt) <- 12
   mtime(multAt) <- 24
@@ -188,22 +295,22 @@ adjustModel <- rxode2({
   d/dt(central) <- ka * depot - cl / v * central
   cp <- central / v
 
-  if (t >= replaceAt && t < replaceAt + 0.5 && depot > 0) {
+  if (t == replaceAt && depot > 0) {
     replace(25, depot)
   }
-  if (t >= multAt && t < multAt + 0.5 && depot > 0) {
+  if (t == multAt && depot > 0) {
     multiply(0.5, depot)
   }
 })
 
 adjustEvents <- et(amt = 100, time = 0) |>
-  et(seq(0, 36, by = 1))
+  et(seq(0, 36, by = 0.25))
 
 adjustPars <- c(ka = 0.5, cl = 1, v = 10)
 adjustSolve <- rxSolve(adjustModel, adjustPars, adjustEvents)
 
-subset(as.data.frame(adjustSolve), time %in% c(11, 12, 13, 23, 24, 25, 36),
-       select = c(time, depot, central, cp))
+plot(adjustSolve, cp)
+
 ```
 
 ## Transit and phantom dosing with `phantom()`
@@ -217,30 +324,66 @@ models, or situations where dose timing should update the model clock
 without depositing mass immediately.
 
 ```{r phantom-example}
-phantomModel <- rxode2({
-  mtime(startTransit) <- 12
 
-  d/dt(depot) <- 0
-  d/dt(x) <- -k * x
-  pd <- podo(depot)
-  td <- tad(depot)
+phantomModel <- function() {
+  ini({
+    k <- 0.2
+  })
+  model({
+    mtime(startTransit) <- 12
 
-  if (t >= startTransit && t < startTransit + 0.5) {
-    phantom(20, depot, 0, 0, 0)
-  }
-})
+    d/dt(depot) <- 0
+    d/dt(x) <- -k * x
+    x(0) <- 1
+    pd <- podo(depot)
+    td <- tad(depot)
 
-phantomEvents <- et(seq(0, 20, by = 1))
-phantomPars <- c(k = 0.1)
-phantomSolve <- rxSolve(phantomModel, phantomPars, phantomEvents,
-                        inits = c(depot = 0, x = 1))
+    if (t == startTransit) {
+      phantom(20, depot)
+    }
+  })
+}
 
-subset(as.data.frame(phantomSolve), time %in% 11:16,
-       select = c(time, depot, x, pd, td))
+phantomEvents <- et(seq(0, 20, by = 0.5))
+phantomSolve <- rxSolve(phantomModel, phantomEvents)
+
+print(subset(as.data.frame(phantomSolve), time %in% 11:16,
+             select = c(time, depot, x, pd, td)))
+
+plot(phantomSolve, x)
 ```
 
 Notice that `pd` and `td` update after the phantom event while the
 depot state is not handled like an ordinary bolus dose.
+
+## Adaptive observation scheduling with `obs()`
+
+When the goal is simply to add future observation rows, `obs()` is a
+more concise interface than `evid_(..., evid = 0, ...)`. Each argument
+is interpreted as a time offset from the current solve time.
+
+```{r obs-direct}
+obsModel <- rxode2({
+  mtime(extraSample) <- 8
+  d/dt(x) <- -k * x
+
+  if (t >= extraSample && t < extraSample + 0.5) {
+    obs(0.5, 1, 2)
+  }
+})
+
+obsEvents <- et(amt = 1, time = 0) |>
+  et(c(0, 8, 12))
+
+obsSolve <- rxSolve(obsModel, c(k = 0.2), obsEvents, inits = c(x = 1))
+obsSolve[, c("time", "x")]
+```
+
+Use `obs()` when you want:
+
+- adaptive follow-up sampling after a decision point
+- multiple future observation rows from one trigger
+- a simpler alternative to `evid_()` for observation-only pushes
 
 ## Direct control with `evid_()`
 
@@ -272,34 +415,6 @@ The low-level `evid_()` interface is appropriate when you need:
 - direct control over `rate`, `ii`, `addl`, and `ss`
 - classic internal rxode2 evids
 
-## Adaptive observation scheduling with `obs()`
-
-When the goal is simply to add future observation rows, `obs()` is a
-more concise interface than `evid_(..., evid = 0, ...)`. Each argument
-is interpreted as a time offset from the current solve time.
-
-```{r obs-direct}
-obsModel <- rxode2({
-  mtime(extraSample) <- 8
-  d/dt(x) <- -k * x
-
-  if (t >= extraSample && t < extraSample + 0.5) {
-    obs(0.5, 1, 2)
-  }
-})
-
-obsEvents <- et(amt = 1, time = 0) |>
-  et(c(0, 8, 12))
-
-obsSolve <- rxSolve(obsModel, c(k = 0.2), obsEvents, inits = c(x = 1))
-obsSolve[, c("time", "x")]
-```
-
-Use `obs()` when you want:
-
-- adaptive follow-up sampling after a decision point
-- multiple future observation rows from one trigger
-- a simpler alternative to `evid_()` for observation-only pushes
 
 ## Practical advice for titration workflows
 
@@ -307,12 +422,17 @@ Use `obs()` when you want:
 
 Adaptive logic only runs when the solver is at a scheduled event or
 output time.  If a titration visit is supposed to happen at 24 hours,
-make sure the event table contains 24 hours.
+make sure the event table contains 24 hours.  For dosing regimens
+every 24 hours you can use the modulo operator to check for dosing
+times, that is `(time %% 24) == 0`.
 
-### 2. Use `mtime()` for planned decision points
+### 2. Use `mtime()` or `obs()` for planned decision points
 
 `mtime()` is a convenient way to mark protocol decision times inside the
 model and makes the logic easier to read than repeating literal times.
+
+The `mtime()` framework will only be observed once, while if you use
+`obs()` make sure to add observations at the appropriate times.
 
 ### 3. Guard against repeated firing
 
@@ -332,7 +452,8 @@ history.
 - use `bolus()` for added doses
 - use `infuse()` or `infuseDur()` for infusion starts
 - use `reset()` for clearing the system
-- use `replace()` when you know the new compartment amount
+- use `replace()` when you know the new compartment amount. Helpful
+  for calculating AUCs.
 - use `multiply()` for proportional adjustment
 - use `phantom()` for transit bookkeeping without direct deposition
 - use `obs()` for observation-only follow-up rows
