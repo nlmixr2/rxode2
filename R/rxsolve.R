@@ -2575,18 +2575,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       inherits(.ctl$iCov, "data.frame") &&
       length(names(.ctl$iCov)) > 0L) {
     .iCovNames <- tolower(names(.ctl$iCov))
-    .ws <- Filter(function(.w) {
+    .ws <- vapply(.ws, function(.w) {
       if (!startsWith(.w, "Cannot keep missing columns:")) {
-        return(TRUE)
+        return(.w)
       }
       .miss <- sub("^Cannot keep missing columns:\\s*", "", .w)
-      .miss <- strsplit(.miss, "\\s+")[[1]]
-      .miss <- tolower(.miss[nzchar(.miss)])
+      .miss <- strsplit(.miss, "[[:space:],]+")[[1]]
+      .miss <- .miss[nzchar(.miss)]
       if (length(.miss) == 0L) {
-        return(TRUE)
+        return(.w)
       }
-      !all(.miss %in% .iCovNames)
-    }, .ws)
+      .missKeep <- .miss[!(tolower(.miss) %in% .iCovNames)]
+      if (length(.missKeep) == 0L) {
+        return(NA_character_)
+      }
+      paste("Cannot keep missing columns:", paste(.missKeep, collapse = " "))
+    }, character(1), USE.NAMES = FALSE)
+    .ws <- unique(.ws[!is.na(.ws)])
   }
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))

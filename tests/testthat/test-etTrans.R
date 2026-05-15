@@ -483,6 +483,33 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true("sex" %in% .nm)
   })
 
+  test_that("missing keep columns still warn when only subset is in iCov", {
+    mod <- rxode2({
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V * centr
+      cp <- centr / V
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:2)
+    iCov <- data.frame(id = 1:2, wt = c(70, 80))
+
+    .warnings <- character()
+    withCallingHandlers(
+      rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40),
+              iCov = iCov, keep = c("WT", "MISSING_COL")),
+      warning = function(.w) {
+        .warnings <<- c(.warnings, conditionMessage(.w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_true(any(grepl("Cannot keep missing columns", .warnings, fixed = TRUE)))
+    expect_true(any(grepl("MISSING_COL", .warnings, fixed = TRUE)))
+    expect_false(any(grepl("\\bWT\\b", .warnings)))
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)
