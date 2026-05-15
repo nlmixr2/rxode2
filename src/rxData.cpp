@@ -184,6 +184,24 @@ bool rxIs_list(const RObject &obj, std::string cls){
     std::string cur;
     for (unsigned int i = classattr.size(); i--; ){
       cur = as<std::string>(classattr[i]);
+      if (cur == "rxEt") {
+        hasEt = true;
+        if (cls == "eventTable") {
+          List ce = as<List>(classattr.attr(".rxode2.lst"));
+          List lobj = List(obj);
+          int nobs = asInt(ce["nobs"], "nobs");
+          int ndose = asInt(ce["ndose"], "ndose");
+          if (lobj.size() != 12) {
+            lobj.attr("class") = CharacterVector::create("data.frame");
+            return false;
+          }
+          if ((as<IntegerVector>(lobj[0])).size() != ndose + nobs) {
+            lobj.attr("class") = CharacterVector::create("data.frame");
+            return false;
+          }
+          return true;
+        }
+      }
       if (cur == cls) {
         if (cls == "rxEt") {
           List ce = as<List>(classattr.attr(".rxode2.lst"));
@@ -286,7 +304,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
         return rxHasEventNames(cv);
       }
     } else if (hasEt) {
-      return (cls == "rx.event");
+      return (cls == "rx.event" || cls == "eventTable");
     } else {
       return false;
     }
