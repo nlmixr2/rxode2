@@ -62,6 +62,44 @@ rxTest({
     expect_equal(.summ$nobs[.summ$id == 1L],   2L)
   })
 
+  test_that("rxMemoryEstimate summarizes large compressed rxEt without losing ids", {
+    .ev <- et(1, id = 1:2000)
+    .est <- rxMemoryEstimate(.ev, neq = 1L)
+    .summ <- attr(.est, "summary")
+    expect_equal(nrow(.summ), 2000L)
+    expect_equal(sum(.summ$nobs), 2000L)
+    expect_equal(sum(.summ$ndoses), 0L)
+  })
+
+  test_that("grouped homogeneous rxEt lowers internal memory estimates", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 24)
+    .ev$add.sampling(seq(0, 48, by = 12))
+    .ev <- et(.ev, id = 1:3)
+
+    .grouped <- rxMemoryEstimate(.ev, neq = 2L, nlhs = 1L)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), neq = 2L, nlhs = 1L)
+
+    expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
+    expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
+    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
+  })
+
+  test_that("grouped dose-only rxEt lowers internal memory estimates", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .ctrl <- rxControl(from = 0, to = 24, by = 12)
+
+    .grouped <- rxMemoryEstimate(.ev, neq = 2L, control = .ctrl)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), neq = 2L, control = .ctrl)
+
+    expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
+    expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
+    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+  })
+
   test_that("rxMemoryEstimate errors on bad input", {
     expect_error(rxMemoryEstimate(data.frame(x = 1)), "'dat' must be")
   })

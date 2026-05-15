@@ -40,6 +40,26 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemSummarizeDat <- function(dat) {
+  if (is.rxEt(dat)) {
+    .groups <- .etGetGroups(.rxEtEnv(dat))
+    if (length(.groups) == 0L) {
+      return(rxMemSummary(nobs = integer(0), ndoses = integer(0), id = integer(0)))
+    }
+    .ids <- vector("list", length(.groups))
+    .nobs <- vector("list", length(.groups))
+    .ndoses <- vector("list", length(.groups))
+    for (.i in seq_along(.groups)) {
+      .g <- .groups[[.i]]
+      .ids[[.i]] <- as.integer(.g$ids)
+      .nobs[[.i]] <- rep.int(sum(.g$data$evid == 0L, na.rm = TRUE), length(.g$ids))
+      .ndoses[[.i]] <- rep.int(sum(.g$data$evid != 0L, na.rm = TRUE), length(.g$ids))
+    }
+    return(rxMemSummary(
+      id = unlist(.ids, use.names = FALSE),
+      nobs = unlist(.nobs, use.names = FALSE),
+      ndoses = unlist(.ndoses, use.names = FALSE)
+    ))
+  }
   .dt    <- data.table::as.data.table(dat)
   .idCol <- grep("^id$", names(.dt), ignore.case = TRUE, value = TRUE)[1]
 
@@ -55,6 +75,50 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     .ret <- rxMemSummary(id = .agg[[.idCol]], nobs = .agg$nobs, ndoses = .agg$ndoses)
   }
   .ret
+}
+
+.rxMemSolveLayoutStats <- function(dat, control = NULL, model = NULL) {
+  .solveDat <- NULL
+  if (is.rxEt(dat)) {
+    .solveInput <- dat
+    if (!is.null(control) && !is.null(control$iCov) && !is.null(model) &&
+        length(.etGroups(.rxEtEnv(dat))) > 0L) {
+      .mv <- rxModelVars(model)
+      .groupedSolve <- .etGroupedSolveDataICov(dat, control$iCov,
+                                               keep = control$keep,
+                                               modelParams = .mv$params)
+      if (!is.null(.groupedSolve)) {
+        .solveInput <- .groupedSolve$events
+      }
+    }
+    .solveDat <- .etPrepareSolveEvents(.solveInput, control)
+  } else if (is.data.frame(dat) && !is.null(attr(dat, "rxHomGroups", exact = TRUE))) {
+    .solveDat <- .etPrepareGroupedSolveData(dat, control)
+  } else if (is.data.frame(dat) && "evid" %in% names(dat)) {
+    .solveDat <- .etFixCmtForSolve(dat)
+    if (nrow(.solveDat) > 0L &&
+        all(.solveDat$evid != 0L, na.rm = TRUE) &&
+        !is.null(control) &&
+        any(vapply(control[c("from", "to", "by", "length.out")], Negate(is.null), logical(1)))) {
+      .solveDat <- .etAddSolveObsRows(.solveDat, .etSolveObsTimes(.solveDat, control))
+    }
+  }
+  if (is.null(.solveDat)) {
+    return(NULL)
+  }
+  .solveNallTotal <- nrow(.solveDat)
+  if (.solveNallTotal == 0L) {
+    return(list(nallTotal = 0L, maxAllTimes = 0L))
+  }
+  .solveMaxAllTimes <- if ("id" %in% names(.solveDat)) {
+    max(tabulate(match(.solveDat$id, unique(.solveDat$id))))
+  } else {
+    .solveNallTotal
+  }
+  list(
+    nallTotal = as.integer(.solveNallTotal),
+    maxAllTimes = as.integer(.solveMaxAllTimes)
+  )
 }
 #' Extract model dimensions from model variables
 #'
@@ -402,6 +466,9 @@ rxMemoryEstimate <- function(
   .nobsTotal   <- sum(.summary$nobs)
   .nallTotal   <- sum(.nallVec)
   .maxAllTimes <- max(.nallVec)
+  .solveStats  <- .rxMemSolveLayoutStats(dat, control, model)
+  .solveNallTotal <- .nallTotal
+  .solveMaxAllTimes <- .maxAllTimes
 
   if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
     .subPerStudy <- if (.ci$nSub > 1L) .ci$nSub else .nsub
@@ -410,6 +477,9 @@ rxMemoryEstimate <- function(
     .nsub      <- .subPerStudy * .ci$nStud
     .nobsTotal <- .meanObsTimes * .nsub
     .nallTotal <- .meanAllTimes * .nsub
+  } else if (!is.null(.solveStats)) {
+    .solveNallTotal <- .solveStats$nallTotal
+    .solveMaxAllTimes <- .solveStats$maxAllTimes
   }
 
   .raw <- rxMemoryComponents_(
@@ -430,8 +500,8 @@ rxMemoryEstimate <- function(
     numLinSens = as.integer(numLinSens),
     numLin     = as.integer(numLin),
     nsub       = as.integer(.nsub),
-    nallTotal  = as.double(.nallTotal),
-    maxAllTimes = as.double(.maxAllTimes)
+    nallTotal  = as.double(.solveNallTotal),
+    maxAllTimes = as.double(.solveMaxAllTimes)
   )
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
