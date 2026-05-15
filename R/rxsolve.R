@@ -2300,18 +2300,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
-      # Merge keep columns from iCov into compact events so etTrans can find them
-      if (!is.null(.ctl$keep) && inherits(.ctl$iCov, "data.frame")) {
-        .evIdCol <- which(tolower(names(events)) == "id")
-        .icIdCol <- which(tolower(names(.ctl$iCov)) == "id")
-        if (length(.evIdCol) == 1L && length(.icIdCol) == 1L) {
-          .keepAdd <- setdiff(intersect(.ctl$keep, names(.ctl$iCov)), names(events))
-          for (.kc in .keepAdd) {
-            events[[.kc]] <- .ctl$iCov[[.kc]][match(events[[names(events)[.evIdCol]]],
-                                                     .ctl$iCov[[names(.ctl$iCov)[.icIdCol]]])]
-          }
-        }
-      }
     }
   } else if (inherits(events, "data.frame") &&
              !is.null(attr(events, "rxHomGroups", exact = TRUE)) &&
@@ -2323,18 +2311,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
-      # Merge keep columns from iCov into compact events so etTrans can find them
-      if (!is.null(.ctl$keep) && inherits(.ctl$iCov, "data.frame")) {
-        .evIdCol <- which(tolower(names(events)) == "id")
-        .icIdCol <- which(tolower(names(.ctl$iCov)) == "id")
-        if (length(.evIdCol) == 1L && length(.icIdCol) == 1L) {
-          .keepAdd <- setdiff(intersect(.ctl$keep, names(.ctl$iCov)), names(events))
-          for (.kc in .keepAdd) {
-            events[[.kc]] <- .ctl$iCov[[.kc]][match(events[[names(events)[.evIdCol]]],
-                                                     .ctl$iCov[[names(.ctl$iCov)[.icIdCol]]])]
-          }
-        }
-      }
     }
   }
   if (getOption("rxode2.debug", FALSE)) {
@@ -2458,10 +2434,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
-  .eventsForSolve <- if (is.rxEt(events)) {
+  .eventsForSolve <- if (is.rxEt(events) || inherits(events, "data.frame")) {
     .etPrepareSolveEvents(events, .ctl)
-  } else if (inherits(events, "data.frame")) {
-    .etFixCmtForSolve(events)
   } else {
     events
   }
@@ -2506,10 +2480,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
           .ctl$iCov <- .groupedSolve$iCov
         }
       }
-      .bundleEventsForSolve <- if (is.rxEt(.bundleEvents)) {
+      .bundleEventsForSolve <- if (is.rxEt(.bundleEvents) || inherits(.bundleEvents, "data.frame")) {
         .etPrepareSolveEvents(.bundleEvents, .ctl)
-      } else if (inherits(.bundleEvents, "data.frame")) {
-        .etFixCmtForSolve(.bundleEvents)
       } else {
         .bundleEvents
       }

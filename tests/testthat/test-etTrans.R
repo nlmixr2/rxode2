@@ -224,6 +224,38 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
+  test_that("homogeneous grouped dose-only solve keeps iCov keep-column output", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    got <- suppressWarnings(
+      as.data.frame(
+        rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = "grp",
+                from = 0, to = 24, by = 12)
+      )
+    )
+    want <- suppressWarnings(
+      as.data.frame(
+        rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = "grp",
+                from = 0, to = 24, by = 12)
+      )
+    )
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr", "grp")],
+      want[, c("id", "time", "depot", "centr", "grp")]
+    )
+  })
+
   test_that("homogeneous grouped solve matches expanded output when nsim is requested", {
     mod <- rxode2({
       KA <- 1
