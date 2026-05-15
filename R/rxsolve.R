@@ -940,14 +940,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     envir=parent.frame()) {
-  .udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
     .w <- which(regexpr("^[Ss][0-9]+$", .nxtra) != -1)
     if (length(.w) > 0) {
       for (.arg in .w) {
-        checkmate::assertNumeric(.xtra[[.arg]], lower=0, finite=TRUE, len=1, .var.name=.nxtra[.arg])
+        checkmate::assertNumeric(.xtra[[.arg]], lower=0,
+                                 finite=TRUE, len=1, .var.name=.nxtra[.arg])
       }
       .bad <- .nxtra[-.w]
     } else {
@@ -963,7 +964,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
            paste(paste0("'", .bad, "'", sep=""), collapse=", "),
            call.=FALSE)
     }
-    if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L,
+                                  upper=6L, any.missing=FALSE)) {
       .sigmaXform <- as.integer(sigmaXform)
     } else {
       .sigmaXform <- c(
@@ -973,17 +975,19 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       )[match.arg(sigmaXform)]
     }
 
-    if (checkmate::testIntegerish(linCmtHmeanI, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(linCmtHmeanI, len=1L, lower=1L,
+                                  upper=3L, any.missing=FALSE)) {
     } else if (checkmate::testCharacter(linCmtHmeanI, any.missing=FALSE)) {
       linCmtHmeanI <- c("arithmetic"=1L,
-                         "geometric"=2L,
-                         "harmonic"=3L)[match.arg(linCmtHmeanI)]
+                        "geometric"=2L,
+                        "harmonic"=3L)[match.arg(linCmtHmeanI)]
     } else {
       stop("linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
            call.=FALSE)
     }
 
-    if (checkmate::testIntegerish(linCmtHmeanO, len=1L, lower=1L, upper=3L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(linCmtHmeanO, len=1L, lower=1L,
+                                  upper=3L, any.missing=FALSE)) {
     } else if (checkmate::testCharacter(linCmtHmeanO, any.missing=FALSE)) {
       linCmtHmeanO <- c("arithmetic"=1L,
                         "geometric"=2L,
@@ -998,7 +1002,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 
     if (is.null(linCmtHcmt)) {
       linCmtHcmt <- 1L
-    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L, upper=31L, any.missing=FALSE)) {
+    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L,
+                                         upper=31L, any.missing=FALSE)) {
       # ok value
     } else if (checkmate::testCharacter(linCmtHcmt, any.missing=FALSE)) {
       .vars <- match.arg(linCmtHcmt,
@@ -1017,7 +1022,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
            call.=FALSE)
     }
 
-    if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L,
+                                  upper=6L, any.missing=FALSE)) {
       .omegaXform <- as.integer(omegaXform)
     } else {
       .omegaXform <- c(
@@ -1042,25 +1048,30 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       }
     }
     method <- odeMethodToInt(method)
-    if (checkmate::testIntegerish(returnType, len=1, lower=0, upper=5, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(returnType, len=1, lower=0,
+                                  upper=5, any.missing=FALSE)) {
       returnType <- as.integer(returnType)
     } else {
-      .matrixIdx <- c(
-        "rxSolve" = 0L, "matrix" = 1L, "data.frame" = 2L, "data.frame.TBS" = 3L, "data.table" = 4L,
-        "tbl" = 5L, "tibble" = 5L)
+      .matrixIdx <- c("rxSolve" = 0L, "matrix" = 1L,
+                      "data.frame" = 2L, "data.frame.TBS" = 3L,
+                      "data.table" = 4L, "tbl" = 5L, "tibble" = 5L)
       returnType <- .matrixIdx[match.arg(returnType)]
     }
-    if (checkmate::testIntegerish(covsInterpolation, len=1, lower=0, upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(covsInterpolation, len=1, lower=0,
+                                  upper=3, any.missing=FALSE)) {
       covsInterpolation <- as.integer(covsInterpolation)
     } else {
-      covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
+      covsInterpolation <- c("linear"=0L, "locf"=1L,
+                             "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
     }
-    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=1, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0,
+                                  upper=1, any.missing=FALSE)) {
       naInterpolation <- as.integer(naInterpolation)
     } else {
       naInterpolation <- c("locf"=1L, "nocb"=0L)[match.arg(naInterpolation)]
     }
-    if (checkmate::testIntegerish(keepInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(keepInterpolation, len=1, lower=0,
+                                  upper=2, any.missing=FALSE)) {
       keepInterpolation <- as.integer(keepInterpolation)
     } else {
       keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)[match.arg(keepInterpolation)]
@@ -1074,9 +1085,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)[match.arg(naTimeHandle)]
     }
     if (any(names(.xtra) == "covs")) {
-      stop("covariates can no longer be specified by 'covs' include them in the event dataset",
-           .call = FALSE
-           )
+      stop("covariates can no longer be specified by 'covs' include them in the event dataset", .call = FALSE)
     }
     if (missing(cores)) {
       cores <- 0L
@@ -1088,7 +1097,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .sigma <- sigma
     } else if (inherits(sigma, "character")) {
       .sigma <- sigma
-      checkmate::assertNumeric(dfObs, lower=length(sigma), finite=TRUE, any.missing=FALSE, len=1)
+      checkmate::assertNumeric(dfObs, lower=length(sigma), finite=TRUE,
+                               any.missing=FALSE, len=1)
     } else {
       .sigma <- lotri(sigma)
     }
@@ -1096,7 +1106,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .omega <- omega
     }  else if (inherits(omega, "character")) {
       .omega <- omega
-      checkmate::testNumeric(dfSub, lower=length(omega), finite=TRUE, any.missing=FALSE, len=1)
+      checkmate::testNumeric(dfSub, lower=length(omega), finite=TRUE,
+                             any.missing=FALSE, len=1)
     } else if (inherits(omega, "lotri")) {
       .omega <- omega
     } else {
@@ -1108,7 +1119,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L)
       .indLinMatExpType <- .indLinMatExpTypeIdx[match.arg(indLinMatExpType)]
     }
-    if (checkmate::testIntegerish(sumType, len=1, lower=1, upper=5, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(sumType, len=1, lower=1,
+                                  upper=5, any.missing=FALSE)) {
       .sum <- as.integer(sumType)
     } else {
       .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)[match.arg(sumType)]
@@ -1151,10 +1163,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE,
+                             any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE,
+                             any.missing=FALSE, len=1)
 
-    checkmate::assertNumeric(linCmtShiErr, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtShiErr, lower=0, finite=TRUE,
+                             any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtShiMax, lower=0, any.missing=FALSE, len=1)
 
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
@@ -1171,18 +1186,22 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertIntegerish(indLinMatExpOrder, len=1, lower=1, any.missing=FALSE)
     indLinMatExpOrder <- as.integer(indLinMatExpOrder)
-    if (!checkmate::testIntegerish(safeZero, lower=0, upper=1, len=1, any.missing=FALSE)) {
+    if (!checkmate::testIntegerish(safeZero, lower=0, upper=1,
+                                   len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
-    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1, len=1, any.missing=FALSE)) {
+    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1,
+                                   len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
     }
     safeLog <- as.integer(safeLog)
-    if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
+    if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1,
+                                   any.missing=FALSE)) {
       checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
     }
-    if (!checkmate::testIntegerish(indOwnAlloc, lower=-1, upper=1, len=1, any.missing=FALSE)) {
+    if (!checkmate::testIntegerish(indOwnAlloc, lower=-1, upper=1,
+                                   len=1, any.missing=FALSE)) {
       checkmate::assertLogical(indOwnAlloc, len=1, any.missing=TRUE)
       if (is.na(indOwnAlloc)) {
         indOwnAlloc <- -1L
@@ -1195,7 +1214,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else if (is.list(scale)) {
       checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
       lapply(names(scale), function(n) {
-        checkmate::assertNumeric(scale[[n]], lower=0, finite=TRUE, any.missing=FALSE, len=1, .var.name=n)
+        checkmate::assertNumeric(scale[[n]], lower=0, finite=TRUE,
+                                 any.missing=FALSE, len=1, .var.name=n)
       })
     } else {
       checkmate::assertNumeric(scale, lower=0, finite=TRUE, any.missing=FALSE,names="strict")
@@ -1238,7 +1258,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertIntegerish(maxsteps, lower=1, any.missing=FALSE, len=1)
     maxsteps <- as.integer(maxsteps)
     checkmate::assertNumeric(hmin, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(hmax, lower=0, any.missing=TRUE, null.ok=TRUE, finite=TRUE, len=1)
+    checkmate::assertNumeric(hmax, lower=0, any.missing=TRUE, null.ok=TRUE,
+                             finite=TRUE, len=1)
     checkmate::assertNumeric(hmaxSd, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
     checkmate::assertNumeric(hini, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
     checkmate::assertIntegerish(maxordn, lower=1, upper=12, any.missing=FALSE, len=1)
@@ -1257,13 +1278,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertIntegerish(maxSS, lower=7L, any.missing=FALSE, len=1)
     if (maxSS <= minSS) stop("'maxSS' must be larger than 'minSS'", call.=FALSE)
     checkmate::assertNumeric(infSSstep, lower=6, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(maxAtolRtolFactor, lower=0.01, any.missing=FALSE, finite=TRUE, null.ok=FALSE, len=1)
+    checkmate::assertNumeric(maxAtolRtolFactor, lower=0.01, any.missing=FALSE,
+                             finite=TRUE, null.ok=FALSE, len=1)
     if (!is.null(tolFactor))
       checkmate::assertNumeric(tolFactor, lower=1.0, finite=TRUE, any.missing=FALSE, .var.name="tolFactor")
     checkmate::assertNumeric(from, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(to, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(by, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(length.out, lower=0, any.missing=FALSE, null.ok=TRUE, len=1)
+    checkmate::assertIntegerish(length.out, lower=0, any.missing=FALSE,
+                                null.ok=TRUE, len=1)
     checkmate::assertLogical(addCov, len=1, any.missing=FALSE)
     checkmate::assertIntegerish(nCoresRV, len=1, lower=1)
     checkmate::assertLogical(sigmaIsChol,len=1, any.missing=FALSE)
@@ -1519,27 +1542,28 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                                  thetaMissing = missing(theta),
                                  etaMissing = missing(eta),
                                  file = params)
-    .object <- rxode2(object)
+    .object <- rxode2(object) # nolint
     return(rxSolve.default(.object, params = params, envir = envir))
   }
-  rxUdfUiReset()
+  rxUdfUiReset() # nolint
   .eventsChk <- .rxSolveUiEventData(events)
   .paramsChk <- .rxSolveUiEventData(params)
   if (is.data.frame(.eventsChk)) {
-    rxUdfUiData(.eventsChk)
+    rxUdfUiData(.eventsChk) # nolint
   } else if (is.data.frame(.paramsChk)) {
-    rxUdfUiData(.paramsChk)
+    rxUdfUiData(.paramsChk) # nolint
   } else {
     stop("Cannot detect an event data frame to use while re-parsing the model",
          call.=FALSE)
   }
-  rxUdfUiEst("rxSolve")
+  rxUdfUiEst("rxSolve") # nolint
   on.exit({
     rxUdfUiReset()
   })
-  .udfEnvSet(list(envir, parent.frame(1)))
-  .object <- rxode2(object)
-  do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
+  .udfEnvSet(list(envir, parent.frame(1))) # nolint
+  .object <- rxode2(object) # nolint
+  do.call("rxSolve", c(list(object=.object, params = params, events = events,
+                            inits = inits),
                        list(...),
                        list(theta = theta, eta = eta, envir=envir)))
 }
@@ -2227,6 +2251,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         .useEvents <- TRUE
       } else if (rxIs(.paramsChk3, "event.data.frame")) {
         .events <- .paramsChk3
+      } else if (is.rxEt(.eventsChk3)) {
+        .events <- .eventsChk3
+        .useEvents <- TRUE
+      } else if (is.rxEt(.paramsChk3)) {
+        .events <- .paramsChk3
       } else {
         stop("Cannot detect an event data frame to merge 'iCov'")
       }
@@ -2271,6 +2300,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
+      # Merge keep columns from iCov into compact events so etTrans can find them
+      if (!is.null(.ctl$keep) && inherits(.ctl$iCov, "data.frame")) {
+        .evIdCol <- which(tolower(names(events)) == "id")
+        .icIdCol <- which(tolower(names(.ctl$iCov)) == "id")
+        if (length(.evIdCol) == 1L && length(.icIdCol) == 1L) {
+          .keepAdd <- setdiff(intersect(.ctl$keep, names(.ctl$iCov)), names(events))
+          for (.kc in .keepAdd) {
+            events[[.kc]] <- .ctl$iCov[[.kc]][match(events[[names(events)[.evIdCol]]],
+                                                     .ctl$iCov[[names(.ctl$iCov)[.icIdCol]]])]
+          }
+        }
+      }
     }
   } else if (inherits(events, "data.frame") &&
              !is.null(attr(events, "rxHomGroups", exact = TRUE)) &&
@@ -2282,6 +2323,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
+      # Merge keep columns from iCov into compact events so etTrans can find them
+      if (!is.null(.ctl$keep) && inherits(.ctl$iCov, "data.frame")) {
+        .evIdCol <- which(tolower(names(events)) == "id")
+        .icIdCol <- which(tolower(names(.ctl$iCov)) == "id")
+        if (length(.evIdCol) == 1L && length(.icIdCol) == 1L) {
+          .keepAdd <- setdiff(intersect(.ctl$keep, names(.ctl$iCov)), names(events))
+          for (.kc in .keepAdd) {
+            events[[.kc]] <- .ctl$iCov[[.kc]][match(events[[names(events)[.evIdCol]]],
+                                                     .ctl$iCov[[names(.ctl$iCov)[.icIdCol]]])]
+          }
+        }
+      }
     }
   }
   if (getOption("rxode2.debug", FALSE)) {

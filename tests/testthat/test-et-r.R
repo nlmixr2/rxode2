@@ -520,19 +520,41 @@ rxTest({
     expect_equal(ev$get.units(), c(dosing = "mg", time = "hours"))
   })
 
-  test_that("$.rxEt get.dosing matches main branch data frame shape", {
-    ev <- et(timeUnits = "hr") |>
-      et(amt = 100, ii = 12, until = 24) |>
-      et(seq(0, 24, by = 6))
-    df <- ev$get.dosing()
-    expect_equal(rownames(df), "1")
-    expect_false(inherits(df$time, "units"))
-    expect_equal(
-      names(df),
-      c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
-    )
-    expect_equal(df$ii, 12)
-    expect_equal(df$addl, 2L)
+  test_that("$.rxEt get.dosing homogenous path returns raw chunk columns without id", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(timeUnits = "hr") |>
+        et(amt = 100, ii = 12, until = 24) |>
+        et(seq(0, 24, by = 6))
+      df <- ev$get.dosing()
+      expect_equal(rownames(df), "1")
+      expect_false(inherits(df$time, "units"))
+      # Homogenous path returns raw chunk data: no id expansion, no id column
+      expect_equal(
+        names(df),
+        c("time", "amt", "evid", "cmt", "ii", "addl", "ss", "rate", "dur", "low", "high")
+      )
+      expect_equal(df$ii, 12)
+      expect_equal(df$addl, 2L)
+    })
+  })
+
+  test_that("$.rxEt get.dosing non-homogenous path returns all records with id", {
+    withr::with_options(list(rxode2.homogenous = FALSE), {
+      ev <- et(timeUnits = "hr") |>
+        et(amt = 100, ii = 12, until = 24) |>
+        et(seq(0, 24, by = 6))
+      df <- ev$get.dosing()
+      expect_equal(rownames(df), "1")
+      # Non-homogenous path retains units from timeUnits specification
+      expect_true(inherits(df$time, "units"))
+      # Non-homogenous path materializes with id column
+      expect_equal(
+        names(df),
+        c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
+      )
+      expect_equal(as.numeric(df$ii), 12)
+      expect_equal(df$addl, 2L)
+    })
   })
 
   test_that("$.rxEt get.dosing reindexes rows after piping tables together", {
