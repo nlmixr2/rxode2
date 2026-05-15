@@ -699,6 +699,11 @@ rename.rxEt <- function(.data, ...) {
   dplyr::rename(.full, ...)
 }
 
+mutate.rxEt <- function(.data, ...) {
+  .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
+  dplyr::mutate(.full, ...)
+}
+
 #' @export
 names.rxEt <- function(x) {
   names(as.data.frame(x, all = TRUE))
