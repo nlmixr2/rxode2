@@ -616,8 +616,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
   # "id" returns the unique sorted ids present in the materialized table
   if (arg == "id" && !is.null(.env)) {
-    .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt")) # nolint
-    return(sort(unique(as.integer(.mat$id))))
+    return(sort(unique(as.integer(.env$ids))))
   }
   if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
     return(get(arg, envir = .env, inherits = FALSE))

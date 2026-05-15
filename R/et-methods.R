@@ -275,6 +275,7 @@
   env$ids  <- sort(unique(df$id))
   env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
   env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
+  env$groups <- list()
   env$chunks <- .addRowsToChunks(env$chunks, df)
   .etImportUpdateShow(env, df)
 }
@@ -442,6 +443,7 @@
 .etMethodCopy <- function(env) {
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- env$chunks
+  .newEnv$groups     <- env$groups
   .newEnv$units      <- env$units
   .newEnv$show       <- env$show
   .newEnv$ids        <- env$ids

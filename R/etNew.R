@@ -53,6 +53,56 @@
   df
 }
 
+.etGroups <- function(envRef) {
+  .groups <- envRef$groups
+  if (is.null(.groups)) .groups <- list()
+  .groups
+}
+
+.etGroupIdsEqual <- function(x, y) {
+  identical(sort.int(as.integer(x), method = "quick"),
+            sort.int(as.integer(y), method = "quick"))
+}
+
+.etGroupChunk <- function(df, ids = NULL) {
+  if (!is.data.frame(df)) {
+    df <- .etExpandObsChunk(df)
+  }
+  df <- .etDropUnitsForChunk(df)
+  if (!is.null(ids) && "id" %in% names(df)) {
+    .id <- unique(as.integer(df$id))
+    if (length(.id) == 1L && length(ids) >= 1L) {
+      df$id <- NULL
+    }
+  }
+  df
+}
+
+.etGetGroups <- function(envRef) {
+  .groups <- .etGroups(envRef)
+  if (length(.groups) > 0L) return(.groups)
+
+  .chunks <- envRef$chunks
+  if (length(.chunks) == 0L) return(list())
+
+  .ret <- vector("list", 0L)
+  for (.i in seq_along(.chunks)) {
+    .chunk <- .chunks[[.i]]
+    if (is.null(.chunk)) next
+    .df <- .etGroupChunk(.chunk, .i)
+    .ret[[length(.ret) + 1L]] <- list(ids = as.integer(.i), data = .df)
+  }
+  .ret
+}
+
+.etSetGroups <- function(envRef, groups) {
+  envRef$groups <- groups
+  if (length(groups) > 0L) {
+    envRef$chunks <- list()
+  }
+  invisible(NULL)
+}
+
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in
@@ -88,6 +138,21 @@
   }
   .posIds <- ids[ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
+  if (length(.posIds) > 1L && !"id" %in% names(df)) {
+    .groups <- .etGetGroups(envRef)
+    .chunk <- .etGroupChunk(df, .posIds)
+    .match <- which(vapply(.groups, function(.g) .etGroupIdsEqual(.g$ids, .posIds), logical(1)))
+    if (length(.match) == 1L) {
+      .groups[[.match]]$data <- as.data.frame(
+        data.table::rbindlist(list(.groups[[.match]]$data, .chunk), fill = TRUE)
+      )
+    } else {
+      .groups[[length(.groups) + 1L]] <- list(ids = sort.int(as.integer(.posIds), method = "quick"),
+                                              data = .chunk)
+    }
+    .etSetGroups(envRef, .groups)
+    return(invisible(NULL))
+  }
   for (.i in .posIds) {
     .row <- .etDropUnitsForChunk(df)
     .row$id <- .i
@@ -141,6 +206,7 @@
 .newRxEt <- function(amountUnits = NA_character_, timeUnits = NA_character_) {
   .env <- new.env(parent = emptyenv())
   .env$chunks     <- list()
+  .env$groups     <- list()
   .env$units      <- c(dosing = amountUnits, time = timeUnits)
   .env$show       <- .etDefaultShow()
   .env$ids        <- 1L
@@ -170,7 +236,7 @@
 .rxEtSyncData <- function(x) {
   .env <- .rxEtEnv(x)
   if (!is.environment(.env)) return(x)
-  .ret <- .etMaterialize(x)
+  .ret <- .etEmptyDf()
   attr(.ret, ".rxEtEnv") <- .env
   .rt <- .env$randomType
   .cls <- c("rxEt", "data.frame")
@@ -318,16 +384,42 @@
 #' @noRd
 .etMaterialize <- function(et) {
   .env <- .rxEtEnv(et)
-  .chunks <- .env$chunks
+  .groups <- .etGetGroups(.env)
 
-  if (length(.chunks) == 0L) return(.etEmptyDf())
+  if (length(.groups) > 0L) {
+    .nonNull <- Filter(function(.g) !is.null(.g$data) && nrow(.g$data) > 0L, .groups)
+    if (length(.nonNull) == 0L) return(.etEmptyDf())
+    .dtList <- lapply(.nonNull, function(.g) {
+      .df <- .g$data
+      if (!is.data.frame(.df)) {
+        .df <- .etExpandObsChunk(.df)
+      }
+      if ("id" %in% names(.df)) {
+        return(data.table::as.data.table(.df))
+      }
+      .n <- nrow(.df)
+      if (.n == 0L || length(.g$ids) == 0L) {
+        return(data.table::as.data.table(.etEmptyDf()))
+      }
+      .idx <- rep.int(seq_len(.n), times = length(.g$ids))
+      .id <- rep.int(as.integer(.g$ids), each = .n)
+      .ret <- data.table::as.data.table(.df[.idx, , drop = FALSE])
+      .ret[, id := .id]
+      .ret
+    })
+    .dt <- data.table::rbindlist(.dtList, fill = TRUE, use.names = TRUE)
+  } else {
+    .chunks <- .env$chunks
 
-  # Each element is a data.frame for one ID; filter NULL entries
-  .nonNull <- Filter(Negate(is.null), .chunks)
-  if (length(.nonNull) == 0L) return(.etEmptyDf())
+    if (length(.chunks) == 0L) return(.etEmptyDf())
 
-  # rbindlist: fast sparse bind across ID data.frames
-  .dt <- data.table::rbindlist(.nonNull, fill = TRUE, use.names = TRUE)
+    # Each element is a data.frame for one ID; filter NULL entries
+    .nonNull <- Filter(Negate(is.null), .chunks)
+    if (length(.nonNull) == 0L) return(.etEmptyDf())
+
+    # rbindlist: fast sparse bind across ID data.frames
+    .dt <- data.table::rbindlist(.nonNull, fill = TRUE, use.names = TRUE)
+  }
 
   # ---- Fill column defaults ----
   if (is.null(.dt[["id"]]))   data.table::set(.dt, j = "id",   value = 1L)

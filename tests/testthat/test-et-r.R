@@ -48,6 +48,25 @@ rxTest({
     expect_true(all(df$evid == 0L))
   })
 
+  test_that("et stores homogeneous ids as one compressed group", {
+    ev <- et(1, id = 1:10)
+    .e <- .rxEtEnv(ev)
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:10)
+    expect_false("id" %in% names(.e$groups[[1]]$data))
+    expect_equal(.e$nobs, 10L)
+  })
+
+  test_that("homogeneous compressed group expands on as.data.frame", {
+    ev <- et(1, id = 1:3)
+    df <- as.data.frame(ev, all = TRUE)
+    expect_equal(nrow(df), 3L)
+    expect_equal(df$id, 1:3)
+    expect_equal(df$time, c(1, 1, 1))
+    expect_equal(df$evid, c(0L, 0L, 0L))
+  })
+
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
     .e <- .rxEtEnv(ev)
