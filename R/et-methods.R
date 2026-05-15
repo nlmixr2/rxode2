@@ -83,8 +83,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetEventTable <- function(env) {
-  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  if (nrow(.mat) == 0L) return(NULL)
+  .mat <- .etPreviewData(env, "all")
+  if (is.null(.mat) || nrow(.mat) == 0L) return(NULL)
   .show <- env$show
   .ret <- .mat[, names(.show)[.show], drop = FALSE]
   rownames(.ret) <- seq_len(nrow(.ret))
@@ -98,9 +98,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetDosing <- function(env) {
-  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  if (nrow(.mat) == 0L) return(NULL)
-  .d <- .etDropUnitsForChunk(.mat[.mat$evid != 0L, , drop = FALSE])
+  .d <- .etPreviewData(env, "dosing")
+  if (is.null(.d)) return(NULL)
   if (nrow(.d) == 0L) {
     NULL
   } else {
@@ -511,9 +510,8 @@
 }
 
 .etMethodGetSampling <- function(env) {
-  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  if (nrow(.mat) == 0L) return(NULL)
-  .s <- .etDropUnitsForChunk(.mat[.mat$evid == 0L, , drop = FALSE])
+  .s <- .etPreviewData(env, "sampling")
+  if (is.null(.s)) return(NULL)
   if (nrow(.s) == 0L) {
     NULL
   } else {

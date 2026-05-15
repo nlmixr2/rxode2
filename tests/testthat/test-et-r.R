@@ -67,6 +67,25 @@ rxTest({
     expect_equal(df$evid, c(0L, 0L, 0L))
   })
 
+  test_that("homogeneous previews stay compressed for print and query helpers", {
+    ev <- et(amt = 100, ii = 24, addl = 2, id = 1:5) |>
+      et(seq(0, 72, by = 24))
+
+    dosing <- ev$get.dosing()
+    sampling <- ev$get.sampling()
+
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_s3_class(sampling, "rxEtPreview")
+    expect_equal(nrow(dosing), 1L)
+    expect_equal(nrow(sampling), 4L)
+    expect_false("id" %in% names(dosing))
+    expect_false("id" %in% names(sampling))
+
+    out <- paste(capture.output(print(ev)), collapse = "\n")
+    expect_match(out, "5 individuals")
+    expect_match(out, "compressed preview")
+  })
+
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
     .e <- .rxEtEnv(ev)

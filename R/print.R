@@ -35,6 +35,33 @@ print.rxRateDur <- function(x, ...) {
   cli::cli_text(crayon::bold(paste0(cli::symbol$line, cli::symbol$line, " ", x, " ", cli::symbol$line, cli::symbol$line)))
 }
 
+.etPreviewGroupLabel <- function(ids) {
+  ids <- sort(unique(as.integer(ids)))
+  if (length(ids) == 0L) return("0 individuals")
+  if (length(ids) == 1L) return(sprintf("1 individual (id %s)", ids))
+  if (all(diff(ids) == 1L)) {
+    return(sprintf("%s individuals (ids %s:%s)", length(ids), ids[1], ids[length(ids)]))
+  }
+  sprintf("%s individuals", length(ids))
+}
+
+#' @export
+print.rxEtPreview <- function(x, ...) {
+  .groups <- attr(x, "rxEtPreviewGroups", exact = TRUE)
+  if (length(.groups) > 0L) {
+    if (length(.groups) == 1L) {
+      cat(sprintf("-- compressed preview for %s --\n", .etPreviewGroupLabel(.groups[[1]]$ids)))
+    } else {
+      cat(sprintf("-- compressed preview for %s groups --\n", length(.groups)))
+      for (.i in seq_along(.groups)) {
+        cat(sprintf("   group %s: %s\n", .i, .etPreviewGroupLabel(.groups[[.i]]$ids)))
+      }
+    }
+  }
+  print.data.frame(unclass(x), ...)
+  invisible(x)
+}
+
 #' @export
 print.rxEt <- function(x, ...) {
   if (.isRxEt(x)) {
@@ -102,7 +129,7 @@ print.rxEt <- function(x, ...) {
           .h2(paste0("First part of ", crayon::yellow(bound), ":"))
         }), sep = "\n")
       }
-      .preview <- as.data.frame(x)
+      .preview <- .etPreviewData(.rxEtEnv(x), "all")
       if (!is.null(.preview[["evid"]])) {
         class(.preview[["evid"]]) <- c("rxEvid", class(.preview[["evid"]]))
       }
@@ -111,7 +138,11 @@ print.rxEt <- function(x, ...) {
           class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
         }
       }
-      print(tibble::as_tibble(.preview))
+      if (inherits(.preview, "rxEtPreview")) {
+        print(.preview)
+      } else {
+        print(tibble::as_tibble(.preview))
+      }
     }
     invisible(x)
   } else {

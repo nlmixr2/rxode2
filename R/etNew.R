@@ -148,6 +148,48 @@
   invisible(NULL)
 }
 
+.etPreviewData <- function(envRef, subset = c("all", "dosing", "sampling")) {
+  subset <- match.arg(subset)
+  .groups <- .etGroups(envRef)
+  if (length(.groups) == 0L) {
+    .mat <- .etMaterialize(structure(list(env = envRef), class = "rxEt"))
+    if (nrow(.mat) == 0L) return(NULL)
+    if (subset == "dosing") {
+      .mat <- .mat[.mat$evid != 0L, , drop = FALSE]
+    } else if (subset == "sampling") {
+      .mat <- .mat[.mat$evid == 0L, , drop = FALSE]
+    }
+    if (nrow(.mat) == 0L) return(NULL)
+    .mat <- .etDropUnitsForChunk(.mat)
+    rownames(.mat) <- seq_len(nrow(.mat))
+    return(.mat)
+  }
+
+  .ret <- vector("list", 0L)
+  .meta <- vector("list", 0L)
+  for (.i in seq_along(.groups)) {
+    .g <- .groups[[.i]]
+    .df <- .etDropUnitsForChunk(.g$data)
+    if (subset == "dosing") {
+      .df <- .df[.df$evid != 0L, , drop = FALSE]
+    } else if (subset == "sampling") {
+      .df <- .df[.df$evid == 0L, , drop = FALSE]
+    }
+    if (nrow(.df) == 0L) next
+    .ret[[length(.ret) + 1L]] <- .df
+    .meta[[length(.meta) + 1L]] <- list(
+      ids = as.integer(.g$ids),
+      nSub = length(.g$ids)
+    )
+  }
+  if (length(.ret) == 0L) return(NULL)
+  .out <- as.data.frame(data.table::rbindlist(.ret, fill = TRUE))
+  rownames(.out) <- seq_len(nrow(.out))
+  attr(.out, "rxEtPreviewGroups") <- .meta
+  class(.out) <- c("rxEtPreview", class(.out))
+  .out
+}
+
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in
