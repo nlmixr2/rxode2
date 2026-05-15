@@ -129,6 +129,21 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     maxAllTimes = as.integer(.solveMaxAllTimes)
   )
 }
+
+.rxMemResolveDat <- function(dat) {
+  if (is.character(dat) && length(dat) == 1L && .rxIsSerializedSolvePath(dat)) {
+    .bundle <- .rxReadStateBundle(dat)
+    if (is.null(.bundle$events)) {
+      stop(sprintf("Serialized solve '%s' does not contain event data for memory estimation", dat),
+           call. = FALSE)
+    }
+    return(.bundle$events)
+  }
+  if (is.list(dat) && !is.data.frame(dat) && !is.null(dat$events)) {
+    return(dat$events)
+  }
+  dat
+}
 #' Extract model dimensions from model variables
 #'
 #'
@@ -350,7 +365,9 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'
 #' @param dat A \code{\link{rxMemSummary}}, a data.frame with
 #'   \code{nobs}/\code{ndoses} columns, or a full event-table
-#'   data.frame with an \code{evid} column.
+#'   data.frame with an \code{evid} column. This can also be a
+#'   serialized solve state file path or a solve state bundle list
+#'   containing an \code{events} element.
 #' @param model Optional rxode2 model object.  When supplied,
 #'   \code{neq}, \code{nlhs}, \code{npars}, \code{extraCmt},
 #'   \code{linB}, \code{nMtime}, \code{nLlik}, and \code{nIndSim} are
@@ -431,6 +448,7 @@ rxMemoryEstimate <- function(
   nIndSim   = NULL,
   numLinSens = 0L,
   numLin    = 0L) {
+  dat <- .rxMemResolveDat(dat)
   if (.isRxMemSummary(dat)) {
     .summary <- dat
     if (!inherits(.summary, "rxMemSummary")) {

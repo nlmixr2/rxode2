@@ -228,4 +228,30 @@ rxTest({
     expect_equal(.est$effectiveSubs, 100L)
     expect_gt(.est$total, .base$total)
   })
+
+  test_that("rxMemoryEstimate accepts serialized state files and bundles", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    .ev <- et(.ev, id = 1:4)
+    .stateFile <- tempfile(fileext = ".rxbin")
+    rxSolve(.mod, .theta, .ev, serializeFile = .stateFile)
+    .bundle <- .rxReadStateBundle(.stateFile)
+
+    .fromFile <- rxMemoryEstimate(.stateFile, model = .mod)
+    .fromBundle <- rxMemoryEstimate(.bundle, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.bundle$events, model = .mod)
+
+    expect_equal(as.numeric(.fromFile$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromBundle$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromFile$outputData), as.numeric(.fromEvents$outputData))
+    expect_equal(as.numeric(.fromBundle$outputData), as.numeric(.fromEvents$outputData))
+  })
 })
