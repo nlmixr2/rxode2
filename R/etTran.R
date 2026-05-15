@@ -213,7 +213,7 @@ etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar =
       }
       inData <- .raw
     } else {
-      inData <- as.data.frame(inData)
+      inData <- as.data.frame(inData, all = TRUE)
     }
   }
   .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly,

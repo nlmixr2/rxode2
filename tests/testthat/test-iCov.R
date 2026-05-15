@@ -54,7 +54,7 @@ rxTest({
                                  SEXN=rbinom(n = 1000, size = 1, prob = 0.5)),
                  # in this case it would be useful to keep the WT in the output dataset
                  keep=c("WTBL","SEXN")),
-                 "to use 'iCov' you must have an id in your event table")
+                 "the 'id' in the iCov must have 1 unique match to the event table")
   })
 
 

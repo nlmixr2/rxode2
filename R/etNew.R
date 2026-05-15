@@ -645,6 +645,40 @@
     return(.etEmptyDf())
   }
   .out <- as.data.frame(data.table::rbindlist(.dat, fill = TRUE, use.names = TRUE))
+  if ("evid" %in% names(.out)) {
+    .doseIdx <- which(.out$evid != 0L)
+    if (length(.doseIdx) > 0L) {
+      for (.col in c("rate", "ii", "dur")) {
+        if (.col %in% names(.out)) {
+          .vals <- .out[[.col]]
+          .naInDose <- is.na(.vals[.doseIdx])
+          if (any(.naInDose)) {
+            .vals[.doseIdx[.naInDose]] <- 0.0
+            .out[[.col]] <- .vals
+          }
+        }
+      }
+      for (.col in c("addl", "ss")) {
+        if (.col %in% names(.out)) {
+          .vals <- .out[[.col]]
+          .naInDose <- is.na(.vals[.doseIdx])
+          if (any(.naInDose)) {
+            .vals[.doseIdx[.naInDose]] <- 0L
+            .out[[.col]] <- .vals
+          }
+        }
+      }
+    }
+  }
+  if ("time" %in% names(.out) && "id" %in% names(.out)) {
+    .evidSort <- if ("evid" %in% names(.out)) {
+      ifelse(!is.na(.out$evid) & .out$evid == 3L, -1L, as.integer(.out$evid))
+    } else {
+      rep(0L, nrow(.out))
+    }
+    .ord <- order(.out$id, as.numeric(.out$time), .evidSort)
+    .out <- .out[.ord, ]
+  }
   attr(.out, "rxHomGroups") <- .ids
   attr(.out, "rxHomIdLevels") <- as.character(unlist(.ids, use.names = FALSE))
   .tu <- .env$units["time"]
