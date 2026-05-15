@@ -1139,6 +1139,7 @@ etSeq <- function(..., samples = c("clear", "use"),
   .explicitIi <- !missing(ii)
 
   .chunks    <- list()
+  .groups    <- list()
   .nobs      <- 0L
   .ndose     <- 0L
   .units     <- NULL
@@ -1162,11 +1163,12 @@ etSeq <- function(..., samples = c("clear", "use"),
   for (.item in .args) {
     if (is.rxEt(.item)) { # nolint
       .ret <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples, # nolint
-                               .chunks, .nobs, .ndose, .explicitIi, ii)
+                               .chunks, .groups, .nobs, .ndose, .explicitIi, ii)
       .units     <- .ret$units
       .show      <- .ret$show
       .ids       <- .ret$ids
       .chunks    <- .ret$chunks
+      .groups    <- .ret$groups
       .nobs      <- .ret$nobs
       .ndose     <- .ret$ndose
       .timeDelta <- .ret$timeDelta
@@ -1179,6 +1181,7 @@ etSeq <- function(..., samples = c("clear", "use"),
 
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- .chunks
+  .newEnv$groups     <- .groups
   .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
   if (!is.null(.show)) {
     .newShow <-  .show

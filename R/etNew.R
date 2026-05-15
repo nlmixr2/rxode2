@@ -203,6 +203,22 @@
   .ret
 }
 
+.etShiftChunk <- function(df, timeDelta) {
+  .df <- .etDropUnitsForChunk(df)
+  if (!is.data.frame(.df) || nrow(.df) == 0L || identical(timeDelta, 0)) {
+    return(.df)
+  }
+  .df$time <- .df$time + timeDelta
+  if (!is.null(.df$low) && any(!is.na(.df$low))) {
+    .df$low[!is.na(.df$low)] <- .df$low[!is.na(.df$low)] + timeDelta
+  }
+  if (!is.null(.df$high) && any(!is.na(.df$high))) {
+    .df$high[!is.na(.df$high)] <- .df$high[!is.na(.df$high)] + timeDelta
+  }
+  if (!is.null(.df$ii)) .df$ii[is.na(.df$ii)] <- 0.0
+  .df
+}
+
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in
