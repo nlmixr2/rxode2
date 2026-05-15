@@ -122,6 +122,22 @@ rxTest({
     expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
   })
 
+  test_that("grouped homogeneous data.frame preserves subject counts in memory estimate", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev$add.sampling(c(0, 12, 24))
+    .ev <- et(.ev, id = 1:5)
+    .groupedDf <- .etGroupedSolveData(.ev)
+
+    .fromRxEt <- rxMemoryEstimate(.ev, neq = 2L)
+    .fromGroupedDf <- rxMemoryEstimate(.groupedDf, neq = 2L)
+
+    expect_equal(.fromGroupedDf$effectiveSubs, .fromRxEt$effectiveSubs)
+    expect_equal(nrow(attr(.fromGroupedDf, "summary")), nrow(attr(.fromRxEt, "summary")))
+    expect_equal(as.numeric(.fromGroupedDf$total), as.numeric(.fromRxEt$total))
+    expect_equal(as.numeric(.fromGroupedDf$outputData), as.numeric(.fromRxEt$outputData))
+  })
+
   test_that("rxMemoryEstimate errors on bad input", {
     expect_error(rxMemoryEstimate(data.frame(x = 1)), "'dat' must be")
   })

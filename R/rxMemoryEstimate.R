@@ -40,6 +40,35 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemSummarizeDat <- function(dat) {
+  .groups <- attr(dat, "rxHomGroups", exact = TRUE)
+  if (is.data.frame(dat) && !is.null(.groups) && "evid" %in% names(dat)) {
+    .idCol <- grep("^id$", names(dat), ignore.case = TRUE, value = TRUE)[1]
+    if (!is.na(.idCol)) {
+      .repIds <- suppressWarnings(as.integer(dat[[.idCol]]))
+      if (!anyNA(.repIds)) {
+        .ids <- vector("list", 0L)
+        .nobs <- vector("list", 0L)
+        .ndoses <- vector("list", 0L)
+        for (.i in seq_along(.groups)) {
+          .groupIds <- .groups[[.i]]
+          if (length(.groupIds) == 0L) next
+          .rows <- .repIds == .i
+          .nobsGroup <- sum(dat$evid[.rows] == 0L, na.rm = TRUE)
+          .ndosesGroup <- sum(dat$evid[.rows] != 0L, na.rm = TRUE)
+          .ids[[length(.ids) + 1L]] <- .groupIds
+          .nobs[[length(.nobs) + 1L]] <- rep.int(.nobsGroup, length(.groupIds))
+          .ndoses[[length(.ndoses) + 1L]] <- rep.int(.ndosesGroup, length(.groupIds))
+        }
+        if (length(.ids) > 0L) {
+          return(rxMemSummary(
+            id = unlist(.ids, use.names = FALSE),
+            nobs = unlist(.nobs, use.names = FALSE),
+            ndoses = unlist(.ndoses, use.names = FALSE)
+          ))
+        }
+      }
+    }
+  }
   if (is.rxEt(dat)) {
     .groups <- .etGetGroups(.rxEtEnv(dat))
     if (length(.groups) == 0L) {
