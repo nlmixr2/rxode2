@@ -167,6 +167,24 @@ rxTest({
       )
     })
 
+    groupedKeepFromBundleNoId <- suppressWarnings(
+      rxSolve(modICov, thetaICov, groupedICovBundle$events,
+              iCov = data.frame(WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+              keep = "grp")
+    )
+    groupedKeepFromBundleWithId <- suppressWarnings(
+      rxSolve(modICov, thetaICov, groupedICovBundle$events,
+              iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+              keep = "grp")
+    )
+
+    test_that("grouped serialized bundle replay infers iCov ids when omitted", {
+      expect_equal(
+        as.data.frame(groupedKeepFromBundleNoId)[, c("id", "time", "cp", "grp")],
+        as.data.frame(groupedKeepFromBundleWithId)[, c("id", "time", "cp", "grp")]
+      )
+    })
+
     groupedDoseOnlyICovEv <- eventTable()
     groupedDoseOnlyICovEv$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
     groupedDoseOnlyICovEv <- et(groupedDoseOnlyICovEv, id = 1:4)

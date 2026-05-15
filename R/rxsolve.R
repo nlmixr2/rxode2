@@ -2026,6 +2026,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   .xtra <- list(...)
   .serializeInput <- .rxIsSerializedSolvePath(params)
+  .preloadedSerializedBundle <- NULL
   if (.serializeInput) {
     .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
                                  initsMissing = missing(inits), inits = inits,
@@ -2244,6 +2245,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (inherits(.ctl$iCov, "data.frame")) {
       .icovId <- which(tolower(names(.ctl$iCov)) == "id")
       .useEvents <- FALSE
+      .replaceSolveInput <- TRUE
       .eventsChk3 <- events
       .paramsChk3 <- params
       if (rxIs(.eventsChk3, "event.data.frame")) {
@@ -2256,6 +2258,15 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         .useEvents <- TRUE
       } else if (is.rxEt(.paramsChk3)) {
         .events <- .paramsChk3
+      } else if (.serializeInput) {
+        if (is.null(.preloadedSerializedBundle)) {
+          .preloadedSerializedBundle <- .rxReadStateBundle(params)
+        }
+        .events <- .preloadedSerializedBundle$events
+        .replaceSolveInput <- FALSE
+        if (is.null(.events) || !(is.data.frame(.events) || is.rxEt(.events))) {
+          stop("Cannot detect an event data frame to merge 'iCov'")
+        }
       } else {
         stop("Cannot detect an event data frame to merge 'iCov'")
       }
@@ -2293,10 +2304,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         stop("iCov has duplicate ids, cannot continue")
       }
       names(.ctl$iCov)[.icovId] <- .by
-      if (.useEvents) {
-        events <- .events
-      } else {
-        params <- .events
+      if (.replaceSolveInput) {
+        if (.useEvents) {
+          events <- .events
+        } else {
+          params <- .events
+        }
       }
     } else {
       stop("'iCov' must be an input dataset")
@@ -2470,7 +2483,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
 
   .callSolve <- function() {
     if (.isSer) {
-      .bundle <- .rxReadStateBundle(params)
+      .bundle <- if (is.null(.preloadedSerializedBundle)) {
+        .rxReadStateBundle(params)
+      } else {
+        .preloadedSerializedBundle
+      }
       if (!.tempSerializedReplay) {
         .rxValidateStateBundleModel(object, .bundle, params)
       }

@@ -53,6 +53,7 @@ Implement homogeneous/grouped `rxEt` support end-to-end so large ID sets stay co
 - Added regression coverage that explicit `control=` on `rxMemoryEstimate(rxSolveObj, ...)` overrides inferred solve defaults by comparing against the same stored solve events with the override applied.
 - Fixed grouped solve `data.frame` setup when `iCov` omits `id`: `rxSolve()` now infers IDs from `rxHomIdLevels`/`rxHomGroups` instead of representative group IDs.
 - Added regression coverage for grouped solve `data.frame` + no-`id` `iCov`, and locked parity against expanded-event solves.
+- Grouped serialized-bundle replay now also supports no-`id` `iCov` input by inferring IDs from homogeneous grouped metadata; regression coverage locks no-`id` vs explicit-`id` replay parity.
 - Focused regression filters currently passing: `etTrans`, `serialize`, `rxMemoryEstimate`, and `et-r`.
 
 ## Next Step (now)
