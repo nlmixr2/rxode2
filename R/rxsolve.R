@@ -2581,6 +2581,15 @@ rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
     return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
                            theta = theta, eta = eta, envir = envir))
   }
+  .dots <- list(...)
+  if (isTRUE(.dots$updateObject)) {
+    # Pass the rxSolve object directly so C++ updates the correct object
+    # rather than the global rxCurObj, which may point to a different rxSolve.
+    if (is.null(params)) params <- object$.params.single
+    if (is.null(inits)) inits <- object$inits
+    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
+                           theta = theta, eta = eta, envir = envir))
+  }
   .model <- as.character(.model)
   if (is.null(params)) params <- object$.params.single
   if (is.null(inits)) inits <- object$inits
@@ -2794,7 +2803,10 @@ solve.rxEt <- solve.rxSolve
   .env <- attr(.cls, ".rxode2.env")
   if (is.environment(.env) && exists(arg, envir = .env, inherits = FALSE)) {
     .val <- get(arg, envir = .env, inherits = FALSE)
-    if (is.function(.val)) return(.val)
+    if (is.function(.val)) {
+      rxSolveSetCurObj_(obj)
+      return(.val)
+    }
     return(.val)
   }
   if (is.environment(.env)) {

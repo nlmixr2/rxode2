@@ -616,6 +616,10 @@ rxSimThetaOmega <- function(params = NULL, omega = NULL, omegaDf = NULL, omegaLo
     .Call(`_rxode2_rxSimThetaOmega`, params, omega, omegaDf, omegaLower, omegaUpper, omegaIsChol, omegaSeparation, omegaXform, nSub, thetaMat, thetaLower, thetaUpper, thetaDf, thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper, sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform, nCoresRV, nObs, dfSub, dfObs, simSubjects, simVariability)
 }
 
+rxSolveSetCurObj_ <- function(obj) {
+    invisible(.Call(`_rxode2_rxSolveSetCurObj_`, obj))
+}
+
 #' Free the C solving/parsing information.
 #'
 #' Take the ODE C system and free it.

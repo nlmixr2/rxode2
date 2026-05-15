@@ -66,6 +66,7 @@
   .ret <- do.call(et, c(.args, .extra)) # nolint
   .retEnv <- .rxEtEnv(.ret)
   env$chunks <- .retEnv$chunks
+  env$groups <- .retEnv$groups
   env$units <- .retEnv$units
   env$show <- .retEnv$show
   env$ids <- .retEnv$ids

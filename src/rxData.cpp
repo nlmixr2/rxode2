@@ -2478,6 +2478,11 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
 
 RObject rxCurObj;
 
+//[[Rcpp::export]]
+void rxSolveSetCurObj_(SEXP obj) {
+  rxCurObj = as<RObject>(obj);
+}
+
 Nullable<Environment> rxrxode2env(RObject obj);
 
 std::string rxDll(RObject obj);
@@ -3019,8 +3024,15 @@ static inline SEXP rxSolve_update(const RObject &object,
   if (e.exists(".params.dat")){
     e.remove(".params.dat");
   }
-  if (e.exists(".et")){
-    e.remove(".et");
+  // Remove cached event-table functions to be re-created from .args.events
+  static const char* etCacheNames[] = {
+    ".et", "add.dosing", "clear.dosing", "add.sampling",
+    "clear.sampling", ".replace.sampling", "get.dosing",
+    "get.sampling", "get.obs.rec", "get.EventTable",
+    "import.EventTable", "get.units", "get.nobs", nullptr
+  };
+  for (int _i = 0; etCacheNames[_i] != nullptr; _i++) {
+    if (e.exists(etCacheNames[_i])) e.remove(etCacheNames[_i]);
   }
   if(e.exists(".sigma")){
     if (Rf_isMatrix(e[".sigma"])) {
@@ -3057,7 +3069,7 @@ static inline SEXP rxSolve_update(const RObject &object,
   List dat = as<List>(rxSolve_(new_object, newRxControl, R_NilValue, extraArgs,
                                new_params, new_events, new_inits, 0));
   if (rxSolveDat->updateObject && as<bool>(e[".real.update"])){
-    List old = as<List>(rxCurObj);
+    List old = lobj;
     //Should I zero out the List...?
     CharacterVector oldNms = old.names();
     CharacterVector nms = dat.names();
@@ -3068,6 +3080,9 @@ static inline SEXP rxSolve_update(const RObject &object,
       }
       old.attr("class") = dat.attr("class");
       old.attr("row.names") = dat.attr("row.names");
+      if (update_events) {
+        e[".args.events"] = new_events;
+      }
       return old;
     } else {
       warning(_("can not update object"));

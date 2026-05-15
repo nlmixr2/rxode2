@@ -384,6 +384,26 @@ namespace rxode2 {
         return Rcpp::as<List >(rcpp_result_gen);
     }
 
+    inline void rxSolveSetCurObj_(SEXP obj) {
+        typedef SEXP(*Ptr_rxSolveSetCurObj_)(SEXP);
+        static Ptr_rxSolveSetCurObj_ p_rxSolveSetCurObj_ = NULL;
+        if (p_rxSolveSetCurObj_ == NULL) {
+            validateSignature("void(*rxSolveSetCurObj_)(SEXP)");
+            p_rxSolveSetCurObj_ = (Ptr_rxSolveSetCurObj_)R_GetCCallable("rxode2", "_rxode2_rxSolveSetCurObj_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxSolveSetCurObj_(Shield<SEXP>(Rcpp::wrap(obj)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+    }
+
     inline LogicalVector rxSolveFree() {
         typedef SEXP(*Ptr_rxSolveFree)();
         static Ptr_rxSolveFree p_rxSolveFree = NULL;
