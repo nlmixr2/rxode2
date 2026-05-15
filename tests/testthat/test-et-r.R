@@ -58,6 +58,23 @@ rxTest({
     expect_equal(.e$nobs, 10L)
   })
 
+  test_that("large homogeneous id resize stays grouped without chunk cloning", {
+    ev <- et(1, id = 1:70000)
+    .e1 <- .rxEtEnv(ev)
+    expect_equal(length(.e1$groups), 1L)
+    expect_equal(length(.e1$chunks), 0L)
+    expect_equal(length(.e1$groups[[1]]$ids), 70000L)
+
+    ev2 <- et(ev, id = 70001:140000)
+    .e2 <- .rxEtEnv(ev2)
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(length(.e2$chunks), 0L)
+    expect_equal(length(.e2$groups[[1]]$ids), 70000L)
+    expect_equal(min(.e2$groups[[1]]$ids), 70001L)
+    expect_equal(max(.e2$groups[[1]]$ids), 140000L)
+    expect_equal(.e2$nobs, 70000L)
+  })
+
   test_that("homogeneous compressed group expands on as.data.frame", {
     ev <- et(1, id = 1:3)
     df <- as.data.frame(ev, all = TRUE)
