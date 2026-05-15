@@ -245,6 +245,20 @@ rxTest({
     expect_equal(nrow(as.data.frame(ev0, all = TRUE)), 0L)
   })
 
+  test_that("id-only resize deduplicates repeated ids", {
+    ev <- et(amt = 10, id = 1:3)
+    ev2 <- et(ev, id = c(2, 2, 3, 3))
+    .e2 <- .rxEtEnv(ev2)
+
+    expect_equal(.e2$ids, c(2L, 3L))
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(.e2$groups[[1]]$ids, c(2L, 3L))
+
+    df <- as.data.frame(ev2, all = TRUE)
+    expect_equal(sort(unique(df$id)), c(2L, 3L))
+    expect_equal(nrow(df), 2L)
+  })
+
   test_that("simulate keeps grouped homogeneous tables compressed when unchanged", {
     ev <- et(1, id = 1:5)
 
