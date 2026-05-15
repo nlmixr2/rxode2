@@ -176,6 +176,40 @@ rxTest({
     expect_equal(df$amt[df$id == 5], c(10, 20))
   })
 
+  test_that("simulate keeps grouped homogeneous tables compressed when unchanged", {
+    ev <- et(1, id = 1:5)
+
+    ev2 <- suppressWarnings(simulate(ev, seed = 42))
+    .e2 <- .rxEtEnv(ev2)
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(length(.e2$chunks), 0L)
+    expect_equal(.e2$groups[[1]]$ids, 1:5)
+
+    ev$simulate(seed = 42)
+    .e <- .rxEtEnv(ev)
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:5)
+  })
+
+  test_that("simulate splits grouped homogeneous windows by id", {
+    ev <- et(list(c(4, 0.5, NA))) |> et(id = 1:10)
+
+    ev2 <- simulate(ev, seed = 42)
+    .e2 <- .rxEtEnv(ev2)
+    expect_equal(length(.e2$groups), 0L)
+    expect_equal(sum(vapply(.e2$chunks, Negate(is.null), logical(1))), 10L)
+
+    df2 <- as.data.frame(ev2)
+    expect_equal(sort(unique(df2$id)), 1:10)
+    expect_gt(stats::sd(df2$time), 0)
+
+    ev$simulate(seed = 42)
+    .e <- .rxEtEnv(ev)
+    expect_equal(length(.e$groups), 0L)
+    expect_equal(sum(vapply(.e$chunks, Negate(is.null), logical(1))), 10L)
+  })
+
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
     .e <- .rxEtEnv(ev)

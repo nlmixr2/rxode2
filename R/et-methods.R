@@ -506,22 +506,18 @@
 #' @author Matthew L. Fidler
 .etMethodSimulate <- function(env, seed = NULL, ...) {
   if (!is.null(seed)) set.seed(seed)
-  .et <- structure(list(env = env), class = "rxEt")
-  .mat <- .etMaterialize(.et)
-  .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
-  if (!any(.hasWin)) {
+  .sim <- .etSimulateRepresentation(env) # nolint
+  if (!isTRUE(.sim$hasWin)) {
+    env$groups <- .sim$groups
+    env$chunks <- .sim$chunks
+    env$randomType <- NA_integer_
+    env$canResize <- FALSE
     warning("simulating event table without windows returns identical event table", call. = FALSE)
   } else {
-    if (!is.na(env$randomType) && env$randomType == 3L) {
-      .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-    } else {
-      .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-    }
-    env$chunks <- list()
-    if (nrow(.mat) > 0L) {
-      .ids <- unique(as.integer(.mat$id))
-      for (.i in .ids) env$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
-    }
+    env$groups <- .sim$groups
+    env$chunks <- .sim$chunks
+    env$randomType <- NA_integer_
+    env$canResize <- FALSE
   }
   invisible(NULL)
 }

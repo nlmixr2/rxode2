@@ -829,19 +829,9 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
     if (!is.null(seed)) set.seed(seed)
     if (is.rxEt(object)) { # nolint
       .env0 <- .rxEtEnv(object) # nolint
-      .mat <- .etMaterialize(object) # nolint
-      .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
-      if (!any(.hasWin)) {
+      .sim <- .etSimulateRepresentation(.env0) # nolint
+      if (!isTRUE(.sim$hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
-      } else {
-        .rt <- .env0$randomType
-        if (!is.na(.rt) && .rt == 3L) {
-          .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-        } else if (!is.na(.rt) && .rt == 2L) {
-          .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-        } else {
-          warning("unclear windows, identical event table", call. = FALSE)
-        }
       }
       .newEnv <- new.env(parent = emptyenv())
       .newEnv$units      <- .env0$units
@@ -851,11 +841,8 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       .newEnv$ndose      <- .env0$ndose
       .newEnv$randomType <- NA_integer_
       .newEnv$canResize  <- FALSE
-      .newEnv$chunks     <- list()
-      if (nrow(.mat) > 0L) {
-        .ids <- unique(as.integer(.mat$id))
-        for (.i in .ids) .newEnv$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
-      }
+      .newEnv$groups     <- .sim$groups
+      .newEnv$chunks     <- .sim$chunks
       return(structure(c(list(.env = .newEnv),
                          .etBuildMethods(.newEnv)), # nolint
                        class = "rxEt"))

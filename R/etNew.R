@@ -148,6 +148,118 @@
   invisible(NULL)
 }
 
+.etChunkIndex <- function(chunks, id) {
+  .idx <- as.integer(id)
+  if (is.na(.idx) || .idx < 1L) {
+    stop("invalid event table id", call. = FALSE)
+  }
+  .len <- length(chunks)
+  if (.idx > .len) {
+    length(chunks) <- .idx
+  }
+  chunks
+}
+
+.etSplitGroupToChunks <- function(chunks, group, randomType = NA_integer_) {
+  .df <- .etDropUnitsForChunk(group$data)
+  if (!is.data.frame(.df) || nrow(.df) == 0L || length(group$ids) == 0L) {
+    return(chunks)
+  }
+  .hasWin <- !is.na(.df$low) & !is.na(.df$high)
+  for (.id in as.integer(group$ids)) {
+    .row <- .df
+    if (any(.hasWin)) {
+      if (!is.na(randomType) && randomType == 3L) {
+        .row$time[.hasWin] <- stats::rnorm(sum(.hasWin), .row$low[.hasWin], .row$high[.hasWin])
+      } else if (!is.na(randomType) && randomType == 2L) {
+        .row$time[.hasWin] <- stats::runif(sum(.hasWin), .row$low[.hasWin], .row$high[.hasWin])
+      }
+    }
+    .row$id <- .id
+    chunks <- .etChunkIndex(chunks, .id)
+    chunks[[.id]] <- .row
+  }
+  chunks
+}
+
+.etSimulateRepresentation <- function(envRef) {
+  .groups <- .etGroups(envRef)
+  .chunks <- envRef$chunks
+  .randomType <- envRef$randomType
+  .hasWin <- FALSE
+  .needsChunkSplit <- length(.chunks) > 0L
+
+  if (length(.groups) > 0L) {
+    for (.g in .groups) {
+      .df <- .etDropUnitsForChunk(.g$data)
+      if (is.data.frame(.df) && nrow(.df) > 0L) {
+        .groupHasWin <- !is.na(.df$low) & !is.na(.df$high)
+        if (any(.groupHasWin)) {
+          .hasWin <- TRUE
+          if (length(.g$ids) > 1L) {
+            .needsChunkSplit <- TRUE
+          }
+        }
+      }
+    }
+  }
+
+  if (!.hasWin && length(.chunks) > 0L) {
+    for (.i in seq_along(.chunks)) {
+      .df <- .etDropUnitsForChunk(.chunks[[.i]])
+      if (is.data.frame(.df) && nrow(.df) > 0L && any(!is.na(.df$low) & !is.na(.df$high))) {
+        .hasWin <- TRUE
+        break
+      }
+    }
+  }
+
+  if (!.hasWin) {
+    return(list(hasWin = FALSE, groups = .groups, chunks = .chunks))
+  }
+
+  if (.needsChunkSplit) {
+    .outChunks <- vector("list", max(length(.chunks), suppressWarnings(max(as.integer(envRef$ids), 0L)), na.rm = TRUE))
+    if (length(.groups) > 0L) {
+      for (.g in .groups) {
+        .outChunks <- .etSplitGroupToChunks(.outChunks, .g, .randomType)
+      }
+    }
+    if (length(.chunks) > 0L) {
+      for (.i in seq_along(.chunks)) {
+        .df <- .etDropUnitsForChunk(.chunks[[.i]])
+        if (!is.data.frame(.df) || nrow(.df) == 0L) next
+        .hasWinI <- !is.na(.df$low) & !is.na(.df$high)
+        if (any(.hasWinI)) {
+          if (!is.na(.randomType) && .randomType == 3L) {
+            .df$time[.hasWinI] <- stats::rnorm(sum(.hasWinI), .df$low[.hasWinI], .df$high[.hasWinI])
+          } else if (!is.na(.randomType) && .randomType == 2L) {
+            .df$time[.hasWinI] <- stats::runif(sum(.hasWinI), .df$low[.hasWinI], .df$high[.hasWinI])
+          }
+        }
+        .id <- if ("id" %in% names(.df)) unique(as.integer(.df$id))[1L] else as.integer(.i)
+        .outChunks <- .etChunkIndex(.outChunks, .id)
+        .outChunks[[.id]] <- .df
+      }
+    }
+    return(list(hasWin = TRUE, groups = list(), chunks = .outChunks))
+  }
+
+  .outGroups <- lapply(.groups, function(.g) {
+    .df <- .etDropUnitsForChunk(.g$data)
+    .hasWinG <- !is.na(.df$low) & !is.na(.df$high)
+    if (any(.hasWinG)) {
+      if (!is.na(.randomType) && .randomType == 3L) {
+        .df$time[.hasWinG] <- stats::rnorm(sum(.hasWinG), .df$low[.hasWinG], .df$high[.hasWinG])
+      } else if (!is.na(.randomType) && .randomType == 2L) {
+        .df$time[.hasWinG] <- stats::runif(sum(.hasWinG), .df$low[.hasWinG], .df$high[.hasWinG])
+      }
+    }
+    list(ids = .g$ids, data = .df)
+  })
+  list(hasWin = TRUE, groups = .outGroups, chunks = list())
+}
+
 .etPreviewData <- function(envRef, subset = c("all", "dosing", "sampling")) {
   subset <- match.arg(subset)
   .groups <- .etGroups(envRef)
