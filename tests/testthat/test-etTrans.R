@@ -563,6 +563,17 @@ d/dt(blood)     = a*intestine - b*blood
     expect_null(prep)
   })
 
+  test_that("grouped iCov split aborts on coercion-colliding iCov ids", {
+    ev <- data.frame(id = c(1L, 2L), time = c(0, 0), evid = c(1L, 1L), amt = c(100, 100))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+    iCov <- data.frame(id = c("1", "01", "2"), WT = c(70, 75, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
   test_that("keep from iCov is case-insensitive and does not warn missing", {
     mod <- rxode2({
       d/dt(depot) <- -KA * depot

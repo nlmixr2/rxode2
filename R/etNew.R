@@ -673,7 +673,11 @@
   .idName <- names(iCov)[.idCol]
   .keep <- as.character(keep)
   .modelParams <- as.character(modelParams)
-  .icovId <- iCov[[.idName]]
+  .icovIdRaw <- if (is.factor(iCov[[.idName]])) as.character(iCov[[.idName]]) else iCov[[.idName]]
+  .icovId <- suppressWarnings(as.integer(.icovIdRaw))
+  if (length(.icovId) != nrow(iCov) || anyNA(.icovId)) {
+    return(NULL)
+  }
   if (anyDuplicated(.icovId)) {
     return(NULL)
   }
