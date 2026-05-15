@@ -298,6 +298,28 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
+  test_that("homogeneous grouped iCov keep columns stay on grouped solve prep", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    prep <- .etGroupedSolveDataICov(ev, iCov, keep = "grp", modelParams = rxModelVars(mod)$params)
+
+    expect_false(is.null(prep))
+    expect_equal(attr(prep$events, "rxHomGroups"), list(1:2, 3:4))
+    expect_equal(prep$iCov$id, 1:2)
+    expect_equal(prep$iCov$grp, c("a", "b"))
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)

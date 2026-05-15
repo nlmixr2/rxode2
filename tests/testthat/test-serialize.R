@@ -152,5 +152,19 @@ rxTest({
         as.data.frame(groupedICovExpanded)[, c("id", "time", "cp")]
       )
     })
+
+    groupedKeepFromBundle <- suppressWarnings(
+      rxSolve(modICov, thetaICov, groupedICovBundle$events, iCov = transform(iCov, grp = c("a", "a", "b", "b")), keep = "grp")
+    )
+    groupedKeepExpanded <- suppressWarnings(
+      rxSolve(modICov, thetaICov, as.data.frame(groupedICovEv), iCov = transform(iCov, grp = c("a", "a", "b", "b")), keep = "grp")
+    )
+
+    test_that("grouped serialized event data keeps iCov-only keep columns on replay", {
+      expect_equal(
+        as.data.frame(groupedKeepFromBundle)[, c("id", "time", "cp", "grp")],
+        as.data.frame(groupedKeepExpanded)[, c("id", "time", "cp", "grp")]
+      )
+    })
   })
 })

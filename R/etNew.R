@@ -659,10 +659,6 @@
   }
   .idName <- names(iCov)[.idCol]
   .keep <- as.character(keep)
-  .extraKeep <- intersect(.keep, setdiff(names(iCov), c(.idName, modelParams)))
-  if (length(.extraKeep) > 0L) {
-    return(NULL)
-  }
   .icovId <- iCov[[.idName]]
   .eventRows <- vector("list", 0L)
   .icovRows <- vector("list", 0L)
