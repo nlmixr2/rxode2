@@ -159,6 +159,29 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
+  test_that("homogeneous grouped dose-only solve keeps grouped ids", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev, from = 0, to = 24, by = 12))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), from = 0, to = 24, by = 12))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)

@@ -3071,23 +3071,25 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                      const RObject &params,
                                      RObject &ev1,
                                      const RObject &inits,
-                                     rxSolve_t* rxSolveDat){
-  rx_solve* rx = getRxSolve_();
-  if (rxIs(ev1, "rxEt")) {
-    CharacterVector cls = ev1.attr("class");
-    List etE = cls.attr(".rxode2.lst");
-    int nobs = asInt(etE["nobs"], "nobs");
-    if (nobs == 0){
-      // KEEP/DROP?
-      if (rxSolveDat->hasICov) {
-        Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
-      }
-      List ev1a = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                          false, false, true, R_NilValue,
-                          rxControl[Rxc_keepF],
-                          rxControl[Rxc_addlKeepsCov],
-                          rxControl[Rxc_addlDropSs],
-                          rxControl[Rxc_ssAtDoseTime]);
+                                                                        rxSolve_t* rxSolveDat){
+                                     rx_solve* rx = getRxSolve_();
+                                     Function etTransR = getRxFn("etTrans");
+                                     if (rxIs(ev1, "rxEt")) {
+                                       CharacterVector cls = ev1.attr("class");
+                                       List etE = cls.attr(".rxode2.lst");
+                                       int nobs = asInt(etE["nobs"], "nobs");
+                                       if (nobs == 0){
+                                         // KEEP/DROP?
+                                         if (rxSolveDat->hasICov) {
+                                           Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
+                                         }
+                                         List ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                                                              false, false, true, R_NilValue,
+                                                              rxControl[Rxc_keepF],
+                                                              rxControl[Rxc_addlKeepsCov],
+                                                              rxControl[Rxc_addlDropSs],
+                                                              rxControl[Rxc_ssAtDoseTime],
+                                                              R_NilValue);
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -3156,19 +3158,19 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       rx->nobs2 = lenOut;
       Function etFun = getRxFn("et");
       ev1 = etFun(ev1, wrap(newObs));
-      ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                             false, false, false, R_NilValue,
-                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                             R_NilValue));
+      ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                     false, false, false, R_NilValue,
+                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                     R_NilValue);
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    List ev1k = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                        false, false, true, R_NilValue,
-                        rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                        rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                        R_NilValue);
+    List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                         false, false, true, R_NilValue,
+                         rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                         rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                         R_NilValue);
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
     if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
@@ -3239,17 +3241,17 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       Function etFun = getRxFn("et");
       RObject evEt = asEtFun(ev1);
       evEt = etFun(evEt, wrap(newObs));
-      ev1 = as<List>(etTrans(as<List>(evEt), obj, rxSolveDat->hasCmt,
-                             false, false, false, R_NilValue,
-                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                             rxControl[Rxc_iCov]));
+      ev1 = etTransR(evEt, obj, rxSolveDat->hasCmt,
+                     false, false, false, R_NilValue,
+                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                     rxControl[Rxc_iCov]);
     } else {
-      ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                             false, false, true, R_NilValue,
-                             rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                             rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                             rxControl[Rxc_iCov]));
+      ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                     false, false, true, R_NilValue,
+                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                     rxControl[Rxc_iCov]);
     }
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
