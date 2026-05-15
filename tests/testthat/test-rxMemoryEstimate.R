@@ -22,20 +22,24 @@ rxTest({
   test_that("rxMemoryEstimate total equals sum of components", {
     .s     <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est   <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
-    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "effectiveSubs")
+    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
     .comps <- .est[!names(.est) %in% .meta]
     expect_equal(as.numeric(.est$total), sum(vapply(.comps, as.numeric, numeric(1))))
   })
 
-  test_that("rxMemoryEstimate contains ramBytes", {
+  test_that("rxMemoryEstimate contains memory availability metadata", {
     .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 1L)
     expect_true("outputData" %in% names(.est))
     expect_gt(as.numeric(.est$outputData), 0)
     expect_true("ramBytes" %in% names(.est))
+    expect_true("freeRamBytes" %in% names(.est))
     .rb <- .est$ramBytes
+    .fb <- .est$freeRamBytes
     expect_true(is.numeric(.rb))
+    expect_true(is.numeric(.fb))
     if (!is.na(.rb)) expect_gt(.rb, 0)
+    if (!is.na(.fb)) expect_gt(.fb, 0)
   })
 
   test_that("rxMemoryEstimate accepts nobs/ndoses data.frame", {
@@ -67,6 +71,9 @@ rxTest({
     .est <- rxMemoryEstimate(.s, neq = 1L)
     expect_output(print(.est), "rxSolve\\(\\) memory estimate")
     expect_output(print(.est), "Total:")
+    if (!is.na(.est$freeRamBytes) && .est$freeRamBytes > 0) {
+      expect_output(print(.est), "free RAM")
+    }
   })
 
   test_that("rxMemoryEstimate scales with subject count", {
