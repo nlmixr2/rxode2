@@ -89,8 +89,15 @@
   for (.i in seq_along(.chunks)) {
     .chunk <- .chunks[[.i]]
     if (is.null(.chunk)) next
-    .df <- .etGroupChunk(.chunk, .i)
-    .ret[[length(.ret) + 1L]] <- list(ids = as.integer(.i), data = .df)
+    .ids <- if (!is.null(names(.chunk)) && "id" %in% names(.chunk)) {
+      unique(as.integer(.chunk$id))
+    } else if (length(envRef$ids) == 1L) {
+      as.integer(envRef$ids)
+    } else {
+      as.integer(.i)
+    }
+    .df <- .etGroupChunk(.chunk, .ids)
+    .ret[[length(.ret) + 1L]] <- list(ids = .ids, data = .df)
   }
   .ret
 }
@@ -100,6 +107,44 @@
   if (length(groups) > 0L) {
     envRef$chunks <- list()
   }
+  invisible(NULL)
+}
+
+.etPresentIds <- function(envRef) {
+  .groups <- .etGroups(envRef)
+  if (length(.groups) > 0L) {
+    return(sort(unique(as.integer(unlist(lapply(.groups, `[[`, "ids"), use.names = FALSE)))))
+  }
+  .chunks <- envRef$chunks
+  if (length(.chunks) == 0L) return(integer(0))
+  .ids <- integer(0)
+  for (.i in seq_along(.chunks)) {
+    .chunk <- .chunks[[.i]]
+    if (is.null(.chunk)) next
+    if (!is.null(names(.chunk)) && "id" %in% names(.chunk)) {
+      .ids <- c(.ids, unique(as.integer(.chunk$id)))
+    } else if (length(envRef$ids) == 1L) {
+      .ids <- c(.ids, as.integer(envRef$ids))
+    } else {
+      .ids <- c(.ids, as.integer(.i))
+    }
+  }
+  sort(unique(.ids))
+}
+
+.etResetCountsFromGroups <- function(envRef) {
+  .groups <- .etGetGroups(envRef)
+  if (length(.groups) == 0L) {
+    envRef$nobs <- 0L
+    envRef$ndose <- 0L
+    return(invisible(NULL))
+  }
+  envRef$nobs <- as.integer(sum(vapply(.groups, function(.g) {
+    sum(.g$data$evid == 0L, na.rm = TRUE) * length(.g$ids)
+  }, numeric(1))))
+  envRef$ndose <- as.integer(sum(vapply(.groups, function(.g) {
+    sum(.g$data$evid != 0L, na.rm = TRUE) * length(.g$ids)
+  }, numeric(1))))
   invisible(NULL)
 }
 
@@ -236,7 +281,8 @@
 .rxEtSyncData <- function(x) {
   .env <- .rxEtEnv(x)
   if (!is.environment(.env)) return(x)
-  .ret <- .etEmptyDf()
+  .nTot <- .env$nobs + .env$ndose
+  .ret <- if (.nTot <= 1000L) .etMaterialize(x) else .etEmptyDf()
   attr(.ret, ".rxEtEnv") <- .env
   .rt <- .env$randomType
   .cls <- c("rxEt", "data.frame")
@@ -402,7 +448,7 @@
         return(data.table::as.data.table(.etEmptyDf()))
       }
       .idx <- rep.int(seq_len(.n), times = length(.g$ids))
-      .id <- rep.int(as.integer(.g$ids), each = .n)
+      .id <- rep(as.integer(.g$ids), each = .n)
       .ret <- data.table::as.data.table(.df[.idx, , drop = FALSE])
       .ret[, id := .id]
       .ret

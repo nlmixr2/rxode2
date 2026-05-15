@@ -551,29 +551,43 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- ID-only resize ----
   if (.doResize) {
-    if (length(.addedIds) > 0L) {
-      if (length(.existingIds) > 0) {
-        .tid <- .existingIds[1]
+    .groups <- .etGetGroups(.envRef) # nolint
+    if (length(.groups) > 0L) {
+      if (length(.groups) == 1L && .etGroupIdsEqual(.existingIds, .groups[[1]]$ids)) {
+        .groups[[1]]$ids <- sort(unique(as.integer(.envRef$ids)))
       } else {
-        .tid <- NA_integer_
+        for (.i in seq_along(.groups)) {
+          .groups[[.i]]$ids <- intersect(.groups[[.i]]$ids, .envRef$ids)
+        }
+        .groups <- Filter(function(.g) length(.g$ids) > 0L, .groups)
       }
-      if (!is.na(.tid) && !is.null(.envRef$chunks[[.tid]])) {
-        .template <- .envRef$chunks[[.tid]]
-        for (.newId in .addedIds) {
-          .newChunk <- .template
-          .newChunk$id <- as.integer(.newId)
-          .envRef$chunks[[.newId]] <- .newChunk
-          .envRef$nobs  <- .envRef$nobs  + sum(.template$evid == 0L, na.rm = TRUE)
-          .envRef$ndose <- .envRef$ndose + sum(.template$evid != 0L, na.rm = TRUE)
+      .etSetGroups(.envRef, .groups) # nolint
+      .etResetCountsFromGroups(.envRef) # nolint
+    } else {
+      if (length(.addedIds) > 0L) {
+        if (length(.existingIds) > 0) {
+          .tid <- .existingIds[1]
+        } else {
+          .tid <- NA_integer_
+        }
+        if (!is.na(.tid) && .tid <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.tid]])) {
+          .template <- .envRef$chunks[[.tid]]
+          for (.newId in .addedIds) {
+            .newChunk <- .template
+            .newChunk$id <- as.integer(.newId)
+            .envRef$chunks[[.newId]] <- .newChunk
+            .envRef$nobs  <- .envRef$nobs  + sum(.template$evid == 0L, na.rm = TRUE)
+            .envRef$ndose <- .envRef$ndose + sum(.template$evid != 0L, na.rm = TRUE)
+          }
         }
       }
-    }
-    for (.rmId in .removedIds) {
-      if (.rmId <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.rmId]])) {
-        .df <- .envRef$chunks[[.rmId]]
-        .envRef$nobs  <- .envRef$nobs  - sum(.df$evid == 0L, na.rm = TRUE)
-        .envRef$ndose <- .envRef$ndose - sum(.df$evid != 0L, na.rm = TRUE)
-        .envRef$chunks[.rmId] <- list(NULL)
+      for (.rmId in .removedIds) {
+        if (.rmId <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.rmId]])) {
+          .df <- .envRef$chunks[[.rmId]]
+          .envRef$nobs  <- .envRef$nobs  - sum(.df$evid == 0L, na.rm = TRUE)
+          .envRef$ndose <- .envRef$ndose - sum(.df$evid != 0L, na.rm = TRUE)
+          .envRef$chunks[.rmId] <- list(NULL)
+        }
       }
     }
   }
@@ -616,7 +630,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
   # "id" returns the unique sorted ids present in the materialized table
   if (arg == "id" && !is.null(.env)) {
-    return(sort(unique(as.integer(.env$ids))))
+    return(.etPresentIds(.env)) # nolint
   }
   if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
     return(get(arg, envir = .env, inherits = FALSE))
@@ -1257,13 +1271,17 @@ etRbind <- function(..., samples = c("use", "clear"),
       }
       .chunks <- .addRowsToChunks(.chunks, .mat) # nolint
     } else {
-      # Merge indexed chunks directly
-      for (.ci in seq_along(.env$chunks)) {
-        if (!is.null(.env$chunks[[.ci]])) {
-          .existing <- if (.ci <= length(.chunks)) .chunks[[.ci]] else NULL
-          .chunks[[.ci]] <- as.data.frame(
-            data.table::rbindlist(list(.existing, .env$chunks[[.ci]]), fill = TRUE)
-          )
+      if (length(.etGroups(.env)) > 0L) { # nolint
+        .chunks <- .addRowsToChunks(.chunks, .etMaterialize(.et)) # nolint
+      } else {
+        # Merge indexed chunks directly
+        for (.ci in seq_along(.env$chunks)) {
+          if (!is.null(.env$chunks[[.ci]])) {
+            .existing <- if (.ci <= length(.chunks)) .chunks[[.ci]] else NULL
+            .chunks[[.ci]] <- as.data.frame(
+              data.table::rbindlist(list(.existing, .env$chunks[[.ci]]), fill = TRUE)
+            )
+          }
         }
       }
       .ids    <- sort(unique(c(.ids, .env$ids)))
