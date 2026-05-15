@@ -224,6 +224,25 @@ d/dt(blood)     = a*intestine - b*blood
     )
   })
 
+  test_that("homogeneous grouped dose-only solve prep handles unit time defaults", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- et(amount.units = "mg", time.units = "hours")
+    ev <- et(ev, amt = 10000, cmt = 1)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    expect_no_error(
+      .sol <- solve(mod, ev, iCov = iCov, params = c(KA = 1, CL = 7, V = 40))
+    )
+    expect_true(nrow(as.data.frame(.sol)) > 0L)
+  })
+
   test_that("homogeneous grouped dose-only solve keeps iCov keep-column output", {
     mod <- rxode2({
       WT2 <- WT/70

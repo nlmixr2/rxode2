@@ -749,7 +749,7 @@
   }
   .to <- .etSolveObsValue(ctl$to, "to")
   if (is.null(.to)) {
-    .to <- max(events$time) + 24
+    .to <- as.numeric(max(events$time)) + 24
   }
   .by <- .etSolveObsValue(ctl$by, "by")
   .lengthOut <- .etSolveObsValue(ctl$length.out, "length.out")
@@ -772,6 +772,7 @@
   .groups <- attr(events, "rxHomGroups", exact = TRUE)
   .idLevels <- attr(events, "rxHomIdLevels", exact = TRUE)
   .events <- .etFixCmtForSolve(events)
+  .events$time <- as.numeric(.events$time)
   .ids <- sort(unique(as.integer(.events$id)))
   .obs <- vector("list", length(.ids))
   for (.i in seq_along(.ids)) {
