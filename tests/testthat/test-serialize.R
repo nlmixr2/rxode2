@@ -185,10 +185,22 @@ rxTest({
               iCov = transform(iCov, grp = c("a", "a", "b", "b")),
               keep = "grp", from = 0, to = 24, by = 12)
     )
+    groupedDoseOnlyKeepTempReplay <- suppressWarnings(
+      rxSolve(modICov, thetaICov, groupedDoseOnlyICovEv,
+              iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+              keep = "grp", from = 0, to = 24, by = 12, serializeFile = TRUE)
+    )
 
     test_that("grouped serialized dose-only events keep iCov-only keep columns on replay", {
       expect_equal(
         as.data.frame(groupedDoseOnlyKeepFromBundle)[, c("id", "time", "cp", "grp")],
+        as.data.frame(groupedDoseOnlyKeepExpanded)[, c("id", "time", "cp", "grp")]
+      )
+    })
+
+    test_that("temporary grouped dose-only serialization replay keeps iCov-only keep columns", {
+      expect_equal(
+        as.data.frame(groupedDoseOnlyKeepTempReplay)[, c("id", "time", "cp", "grp")],
         as.data.frame(groupedDoseOnlyKeepExpanded)[, c("id", "time", "cp", "grp")]
       )
     })
