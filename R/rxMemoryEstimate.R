@@ -131,6 +131,12 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 }
 
 .rxMemResolveDat <- function(dat) {
+  if (inherits(dat, "rxSolve")) {
+    .env <- attr(class(dat), ".rxode2.env", exact = TRUE)
+    if (is.environment(.env) && exists(".args.events", envir = .env, inherits = FALSE)) {
+      return(get(".args.events", envir = .env, inherits = FALSE))
+    }
+  }
   if (is.character(dat) && length(dat) == 1L && .rxIsSerializedSolvePath(dat)) {
     .bundle <- .rxReadStateBundle(dat)
     if (is.null(.bundle$events)) {
@@ -366,8 +372,9 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param dat A \code{\link{rxMemSummary}}, a data.frame with
 #'   \code{nobs}/\code{ndoses} columns, or a full event-table
 #'   data.frame with an \code{evid} column. This can also be a
-#'   serialized solve state file path or a solve state bundle list
-#'   containing an \code{events} element.
+#'   serialized solve state file path, a solve state bundle list
+#'   containing an \code{events} element, or an \code{rxSolve}
+#'   object (using its stored solve events).
 #' @param model Optional rxode2 model object.  When supplied,
 #'   \code{neq}, \code{nlhs}, \code{npars}, \code{extraCmt},
 #'   \code{linB}, \code{nMtime}, \code{nLlik}, and \code{nIndSim} are

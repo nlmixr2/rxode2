@@ -254,4 +254,25 @@ rxTest({
     expect_equal(as.numeric(.fromFile$outputData), as.numeric(.fromEvents$outputData))
     expect_equal(as.numeric(.fromBundle$outputData), as.numeric(.fromEvents$outputData))
   })
+
+  test_that("rxMemoryEstimate accepts rxSolve objects", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    .ev <- et(.ev, id = 1:4)
+    .solved <- rxSolve(.mod, .theta, .ev)
+    .env <- attr(class(.solved), ".rxode2.env")
+    .fromSolve <- rxMemoryEstimate(.solved, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.env$.args.events, model = .mod)
+
+    expect_equal(as.numeric(.fromSolve$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromSolve$outputData), as.numeric(.fromEvents$outputData))
+  })
 })
