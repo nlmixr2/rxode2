@@ -100,6 +100,28 @@ rxTest({
     expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
   })
 
+  test_that("grouped dose-only rxEt with iCov keep stays compressed in memory estimate", {
+    .mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+    .ctrl <- rxControl(from = 0, to = 24, by = 12, iCov = .iCov, keep = "grp")
+
+    .grouped <- rxMemoryEstimate(.ev, model = .mod, control = .ctrl)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), model = .mod, control = .ctrl)
+
+    expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
+    expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
+    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
+  })
+
   test_that("rxMemoryEstimate errors on bad input", {
     expect_error(rxMemoryEstimate(data.frame(x = 1)), "'dat' must be")
   })
