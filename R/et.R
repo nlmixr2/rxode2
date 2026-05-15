@@ -1243,6 +1243,7 @@ etRbind <- function(..., samples = c("use", "clear"),
   .units   <- NULL
   .show    <- NULL
   .ids     <- integer(0)
+  .groups  <- list()
   .nextId  <- 0L
 
   for (.et in .ets) {
@@ -1256,6 +1257,12 @@ etRbind <- function(..., samples = c("use", "clear"),
     }
     # ID remapping for unique mode (always materializes)
     if (.uniqueId || .samples == "clear") {
+      if (length(.groups) > 0L) {
+        for (.g in .groups) {
+          .chunks <- .addRowsToChunks(.chunks, .etMaterializeGroup(.g)) # nolint
+        }
+        .groups <- list()
+      }
       .mat    <- .etMaterialize(.et) # nolint
       if (.uniqueId) {
         .oldIds <- sort(unique(.mat$id))
@@ -1271,16 +1278,31 @@ etRbind <- function(..., samples = c("use", "clear"),
       }
       .chunks <- .addRowsToChunks(.chunks, .mat) # nolint
     } else {
-      if (length(.etGroups(.env)) > 0L) { # nolint
-        .chunks <- .addRowsToChunks(.chunks, .etMaterialize(.et)) # nolint
+      .etGroupsIn <- .etGetGroups(.env) # nolint
+      if (length(.chunks) == 0L &&
+          length(.etGroupsIn) > 0L &&
+          length(intersect(.ids, .env$ids)) == 0L) {
+        .groups <- c(.groups, lapply(.etGroupsIn, function(.g) {
+          list(ids = as.integer(.g$ids), data = .g$data)
+        }))
       } else {
-        # Merge indexed chunks directly
-        for (.ci in seq_along(.env$chunks)) {
-          if (!is.null(.env$chunks[[.ci]])) {
-            .existing <- if (.ci <= length(.chunks)) .chunks[[.ci]] else NULL
-            .chunks[[.ci]] <- as.data.frame(
-              data.table::rbindlist(list(.existing, .env$chunks[[.ci]]), fill = TRUE)
-            )
+        if (length(.groups) > 0L) {
+          for (.g in .groups) {
+            .chunks <- .addRowsToChunks(.chunks, .etMaterializeGroup(.g)) # nolint
+          }
+          .groups <- list()
+        }
+        if (length(.etGroups(.env)) > 0L) { # nolint
+          .chunks <- .addRowsToChunks(.chunks, .etMaterialize(.et)) # nolint
+        } else {
+          # Merge indexed chunks directly
+          for (.ci in seq_along(.env$chunks)) {
+            if (!is.null(.env$chunks[[.ci]])) {
+              .existing <- if (.ci <= length(.chunks)) .chunks[[.ci]] else NULL
+              .chunks[[.ci]] <- as.data.frame(
+                data.table::rbindlist(list(.existing, .env$chunks[[.ci]]), fill = TRUE)
+              )
+            }
           }
         }
       }
@@ -1294,6 +1316,7 @@ etRbind <- function(..., samples = c("use", "clear"),
 
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- .chunks
+  .newEnv$groups     <- .groups
   if (!is.null(.units)) {
     .newEnv$units      <-  .units
   } else {

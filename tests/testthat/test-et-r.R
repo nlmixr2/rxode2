@@ -86,6 +86,28 @@ rxTest({
     expect_match(out, "compressed preview")
   })
 
+  test_that("etRbind keeps non-overlapping homogeneous groups compressed", {
+    e1 <- et(amt = 100, ii = 24, addl = 2, id = 1:3)
+    e2 <- et(amt = 50, ii = 12, addl = 1, id = 4:5)
+    e3 <- rbind(e1, e2)
+    .e <- .rxEtEnv(e3)
+
+    expect_equal(length(.e$groups), 2L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:3)
+    expect_equal(.e$groups[[2]]$ids, 4:5)
+
+    dosing <- e3$get.dosing()
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_equal(nrow(dosing), 2L)
+    expect_false("id" %in% names(dosing))
+
+    out <- paste(capture.output(print(e3)), collapse = "\n")
+    expect_match(out, "compressed preview for 2 groups")
+    expect_match(out, "group 1: 3 individuals")
+    expect_match(out, "group 2: 2 individuals")
+  })
+
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
     .e <- .rxEtEnv(ev)

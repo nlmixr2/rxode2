@@ -444,7 +444,17 @@
     .posIds      <- .idVal[.idVal > 0L]
     .negIds      <- abs(.idVal[.idVal < 0L])
     .existingIds <- envRef$ids
-    if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
+    if (length(.posIds) > 0L &&
+        !xIsRxEt &&
+        identical(sort(as.integer(envRef$ids)), 1L) &&
+        envRef$nobs == 0L &&
+        envRef$ndose == 0L &&
+        length(.etGroups(envRef)) == 0L &&
+        length(envRef$chunks) == 0L) {
+      .addedIds   <- setdiff(.posIds, .existingIds)
+      .removedIds <- setdiff(.existingIds, .posIds)
+      envRef$ids  <- sort(unique(.posIds))
+    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)

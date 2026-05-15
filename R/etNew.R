@@ -190,6 +190,19 @@
   .out
 }
 
+.etMaterializeGroup <- function(group) {
+  .df <- .etDropUnitsForChunk(group$data)
+  if (!is.data.frame(.df) || nrow(.df) == 0L || length(group$ids) == 0L) {
+    return(.etEmptyDf())
+  }
+  .n <- nrow(.df)
+  .idx <- rep(seq_len(.n), times = length(group$ids))
+  .id <- rep(as.integer(group$ids), each = .n)
+  .ret <- .df[.idx, , drop = FALSE]
+  .ret$id <- .id
+  .ret
+}
+
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
 #' Assigns id column and appends to \code{chunks[[id]]} for each ID in

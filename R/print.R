@@ -58,7 +58,9 @@ print.rxEtPreview <- function(x, ...) {
       }
     }
   }
-  print.data.frame(unclass(x), ...)
+  .df <- x
+  class(.df) <- "data.frame"
+  print.data.frame(.df, ...)
   invisible(x)
 }
 
