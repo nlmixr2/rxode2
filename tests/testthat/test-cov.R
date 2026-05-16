@@ -141,6 +141,9 @@ rxTest({
 
   skip_if_not_installed("units")
 
+  for (.homogenous in c(TRUE, FALSE)) {
+    withr::with_options(list(rxode2.homogenous = .homogenous), {
+
   for (meth in c("liblsoda", "lsoda", "dop853")) { ## Dop is very close but doesn't match precisely.
 
     # context(sprintf("Simple test for time-varying covariates (%s)", meth))
@@ -201,7 +204,7 @@ rxTest({
     et <- eventTable(time.units = "hr") # default time units
     et$add.sampling(seq(from = 0, to = 10, by = 0.5))
 
-    cov <- data.frame(c = et$get.EventTable()$time + 1)
+    cov <- data.frame(c = as.numeric(et$get.EventTable()$time) + 1)
 
     et0 <- et
 
@@ -427,10 +430,8 @@ rxTest({
       expect_false(isTRUE(all.equal(out, out1)))
     })
 
-    cov <- data.frame(
-      c = et0$get.EventTable()$time + 1,
-      a = -et0$get.EventTable()$time / 100
-    )
+    .t0 <- as.numeric(et0$get.EventTable()$time)
+    cov <- data.frame(c = .t0 + 1, a = -.t0 / 100)
 
     et <- cbind(et0, cov)
 
@@ -458,7 +459,7 @@ rxTest({
       expect_equal(cov$a[et0$get.obs.rec()], out$a)
     })
 
-    cov <- data.frame(c = et0$get.EventTable()$time + 1)
+    cov <- data.frame(c = as.numeric(et0$get.EventTable()$time) + 1)
     et <- cbind(et0, cov)
 
     suppressWarnings(.rxWithSink(t, {
@@ -622,6 +623,9 @@ rxTest({
         "column 'V1I' has only 'NA' values for id '2'"))
     })
   }
+
+  }) ## withr::with_options
+  } ## for (.homogenous in ...)
 
   # time-varying covariates work with ODEs
 
