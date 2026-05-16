@@ -64,6 +64,9 @@ static const void *rx_seqrep_Dataptr_or_null(SEXP x) {
 /* ---- DATAPTR: materialise on demand ------------------------------------ */
 static void *rx_seqrep_Dataptr(SEXP x, Rboolean writeable) {
   SEXP mat = rx_seqrep_materialize(x);
+#ifndef DATAPTR_RW
+#define DATAPTR_RW(x) ((void *)DATAPTR(x))
+#endif
   return DATAPTR_RW(mat);
 }
 
