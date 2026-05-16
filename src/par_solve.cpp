@@ -1251,7 +1251,7 @@ static inline void solveWith1Pt(int *neq,
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
-          int _itol = 0, _itask = 1, _iopt = 0;
+          int _itol = 1, _itask = 1, _iopt = 1;
           F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
                            &_itol, &(op->RTOL), &(op->ATOL), &_itask,
                            istate, &_iopt, __rworkPool[0].rworkp,
