@@ -5426,12 +5426,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
-    {
-      int _bneq = (int)op->neq;
-      int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
-      int _liw = 20 + _bneq;
-      ensureRworkPool((int)op->cores, _lrw, _liw);
-    }
+
+    CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
+    int _bneq = (int)_mvState.size();
+    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+    int _liw = 20 + _bneq;
+    ensureRworkPool((int)op->cores, _lrw, _liw);
 
     // Now set up events and parameters
     RObject par0 = params;
