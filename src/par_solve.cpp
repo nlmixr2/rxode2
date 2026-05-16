@@ -2193,8 +2193,6 @@ void handleSS(int *neq,
         for (int ii = 0; ii < nIgnoredDoses; ++ii) {
           pushIgnoredDose(ignoreDoses[ii], ind);
         }
-      } else if (doSSinf) {
-        ind->InfusionRate[ind->cmt] = rateOn;
       } else {
         ind->InfusionRate[ind->cmt] = 0.0;
       }
