@@ -2961,14 +2961,23 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       }
       _pool->allocated_neq = neqOde;
     } else {
-      // Reuse: reset only integration state; memory allocation is preserved.
-      lsoda_reset(ctx);
+      // neq changed or reusing pool slot: free and re-prepare to guarantee
+      // identical state to a first-subject solve (lsoda_reset is insufficient
+      // because check_opt normalises mxordn/mxords on state=1 entry).
+      lsoda_free(ctx);
+      ctx->common = NULL;
+      if (!lsoda_prepare(ctx, &_pool->opt)) {
+        freeLsodaCtxPool();
+        rxSolveFreeC();
+        (Rf_error)(_("not enough memory for lsoda context"));
+      }
+      _pool->allocated_neq = neqOde;
       ctx->function = (_lsoda_f)dydt_liblsoda;
       ctx->data = neq;
       ctx->neq = neqOde;
       ctx->state = 1;
       ctx->error = NULL;
-      ctx->opt = &_pool->opt; // ensure opt pointer still targets pool storage
+      ctx->opt = &_pool->opt;
     }
   } else {
     lsoda_prepare(ctx, &opt);
