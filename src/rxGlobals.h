@@ -81,5 +81,7 @@ struct rx_globals {
   double *grtol2Thread = NULL;
   double *gssAtolThread = NULL;
   double *gssRtolThread = NULL;
+  double *geta_pre = NULL;
+  int geta_pre_n = 0;
   bool alloc=false;
 };
