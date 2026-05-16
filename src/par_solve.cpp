@@ -114,10 +114,10 @@ extern "C" void freeLsodaCtxPool() {
 // in parallel.  Each thread gets its own pre-allocated work arrays sized once
 // at setup time (22 + neq*max(16,neq+9) + 1 doubles; 20 + neq + 1 ints).
 struct rwork_pool_t {
-  double      *rworkp;  // real work array
-  int         *iworkp;  // integer work array
-  unsigned int rworki;  // current capacity (element count)
-  unsigned int iworki;
+  double      *rworkp = NULL;  // real work array
+  int         *iworkp = NULL;  // integer work array
+  unsigned int rworki = 0;  // current capacity (element count)
+  unsigned int iworki = 0;
 };
 
 static std::vector<rwork_pool_t> __rworkPool;
@@ -130,13 +130,29 @@ extern "C" void ensureRworkPool(int nCores, int lrw, int liw) {
   for (int i = 0; i < nCores; i++) {
     rwork_pool_t &p = __rworkPool[i];
     if ((int)p.rworki < need) {
-      p.rworkp = (p.rworki == 0) ? R_Calloc(need, double)
-                                 : R_Realloc(p.rworkp, need, double);
+      double *np;
+      if (p.rworki == 0 || p.rworkp == NULL) {
+        if (p.rworkp != NULL) free(p.rworkp);
+        np = (double *)calloc((size_t)need, sizeof(double));
+      } else {
+        np = (double *)realloc(p.rworkp, (size_t)need * sizeof(double));
+        if (np) memset(np + p.rworki, 0, ((size_t)need - p.rworki) * sizeof(double));
+      }
+      if (!np) (Rf_error)("ensureRworkPool: out of memory allocating rwork (%d doubles)", need);
+      p.rworkp = np;
       p.rworki = (unsigned int)need;
     }
     if ((int)p.iworki < needI) {
-      p.iworkp = (p.iworki == 0) ? R_Calloc(needI, int)
-                                 : R_Realloc(p.iworkp, needI, int);
+      int *np;
+      if (p.iworki == 0 || p.iworkp == NULL) {
+        if (p.iworkp != NULL) free(p.iworkp);
+        np = (int *)calloc((size_t)needI, sizeof(int));
+      } else {
+        np = (int *)realloc(p.iworkp, (size_t)needI * sizeof(int));
+        if (np) memset(np + p.iworki, 0, ((size_t)needI - p.iworki) * sizeof(int));
+      }
+      if (!np) (Rf_error)("ensureRworkPool: out of memory allocating iwork (%d ints)", needI);
+      p.iworkp = np;
       p.iworki = (unsigned int)needI;
     }
   }
@@ -145,8 +161,16 @@ extern "C" void ensureRworkPool(int nCores, int lrw, int liw) {
 extern "C" void freeRworkPool() {
   for (int i = 0; i < (int)__rworkPool.size(); i++) {
     rwork_pool_t &p = __rworkPool[i];
-    if (p.rworki > 0) { R_Free(p.rworkp); p.rworkp = NULL; p.rworki = 0; }
-    if (p.iworki > 0) { R_Free(p.iworkp); p.iworkp = NULL; p.iworki = 0; }
+    if (p.rworki > 0 && p.rworkp != NULL) {
+      free(p.rworkp);
+      p.rworkp = NULL;
+      p.rworki = 0;
+    }
+    if (p.iworki > 0 && p.iworkp != NULL) {
+      free(p.iworkp);
+      p.iworkp = NULL;
+      p.iworki = 0;
+    }
   }
   __rworkPool.clear();
 }
