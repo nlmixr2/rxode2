@@ -286,7 +286,6 @@ rx_solving_options_ind *inds_global = NULL;
 
 rx_solving_options_ind *inds_thread = NULL;
 
-int gitol=0, gitask = 1, giopt = 0, gliw=0, glrw = 0;
 
 void par_flush_console() {
 #if !defined(WIN32) && !defined(__WIN32) && !defined(__WIN32__)
@@ -636,22 +635,6 @@ int global_jt = 2;
 int global_mf = 22;
 int global_debug = 0;
 
-double *global_rworkp;
-int *global_iworkp;
-
-unsigned int global_rworki = 0;
-double *global_rwork(unsigned int mx){
-  if (mx >= global_rworki){
-    bool first = (global_rworki == 0);
-    global_rworki = mx+1024;
-    if (first) {
-      global_rworkp = R_Calloc(global_rworki, double);
-    } else {
-      global_rworkp = R_Realloc(global_rworkp, global_rworki, double);
-    }
-  }
-  return global_rworkp;
-}
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
@@ -1265,10 +1248,15 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
-        F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
-                         &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                         istate, &giopt, global_rworkp,
-                         &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+        {
+          int _lrw = 22 + op->neq * max(16, op->neq + 9);
+          int _liw = 20 + op->neq;
+          int _itol = 0, _itask = 1, _iopt = 0;
+          F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
+                           &_itol, &(op->RTOL), &(op->ATOL), &_itask,
+                           istate, &_iopt, __rworkPool[0].rworkp,
+                           &_lrw, __rworkPool[0].iworkp, &_liw, jdum_lsoda, &global_jt);
+        }
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
       }
@@ -3393,19 +3381,6 @@ extern "C" void par_liblsoda(rx_solve *rx){
   }
 }
 
-unsigned int global_iworki = 0;
-int *global_iwork(unsigned int mx){
-  if (mx >= global_iworki){
-    bool first = (global_iworki == 0);
-    global_iworki = mx+1024;
-    if (first) {
-      global_iworkp = R_Calloc(global_iworki, int);
-    } else {
-      global_iworkp = R_Realloc(global_iworkp, global_iworki, int);
-    }
-  }
-  return global_iworkp;
-}
 
 double *global_InfusionRatep;
 unsigned int global_InfusionRatei = 0;
@@ -3464,12 +3439,6 @@ extern "C" void rxOptionsFree(){
   freeLsodaCtxPool();
   freeRworkPool();
   rxEtaPreFree();
-
-  if (global_iworki != 0) R_Free(global_iworkp);
-  global_iworki = 0;
-
-  if (global_rworki != 0) R_Free(global_rworkp);
-  global_rworki = 0;
 
   if (global_InfusionRatei != 0) R_Free(global_InfusionRatep);
   global_InfusionRatei = 0;
@@ -3664,9 +3633,8 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0];
   if (global_debug)
     RSprintf("JT: %d\n",cjt);
-  // Fortran dlsoda is not reentrant — always use global singleton arrays
-  double *rwork = global_rwork(lrw+1);
-  int    *iwork = global_iwork(liw+1);
+  double *rwork = __rworkPool[0].rworkp;
+  int    *iwork = __rworkPool[0].iworkp;
   ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, cjt,
              dydt_ls, u_inis, jdum);
 }
@@ -3685,10 +3653,9 @@ extern "C" void par_lsoda(rx_solve *rx) {
     RSprintf("JT: %d\n", jt);
 
   // Fortran dlsoda uses non-reentrant COMMON blocks — must remain single-threaded.
-  // Use pool slot 0 (or global fallback) to avoid repeated malloc/free.
-  bool _usePool = !__rworkPool.empty();
-  double *rwork = _usePool ? __rworkPool[0].rworkp : global_rwork(lrw+1);
-  int    *iwork = _usePool ? __rworkPool[0].iworkp : global_iwork(liw+1);
+  // Pool slot 0 is always pre-allocated by ensureRworkPool before solving begins.
+  double *rwork = __rworkPool[0].rworkp;
+  int    *iwork = __rworkPool[0].iworkp;
 
   int curTick = 0;
   int abort = 0;
