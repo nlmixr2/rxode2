@@ -1,5 +1,14 @@
 # rxEt environment and chunk helpers -------------------------------------
 
+
+#' Is the homogenous event table path active?
+#'
+#'
+#' @return logical; TRUE if homogenous event table path is active,
+#'   FALSE otherwise, gets from option "rxode2.homogenous" with
+#'   default TRUE
+#' @noRd
+#' @author Matthew L. Fidler
 .rxGetHomogenous <- function() {
   isTRUE(getOption("rxode2.homogenous", TRUE))
 }
@@ -56,18 +65,39 @@
   }
   df
 }
-
+#' Get the groups from the rxEt environment
+#'
+#' @param envRef The environmental reference for the rxEt groups
+#' @return A list of groups, where each group is a list containing 'ids' and 'data'
+#' @noRd
+#' @author Matthew L. Fidler
 .etGroups <- function(envRef) {
   .groups <- envRef$groups
   if (is.null(.groups)) .groups <- list()
   .groups
 }
-
+#' Check if two sets of group IDs are equal
+#'
+#' @param x first group to check if it is equal.
+#' @param y second group to check if it is equal.
+#' @return logical value indicating whether the two sets of group IDs are equal
+#' @noRd
+#' @author Matthew L. Fidler
 .etGroupIdsEqual <- function(x, y) {
   identical(sort.int(as.integer(x), method = "quick"),
             sort.int(as.integer(y), method = "quick"))
 }
-
+#' Process a chunk of data for grouping
+#'
+#' This function takes a data frame and an optional set of IDs, and
+#' processes the data frame for grouping.
+#'
+#'
+#' @param df data frame to process for grouping
+#' @param ids optional vector of IDs to consider for grouping; if NULL, the function will
+#' @return processed data frame
+#' @noRd
+#' @author Matthew L. Fidler
 .etGroupChunk <- function(df, ids = NULL) {
   if (!is.data.frame(df)) {
     df <- .etExpandObsChunk(df)
@@ -82,6 +112,14 @@
   df
 }
 
+#' Get the groups from the rxEt environment, with fallback to chunks
+#' if groups are not set
+#'
+#'
+#' @param envRef
+#' @return
+#' @noRd
+#' @author Matthew L. Fidler
 .etGetGroups <- function(envRef) {
   .groups <- .etGroups(envRef)
   if (length(.groups) > 0L) return(.groups)
