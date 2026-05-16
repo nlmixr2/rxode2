@@ -318,7 +318,6 @@
       .mat <- .mat[.mat$evid == 0L, , drop = FALSE]
     }
     if (nrow(.mat) == 0L) return(NULL)
-    .mat <- .etDropUnitsForChunk(.mat)
     rownames(.mat) <- seq_len(nrow(.mat))
     return(.mat)
   }
@@ -346,6 +345,14 @@
   rownames(.out) <- seq_len(nrow(.out))
   attr(.out, "rxEtPreviewGroups") <- .meta
   class(.out) <- c("rxEtPreview", class(.out))
+  .tu <- envRef$units["time"]
+  if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {
+    for (.col in c("time", "ii", "low", "high", "dur")) {
+      if (.col %in% names(.out)) {
+        .out[[.col]] <- units::set_units(.out[[.col]], .tu, mode = "standard")
+      }
+    }
+  }
   .out
 }
 
