@@ -2898,19 +2898,33 @@ extern "C" void rxSolveFreeC() {
 
 List keepFcov;
 List keepFcovType;
+static std::vector<int>     _keepCovIdx;
+static std::vector<double*> _keepCovPtrs;
 
 extern void resetFkeep() {
   keepFcov = List::create();
   keepFcovType = List::create();
+  _keepCovIdx.clear();
+  _keepCovPtrs.clear();
+}
+
+extern "C" void setupFkeepCache() {
+  int n = keepFcov.size();
+  _keepCovIdx.resize(n);
+  _keepCovPtrs.resize(n);
+  List keepFcovI = keepFcov.attr("keepCov");
+  for (int i = 0; i < n; i++) {
+    _keepCovIdx[i] = as<int>(keepFcovI[i]);
+    _keepCovPtrs[i] = (_keepCovIdx[i] == 0) ? REAL(keepFcov[i]) : nullptr;
+  }
 }
 
 
 extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid) {
   // fid is the first index of the id for keep
-  List keepFcovI= keepFcov.attr("keepCov");
-  int idx = keepFcovI[col];
+  int idx = _keepCovIdx[col];
   if (idx == 0) {
-    double *vals = REAL(keepFcov[col]);
+    double *vals = _keepCovPtrs[col];
     double val = vals[id];
     if (R_IsNA(val) || R_IsNaN(val)) {
       rx_solve* rx = getRxSolve_();

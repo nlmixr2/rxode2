@@ -122,6 +122,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 }
 
 extern "C" void printErr(int err, int id);
+extern "C" void setupFkeepCache();
 extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   rx_solve *rx;
   rx = &rx_global;
@@ -493,6 +494,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
 
   // Parallel data-frame fill.  Each thread fills a disjoint slice of the
   // output arrays.  No R API calls inside the parallel region.
+  if (nkeep) setupFkeepCache();
   bool runSerial = true;
 #ifdef _OPENMP
   if (!hasStrCol) {
