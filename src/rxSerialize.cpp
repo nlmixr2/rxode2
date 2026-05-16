@@ -1101,7 +1101,8 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     // Allocate per-thread scratch slots that setupRxInd would normally set.
     // These point to global per-thread slabs; use thread 0 as placeholder —
     // setupRxInd() in the solve loop will re-point them before use.
-    ind->on        = _globals.gon;    // thread 0 slice placeholder
+    ind->on           = _globals.gon;    // thread 0 slice placeholder
+    ind->InfusionRate = (_globals.gInfusionRate && _globals.gInfusionRate[0]) ? _globals.gInfusionRate[0] : NULL;
     ind->solveSave = _globals.gSolveSave;
     ind->solveLast = _globals.gSolveLast;
     ind->solveLast2= _globals.gSolveLast2;
