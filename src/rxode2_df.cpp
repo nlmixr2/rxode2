@@ -467,6 +467,22 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       _curi += rx->subjects[_sid].n_all_times;
     }
   }
+  // For neq==0 models, par_solve skips the solve block entirely so sortInd
+  // (and ix[] initialization) never ran.  Call sortInd now to initialize ix[]
+  // before subRowStart uses _sind->ix[_ti] via getEvid().
+  // Guard: some subjects (e.g. after model piping) may have timeThread==NULL
+  // (rxFreeInd sets it to NULL for indOwnAlloc subjects).  sortInd writes into
+  // ind->timeThread as scratch space, so supply a temporary buffer in that case.
+  if (op->neq == 0) {
+    std::vector<double> ttScratch(rx->maxAllTimes);
+    for (int _sid = 0; _sid < nsolve_df; _sid++) {
+      rx_solving_options_ind *_ind = &rx->subjects[_sid];
+      double *savedTT = _ind->timeThread;
+      if (savedTT == NULL) _ind->timeThread = ttScratch.data();
+      sortInd(_ind);
+      _ind->timeThread = savedTT;
+    }
+  }
   for (int _sid = 0; _sid < nsolve_df; _sid++) {
     rx_solving_options_ind *_sind = &rx->subjects[_sid];
     int _di = 0, _subRows = 0, _subKk = 0;
