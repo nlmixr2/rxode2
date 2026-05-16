@@ -6,14 +6,15 @@
 - Parallelized the rxode2 data.frame creation (as long as you are not keeping
   character values, since they touch the R API).
 
-- Use ALTREP for `id` and `sim.id` in outputs.
+- Use ALTREP for `id` (when the number of output rows per id is the
+  same) and `sim.id` in outputs.
 
 - Change compile flags and compiler directives for rxode2 models to
   speed up how they run.
 
 - No longer introduce a discontinuity for phantom events (evid=7).
 
-- Have a pre-allocated context pool for lsoda in both lib-lsoda and
+- Have a pre-allocated context pool for lsoda in both liblsoda and
   lsoda (faster because memory doesn't need to allocated and
   deallocated so often)
 
