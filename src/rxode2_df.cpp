@@ -40,6 +40,7 @@
 #include "rxomp.h"
 #include <Rcpp.h>
 #include "strncmp.h"
+#include "rxode2_altrep.h"
 #define rxModelVars(a) rxModelVar_s(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 void resetSolveLinB();
@@ -430,7 +431,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     switch (colType[_c]) {
     case REALSXP: colR[_c] = REAL(_col); break;
     case INTSXP:
-    case LGLSXP:  colI[_c] = INTEGER(_col); break;
+    case LGLSXP:
+      // Leave nullptr for ALTREP columns — values are computed on-the-fly;
+      // do not call INTEGER() which would materialise them.
+      colI[_c] = ALTREP(_col) ? nullptr : INTEGER(_col);
+      break;
     case STRSXP:  hasStrCol = true; break;
     default: break;
     }
@@ -489,6 +494,46 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
     subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
     subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
+  }
+
+  // Use ALTREP compact sequences for id/sim.id when all subjects contribute
+  // the same number of rows.  This avoids allocating and filling large integer
+  // vectors for bookkeeping columns that are fully predictable.
+  // Condition: nsolve_df > 0 and all per-solveid row counts are equal.
+  bool useAltrepId = false;
+  if (nsolve_df > 1 && (md || sm)) {
+    int rows0 = subRowStart[1] - subRowStart[0];
+    if (rows0 > 0) {
+      useAltrepId = true;
+      for (int _sid = 1; _sid < nsolve_df && useAltrepId; _sid++) {
+        if (subRowStart[_sid + 1] - subRowStart[_sid] != rows0) useAltrepId = false;
+      }
+    }
+    if (useAltrepId) {
+      int jj_alt = 0;
+      if (sm) {
+        // sim.id: rep(1:nsim, each = nsub * rows0)
+        int rows_per_sim = nsub * rows0;
+        df[jj_alt] = rxode2_make_seqrep(nsim, rows_per_sim, (R_xlen_t)rx->nr);
+        jj_alt++;
+      }
+      if (md) {
+        // id: rep(1:nsub, each = rows0, times = nsim)
+        // The formula ((i / rows0) % nsub) + 1 = rx_seqrep with n_vals=nsub,
+        // run_len=rows0, total_len=rx->nr covers all nsim repetitions.
+        df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
+        jj_alt++;
+      }
+      if (ms) {
+        // shift column: resetno changes within a subject — cannot ALTREP, leave as-is
+        // (already allocated above as IntegerVector)
+      }
+    }
+    // colI[] was extracted before ALTREP replacement — nullify those entries
+    // so the fill loop skips writing into the replaced (now-dead) IntegerVectors.
+    int jj_null = 0;
+    if (sm) { colI[jj_null] = nullptr; jj_null++; }
+    if (md) { colI[jj_null] = nullptr; }
   }
 
   // Parallel data-frame fill.  Each thread fills a disjoint slice of the
@@ -577,8 +622,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
         jj_p = 0;
         if (doDose || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
-          if (sm) { colI[jj_p][ii] = csim + 1;     jj_p++; }
-          if (md) { colI[jj_p][ii] = csub_par + 1; jj_p++; }
+          if (sm) { if (colI[jj_p]) colI[jj_p][ii] = csim + 1;     jj_p++; }
+          if (md) { if (colI[jj_p]) colI[jj_p][ii] = csub_par + 1; jj_p++; }
           if (ms) { colI[jj_p][ii] = resetno_p + 1; jj_p++; }
           if (doDose) {
             if (nmevid) {
@@ -935,8 +980,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           jj = 0;
           int solveId = csim*nsub + csub;
           if (doDose || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid == 0)) {
-            if (sm) { colI[jj][ii] = csim + 1;   jj++; }
-            if (md) { colI[jj][ii] = csub + 1;   jj++; }
+            if (sm) { if (colI[jj]) colI[jj][ii] = csim + 1;   jj++; }
+            if (md) { if (colI[jj]) colI[jj][ii] = csub + 1;   jj++; }
             if (ms) { colI[jj][ii] = resetno + 1; jj++; }
             if (doDose) {
               if (nmevid) {
