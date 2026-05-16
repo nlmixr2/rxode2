@@ -263,7 +263,7 @@ rxMemoryEstimate <- function(
   neps      = 0L,
   ncov      = 0L,
   nsim      = 1L,
-  cores     = 0L,
+  cores     = 1L,
   nMtime    = 0L,
   extraCmt  = 0L,
   linB      = FALSE,
