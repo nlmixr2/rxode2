@@ -40,6 +40,14 @@ extern "C" {
 
   void updateExtraDoseGlobals(rx_solving_options_ind* ind);
 
+  // Pre-generated eta buffer — used by rxthreefry.cpp
+  double* rxEtaPreGetOrAlloc(int nsolve_neta);
+  double* rxGetEtaPre(void);
+  void    rxEtaPreDeactivate(void);
+  void    rxEtaPreFree(void);
+  int     rxGetNOmega(void);
+  int     rxIsZeroOmega(void);
+
 #if defined(__cplusplus)
 }
 #endif

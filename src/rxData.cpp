@@ -46,6 +46,8 @@ using namespace arma;
 extern "C" void seedEng(int ncores);
 extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
+extern "C" void ensureLsodaCtxPool(int nCores);
+extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -1565,6 +1567,12 @@ struct rx_globals {
   double *gssAtolThread = NULL;
   double *gssRtolThread = NULL;
 
+  // Pre-generated eta draws: [nsolve × neta] row-major.
+  // Populated by rxPreGenEta() before the parallel solve loop; cleared after.
+  // simeta() reads row[solveid] directly, skipping per-subject rxRmvnA().
+  double *geta_pre = NULL;
+  int     geta_pre_n = 0;   // allocated capacity in doubles (nsolve * neta)
+
   bool alloc=false;
 };
 
@@ -1572,6 +1580,42 @@ struct rx_globals {
 rx_globals _globals;
 
 #include "extraDosing.h"
+
+// ---------------------------------------------------------------------------
+// Pre-generated eta buffer accessors (C linkage for rxthreefry.cpp)
+// ---------------------------------------------------------------------------
+extern "C" {
+
+  // Ensure buffer has at least nsolve*neta doubles. Returns pointer to buffer.
+  double* rxEtaPreGetOrAlloc(int nsolve_neta) {
+    if (nsolve_neta > _globals.geta_pre_n) {
+      free(_globals.geta_pre);
+      _globals.geta_pre   = (double*)malloc((size_t)nsolve_neta * sizeof(double));
+      _globals.geta_pre_n = (_globals.geta_pre ? nsolve_neta : 0);
+    }
+    return _globals.geta_pre;
+  }
+
+  // Return current pre-gen buffer (NULL if not allocated / not active).
+  double* rxGetEtaPre(void) { return _globals.geta_pre; }
+
+  // Deactivate: set pointer to NULL without freeing (keep allocation for reuse).
+  void rxEtaPreDeactivate(void) { _globals.geta_pre = NULL; }
+
+  // Free buffer and reset counters.
+  void rxEtaPreFree(void) {
+    free(_globals.geta_pre);
+    _globals.geta_pre   = NULL;
+    _globals.geta_pre_n = 0;
+  }
+
+  // Number of omega matrices (1 = same for all sims, >1 = per-sim omega).
+  int rxGetNOmega(void) { return _globals.nOmega; }
+
+  // True when omega is zero (skip pre-gen).
+  int rxIsZeroOmega(void) { return _globals.zeroOmega ? 1 : 0; }
+
+} // extern "C"
 
 static inline double *getLinCmtSaveThread() {
   rx_solve* rx = getRxSolve_();
@@ -2854,19 +2898,33 @@ extern "C" void rxSolveFreeC() {
 
 List keepFcov;
 List keepFcovType;
+static std::vector<int>     _keepCovIdx;
+static std::vector<double*> _keepCovPtrs;
 
 extern void resetFkeep() {
   keepFcov = List::create();
   keepFcovType = List::create();
+  _keepCovIdx.clear();
+  _keepCovPtrs.clear();
+}
+
+extern "C" void setupFkeepCache() {
+  int n = keepFcov.size();
+  _keepCovIdx.resize(n);
+  _keepCovPtrs.resize(n);
+  List keepFcovI = keepFcov.attr("keepCov");
+  for (int i = 0; i < n; i++) {
+    _keepCovIdx[i] = as<int>(keepFcovI[i]);
+    _keepCovPtrs[i] = (_keepCovIdx[i] == 0) ? REAL(keepFcov[i]) : nullptr;
+  }
 }
 
 
 extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid) {
   // fid is the first index of the id for keep
-  List keepFcovI= keepFcov.attr("keepCov");
-  int idx = keepFcovI[col];
+  int idx = _keepCovIdx[col];
   if (idx == 0) {
-    double *vals = REAL(keepFcov[col]);
+    double *vals = _keepCovPtrs[col];
     double val = vals[id];
     if (R_IsNA(val) || R_IsNaN(val)) {
       rx_solve* rx = getRxSolve_();
@@ -5381,6 +5439,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
+    ensureLsodaCtxPool((int)op->cores);
+
+    CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
+    int _bneq = (int)_mvState.size();
+    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+    int _liw = 20 + _bneq;
+    ensureRworkPool((int)op->cores, _lrw, _liw);
 
     // Now set up events and parameters
     RObject par0 = params;
