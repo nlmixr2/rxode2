@@ -64,7 +64,7 @@ static const void *rx_seqrep_Dataptr_or_null(SEXP x) {
 /* ---- DATAPTR: materialise on demand ------------------------------------ */
 static void *rx_seqrep_Dataptr(SEXP x, Rboolean writeable) {
   SEXP mat = rx_seqrep_materialize(x);
-  return DATAPTR(mat);
+  return DATAPTR_RW(mat);
 }
 
 /* ---- Sum, Min, Max: can be computed analytically ---------------------- */

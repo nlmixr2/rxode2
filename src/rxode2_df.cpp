@@ -467,14 +467,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       _curi += rx->subjects[_sid].n_all_times;
     }
   }
-  // For neq==0 models, sortInd was never called during par_solve (the solve
-  // block is skipped entirely).  Call it now so ix[] is initialised before
-  // subRowStart uses _sind->ix[_ti] via getEvid().
-  if (op->neq == 0) {
-    for (int _sid = 0; _sid < nsolve_df; _sid++) {
-      sortInd(&rx->subjects[_sid]);
-    }
-  }
   for (int _sid = 0; _sid < nsolve_df; _sid++) {
     rx_solving_options_ind *_sind = &rx->subjects[_sid];
     int _di = 0, _subRows = 0, _subKk = 0;
@@ -515,7 +507,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     if (rows0 > 0) {
       useAltrepId = true;
       for (int _sid = 1; _sid < nsolve_df && useAltrepId; _sid++) {
-        if (subRowStart[_sid + 1] - subRowStart[_sid] != rows0) useAltrepId = false;
+        if (subRowStart[_sid + 1] - subRowStart[_sid] != rows0) {
+          useAltrepId = false;
+        }
       }
     }
     if (useAltrepId) {
@@ -532,10 +526,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         // run_len=rows0, total_len=rx->nr covers all nsim repetitions.
         df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
         jj_alt++;
-      }
-      if (ms) {
-        // shift column: resetno changes within a subject — cannot ALTREP, leave as-is
-        // (already allocated above as IntegerVector)
       }
     }
     // colI[] was extracted before ALTREP replacement — nullify those entries
