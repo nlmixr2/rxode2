@@ -5102,6 +5102,20 @@ extern "C" void par_solve(rx_solve *rx) {
       }
       rxEtaPreDeactivate();
     }
+  } else {
+    // Pure-LHS (neq==0) models: the ODE solve block is skipped entirely.
+    // Call iniSubject for every subject so that:
+    //   (1) _setIndPointersByThread sets ind->timeThread (non-NULL invariant
+    //       that rxode2_df relies on), and
+    //   (2) sortInd initialises ix[] (required for correct event iteration
+    //       in rxode2_df).
+    // rxSolveFree() at the start of rxSolve_ clears timeThread for any
+    // subject that previously owned its allocation, so this loop is the
+    // only place those pointers are restored before output creation.
+    uint32_t nsubAll = (uint32_t)rx->nsub * rx->nsim;
+    for (uint32_t _sid = 0; _sid < nsubAll; _sid++) {
+      iniSubject((int)_sid, 1, &rx->subjects[_sid], op, rx, update_inis);
+    }
   }
   par_progress_0=0;
 }
