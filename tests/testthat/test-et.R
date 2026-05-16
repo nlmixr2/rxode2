@@ -88,11 +88,12 @@ rxTest({
       expect_equal(et1$get.dosing(), NULL)
       ## homogeneous path returns compressed (10 time-points); non-homogeneous returns 100
       expect_equal(length(et1$get.sampling()$time),
-                   if (getOption("rxode2.homogenous", TRUE)) 10L else 100L)
+                   if (.rxGetHomogenous()) 10L else 100L)
     })
 
     test_that("get.sampling homogeneous vs non-homogeneous path", {
       ## default homogeneous: compressed per-group view
+      withr::local_options(rxode2.homogenous = TRUE)
       expect_equal(length(et1$get.sampling()$time), 10L)
       ## non-homogeneous: fully materialized across all subjects
       withr::local_options(rxode2.homogenous = FALSE)
@@ -237,7 +238,7 @@ rxTest({
       expect_equal(et1$get.dosing(), NULL)
       ## homogeneous path returns compressed (10 time-points); non-homogeneous returns 100
       expect_equal(length(et1$get.sampling()$time),
-                   if (getOption("rxode2.homogenous", TRUE)) 10L else 100L)
+                   if (.rxGetHomogenous()) 10L else 100L)
     })
 
     ## Check adding different units of time, rate, amt work
