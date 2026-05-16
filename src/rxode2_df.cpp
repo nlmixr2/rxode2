@@ -622,8 +622,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
         jj_p = 0;
         if (doDose || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
-          if (sm) { if (colI[jj_p]) colI[jj_p][ii] = csim + 1;     jj_p++; }
-          if (md) { if (colI[jj_p]) colI[jj_p][ii] = csub_par + 1; jj_p++; }
+          if (sm) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csim + 1;     jj_p++; }
+          if (md) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csub_par + 1; jj_p++; }
           if (ms) { colI[jj_p][ii] = resetno_p + 1; jj_p++; }
           if (doDose) {
             if (nmevid) {
@@ -980,8 +980,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           jj = 0;
           int solveId = csim*nsub + csub;
           if (doDose || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid == 0)) {
-            if (sm) { if (colI[jj]) colI[jj][ii] = csim + 1;   jj++; }
-            if (md) { if (colI[jj]) colI[jj][ii] = csub + 1;   jj++; }
+            if (sm) { if (colI[jj] != nullptr) colI[jj][ii] = csim + 1;   jj++; }
+            if (md) { if (colI[jj] != nullptr) colI[jj][ii] = csub + 1;   jj++; }
             if (ms) { colI[jj][ii] = resetno + 1; jj++; }
             if (doDose) {
               if (nmevid) {
