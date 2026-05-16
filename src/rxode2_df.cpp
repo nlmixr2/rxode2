@@ -123,6 +123,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 }
 
 extern "C" void printErr(int err, int id);
+extern "C" void setupFkeepCache();
 extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   rx_solve *rx;
   rx = &rx_global;
@@ -466,6 +467,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       _curi += rx->subjects[_sid].n_all_times;
     }
   }
+  // For neq==0 models, sortInd was never called during par_solve (the solve
+  // block is skipped entirely).  Call it now so ix[] is initialised before
+  // subRowStart uses _sind->ix[_ti] via getEvid().
+  if (op->neq == 0) {
+    for (int _sid = 0; _sid < nsolve_df; _sid++) {
+      sortInd(&rx->subjects[_sid]);
+    }
+  }
   for (int _sid = 0; _sid < nsolve_df; _sid++) {
     rx_solving_options_ind *_sind = &rx->subjects[_sid];
     int _di = 0, _subRows = 0, _subKk = 0;
@@ -538,6 +547,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
 
   // Parallel data-frame fill.  Each thread fills a disjoint slice of the
   // output arrays.  No R API calls inside the parallel region.
+  if (nkeep) setupFkeepCache();
   bool runSerial = true;
 #ifdef _OPENMP
   if (!hasStrCol) {
