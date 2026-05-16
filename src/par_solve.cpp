@@ -3010,7 +3010,9 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idx = -1-trueIdx;
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-            ctx->state = 1;
+            // Phantom events (evid=7) don't modify yp[] or InfusionRate[],
+            // so LSODA can safely continue from state=2 without reinit.
+            if (ind->wh0 != EVID0_PHANTOM) ctx->state = 1;
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
@@ -3053,7 +3055,9 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
-        if (rx->istateReset) ctx->state = 1;
+        // Phantom events (evid=7) don't modify yp[] or InfusionRate[],
+        // so LSODA can safely continue from state=2 without reinit.
+        if (rx->istateReset && ind->wh0 != EVID0_PHANTOM) ctx->state = 1;
         xp = xout;
       }
       int _mtime_requeued = 0;
@@ -3552,7 +3556,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->idx = -1-trueIdx;
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-            istate = 1;
+            // Phantom events (evid=7) don't modify yp[] or InfusionRate[].
+            if (ind->wh0 != EVID0_PHANTOM) istate = 1;
             ind->ixds = ixds; // This is a fake dose, real dose stays in place
             ind->idx = idx;
             ind->idxExtra++;
@@ -3598,7 +3603,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
-        if (rx->istateReset) istate = 1;
+        // Phantom events (evid=7) don't modify yp[] or InfusionRate[].
+        if (rx->istateReset && ind->wh0 != EVID0_PHANTOM) istate = 1;
         xp = xout;
       }
       int _mtime_requeued = 0;
