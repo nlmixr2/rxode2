@@ -37,6 +37,7 @@
 #include "timsort.h"
 #define SORT gfx::timsort
 #include "par_solve.h"
+#include "rxomp.h"
 #include <Rcpp.h>
 #include "strncmp.h"
 #define rxModelVars(a) rxModelVar_s(a)
@@ -417,27 +418,113 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     df[i] = NumericVector((R_xlen_t)rx->nr);
   }
   // Now create the data frame
-  int resetno = 0;
-  for (int csim = 0; csim < nsim; csim++) {
-    int curi = 0;
-    for (csub = 0; csub < nsub; csub++){
-      resetno=0;
-      neq[1] = csub+csim*nsub;
-      ind = &(rx->subjects[neq[1]]);
-      iniSubject(neq[1], 1, ind, op, rx, update_inis);
-      ntimes = ind->n_all_times;
-      par_ptr = ind->par_ptr;
-      di = 0;
-      for (i = 0; i < ntimes; i++){
+  // Pre-extract raw column data pointers — safe as long as no R API calls
+  // occur inside the parallel fill region below.
+  std::vector<double*> colR(ncol, nullptr);
+  std::vector<int*>    colI(ncol, nullptr);
+  std::vector<int>     colType(ncol, 0);
+  bool hasStrCol = false;
+  for (int _c = 0; _c < ncol; _c++) {
+    SEXP _col = VECTOR_ELT(df, _c);
+    colType[_c] = TYPEOF(_col);
+    switch (colType[_c]) {
+    case REALSXP: colR[_c] = REAL(_col); break;
+    case INTSXP:
+    case LGLSXP:  colI[_c] = INTEGER(_col); break;
+    case STRSXP:  hasStrCol = true; break;
+    default: break;
+    }
+  }
+  // Pre-compute LHS factor level counts for bounds checking in the fill loop.
+  int _lhsColStart = nidCols + doseCols + 2*nmevid + 1; // +1 for time column
+  std::vector<int> lhsLevelCount(nlhs, 0);
+  for (int _lhsJ = 0; _lhsJ < nlhs; _lhsJ++) {
+    if (op->lhs_str[_lhsJ] == 1) {
+      SEXP _lhsCol = VECTOR_ELT(df, _lhsColStart + _lhsJ);
+      SEXP _lvl = Rf_getAttrib(_lhsCol, R_LevelsSymbol);
+      lhsLevelCount[_lhsJ] = (_lvl != R_NilValue) ? Rf_length(_lvl) : 0;
+    }
+  }
+  // Serial pre-pass: compute per-subject starting row index (ii), error
+  // index (kk), and curi offset so the parallel fill knows where each
+  // subject writes without a reduction step.
+  int nsolve_df = nsim * nsub;
+  std::vector<int> subRowStart(nsolve_df + 1, 0);
+  std::vector<int> subKkStart(nsolve_df + 1, 0);
+  std::vector<int> subCuriStart(nsolve_df + 1, 0);
+  // curi resets to 0 at the start of each simulation
+  for (int _csim = 0; _csim < nsim; _csim++) {
+    int _curi = 0;
+    for (int _csub = 0; _csub < nsub; _csub++) {
+      int _sid = _csim * nsub + _csub;
+      subCuriStart[_sid] = _curi;
+      _curi += rx->subjects[_sid].n_all_times;
+    }
+  }
+  for (int _sid = 0; _sid < nsolve_df; _sid++) {
+    rx_solving_options_ind *_sind = &rx->subjects[_sid];
+    int _di = 0, _subRows = 0, _subKk = 0;
+    for (int _ti = 0; _ti < _sind->n_all_times; _ti++) {
+      int _ev = getEvid(_sind, _sind->ix[_ti]);
+      if (_ev == 9) continue;
+      // kk is incremented before the subsetEvid continue checks in the fill loop
+      if (updateErr) {
+        if ((doDose && _ev != 9) || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
+          _subKk++;
+        }
+      }
+      if (subsetEvid == 1) {
+        if (isObs(_ev) && _ev >= 10) continue;
+        if (isDose(_ev)) {
+          int _wh=0, _cmt=0, _wh100=0, _whI=0, _wh0=0;
+          getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) { _di++; continue; }
+          if (getDoseNumber(_sind, _di) <= 0) { _di++; continue; }
+          _di++;
+        }
+      }
+      if (doDose || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
+        _subRows++;
+      }
+    }
+    subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
+    subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
+  }
+
+  // Parallel data-frame fill.  Each thread fills a disjoint slice of the
+  // output arrays.  No R API calls inside the parallel region.
+  bool runSerial = true;
+#ifdef _OPENMP
+  if (!hasStrCol) {
+    runSerial = false;
+#pragma omp parallel for num_threads(op->cores) schedule(dynamic,1)
+    for (int solveid = 0; solveid < nsolve_df; solveid++) {
+      int csim     = solveid / nsub;
+      int csub_par = solveid % nsub;
+      int ii       = subRowStart[solveid];
+      int kk       = (errNrow > 0) ? min2(subKkStart[solveid], errNrow - 1) : 0;
+      int curi     = subCuriStart[solveid];
+      int resetno_p = 0;
+      int di_p      = 0;
+      int jj_p, j;
+      int evid_p = 0;
+      int wh_p, cmt_p, wh100_p, whI_p, wh0_p;
+      // Shadow outer `ind` so that getSolve() macro works correctly.
+      rx_solving_options_ind *ind = &(rx->subjects[solveid]);
+      iniSubject(solveid, 1, ind, op, rx, update_inis);
+      int ntimes_p    = ind->n_all_times;
+      double *par_ptr_p = ind->par_ptr;
+
+      for (int i = 0; i < ntimes_p; i++) {
         ind->idx = i;
-        if (evid == 3) {
+        if (evid_p == 3) {
           ind->curShift -= rx->maxShift;
-          resetno++;
+          resetno_p++;
         }
         double curT = getTime_(ind->ix[ind->idx], ind);
-        evid = getEvid(ind, ind->ix[ind->idx]);
-        if (evid == 9) continue;
-        if (isDose(evid)){
+        evid_p = getEvid(ind, ind->ix[ind->idx]);
+        if (evid_p == 9) continue;
+        if (isDose(evid_p)) {
           getWh(getEvid(ind, ind->ix[i]), &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
           switch (ind->whI) {
           case EVIDF_INF_RATE:
@@ -445,495 +532,664 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           case EVIDF_MODEL_DUR_OFF:
           case EVIDF_MODEL_RATE_ON:
           case EVIDF_MODEL_RATE_OFF:
-            dullRate=0;
+#pragma omp atomic write
+            dullRate = 0;
             break;
           case EVIDF_INF_DUR:
-            dullDur=0;
+#pragma omp atomic write
+            dullDur = 0;
             break;
           }
           handleTlastInline(&curT, ind);
         }
         if (updateErr) {
-          for (j=0; j < errNcol; j++){
-            // The error pointer is updated if needed
-            par_ptr[svar[j]] = errs[errNrow*j+kk];
+          for (j = 0; j < errNcol; j++) {
+            par_ptr_p[svar[j]] = errs[errNrow*j + kk];
           }
-          if ((doDose && evid!= 9) || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)){
-            // Only increment if this is an observation or of this a
-            // simulation that requests dosing information too.
-            kk=min2(kk+1, errNrow-1);
+          if ((doDose && evid_p != 9) || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
+            kk = min2(kk + 1, errNrow - 1);
           }
         }
         if (nlhs) {
-          calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
+          calc_lhs(solveid, curT, getSolve(i), ind->lhs);
         }
-        if (subsetEvid == 1){
-          if (isObs(evid) && evid >= 10) continue;
-          if (isDose(evid)){
-            getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-            if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF){
-              // modeled duration is in the RATE column like NONMEM datsets
-              dullRate=0;
-              di++;
-              continue;
-            } else if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+        if (subsetEvid == 1) {
+          if (isObs(evid_p) && evid_p >= 10) continue;
+          if (isDose(evid_p)) {
+            getWh(evid_p, &wh_p, &cmt_p, &wh100_p, &whI_p, &wh0_p);
+            if (whI_p == EVIDF_MODEL_RATE_OFF || whI_p == EVIDF_MODEL_DUR_OFF) {
+#pragma omp atomic write
               dullRate = 0;
-            } else if (whI == EVIDF_INF_DUR) {
+              di_p++;
+              continue;
+            } else if (whI_p == EVIDF_INF_RATE || whI_p == EVIDF_MODEL_RATE_ON || whI_p == EVIDF_MODEL_DUR_ON) {
+#pragma omp atomic write
+              dullRate = 0;
+            } else if (whI_p == EVIDF_INF_DUR) {
+#pragma omp atomic write
               dullDur = 0;
             }
-            if (getDoseNumber(ind, di) <= 0){
-              di++;
+            if (getDoseNumber(ind, di_p) <= 0) {
+              di_p++;
               continue;
             }
           }
         }
-        jj  = 0;
-        int solveId=csim*nsub+csub;
-        if (doDose || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)) {
-          // sim.id
-          if (sm){
-            dfi = INTEGER(VECTOR_ELT(df, jj));
-            dfi[ii] = csim+1;
-            jj++;
-          }
-          // id
-          if (md){
-            dfi = INTEGER(VECTOR_ELT(df, jj));
-            dfi[ii] = csub+1;
-            jj++;
-          }
-          if (ms) {
-            dfi = INTEGER(VECTOR_ELT(df, jj));
-            dfi[ii] = resetno+1;
-            jj++;
-          }
-          // evid, cmt, ss, amt, dur, ii
+        jj_p = 0;
+        if (doDose || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
+          if (sm) { colI[jj_p][ii] = csim + 1;     jj_p++; }
+          if (md) { colI[jj_p][ii] = csub_par + 1; jj_p++; }
+          if (ms) { colI[jj_p][ii] = resetno_p + 1; jj_p++; }
           if (doDose) {
-            if (nmevid){
-              if (isObs(evid)) {
-                // evid
-                dfi = INTEGER(VECTOR_ELT(df, jj++));
-                if (evid >= 10){
-                  dfi[ii] = evid+91; // mtime 101 102 103...
-                  /* dullEvid=0; */
-                } else {
-                  /* if (evid == 2) dullEvid=0; */
-                  dfi[ii] = evid;
-                }
-                // cmt
-                dfi = INTEGER(VECTOR_ELT(df, jj++));
-                dfi[ii] = NA_INTEGER; // Has all states, cmt makes no sense.
-                // ss
-                dfi = INTEGER(VECTOR_ELT(df, jj++));
-                dfi[ii] = 0;
-                // amt
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // rate
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // dur
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
+            if (nmevid) {
+              if (isObs(evid_p)) {
+                colI[jj_p][ii] = (evid_p >= 10) ? evid_p + 91 : evid_p; jj_p++;
+                colI[jj_p][ii] = NA_INTEGER; jj_p++;  // cmt
+                colI[jj_p][ii] = 0;          jj_p++;  // ss
+                colR[jj_p][ii] = NA_REAL;    jj_p++;  // amt
+                colR[jj_p][ii] = NA_REAL;    jj_p++;  // rate
+                colR[jj_p][ii] = NA_REAL;    jj_p++;  // dur
+                colR[jj_p][ii] = NA_REAL;    jj_p++;  // ii
               } else {
-                getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-                dfi = INTEGER(VECTOR_ELT(df, jj++));
-                double curAmt = getDoseNumber(ind, di);
-                if (evid == 3) {
-                  dfi[ii] = 3;
-                } else if (whI == EVIDF_MODEL_RATE_OFF){
-                  dullRate=0;
-                  dfi[ii] = -1;
-                } else if (whI == EVIDF_MODEL_DUR_OFF){
-                  dullRate=0; // rate specifies modeled duration
-                  dfi[ii] = -2; // evid
+                getWh(evid_p, &wh_p, &cmt_p, &wh100_p, &whI_p, &wh0_p);
+                double curAmt = getDoseNumber(ind, di_p);
+                if (evid_p == 3) {
+                  colI[jj_p][ii] = 3;
+                } else if (whI_p == EVIDF_MODEL_RATE_OFF) {
+#pragma omp atomic write
+                  dullRate = 0;
+                  colI[jj_p][ii] = -1;
+                } else if (whI_p == EVIDF_MODEL_DUR_OFF) {
+#pragma omp atomic write
+                  dullRate = 0;
+                  colI[jj_p][ii] = -2;
                 } else {
                   if (curAmt > 0) {
-                    if (whI == EVIDF_REPLACE){
-                      dfi[ii] = 5;
-                    } else if (whI == EVIDF_MULT){
-                      dfi[ii] = 6;
+                    if (whI_p == EVIDF_REPLACE) {
+                      colI[jj_p][ii] = 5;
+                    } else if (whI_p == EVIDF_MULT) {
+                      colI[jj_p][ii] = 6;
                     } else {
-                      dfi[ii] = 1; // evid
-                      if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_MODEL_RATE_ON) {
+                      colI[jj_p][ii] = 1;
+                      if (whI_p == EVIDF_INF_RATE || whI_p == EVIDF_MODEL_DUR_ON || whI_p == EVIDF_MODEL_RATE_ON) {
+#pragma omp atomic write
                         dullRate = 0;
-                      } else if (whI == EVIDF_INF_DUR) {
+                      } else if (whI_p == EVIDF_INF_DUR) {
+#pragma omp atomic write
                         dullDur = 0;
                       }
                     }
                   } else {
-                    if (whI == EVIDF_INF_RATE){
-                      dullRate=0;
-                      dfi[ii] = -10; // evid
-                    } else if (whI == EVIDF_INF_DUR) {
-                      dullDur=0;
-                      dfi[ii] = -20; // evid
-                    } else if (whI == EVIDF_REPLACE){
-                      dfi[ii] = 5;
-                    } else if (whI == EVIDF_MULT){
-                      dfi[ii] = 6;
+                    if (whI_p == EVIDF_INF_RATE) {
+#pragma omp atomic write
+                      dullRate = 0;
+                      colI[jj_p][ii] = -10;
+                    } else if (whI_p == EVIDF_INF_DUR) {
+#pragma omp atomic write
+                      dullDur = 0;
+                      colI[jj_p][ii] = -20;
+                    } else if (whI_p == EVIDF_REPLACE) {
+                      colI[jj_p][ii] = 5;
+                    } else if (whI_p == EVIDF_MULT) {
+                      colI[jj_p][ii] = 6;
                     } else {
-                      dfi[ii] = 1;
-                      if (whI == EVIDF_INF_DUR) {
+                      colI[jj_p][ii] = 1;
+                      if (whI_p == EVIDF_INF_DUR) {
+#pragma omp atomic write
                         dullDur = 0;
                       }
                     }
                   }
                 }
+                jj_p++;  // evid column done
                 // cmt
-                dfi = INTEGER(VECTOR_ELT(df, jj++));
-                if (evid == 2 || evid == 3){
-                  dfi[ii] = NA_INTEGER;
-                } else if (wh0 == 30){
-                  dfi[ii] = -cmt-1;
+                if (evid_p == 2 || evid_p == 3) {
+                  colI[jj_p][ii] = NA_INTEGER;
+                } else if (wh0_p == 30) {
+                  colI[jj_p][ii] = -cmt_p - 1;
                 } else {
-                  dfi[ii] = cmt+1;
+                  colI[jj_p][ii] = cmt_p + 1;
                 }
+                jj_p++;
                 // ss
-                dfi = INTEGER(VECTOR_ELT(df, jj++));
-                switch (wh0){
-                  /* case 30: */
+                switch (wh0_p) {
                 case EVID0_SS2:
-                  dullSS=0;
-                  dfi[ii] = 2;
+#pragma omp atomic write
+                  dullSS = 0;
+                  colI[jj_p][ii] = 2;
                   break;
                 case EVID0_SS:
-                  dullSS=0;
-                  dfi[ii] = 1;
+#pragma omp atomic write
+                  dullSS = 0;
+                  colI[jj_p][ii] = 1;
                   break;
                 case 40:
-                  dullRate=0;
-                  dullSS=0;
-                  dullIi=0;
-                  dfi[ii] = 1;
+#pragma omp atomic write
+                  dullRate = 0;
+#pragma omp atomic write
+                  dullSS = 0;
+#pragma omp atomic write
+                  dullIi = 0;
+                  colI[jj_p][ii] = 1;
                   break;
                 default:
-                  dfi[ii] = 0;
+                  colI[jj_p][ii] = 0;
                   break;
                 }
+                jj_p++;
               }
             } else {
-              // evid
-              dfi = INTEGER(VECTOR_ELT(df, jj++));
-              dfi[ii] = evid;
-              // amt
-              dfp = REAL(VECTOR_ELT(df, jj++));
-              dfp[ii] = isObs(evid) ? NA_REAL : getDoseNumber(ind, di++);
+              // !nmevid
+              colI[jj_p][ii] = evid_p; jj_p++;
+              colR[jj_p][ii] = isObs(evid_p) ? NA_REAL : getDoseNumber(ind, di_p++); jj_p++;
             }
-            if (nmevid && isDose(evid)){
-              double curIi = getIiNumber(ind, di);
-              if (curIi != 0) dullIi=0;
-              double curAmt = getDoseNumber(ind, di++);
-              // rate dur ii ss
-              switch(ind->whI){
-              case EVIDF_MODEL_RATE_ON: // modeled rate
-                // amt
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curAmt;
-                // rate
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = -1.0;
-                // dur
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+            if (nmevid && isDose(evid_p)) {
+              double curIi   = getIiNumber(ind, di_p);
+              if (curIi != 0) {
+#pragma omp atomic write
+                dullIi = 0;
+              }
+              double curAmt_r = getDoseNumber(ind, di_p++);
+              switch (ind->whI) {
+              case EVIDF_MODEL_RATE_ON:
+                colR[jj_p][ii] = curAmt_r; jj_p++;
+                colR[jj_p][ii] = -1.0;     jj_p++;
+                colR[jj_p][ii] = NA_REAL;  jj_p++;
+                colR[jj_p][ii] = curIi;    jj_p++;
                 break;
-              case EVIDF_MODEL_DUR_ON: // modeled duration
-                // amt
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curAmt;
-                // rate
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = -2.0;
-                // dur
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+              case EVIDF_MODEL_DUR_ON:
+                colR[jj_p][ii] = curAmt_r; jj_p++;
+                colR[jj_p][ii] = -2.0;     jj_p++;
+                colR[jj_p][ii] = NA_REAL;  jj_p++;
+                colR[jj_p][ii] = curIi;    jj_p++;
                 break;
-              case EVIDF_MODEL_RATE_OFF: // End modeled rate
-                // amt
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // rate
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // dur
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+              case EVIDF_MODEL_RATE_OFF:
+                colR[jj_p][ii] = NA_REAL; jj_p++;
+                colR[jj_p][ii] = NA_REAL; jj_p++;
+                colR[jj_p][ii] = NA_REAL; jj_p++;
+                colR[jj_p][ii] = curIi;   jj_p++;
                 break;
-              case EVIDF_MODEL_DUR_OFF: // end modeled duration
-                // amt
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // rate
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // dur
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+              case EVIDF_MODEL_DUR_OFF:
+                colR[jj_p][ii] = NA_REAL; jj_p++;
+                colR[jj_p][ii] = NA_REAL; jj_p++;
+                colR[jj_p][ii] = NA_REAL; jj_p++;
+                colR[jj_p][ii] = curIi;   jj_p++;
                 break;
-              case EVIDF_INF_DUR: // Infusion specified by dur
-                if (curAmt < 0){
-                  // amt
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
-                  // rate
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
-                  // dur
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
+              case EVIDF_INF_DUR:
+                if (curAmt_r < 0) {
+                  colR[jj_p][ii] = NA_REAL; jj_p++;
+                  colR[jj_p][ii] = NA_REAL; jj_p++;
+                  colR[jj_p][ii] = NA_REAL; jj_p++;
                 } else {
-                  // Find the next fixed length infusion that is turned off.
-                  double curDur=0.0;
-                  for (int jjj = di; jjj < ind->ndoses; jjj++){
-                    if (getDoseNumber(ind, jjj) == -curAmt){
-                      int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
+                  double curDur = 0.0;
+                  for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
+                    if (getDoseNumber(ind, jjj) == -curAmt_r) {
+                      int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
                       getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
-                      dullRate=0;
-                      if (nWhI == whI && nCmt == cmt){
-                        curDur = getTime_(ind->idose[jjj], ind) -
-                          getTime_(ind->ix[i], ind);
+#pragma omp atomic write
+                      dullRate = 0;
+                      if (nWhI == ind->whI && nCmt == ind->cmt) {
+                        curDur = getTime_(ind->idose[jjj], ind) - getTime_(ind->ix[i], ind);
                         break;
                       }
                     }
                   }
-                  // amt
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = curAmt*curDur;
-                  // rate
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
-                  // dur
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = curDur;
+                  colR[jj_p][ii] = curAmt_r * curDur; jj_p++;
+                  colR[jj_p][ii] = NA_REAL;            jj_p++;
+                  colR[jj_p][ii] = curDur;             jj_p++;
                 }
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+                colR[jj_p][ii] = curIi; jj_p++;
                 break;
-              case EVIDF_INF_RATE: // Infusion specified by rate
-                if (curAmt < 0){
-                  // amt
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
-                  // rate
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
-                  // dur
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
+              case EVIDF_INF_RATE:
+                if (curAmt_r < 0) {
+                  colR[jj_p][ii] = NA_REAL; jj_p++;
+                  colR[jj_p][ii] = NA_REAL; jj_p++;
+                  colR[jj_p][ii] = NA_REAL; jj_p++;
                 } else {
-                  double curDur=0.0;
-                  for (int jjj = di; jjj < ind->ndoses; jjj++){
-                    if (getDoseNumber(ind, jjj) == -curAmt){
-                      int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
+                  double curDur = 0.0;
+                  for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
+                    if (getDoseNumber(ind, jjj) == -curAmt_r) {
+                      int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
                       getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
-                      dullRate=0;
-                      if (nWhI == whI && nCmt == cmt){
-                        curDur = getTime_(ind->idose[jjj], ind) -
-                          getTime_(ind->ix[i], ind);
+#pragma omp atomic write
+                      dullRate = 0;
+                      if (nWhI == ind->whI && nCmt == ind->cmt) {
+                        curDur = getTime_(ind->idose[jjj], ind) - getTime_(ind->ix[i], ind);
                         break;
                       }
                     }
                   }
-                  // amt
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = curAmt*curDur;
-                  // rate
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = curAmt;
-                  // dur
-                  dfp = REAL(VECTOR_ELT(df, jj++));
-                  dfp[ii] = NA_REAL;
+                  colR[jj_p][ii] = curAmt_r * curDur; jj_p++;
+                  colR[jj_p][ii] = curAmt_r;           jj_p++;
+                  colR[jj_p][ii] = NA_REAL;            jj_p++;
                 }
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+                colR[jj_p][ii] = curIi; jj_p++;
                 break;
               default:
-                // Non infusion dose.
-                // Could be multiply/replace events
-                // amt
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curAmt;
-                // rate
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // dur
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = NA_REAL;
-                // ii
-                dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;
+                colR[jj_p][ii] = curAmt_r; jj_p++;
+                colR[jj_p][ii] = NA_REAL;  jj_p++;
+                colR[jj_p][ii] = NA_REAL;  jj_p++;
+                colR[jj_p][ii] = curIi;    jj_p++;
               }
             }
-          } else if (nevid2col)  {
-            //evid
-            dfi = INTEGER(VECTOR_ELT(df, jj++));
-            dfi[ii] = evid;
+          } else if (nevid2col) {
+            colI[jj_p][ii] = evid_p; jj_p++;
           }
           // time
-          dfp = REAL(VECTOR_ELT(df, jj++));
-          if (evid == 3) {
-            dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
-            if (fabs(dfp[ii]) < sqrt(DBL_EPSILON)) {
-              dfp[ii] = 0.0;
-            }
+          if (evid_p == 3) {
+            colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
+            if (fabs(colR[jj_p][ii]) < sqrt(DBL_EPSILON)) colR[jj_p][ii] = 0.0;
           } else {
-            dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+            colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift;
           }
+          jj_p++;
           // LHS
-          if (nlhs){
-            for (j = 0; j < nlhs; j++){
-              RObject curR = VECTOR_ELT(df, jj);
-              if (curR.hasAttribute("levels") && op->lhs_str[j] == 1) {
-                // factor; from string
-                IntegerVector cur = VECTOR_ELT(df, jj);
-                CharacterVector curL = cur.attr("levels");
-                dfi = INTEGER(cur);
-                int len = curL.size();
+          if (nlhs) {
+            for (j = 0; j < nlhs; j++) {
+              if (op->lhs_str[j] == 1) {
+                int _lhsVal;
                 if (ISNA(ind->lhs[j])) {
-                  dfi[ii] = NA_INTEGER;
+                  _lhsVal = NA_INTEGER;
                 } else {
-                  dfi[ii] = (int)(ind->lhs[j]);
-                  if (dfi[ii] < 1 || dfi[ii] > len) {
-                    dfi[ii] = NA_INTEGER;
-                  }
+                  _lhsVal = (int)(ind->lhs[j]);
+                  int _len = lhsLevelCount[j];
+                  if (_lhsVal < 1 || _lhsVal > _len) _lhsVal = NA_INTEGER;
                 }
-                jj++;
+                colI[jj_p][ii] = _lhsVal; jj_p++;
               } else {
-                dfp = REAL(VECTOR_ELT(df, jj));
-                dfp[ii] =ind->lhs[j];
-                jj++;
+                colR[jj_p][ii] = ind->lhs[j]; jj_p++;
               }
             }
           }
           // States
-          if (nPrnState){
-            for (j = 0; j < neq[0]; j++){
-              if (!rmState[j]){
-                dfp = REAL(VECTOR_ELT(df, jj));
-                dfp[ii] = (getSolve(i))[j] / scale[j];
-                jj++;
+          if (nPrnState) {
+            for (j = 0; j < neq[0]; j++) {
+              if (!rmState[j]) {
+                colR[jj_p][ii] = (getSolve(i))[j] / scale[j]; jj_p++;
               }
             }
           }
-          // Cov
-          int didUpdate = 0;
-          if (add_cov*ncov > 0){
-            // This takes care of the time varying covariates that may be shuffled.
-            _update_par_ptr(curT, solveId, rx, ind->idx);
-            didUpdate=1;
-            for (j = 0; j < add_cov*ncov; j++){
-              tmp = VECTOR_ELT(df, jj);
-              double tmpD = par_ptr[op->par_cov[j]-1];
-              if (TYPEOF(tmp) == REALSXP) {
-                dfp = REAL(tmp);
-                // is this ntimes = nAllTimes or nObs time for this subject...?
-                dfp[ii] = tmpD;
-              } else {
-                dfi = INTEGER(tmp);
-                // is this ntimes = nAllTimes or nObs time for this subject...?
-                dfi[ii] = (int)(tmpD);
-              }
-              jj++;
+          // Covariates
+          int didUpdate_p = 0;
+          if (add_cov*ncov > 0) {
+            _update_par_ptr(curT, solveid, rx, ind->idx);
+            didUpdate_p = 1;
+            for (j = 0; j < add_cov*ncov; j++) {
+              double tmpD = par_ptr_p[op->par_cov[j] - 1];
+              if (colType[jj_p] == REALSXP) { colR[jj_p][ii] = tmpD; }
+              else                           { colI[jj_p][ii] = (int)(tmpD); }
+              jj_p++;
             }
           }
-          if (add_cov*ncov0 > 0){
-            for (j = 0; j < add_cov*ncov0; j++){
-              tmp  = VECTOR_ELT(df, jj);
-              if (TYPEOF(tmp) == REALSXP){
-                dfp = REAL(tmp);
-                // is this ntimes = nAllTimes or nObs time for this subject...?
-                dfp[ii] = ind->par_ptr[rx->cov0[j]];
-              } else {
-                dfi = INTEGER(tmp);
-                // is this ntimes = nAllTimes or nObs time for this subject...?
-                dfi[ii] = (int)(ind->par_ptr[rx->cov0[j]]);
-              }
-              jj++;
+          if (add_cov*ncov0 > 0) {
+            for (j = 0; j < add_cov*ncov0; j++) {
+              if (colType[jj_p] == REALSXP) { colR[jj_p][ii] = ind->par_ptr[rx->cov0[j]]; }
+              else                          { colI[jj_p][ii] = (int)(ind->par_ptr[rx->cov0[j]]); }
+              jj_p++;
             }
           }
-          if (nkeep && didUpdate==0) _update_par_ptr(curT, solveId, rx, ind->idx);
-          for (j = 0; j < nkeep; j++){
-            tmp = VECTOR_ELT(df, jj);
-            if (TYPEOF(tmp) == REALSXP){
-              dfp = REAL(tmp);
-              // is this ntimes = nAllTimes or nObs time for this subject...?
-              dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind, curi);
-            } else if (TYPEOF(tmp) == STRSXP){
-              SET_STRING_ELT(tmp, ii, get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind, curi)));
-            } else if (TYPEOF(tmp) == LGLSXP) {
-              // Everything here is double
-              dfi = LOGICAL(tmp);
-              double curD = get_fkeep(j, curi + ind->ix[i], ind, curi);
-              if (ISNA(curD) || std::isnan(curD)) {
-                dfi[ii] = NA_LOGICAL;
-              } else {
-                dfi[ii] = (int) (curD);
-              }
+          if (nkeep && didUpdate_p == 0) _update_par_ptr(curT, solveid, rx, ind->idx);
+          for (j = 0; j < nkeep; j++) {
+            double _fv = get_fkeep(j, curi + ind->ix[i], ind, curi);
+            if (colType[jj_p] == REALSXP) {
+              colR[jj_p][ii] = _fv;
+            } else if (colType[jj_p] == STRSXP) {
+              // Should not reach here: runSerial=false only when !hasStrCol
+            } else if (colType[jj_p] == LGLSXP) {
+              if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
+              else                              colI[jj_p][ii] = (int)(_fv);
             } else {
-              dfi = INTEGER(tmp);
-              /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
-              // is this ntimes = nAllTimes or nObs time for this subject...?
-              double curD = get_fkeep(j, curi + ind->ix[i], ind, curi);
-              if (ISNA(curD) || std::isnan(curD)) {
-                dfi[ii] = NA_INTEGER;
-              } else {
-                dfi[ii] = (int) (curD);
-              }
+              if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_INTEGER;
+              else                              colI[jj_p][ii] = (int)(_fv);
             }
-            jj++;
+            jj_p++;
           }
-          //
-          if (doTBS){
-            dfp = REAL(VECTOR_ELT(df, jj));
-            dfp[ii] = ind->lambda;
-            jj++;
-            dfp = REAL(VECTOR_ELT(df, jj));
-            dfp[ii] = ind->yj;
-            jj++;
-            dfp = REAL(VECTOR_ELT(df, jj));
-            dfp[ii] = ind->logitLow;
-            jj++;
-            dfp = REAL(VECTOR_ELT(df, jj));
-            dfp[ii] = ind->logitHi;
-            jj++;
+          if (doTBS) {
+            colR[jj_p][ii] = ind->lambda;   jj_p++;
+            colR[jj_p][ii] = ind->yj;       jj_p++;
+            colR[jj_p][ii] = ind->logitLow; jj_p++;
+            colR[jj_p][ii] = ind->logitHi;  jj_p++;
           }
           ii++;
         }
         ind->_newind = 2;
       }
-      curi += ntimes;
-      nBadDose = ind->nBadDose;
-      BadDose = ind->BadDose;
-      if (nBadDose && csim == 0){
-        for (i = 0; i < nBadDose; i++){
-          if (BadDose[i] > op->extraCmt){
-            warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i],csub+1);
-          }
-        }
-      }
-      if (updateErr){
-        for (j=0; j < errNcol; j++){
-          par_ptr[svar[j]] = NA_REAL;
+      if (updateErr) {
+        for (j = 0; j < errNcol; j++) {
+          par_ptr_p[svar[j]] = NA_REAL;
         }
       }
       ind->inLhs = 0;
+    } // end parallel for (solveid)
+  }
+#endif // _OPENMP
+  if (runSerial) {
+    // Serial fill: uses pre-extracted colR/colI (avoids repeated VECTOR_ELT
+    // per cell).  Also handles STRSXP keep columns via SET_STRING_ELT.
+    int resetno = 0;
+    for (int csim = 0; csim < nsim; csim++) {
+      int curi = 0;
+      for (csub = 0; csub < nsub; csub++) {
+        resetno = 0;
+        neq[1] = csub + csim*nsub;
+        ind = &(rx->subjects[neq[1]]);
+        iniSubject(neq[1], 1, ind, op, rx, update_inis);
+        ntimes  = ind->n_all_times;
+        par_ptr = ind->par_ptr;
+        di = 0;
+        for (i = 0; i < ntimes; i++) {
+          ind->idx = i;
+          if (evid == 3) {
+            ind->curShift -= rx->maxShift;
+            resetno++;
+          }
+          double curT = getTime_(ind->ix[ind->idx], ind);
+          evid = getEvid(ind, ind->ix[ind->idx]);
+          if (evid == 9) continue;
+          if (isDose(evid)) {
+            getWh(getEvid(ind, ind->ix[i]), &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
+            switch (ind->whI) {
+            case EVIDF_INF_RATE:
+            case EVIDF_MODEL_DUR_ON:
+            case EVIDF_MODEL_DUR_OFF:
+            case EVIDF_MODEL_RATE_ON:
+            case EVIDF_MODEL_RATE_OFF:
+              dullRate = 0;
+              break;
+            case EVIDF_INF_DUR:
+              dullDur = 0;
+              break;
+            }
+            handleTlastInline(&curT, ind);
+          }
+          if (updateErr) {
+            for (j = 0; j < errNcol; j++) {
+              par_ptr[svar[j]] = errs[errNrow*j + kk];
+            }
+            if ((doDose && evid != 9) || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid == 0)) {
+              kk = min2(kk + 1, errNrow - 1);
+            }
+          }
+          if (nlhs) {
+            calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
+          }
+          if (subsetEvid == 1) {
+            if (isObs(evid) && evid >= 10) continue;
+            if (isDose(evid)) {
+              getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+              if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) {
+                dullRate = 0;
+                di++;
+                continue;
+              } else if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+                dullRate = 0;
+              } else if (whI == EVIDF_INF_DUR) {
+                dullDur = 0;
+              }
+              if (getDoseNumber(ind, di) <= 0) {
+                di++;
+                continue;
+              }
+            }
+          }
+          jj = 0;
+          int solveId = csim*nsub + csub;
+          if (doDose || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid == 0)) {
+            if (sm) { colI[jj][ii] = csim + 1;   jj++; }
+            if (md) { colI[jj][ii] = csub + 1;   jj++; }
+            if (ms) { colI[jj][ii] = resetno + 1; jj++; }
+            if (doDose) {
+              if (nmevid) {
+                if (isObs(evid)) {
+                  colI[jj][ii] = (evid >= 10) ? evid + 91 : evid; jj++;
+                  colI[jj][ii] = NA_INTEGER; jj++;  // cmt
+                  colI[jj][ii] = 0;          jj++;  // ss
+                  colR[jj][ii] = NA_REAL;    jj++;  // amt
+                  colR[jj][ii] = NA_REAL;    jj++;  // rate
+                  colR[jj][ii] = NA_REAL;    jj++;  // dur
+                  colR[jj][ii] = NA_REAL;    jj++;  // ii
+                } else {
+                  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+                  double curAmt = getDoseNumber(ind, di);
+                  if (evid == 3) {
+                    colI[jj][ii] = 3;
+                  } else if (whI == EVIDF_MODEL_RATE_OFF) {
+                    dullRate = 0;
+                    colI[jj][ii] = -1;
+                  } else if (whI == EVIDF_MODEL_DUR_OFF) {
+                    dullRate = 0;
+                    colI[jj][ii] = -2;
+                  } else {
+                    if (curAmt > 0) {
+                      if (whI == EVIDF_REPLACE)     { colI[jj][ii] = 5; }
+                      else if (whI == EVIDF_MULT)   { colI[jj][ii] = 6; }
+                      else {
+                        colI[jj][ii] = 1;
+                        if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_MODEL_RATE_ON) {
+                          dullRate = 0;
+                        } else if (whI == EVIDF_INF_DUR) {
+                          dullDur = 0;
+                        }
+                      }
+                    } else {
+                      if (whI == EVIDF_INF_RATE) {
+                        dullRate = 0; colI[jj][ii] = -10;
+                      } else if (whI == EVIDF_INF_DUR) {
+                        dullDur = 0;  colI[jj][ii] = -20;
+                      } else if (whI == EVIDF_REPLACE) { colI[jj][ii] = 5; }
+                      else if (whI == EVIDF_MULT)      { colI[jj][ii] = 6; }
+                      else {
+                        colI[jj][ii] = 1;
+                        if (whI == EVIDF_INF_DUR) dullDur = 0;
+                      }
+                    }
+                  }
+                  jj++;  // evid done
+                  if (evid == 2 || evid == 3) { colI[jj][ii] = NA_INTEGER; }
+                  else if (wh0 == 30)          { colI[jj][ii] = -cmt - 1; }
+                  else                         { colI[jj][ii] = cmt + 1; }
+                  jj++;  // cmt done
+                  switch (wh0) {
+                  case EVID0_SS2: dullSS = 0; colI[jj][ii] = 2; break;
+                  case EVID0_SS:  dullSS = 0; colI[jj][ii] = 1; break;
+                  case 40:
+                    dullRate = 0; dullSS = 0; dullIi = 0; colI[jj][ii] = 1; break;
+                  default: colI[jj][ii] = 0; break;
+                  }
+                  jj++;  // ss done
+                }
+              } else {
+                colI[jj][ii] = evid; jj++;
+                colR[jj][ii] = isObs(evid) ? NA_REAL : getDoseNumber(ind, di++); jj++;
+              }
+              if (nmevid && isDose(evid)) {
+                double curIi  = getIiNumber(ind, di);
+                if (curIi != 0) dullIi = 0;
+                double curAmt = getDoseNumber(ind, di++);
+                switch (ind->whI) {
+                case EVIDF_MODEL_RATE_ON:
+                  colR[jj][ii] = curAmt; jj++; colR[jj][ii] = -1.0;   jj++;
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = curIi; jj++;
+                  break;
+                case EVIDF_MODEL_DUR_ON:
+                  colR[jj][ii] = curAmt; jj++; colR[jj][ii] = -2.0;   jj++;
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = curIi; jj++;
+                  break;
+                case EVIDF_MODEL_RATE_OFF:
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = NA_REAL; jj++;
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = curIi;  jj++;
+                  break;
+                case EVIDF_MODEL_DUR_OFF:
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = NA_REAL; jj++;
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = curIi;  jj++;
+                  break;
+                case EVIDF_INF_DUR:
+                  if (curAmt < 0) {
+                    colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = NA_REAL; jj++;
+                    colR[jj][ii] = NA_REAL; jj++;
+                  } else {
+                    double curDur = 0.0;
+                    for (int jjj = di; jjj < ind->ndoses; jjj++) {
+                      if (getDoseNumber(ind, jjj) == -curAmt) {
+                        int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
+                        getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+                        dullRate = 0;
+                        if (nWhI == whI && nCmt == cmt) {
+                          curDur = getTime_(ind->idose[jjj], ind) - getTime_(ind->ix[i], ind);
+                          break;
+                        }
+                      }
+                    }
+                    colR[jj][ii] = curAmt*curDur; jj++;
+                    colR[jj][ii] = NA_REAL;        jj++;
+                    colR[jj][ii] = curDur;         jj++;
+                  }
+                  colR[jj][ii] = curIi; jj++;
+                  break;
+                case EVIDF_INF_RATE:
+                  if (curAmt < 0) {
+                    colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = NA_REAL; jj++;
+                    colR[jj][ii] = NA_REAL; jj++;
+                  } else {
+                    double curDur = 0.0;
+                    for (int jjj = di; jjj < ind->ndoses; jjj++) {
+                      if (getDoseNumber(ind, jjj) == -curAmt) {
+                        int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
+                        getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+                        dullRate = 0;
+                        if (nWhI == whI && nCmt == cmt) {
+                          curDur = getTime_(ind->idose[jjj], ind) - getTime_(ind->ix[i], ind);
+                          break;
+                        }
+                      }
+                    }
+                    colR[jj][ii] = curAmt*curDur; jj++;
+                    colR[jj][ii] = curAmt;         jj++;
+                    colR[jj][ii] = NA_REAL;        jj++;
+                  }
+                  colR[jj][ii] = curIi; jj++;
+                  break;
+                default:
+                  colR[jj][ii] = curAmt;  jj++; colR[jj][ii] = NA_REAL; jj++;
+                  colR[jj][ii] = NA_REAL; jj++; colR[jj][ii] = curIi;  jj++;
+                }
+              }
+            } else if (nevid2col) {
+              colI[jj][ii] = evid; jj++;
+            }
+            // time
+            if (evid == 3) {
+              colR[jj][ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
+              if (fabs(colR[jj][ii]) < sqrt(DBL_EPSILON)) colR[jj][ii] = 0.0;
+            } else {
+              colR[jj][ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+            }
+            jj++;
+            // LHS
+            if (nlhs) {
+              for (j = 0; j < nlhs; j++) {
+                if (op->lhs_str[j] == 1) {
+                  int _lhsVal;
+                  if (ISNA(ind->lhs[j])) {
+                    _lhsVal = NA_INTEGER;
+                  } else {
+                    _lhsVal = (int)(ind->lhs[j]);
+                    int _len = lhsLevelCount[j];
+                    if (_lhsVal < 1 || _lhsVal > _len) _lhsVal = NA_INTEGER;
+                  }
+                  colI[jj][ii] = _lhsVal; jj++;
+                } else {
+                  colR[jj][ii] = ind->lhs[j]; jj++;
+                }
+              }
+            }
+            // States
+            if (nPrnState) {
+              for (j = 0; j < neq[0]; j++) {
+                if (!rmState[j]) {
+                  colR[jj][ii] = (getSolve(i))[j] / scale[j]; jj++;
+                }
+              }
+            }
+            // Covariates
+            int didUpdate = 0;
+            if (add_cov*ncov > 0) {
+              _update_par_ptr(curT, solveId, rx, ind->idx);
+              didUpdate = 1;
+              for (j = 0; j < add_cov*ncov; j++) {
+                double tmpD = par_ptr[op->par_cov[j] - 1];
+                if (colType[jj] == REALSXP) { colR[jj][ii] = tmpD; }
+                else                        { colI[jj][ii] = (int)(tmpD); }
+                jj++;
+              }
+            }
+            if (add_cov*ncov0 > 0) {
+              for (j = 0; j < add_cov*ncov0; j++) {
+                if (colType[jj] == REALSXP) { colR[jj][ii] = ind->par_ptr[rx->cov0[j]]; }
+                else                        { colI[jj][ii] = (int)(ind->par_ptr[rx->cov0[j]]); }
+                jj++;
+              }
+            }
+            if (nkeep && didUpdate == 0) _update_par_ptr(curT, solveId, rx, ind->idx);
+            for (j = 0; j < nkeep; j++) {
+              if (colType[jj] == REALSXP) {
+                colR[jj][ii] = get_fkeep(j, curi + ind->ix[i], ind, curi);
+              } else if (colType[jj] == STRSXP) {
+                SET_STRING_ELT(VECTOR_ELT(df, jj), ii,
+                               get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind, curi)));
+              } else if (colType[jj] == LGLSXP) {
+                double curD = get_fkeep(j, curi + ind->ix[i], ind, curi);
+                if (ISNA(curD) || std::isnan(curD)) colI[jj][ii] = NA_LOGICAL;
+                else                                colI[jj][ii] = (int)(curD);
+              } else {
+                double curD = get_fkeep(j, curi + ind->ix[i], ind, curi);
+                if (ISNA(curD) || std::isnan(curD)) colI[jj][ii] = NA_INTEGER;
+                else                                colI[jj][ii] = (int)(curD);
+              }
+              jj++;
+            }
+            if (doTBS) {
+              colR[jj][ii] = ind->lambda;   jj++;
+              colR[jj][ii] = ind->yj;       jj++;
+              colR[jj][ii] = ind->logitLow; jj++;
+              colR[jj][ii] = ind->logitHi;  jj++;
+            }
+            ii++;
+          }
+          ind->_newind = 2;
+        }
+        curi += ntimes;
+        nBadDose = ind->nBadDose;
+        BadDose  = ind->BadDose;
+        if (nBadDose && csim == 0) {
+          for (i = 0; i < nBadDose; i++) {
+            if (BadDose[i] > op->extraCmt) {
+              warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i], csub+1);
+            }
+          }
+        }
+        if (updateErr) {
+          for (j = 0; j < errNcol; j++) {
+            par_ptr[svar[j]] = NA_REAL;
+          }
+        }
+        ind->inLhs = 0;
+      }
+    }
+  } // end if (runSerial)
+  // Emit bad-dose warnings after the parallel region (R API not allowed inside).
+  if (!runSerial) {
+    for (int _csub = 0; _csub < nsub; _csub++) {
+      rx_solving_options_ind *_ind = &(rx->subjects[_csub]); // csim==0 subjects
+      nBadDose = _ind->nBadDose;
+      BadDose  = _ind->BadDose;
+      if (nBadDose) {
+        for (i = 0; i < nBadDose; i++) {
+          if (BadDose[i] > op->extraCmt) {
+            warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i], _csub+1);
+          }
+        }
+      }
     }
   }
   IntegerVector sexp_rownames = IntegerVector(2);
