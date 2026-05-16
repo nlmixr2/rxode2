@@ -58,6 +58,10 @@ int _isRstudio = 0;
 extern "C" void setRstudioPrint(int rstudio);
 extern "C" void RSprintf(const char *format, ...);
 
+// Pre-generated eta batch draw (defined in rxthreefry.cpp)
+extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
+extern "C" void rxEtaPreDeactivate(void);
+
 extern "C" SEXP _rxHasOpenMp(){
   SEXP ret = PROTECT(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
@@ -70,6 +74,107 @@ extern "C" SEXP _rxHasOpenMp(){
 }
 
 rx_solve rx_global;
+
+// ── Per-thread LSODA context pool ────────────────────────────────────────────
+// Eliminates one malloc/free pair of the large alloc_mem block per subject.
+// Pattern mirrors the __linCmtA / __linCmtB pool in linCmt.cpp.
+struct lsoda_pool_t {
+  struct lsoda_context_t ctx;          // context (holds common ptr, function, etc.)
+  struct lsoda_opt_t     opt;          // persistent opt storage ctx->opt points here
+  int                    allocated_neq; // neq used for alloc_mem; 0 = not prepared yet
+};
+
+static std::vector<lsoda_pool_t> __lsodaCtxPool;
+
+extern "C" void ensureLsodaCtxPool(int nCores) {
+  if ((int)__lsodaCtxPool.size() < nCores) {
+    __lsodaCtxPool.resize(nCores); // value-initializes new slots (all zero)
+  }
+}
+
+extern "C" void freeLsodaCtxPool() {
+  for (int i = 0; i < (int)__lsodaCtxPool.size(); i++) {
+    lsoda_pool_t &p = __lsodaCtxPool[i];
+    if (p.allocated_neq > 0 && p.ctx.common != NULL) {
+      if (p.ctx.error) {
+        free(p.ctx.error);
+        p.ctx.error = NULL;
+      }
+      lsoda_free(&p.ctx);
+      p.ctx.common = NULL;
+    }
+    p.allocated_neq = 0;
+  }
+  __lsodaCtxPool.clear();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Per-thread Fortran LSODA rwork/iwork pool ────────────────────────────────
+// Eliminates false-sharing on the global rwork/iwork arrays when par_lsoda runs
+// in parallel.  Each thread gets its own pre-allocated work arrays sized once
+// at setup time (22 + neq*max(16,neq+9) + 1 doubles; 20 + neq + 1 ints).
+struct rwork_pool_t {
+  double      *rworkp = NULL;  // real work array
+  int         *iworkp = NULL;  // integer work array
+  unsigned int rworki = 0;  // current capacity (element count)
+  unsigned int iworki = 0;
+};
+
+static std::vector<rwork_pool_t> __rworkPool;
+
+extern "C" void ensureRworkPool(int nCores, int lrw, int liw) {
+  int need = lrw + 1;
+  int needI = liw + 1;
+  if ((int)__rworkPool.size() < nCores)
+    __rworkPool.resize(nCores); // zero-initialises new slots
+  for (int i = 0; i < nCores; i++) {
+    rwork_pool_t &p = __rworkPool[i];
+    if ((int)p.rworki < need) {
+      double *np;
+      if (p.rworki == 0 || p.rworkp == NULL) {
+        if (p.rworkp != NULL) free(p.rworkp);
+        np = (double *)calloc((size_t)need, sizeof(double));
+      } else {
+        np = (double *)realloc(p.rworkp, (size_t)need * sizeof(double));
+        if (np) memset(np + p.rworki, 0, ((size_t)need - p.rworki) * sizeof(double));
+      }
+      if (!np) (Rf_error)("ensureRworkPool: out of memory allocating rwork (%d doubles)", need);
+      p.rworkp = np;
+      p.rworki = (unsigned int)need;
+    }
+    if ((int)p.iworki < needI) {
+      int *np;
+      if (p.iworki == 0 || p.iworkp == NULL) {
+        if (p.iworkp != NULL) free(p.iworkp);
+        np = (int *)calloc((size_t)needI, sizeof(int));
+      } else {
+        np = (int *)realloc(p.iworkp, (size_t)needI * sizeof(int));
+        if (np) memset(np + p.iworki, 0, ((size_t)needI - p.iworki) * sizeof(int));
+      }
+      if (!np) (Rf_error)("ensureRworkPool: out of memory allocating iwork (%d ints)", needI);
+      p.iworkp = np;
+      p.iworki = (unsigned int)needI;
+    }
+  }
+}
+
+extern "C" void freeRworkPool() {
+  for (int i = 0; i < (int)__rworkPool.size(); i++) {
+    rwork_pool_t &p = __rworkPool[i];
+    if (p.rworki > 0 && p.rworkp != NULL) {
+      free(p.rworkp);
+      p.rworkp = NULL;
+      p.rworki = 0;
+    }
+    if (p.iworki > 0 && p.iworkp != NULL) {
+      free(p.iworkp);
+      p.iworkp = NULL;
+      p.iworki = 0;
+    }
+  }
+  __rworkPool.clear();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 extern "C" void nullGlobals() {
   lineNull(&(rx_global.factors));
@@ -181,7 +286,6 @@ rx_solving_options_ind *inds_global = NULL;
 
 rx_solving_options_ind *inds_thread = NULL;
 
-int gitol=0, gitask = 1, giopt = 0, gliw=0, glrw = 0;
 
 void par_flush_console() {
 #if !defined(WIN32) && !defined(__WIN32) && !defined(__WIN32__)
@@ -531,22 +635,6 @@ int global_jt = 2;
 int global_mf = 22;
 int global_debug = 0;
 
-double *global_rworkp;
-int *global_iworkp;
-
-unsigned int global_rworki = 0;
-double *global_rwork(unsigned int mx){
-  if (mx >= global_rworki){
-    bool first = (global_rworki == 0);
-    global_rworki = mx+1024;
-    if (first) {
-      global_rworkp = R_Calloc(global_rworki, double);
-    } else {
-      global_rworkp = R_Realloc(global_rworkp, global_rworki, double);
-    }
-  }
-  return global_rworkp;
-}
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
@@ -1160,10 +1248,15 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
-        F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
-                         &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                         istate, &giopt, global_rworkp,
-                         &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+        {
+          int _lrw = 22 + op->neq * max(16, op->neq + 9);
+          int _liw = 20 + op->neq;
+          int _itol = 1, _itask = 1, _iopt = 1;
+          F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
+                           &_itol, &(op->RTOL), &(op->ATOL), &_itask,
+                           istate, &_iopt, __rworkPool[0].rworkp,
+                           &_lrw, __rworkPool[0].iworkp, &_liw, jdum_lsoda, &global_jt);
+        }
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
       }
@@ -2721,37 +2814,69 @@ extern "C" void ind_indLin(rx_solve *rx,
 extern "C" void par_indLin(rx_solve *rx){
   assignFuns();
   rx_solving_options *op = &op_global;
+#ifdef _OPENMP
+  int cores = op->cores;
+#else
   int cores = 1;
+#endif
   uint32_t nsub = rx->nsub, nsim = rx->nsim;
   int nsolve = (int)(nsim*nsub); // safe: overflow guard ensures nsim*nsub <= INT_MAX
   int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
-  /* double *yp0=(double*) malloc((op->neq)*nsim*nsub*sizeof(double)); */
   int curTick=0;
   int cur=0;
   // Breaking of of loop ideas came from http://www.thinkingparallel.com/2007/06/29/breaking-out-of-loops-in-openmp/
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
-  // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
-  // volatile ensures reads/writes are not cached in registers across threads
-  volatile int abort = 0;
-  // FIXME parallel
-  uint32_t seed0 = getRxSeed1(1);
+  // Use omp atomic read/write for thread-safe flag access across OpenMP threads
+  int abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(cores) schedule(dynamic,1)
+#endif
   for (int solveid = 0; solveid < nsolve; solveid++){
-    if (abort == 0){
-      setSeedEng1(seed0 + solveid - 1 );
+    int localAbort;
+#pragma omp atomic read
+    localAbort = abort;
+    if (localAbort == 0){
+      setSeedEng1(seed0 + solveid - 1);
       ind_indLin(rx, solveid, update_inis);
-      if (displayProgress){ // Can only abort if it is long enough to display progress.
-        curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
+      if (displayProgress){
+#pragma omp critical
+        cur++;
+#ifdef _OPENMP
+        if (omp_get_thread_num() == 0) // only in master thread!
+#endif
+          {
+            curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
+            int localAbort2;
+#pragma omp atomic read
+            localAbort2 = abort;
+            if (localAbort2 == 0){
+              if (checkInterrupt()) {
+                int newAbort = 1;
+#pragma omp atomic write
+                abort = newAbort;
+              }
+            }
+          }
       }
     }
   }
   setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1){
     op->abort = 1;
-    /* yp0 = NULL; */
     par_progress(cur, nsolve, curTick, cores, t0, 1);
   } else {
     if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
+  }
+  if (displayProgress) {
+    int doIt = isProgSupported();
+    if (doIt == -1){
+    } else if (isRstudio() || doIt == 0){
+      RSprintf("\n");
+    } else {
+      RSprintf("\r                                                                                \r");
+    }
   }
 }
 
@@ -2786,19 +2911,30 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double *yp;
   int neqOde = *neq - op->numLin - op->numLinSens;
   int localBadSolve = 0;
-  struct lsoda_context_t * ctx = lsoda_create_ctx();
-  if (ctx == NULL) {
-    rxSolveFreeC();
-    (Rf_error)(_("not enough memory for lsoda context"));
+
+  // ── LSODA context: use per-thread pool when available (avoids per-subject
+  //    malloc/free of the large alloc_mem working-array block).
+  bool _usingPool = (!__lsodaCtxPool.empty());
+  lsoda_pool_t *_pool = _usingPool
+    ? &__lsodaCtxPool[rx_get_thread((int)__lsodaCtxPool.size())]
+    : NULL;
+  struct lsoda_context_t *ctx;
+  if (_usingPool) {
+    ctx = &_pool->ctx;
+  } else {
+    ctx = lsoda_create_ctx();
+    if (ctx == NULL) {
+      rxSolveFreeC();
+      (Rf_error)(_("not enough memory for lsoda context"));
+    }
   }
   ctx->function = (_lsoda_f)dydt_liblsoda;
   ctx->data = neq;
   ctx->neq = neqOde;
   ctx->state = 1;
-  ctx->error=NULL;
+  ctx->error = NULL;
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) {
-    free(ctx);
-    ctx = NULL;
+    if (!_usingPool) free(ctx);
     return;
   }
   // x = ind->all_times;
@@ -2810,7 +2946,42 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     opt.rtol = ind->rtol2;
     opt.atol = ind->atol2;
   }
-  lsoda_prepare(ctx, &opt);
+  if (_usingPool) {
+    _pool->opt = opt; // copy opt into pool so ctx->opt stays valid across subjects
+    if (_pool->allocated_neq != neqOde) {
+      // neq changed (or first use): free old memory and re-prepare
+      if (_pool->allocated_neq > 0 && ctx->common != NULL) {
+        lsoda_free(ctx);
+        ctx->common = NULL;
+      }
+      if (!lsoda_prepare(ctx, &_pool->opt)) {
+        freeLsodaCtxPool();
+        rxSolveFreeC();
+        (Rf_error)(_("not enough memory for lsoda context"));
+      }
+      _pool->allocated_neq = neqOde;
+    } else {
+      // neq changed or reusing pool slot: free and re-prepare to guarantee
+      // identical state to a first-subject solve (lsoda_reset is insufficient
+      // because check_opt normalises mxordn/mxords on state=1 entry).
+      lsoda_free(ctx);
+      ctx->common = NULL;
+      if (!lsoda_prepare(ctx, &_pool->opt)) {
+        freeLsodaCtxPool();
+        rxSolveFreeC();
+        (Rf_error)(_("not enough memory for lsoda context"));
+      }
+      _pool->allocated_neq = neqOde;
+      ctx->function = (_lsoda_f)dydt_liblsoda;
+      ctx->data = neq;
+      ctx->neq = neqOde;
+      ctx->state = 1;
+      ctx->error = NULL;
+      ctx->opt = &_pool->opt;
+    }
+  } else {
+    lsoda_prepare(ctx, &opt);
+  }
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
@@ -2860,7 +3031,9 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idx = -1-trueIdx;
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-            ctx->state = 1;
+            // Phantom events (evid=7) don't modify yp[] or InfusionRate[],
+            // so LSODA can safely continue from state=2 without reinit.
+            if (ind->wh0 != EVID0_PHANTOM) ctx->state = 1;
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
@@ -2903,7 +3076,9 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
-        if (rx->istateReset) ctx->state = 1;
+        // Phantom events (evid=7) don't modify yp[] or InfusionRate[],
+        // so LSODA can safely continue from state=2 without reinit.
+        if (rx->istateReset && ind->wh0 != EVID0_PHANTOM) ctx->state = 1;
         xp = xout;
       }
       int _mtime_requeued = 0;
@@ -2926,8 +3101,16 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ind->solvedIdx = i;
   }
   // Reset LHS to NA
-  lsoda_free(ctx);
-  free(ctx);
+  if (_usingPool) {
+    // Pool: keep the context alive for the next subject; just clean up any error.
+    if (ctx->error) {
+      free(ctx->error);
+      ctx->error = NULL;
+    }
+  } else {
+    lsoda_free(ctx);
+    free(ctx);
+  }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -3157,7 +3340,7 @@ extern "C" void par_liblsoda(rx_solve *rx){
   int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(op->cores)
+#pragma omp parallel for num_threads(op->cores) schedule(dynamic,1)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++){
     int localAbort;
@@ -3207,19 +3390,6 @@ extern "C" void par_liblsoda(rx_solve *rx){
   }
 }
 
-unsigned int global_iworki = 0;
-int *global_iwork(unsigned int mx){
-  if (mx >= global_iworki){
-    bool first = (global_iworki == 0);
-    global_iworki = mx+1024;
-    if (first) {
-      global_iworkp = R_Calloc(global_iworki, int);
-    } else {
-      global_iworkp = R_Realloc(global_iworkp, global_iworki, int);
-    }
-  }
-  return global_iworkp;
-}
 
 double *global_InfusionRatep;
 unsigned int global_InfusionRatei = 0;
@@ -3275,11 +3445,9 @@ extern "C" void rxOptionsIni() {
 }
 
 extern "C" void rxOptionsFree(){
-  if (global_iworki != 0) R_Free(global_iworkp);
-  global_iworki = 0;
-
-  if (global_rworki != 0) R_Free(global_rworkp);
-  global_rworki = 0;
+  freeLsodaCtxPool();
+  freeRworkPool();
+  rxEtaPreFree();
 
   if (global_InfusionRatei != 0) R_Free(global_InfusionRatep);
   global_InfusionRatei = 0;
@@ -3311,9 +3479,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
 
   int istate = 1, i = 0;
-  gitol = 1; gitask = 1; giopt = 1;
-  gliw = liw;
-  glrw = lrw;
+  // Thread-local copies of solver flags (replaces shared globals gitol/gitask/giopt/gliw/glrw)
+  int itol = 1, itask = 1, iopt = 1;
 
   std::fill(rwork, rwork + lrw + 1, 0.0); // Works because it is a double
   std::fill(iwork, iwork + liw + 1, 0); // Works because it is a integer
@@ -3377,8 +3544,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                             &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &itol, &(op->RTOL), &(op->ATOL), &itask,
+                             &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -3391,15 +3558,16 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->idx = -1-trueIdx;
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-            istate = 1;
+            // Phantom events (evid=7) don't modify yp[] or InfusionRate[].
+            if (ind->wh0 != EVID0_PHANTOM) istate = 1;
             ind->ixds = ixds; // This is a fake dose, real dose stays in place
             ind->idx = idx;
             ind->idxExtra++;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
-              F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                               &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+              F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &itol, &(op->RTOL), &(op->ATOL), &itask,
+                               &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
               neq[0] = eff;
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -3412,11 +3580,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
-                           &xp, &xout, &gitol,
+                           &xp, &xout, &itol,
                            &(op->RTOL),
                            &(op->ATOL),
-                           &gitask,
-                           &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+                           &itask,
+                           &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -3437,7 +3605,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
-        if (rx->istateReset) istate = 1;
+        // Phantom events (evid=7) don't modify yp[] or InfusionRate[].
+        if (rx->istateReset && ind->wh0 != EVID0_PHANTOM) istate = 1;
         xp = xout;
       }
       int _mtime_requeued = 0;
@@ -3470,14 +3639,11 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
   neq[0] = op->neq;
   neq[1] = 0;
 
-  // Set jt to 1 if full is specified.
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0];
-  double *rwork;
-  int *iwork;
   if (global_debug)
     RSprintf("JT: %d\n",cjt);
-  rwork = global_rwork(lrw+1);
-  iwork = global_iwork(liw+1);
+  double *rwork = __rworkPool[0].rworkp;
+  int    *iwork = __rworkPool[0].iworkp;
   ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, cjt,
              dydt_ls, u_inis, jdum);
 }
@@ -3488,41 +3654,41 @@ extern "C" void par_lsoda(rx_solve *rx) {
   rx_solving_options *op = rx->op;
   int displayProgress = (op->nDisplayProgress <= nsolve);
   clock_t t0 = clock();
-  int neq[2];
-  neq[0] = op->neq;
-  neq[1] = 0;
-  /* yp = global_yp(neq[0]); */
 
-  // Set jt to 1 if full is specified.
-  int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0], jt = global_jt;
-  double *rwork;
-  int *iwork;
+  int baseNeq = op->neq;
+  int lrw = 22 + baseNeq * max(16, baseNeq + 9), liw = 20 + baseNeq;
+  int jt = global_jt;
   if (global_debug)
-    RSprintf("JT: %d\n",jt);
-  rwork = global_rwork(lrw+1);
-  iwork = global_iwork(liw+1);
+    RSprintf("JT: %d\n", jt);
+
+  // Fortran dlsoda uses non-reentrant COMMON blocks — must remain single-threaded.
+  // Pool slot 0 is always pre-allocated by ensureRworkPool before solving begins.
+  double *rwork = __rworkPool[0].rworkp;
+  int    *iwork = __rworkPool[0].iworkp;
 
   int curTick = 0;
   int abort = 0;
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
-      setSeedEng1(seed0 + solveid - 1 );
+      setSeedEng1(seed0 + solveid - 1);
+      int neq[2];
+      neq[0] = baseNeq;
+      neq[1] = 0;
       ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
-      if (displayProgress){ // Can only abort if it is long enough to display progress.
+      if (displayProgress){
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
 #ifdef _OPENMP
-        if (omp_get_thread_num() == 0) {// only in master thread!
+        if (omp_get_thread_num() == 0) {
 #endif
         if (checkInterrupt()){
-          abort =1;
+          abort = 1;
           break;
         }
 #ifdef _OPENMP
         }
 #endif
-
       }
     }
   }
@@ -4916,6 +5082,14 @@ extern "C" void par_solve(rx_solve *rx) {
       par_linCmt(rx);
       return;
     } else {
+#ifdef _OPENMP
+      int cores = op->cores;
+#else
+      int cores = 1;
+#endif
+      // Pre-generate all eta draws before the parallel loop.
+      // simeta() reads from the buffer instead of calling rxRmvnA() per subject.
+      rxPreGenEta(rx, cores);
       switch(op->stiff){
       case 3:
         par_indLin(rx);
@@ -4935,6 +5109,21 @@ extern "C" void par_solve(rx_solve *rx) {
         par_dop(rx);
         break;
       }
+      rxEtaPreDeactivate();
+    }
+  } else {
+    // Pure-LHS (neq==0) models: the ODE solve block is skipped entirely.
+    // Call iniSubject for every subject so that:
+    //   (1) _setIndPointersByThread sets ind->timeThread (non-NULL invariant
+    //       that rxode2_df relies on), and
+    //   (2) sortInd initialises ix[] (required for correct event iteration
+    //       in rxode2_df).
+    // rxSolveFree() at the start of rxSolve_ clears timeThread for any
+    // subject that previously owned its allocation, so this loop is the
+    // only place those pointers are restored before output creation.
+    uint32_t nsubAll = (uint32_t)rx->nsub * rx->nsim;
+    for (uint32_t _sid = 0; _sid < nsubAll; _sid++) {
+      iniSubject((int)_sid, 1, &rx->subjects[_sid], op, rx, update_inis);
     }
   }
   par_progress_0=0;

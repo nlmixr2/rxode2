@@ -14,6 +14,7 @@
 #include "rxthreefry.h"
 #include "rx2api.h"
 #include "mlogit.h"
+#include "rxode2_altrep.h"
 
 SEXP _rxHasOpenMp(void);
 
@@ -945,6 +946,7 @@ void R_init_rxode2(DllInfo *info){
   R_registerRoutines(info, cMethods, callMethods, NULL, NULL);
   R_useDynamicSymbols(info, FALSE);
   rxOptionsIni();
+  rxode2_init_altrep_class(info);
   initRxThreads();
   avoid_openmp_hang_within_fork();
   nullGlobals();

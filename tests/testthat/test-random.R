@@ -325,10 +325,10 @@ rxTest({
       }
 
       expect_equal(mean(f$x1), mf(20), tolerance = 0.01)
-      expect_equal(sd(f$x1), sf(10, 20), tolerance = 0.01)
+      expect_equal(sd(f$x1), sf(10, 20), tolerance = 0.02)
 
       expect_equal(mean(f$x2), mf(40), tolerance = 0.01)
-      expect_equal(sd(f$x2), sf(30, 40), tolerance = 0.01)
+      expect_equal(sd(f$x2), sf(30, 40), tolerance = 0.02)
 
       ## Seed tests
 

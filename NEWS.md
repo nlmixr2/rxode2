@@ -3,6 +3,27 @@
 - Various low level fixes to allow `nlmixr2est` to have parallelized
   focei.
 
+- Parallelized the rxode2 data.frame creation (as long as you are not keeping
+  character values, since they touch the R API).
+
+- Use ALTREP for `id` (when the number of output rows per id is the
+  same) and `sim.id` in outputs.
+
+- Change compile flags and compiler directives for rxode2 models to
+  speed up how they run.
+
+- No longer introduce a discontinuity for phantom events (evid=7).
+
+- Have a pre-allocated context pool for lsoda in both liblsoda and
+  lsoda (faster because memory doesn't need to allocated and
+  deallocated so often)
+
+- Change OMP scheduling to dynamic to try to help load-balance the ode
+  solving per subject.
+
+- Simulation normal random numbers before integrating them into your
+  solve.
+
 - Add `evid_()` function to allow arbitrary doses and observations in
   a rxode2 model.
 

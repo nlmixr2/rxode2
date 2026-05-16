@@ -1,3 +1,5 @@
+^benchmark/$
+^PERFORMACE_PLAN.md$
 ^.antigravity/$
 ^.claude$
 ^.vexp$

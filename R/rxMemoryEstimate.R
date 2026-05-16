@@ -40,6 +40,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemSummarizeDat <- function(dat) {
+  evid <- .  <- NULL  # nolint
   .groups <- attr(dat, "rxHomGroups", exact = TRUE)
   if (is.data.frame(dat) && !is.null(.groups) && "evid" %in% names(dat)) {
     .idCol <- grep("^id$", names(dat), ignore.case = TRUE, value = TRUE)[1]
@@ -98,8 +99,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
       ndoses = sum(.dt[["evid"]] != 0L, na.rm = TRUE)
     )
   } else {
-    .agg <- .dt[, .(nobs = sum(evid == 0L, na.rm = TRUE),
-                    ndoses = sum(evid != 0L, na.rm = TRUE)),
+    .agg <- .dt[, list(nobs = sum(evid == 0L, na.rm = TRUE),
+                       ndoses = sum(evid != 0L, na.rm = TRUE)),
                 by = .idCol]
     .ret <- rxMemSummary(id = .agg[[.idCol]], nobs = .agg$nobs, ndoses = .agg$ndoses)
   }
@@ -482,7 +483,7 @@ rxMemoryEstimate <- function(
   neps      = 0L,
   ncov      = 0L,
   nsim      = 1L,
-  cores     = 0L,
+  cores     = 1L,
   nMtime    = 0L,
   extraCmt  = 0L,
   linB      = FALSE,
