@@ -6145,8 +6145,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (!rxIsNull(_sf) && Rf_isString(_sf) && LENGTH(_sf) == 1) {
         SEXP _sfSexp = STRING_ELT(_sf, 0);
         if (_sfSexp != NA_STRING) {
-          SEXP _pathSexp = PROTECT(Rf_ScalarString(_sfSexp));
-          SEXP cState = PROTECT(rxSaveState_());
+          // Use Rcpp RAII so the protect/unprotect ordering is always correct
+          // regardless of what other Rcpp objects are pushed onto the stack
+          // between here and the saveFn call.
+          RObject _pathSexp(Rf_ScalarString(_sfSexp));
+          RObject cState(rxSaveState_());
           Environment rxenv = Environment::namespace_env("rxode2");
           if (rxenv.exists(".rxSaveStateBundle")) {
             Function saveFn = rxenv[".rxSaveStateBundle"];
@@ -6158,7 +6161,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
             saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
                    params, events, inits);
           }
-          UNPROTECT(2);
         }
       }
     }
