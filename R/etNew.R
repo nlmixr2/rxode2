@@ -956,6 +956,7 @@
 #'
 #' @noRd
 .etMaterialize <- function(et) {
+  id <- NULL # for R cmd check since data.table uses id := ...
   .env <- .rxEtEnv(et)
   .groups <- .etGetGroups(.env)
 
