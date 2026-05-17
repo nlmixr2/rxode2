@@ -950,6 +950,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     dense=FALSE,
+                    oomFile=NULL,
+                    oomChunkSize=NULL,
+                    oomParallel=0L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1365,6 +1368,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
       }
     }
+    if (!is.null(oomFile))
+      checkmate::assertCharacter(oomFile, len = 1, any.missing = FALSE)
+    if (!is.null(oomChunkSize))
+      checkmate::assertIntegerish(oomChunkSize, lower = 1, len = 1)
+    checkmate::assertIntegerish(oomParallel, lower = 0, len = 1)
+    oomParallel <- as.integer(oomParallel)
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1535,6 +1544,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
       dense=dense,
+      oomFile=oomFile,
+      oomChunkSize=oomChunkSize,
+      oomParallel=oomParallel,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2481,6 +2493,28 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     events
   }
+
+  if (!is.null(.ctl$oomFile)) {
+    return(.rxSolveOom(object, params = params, events = events,
+                       inits = inits, .ctl = .ctl, .envir = envir))
+  }
+
+  if (is.null(.ctl$oomFile) && !.serializeInput && .setupOnly == 0L) {
+    .oomEst <- tryCatch(
+      rxMemoryEstimate(.eventsForSolve, model = object, control = .ctl),
+      error = function(e) NULL
+    )
+    if (!is.null(.oomEst) && !is.na(.oomEst$freeRamBytes) && .oomEst$freeRamBytes > 0) {
+      if (as.numeric(.oomEst$total) > .oomEst$freeRamBytes * 0.90) {
+        stop(sprintf(
+          "Solve requires %.1f GB but only %.1f GB appears free.\n",
+          as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
+          "Re-run with rxControl(oomFile = 'path/prefix') to solve in chunks.",
+          call. = FALSE)
+      }
+    }
+  }
+
   .replayFallbackParams <- params
   .replayFallbackEvents <- .eventsForSolve
   .replayFallbackInits <- inits
