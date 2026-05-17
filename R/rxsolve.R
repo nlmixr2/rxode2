@@ -2496,7 +2496,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .rxAssertSerializedSolveArgs(extras = "serializeFile", file = params)
   } else if (.isSer && .serializeMode == "temp") {
     .serializeMode <- "none"
-    .ctl$serializeFile <- NULL
+    .ctl["serializeFile"] <- list(NULL)
   }
 
   .callSolve <- function() {
@@ -2568,7 +2568,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmpSerializeFile
     .isSer <- TRUE
     .tempSerializedReplay <- TRUE
-    .ctl$serializeFile <- NULL
+    .ctl["serializeFile"] <- list(NULL)
   }
 
   if (getOption("rxode2.debug", FALSE)) {

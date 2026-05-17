@@ -6147,30 +6147,16 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolve_normalizeParms(object, rxControl, specParams, extraArgs,
                            pars, ev1, inits, rxSolveDat);
     sortIds(rx, 1);
+    // write pre-integration state if serializeFile is set
 
-    // Serialization hook: write pre-integration state if serializeFile is set
-    {
-      RObject _sf = rxControl[Rxc_serializeFile];
-      if (!rxIsNull(_sf) && Rf_isString(_sf) && LENGTH(_sf) == 1) {
-        SEXP _sfSexp = STRING_ELT(_sf, 0);
-        if (_sfSexp != NA_STRING) {
-          // Use Rcpp RAII so the protect/unprotect ordering is always correct
-          // regardless of what other Rcpp objects are pushed onto the stack
-          // between here and the saveFn call.
-          RObject _pathSexp(Rf_ScalarString(_sfSexp));
-          RObject cState(rxSaveState_());
-          Environment rxenv = Environment::namespace_env("rxode2");
-          if (rxenv.exists(".rxSaveStateBundle")) {
-            Function saveFn = rxenv[".rxSaveStateBundle"];
-            saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
-                   params, events, inits);
-          } else {
-            Language call(Rf_install("get"), ".rxSaveStateBundle", Language(Rf_install("asNamespace"), "rxode2"));
-            Function saveFn = call.eval();
-            saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
-                   params, events, inits);
-          }
-        }
+    RObject _sf = rxControl[Rxc_serializeFile];
+    if (!rxIsNull(_sf) && Rf_isString(_sf) && LENGTH(_sf) == 1) {
+      if (STRING_ELT(_sf, 0) != NA_STRING) {
+        RObject _pathSexp(Rf_ScalarString(STRING_ELT(_sf, 0)));
+        RObject cState(rxSaveState_());
+        Function saveFn = getRxFn(".rxSaveStateBundle");
+          saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
+                 params, events, inits);
       }
     }
 
