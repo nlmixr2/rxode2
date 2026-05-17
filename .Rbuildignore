@@ -1,5 +1,6 @@
-^benchmark/$
+^bench/$
 ^PERFORMACE_PLAN.md$
+^AGENT_STATUS.md$
 ^.antigravity/$
 ^.claude$
 ^.vexp$
