@@ -120,6 +120,44 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .fwdCtlArgs$oomParallel   <- NULL
   .fwdCtlArgs$serializeFile <- NULL
 
+  # Pre-draw ALL subjects' etas once using the base seed so that chunked solves
+  # reproduce the same etas as a single full rxSolve(seed=baseSeed) call.
+  #
+  # rxSolve_ calls seedEng(op->cores) BEFORE rxSimThetaOmega, advancing rxSeed
+  # by 2*ncores.  We replicate that here with rxSeedEng() so our standalone
+  # rxSimThetaOmega sees the same effective seed as the internal call in rxSolve_.
+  .preDrawnParams <- NULL
+  if (!is.null(.ctl$omega)) {
+    .ncores <- if (!is.null(.ctl$cores) && .ctl$cores > 0L) {
+      as.integer(.ctl$cores)
+    } else {
+      getRxThreads()
+    }
+    rxSetSeed(.baseSeed)
+    rxSeedEng(.ncores)
+    .preDrawnParams <- rxSimThetaOmega(
+      params          = params,
+      omega           = .ctl$omega,
+      omegaDf         = .ctl$omegaDf,
+      omegaLower      = if (!is.null(.ctl$omegaLower))  .ctl$omegaLower  else -Inf,
+      omegaUpper      = if (!is.null(.ctl$omegaUpper))  .ctl$omegaUpper  else  Inf,
+      omegaIsChol     = if (!is.null(.ctl$omegaIsChol)) .ctl$omegaIsChol else FALSE,
+      omegaSeparation = if (!is.null(.ctl$omegaSeparation)) .ctl$omegaSeparation else "auto",
+      omegaXform      = if (!is.null(.ctl$omegaXform))  .ctl$omegaXform  else 1L,
+      nSub            = .nSub,
+      nCoresRV        = 1L,
+      nStud           = 1L
+    )
+    # Strip omega from forwarded args — etas are now baked into per-chunk params
+    .fwdCtlArgs$omega           <- NULL
+    .fwdCtlArgs$omegaDf         <- NULL
+    .fwdCtlArgs$omegaLower      <- NULL
+    .fwdCtlArgs$omegaUpper      <- NULL
+    .fwdCtlArgs$omegaIsChol     <- NULL
+    .fwdCtlArgs$omegaSeparation <- NULL
+    .fwdCtlArgs$omegaXform      <- NULL
+  }
+
   # Normalize: ensure id column is always present so chunks can be rbind'd.
   # Single-subject solves drop the id column; stamp it back from .chunkIds.
   .normalizeResult <- function(.result, .chunkIds) {
@@ -161,23 +199,26 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .modelObj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
     mirai::daemons(.nDaemons)
     on.exit(mirai::daemons(0), add = TRUE)
-    .chunkSeeds <- integer(.nChunks)
-    .chunkEvList <- vector("list", .nChunks)
+    .chunkEvList   <- vector("list", .nChunks)
+    .chunkParamsList <- vector("list", .nChunks)
     for (.i in seq_len(.nChunks)) {
-      .chunkSeeds[.i] <- as.integer(
-        (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
-      )
       .chunkEvList[[.i]] <- .extractChunkEvents(.chunkList[[.i]])
-      .cumSub <- .cumSub + length(.chunkList[[.i]])
+      .nThis <- length(.chunkList[[.i]])
+      .chunkParamsList[[.i]] <- if (!is.null(.preDrawnParams)) {
+        .preDrawnParams[(.cumSub + 1L):(.cumSub + .nThis), , drop = FALSE]
+      } else {
+        params
+      }
+      .cumSub <- .cumSub + .nThis
     }
+    .cumSub <- 0L
     .chunkIdsList <- .chunkList
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
       function(.i) {
         library(rxode2)
-        rxSetSeed(.chunkSeeds[.i])
         .result <- do.call(rxSolve,
-                           c(list(object = .modelObj, params = .params,
+                           c(list(object = .modelObj, params = .chunkParamsList[[.i]],
                                   events = .chunkEvList[[.i]], inits = .inits),
                              .fwdCtlArgs))
         .df <- as.data.frame(.result)
@@ -195,9 +236,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         }
         list(file = .f, nrows = nrow(.df))
       },
-      .args = list(.chunkSeeds = .chunkSeeds, .chunkEvList = .chunkEvList,
-                   .chunkIdsList = .chunkIdsList,
-                   .params = params, .inits = inits, .fwdCtlArgs = .fwdCtlArgs)
+      .args = list(.chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
+                   .chunkParamsList = .chunkParamsList,
+                   .inits = inits, .fwdCtlArgs = .fwdCtlArgs)
     )
     for (.i in seq_len(.nChunks)) {
       .r <- .tasks[[.i]][]
@@ -208,12 +249,17 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     for (.i in seq_len(.nChunks)) {
       .chunkIds <- .chunkList[[.i]]
       .nThis    <- length(.chunkIds)
-      rxSetSeed(as.integer(
-        (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
-      ))
       .chunkEvents <- .extractChunkEvents(.chunkIds)
+      .chunkParams <- if (!is.null(.preDrawnParams)) {
+        .preDrawnParams[(.cumSub + 1L):(.cumSub + .nThis), , drop = FALSE]
+      } else {
+        rxSetSeed(as.integer(
+          (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
+        ))
+        params
+      }
       .result <- do.call(rxSolve,
-                         c(list(object = object, params = params,
+                         c(list(object = object, params = .chunkParams,
                                 events = .chunkEvents, inits = inits,
                                 envir = .envir), .fwdCtlArgs))
       .outFiles[.i] <- .writeResult(.result, .chunkIds)

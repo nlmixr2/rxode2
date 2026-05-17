@@ -1478,24 +1478,26 @@ extern "C" {
   // Ensure buffer has at least nsolve*neta doubles. Returns pointer to buffer.
   double* rxEtaPreGetOrAlloc(int nsolve_neta) {
     if (nsolve_neta > _globals.geta_pre_n) {
-      free(_globals.geta_pre);
-      _globals.geta_pre   = (double*)malloc((size_t)nsolve_neta * sizeof(double));
-      _globals.geta_pre_n = (_globals.geta_pre ? nsolve_neta : 0);
+      free(_globals.geta_pre_alloc);
+      _globals.geta_pre_alloc = (double*)malloc((size_t)nsolve_neta * sizeof(double));
+      _globals.geta_pre_n     = (_globals.geta_pre_alloc ? nsolve_neta : 0);
     }
+    _globals.geta_pre = _globals.geta_pre_alloc;
     return _globals.geta_pre;
   }
 
   // Return current pre-gen buffer (NULL if not allocated / not active).
   double* rxGetEtaPre(void) { return _globals.geta_pre; }
 
-  // Deactivate: set pointer to NULL without freeing (keep allocation for reuse).
+  // Deactivate: set active pointer to NULL, keep underlying allocation for reuse.
   void rxEtaPreDeactivate(void) { _globals.geta_pre = NULL; }
 
   // Free buffer and reset counters.
   void rxEtaPreFree(void) {
-    free(_globals.geta_pre);
-    _globals.geta_pre   = NULL;
-    _globals.geta_pre_n = 0;
+    free(_globals.geta_pre_alloc);
+    _globals.geta_pre_alloc = NULL;
+    _globals.geta_pre       = NULL;
+    _globals.geta_pre_n     = 0;
   }
 
   // Number of omega matrices (1 = same for all sims, >1 = per-sim omega).

@@ -21,6 +21,29 @@ test_that("rxSolveChunked is reproducible with the same seed", {
   })
 })
 
+test_that("rxSolveChunked matches rxSolve with same rxSetSeed", {
+  rxTest({
+    mod <- rxode2({
+      k <- exp(lk + eta.k)
+      d/dt(A) <- -k * A
+    })
+    et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:20)
+
+    rxSetSeed(42)
+    full <- rxSolve(mod, c(lk = log(0.1)), et_pop,
+                    omega = lotri::lotri(eta.k ~ 0.09))
+    chnk <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42,
+                            omega = lotri::lotri(eta.k ~ 0.09),
+                            chunkSize = 5)
+
+    full_df <- as.data.frame(full)
+    chnk_df <- as.data.frame(chnk)
+    full_df <- full_df[order(full_df$id, full_df$time), ]
+    chnk_df <- chnk_df[order(chnk_df$id, chnk_df$time), ]
+    expect_equal(full_df$A, chnk_df$A, tolerance = 1e-6)
+  })
+})
+
 test_that("rxSolve with oomFile returns rxSolveOom and manifest is written", {
   rxTest({
     mod <- rxode2({
