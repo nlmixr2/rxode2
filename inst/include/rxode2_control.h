@@ -116,5 +116,6 @@
 #define Rxc_maxExtra 111
 #define Rxc_tolFactor 112
 #define Rxc_serializeFile 113
-#define Rxc__zeros 114
+#define Rxc_dense 114
+#define Rxc__zeros 115
 #endif // __rxode2_control_H__

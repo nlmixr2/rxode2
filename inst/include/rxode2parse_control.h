@@ -115,7 +115,8 @@
 #define Rxc_maxExtra 111
 #define Rxc_tolFactor 112
 #define Rxc_serializeFile 113
-#define Rxc__zeros 114
+#define Rxc_dense 114
+#define Rxc__zeros 115
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
