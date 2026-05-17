@@ -180,7 +180,6 @@ ctx->nfcn    Number of function calls.
 #include <limits.h>
 
 typedef void (*FcnEqDiff)(int *nptr, double x, double *y, double *f);
-typedef void (*SolTrait)(long int nr, double xold, double x, double* y, int *nptr, int* irtrn);
 
 /* Context struct holding all solver state, enabling thread-safe reentrant calls.
    Previously these were file-scope static variables in dop853.c. */
@@ -191,8 +190,16 @@ typedef struct {
   double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
   double       *rcont1, *rcont2, *rcont3, *rcont4;
   double       *rcont5, *rcont6, *rcont7, *rcont8;
+  void         *userdata;
 } dop853_ctx_t;
 
+/* SolTrait defined after dop853_ctx_t so the callback can receive ctx and userdata */
+typedef void (*SolTrait)(long int nr, double xold, double x, double *y,
+                         int *nptr, dop853_ctx_t *ctx, void *userdata,
+                         int *irtrn);
+
+/* Dense output interpolant: 0-based component index ii, valid only inside solout */
+double contd8(dop853_ctx_t *ctx, int ii, double x);
 
 extern int dop853
  (int *nptr,      /* dimension of the system <= INT_MAX-1*/
@@ -218,5 +225,6 @@ extern int dop853
   long int nstiff,     /* test for stiffness */
   int nrdens, /* number of components for which dense outpout is required */
   int* icont, /* indexes of components for which dense output is required, >= nrdens */
-  int licont  /* declared length of icon */
+  int licont, /* declared length of icon */
+  void *userdata /* passed through to solout callback */
  );

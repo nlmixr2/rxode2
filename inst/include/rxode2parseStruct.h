@@ -123,6 +123,7 @@ typedef struct {
   int depotLin;
   int linOffset;
   int ssSolved;
+  int useDense;
   int indOwnAlloc;
 } rx_solving_options;
 

@@ -46,4 +46,80 @@ rxTest({
   test_that("parallel dop853 is deterministic across repeated calls", {
     expect_equal(as.data.frame(s2a), as.data.frame(s2b))
   })
+
+  # Dense-path parity: cores=1 vs cores=2
+  s_d1 <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
+                                    dense = TRUE, cores = 1))
+  s_d2 <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
+                                    dense = TRUE, cores = 2))
+
+  test_that("dop853 dense: cores=1 and cores=2 give identical results", {
+    expect_equal(as.data.frame(s_d1), as.data.frame(s_d2))
+  })
+
+  s_nd <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
+                                    dense = FALSE, cores = 1))
+
+  test_that("dop853 dense=TRUE matches dense=FALSE (cores=1)", {
+    expect_equal(as.data.frame(s_d1), as.data.frame(s_nd), tolerance = 1e-5)
+  })
+
+  s_d2a <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
+                                     dense = TRUE, cores = 2))
+  s_d2b <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
+                                     dense = TRUE, cores = 2))
+
+  test_that("parallel dense dop853 is deterministic across repeated calls", {
+    expect_equal(as.data.frame(s_d2a), as.data.frame(s_d2b))
+  })
+
+  # nmtest dataset: dense vs non-dense must give identical cp for ODE model
+  d <- nlmixr2data::nmtest
+
+  f <- rxode2({
+    cl <- 1.1
+    v <- 20
+    ka <- 1.5
+    d/dt(depot)   <- -ka * depot
+    d/dt(central) <- ka * depot - (cl / v) * central
+    f(central)    <- bioav
+    if (mode == 1) rate(central) <- rat2
+    if (mode == 2) dur(central)  <- dur2
+    cp <- central / (v / 1000)
+  })
+
+  fl <- rxode2({
+    cl <- 1.1
+    v <- 20
+    ka <- 1.5
+    d/dt(depot)   <- -ka * depot
+    d/dt(central) <- ka * depot - (cl / v) * central
+    lag(central)  <- lagt
+    f(central)    <- bioav
+    if (mode == 1) rate(central) <- rat2
+    if (mode == 2) dur(central)  <- dur2
+    cp <- central / (v / 1000)
+  })
+
+  lapply(unique(d$id), function(id) {
+    di <- d[d$id == id, ]
+    for (addlDropSs in c(TRUE, FALSE)) {
+      test_that(paste0("dop853 dense==nodense nmtest id:", id,
+                       " addlDropSs:", addlDropSs), {
+        s_nodense <- rxSolve(f, di, method = "dop853", dense = FALSE,
+                             addlDropSs = addlDropSs)
+        s_dense   <- rxSolve(f, di, method = "dop853",
+                             addlDropSs = addlDropSs)
+        expect_equal(s_nodense$cp, s_dense$cp, tolerance = 1e-5)
+      })
+      test_that(paste0("dop853 dense==nodense nmtest id:", id,
+                       " alag addlDropSs:", addlDropSs), {
+        s_nodense <- rxSolve(fl, di, method = "dop853", dense = FALSE,
+                             addlDropSs = addlDropSs)
+        s_dense   <- rxSolve(fl, di, method = "dop853",
+                             addlDropSs = addlDropSs)
+        expect_equal(s_nodense$cp, s_dense$cp, tolerance = 1e-5)
+      })
+    }
+  })
 })

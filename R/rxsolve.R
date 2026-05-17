@@ -797,6 +797,16 @@
 #'   allowed because the file already stores the solve inputs and
 #'   controls.
 #'
+#' @param dense Logical; when `TRUE` (default) and `method="dop853"`,
+#'   enables DOP853 dense polynomial output (`iout=2`). Instead of
+#'   calling the solver once per observation time, a single solver call
+#'   spans each inter-dose interval and a 7th-order polynomial
+#'   interpolates all observation times within that interval. This can
+#'   substantially reduce the number of solver evaluations for models
+#'   with dense sampling grids. Silently ignored for non-dop853
+#'   methods. Not yet supported for `linCmt()` models (a message is
+#'   emitted and the standard path is used instead).
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -939,6 +949,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     maxExtra=1000L,
                     tolFactor=NULL,
                     serializeFile=NULL,
+                    dense=TRUE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1522,6 +1533,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       maxExtra=maxExtra,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
+      dense=dense,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2484,7 +2496,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .rxAssertSerializedSolveArgs(extras = "serializeFile", file = params)
   } else if (.isSer && .serializeMode == "temp") {
     .serializeMode <- "none"
-    .ctl$serializeFile <- NULL
+    .ctl["serializeFile"] <- list(NULL)
   }
 
   .callSolve <- function() {
@@ -2556,7 +2568,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmpSerializeFile
     .isSer <- TRUE
     .tempSerializedReplay <- TRUE
-    .ctl$serializeFile <- NULL
+    .ctl["serializeFile"] <- list(NULL)
   }
 
   if (getOption("rxode2.debug", FALSE)) {
