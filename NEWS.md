@@ -9,6 +9,12 @@
 - Use ALTREP for `id` (when the number of output rows per id is the
   same) and `sim.id` in outputs.
 
+- Expand ALTREP output compression for repeated simulation event
+  columns (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`)
+  when blocks are identical across simulations, with conservative
+  fallback to materialized columns when runtime event mutation is
+  detected (`evid_()` push growth / per-individual event reallocation).
+
 - Change compile flags and compiler directives for rxode2 models to
   speed up how they run.
 
