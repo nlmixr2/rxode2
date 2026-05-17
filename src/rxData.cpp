@@ -5361,6 +5361,24 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     getRxSolve_()->matrix = 2;
   }
 
+  // Mirror the setup calls that rxSolve_ does before rxSolve_finalize.
+  // rxRestoreState_ rebuilds op (including op->neq and op->cores) and
+  // inds_global, but the thread-local pools are not serialized and must
+  // be re-created here.
+  {
+    rx_solve* rx = getRxSolve_();
+    rx_solving_options* op = rx->op;
+    if (op->cores == 0) op->cores = 1;
+    seedEng((int)(op->cores));
+    ensureLinCmtA((int)op->cores);
+    ensureLinCmtB((int)op->cores);
+    ensureLsodaCtxPool((int)op->cores);
+    int _bneq = (int)op->neq;
+    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+    int _liw = 20 + _bneq;
+    ensureRworkPool((int)op->cores, _lrw, _liw);
+  }
+
   return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
                           params, events, inits, &rxSolveDat);
 }
