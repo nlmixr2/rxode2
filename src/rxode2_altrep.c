@@ -22,10 +22,14 @@
 
 #include <Rinternals.h>
 #include <R_ext/Altrep.h>
+#include <string.h>
 
 #include "rxode2_altrep.h"
 
 static R_altrep_class_t rx_seqrep_class;
+static R_altrep_class_t rx_rep_int_class;
+static R_altrep_class_t rx_rep_lgl_class;
+static R_altrep_class_t rx_rep_real_class;
 
 /* ---- length ------------------------------------------------------------ */
 static R_xlen_t rx_seqrep_Length(SEXP x) {
@@ -94,6 +98,141 @@ static SEXP rx_seqrep_Max(SEXP x, Rboolean narm) {
   return Rf_ScalarInteger(d[0]);
 }
 
+/* ---- repeated block ALTREP helpers ------------------------------------- */
+static inline R_xlen_t rx_rep_times(SEXP x) {
+  SEXP times = VECTOR_ELT(R_altrep_data1(x), 0);
+  return (R_xlen_t)INTEGER(times)[0];
+}
+
+static inline SEXP rx_rep_base(SEXP x) {
+  return VECTOR_ELT(R_altrep_data1(x), 1);
+}
+
+static inline R_xlen_t rx_rep_base_len(SEXP x) {
+  return XLENGTH(rx_rep_base(x));
+}
+
+static inline R_xlen_t rx_rep_total_len(SEXP x) {
+  return rx_rep_base_len(x) * rx_rep_times(x);
+}
+
+static R_xlen_t rx_rep_int_Length(SEXP x) {
+  return rx_rep_total_len(x);
+}
+
+static int rx_rep_int_Elt(SEXP x, R_xlen_t i) {
+  SEXP base = rx_rep_base(x);
+  R_xlen_t n = XLENGTH(base);
+  if (n == 0) return NA_INTEGER;
+  return INTEGER(base)[i % n];
+}
+
+static SEXP rx_rep_int_materialize(SEXP x) {
+  SEXP mat = R_altrep_data2(x);
+  if (TYPEOF(mat) == INTSXP && XLENGTH(mat) == rx_rep_total_len(x)) return mat;
+  SEXP base = VECTOR_ELT(R_altrep_data1(x), 1);
+  R_xlen_t n = XLENGTH(base);
+  R_xlen_t times = rx_rep_times(x);
+  mat = PROTECT(Rf_allocVector(INTSXP, n * times));
+  int *out = INTEGER(mat);
+  const int *src = INTEGER(base);
+  for (R_xlen_t t = 0; t < times; ++t) {
+    memcpy(out + t * n, src, (size_t)n * sizeof(int));
+  }
+  R_set_altrep_data2(x, mat);
+  UNPROTECT(1);
+  return mat;
+}
+
+static const void *rx_rep_int_Dataptr_or_null(SEXP x) {
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == INTSXP && XLENGTH(d2) == rx_rep_total_len(x)) return DATAPTR_RO(d2);
+  return NULL;
+}
+
+static void *rx_rep_int_Dataptr(SEXP x, Rboolean writeable) {
+  SEXP mat = rx_rep_int_materialize(x);
+  return DATAPTR_RW(mat);
+}
+
+static R_xlen_t rx_rep_lgl_Length(SEXP x) {
+  return rx_rep_total_len(x);
+}
+
+static int rx_rep_lgl_Elt(SEXP x, R_xlen_t i) {
+  SEXP base = rx_rep_base(x);
+  R_xlen_t n = XLENGTH(base);
+  if (n == 0) return NA_LOGICAL;
+  return LOGICAL(base)[i % n];
+}
+
+static SEXP rx_rep_lgl_materialize(SEXP x) {
+  SEXP mat = R_altrep_data2(x);
+  if (TYPEOF(mat) == LGLSXP && XLENGTH(mat) == rx_rep_total_len(x)) return mat;
+  SEXP base = VECTOR_ELT(R_altrep_data1(x), 1);
+  R_xlen_t n = XLENGTH(base);
+  R_xlen_t times = rx_rep_times(x);
+  mat = PROTECT(Rf_allocVector(LGLSXP, n * times));
+  int *out = LOGICAL(mat);
+  const int *src = LOGICAL(base);
+  for (R_xlen_t t = 0; t < times; ++t) {
+    memcpy(out + t * n, src, (size_t)n * sizeof(int));
+  }
+  R_set_altrep_data2(x, mat);
+  UNPROTECT(1);
+  return mat;
+}
+
+static const void *rx_rep_lgl_Dataptr_or_null(SEXP x) {
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == LGLSXP && XLENGTH(d2) == rx_rep_total_len(x)) return DATAPTR_RO(d2);
+  return NULL;
+}
+
+static void *rx_rep_lgl_Dataptr(SEXP x, Rboolean writeable) {
+  SEXP mat = rx_rep_lgl_materialize(x);
+  return DATAPTR_RW(mat);
+}
+
+static R_xlen_t rx_rep_real_Length(SEXP x) {
+  return rx_rep_total_len(x);
+}
+
+static double rx_rep_real_Elt(SEXP x, R_xlen_t i) {
+  SEXP base = rx_rep_base(x);
+  R_xlen_t n = XLENGTH(base);
+  if (n == 0) return NA_REAL;
+  return REAL(base)[i % n];
+}
+
+static SEXP rx_rep_real_materialize(SEXP x) {
+  SEXP mat = R_altrep_data2(x);
+  if (TYPEOF(mat) == REALSXP && XLENGTH(mat) == rx_rep_total_len(x)) return mat;
+  SEXP base = VECTOR_ELT(R_altrep_data1(x), 1);
+  R_xlen_t n = XLENGTH(base);
+  R_xlen_t times = rx_rep_times(x);
+  mat = PROTECT(Rf_allocVector(REALSXP, n * times));
+  double *out = REAL(mat);
+  const double *src = REAL(base);
+  for (R_xlen_t t = 0; t < times; ++t) {
+    memcpy(out + t * n, src, (size_t)n * sizeof(double));
+  }
+  R_set_altrep_data2(x, mat);
+  UNPROTECT(1);
+  return mat;
+}
+
+static const void *rx_rep_real_Dataptr_or_null(SEXP x) {
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == REALSXP && XLENGTH(d2) == rx_rep_total_len(x)) return DATAPTR_RO(d2);
+  return NULL;
+}
+
+static void *rx_rep_real_Dataptr(SEXP x, Rboolean writeable) {
+  SEXP mat = rx_rep_real_materialize(x);
+  return DATAPTR_RW(mat);
+}
+
 /* ---- Registration ------------------------------------------------------ */
 void rxode2_init_altrep_class(DllInfo *info) {
   rx_seqrep_class = R_make_altinteger_class("rx_seqrep", "rxode2", info);
@@ -104,6 +243,24 @@ void rxode2_init_altrep_class(DllInfo *info) {
   R_set_altinteger_Sum_method(rx_seqrep_class, rx_seqrep_Sum);
   R_set_altinteger_Min_method(rx_seqrep_class, rx_seqrep_Min);
   R_set_altinteger_Max_method(rx_seqrep_class, rx_seqrep_Max);
+
+  rx_rep_int_class = R_make_altinteger_class("rx_rep_int", "rxode2", info);
+  R_set_altrep_Length_method(rx_rep_int_class, rx_rep_int_Length);
+  R_set_altinteger_Elt_method(rx_rep_int_class, rx_rep_int_Elt);
+  R_set_altvec_Dataptr_method(rx_rep_int_class, rx_rep_int_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_rep_int_class, rx_rep_int_Dataptr_or_null);
+
+  rx_rep_lgl_class = R_make_altlogical_class("rx_rep_lgl", "rxode2", info);
+  R_set_altrep_Length_method(rx_rep_lgl_class, rx_rep_lgl_Length);
+  R_set_altlogical_Elt_method(rx_rep_lgl_class, rx_rep_lgl_Elt);
+  R_set_altvec_Dataptr_method(rx_rep_lgl_class, rx_rep_lgl_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_rep_lgl_class, rx_rep_lgl_Dataptr_or_null);
+
+  rx_rep_real_class = R_make_altreal_class("rx_rep_real", "rxode2", info);
+  R_set_altrep_Length_method(rx_rep_real_class, rx_rep_real_Length);
+  R_set_altreal_Elt_method(rx_rep_real_class, rx_rep_real_Elt);
+  R_set_altvec_Dataptr_method(rx_rep_real_class, rx_rep_real_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_rep_real_class, rx_rep_real_Dataptr_or_null);
 }
 
 /* ---- Factory ----------------------------------------------------------- */
@@ -114,5 +271,35 @@ SEXP rxode2_make_seqrep(int n_vals, int run_len, R_xlen_t total_len) {
   INTEGER(d1)[2] = (int)total_len; /* safe: rx->nr <= INT_MAX (checked earlier) */
   SEXP out = R_new_altrep(rx_seqrep_class, d1, R_NilValue);
   UNPROTECT(1);
+  return out;
+}
+
+SEXP rxode2_make_rep_int(SEXP base, int times) {
+  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
+  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  SET_VECTOR_ELT(d1, 0, ti);
+  SET_VECTOR_ELT(d1, 1, base);
+  SEXP out = R_new_altrep(rx_rep_int_class, d1, R_NilValue);
+  UNPROTECT(2);
+  return out;
+}
+
+SEXP rxode2_make_rep_lgl(SEXP base, int times) {
+  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
+  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  SET_VECTOR_ELT(d1, 0, ti);
+  SET_VECTOR_ELT(d1, 1, base);
+  SEXP out = R_new_altrep(rx_rep_lgl_class, d1, R_NilValue);
+  UNPROTECT(2);
+  return out;
+}
+
+SEXP rxode2_make_rep_real(SEXP base, int times) {
+  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
+  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  SET_VECTOR_ELT(d1, 0, ti);
+  SET_VECTOR_ELT(d1, 1, base);
+  SEXP out = R_new_altrep(rx_rep_real_class, d1, R_NilValue);
+  UNPROTECT(2);
   return out;
 }

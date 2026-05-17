@@ -366,6 +366,7 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
 // [[Rcpp::export]]
 bool rxIs(const RObject &obj, std::string cls){
   if (obj == NULL) return false;
+  if (cls == "altrep") return ALTREP(obj);
   if (cls == "units"){
     if (obj.hasAttribute("class")){
       CharacterVector cls = obj.attr("class");

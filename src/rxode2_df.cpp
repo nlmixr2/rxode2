@@ -23,6 +23,7 @@
 #include <thread>
 #include <string>
 #include <vector>
+#include <cstring>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -53,6 +54,71 @@ using namespace arma;
 
 extern t_update_inis update_inis;
 extern t_calc_lhs calc_lhs;
+
+static inline bool rxEqIntBlockVal(int a, int b) {
+  if (a == NA_INTEGER && b == NA_INTEGER) return true;
+  return a == b;
+}
+
+static inline bool rxEqRealBlockVal(double a, double b) {
+  if ((ISNA(a) || std::isnan(a)) && (ISNA(b) || std::isnan(b))) return true;
+  return a == b;
+}
+
+static bool rxCanRepBySim(SEXP col, int rowsPerSim, int nsim) {
+  if (rowsPerSim <= 0 || nsim <= 1 || ALTREP(col)) return false;
+  if ((R_xlen_t)rowsPerSim * (R_xlen_t)nsim != XLENGTH(col)) return false;
+  int type = TYPEOF(col);
+  if (type == INTSXP || type == LGLSXP) {
+    const int *p = INTEGER(col);
+    for (int s = 1; s < nsim; ++s) {
+      R_xlen_t off = (R_xlen_t)s * (R_xlen_t)rowsPerSim;
+      for (int i = 0; i < rowsPerSim; ++i) {
+        if (!rxEqIntBlockVal(p[i], p[off + i])) return false;
+      }
+    }
+    return true;
+  } else if (type == REALSXP) {
+    const double *p = REAL(col);
+    for (int s = 1; s < nsim; ++s) {
+      R_xlen_t off = (R_xlen_t)s * (R_xlen_t)rowsPerSim;
+      for (int i = 0; i < rowsPerSim; ++i) {
+        if (!rxEqRealBlockVal(p[i], p[off + i])) return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
+  int type = TYPEOF(col);
+  SEXP base = R_NilValue;
+  SEXP out = R_NilValue;
+  if (type == INTSXP) {
+    base = PROTECT(Rf_allocVector(INTSXP, rowsPerSim));
+    memcpy(INTEGER(base), INTEGER(col), (size_t)rowsPerSim * sizeof(int));
+    out = PROTECT(rxode2_make_rep_int(base, nsim));
+    Rf_copyMostAttrib(col, out);
+    UNPROTECT(2);
+    return out;
+  } else if (type == LGLSXP) {
+    base = PROTECT(Rf_allocVector(LGLSXP, rowsPerSim));
+    memcpy(LOGICAL(base), LOGICAL(col), (size_t)rowsPerSim * sizeof(int));
+    out = PROTECT(rxode2_make_rep_lgl(base, nsim));
+    Rf_copyMostAttrib(col, out);
+    UNPROTECT(2);
+    return out;
+  } else if (type == REALSXP) {
+    base = PROTECT(Rf_allocVector(REALSXP, rowsPerSim));
+    memcpy(REAL(base), REAL(col), (size_t)rowsPerSim * sizeof(double));
+    out = PROTECT(rxode2_make_rep_real(base, nsim));
+    Rf_copyMostAttrib(col, out);
+    UNPROTECT(2);
+    return out;
+  }
+  return col;
+}
 
 extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
   int totN = rx->factorNames.n;
@@ -497,6 +563,24 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
     subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
     subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
+  }
+  bool uniformSimBlocks = false;
+  int rowsPerSimUniform = 0;
+  if (nsim > 1 && nsub > 0) {
+    rowsPerSimUniform = subRowStart[nsub] - subRowStart[0];
+    if (rowsPerSimUniform > 0) {
+      uniformSimBlocks = true;
+      for (int _sim = 1; _sim < nsim && uniformSimBlocks; _sim++) {
+        int _from = _sim * nsub;
+        int _rows = subRowStart[_from + nsub] - subRowStart[_from];
+        if (_rows != rowsPerSimUniform) uniformSimBlocks = false;
+      }
+    }
+  }
+  bool hasRuntimeEventMutation = false;
+  for (int _sid = 0; _sid < nsolve_df && !hasRuntimeEventMutation; _sid++) {
+    rx_solving_options_ind *_sind = &rx->subjects[_sid];
+    if (_sind->nPushedExtra > 0) hasRuntimeEventMutation = true;
   }
 
   // Use ALTREP compact sequences for id/sim.id when all subjects contribute
@@ -1236,6 +1320,33 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i], _csub+1);
           }
         }
+      }
+    }
+  }
+  if (uniformSimBlocks && !hasRuntimeEventMutation) {
+    int colAt = nidCols;
+    std::vector<int> repCols;
+    if (doDose) {
+      repCols.push_back(colAt++); // evid
+      if (nmevid) {
+        repCols.push_back(colAt++); // cmt
+        repCols.push_back(colAt++); // ss
+      }
+      repCols.push_back(colAt++); // amt
+      if (nmevid) {
+        repCols.push_back(colAt++); // rate
+        repCols.push_back(colAt++); // dur
+        repCols.push_back(colAt++); // ii
+      }
+    } else if (nevid2col) {
+      repCols.push_back(colAt++); // evid
+    }
+    repCols.push_back(colAt); // time
+    for (unsigned int _k = 0; _k < repCols.size(); ++_k) {
+      int _col = repCols[_k];
+      SEXP cur = VECTOR_ELT(df, _col);
+      if (rxCanRepBySim(cur, rowsPerSimUniform, nsim)) {
+        SET_VECTOR_ELT(df, _col, rxRepFromFirstSim(cur, rowsPerSimUniform, nsim));
       }
     }
   }
