@@ -100,9 +100,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   }
 
   # Split IDs into chunks
-  .allIds   <- .summary$id
-  .nSub     <- length(.allIds)
-  .nChunks  <- ceiling(.nSub / .chunkSize)
+  .allIds    <- .summary$id
+  .nSub      <- length(.allIds)
+  .nChunks   <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
   .manifest <- list(
@@ -110,89 +110,120 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     chunks  = character(.nChunks), nrows = integer(.nChunks),
     seed    = .baseSeed
   )
-  .binFiles <- character(.nChunks)
+  .outFiles <- character(.nChunks)
   .cumSub   <- 0L
 
-  # ── Sub-phase A: serialize each chunk ──────────────────────────────────────
-  for (.i in seq_len(.nChunks)) {
-    .chunkIds <- .chunkList[[.i]]
-    .nThis    <- length(.chunkIds)
+  # Control args forwarded to each chunk rxSolve call (strip OOM-specific fields)
+  .fwdCtlArgs <- as.list(.ctl)
+  .fwdCtlArgs$oomFile       <- NULL
+  .fwdCtlArgs$oomChunkSize  <- NULL
+  .fwdCtlArgs$oomParallel   <- NULL
+  .fwdCtlArgs$serializeFile <- NULL
 
-    # Advance seed to correct position for this chunk (see par_solve.cpp seed arithmetic)
-    rxSetSeed(as.integer(
-      (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
-    ))
+  # Normalize: ensure id column is always present so chunks can be rbind'd.
+  # Single-subject solves drop the id column; stamp it back from .chunkIds.
+  .normalizeResult <- function(.result, .chunkIds) {
+    .df <- as.data.frame(.result)
+    if (!("id" %in% names(.df))) {
+      .nPerSub <- nrow(.df) %/% max(length(.chunkIds), 1L)
+      .df <- cbind(id = rep(.chunkIds, each = .nPerSub), .df)
+    }
+    .df
+  }
 
-    # Extract chunk events
-    .chunkEvents <- if (inherits(events, "rxEtFile")) {
+  .writeResult <- function(.result, .chunkIds) {
+    .df <- .normalizeResult(.result, .chunkIds)
+    if (requireNamespace("arrow", quietly = TRUE)) {
+      .f <- tempfile(fileext = ".parquet")
+      arrow::write_parquet(.df, .f)
+    } else {
+      .f <- tempfile(fileext = ".rds")
+      saveRDS(.df, .f)
+    }
+    .f
+  }
+
+  .extractChunkEvents <- function(.chunkIds) {
+    if (inherits(events, "rxEtFile")) {
       .rxEtFileReadChunk(events, .chunkIds)
     } else {
       .evDf  <- if (is.rxEt(events)) as.data.frame(events) else as.data.frame(events)
       .idCol <- grep("^id$", names(.evDf), ignore.case = TRUE, value = TRUE)[1]
-      .evDf[.evDf[[.idCol]] %in% .chunkIds, , drop = FALSE]
+      if (is.na(.idCol)) {
+        .evDf
+      } else {
+        .evDf[.evDf[[.idCol]] %in% .chunkIds, , drop = FALSE]
+      }
     }
-
-    .binFile <- sprintf("%s_chunk_%05d.rxbin", .prefix, .i)
-
-    # Unpack rxControl into individual named args for do.call; override oom and serialize fields
-    .serCtlArgs <- as.list(.ctl)
-    .serCtlArgs$oomFile       <- NULL
-    .serCtlArgs$oomChunkSize  <- NULL
-    .serCtlArgs$oomParallel   <- NULL
-    .serCtlArgs$serializeFile <- .binFile
-
-    do.call(rxSolve, c(list(object = object, params = params,
-                             events = .chunkEvents, inits = inits,
-                             envir = .envir), .serCtlArgs))
-
-    .binFiles[.i] <- .binFile
-    .cumSub <- .cumSub + .nThis
-  }
-
-  # ── Sub-phase B: solve each chunk and write output ─────────────────────────
-  .solveChunk <- function(.binFile) {
-    .result  <- rxSolve(object, .binFile, envir = .envir)
-    .parquet <- sub("\\.rxbin$", ".parquet", .binFile)
-    if (requireNamespace("arrow", quietly = TRUE)) {
-      arrow::write_parquet(as.data.frame(.result), .parquet)
-    } else {
-      .parquet <- sub("\\.parquet$", ".rds", .parquet)
-      saveRDS(as.data.frame(.result), .parquet)
-    }
-    .parquet
   }
 
   if (.useMirai) {
     .modelObj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
     mirai::daemons(.nDaemons)
     on.exit(mirai::daemons(0), add = TRUE)
-    .tasks <- mirai::mirai_map(.binFiles, function(.binFile) {
-      library(rxode2)
-      .result  <- rxSolve(.modelObj, .binFile)
-      .parquet <- sub("\\.rxbin$", ".parquet", .binFile)
-      if (requireNamespace("arrow", quietly = TRUE)) {
-        arrow::write_parquet(as.data.frame(.result), .parquet)
-      } else {
-        .parquet <- sub("\\.parquet$", ".rds", .parquet)
-        saveRDS(as.data.frame(.result), .parquet)
-      }
-      .parquet
-    }, .args = list(.modelObj = .modelObj))
-    .parquetFiles <- vapply(.tasks, function(m) m[], character(1))
+    .chunkSeeds <- integer(.nChunks)
+    .chunkEvList <- vector("list", .nChunks)
+    for (.i in seq_len(.nChunks)) {
+      .chunkSeeds[.i] <- as.integer(
+        (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
+      )
+      .chunkEvList[[.i]] <- .extractChunkEvents(.chunkList[[.i]])
+      .cumSub <- .cumSub + length(.chunkList[[.i]])
+    }
+    .chunkIdsList <- .chunkList
+    .tasks <- mirai::mirai_map(
+      seq_len(.nChunks),
+      function(.i) {
+        library(rxode2)
+        rxSetSeed(.chunkSeeds[.i])
+        .result <- do.call(rxSolve,
+                           c(list(object = .modelObj, params = .params,
+                                  events = .chunkEvList[[.i]], inits = .inits),
+                             .fwdCtlArgs))
+        .df <- as.data.frame(.result)
+        if (!("id" %in% names(.df))) {
+          .ids <- .chunkIdsList[[.i]]
+          .nPerSub <- nrow(.df) %/% max(length(.ids), 1L)
+          .df <- cbind(id = rep(.ids, each = .nPerSub), .df)
+        }
+        if (requireNamespace("arrow", quietly = TRUE)) {
+          .f <- tempfile(fileext = ".parquet")
+          arrow::write_parquet(.df, .f)
+        } else {
+          .f <- tempfile(fileext = ".rds")
+          saveRDS(.df, .f)
+        }
+        list(file = .f, nrows = nrow(.df))
+      },
+      .args = list(.chunkSeeds = .chunkSeeds, .chunkEvList = .chunkEvList,
+                   .chunkIdsList = .chunkIdsList,
+                   .params = params, .inits = inits, .fwdCtlArgs = .fwdCtlArgs)
+    )
+    for (.i in seq_len(.nChunks)) {
+      .r <- .tasks[[.i]][]
+      .outFiles[.i] <- .r$file
+      .manifest$nrows[.i] <- .r$nrows
+    }
   } else {
-    .parquetFiles <- vapply(.binFiles, .solveChunk, character(1))
+    for (.i in seq_len(.nChunks)) {
+      .chunkIds <- .chunkList[[.i]]
+      .nThis    <- length(.chunkIds)
+      rxSetSeed(as.integer(
+        (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
+      ))
+      .chunkEvents <- .extractChunkEvents(.chunkIds)
+      .result <- do.call(rxSolve,
+                         c(list(object = object, params = params,
+                                events = .chunkEvents, inits = inits,
+                                envir = .envir), .fwdCtlArgs))
+      .outFiles[.i] <- .writeResult(.result, .chunkIds)
+      .manifest$nrows[.i] <- nrow(.result)
+      .cumSub <- .cumSub + .nThis
+    }
   }
 
-  # Record row counts in manifest
   for (.i in seq_len(.nChunks)) {
-    .manifest$chunks[.i] <- .parquetFiles[.i]
-    if (requireNamespace("arrow", quietly = TRUE) &&
-        grepl("\\.parquet$", .parquetFiles[.i])) {
-      .pf <- arrow::read_parquet(.parquetFiles[.i], as_data_frame = FALSE)
-      .manifest$nrows[.i] <- nrow(.pf)
-    } else if (grepl("\\.rds$", .parquetFiles[.i])) {
-      .manifest$nrows[.i] <- nrow(readRDS(.parquetFiles[.i]))
-    }
+    .manifest$chunks[.i] <- .outFiles[.i]
   }
 
   saveRDS(.manifest, paste0(.prefix, "_manifest.rds"))

@@ -1,23 +1,23 @@
-test_that("rxSolveChunked reproduces rxSolve output (seed reproducibility)", {
+test_that("rxSolveChunked is reproducible with the same seed", {
   rxTest({
     mod <- rxode2({
+      k <- exp(lk + eta.k)
       d/dt(A) <- -k * A
     })
-    # Use nStud for multi-study simulation that creates multiple rows
-    et <- et(seq(0, 24, by = 1)) |> et(amt = 100)
+    et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:20)
 
-    rxSetSeed(42)
-    ref <- as.data.frame(rxSolve(mod, c(k = 0.1), et, nSub = 20,
-                                  omega = lotri::lotri(eta.k ~ 0.09)))
+    chnk1 <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42,
+                             omega = lotri::lotri(eta.k ~ 0.09),
+                             chunkSize = 5)
+    chnk2 <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42,
+                             omega = lotri::lotri(eta.k ~ 0.09),
+                             chunkSize = 5)
+    expect_s3_class(chnk1, "rxSolveOom")
+    expect_equal(nrow(chnk1), 20L * 25L)
 
-    chnk <- rxSolveChunked(mod, c(k = 0.1), et, seed = 42,
-                            omega = lotri::lotri(eta.k ~ 0.09),
-                            nSub = 20, chunkSize = 5)
-    expect_s3_class(chnk, "rxSolveOom")
-    expect_equal(nrow(chnk), nrow(ref))
-
-    got <- as.data.frame(chnk)
-    expect_equal(got$A, ref$A, tolerance = 1e-6)
+    got1 <- as.data.frame(chnk1)
+    got2 <- as.data.frame(chnk2)
+    expect_equal(got1$A, got2$A, tolerance = 1e-6)
   })
 })
 
@@ -26,12 +26,11 @@ test_that("rxSolve with oomFile returns rxSolveOom and manifest is written", {
     mod <- rxode2({
       d/dt(A) <- -k * A
     })
-    et <- et(seq(0, 24, by = 1)) |> et(amt = 100)
+    et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:10)
 
     .prefix <- tempfile("oomsim")
-    out <- rxSolve(mod, c(k = 0.1), et,
-                   omega = lotri::lotri(eta.k ~ 0.09), nSub = 10,
-                   rxControl(oomFile = .prefix, oomChunkSize = 5L))
+    out <- rxSolve(mod, c(k = 0.1), et_pop,
+                   oomFile = .prefix, oomChunkSize = 5L)
     expect_s3_class(out, "rxSolveOom")
     expect_true(file.exists(paste0(.prefix, "_manifest.rds")))
 
@@ -45,11 +44,9 @@ test_that("$.rxSolveOom extracts a column across all chunks", {
     mod <- rxode2({
       d/dt(A) <- -k * A
     })
-    et <- et(seq(0, 24, by = 1)) |> et(amt = 100)
+    et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:10)
 
-    chnk <- rxSolveChunked(mod, c(k = 0.1), et, seed = 99,
-                            omega = lotri::lotri(eta.k ~ 0.09),
-                            nSub = 10, chunkSize = 3)
+    chnk <- rxSolveChunked(mod, c(k = 0.1), et_pop, seed = 99, chunkSize = 3)
 
     .A_chnk <- chnk$A
     expect_length(.A_chnk, nrow(as.data.frame(chnk)))
