@@ -37,6 +37,10 @@ et1cmt <- et(amt = 100, time = 0) |>
 et3cmt <- et(amt = 100, time = 0, cmt = 1) |>
   et(seq(0, 48, by = 0.5))
 
+# Dense observations for DOP853 benchmark (10x more observations per unit time)
+et1cmtDense <- et(amt = 100, time = 0) |>
+  et(seq(0, 24, by = 0.05))  # 0.05 hour = 3 min intervals
+
 # ── Population datasets ───────────────────────────────────────────────────────
 nSub <- 100L
 set.seed(42)
@@ -56,6 +60,12 @@ etPop1 <- et(amt = 100, time = 0) |>
 etPop3 <- et(amt = 100, time = 0, cmt = 1) |>
   et(seq(0, 48, by = 1)) |>
   et(id = seq_len(nSub))
+
+# Dense observations population (10x more obs) - for DOP853 benchmark
+etPop1Dense <- et(amt = 100, time = 0) |>
+  et(seq(0, 24, by = 0.1)) |>  # 0.1 hour = 6 min intervals
+  et(id = seq_len(nSub))
+
 # Smaller population for Fortran LSODA benchmarks (it's much slower than liblsoda)
 nSub10 <- 10L
 thetaPop10 <- thetaPop1[seq_len(nSub10), ]
@@ -71,6 +81,7 @@ message("Compiling models (not timed)...")
 invisible(.solve(mod1cmt, params1cmt, et1cmt))
 invisible(.solve(mod3cmt, params3cmt, et3cmt))
 invisible(.solve(mod1cmt, thetaPop1, etPop1, method = "liblsoda", cores = 1))
+invisible(.solve(mod1cmt, thetaPop1, etPop1Dense, method = "dop853", cores = 1))
 message("Models compiled.\n")
 
 # ── Simple timing loop ────────────────────────────────────────────────────────
@@ -107,7 +118,12 @@ results <- rbind(
   .timeit("pop100_3cmt_multicore",
     fn = function() invisible(.solve(mod3cmt, thetaPop3, etPop3, method = "liblsoda"))),
   .timeit("pop100_1cmt_analytical",
-    fn = function() invisible(.solve(mod1cmt, thetaPop1, etPop1, cores = 1)))
+    fn = function() invisible(.solve(mod1cmt, thetaPop1, etPop1, cores = 1))),
+  # DOP853 with dense observations (10x more obs) - baseline for dop853-dense optimization
+  .timeit("pop100_1cmt_dop853_dense_1core",
+    fn = function() invisible(.solve(mod1cmt, thetaPop1, etPop1Dense, method = "dop853", cores = 1))),
+  .timeit("pop100_1cmt_dop853_dense_multicore",
+    fn = function() invisible(.solve(mod1cmt, thetaPop1, etPop1Dense, method = "dop853")))
 )
 
 # ── Save and report ───────────────────────────────────────────────────────────
