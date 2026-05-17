@@ -440,15 +440,34 @@
   .existingIds <- integer(0)
   .doResize    <- FALSE
   if (!is.null(id)) {
-    .idVal       <- as.integer(id)
+    .idInput <- if (is.factor(id)) as.character(id) else id
+    .idVal <- suppressWarnings(as.integer(.idInput))
+    if (anyNA(.idVal)) {
+      stop("'id' must contain integer-like values", call. = FALSE)
+    }
     .posIds      <- .idVal[.idVal > 0L]
     .negIds      <- abs(.idVal[.idVal < 0L])
     .existingIds <- envRef$ids
-    if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
+    if (length(.posIds) > 0L &&
+        !xIsRxEt &&
+        identical(sort(as.integer(envRef$ids)), 1L) &&
+        envRef$nobs == 0L &&
+        envRef$ndose == 0L &&
+        length(.etGroups(envRef)) == 0L &&
+        length(envRef$chunks) == 0L) {
+      .addedIds   <- setdiff(.posIds, .existingIds)
+      .removedIds <- setdiff(.existingIds, .posIds)
+      envRef$ids  <- sort(unique(.posIds))
+    } else if (xIsRxEt && envRef$canResize && length(.idVal) == 0L) {
+      .removedIds <- .existingIds
+      .addedIds <- integer(0)
+      envRef$ids <- integer(0)
+      .doResize <- length(.removedIds) > 0L
+    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)
-      envRef$ids <- sort(.posIds)
+      envRef$ids <- sort(unique(.posIds))
       .doResize   <- length(.addedIds) > 0L || length(.removedIds) > 0L
     } else {
       .addedIds   <- setdiff(.posIds, .existingIds)
@@ -1084,7 +1103,8 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, nobs, ndose, explicitIi, ii) {
+.etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, groups,
+                             nobs, ndose, explicitIi, ii) {
   env <- .rxEtEnv(item) # nolint
   if (is.null(units)) {
     units <- env$units
@@ -1092,21 +1112,48 @@
   } else {
     show <- show | env$show
   }
+  .itemGroups <- .etGetGroups(env) # nolint
+  .keepGrouped <- length(chunks) == 0L &&
+    length(.itemGroups) == 1L &&
+    (length(groups) == 0L ||
+       (length(groups) == 1L && .etGroupIdsEqual(groups[[1]]$ids, .itemGroups[[1]]$ids))) # nolint
+
+  if (!.keepGrouped && length(groups) > 0L) {
+    for (.g in groups) {
+      chunks <- .addRowsToChunks(chunks, .etMaterializeGroup(.g)) # nolint
+    }
+    groups <- list()
+  }
+
   ids <- sort(unique(c(ids, env$ids)))
-  mat <- .etMaterialize(item) # nolint
-  # Strip units for arithmetic; units preserved in env$units
-  if (requireNamespace("units", quietly = TRUE)) {
-    for (tmCol in c("time", "low", "high", "ii")) {
-      if (!is.null(mat[[tmCol]]) && inherits(mat[[tmCol]], "units"))
-        mat[[tmCol]] <- as.numeric(mat[[tmCol]])
+  if (.keepGrouped) {
+    .summaryDf <- .etShiftChunk(.itemGroups[[1]]$data, timeDelta) # nolint
+    if (samples == "use") {
+      .groupDf <- .summaryDf
+      nobs <- nobs + env$nobs
+    } else {
+      .groupDf <- .summaryDf[.summaryDf$evid != 0L, , drop = FALSE]
+    }
+    if (nrow(.groupDf) > 0L) {
+      if (length(groups) == 0L) {
+        groups <- list(list(ids = as.integer(.itemGroups[[1]]$ids), data = .groupDf))
+      } else {
+        groups[[1]]$data <- as.data.frame(
+          data.table::rbindlist(list(groups[[1]]$data, .groupDf), fill = TRUE)
+        )
+      }
+    }
+    mat <- .summaryDf
+  } else {
+    mat <- .etShiftChunk(.etMaterialize(item), timeDelta) # nolint
+    if (samples == "use") {
+      chunks <- .addRowsToChunks(chunks, mat) # nolint
+      nobs   <- nobs + env$nobs
+    } else {
+      doseOnly <- mat[mat$evid != 0L, , drop = FALSE]
+      chunks <- .addRowsToChunks(chunks, doseOnly) # nolint
     }
   }
-  mat$time <- mat$time + timeDelta
-  if (!is.null(mat$low)  && any(!is.na(mat$low)))
-    mat$low[!is.na(mat$low)]   <- mat$low[!is.na(mat$low)]   + timeDelta
-  if (!is.null(mat$high) && any(!is.na(mat$high)))
-    mat$high[!is.na(mat$high)] <- mat$high[!is.na(mat$high)] + timeDelta
-  if (!is.null(mat$ii)) mat$ii[is.na(mat$ii)] <- 0.0
 
   lastIi <- 0.0
   lastDose <- 0.0
@@ -1124,26 +1171,17 @@
     lastDose <- lastDoseRow$time + addlVal * lastIi
   }
   maxTime <- max(mat$time, na.rm = TRUE)
-  if (samples == "use") {
-    chunks <- .addRowsToChunks(chunks, mat) # nolint
-    nobs   <- nobs + env$nobs
-  } else {
-    doseOnly <- mat[mat$evid != 0L, , drop = FALSE]
-    chunks <- .addRowsToChunks(chunks, doseOnly) # nolint
-  }
   ndose <- ndose + env$ndose
-  # Advance past last dose period; also respect max obs time (for samples=\"use\")
-  if (explicitIi && identical(ii, 0)) {
-    timeDelta <- timeDelta
-  } else {
+  # Advance past last dose period; also respect max obs time (for samples="use")
+  if (!(explicitIi && identical(ii, 0))) {
     if (lastIi > 0) {
-      effectiveIi <-  lastIi
+      effectiveIi <- lastIi
     } else {
-      effectiveIi <-  ii
+      effectiveIi <- ii
     }
-    timeDelta   <- max(maxTime, lastDose + effectiveIi)
+    timeDelta <- max(maxTime, lastDose + effectiveIi)
   }
-  list(units = units, show = show, ids = ids, chunks = chunks,
+  list(units = units, show = show, ids = ids, chunks = chunks, groups = groups,
        nobs = nobs, ndose = ndose, timeDelta = timeDelta,
        lastIi = lastIi, lastDose = lastDose)
 }

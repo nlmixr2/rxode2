@@ -165,26 +165,33 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
       expect_equal(x$eff[1], 0.5)
     })
 
-    x <- solve(mod1, theta, ev, inits)
+    for (.homogenous in c(FALSE, TRUE)) {
+      withr::with_options(list(rxode2.homogenous = .homogenous), {
+        .label <- if (.homogenous) " (homogenous=TRUE)" else " (homogenous=FALSE)"
 
-    test_that("Add sampling makes sense", {
-      ## Piping does not update object, like dplyr.
-      tmp <- x |> add.sampling(0.5)
-      expect_equal(as.numeric(tmp$time[2]), 0.5)
-      expect_equal(as.numeric(x$time[2]), 1)
-      ## $ access updates object.
-      expect_warning(x$add.sampling(0.5), NA) # from issue #750
-      expect_equal(as.numeric(x$time[2]), 0.5)
-    })
-    x <- solve(mod1, theta, ev, inits)
+        x <- solve(mod1, theta, ev, inits)
 
-    test_that("Add dosing makes sense", {
-      tmp <- x |> add.dosing(dose = 500, start.time = 0.5)
-      expect_equal(tmp$get.dosing()$time[2], 0.5)
-      expect_equal(x$get.dosing()$time[2], 120)
-      x$add.dosing(0.5)
-      expect_equal(x$get.dosing()$time[2], 0)
-    })
+        test_that(paste0("Add sampling makes sense", .label), {
+          ## Piping does not update object, like dplyr.
+          tmp <- x |> add.sampling(0.5)
+          expect_equal(as.numeric(tmp$time[2]), 0.5)
+          expect_equal(as.numeric(x$time[2]), 1)
+          ## $ access updates object.
+          expect_warning(x$add.sampling(0.5), NA) # from issue #750
+          expect_equal(as.numeric(x$time[2]), 0.5)
+        })
+
+        x <- solve(mod1, theta, ev, inits)
+
+        test_that(paste0("Add dosing makes sense", .label), {
+          tmp <- x |> add.dosing(dose = 500, start.time = 0.5)
+          expect_equal(as.numeric(tmp$get.dosing()$time[2]), 0.5)
+          expect_equal(as.numeric(x$get.dosing()$time[2]), 120)
+          x$add.dosing(0.5)
+          expect_equal(as.numeric(x$get.dosing()$time[2]), 0)
+        })
+      })
+    }
 
     x <- solve(mod1, theta, ev, inits)
 

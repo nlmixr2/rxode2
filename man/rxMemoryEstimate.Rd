@@ -16,7 +16,7 @@ rxMemoryEstimate(
   neps = 0L,
   ncov = 0L,
   nsim = 1L,
-  cores = 0L,
+  cores = 1L,
   nMtime = 0L,
   extraCmt = 0L,
   linB = FALSE,
@@ -29,7 +29,10 @@ rxMemoryEstimate(
 \arguments{
 \item{dat}{A \code{\link{rxMemSummary}}, a data.frame with
 \code{nobs}/\code{ndoses} columns, or a full event-table
-data.frame with an \code{evid} column.}
+data.frame with an \code{evid} column. This can also be a
+serialized solve state file path, a solve state bundle list
+containing an \code{events} element, or an \code{rxSolve}
+object (using its stored solve events).}
 
 \item{model}{Optional rxode2 model object.  When supplied,
 \code{neq}, \code{nlhs}, \code{npars}, \code{extraCmt},
@@ -81,9 +84,9 @@ linCmt).}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose
-elements are raw byte counts plus \code{ramBytes},
-\code{freeRamBytes}, \code{total}, \code{sizeofInd}, and
-\code{rxLlikSaveSize}.
+elements are raw byte counts plus \code{outputData},
+\code{ramBytes}, \code{freeRamBytes}, \code{total},
+\code{sizeofInd}, and \code{rxLlikSaveSize}.
 }
 \description{
 Accepts either a pre-summarised per-ID table (an \code{\link{rxMemSummary}}

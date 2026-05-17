@@ -551,29 +551,64 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- ID-only resize ----
   if (.doResize) {
-    if (length(.addedIds) > 0L) {
-      if (length(.existingIds) > 0) {
-        .tid <- .existingIds[1]
-      } else {
-        .tid <- NA_integer_
+    .groups <- .etGetGroups(.envRef) # nolint
+    if (length(.groups) > 0L) {
+      .templateId <- if (length(.existingIds) > 0L) .existingIds[[1L]] else NA_integer_
+      .templateGroup <- which(vapply(.groups, function(.g) .templateId %in% .g$ids, logical(1)))[1]
+      if (is.na(.templateGroup)) {
+        .templateGroup <- if (length(.groups) > 0L) 1L else NA_integer_
       }
-      if (!is.na(.tid) && !is.null(.envRef$chunks[[.tid]])) {
-        .template <- .envRef$chunks[[.tid]]
-        for (.newId in .addedIds) {
-          .newChunk <- .template
-          .newChunk$id <- as.integer(.newId)
-          .envRef$chunks[[.newId]] <- .newChunk
-          .envRef$nobs  <- .envRef$nobs  + sum(.template$evid == 0L, na.rm = TRUE)
-          .envRef$ndose <- .envRef$ndose + sum(.template$evid != 0L, na.rm = TRUE)
+      .templateData <- if (!is.na(.templateGroup)) .groups[[.templateGroup]]$data else NULL
+      if (length(.groups) == 1L && .etGroupIdsEqual(.existingIds, .groups[[1]]$ids)) {
+        .groups[[1]]$ids <- sort(unique(as.integer(.envRef$ids)))
+      } else {
+        for (.i in seq_along(.groups)) {
+          .groups[[.i]]$ids <- intersect(.groups[[.i]]$ids, .envRef$ids)
+        }
+        .groups <- Filter(function(.g) length(.g$ids) > 0L, .groups)
+        if (length(.addedIds) > 0L && length(.groups) > 0L) {
+          .templateGroup <- which(vapply(.groups, function(.g) .templateId %in% .g$ids, logical(1)))[1]
+          if (is.na(.templateGroup)) {
+            .templateGroup <- 1L
+          }
+          .groups[[.templateGroup]]$ids <- sort(unique(c(.groups[[.templateGroup]]$ids, as.integer(.addedIds))))
+        } else if (length(.addedIds) > 0L &&
+                   length(.groups) == 0L &&
+                   is.data.frame(.templateData) &&
+                   nrow(.templateData) > 0L) {
+          .groups <- list(list(
+            ids = sort(unique(as.integer(.addedIds))),
+            data = .templateData
+          ))
         }
       }
-    }
-    for (.rmId in .removedIds) {
-      if (.rmId <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.rmId]])) {
-        .df <- .envRef$chunks[[.rmId]]
-        .envRef$nobs  <- .envRef$nobs  - sum(.df$evid == 0L, na.rm = TRUE)
-        .envRef$ndose <- .envRef$ndose - sum(.df$evid != 0L, na.rm = TRUE)
-        .envRef$chunks[.rmId] <- list(NULL)
+      .etSetGroups(.envRef, .groups) # nolint
+      .etResetCountsFromGroups(.envRef) # nolint
+    } else {
+      if (length(.addedIds) > 0L) {
+        if (length(.existingIds) > 0) {
+          .tid <- .existingIds[1]
+        } else {
+          .tid <- NA_integer_
+        }
+        if (!is.na(.tid) && .tid <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.tid]])) {
+          .template <- .envRef$chunks[[.tid]]
+          for (.newId in .addedIds) {
+            .newChunk <- .template
+            .newChunk$id <- as.integer(.newId)
+            .envRef$chunks[[.newId]] <- .newChunk
+            .envRef$nobs  <- .envRef$nobs  + sum(.template$evid == 0L, na.rm = TRUE)
+            .envRef$ndose <- .envRef$ndose + sum(.template$evid != 0L, na.rm = TRUE)
+          }
+        }
+      }
+      for (.rmId in .removedIds) {
+        if (.rmId <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.rmId]])) {
+          .df <- .envRef$chunks[[.rmId]]
+          .envRef$nobs  <- .envRef$nobs  - sum(.df$evid == 0L, na.rm = TRUE)
+          .envRef$ndose <- .envRef$ndose - sum(.df$evid != 0L, na.rm = TRUE)
+          .envRef$chunks[.rmId] <- list(NULL)
+        }
       }
     }
   }
@@ -616,8 +651,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
   # "id" returns the unique sorted ids present in the materialized table
   if (arg == "id" && !is.null(.env)) {
-    .mat <- .etMaterialize(structure(list(.env = .env), class = "rxEt")) # nolint
-    return(sort(unique(as.integer(.mat$id))))
+    return(.etPresentIds(.env)) # nolint
   }
   if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
     return(get(arg, envir = .env, inherits = FALSE))
@@ -663,6 +697,11 @@ filter.rxEt <- function(.data, ..., .by = NULL, .preserve = FALSE) {
 rename.rxEt <- function(.data, ...) {
   .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
   dplyr::rename(.full, ...)
+}
+
+mutate.rxEt <- function(.data, ...) {
+  .full <- tibble::as_tibble(as.data.frame(.data, all = TRUE))
+  dplyr::mutate(.full, ...)
 }
 
 #' @export
@@ -816,19 +855,9 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
     if (!is.null(seed)) set.seed(seed)
     if (is.rxEt(object)) { # nolint
       .env0 <- .rxEtEnv(object) # nolint
-      .mat <- .etMaterialize(object) # nolint
-      .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
-      if (!any(.hasWin)) {
+      .sim <- .etSimulateRepresentation(.env0) # nolint
+      if (!isTRUE(.sim$hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
-      } else {
-        .rt <- .env0$randomType
-        if (!is.na(.rt) && .rt == 3L) {
-          .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-        } else if (!is.na(.rt) && .rt == 2L) {
-          .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-        } else {
-          warning("unclear windows, identical event table", call. = FALSE)
-        }
       }
       .newEnv <- new.env(parent = emptyenv())
       .newEnv$units      <- .env0$units
@@ -838,11 +867,8 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       .newEnv$ndose      <- .env0$ndose
       .newEnv$randomType <- NA_integer_
       .newEnv$canResize  <- FALSE
-      .newEnv$chunks     <- list()
-      if (nrow(.mat) > 0L) {
-        .ids <- unique(as.integer(.mat$id))
-        for (.i in .ids) .newEnv$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
-      }
+      .newEnv$groups     <- .sim$groups
+      .newEnv$chunks     <- .sim$chunks
       return(structure(c(list(.env = .newEnv),
                          .etBuildMethods(.newEnv)), # nolint
                        class = "rxEt"))
@@ -1126,6 +1152,7 @@ etSeq <- function(..., samples = c("clear", "use"),
   .explicitIi <- !missing(ii)
 
   .chunks    <- list()
+  .groups    <- list()
   .nobs      <- 0L
   .ndose     <- 0L
   .units     <- NULL
@@ -1149,11 +1176,12 @@ etSeq <- function(..., samples = c("clear", "use"),
   for (.item in .args) {
     if (is.rxEt(.item)) { # nolint
       .ret <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples, # nolint
-                               .chunks, .nobs, .ndose, .explicitIi, ii)
+                               .chunks, .groups, .nobs, .ndose, .explicitIi, ii)
       .units     <- .ret$units
       .show      <- .ret$show
       .ids       <- .ret$ids
       .chunks    <- .ret$chunks
+      .groups    <- .ret$groups
       .nobs      <- .ret$nobs
       .ndose     <- .ret$ndose
       .timeDelta <- .ret$timeDelta
@@ -1166,6 +1194,7 @@ etSeq <- function(..., samples = c("clear", "use"),
 
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- .chunks
+  .newEnv$groups     <- .groups
   .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
   if (!is.null(.show)) {
     .newShow <-  .show
@@ -1230,6 +1259,7 @@ etRbind <- function(..., samples = c("use", "clear"),
   .units   <- NULL
   .show    <- NULL
   .ids     <- integer(0)
+  .groups  <- list()
   .nextId  <- 0L
 
   for (.et in .ets) {
@@ -1243,6 +1273,12 @@ etRbind <- function(..., samples = c("use", "clear"),
     }
     # ID remapping for unique mode (always materializes)
     if (.uniqueId || .samples == "clear") {
+      if (length(.groups) > 0L) {
+        for (.g in .groups) {
+          .chunks <- .addRowsToChunks(.chunks, .etMaterializeGroup(.g)) # nolint
+        }
+        .groups <- list()
+      }
       .mat    <- .etMaterialize(.et) # nolint
       if (.uniqueId) {
         .oldIds <- sort(unique(.mat$id))
@@ -1258,13 +1294,39 @@ etRbind <- function(..., samples = c("use", "clear"),
       }
       .chunks <- .addRowsToChunks(.chunks, .mat) # nolint
     } else {
-      # Merge indexed chunks directly
-      for (.ci in seq_along(.env$chunks)) {
-        if (!is.null(.env$chunks[[.ci]])) {
-          .existing <- if (.ci <= length(.chunks)) .chunks[[.ci]] else NULL
-          .chunks[[.ci]] <- as.data.frame(
-            data.table::rbindlist(list(.existing, .env$chunks[[.ci]]), fill = TRUE)
-          )
+      .etGroupsIn <- .etGetGroups(.env) # nolint
+      if (length(.chunks) == 0L &&
+          length(.etGroupsIn) > 0L &&
+          length(intersect(.ids, .env$ids)) == 0L) {
+        .groups <- c(.groups, lapply(.etGroupsIn, function(.g) {
+          list(ids = as.integer(.g$ids), data = .g$data)
+        }))
+      } else if (length(.chunks) == 0L &&
+                 length(.groups) == 1L &&
+                 length(.etGroupsIn) == 1L &&
+                 .etGroupIdsEqual(.groups[[1]]$ids, .etGroupsIn[[1]]$ids)) {
+        .groups[[1]]$data <- as.data.frame(
+          data.table::rbindlist(list(.groups[[1]]$data, .etGroupsIn[[1]]$data), fill = TRUE)
+        )
+      } else {
+        if (length(.groups) > 0L) {
+          for (.g in .groups) {
+            .chunks <- .addRowsToChunks(.chunks, .etMaterializeGroup(.g)) # nolint
+          }
+          .groups <- list()
+        }
+        if (length(.etGroups(.env)) > 0L) { # nolint
+          .chunks <- .addRowsToChunks(.chunks, .etMaterialize(.et)) # nolint
+        } else {
+          # Merge indexed chunks directly
+          for (.ci in seq_along(.env$chunks)) {
+            if (!is.null(.env$chunks[[.ci]])) {
+              .existing <- if (.ci <= length(.chunks)) .chunks[[.ci]] else NULL
+              .chunks[[.ci]] <- as.data.frame(
+                data.table::rbindlist(list(.existing, .env$chunks[[.ci]]), fill = TRUE)
+              )
+            }
+          }
         }
       }
       .ids    <- sort(unique(c(.ids, .env$ids)))
@@ -1277,6 +1339,7 @@ etRbind <- function(..., samples = c("use", "clear"),
 
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- .chunks
+  .newEnv$groups     <- .groups
   if (!is.null(.units)) {
     .newEnv$units      <-  .units
   } else {
@@ -1468,22 +1531,40 @@ as_tibble.rxEt <- function(x, ...) {
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
 etExpand <- function(et) {
-  .mat      <- .etMaterialize(et) # nolint
-  .expanded <- .etExpandAddl(.mat, .rxEtEnv(et)) # nolint
   .env      <- .rxEtEnv(et) # nolint
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()
-  if (nrow(.expanded) > 0L) {
-    .ids <- unique(as.integer(.expanded$id))
-    for (.i in .ids) {
-      .newEnv$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+  .groups <- .etGetGroups(.env) # nolint
+  if (length(.groups) > 0L) {
+    .newEnv$groups <- lapply(.groups, function(.g) {
+      list(ids = as.integer(.g$ids), data = .etExpandGroupData(.g$data, .env)) # nolint
+    })
+  } else {
+    .mat      <- .etMaterialize(et) # nolint
+    .expanded <- .etExpandAddl(.mat, .env) # nolint
+    .newEnv$groups <- list()
+    if (nrow(.expanded) > 0L) {
+      .ids <- unique(as.integer(.expanded$id))
+      for (.i in .ids) {
+        .newEnv$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+      }
     }
   }
   .newEnv$units      <- .env$units
   .newEnv$show       <- .env$show
   .newEnv$ids        <- .env$ids
-  .newEnv$nobs       <- sum(.expanded$evid == 0L)
-  .newEnv$ndose      <- sum(.expanded$evid != 0L)
+  .etResetCountsFromGroups(.newEnv) # nolint
+  if (length(.newEnv$groups) == 0L) {
+    .newEnv$nobs       <- sum(.expanded$evid == 0L)
+    .newEnv$ndose      <- sum(.expanded$evid != 0L)
+  }
+  if (length(.newEnv$groups) > 0L) {
+    .newEnv$show["addl"] <- any(vapply(.newEnv$groups, function(.g) {
+      !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
+    }, logical(1)))
+  } else {
+    .newEnv$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  }
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
   structure(c(list(.env = .newEnv),

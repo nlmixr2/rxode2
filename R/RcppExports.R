@@ -616,6 +616,10 @@ rxSimThetaOmega <- function(params = NULL, omega = NULL, omegaDf = NULL, omegaLo
     .Call(`_rxode2_rxSimThetaOmega`, params, omega, omegaDf, omegaLower, omegaUpper, omegaIsChol, omegaSeparation, omegaXform, nSub, thetaMat, thetaLower, thetaUpper, thetaDf, thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper, sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform, nCoresRV, nObs, dfSub, dfObs, simSubjects, simVariability)
 }
 
+rxSolveSetCurObj_ <- function(obj) {
+    invisible(.Call(`_rxode2_rxSolveSetCurObj_`, obj))
+}
+
 #' Free the C solving/parsing information.
 #'
 #' Take the ODE C system and free it.
@@ -635,6 +639,10 @@ rxSolveFree <- function() {
 #' @author Matthew L. Fidler
 rxSolveSetup <- function() {
     .Call(`_rxode2_rxSolveSetup`)
+}
+
+rxSolveFromRaw_ <- function(obj, rawObj, solveState, rxControl, specParams, extraArgs, params, events, inits) {
+    .Call(`_rxode2_rxSolveFromRaw_`, obj, rawObj, solveState, rxControl, specParams, extraArgs, params, events, inits)
 }
 
 rxSolve_ <- function(obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly) {
@@ -943,6 +951,33 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
 
 rxOptRep_ <- function(input) {
     .Call(`_rxode2_rxOptRep_`, input)
+}
+
+#' Save the pre-integration rxode2 solver state to a binary file
+#'
+#' Called internally after event-table and parameter setup but before ODE
+#' integration.  The file can later be restored with rxRestoreState_().
+#'
+#' @param path File path to write (created/overwritten).
+#' @return Invisibly TRUE.
+#' @noRd
+rxSaveState_ <- function() {
+    .Call(`_rxode2_rxSaveState_`)
+}
+
+#' Check whether a file was written by rxSaveState_
+#' @noRd
+rxIsSerializeFile_ <- function(rawSexp) {
+    .Call(`_rxode2_rxIsSerializeFile_`, rawSexp)
+}
+
+#' Restore a pre-integration rxode2 solver state from binary file
+#'
+#' @param path File path written by rxSaveState_().
+#' @return Invisibly TRUE.
+#' @noRd
+rxRestoreState_ <- function(rawSexp) {
+    .Call(`_rxode2_rxRestoreState_`, rawSexp)
 }
 
 rxStack_ <- function(Data, vars = NULL) {

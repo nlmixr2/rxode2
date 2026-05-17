@@ -1,5 +1,18 @@
 # rxEt environment and chunk helpers -------------------------------------
 
+
+#' Is the homogenous event table path active?
+#'
+#'
+#' @return logical; TRUE if homogenous event table path is active,
+#'   FALSE otherwise, gets from option "rxode2.homogenous" with
+#'   default TRUE
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGetHomogenous <- function() {
+  isTRUE(getOption("rxode2.homogenous", TRUE))
+}
+
 #' Extract mutable .env from either new-style (data.frame subclass + .rxEtEnv attr)
 #' or internal mini-rxEt (1-element named list where [[1L]] is the env).
 #'
@@ -52,6 +65,338 @@
   }
   df
 }
+#' Get the groups from the rxEt environment
+#'
+#' @param envRef The environmental reference for the rxEt groups
+#' @return A list of groups, where each group is a list containing 'ids' and 'data'
+#' @noRd
+#' @author Matthew L. Fidler
+.etGroups <- function(envRef) {
+  .groups <- envRef$groups
+  if (is.null(.groups)) .groups <- list()
+  .groups
+}
+#' Check if two sets of group IDs are equal
+#'
+#' @param x first group to check if it is equal.
+#' @param y second group to check if it is equal.
+#' @return logical value indicating whether the two sets of group IDs are equal
+#' @noRd
+#' @author Matthew L. Fidler
+.etGroupIdsEqual <- function(x, y) {
+  identical(sort.int(as.integer(x), method = "quick"),
+            sort.int(as.integer(y), method = "quick"))
+}
+#' Process a chunk of data for grouping
+#'
+#' This function takes a data frame and an optional set of IDs, and
+#' processes the data frame for grouping.
+#'
+#'
+#' @param df data frame to process for grouping
+#' @param ids optional vector of IDs to consider for grouping; if NULL, the function will
+#' @return processed data frame
+#' @noRd
+#' @author Matthew L. Fidler
+.etGroupChunk <- function(df, ids = NULL) {
+  if (!is.data.frame(df)) {
+    df <- .etExpandObsChunk(df)
+  }
+  df <- .etDropUnitsForChunk(df)
+  if (!is.null(ids) && "id" %in% names(df)) {
+    .id <- unique(as.integer(df$id))
+    if (length(.id) == 1L && length(ids) >= 1L) {
+      df$id <- NULL
+    }
+  }
+  df
+}
+
+#' Get the groups from the rxEt environment, with fallback to chunks
+#' if groups are not set
+#'
+#' @param envRef The environment reference group
+#' @return A list of groups, where each group is a list containing
+#'   'ids' and 'data'. If groups are not set, it will return an empty
+#'   list or process the chunks to create groups.
+#' @noRd
+#' @author Matthew L. Fidler
+.etGetGroups <- function(envRef) {
+  .groups <- .etGroups(envRef)
+  if (length(.groups) > 0L) return(.groups)
+
+  .chunks <- envRef$chunks
+  if (length(.chunks) == 0L) return(list())
+
+  .ret <- vector("list", 0L)
+  for (.i in seq_along(.chunks)) {
+    .chunk <- .chunks[[.i]]
+    if (is.null(.chunk)) next
+    .ids <- if (!is.null(names(.chunk)) && "id" %in% names(.chunk)) {
+      unique(as.integer(.chunk$id))
+    } else if (length(envRef$ids) == 1L) {
+      as.integer(envRef$ids)
+    } else {
+      as.integer(.i)
+    }
+    .df <- .etGroupChunk(.chunk, .ids)
+    .ret[[length(.ret) + 1L]] <- list(ids = .ids, data = .df)
+  }
+  .ret
+}
+
+.etSetGroups <- function(envRef, groups) {
+  envRef$groups <- groups
+  if (length(groups) > 0L) {
+    envRef$chunks <- list()
+  }
+  invisible(NULL)
+}
+
+.etPresentIds <- function(envRef) {
+  .groups <- .etGroups(envRef)
+  if (length(.groups) > 0L) {
+    return(sort(unique(as.integer(unlist(lapply(.groups, `[[`, "ids"), use.names = FALSE)))))
+  }
+  .chunks <- envRef$chunks
+  if (length(.chunks) == 0L) return(integer(0))
+  .ids <- integer(0)
+  for (.i in seq_along(.chunks)) {
+    .chunk <- .chunks[[.i]]
+    if (is.null(.chunk)) next
+    if (!is.null(names(.chunk)) && "id" %in% names(.chunk)) {
+      .ids <- c(.ids, unique(as.integer(.chunk$id)))
+    } else if (length(envRef$ids) == 1L) {
+      .ids <- c(.ids, as.integer(envRef$ids))
+    } else {
+      .ids <- c(.ids, as.integer(.i))
+    }
+  }
+  sort(unique(.ids))
+}
+
+.etResetCountsFromGroups <- function(envRef) {
+  .groups <- .etGetGroups(envRef)
+  if (length(.groups) == 0L) {
+    envRef$nobs <- 0L
+    envRef$ndose <- 0L
+    return(invisible(NULL))
+  }
+  envRef$nobs <- as.integer(sum(vapply(.groups, function(.g) {
+    sum(.g$data$evid == 0L, na.rm = TRUE) * length(.g$ids)
+  }, numeric(1))))
+  envRef$ndose <- as.integer(sum(vapply(.groups, function(.g) {
+    sum(.g$data$evid != 0L, na.rm = TRUE) * length(.g$ids)
+  }, numeric(1))))
+  invisible(NULL)
+}
+
+.etChunkIndex <- function(chunks, id) {
+  .idx <- as.integer(id)
+  if (is.na(.idx) || .idx < 1L) {
+    stop("invalid event table id", call. = FALSE)
+  }
+  .len <- length(chunks)
+  if (.idx > .len) {
+    length(chunks) <- .idx
+  }
+  chunks
+}
+
+.etSplitGroupToChunks <- function(chunks, group, randomType = NA_integer_) {
+  .df <- .etDropUnitsForChunk(group$data)
+  if (!is.data.frame(.df) || nrow(.df) == 0L || length(group$ids) == 0L) {
+    return(chunks)
+  }
+  .hasWin <- !is.na(.df$low) & !is.na(.df$high)
+  for (.id in as.integer(group$ids)) {
+    .row <- .df
+    if (any(.hasWin)) {
+      if (!is.na(randomType) && randomType == 3L) {
+        .row$time[.hasWin] <- stats::rnorm(sum(.hasWin), .row$low[.hasWin], .row$high[.hasWin])
+      } else if (!is.na(randomType) && randomType == 2L) {
+        .row$time[.hasWin] <- stats::runif(sum(.hasWin), .row$low[.hasWin], .row$high[.hasWin])
+      }
+    }
+    .row$id <- .id
+    chunks <- .etChunkIndex(chunks, .id)
+    chunks[[.id]] <- .row
+  }
+  chunks
+}
+
+.etSimulateRepresentation <- function(envRef) {
+  .groups <- .etGroups(envRef)
+  .chunks <- envRef$chunks
+  .randomType <- envRef$randomType
+  .hasWin <- FALSE
+  .needsChunkSplit <- length(.chunks) > 0L
+
+  if (length(.groups) > 0L) {
+    for (.g in .groups) {
+      .df <- .etDropUnitsForChunk(.g$data)
+      if (is.data.frame(.df) && nrow(.df) > 0L) {
+        .groupHasWin <- !is.na(.df$low) & !is.na(.df$high)
+        if (any(.groupHasWin)) {
+          .hasWin <- TRUE
+          if (length(.g$ids) > 1L) {
+            .needsChunkSplit <- TRUE
+          }
+        }
+      }
+    }
+  }
+
+  if (!.hasWin && length(.chunks) > 0L) {
+    for (.i in seq_along(.chunks)) {
+      .df <- .etDropUnitsForChunk(.chunks[[.i]])
+      if (is.data.frame(.df) && nrow(.df) > 0L && any(!is.na(.df$low) & !is.na(.df$high))) {
+        .hasWin <- TRUE
+        break
+      }
+    }
+  }
+
+  if (!.hasWin) {
+    return(list(hasWin = FALSE, groups = .groups, chunks = .chunks))
+  }
+
+  if (!is.na(.randomType) && .randomType == 1L) {
+    return(list(hasWin = FALSE, groups = .groups, chunks = .chunks))
+  }
+
+  if (.needsChunkSplit) {
+    .outChunks <- vector("list", max(length(.chunks), suppressWarnings(max(as.integer(envRef$ids), 0L)), na.rm = TRUE))
+    if (length(.groups) > 0L) {
+      for (.g in .groups) {
+        .outChunks <- .etSplitGroupToChunks(.outChunks, .g, .randomType)
+      }
+    }
+    if (length(.chunks) > 0L) {
+      for (.i in seq_along(.chunks)) {
+        .df <- .etDropUnitsForChunk(.chunks[[.i]])
+        if (!is.data.frame(.df) || nrow(.df) == 0L) next
+        .hasWinI <- !is.na(.df$low) & !is.na(.df$high)
+        if (any(.hasWinI)) {
+          if (!is.na(.randomType) && .randomType == 3L) {
+            .df$time[.hasWinI] <- stats::rnorm(sum(.hasWinI), .df$low[.hasWinI], .df$high[.hasWinI])
+          } else if (!is.na(.randomType) && .randomType == 2L) {
+            .df$time[.hasWinI] <- stats::runif(sum(.hasWinI), .df$low[.hasWinI], .df$high[.hasWinI])
+          }
+        }
+        .id <- if ("id" %in% names(.df)) unique(as.integer(.df$id))[1L] else as.integer(.i)
+        .outChunks <- .etChunkIndex(.outChunks, .id)
+        .outChunks[[.id]] <- .df
+      }
+    }
+    return(list(hasWin = TRUE, groups = list(), chunks = .outChunks))
+  }
+
+  .outGroups <- lapply(.groups, function(.g) {
+    .df <- .etDropUnitsForChunk(.g$data)
+    .hasWinG <- !is.na(.df$low) & !is.na(.df$high)
+    if (any(.hasWinG)) {
+      if (!is.na(.randomType) && .randomType == 3L) {
+        .df$time[.hasWinG] <- stats::rnorm(sum(.hasWinG), .df$low[.hasWinG], .df$high[.hasWinG])
+      } else if (!is.na(.randomType) && .randomType == 2L) {
+        .df$time[.hasWinG] <- stats::runif(sum(.hasWinG), .df$low[.hasWinG], .df$high[.hasWinG])
+      }
+    }
+    list(ids = .g$ids, data = .df)
+  })
+  list(hasWin = TRUE, groups = .outGroups, chunks = list())
+}
+
+.etPreviewData <- function(envRef, subset = c("all", "dosing", "sampling")) {
+  subset <- match.arg(subset)
+  .groups <- .etGroups(envRef)
+  if (length(.groups) == 0L) {
+    .mat <- .etMaterialize(structure(list(env = envRef), class = "rxEt"))
+    if (nrow(.mat) == 0L) return(NULL)
+    if (subset == "dosing") {
+      .mat <- .mat[.mat$evid != 0L, , drop = FALSE]
+    } else if (subset == "sampling") {
+      .mat <- .mat[.mat$evid == 0L, , drop = FALSE]
+    }
+    if (nrow(.mat) == 0L) return(NULL)
+    rownames(.mat) <- seq_len(nrow(.mat))
+    return(.mat)
+  }
+
+  .ret <- vector("list", 0L)
+  .meta <- vector("list", 0L)
+  for (.i in seq_along(.groups)) {
+    .g <- .groups[[.i]]
+    .df <- .etDropUnitsForChunk(.g$data)
+    if (subset == "dosing") {
+      .df <- .df[.df$evid != 0L, , drop = FALSE]
+    } else if (subset == "sampling") {
+      .df <- .df[.df$evid == 0L, , drop = FALSE]
+    }
+    if (nrow(.df) == 0L) next
+    .ret[[length(.ret) + 1L]] <- .df
+    .meta[[length(.meta) + 1L]] <- list(
+      ids = as.integer(.g$ids),
+      nSub = length(.g$ids),
+      nRow = nrow(.df)
+    )
+  }
+  if (length(.ret) == 0L) return(NULL)
+  .out <- as.data.frame(data.table::rbindlist(.ret, fill = TRUE))
+  rownames(.out) <- seq_len(nrow(.out))
+  attr(.out, "rxEtPreviewGroups") <- .meta
+  class(.out) <- c("rxEtPreview", class(.out))
+  .tu <- envRef$units["time"]
+  if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {
+    for (.col in c("time", "ii", "low", "high", "dur")) {
+      if (.col %in% names(.out)) {
+        .out[[.col]] <- units::set_units(.out[[.col]], .tu, mode = "standard")
+      }
+    }
+  }
+  .out
+}
+
+.etMaterializeGroup <- function(group) {
+  .df <- .etDropUnitsForChunk(group$data)
+  if (!is.data.frame(.df) || nrow(.df) == 0L || length(group$ids) == 0L) {
+    return(.etEmptyDf())
+  }
+  .n <- nrow(.df)
+  .idx <- rep(seq_len(.n), times = length(group$ids))
+  .id <- rep(as.integer(group$ids), each = .n)
+  .ret <- .df[.idx, , drop = FALSE]
+  .ret$id <- .id
+  .ret
+}
+
+.etShiftChunk <- function(df, timeDelta) {
+  .df <- .etDropUnitsForChunk(df)
+  if (!is.data.frame(.df) || nrow(.df) == 0L || identical(timeDelta, 0)) {
+    return(.df)
+  }
+  .df$time <- .df$time + timeDelta
+  if (!is.null(.df$low) && any(!is.na(.df$low))) {
+    .df$low[!is.na(.df$low)] <- .df$low[!is.na(.df$low)] + timeDelta
+  }
+  if (!is.null(.df$high) && any(!is.na(.df$high))) {
+    .df$high[!is.na(.df$high)] <- .df$high[!is.na(.df$high)] + timeDelta
+  }
+  if (!is.null(.df$ii)) .df$ii[is.na(.df$ii)] <- 0.0
+  .df
+}
+
+.etExpandGroupData <- function(df, envRef) {
+  .df <- .etDropUnitsForChunk(df)
+  if (!is.data.frame(.df) || nrow(.df) == 0L) {
+    return(.df)
+  }
+  .tmp <- .df
+  .tmp$id <- 1L
+  .expanded <- .etExpandAddl(.tmp, envRef)
+  .expanded$id <- NULL
+  .expanded
+}
 
 #' Add rows of a data.frame to the ID-indexed chunks list
 #'
@@ -88,6 +433,48 @@
   }
   .posIds <- ids[ids > 0L]
   if (length(.posIds) == 0L) return(invisible(NULL))
+  if (!"id" %in% names(df)) {
+    .groups <- .etGetGroups(envRef)
+    .chunk <- .etGroupChunk(df, .posIds)
+    if (length(.groups) > 0L) {
+      .newGroups <- vector("list", 0L)
+      .remainingIds <- sort.int(as.integer(.posIds), method = "quick")
+      for (.g in .groups) {
+        .overlap <- intersect(.g$ids, .remainingIds)
+        if (length(.overlap) == 0L) {
+          .newGroups[[length(.newGroups) + 1L]] <- .g
+          next
+        }
+        .keepIds <- setdiff(.g$ids, .overlap)
+        if (length(.keepIds) > 0L) {
+          .newGroups[[length(.newGroups) + 1L]] <- list(ids = .keepIds, data = .g$data)
+        }
+        .newGroups[[length(.newGroups) + 1L]] <- list(
+          ids = sort.int(as.integer(.overlap), method = "quick"),
+          data = as.data.frame(data.table::rbindlist(list(.g$data, .chunk), fill = TRUE))
+        )
+        .remainingIds <- setdiff(.remainingIds, .overlap)
+      }
+      if (length(.remainingIds) > 0L) {
+        .newGroups[[length(.newGroups) + 1L]] <- list(ids = .remainingIds, data = .chunk)
+      }
+      .etSetGroups(envRef, .newGroups)
+      return(invisible(NULL))
+    }
+    if (length(.posIds) > 1L) {
+      .match <- which(vapply(.groups, function(.g) .etGroupIdsEqual(.g$ids, .posIds), logical(1)))
+      if (length(.match) == 1L) {
+        .groups[[.match]]$data <- as.data.frame(
+          data.table::rbindlist(list(.groups[[.match]]$data, .chunk), fill = TRUE)
+        )
+      } else {
+        .groups[[length(.groups) + 1L]] <- list(ids = sort.int(as.integer(.posIds), method = "quick"),
+                                                data = .chunk)
+      }
+      .etSetGroups(envRef, .groups)
+      return(invisible(NULL))
+    }
+  }
   for (.i in .posIds) {
     .row <- .etDropUnitsForChunk(df)
     .row$id <- .i
@@ -141,6 +528,7 @@
 .newRxEt <- function(amountUnits = NA_character_, timeUnits = NA_character_) {
   .env <- new.env(parent = emptyenv())
   .env$chunks     <- list()
+  .env$groups     <- list()
   .env$units      <- c(dosing = amountUnits, time = timeUnits)
   .env$show       <- .etDefaultShow()
   .env$ids        <- 1L
@@ -170,7 +558,8 @@
 .rxEtSyncData <- function(x) {
   .env <- .rxEtEnv(x)
   if (!is.environment(.env)) return(x)
-  .ret <- .etMaterialize(x)
+  .nTot <- .env$nobs + .env$ndose
+  .ret <- if (.nTot <= 1000L) .etMaterialize(x) else .etEmptyDf()
   attr(.ret, ".rxEtEnv") <- .env
   .rt <- .env$randomType
   .cls <- c("rxEt", "data.frame")
@@ -282,6 +671,256 @@
   df
 }
 
+.etGroupedSolveData <- function(x) {
+  .env <- .rxEtEnv(x)
+  .groups <- .etGetGroups(.env)
+  if (length(.groups) == 0L) {
+    return(NULL)
+  }
+  .dat <- vector("list", 0L)
+  .ids <- vector("list", 0L)
+  for (.i in seq_along(.groups)) {
+    .g <- .groups[[.i]]
+    .df <- .etFixCmtForSolve(.etDropUnitsForChunk(.g$data))
+    if (!is.data.frame(.df) || nrow(.df) == 0L || length(.g$ids) == 0L) next
+    .df$id <- rep.int(.i, nrow(.df))
+    .dat[[length(.dat) + 1L]] <- .df
+    .ids[[length(.ids) + 1L]] <- as.integer(.g$ids)
+  }
+  if (length(.dat) == 0L) {
+    return(.etEmptyDf())
+  }
+  .out <- as.data.frame(data.table::rbindlist(.dat, fill = TRUE, use.names = TRUE))
+  if ("evid" %in% names(.out)) {
+    .doseIdx <- which(.out$evid != 0L)
+    if (length(.doseIdx) > 0L) {
+      for (.col in c("rate", "ii", "dur")) {
+        if (.col %in% names(.out)) {
+          .vals <- .out[[.col]]
+          .naInDose <- is.na(.vals[.doseIdx])
+          if (any(.naInDose)) {
+            .vals[.doseIdx[.naInDose]] <- 0.0
+            .out[[.col]] <- .vals
+          }
+        }
+      }
+      for (.col in c("addl", "ss")) {
+        if (.col %in% names(.out)) {
+          .vals <- .out[[.col]]
+          .naInDose <- is.na(.vals[.doseIdx])
+          if (any(.naInDose)) {
+            .vals[.doseIdx[.naInDose]] <- 0L
+            .out[[.col]] <- .vals
+          }
+        }
+      }
+    }
+  }
+  if ("time" %in% names(.out) && "id" %in% names(.out)) {
+    .evidSort <- if ("evid" %in% names(.out)) {
+      ifelse(!is.na(.out$evid) & .out$evid == 3L, -1L, as.integer(.out$evid))
+    } else {
+      rep(0L, nrow(.out))
+    }
+    .ord <- order(.out$id, as.numeric(.out$time), .evidSort)
+    .out <- .out[.ord, ]
+  }
+  attr(.out, "rxHomGroups") <- .ids
+  attr(.out, "rxHomIdLevels") <- as.character(unlist(.ids, use.names = FALSE))
+  .tu <- .env$units["time"]
+  if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {
+    .out[["time"]] <- units::set_units(.out[["time"]], .tu, mode = "standard")
+  }
+  .out
+}
+
+.etGroupedSolveSplitKey <- function(df) {
+  if (!is.data.frame(df) || ncol(df) == 0L) {
+    return(rep.int("1", if (is.data.frame(df)) nrow(df) else 0L))
+  }
+  do.call(interaction, c(unname(df), list(drop = TRUE, lex.order = TRUE)))
+}
+
+.etGroupedSolveDataFrameICov <- function(events, iCov, keep = NULL, modelParams = character(0)) {
+  .groups <- attr(events, "rxHomGroups", exact = TRUE)
+  if (!is.data.frame(events) || is.null(.groups) || !inherits(iCov, "data.frame")) {
+    return(NULL)
+  }
+  .idCol <- which(tolower(names(iCov)) == "id")
+  if (length(.idCol) != 1L) {
+    return(NULL)
+  }
+  .idName <- names(iCov)[.idCol]
+  .keep <- as.character(keep)
+  .modelParams <- as.character(modelParams)
+  .icovIdRaw <- if (is.factor(iCov[[.idName]])) as.character(iCov[[.idName]]) else iCov[[.idName]]
+  .icovId <- suppressWarnings(as.integer(.icovIdRaw))
+  if (length(.icovId) != nrow(iCov) || anyNA(.icovId)) {
+    return(NULL)
+  }
+  if (anyDuplicated(.icovId)) {
+    return(NULL)
+  }
+  .eventId <- suppressWarnings(as.integer(if (is.factor(events$id)) as.character(events$id) else events$id))
+  if (length(.eventId) != nrow(events) || anyNA(.eventId)) {
+    return(NULL)
+  }
+  .eventRows <- vector("list", 0L)
+  .icovRows <- vector("list", 0L)
+  .outGroups <- vector("list", 0L)
+  .outId <- 1L
+  for (.i in seq_along(.groups)) {
+    .idsInGroup <- as.integer(.groups[[.i]])
+    .idx <- match(.idsInGroup, .icovId)
+    if (anyNA(.idx)) {
+      return(NULL)
+    }
+    .subIc <- iCov[.idx, , drop = FALSE]
+    .splitCols <- setdiff(names(.subIc), .idName)
+    .splitNeeded <- unique(c(tolower(.modelParams), tolower(.keep)))
+    .splitCols <- .splitCols[tolower(.splitCols) %in% .splitNeeded]
+    .splitKey <- if (length(.splitCols) == 0L) {
+      factor(rep.int("1", nrow(.subIc)))
+    } else {
+      .etGroupedSolveSplitKey(.subIc[.splitCols])
+    }
+    .split <- split(seq_len(nrow(.subIc)), .splitKey, drop = TRUE)
+    .df <- events[.eventId == .i, , drop = FALSE]
+    if (!is.data.frame(.df) || nrow(.df) == 0L) {
+      return(NULL)
+    }
+    for (.grpIdx in .split) {
+      .ids <- as.integer(.idsInGroup[.grpIdx])
+      .row <- .df
+      .row$id <- rep.int(.outId, nrow(.row))
+      .eventRows[[length(.eventRows) + 1L]] <- .row
+      .icovRow <- .subIc[.grpIdx[1L], , drop = FALSE]
+      .icovRow[[.idName]] <- .outId
+      .icovRows[[length(.icovRows) + 1L]] <- .icovRow
+      .outGroups[[length(.outGroups) + 1L]] <- .ids
+      .outId <- .outId + 1L
+    }
+  }
+  if (length(.eventRows) == 0L) {
+    return(NULL)
+  }
+  .events <- as.data.frame(data.table::rbindlist(.eventRows, fill = TRUE, use.names = TRUE))
+  .iCovOut <- as.data.frame(data.table::rbindlist(.icovRows, fill = TRUE, use.names = TRUE))
+  .iCovOut[[.idName]] <- suppressWarnings(as.integer(.iCovOut[[.idName]]))
+  if (anyNA(.iCovOut[[.idName]])) {
+    return(NULL)
+  }
+  attr(.events, "rxHomGroups") <- .outGroups
+  attr(.events, "rxHomIdLevels") <- as.character(unlist(.outGroups, use.names = FALSE))
+  list(
+    events = .events,
+    iCov = .iCovOut
+  )
+}
+
+.etGroupedSolveDataICov <- function(x, iCov, keep = NULL, modelParams = character(0)) {
+  .env <- .rxEtEnv(x)
+  .groups <- .etGetGroups(.env)
+  if (length(.groups) == 0L) {
+    return(NULL)
+  }
+  .etGroupedSolveDataFrameICov(.etGroupedSolveData(x), iCov,
+                               keep = keep, modelParams = modelParams)
+}
+
+.etSolveObsValue <- function(x, name) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+  if (length(x) != 1L) {
+    stop(sprintf("'%s' must be of length 1", name), call. = FALSE)
+  }
+  as.numeric(x)[1L]
+}
+
+.etSolveObsTimes <- function(events, ctl = NULL) {
+  .from <- .etSolveObsValue(ctl$from, "from")
+  if (is.null(.from)) {
+    .from <- 0.0
+  }
+  .to <- .etSolveObsValue(ctl$to, "to")
+  if (is.null(.to)) {
+    .maxTime <- suppressWarnings(max(as.numeric(events$time), na.rm = TRUE))
+    if (!is.finite(.maxTime)) {
+      .maxTime <- .from
+    }
+    .to <- .maxTime + 24
+  }
+  .by <- .etSolveObsValue(ctl$by, "by")
+  .lengthOut <- .etSolveObsValue(ctl$length.out, "length.out")
+  if (!is.null(.lengthOut)) {
+    .lengthOut <- as.integer(.lengthOut)
+    if (!is.null(.by)) {
+      stop("cannot use both 'by' and 'length.out' for rxode2 simulations", call. = FALSE)
+    }
+    .by <- (.to - .from)/(.lengthOut - 1)
+  } else if (is.null(.by)) {
+    .lengthOut <- 200L
+    .by <- (.to - .from)/(.lengthOut - 1)
+  } else {
+    .lengthOut <- as.integer((.to - .from)/.by + 1.0)
+  }
+  .by * seq.int(0L, .lengthOut - 1L) + .from
+}
+
+.etAddSolveObsRows <- function(events, obsTimes) {
+  .groups <- attr(events, "rxHomGroups", exact = TRUE)
+  .idLevels <- attr(events, "rxHomIdLevels", exact = TRUE)
+  .events <- .etFixCmtForSolve(events)
+  .events$time <- as.numeric(.events$time)
+  .ids <- sort(unique(as.integer(.events$id)))
+  .obs <- vector("list", length(.ids))
+  for (.i in seq_along(.ids)) {
+    .obs[[.i]] <- data.frame(
+      id = rep.int(.ids[.i], length(obsTimes)),
+      time = obsTimes,
+      evid = 0L
+    )
+  }
+  .out <- as.data.frame(data.table::rbindlist(c(list(.events), .obs), fill = TRUE, use.names = TRUE))
+  if (!is.null(.groups)) {
+    attr(.out, "rxHomGroups") <- .groups
+  }
+  if (!is.null(.idLevels)) {
+    attr(.out, "rxHomIdLevels") <- .idLevels
+  }
+  .out
+}
+
+.etPrepareGroupedSolveData <- function(events, ctl = NULL) {
+  .groups <- attr(events, "rxHomGroups", exact = TRUE)
+  .events <- .etFixCmtForSolve(events)
+  if (is.null(.groups)) {
+    return(.events)
+  }
+  if (nrow(.events) == 0L) {
+    return(.events)
+  }
+  if ("evid" %in% names(.events) && any(.events$evid == 0L, na.rm = TRUE)) {
+    return(.events)
+  }
+  .etAddSolveObsRows(.events, .etSolveObsTimes(.events, ctl))
+}
+
+.etPrepareSolveEvents <- function(events, ctl = NULL) {
+  if (!is.rxEt(events)) {
+    return(.etPrepareGroupedSolveData(events, ctl))
+  }
+  .env <- .rxEtEnv(events)
+  if (is.null(ctl$iCov) && length(.etGroups(.env)) > 0L) {
+    return(.etPrepareGroupedSolveData(.etGroupedSolveData(events), ctl))
+  }
+  if (isTRUE(.env$nobs == 0L)) {
+    return(.etFixCmtForSolve(.etMaterialize(events)))
+  }
+  .etFixCmtForSolve(.etMaterialize(events))
+}
+
 #' Empty data.frame skeleton matching materialized format
 #'
 #' @return empty data.frame with canonical columns and types
@@ -317,17 +956,44 @@
 #'
 #' @noRd
 .etMaterialize <- function(et) {
+  id <- NULL # for R cmd check since data.table uses id := ...
   .env <- .rxEtEnv(et)
-  .chunks <- .env$chunks
+  .groups <- .etGetGroups(.env)
 
-  if (length(.chunks) == 0L) return(.etEmptyDf())
+  if (length(.groups) > 0L) {
+    .nonNull <- Filter(function(.g) !is.null(.g$data) && nrow(.g$data) > 0L, .groups)
+    if (length(.nonNull) == 0L) return(.etEmptyDf())
+    .dtList <- lapply(.nonNull, function(.g) {
+      .df <- .g$data
+      if (!is.data.frame(.df)) {
+        .df <- .etExpandObsChunk(.df)
+      }
+      if ("id" %in% names(.df)) {
+        return(data.table::as.data.table(.df))
+      }
+      .n <- nrow(.df)
+      if (.n == 0L || length(.g$ids) == 0L) {
+        return(data.table::as.data.table(.etEmptyDf()))
+      }
+      .idx <- rep.int(seq_len(.n), times = length(.g$ids))
+      .id <- rep(as.integer(.g$ids), each = .n)
+      .ret <- data.table::as.data.table(.df[.idx, , drop = FALSE])
+      .ret[, id := .id]
+      .ret
+    })
+    .dt <- data.table::rbindlist(.dtList, fill = TRUE, use.names = TRUE)
+  } else {
+    .chunks <- .env$chunks
 
-  # Each element is a data.frame for one ID; filter NULL entries
-  .nonNull <- Filter(Negate(is.null), .chunks)
-  if (length(.nonNull) == 0L) return(.etEmptyDf())
+    if (length(.chunks) == 0L) return(.etEmptyDf())
 
-  # rbindlist: fast sparse bind across ID data.frames
-  .dt <- data.table::rbindlist(.nonNull, fill = TRUE, use.names = TRUE)
+    # Each element is a data.frame for one ID; filter NULL entries
+    .nonNull <- Filter(Negate(is.null), .chunks)
+    if (length(.nonNull) == 0L) return(.etEmptyDf())
+
+    # rbindlist: fast sparse bind across ID data.frames
+    .dt <- data.table::rbindlist(.nonNull, fill = TRUE, use.names = TRUE)
+  }
 
   # ---- Fill column defaults ----
   if (is.null(.dt[["id"]]))   data.table::set(.dt, j = "id",   value = 1L)

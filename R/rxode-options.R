@@ -54,6 +54,7 @@
     .s3register("dplyr::filter", "rxEt")
     .s3register("dplyr::select", "rxEt")
     .s3register("dplyr::rename", "rxEt")
+    .s3register("dplyr::mutate", "rxEt")
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
   }

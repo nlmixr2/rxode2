@@ -30,6 +30,8 @@ rxTest({
   test_that("rxMemoryEstimate contains memory availability metadata", {
     .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 1L)
+    expect_true("outputData" %in% names(.est))
+    expect_gt(as.numeric(.est$outputData), 0)
     expect_true("ramBytes" %in% names(.est))
     expect_true("freeRamBytes" %in% names(.est))
     .rb <- .est$ramBytes
@@ -58,6 +60,98 @@ rxTest({
     expect_equal(nrow(.summ), 2L)
     expect_equal(.summ$ndoses[.summ$id == 1L], 1L)
     expect_equal(.summ$nobs[.summ$id == 1L],   2L)
+  })
+
+  test_that("rxMemoryEstimate summarizes large compressed rxEt without losing ids", {
+    .ev <- et(1, id = 1:2000)
+    .est <- rxMemoryEstimate(.ev, neq = 1L)
+    .summ <- attr(.est, "summary")
+    expect_equal(nrow(.summ), 2000L)
+    expect_equal(sum(.summ$nobs), 2000L)
+    expect_equal(sum(.summ$ndoses), 0L)
+  })
+
+  test_that("grouped homogeneous rxEt lowers internal memory estimates", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 24)
+    .ev$add.sampling(seq(0, 48, by = 12))
+    .ev <- et(.ev, id = 1:3)
+
+    .grouped <- rxMemoryEstimate(.ev, neq = 2L, nlhs = 1L)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), neq = 2L, nlhs = 1L)
+
+    expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
+    expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
+    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
+  })
+
+  test_that("grouped dose-only rxEt lowers internal memory estimates", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .ctrl <- rxControl(from = 0, to = 24, by = 12)
+
+    .grouped <- rxMemoryEstimate(.ev, neq = 2L, control = .ctrl)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), neq = 2L, control = .ctrl)
+
+    expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
+    expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
+    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+  })
+
+  test_that("grouped dose-only rxEt with iCov keep stays compressed in memory estimate", {
+    .mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+    .ctrl <- rxControl(from = 0, to = 24, by = 12, iCov = .iCov, keep = "grp")
+
+    .grouped <- rxMemoryEstimate(.ev, model = .mod, control = .ctrl)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), model = .mod, control = .ctrl)
+
+    expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
+    expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
+    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
+  })
+
+  test_that("grouped dose-only iCov keep affects solve layout without model", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .iCov <- data.frame(id = 1:4, grp = c("a", "a", "b", "b"))
+    .ctrlNoKeep <- rxControl(from = 0, to = 24, by = 12, iCov = .iCov)
+    .ctrlKeep <- rxControl(from = 0, to = 24, by = 12, iCov = .iCov, keep = "grp")
+
+    .noKeep <- rxMemoryEstimate(.ev, neq = 2L, control = .ctrlNoKeep)
+    .withKeep <- rxMemoryEstimate(.ev, neq = 2L, control = .ctrlKeep)
+    .expanded <- rxMemoryEstimate(as.data.frame(.ev), neq = 2L, control = .ctrlKeep)
+
+    expect_gt(as.numeric(.withKeep$gall_times), as.numeric(.noKeep$gall_times))
+    expect_lt(as.numeric(.withKeep$gall_times), as.numeric(.expanded$gall_times))
+  })
+
+  test_that("grouped homogeneous data.frame preserves subject counts in memory estimate", {
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev$add.sampling(c(0, 12, 24))
+    .ev <- et(.ev, id = 1:5)
+    .groupedDf <- .etGroupedSolveData(.ev)
+
+    .fromRxEt <- rxMemoryEstimate(.ev, neq = 2L)
+    .fromGroupedDf <- rxMemoryEstimate(.groupedDf, neq = 2L)
+
+    expect_equal(.fromGroupedDf$effectiveSubs, .fromRxEt$effectiveSubs)
+    expect_equal(nrow(attr(.fromGroupedDf, "summary")), nrow(attr(.fromRxEt, "summary")))
+    expect_equal(as.numeric(.fromGroupedDf$total), as.numeric(.fromRxEt$total))
+    expect_equal(as.numeric(.fromGroupedDf$outputData), as.numeric(.fromRxEt$outputData))
   })
 
   test_that("rxMemoryEstimate errors on bad input", {
@@ -100,6 +194,14 @@ rxTest({
     .ctrl4 <- rxControl(cores = 4L)
     .est4  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl4)
     expect_gt(.est4$total, .base$total)
+  })
+
+  test_that("addDosing increases estimated output data memory", {
+    .s       <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base    <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L)
+    .ctrl    <- rxControl(addDosing = TRUE)
+    .dosing  <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, control = .ctrl)
+    expect_gt(as.numeric(.dosing$outputData), as.numeric(.base$outputData))
   })
 
   test_that("rxControl omega sets neta, sigma sets neps", {
@@ -157,5 +259,128 @@ rxTest({
     .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 100L)
     expect_gt(.est$total, .base$total)
+  })
+
+  test_that("rxMemoryEstimate accepts serialized state files and bundles", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    .ev <- et(.ev, id = 1:4)
+    .stateFile <- tempfile(fileext = ".rxbin")
+    rxSolve(.mod, .theta, .ev, serializeFile = .stateFile)
+    .bundle <- .rxReadStateBundle(.stateFile)
+
+    .fromFile <- rxMemoryEstimate(.stateFile, model = .mod)
+    .fromBundle <- rxMemoryEstimate(.bundle, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.bundle$events, model = .mod)
+
+    expect_equal(as.numeric(.fromFile$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromBundle$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromFile$outputData), as.numeric(.fromEvents$outputData))
+    expect_equal(as.numeric(.fromBundle$outputData), as.numeric(.fromEvents$outputData))
+  })
+
+  test_that("rxMemoryEstimate accepts rxSolve objects", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    .ev <- et(.ev, id = 1:4)
+    .solved <- rxSolve(.mod, .theta, .ev)
+    .env <- attr(class(.solved), ".rxode2.env")
+    .fromSolve <- rxMemoryEstimate(.solved, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.env$.args.events, model = .mod, control = .env$.args)
+
+    expect_equal(as.numeric(.fromSolve$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromSolve$outputData), as.numeric(.fromEvents$outputData))
+  })
+
+  test_that("rxMemoryEstimate infers control defaults from rxSolve objects", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .solved <- rxSolve(.mod, .theta, .ev, from = 0, to = 24, by = 12, nsim = 3)
+    .env <- attr(class(.solved), ".rxode2.env")
+
+    .fromSolve <- rxMemoryEstimate(.solved, model = .mod)
+    .fromEvents <- rxMemoryEstimate(.env$.args.events, model = .mod, control = .env$.args)
+
+    expect_equal(.fromSolve$effectiveSubs, .fromEvents$effectiveSubs)
+    expect_equal(as.numeric(.fromSolve$total), as.numeric(.fromEvents$total))
+    expect_equal(as.numeric(.fromSolve$gall_times), as.numeric(.fromEvents$gall_times))
+  })
+
+  test_that("rxMemoryEstimate explicit control overrides rxSolve defaults", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .solved <- rxSolve(.mod, .theta, .ev, from = 0, to = 24, by = 12, nsim = 3)
+    .env <- attr(class(.solved), ".rxode2.env")
+
+    .override <- rxControl(from = 0, to = 24, by = 12, nsim = 1)
+    .fromSolveDefault <- rxMemoryEstimate(.solved, model = .mod)
+    .fromSolveOverride <- rxMemoryEstimate(.solved, model = .mod, control = .override)
+    .fromEventsOverride <- rxMemoryEstimate(.env$.args.events, model = .mod, control = .override)
+
+    expect_equal(.fromSolveOverride$effectiveSubs, .fromEventsOverride$effectiveSubs)
+    expect_equal(as.numeric(.fromSolveOverride$total), as.numeric(.fromEventsOverride$total))
+    expect_equal(as.numeric(.fromSolveOverride$gall_times), as.numeric(.fromEventsOverride$gall_times))
+    expect_false(isTRUE(all.equal(as.numeric(.fromSolveOverride$total),
+                                  as.numeric(.fromSolveDefault$total))))
+  })
+
+  test_that("rxMemoryEstimate file/bundle/rxSolve parity for same dose-only grouped solve", {
+    skip_on_cran()
+    .mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    .theta <- c(ka = 1.5, cl = 10, v = 50)
+    .ev <- eventTable()
+    .ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    .ev <- et(.ev, id = 1:4)
+    .ctrl <- rxControl(from = 0, to = 24, by = 12)
+    .stateFile <- tempfile(fileext = ".rxbin")
+
+    rxSolve(.mod, .theta, .ev, serializeFile = .stateFile)
+    .bundle <- .rxReadStateBundle(.stateFile)
+    .solved <- rxSolve(.mod, .theta, .ev)
+
+    .fromFile <- rxMemoryEstimate(.stateFile, model = .mod, control = .ctrl)
+    .fromBundle <- rxMemoryEstimate(.bundle, model = .mod, control = .ctrl)
+    .fromSolve <- rxMemoryEstimate(.solved, model = .mod, control = .ctrl)
+
+    expect_equal(as.numeric(.fromFile$total), as.numeric(.fromBundle$total))
+    expect_equal(as.numeric(.fromFile$total), as.numeric(.fromSolve$total))
+    expect_equal(as.numeric(.fromFile$gall_times), as.numeric(.fromBundle$gall_times))
+    expect_equal(as.numeric(.fromFile$gall_times), as.numeric(.fromSolve$gall_times))
   })
 })

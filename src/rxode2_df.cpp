@@ -128,6 +128,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   rx_solve *rx;
   rx = &rx_global;
   rx_solving_options *op = &op_global;
+
   int add_cov = rx->add_cov;
   int ncov = op->ncov;
   int ncov0 = rx->nCov0;
@@ -138,6 +139,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int nall = rx->nall - rx->nevid9;
   int errNcol = rxGetErrsNcol();
   int errNrow = rxGetErrsNrow();
+
   if (op->nsvar != errNcol) {
     rxSolveFreeC();
     (Rf_errorcall)(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);

@@ -110,6 +110,520 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
   })
 
+  test_that("homogeneous solve events stay compressed through etTrans", {
+    mod <- rxode2parse("
+      ka = 1
+      d/dt(depot) = -ka * depot
+    ")
+
+    ev <- et(time = 0, amt = 100, cmt = 1) |>
+      et(0:4) |>
+      et(id = 1:3)
+
+    prep <- .etPrepareSolveEvents(ev, rxControl())
+    grp <- .etGetGroups(.rxEtEnv(ev))
+
+    expect_equal(nrow(prep), nrow(grp[[1]]$data))
+    expect_equal(attr(prep, "rxHomIdLevels"), c("1", "2", "3"))
+
+    tr <- etTrans(prep, mod)
+    expect_equal(nrow(as.data.frame(tr)), nrow(prep))
+    expect_equal(attr(tr, "rxHomIdLevels"), c("1", "2", "3"))
+    expect_equal(as.integer(attr(tr, "rxHomGroups")[[1]]), 1:3)
+
+    trInfo <- attr(class(tr), ".rxode2.lst")
+    expect_equal(trInfo$idLvl, c("1", "2", "3"))
+  })
+
+  test_that("homogeneous grouped solve matches expanded solve output", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev)))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped dose-only solve keeps grouped ids", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev, from = 0, to = 24, by = 12))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), from = 0, to = 24, by = 12))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped dose-only solve prep keeps grouped attrs", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    prep <- .etPrepareSolveEvents(ev, rxControl(from = 0, to = 24, by = 12))
+
+    expect_equal(attr(prep, "rxHomGroups"), list(1:3))
+    expect_equal(attr(prep, "rxHomIdLevels"), c("1", "2", "3"))
+    expect_equal(sort(unique(prep$id)), 1L)
+    expect_equal(sum(prep$evid == 0L), 3L)
+  })
+
+  test_that("grouped solve prep handles empty grouped data frames", {
+    ev <- data.frame(id = integer(0), time = numeric(0), evid = integer(0))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+
+    prep <- .etPrepareGroupedSolveData(ev, rxControl())
+
+    expect_true(is.data.frame(prep))
+    expect_equal(nrow(prep), 0L)
+    expect_equal(attr(prep, "rxHomGroups"), list(1:2))
+  })
+
+  test_that("homogeneous grouped dose-only solve prep supports model iCov compression", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+    ctl <- rxControl(iCov = iCov, from = 0, to = 24, by = 12)
+    prep <- .etGroupedSolveDataICov(ev, iCov, modelParams = rxModelVars(mod)$params)
+    prepEvents <- .etPrepareSolveEvents(prep$events, ctl)
+    ctl$iCov <- prep$iCov
+
+    got <- as.data.frame(rxode2:::rxSolveSEXP(mod, ctl, NULL, list(),
+                                              c(KA = 1, CL = 7, V = 40),
+                                              prepEvents, NULL, FALSE))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V = 40), iCov = iCov,
+                                  from = 0, to = 24, by = 12))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped dose-only solve prep handles unit time defaults", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- et(amount.units = "mg", time.units = "hours")
+    ev <- et(ev, amt = 10000, cmt = 1)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    expect_no_error(
+      .sol <- solve(mod, ev, iCov = iCov, params = c(KA = 1, CL = 7, V = 40))
+    )
+    expect_true(nrow(as.data.frame(.sol)) > 0L)
+  })
+
+  test_that("homogeneous grouped dose-only solve keeps iCov keep-column output", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    got <- suppressWarnings(
+      as.data.frame(
+        rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = "grp",
+                from = 0, to = 24, by = 12)
+      )
+    )
+    want <- suppressWarnings(
+      as.data.frame(
+        rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = "grp",
+                from = 0, to = 24, by = 12)
+      )
+    )
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr", "grp")],
+      want[, c("id", "time", "depot", "centr", "grp")]
+    )
+  })
+
+  test_that("homogeneous grouped solve matches expanded output when nsim is requested", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev, nsim = 2))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), nsim = 2))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous rxEt routes nsim through nSub instead of nStud", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    groupedCtl <- rxControl(nsim = 2, events = ev)
+    expandedCtl <- rxControl(nsim = 2, events = as.data.frame(ev))
+
+    expect_equal(groupedCtl$nSub, 2L)
+    expect_equal(groupedCtl$nStud, 1L)
+    expect_equal(expandedCtl$nSub, 1L)
+    expect_equal(expandedCtl$nStud, 2L)
+  })
+
+  test_that("rxSolve updates preserve grouped solve event attributes", {
+    on.exit(rxClean(), add = TRUE)
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+
+    s1 <- rxSolve(mod, ev)
+    .e1 <- attr(class(s1), ".rxode2.env")
+    .ev1 <- .e1$.args.events
+    .groups <- attr(.ev1, "rxHomGroups", exact = TRUE)
+    .idLvls <- attr(.ev1, "rxHomIdLevels", exact = TRUE)
+    expect_false(is.null(.groups))
+
+    s2 <- rxSolveUpdate(s1, "KA", rep(0.5, nrow(.ev1)))
+    .e2 <- attr(class(s2), ".rxode2.env")
+    .ev2 <- .e2$.args.events
+    expect_equal(attr(.ev2, "rxHomGroups"), .groups)
+    expect_equal(attr(.ev2, "rxHomIdLevels"), .idLvls)
+
+    s3 <- rxSolveUpdate(s2, "KA", 1)
+    .e3 <- attr(class(s3), ".rxode2.env")
+    .ev3 <- .e3$.args.events
+    expect_equal(attr(.ev3, "rxHomGroups"), .groups)
+    expect_equal(attr(.ev3, "rxHomIdLevels"), .idLvls)
+  })
+
+  test_that("rxSolve updates preserve grouped iCov keep-column output", {
+    on.exit(rxClean(), add = TRUE)
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    s1 <- suppressWarnings(
+      rxSolve(mod, ev, params = c(KA = 1, CL = 7, V2 = 40),
+              iCov = iCov, keep = "grp", from = 0, to = 24, by = 12)
+    )
+    .e1 <- attr(class(s1), ".rxode2.env")
+    .ev1 <- .e1$.args.events
+    expect_equal(sort(unique(as.data.frame(s1)$grp)), c("a", "b"))
+
+    s2 <- suppressWarnings(rxSolveUpdate(s1, "KA", rep(0.5, nrow(.ev1))))
+    .e2 <- attr(class(s2), ".rxode2.env")
+    .ev2 <- .e2$.args.events
+    expect_equal(attr(.ev2, "rxHomGroups"), attr(.ev1, "rxHomGroups"))
+    expect_equal(attr(.ev2, "rxHomIdLevels"), attr(.ev1, "rxHomIdLevels"))
+    expect_equal(sort(unique(as.data.frame(s2)$grp)), c("a", "b"))
+
+    s3 <- suppressWarnings(rxSolveUpdate(s2, "KA", 1))
+    .e3 <- attr(class(s3), ".rxode2.env")
+    .ev3 <- .e3$.args.events
+    expect_equal(attr(.ev3, "rxHomGroups"), attr(.ev1, "rxHomGroups"))
+    expect_equal(attr(.ev3, "rxHomIdLevels"), attr(.ev1, "rxHomIdLevels"))
+    expect_equal(sort(unique(as.data.frame(s3)$grp)), c("a", "b"))
+  })
+
+  test_that("homogeneous grouped solve supports model iCov compression", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    got <- as.data.frame(rxSolve(mod, ev, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("grouped solve data.frame infers iCov ids from homogeneous id levels", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 101:104)
+
+    groupedDf <- .etGroupedSolveData(ev)
+    iCovNoId <- data.frame(WT = c(70, 70, 80, 80))
+
+    got <- as.data.frame(rxSolve(mod, groupedDf, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCovNoId))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCovNoId))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("grouped solve data.frame iCov split accepts factor representative ids", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    groupedDf <- .etGroupedSolveData(ev)
+    groupedDf$id <- factor(groupedDf$id)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    got <- as.data.frame(rxSolve(mod, groupedDf, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped solve keeps iCov keep-column output", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    got <- suppressWarnings(
+      as.data.frame(rxSolve(mod, ev, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov, keep = "grp"))
+    )
+    want <- suppressWarnings(
+      as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov, keep = "grp"))
+    )
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr", "grp")],
+      want[, c("id", "time", "depot", "centr", "grp")]
+    )
+  })
+
+  test_that("homogeneous grouped iCov keep columns stay on grouped solve prep", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    prep <- .etGroupedSolveDataICov(ev, iCov, keep = "grp", modelParams = rxModelVars(mod)$params)
+
+    expect_false(is.null(prep))
+    expect_equal(attr(prep$events, "rxHomGroups"), list(1:2, 3:4))
+    expect_equal(prep$iCov$id, 1:2)
+    expect_equal(prep$iCov$grp, c("a", "b"))
+  })
+
+  test_that("homogeneous grouped iCov split ignores unrelated iCov columns", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 70, 70), grp = c("a", "b", "c", "d"))
+
+    prep <- .etGroupedSolveDataICov(ev, iCov, modelParams = rxModelVars(mod)$params)
+
+    expect_false(is.null(prep))
+    expect_equal(attr(prep$events, "rxHomGroups"), list(1:4))
+    expect_equal(prep$iCov$id, 1L)
+    expect_equal(prep$iCov$WT, 70)
+  })
+
+  test_that("grouped iCov split aborts on incomplete representative groups", {
+    ev <- data.frame(id = 1L, time = 0, evid = 1L, amt = 100)
+    attr(ev, "rxHomGroups") <- list(1:2, 3:4)
+    attr(ev, "rxHomIdLevels") <- c("1", "2", "3", "4")
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
+  test_that("grouped iCov split aborts on duplicate iCov ids", {
+    ev <- data.frame(id = c(1L, 2L), time = c(0, 0), evid = c(1L, 1L), amt = c(100, 100))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+    iCov <- data.frame(id = c(1, 1, 2), WT = c(70, 75, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
+  test_that("grouped iCov split aborts on coercion-colliding iCov ids", {
+    ev <- data.frame(id = c(1L, 2L), time = c(0, 0), evid = c(1L, 1L), amt = c(100, 100))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+    iCov <- data.frame(id = c("1", "01", "2"), WT = c(70, 75, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
+  test_that("keep from iCov is case-insensitive and does not warn missing", {
+    mod <- rxode2({
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V * centr
+      cp <- centr / V
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:2)
+    iCov <- data.frame(id = 1:2, wt = c(70, 80), sex = c("M", "F"))
+
+    expect_no_warning(
+      .sol <- rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40),
+                      iCov = iCov, keep = c("WT", "SEX"))
+    )
+
+    .nm <- tolower(names(as.data.frame(.sol)))
+    expect_true("wt" %in% .nm)
+    expect_true("sex" %in% .nm)
+  })
+
+  test_that("missing keep columns still warn when only subset is in iCov", {
+    mod <- rxode2({
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V * centr
+      cp <- centr / V
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:2)
+    iCov <- data.frame(id = 1:2, wt = c(70, 80))
+
+    .warnings <- character()
+    withCallingHandlers(
+      rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40),
+              iCov = iCov, keep = c("WT", "MISSING_COL")),
+      warning = function(.w) {
+        .warnings <<- c(.warnings, conditionMessage(.w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_true(any(grepl("Cannot keep missing columns", .warnings, fixed = TRUE)))
+    expect_true(any(grepl("MISSING_COL", .warnings, fixed = TRUE)))
+    expect_false(any(grepl("\\bWT\\b", .warnings)))
+  })
+
   test_that("splitBolus expands source bolus doses to all target compartments", {
     modSplit <- rxode2parse("
       splitBolus(depot, depot, central, peripheral)

@@ -48,6 +48,283 @@ rxTest({
     expect_true(all(df$evid == 0L))
   })
 
+  test_that("et stores homogeneous ids as one compressed group", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(1, id = 1:10)
+      .e <- .rxEtEnv(ev)
+      expect_equal(length(.e$groups), 1L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$groups[[1]]$ids, 1:10)
+      expect_false("id" %in% names(.e$groups[[1]]$data))
+      expect_equal(.e$nobs, 10L)
+    })
+  })
+
+  test_that("large homogeneous id resize stays grouped without chunk cloning", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(1, id = 1:70000)
+      .e1 <- .rxEtEnv(ev)
+      expect_equal(length(.e1$groups), 1L)
+      expect_equal(length(.e1$chunks), 0L)
+      expect_equal(length(.e1$groups[[1]]$ids), 70000L)
+
+      ev2 <- et(ev, id = 70001:140000)
+      .e2 <- .rxEtEnv(ev2)
+      expect_equal(length(.e2$groups), 1L)
+      expect_equal(length(.e2$chunks), 0L)
+      expect_equal(length(.e2$groups[[1]]$ids), 70000L)
+      expect_equal(min(.e2$groups[[1]]$ids), 70001L)
+      expect_equal(max(.e2$groups[[1]]$ids), 140000L)
+      expect_equal(.e2$nobs, 70000L)
+    })
+  })
+
+  test_that("homogeneous compressed group expands on as.data.frame", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(1, id = 1:3)
+      df <- as.data.frame(ev, all = TRUE)
+      expect_equal(nrow(df), 3L)
+      expect_equal(df$id, 1:3)
+      expect_equal(df$time, c(1, 1, 1))
+      expect_equal(df$evid, c(0L, 0L, 0L))
+    })
+  })
+
+  test_that("homogeneous previews stay compressed for print and query helpers", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(amt = 100, ii = 24, addl = 2, id = 1:5) |>
+        et(seq(0, 72, by = 24))
+
+      dosing <- ev$get.dosing()
+      sampling <- ev$get.sampling()
+
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_s3_class(sampling, "rxEtPreview")
+      expect_equal(nrow(dosing), 1L)
+      expect_equal(nrow(sampling), 4L)
+      expect_false("id" %in% names(dosing))
+      expect_false("id" %in% names(sampling))
+
+      out <- paste(capture.output(print(ev)), collapse = "\n")
+      expect_match(out, "5 individuals")
+      expect_match(out, "compressed preview")
+    })
+  })
+
+  test_that("etRbind keeps non-overlapping homogeneous groups compressed", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      e1 <- et(amt = 100, ii = 24, addl = 2, id = 1:3)
+      e2 <- et(amt = 50, ii = 12, addl = 1, id = 4:5)
+      e3 <- rbind(e1, e2)
+      .e <- .rxEtEnv(e3)
+
+      expect_equal(length(.e$groups), 2L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$groups[[1]]$ids, 1:3)
+      expect_equal(.e$groups[[2]]$ids, 4:5)
+
+      dosing <- e3$get.dosing()
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_equal(nrow(dosing), 2L)
+      expect_false("id" %in% names(dosing))
+
+      out <- paste(capture.output(print(e3)), collapse = "\n")
+      expect_match(out, "compressed preview for 2 groups")
+      expect_match(out, "group 1: 3 individuals")
+      expect_match(out, "group 2: 2 individuals")
+    })
+  })
+
+  test_that("etRbind keeps matching homogeneous ids compressed", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      e1 <- et(amt = 100, id = 1:3)
+      e2 <- et(amt = 50, time = 24, id = 1:3)
+      e3 <- rbind(e1, e2)
+      .e <- .rxEtEnv(e3)
+
+      expect_equal(length(.e$groups), 1L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$groups[[1]]$ids, 1:3)
+
+      dosing <- e3$get.dosing()
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_equal(nrow(dosing), 2L)
+      expect_false("id" %in% names(dosing))
+      expect_equal(dosing$time, c(0, 24))
+      expect_equal(dosing$amt, c(100, 50))
+
+      df <- as.data.frame(e3, all = TRUE)
+      expect_equal(nrow(df), 6L)
+      expect_equal(df$time[df$id == 1], c(0, 24))
+      expect_equal(df$amt[df$id == 1], c(100, 50))
+    })
+  })
+
+  test_that("etSeq keeps same-id homogeneous groups compressed", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+    e1 <- et(amt = 100, ii = 24, addl = 1, id = 1:3)
+    e2 <- et(amt = 50, id = 1:3)
+    e3 <- etSeq(e1, e2)
+    .e <- .rxEtEnv(e3)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:3)
+
+    dosing <- e3$get.dosing()
+    expect_s3_class(dosing, "rxEtPreview")
+    expect_equal(nrow(dosing), 2L)
+    expect_false("id" %in% names(dosing))
+    expect_equal(dosing$time, c(0, 48))
+    expect_equal(dosing$amt, c(100, 50))
+
+    df <- as.data.frame(e3, all = TRUE)
+    expect_equal(nrow(df), 6L)
+    expect_equal(sort(unique(df$id)), 1:3)
+    expect_equal(df$time[df$id == 1], c(0, 48))
+    expect_equal(df$amt[df$id == 1], c(100, 50))
+    })
+  })
+
+  test_that("subset dose edits split homogeneous groups", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(amt = 10, id = 1:5) |> et(amt = 20, id = 4:5)
+      .e <- .rxEtEnv(ev)
+
+      expect_equal(length(.e$groups), 2L)
+      expect_equal(.e$groups[[1]]$ids, 1:3)
+      expect_equal(.e$groups[[2]]$ids, 4:5)
+      expect_equal(.e$groups[[1]]$data$amt, 10)
+      expect_equal(.e$groups[[2]]$data$amt, c(10, 20))
+
+      dosing <- ev$get.dosing()
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_equal(nrow(dosing), 3L)
+      expect_false("id" %in% names(dosing))
+
+      df <- as.data.frame(ev, all = TRUE)
+      expect_equal(df$amt[df$id == 1], 10)
+      expect_equal(df$amt[df$id == 4], c(10, 20))
+      expect_equal(df$amt[df$id == 5], c(10, 20))
+    })
+  })
+
+  test_that("id-only resize keeps added ids in grouped homogeneous tables", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(amt = 10, id = 1:3) |> et(amt = 20, id = 4:5)
+      .templateId <- .rxEtEnv(ev)$ids[[1L]]
+      .template <- as.data.frame(ev, all = TRUE)
+      .template <- .template[.template$id == .templateId, c("time", "evid", "amt"), drop = FALSE]
+      ev2 <- et(ev, id = 1:6)
+      .e2 <- .rxEtEnv(ev2)
+
+      expect_equal(length(.e2$groups), 2L)
+      expect_true(any(vapply(.e2$groups, function(.g) 6L %in% .g$ids, logical(1))))
+
+      df <- as.data.frame(ev2, all = TRUE)
+      expect_true(6L %in% unique(df$id))
+      .actual <- df[df$id == 6L, c("time", "evid", "amt"), drop = FALSE]
+      rownames(.actual) <- NULL
+      rownames(.template) <- NULL
+      expect_equal(.actual, .template)
+    })
+  })
+
+  test_that("id-only resize with disjoint ids keeps grouped template events", {
+    ev <- et(amt = 10, id = 1:3) |> et(amt = 20, id = 4:5)
+    .templateId <- .rxEtEnv(ev)$ids[[1L]]
+    .template <- as.data.frame(ev, all = TRUE)
+    .template <- .template[.template$id == .templateId, c("time", "evid", "amt"), drop = FALSE]
+
+    ev2 <- et(ev, id = 6:7)
+    .e2 <- .rxEtEnv(ev2)
+
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(sort(.e2$groups[[1]]$ids), 6:7)
+
+    df <- as.data.frame(ev2, all = TRUE)
+    expect_equal(sort(unique(df$id)), 6:7)
+    .actual <- df[df$id == 6L, c("time", "evid", "amt"), drop = FALSE]
+    rownames(.actual) <- NULL
+    rownames(.template) <- NULL
+    expect_equal(.actual, .template)
+  })
+
+  test_that("id-only resize to empty clears grouped tables", {
+    ev <- et(amt = 10, id = 1:3) |> et(amt = 20, id = 4:5)
+    ev0 <- et(ev, id = integer(0))
+    .e0 <- .rxEtEnv(ev0)
+
+    expect_equal(length(.e0$ids), 0L)
+    expect_equal(length(.e0$groups), 0L)
+    expect_equal(sum(vapply(.e0$chunks, Negate(is.null), logical(1))), 0L)
+    expect_equal(.e0$nobs, 0L)
+    expect_equal(.e0$ndose, 0L)
+    expect_equal(nrow(as.data.frame(ev0, all = TRUE)), 0L)
+  })
+
+  test_that("id-only resize deduplicates repeated ids", {
+    ev <- et(amt = 10, id = 1:3)
+    ev2 <- et(ev, id = c(2, 2, 3, 3))
+    .e2 <- .rxEtEnv(ev2)
+
+    expect_equal(.e2$ids, c(2L, 3L))
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(.e2$groups[[1]]$ids, c(2L, 3L))
+
+    df <- as.data.frame(ev2, all = TRUE)
+    expect_equal(sort(unique(df$id)), c(2L, 3L))
+    expect_equal(nrow(df), 2L)
+  })
+
+  test_that("id handling rejects non-integer-like values", {
+    ev <- et(1, id = 1:2)
+
+    expect_error(
+      et(ev, id = c("a", "2")),
+      "'id' must contain integer-like values"
+    )
+
+    expect_no_warning(
+      ev2 <- et(ev, id = as.character(c(3, 4)))
+    )
+    expect_equal(sort(unique(as.data.frame(ev2, all = TRUE)$id)), c(3L, 4L))
+  })
+
+  test_that("simulate keeps grouped homogeneous tables compressed when unchanged", {
+    ev <- et(1, id = 1:5)
+
+    ev2 <- suppressWarnings(simulate(ev, seed = 42))
+    .e2 <- .rxEtEnv(ev2)
+    expect_equal(length(.e2$groups), 1L)
+    expect_equal(length(.e2$chunks), 0L)
+    expect_equal(.e2$groups[[1]]$ids, 1:5)
+
+    ev$simulate(seed = 42)
+    .e <- .rxEtEnv(ev)
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$ids, 1:5)
+  })
+
+  test_that("simulate splits grouped homogeneous windows by id", {
+    ev <- et(list(c(4, 0.5, NA))) |> et(id = 1:10)
+
+    ev2 <- simulate(ev, seed = 42)
+    .e2 <- .rxEtEnv(ev2)
+    expect_equal(length(.e2$groups), 0L)
+    expect_equal(sum(vapply(.e2$chunks, Negate(is.null), logical(1))), 10L)
+
+    df2 <- as.data.frame(ev2)
+    expect_equal(sort(unique(df2$id)), 1:10)
+    expect_gt(stats::sd(df2$time), 0)
+
+    ev$simulate(seed = 42)
+    .e <- .rxEtEnv(ev)
+    expect_equal(length(.e$groups), 0L)
+    expect_equal(sum(vapply(.e$chunks, Negate(is.null), logical(1))), 10L)
+  })
+
   test_that(".etMaterialize sorts by id then time", {
     ev <- .newRxEt()
     .e <- .rxEtEnv(ev)
@@ -358,22 +635,46 @@ rxTest({
     expect_equal(ev$get.units(), c(dosing = "mg", time = "hours"))
   })
 
-  test_that("$.rxEt get.dosing matches main branch data frame shape", {
-    ev <- et(timeUnits = "hr") |>
-      et(amt = 100, ii = 12, until = 24) |>
-      et(seq(0, 24, by = 6))
-    df <- ev$get.dosing()
-    expect_equal(rownames(df), "1")
-    expect_false(inherits(df$time, "units"))
-    expect_equal(
-      names(df),
-      c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
-    )
-    expect_equal(df$ii, 12)
-    expect_equal(df$addl, 2L)
+  test_that("$.rxEt get.dosing homogenous path returns chunk columns with units and without id", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      skip_if_not_installed("units")
+      ev <- et(timeUnits = "hr") |>
+        et(amt = 100, ii = 12, until = 24) |>
+        et(seq(0, 24, by = 6))
+      df <- ev$get.dosing()
+      expect_equal(rownames(df), "1")
+      expect_true(inherits(df$time, "units"))
+      # Homogenous path returns chunk data: no id expansion, no id column
+      expect_equal(
+        names(df),
+        c("time", "amt", "evid", "cmt", "ii", "addl", "ss", "rate", "dur", "low", "high")
+      )
+      expect_equal(as.numeric(df$ii), 12)
+      expect_equal(df$addl, 2L)
+    })
+  })
+
+  test_that("$.rxEt get.dosing non-homogenous path returns all records with id", {
+    withr::with_options(list(rxode2.homogenous = FALSE), {
+      ev <- et(timeUnits = "hr") |>
+        et(amt = 100, ii = 12, until = 24) |>
+        et(seq(0, 24, by = 6))
+      df <- ev$get.dosing()
+      expect_equal(rownames(df), "1")
+      # Non-homogenous path retains units from timeUnits specification
+      expect_true(inherits(df$time, "units"))
+      # Non-homogenous path materializes with id column
+      expect_equal(
+        names(df),
+        c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur")
+      )
+      expect_equal(as.numeric(df$ii), 12)
+      expect_equal(df$addl, 2L)
+    })
   })
 
   test_that("$.rxEt get.dosing reindexes rows after piping tables together", {
+    skip_if_not_installed("units")
     bid <- et(timeUnits = "hr") |> et(amt = 100, ii = 12, until = 24)
     qd <- et(timeUnits = "hr") |> et(amt = 200, ii = 24, until = 24)
     ev <- etRbind(bid, qd, id = "unique") |>
@@ -381,7 +682,10 @@ rxTest({
     df <- ev$get.dosing()
     expect_equal(rownames(df), c("1", "2"))
     expect_equal(df$amt, c(100, 200))
-    expect_equal(df$ii, c(12, 0))
+    expect_equal(df$low, units::set_units(c(NA, NA), "hr"))
+    expect_equal(df$time, units::set_units(c(0, 0), "hr"))
+    expect_equal(df$high, units::set_units(c(NA, NA), "hr"))
+    expect_equal(df$ii, units::set_units(c(12, 0), "hr"))
     expect_equal(df$addl, c(2L, 0L))
   })
 
@@ -443,6 +747,29 @@ rxTest({
     expect_true(all(df$addl[df$evid == 1L] == 0L))
   })
 
+  test_that("etExpand keeps homogeneous groups compressed", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(amt = 100, ii = 24, addl = 2, id = 1:3)
+      ev2 <- etExpand(ev)
+      .e <- .rxEtEnv(ev2)
+
+      expect_equal(length(.e$groups), 1L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$groups[[1]]$ids, 1:3)
+      expect_equal(.e$groups[[1]]$data$time, c(0, 24, 48))
+      expect_true(all(.e$groups[[1]]$data$addl == 0L))
+
+      dosing <- ev2$get.dosing()
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_equal(nrow(dosing), 3L)
+      expect_false("id" %in% names(dosing))
+
+      df <- as.data.frame(ev2, all = TRUE)
+      expect_equal(nrow(df), 9L)
+      expect_equal(df$time[df$id == 1], c(0, 24, 48))
+    })
+  })
+
   test_that("in-place expand updates addl print metadata", {
     local_options(cli.unicode = FALSE, crayon.enabled = FALSE, width = 80)
     ev <- et(amt = 100, ii = 24, addl = 4)
@@ -451,6 +778,69 @@ rxTest({
     expect_false(ev$show["addl"])
     expect_equal(names(as.data.frame(ev)), c("time", "amt", "ii", "evid"))
     expect_false(grepl("multiple doses in `addl` columns", paste(capture.output(print(ev)), collapse = "\n"), fixed = TRUE))
+  })
+
+  test_that("in-place expand keeps homogeneous groups compressed", {
+    ev <- et(amt = 100, ii = 24, addl = 2, id = 1:3)
+    ev$expand()
+    .e <- .rxEtEnv(ev)
+
+    expect_equal(length(.e$groups), 1L)
+    expect_equal(length(.e$chunks), 0L)
+    expect_equal(.e$groups[[1]]$data$time, c(0, 24, 48))
+    expect_true(all(.e$groups[[1]]$data$addl == 0L))
+    expect_false(ev$show["addl"])
+
+    df <- as.data.frame(ev, all = TRUE)
+    expect_equal(nrow(df), 9L)
+    expect_equal(df$time[df$id == 1], c(0, 24, 48))
+  })
+
+  test_that("clear.dosing updates grouped homogeneous tables", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(amt = 10, ii = 24, addl = 1, id = 1:3) |>
+        et(seq(0, 24, by = 24))
+      ev$clear.dosing()
+      .e <- .rxEtEnv(ev)
+
+      expect_equal(length(.e$groups), 1L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$ndose, 0L)
+      expect_equal(.e$nobs, 6L)
+      expect_false(ev$show["addl"])
+
+      sampling <- ev$get.sampling()
+      expect_s3_class(sampling, "rxEtPreview")
+      expect_equal(nrow(sampling), 2L)
+      expect_equal(ev$get.dosing(), NULL)
+
+      df <- as.data.frame(ev, all = TRUE)
+      expect_equal(nrow(df), 6L)
+      expect_true(all(df$evid == 0L))
+    })
+  })
+
+  test_that("clear.sampling updates grouped homogeneous tables", {
+    withr::with_options(list(rxode2.homogenous = TRUE), {
+      ev <- et(amt = 10, ii = 24, addl = 1, id = 1:3) |>
+        et(seq(0, 24, by = 24))
+      ev$clear.sampling()
+      .e <- .rxEtEnv(ev)
+
+      expect_equal(length(.e$groups), 1L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$ndose, 3L)
+      expect_equal(.e$nobs, 0L)
+      expect_equal(ev$get.sampling(), NULL)
+
+      dosing <- ev$get.dosing()
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_equal(nrow(dosing), 1L)
+
+      df <- as.data.frame(ev, all = TRUE)
+      expect_equal(nrow(df), 3L)
+      expect_true(all(df$evid != 0L))
+    })
   })
 
   test_that("etRep repeats event table", {

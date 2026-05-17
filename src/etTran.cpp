@@ -935,6 +935,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  SEXP homGroupsS = Rf_getAttrib(inData, Rf_install("rxHomGroups"));
+  SEXP homIdLevelsS = Rf_getAttrib(inData, Rf_install("rxHomIdLevels"));
+  bool hasHomGroups = !Rf_isNull(homGroupsS);
+  bool hasHomIdLevels = !Rf_isNull(homIdLevelsS);
   // Translates events + model into translated events
   CharacterVector dName = as<CharacterVector>(Rf_getAttrib(inData, R_NamesSymbol));
   CharacterVector lName = clone(dName);
@@ -961,6 +965,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool allInf = true;
   int mxCmt = 0;
   std::vector<int> keepI(keep.size(), 0);
+  CharacterVector keepNameLc = clone(keep);
+  for (j = keepNameLc.size(); j--;) {
+    std::string keepS = as<std::string>(keepNameLc[j]);
+    std::transform(keepS.begin(), keepS.end(), keepS.begin(), ::tolower);
+    keepNameLc[j] = keepS;
+  }
   bool needCmt = false;
   // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
@@ -1043,7 +1053,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     for (j = keep.size(); j--;) {
-      if (as<std::string>(dName[i]) == as<std::string>(keep[j])){
+      if (as<std::string>(lName[i]) == as<std::string>(keepNameLc[j])){
         if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing=TRUE'"));
         keepCol.push_back(i);
         keepI[j] = 1;
@@ -1140,7 +1150,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       for (j = keep.size(); j--;) {
-        if (as<std::string>(diName[i]) == as<std::string>(keep[j])) {
+        if (as<std::string>(liName[i]) == as<std::string>(keepNameLc[j])) {
           keepCol.push_back(-i-1);
           keepI[j] = 2;
           break;
@@ -2817,13 +2827,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         iDf.attr("row.names") = IntegerVector::create(NA_INTEGER, -inIdCov.size());
         Function getIcovIdx = getRxFn(".getIcovIdx");
         iCovKeepIdx = getIcovIdx(inDf, iDf);
+        calcIcovKeepIdx = true;
       }
       SEXP cur2 = iCov_[-keepColj-1];
       if (TYPEOF(cur2) == STRSXP) {
         CharacterVector cur3 = as<CharacterVector>(cur2);
         CharacterVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_STRING;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         cur = wrap(cur4);
         // save attributes
@@ -2833,7 +2849,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         IntegerVector cur3 = as<IntegerVector>(cur2);
         IntegerVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_INTEGER;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         cur = wrap(cur4);
         // save attributes
@@ -2842,7 +2863,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         NumericVector cur3 = as<NumericVector>(cur2);
         NumericVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_REAL;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         // save attributes
         std::vector<std::string> attr = cur3.attributeNames();
@@ -2856,7 +2882,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         LogicalVector cur3 = as<LogicalVector>(cur2);
         LogicalVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
-          cur4[i] = cur3[iCovKeepIdx[i]];
+          int idx = iCovKeepIdx[i];
+          if (idx == NA_INTEGER || idx < 0 || idx >= cur3.size()) {
+            cur4[i] = NA_LOGICAL;
+          } else {
+            cur4[i] = cur3[idx];
+          }
         }
         cur = wrap(cur4);
         // save attributes
@@ -3303,7 +3334,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   e[RxTrans_lib_name] = trans["lib.name"]; // FIXME
   e[RxTrans_addCmt] = addCmt;
   e[RxTrans_cmtInfo] = cmtInfo;
-  if (redoId){
+  if (hasHomIdLevels) {
+    e[RxTrans_idLvl] = homIdLevelsS;
+  } else if (redoId){
     e[RxTrans_idLvl] = idLvl2;
   } else {
     e[RxTrans_idLvl] = idLvl;
@@ -3347,6 +3380,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time14: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  if (hasHomGroups) {
+    Rf_setAttrib(lstF, Rf_install("rxHomGroups"), homGroupsS);
+  }
+  if (hasHomIdLevels) {
+    Rf_setAttrib(lstF, Rf_install("rxHomIdLevels"), homIdLevelsS);
+  }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);
   Rf_setAttrib(lstF, R_RowNamesSymbol, IntegerVector::create(NA_INTEGER,-idxOutput.size()+rmAmt));

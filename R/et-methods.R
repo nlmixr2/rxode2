@@ -66,6 +66,7 @@
   .ret <- do.call(et, c(.args, .extra)) # nolint
   .retEnv <- .rxEtEnv(.ret)
   env$chunks <- .retEnv$chunks
+  env$groups <- .retEnv$groups
   env$units <- .retEnv$units
   env$show <- .retEnv$show
   env$ids <- .retEnv$ids
@@ -83,10 +84,15 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetEventTable <- function(env) {
-  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  if (nrow(.mat) == 0L) return(NULL)
+  if (.rxGetHomogenous()) { # nolint
+    .mat <- .etPreviewData(env, "all")
+  } else {
+    .mat <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
+  }
+  if (is.null(.mat) || nrow(.mat) == 0L) return(NULL)
   .show <- env$show
-  .ret <- .mat[, names(.show)[.show], drop = FALSE]
+  .cols <- intersect(names(.show)[.show], names(.mat))
+  .ret <- .mat[, .cols, drop = FALSE]
   rownames(.ret) <- seq_len(nrow(.ret))
   .ret
 }
@@ -98,9 +104,14 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetDosing <- function(env) {
-  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  if (nrow(.mat) == 0L) return(NULL)
-  .d <- .etDropUnitsForChunk(.mat[.mat$evid != 0L, , drop = FALSE])
+  if (.rxGetHomogenous()) { # nolint
+    .d <- .etPreviewData(env, "dosing")
+  } else {
+    .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
+    if (is.null(.full) || nrow(.full) == 0L) return(NULL)
+    .d <- .full[.full$evid != 0L, , drop = FALSE]
+  }
+  if (is.null(.d)) return(NULL)
   if (nrow(.d) == 0L) {
     NULL
   } else {
@@ -118,6 +129,17 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodClearSampling <- function(env) {
+  .groups <- .etGetGroups(env) # nolint
+  if (length(.groups) > 0L) {
+    .groups <- Filter(Negate(is.null), lapply(.groups, function(.g) {
+      .df <- .g$data[.g$data$evid != 0L, , drop = FALSE]
+      if (nrow(.df) == 0L) return(NULL)
+      list(ids = .g$ids, data = .df)
+    }))
+    .etSetGroups(env, .groups) # nolint
+    .etResetCountsFromGroups(env) # nolint
+    return(invisible(NULL))
+  }
   for (.i in seq_along(env$chunks)) {
     if (!is.null(env$chunks[[.i]])) {
       .df <- env$chunks[[.i]]
@@ -275,6 +297,7 @@
   env$ids  <- sort(unique(df$id))
   env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
   env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
+  env$groups <- list()
   env$chunks <- .addRowsToChunks(env$chunks, df)
   .etImportUpdateShow(env, df)
 }
@@ -397,23 +420,41 @@
 #'
 #' @author Matthew L. Fidler
 .etMethodExpand <- function(env) {
-  .et <- structure(list(env = env), class = "rxEt")
-  .mat <- .etMaterialize(.et)
-  .expanded <- .etExpandAddl(.mat, env)
-  env$chunks <- list()
-  if (nrow(.expanded) > 0L) {
-    .ids <- unique(as.integer(.expanded$id))
-    for (.i in .ids) {
-      env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
-    }
-    env$ids <- sort(.ids)
+  .groups <- .etGetGroups(env) # nolint
+  if (length(.groups) > 0L) {
+    env$groups <- lapply(.groups, function(.g) {
+      list(ids = as.integer(.g$ids), data = .etExpandGroupData(.g$data, env)) # nolint
+    })
+    env$chunks <- list()
   } else {
-    env$ids <- 1L
+    .et <- structure(list(env = env), class = "rxEt")
+    .mat <- .etMaterialize(.et)
+    .expanded <- .etExpandAddl(.mat, env)
+    env$groups <- list()
+    env$chunks <- list()
+    if (nrow(.expanded) > 0L) {
+      .ids <- unique(as.integer(.expanded$id))
+      for (.i in .ids) {
+        env$chunks[[.i]] <- .expanded[.expanded$id == .i, , drop = FALSE]
+      }
+      env$ids <- sort(.ids)
+    } else {
+      env$ids <- 1L
+    }
   }
-  env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
-  env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+  .etResetCountsFromGroups(env) # nolint
+  if (length(.etGroups(env)) == 0L) { # nolint
+    env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
+    env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
+  }
   env$show["id"] <- length(env$ids) > 1L
-  env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  if (length(.etGroups(env)) > 0L) { # nolint
+    env$show["addl"] <- any(vapply(env$groups, function(.g) {
+      !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
+    }, logical(1)))
+  } else {
+    env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
+  }
   env$randomType <- NA_integer_
   env$canResize <- FALSE
   invisible(NULL)
@@ -442,6 +483,7 @@
 .etMethodCopy <- function(env) {
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks     <- env$chunks
+  .newEnv$groups     <- env$groups
   .newEnv$units      <- env$units
   .newEnv$show       <- env$show
   .newEnv$ids        <- env$ids
@@ -476,27 +518,37 @@
 #' @author Matthew L. Fidler
 .etMethodSimulate <- function(env, seed = NULL, ...) {
   if (!is.null(seed)) set.seed(seed)
-  .et <- structure(list(env = env), class = "rxEt")
-  .mat <- .etMaterialize(.et)
-  .hasWin <- !is.na(.mat$low) & !is.na(.mat$high)
-  if (!any(.hasWin)) {
+  .sim <- .etSimulateRepresentation(env) # nolint
+  if (!isTRUE(.sim$hasWin)) {
+    env$groups <- .sim$groups
+    env$chunks <- .sim$chunks
+    env$randomType <- NA_integer_
+    env$canResize <- FALSE
     warning("simulating event table without windows returns identical event table", call. = FALSE)
   } else {
-    if (!is.na(env$randomType) && env$randomType == 3L) {
-      .mat$time[.hasWin] <- stats::rnorm(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-    } else {
-      .mat$time[.hasWin] <- stats::runif(sum(.hasWin), .mat$low[.hasWin], .mat$high[.hasWin])
-    }
-    env$chunks <- list()
-    if (nrow(.mat) > 0L) {
-      .ids <- unique(as.integer(.mat$id))
-      for (.i in .ids) env$chunks[[.i]] <- .mat[.mat$id == .i, , drop = FALSE]
-    }
+    env$groups <- .sim$groups
+    env$chunks <- .sim$chunks
+    env$randomType <- NA_integer_
+    env$canResize <- FALSE
   }
   invisible(NULL)
 }
 
 .etMethodClearDosing <- function(env) {
+  .groups <- .etGetGroups(env) # nolint
+  if (length(.groups) > 0L) {
+    .groups <- Filter(Negate(is.null), lapply(.groups, function(.g) {
+      .df <- .g$data[.g$data$evid == 0L, , drop = FALSE]
+      if (nrow(.df) == 0L) return(NULL)
+      list(ids = .g$ids, data = .df)
+    }))
+    .etSetGroups(env, .groups) # nolint
+    .etResetCountsFromGroups(env) # nolint
+    if (env$ndose == 0L) {
+      env$show[c("amt", "rate", "ii", "addl", "ss", "dur")] <- FALSE
+    }
+    return(invisible(NULL))
+  }
   for (.i in seq_along(env$chunks)) {
     if (!is.null(env$chunks[[.i]])) {
       .df <- env$chunks[[.i]]
@@ -505,13 +557,19 @@
     }
   }
   env$ndose <- 0L
+  env$show[c("amt", "rate", "ii", "addl", "ss", "dur")] <- FALSE
   invisible(NULL)
 }
 
 .etMethodGetSampling <- function(env) {
-  .mat <- .etMaterialize(structure(list(env = env), class = "rxEt"))
-  if (nrow(.mat) == 0L) return(NULL)
-  .s <- .etDropUnitsForChunk(.mat[.mat$evid == 0L, , drop = FALSE])
+  if (.rxGetHomogenous()) { # nolint
+    .s <- .etPreviewData(env, "sampling")
+  } else {
+    .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
+    if (is.null(.full) || nrow(.full) == 0L) return(NULL)
+    .s <- .full[.full$evid == 0L, , drop = FALSE]
+  }
+  if (is.null(.s)) return(NULL)
   if (nrow(.s) == 0L) {
     NULL
   } else {

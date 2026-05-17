@@ -292,6 +292,11 @@ int compareFactorVal(int val, const char *factor, const char *value);
 int compareFactorInt(int val, const char *factor, int value);
 SEXP _rxode2_rxSolve_(SEXP, SEXP, SEXP, SEXP, SEXP,
                       SEXP, SEXP, SEXP);
+SEXP _rxode2_rxSolveFromRaw_(SEXP, SEXP, SEXP, SEXP, SEXP,
+                             SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxSaveState_(void);
+SEXP _rxode2_rxIsSerializeFile_(SEXP);
+SEXP _rxode2_rxRestoreState_(SEXP);
 
 SEXP getRxThreads_R(SEXP verbose);
 SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
@@ -625,6 +630,7 @@ SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
 SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
@@ -797,6 +803,11 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 19},
+    {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
+    {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},
+    {"_rxode2_rxRestoreState_", (DL_FUNC) _rxode2_rxRestoreState_, 1},
+    {"_rxode2_rxSolveFromRaw_", (DL_FUNC) _rxode2_rxSolveFromRaw_, 9},
+    {"_rxode2_rxSolveSetCurObj_", (DL_FUNC) &_rxode2_rxSolveSetCurObj_, 1},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
