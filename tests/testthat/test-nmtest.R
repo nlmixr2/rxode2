@@ -137,12 +137,17 @@ rxTest({
     } else {
       ssSolved <- TRUE
     }
+    dense <- FALSE
     if (meth == "A" || meth == "Ao" || meth == "As") {
       lin <- "A"
       meth <- "liblsoda"
     } else if (meth == "B" || meth == "Bo" || meth == "Bs") {
       lin <- "B"
       meth <- "liblsoda"
+    } else  if (meth == "ddop853") {
+      lin <- "A"
+      meth <- "dop853"
+      dense <- TRUE
     } else  if (meth == "Ad") {
       lin <- "A"
       meth <- "dop853"
@@ -220,27 +225,27 @@ rxTest({
         s1 <- rxSolve(lfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved)
+                      ssSolved=ssSolved, dense=dense)
       } else if (lin == "B") {
         s1 <- rxSolve(lbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved)
+                      ssSolved=ssSolved, dense=dense)
       } else if (lin == "Ao") {
         s1 <- rxSolve(elfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved)
+                      ssSolved=ssSolved, dense=dense)
       } else if (lin == "Bo") {
         s1 <- rxSolve(elbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved)
+                      ssSolved=ssSolved, dense=dense)
       } else {
         s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved)
+                      ssSolved=ssSolved, dense=dense)
       }
       if (!noLag) {
         print(plot(s1, cp) +
@@ -254,27 +259,27 @@ rxTest({
           s2 <- rxSolve(lf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved)
+                        ssSolved=ssSolved, dense=dense)
         } else if (lin == "B") {
           s2 <- rxSolve(lbf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved)
+                        ssSolved=ssSolved, dense=dense)
         } else if (lin == "Ao") {
           s2 <- rxSolve(elf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved)
+                        ssSolved=ssSolved, dense=dense)
         } else if (lin == "Bo") {
           s2 <- rxSolve(elbf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved)
+                        ssSolved=ssSolved, dense=dense)
         } else {
           s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved)
+                        ssSolved=ssSolved, dense=dense)
         }
         return(plot(s1, cp) +
                  geom_point(data=d, aes(x=time, y=cp), col="red") +
@@ -299,15 +304,15 @@ rxTest({
           if (lin == "A") {
             s1 <- rxSolve(lf, d, method=meth,
                           addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs)
+                          addlDropSs=addlDropSs, dense=dense)
           } else if (lin == "B") {
             s1 <- rxSolve(lbf, d, method=meth,
                           addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs)
+                          addlDropSs=addlDropSs, dense=dense)
           } else {
             s1 <- rxSolve(f, d, method=meth,
                           addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs)
+                          addlDropSs=addlDropSs, dense=dense)
           }
           expect_equal(s1$cp[s1$time >= sub],
                        d[d$id == id & d$evid == 0 & d$time >= sub,]$cp,
@@ -319,23 +324,23 @@ rxTest({
         if (lin == "A") {
           s1 <- rxSolve(lfl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs)
+                        addlDropSs=addlDropSs, dense=dense)
         } else if (lin == "B") {
           s1 <- rxSolve(lfl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs)
+                        addlDropSs=addlDropSs, dense=dense)
         } else if (lin == "Ao") {
           s1 <- rxSolve(elfl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs)
+                        addlDropSs=addlDropSs, dense=dense)
         } else if (lin == "Bo") {
           s1 <- rxSolve(elfl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs)
+                        addlDropSs=addlDropSs, dense=dense)
         } else {
           s1 <- rxSolve(fl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs)
+                        addlDropSs=addlDropSs, dense=dense)
         }
         expect_equal(s1$cp[s1$time >= sub],
                      d[d$id == id & d$evid == 0 & d$time >= sub,]$cp,
@@ -354,7 +359,7 @@ rxTest({
   p <- FALSE
 
   lapply(id, function(i) {
-    meths <- c("liblsoda", "lsoda", "dop853", "A", "B", "Ao", "Bo", "As", "Bs",
+    meths <- c("liblsoda", "lsoda", "dop853", "ddop853", "A", "B", "Ao", "Bo", "As", "Bs",
                "Ad", "Bd", "Al", "Bl")
     modDat <- c("none", "rate", "dur")
     for (meth in meths) {
