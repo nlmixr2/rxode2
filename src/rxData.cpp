@@ -5264,6 +5264,7 @@ static inline void iniRx(rx_solve* rx) {
   op->nlhs = 0;
   op->neq = 0;
   op->stiff = 0;
+  op->useDense = 0;
   op->ncov = 0;
   op->par_cov = NULL;
   op->par_cov_interp = NULL;

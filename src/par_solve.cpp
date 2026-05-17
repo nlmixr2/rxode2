@@ -4451,8 +4451,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     int this_evid = getEvid(ind, ind->ix[i]);
     bool is_obs   = isObs(this_evid);
     bool is_last  = (i == nx - 1);
-    bool is_key   = !is_obs;           // doses, evid3, etc.
-    bool need_seg = is_obs && is_last; // last event is an obs: close the final segment
+    bool need_seg = is_obs && is_last; // last obs: close the final segment
 
     if (is_obs && !is_last) {
       // Pure observation interior to a segment.
@@ -4470,8 +4469,28 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       continue;
     }
 
-    // KEY EVENT or last obs: first close the current segment with a dense dop853 call.
-    if (this_evid != 3) {
+    // KEY EVENT or last obs: close the pending segment, then process the event.
+    if (this_evid == 3) {
+      // evid3 (reset): no extraDose, but close any pending obs segment first.
+      if (!isSameTimeDop(xout, xp)) {
+        dc.obs_next    = last_key_i + 1;
+        dc.segment_end = i - 1;
+        if (dc.obs_next <= dc.segment_end) {
+          preSolve(op, ind, xp, xout, yp);
+          neq[0] = eff - op->numLin - op->numLinSens;
+          idid = dop853(neq, c_dydt, xp, yp, xout,
+                        op->rtol2, op->atol2, itol,
+                        dopDenseSolout, iout_dense,
+                        NULL, DBL_EPSILON, 0, 0, 0, 0,
+                        ind->HMAX, op->H0, op->mxstep, 1, -1,
+                        neq[0], NULL, 0, &dc);
+          neq[0] = eff;
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
+        }
+      }
+    } else {
       if (ind->err) {
         printErr(ind->err, ind->id);
         *rc = idid;
