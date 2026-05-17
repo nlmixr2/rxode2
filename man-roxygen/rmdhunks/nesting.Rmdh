@@ -1,0 +1,167 @@
+More than one level of nesting is possible in rxode2; In this example
+we will be using the following uncertainties and sources of variability:
+
+|                     Level | Variable           | Matrix specified | Integrated Matrix |
+|--------------------------:|--------------------|------------------|-------------------|
+|         Model uncertainty | NA                 | `thetaMat`       | `thetaMat`        |
+|              Investigator | `inv.Cl`, `inv.Ka` | `omega`          | `theta`           |
+|                   Subject | `eta.Cl`, `eta.Ka` | `omega`          | `omega`           |
+|                       Eye | `eye.Cl`, `eye.Ka` | `omega`          | `omega`           |
+|                  Occasion | `iov.Cl`, `occ.Ka` | `omega`          | `omega`           |
+| Unexplained Concentration | `prop.sd`          | `sigma`          | `sigma`           |
+|        Unexplained Effect | `add.sd`           | `sigma`          | `sigma`           |
+
+
+### Event table
+
+This event table contains nesting variables:
+
+ - inv: investigator id
+ - id: subject id
+ - eye: eye id (left or right)
+ - occ: occasion
+
+```{r}
+library(rxode2)
+library(dplyr)
+
+et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+  et(seq(0, 240, by=4)) |> # Assumes sampling when there is no dosing information
+  et(seq(0, 240, by=4) + 0.1) |> ## adds 0.1 for separate eye
+  et(id=1:20) |>
+  ## Add an occasion per dose
+  mutate(occ=cumsum(!is.na(amt))) |>
+  mutate(occ=ifelse(occ == 0, 1, occ)) |>
+  mutate(occ=2- occ %% 2) |>
+  mutate(eye=ifelse(round(time) == time, 1, 2)) |>
+  mutate(inv=ifelse(id < 10, 1, 2)) |>
+  as_tibble() ->
+  ev
+```
+
+### rxode2 model
+
+This creates the `rxode2` model with multi-level nesting.  Note the
+variables `inv.Cl`, `inv.Ka`, `eta.Cl` etc; You only need one variable
+for each level of nesting.
+
+```{r}
+
+mod <- rxode2({
+  ## Clearance with individuals
+  eff(0) = 1
+  C2 = centr/V2*(1+prop.sd)
+  C3 = peri/V3
+  CL =  TCl*exp(eta.Cl + eye.Cl + iov.Cl + inv.Cl)
+  KA = TKA * exp(eta.Ka + eye.Ka + iov.Cl + inv.Ka)
+  d/dt(depot) =-KA*depot
+  d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
+  d/dt(peri)  =                    Q*C2 - Q*C3
+  d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff
+  ef0 = eff + add.sd
+})
+```
+
+### Uncertainty in Model parameters
+
+```{r}
+set.seed(1014)
+
+theta <- c("TKA"=0.294, "TCl"=18.6, "V2"=40.2,
+           "Q"=10.5, "V3"=297, "Kin"=1, "Kout"=1, "EC50"=200)
+
+## Creating covariance matrix
+tmp <- matrix(rnorm(8^2), 8, 8)
+tMat <- tcrossprod(tmp, tmp) / (8 ^ 2)
+dimnames(tMat) <- list(names(theta), names(theta))
+
+tMat
+```
+
+### Nesting Variability
+
+To specify multiple levels of nesting, you can specify it as a nested
+`lotri` matrix; When using this approach you use the condition
+operator `|` to specify what variable nesting occurs on; For the
+Bayesian simulation we need to specify how much information we have
+for each parameter; For `rxode2` this is the `nu` parameter.
+
+In this case:
+- id, `nu=100` or the model came from 100 subjects
+- eye, `nu=200` or the model came from 200 eyes
+- occ, `nu=200` or the model came from 200 occasions
+- inv, `nu=10` or the model came from 10 investigators
+
+To specify this in `lotri` you can use `| var(nu=X)`, or:
+
+```{r}
+omega <- lotri(lotri(eta.Cl ~ 0.1,
+                     eta.Ka ~ 0.1) | id(nu=100),
+               lotri(eye.Cl ~ 0.05,
+                     eye.Ka ~ 0.05) | eye(nu=200),
+               lotri(iov.Cl ~ 0.01,
+                     iov.Ka ~ 0.01) | occ(nu=200),
+               lotri(inv.Cl ~ 0.02,
+                     inv.Ka ~ 0.02) | inv(nu=10))
+omega
+```
+
+### Unexplained variability
+The last piece of variability to specify is the unexplained variability
+```{r}
+sigma <- lotri(prop.sd ~ .25,
+               add.sd~ 0.125)
+```
+### Solving the problem
+
+```{r}
+s <- rxSolve(mod, theta, ev,
+             thetaMat=tMat, omega=omega,
+             sigma=sigma, sigmaDf=400,
+             nStud=200)
+
+print(s)
+```
+
+There are multiple investigators in a study; Each investigator has a
+number of individuals enrolled at their site. `rxode2` automatically
+determines the number of investigators and then will simulate an
+effect for each investigator. With the output, `inv.Cl(inv==1)` will
+be the `inv.Cl` for investigator 1, `inv.Cl(inv==2)` will be the
+`inv.Cl` for investigator 2, etc.
+
+`inv.Cl(inv==1)`, `inv.Cl(inv==2)`, etc will be simulated for each
+study and then combined to form the between investigator
+variability. In equation form these represent the following:
+
+```
+inv.Cl = (inv == 1) * `inv.Cl(inv==1)` + (inv == 2) * `inv.Cl(inv==2)`
+```
+
+If you look at the simulated parameters you can see `inv.Cl(inv==1)`
+and `inv.Cl(inv==2)` are in the `s$params`; They are the same for each
+study:
+
+```{r}
+print(head(s$params))
+```
+
+```{r}
+print(head(s$params |> filter(sim.id == 2)))
+```
+
+For between eye variability and between occasion variability each
+individual simulates a number of variables that become the between eye
+and between occasion variability;  In the case of the eye:
+
+```
+eye.Cl = (eye == 1) * `eye.Cl(eye==1)` + (eye == 2) * `eye.Cl(eye==2)`
+```
+
+So when you look the simulation each of these variables (ie
+`eye.Cl(eye==1)`, `eye.Cl(eye==2)`, etc) they change for each
+individual and when combined make the between eye variability or the
+between occasion variability that can be seen in some pharamcometric
+models.

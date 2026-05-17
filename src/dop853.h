@@ -1,0 +1,222 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
+/*      DOP853
+	------
+
+
+This code computes the numerical solution of a system of first order ordinary
+differential equations y'=f(x,y). It uses an explicit Runge-Kutta method of
+order 8(5,3) due to Dormand & Prince with step size control and dense output.
+
+Authors : E. Hairer & G. Wanner
+	  Universite de Geneve, dept. de Mathematiques
+	  CH-1211 GENEVE 4, SWITZERLAND
+	  E-mail : HAIRER@DIVSUN.UNIGE.CH, WANNER@DIVSUN.UNIGE.CH
+
+The code is described in : E. Hairer, S.P. Norsett and G. Wanner, Solving
+ordinary differential equations I, nonstiff problems, 2nd edition,
+Springer Series in Computational Mathematics, Springer-Verlag (1993).
+
+Version of Mai 2, 1994.
+
+Remarks about the C version : this version allocates memory by itself, the
+iwork array (among the initial FORTRAN parameters) has been splitted into
+independant initial parameters, the statistical variables and last step size
+and x have been encapsulated in a dop853_ctx_t context struct for thread-safe
+reentrant usage; the variable names have been kept to maintain a kind
+of reading compatibility between the C and FORTRAN codes; adaptation made by
+J.Colinge (COLINGE@DIVSUN.UNIGE.CH).
+
+
+
+INPUT PARAMETERS
+----------------
+
+n        Dimension of the system (n < INT_MAX).
+
+fcn      A pointer the the function definig the differential equation, this
+	 function must have the following prototype
+
+	   void fcn (int n, double x, double *y, double *f)
+
+	 where the array f will be filled with the function result.
+
+x        Initial x value.
+
+*y       Initial y values (double y[n]).
+
+xend     Final x value (xend-x may be positive or negative).
+
+*rtoler  Relative and absolute error tolerances. They can be both scalars or
+*atoler  vectors of length n (in the scalar case pass the addresses of
+	 variables where you have placed the tolerance values).
+
+itoler   Switch for atoler and rtoler :
+	   itoler=0 : both atoler and rtoler are scalars, the code keeps
+		      roughly the local error of y[i] below
+		      rtoler*abs(y[i])+atoler.
+	   itoler=1 : both rtoler and atoler are vectors, the code keeps
+		      the local error of y[i] below
+		      rtoler[i]*abs(y[i])+atoler[i].
+
+solout   A pointer to the output function called during integration.
+	 If iout >= 1, it is called after every successful step. If iout = 0,
+	 pass a pointer equal to NULL. solout must have the following
+	 prototype
+
+	   solout (long int nr, double xold, double x, double* y, int n, int* irtrn)
+
+	 where y is the solution at the nr-th grid point x, xold is the
+	 previous grid point and irtrn serves to interrupt the integration
+	 (if set to a negative value).
+
+	 Continuous output : during the calls to solout, a continuous solution
+	 for the interval (xold,x) is available through the function
+
+	   contd8(ctx, i, s)
+
+	 which provides an approximation to the i-th component of the solution
+	 at the point s (s must lie in the interval (xold,x)), where ctx is
+	 the dop853_ctx_t context pointer.
+
+iout     Switch for calling solout :
+	   iout=0 : no call,
+	   iout=1 : solout only used for output,
+	   iout=2 : dense output is performed in solout (in this case nrdens
+		    must be greater than 0).
+
+fileout  A pointer to the stream used for messages, if you do not want any
+	 message, just pass NULL.
+
+icont    An array containing the indexes of components for which dense
+	 output is required. If no dense output is required, pass NULL.
+
+licont   The number of cells in icont.
+
+
+Sophisticated setting of parameters
+-----------------------------------
+
+	 Several parameters have a default value (if set to 0) but, to better
+	 adapt the code to your problem, you can specify particular initial
+	 values.
+
+uround   The rounding unit, default 2.3E-16 (this default value can be
+	 replaced in the code by DBL_EPSILON providing float.h defines it
+	 in your system).
+
+safe     Safety factor in the step size prediction, default 0.9.
+
+fac1     Parameters for step size selection; the new step size is chosen
+fac2     subject to the restriction  fac1 <= hnew/hold <= fac2.
+	 Default values are fac1=0.333 and fac2=6.0.
+
+beta     The "beta" for stabilized step size control (see section IV.2 of our
+	 book). Larger values for beta ( <= 0.1 ) make the step size control
+	 more stable. Negative initial value provoke beta=0; default beta=0.
+
+hmax     Maximal step size, default xend-x.
+
+h        Initial step size, default is a guess computed by the function hinit.
+
+nmax     Maximal number of allowed steps, default 100000.
+
+meth     Switch for the choice of the method coefficients; at the moment the
+	 only possibility and default value are 1.
+
+nstiff   Test for stiffness is activated when the current step number is a
+	 multiple of nstiff. A negative value means no test and the default
+	 is 1000.
+
+nrdens   Number of components for which dense outpout is required, default 0.
+	 For 0 < nrdens < n, the components have to be specified in icont[0],
+	 icont[1], ... icont[nrdens-1]. Note that if nrdens=0 or nrdens=n, no
+	 icont is needed, pass NULL.
+
+
+Memory requirements
+-------------------
+
+	 The function dop853 allocates dynamically 11*n doubles for the method
+	 stages, 8*nrdens doubles for the interpolation if dense output is
+	 performed and n unsigned if 0 < nrdens < n.
+
+
+OUTPUT PARAMETERS
+-----------------
+
+y       numerical solution at x=ctx->xout (see dop853_ctx_t below).
+
+dopri5 returns the following values
+
+	 1 : computation successful,
+	 2 : computation successful interrupted by solout,
+	-1 : input is not consistent,
+	-2 : larger nmax is needed,
+	-3 : step size becomes too small,
+	-4 : the problem is probably stiff (interrupted).
+
+
+After a successful call to dop853, the following fields of the dop853_ctx_t
+context struct provide solver statistics and output values :
+
+ctx->xout    x value for which the solution has been computed (x=xend after
+	successful return).
+
+ctx->hout    Predicted step size of the last accepted step (useful for a
+	subsequent call to dop853).
+
+ctx->nstep   Number of used steps.
+ctx->naccpt  Number of accepted steps.
+ctx->nrejct  Number of rejected steps.
+ctx->nfcn    Number of function calls.
+
+
+*/
+
+
+#include <stdio.h>
+#include <limits.h>
+
+typedef void (*FcnEqDiff)(int *nptr, double x, double *y, double *f);
+typedef void (*SolTrait)(long int nr, double xold, double x, double* y, int *nptr, int* irtrn);
+
+/* Context struct holding all solver state, enabling thread-safe reentrant calls.
+   Previously these were file-scope static variables in dop853.c. */
+typedef struct {
+  long int     nfcn, nstep, naccpt, nrejct;
+  double       hout, xold, xout;
+  int          nrds, *indir;
+  double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
+  double       *rcont1, *rcont2, *rcont3, *rcont4;
+  double       *rcont5, *rcont6, *rcont7, *rcont8;
+} dop853_ctx_t;
+
+
+extern int dop853
+ (int *nptr,      /* dimension of the system <= INT_MAX-1*/
+  FcnEqDiff fcn,       /* function computing the value of f(x,y) */
+  double x,            /* initial x-value */
+  double* y,           /* initial values for y */
+  double xend,         /* final x-value (xend-x may be positive or negative) */
+  double* rtoler,      /* relative error tolerance */
+  double* atoler,      /* absolute error tolerance */
+  int itoler,          /* switch for rtoler and atoler */
+  SolTrait solout,     /* function providing the numerical solution during integration */
+  int iout,            /* switch for calling solout */
+  FILE* fileout,       /* messages stream */
+  double uround,       /* rounding unit */
+  double safe,         /* safety factor */
+  double fac1,         /* parameters for step size selection */
+  double fac2,
+  double beta,         /* for stabilized step size control */
+  double hmax,         /* maximal step size */
+  double h,            /* initial step size */
+  long int nmax,       /* maximal number of allowed steps */
+  int meth,            /* switch for the choice of the coefficients */
+  long int nstiff,     /* test for stiffness */
+  int nrdens, /* number of components for which dense outpout is required */
+  int* icont, /* indexes of components for which dense output is required, >= nrdens */
+  int licont  /* declared length of icon */
+ );

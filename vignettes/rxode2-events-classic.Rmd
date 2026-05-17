@@ -1,0 +1,20 @@
+---
+title: "Classic rxode2 Events"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+knitr::opts_chunk$set( comment = "#>")
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+## Classic RxODE evid values
+
+```{r child='events-classic.Rmdh'}
+```

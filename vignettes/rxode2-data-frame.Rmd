@@ -1,0 +1,22 @@
+---
+title: "rxode2 Data Frames"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  out.width = "100%"
+)
+```
+
+
+```{r child='df.Rmdh'}
+```

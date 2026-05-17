@@ -1,0 +1,18 @@
+We gratefully acknowledge tools, code, bug reports, examples, etc. from
+the following individuals. Please do let us know if we've missed anyone.
+
+* Peter N. Brown, Alan C. Hindmarsh, and George D. Byrne for the DVODE
+  solver.
+
+* E. Hairer and G. Wanner for the Runge-Kutta ODE solver DOP853.
+
+* Cecilia Magherini and Luigi Brugnano for the previously used (prior
+  to RxODE 0.5-1) Fortran BIM code for solving stiff ODEs.
+
+* Linda R. Petzold and Alan C. Hindmarsh for the LSODA solver for stiff
+  and non-stiff initial-value first order ODEs.
+
+* C. B. Moler for a couple of LINPACK routines.
+
+* John Bradley Plevyak for DParser (http://dparser.sourceforge.net/).
+

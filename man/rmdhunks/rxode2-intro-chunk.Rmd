@@ -1,0 +1,110 @@
+The model equations can be specified through a text string, a model
+file or an R expression. Both differential and algebraic equations are
+permitted. Differential equations are specified by `d/dt(var_name) = `. Each
+equation can be separated by a semicolon.
+
+To load `rxode2` package and compile the model:
+
+```{r}
+library(rxode2)
+
+mod1 <- function() {
+  ini({
+    # central
+    KA=2.94E-01
+    CL=1.86E+01
+    V2=4.02E+01
+    # peripheral
+    Q=1.05E+01
+    V3=2.97E+02
+    # effects
+    Kin=1
+    Kout=1
+    EC50=200
+  })
+  model({
+    C2 <- centr/V2
+    C3 <- peri/V3
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  <- Q*C2 - Q*C3
+    eff(0) <- 1
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+  })
+}
+```
+
+Model parameters may be specified in the `ini({})` model block,
+initial conditions can be specified within the model with the `cmt(0)=
+X`, like in this model `eff(0) <- 1`.
+
+You may also specify between subject variability initial conditions
+and residual error components just like nlmixr2.  This allows a single
+interface for `nlmixr2`/`rxode2` models.  Also note, the classic
+`rxode2` interface still works just like it did in the past (so don't
+worry about breaking code at this time).
+
+In fact, you can get the classic `rxode2` model `$simulationModel` in
+the ui object:
+
+```r
+mod1 <- mod1() # create the ui object (can also use `rxode2(mod1)`)
+mod1
+
+summary(mod1$simulationModel)
+```
+
+
+
+## Specify Dosing and sampling in rxode2
+
+`rxode2` provides a simple and very flexible way to specify dosing and
+sampling through functions that generate an event table. First, an
+empty event table is generated through the "et()" function. This
+has an interface that is similar to NONMEM event tables:
+
+```{r}
+ev  <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, addl=9,ii=12,cmt="depot") |>
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
+  et(0:240) # Add sampling
+```
+
+You can see from the above code, you can dose to the compartment named
+in the rxode2 model.  This slight deviation from NONMEM can reduce the
+need for compartment renumbering.
+
+These events can also be combined and expanded (to multi-subject
+events and complex regimens) with `rbind`, `c`, `seq`, and `rep`. For
+more information about creating complex dosing regimens using rxode2
+see the [rxode2 events
+vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
+
+
+## Solving ODEs
+
+The ODE can now be solved using `rxSolve`:
+
+
+```{r}
+x <- mod1 |> rxSolve(ev)
+x
+```
+
+This returns a modified data frame.  You can see the compartment
+values in the plot below:
+
+```{r intro-central}
+library(ggplot2)
+plot(x,C2) + ylab("Central Concentration")
+```
+
+Or,
+
+```{r intro-effect}
+plot(x,eff)  + ylab("Effect")
+```
+
+Note that the labels are automatically labeled with the units from the
+initial event table. rxode2 extracts `units` to label the plot (if they
+are present).

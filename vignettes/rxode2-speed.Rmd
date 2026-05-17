@@ -1,0 +1,26 @@
+---
+title: "Speeding up rxode2"
+author: "Matthew Fidler"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no 
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+options(knitr.table.format = "html")
+```
+
+```{r child='../man-roxygen/rmdhunks/speed.Rmdh'}
+```
+
+## Session Information
+
+The session information:
+```{r}
+sessionInfo()
+```

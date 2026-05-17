@@ -1,0 +1,21 @@
+---
+title: "Easy rxode2 Event Tables"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Easy rxode2 Event Tables}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+knitr::opts_chunk$set( comment = "#>")
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+# Creating rxode2's event tables
+```{r child='events-et.Rmdh'}
+```

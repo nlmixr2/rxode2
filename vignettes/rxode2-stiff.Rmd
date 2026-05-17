@@ -1,0 +1,14 @@
+---
+title: "rxode2 Jacobian specification and Stiff Systems"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no 
+---
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+
+```{r child='../man-roxygen/rmdhunks/stiff.Rmdh'}
+```

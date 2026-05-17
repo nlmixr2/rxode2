@@ -1,0 +1,1302 @@
+---
+title: "rxode2 events"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  This covers basic events supported for `rxode2` models with an example rxode2 model
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+## Adapted from gradethis::grade_result for now
+## Wait for gradethis to make it to CRAN
+## Model from rxode2 tutorial
+m1 <-rxode2({
+    KA=2.94E-01;
+    CL=1.86E+01;
+    V2=4.02E+01;
+    Q=1.05E+01;
+    V3=2.97E+02;
+    Kin=1;
+    Kout=1;
+    EC50=200;
+    ## Added modeled bioavaiblity, duration and rate
+    fdepot = 1;
+    durDepot = 8;
+    rateDepot = 1250;
+    C2 = centr/V2;
+    C3 = peri/V3;
+    d/dt(depot) =-KA*depot;
+    f(depot) = fdepot
+    dur(depot) = durDepot
+    rate(depot) = rateDepot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
+    d/dt(peri)  =                    Q*C2 - Q*C3;
+    d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
+    eff(0) = 1
+});
+
+```
+From Rstudio 1.3+ tutorial pane you can use the expand button
+(![](images/expandTutorial.png)) to navigate tutorial sections.
+
+## Creating events
+
+### Model for Event discussion
+
+For these models, we can illustrate by using the model shared in the
+rxode2 tutorial; Compile it so we can continue:
+
+```{r m1, exercise=TRUE}
+## Model from rxode2 tutorial
+m1 <-rxode2({
+    KA=2.94E-01;
+    CL=1.86E+01;
+    V2=4.02E+01;
+    Q=1.05E+01;
+    V3=2.97E+02;
+    Kin=1;
+    Kout=1;
+    EC50=200;
+    ## Added modeled bioavaiblity, duration and rate
+    fdepot = 1;
+    durDepot = 8;
+    rateDepot = 1250;
+    C2 = centr/V2;
+    C3 = peri/V3;
+    d/dt(depot) =-KA*depot;
+    f(depot) = fdepot
+    dur(depot) = durDepot
+    rate(depot) = rateDepot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
+    d/dt(peri)  =                    Q*C2 - Q*C3;
+    d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
+    eff(0) = 1
+});
+
+print(summary(m1))
+```
+### What is an event table
+
+An event table in rxode2 is a specialized data frame that acts as a
+container for all of rxode2's events and observation times.  While not
+required to solve, the event table allows easy generation of a data
+table in the format that `rxode2` expects.
+
+To create an rxode2 event table you may use the code `eventTable()`,
+`et()`, or even create your own data frame with the right event
+information contained in it.  This is closely related to the [types of
+events that rxode2 supports](rxode2-event-types.html).
+
+Once the event table has been created you can add
+sampling/observations or doses by piping or direct access.
+
+This is a short table of arguments the two main functions (`et()` and
+`add.dosing()`:
+
+| add.dosing()    | et() | Description                         |
+|-----------------|------|-------------------------------------|
+| dose            | amt  | Dose/Rate/Duration amount           |
+| nbr.doses       | addl | Additional doses or number of doses |
+| dosing.interval | ii   | Dosing Interval                     |
+| dosing.to       | cmt  | Dosing Compartment                  |
+| rate            | rate | Infusion rate                       |
+| start.time      | time | Dosing start time                   |
+|                 | dur  | Infusion Duration                   |
+
+
+Sampling times can be added with `add.sampling(` sampling times `)` or
+`et(` sampling times `)`.  [Dosing intervals and sampling
+windows](#add-doses-and-samples-within-a-sampling-window) are also
+supported.
+
+### Exercise: Create an empty table  and add a 100 mg dose
+
+```{r eventTable, exercise=TRUE}
+e <- et()## you can add the units by `amount.units` and `time.units`
+
+print(e)
+```
+
+<div id="eventTable-hint">
+You may add a dose by `$add.dosing(dose=...)` or `e |> et(amt=...)`
+</div>
+
+### Solving the system
+
+With the model built from `rxode2`, and the event table built above, we
+can solve and plot the scenario; Run the code and see if you notice
+anything:
+
+```{r, preSample, exercise=TRUE}
+ev <- et() |>
+    et(dose=5000, dosing.interval=12, until=48)
+
+rxSolve(m1, ev) |> plot(C2)
+```
+
+### Quiz 1
+
+Lets see if you can recall everything so far:
+
+```{r unitsQuiz, echo=FALSE}
+quiz(
+  question("What function(s) can create event table for solving in rxode2?",
+    answer("`data.frame()`", correct=TRUE),
+    answer("`eventTable()`", correct=TRUE),
+    answer("`et()`", correct=TRUE),
+    answer("ev()", correct = FALSE),
+    answer("add.sampling()", correct=FALSE),
+    answer("add.dosing()", correct=FALSE)
+  ),
+  question("What did you notice about the event table plot?",
+           answer("There was a missing dose at the end of the plot"),
+           answer("The samples times were chose by rxode2", correct=TRUE))
+)
+```
+
+## Adding sampling
+
+In the last example you may have noticed that the sample times were
+chosen by `rxode2`; This is because the event table that was supplied
+to the solving routine only included dosing information.  If you add
+observations to the event table you can control the observations of
+each event.
+
+Recall `rxode2` you can use `add.sampling(` samples `)` or `et(` samples `)` to add
+observations to an rxode2 event table.
+
+### Exercise, add observations for the first 24 hours
+
+As an exercise, add an observation for the first 24 hours every 0.5 hours:
+
+```{r addObs, exercise=TRUE}
+ev <- et() |>
+    et(dose=5000, ii=12, until=48)
+
+rxSolve(m1, ev) |> plot(C2)
+```
+
+```{r addObs-solution}
+ev <- et() |>
+    et(dose=5000, ii=12, until=48) |>
+    et(seq(0, 24, by=0.5))
+
+rxSolve(m1, ev) |> plot(C2)
+```
+
+### `et` convenience notation
+
+If you are like me, you may have used `seq()` as your solution to
+adding observations to the event table.  For the function `et()` you
+can simply drop the `seq()` and enclose everything in the `et()`
+function.  For `et(seq(0,24,by=0.5))` this can be written as
+`et(0,24,by=0.5)`.
+
+As an exercise change the event table below to reflect this convenience:
+
+
+```{r addObsEt, exercise=TRUE}
+ev <- et() |>
+    et(dose=5000, ii=12, until=48) |>
+    et(seq(0, 24, by=0.5))
+
+rxSolve(m1, ev) |> plot(C2)
+```
+
+```{r addObsEt-solution}
+ev <- et() |>
+    et(dose=5000, ii=12, until=48) |>
+    et(seq(0, 24, by=0.5))
+
+rxSolve(m1, ev) |> plot(C2)
+```
+
+
+## Event classification
+
+Here are the legal entries to a rxode2 event table (which can be a
+`tibble`, `data.frame`, `data.table` or `rxode2` event table):
+
+| Column | Meaning               | Notes                                                                        |
+|-----------|-----------------------|------------------------------------------------------------------------------|
+| id        | Individual identifier | Will convert to a factor/integer (sorted)
+| time      | Individual time       | For each ID must be ascending and non-negative                               |
+| amt       | dose amount           | Positive for doses zero/NA for observations                                  |
+| rate      | infusion rate         | When specified the infusion duration will be dur=amt/rate                    |
+|           |                       | rate = -1, rate modeled; rate = -2, duration modeled                         |
+| dur       | infusion duration     | When specified the infusion rate will be rate = amt/dur                      |
+| evid      | event ID              | 0=Observation; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace; 6=Multiply |
+| cmt       | Compartment           | Represents compartment #/name for dose/observation                           |
+| ss        | Steady State Flag     | 0 = non-steady-state; 1=steady state; 2=steady state +prior states           |
+| ii        | Inter-dose Interval   | Time between doses.                                                          |
+| addl      | # of additional doses | Number of doses like the current dose.                                       |
+
+### Quiz -- Legal event names
+
+What are some of the legal event names:
+
+```{r eventColQuiz,echo=FALSE}
+quiz(
+  question("What are legal names for event columns:",
+           answer("steadyState", correct=FALSE),
+           answer("ii", correct=TRUE),
+           answer("dosingInterval", correct=FALSE),
+           answer("rate", correct=TRUE),
+           answer("dur", correct = TRUE),
+           answer("ss", correct=TRUE)))
+```
+
+### Event differences
+
+If you are familiar with `NONMEM` or `Monolix`, you may notice that
+`rxode2` event tables are very similar to the `NONMEM`/`Monolix`
+dataset convention with these exceptions:
+
+ - The compartment data item (`cmt`) can be a string/factor with
+   compartment names
+   - You may turn off a compartment with a negative compartment number
+     or "-cmt" where cmt is the compartment name.
+   - The compartment data item (`cmt`) can still be a number, the
+     number of the compartment is defined by the appearance of the
+     compartment name in the model. This can be tedious to count, so
+     you can specify compartment numbers easier by using the
+     `cmt(cmtName)` at the beginning of the model.
+ - An additional column, `dur` can specify the duration of infusions;
+    - Bioavailability changes will change the rate of infusion since
+      `dur`/`amt` are fixed in the input data.
+    - Similarly, when specifying `rate`/`amt` for an infusion, the
+      bioavailability will change the infusion duration since
+      `rate`/`amt` are fixed in the input data.
+ - Some infrequent NONMEM columns are not supported: `pcmt`, `call`.
+ - Additional events are supported:
+   - `evid=5` or replace event; This replaces the value of a
+       compartment with the value specified in the `amt` column. This
+       is equivalent to `deSolve`=`replace`.
+   - `evid=6` or multiply event; This multiplies the value in the
+     compartment with the value specified by the `amt` column.  This
+     is equivalent to `deSolve`=`multiply`.
+
+### Event ID (evid quiz)
+
+Now that we covered all the event types, quick quiz on what they all
+mean:
+
+```{r quizDiff, echo=FALSE}
+quiz(
+  question("What does evid=1 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=TRUE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=0 mean?",
+           answer("An observation event", correct=TRUE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=2 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=TRUE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=3 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=TRUE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=4 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=TRUE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=5 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=TRUE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=6 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=TRUE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=FALSE)),
+  question("What does evid=7 mean?",
+           answer("An observation event", correct=FALSE),
+           answer("A reset event", correct=FALSE),
+           answer("A reset then dose", correct=FALSE),
+           answer("A multiplication event", correct=FALSE),
+           answer("An addivite event (adding say one dose)", correct=FALSE),
+           answer("Other type of event", correct=FALSE),
+           answer("Replacement event", correct=FALSE),
+           answer("Nothing; illegal evid", correct=TRUE))
+  )
+```
+
+### Remembering event types
+
+One of the challenges of flexible event types, is remembering the
+event identifiers; If you ever want to figure out what an event type
+is, it is print out in an `rxode2` event table.
+
+In this exercise, print out event types `1`  to `6` by creating an event table:
+
+```{r etPrintout, exercise=TRUE}
+e <- et() |>
+    et(time=1, amt=1, evid=1) |>
+    et(time=2, amt=2, evid=2) |>
+    et(time=3, amt=3, evid=3) |>
+    et(time=4, amt=4, evid=4)
+
+## add evid=5 through 6 to the above event table
+
+print(e)
+```
+
+```{r etPrintout-solution}
+e <- et() |>
+    et(time=1, amt=1, evid=1) |>
+    et(time=2, amt=2, evid=2) |>
+    et(time=3, amt=3, evid=3) |>
+    et(time=4, amt=4, evid=4) |>
+    et(time=5, amt=5, evid=5) |>
+    et(time=6, amt=6, evid=6)
+## add evid=5 through 6 to the above event table
+
+print(e)
+```
+
+### Convert to data.frame
+
+Notice that the `evid` shows `#:Description`, this is only for
+display; When you convert the event table to a data.frame, it becomes
+a number.
+
+Use `as.data.frame` to convert the event table `e` to an data.frame and print-out the results:
+
+```{r etPrintoutDf, exercise=TRUE}
+e <- et() |>
+    et(time=1, amt=1, evid=1) |>
+    et(time=2, amt=2, evid=2) |>
+    et(time=3, amt=3, evid=3) |>
+    et(time=4, amt=4, evid=4) |>
+    et(time=6, amt=6, evid=6)
+
+print(e)
+```
+
+
+```{r etPrintoutDf-solution}
+e <- et() |>
+    et(time=1, amt=1, evid=1) |>
+    et(time=2, amt=2, evid=2) |>
+    et(time=3, amt=3, evid=3) |>
+    et(time=4, amt=4, evid=4) |>
+    et(time=6, amt=6, evid=6) |>
+    as.data.frame
+
+print(e)
+
+```
+
+## Bolus/Additive Doses
+
+A bolus dose is the default type of dose in rxode2 and only requires
+the `amt`/`dose`.  Note that this uses the convenience function `et()`
+described in the [rxode2 event tables](rxode2-event-table.html)
+
+```{r, bolus, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24) |>
+    et(seq(0, 24, length.out=100))
+
+print(ev)
+
+rxSolve(m1, ev) |> plot(C2) +
+    xlab("Time")
+```
+## Infusions
+
+There are a few different type of infusions that rxode2 supports:
+
+- Constant Rate Infusion (`rate`)
+- Constant Duration Infusion (`dur`)
+- Estimated Rate of Infusion
+- Estimated Duration of Infusion
+
+
+### Constant Infusion (in terms of duration and rate)
+
+The next type of event is an infusion; There are two ways to specify
+an infusion; The first is the `dur` keyword.
+
+An example of this is:
+
+```{r, durInf, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, dur=8) |>
+    et(seq(0, 24, length.out=100))
+
+print(ev)
+
+rxSolve(m1, ev) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+
+It can be also specified by the `rate` component:
+
+```{r, rateInf, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=10000/8) |>
+    et(seq(0, 24, length.out=100))
+
+print(ev)
+
+rxSolve(m1, ev) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+### Did you spot a difference in the event tables?
+
+If you have a keen eye you may have noticed the two event tables.  The
+first had a `rate` column and the second has a `dur` column.  Keep
+this in mind as we continue our infusion discussion.
+
+### What does bioavailability do to the system?
+
+Now that we have infusion, a natural question is how does
+bioavailability affect the `rxode2` system?
+
+Let check; Change the bioavailability to `fdepot=0.25` when the event
+table is parameterized in terms of `rate` to see what happens (you may
+have to run the code then change it to see the difference):
+
+```{r, rateFinf, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=10000/8) |>
+    et(seq(0, 24, length.out=100))
+
+## Change the fdepot to 0.25
+rxSolve(m1, ev, c(fdepot=1)) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+### Bioavailability change for durations
+
+In the case of modeling `rate`, a bioavailability decrease,
+decreases the infusion duration, as in `NONMEM`.
+
+Conversely, a bioavailability increase should therefore increase the infusion
+duration; A simple check could be to change the `fdepot` to `2`:
+
+```{r, rateFinf2, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=10000/8) |>
+    et(seq(0, 24, length.out=100))
+
+## Change the fdepot to 2
+## If you cannot clearly see the effect, continue to the next section
+rxSolve(m1, ev, c(fdepot=1)) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+### Rationale for infusion changes when `rate` is specified
+
+The rationale for this behavior is that the `rate` and `amt` are
+specified by the event table, so the only thing that can change with a
+bioavailability increase is the duration of the infusion.
+
+However a bioavailability change may not affect the infusion duration of an IV
+infusion, so this thinking about IV infusion bioavilability has led to
+confusion in the past.
+
+This is the reason why parameterizing using the duration can be useful.
+
+### Exercise -- parameterize using duration
+
+If you specify the `amt` and `dur` components in the event table,
+bioavailability changes affect the `rate` of infusion.
+
+Note that if there is no bioavialability change the solution is the
+same; Change the bioavilability to see the effect:
+
+```{r durInf2, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, dur=8) |>
+    et(0, 24, length.out=100)
+
+## If you cannot see a clear difference, go to the next section
+rxSolve(m1, ev, c(fdepot=1)) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+### Duration effect
+
+Did you figure out the effect?  It can be hard to notice; the `y`-axis
+changed; To more clearly see the effect you can look at the
+side-by-side comparison; Run the following code to see the difference:
+
+```{r durSideBySide, exercise=TRUE}
+library(ggplot2)
+library(gridExtra)
+
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, dur=8) |>
+    et(0, 24, length.out=100)
+
+p1 <- rxSolve(m1, ev, c(fdepot=1.25)) |> plot(depot) +
+    xlab("Time") + ylim(0,5000)
+
+p2 <- rxSolve(m1, ev, c(fdepot=0.25)) |> plot(depot) +
+    xlab("Time")+ ylim(0,5000)
+
+grid.arrange(p1,p2, nrow=1)
+```
+
+Now you can see the clear changes in infusion `rate` when `dur` and
+`amt` is constant.  This is more likely what would happen in clinical
+practice; The duration of infusion is the same, but the rate is
+changed.
+
+### Modeled rate
+
+You may also model rate.  This is equivalent to NONMEM's `rate=-1` and
+is how rxode2's event table specifies the data item as well. You can
+also use `rate=model` as a mnemonic.  Note that you chan change the
+`rateDepot` to change the rate of the infusion.  Also `fdepot` in this
+case changes the duration of infusion.
+
+```{r modelRate, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, rate=model) |>
+    et(seq(0, 24, length.out=100))
+
+print(ev)
+
+rxSolve(m1, ev, c(rateDepot=10000/3, fdepot=1)) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+Note that the event table gives you clues about the type of event
+`rate=-1` is by the text.  As before, this is simply a displayed
+output and the actual value is `-1`
+
+
+### Modeled duration
+
+You can model the duration, which is equivalent to NONMEM's
+`rate=-2`. As a mnemonic you can use the `dur=model` instead of
+`rate=-2`
+
+
+As an exercise you can change the duration of infusion (`durDepot`)
+and the `fdepot`.  The `durDepot` will change the duration of the
+infusion; The `fdepot` will change the infusion rate:
+
+```{r modelDur, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12,until=24, dur=model) |>
+    et(seq(0, 24, length.out=100))
+
+print(ev)
+
+rxSolve(m1, ev, c(durDepot=7, fdepot =1)) |> plot(depot, C2) +
+    xlab("Time")
+```
+
+## Steady State dosing
+
+These doses are solved until a steady state is reached with a constant
+inter-dose interval.  There are three types of steady state doses that
+`rxode2` supports:
+
+- Simple steady state solutions
+- Complex steady state solutions
+- Infusion steady state solutions
+
+The `rxode2` event table needs to be setup specially for each type of
+steady state record.
+
+### Simple Steady State dosing
+
+Simple steady-state dosing can be added by using the `ss=1` flag
+coupled with the inter-dose interval flag `ii`.  This is interpreted
+as the same bolus dose or infusion being applied separated by a dosing
+interval `ii` until the steady state is reached.
+
+This particular example has a steady-state bolus dose separated by 12
+hours; You may run it and see how it behaves.
+
+As an exercise you can change it to a 30 minute duration infusion with
+`dur=0.5`; You can also explore the effect of the inter-dose interval `ii`
+on the steady state concentrations
+
+```{r ssBolus, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, ss=1) |>
+    et(seq(0, 24, length.out=100))
+
+print(ev)
+
+rxSolve(m1, ev) |> plot(depot, C2)
+```
+
+
+```{r ssBolus-solution}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, ss=1, dur=0.5) |>
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot, C2)
+```
+
+### Simple steady state dosing observations
+
+You probably observed the steady state solution did not start at zero,
+but was at a higher concentration, as expected.  This simple way of
+specifying steady state works for both bolus doses and infusion doses;
+It also assumes a constant interval between doses;
+
+But, what if the interval or dose was not constant; For example if you
+were dosing `100` mg in the morning and `150` mg in the evening.  How
+would you get the steady state solution?
+
+The answer is adding a bit of complexity to the steady state solutions
+
+### Complex steady state
+
+By using the `ss=2` flag, you can use the super-positioning principle
+in linear kinetics to get steady state nonstandard dosing
+(i.e. morning 100 mg vs evening 150 mg). This is done by:
+
+ - Saving all the state values
+ - Resetting all the states and solving the system to steady state
+ - Adding back all the prior state values
+
+This takes a full dose cycle to reach a true steady state solution;
+
+As an exercise, run the example below and then change the evening dose to `200` mg:
+
+```{r complexSS, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=24, ss=1) |>
+    et(time=12, amt=15000, ii=24, ss=2) |>
+    et(time=24, amt=10000, ii=24, addl=3) |>
+    et(time=36, amt=15000, ii=24, addl=3) |>
+    et(seq(0, 64, length.out=500))
+
+library(ggplot2)
+
+rxSolve(m1, ev,maxsteps=10000) |> plot(C2) +
+    annotate("rect", xmin=0, xmax=24, ymin=-Inf, ymax=Inf, alpha=0.2) +
+    annotate("text", x=12.5, y=7, label="Initial Steady State Period") +
+    annotate("text", x=44,   y=7, label="Steady State AM/PM dosing")
+
+```
+
+### Infusion steady states
+
+The last type of steady state that rxode2 supports is steady-state
+constant infusion rate.  This can be specified the same way as NONMEM,
+that is:
+
+- No inter-dose interval `ii`=`0`
+- A steady state dose, ie `ss`=`1`
+- Either a positive rate (`rate`>0) or a estimated rate `rate`=`-1`.
+- A zero dose, ie `amt`=`0`
+- Once the steady-state constant infusion is achieved, the infusion is
+  turned off when using this record, just like NONMEM.
+
+Note that `rate`=`-2` where we model the duration of infusion doesn't
+make much sense since we are solving the infusion until steady state.
+The duration is specified by the steady state solution.
+
+Also note that bioavailability changes on this steady state infusion
+also do not make sense because they neither change the `rate` or the
+duration of the steady state infusion.  Hence modeled bioavailability
+on this type of dosing event is ignored.
+
+As an exercise you can run this example and then change the rate to
+see how it affects the steady state solution; The steady state
+solution (on the top) should be the same as the long term infusion (on
+the bottom)
+
+```{r infSSzero, exercise=TRUE}
+library(gridExtra)
+ev <- et(timeUnits="hr") |>
+    ## The infusion amount is unknown, rather we are using as much as
+    ## needed to get to steady state so `ss=0`
+    et(amt=0, ss=1,rate=10000/8)
+
+p1 <- rxSolve(m1, ev) |> plot(C2, eff)
+
+
+ev <- et(timeUnits="hr") |>
+    ## Use a very large dose so that the infusion reaches steady state
+    et(amt=200000, rate=10000/8) |>
+    et(0, 250, length.out=1000)
+
+p2 <- rxSolve(m1, ev) |> plot(C2, eff)
+
+
+grid.arrange(p1,p2, ncol=1)
+
+```
+
+## Resetting or turning off Compartments
+
+rxode2 supports two different types of events that may be useful:
+
+- Reset events
+- Turning off compartments
+
+### Resetting events
+
+Reset events are implemented by `evid=3` or `evid=reset`, for reset
+and `evid=4` for reset and dose.  The exercise below resets the dose
+`6 hours` post dose.
+
+Run the following example to see what happens 6 hours post-dose:
+
+```{r resetExample, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, evid=reset) |> ## this is a mnemonic for evid=3
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+### Instead of reset, what about reset and dose?
+
+You can see all the compartments are reset to their initial values at
+`time=6`.  The next dose start the dosing cycle over.
+
+What if you used the reset and dose event `evid=4` of `amt=1000`?
+
+Adjust the last example to see what happens:
+
+```{r resetDoseExample, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, evid=reset) |> ## Change this to evid=4
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+```{r resetDoseExample-solution}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, evid=4) |> ## Change this to evid=4
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+
+### Turning off compartments
+
+In this case, the whole system is reset and the dose is given to the
+depot compartment.  This related but not the same as turning off a
+compartment.
+
+What is the difference between "resetting" the system and turning off
+compartments?
+
+To find out try turning off the `depot` compartment; This is done by
+changing the reset event to `evid=2` and turning off the compartment.
+This can be done by dosing either to the negative compartment, ie `-#` or  dosing to the `-cmtName` compartment.  In this case it can be `-1` or `-depot`
+
+As an exercise change the reset dose to turn off the depot compartment:
+
+```{r depotOff, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, evid=4) |> ## turn off the compartment with evid=2 and cmt=?
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+```{r depotOff-solution}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, cmt="-depot", evid=2) |>
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+### Turning the compartment back on?
+
+In this case, the depot is turned off; The depot compartment
+concentrations  are set to the initial values but the other compartment
+concentrations/levels are not reset.
+
+So what do you need to do to turn the compartment back on? Add another
+dose to the `depot` is administered the depot compartment is turned
+back on. This dose can be even a bolus of `0` just to turn the
+compartment back on.
+
+**Note:** a dose to a compartment only turns back on the compartment
+that was dosed.  Hence if you turn off the effect compartment, it
+continues to be off after another dose to the depot.
+
+As an exercise, run the model without turning on the effect
+compartment; Then as an exercise turn the effect compartment back on
+at `time=12`:
+
+```{r cmtOn, exercise=TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, cmt="-eff", evid=2) |>
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+```{r cmtOn-solution}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, ii=12, addl=3) |>
+    et(time=6, cmt="-eff", evid=2) |>
+    et(time=12,cmt="eff",evid=2) |>
+    et(seq(0, 24, length.out=100))
+
+rxSolve(m1, ev) |> plot(depot,C2, eff)
+```
+
+### Result of turning on the effect compartment again
+
+Once the effect compartment was turned back on, you can see a sharp
+increase in effect since the amount in the `C2` starts to equilabrate
+with the effect compartment
+
+## Combining/Expanding event tables
+
+In this section of the events tutorial we will cover:
+
+- Multi-subject event table creation/expansion
+
+- Combining event tables
+
+- Sequencing event tables
+
+- Repeating event tables
+
+### Expanding the event table into a multi-subject event table
+
+You may want to expand the event table into a multiple subject event
+table; `et()` will expand the event table by duplicating an event
+table for each individual specified in `id=...`
+
+As an exercise, expand the solve to be 4 IDs
+
+```{r idExpand, exercise = TRUE}
+ev <- et(timeUnits="hr") |>
+    et(amt=10000, until = set_units(3, days), ii=12) |> # loading doses
+    et(seq(0,48,length.out=200)) |>
+    et(id=1:4)
+
+print(ev)
+
+set.seed(42)
+rxSolve(m1, ev,
+      params=data.frame(KA=0.294*exp(rnorm(4)), 18.6*exp(rnorm(4)))) |>
+    plot(C2)
+```
+
+<div id="idExpand-hint">
+You can add `et(id=1:4)` to the end of the event table pipline  to solve for 4 individuals
+</div>
+
+### Combining event tables
+
+You may have noticed that the `rxSolve` will work if you add
+`et(id=1:4)` or if you do not; Where the expanding of individual IDs
+really shines is by combining arms in a study with different sampling
+times or sampling intervals.  There the IDs will not have the exact
+same structure.
+
+To combine event tables, you can use `c`, `seq`, `rep`, and `rbind`.
+
+### Sequencing event tables for complex dosing
+
+One way to combine event table is to sequence them by `c()`, `seq()` or
+`etSeq()`. This takes the two dosing groups and adds at least one
+inter-dose interval between them:
+
+
+`etSeq()` can combine two event tables or time intervals; As an
+exercise, change the event table to have qd dosing followed by bid
+dosing:
+
+```{r bidQd, exercise=TRUE}
+## bid for 5 days
+bid <- et(timeUnits="hr") |>
+       et(amt=10000,ii=12,until=set_units(5, "days"))
+
+## qd for 5 days
+qd <- et(timeUnits="hr") |>
+      et(amt=20000,ii=24,until=set_units(5, "days"))
+
+## bid for 5 days followed by qd for 5 days
+## Change to qd for 5 days and bid for 5 days
+et <- seq(bid,qd) |> et(seq(0,11*24,length.out=100));
+
+rxSolve(m1, et) |> plot(C2)
+```
+
+### Using `seq` to add a drug holiday
+
+You can also add drug holidays using the `etSeq` or `seq` function.
+The way to do this is to simply add a time-period between the two dosing tables;  For example
+
+```{r, echo=TRUE, eval=FALSE}
+seq(eventTable1,separationTime,eventTable2)
+```
+
+Would combine `eventTable1` add a `separationTime` and finally add `eventTable2`
+
+Below is an example of a 3 day drug holiday; Change it to a week of drug holiday
+
+```{r etSeq2, exercise=TRUE}
+## bid for 5 days
+bid <- et(timeUnits="hr") |>
+       et(amt=10000,ii=12,until=set_units(5, "days"))
+
+## qd for 5 days
+qd <- et(timeUnits="hr") |>
+      et(amt=20000,ii=24,until=set_units(5, "days"))
+
+## bid for 5 days followed by qd for 5 days
+et <- seq(bid,set_units(3, day), qd) |>
+    et(seq(0,18*24,length.out=100));
+
+rxSolve(m1, et) |> plot(C2)
+```
+
+<div id="etSeq2-hint">
+You can change `set_units(3, day)` to `set_units(1, week)`
+</div>
+
+### Notes on adding the one-week drug holiday
+
+Note that in this worked-out example, the time between the `bid` and
+the `qd` event tables is exactly one week, not 1 week plus 24 hours
+because of the inter-dose interval.  If you want that behavior, you
+can sequence it using the `wait="+ii"`.
+
+Also note, that `rxode2` assumes that the dosing is what you want to
+space the event tables by, and clears out any sampling records when
+you combine the event tables.  If that is not true, you can also use
+the option `samples="use"`
+
+### Repeating event tables
+
+You can have an event table that you can repeat with `etRep` or `rep`.
+
+For example 4 rounds of 2 weeks on QD therapy and 1 week off of
+therapy can be simply specified by the default exercise below.
+
+As an exercise, change the drug holiday to 2 weeks
+
+
+```{r etRep,exercise=TRUE}
+qd <-et(timeUnits = "hr") |> et(amt=10000, ii=24, until=set_units(2, "weeks"), cmt="depot")
+
+et <- rep(qd, times=4, wait=set_units(1,"weeks")) |>
+      add.sampling(set_units(seq(0, 12.5,by=0.005),weeks))
+
+rxSolve(m1, et)  |> plot(C2)
+```
+
+### Combining event tables with rbind
+
+You may combine event tables with `rbind`.  This does not consider the
+event times when combining the event tables, but keeps them the same
+times. If you space the event tables by a waiting period, it also does
+not consider the inter-dose interval.
+
+Using the previous `seq` you can clearly see the difference.
+
+Please run the bid/qd example to have it fresh in you memory.  After
+you have run it, change `seq` to `rbind` to see what changesr
+
+```{r rbind, exercise=TRUE}
+## bid for 5 days
+bid <- et(timeUnits="hr") |>
+       et(amt=10000,ii=12,until=set_units(5, "days"))
+
+## qd for 5 days
+qd <- et(timeUnits="hr") |>
+      et(amt=20000,ii=24,until=set_units(5, "days"))
+
+et <- seq(bid,qd) |>
+    et(seq(0,18*24,length.out=500));
+
+rxSolve(m1, et) |> plot(C2)
+```
+
+### rbind vs seq
+
+As you noticed in the example `rbind` combined the event tables as
+they are, creating a double dose at the `qd` time and a single dose at
+the `bid` time.  What about if you use a waiting period?
+
+### Using rbind with a waiting period
+
+Still the waiting period applies (but does not consider the inter-dose interval).
+
+As an exercise, change the waiting period to 3 days.
+
+```{r rbindWait, exercise=TRUE}
+## bid for 5 days
+bid <- et(timeUnits="hr") |>
+       et(amt=10000,ii=12,until=set_units(5, "days"))
+
+## qd for 5 days
+qd <- et(timeUnits="hr") |>
+      et(amt=20000,ii=24,until=set_units(5, "days"))
+
+
+et <- rbind(bid,wait=set_units(10,days),qd) |>
+    et(seq(0,18*24,length.out=500));
+
+rxSolve(m1, et) |> plot(C2)
+```
+
+### rbind with a waiting interval of 3 days
+
+Notice that when waiting for 3 days, the days 3-5 duplicate the QD
+doses
+
+### Combining multi-subject event tables with `rbind`
+
+You can also bind the tables together and make each ID in the event
+table unique; This can be good to combine cohorts with different
+expected dosing and sampling times.  This requires the `id="unique"`
+option;  Using the first example shows how this is different in this case:
+
+```{r rbindId, exercise=TRUE}
+## bid for 5 days
+bid <- et(timeUnits="hr") |>
+       et(amt=10000,ii=12,until=set_units(5, "days"))
+
+## qd for 5 days
+qd <- et(timeUnits="hr") |>
+      et(amt=20000,ii=24,until=set_units(5, "days"))
+
+
+## bid for 5 days
+et <- etRbind(bid,qd, id="unique") |>
+    et(seq(0,150,length.out=500));
+
+library(ggplot2)
+rxSolve(m1, et) |> plot(C2) + facet_wrap( ~ id)
+```
+
+## Add samples/doses in a window
+### Dosing windows
+
+In addition to adding fixed doses and fixed sampling times, you can
+have windows where you sample and draw doses from.  For dosing windows
+you specify the time as an ordered numerical vector with the lowest
+dosing time and the highest dosing time inside a list.
+
+In the initial example, the dosing is within a 6 hour dosing window;
+This can be specified by `list(c(0,6))`;
+
+For an exercise change the dosing windows to `c(0,2)`:
+
+```{r doseWindow, exercise=TRUE}
+set.seed(42)
+ev <- et(timeUnits="hr") |>
+    et(time=list(c(0,6)), amt=10000, until = set_units(2, days), ii=12) |> # loading doses
+    et(id=1:4)
+
+print(ev)
+ev <- ev |> et(seq(0,48,length.out=200))
+
+solve(m1, ev, params=data.frame(KA=0.294*exp(rnorm(4)), 18.6*exp(rnorm(4)))) |>
+    plot(C2)
+```
+
+```{r doseWindow-solution}
+set.seed(42)
+ev <- et(timeUnits="hr") |>
+    et(time=list(c(0,2)), amt=10000, until = set_units(2, days), ii=12) |> # loading doses
+    et(id=1:4) |>
+    et(seq(0,48,length.out=200))
+
+solve(m1, ev, params=data.frame(KA=0.294*exp(rnorm(4)), 18.6*exp(rnorm(4)))) |> plot(C2)
+```
+
+### Sampling windows
+
+The same sort of thing can be specified with sampling times.  To
+specify the sampling times in terms of a sampling window, you can
+create a list of the sampling times.  Each sampling time will be a two
+element ordered numeric vector.
+
+```{r sampleTime, exercise=TRUE}
+set.seed(42)
+ev <- et(timeUnits="hr") |>
+    et(time=list(c(0,2)), amt=10000, until = set_units(2, days), ii=12) |> # loading doses
+    et(id=1:4)
+
+## Create 20 samples in the first 24 hours and 20 samples in the second 24 hours
+samples <- c(lapply(1:20, function(...){c(0,24)}),
+             lapply(1:20, function(...){c(20,48)}))
+
+## Add the random collection to the event table
+ev <- ev |> et(samples)
+
+library(ggplot2)
+solve(m1, ev, params=data.frame(KA=0.294*exp(rnorm(4)), 18.6*exp(rnorm(4)))) |> plot(C2) + geom_point()
+```
+
+This shows the flexibility in dosing and sampling that the rxode2 event tables allow.
+
+## Units in event tables
+
+As commented in the last exercise, you may specify units in the table
+event table. When specified, the units use the `units` package to keep
+track of the units and convert them if needed.  Additionally,
+`ggforce` uses them to label the `ggplot` axes.  The `set_units` and
+`drop_units` are useful to set and drop the rxode2 event table units.
+
+This example creates a data-set with doses in `mg` and time in `hr`.
+
+### Adding units in data-set and converting to different overall units
+
+In this exercise use `set_units` to change the dose to `g` and the
+time to `days`:
+
+```{r units1, exercise=TRUE}
+ev <- et(amount.units="mg", time.units="hr") |>
+    et(dose=5000, dosing.interval=12, until=48) |>
+    etExpand() ## Expand dosing so there is no ii/addl record
+
+## Use set_units to change the  dose to g and time to days
+print(ev)
+```
+
+<div id="units1-hint">
+Use `ev |> set_units(g) |> set_units(day)`
+</div>
+
+### Dropping units
+
+You may have used the `units` package in the past; In the case of
+`rxode2` event tables, you do not have to apply to the column(s) in the
+dataset, but `rxode2` applies the unit changes where it needs to apply them.
+
+This is also true when dropping units in an event table.  In this
+exercise, drop the units using `drop_units` from the event table dataset:
+
+```{r units2, exercise=TRUE}
+ev <- et(amount.units="mg", time.units="hr") |>
+    et(dose=5000, dosing.interval=12, until=48) |>
+    etExpand() |> ## Expand dosing so there is no ii/addl record
+    set_units(day) |> # change the units to day/grams
+    set_units(g)
+
+## Use drop_units to remove unit information
+print(ev)
+```
+
+<div id="units2-hint">
+Use `drop_units()` on the `ev` dataset
+</div>
+
+
+### Dropping units keeps the original transformation
+
+If you simply dropped the units at the end of the prior example, you
+may have noticed that the event table `ev` did not revert to the units
+originally specified in the event table.  It will keep the conversions
+completed before unit information is dropped.
+
+You could also add units to the event table by simply using `set_units`.
+
+In this example, try setting the units to `mg` and `hr` by the `set_units` function:
+
+```{r units3, exercise=TRUE}
+ev <- et() |>
+    et(dose=5000, dosing.interval=12, until=48) |>
+    etExpand() ## Expand dosing so there is no ii/addl record
+
+print(ev)
+```
+
+<div id="units3-hint">
+Use the `set_units(mg) |> set_units(hr)` to change the units
+</div>
+
+## Using deSolve data frames
+
+Sometimes you may have a `deSolve` model you may wish to convert to
+`rxode2` to take advantage of its threading capabilities or
+pre-compiled models.
+
+Using the `deSolve`'s example for the event data frame and adapting it
+for `rxode2` you simply wrap the `deSolve` data frame in the `et()` function;
+
+For example, using the model and event table the March 2020
+`deSolve`'s vignette, we can reproduce the results
+
+```{r deSolve, exercise=TRUE}
+rx <- rxode2({
+    d/dt(v1) = -0.1 * v1
+    d/dt(v2) = -0.1 * v2
+    v1(0) = 1
+    v2(0) = 2
+})
+
+eventdat <- data.frame(var = c("v1", "v2", "v2", "v1"), time = c(1, 1, 5, 9),
+                       value = c(1, 2, 3, 4),
+                       method = c("add", "mult", "rep", "add"))
+
+print(eventdat)
+
+
+## When we have a
+et <- et(eventdat) |> et(0, 10, by=0.1)
+
+print(et)
+
+## In this case we have to add the dosing records
+rxSolve(rx, et, times=seq(0, 10, by=0.1)) |> plot()
+```

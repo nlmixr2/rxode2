@@ -1,0 +1,111 @@
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+knitr::opts_chunk$set( comment = "#>")
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+This is an example model for weight based dosing of
+daptomycin. Daptomycin is a cyclic lipopeptide antibiotic from
+fermented *Streptomyces roseosporus*.
+
+There are 3 stages for weight-based dosing simulations:
+- Create rxode2 model
+- Simulate Covariates
+- Create event table with weight-based dosing (merged back to covariates)
+
+# Creating a 2-compartment model in rxode2
+
+```{r}
+library(rxode2)
+
+## Note the time covariate is not included in the simulation
+m1 <- function() {
+  model({
+    CL ~ (1-0.2*SEX)*(0.807+0.00514*(CRCL-91.2))*exp(eta.cl)
+    V1 ~ 4.8*exp(eta.v1)
+    Q ~ (3.46+0.0593*(WT-75.1))*exp(eta.q);
+    V2 ~ 1.93*(3.13+0.0458*(WT-75.1))*exp(eta.v2)
+    A1 ~ centr;
+    A2 ~ peri;
+    d/dt(centr) <- - A1*(CL/V1 + Q/V1) + A2*Q/V2;
+    d/dt(peri) <- A1*Q/V1 - A2*Q/V2;
+    DV = centr / V1 * (1 + prop.err)
+  })
+}
+```
+
+# Simulating Covariates
+
+This simulation correlates age, sex, and weight. Since we will be
+using weight based dosing, this needs to be simulated first
+
+```{r}
+set.seed(42)
+rxSetSeed(42)
+library(dplyr)
+nsub=30
+# Simulate Weight based on age and gender
+AGE<-round(runif(nsub,min=18,max=70))
+SEX<-round(runif(nsub,min=0,max=1))
+HTm<-round(rnorm(nsub,176.3,0.17*sqrt(4482)),digits=1)
+HTf<-round(rnorm(nsub,162.2,0.16*sqrt(4857)),digits=1)
+WTm<-round(exp(3.28+1.92*log(HTm/100))*exp(rnorm(nsub,0,0.14)),digits=1)
+WTf<-round(exp(3.49+1.45*log(HTf/100))*exp(rnorm(nsub,0,0.17)),digits=1)
+WT<-ifelse(SEX==1,WTf,WTm)
+CRCL<-round(runif(nsub,30,140))
+## id is in lower case to match the event table
+cov.df <- tibble(id=seq_along(AGE), AGE=AGE, SEX=SEX, WT=WT, CRCL=CRCL)
+print(cov.df)
+```
+# Creating weight based event table
+
+```{r}
+s<-c(0,0.25,0.5,0.75,1,1.5,seq(2,24,by=1))
+s <- lapply(s, function(x){.x <- 0.1 * x; c(x - .x, x + .x)})
+
+e <- et() |>
+    ## Specify the id and weight based dosing from covariate data.frame
+    ## This requires rxode2 XXX
+    et(id=cov.df$id, amt=6*cov.df$WT, rate=6 * cov.df$WT) |>
+    ## Sampling is added for each ID
+    et(s) |>
+    as.data.frame() |>
+    ## Merge the event table with the covarite information
+    merge(cov.df, by="id") |>
+    as_tibble()
+
+
+e
+```
+
+# Solving Daptomycin simulation
+
+```{r}
+data <- rxSolve(m1, e,
+             ## Lotri uses lower-triangular matrix rep. for named matrix
+             omega=lotri(eta.cl ~ .306,
+                         eta.q ~0.0652,
+                         eta.v1 ~.567,
+                         eta.v2 ~ .191),
+             sigma=lotri(prop.err ~ 0.15),
+             addDosing = TRUE, addCov = TRUE)
+
+print(data)
+
+plot(data, log="y")
+```
+
+# Daptomycin Reference
+
+This weight-based simulation is adapted from the Daptomycin article
+below:
+
+Dvorchik B, Arbeit RD, Chung J, Liu S, Knebel W, Kastrissios
+H. Population pharmacokinetics of daptomycin. Antimicrob Agents
+Che mother 2004; 48: 2799-2807. doi:(10.1128/AAC.48.8.2799-2807.2004)[https://dx.doi.org/10.1128%2FAAC.48.8.2799-2807.2004]
+
+This simulation example was made available from the work of Sherwin Sy
+with modifications by Matthew Fidler

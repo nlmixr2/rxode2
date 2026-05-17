@@ -1,0 +1,30 @@
+---
+title: "Introduction to rxode2"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to rxode2}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+# Introduction
+
+`rxode2` is an R package that facilitates simulation with ODE models in
+R. It is designed with pharmacometrics models in mind, but can be
+applied more generally to any ODE model.
+
+# Description of rxode2 illustrated through an example
+
+```{r child='../man/rmdhunks/rxode2-intro-chunk.Rmd'}
+```

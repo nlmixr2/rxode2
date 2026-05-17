@@ -1,0 +1,167 @@
+---
+title: "Sticky variables in rxode2"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+In `rxode2`, variables defined on the left-hand side (LHS) of an
+equation are typically re-evaluated at every time point or integration
+step. However, there are scenarios where you want a variable to
+"stick" to its previous value unless a certain condition is met. This
+is particularly useful for calculating non-compartmental analysis
+(NCA) type metrics like $C_{max}$, $T_{max}$, $C_{min}$, and $T_{min}$
+during a simulation.
+
+## What are Sticky Variables?
+
+A sticky variable is a variable that retains its value from the
+previous time point if it is not explicitly updated in the current
+time point. In general variables are sticky unless they are a
+covariate in the model, a specified parameter, or a model-based
+assignment.
+
+In `rxode2`, a variable retains it last value before it is assigned.
+When `rxode2` identifies a variable as sticky, it initializes it to
+`NA` for each individual and ensures its value persists across
+integration steps and time points.
+
+## Calculating $C_{max}$ and $T_{max}$
+
+To calculate $C_{max}$ and $T_{max}$, you need to keep track of the
+maximum concentration seen so far and the time it occurred.
+
+Here is how you can do this in an `rxode2` model:
+
+```{r cmax_model}
+m <- rxode2({
+  v  <- 10
+  cl <- 1
+  ka <- 1
+  d/dt(depot) <- -ka * depot
+  d/dt(centr) <- ka * depot - cl/v * centr
+  cp <- centr / v
+
+  # Initialize sticky variables if they are NA
+  if (is.na(C_max)) {
+    C_max <- 0
+    T_max <- 0
+  }
+
+  # Update C_max and T_max
+  if (cp > C_max) {
+    C_max <- cp
+    T_max <- time
+  }
+})
+```
+
+In this model, `C_max` and `T_max` are checked with
+`is.na(C_max)`. The first time the model is evaluated for a subject,
+`C_max` will be `NA`, so it gets initialized to 0. In subsequent
+evaluations (at different time points), `C_max` will carry its value
+from the previous step.
+
+## Comprehensive Example: $C_{max}$, $T_{max}$, $C_{min}$, and $T_{min}$
+
+Let's look at a more complete example that calculates both peaks and
+troughs.
+
+```{r comprehensive}
+m <- rxode2({
+  v  <- 10
+  cl <- 1
+  ka <- 1
+  d/dt(depot) <- -ka * depot
+  d/dt(centr) <- ka * depot - cl/v * centr
+  cp <- centr / v
+
+  if (is.na(C_max)) {
+    C_max <- 0
+    C_min <- Inf
+    T_max <- 0
+    T_min <- Inf
+  }
+
+  if (cp > C_max) {
+    C_max <- cp
+    T_max <- time
+  }
+
+  if (cp < C_min) {
+    C_min <- cp
+    T_min <- time
+  }
+})
+
+ev <- et(amt=100) |>
+  et(seq(0, 24, length.out=100))
+
+s <- rxSolve(m, ev)
+
+tail(s)
+```
+
+## Sticky Variables for Time After Dose (TAD)
+
+Another common use case is calculating the time since the last
+dose. While `rxode2` provides internal ways to handle this, you can
+also implement it using sticky variables and the `is.na(amt)` check
+(which is true when no dose is administered at the current time).
+
+```{r tad_example}
+m <- rxode2({
+  cl <- 1
+  v <- 10
+  d/dt(centr) <- -cl/v * centr
+  cp <- centr/v
+
+  if (!is.na(amt)) {
+    # A dose is happening
+    tdose <- time
+  }
+
+  # tad is sticky because tdose is sticky
+  tad <- time - tdose
+})
+
+ev <- et(amt=100, time=0) |>
+  et(amt=100, time=12) |>
+  et(seq(0, 24, by=1))
+
+s <- rxSolve(m, ev)
+head(s, 15)
+```
+
+## How it works internally
+
+When `rxode2` parses the model, it identifies which variables are
+"left-handed side" (LHS) variables.  Covariates and parameters are
+reset to `NA` or `0` at each new time step to avoid bleeding values
+from one time point to another.
+
+However, when a variable is identified as sticky, `rxode2` changes
+this behavior:
+
+- It does NOT reset the value between time points for the same
+  individual.
+- It resets the value to `NA` only when a new individual starts.
+
+This allows you to implement complex logic that depends on the history
+of the simulation.
+
+## Summary
+
+Sticky variables provide a powerful way to perform state-dependent
+calculations within your `rxode2` models. By using `is.na()` to
+initialize these variables, you can ensure they persist throughout the
+simulation for each individual, enabling real-time calculation of NCA
+metrics, time-since-event markers, and more.

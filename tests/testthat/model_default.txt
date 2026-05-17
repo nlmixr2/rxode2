@@ -1,0 +1,489 @@
+  ## dynamic variables, count: 103
+  CD80_th0_lca_ln_is = CD80_th0_lca_ln_is__/IS; # CD80_th0_lca_ln_is in IS
+  Th1_pl = Th1_pl__/PL; # Th1_pl in PL
+  Th1_nld = Th1_nld__/NLD; # Th1_nld in NLD
+  Th1_ld = Th1_ld__/LD; # Th1_ld in LD
+  Th1_nle = Th1_nle__/NLE; # Th1_nle in NLE
+  Th1_le = Th1_le__/LE; # Th1_le in LE
+  IL2_ln = IL2_ln__/LN; # IL2_ln in LN
+  IL2_pl = IL2_pl__/PL; # IL2_pl in PL
+  IL2_nld = IL2_nld__/NLD; # IL2_nld in NLD
+  IL2_ld = IL2_ld__/LD; # IL2_ld in LD
+  IL2_nle = IL2_nle__/NLE; # IL2_nle in NLE
+  IL2_le = IL2_le__/LE; # IL2_le in LE
+  IL3_ln = IL3_ln__/LN; # IL3_ln in LN
+  IL3_pl = IL3_pl__/PL; # IL3_pl in PL
+  IL3_nld = IL3_nld__/NLD; # IL3_nld in NLD
+  IL3_ld = IL3_ld__/LD; # IL3_ld in LD
+  IL3_nle = IL3_nle__/NLE; # IL3_nle in NLE
+  IL3_le = IL3_le__/LE; # IL3_le in LE
+  IL10_ln = IL10_ln__/LN; # IL10_ln in LN
+  IL10_pl = IL10_pl__/PL; # IL10_pl in PL
+  IL10_nld = IL10_nld__/NLD; # IL10_nld in NLD
+  IL10_ld = IL10_ld__/LD; # IL10_ld in LD
+  IL10_nle = IL10_nle__/NLE; # IL10_nle in NLE
+  IL10_le = IL10_le__/LE; # IL10_le in LE
+  IL21_ln = IL21_ln__/LN; # IL21_ln in LN
+  IL21_pl = IL21_pl__/PL; # IL21_pl in PL
+  IL21_nld = IL21_nld__/NLD; # IL21_nld in NLD
+  IL21_ld = IL21_ld__/LD; # IL21_ld in LD
+  IL21_nle = IL21_nle__/NLE; # IL21_nle in NLE
+  IL21_le = IL21_le__/LE; # IL21_le in LE
+  IFNg_ln = IFNg_ln__/LN; # IFNg_ln in LN
+  IFNg_pl = IFNg_pl__/PL; # IFNg_pl in PL
+  IFNg_nld = IFNg_nld__/NLD; # IFNg_nld in NLD
+  IFNg_ld = IFNg_ld__/LD; # IFNg_ld in LD
+  IFNg_nle = IFNg_nle__/NLE; # IFNg_nle in NLE
+  IFNg_le = IFNg_le__/LE; # IFNg_le in LE
+  GMCSF_ln = GMCSF_ln__/LN; # GMCSF_ln in LN
+  GMCSF_pl = GMCSF_pl__/PL; # GMCSF_pl in PL
+  GMCSF_nld = GMCSF_nld__/NLD; # GMCSF_nld in NLD
+  GMCSF_ld = GMCSF_ld__/LD; # GMCSF_ld in LD
+  GMCSF_nle = GMCSF_nle__/NLE; # GMCSF_nle in NLE
+  GMCSF_le = GMCSF_le__/LE; # GMCSF_le in LE
+  TNFa_ln = TNFa_ln__/LN; # TNFa_ln in LN
+  TNFa_pl = TNFa_pl__/PL; # TNFa_pl in PL
+  TNFa_nld = TNFa_nld__/NLD; # TNFa_nld in NLD
+  TNFa_ld = TNFa_ld__/LD; # TNFa_ld in LD
+  TNFa_nle = TNFa_nle__/NLE; # TNFa_nle in NLE
+  TNFa_le = TNFa_le__/LE; # TNFa_le in LE
+  MHC2_th0_lca_ln_is = MHC2_th0_lca_ln_is__/IS; # MHC2_th0_lca_ln_is in IS
+  TCRc_MHC2_th0_lca_ln_is = TCRc_MHC2_th0_lca_ln_is__/IS; # TCRc_MHC2_th0_lca_ln_is in IS
+  TCRc_th0_lca_ln_is = TCRc_th0_lca_ln_is__/IS; # TCRc_th0_lca_ln_is in IS
+  Th1_ln = Th1_ln__/LN; # Th1_ln in LN
+  CD28_CD80_th0_lca_ln_is = CD28_CD80_th0_lca_ln_is__/IS; # CD28_CD80_th0_lca_ln_is in IS
+  CD28_th0_lca_ln_is = CD28_th0_lca_ln_is__/IS; # CD28_th0_lca_ln_is in IS
+  CD86_th0_lca_ln_is = CD86_th0_lca_ln_is__/IS; # CD86_th0_lca_ln_is in IS
+  CD28_CD86_th0_lca_ln_is = CD28_CD86_th0_lca_ln_is__/IS; # CD28_CD86_th0_lca_ln_is in IS
+  OX40L_th0_lca_ln_is = OX40L_th0_lca_ln_is__/IS; # OX40L_th0_lca_ln_is in IS
+  OX40_OX40L_th0_lca_ln_is = OX40_OX40L_th0_lca_ln_is__/IS; # OX40_OX40L_th0_lca_ln_is in IS
+  OX40_th0_lca_ln_is = OX40_th0_lca_ln_is__/IS; # OX40_th0_lca_ln_is in IS
+  MHC2_th0_ideca_ln_is = MHC2_th0_ideca_ln_is__/IS; # MHC2_th0_ideca_ln_is in IS
+  TCRc_MHC2_th0_ideca_ln_is = TCRc_MHC2_th0_ideca_ln_is__/IS; # TCRc_MHC2_th0_ideca_ln_is in IS
+  TCRc_th0_ideca_ln_is = TCRc_th0_ideca_ln_is__/IS; # TCRc_th0_ideca_ln_is in IS
+  CD80_th0_ideca_ln_is = CD80_th0_ideca_ln_is__/IS; # CD80_th0_ideca_ln_is in IS
+  CD28_CD80_th0_ideca_ln_is = CD28_CD80_th0_ideca_ln_is__/IS; # CD28_CD80_th0_ideca_ln_is in IS
+  CD28_th0_ideca_ln_is = CD28_th0_ideca_ln_is__/IS; # CD28_th0_ideca_ln_is in IS
+  CD86_th0_ideca_ln_is = CD86_th0_ideca_ln_is__/IS; # CD86_th0_ideca_ln_is in IS
+  CD28_CD86_th0_ideca_ln_is = CD28_CD86_th0_ideca_ln_is__/IS; # CD28_CD86_th0_ideca_ln_is in IS
+  OX40L_th0_ideca_ln_is = OX40L_th0_ideca_ln_is__/IS; # OX40L_th0_ideca_ln_is in IS
+  OX40_OX40L_th0_ideca_ln_is = OX40_OX40L_th0_ideca_ln_is__/IS; # OX40_OX40L_th0_ideca_ln_is in IS
+  OX40_th0_ideca_ln_is = OX40_th0_ideca_ln_is__/IS; # OX40_th0_ideca_ln_is in IS
+  MHC2_th0_bi_ln_is = MHC2_th0_bi_ln_is__/IS; # MHC2_th0_bi_ln_is in IS
+  TCRc_MHC2_th0_bi_ln_is = TCRc_MHC2_th0_bi_ln_is__/IS; # TCRc_MHC2_th0_bi_ln_is in IS
+  TCRc_th0_bi_ln_is = TCRc_th0_bi_ln_is__/IS; # TCRc_th0_bi_ln_is in IS
+  CD80_th0_bi_ln_is = CD80_th0_bi_ln_is__/IS; # CD80_th0_bi_ln_is in IS
+  CD28_CD80_th0_bi_ln_is = CD28_CD80_th0_bi_ln_is__/IS; # CD28_CD80_th0_bi_ln_is in IS
+  CD28_th0_bi_ln_is = CD28_th0_bi_ln_is__/IS; # CD28_th0_bi_ln_is in IS
+  CD86_th0_bi_ln_is = CD86_th0_bi_ln_is__/IS; # CD86_th0_bi_ln_is in IS
+  CD28_CD86_th0_bi_ln_is = CD28_CD86_th0_bi_ln_is__/IS; # CD28_CD86_th0_bi_ln_is in IS
+  OX40L_th0_bi_ln_is = OX40L_th0_bi_ln_is__/IS; # OX40L_th0_bi_ln_is in IS
+  OX40_OX40L_th0_bi_ln_is = OX40_OX40L_th0_bi_ln_is__/IS; # OX40_OX40L_th0_bi_ln_is in IS
+  OX40_th0_bi_ln_is = OX40_th0_bi_ln_is__/IS; # OX40_th0_bi_ln_is in IS
+  MHC2_th0_m1_ld_is = MHC2_th0_m1_ld_is__/IS; # MHC2_th0_m1_ld_is in IS
+  TCRc_MHC2_th0_m1_ld_is = TCRc_MHC2_th0_m1_ld_is__/IS; # TCRc_MHC2_th0_m1_ld_is in IS
+  TCRc_th0_m1_ld_is = TCRc_th0_m1_ld_is__/IS; # TCRc_th0_m1_ld_is in IS
+  CD80_th0_m1_ld_is = CD80_th0_m1_ld_is__/IS; # CD80_th0_m1_ld_is in IS
+  CD28_CD80_th0_m1_ld_is = CD28_CD80_th0_m1_ld_is__/IS; # CD28_CD80_th0_m1_ld_is in IS
+  CD28_th0_m1_ld_is = CD28_th0_m1_ld_is__/IS; # CD28_th0_m1_ld_is in IS
+  CD86_th0_m1_ld_is = CD86_th0_m1_ld_is__/IS; # CD86_th0_m1_ld_is in IS
+  CD28_CD86_th0_m1_ld_is = CD28_CD86_th0_m1_ld_is__/IS; # CD28_CD86_th0_m1_ld_is in IS
+  OX40L_th0_m1_ld_is = OX40L_th0_m1_ld_is__/IS; # OX40L_th0_m1_ld_is in IS
+  OX40_OX40L_th0_m1_ld_is = OX40_OX40L_th0_m1_ld_is__/IS; # OX40_OX40L_th0_m1_ld_is in IS
+  OX40_th0_m1_ld_is = OX40_th0_m1_ld_is__/IS; # OX40_th0_m1_ld_is in IS
+  MHC2_th0_m1_nld_is = MHC2_th0_m1_nld_is__/IS; # MHC2_th0_m1_nld_is in IS
+  TCRc_MHC2_th0_m1_nld_is = TCRc_MHC2_th0_m1_nld_is__/IS; # TCRc_MHC2_th0_m1_nld_is in IS
+  TCRc_th0_m1_nld_is = TCRc_th0_m1_nld_is__/IS; # TCRc_th0_m1_nld_is in IS
+  CD80_th0_m1_nld_is = CD80_th0_m1_nld_is__/IS; # CD80_th0_m1_nld_is in IS
+  CD28_CD80_th0_m1_nld_is = CD28_CD80_th0_m1_nld_is__/IS; # CD28_CD80_th0_m1_nld_is in IS
+  CD28_th0_m1_nld_is = CD28_th0_m1_nld_is__/IS; # CD28_th0_m1_nld_is in IS
+  CD86_th0_m1_nld_is = CD86_th0_m1_nld_is__/IS; # CD86_th0_m1_nld_is in IS
+  CD28_CD86_th0_m1_nld_is = CD28_CD86_th0_m1_nld_is__/IS; # CD28_CD86_th0_m1_nld_is in IS
+  OX40L_th0_m1_nld_is = OX40L_th0_m1_nld_is__/IS; # OX40L_th0_m1_nld_is in IS
+  OX40_OX40L_th0_m1_nld_is = OX40_OX40L_th0_m1_nld_is__/IS; # OX40_OX40L_th0_m1_nld_is in IS
+  OX40_th0_m1_nld_is = OX40_th0_m1_nld_is__/IS; # OX40_th0_m1_nld_is in IS
+
+  ## explicit rules, count: 172
+  V1a_tdif_lca_th0_th1_ln = 0; #
+  V1b_tdif_ideca_th0_th1_ln = 0; #
+  V1c_tdif_bi_th0_th1_ln = 0; #
+  V2_pro_th1_ln = LN * Th1_ln / (EC50_pro_th1_ln + Th1_ln) * kbase_pro_th1_ln * (1 + Emax_0_il2_pro_th1_ln * IL2_ln / EC50_0_il2_pro_th1_ln) / (1 + IL2_ln / EC50_0_il2_pro_th1_ln) * (1 + Imax_0_tgfb_pro_th1_ln * TGFb_ln / IC50_0_tgfb_pro_th1_ln) / (1 + TGFb_ln / IC50_0_tgfb_pro_th1_ln); #
+  V3_apo_th1_ln = LN * kbase_apo_th1_ln * Th1_ln; #
+  V4_migr_th1_ln_pl = Th1_ln * fraction_free_th1_ln * J_ln_pl; #
+  V5_apo_th1_pl = PL * kbase_apo_th1_pl * Th1_pl; #
+  V6_elim_th1_pl = PL * kbase_elim_th1_pl * Th1_pl; #
+  V7_migr_th1_pl_nld = PL * Th1_pl * (EC_nld + ratio_icam1 * ECa_nld) * NLD / ((EC_nld + ratio_icam1 * ECa_nld) * NLD + (EC_ld + ratio_icam1 * ECa_ld) * LD) * kbase_migr_th1_pl_nld * (1 + Emax_0_cxcl9_migr_th1_pl_nld * CXCL9_nld / EC50_0_cxcl9_migr_th1_pl_nld + Emax_0_cxcl10_migr_th1_pl_nld * CXCL10_nld / EC50_0_cxcl10_migr_th1_pl_nld) / (1 + CXCL9_nld / EC50_0_cxcl9_migr_th1_pl_nld + CXCL10_nld / EC50_0_cxcl10_migr_th1_pl_nld); #
+  V8_migr_th1_pl_ld = PL * Th1_pl * (EC_ld + ratio_icam1 * ECa_ld) * LD / ((EC_nld + ratio_icam1 * ECa_nld) * NLD + (EC_ld + ratio_icam1 * ECa_ld) * LD) * kbase_migr_th1_pl_ld * (1 + Emax_0_cxcl9_migr_th1_pl_ld * CXCL9_ld / EC50_0_cxcl9_migr_th1_pl_ld + Emax_0_cxcl10_migr_th1_pl_ld * CXCL10_ld / EC50_0_cxcl10_migr_th1_pl_ld) / (1 + CXCL9_ld / EC50_0_cxcl9_migr_th1_pl_ld + CXCL10_ld / EC50_0_cxcl10_migr_th1_pl_ld); #
+  V9_tdif_m1_th0_th1_ld = LD * Th0_ld * M1_ld * TCRc_MHC2_th0_m1_ld_is / (TCRc_MHC2_th0_m1_ld_is + EC50_0_tcrc_tdif_m1_th0_th1_ld * (1 + (1 / MEC50max_cd28_tcrc_tdif_m1_th0_th1_ld) * (CD28_CD80_th0_m1_ld_is + CD28_CD86_th0_m1_ld_is) / EC50_cd28_tcrc_tdif_m1_th0_th1_ld) / (1 + (CD28_CD80_th0_m1_ld_is + MEC50max_cd28_tcrc_tdif_m1_th0_th1_ld) / EC50_cd28_tcrc_tdif_m1_th0_th1_ld)) * kbase_tdif_m1_th0_th1_ld * (1 + MEmax_ox40_tcrc_tdif_m1_th0_th1_ld * OX40_OX40L_th0_m1_ld_is / EC50_ox40_tcrc_tdif_m1_th0_th1_ld + MEmax_il12_tcrc_tdif_m1_th0_th1_ld * IL12_ld / EC50_il12_tcrc_tdif_m1_th0_th1_ld + MEmax_ifng_tcrc_tdif_m1_th0_th1_ld * IFNg_ld / EC50_ifng_tcrc_tdif_m1_th0_th1_ld + MEmax_il4_tcrc_tdif_m1_th0_th1_ld * IL4_ld / EC50_il4_tcrc_tdif_m1_th0_th1_ld + MEmax_il10_tcrc_tdif_m1_th0_th1_ld * IL10_ld / EC50_il10_tcrc_tdif_m1_th0_th1_ld) / (1 + OX40_OX40L_th0_m1_ld_is / EC50_ox40_tcrc_tdif_m1_th0_th1_ld + IL12_ld / EC50_il12_tcrc_tdif_m1_th0_th1_ld + IFNg_ld / EC50_ifng_tcrc_tdif_m1_th0_th1_ld + IL4_ld / EC50_il4_tcrc_tdif_m1_th0_th1_ld + IL10_ld / EC50_il10_tcrc_tdif_m1_th0_th1_ld); #
+  V10_apo_th1_nld = NLD * kbase_apo_th1_nld * Th1_nld; #
+  V11_migr_th1_nld_nle = NLD * Th1_nld * kbase_migr_th1_nld_nle * (1 + Emax_0_cxcl9_migr_th1_nld_nle * CXCL9_nle / EC50_0_cxcl9_migr_th1_nld_nle + Emax_0_cxcl10_migr_th1_nld_nle * CXCL10_nle / EC50_0_cxcl10_migr_th1_nld_nle) / (1 + CXCL9_nle / EC50_0_cxcl9_migr_th1_nld_nle + CXCL10_nle / EC50_0_cxcl10_migr_th1_nld_nle); #
+  V12_apo_th1_nle = NLE * kbase_apo_th1_nle * Th1_nle; #
+  V13_tdif_m1_th0_th1_nld = NLD * Th0_nld * M1_nld * TCRc_MHC2_th0_m1_nld_is / (TCRc_MHC2_th0_m1_nld_is + EC50_0_tcrc_tdif_m1_th0_th1_nld * (1 + (1 / MEC50max_cd28_tcrc_tdif_m1_th0_th1_nld) * (CD28_CD80_th0_m1_nld_is + CD28_CD86_th0_m1_nld_is) / EC50_cd28_tcrc_tdif_m1_th0_th1_nld) / (1 + (CD28_CD80_th0_m1_nld_is + MEC50max_cd28_tcrc_tdif_m1_th0_th1_nld) / EC50_cd28_tcrc_tdif_m1_th0_th1_nld)) * kbase_tdif_m1_th0_th1_nld * (1 + MEmax_ox40_tcrc_tdif_m1_th0_th1_nld * OX40_OX40L_th0_m1_nld_is / EC50_ox40_tcrc_tdif_m1_th0_th1_nld + MEmax_il12_tcrc_tdif_m1_th0_th1_nld * IL12_nld / EC50_il12_tcrc_tdif_m1_th0_th1_nld + MEmax_ifng_tcrc_tdif_m1_th0_th1_nld * IFNg_nld / EC50_ifng_tcrc_tdif_m1_th0_th1_nld + MEmax_il4_tcrc_tdif_m1_th0_th1_nld * IL4_nld / EC50_il4_tcrc_tdif_m1_th0_th1_nld + MEmax_il10_tcrc_tdif_m1_th0_th1_nld * IL10_nld / EC50_il10_tcrc_tdif_m1_th0_th1_nld) / (1 + OX40_OX40L_th0_m1_nld_is / EC50_ox40_tcrc_tdif_m1_th0_th1_nld + IL12_nld / EC50_il12_tcrc_tdif_m1_th0_th1_nld + IFNg_nld / EC50_ifng_tcrc_tdif_m1_th0_th1_nld + IL4_nld / EC50_il4_tcrc_tdif_m1_th0_th1_nld + IL10_nld / EC50_il10_tcrc_tdif_m1_th0_th1_nld); #
+  V14_apo_th1_ld = LD * kbase_apo_th1_ld * Th1_ld; #
+  V15_migr_th1_ld_le = LD * Th1_ld * kbase_migr_th1_ld_le * (1 + Emax_0_cxcl9_migr_th1_ld_le * CXCL9_le / EC50_0_cxcl9_migr_th1_ld_le + Emax_0_cxcl10_migr_th1_ld_le * CXCL10_le / EC50_0_cxcl10_migr_th1_ld_le) / (1 + CXCL9_le / EC50_0_cxcl9_migr_th1_ld_le + CXCL10_le / EC50_0_cxcl10_migr_th1_ld_le); #
+  V16_apo_th1_le = LE * kbase_apo_th1_le * Th1_le; #
+  V17_migr_th1_nld_ln = Th1_nld * fraction_free_th1_nld * J_nld_ln; #
+  V18_migr_th1_ld_ln = Th1_ld * fraction_free_th1_ld * J_ld_ln; #
+  syn_il2_th1_ln = LN * kbase_syn_il2_th1_ln * Th1_ln; #
+  syn_il2_th1_pl = PL * kbase_syn_il2_th1_pl * Th1_pl; #
+  syn_il2_th1_nld = NLD * kbase_syn_il2_th1_nld * Th1_nld; #
+  syn_il2_th1_ld = LD * kbase_syn_il2_th1_ld * Th1_ld; #
+  syn_il2_th1_nle = NLE * kbase_syn_il2_th1_nle * Th1_nle; #
+  syn_il2_th1_le = LE * kbase_syn_il2_th1_le * Th1_le; #
+  syn_il3_th1_ln = LN * kbase_syn_il3_th1_ln * Th1_ln; #
+  syn_il3_th1_pl = PL * kbase_syn_il3_th1_pl * Th1_pl; #
+  syn_il3_th1_nld = NLD * kbase_syn_il3_th1_nld * Th1_nld; #
+  syn_il3_th1_ld = LD * kbase_syn_il3_th1_ld * Th1_ld; #
+  syn_il3_th1_nle = NLE * kbase_syn_il3_th1_nle * Th1_nle; #
+  syn_il3_th1_le = LE * kbase_syn_il3_th1_le * Th1_le; #
+  syn_il10_th1_ln = LN * kbase_syn_il10_th1_ln * Th1_ln; #
+  syn_il10_th1_pl = PL * kbase_syn_il10_th1_pl * Th1_pl; #
+  syn_il10_th1_nld = NLD * kbase_syn_il10_th1_nld * Th1_nld; #
+  syn_il10_th1_ld = LD * kbase_syn_il10_th1_ld * Th1_ld; #
+  syn_il10_th1_nle = NLE * kbase_syn_il10_th1_nle * Th1_nle; #
+  syn_il10_th1_le = LE * kbase_syn_il10_th1_le * Th1_le; #
+  syn_il21_th1_ln = LN * kbase_syn_il21_th1_ln * Th1_ln; #
+  syn_il21_th1_pl = PL * kbase_syn_il21_th1_pl * Th1_pl; #
+  syn_il21_th1_nld = NLD * kbase_syn_il21_th1_nld * Th1_nld; #
+  syn_il21_th1_ld = LD * kbase_syn_il21_th1_ld * Th1_ld; #
+  syn_il21_th1_nle = NLE * kbase_syn_il21_th1_nle * Th1_nle; #
+  syn_il21_th1_le = LE * kbase_syn_il21_th1_le * Th1_le; #
+  syn_ifng_th1_ln = LN * kbase_syn_ifng_th1_ln * Th1_ln; #
+  syn_ifng_th1_pl = PL * kbase_syn_ifng_th1_pl * Th1_pl; #
+  syn_ifng_th1_nld = NLD * kbase_syn_ifng_th1_nld * Th1_nld; #
+  syn_ifng_th1_ld = LD * kbase_syn_ifng_th1_ld * Th1_ld; #
+  syn_ifng_th1_nle = NLE * kbase_syn_ifng_th1_nle * Th1_nle; #
+  syn_ifng_th1_le = LE * kbase_syn_ifng_th1_le * Th1_le; #
+  syn_gmcsf_th1_ln = LN * kbase_syn_gmcsf_th1_ln * Th1_ln; #
+  syn_gmcsf_th1_pl = PL * kbase_syn_gmcsf_th1_pl * Th1_pl; #
+  syn_gmcsf_th1_nld = NLD * kbase_syn_gmcsf_th1_nld * Th1_nld; #
+  syn_gmcsf_th1_ld = LD * kbase_syn_gmcsf_th1_ld * Th1_ld; #
+  syn_gmcsf_th1_nle = NLE * kbase_syn_gmcsf_th1_nle * Th1_nle; #
+  syn_gmcsf_th1_le = LE * kbase_syn_gmcsf_th1_le * Th1_le; #
+  syn_tnfa_th1_ln = LN * kbase_syn_tnfa_th1_ln * Th1_ln; #
+  syn_tnfa_th1_pl = PL * kbase_syn_tnfa_th1_pl * Th1_pl; #
+  syn_tnfa_th1_nld = NLD * kbase_syn_tnfa_th1_nld * Th1_nld; #
+  syn_tnfa_th1_ld = LD * kbase_syn_tnfa_th1_ld * Th1_ld; #
+  syn_tnfa_th1_nle = NLE * kbase_syn_tnfa_th1_nle * Th1_nle; #
+  syn_tnfa_th1_le = LE * kbase_syn_tnfa_th1_le * Th1_le; #
+  V1_deg_mhc2_th0_lca_ln_is = IS * k_deg_mhc2_is * MHC2_th0_lca_ln_is; #
+  V2_syn_mhc2_th0_lca_ln_is = IS * V0_syn_mhc2_lca_is; #
+  V3_bind_tcrc_mhc2_th0_lca_ln_is = IS * (k_off_tcrc_mhc2 * (TCRc_th0_lca_ln_is * MHC2_th0_lca_ln_is / Kd_tcrc_mhc2 - TCRc_MHC2_th0_lca_ln_is)); #
+  V4_deg_tcrc_mhc2_th0_lca_ln_is = IS * k_deg_tcrc_mhc2_is * TCRc_MHC2_th0_lca_ln_is; #
+  V5_deg_tcrc_th0_lca_ln_is = IS * k_deg_tcrc_is * TCRc_th0_lca_ln_is; #
+  V6_syn_tcrc_th0_lca_ln_is = IS * V0_syn_tcrc_th0_is; #
+  V7_deg_cd80_th0_lca_ln_is = IS * k_deg_cd80_is * CD80_th0_lca_ln_is; #
+  V8_syn_cd80_th0_lca_ln_is = IS * V0_syn_cd80_lca_is; #
+  V9_bind_cd28_cd80_th0_lca_ln_is = IS * (k_off_cd28_cd80 * (CD28_th0_lca_ln_is * CD80_th0_lca_ln_is / Kd_cd28_cd80 - CD28_CD80_th0_lca_ln_is)); #
+  V10_deg_cd28_cd80_th0_lca_ln_is = IS * k_deg_cd28_cd80_is * CD28_CD80_th0_lca_ln_is; #
+  V11_deg_cd28_th0_lca_ln_is = IS * k_deg_cd28_is * CD28_th0_lca_ln_is; #
+  V12_syn_cd28_th0_lca_ln_is = IS * V0_syn_cd28_th0_is; #
+  V13_deg_cd86_th0_lca_ln_is = IS * k_deg_cd86_is * CD86_th0_lca_ln_is; #
+  V14_syn_cd86_th0_lca_ln_is = IS * V0_syn_cd86_lca_is; #
+  V15_bind_cd28_cd86_th0_lca_ln_is = IS * (k_off_cd28_cd86 * (CD28_th0_lca_ln_is * CD86_th0_lca_ln_is / Kd_cd28_cd86 - CD28_CD86_th0_lca_ln_is)); #
+  V16_deg_cd28_cd86_th0_lca_ln_is = IS * k_deg_cd28_cd86_is * CD28_CD86_th0_lca_ln_is; #
+  V17_deg_ox40l_th0_lca_ln_is = IS * k_deg_ox40l_is * OX40L_th0_lca_ln_is; #
+  V18_syn_ox40l_th0_lca_ln_is = IS * V0_syn_ox40l_lca_is * (1 + Emax_0_tslp_syn_ox40l_lca_ln_is * TSLP_ln / EC50_0_tslp_syn_ox40l_lca_ln_is) / (1 + TSLP_ln / EC50_0_tslp_syn_ox40l_lca_ln_is); #
+  V19_bind_ox40_ox40l_th0_lca_ln_is = IS * (k_off_ox40_ox40l * (OX40_th0_lca_ln_is * OX40L_th0_lca_ln_is / Kd_ox40_ox40l - OX40_OX40L_th0_lca_ln_is)); #
+  V20_deg_ox40_ox40l_th0_lca_ln_is = IS * k_deg_ox40_ox40l_is * OX40_OX40L_th0_lca_ln_is; #
+  V21_deg_ox40_th0_lca_ln_is = IS * k_deg_ox40_is * OX40_th0_lca_ln_is; #
+  V22_syn_ox40_th0_lca_ln_is = IS * V0_syn_ox40_th0_is; #
+  V1_deg_mhc2_th0_ideca_ln_is = IS * k_deg_mhc2_is * MHC2_th0_ideca_ln_is; #
+  V2_syn_mhc2_th0_ideca_ln_is = IS * V0_syn_mhc2_ideca_is; #
+  V3_bind_tcrc_mhc2_th0_ideca_ln_is = IS * (k_off_tcrc_mhc2 * (TCRc_th0_ideca_ln_is * MHC2_th0_ideca_ln_is / Kd_tcrc_mhc2 - TCRc_MHC2_th0_ideca_ln_is)); #
+  V4_deg_tcrc_mhc2_th0_ideca_ln_is = IS * k_deg_tcrc_mhc2_is * TCRc_MHC2_th0_ideca_ln_is; #
+  V5_deg_tcrc_th0_ideca_ln_is = IS * k_deg_tcrc_is * TCRc_th0_ideca_ln_is; #
+  V6_syn_tcrc_th0_ideca_ln_is = IS * V0_syn_tcrc_th0_is; #
+  V7_deg_cd80_th0_ideca_ln_is = IS * k_deg_cd80_is * CD80_th0_ideca_ln_is; #
+  V8_syn_cd80_th0_ideca_ln_is = IS * V0_syn_cd80_ideca_is; #
+  V9_bind_cd28_cd80_th0_ideca_ln_is = IS * (k_off_cd28_cd80 * (CD28_th0_ideca_ln_is * CD80_th0_ideca_ln_is / Kd_cd28_cd80 - CD28_CD80_th0_ideca_ln_is)); #
+  V10_deg_cd28_cd80_th0_ideca_ln_is = IS * k_deg_cd28_cd80_is * CD28_CD80_th0_ideca_ln_is; #
+  V11_deg_cd28_th0_ideca_ln_is = IS * k_deg_cd28_is * CD28_th0_ideca_ln_is; #
+  V12_syn_cd28_th0_ideca_ln_is = IS * V0_syn_cd28_th0_is; #
+  V13_deg_cd86_th0_ideca_ln_is = IS * k_deg_cd86_is * CD86_th0_ideca_ln_is; #
+  V14_syn_cd86_th0_ideca_ln_is = IS * V0_syn_cd86_ideca_is; #
+  V15_bind_cd28_cd86_th0_ideca_ln_is = IS * (k_off_cd28_cd86 * (CD28_th0_ideca_ln_is * CD86_th0_ideca_ln_is / Kd_cd28_cd86 - CD28_CD86_th0_ideca_ln_is)); #
+  V16_deg_cd28_cd86_th0_ideca_ln_is = IS * k_deg_cd28_cd86_is * CD28_CD86_th0_ideca_ln_is; #
+  V17_deg_ox40l_th0_ideca_ln_is = IS * k_deg_ox40l_is * OX40L_th0_ideca_ln_is; #
+  V18_syn_ox40l_th0_ideca_ln_is = IS * V0_syn_ox40l_ideca_is; #
+  V19_bind_ox40_ox40l_th0_ideca_ln_is = IS * (k_off_ox40_ox40l * (OX40_th0_ideca_ln_is * OX40L_th0_ideca_ln_is / Kd_ox40_ox40l - OX40_OX40L_th0_ideca_ln_is)); #
+  V20_deg_ox40_ox40l_th0_ideca_ln_is = IS * k_deg_ox40_ox40l_is * OX40_OX40L_th0_ideca_ln_is; #
+  V21_deg_ox40_th0_ideca_ln_is = IS * k_deg_ox40_is * OX40_th0_ideca_ln_is; #
+  V22_syn_ox40_th0_ideca_ln_is = IS * V0_syn_ox40_th0_is; #
+  V1_deg_mhc2_th0_bi_ln_is = IS * k_deg_mhc2_is * MHC2_th0_bi_ln_is; #
+  V2_syn_mhc2_th0_bi_ln_is = IS * V0_syn_mhc2_bi_is; #
+  V3_bind_tcrc_mhc2_th0_bi_ln_is = IS * (k_off_tcrc_mhc2 * (TCRc_th0_bi_ln_is * MHC2_th0_bi_ln_is / Kd_tcrc_mhc2 - TCRc_MHC2_th0_bi_ln_is)); #
+  V4_deg_tcrc_mhc2_th0_bi_ln_is = IS * k_deg_tcrc_mhc2_is * TCRc_MHC2_th0_bi_ln_is; #
+  V5_deg_tcrc_th0_bi_ln_is = IS * k_deg_tcrc_is * TCRc_th0_bi_ln_is; #
+  V6_syn_tcrc_th0_bi_ln_is = IS * V0_syn_tcrc_th0_is; #
+  V7_deg_cd80_th0_bi_ln_is = IS * k_deg_cd80_is * CD80_th0_bi_ln_is; #
+  V8_syn_cd80_th0_bi_ln_is = IS * V0_syn_cd80_bi_is; #
+  V9_bind_cd28_cd80_th0_bi_ln_is = IS * (k_off_cd28_cd80 * (CD28_th0_bi_ln_is * CD80_th0_bi_ln_is / Kd_cd28_cd80 - CD28_CD80_th0_bi_ln_is)); #
+  V10_deg_cd28_cd80_th0_bi_ln_is = IS * k_deg_cd28_cd80_is * CD28_CD80_th0_bi_ln_is; #
+  V11_deg_cd28_th0_bi_ln_is = IS * k_deg_cd28_is * CD28_th0_bi_ln_is; #
+  V12_syn_cd28_th0_bi_ln_is = IS * V0_syn_cd28_th0_is; #
+  V13_deg_cd86_th0_bi_ln_is = IS * k_deg_cd86_is * CD86_th0_bi_ln_is; #
+  V14_syn_cd86_th0_bi_ln_is = IS * V0_syn_cd86_bi_is; #
+  V15_bind_cd28_cd86_th0_bi_ln_is = IS * (k_off_cd28_cd86 * (CD28_th0_bi_ln_is * CD86_th0_bi_ln_is / Kd_cd28_cd86 - CD28_CD86_th0_bi_ln_is)); #
+  V16_deg_cd28_cd86_th0_bi_ln_is = IS * k_deg_cd28_cd86_is * CD28_CD86_th0_bi_ln_is; #
+  V17_deg_ox40l_th0_bi_ln_is = IS * k_deg_ox40l_is * OX40L_th0_bi_ln_is; #
+  V18_syn_ox40l_th0_bi_ln_is = IS * V0_syn_ox40l_bi_is; #
+  V19_bind_ox40_ox40l_th0_bi_ln_is = IS * (k_off_ox40_ox40l * (OX40_th0_bi_ln_is * OX40L_th0_bi_ln_is / Kd_ox40_ox40l - OX40_OX40L_th0_bi_ln_is)); #
+  V20_deg_ox40_ox40l_th0_bi_ln_is = IS * k_deg_ox40_ox40l_is * OX40_OX40L_th0_bi_ln_is; #
+  V21_deg_ox40_th0_bi_ln_is = IS * k_deg_ox40_is * OX40_th0_bi_ln_is; #
+  V22_syn_ox40_th0_bi_ln_is = IS * V0_syn_ox40_th0_is; #
+  V1_deg_mhc2_th0_m1_ld_is = IS * k_deg_mhc2_is * MHC2_th0_m1_ld_is; #
+  V2_syn_mhc2_th0_m1_ld_is = IS * V0_syn_mhc2_m1_is; #
+  V3_bind_tcrc_mhc2_th0_m1_ld_is = IS * (k_off_tcrc_mhc2 * (TCRc_th0_m1_ld_is * MHC2_th0_m1_ld_is / Kd_tcrc_mhc2 - TCRc_MHC2_th0_m1_ld_is)); #
+  V4_deg_tcrc_mhc2_th0_m1_ld_is = IS * k_deg_tcrc_mhc2_is * TCRc_MHC2_th0_m1_ld_is; #
+  V5_deg_tcrc_th0_m1_ld_is = IS * k_deg_tcrc_is * TCRc_th0_m1_ld_is; #
+  V6_syn_tcrc_th0_m1_ld_is = IS * V0_syn_tcrc_th0_is; #
+  V7_deg_cd80_th0_m1_ld_is = IS * k_deg_cd80_is * CD80_th0_m1_ld_is; #
+  V8_syn_cd80_th0_m1_ld_is = IS * V0_syn_cd80_m1_is; #
+  V9_bind_cd28_cd80_th0_m1_ld_is = IS * (k_off_cd28_cd80 * (CD28_th0_m1_ld_is * CD80_th0_m1_ld_is / Kd_cd28_cd80 - CD28_CD80_th0_m1_ld_is)); #
+  V10_deg_cd28_cd80_th0_m1_ld_is = IS * k_deg_cd28_cd80_is * CD28_CD80_th0_m1_ld_is; #
+  V11_deg_cd28_th0_m1_ld_is = IS * k_deg_cd28_is * CD28_th0_m1_ld_is; #
+  V12_syn_cd28_th0_m1_ld_is = IS * V0_syn_cd28_th0_is; #
+  V13_deg_cd86_th0_m1_ld_is = IS * k_deg_cd86_is * CD86_th0_m1_ld_is; #
+  V14_syn_cd86_th0_m1_ld_is = IS * V0_syn_cd86_m1_is; #
+  V15_bind_cd28_cd86_th0_m1_ld_is = IS * (k_off_cd28_cd86 * (CD28_th0_m1_ld_is * CD86_th0_m1_ld_is / Kd_cd28_cd86 - CD28_CD86_th0_m1_ld_is)); #
+  V16_deg_cd28_cd86_th0_m1_ld_is = IS * k_deg_cd28_cd86_is * CD28_CD86_th0_m1_ld_is; #
+  V17_deg_ox40l_th0_m1_ld_is = IS * k_deg_ox40l_is * OX40L_th0_m1_ld_is; #
+  V18_syn_ox40l_th0_m1_ld_is = IS * V0_syn_ox40l_m1_is; #
+  V19_bind_ox40_ox40l_th0_m1_ld_is = IS * (k_off_ox40_ox40l * (OX40_th0_m1_ld_is * OX40L_th0_m1_ld_is / Kd_ox40_ox40l - OX40_OX40L_th0_m1_ld_is)); #
+  V20_deg_ox40_ox40l_th0_m1_ld_is = IS * k_deg_ox40_ox40l_is * OX40_OX40L_th0_m1_ld_is; #
+  V21_deg_ox40_th0_m1_ld_is = IS * k_deg_ox40_is * OX40_th0_m1_ld_is; #
+  V22_syn_ox40_th0_m1_ld_is = IS * V0_syn_ox40_th0_is; #
+  V1_deg_mhc2_th0_m1_nld_is = IS * k_deg_mhc2_is * MHC2_th0_m1_nld_is; #
+  V2_syn_mhc2_th0_m1_nld_is = IS * V0_syn_mhc2_m1_is; #
+  V3_bind_tcrc_mhc2_th0_m1_nld_is = IS * (k_off_tcrc_mhc2 * (TCRc_th0_m1_nld_is * MHC2_th0_m1_nld_is / Kd_tcrc_mhc2 - TCRc_MHC2_th0_m1_nld_is)); #
+  V4_deg_tcrc_mhc2_th0_m1_nld_is = IS * k_deg_tcrc_mhc2_is * TCRc_MHC2_th0_m1_nld_is; #
+  V5_deg_tcrc_th0_m1_nld_is = IS * k_deg_tcrc_is * TCRc_th0_m1_nld_is; #
+  V6_syn_tcrc_th0_m1_nld_is = IS * V0_syn_tcrc_th0_is; #
+  V7_deg_cd80_th0_m1_nld_is = IS * k_deg_cd80_is * CD80_th0_m1_nld_is; #
+  V8_syn_cd80_th0_m1_nld_is = IS * V0_syn_cd80_m1_is; #
+  V9_bind_cd28_cd80_th0_m1_nld_is = IS * (k_off_cd28_cd80 * (CD28_th0_m1_nld_is * CD80_th0_m1_nld_is / Kd_cd28_cd80 - CD28_CD80_th0_m1_nld_is)); #
+  V10_deg_cd28_cd80_th0_m1_nld_is = IS * k_deg_cd28_cd80_is * CD28_CD80_th0_m1_nld_is; #
+  V11_deg_cd28_th0_m1_nld_is = IS * k_deg_cd28_is * CD28_th0_m1_nld_is; #
+  V12_syn_cd28_th0_m1_nld_is = IS * V0_syn_cd28_th0_is; #
+  V13_deg_cd86_th0_m1_nld_is = IS * k_deg_cd86_is * CD86_th0_m1_nld_is; #
+  V14_syn_cd86_th0_m1_nld_is = IS * V0_syn_cd86_m1_is; #
+  V15_bind_cd28_cd86_th0_m1_nld_is = IS * (k_off_cd28_cd86 * (CD28_th0_m1_nld_is * CD86_th0_m1_nld_is / Kd_cd28_cd86 - CD28_CD86_th0_m1_nld_is)); #
+  V16_deg_cd28_cd86_th0_m1_nld_is = IS * k_deg_cd28_cd86_is * CD28_CD86_th0_m1_nld_is; #
+  V17_deg_ox40l_th0_m1_nld_is = IS * k_deg_ox40l_is * OX40L_th0_m1_nld_is; #
+  V18_syn_ox40l_th0_m1_nld_is = IS * V0_syn_ox40l_m1_is; #
+  V19_bind_ox40_ox40l_th0_m1_nld_is = IS * (k_off_ox40_ox40l * (OX40_th0_m1_nld_is * OX40L_th0_m1_nld_is / Kd_ox40_ox40l - OX40_OX40L_th0_m1_nld_is)); #
+  V20_deg_ox40_ox40l_th0_m1_nld_is = IS * k_deg_ox40_ox40l_is * OX40_OX40L_th0_m1_nld_is; #
+  V21_deg_ox40_th0_m1_nld_is = IS * k_deg_ox40_is * OX40_th0_m1_nld_is; #
+  V22_syn_ox40_th0_m1_nld_is = IS * V0_syn_ox40_th0_is; #
+
+  ## initial condition, count: 103
+  # CD80_th0_lca_ln_is__(0) = 0;
+  # Th1_pl__(0) = 0;
+  # Th1_nld__(0) = 0;
+  # Th1_ld__(0) = 0;
+  # Th1_nle__(0) = 0;
+  # Th1_le__(0) = 0;
+  # IL2_ln__(0) = 0;
+  # IL2_pl__(0) = 0;
+  # IL2_nld__(0) = 0;
+  # IL2_ld__(0) = 0;
+  # IL2_nle__(0) = 0;
+  # IL2_le__(0) = 0;
+  # IL3_ln__(0) = 0;
+  # IL3_pl__(0) = 0;
+  # IL3_nld__(0) = 0;
+  # IL3_ld__(0) = 0;
+  # IL3_nle__(0) = 0;
+  # IL3_le__(0) = 0;
+  # IL10_ln__(0) = 0;
+  # IL10_pl__(0) = 0;
+  # IL10_nld__(0) = 0;
+  # IL10_ld__(0) = 0;
+  # IL10_nle__(0) = 0;
+  # IL10_le__(0) = 0;
+  # IL21_ln__(0) = 0;
+  # IL21_pl__(0) = 0;
+  # IL21_nld__(0) = 0;
+  # IL21_ld__(0) = 0;
+  # IL21_nle__(0) = 0;
+  # IL21_le__(0) = 0;
+  # IFNg_ln__(0) = 0;
+  # IFNg_pl__(0) = 0;
+  # IFNg_nld__(0) = 0;
+  # IFNg_ld__(0) = 0;
+  # IFNg_nle__(0) = 0;
+  # IFNg_le__(0) = 0;
+  # GMCSF_ln__(0) = 0;
+  # GMCSF_pl__(0) = 0;
+  # GMCSF_nld__(0) = 0;
+  # GMCSF_ld__(0) = 0;
+  # GMCSF_nle__(0) = 0;
+  # GMCSF_le__(0) = 0;
+  # TNFa_ln__(0) = 0;
+  # TNFa_pl__(0) = 0;
+  # TNFa_nld__(0) = 0;
+  # TNFa_ld__(0) = 0;
+  # TNFa_nle__(0) = 0;
+  # TNFa_le__(0) = 0;
+  # MHC2_th0_lca_ln_is__(0) = 0;
+  # TCRc_MHC2_th0_lca_ln_is__(0) = 0;
+  # TCRc_th0_lca_ln_is__(0) = 0;
+  # Th1_ln__(0) = 0;
+  # CD28_CD80_th0_lca_ln_is__(0) = 0;
+  # CD28_th0_lca_ln_is__(0) = 0;
+  # CD86_th0_lca_ln_is__(0) = 0;
+  # CD28_CD86_th0_lca_ln_is__(0) = 0;
+  # OX40L_th0_lca_ln_is__(0) = 0;
+  # OX40_OX40L_th0_lca_ln_is__(0) = 0;
+  # OX40_th0_lca_ln_is__(0) = 0;
+  # MHC2_th0_ideca_ln_is__(0) = 0;
+  # TCRc_MHC2_th0_ideca_ln_is__(0) = 0;
+  # TCRc_th0_ideca_ln_is__(0) = 0;
+  # CD80_th0_ideca_ln_is__(0) = 0;
+  # CD28_CD80_th0_ideca_ln_is__(0) = 0;
+  # CD28_th0_ideca_ln_is__(0) = 0;
+  # CD86_th0_ideca_ln_is__(0) = 0;
+  # CD28_CD86_th0_ideca_ln_is__(0) = 0;
+  # OX40L_th0_ideca_ln_is__(0) = 0;
+  # OX40_OX40L_th0_ideca_ln_is__(0) = 0;
+  # OX40_th0_ideca_ln_is__(0) = 0;
+  # MHC2_th0_bi_ln_is__(0) = 0;
+  # TCRc_MHC2_th0_bi_ln_is__(0) = 0;
+  # TCRc_th0_bi_ln_is__(0) = 0;
+  # CD80_th0_bi_ln_is__(0) = 0;
+  # CD28_CD80_th0_bi_ln_is__(0) = 0;
+  # CD28_th0_bi_ln_is__(0) = 0;
+  # CD86_th0_bi_ln_is__(0) = 0;
+  # CD28_CD86_th0_bi_ln_is__(0) = 0;
+  # OX40L_th0_bi_ln_is__(0) = 0;
+  # OX40_OX40L_th0_bi_ln_is__(0) = 0;
+  # OX40_th0_bi_ln_is__(0) = 0;
+  # MHC2_th0_m1_ld_is__(0) = 0;
+  # TCRc_MHC2_th0_m1_ld_is__(0) = 0;
+  # TCRc_th0_m1_ld_is__(0) = 0;
+  # CD80_th0_m1_ld_is__(0) = 0;
+  # CD28_CD80_th0_m1_ld_is__(0) = 0;
+  # CD28_th0_m1_ld_is__(0) = 0;
+  # CD86_th0_m1_ld_is__(0) = 0;
+  # CD28_CD86_th0_m1_ld_is__(0) = 0;
+  # OX40L_th0_m1_ld_is__(0) = 0;
+  # OX40_OX40L_th0_m1_ld_is__(0) = 0;
+  # OX40_th0_m1_ld_is__(0) = 0;
+  # MHC2_th0_m1_nld_is__(0) = 0;
+  # TCRc_MHC2_th0_m1_nld_is__(0) = 0;
+  # TCRc_th0_m1_nld_is__(0) = 0;
+  # CD80_th0_m1_nld_is__(0) = 0;
+  # CD28_CD80_th0_m1_nld_is__(0) = 0;
+  # CD28_th0_m1_nld_is__(0) = 0;
+  # CD86_th0_m1_nld_is__(0) = 0;
+  # CD28_CD86_th0_m1_nld_is__(0) = 0;
+  # OX40L_th0_m1_nld_is__(0) = 0;
+  # OX40_OX40L_th0_m1_nld_is__(0) = 0;
+  # OX40_th0_m1_nld_is__(0) = 0;
+
+  ## differential equations, count: 103
+  d/dt(CD80_th0_lca_ln_is__) ~ 0 + (-1)*V7_deg_cd80_th0_lca_ln_is + (1)*V8_syn_cd80_th0_lca_ln_is + (-1)*V9_bind_cd28_cd80_th0_lca_ln_is;
+  d/dt(Th1_pl__) ~ 0 + (1)*V4_migr_th1_ln_pl + (-1)*V5_apo_th1_pl + (-1)*V6_elim_th1_pl + (-1)*V7_migr_th1_pl_nld + (-1)*V8_migr_th1_pl_ld;
+  d/dt(Th1_nld__) ~ 0 + (1)*V7_migr_th1_pl_nld + (-1)*V10_apo_th1_nld + (-1)*V11_migr_th1_nld_nle + (1)*V13_tdif_m1_th0_th1_nld + (-1)*V17_migr_th1_nld_ln;
+  d/dt(Th1_ld__) ~ 0 + (1)*V8_migr_th1_pl_ld + (1)*V9_tdif_m1_th0_th1_ld + (-1)*V14_apo_th1_ld + (-1)*V15_migr_th1_ld_le + (-1)*V18_migr_th1_ld_ln;
+  d/dt(Th1_nle__) ~ 0 + (1)*V11_migr_th1_nld_nle + (-1)*V12_apo_th1_nle;
+  d/dt(Th1_le__) ~ 0 + (1)*V15_migr_th1_ld_le + (-1)*V16_apo_th1_le;
+  d/dt(IL2_ln__) ~ 0 + (1)*syn_il2_th1_ln;
+  d/dt(IL2_pl__) ~ 0 + (1)*syn_il2_th1_pl;
+  d/dt(IL2_nld__) ~ 0 + (1)*syn_il2_th1_nld;
+  d/dt(IL2_ld__) ~ 0 + (1)*syn_il2_th1_ld;
+  d/dt(IL2_nle__) ~ 0 + (1)*syn_il2_th1_nle;
+  d/dt(IL2_le__) ~ 0 + (1)*syn_il2_th1_le;
+  d/dt(IL3_ln__) ~ 0 + (1)*syn_il3_th1_ln;
+  d/dt(IL3_pl__) ~ 0 + (1)*syn_il3_th1_pl;
+  d/dt(IL3_nld__) ~ 0 + (1)*syn_il3_th1_nld;
+  d/dt(IL3_ld__) ~ 0 + (1)*syn_il3_th1_ld;
+  d/dt(IL3_nle__) ~ 0 + (1)*syn_il3_th1_nle;
+  d/dt(IL3_le__) ~ 0 + (1)*syn_il3_th1_le;
+  d/dt(IL10_ln__) ~ 0 + (1)*syn_il10_th1_ln;
+  d/dt(IL10_pl__) ~ 0 + (1)*syn_il10_th1_pl;
+  d/dt(IL10_nld__) ~ 0 + (1)*syn_il10_th1_nld;
+  d/dt(IL10_ld__) ~ 0 + (1)*syn_il10_th1_ld;
+  d/dt(IL10_nle__) ~ 0 + (1)*syn_il10_th1_nle;
+  d/dt(IL10_le__) ~ 0 + (1)*syn_il10_th1_le;
+  d/dt(IL21_ln__) ~ 0 + (1)*syn_il21_th1_ln;
+  d/dt(IL21_pl__) ~ 0 + (1)*syn_il21_th1_pl;
+  d/dt(IL21_nld__) ~ 0 + (1)*syn_il21_th1_nld;
+  d/dt(IL21_ld__) ~ 0 + (1)*syn_il21_th1_ld;
+  d/dt(IL21_nle__) ~ 0 + (1)*syn_il21_th1_nle;
+  d/dt(IL21_le__) ~ 0 + (1)*syn_il21_th1_le;
+  d/dt(IFNg_ln__) ~ 0 + (1)*syn_ifng_th1_ln;
+  d/dt(IFNg_pl__) ~ 0 + (1)*syn_ifng_th1_pl;
+  d/dt(IFNg_nld__) ~ 0 + (1)*syn_ifng_th1_nld;
+  d/dt(IFNg_ld__) ~ 0 + (1)*syn_ifng_th1_ld;
+  d/dt(IFNg_nle__) ~ 0 + (1)*syn_ifng_th1_nle;
+  d/dt(IFNg_le__) ~ 0 + (1)*syn_ifng_th1_le;
+  d/dt(GMCSF_ln__) ~ 0 + (1)*syn_gmcsf_th1_ln;
+  d/dt(GMCSF_pl__) ~ 0 + (1)*syn_gmcsf_th1_pl;
+  d/dt(GMCSF_nld__) ~ 0 + (1)*syn_gmcsf_th1_nld;
+  d/dt(GMCSF_ld__) ~ 0 + (1)*syn_gmcsf_th1_ld;
+  d/dt(GMCSF_nle__) ~ 0 + (1)*syn_gmcsf_th1_nle;
+  d/dt(GMCSF_le__) ~ 0 + (1)*syn_gmcsf_th1_le;
+  d/dt(TNFa_ln__) ~ 0 + (1)*syn_tnfa_th1_ln;
+  d/dt(TNFa_pl__) ~ 0 + (1)*syn_tnfa_th1_pl;
+  d/dt(TNFa_nld__) ~ 0 + (1)*syn_tnfa_th1_nld;
+  d/dt(TNFa_ld__) ~ 0 + (1)*syn_tnfa_th1_ld;
+  d/dt(TNFa_nle__) ~ 0 + (1)*syn_tnfa_th1_nle;
+  d/dt(TNFa_le__) ~ 0 + (1)*syn_tnfa_th1_le;
+  d/dt(MHC2_th0_lca_ln_is__) ~ 0 + (-1)*V1_deg_mhc2_th0_lca_ln_is + (1)*V2_syn_mhc2_th0_lca_ln_is + (-1)*V3_bind_tcrc_mhc2_th0_lca_ln_is;
+  d/dt(TCRc_MHC2_th0_lca_ln_is__) ~ 0 + (1)*V3_bind_tcrc_mhc2_th0_lca_ln_is + (-1)*V4_deg_tcrc_mhc2_th0_lca_ln_is;
+  d/dt(TCRc_th0_lca_ln_is__) ~ 0 + (-1)*V3_bind_tcrc_mhc2_th0_lca_ln_is + (-1)*V5_deg_tcrc_th0_lca_ln_is + (1)*V6_syn_tcrc_th0_lca_ln_is;
+  d/dt(Th1_ln__) ~ 0 + (1)*V1a_tdif_lca_th0_th1_ln + (1)*V1b_tdif_ideca_th0_th1_ln + (1)*V1c_tdif_bi_th0_th1_ln + (-1)*V2_pro_th1_ln + (2)*V2_pro_th1_ln + (-1)*V3_apo_th1_ln + (-1)*V4_migr_th1_ln_pl + (1)*V17_migr_th1_nld_ln + (1)*V18_migr_th1_ld_ln;
+  d/dt(CD28_CD80_th0_lca_ln_is__) ~ 0 + (1)*V9_bind_cd28_cd80_th0_lca_ln_is + (-1)*V10_deg_cd28_cd80_th0_lca_ln_is;
+  d/dt(CD28_th0_lca_ln_is__) ~ 0 + (-1)*V9_bind_cd28_cd80_th0_lca_ln_is + (-1)*V11_deg_cd28_th0_lca_ln_is + (1)*V12_syn_cd28_th0_lca_ln_is + (-1)*V15_bind_cd28_cd86_th0_lca_ln_is;
+  d/dt(CD86_th0_lca_ln_is__) ~ 0 + (-1)*V13_deg_cd86_th0_lca_ln_is + (1)*V14_syn_cd86_th0_lca_ln_is + (-1)*V15_bind_cd28_cd86_th0_lca_ln_is;
+  d/dt(CD28_CD86_th0_lca_ln_is__) ~ 0 + (1)*V15_bind_cd28_cd86_th0_lca_ln_is + (-1)*V16_deg_cd28_cd86_th0_lca_ln_is;
+  d/dt(OX40L_th0_lca_ln_is__) ~ 0 + (-1)*V17_deg_ox40l_th0_lca_ln_is + (1)*V18_syn_ox40l_th0_lca_ln_is + (-1)*V19_bind_ox40_ox40l_th0_lca_ln_is;
+  d/dt(OX40_OX40L_th0_lca_ln_is__) ~ 0 + (1)*V19_bind_ox40_ox40l_th0_lca_ln_is + (-1)*V20_deg_ox40_ox40l_th0_lca_ln_is;
+  d/dt(OX40_th0_lca_ln_is__) ~ 0 + (-1)*V19_bind_ox40_ox40l_th0_lca_ln_is + (-1)*V21_deg_ox40_th0_lca_ln_is + (1)*V22_syn_ox40_th0_lca_ln_is;
+  d/dt(MHC2_th0_ideca_ln_is__) ~ 0 + (-1)*V1_deg_mhc2_th0_ideca_ln_is + (1)*V2_syn_mhc2_th0_ideca_ln_is + (-1)*V3_bind_tcrc_mhc2_th0_ideca_ln_is;
+  d/dt(TCRc_MHC2_th0_ideca_ln_is__) ~ 0 + (1)*V3_bind_tcrc_mhc2_th0_ideca_ln_is + (-1)*V4_deg_tcrc_mhc2_th0_ideca_ln_is;
+  d/dt(TCRc_th0_ideca_ln_is__) ~ 0 + (-1)*V3_bind_tcrc_mhc2_th0_ideca_ln_is + (-1)*V5_deg_tcrc_th0_ideca_ln_is + (1)*V6_syn_tcrc_th0_ideca_ln_is;
+  d/dt(CD80_th0_ideca_ln_is__) ~ 0 + (-1)*V7_deg_cd80_th0_ideca_ln_is + (1)*V8_syn_cd80_th0_ideca_ln_is + (-1)*V9_bind_cd28_cd80_th0_ideca_ln_is;
+  d/dt(CD28_CD80_th0_ideca_ln_is__) ~ 0 + (1)*V9_bind_cd28_cd80_th0_ideca_ln_is + (-1)*V10_deg_cd28_cd80_th0_ideca_ln_is;
+  d/dt(CD28_th0_ideca_ln_is__) ~ 0 + (-1)*V9_bind_cd28_cd80_th0_ideca_ln_is + (-1)*V11_deg_cd28_th0_ideca_ln_is + (1)*V12_syn_cd28_th0_ideca_ln_is + (-1)*V15_bind_cd28_cd86_th0_ideca_ln_is;
+  d/dt(CD86_th0_ideca_ln_is__) ~ 0 + (-1)*V13_deg_cd86_th0_ideca_ln_is + (1)*V14_syn_cd86_th0_ideca_ln_is + (-1)*V15_bind_cd28_cd86_th0_ideca_ln_is;
+  d/dt(CD28_CD86_th0_ideca_ln_is__) ~ 0 + (1)*V15_bind_cd28_cd86_th0_ideca_ln_is + (-1)*V16_deg_cd28_cd86_th0_ideca_ln_is;
+  d/dt(OX40L_th0_ideca_ln_is__) ~ 0 + (-1)*V17_deg_ox40l_th0_ideca_ln_is + (1)*V18_syn_ox40l_th0_ideca_ln_is + (-1)*V19_bind_ox40_ox40l_th0_ideca_ln_is;
+  d/dt(OX40_OX40L_th0_ideca_ln_is__) ~ 0 + (1)*V19_bind_ox40_ox40l_th0_ideca_ln_is + (-1)*V20_deg_ox40_ox40l_th0_ideca_ln_is;
+  d/dt(OX40_th0_ideca_ln_is__) ~ 0 + (-1)*V19_bind_ox40_ox40l_th0_ideca_ln_is + (-1)*V21_deg_ox40_th0_ideca_ln_is + (1)*V22_syn_ox40_th0_ideca_ln_is;
+  d/dt(MHC2_th0_bi_ln_is__) ~ 0 + (-1)*V1_deg_mhc2_th0_bi_ln_is + (1)*V2_syn_mhc2_th0_bi_ln_is + (-1)*V3_bind_tcrc_mhc2_th0_bi_ln_is;
+  d/dt(TCRc_MHC2_th0_bi_ln_is__) ~ 0 + (1)*V3_bind_tcrc_mhc2_th0_bi_ln_is + (-1)*V4_deg_tcrc_mhc2_th0_bi_ln_is;
+  d/dt(TCRc_th0_bi_ln_is__) ~ 0 + (-1)*V3_bind_tcrc_mhc2_th0_bi_ln_is + (-1)*V5_deg_tcrc_th0_bi_ln_is + (1)*V6_syn_tcrc_th0_bi_ln_is;
+  d/dt(CD80_th0_bi_ln_is__) ~ 0 + (-1)*V7_deg_cd80_th0_bi_ln_is + (1)*V8_syn_cd80_th0_bi_ln_is + (-1)*V9_bind_cd28_cd80_th0_bi_ln_is;
+  d/dt(CD28_CD80_th0_bi_ln_is__) ~ 0 + (1)*V9_bind_cd28_cd80_th0_bi_ln_is + (-1)*V10_deg_cd28_cd80_th0_bi_ln_is;
+  d/dt(CD28_th0_bi_ln_is__) ~ 0 + (-1)*V9_bind_cd28_cd80_th0_bi_ln_is + (-1)*V11_deg_cd28_th0_bi_ln_is + (1)*V12_syn_cd28_th0_bi_ln_is + (-1)*V15_bind_cd28_cd86_th0_bi_ln_is;
+  d/dt(CD86_th0_bi_ln_is__) ~ 0 + (-1)*V13_deg_cd86_th0_bi_ln_is + (1)*V14_syn_cd86_th0_bi_ln_is + (-1)*V15_bind_cd28_cd86_th0_bi_ln_is;
+  d/dt(CD28_CD86_th0_bi_ln_is__) ~ 0 + (1)*V15_bind_cd28_cd86_th0_bi_ln_is + (-1)*V16_deg_cd28_cd86_th0_bi_ln_is;
+  d/dt(OX40L_th0_bi_ln_is__) ~ 0 + (-1)*V17_deg_ox40l_th0_bi_ln_is + (1)*V18_syn_ox40l_th0_bi_ln_is + (-1)*V19_bind_ox40_ox40l_th0_bi_ln_is;
+  d/dt(OX40_OX40L_th0_bi_ln_is__) ~ 0 + (1)*V19_bind_ox40_ox40l_th0_bi_ln_is + (-1)*V20_deg_ox40_ox40l_th0_bi_ln_is;
+  d/dt(OX40_th0_bi_ln_is__) ~ 0 + (-1)*V19_bind_ox40_ox40l_th0_bi_ln_is + (-1)*V21_deg_ox40_th0_bi_ln_is + (1)*V22_syn_ox40_th0_bi_ln_is;
+  d/dt(MHC2_th0_m1_ld_is__) ~ 0 + (-1)*V1_deg_mhc2_th0_m1_ld_is + (1)*V2_syn_mhc2_th0_m1_ld_is + (-1)*V3_bind_tcrc_mhc2_th0_m1_ld_is;
+  d/dt(TCRc_MHC2_th0_m1_ld_is__) ~ 0 + (1)*V3_bind_tcrc_mhc2_th0_m1_ld_is + (-1)*V4_deg_tcrc_mhc2_th0_m1_ld_is;
+  d/dt(TCRc_th0_m1_ld_is__) ~ 0 + (-1)*V3_bind_tcrc_mhc2_th0_m1_ld_is + (-1)*V5_deg_tcrc_th0_m1_ld_is + (1)*V6_syn_tcrc_th0_m1_ld_is;
+  d/dt(CD80_th0_m1_ld_is__) ~ 0 + (-1)*V7_deg_cd80_th0_m1_ld_is + (1)*V8_syn_cd80_th0_m1_ld_is + (-1)*V9_bind_cd28_cd80_th0_m1_ld_is;
+  d/dt(CD28_CD80_th0_m1_ld_is__) ~ 0 + (1)*V9_bind_cd28_cd80_th0_m1_ld_is + (-1)*V10_deg_cd28_cd80_th0_m1_ld_is;
+  d/dt(CD28_th0_m1_ld_is__) ~ 0 + (-1)*V9_bind_cd28_cd80_th0_m1_ld_is + (-1)*V11_deg_cd28_th0_m1_ld_is + (1)*V12_syn_cd28_th0_m1_ld_is + (-1)*V15_bind_cd28_cd86_th0_m1_ld_is;
+  d/dt(CD86_th0_m1_ld_is__) ~ 0 + (-1)*V13_deg_cd86_th0_m1_ld_is + (1)*V14_syn_cd86_th0_m1_ld_is + (-1)*V15_bind_cd28_cd86_th0_m1_ld_is;
+  d/dt(CD28_CD86_th0_m1_ld_is__) ~ 0 + (1)*V15_bind_cd28_cd86_th0_m1_ld_is + (-1)*V16_deg_cd28_cd86_th0_m1_ld_is;
+  d/dt(OX40L_th0_m1_ld_is__) ~ 0 + (-1)*V17_deg_ox40l_th0_m1_ld_is + (1)*V18_syn_ox40l_th0_m1_ld_is + (-1)*V19_bind_ox40_ox40l_th0_m1_ld_is;
+  d/dt(OX40_OX40L_th0_m1_ld_is__) ~ 0 + (1)*V19_bind_ox40_ox40l_th0_m1_ld_is + (-1)*V20_deg_ox40_ox40l_th0_m1_ld_is;
+  d/dt(OX40_th0_m1_ld_is__) ~ 0 + (-1)*V19_bind_ox40_ox40l_th0_m1_ld_is + (-1)*V21_deg_ox40_th0_m1_ld_is + (1)*V22_syn_ox40_th0_m1_ld_is;
+  d/dt(MHC2_th0_m1_nld_is__) ~ 0 + (-1)*V1_deg_mhc2_th0_m1_nld_is + (1)*V2_syn_mhc2_th0_m1_nld_is + (-1)*V3_bind_tcrc_mhc2_th0_m1_nld_is;
+  d/dt(TCRc_MHC2_th0_m1_nld_is__) ~ 0 + (1)*V3_bind_tcrc_mhc2_th0_m1_nld_is + (-1)*V4_deg_tcrc_mhc2_th0_m1_nld_is;
+  d/dt(TCRc_th0_m1_nld_is__) ~ 0 + (-1)*V3_bind_tcrc_mhc2_th0_m1_nld_is + (-1)*V5_deg_tcrc_th0_m1_nld_is + (1)*V6_syn_tcrc_th0_m1_nld_is;
+  d/dt(CD80_th0_m1_nld_is__) ~ 0 + (-1)*V7_deg_cd80_th0_m1_nld_is + (1)*V8_syn_cd80_th0_m1_nld_is + (-1)*V9_bind_cd28_cd80_th0_m1_nld_is;
+  d/dt(CD28_CD80_th0_m1_nld_is__) ~ 0 + (1)*V9_bind_cd28_cd80_th0_m1_nld_is + (-1)*V10_deg_cd28_cd80_th0_m1_nld_is;
+  d/dt(CD28_th0_m1_nld_is__) ~ 0 + (-1)*V9_bind_cd28_cd80_th0_m1_nld_is + (-1)*V11_deg_cd28_th0_m1_nld_is + (1)*V12_syn_cd28_th0_m1_nld_is + (-1)*V15_bind_cd28_cd86_th0_m1_nld_is;
+  d/dt(CD86_th0_m1_nld_is__) ~ 0 + (-1)*V13_deg_cd86_th0_m1_nld_is + (1)*V14_syn_cd86_th0_m1_nld_is + (-1)*V15_bind_cd28_cd86_th0_m1_nld_is;
+  d/dt(CD28_CD86_th0_m1_nld_is__) ~ 0 + (1)*V15_bind_cd28_cd86_th0_m1_nld_is + (-1)*V16_deg_cd28_cd86_th0_m1_nld_is;
+  d/dt(OX40L_th0_m1_nld_is__) ~ 0 + (-1)*V17_deg_ox40l_th0_m1_nld_is + (1)*V18_syn_ox40l_th0_m1_nld_is + (-1)*V19_bind_ox40_ox40l_th0_m1_nld_is;
+  d/dt(OX40_OX40L_th0_m1_nld_is__) ~ 0 + (1)*V19_bind_ox40_ox40l_th0_m1_nld_is + (-1)*V20_deg_ox40_ox40l_th0_m1_nld_is;
+  d/dt(OX40_th0_m1_nld_is__) ~ 0 + (-1)*V19_bind_ox40_ox40l_th0_m1_nld_is + (-1)*V21_deg_ox40_th0_m1_nld_is + (1)*V22_syn_ox40_th0_m1_nld_is;
+  

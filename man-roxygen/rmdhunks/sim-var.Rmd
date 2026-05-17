@@ -1,0 +1,418 @@
+# Population Simulations with rxode2
+
+## Simulation of Variability with rxode2
+
+In pharmacometrics the nonlinear-mixed effect modeling software (like
+nlmixr) characterizes the between-subject variability.  With this
+between subject variability you can simulate new subjects.
+
+Assuming that you have a 2-compartment, indirect response model, you
+can set create an rxode2 model describing this system below:
+
+### Setting up the rxode2 model
+
+```{r}
+library(rxode2)
+
+set.seed(32)
+rxSetSeed(32)
+
+mod <- function() {
+  ini({
+    KA <- 2.94E-01
+    TCl <- 1.86E+01
+    # between subject variability
+    eta.Cl ~ 0.4^2
+    V2 <- 4.02E+01
+    Q <- 1.05E+01
+    V3 <- 2.97E+02
+    Kin <- 1
+    Kout <- 1
+    EC50 <- 200
+  })
+  model({
+    C2 <- centr/V2
+    C3 <- peri/V3
+    CL <-  TCl*exp(eta.Cl) ## This is coded as a variable in the model
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  <-                    Q*C2 - Q*C3
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0) <- 1
+  })
+}
+```
+
+
+### Simulating
+
+The next step to simulate is to create the dosing regimen for overall simulation:
+
+```{r}
+ev <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, cmt="centr")
+```
+If you wish, you can also add sampling times (though rxode2 can fill these in for you):
+
+```{r}
+ev <- ev |> et(0,48, length.out=100)
+```
+
+Note the `et` takes similar arguments as `seq` when adding sampling
+times.  There are more methods to adding sampling times and events to
+make complex dosing regimens (See [the event
+vignette](rxode2-events.html)). This includes ways to add variability
+to the [both the sampling and dosing
+times](rxode2-events.html#add-doses-and-samples-within-a-sampling-window)).
+
+Once this is complete you can simulate using the `rxSolve` routine:
+
+```{r}
+sim  <- rxSolve(mod, ev, nSub=100)
+```
+
+To quickly look and customize your simulation you use the default
+`plot` routine.  Since this is an rxode2 object, it will create a
+`ggplot2` object that you can modify as you wish.  The extra parameter
+to the `plot` tells `rxode2`/`R` what piece of information you are
+interested in plotting. In this case, we are interested in looking at
+the derived parameter `C2`:
+
+### Checking the simulation with `plot`
+
+```{r}
+library(ggplot2)
+## The plots from rxode2 are ggplots so they can be modified with
+## standard ggplot commands.
+plot(sim, C2, log="y") +
+    ylab("Central Compartment")
+```
+
+Of course this additional parameter could also be a state value, like `eff`:
+
+```{r}
+## They also takes many of the standard plot arguments; See ?plot
+plot(sim, eff, ylab="Effect")
+```
+
+Or you could even look at the two side-by-side:
+
+```{r}
+plot(sim, C2, eff)
+```
+
+Or stack them with `patchwork`
+```{r}
+library(patchwork)
+plot(sim, C2, log="y") / plot(sim, eff)
+```
+
+
+### Processing the data to create summary plots
+
+Usually in pharmacometric simulations it is not enough to simply
+simulate the system.  We have to do something easier to digest, like
+look at the central and extreme tendencies of the simulation.
+
+Since the `rxode2` solve object is a type of [data
+frame](rxode2-data-frame.html)
+
+It is now straightforward to perform calculations and generate plots
+with the simulated data. You can
+
+Below, the 5th, 50th, and 95th percentiles
+of the simulated data are plotted.
+
+```{r}
+confint(sim, "C2", level=0.95) |>
+    plot(ylab="Central Concentration", log="y")
+```
+
+```{r}
+confint(sim, "eff", level=0.95) |>
+    plot(ylab="Effect")
+```
+
+Note that you can see the parameters that were simulated for the example
+
+```{r}
+head(sim$param)
+```
+
+### Simulation of unexplained variability (sigma)
+
+In addition to conveniently simulating between subject variability,
+you can also easily simulate unexplained variability.
+
+One way to do that is to create a rxode2 model with the endpoints
+defined. Model piping can do this while keeping the model intact:
+
+```{r}
+mod2 <- mod |>
+  model(eff ~ add(eff.sd), append=TRUE) |>
+  model(C2 ~ prop(prop.sd), append=TRUE) |>
+  ini(eff.sd=sqrt(0.1), prop.sd=sqrt(0.1))
+```
+
+You can see how the dataset should be defined with
+`$multipleEndpoint`:
+
+```{r}
+mod2$multipleEndpoint
+```
+
+Here you see the endpoints should be defined for `eff` and `C2`:
+
+```{r}
+ev <- et(amountUnits="mg", timeUnits="hours") |>
+  et(amt=10000, cmt="centr") |>
+  et(seq(0,48, length.out=100), cmt="eff") |>
+  et(seq(0,48, length.out=100), cmt="C2")
+```
+
+Which allows you to solve the system:
+
+```{r}
+sim  <- rxSolve(mod2, ev, nSub=100)
+```
+
+Since this is simulated from a model with the residual specification
+included and a multiple endpoint model, you can summarize for each
+endpoint by simply taking a confidence interval of `"sim"`:
+
+```{r}
+s <- confint(sim, "sim")
+
+plot(s)
+```
+
+If you want to subset to a specific endpoint, like `eff` you can
+create the confidence interval for only that endpoint by using the
+specification `sim.eff`, where the endpoint name is separated from
+`sim` by a dot:
+
+
+```{r}
+seff <- confint(sim, "sim.eff")
+
+plot(seff)
+```
+
+### Simulation of Individuals
+
+Sometimes you may want to match the dosing and observations of
+individuals in a clinical trial.  To do this you will have to create a
+data.frame using the `rxode2` event specification as well as an `ID`
+column to indicate an individual. The rxode2 event vignette talks more about
+how these datasets should be created.
+
+```{r}
+library(dplyr)
+ev1 <- et(amountUnits="mg", timeUnits="hours") |>
+    et(amt=10000, cmt=2) |>
+    et(0,48,length.out=10)
+
+ev2 <- et(amountUnits="mg", timeUnits="hours") |>
+    et(amt=5000, cmt=2) |>
+    et(0,48,length.out=8)
+
+dat <- rbind(data.frame(ID=1, ev1$get.EventTable()),
+             data.frame(ID=2, ev2$get.EventTable()))
+
+
+## Note the number of subject is not needed since it is determined by the data
+sim  <- rxSolve(mod, dat)
+
+sim |> select(id, time, eff, C2)
+```
+
+# Simulation of Clinical Trials
+
+By either using a simple single event table, or data from a clinical
+trial as described above, a complete clinical trial simulation can be
+performed.
+
+Typically in clinical trial simulations you want to account for the
+uncertainty in the fixed parameter estimates, and even the uncertainty
+in both your between subject variability as well as the unexplained
+variability.
+
+`rxode2` allows you to account for these uncertainties by simulating
+multiple virtual "studies," specified by the parameter `nStud`.  Each
+of these studies samples a realization of fixed effect parameters and
+covariance matrices for the between subject variability(`omega`) and
+unexplained variabilities (`sigma`). Depending on the information you
+have from the models, there are a few strategies for simulating a
+realization of the `omega` and `sigma` matrices.
+
+The first strategy occurs when either there is not any standard errors
+for standard deviations (or related parameters), or there is a modeled
+correlation in the model you are simulating from.  In that case the
+suggested strategy is to use the inverse Wishart (parameterized to
+scale to the conjugate prior)/[scaled inverse chi
+distribution](https://en.wikipedia.org/wiki/Scaled_inverse_chi-squared_distribution).
+this approach uses a single parameter to inform the variability of the
+covariance matrix sampled (the degrees of freedom).
+
+The second strategy occurs if you have standard errors on the
+variance/standard deviation with no modeled correlations in the
+covariance matrix.  In this approach you perform separate simulations
+for the standard deviations and the correlation matrix.  First you
+simulate the variance/standard deviation components in the `thetaMat`
+multivariate normal simulation.  After simulation and transformation
+to standard deviations, a correlation matrix is simulated using the
+degrees of freedom of your covariance matrix.  Combining the simulated
+standard deviation with the simulated correlation matrix will give a
+simulated covariance matrix. For smaller dimension covariance matrices
+(dimension < 10x10) it is recommended you use the `lkj` distribution
+to simulate the correlation matrix.  For higher dimension covariance
+matrices it is suggested you use the inverse wishart distribution
+(transformed to a correlation matrix) for the simulations.
+
+The covariance/variance prior is simulated from `rxode2`s `cvPost()`
+function.
+
+## Simulation from inverse Wishart correlations
+
+An example of this simulation is below:
+```{r}
+
+## Creating covariance matrix
+tmp <- matrix(rnorm(8^2), 8, 8)
+tMat <- tcrossprod(tmp, tmp) / (8 ^ 2)
+dimnames(tMat) <- list(NULL, names(mod2$theta)[1:8])
+
+sim  <- rxSolve(mod2, ev, nSub=100, thetaMat=tMat, nStud=10,
+                dfSub=10, dfObs=100)
+
+s <-sim |> confint("sim")
+
+plot(s)
+```
+
+If you wish you can see what `omega` and `sigma` was used for each
+virtual study by accessing them in the solved data object with
+`$omega.list` and `$sigma.list`:
+
+```{r}
+head(sim$omegaList)
+```
+
+```{r}
+head(sim$sigmaList)
+```
+
+You can also see the parameter realizations from the `$params` data frame.
+
+## Simulate using covariance inputs
+
+Lets assume we wish to simulate from [the nonmem run included in
+xpose](https://github.com/UUPharmacometrics/xpose/blob/master/inst/extdata/run001.lst)
+
+First we setup the model; Since we are taking this from nonmem and
+would like to use the more free-form style from the classic `rxode2`
+model we start from the classic model:
+
+```{r}
+rx1 <- rxode2({
+  cl <- tcl*(1+crcl.cl*(CLCR-65)) * exp(eta.cl)
+  v <- tv * WT * exp(eta.v)
+  ka <- tka * exp(eta.ka)
+  ipred <- linCmt()
+  obs <- ipred * (1 + prop.sd) + add.sd
+})
+```
+
+Next we input the estimated parameters:
+
+```{r}
+theta <- c(tcl=2.63E+01, tv=1.35E+00, tka=4.20E+00, tlag=2.08E-01,
+           prop.sd=2.05E-01, add.sd=1.06E-02, crcl.cl=7.17E-03,
+           ## Note that since we are using the separation strategy the ETA variances are here too
+           eta.cl=7.30E-02,  eta.v=3.80E-02, eta.ka=1.91E+00)
+```
+
+And also their covariances; To me, the easiest way to create a named
+covariance matrix is to use `lotri()`:
+
+```{r}
+thetaMat <- lotri(
+    tcl + tv + tka + tlag + prop.sd + add.sd + crcl.cl + eta.cl + eta.v + eta.ka ~
+        c(7.95E-01,
+          2.05E-02, 1.92E-03,
+          7.22E-02, -8.30E-03, 6.55E-01,
+          -3.45E-03, -6.42E-05, 3.22E-03, 2.47E-04,
+          8.71E-04, 2.53E-04, -4.71E-03, -5.79E-05, 5.04E-04,
+          6.30E-04, -3.17E-06, -6.52E-04, -1.53E-05, -3.14E-05, 1.34E-05,
+          -3.30E-04, 5.46E-06, -3.15E-04, 2.46E-06, 3.15E-06, -1.58E-06, 2.88E-06,
+          -1.29E-03, -7.97E-05, 1.68E-03, -2.75E-05, -8.26E-05, 1.13E-05, -1.66E-06, 1.58E-04,
+          -1.23E-03, -1.27E-05, -1.33E-03, -1.47E-05, -1.03E-04, 1.02E-05, 1.67E-06, 6.68E-05, 1.56E-04,
+          7.69E-02, -7.23E-03, 3.74E-01, 1.79E-03, -2.85E-03, 1.18E-05, -2.54E-04, 1.61E-03, -9.03E-04, 3.12E-01))
+
+evw <- et(amount.units="mg", time.units="hours") |>
+    et(amt=100) |>
+    ## For this problem we will simulate with sampling windows
+    et(list(c(0, 0.5),
+       c(0.5, 1),
+       c(1, 3),
+       c(3, 6),
+       c(6, 12))) |>
+    et(id=1:1000)
+
+## From the run we know that:
+##   total number of observations is: 476
+##    Total number of individuals:     74
+sim  <- rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
+                thetaMat=thetaMat,
+                ## Match boundaries of problem
+                thetaLower=0,
+                sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations
+                sigmaXform="identity", # default sigma xform="identity"
+                omega=c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
+                omegaXform="variance", # default omega xform="variance"
+                iCov=data.frame(WT=rnorm(1000, 70, 15), CLCR=rnorm(1000, 65, 25)),
+                dfSub=74, dfObs=476);
+
+print(sim)
+## Notice that the simulation time-points change for the individual
+
+## If you want the same sampling time-points you can do that as well:
+evw <- et(amount.units="mg", time.units="hours") |>
+    et(amt=100) |>
+    et(0, 24, length.out=50) |>
+    et(id=1:100)
+
+sim  <- rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
+                thetaMat=thetaMat,
+                ## Match boundaries of problem
+                thetaLower=0,
+                sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations
+                sigmaXform="identity", # default sigma xform="identity"
+                omega=c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
+                omegaXform="variance", # default omega xform="variance"
+                iCov=data.frame(WT=rnorm(100, 70, 15), CLCR=rnorm(100, 65, 25)),
+                dfSub=74, dfObs=476,
+                resample=TRUE)
+
+s <-sim |> confint(c("ipred"))
+plot(s)
+```
+
+## Simulate without uncertainty in `omega` or `sigma` parameters
+
+If you do not wish to sample from the prior distributions of either
+the `omega` or `sigma` matrices, you can turn off this feature by
+specifying the `simVariability = FALSE` option when solving:
+
+```{r}
+
+sim  <- rxSolve(mod2, ev, nSub=100, thetaMat=tMat, nStud=10,
+                simVariability=FALSE)
+
+s <-sim |> confint(c("centr", "eff"))
+
+plot(s)
+```
+
+Note since realizations of `omega` and `sigma` were not simulated,
+`$omegaList` and `$sigmaList` both return `NULL`.

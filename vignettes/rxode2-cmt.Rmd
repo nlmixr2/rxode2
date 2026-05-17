@@ -1,0 +1,30 @@
+---
+title: "Changing rxode2 compartment numbers"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+knitr::opts_chunk$set( comment = "#>")
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+# How rxode2 assigns compartment numbers
+
+```{r child='../man/rmdhunks/rxode2-cmt-assign.Rmd'}
+```
+
+# Changing compartment numbers by pre-declaring the compartments
+
+```{r child='../man/rmdhunks/rxode2-cmt-preassign-1.Rmd'}
+```
+
+# Appending compartments to the model
+
+```{r child='../man/rmdhunks/rxode2-cmt-preassign-2.Rmd'}
+```

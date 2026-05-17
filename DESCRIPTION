@@ -1,0 +1,136 @@
+Package: rxode2
+Version: 5.0.2
+Title: Facilities for Simulating from ODE-Based Models
+Authors@R: c(
+   person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
+   person("Wenping", "Wang", role = c("aut"), email = "wwang8198@gmail.com"),
+   person("Alan", "Hindmarsh",role="ctb"),
+   person("Arun", "Srinivasan", role="ctb", email="arunkumar.sriniv@gmail.com"),
+   person("Awad H.", "Al-Mohy",role="ctb"),
+   person("Bill", "Denney", email="wdenney@humanpredictions.com", role="ctb", comment=c(ORCID="0000-0002-5759-428X")),
+   person("Cleve", "Moler", role="ctb"),
+   person("David", "Cooley", role="ctb"),
+   person("Drew", "Schmidt", role="ctb"),
+   person("Ernst", "Hairer", role="ctb"),
+   person("Gabriel", "Staples", role="ctb"),
+   person("Gerhard", "Wanner", role="ctb"),
+   person("Gilbert", "Stewart", role="ctb"),
+   person("Goro", "Fuji",  role="ctb", email="gfuji@cpan.org"),
+   person("Hadley", "Wickham", role="ctb"),
+   person("Igor", "Kushnir", email="igorkuo@gmail.com", role="ctb"),
+   person("Jack", "Dongarra", role="ctb"),
+   person("Jim", "Bunch", role="ctb"),
+   person("Kevin", "Ushey", role="ctb"),
+   person("Linda", "Petzold", role="ctb"),
+   person("Martin", "Maechler", role="ctb"),
+   person("Matt", "Dowle", role="ctb", email="mattjdowle@gmail.com"),
+   person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = "ctb"),
+   person("Melissa", "Hallow", role = "aut", email = "hallowkm@uga.edu"),
+   person("Michel", "Lang", , "michellang@gmail.com", role = "ctb"),
+   person("Morwenn","", role="ctb"),
+   person("Nicholas J.", "Higham",role="ctb"),
+   person("Omar", "Elashkar", email="omar.i.elashkar@gmail.com", role="ctb"),
+   person("Richard", "Upton", role = "ctb"),
+   person("Roger B.", "Sidje", role="ctb"),
+   person("Simon", "Frost", role="ctb"),
+   person("Yu", "Feng", role="ctb"),
+   person("Zufar", "Mulyukov", role="ctb", email="zufar.mulyukov@novartis.com"))
+Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
+Depends:
+    R (>= 4.1.0)
+Suggests:
+    Matrix,
+    DT,
+    covr,
+    crayon,
+    curl,
+    digest,
+    dplyr (>= 0.8.0),
+    ggrepel,
+    gridExtra,
+    htmltools,
+    knitr,
+    learnr,
+    microbenchmark,
+    nlme,
+    remotes,
+    rlang,
+    rmarkdown,
+    scales,
+    shiny,
+    stringi,
+    symengine,
+    testthat,
+    tidyr,
+    usethis,
+    withr,
+    xgxr,
+    pillar,
+    tibble,
+    units (>= 0.6-0),
+    rsconnect,
+    devtools,
+    patchwork,
+    nlmixr2data,
+    lifecycle,
+    kableExtra,
+    pmxTools,
+    rootSolve,
+    memuse
+Imports:
+    PreciseSums (>= 0.7),
+    Rcpp (>= 0.12.3),
+    backports,
+    cli (>= 2.0.0),
+    checkmate,
+    ggplot2 (>= 3.4.0),
+    inline,
+    lotri (>= 1.0.2),
+    memoise,
+    methods,
+    rex,
+    sys,
+    tools,
+    utils,
+    dparser (>= 1.3.1-12),
+    rxode2ll (>= 2.0.9),
+    data.table (>= 1.12.4),
+    qs2,
+    vctrs,
+    stats
+Description: Facilities for running simulations from ordinary
+    differential equation ('ODE') models, such as pharmacometrics and other
+    compartmental models.  A compilation manager translates the ODE model
+    into C, compiles it, and dynamically loads the object code into R for
+    improved computational efficiency.  An event table object facilitates
+    the specification of complex dosing regimens (optional) and sampling
+    schedules.  NB: The use of this package requires both C and
+    Fortran compilers, for details on their use with R please see
+    Section 6.3, Appendix A, and Appendix D in the "R Administration and
+    Installation" manual. Also the code is mostly released under GPL.  The
+    'VODE' and 'LSODA' are in the public domain.  The information is available
+    in the inst/COPYRIGHTS.
+BugReports: https://github.com/nlmixr2/rxode2/issues/
+NeedsCompilation: yes
+VignetteBuilder: knitr
+License: GPL (>= 3)
+URL: https://nlmixr2.github.io/rxode2/,
+    https://github.com/nlmixr2/rxode2/
+Biarch: true
+LinkingTo:
+    sitmo,
+    lotri (>= 1.0.0),
+    PreciseSums (>= 0.7),
+    Rcpp,
+    RcppArmadillo (>= 0.9.300.2.0),
+    BH,
+    RcppParallel,
+    RcppEigen (>= 0.3.3.9.2),
+    StanHeaders (>= 2.21.0.7),
+    dparser (>= 1.3.1-12)
+Encoding: UTF-8
+LazyData: true
+Language: en-US
+Roxygen: list(markdown = TRUE)
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

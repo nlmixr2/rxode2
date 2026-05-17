@@ -1,0 +1,9 @@
+---
+title: "rxode2 Covariates"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+```{r child='../man-roxygen/rmdhunks/covariates.Rmd'}
+```

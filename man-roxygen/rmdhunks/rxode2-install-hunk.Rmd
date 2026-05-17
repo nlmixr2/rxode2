@@ -1,0 +1,133 @@
+---
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+You can install the released version of rxode2 from
+[CRAN](https://CRAN.R-project.org) with:
+
+``` {.r}
+install.packages("rxode2")
+```
+
+The fastest way to install the development version of `rxode2` is to
+use the `r-universe` service.  This service compiles binaries of the
+development version for MacOS and for Windows so you don't have to
+wait for package compilation:
+
+``` {.r}
+install.packages(c("dparser", "rxode2ll", "rxode2"),
+                 repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
+                         CRAN="https://cloud.r-project.org"))
+```
+
+If this doesn't work you install the development version of rxode2 with
+
+``` {.r}
+devtools::install_github("nlmixr2/rxode2ll")
+devtools::install_github("nlmixr2/rxode2")
+```
+
+To build models with rxode2, you need a working c compiler. To use
+parallel threaded solving in rxode2, this c compiler needs to support
+open-mp.
+
+You can check to see if R has working c compiler you can check with:
+
+``` {.r}
+## install.packages("pkgbuild")
+pkgbuild::has_build_tools(debug = TRUE)
+```
+
+If you do not have the toolchain, you can set it up as described by the
+platform information below:
+
+### Windows
+
+In windows you may simply use installr to install rtools:
+
+``` {.r}
+install.packages("installr")
+library(installr)
+install.rtools()
+```
+
+Alternatively you can
+[download](https://cran.r-project.org/bin/windows/Rtools/) and install
+rtools directly.
+
+### Mac OSX
+
+To get the most speed you need OpenMP enabled and compile rxode2 with
+that compiler. There are various options and the most up to date
+discussion about this is likely the [data.table installation FAQ for
+MacOS](https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac).
+The last thing to keep in mind is that `rxode2` uses the code very
+similar to the original `lsoda` which requires the `gfortran` compiler
+to be setup as well as the `OpenMP` compilers.
+
+If you are going to be using `rxode2` and `nlmixr` together and have an
+older mac computer, I would suggest trying the following:
+
+``` {.r}
+library(symengine)
+```
+
+If this crashes your R session then the binary does not work with your
+Mac machine.  To be able to run nlmixr, you will need to compile this
+package manually.  I will proceed assuming you have `homebrew`
+installed on your system.
+
+On your system terminal you will need to install the dependencies to
+compile `symengine`:
+
+``` {.sh}
+brew install cmake gmp mpfr libmpc
+```
+
+After installing the dependencies, you need to re-install `symengine`:
+
+``` {.r}
+install.packages("symengine", type="source")
+library(symengine)
+```
+
+### Linux
+
+To install on linux make sure you install `gcc` (with openmp support)
+and `gfortran` using your distribution's package manager.
+
+You will also have to install system dependencies like `udunits` and
+the [symengine
+dependencies](https://github.com/symengine/symengine.R?tab=readme-ov-file#installation)
+for the complete installation to work in linux.  You could also have
+this done by system packages in your package manager if you add the
+appropriate repositories.  This is the point of the
+[r2u](https://github.com/eddelbuettel/r2u) project.
+
+
+### R versions 4.0 and 4.1
+
+For installation on R versions 4.0.x and 4.1.x, please see the instructions on
+how to install `symengine` in the `nlmixr2` installation instructions:
+https://github.com/nlmixr2/nlmixr2#r-package-installation
+
+## Development version
+
+Since the development version of rxode2 uses StanHeaders, you will need
+to make sure your compiler is setup to support C++14, as described in
+the [rstan setup
+page](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started#configuration-of-the-c-toolchain).
+For R 4.0, I do not believe this requires modifying the windows
+toolchain any longer (so it is much easier to setup).
+
+Once the C++ toolchain is setup appropriately, you can install the
+development version from
+[GitHub](https://github.com/nlmixr2/rxode2) with:
+
+``` {.r}
+# install.packages("devtools")
+devtools::install_github("nlmixr2/rxode2ll")
+devtools::install_github("nlmixr2/rxode2")
+```

@@ -1,0 +1,64 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# rxode2
+
+<!-- badges: start -->
+![Cran updating status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
+[![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/nlmixr2/rxode2/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2)
+[![CRAN version](http://www.r-pkg.org/badges/version/rxode2)](https://cran.r-project.org/package=rxode2)
+[![CRAN total downloads](https://cranlogs.r-pkg.org/badges/grand-total/rxode2)](https://cran.r-project.org/package=rxode2)
+[![CRAN total downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org/package=rxode2)
+[![CodeFactor](https://www.codefactor.io/repository/github/nlmixr2/rxode2/badge)](https://www.codefactor.io/repository/github/nlmixr2/rxode2)
+![r-universe](https://nlmixr2.r-universe.dev/badges/rxode2)
+<!-- badges: end -->
+
+## Overview
+
+**rxode2** is an R package for solving and simulating from ode-based
+models. These models are convert the rxode2 mini-language to C and
+create a compiled dll for fast solving. ODE solving using rxode2 has a
+few key parts:
+
+ - `rxode2()` which creates the C code for fast ODE solving based on a
+   [simple syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html) related to Leibnitz notation.
+ - The event data, which can be:
+   - a `NONMEM` or `deSolve` [compatible data frame](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html), or
+   - created with `et()` or `eventTable()` for [easy simulation of events](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html)
+   - The data frame can be augmented by adding
+     [time-varying](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#time-varying-covariates)
+     or adding [individual covariates](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#individual-covariates) (`iCov=` as needed)
+ - `rxSolve()` which solves the system of equations using initial
+   conditions and parameters to make predictions
+   - With multiple subject data, [this may be
+     parallelized](https://nlmixr2.github.io/rxode2/articles/rxode2-speed.html).
+   - With single subject the [output data frame is adaptive](https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html)
+   - Covariances and other metrics of uncertanty can be used to
+     [simulate while solving](https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html)
+
+## Installation
+
+```{r child='man-roxygen/rmdhunks/rxode2-install-hunk.Rmd'}
+```
+
+# Illustrated Example
+
+```{r child='man/rmdhunks/rxode2-intro-chunk.Rmd'}
+```
+
+# Related R Packages
+```{r child='man-roxygen/rmdhunks/related-R-chunk.Rmd'}
+```

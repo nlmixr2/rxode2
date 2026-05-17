@@ -1,0 +1,16 @@
+---
+title: "Single Subject ODE solving -- differences from multiple subject"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no 
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+```{r child='../man-roxygen/rmdhunks/single-subject.Rmdh'}
+```

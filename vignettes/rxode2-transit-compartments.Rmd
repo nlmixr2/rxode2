@@ -1,0 +1,17 @@
+---
+title: "rxode2 Transit Compartment Models"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no 
+---
+
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE);
+options(knitr.table.format = "html")
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+```{r child='../man-roxygen/rmdhunks/transit-compartments.Rmdh'}
+```

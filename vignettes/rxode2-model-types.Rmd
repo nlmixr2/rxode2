@@ -1,0 +1,27 @@
+---
+title: "rxode2 additional model types"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+```{r, echo=FALSE}
+options(cli.unicode=FALSE, crayon.enabled=FALSE)
+options(knitr.table.format = "html")
+options(width=80, cli.width=80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
+```
+
+As suggested in the name, rxode2 is often concerned with solutions to
+ordinary differential equations.  The syntax of the ODE models is
+covered in the [rxode2 syntax vignette](rxode2-syntax.html)
+
+You can create other types of models with rxode2:
+
+- Prediction only models without ODE systems in them (`$PRED` models
+  in NONMEM).
+- 1, 2 and 3 solved compartment models (`ADVAN/TRANS` in NONMEM).
+- Mixing any of these items with ODE systems.
+
+```{r child='../man-roxygen/rmdhunks/model-types.Rmd'}
+```

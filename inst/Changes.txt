@@ -1,0 +1,89 @@
+Version 0.5-1
+
+* Mainly changes to prepare for CRAN.
+
+* Added workaround for the Windows issue of folder names with embedded 
+  spaces. 
+
+* Cleaned up the ode directory to remove unused fortran code causing
+  too many warnings.
+
+* Added a $copy() method to the eventTable object; reversed the default
+  time.interval=24 in eventTable$add.dosing().
+
+* Added "tests" subdirectory; more scripts need to be written.
+
+Version 0.5-0
+
+* Moved to github.
+
+Version 0.4-1 
+
+* RxODE objects include get.modelVars() to extract model params, lhs, 
+  and state variables
+
+* Update call_dvode.c to prevent aborting R.
+
+Version 0.4-0 (svn revision 123, 06Jan2015)
+
+* Reverted to the simple name "RxODE" from "RxODE2".
+
+* Added syntax to the ODE modeling language to allow comments.
+
+* Deprecated the RxODE function "run", use "solve" going forward.
+
+* Added vignettes and demos.
+
+* Re-named source subdirectories with more descriptive names.
+
+* Changes to RxODE()
+    + Added a filename= argument to allow models to be specified via a
+      file instead of strings in model= (these two arguments are 
+      mutually exclusive);
+    + Changed some argument names to better reflect what they are, 
+      namely, "th=" in run() now is "params=".  
+    + Added a solve() synonym to run() (what about "fit()"?)
+    + Re-factor RxODE and moved all the code that deals with 
+      parsing, compiling, linking, etc., into a "compilation manager"
+      object "cmpMgr".  A new function rx.initCmpMgr() does all this.
+    + Fixed bug in run() that was producing "observations" at dosing
+      times (i.e., not only at sampling times).
+    + Added code in the compilation manager to generate C files
+      with project-specific C function names (previously we had a single
+      entry for all models); this allows us to working with multiple
+      models concurrently.  [We may need to revisit this approach.]
+
+* Changes to eventTable() and its methods:
+    + Added optional argument "amount.units=" and "time.units=";
+    + add.dosing() no longer has a default dosing.intervals=
+      when specifying multiple doses;
+    + add.dosing() has a new default for "start.time=" (0 for
+      very first dosing event, otherwise max(time) + duration.time.
+      [Should we force this not to have a default?]
+
+* C code
+    + Renamed jj.c file to tran.c
+    + Fixed fprintf() non-constant formats (security warnings on 
+      gcc 4.8.2);
+    + Fixed non-portable casting from 64-bit pointers to 32-bit ints;
+    + ode/dop831.c, deprecated #include <malloc.h> in favor of 
+      #include <stdlib.h> (required on Mac OS X);
+
+* Mac OS/X 10.6 
+    + Makefile ld(1) requires a space after -o, i.e., "-o tran.exe";
+
+* Windows
+    + Updated src/Makefile.win for updated file names, etc.
+
+Version 0.3
+
+* Self-containing: including build parser & libodeaux.a
+
+Version 0.2-1
+
+* Renamed package to RxODE
+
+Version 0.1-1
+
+* Initial version. Depends on external commands tran and 
+  prn_tree, plus on external libodeaux.a library.

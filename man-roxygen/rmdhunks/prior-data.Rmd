@@ -1,0 +1,69 @@
+# Using prior data for solving
+
+rxode2 can use a [single subject](rxode2-single-subject.html) or
+[multiple subjects with a single event table](rxode2-sim-var.html) to
+solve ODEs.  Additionally, rxode2 can use an arbitrary data frame with
+individualized events. For example when using `nlmixr`, you could use
+the `theo_sd` data frame
+
+```{r}
+library(rxode2)
+library(nlmixr2data)
+
+## Load data from nlmixr
+d <- theo_sd
+
+## Create rxode2 model
+theo <- function() {
+  ini({
+    tka <- 0.45 # Log Ka
+    tcl <- 1 # Log Cl
+    tv <- 3.45    # Log V
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+  })
+}
+
+## Create parameter dataset
+library(dplyr)
+parsDf <- tribble(
+  ~ eta.ka, ~ eta.cl, ~ eta.v,
+  0.105, -0.487, -0.080,
+  0.221, 0.144, 0.021,
+  0.368, 0.031, 0.058,
+ -0.277, -0.015, -0.007,
+ -0.046, -0.155, -0.142,
+ -0.382, 0.367, 0.203,
+ -0.791, 0.160, 0.047,
+ -0.181, 0.168, 0.096,
+  1.420, 0.042, 0.012,
+ -0.738, -0.391, -0.170,
+  0.790, 0.281, 0.146,
+ -0.527, -0.126, -0.198) |>
+    mutate(tka = 0.451, tcl = 1.017, tv = 3.449)
+
+## Now solve the dataset
+solveData <- rxSolve(theo, parsDf, d)
+
+plot(solveData, cp)
+
+print(solveData)
+
+## Of course the fasest way to solve if you don't care about the rxode2 extra parameters is
+
+solveData <- rxSolve(theo, parsDf, d, returnType="data.frame")
+
+## solved data
+dplyr::as_tibble(solveData)
+
+data.table::data.table(solveData)
+```

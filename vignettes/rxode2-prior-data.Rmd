@@ -1,0 +1,19 @@
+---
+title: "Using Prior Data for ODE solving"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no 
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r echo=FALSE, results='asis'}
+cat(unlist(knitr::knit_child(text = readLines("../man-roxygen/rmdhunks/prior-data.Rmd"),
+                             envir = environment(), quiet = TRUE)), sep="\n")
+```
