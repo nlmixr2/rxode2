@@ -1178,7 +1178,8 @@ static const char *err_msg_ls[] =
   };
 
 //dummy solout fn
-extern "C" void solout(long int nr, double t_old, double t, double *y, int *nptr, int *irtrn){}
+extern "C" void solout(long int nr, double t_old, double t, double *y, int *nptr,
+                       dop853_ctx_t *ctx, void *userdata, int *irtrn){}
 
 extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                       double tp, double *yp_, double tf,
@@ -1298,7 +1299,8 @@ static inline void solveWith1Pt(int *neq,
                       -1,                     /* test for stiffness */
                       0,                      /* number of components for which dense outpout is required */
                       NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                      0                       /* declared length of icon */
+                      0,                      /* declared length of icon */
+                      NULL                    /* userdata */
                       );
         // switch to overall states
         neq[0] = eff;
@@ -4205,7 +4207,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           -1,                     /* test for stiffness */
                           0,                      /* number of components for which dense outpout is required */
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                          0                       /* declared length of icon */
+                          0,                      /* declared length of icon */
+                          NULL                    /* userdata */
                           );
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -4248,7 +4251,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           -1,                     /* test for stiffness */
                           0,                      /* number of components for which dense outpout is required */
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                          0                       /* declared length of icon */
+                          0,                      /* declared length of icon */
+                          NULL                    /* userdata */
                           );
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -4282,7 +4286,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         -1,                     /* test for stiffness */
                         0,                      /* number of components for which dense outpout is required */
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                        0                       /* declared length of icon */
+                        0,                      /* declared length of icon */
+                        NULL                    /* userdata */
                         );
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);

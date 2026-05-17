@@ -5633,6 +5633,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (op->indOwnAlloc == -1) {
       op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
     }
+    op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
+    if (op->useDense && method != 3) {
+      op->useDense = 0;
+    }
+    if (op->useDense && (op->numLin > 0 || op->numLinSens > 0)) {
+      Rf_warning("dense output not yet supported for linCmt models; using standard dop853");
+      op->useDense = 0;
+    }
     op->stiff = method;
 
     rxSolveDat->throttle = false;

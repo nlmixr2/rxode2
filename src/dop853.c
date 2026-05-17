@@ -118,7 +118,7 @@ static double hinit (int *nptr, FcnEqDiff fcn, double x, double* y,
 
 
 /* dense output function */
-static double contd8 (dop853_ctx_t *ctx, int ii, double x)
+double contd8 (dop853_ctx_t *ctx, int ii, double x)
 {
   int i;
   double       s, s1;
@@ -386,7 +386,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       irtrn = 1;
       ctx->hout = 1.0;
       ctx->xout = x;
-      solout (ctx->naccpt+1, ctx->xold, x, y, nptr, &irtrn);
+      solout (ctx->naccpt+1, ctx->xold, x, y, nptr, ctx, ctx->userdata, &irtrn);
       if (irtrn < 0)
         {
           /* if (fileout) */
@@ -653,7 +653,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
             {
               ctx->hout = h;
               ctx->xout = x;
-              solout (ctx->naccpt+1, ctx->xold, x, y, nptr, &irtrn);
+              solout (ctx->naccpt+1, ctx->xold, x, y, nptr, ctx, ctx->userdata, &irtrn);
               if (irtrn < 0)
                 {
                   /* if (fileout) */
@@ -698,7 +698,8 @@ int dop853
 (int *nptr, FcnEqDiff fcn, double x, double* y, double xend, double* rtoler,
  double* atoler, int itoler, SolTrait solout, int iout, FILE* fileout, double uround,
  double safe, double fac1, double fac2, double beta, double hmax, double h,
- long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont)
+ long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont,
+ void *userdata)
 {
   dop853_ctx_t ctx;
   int          arret, idid;
@@ -714,6 +715,7 @@ int dop853
   ctx.rcont5 = ctx.rcont6 = ctx.rcont7 = ctx.rcont8 = NULL;
   ctx.yy1 = ctx.k1 = ctx.k2 = ctx.k3 = ctx.k4 = ctx.k5 = NULL;
   ctx.k6 = ctx.k7 = ctx.k8 = ctx.k9 = ctx.k10 = NULL;
+  ctx.userdata = userdata;
 
   arret = 0;
 
