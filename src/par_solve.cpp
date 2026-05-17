@@ -4330,13 +4330,265 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
+// Dense-output context passed as userdata to dopDenseSolout
+struct DopDenseCtx {
+  rx_solving_options_ind *ind;
+  rx_solving_options     *op;
+  int                    *neq;
+  int                     obs_next;    // next ix-array slot to fill in solout
+  int                     segment_end; // last ix-array slot for this segment
+};
+
+static void dopDenseSolout(long int nr, double xold, double x, double *y,
+                           int *nptr, dop853_ctx_t *ctx,
+                           void *userdata, int *irtrn) {
+  DopDenseCtx *dc = (DopDenseCtx *)userdata;
+  rx_solving_options_ind *ind = dc->ind;
+  rx_solving_options     *op  = dc->op;
+  int solveid = dc->neq[1];
+  int n = nptr[0];
+  double eps = 1e-8;
+
+  while (dc->obs_next <= dc->segment_end) {
+    int    idx   = dc->obs_next;
+    int    raw   = ind->ix[idx];
+    double t_obs = ind->timeThread[raw];
+
+    if (t_obs > x + eps) break;              // beyond this DOP853 step
+
+    if (!isObs(getEvid(ind, raw))) {         // key events shouldn't appear here
+      dc->obs_next++;
+      continue;
+    }
+    if (t_obs >= xold - eps) {              // in [xold, x]: interpolate
+      _growSolveIfNeeded(ind, op, idx, (idx + 1 != ind->n_all_times));
+      double *slot = getSolve(idx);
+      for (int j = 0; j < n; j++)
+        slot[j] = contd8(ctx, j, t_obs);   // 0-based component index
+      calc_lhs(solveid, t_obs, slot, ind->lhs);
+    }
+    dc->obs_next++;
+  }
+}
+
+extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,
+                               int *neq, t_dydt c_dydt, t_update_inis u_inis) {
+  clock_t t0 = clock();
+  int itol=1;
+  int iout_dense=2;
+  int iout_zero=0;
+  int idid=0;
+  int i;
+  double xout;
+  double *yp;
+  void *ctx = NULL;
+  int istate = 0;
+  static const char *err_msg[]=
+    {
+      "input is not consistent",
+      "larger nmax is needed",
+      "step size becomes too small",
+      "problem is probably stiff (interrupted)"
+    };
+  rx_solving_options_ind *ind;
+  double *x;
+  double *InfusionRate;
+  double *inits;
+  int *rc;
+  int nx;
+  neq[1] = solveid;
+  ind = &(rx->subjects[neq[1]]);
+  int eff = rxEffNeq(ind, op);
+  neq[0] = eff;
+  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+  nx = ind->n_all_times;
+  inits = op->inits;
+  InfusionRate = ind->InfusionRate;
+  x = ind->all_times;
+  rc = ind->rc;
+  double xp = x[0];
+  ind->solvedIdx = 0;
+
+  // Track the last key event index so we know where each segment starts.
+  // -1 means we haven't seen any key event yet; segment scans start at 0.
+  int last_key_i = -1;
+
+  DopDenseCtx dc;
+  dc.ind = ind;
+  dc.op  = op;
+  dc.neq = neq;
+
+  for (i = 0; i < nx; i++) {
+    ind->idx  = i;
+    ind->linSS = 0;
+
+    // mainSorted re-sort — identical to ind_dop0
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw  = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getAllTimes(ind, _raw);
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
+
+    yp   = getSolve(i);
+    xout = ind->timeThread[ind->ix[i]];
+    if (global_debug) {
+      RSprintf("dense i=%d xp=%f xout=%f\n", i, xp, xout);
+    }
+
+    int this_evid = getEvid(ind, ind->ix[i]);
+    bool is_obs   = isObs(this_evid);
+    bool is_last  = (i == nx - 1);
+    bool is_key   = !is_obs;           // doses, evid3, etc.
+    bool need_seg = is_obs && is_last; // last event is an obs: close the final segment
+
+    if (is_obs && !is_last) {
+      // Pure observation interior to a segment.
+      // Same-time obs (at xp): fill directly from the carry-forward state.
+      if (isSameTimeDop(xout, xp)) {
+        _growSolveIfNeeded(ind, op, i, 1);
+        int src = (last_key_i >= 0) ? last_key_i : 0;
+        std::copy(getSolve(src), getSolve(src) + eff, getSolve(i));
+        calc_lhs(solveid, xout, getSolve(i), ind->lhs);
+        // also prime the next slot so getSolve(i+1) stays consistent
+        std::copy(getSolve(i), getSolve(i) + eff, getSolve(i+1));
+      }
+      // else: will be filled by dopDenseSolout when the segment closes
+      ind->solvedIdx = i;
+      continue;
+    }
+
+    // KEY EVENT or last obs: first close the current segment with a dense dop853 call.
+    if (this_evid != 3) {
+      if (ind->err) {
+        printErr(ind->err, ind->id);
+        *rc = idid;
+        badSolveExit(i);
+      } else {
+        // extraDose sub-steps use iout=0 (exact endpoints, not interpolated)
+        if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            neq[0] = eff - op->numLin - op->numLinSens;
+            idid = dop853(neq, c_dydt, xp, yp, ind->extraDoseNewXout,
+                          op->rtol2, op->atol2, itol,
+                          solout, iout_zero,
+                          NULL, DBL_EPSILON, 0, 0, 0, 0,
+                          ind->HMAX, op->H0, op->mxstep, 1, -1,
+                          0, NULL, 0, NULL);
+            neq[0] = eff;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+          int idx  = ind->idx;
+          int ixds = ind->ixds;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          idid = 1;
+          ind->idx = idx;
+          ind->ixds = ixds;
+          ind->idxExtra++;
+          if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            neq[0] = eff - op->numLin - op->numLinSens;
+            idid = dop853(neq, c_dydt, ind->extraDoseNewXout, yp, xout,
+                          op->rtol2, op->atol2, itol,
+                          solout, iout_zero,
+                          NULL, DBL_EPSILON, 0, 0, 0, 0,
+                          ind->HMAX, op->H0, op->mxstep, 1, -1,
+                          0, NULL, 0, NULL);
+            neq[0] = eff;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+        }
+
+        // Dense segment solve from xp to xout, filling all pending obs via callback.
+        // For a key (non-obs) event: obs in segment are slots [last_key_i+1 .. i-1].
+        // For last-obs case (need_seg): obs in segment are slots [last_key_i+1 .. i].
+        if (!isSameTimeDop(xout, xp)) {
+          dc.obs_next    = last_key_i + 1;
+          dc.segment_end = need_seg ? i : i - 1;
+
+          preSolve(op, ind, xp, xout, yp);
+          neq[0] = eff - op->numLin - op->numLinSens;
+          idid = dop853(neq, c_dydt, xp, yp, xout,
+                        op->rtol2, op->atol2, itol,
+                        dopDenseSolout, iout_dense,
+                        NULL, DBL_EPSILON, 0, 0, 0, 0,
+                        ind->HMAX, op->H0, op->mxstep, 1, -1,
+                        neq[0],  // nrdens = all ODE states
+                        NULL, 0, // icont = NULL (full component 0-based)
+                        &dc);    // userdata
+          neq[0] = eff;
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
+        }
+      }
+    }
+
+    // Handle the key event and updateSolve — identical to ind_dop0
+    if (!op->badSolve) {
+      ind->idx = i;
+      if (this_evid == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(idid), u_inis);
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSS(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == EVID0_OFF) {
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        xp = xout;
+      }
+      int _mtime_requeued = 0;
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
+          ind->mainSorted = 0;
+          _mtime_requeued = 1;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
+          ind->mainSorted = 0;
+        }
+      }
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
+      if (_mtime_requeued) i--;
+    }
+    last_key_i = i;
+    ind->solvedIdx = i;
+  }
+  ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
+}
+
 extern "C" void ind_dop(rx_solve *rx, int solveid,
                         t_dydt c_dydt, t_update_inis u_inis){
   rx_solving_options *op = rx->op;
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
+  if (op->useDense)
+    ind_dop0_dense(rx, op, solveid, neq, c_dydt, u_inis);
+  else
+    ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
 }
 
 void par_dop(rx_solve *rx){
@@ -4367,7 +4619,10 @@ void par_dop(rx_solve *rx){
     localAbort = abort;
     if (localAbort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_dop0(rx, op, solveid, neq, dydt, update_inis);
+      if (op->useDense)
+        ind_dop0_dense(rx, op, solveid, neq, dydt, update_inis);
+      else
+        ind_dop0(rx, op, solveid, neq, dydt, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
