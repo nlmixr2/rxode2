@@ -115,9 +115,10 @@
 #' Get the groups from the rxEt environment, with fallback to chunks
 #' if groups are not set
 #'
-#'
-#' @param envRef
-#' @return
+#' @param envRef The environment reference group
+#' @return A list of groups, where each group is a list containing
+#'   'ids' and 'data'. If groups are not set, it will return an empty
+#'   list or process the chunks to create groups.
 #' @noRd
 #' @author Matthew L. Fidler
 .etGetGroups <- function(envRef) {
