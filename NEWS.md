@@ -42,6 +42,11 @@
 - Change `dop853` to allow per state tolerances and parallel solving
   like `liblsoda`.
 
+- Change `dop853` to be able to use `dense=TRUE` for the 8th order
+  dense polynomial interpolation between dosing events.
+
+- Now `dop853` can be parallelized per thread.
+
 - Change mtime state-based dosing to use less memory.
 
 - Add `plogis()` translation inside `rxode2` to it's c-based `expit()`
