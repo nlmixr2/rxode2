@@ -87,6 +87,8 @@
 - Add `serializeFile` as an option to save the rxode2 C fitting data and
   then restore as needed.
 
+- Add out of memory solve capabilities
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
