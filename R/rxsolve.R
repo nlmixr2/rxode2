@@ -807,6 +807,21 @@
 #'   supported for `linCmt()` models (a message is emitted and the
 #'   standard path is used instead).
 #'
+#' @param oomFile Character string giving a file path prefix for out-of-memory
+#'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
+#'   each chunk's result to `<oomFile>_chunk_NNNNN.parquet` (or `.rds` if
+#'   `arrow` is unavailable), and returns an `rxSolveOom` object. The manifest
+#'   is saved to `<oomFile>_manifest.rds`. Set to `NULL` (default) to use the
+#'   normal in-memory path.
+#'
+#' @param oomChunkSize Integer; number of subjects per chunk when `oomFile` is
+#'   set. If `NULL` (default), the chunk size is auto-computed from available
+#'   free RAM using `rxMemoryEstimate()`.
+#'
+#' @param oomParallel Integer; number of `mirai` daemons to use for parallel
+#'   chunk solving when `oomFile` is set. `0L` (default) uses serial solving.
+#'   Requires the `mirai` package.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are

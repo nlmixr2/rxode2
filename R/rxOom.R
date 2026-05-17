@@ -230,6 +230,9 @@ as.data.frame.rxSolveOom <- function(x, ...) {
 #' @export
 nrow.rxSolveOom <- function(x) sum(attr(x, "manifest")$nrows)
 
+#' @export
+dim.rxSolveOom <- function(x) c(sum(attr(x, "manifest")$nrows), NA_integer_)
+
 # ── User-facing convenience wrapper ──────────────────────────────────────────
 
 #' Solve an ODE model in memory-safe chunks

@@ -156,6 +156,9 @@ rxSolve(
   tolFactor = NULL,
   serializeFile = NULL,
   dense = FALSE,
+  oomFile = NULL,
+  oomChunkSize = NULL,
+  oomParallel = 0L,
   envir = parent.frame()
 )
 
@@ -1031,6 +1034,21 @@ reduce the number of solver evaluations for models with dense
 sampling grids. Silently ignored for non-dop853 methods. Not yet
 supported for \code{linCmt()} models (a message is emitted and the
 standard path is used instead).}
+
+\item{oomFile}{Character string giving a file path prefix for out-of-memory
+chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes
+each chunk's result to \verb{<oomFile>_chunk_NNNNN.parquet} (or \code{.rds} if
+\code{arrow} is unavailable), and returns an \code{rxSolveOom} object. The manifest
+is saved to \verb{<oomFile>_manifest.rds}. Set to \code{NULL} (default) to use the
+normal in-memory path.}
+
+\item{oomChunkSize}{Integer; number of subjects per chunk when \code{oomFile} is
+set. If \code{NULL} (default), the chunk size is auto-computed from available
+free RAM using \code{rxMemoryEstimate()}.}
+
+\item{oomParallel}{Integer; number of \code{mirai} daemons to use for parallel
+chunk solving when \code{oomFile} is set. \code{0L} (default) uses serial solving.
+Requires the \code{mirai} package.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
