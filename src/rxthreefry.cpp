@@ -1684,52 +1684,6 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
   rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
 }
 // ---------------------------------------------------------------------------
-// rxPreGenEtaPerRow_: per-row seeding helper for rxPreGenEta.
-//
-// Each row k seeds its own threefry engine with (seed + k), making eta
-// draws independent of ncores.  This allows OOM chunk solves to reproduce
-// a full solve exactly by setting rxSeed = baseSeed + cumSub before each
-// chunk: row i of the chunk equals row (cumSub+i) of the full solve.
-//
-// Only used for the non-truncated single-omega case.
-// ---------------------------------------------------------------------------
-static void rxPreGenEtaPerRow_(arma::mat& A, arma::rowvec& mu,
-                                arma::mat& sigma, int ncores) {
-  int n = A.n_rows;
-  int d = mu.n_elem;
-  arma::mat ch;
-  if (!sigma.is_zero()) {
-    ch = arma::trimatu(arma::chol(sigma));
-  }
-  uint32_t seed = getRxSeed1(ncores);
-#ifdef _OPENMP
-#pragma omp parallel for num_threads(ncores) schedule(static)
-#endif
-  for (int row = 0; row < n; row++) {
-    sitmo::threefry row_eng;
-    row_eng.seed(seed + (uint32_t)row);
-    boost::random::normal_distribution<> snorm(0.0, 1.0);
-    if (d == 1) {
-      double val = sigma.is_zero() ? mu(0) : snorm(row_eng) * ch(0, 0) + mu(0);
-      A(row, 0) = val;
-    } else {
-      // Fill z into the row, then apply upper Cholesky in-place.
-      // Process j descending so each z[k] (k<=j) is still unmodified when read.
-      for (int j = 0; j < d; j++) A(row, j) = sigma.is_zero() ? 0.0 : snorm(row_eng);
-      if (!sigma.is_zero()) {
-        for (int j = d; j--;) {
-          double acc = 0.0;
-          for (int k = 0; k <= j; k++) acc += A(row, k) * ch(k, j);
-          A(row, j) = acc + mu(j);
-        }
-      } else {
-        for (int j = 0; j < d; j++) A(row, j) = mu(j);
-      }
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
 // rxPreGenEta: pre-generate all nsolve × neta eta draws before the parallel
 // solve loop.  Subjects then read from the buffer in simeta() without calling
 // rxRmvnA() per subject — eliminating per-subject Cholesky + draw overhead.
@@ -1737,10 +1691,6 @@ static void rxPreGenEtaPerRow_(arma::mat& A, arma::rowvec& mu,
 // Handles two cases:
 //   nOmega == 1: single omega matrix → generate all nsolve rows in one call
 //   nOmega  > 1: per-simulation omega → generate nsub rows per simulation
-//
-// For nOmega==1 non-truncated: uses rxPreGenEtaPerRow_ (per-row seeding) so
-// that results are independent of ncores and OOM chunk solves can reproduce
-// the full solve exactly via rxSetSeed(baseSeed + cumSub).
 // ---------------------------------------------------------------------------
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
   if (rx->neta <= 0 || rxIsZeroOmega()) return;
@@ -1754,34 +1704,21 @@ extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
   arma::vec lower = getLowerVec(1, rx);
   arma::vec upper = getUpperVec(1, rx);
   arma::rowvec mu(neta, arma::fill::zeros);
-  bool trunc = anyFinite(lower) || anyFinite(upper);
 
   if (rxGetNOmega() == 1) {
-    // Multiple omega matrices (one per simulation study)
+    // All subjects share the same omega — one big batch call
     arma::mat A(buf, nsolve, neta, false, true);
     arma::mat sigma = getArmaMat(1, 0, rx);
-    if (!trunc) {
-      rxPreGenEtaPerRow_(A, mu, sigma, ncores);
-    } else {
-      rxRmvnA(A, mu, sigma, lower, upper, ncores, false, 0.4, 2.05, 1e-10, 100);
-    }
+    rxRmvnA(A, mu, sigma, lower, upper, ncores, false, 0.4, 2.05, 1e-10, 100);
   } else {
-    // Single omega matrix (nOmega=0): common case for population simulations.
-    // Use per-row seeding for reproducibility across chunk solves.
+    // Per-simulation omega: generate nsub rows for each simulation
     int nsub = (int)rx->nsub;
     int nsim = (int)rx->nsim;
-    if (!trunc && nsim == 1) {
-      // Non-truncated, single-sim: per-row seeding enables OOM chunk match.
-      arma::mat A(buf, nsolve, neta, false, true);
-      arma::mat sigma = getArmaMat(1, 0, rx);
-      rxPreGenEtaPerRow_(A, mu, sigma, ncores);
-    } else {
-      for (int csim = 0; csim < nsim; csim++) {
-        double *ptr = buf + (ptrdiff_t)csim * nsub * neta;
-        arma::mat A(ptr, nsub, neta, false, true);
-        arma::mat sigma = getArmaMat(1, csim, rx);
-        rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
-      }
+    for (int csim = 0; csim < nsim; csim++) {
+      double *ptr = buf + (ptrdiff_t)csim * nsub * neta;
+      arma::mat A(ptr, nsub, neta, false, true);
+      arma::mat sigma = getArmaMat(1, csim, rx);
+      rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
     }
   }
 }
