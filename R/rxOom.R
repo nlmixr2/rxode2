@@ -70,6 +70,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .nDaemons <- if (is.null(.ctl$oomParallel)) 0L else as.integer(.ctl$oomParallel)
   .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
 
+  # Normalize: if events is an rxEt but params is not, events is the params; swap
+  if ((is.rxEt(params) || rxIs(params, "rx.event")) && !is.rxEt(events)) {
+    .tmp  <- events
+    events <- params
+    params <- .tmp
+  }
+
   # Build memory summary from events
   .summary <- if (inherits(events, "rxEtFile")) {
     rxMemSummary.rxEtFile(events)
@@ -127,12 +134,16 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 
     .binFile <- sprintf("%s_chunk_%05d.rxbin", .prefix, .i)
 
-    # Build a control object with serializeFile set, oomFile cleared
-    .serCtl <- .ctl
-    .serCtl$oomFile       <- NULL
-    .serCtl$serializeFile <- .binFile
+    # Unpack rxControl into individual named args for do.call; override oom and serialize fields
+    .serCtlArgs <- as.list(.ctl)
+    .serCtlArgs$oomFile       <- NULL
+    .serCtlArgs$oomChunkSize  <- NULL
+    .serCtlArgs$oomParallel   <- NULL
+    .serCtlArgs$serializeFile <- .binFile
 
-    rxSolve(object, .serCtl, params, .chunkEvents, inits, envir = .envir)
+    do.call(rxSolve, c(list(object = object, params = params,
+                             events = .chunkEvents, inits = inits,
+                             envir = .envir), .serCtlArgs))
 
     .binFiles[.i] <- .binFile
     .cumSub <- .cumSub + .nThis
@@ -253,6 +264,12 @@ dim.rxSolveOom <- function(x) c(sum(attr(x, "manifest")$nrows), NA_integer_)
 #' @export
 rxSolveChunked <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             chunkSize, seed = NULL, parallel = 0L) {
+  # Normalize params/events to match rxSolve convention
+  if ((is.rxEt(params) || rxIs(params, "rx.event")) && !is.rxEt(events)) {
+    .tmp   <- events
+    events <- params
+    params <- .tmp
+  }
   if (!missing(chunkSize) && !is.null(chunkSize)) {
     .chunkSize <- as.integer(chunkSize)
   } else {
