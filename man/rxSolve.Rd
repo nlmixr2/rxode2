@@ -155,7 +155,7 @@ rxSolve(
   maxExtra = 1000L,
   tolFactor = NULL,
   serializeFile = NULL,
-  dense = TRUE,
+  dense = FALSE,
   envir = parent.frame()
 )
 
@@ -1022,15 +1022,15 @@ from an existing serialization file via \code{rxSolve(model, "state.rxbin")}, on
 allowed because the file already stores the solve inputs and
 controls.}
 
-\item{dense}{Logical; when \code{TRUE} (default) and \code{method="dop853"},
-enables DOP853 dense polynomial output (\code{iout=2}). Instead of
-calling the solver once per observation time, a single solver call
-spans each inter-dose interval and a 7th-order polynomial
-interpolates all observation times within that interval. This can
-substantially reduce the number of solver evaluations for models
-with dense sampling grids. Silently ignored for non-dop853
-methods. Not yet supported for \code{linCmt()} models (a message is
-emitted and the standard path is used instead).}
+\item{dense}{Logical; when \code{TRUE} and \code{method="dop853"}, enables
+DOP853 dense polynomial output (\code{iout=2}). Instead of calling the
+solver once per observation time, a single solver call spans each
+inter-dose interval and a 7th-order polynomial interpolates all
+observation times within that interval. This can substantially
+reduce the number of solver evaluations for models with dense
+sampling grids. Silently ignored for non-dop853 methods. Not yet
+supported for \code{linCmt()} models (a message is emitted and the
+standard path is used instead).}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
