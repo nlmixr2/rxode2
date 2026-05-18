@@ -29,6 +29,7 @@ SEXP rxode2_make_seqrep(int n_vals, int run_len, R_xlen_t total_len);
 SEXP rxode2_make_rep_int(SEXP base, int times);
 SEXP rxode2_make_rep_lgl(SEXP base, int times);
 SEXP rxode2_make_rep_real(SEXP base, int times);
+SEXP rxode2_make_rep_str(SEXP base, int times);
 
 #ifdef __cplusplus
 }

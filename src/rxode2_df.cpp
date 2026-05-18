@@ -87,6 +87,14 @@ static bool rxCanRepBySim(SEXP col, int rowsPerSim, int nsim) {
       }
     }
     return true;
+  } else if (type == STRSXP) {
+    for (int s = 1; s < nsim; ++s) {
+      R_xlen_t off = (R_xlen_t)s * (R_xlen_t)rowsPerSim;
+      for (int i = 0; i < rowsPerSim; ++i) {
+        if (STRING_ELT(col, i) != STRING_ELT(col, off + i)) return false;
+      }
+    }
+    return true;
   }
   return false;
 }
@@ -113,6 +121,14 @@ static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
     base = PROTECT(Rf_allocVector(REALSXP, rowsPerSim));
     memcpy(REAL(base), REAL(col), (size_t)rowsPerSim * sizeof(double));
     out = PROTECT(rxode2_make_rep_real(base, nsim));
+    Rf_copyMostAttrib(col, out);
+    UNPROTECT(2);
+    return out;
+  } else if (type == STRSXP) {
+    base = PROTECT(Rf_allocVector(STRSXP, rowsPerSim));
+    for (int i = 0; i < rowsPerSim; ++i)
+      SET_STRING_ELT(base, i, STRING_ELT(col, i));
+    out = PROTECT(rxode2_make_rep_str(base, nsim));
     Rf_copyMostAttrib(col, out);
     UNPROTECT(2);
     return out;

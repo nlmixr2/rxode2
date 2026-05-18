@@ -113,8 +113,7 @@ rxTest({
     expect_true(.isAltrep(out$grp))
     # Factor levels must survive the ALTREP wrapping
     expect_equal(levels(out$grp), c("A", "B"))
-    # Character keep columns cannot be rep-ALTREP
-    expect_false(.isAltrep(out$label))
+    expect_true(.isAltrep(out$label))
     # All values must be correct
     expect_true(all(out$score == 1.5))
     expect_true(all(out$label == "low"))
@@ -157,8 +156,7 @@ rxTest({
     expect_true(.isAltrep(out$grp))
     # Factor levels must survive the ALTREP wrapping
     expect_equal(levels(out$grp), c("A", "B"))
-    # Character keep columns cannot be rep-ALTREP
-    expect_false(.isAltrep(out$label))
+    expect_true(.isAltrep(out$label))
     # Values correct for each subject across all sims
     for (.id in 1:3) {
       .rows <- out$id == .id

@@ -30,6 +30,7 @@ static R_altrep_class_t rx_seqrep_class;
 static R_altrep_class_t rx_rep_int_class;
 static R_altrep_class_t rx_rep_lgl_class;
 static R_altrep_class_t rx_rep_real_class;
+static R_altrep_class_t rx_rep_str_class;
 
 /* ---- length ------------------------------------------------------------ */
 static R_xlen_t rx_seqrep_Length(SEXP x) {
@@ -233,6 +234,32 @@ static void *rx_rep_real_Dataptr(SEXP x, Rboolean writeable) {
   return DATAPTR_RW(mat);
 }
 
+static R_xlen_t rx_rep_str_Length(SEXP x) {
+  return rx_rep_total_len(x);
+}
+
+static SEXP rx_rep_str_Elt(SEXP x, R_xlen_t i) {
+  SEXP base = rx_rep_base(x);
+  R_xlen_t n = XLENGTH(base);
+  if (n == 0) return NA_STRING;
+  return STRING_ELT(base, i % n);
+}
+
+static SEXP rx_rep_str_materialize(SEXP x) {
+  SEXP mat = R_altrep_data2(x);
+  if (TYPEOF(mat) == STRSXP && XLENGTH(mat) == rx_rep_total_len(x)) return mat;
+  SEXP base = rx_rep_base(x);
+  R_xlen_t n = XLENGTH(base);
+  R_xlen_t times = rx_rep_times(x);
+  mat = PROTECT(Rf_allocVector(STRSXP, n * times));
+  for (R_xlen_t t = 0; t < times; ++t)
+    for (R_xlen_t j = 0; j < n; ++j)
+      SET_STRING_ELT(mat, t * n + j, STRING_ELT(base, j));
+  R_set_altrep_data2(x, mat);
+  UNPROTECT(1);
+  return mat;
+}
+
 /* ---- Registration ------------------------------------------------------ */
 void rxode2_init_altrep_class(DllInfo *info) {
   rx_seqrep_class = R_make_altinteger_class("rx_seqrep", "rxode2", info);
@@ -261,6 +288,10 @@ void rxode2_init_altrep_class(DllInfo *info) {
   R_set_altreal_Elt_method(rx_rep_real_class, rx_rep_real_Elt);
   R_set_altvec_Dataptr_method(rx_rep_real_class, rx_rep_real_Dataptr);
   R_set_altvec_Dataptr_or_null_method(rx_rep_real_class, rx_rep_real_Dataptr_or_null);
+
+  rx_rep_str_class = R_make_altstring_class("rx_rep_str", "rxode2", info);
+  R_set_altrep_Length_method(rx_rep_str_class, rx_rep_str_Length);
+  R_set_altstring_Elt_method(rx_rep_str_class, rx_rep_str_Elt);
 }
 
 /* ---- Factory ----------------------------------------------------------- */
@@ -300,6 +331,16 @@ SEXP rxode2_make_rep_real(SEXP base, int times) {
   SET_VECTOR_ELT(d1, 0, ti);
   SET_VECTOR_ELT(d1, 1, base);
   SEXP out = R_new_altrep(rx_rep_real_class, d1, R_NilValue);
+  UNPROTECT(2);
+  return out;
+}
+
+SEXP rxode2_make_rep_str(SEXP base, int times) {
+  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
+  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  SET_VECTOR_ELT(d1, 0, ti);
+  SET_VECTOR_ELT(d1, 1, base);
+  SEXP out = R_new_altrep(rx_rep_str_class, d1, R_NilValue);
   UNPROTECT(2);
   return out;
 }
