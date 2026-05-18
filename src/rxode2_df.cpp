@@ -136,7 +136,7 @@ static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
   return col;
 }
 
-extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
+extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {
   int totN = rx->factorNames.n;
   int base = 0, curLen= rx->factorNs[0], curG=0;
   curLen= rx->factorNs[0];
@@ -151,7 +151,7 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
       for (int j = 0; j < curLen; j++){
         SET_STRING_ELT(lvl, j,Rf_mkChar(rx->factors.line[base+j]));
       }
-      SEXP val = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)rx->nr));
+      SEXP val = PROTECT(Rf_allocVector(INTSXP, nrow));
       Rf_setAttrib(val, R_LevelsSymbol, lvl);
       SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));
       SET_STRING_ELT(cls, 0, Rf_mkChar("factor"));
@@ -161,7 +161,7 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
     }
     base += curLen;
   }
-  SEXP val = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t)rx->nr));
+  SEXP val = PROTECT(Rf_allocVector(REALSXP, nrow));
   UNPROTECT(1);
   return val;
 }
@@ -399,6 +399,73 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }
   }
+  // Pre-compute per-subject row counts before allocating output columns so
+  // cov/keep columns can be sized to rowsPerSimUniform rather than rx->nr.
+  int updateErr = (errNcol > 0) ? 1 : 0;
+  int nsolve_df = nsim * nsub;
+  std::vector<int> subRowStart(nsolve_df + 1, 0);
+  std::vector<int> subKkStart(nsolve_df + 1, 0);
+  std::vector<int> subCuriStart(nsolve_df + 1, 0);
+  for (int _csim = 0; _csim < nsim; _csim++) {
+    int _curi = 0;
+    for (int _csub = 0; _csub < nsub; _csub++) {
+      int _sid = _csim * nsub + _csub;
+      subCuriStart[_sid] = _curi;
+      _curi += rx->subjects[_sid].n_all_times;
+    }
+  }
+  for (int _sid = 0; _sid < nsolve_df; _sid++) {
+    rx_solving_options_ind *_sind = &rx->subjects[_sid];
+    int _di = 0, _subRows = 0, _subKk = 0;
+    for (int _ti = 0; _ti < _sind->n_all_times; _ti++) {
+      int _ev = getEvid(_sind, _sind->ix[_ti]);
+      if (_ev == 9) continue;
+      if (updateErr) {
+        if ((doDose && _ev != 9) || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
+          _subKk++;
+        }
+      }
+      if (subsetEvid == 1) {
+        if (isObs(_ev) && _ev >= 10) continue;
+        if (isDose(_ev)) {
+          int _wh=0, _cmt=0, _wh100=0, _whI=0, _wh0=0;
+          getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) { _di++; continue; }
+          if (getDoseNumber(_sind, _di) <= 0) { _di++; continue; }
+          _di++;
+        }
+      }
+      if (doDose || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
+        _subRows++;
+      }
+    }
+    subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
+    subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
+  }
+  bool uniformSimBlocks = false;
+  int rowsPerSimUniform = 0;
+  if (nsim > 1 && nsub > 0) {
+    rowsPerSimUniform = subRowStart[nsub] - subRowStart[0];
+    if (rowsPerSimUniform > 0) {
+      uniformSimBlocks = true;
+      for (int _sim = 1; _sim < nsim && uniformSimBlocks; _sim++) {
+        int _from = _sim * nsub;
+        int _rows = subRowStart[_from + nsub] - subRowStart[_from];
+        if (_rows != rowsPerSimUniform) uniformSimBlocks = false;
+      }
+    }
+  }
+  bool hasRuntimeEventMutation = false;
+  for (int _sid = 0; _sid < nsolve_df && !hasRuntimeEventMutation; _sid++) {
+    rx_solving_options_ind *_sind = &rx->subjects[_sid];
+    if (_sind->nPushedExtra > 0) hasRuntimeEventMutation = true;
+  }
+  // cov/keep columns are sized to one sim block when the pattern repeats;
+  // the fill loop only writes csim==0 rows and ALTREP expands them virtually.
+  bool covKeepShrunk = uniformSimBlocks && !hasRuntimeEventMutation &&
+                       ncols2 > 0 && rowsPerSimUniform > 0 && nmevid == 0;
+  R_xlen_t covKeepNrow = covKeepShrunk ? (R_xlen_t)rowsPerSimUniform : (R_xlen_t)rx->nr;
+
   int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
   List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
   for (i = nidCols; i--;){
@@ -407,11 +474,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   i = nidCols;
   double *par_ptr;
   double *errs = rxGetErrs();
-  int updateErr = 0;
-
-  if (errNcol > 0){
-    updateErr = 1;
-  }
   if (doDose){
     //evid
     df[i++] = IntegerVector((R_xlen_t)rx->nr);
@@ -441,7 +503,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   for (i = i0; i < i0+nlhs; i++){
     if (op->lhs_str[i-i0] == 1) {
       // factor; from string expression
-      df[i] = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx);
+      df[i] = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx, (R_xlen_t)rx->nr);
     } else {
       df[i] = NumericVector((R_xlen_t)rx->nr);
     }
@@ -459,16 +521,16 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   SEXP tmp;
   for (i = 0; i < ncov*add_cov; i++){
     charItem =CHAR(STRING_ELT(paramNames, par_cov[i]-1));
-    df[j++] = getDfLevels(charItem, rx);
+    df[j++] = getDfLevels(charItem, rx, covKeepNrow);
   }
   par_cov = rx->cov0;
   for (i = 0; i < ncov0*add_cov; i++){
     charItem =CHAR(STRING_ELT(paramNames, par_cov[i]));
-    df[j++] = getDfLevels(charItem, rx);
+    df[j++] = getDfLevels(charItem, rx, covKeepNrow);
   }
   for (i = 0; i < nkeep; i++){
     charItem = CHAR(STRING_ELT(fkeepNames, i));
-    df[j++] = getDfLevels(charItem, rx);
+    df[j++] = getDfLevels(charItem, rx, covKeepNrow);
   }
   ncols += ncols2;
   for (i = ncols + doseCols + nidCols + 2*nmevid;
@@ -476,20 +538,21 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
        i++){
     df[i] = NumericVector((R_xlen_t)rx->nr);
   }
-  // keep items
+  // keep items (when nmevid==0 these are the same positions as the main-block
+  // keep allocated by getDfLevels above; use covKeepNrow so the size matches).
   j = 0;
   for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
        i < ncols + doseCols + nidCols + nmevid*5;
        i++) {
     int curType = get_fkeepType(j);
     if (curType == 4) {
-      df[i] = assign_fkeepAttr(j, NumericVector((R_xlen_t)rx->nr));
+      df[i] = assign_fkeepAttr(j, NumericVector(covKeepNrow));
     } else if (curType == 1) {
-      df[i] = StringVector((R_xlen_t)rx->nr);
+      df[i] = StringVector(covKeepNrow);
     } else if (curType == 5) {
-      df[i] = assign_fkeepAttr(j, LogicalVector((R_xlen_t)rx->nr));
+      df[i] = assign_fkeepAttr(j, LogicalVector(covKeepNrow));
     } else {
-      IntegerVector cur((R_xlen_t)rx->nr);
+      IntegerVector cur(covKeepNrow);
       if (curType == 2) {
         cur.attr("levels") = get_fkeepLevels(j);
       }
@@ -559,70 +622,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       lhsLevelCount[_lhsJ] = (_lvl != R_NilValue) ? Rf_length(_lvl) : 0;
     }
   }
-  // Serial pre-pass: compute per-subject starting row index (ii), error
-  // index (kk), and curi offset so the parallel fill knows where each
-  // subject writes without a reduction step.
-  int nsolve_df = nsim * nsub;
-  std::vector<int> subRowStart(nsolve_df + 1, 0);
-  std::vector<int> subKkStart(nsolve_df + 1, 0);
-  std::vector<int> subCuriStart(nsolve_df + 1, 0);
-  // curi resets to 0 at the start of each simulation
-  for (int _csim = 0; _csim < nsim; _csim++) {
-    int _curi = 0;
-    for (int _csub = 0; _csub < nsub; _csub++) {
-      int _sid = _csim * nsub + _csub;
-      subCuriStart[_sid] = _curi;
-      _curi += rx->subjects[_sid].n_all_times;
-    }
-  }
-  for (int _sid = 0; _sid < nsolve_df; _sid++) {
-    rx_solving_options_ind *_sind = &rx->subjects[_sid];
-    int _di = 0, _subRows = 0, _subKk = 0;
-    for (int _ti = 0; _ti < _sind->n_all_times; _ti++) {
-      int _ev = getEvid(_sind, _sind->ix[_ti]);
-      if (_ev == 9) continue;
-      // kk is incremented before the subsetEvid continue checks in the fill loop
-      if (updateErr) {
-        if ((doDose && _ev != 9) || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
-          _subKk++;
-        }
-      }
-      if (subsetEvid == 1) {
-        if (isObs(_ev) && _ev >= 10) continue;
-        if (isDose(_ev)) {
-          int _wh=0, _cmt=0, _wh100=0, _whI=0, _wh0=0;
-          getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) { _di++; continue; }
-          if (getDoseNumber(_sind, _di) <= 0) { _di++; continue; }
-          _di++;
-        }
-      }
-      if (doDose || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
-        _subRows++;
-      }
-    }
-    subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
-    subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
-  }
-  bool uniformSimBlocks = false;
-  int rowsPerSimUniform = 0;
-  if (nsim > 1 && nsub > 0) {
-    rowsPerSimUniform = subRowStart[nsub] - subRowStart[0];
-    if (rowsPerSimUniform > 0) {
-      uniformSimBlocks = true;
-      for (int _sim = 1; _sim < nsim && uniformSimBlocks; _sim++) {
-        int _from = _sim * nsub;
-        int _rows = subRowStart[_from + nsub] - subRowStart[_from];
-        if (_rows != rowsPerSimUniform) uniformSimBlocks = false;
-      }
-    }
-  }
-  bool hasRuntimeEventMutation = false;
-  for (int _sid = 0; _sid < nsolve_df && !hasRuntimeEventMutation; _sid++) {
-    rx_solving_options_ind *_sind = &rx->subjects[_sid];
-    if (_sind->nPushedExtra > 0) hasRuntimeEventMutation = true;
-  }
-
   // Use ALTREP compact sequences for id/sim.id when all subjects contribute
   // the same number of rows.  This avoids allocating and filling large integer
   // vectors for bookkeeping columns that are fully predictable.
@@ -983,42 +982,61 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               }
             }
           }
-          // Covariates
+          // Covariates and keep: when covKeepShrunk the columns hold only one
+          // sim-block; skip writes for csim > 0 (same values, smaller buffer).
           int didUpdate_p = 0;
           if (add_cov*ncov > 0) {
-            _update_par_ptr(curT, solveid, rx, ind->idx);
-            didUpdate_p = 1;
-            for (j = 0; j < add_cov*ncov; j++) {
-              double tmpD = par_ptr_p[op->par_cov[j] - 1];
-              if (colType[jj_p] == REALSXP) { colR[jj_p][ii] = tmpD; }
-              else                           { colI[jj_p][ii] = (int)(tmpD); }
-              jj_p++;
+            if (!covKeepShrunk || csim == 0) {
+              _update_par_ptr(curT, solveid, rx, ind->idx);
+              didUpdate_p = 1;
+              for (j = 0; j < add_cov*ncov; j++) {
+                double tmpD = par_ptr_p[op->par_cov[j] - 1];
+                if (colType[jj_p] == REALSXP) {
+                  colR[jj_p][ii] = tmpD;
+                } else {
+                  colI[jj_p][ii] = (int)(tmpD);
+                }
+                jj_p++;
+              }
+            } else {
+              jj_p += add_cov*ncov;
             }
           }
           if (add_cov*ncov0 > 0) {
-            for (j = 0; j < add_cov*ncov0; j++) {
-              if (colType[jj_p] == REALSXP) { colR[jj_p][ii] = ind->par_ptr[rx->cov0[j]]; }
-              else                          { colI[jj_p][ii] = (int)(ind->par_ptr[rx->cov0[j]]); }
-              jj_p++;
+            if (!covKeepShrunk || csim == 0) {
+              for (j = 0; j < add_cov*ncov0; j++) {
+                if (colType[jj_p] == REALSXP) {
+                  colR[jj_p][ii] = ind->par_ptr[rx->cov0[j]];
+                } else {
+                  colI[jj_p][ii] = (int)(ind->par_ptr[rx->cov0[j]]);
+                }
+                jj_p++;
+              }
+            } else {
+              jj_p += add_cov*ncov0;
             }
           }
-          if (nkeep && didUpdate_p == 0) _update_par_ptr(curT, solveid, rx, ind->idx);
-          for (j = 0; j < nkeep; j++) {
-            double _fv = get_fkeep(j, curi + ind->ix[i], ind, curi);
-            if (colType[jj_p] == REALSXP) {
-              colR[jj_p][ii] = _fv;
-            } else if (colType[jj_p] == STRSXP) {
-              int _idx = (R_IsNA(_fv) || std::isnan(_fv)) ? 0 : (int)_fv;
-              if (_idx < 0 || _idx > strLevelCount[jj_p]) _idx = 0;
-              SET_STRING_ELT(colSEXP[jj_p], ii, strLevelCache[jj_p][_idx]);
-            } else if (colType[jj_p] == LGLSXP) {
-              if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
-              else                              colI[jj_p][ii] = (int)(_fv);
-            } else {
-              if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_INTEGER;
-              else                              colI[jj_p][ii] = (int)(_fv);
+          if (!covKeepShrunk || csim == 0) {
+            if (nkeep && didUpdate_p == 0) _update_par_ptr(curT, solveid, rx, ind->idx);
+            for (j = 0; j < nkeep; j++) {
+              double _fv = get_fkeep(j, curi + ind->ix[i], ind, curi);
+              if (colType[jj_p] == REALSXP) {
+                colR[jj_p][ii] = _fv;
+              } else if (colType[jj_p] == STRSXP) {
+                int _idx = (R_IsNA(_fv) || std::isnan(_fv)) ? 0 : (int)_fv;
+                if (_idx < 0 || _idx > strLevelCount[jj_p]) _idx = 0;
+                SET_STRING_ELT(colSEXP[jj_p], ii, strLevelCache[jj_p][_idx]);
+              } else if (colType[jj_p] == LGLSXP) {
+                if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
+                else                              colI[jj_p][ii] = (int)(_fv);
+              } else {
+                if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_INTEGER;
+                else                              colI[jj_p][ii] = (int)(_fv);
+              }
+              jj_p++;
             }
-            jj_p++;
+          } else {
+            jj_p += nkeep;
           }
           if (doTBS) {
             colR[jj_p][ii] = ind->lambda;   jj_p++;
@@ -1069,9 +1087,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       repCols.push_back(colAt++); // evid
     }
     repCols.push_back(colAt); // time
-    // Covariates and kept variables repeat across sims identically to time.
-    // They occupy ncols2 columns immediately after time + LHS + states.
-    if (ncols2 > 0) {
+    // When covKeepShrunk the cov/keep columns are already one-block-sized and
+    // will be wrapped below; otherwise add them to repCols for normal treatment.
+    if (!covKeepShrunk && ncols2 > 0) {
       int _covColStart = colAt + 1 + nlhs + nPrnState;
       for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
         repCols.push_back(_c);
@@ -1082,6 +1100,30 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       SEXP cur = VECTOR_ELT(df, _col);
       if (rxCanRepBySim(cur, rowsPerSimUniform, nsim)) {
         SET_VECTOR_ELT(df, _col, rxRepFromFirstSim(cur, rowsPerSimUniform, nsim));
+      }
+    }
+    // Cov/keep columns were pre-sized to one sim block and filled for csim==0
+    // only; wrap them directly in ALTREP without any copy.
+    if (covKeepShrunk) {
+      int _covColStart = colAt + 1 + nlhs + nPrnState;
+      for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
+        SEXP cur = VECTOR_ELT(df, _c);
+        int _type = TYPEOF(cur);
+        SEXP out = R_NilValue;
+        if (_type == INTSXP) {
+          out = PROTECT(rxode2_make_rep_int(cur, nsim));
+          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        } else if (_type == LGLSXP) {
+          out = PROTECT(rxode2_make_rep_lgl(cur, nsim));
+          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        } else if (_type == REALSXP) {
+          out = PROTECT(rxode2_make_rep_real(cur, nsim));
+          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        } else if (_type == STRSXP) {
+          out = PROTECT(rxode2_make_rep_str(cur, nsim));
+          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        }
+        if (out != R_NilValue) SET_VECTOR_ELT(df, _c, out);
       }
     }
   }
