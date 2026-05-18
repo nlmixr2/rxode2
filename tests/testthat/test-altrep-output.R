@@ -45,10 +45,10 @@ rxTest({
       cp <- centr / v
     })
     ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
-    ev_wt <- cbind(ev, wt = 70.0)   # same covariate for every subject
+    evWt <- cbind(ev, wt = 70.0)   # same covariate for every subject
     p <- data.frame(id = 1:3, ka = 0.5, cl = 1, v = 10)
 
-    out <- rxSolve(mod, p, ev_wt, addCov = TRUE, returnType = "data.frame")
+    out <- rxSolve(mod, p, evWt, addCov = TRUE, returnType = "data.frame")
 
     expect_true(.isAltrep(out$wt))
     expect_true(all(out$wt == 70))
@@ -57,10 +57,14 @@ rxTest({
   test_that("covariate columns are ALTREP via explicit nsim (stochastic) path", {
     # Multiple virtual studies from omega draws; covariate values are fixed
     # per-subject across sims → each sim block is identical → ALTREP.
-    pk_cov <- function() {
+    pkCov <- function() {
       ini({
-        tka <- 0.5; tcl <- 0; tv <- log(10)
-        eta.ka ~ 0.3; eta.cl ~ 0.2; eta.v ~ 0.1
+        tka <- 0.5
+        tcl <- 0
+        tv <- log(10)
+        eta.ka ~ 0.3
+        eta.cl ~ 0.2
+        eta.v ~ 0.1
       })
       model({
         ka <- exp(tka + eta.ka)
@@ -71,15 +75,15 @@ rxTest({
         cp <- centr / v
       })
     }
-    ev_df <- as.data.frame(
+    evDf <- as.data.frame(
       et(amt = 100, cmt = 1) |> et(seq(0, 24, by = 1)) |> et(id = 1:3)
     )
-    n <- sum(ev_df$id == 1L)
-    ev_df$wt  <- rep(c(70, 80, 90), each = n)
-    ev_df$age <- rep(c(30, 40, 50), each = n)
+    n <- sum(evDf$id == 1L)
+    evDf$wt  <- rep(c(70, 80, 90), each = n)
+    evDf$age <- rep(c(30, 40, 50), each = n)
 
     set.seed(42)
-    out <- rxSolve(pk_cov, ev_df, nsim = 3, addCov = TRUE,
+    out <- rxSolve(pkCov, evDf, nsim = 3, addCov = TRUE,
                    returnType = "data.frame")
 
     expect_true(.isAltrep(out$wt))
@@ -100,11 +104,11 @@ rxTest({
     })
     ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
     # cbind onto a single-subject event table; identical for every subject
-    ev_df <- cbind(ev, score = 1.5, code = 2L, flag = TRUE, label = "low")
-    ev_df$grp <- factor(rep("A", nrow(ev_df)), levels = c("A", "B"))
+    evDf <- cbind(ev, score = 1.5, code = 2L, flag = TRUE, label = "low")
+    evDf$grp <- factor(rep("A", nrow(evDf)), levels = c("A", "B"))
     p <- data.frame(id = 1:3, ka = 0.5, cl = 1, v = 10)
 
-    out <- rxSolve(mod, p, ev_df, returnType = "data.frame",
+    out <- rxSolve(mod, p, evDf, returnType = "data.frame",
                    keep = c("score", "code", "flag", "grp", "label"))
 
     expect_true(.isAltrep(out$score))
@@ -119,12 +123,61 @@ rxTest({
     expect_true(all(out$label == "low"))
   })
 
+  test_that("nStud > 1 makes event-table and keep columns ALTREP (theo_sd / WT)", {
+    one.cmt <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v  <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+    d <- nlmixr2data::theo_sd
+
+    set.seed(42)
+    out <- rxSolve(one.cmt, d, nStud = 4, keep = "WT",
+                   addDosing = TRUE, returnType = "data.frame")
+
+    # Event-table columns that repeat identically across studies must be ALTREP.
+    expect_true(.isAltrep(out$time))
+    expect_true(.isAltrep(out$evid))
+    expect_true(.isAltrep(out$amt))
+
+    # The kept WT covariate must also be ALTREP.
+    expect_true(.isAltrep(out$WT))
+
+    # WT must be constant within each output id and match the source data.
+    wtRef <- setNames(vapply(unique(d$ID), function(i) d$WT[d$ID == i][1], numeric(1)),
+                      unique(d$ID))
+    nOrig <- length(unique(d$ID))
+    for (.id in unique(out$id)) {
+      # id cycles 1..nOrig across each study block
+      origId <- ((.id - 1L) %% nOrig) + 1L
+      wtVals <- unique(out$WT[out$id == .id])
+      expect_length(wtVals, 1)
+      expect_equal(wtVals, wtRef[[as.character(origId)]])
+    }
+  })
+
   test_that("keep columns (double, integer, logical, factor) are ALTREP via explicit nsim (stochastic) path", {
     # Per-subject varying keep values; same values in every sim block → ALTREP.
-    pk_keep <- function() {
+    pkKeep <- function() {
       ini({
-        tka <- 0.5; tcl <- 0; tv <- log(10)
-        eta.ka ~ 0.3; eta.cl ~ 0.2; eta.v ~ 0.1
+        tka <- 0.5
+        tcl <- 0
+        tv <- log(10)
+        eta.ka ~ 0.3
+        eta.cl ~ 0.2
+        eta.v ~ 0.1
       })
       model({
         ka <- exp(tka + eta.ka)
@@ -135,18 +188,18 @@ rxTest({
         cp <- centr / v
       })
     }
-    ev_df <- as.data.frame(
+    evDf <- as.data.frame(
       et(amt = 100, cmt = 1) |> et(seq(0, 24, by = 1)) |> et(id = 1:3)
     )
-    n <- sum(ev_df$id == 1L)
-    ev_df$score <- rep(c(1.5, 2.5, 3.5),          each = n)
-    ev_df$code  <- rep(c(1L,  2L,  3L),            each = n)
-    ev_df$flag  <- rep(c(TRUE, FALSE, TRUE),        each = n)
-    ev_df$grp   <- factor(rep(c("A", "B", "A"),    each = n), levels = c("A", "B"))
-    ev_df$label <- rep(c("low", "high", "low"),     each = n)
+    n <- sum(evDf$id == 1L)
+    evDf$score <- rep(c(1.5, 2.5, 3.5),          each = n)
+    evDf$code  <- rep(c(1L,  2L,  3L),            each = n)
+    evDf$flag  <- rep(c(TRUE, FALSE, TRUE),        each = n)
+    evDf$grp   <- factor(rep(c("A", "B", "A"),    each = n), levels = c("A", "B"))
+    evDf$label <- rep(c("low", "high", "low"),     each = n)
 
     set.seed(42)
-    out <- rxSolve(pk_keep, ev_df, nsim = 3,
+    out <- rxSolve(pkKeep, evDf, nsim = 3,
                    keep = c("score", "code", "flag", "grp", "label"),
                    returnType = "data.frame")
 
