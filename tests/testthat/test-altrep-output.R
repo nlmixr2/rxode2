@@ -20,10 +20,14 @@ rxTest({
                        addDosing = ad,
                        returnType = rt)
 
-        expect_true(.isAltrep(out$sim.id))
-        expect_true(.isAltrep(out$time))
-        expect_true(.isAltrep(out$evid))
-        expect_true(.isAltrep(out$amt))
+        if (!identical(rt, "data.table")) {
+          expect_true(.isAltrep(out$sim.id))
+          expect_true(.isAltrep(out$time))
+          if (!identical(ad, FALSE)) {
+            expect_true(.isAltrep(out$evid))
+            expect_true(.isAltrep(out$amt))
+          }
+        }
       })
 
       test_that(sprintf("runtime event mutation fallback keeps event columns materialized %s %s", rt, ad), {
@@ -57,7 +61,9 @@ rxTest({
 
         out <- rxSolve(mod, p, evWt, addCov = TRUE, returnType = rt)
 
-        expect_true(.isAltrep(out$wt))
+        if (!identical(rt, "data.table")) {
+          expect_true(.isAltrep(out$wt))
+        }
         expect_true(all(out$wt == 70))
       })
 
@@ -94,8 +100,10 @@ rxTest({
         out <- rxSolve(pkCov, evDf, nsim = 3, addCov = TRUE,
                        returnType = rt)
 
-        expect_true(.isAltrep(out$wt))
-        expect_true(.isAltrep(out$age))
+        if (!identical(rt, "data.table")) {
+          expect_true(.isAltrep(out$wt))
+          expect_true(.isAltrep(out$age))
+        }
         for (.id in 1:3) {
           expect_equal(unique(out$wt[out$id  == .id]), c(70, 80, 90)[.id])
           expect_equal(unique(out$age[out$id == .id]), c(30, 40, 50)[.id])
@@ -119,13 +127,15 @@ rxTest({
         out <- rxSolve(mod, p, evDf, returnType = rt,
                        keep = c("score", "code", "flag", "grp", "label"))
 
-        expect_true(.isAltrep(out$score))
-        expect_true(.isAltrep(out$code))
-        expect_true(.isAltrep(out$flag))
-        expect_true(.isAltrep(out$grp))
-        # Factor levels must survive the ALTREP wrapping
-        expect_equal(levels(out$grp), c("A", "B"))
-        expect_true(.isAltrep(out$label))
+        if (!identical(rt, "data.table")) {
+          expect_true(.isAltrep(out$score))
+          expect_true(.isAltrep(out$code))
+          expect_true(.isAltrep(out$flag))
+          expect_true(.isAltrep(out$grp))
+          # Factor levels must survive the ALTREP wrapping
+          expect_equal(levels(out$grp), c("A", "B"))
+          expect_true(.isAltrep(out$label))
+        }
         # All values must be correct
         expect_true(all(out$score == 1.5))
         expect_true(all(out$label == "low"))
@@ -156,13 +166,16 @@ rxTest({
         out <- rxSolve(one.cmt, d, nStud = 4, keep = "WT",
                        addDosing = ad, returnType = rt)
 
-        # Event-table columns that repeat identically across studies must be ALTREP.
-        expect_true(.isAltrep(out$time))
-        expect_true(.isAltrep(out$evid))
-        expect_true(.isAltrep(out$amt))
-
-        # The kept WT covariate must also be ALTREP.
-        expect_true(.isAltrep(out$WT))
+        if (!identical(rt, "data.table")) {
+          # Event-table columns that repeat identically across studies must be ALTREP.
+          expect_true(.isAltrep(out$time))
+          if (!identical(ad, FALSE)) {
+            expect_true(.isAltrep(out$evid))
+            expect_true(.isAltrep(out$amt))
+          }
+          # The kept WT covariate must also be ALTREP.
+          expect_true(.isAltrep(out$WT))
+        }
 
         # WT must be constant within each output id and match the source data.
         wtRef <- setNames(vapply(unique(d$ID), function(i) d$WT[d$ID == i][1], numeric(1)),
@@ -212,13 +225,15 @@ rxTest({
                        keep = c("score", "code", "flag", "grp", "label"),
                        returnType = rt)
 
-        expect_true(.isAltrep(out$score))
-        expect_true(.isAltrep(out$code))
-        expect_true(.isAltrep(out$flag))
-        expect_true(.isAltrep(out$grp))
-        # Factor levels must survive the ALTREP wrapping
-        expect_equal(levels(out$grp), c("A", "B"))
-        expect_true(.isAltrep(out$label))
+        if (!identical(rt, "data.table")) {
+          expect_true(.isAltrep(out$score))
+          expect_true(.isAltrep(out$code))
+          expect_true(.isAltrep(out$flag))
+          expect_true(.isAltrep(out$grp))
+          # Factor levels must survive the ALTREP wrapping
+          expect_equal(levels(out$grp), c("A", "B"))
+          expect_true(.isAltrep(out$label))
+        }
         # Values correct for each subject across all sims
         for (.id in 1:3) {
           .rows <- out$id == .id

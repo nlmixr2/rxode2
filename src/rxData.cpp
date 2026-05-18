@@ -4769,7 +4769,7 @@ List rxSolve_df(const RObject &obj,
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
   if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
-    IntegerVector did = as<IntegerVector>(dat["id"]);
+    RObject did = dat["id"];
     did.attr("levels") = rxSolveDat->idLevels;
     did.attr("class") = "factor";
   }
@@ -4779,15 +4779,18 @@ List rxSolve_df(const RObject &obj,
     for (int j = lvlC.size(); j--;) {
       lvlI[j] = atoi(CHAR(lvlC[j]));
     }
-    IntegerVector did = as<IntegerVector>(dat["id"]);
-    IntegerVector did2(did.size());
-    for (int j = did.size(); j--;){
-      did2[j] = lvlI[did[j]-1];
+    SEXP didS = dat["id"];
+    R_xlen_t nid = XLENGTH(didS);
+    SEXP did2 = PROTECT(Rf_allocVector(INTSXP, nid));
+    int *p2 = INTEGER(did2);
+    for (R_xlen_t j = nid; j--;){
+      p2[j] = lvlI[INTEGER_ELT(didS, j) - 1];
     }
     dat["id"] = did2;
+    UNPROTECT(1);
   }
   if (rxSolveDat->addTimeUnits){
-    NumericVector tmpN = as<NumericVector>(dat["time"]);
+    RObject tmpN = dat["time"];
     tmpN.attr("class") = "units";
     tmpN.attr("units") = rxSolveDat->timeUnitsU;
   }
@@ -4795,11 +4798,11 @@ List rxSolve_df(const RObject &obj,
   if (rx->add_cov && (rx->matrix == 2 || rx->matrix == 0) &&
       rxSolveDat->covUnits.hasAttribute("names")){
     CharacterVector nmC = rxSolveDat->covUnits.attr("names");
-    NumericVector tmpN, tmpN2;
+    NumericVector tmpN;
     for (unsigned int i = nmC.size(); i--;){
       tmpN = rxSolveDat->covUnits[i];
       if (rxIs(tmpN, "units")){
-        tmpN2 = dat[as<std::string>(nmC[i])];
+        RObject tmpN2 = dat[as<std::string>(nmC[i])];
         tmpN2.attr("class") = "units";
         tmpN2.attr("units") = tmpN.attr("units");
       }
