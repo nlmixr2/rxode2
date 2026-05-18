@@ -342,6 +342,9 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
   return ret;
 }
 
+extern "C" Rboolean is_rx_seqrep(SEXP x);
+
+
 //' Check the type of an object using Rcpp
 //'
 //' @param obj Object to check
@@ -367,6 +370,7 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
 bool rxIs(const RObject &obj, std::string cls){
   if (obj == NULL) return false;
   if (cls == "altrep") return ALTREP(obj);
+  if (cls == "seqrep") return is_rx_seqrep(obj);
   if (cls == "units"){
     if (obj.hasAttribute("class")){
       CharacterVector cls = obj.attr("class");

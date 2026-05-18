@@ -32,6 +32,10 @@ static R_altrep_class_t rx_rep_lgl_class;
 static R_altrep_class_t rx_rep_real_class;
 static R_altrep_class_t rx_rep_str_class;
 
+extern Rboolean is_rx_seqrep(SEXP x) {
+  return ALTREP(x) && R_altrep_inherits(x, rx_seqrep_class);
+}
+
 /* ---- length ------------------------------------------------------------ */
 static R_xlen_t rx_seqrep_Length(SEXP x) {
   return (R_xlen_t)INTEGER(R_altrep_data1(x))[2];
@@ -260,6 +264,17 @@ static SEXP rx_rep_str_materialize(SEXP x) {
   return mat;
 }
 
+static const void *rx_rep_str_Dataptr_or_null(SEXP x) {
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == STRSXP && XLENGTH(d2) == rx_rep_total_len(x)) return DATAPTR_RO(d2);
+  return NULL;
+}
+
+static void *rx_rep_str_Dataptr(SEXP x, Rboolean writeable) {
+  SEXP mat = rx_rep_str_materialize(x);
+  return DATAPTR_RW(mat);
+}
+
 /* ---- Registration ------------------------------------------------------ */
 void rxode2_init_altrep_class(DllInfo *info) {
   rx_seqrep_class = R_make_altinteger_class("rx_seqrep", "rxode2", info);
@@ -292,6 +307,8 @@ void rxode2_init_altrep_class(DllInfo *info) {
   rx_rep_str_class = R_make_altstring_class("rx_rep_str", "rxode2", info);
   R_set_altrep_Length_method(rx_rep_str_class, rx_rep_str_Length);
   R_set_altstring_Elt_method(rx_rep_str_class, rx_rep_str_Elt);
+  R_set_altvec_Dataptr_method(rx_rep_str_class, rx_rep_str_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_rep_str_class, rx_rep_str_Dataptr_or_null);
 }
 
 /* ---- Factory ----------------------------------------------------------- */
