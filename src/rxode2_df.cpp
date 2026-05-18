@@ -570,7 +570,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   for (i = ncols + doseCols + nidCols + nmevid*5;
        i < ncols + doseCols + nidCols + nmevid*5 + doTBS*4;
        i++) {
-    df[i] = NumericVector((R_xlen_t)rx->nr);
+    df[i] = NumericVector(doseTimeNrow);
   }
   // Now create the data frame
   // Pre-extract raw column data pointers — safe as long as no R API calls
@@ -1055,10 +1055,10 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             jj_p += nkeep;
           }
           if (doTBS) {
-            colR[jj_p][ii] = ind->lambda;   jj_p++;
-            colR[jj_p][ii] = ind->yj;       jj_p++;
-            colR[jj_p][ii] = ind->logitLow; jj_p++;
-            colR[jj_p][ii] = ind->logitHi;  jj_p++;
+            if (_writeDT) colR[jj_p][ii] = ind->lambda;   jj_p++;
+            if (_writeDT) colR[jj_p][ii] = ind->yj;       jj_p++;
+            if (_writeDT) colR[jj_p][ii] = ind->logitLow; jj_p++;
+            if (_writeDT) colR[jj_p][ii] = ind->logitHi;  jj_p++;
           }
           ii++;
         }
@@ -1126,10 +1126,18 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
     // time
     if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt);
+    // Shared column-start for cov/keep and TBS blocks.
+    int _covColStart = colAt + 1 + nlhs + nPrnState;
+    int _tbsColStart = _covColStart + ncols2;
     // Cov/keep: pre-sized when covKeepShrunk → direct wrap; otherwise rxCanRepBySim.
     if (!covKeepShrunk && ncols2 > 0) {
-      int _covColStart = colAt + 1 + nlhs + nPrnState;
       for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
+        repCols.push_back(_c);
+      }
+    }
+    // TBS columns repeat identically across sims (same schedule).
+    if (!doseTimeShrunk && doTBS) {
+      for (int _c = _tbsColStart; _c < _tbsColStart + 4 && _c < ncol; _c++) {
         repCols.push_back(_c);
       }
     }
@@ -1141,8 +1149,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       }
     }
     if (covKeepShrunk) {
-      int _covColStart = colAt + 1 + nlhs + nPrnState;
       for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
+        _wrapDirect(_c);
+      }
+    }
+    if (doseTimeShrunk && doTBS) {
+      for (int _c = _tbsColStart; _c < _tbsColStart + 4 && _c < ncol; _c++) {
         _wrapDirect(_c);
       }
     }

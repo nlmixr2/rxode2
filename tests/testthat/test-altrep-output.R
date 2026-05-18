@@ -244,4 +244,61 @@ rxTest({
       })
     }
   }
+
+  # ── TBS columns (returnType = "data.frame.TBS") ───────────────────────────
+
+  for (ad in c(TRUE, FALSE, NA)) {
+
+    test_that(sprintf("TBS columns are ALTREP via homogeneous event-table path (addDosing=%s)", ad), {
+      mod <- rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(centr) <- ka * depot - cl / v * centr
+        cp <- centr / v
+      })
+      ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+      p <- data.frame(id = 1:3, ka = 0.5, cl = 1, v = 10)
+
+      out <- rxSolve(mod, p, ev, addDosing = ad, returnType = "data.frame.TBS")
+
+      expect_true(.isAltrep(out$rxLambda))
+      expect_true(.isAltrep(out$rxYj))
+      expect_true(.isAltrep(out$rxLow))
+      expect_true(.isAltrep(out$rxHi))
+      # Values must be replicated correctly
+      expect_true(all(out$rxLambda == out$rxLambda[1]))
+      expect_true(all(out$rxYj    == out$rxYj[1]))
+    })
+
+    test_that(sprintf("TBS columns are ALTREP via nStud path (addDosing=%s)", ad), {
+      one.cmt <- function() {
+        ini({
+          tka <- 0.45
+          tcl <- log(c(0, 2.7, 100))
+          tv <- 3.45
+          eta.ka ~ 0.6
+          eta.cl ~ 0.3
+          eta.v ~ 0.1
+          add.sd <- 0.7
+        })
+        model({
+          ka <- exp(tka + eta.ka)
+          cl <- exp(tcl + eta.cl)
+          v  <- exp(tv + eta.v)
+          linCmt() ~ add(add.sd)
+        })
+      }
+      d <- nlmixr2data::theo_sd
+
+      set.seed(42)
+      out <- rxSolve(one.cmt, d, nStud = 3, addDosing = ad,
+                     returnType = "data.frame.TBS")
+
+      expect_true(.isAltrep(out$rxLambda))
+      expect_true(.isAltrep(out$rxYj))
+      expect_true(.isAltrep(out$rxLow))
+      expect_true(.isAltrep(out$rxHi))
+      expect_true(all(out$rxLambda == out$rxLambda[1]))
+      expect_true(all(out$rxYj    == out$rxYj[1]))
+    })
+  }
 })
