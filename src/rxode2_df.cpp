@@ -328,6 +328,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   // Mutiple ID data?
   int md = 0;
   if (rx->nsub > 1) md = 1;
+  // When all subjects share a single event table (nsim > 1, nsub == 1) each
+  // simulation corresponds to one original subject; add an id column so that
+  // downstream code can access out$id without a post-processing allocation.
+  bool simSubjectPath = (rx->nsim > 1 && rx->nsub == 1);
+  if (simSubjectPath) md = 1;
   // Multiple simulation data?
   int sm = 0;
   if (rx->nsim > 1) sm = 1;
@@ -652,10 +657,20 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         jj_alt++;
       }
       if (md) {
-        // id: rep(1:nsub, each = rows0, times = nsim)
-        // The formula ((i / rows0) % nsub) + 1 = rx_seqrep with n_vals=nsub,
-        // run_len=rows0, total_len=rx->nr covers all nsim repetitions.
-        df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
+        if (simSubjectPath) {
+          // id = sim.id: rep(1:nsim, each = rows0) — one subject per sim.
+          df[jj_alt] = rxode2_make_seqrep(nsim, rows0, (R_xlen_t)rx->nr);
+        } else if (nsim > 1) {
+          // nStud: rep(rep(1:nsub, each=rows0), times=nsim) expressed as
+          // repint wrapping a seqrep base so that rxIs(x,"repint") is TRUE.
+          SEXP _base = PROTECT(rxode2_make_seqrep(nsub, rows0, (R_xlen_t)nsub * rows0));
+          SEXP _rep  = PROTECT(rxode2_make_rep_int(_base, nsim));
+          df[jj_alt] = _rep;
+          UNPROTECT(2);
+        } else {
+          // nsim == 1: seqrep(nsub, rows0) over the full output.
+          df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
+        }
         jj_alt++;
       }
     }
@@ -757,8 +772,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
         jj_p = 0;
         if (doDose || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
-          if (sm) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csim + 1;     jj_p++; }
-          if (md) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csub_par + 1; jj_p++; }
+          if (sm) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csim + 1;                                   jj_p++; }
+          if (md) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = (simSubjectPath ? csim : csub_par) + 1; jj_p++; }
           if (ms) { colI[jj_p][ii] = resetno_p + 1; jj_p++; }
           if (doDose) {
             if (nmevid) {
