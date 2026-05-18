@@ -296,7 +296,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
     int64_t nrLong;
     if (anyPushed) {
-      // Count observation rows from the grown n_all_times (includes evid_()-pushed observations).
+      // Count output rows from the grown n_all_times using the same predicate as subRowStart:
+      // include doses when doDose==1, observations when doDose==0, etc.
       nrLong = 0;
       for (int _cs = 0; _cs < nsim; _cs++) {
         for (int _cb = 0; _cb < nsub; _cb++) {
@@ -442,6 +443,10 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
     subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
   }
+  // subRowStart[nsolve_df] is the authoritative total row count; it uses the same
+  // per-event predicate as the fill loop and correctly includes any extra events
+  // pushed by evid_() that are not reflected in the nall/nobs estimates above.
+  rx->nr = (int64_t)subRowStart[nsolve_df];
   bool uniformSimBlocks = false;
   int rowsPerSimUniform = 0;
   if (nsim > 1 && nsub > 0) {
