@@ -465,11 +465,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     rx_solving_options_ind *_sind = &rx->subjects[_sid];
     if (_sind->nPushedExtra > 0) hasRuntimeEventMutation = true;
   }
-  // cov/keep columns are sized to one sim block when the pattern repeats;
-  // the fill loop only writes csim==0 rows and ALTREP expands them virtually.
-  bool covKeepShrunk = uniformSimBlocks && !hasRuntimeEventMutation &&
-                       ncols2 > 0 && rowsPerSimUniform > 0 && nmevid == 0;
-  R_xlen_t covKeepNrow = covKeepShrunk ? (R_xlen_t)rowsPerSimUniform : (R_xlen_t)rx->nr;
+  // Dose/time/cov/keep columns are sized to one sim block when the block pattern
+  // repeats identically; the fill loop only writes csim==0 rows and ALTREP wraps.
+  bool doseTimeShrunk = uniformSimBlocks && !hasRuntimeEventMutation && rowsPerSimUniform > 0 && nmevid == 0;
+  bool covKeepShrunk  = doseTimeShrunk && ncols2 > 0;
+  R_xlen_t doseTimeNrow = doseTimeShrunk ? (R_xlen_t)rowsPerSimUniform : (R_xlen_t)rx->nr;
+  R_xlen_t covKeepNrow  = covKeepShrunk  ? (R_xlen_t)rowsPerSimUniform : (R_xlen_t)rx->nr;
 
   int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
   List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
@@ -481,15 +482,15 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   double *errs = rxGetErrs();
   if (doDose){
     //evid
-    df[i++] = IntegerVector((R_xlen_t)rx->nr);
+    df[i++] = IntegerVector(doseTimeNrow);
     if (nmevid){
       // cmt
-      df[i++] = IntegerVector((R_xlen_t)rx->nr);
+      df[i++] = IntegerVector(doseTimeNrow);
       // ss
-      df[i++] = IntegerVector((R_xlen_t)rx->nr);
+      df[i++] = IntegerVector(doseTimeNrow);
     }
     // amt
-    df[i++] = NumericVector((R_xlen_t)rx->nr);
+    df[i++] = NumericVector(doseTimeNrow);
   } else if (nevid2col) {
     df[i++] = IntegerVector((R_xlen_t)rx->nr);
   }
@@ -497,11 +498,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   CharacterVector paramNames = rxParamNames(op->modNamePtr);
   CharacterVector fkeepNames = get_fkeepn();
   // time comes in here
-  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector((R_xlen_t)rx->nr);
+  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector(doseTimeNrow);
   CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
   // time
   int i0 = md + sm + ms + doseCols + 2*nmevid;
-  df[i0] = NumericVector((R_xlen_t)rx->nr);
+  df[i0] = NumericVector(doseTimeNrow);
   i0++;
 
   // nlhs
@@ -541,7 +542,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   for (i = ncols + doseCols + nidCols + 2*nmevid;
        i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
        i++){
-    df[i] = NumericVector((R_xlen_t)rx->nr);
+    df[i] = NumericVector(doseTimeNrow);
   }
   // keep items (when nmevid==0 these are the same positions as the main-block
   // keep allocated by getDfLevels above; use covKeepNrow so the size matches).
@@ -680,6 +681,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       int csim     = solveid / nsub;
       int csub_par = solveid % nsub;
       int ii       = subRowStart[solveid];
+      bool _writeDT = !doseTimeShrunk || csim == 0;
       int kk       = (errNrow > 0) ? min2(subKkStart[solveid], errNrow - 1) : 0;
       int curi     = subCuriStart[solveid];
       int resetno_p = 0;
@@ -761,34 +763,34 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           if (doDose) {
             if (nmevid) {
               if (isObs(evid_p)) {
-                colI[jj_p][ii] = (evid_p >= 10) ? evid_p + 91 : evid_p; jj_p++;
-                colI[jj_p][ii] = NA_INTEGER; jj_p++;  // cmt
-                colI[jj_p][ii] = 0;          jj_p++;  // ss
-                colR[jj_p][ii] = NA_REAL;    jj_p++;  // amt
-                colR[jj_p][ii] = NA_REAL;    jj_p++;  // rate
-                colR[jj_p][ii] = NA_REAL;    jj_p++;  // dur
-                colR[jj_p][ii] = NA_REAL;    jj_p++;  // ii
+                if (_writeDT) colI[jj_p][ii] = (evid_p >= 10) ? evid_p + 91 : evid_p; jj_p++;
+                if (_writeDT) colI[jj_p][ii] = NA_INTEGER; jj_p++;  // cmt
+                if (_writeDT) colI[jj_p][ii] = 0;          jj_p++;  // ss
+                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // amt
+                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // rate
+                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // dur
+                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // ii
               } else {
                 getWh(evid_p, &wh_p, &cmt_p, &wh100_p, &whI_p, &wh0_p);
                 double curAmt = getDoseNumber(ind, di_p);
                 if (evid_p == 3) {
-                  colI[jj_p][ii] = 3;
+                  if (_writeDT) colI[jj_p][ii] = 3;
                 } else if (whI_p == EVIDF_MODEL_RATE_OFF) {
 #pragma omp atomic write
                   dullRate = 0;
-                  colI[jj_p][ii] = -1;
+                  if (_writeDT) colI[jj_p][ii] = -1;
                 } else if (whI_p == EVIDF_MODEL_DUR_OFF) {
 #pragma omp atomic write
                   dullRate = 0;
-                  colI[jj_p][ii] = -2;
+                  if (_writeDT) colI[jj_p][ii] = -2;
                 } else {
                   if (curAmt > 0) {
                     if (whI_p == EVIDF_REPLACE) {
-                      colI[jj_p][ii] = 5;
+                      if (_writeDT) colI[jj_p][ii] = 5;
                     } else if (whI_p == EVIDF_MULT) {
-                      colI[jj_p][ii] = 6;
+                      if (_writeDT) colI[jj_p][ii] = 6;
                     } else {
-                      colI[jj_p][ii] = 1;
+                      if (_writeDT) colI[jj_p][ii] = 1;
                       if (whI_p == EVIDF_INF_RATE || whI_p == EVIDF_MODEL_DUR_ON || whI_p == EVIDF_MODEL_RATE_ON) {
 #pragma omp atomic write
                         dullRate = 0;
@@ -801,17 +803,17 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                     if (whI_p == EVIDF_INF_RATE) {
 #pragma omp atomic write
                       dullRate = 0;
-                      colI[jj_p][ii] = -10;
+                      if (_writeDT) colI[jj_p][ii] = -10;
                     } else if (whI_p == EVIDF_INF_DUR) {
 #pragma omp atomic write
                       dullDur = 0;
-                      colI[jj_p][ii] = -20;
+                      if (_writeDT) colI[jj_p][ii] = -20;
                     } else if (whI_p == EVIDF_REPLACE) {
-                      colI[jj_p][ii] = 5;
+                      if (_writeDT) colI[jj_p][ii] = 5;
                     } else if (whI_p == EVIDF_MULT) {
-                      colI[jj_p][ii] = 6;
+                      if (_writeDT) colI[jj_p][ii] = 6;
                     } else {
-                      colI[jj_p][ii] = 1;
+                      if (_writeDT) colI[jj_p][ii] = 1;
                       if (whI_p == EVIDF_INF_DUR) {
 #pragma omp atomic write
                         dullDur = 0;
@@ -822,11 +824,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 jj_p++;  // evid column done
                 // cmt
                 if (evid_p == 2 || evid_p == 3) {
-                  colI[jj_p][ii] = NA_INTEGER;
+                  if (_writeDT) colI[jj_p][ii] = NA_INTEGER;
                 } else if (wh0_p == 30) {
-                  colI[jj_p][ii] = -cmt_p - 1;
+                  if (_writeDT) colI[jj_p][ii] = -cmt_p - 1;
                 } else {
-                  colI[jj_p][ii] = cmt_p + 1;
+                  if (_writeDT) colI[jj_p][ii] = cmt_p + 1;
                 }
                 jj_p++;
                 // ss
@@ -834,12 +836,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 case EVID0_SS2:
 #pragma omp atomic write
                   dullSS = 0;
-                  colI[jj_p][ii] = 2;
+                  if (_writeDT) colI[jj_p][ii] = 2;
                   break;
                 case EVID0_SS:
 #pragma omp atomic write
                   dullSS = 0;
-                  colI[jj_p][ii] = 1;
+                  if (_writeDT) colI[jj_p][ii] = 1;
                   break;
                 case 40:
 #pragma omp atomic write
@@ -848,18 +850,25 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                   dullSS = 0;
 #pragma omp atomic write
                   dullIi = 0;
-                  colI[jj_p][ii] = 1;
+                  if (_writeDT) colI[jj_p][ii] = 1;
                   break;
                 default:
-                  colI[jj_p][ii] = 0;
+                  if (_writeDT) colI[jj_p][ii] = 0;
                   break;
                 }
                 jj_p++;
               }
             } else {
               // !nmevid
-              colI[jj_p][ii] = evid_p; jj_p++;
-              colR[jj_p][ii] = isObs(evid_p) ? NA_REAL : getDoseNumber(ind, di_p++); jj_p++;
+              if (_writeDT) colI[jj_p][ii] = evid_p;
+              jj_p++;
+              if (isObs(evid_p)) {
+                if (_writeDT) colR[jj_p][ii] = NA_REAL;
+              } else {
+                if (_writeDT) colR[jj_p][ii] = getDoseNumber(ind, di_p);
+                di_p++;
+              }
+              jj_p++;
             }
             if (nmevid && isDose(evid_p)) {
               double curIi   = getIiNumber(ind, di_p);
@@ -868,7 +877,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 dullIi = 0;
               }
               double curAmt_r = getDoseNumber(ind, di_p++);
-              switch (ind->whI) {
+              if (!_writeDT) { jj_p += 4; } else switch (ind->whI) {
               case EVIDF_MODEL_RATE_ON:
                 colR[jj_p][ii] = curAmt_r; jj_p++;
                 colR[jj_p][ii] = -1.0;     jj_p++;
@@ -954,11 +963,13 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             colI[jj_p][ii] = evid_p; jj_p++;
           }
           // time
-          if (evid_p == 3) {
-            colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
-            if (fabs(colR[jj_p][ii]) < sqrt(DBL_EPSILON)) colR[jj_p][ii] = 0.0;
-          } else {
-            colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+          if (_writeDT) {
+            if (evid_p == 3) {
+              colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
+              if (fabs(colR[jj_p][ii]) < sqrt(DBL_EPSILON)) colR[jj_p][ii] = 0.0;
+            } else {
+              colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+            }
           }
           jj_p++;
           // LHS
@@ -1075,25 +1086,47 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   }
   if (uniformSimBlocks && !hasRuntimeEventMutation) {
     int colAt = nidCols;
+    // Helper: directly ALTREP-wrap a pre-sized (one sim block) column.
+    auto _wrapDirect = [&](int _c) {
+      SEXP cur = VECTOR_ELT(df, _c);
+      int _type = TYPEOF(cur);
+      SEXP out = R_NilValue;
+      if (_type == INTSXP) {
+        out = PROTECT(rxode2_make_rep_int(cur, nsim));
+        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+      } else if (_type == LGLSXP) {
+        out = PROTECT(rxode2_make_rep_lgl(cur, nsim));
+        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+      } else if (_type == REALSXP) {
+        out = PROTECT(rxode2_make_rep_real(cur, nsim));
+        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+      } else if (_type == STRSXP) {
+        out = PROTECT(rxode2_make_rep_str(cur, nsim));
+        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+      }
+      if (out != R_NilValue) SET_VECTOR_ELT(df, _c, out);
+    };
+    // Dose/time columns: pre-sized to one block when doseTimeShrunk → direct wrap.
+    // Otherwise fall through to rxCanRepBySim for the full-size columns.
     std::vector<int> repCols;
     if (doDose) {
-      repCols.push_back(colAt++); // evid
+      if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;
       if (nmevid) {
-        repCols.push_back(colAt++); // cmt
-        repCols.push_back(colAt++); // ss
+        if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;  // cmt
+        if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;  // ss
       }
-      repCols.push_back(colAt++); // amt
+      if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;    // amt
       if (nmevid) {
-        repCols.push_back(colAt++); // rate
-        repCols.push_back(colAt++); // dur
-        repCols.push_back(colAt++); // ii
+        if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;  // rate
+        if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;  // dur
+        if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt); colAt++;  // ii
       }
     } else if (nevid2col) {
-      repCols.push_back(colAt++); // evid
+      repCols.push_back(colAt++); // evid — not doseTimeShrunk path
     }
-    repCols.push_back(colAt); // time
-    // When covKeepShrunk the cov/keep columns are already one-block-sized and
-    // will be wrapped below; otherwise add them to repCols for normal treatment.
+    // time
+    if (doseTimeShrunk) _wrapDirect(colAt); else repCols.push_back(colAt);
+    // Cov/keep: pre-sized when covKeepShrunk → direct wrap; otherwise rxCanRepBySim.
     if (!covKeepShrunk && ncols2 > 0) {
       int _covColStart = colAt + 1 + nlhs + nPrnState;
       for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
@@ -1107,28 +1140,10 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         SET_VECTOR_ELT(df, _col, rxRepFromFirstSim(cur, rowsPerSimUniform, nsim));
       }
     }
-    // Cov/keep columns were pre-sized to one sim block and filled for csim==0
-    // only; wrap them directly in ALTREP without any copy.
     if (covKeepShrunk) {
       int _covColStart = colAt + 1 + nlhs + nPrnState;
       for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
-        SEXP cur = VECTOR_ELT(df, _c);
-        int _type = TYPEOF(cur);
-        SEXP out = R_NilValue;
-        if (_type == INTSXP) {
-          out = PROTECT(rxode2_make_rep_int(cur, nsim));
-          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
-        } else if (_type == LGLSXP) {
-          out = PROTECT(rxode2_make_rep_lgl(cur, nsim));
-          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
-        } else if (_type == REALSXP) {
-          out = PROTECT(rxode2_make_rep_real(cur, nsim));
-          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
-        } else if (_type == STRSXP) {
-          out = PROTECT(rxode2_make_rep_str(cur, nsim));
-          Rf_copyMostAttrib(cur, out); UNPROTECT(1);
-        }
-        if (out != R_NilValue) SET_VECTOR_ELT(df, _c, out);
+        _wrapDirect(_c);
       }
     }
   }
