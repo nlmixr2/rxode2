@@ -510,17 +510,17 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
   }
   // Pre-compute keep-column base df-index and build CHARSXP level caches for
-  // any STRSXP keep columns.  These let the unified fill loop store a CHARSXP
-  // pointer per row without calling any R API, and then flush to SET_STRING_ELT
-  // in a sequential post-pass after the OpenMP region.
+  // any STRSXP keep columns.  SET_STRING_ELT is called directly inside the
+  // OpenMP region (thread-safe when writing to disjoint row indices).
   int _jj_keep_base = ncols + doseCols + nidCols + nmevid*5 - nkeep;
   std::vector<SEXP *> strLevelCache(ncol, nullptr);
   std::vector<int>    strLevelCount(ncol, 0);
-  std::vector<SEXP *> strColCache(ncol, nullptr);
+  std::vector<SEXP>   colSEXP(ncol, R_NilValue);
   if (nkeep && hasStrCol) {
     for (int _j = 0; _j < nkeep; _j++) {
       int _jj = _jj_keep_base + _j;
       if (colType[_jj] == STRSXP) {
+        colSEXP[_jj] = VECTOR_ELT(df, _jj);
         SEXP _lvl = get_fkeepLevels(_j);
         int _nLev = Rf_length(_lvl);
         strLevelCount[_jj] = _nLev;
@@ -530,10 +530,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         for (int _k = 0; _k < _nLev; _k++)
           _lc[_k + 1] = STRING_ELT(_lvl, _k);
         strLevelCache[_jj] = _lc;
-        // Per-output-row cache initialised to NA_STRING
-        SEXP *_pc = (SEXP *)R_alloc(rx->nr, sizeof(SEXP));
-        for (int _r = 0; _r < (int)rx->nr; _r++) _pc[_r] = NA_STRING;
-        strColCache[_jj] = _pc;
       }
     }
   }
@@ -654,9 +650,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
   }
 
-  // Unified data-frame fill.  No R API calls inside the OpenMP region.
-  // STRSXP keep columns write into strColCache[] in parallel; SET_STRING_ELT
-  // is called in the sequential post-pass below.
+  // Unified data-frame fill.  SET_STRING_ELT is called directly inside the
+  // OpenMP region; it is safe because each thread writes to disjoint row indices.
   if (nkeep) setupFkeepCache();
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores) schedule(dynamic,1)
@@ -999,7 +994,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             } else if (colType[jj_p] == STRSXP) {
               int _idx = (R_IsNA(_fv) || std::isnan(_fv)) ? 0 : (int)_fv;
               if (_idx < 0 || _idx > strLevelCount[jj_p]) _idx = 0;
-              strColCache[jj_p][ii] = strLevelCache[jj_p][_idx];
+              SET_STRING_ELT(colSEXP[jj_p], ii, strLevelCache[jj_p][_idx]);
             } else if (colType[jj_p] == LGLSXP) {
               if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
               else                              colI[jj_p][ii] = (int)(_fv);
@@ -1026,19 +1021,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       }
       ind->inLhs = 0;
     } // end for (solveid)
-  // Sequential post-pass: assign pre-cached CHARSXPs to STRSXP keep columns.
-  // SET_STRING_ELT must not be called inside an OpenMP parallel region.
-  if (nkeep && hasStrCol) {
-    for (int _j = 0; _j < nkeep; _j++) {
-      int _jj = _jj_keep_base + _j;
-      if (strColCache[_jj] != nullptr) {
-        SEXP _col = VECTOR_ELT(df, _jj);
-        for (int _r = 0; _r < (int)rx->nr; _r++) {
-          SET_STRING_ELT(_col, _r, strColCache[_jj][_r]);
-        }
-      }
-    }
-  }
   // Emit bad-dose warnings (R API not allowed inside the fill loop).
   for (int _csub = 0; _csub < nsub; _csub++) {
     rx_solving_options_ind *_ind = &(rx->subjects[_csub]); // csim==0 subjects
@@ -1071,6 +1053,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       repCols.push_back(colAt++); // evid
     }
     repCols.push_back(colAt); // time
+    // Covariates and kept variables repeat across sims identically to time.
+    // They occupy ncols2 columns immediately after time + LHS + states.
+    if (ncols2 > 0) {
+      int _covColStart = colAt + 1 + nlhs + nPrnState;
+      for (int _c = _covColStart; _c < _covColStart + ncols2 && _c < ncol; _c++) {
+        repCols.push_back(_c);
+      }
+    }
     for (unsigned int _k = 0; _k < repCols.size(); ++_k) {
       int _col = repCols[_k];
       SEXP cur = VECTOR_ELT(df, _col);
