@@ -4788,6 +4788,64 @@ List rxSolve_df(const RObject &obj,
     dat["id"] = did2;
     UNPROTECT(1);
   }
+  // Re-wrap id as ALTREP repint when multiple sims and sim blocks are uniform.
+  // convertInt above materialises the ALTREP seqrep into a plain vector; this
+  // restores compact representation when the pattern repeats across sims.
+  if (rx->nsim > 1 && rx->nsub > 1) {
+    int64_t nr = rx->nr;
+    if (nr > 0 && nr % (int64_t)rx->nsim == 0) {
+      int rowsPerSim = (int)(nr / (int64_t)rx->nsim);
+      SEXP names_s = Rf_getAttrib(dat, R_NamesSymbol);
+      int idIdx = -1;
+      for (int _c = 0; _c < Rf_length(names_s); _c++) {
+        if (strcmp(CHAR(STRING_ELT(names_s, _c)), "id") == 0) { idIdx = _c; break; }
+      }
+      if (idIdx >= 0) {
+        SEXP idSexp = VECTOR_ELT(dat, idIdx);
+        if (!ALTREP(idSexp) && TYPEOF(idSexp) == INTSXP) {
+          bool uniform = true;
+          const int *p_id = INTEGER(idSexp);
+          for (int s = 1; s < (int)rx->nsim && uniform; ++s) {
+            int off = s * rowsPerSim;
+            for (int i = 0; i < rowsPerSim && uniform; ++i) {
+              if (p_id[i] != p_id[off + i]) uniform = false;
+            }
+          }
+          if (uniform) {
+            SEXP base = PROTECT(Rf_allocVector(INTSXP, rowsPerSim));
+            memcpy(INTEGER(base), p_id, (size_t)rowsPerSim * sizeof(int));
+            SEXP rewrapped = PROTECT(rxode2_make_rep_int(base, (int)rx->nsim));
+            SET_VECTOR_ELT(dat, idIdx, rewrapped);
+            UNPROTECT(2);
+          }
+        }
+      }
+    }
+  }
+  // When a single event table is shared across multiple subjects (nsim > 1,
+  // nsub == 1), each simulation corresponds to one original subject.  Add an
+  // "id" column that mirrors sim.id so downstream code can access out$id.
+  if (rx->nsim > 1 && rx->nsub == 1) {
+    int oldN = (int)dat.size();
+    SEXP dat_sexp = dat;
+    SEXP oldNames = Rf_getAttrib(dat_sexp, R_NamesSymbol);
+    SEXP sim_id_sexp = VECTOR_ELT(dat_sexp, 0); // sim.id is always first when sm=1
+    SEXP dat2_sexp = PROTECT(Rf_allocVector(VECSXP, oldN + 1));
+    SEXP newNames = PROTECT(Rf_allocVector(STRSXP, oldN + 1));
+    SET_STRING_ELT(newNames, 0, STRING_ELT(oldNames, 0)); // "sim.id"
+    SET_VECTOR_ELT(dat2_sexp, 0, sim_id_sexp);
+    SET_STRING_ELT(newNames, 1, Rf_mkChar("id"));
+    SET_VECTOR_ELT(dat2_sexp, 1, sim_id_sexp); // id = same ALTREP seqrep as sim.id
+    for (int _c = 1; _c < oldN; _c++) {
+      SET_VECTOR_ELT(dat2_sexp, _c + 1, VECTOR_ELT(dat_sexp, _c));
+      SET_STRING_ELT(newNames, _c + 1, STRING_ELT(oldNames, _c));
+    }
+    Rf_setAttrib(dat2_sexp, R_NamesSymbol, newNames);
+    SEXP rn = Rf_getAttrib(dat_sexp, R_RowNamesSymbol);
+    Rf_setAttrib(dat2_sexp, R_RowNamesSymbol, rn);
+    UNPROTECT(2);
+    dat = as<List>(dat2_sexp);
+  }
   if (rxSolveDat->addTimeUnits){
     RObject tmpN = dat["time"];
     tmpN.attr("class") = "units";

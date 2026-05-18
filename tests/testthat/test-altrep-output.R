@@ -5,11 +5,11 @@ rxTest({
   }
 
   .isRepint <- function(x) {
-    .isAltrep(x) && inherits(x, "repint")
+    rxIs(x, "repint")
   }
 
   .isSeqrep <- function(x) {
-    .isAltrep(x) && inherits(x, "seqrep")
+    rxIs(x, "seqrep")
   }
 
   for (rt in c("data.frame", "tibble", "rxSolve")) {
