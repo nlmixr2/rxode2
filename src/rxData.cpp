@@ -34,6 +34,7 @@
 #include "rxomp.h"
 #include "rxMemAvail.h"
 #include "strncmp.h"
+#include "rxode2_altrep.h"
 #include "../inst/include/rxMemoryCalc.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
@@ -342,9 +343,6 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
   return ret;
 }
 
-extern "C" Rboolean is_rx_seqrep(SEXP x);
-
-
 //' Check the type of an object using Rcpp
 //'
 //' @param obj Object to check
@@ -371,6 +369,7 @@ bool rxIs(const RObject &obj, std::string cls){
   if (obj == NULL) return false;
   if (cls == "altrep") return ALTREP(obj);
   if (cls == "seqrep") return is_rx_seqrep(obj);
+  if (cls == "repint") return is_rx_rep_int(obj);
   if (cls == "units"){
     if (obj.hasAttribute("class")){
       CharacterVector cls = obj.attr("class");

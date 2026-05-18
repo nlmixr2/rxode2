@@ -31,6 +31,11 @@ SEXP rxode2_make_rep_lgl(SEXP base, int times);
 SEXP rxode2_make_rep_real(SEXP base, int times);
 SEXP rxode2_make_rep_str(SEXP base, int times);
 
+int rxInt(SEXP x, R_xlen_t i);
+double rxReal(SEXP x, R_xlen_t i);
+Rboolean is_rx_rep_int(SEXP x);
+Rboolean is_rx_seqrep(SEXP x);
+
 #ifdef __cplusplus
 }
 #endif

@@ -32,10 +32,6 @@ static R_altrep_class_t rx_rep_lgl_class;
 static R_altrep_class_t rx_rep_real_class;
 static R_altrep_class_t rx_rep_str_class;
 
-extern Rboolean is_rx_seqrep(SEXP x) {
-  return ALTREP(x) && R_altrep_inherits(x, rx_seqrep_class);
-}
-
 /* ---- length ------------------------------------------------------------ */
 static R_xlen_t rx_seqrep_Length(SEXP x) {
   return (R_xlen_t)INTEGER(R_altrep_data1(x))[2];
@@ -360,4 +356,45 @@ SEXP rxode2_make_rep_str(SEXP base, int times) {
   SEXP out = R_new_altrep(rx_rep_str_class, d1, R_NilValue);
   UNPROTECT(2);
   return out;
+}
+
+// API for integers and reals for accessing without materialising the
+// full vector
+
+extern Rboolean is_rx_seqrep(SEXP x) {
+  return ALTREP(x) && R_altrep_inherits(x, rx_seqrep_class);
+}
+
+extern Rboolean is_rx_rep_int(SEXP x) {
+  return ALTREP(x) && R_altrep_inherits(x, rx_rep_int_class);
+}
+
+extern int rxInt(SEXP x, R_xlen_t i) {
+  if (ALTREP(x)) {
+    if (R_altrep_inherits(x, rx_seqrep_class)) {
+      return rx_seqrep_Elt(x, i);
+    } else if (R_altrep_inherits(x, rx_rep_int_class)) {
+      return rx_rep_int_Elt(x, i);
+    } else {
+      return NA_INTEGER;
+    }
+  } else {
+    if (TYPEOF(x) != INTSXP) return NA_INTEGER;
+    return INTEGER(x)[i];
+  }
+  return NA_INTEGER; // nocov
+}
+
+extern double rxReal(SEXP x, R_xlen_t i) {
+  if (ALTREP(x)) {
+    if (R_altrep_inherits(x, rx_rep_real_class)) {
+      return rx_rep_real_Elt(x, i);
+    } else {
+      return NA_REAL;
+    }
+  } else {
+    if (TYPEOF(x) != REALSXP) return NA_REAL;
+    return REAL(x)[i];
+  }
+  return NA_REAL; // nocov
 }
