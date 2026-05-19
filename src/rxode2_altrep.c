@@ -60,9 +60,12 @@ static SEXP rx_seqrep_materialize(SEXP x) {
 
   /* Build the first repeating block element-by-element. */
   if (block > len) block = len;
-  for (int v = 0; v < n_vals; v++)
-    for (int r = 0; r < run_len; r++)
-      p[(R_xlen_t)v * run_len + r] = v + 1;
+  R_xlen_t idx = 0;
+  for (int v = 0; v < n_vals && idx < block; v++) {
+    for (int r = 0; r < run_len && idx < block; r++) {
+      p[idx++] = v + 1;
+    }
+  }
 
   /* Exponential doubling: each memcpy at least doubles the filled region. */
   for (R_xlen_t filled = block; filled < len; ) {
