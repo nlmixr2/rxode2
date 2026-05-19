@@ -33,8 +33,8 @@ rxTest({
                        returnType = rt)
 
           expect_true(.isAltrep(out$sim.id))
-          expect_true(.isSeqrep(out$id))
-          expect_true(.isAltrep(out$id))
+          # simSubjectPath: id column is absent (subjects identified by sim.id)
+          expect_false("id" %in% names(out))
           expect_true(.isAltrep(out$time))
           if (!identical(ad, FALSE)) {
             expect_true(.isAltrep(out$evid))
@@ -77,8 +77,8 @@ rxTest({
         out <- rxSolve(mod, p, evWt, addCov = TRUE, returnType = rt)
 
         expect_true(.isAltrep(out$wt))
-        expect_true(.isSeqrep(out$id))
-        expect_true(.isAltrep(out$id))
+        # simSubjectPath: id column is absent (subjects identified by sim.id)
+        expect_false("id" %in% names(out))
 
         expect_true(all(out$wt == 70))
       })

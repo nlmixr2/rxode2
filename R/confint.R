@@ -83,7 +83,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
         any(names(.stk) == "sim.id")) {
     names(.stk) <- gsub("sim.id", "id", names(.stk))
   }
-  for(.v in .by) {
+  for (.v in .by) {
     .stk[[.v]] <- object[[.v]]
   }
   setDT(.stk)
@@ -100,7 +100,8 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     binom=.binom
   )
   class(.lst) <- "rxHidden"
-  if (.ci ==0 || !any(names(.stk) == "sim.id")) {
+  if (.ci ==0 || !any(names(.stk) == "sim.id") ||
+      !isTRUE(object$env$.args$nStud > 1L)) {
     if (any(names(.stk) == "sim.id")) {
       .stk$id <- factor(paste(.stk$sim.id, .stk$id))
       .ntot <- length(levels(.stk$id))

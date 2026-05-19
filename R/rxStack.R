@@ -62,7 +62,7 @@ rxStack <- function(data, vars = NULL, doSim=TRUE, doIpredSim=TRUE) {
   } else {
     .doSim <- FALSE
   }
-  if (doIpredSim){
+  if (doIpredSim) {
     .doIpredSim <- all(vapply(vars, function(x) {
       if (x == "ipredSim") return(TRUE)
       if (substr(x, 0, 9) == "ipredSim.") return(TRUE)

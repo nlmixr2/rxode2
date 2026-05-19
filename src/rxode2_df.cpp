@@ -328,11 +328,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   // Mutiple ID data?
   int md = 0;
   if (rx->nsub > 1) md = 1;
-  // When all subjects share a single event table (nsim > 1, nsub == 1) each
-  // simulation corresponds to one original subject; add an id column so that
-  // downstream code can access out$id without a post-processing allocation.
   bool simSubjectPath = (rx->nsim > 1 && rx->nsub == 1);
-  if (simSubjectPath) md = 1;
   // Multiple simulation data?
   int sm = 0;
   if (rx->nsim > 1) sm = 1;
