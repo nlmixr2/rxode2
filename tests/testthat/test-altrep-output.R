@@ -187,7 +187,7 @@ rxTest({
         # Event-table columns that repeat identically across studies must be ALTREP.
         expect_true(.isAltrep(out$sim.id))
         expect_true(max(out$sim.id) == 4)
-        expect_true(.isRepint(out$id)) # should be seq
+        expect_true(.isSeqrep(out$id))
         expect_true(.isAltrep(out$time))
 
         if (!identical(ad, FALSE)) {

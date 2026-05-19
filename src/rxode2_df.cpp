@@ -655,14 +655,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       if (md) {
         if (!lvlI.empty() && isIdentity) {
           // Sequential integer IDs (1:nsub): seqrep or repint(seqrep, nsim).
-          if (nsim > 1) {
-            SEXP _base = PROTECT(rxode2_make_seqrep(nsub, rows0, (R_xlen_t)nsub * rows0));
-            SEXP _rep  = PROTECT(rxode2_make_rep_int(_base, nsim));
-            df[jj_alt] = _rep;
-            UNPROTECT(2);
-          } else {
-            df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
-          }
+          df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
           jj_alt++;
           mdFilled = true;
         } else if (!lvlI.empty() && !isIdentity && nsim > 1) {
