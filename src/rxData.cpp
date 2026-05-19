@@ -35,6 +35,7 @@
 #include "rxMemAvail.h"
 #include "strncmp.h"
 #include "rxode2_altrep.h"
+#include "rxode2_df.h"
 #include "../inst/include/rxMemoryCalc.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
@@ -4757,7 +4758,23 @@ List rxSolve_df(const RObject &obj,
   int doTBS = (rx->matrix == 3);
   if (doTBS) rx->matrix=2;
   if (rx->matrix == 4 || rx->matrix == 5) rx->matrix=2;
-  List dat = rxode2_df(doDose, doTBS);
+
+  // Determine:
+  // 1. Is the id=1, 2, 3 etc
+  // 2. What are the id levels as integers (filled in lvlI)
+  bool isIdentity = false;
+  std::vector<int> lvlI;
+  if (rxSolveDat->convertInt && rx->nsub > 1) {
+    CharacterVector lvlC = rxSolveDat->idLevels;
+    lvlI.resize(lvlC.size());
+    isIdentity = true;
+    for (int j = (int)lvlC.size(); j--;) {
+      lvlI[j] = atoi(CHAR(lvlC[j]));
+      if (lvlI[j] != j + 1) isIdentity = false;
+    }
+  }
+
+  List dat = rxode2_df(doDose, doTBS, lvlI, isIdentity);
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
   }
@@ -4782,7 +4799,7 @@ List rxSolve_df(const RObject &obj,
       did.attr("class") = "factor";
     }
   }
-  if (rxSolveDat->convertInt && rx->nsub > 1){
+  if (rxSolveDat->convertInt && rx->nsub > 1) {
     CharacterVector lvlC = rxSolveDat->idLevels;
     IntegerVector lvlI(lvlC.size());
     bool isIdentity = true;

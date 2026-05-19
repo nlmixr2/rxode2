@@ -206,7 +206,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 
 extern "C" void printErr(int err, int id);
 extern "C" void setupFkeepCache();
-extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
+SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) {
   rx_solve *rx;
   rx = &rx_global;
   rx_solving_options *op = &op_global;

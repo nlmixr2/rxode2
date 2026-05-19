@@ -99,7 +99,6 @@ void par_solve(rx_solve *rx);
 
 rx_solving_options *getRxOp(rx_solve *rx);
 
-SEXP rxode2_df(int doDose, int doTBS);
 SEXP rxode2_par_df(void);
 
 void rxOptionsIniEnsure(int mx, int cores);
