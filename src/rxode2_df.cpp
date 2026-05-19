@@ -645,40 +645,48 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       }
     }
     if (useAltrepId) {
+      bool mdFilled = false;
       int jj_alt = 0;
       if (sm) {
-        // sim.id: rep(1:nsim, each = nsub * rows0)
         int rows_per_sim = nsub * rows0;
         df[jj_alt] = rxode2_make_seqrep(nsim, rows_per_sim, (R_xlen_t)rx->nr);
         jj_alt++;
       }
       if (md) {
-        if (simSubjectPath) {
-          // id = sim.id: rep(1:nsim, each = rows0) — one subject per sim.
-          df[jj_alt] = rxode2_make_seqrep(nsim, rows0, (R_xlen_t)rx->nr);
-        } else if (nsim > 1) {
-          // nStud: rep(rep(1:nsub, each=rows0), times=nsim) expressed as
-          // repint wrapping a seqrep base so that rxIs(x,"repint") is TRUE.
-          SEXP _base = PROTECT(rxode2_make_seqrep(nsub, rows0, (R_xlen_t)nsub * rows0));
-          SEXP _rep  = PROTECT(rxode2_make_rep_int(_base, nsim));
-          df[jj_alt] = _rep;
+        if (!lvlI.empty() && isIdentity) {
+          // Sequential integer IDs (1:nsub): seqrep or repint(seqrep, nsim).
+          if (nsim > 1) {
+            SEXP _base = PROTECT(rxode2_make_seqrep(nsub, rows0, (R_xlen_t)nsub * rows0));
+            SEXP _rep  = PROTECT(rxode2_make_rep_int(_base, nsim));
+            df[jj_alt] = _rep;
+            UNPROTECT(2);
+          } else {
+            df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
+          }
+          jj_alt++;
+          mdFilled = true;
+        } else if (!lvlI.empty() && !isIdentity && nsim > 1) {
+          // Non-sequential integer IDs, multi-sim: build rep_int(base, nsim)
+          // directly from lvlI.  Allocates only nsub*rows0 (one sim block) —
+          // avoids the O(nr) fill + uniformity scan in the old rxData.cpp re-wrap.
+          int baseLen = nsub * rows0;
+          SEXP _base = PROTECT(Rf_allocVector(INTSXP, baseLen));
+          int *_bp = INTEGER(_base);
+          for (int _s = 0; _s < nsub; _s++)
+            for (int _r = 0; _r < rows0; _r++)
+              _bp[_s * rows0 + _r] = lvlI[_s];
+          df[jj_alt] = PROTECT(rxode2_make_rep_int(_base, nsim));
           UNPROTECT(2);
-        } else {
-          // nsim == 1: seqrep(nsub, rows0) over the full output.
-          df[jj_alt] = rxode2_make_seqrep(nsub, rows0, (R_xlen_t)rx->nr);
+          jj_alt++;
+          mdFilled = true;
         }
-        jj_alt++;
+        // lvlI.empty() (character IDs): no ALTREP — fill loop writes csub_par+1
+        // and factor conversion in rxData.cpp attaches character levels.
+        // !isIdentity && nsim==1: fill loop writes lvlI[csub_par] directly.
       }
-    }
-    // colI[] was extracted before ALTREP replacement — nullify those entries
-    // so the fill loop skips writing into the replaced (now-dead) IntegerVectors.
-    int jj_null = 0;
-    if (sm) {
-      colI[jj_null] = nullptr;
-      jj_null++;
-    }
-    if (md) {
-      colI[jj_null] = nullptr;
+      int jj_null = 0;
+      if (sm) { colI[jj_null] = nullptr; jj_null++; }
+      if (mdFilled) { colI[jj_null] = nullptr; }
     }
   }
 
@@ -769,7 +777,12 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         jj_p = 0;
         if (doDose || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
           if (sm) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csim + 1;                                   jj_p++; }
-          if (md) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = (simSubjectPath ? csim : csub_par) + 1; jj_p++; }
+          if (md) {
+            if (colI[jj_p] != nullptr) {
+              colI[jj_p][ii] = lvlI.empty() ? csub_par + 1 : lvlI[csub_par];
+            }
+            jj_p++;
+          }
           if (ms) { colI[jj_p][ii] = resetno_p + 1; jj_p++; }
           if (doDose) {
             if (nmevid) {

@@ -323,4 +323,44 @@ rxTest({
       expect_true(all(out$rxYj    == out$rxYj[1]))
     })
   }
+
+  # ── Non-sequential integer IDs ────────────────────────────────────────────
+
+  test_that("non-sequential integer IDs produce ALTREP repint id column (nStud > 1)", {
+    pkMod <- function() {
+      ini({
+        tka <- 0.5
+        tcl <- 0
+        tv  <- log(10)
+        eta.ka ~ 0.3
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl)
+        v  <- exp(tv)
+        d/dt(depot) <- -ka * depot
+        d/dt(centr) <- ka * depot - cl / v * centr
+        cp <- centr / v
+      })
+    }
+    # IDs must come from the event table; the parameter data frame is matched
+    # by position, not by its id column.
+    evDf <- as.data.frame(
+      et(amt = 100, cmt = 1, ii = 12, addl = 1) |>
+        et(seq(0, 24, by = 1)) |>
+        et(id = c(5L, 10L, 15L))
+    )
+    set.seed(42)
+    out <- rxSolve(pkMod, evDf, nStud = 2)
+
+    # nStud=2: fill loop writes lvlI values directly per subject; re-wrap block
+    # creates rep_int(base, times=2) ALTREP since the pattern is uniform across sims.
+    expect_true(.isAltrep(out$id))
+    expect_true(.isRepint(out$id))
+    expect_false(is.factor(out$id))
+    expect_equal(sort(unique(out$id)), c(5L, 10L, 15L))
+    for (.id in c(5L, 10L, 15L)) {
+      expect_true(all(out$id[out$id == .id] == .id))
+    }
+  })
 })

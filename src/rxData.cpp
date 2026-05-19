@@ -4784,75 +4784,17 @@ List rxSolve_df(const RObject &obj,
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
-  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
+  // Skip factor conversion for non-sequential integer IDs: the fill loop
+  // already wrote the correct lvlI values directly, so applying factor levels
+  // (which are 1-based level indices) would corrupt the column.
+  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1
+      && !(rxSolveDat->convertInt && !isIdentity)) {
     SEXP didS = dat["id"];
-    // Only convert non-ALTREP columns.  When the id is an ALTREP
-    // seqrep/repint from rxode2_df.cpp, convertInt will materialise it if a
-    // non-identity mapping is needed (and Block 1 below re-wraps it); for the
-    // identity case the ALTREP already holds the correct integer values so
-    // factor-conversion here would be undone by the re-wrap.  This mirrors
-    // the implicit behaviour of the old code where convertInt always replaced
-    // the seqrep before idFactor had any lasting effect.
+    // Skip ALTREP columns — the seqrep/repint already holds correct values.
     if (!ALTREP(didS)) {
       RObject did = didS;
       did.attr("levels") = rxSolveDat->idLevels;
       did.attr("class") = "factor";
-    }
-  }
-  if (rxSolveDat->convertInt && rx->nsub > 1) {
-    CharacterVector lvlC = rxSolveDat->idLevels;
-    IntegerVector lvlI(lvlC.size());
-    bool isIdentity = true;
-    for (int j = (int)lvlC.size(); j--;) {
-      lvlI[j] = atoi(CHAR(lvlC[j]));
-      if (lvlI[j] != j + 1) isIdentity = false;
-    }
-    // Skip materialising the ALTREP id column when the id level mapping is
-    // the identity (1..nsub) — the seqrep/repint from rxode2_df.cpp is correct.
-    if (!isIdentity) {
-      SEXP didS = dat["id"];
-      R_xlen_t nid = XLENGTH(didS);
-      SEXP did2 = PROTECT(Rf_allocVector(INTSXP, nid));
-      int *p2 = INTEGER(did2);
-      for (R_xlen_t j = nid; j--;){
-        p2[j] = lvlI[INTEGER_ELT(didS, j) - 1];
-      }
-      dat["id"] = did2;
-      UNPROTECT(1);
-    }
-  }
-  // Re-wrap id as ALTREP repint when multiple sims and sim blocks are uniform.
-  // convertInt above materialises the ALTREP seqrep into a plain vector; this
-  // restores compact representation when the pattern repeats across sims.
-  if (rx->nsim > 1 && rx->nsub > 1) {
-    int64_t nr = rx->nr;
-    if (nr > 0 && nr % (int64_t)rx->nsim == 0) {
-      int rowsPerSim = (int)(nr / (int64_t)rx->nsim);
-      SEXP names_s = Rf_getAttrib(dat, R_NamesSymbol);
-      int idIdx = -1;
-      for (int _c = 0; _c < Rf_length(names_s); _c++) {
-        if (strcmp(CHAR(STRING_ELT(names_s, _c)), "id") == 0) { idIdx = _c; break; }
-      }
-      if (idIdx >= 0) {
-        SEXP idSexp = VECTOR_ELT(dat, idIdx);
-        if (!ALTREP(idSexp) && TYPEOF(idSexp) == INTSXP) {
-          bool uniform = true;
-          const int *p_id = INTEGER(idSexp);
-          for (int s = 1; s < (int)rx->nsim && uniform; ++s) {
-            int off = s * rowsPerSim;
-            for (int i = 0; i < rowsPerSim && uniform; ++i) {
-              if (p_id[i] != p_id[off + i]) uniform = false;
-            }
-          }
-          if (uniform) {
-            SEXP base = PROTECT(Rf_allocVector(INTSXP, rowsPerSim));
-            memcpy(INTEGER(base), p_id, (size_t)rowsPerSim * sizeof(int));
-            SEXP rewrapped = PROTECT(rxode2_make_rep_int(base, (int)rx->nsim));
-            SET_VECTOR_ELT(dat, idIdx, rewrapped);
-            UNPROTECT(2);
-          }
-        }
-      }
     }
   }
   if (rxSolveDat->addTimeUnits){
