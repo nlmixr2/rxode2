@@ -24,7 +24,8 @@ rxTest({
           cp <- centr / v
         })
 
-        ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+        ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |>
+          et(seq(0, 24, by = 1))
 
         p <- data.frame(id = 1:2, ka = c(1, 1), cl = c(1, 1), v = c(10, 10))
         out <- rxSolve(mod, p, ev,
@@ -47,7 +48,8 @@ rxTest({
           d/dt(x) <- -x
           if (t < 1) evid_(t + 0.1, 1, 10, 1, 0, 0, 0, 0)
         })
-        ev <- et(amt = 1, time = 0) |> et(seq(0, 1, by = 0.1))
+        ev <- et(amt = 1, time = 0) |>
+          et(seq(0, 1, by = 0.1))
 
         p <- data.frame(id = 1:2, x = c(1, 1))
         out <- rxSolve(mod, p, ev,
@@ -59,14 +61,16 @@ rxTest({
       # ── covariate (addCov = TRUE) columns ──────────────────────────────────────
 
       test_that(sprintf("covariate column is ALTREP via homogenous event-table path (%s %s)",
-              rt, ad), {
+                        rt, ad), {
+
         # Identical subjects -> homogenous ET optimization -> rx->nsim > 1
         mod <- rxode2({
           d/dt(depot) <- -ka * depot
           d/dt(centr) <- ka * depot - (cl * (wt / 70)^0.75) / v * centr
           cp <- centr / v
         })
-        ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+        ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |>
+          et(seq(0, 24, by = 1))
         evWt <- cbind(ev, wt = 70.0)   # same covariate for every subject
         p <- data.frame(id = 1:3, ka = 0.5, cl = 1, v = 10)
 
@@ -80,9 +84,10 @@ rxTest({
       })
 
       test_that(sprintf("covariate columns are ALTREP via explicit nsim (stochastic) path (%s %s)",
-                      rt, ad), {
+                        rt, ad), {
+
         # Multiple virtual studies from omega draws; covariate values are fixed
-        # per-subject across sims → each sim block is identical → ALTREP.
+        # per-subject across sims -> each sim block is identical → ALTREP.
         pkCov <- function() {
           ini({
             tka <- 0.5
@@ -181,6 +186,7 @@ rxTest({
 
         # Event-table columns that repeat identically across studies must be ALTREP.
         expect_true(.isAltrep(out$sim.id))
+        expect_true(max(out$sim.id) == 4)
         expect_true(.isRepint(out$id)) # should be seq
         expect_true(.isAltrep(out$time))
 
@@ -209,7 +215,7 @@ rxTest({
       })
 
       test_that(paste0("keep columns (double, integer, logical, factor) are ALTREP via explicit nsim (stochastic) path %s %s", rt, ad), {
-        # Per-subject varying keep values; same values in every sim block → ALTREP.
+        # Per-subject varying keep values; same values in every sim block -> ALTREP.
         pkKeep <- function() {
           ini({
             tka <- 0.5
