@@ -56,8 +56,20 @@ static SEXP rx_seqrep_materialize(SEXP x) {
   const int *d = INTEGER(R_altrep_data1(x));
   int n_vals  = d[0];
   int run_len = d[1];
-  for (R_xlen_t i = 0; i < len; i++) {
-    p[i] = (int)((i / run_len) % n_vals) + 1;
+  R_xlen_t block = (R_xlen_t)n_vals * run_len;
+
+  /* Build the first repeating block element-by-element. */
+  if (block > len) block = len;
+  for (int v = 0; v < n_vals; v++)
+    for (int r = 0; r < run_len; r++)
+      p[(R_xlen_t)v * run_len + r] = v + 1;
+
+  /* Exponential doubling: each memcpy at least doubles the filled region. */
+  for (R_xlen_t filled = block; filled < len; ) {
+    R_xlen_t chunk = filled;
+    if (filled + chunk > len) chunk = len - filled;
+    memcpy(p + filled, p, chunk * sizeof(int));
+    filled += chunk;
   }
   R_set_altrep_data2(x, mat);
   UNPROTECT(1);
@@ -80,13 +92,11 @@ static void *rx_seqrep_Dataptr(SEXP x, Rboolean writeable) {
 /* ---- Sum, Min, Max: can be computed analytically ---------------------- */
 static SEXP rx_seqrep_Sum(SEXP x, Rboolean narm) {
   const int *d = INTEGER(R_altrep_data1(x));
-  int n_vals  = d[0];
-  int run_len = d[1];
+  int n_vals       = d[0];
   R_xlen_t total_len = (R_xlen_t)d[2];
   /* Sum of rep(1:n_vals, each=run_len, times=n_reps)
-   * = n_reps * run_len * n_vals*(n_vals+1)/2 */
-  double nreps = (double)total_len / (double)(n_vals * (R_xlen_t)run_len);
-  double s = nreps * run_len * ((double)n_vals * (n_vals + 1) / 2.0);
+   * = total_len * (n_vals+1) / 2  (division-free; safe when n_vals or run_len is 0) */
+  double s = (double)total_len * (n_vals + 1) / 2.0;
   return Rf_ScalarReal(s);
 }
 
@@ -125,7 +135,7 @@ static int rx_rep_int_Elt(SEXP x, R_xlen_t i) {
   SEXP base = rx_rep_base(x);
   R_xlen_t n = XLENGTH(base);
   if (n == 0) return NA_INTEGER;
-  return INTEGER(base)[i % n];
+  return INTEGER_ELT(base, i % n);
 }
 
 static SEXP rx_rep_int_materialize(SEXP x) {
@@ -164,7 +174,7 @@ static int rx_rep_lgl_Elt(SEXP x, R_xlen_t i) {
   SEXP base = rx_rep_base(x);
   R_xlen_t n = XLENGTH(base);
   if (n == 0) return NA_LOGICAL;
-  return LOGICAL(base)[i % n];
+  return LOGICAL_ELT(base, i % n);
 }
 
 static SEXP rx_rep_lgl_materialize(SEXP x) {
@@ -203,7 +213,7 @@ static double rx_rep_real_Elt(SEXP x, R_xlen_t i) {
   SEXP base = rx_rep_base(x);
   R_xlen_t n = XLENGTH(base);
   if (n == 0) return NA_REAL;
-  return REAL(base)[i % n];
+  return REAL_ELT(base, i % n);
 }
 
 static SEXP rx_rep_real_materialize(SEXP x) {
