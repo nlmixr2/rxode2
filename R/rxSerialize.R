@@ -8,6 +8,7 @@
 ##' @param file Character(1).  Path of the file to write.
 ##' @return Invisibly \code{TRUE}.
 ##' @seealso \code{\link{rxLoadState}}
+##' @keywords internal
 ##' @export
 rxSaveState <- function(file) {
   checkmate::assertCharacter(file, len = 1L, any.missing = FALSE)
@@ -157,6 +158,7 @@ rxSaveState <- function(file) {
 ##' @param file Character(1).  Path of a file written by \code{\link{rxSaveState}}.
 ##' @return Invisibly \code{TRUE}.
 ##' @seealso \code{\link{rxSaveState}}
+##' @keywords internal
 ##' @export
 rxLoadState <- function(file) {
   checkmate::assertCharacter(file, len = 1L, any.missing = FALSE)
