@@ -281,6 +281,96 @@ static void *rx_rep_str_Dataptr(SEXP x, Rboolean writeable) {
   return DATAPTR_RW(mat);
 }
 
+/* ---- Get_region --------------------------------------------------------- */
+
+/* rx_seqrep: fill buf[0..size) without element-by-element modulo overhead.
+ * Advance through runs, filling each run value with a tight inner loop that
+ * compilers can auto-vectorise (constant value, sequential write). */
+static R_xlen_t rx_seqrep_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, int *buf) {
+  const int *d    = INTEGER(R_altrep_data1(x));
+  int n_vals      = d[0];
+  int run_len     = d[1];
+  R_xlen_t total  = (R_xlen_t)d[2];
+
+  if (i >= total) return 0;
+  if (i + size > total) size = total - i;
+
+  R_xlen_t period  = (R_xlen_t)n_vals * run_len;
+  R_xlen_t pos     = i % period;
+  int val_idx      = (int)(pos / run_len);        /* 0-based */
+  R_xlen_t rem     = (R_xlen_t)run_len - pos % (R_xlen_t)run_len;
+
+  R_xlen_t written = 0;
+  while (written < size) {
+    R_xlen_t chunk = rem < size - written ? rem : size - written;
+    int val = val_idx + 1;
+    for (R_xlen_t k = 0; k < chunk; k++) buf[written + k] = val;
+    written += chunk;
+    val_idx  = (val_idx + 1) % n_vals;
+    rem      = run_len;
+  }
+  return size;
+}
+
+/* rx_rep_int/lgl/real: tile the base vector using the base's own Get_region,
+ * so an ALTREP base (e.g. seqrep) is never forced to materialise. */
+static R_xlen_t rx_rep_int_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, int *buf) {
+  SEXP base      = rx_rep_base(x);
+  R_xlen_t n     = XLENGTH(base);
+  R_xlen_t total = rx_rep_total_len(x);
+
+  if (n == 0 || i >= total) return 0;
+  if (i + size > total) size = total - i;
+
+  R_xlen_t pos = i % n, written = 0;
+  while (written < size) {
+    R_xlen_t chunk = n - pos;
+    if (chunk > size - written) chunk = size - written;
+    INTEGER_GET_REGION(base, pos, chunk, buf + written);
+    written += chunk;
+    pos      = 0;
+  }
+  return size;
+}
+
+static R_xlen_t rx_rep_lgl_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, int *buf) {
+  SEXP base      = rx_rep_base(x);
+  R_xlen_t n     = XLENGTH(base);
+  R_xlen_t total = rx_rep_total_len(x);
+
+  if (n == 0 || i >= total) return 0;
+  if (i + size > total) size = total - i;
+
+  R_xlen_t pos = i % n, written = 0;
+  while (written < size) {
+    R_xlen_t chunk = n - pos;
+    if (chunk > size - written) chunk = size - written;
+    LOGICAL_GET_REGION(base, pos, chunk, buf + written);
+    written += chunk;
+    pos      = 0;
+  }
+  return size;
+}
+
+static R_xlen_t rx_rep_real_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, double *buf) {
+  SEXP base      = rx_rep_base(x);
+  R_xlen_t n     = XLENGTH(base);
+  R_xlen_t total = rx_rep_total_len(x);
+
+  if (n == 0 || i >= total) return 0;
+  if (i + size > total) size = total - i;
+
+  R_xlen_t pos = i % n, written = 0;
+  while (written < size) {
+    R_xlen_t chunk = n - pos;
+    if (chunk > size - written) chunk = size - written;
+    REAL_GET_REGION(base, pos, chunk, buf + written);
+    written += chunk;
+    pos      = 0;
+  }
+  return size;
+}
+
 /* ---- Registration ------------------------------------------------------ */
 void rxode2_init_altrep_class(DllInfo *info) {
   rx_seqrep_class = R_make_altinteger_class("rx_seqrep", "rxode2", info);
@@ -291,24 +381,28 @@ void rxode2_init_altrep_class(DllInfo *info) {
   R_set_altinteger_Sum_method(rx_seqrep_class, rx_seqrep_Sum);
   R_set_altinteger_Min_method(rx_seqrep_class, rx_seqrep_Min);
   R_set_altinteger_Max_method(rx_seqrep_class, rx_seqrep_Max);
+  R_set_altinteger_Get_region_method(rx_seqrep_class, rx_seqrep_Get_region);
 
   rx_rep_int_class = R_make_altinteger_class("rx_rep_int", "rxode2", info);
   R_set_altrep_Length_method(rx_rep_int_class, rx_rep_int_Length);
   R_set_altinteger_Elt_method(rx_rep_int_class, rx_rep_int_Elt);
   R_set_altvec_Dataptr_method(rx_rep_int_class, rx_rep_int_Dataptr);
   R_set_altvec_Dataptr_or_null_method(rx_rep_int_class, rx_rep_int_Dataptr_or_null);
+  R_set_altinteger_Get_region_method(rx_rep_int_class, rx_rep_int_Get_region);
 
   rx_rep_lgl_class = R_make_altlogical_class("rx_rep_lgl", "rxode2", info);
   R_set_altrep_Length_method(rx_rep_lgl_class, rx_rep_lgl_Length);
   R_set_altlogical_Elt_method(rx_rep_lgl_class, rx_rep_lgl_Elt);
   R_set_altvec_Dataptr_method(rx_rep_lgl_class, rx_rep_lgl_Dataptr);
   R_set_altvec_Dataptr_or_null_method(rx_rep_lgl_class, rx_rep_lgl_Dataptr_or_null);
+  R_set_altlogical_Get_region_method(rx_rep_lgl_class, rx_rep_lgl_Get_region);
 
   rx_rep_real_class = R_make_altreal_class("rx_rep_real", "rxode2", info);
   R_set_altrep_Length_method(rx_rep_real_class, rx_rep_real_Length);
   R_set_altreal_Elt_method(rx_rep_real_class, rx_rep_real_Elt);
   R_set_altvec_Dataptr_method(rx_rep_real_class, rx_rep_real_Dataptr);
   R_set_altvec_Dataptr_or_null_method(rx_rep_real_class, rx_rep_real_Dataptr_or_null);
+  R_set_altreal_Get_region_method(rx_rep_real_class, rx_rep_real_Get_region);
 
   rx_rep_str_class = R_make_altstring_class("rx_rep_str", "rxode2", info);
   R_set_altrep_Length_method(rx_rep_str_class, rx_rep_str_Length);
