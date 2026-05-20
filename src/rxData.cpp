@@ -2928,9 +2928,8 @@ extern "C" SEXP get_fkeepChar(int col, double val) {
 extern "C" SEXP get_fkeepn() {
   SEXP names = keepFcov.attr("names");
   if (Rf_isNull(names)) {
-    SEXP ret = PROTECT(Rf_allocVector(STRSXP, 0));
-    UNPROTECT(1);
-    return ret;
+    CharacterVector ret(0);
+    return wrap(ret);
   }
   return names;
 }
