@@ -1,10 +1,9 @@
 #' @export
 confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   sim.id <- id <- NULL # rcheck nonsense
+  .SD <- . <- NULL # nolint
+  `:=` <- NULL # nolint
   rxode2::rxReq("data.table")
-  ## p1 <-eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- time <- trt <- NULL
-  ## rxode2::rxReq("dplyr")
-  ## rxode2::rxReq("tidyr")
   checkmate::assertNumeric(level, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
   .args <- list(...)
   if (any(names(.args) == "doSim")) {
@@ -33,11 +32,10 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   }
   .mean <- FALSE
   .binom <- FALSE
-  .m <- 0L
   .nC <- 0L
   .pred <- FALSE
   .useT <- TRUE
-  .M <- 500000
+  .mM <- 500000
   .tol <- .Machine$double.eps^0.25
   if (any(names(.args) == "useT")) {
     .useT <- .args$useT
@@ -63,12 +61,12 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     checkmate::assertIntegerish(.nC, len=1, any.missing=FALSE, lower=0L, .var.name="n")
   }
   if (any(names(.args) == "m")) {
-    .m <- unique(.args$m)
-    checkmate::assertIntegerish(.m, len=1, any.missing=FALSE, lower=0L, .var.name="m")
+    .mM <- unique(.args$m)
+    checkmate::assertIntegerish(.mM, len=1, any.missing=FALSE, lower=0L, .var.name="m")
   }
   if (any(names(.args) == "M")) {
-    .M <- unique(.args$M)
-    checkmate::assertIntegerish(.M, len=1, any.missing=FALSE, lower=1000L, .var.name="M")
+    .mM <- unique(.args$M)
+    checkmate::assertIntegerish(.mM, len=1, any.missing=FALSE, lower=1000L, .var.name="M")
   }
   if (any(names(.args) == "tol")) {
     .tol <- unique(.args$tol)
@@ -78,7 +76,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   if (any(names(.args) == "ciMethod")) {
     .ciMethod <- .args$method
   }
-  .stk <- rxStack(object, parm, doSim=.doSim)
+  .stk <- rxStack(object, parm, doSim=.doSim) # nolint
   if (!any(names(.stk) == "id") &&
         any(names(.stk) == "sim.id")) {
     names(.stk) <- gsub("sim.id", "id", names(.stk))
@@ -86,7 +84,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   for (.v in .by) {
     .stk[[.v]] <- object[[.v]]
   }
-  setDT(.stk)
+  setDT(.stk) # nolint
   .a <- (1 - level) / 2
   .p <- c(.a, 0.5, 1 - .a)
   .c <- (1-.ci) / 2
@@ -101,7 +99,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   )
   class(.lst) <- "rxHidden"
   if (.ci ==0 || !any(names(.stk) == "sim.id") ||
-      !isTRUE(object$env$.args$nStud > 1L)) {
+        !isTRUE(object$env$.args$nStud > 1L)) {
     if (any(names(.stk) == "sim.id")) {
       .stk$id <- factor(paste(.stk$sim.id, .stk$id))
       .ntot <- length(levels(.stk$id))
@@ -114,7 +112,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     }
     if (.ci == 0 || .ntot < 2500) {
       if (.ci != 0.0) {
-        .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations")
+        .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations") # nolint
       }
       message("summarizing data...", appendLF = FALSE)
       if (.mean) {
@@ -128,7 +126,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
       } else if (.binom) {
         .stk <- .stk[, list(
           p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                            n=.nC, m=.m, M=.m, tol=.tol,
+                                            n=.nC, m=.mM, M=.mM, tol=.tol,
                                             pred=.pred, ciMethod=.ciMethod),
           Percentile = sprintf("%s%%", .p * 100)
         ),
@@ -170,7 +168,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   } else if (.binom) {
     .ret <- .ret[, list(p1 = .p,
                         eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                                 n=.nC, m=.m, M=.m, tol=.tol,
+                                                 n=.nC, m=.mM, M=.mM, tol=.tol,
                                                  pred=.pred, ciMethod=.ciMethod)),
                  by = c("id", "time", "trt", .by)]
   } else {
@@ -179,8 +177,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   }
   .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
                           sprintf("p%s", .p2 * 100)),
-               by = c("p1", "time", "trt", .by)
-               ]
+               by = c("p1", "time", "trt", .by)]
   .ret$Percentile <- factor(sprintf("%s%%", .ret$p1 * 100))
   if (requireNamespace("tibble", quietly = TRUE)) {
     .ret <- tibble::as_tibble(.ret)
@@ -189,5 +186,5 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .cls <- c("rxSolveConfint2", class(.ret))
   attr(.cls, ".rx") <- .lst
   class(.ret) <- .cls
-  return(.ret)
+  .ret
 }
