@@ -100,41 +100,35 @@ static bool rxCanRepBySim(SEXP col, int rowsPerSim, int nsim) {
 }
 
 static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
-  int pro = 0;
   int type = TYPEOF(col);
-  SEXP base = R_NilValue;
-  SEXP out = R_NilValue;
   if (type == INTSXP) {
-    base = PROTECT(Rf_allocVector(INTSXP, rowsPerSim)); pro++;
-    memcpy(INTEGER(base), INTEGER(col), (size_t)rowsPerSim * sizeof(int));
-    out = PROTECT(rxode2_make_rep_int(base, nsim)); pro++;
+    IntegerVector base(rowsPerSim);
+    memcpy(base.begin(), INTEGER(col), (size_t)rowsPerSim * sizeof(int));
+    RObject out = rxode2_make_rep_int(base, nsim);
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(pro);
-    return out;
+    return wrap(out);
   } else if (type == LGLSXP) {
-    base = PROTECT(Rf_allocVector(LGLSXP, rowsPerSim)); pro++;
-    memcpy(LOGICAL(base), LOGICAL(col), (size_t)rowsPerSim * sizeof(int));
-    out = PROTECT(rxode2_make_rep_lgl(base, nsim)); pro++;
+    LogicalVector base(rowsPerSim);
+    memcpy(base.begin(), LOGICAL(col), (size_t)rowsPerSim * sizeof(int));
+    RObject out = rxode2_make_rep_lgl(base, nsim);
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(pro);
-    return out;
+    return wrap(out);
   } else if (type == REALSXP) {
-    base = PROTECT(Rf_allocVector(REALSXP, rowsPerSim)); pro++;
-    memcpy(REAL(base), REAL(col), (size_t)rowsPerSim * sizeof(double));
-    out = PROTECT(rxode2_make_rep_real(base, nsim)); pro++;
+    NumericVector base(rowsPerSim);
+    memcpy(base.begin(), REAL(col), (size_t)rowsPerSim * sizeof(double));
+    RObject out = rxode2_make_rep_real(base, nsim);
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(pro);
-    return out;
+    return wrap(out);
   } else if (type == STRSXP) {
-    base = PROTECT(Rf_allocVector(STRSXP, rowsPerSim)); pro++;
-    for (int i = 0; i < rowsPerSim; ++i)
+    CharacterVector base(rowsPerSim);
+    for (int i = 0; i < rowsPerSim; ++i) {
       SET_STRING_ELT(base, i, STRING_ELT(col, i));
-    out = PROTECT(rxode2_make_rep_str(base, nsim)); pro++;
+    }
+    RObject out = rxode2_make_rep_str(base, nsim);
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(pro);
-    return out;
+    return wrap(out);
   }
-  return col;
+  return R_NilValue;
 }
 
 extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {
@@ -148,16 +142,15 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {
     const char *curFactor = rx->factorNames.line[i];
     curLen = rx->factorNs[i];
     if (!strncmpci(item, curFactor, strlen(item))) {
-      SEXP lvl = PROTECT(Rf_allocVector(STRSXP, curLen));
+      CharacterVector lvl(curLen);
       for (int j = 0; j < curLen; j++){
         SET_STRING_ELT(lvl, j,Rf_mkChar(rx->factors.line[base+j]));
       }
-      SEXP val = PROTECT(Rf_allocVector(INTSXP, nrow));
+      IntegerVector val(nrow);
       Rf_setAttrib(val, R_LevelsSymbol, lvl);
-      SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));
+      CharacterVector cls(1);
       SET_STRING_ELT(cls, 0, Rf_mkChar("factor"));
       Rf_setAttrib(val,R_ClassSymbol, cls);
-      UNPROTECT(3);
       return val;
     }
     base += curLen;
