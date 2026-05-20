@@ -100,37 +100,38 @@ static bool rxCanRepBySim(SEXP col, int rowsPerSim, int nsim) {
 }
 
 static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
+  int pro = 0;
   int type = TYPEOF(col);
   SEXP base = R_NilValue;
   SEXP out = R_NilValue;
   if (type == INTSXP) {
-    base = PROTECT(Rf_allocVector(INTSXP, rowsPerSim));
+    base = PROTECT(Rf_allocVector(INTSXP, rowsPerSim)); pro++;
     memcpy(INTEGER(base), INTEGER(col), (size_t)rowsPerSim * sizeof(int));
-    out = PROTECT(rxode2_make_rep_int(base, nsim));
+    out = PROTECT(rxode2_make_rep_int(base, nsim)); pro++;
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(2);
+    UNPROTECT(pro);
     return out;
   } else if (type == LGLSXP) {
-    base = PROTECT(Rf_allocVector(LGLSXP, rowsPerSim));
+    base = PROTECT(Rf_allocVector(LGLSXP, rowsPerSim)); pro++;
     memcpy(LOGICAL(base), LOGICAL(col), (size_t)rowsPerSim * sizeof(int));
-    out = PROTECT(rxode2_make_rep_lgl(base, nsim));
+    out = PROTECT(rxode2_make_rep_lgl(base, nsim)); pro++;
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(2);
+    UNPROTECT(pro);
     return out;
   } else if (type == REALSXP) {
-    base = PROTECT(Rf_allocVector(REALSXP, rowsPerSim));
+    base = PROTECT(Rf_allocVector(REALSXP, rowsPerSim)); pro++;
     memcpy(REAL(base), REAL(col), (size_t)rowsPerSim * sizeof(double));
-    out = PROTECT(rxode2_make_rep_real(base, nsim));
+    out = PROTECT(rxode2_make_rep_real(base, nsim)); pro++;
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(2);
+    UNPROTECT(pro);
     return out;
   } else if (type == STRSXP) {
-    base = PROTECT(Rf_allocVector(STRSXP, rowsPerSim));
+    base = PROTECT(Rf_allocVector(STRSXP, rowsPerSim)); pro++;
     for (int i = 0; i < rowsPerSim; ++i)
       SET_STRING_ELT(base, i, STRING_ELT(col, i));
-    out = PROTECT(rxode2_make_rep_str(base, nsim));
+    out = PROTECT(rxode2_make_rep_str(base, nsim)); pro++;
     Rf_copyMostAttrib(col, out);
-    UNPROTECT(2);
+    UNPROTECT(pro);
     return out;
   }
   return col;
@@ -161,9 +162,8 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {
     }
     base += curLen;
   }
-  SEXP val = PROTECT(Rf_allocVector(REALSXP, nrow));
-  UNPROTECT(1);
-  return val;
+  NumericVector val(nrow);
+  return wrap(val);
 }
 
 extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
@@ -474,7 +474,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   R_xlen_t covKeepNrow  = covKeepShrunk  ? (R_xlen_t)rowsPerSimUniform : (R_xlen_t)rx->nr;
 
   int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
-  List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
+  List df = List(ncol);
   for (i = nidCols; i--;){
     df[i] = IntegerVector((R_xlen_t)rx->nr);
   }
@@ -663,13 +663,12 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           // directly from lvlI.  Allocates only nsub*rows0 (one sim block) —
           // avoids the O(nr) fill + uniformity scan in the old rxData.cpp re-wrap.
           int baseLen = nsub * rows0;
-          SEXP _base = PROTECT(Rf_allocVector(INTSXP, baseLen));
-          int *_bp = INTEGER(_base);
+          IntegerVector _bp(baseLen);
           for (int _s = 0; _s < nsub; _s++)
             for (int _r = 0; _r < rows0; _r++)
               _bp[_s * rows0 + _r] = lvlI[_s];
-          df[jj_alt] = PROTECT(rxode2_make_rep_int(_base, nsim));
-          UNPROTECT(2);
+          RObject cur = rxode2_make_rep_int(_bp, nsim);
+          df[jj_alt] = cur;
           jj_alt++;
           mdFilled = true;
         }
@@ -1107,19 +1106,19 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     auto _wrapDirect = [&](int _c) {
       SEXP cur = VECTOR_ELT(df, _c);
       int _type = TYPEOF(cur);
-      SEXP out = R_NilValue;
+      RObject out = R_NilValue;
       if (_type == INTSXP) {
-        out = PROTECT(rxode2_make_rep_int(cur, nsim));
-        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        out = rxode2_make_rep_int(cur, nsim);
+        Rf_copyMostAttrib(cur, out);
       } else if (_type == LGLSXP) {
-        out = PROTECT(rxode2_make_rep_lgl(cur, nsim));
-        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        out = rxode2_make_rep_lgl(cur, nsim);
+        Rf_copyMostAttrib(cur, out);
       } else if (_type == REALSXP) {
-        out = PROTECT(rxode2_make_rep_real(cur, nsim));
-        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        out = rxode2_make_rep_real(cur, nsim);
+        Rf_copyMostAttrib(cur, out);
       } else if (_type == STRSXP) {
-        out = PROTECT(rxode2_make_rep_str(cur, nsim));
-        Rf_copyMostAttrib(cur, out); UNPROTECT(1);
+        out = rxode2_make_rep_str(cur, nsim);
+        Rf_copyMostAttrib(cur, out);
       }
       if (out != R_NilValue) SET_VECTOR_ELT(df, _c, out);
     };
