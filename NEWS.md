@@ -16,8 +16,6 @@
 - Change compile flags and compiler directives for rxode2 models to
   speed up how they run.
 
-- No longer introduce a discontinuity for phantom events (evid=7).
-
 - Have a pre-allocated context pool for lsoda in both liblsoda and
   lsoda (faster because memory doesn't need to allocated and
   deallocated so often)
