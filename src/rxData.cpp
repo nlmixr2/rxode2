@@ -3570,7 +3570,7 @@ static inline void rxSolve_simulate(const RObject &obj,
         }
         rx->nevid9 = evid9;
         // Get true number of subjects if this is a homogenous event table.
-        SEXP hgs = PROTECT(Rf_getAttrib(ev1, Rf_install("rxHomGroups")));
+        RObject hgs = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
         if (!Rf_isNull(hgs)) {
           List hgl = as<List>(hgs);
           nSub0 = 0;
@@ -3578,7 +3578,6 @@ static inline void rxSolve_simulate(const RObject &obj,
             nSub0 += (R_xlen_t)Rf_length(hgl[_hg]);
           }
         }
-        UNPROTECT(1);
       } else {
         nSub0 =1;
         DataFrame dataf = as<DataFrame>(ev1);
