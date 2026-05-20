@@ -3,17 +3,15 @@
 - Various low level fixes to allow `nlmixr2est` to have parallelized
   focei.
 
-- Parallelized the rxode2 data.frame creation (as long as you are not keeping
-  character values, since they touch the R API).
+- Parallelized the rxode2 data.frame creation.
 
-- Use ALTREP for `id` (when the number of output rows per id is the
-  same) and `sim.id` in output.
-
-- Also ALTREP output for repeated simulation event columns (`evid`,
-  `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`), covariates and
-  kept variables when blocks are identical across simulations; falls
-  back to filled out columns when runtime event mutation is detected
-  (`evid_()` push growth / per-individual event reallocation).
+- Use ALTREP for `id`, `sim.id`, repeated simulation event columns
+  (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`),
+  covariates and kept variables when blocks are identical across
+  simulations; falls back to filled out columns when runtime event
+  mutation is detected (`evid_()` push growth / per-individual event
+  reallocation). Also factors cannot currently be represented by
+  altrep, so they are forced to be fully represented.
 
 - Change compile flags and compiler directives for rxode2 models to
   speed up how they run.
@@ -70,7 +68,7 @@
 
 - More easily identify initial conditions (#948)
 
-- Fix sensitivities in the linCmt() that did not match the ODE (#1018, #1012)
+- Fix sensitivities in the `linCmt()` that did not match the ODE (#1018, #1012)
 
 - Added in-solve addition of observations (`obs()`), bolus doses
   `bolus()`, infusion doses `infuse()` or `infuseDur()`, system resets
