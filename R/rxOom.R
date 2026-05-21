@@ -66,8 +66,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # ── Main OOM solve loop ───────────────────────────────────────────────────────
 
 .rxSolveOom <- function(object, params, events, inits, .ctl, .envir = parent.frame()) {
-  .prefix   <- .ctl$oomFile
-  .nDaemons <- if (is.null(.ctl$oomParallel)) 0L else as.integer(.ctl$oomParallel)
+  .prefix   <- .ctl$file
+  .nDaemons <- if (is.null(.ctl$parallel)) 0L else as.integer(.ctl$parallel)
   .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
 
   # Normalize: if events is an rxEt but params is not, events is the params; swap
@@ -86,8 +86,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   }
 
   # Chunk size
-  .chunkSize <- if (!is.null(.ctl$oomChunkSize)) {
-    as.integer(.ctl$oomChunkSize)
+  .chunkSize <- if (!is.null(.ctl$chunkSize)) {
+    as.integer(.ctl$chunkSize)
   } else {
     .rxOomChunkSize(object, .summary, .ctl)
   }
@@ -115,9 +115,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 
   # Control args forwarded to each chunk rxSolve call (strip OOM-specific fields)
   .fwdCtlArgs <- as.list(.ctl)
-  .fwdCtlArgs$oomFile       <- NULL
-  .fwdCtlArgs$oomChunkSize  <- NULL
-  .fwdCtlArgs$oomParallel   <- NULL
+  .fwdCtlArgs$file      <- NULL
+  .fwdCtlArgs$chunkSize <- NULL
+  .fwdCtlArgs$parallel  <- NULL
   .fwdCtlArgs$serializeFile <- NULL
 
   # Pre-draw ALL subjects' etas once using the base seed so that chunked solves

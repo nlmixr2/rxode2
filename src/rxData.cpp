@@ -6017,7 +6017,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("the solver buffer (%lld elements, %.1f GB) is too large for rxSolve to handle; "
              "reduce the number of timepoints or simulations; "
-             "use rxControl(oomFile = 'prefix') to solve in chunks"),
+             "use rxSolve(..., file = 'prefix') to solve in chunks"),
            (long long)_mem.n0, (double)_mem.n0 * sizeof(double) / 1e9);
     }
     // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
@@ -6029,7 +6029,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         rxSolveFree();
         stop(_("the solver requires %.1f GB but only %.1f GB appears available; "
                "reduce the number of timepoints or simulations; "
-               "use rxControl(oomFile = 'prefix') to solve in chunks"),
+               "use rxSolve(..., file = 'prefix') to solve in chunks"),
              (double)_needed / 1e9, (double)_avail / 1e9);
       }
     }

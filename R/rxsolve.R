@@ -1559,9 +1559,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
       dense=dense,
-      oomFile=file,
-      oomChunkSize=chunkSize,
-      oomParallel=parallel,
+      file=file,
+      chunkSize=chunkSize,
+      parallel=parallel,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2509,12 +2509,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     events
   }
 
-  if (!is.null(.ctl$oomFile)) {
+  if (!is.null(.ctl$file)) {
     return(.rxSolveOom(object, params = params, events = events,
                        inits = inits, .ctl = .ctl, .envir = envir))
   }
 
-  if (is.null(.ctl$oomFile) && !.serializeInput && .setupOnly == 0L) {
+  if (is.null(.ctl$file) && !.serializeInput && .setupOnly == 0L) {
     .oomEst <- tryCatch(
       rxMemoryEstimate(.eventsForSolve, model = object, control = .ctl),
       error = function(e) NULL
