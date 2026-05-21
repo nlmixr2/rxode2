@@ -17,9 +17,11 @@
 #include "../inst/include/rxode2parseSbuf.h"
 #include "tran.h"
 #include "../inst/include/rxode2parseVer.h"
+#include "rxProtect.h"
 
 static inline SEXP calcSLinCmt(void) {
-  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,15));
+  rxProtectGuard;
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,15));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -35,7 +37,7 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[13] = tb.hasMix;
   INTEGER(sLinCmt)[14] = tb.evid_;
 
-  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 15));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 15));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -52,13 +54,14 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 13, Rf_mkChar("mix"));
   SET_STRING_ELT(sLinCmtN, 14, Rf_mkChar("evid_"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
-  UNPROTECT(2);
+  rxUPAll();
   return(sLinCmt);
 }
 
 static inline SEXP calcVersionInfo(void) {
-  SEXP version  = PROTECT(Rf_allocVector(STRSXP, 3));
-  SEXP versionn = PROTECT(Rf_allocVector(STRSXP, 3));
+  rxProtectGuard;
+  SEXP version  = rxP(Rf_allocVector(STRSXP, 3));
+  SEXP versionn = rxP(Rf_allocVector(STRSXP, 3));
 
   SET_STRING_ELT(versionn,0,Rf_mkChar("version"));
   SET_STRING_ELT(versionn,1,Rf_mkChar("repo"));
@@ -68,7 +71,7 @@ static inline SEXP calcVersionInfo(void) {
   SET_STRING_ELT(version,1,Rf_mkChar(__VER_repo__));
   SET_STRING_ELT(version,2,Rf_mkChar(__VER_md5__));
   Rf_setAttrib(version,   R_NamesSymbol, versionn);
-  UNPROTECT(2);
+  rxUPAll();
   return version;
 }
 
@@ -183,9 +186,9 @@ static inline void assertNoLinCmtDepotCentral(void) {
 }
 
 static inline SEXP calcIniVals(void) {
-  int pro=0;
-  SEXP inin  = PROTECT(Rf_allocVector(STRSXP, tb.isPi + tb.ini_i)); pro++;
-  SEXP ini   = PROTECT(Rf_allocVector(REALSXP, tb.isPi + tb.ini_i)); pro++;
+  rxProtectGuard;
+  SEXP inin  = rxP(Rf_allocVector(STRSXP, tb.isPi + tb.ini_i));
+  SEXP ini   = rxP(Rf_allocVector(REALSXP, tb.isPi + tb.ini_i));
   char *buf;
   for (int i=tb.isPi + tb.ini_i;i--;) REAL(ini)[i] = NA_REAL;
   int ini_i=0;
@@ -206,8 +209,8 @@ static inline SEXP calcIniVals(void) {
     SET_STRING_ELT(inin,ini_i,Rf_mkChar("pi"));
     REAL(ini)[ini_i++] = M_PI;
   } else if (redo){
-    inin  = PROTECT(Rf_allocVector(STRSXP, tb.ini_i));pro++;
-    ini   = PROTECT(Rf_allocVector(REALSXP, tb.ini_i));pro++;
+    inin  = rxP(Rf_allocVector(STRSXP, tb.ini_i));
+    ini   = rxP(Rf_allocVector(REALSXP, tb.ini_i));
     for (int i = tb.ini_i; i--;) REAL(ini)[i] = NA_REAL;
     ini_i=0;
     for (int i = 0; i < NV; i++){
@@ -226,7 +229,7 @@ static inline SEXP calcIniVals(void) {
   tb.ini_i = ini_i;
 
   Rf_setAttrib(ini,   R_NamesSymbol, inin);
-  UNPROTECT(pro);
+  rxUPAll();
   return ini;
 }
 

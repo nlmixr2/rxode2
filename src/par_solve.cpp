@@ -22,6 +22,7 @@
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 
 // dop853 is same time
+#include "rxProtect.h"
 
 extern "C" uint32_t getRxSeed1(int ncores);
 extern "C" void setSeedEng1(uint32_t seed);
@@ -62,14 +63,14 @@ extern "C" void RSprintf(const char *format, ...);
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
 extern "C" void rxEtaPreDeactivate(void);
 
-extern "C" SEXP _rxHasOpenMp(){
-  SEXP ret = PROTECT(Rf_allocVector(LGLSXP,1));
+extern "C" SEXP _rxHasOpenMp(){ rxProtect rx_protect; 
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
   INTEGER(ret)[0] = 1;
 #else
   INTEGER(ret)[0] = 0;
 #endif
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 
@@ -432,12 +433,12 @@ typedef struct {
 
 rx_tick rxt;
 
-extern "C" SEXP _rxTick(){
+extern "C" SEXP _rxTick(){ rxProtect rx_protect; 
   rxt.cur++;
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 1));
   rxt.d =par_progress(rxt.cur, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   INTEGER(ret)[0]=rxt.d;
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 
@@ -3033,9 +3034,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idx = -1-trueIdx;
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-            // Phantom events (evid=7) don't modify yp[] or InfusionRate[],
-            // so LSODA can safely continue from state=2 without reinit.
-            if (ind->wh0 != EVID0_PHANTOM) ctx->state = 1;
+            ctx->state = 1;
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
@@ -3078,9 +3077,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
-        // Phantom events (evid=7) don't modify yp[] or InfusionRate[],
-        // so LSODA can safely continue from state=2 without reinit.
-        if (rx->istateReset && ind->wh0 != EVID0_PHANTOM) ctx->state = 1;
+        if (rx->istateReset) ctx->state = 1;
         xp = xout;
       }
       int _mtime_requeued = 0;
@@ -3560,8 +3557,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->idx = -1-trueIdx;
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-            // Phantom events (evid=7) don't modify yp[] or InfusionRate[].
-            if (ind->wh0 != EVID0_PHANTOM) istate = 1;
+            istate = 1;
             ind->ixds = ixds; // This is a fake dose, real dose stays in place
             ind->idx = idx;
             ind->idxExtra++;
@@ -3607,8 +3603,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
-        // Phantom events (evid=7) don't modify yp[] or InfusionRate[].
-        if (rx->istateReset && ind->wh0 != EVID0_PHANTOM) istate = 1;
+        if (rx->istateReset) istate = 1;
         xp = xout;
       }
       int _mtime_requeued = 0;

@@ -3,6 +3,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADER
 #include <Rcpp.h>
+#include "rxProtect.h"
 using namespace Rcpp;
 
 int fastFactorDataHasNa = 0;
@@ -27,33 +28,33 @@ inline SEXP sexp_unique( Rcpp::Vector< RTYPE > x ) {
 #define get_sexp_unique _rxode2parse_get_sexp_unique
 
 // returns unique values in their original input order
-extern "C" SEXP get_sexp_unique( SEXP s ) {
+extern "C" SEXP get_sexp_unique( SEXP s ) { rxProtect rx_protect;
 
-  SEXP s2 = PROTECT(Rcpp::clone( s ));
+  SEXP s2 = rx_protect.protect(Rcpp::clone( s ));
 
   switch( TYPEOF( s2 ) ) {
   case LGLSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_unique< bool, LGLSXP >( s2 );
   }
   case REALSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_unique< double, REALSXP >( s2 );
   }
   case INTSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_unique< int, INTSXP >( s2 );
   }
   case STRSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_unique< char* , STRSXP >( s2 );
   }
   default: {
-    UNPROTECT(1);
-    Rcpp::stop("unknown vector type");
+    // UNPROTECT
+    rxError("unknown vector type");
   }
   }
-  UNPROTECT(1);
+  // UNPROTECT
   return 0;
 }
 
@@ -71,40 +72,40 @@ inline int sexp_uniqueL( Rcpp::Vector< RTYPE > x ) {
   return x.size();
 }
 
-extern "C" int get_sexp_uniqueL( SEXP s ) {
+extern "C" int get_sexp_uniqueL( SEXP s ) { rxProtect rx_protect;
 
-  SEXP s2 = PROTECT(Rcpp::clone( s ));
+  SEXP s2 = rx_protect.protect(Rcpp::clone( s ));
 
   switch( TYPEOF( s2 ) ) {
   case LGLSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_uniqueL< bool, LGLSXP >( s2 );
   }
   case REALSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_uniqueL< double, REALSXP >( s2 );
   }
   case INTSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_uniqueL< int, INTSXP >( s2 );
   }
   case STRSXP: {
-    UNPROTECT(1);
+    // UNPROTECT
     return sexp_uniqueL< char* , STRSXP >( s2 );
   }
   default: {
-    UNPROTECT(1);
-    Rcpp::stop("unknown vector type");
+    // UNPROTECT
+    rxError("unknown vector type");
   }
   }
-  UNPROTECT(1);
+  // UNPROTECT
   return 0;
 }
 
 // adapted from https://gallery.rcpp.org/articles/fast-factor-generation/
 // This was modified to use symbols for levels and class.
 template <int RTYPE>
-SEXP fast_factor_unsorted( const Vector<RTYPE>& x, SEXP oldLvl) {
+SEXP fast_factor_unsorted( const Vector<RTYPE>& x, SEXP oldLvl) { rxProtect rx_protect;
   Vector<RTYPE> levs = get_sexp_unique(x);
   if (RTYPE == INTSXP) {
     int *cur = INTEGER(levs);
@@ -123,15 +124,14 @@ SEXP fast_factor_unsorted( const Vector<RTYPE>& x, SEXP oldLvl) {
     }
   }
   IntegerVector out = match(x, levs);
-  int pro = 0;
-  SEXP outS = PROTECT(wrap(out)); pro++;
-  SEXP lvl = PROTECT(R_NilValue); pro++; // Obsessive about protection; probably dosen't need to be protected.
-  SEXP fac = PROTECT(wrap(CharacterVector("factor"))); pro++;
+  SEXP outS = rx_protect.protect(wrap(out));
+  SEXP lvl = rx_protect.protect(R_NilValue); // Obsessive about protection; probably dosen't need to be protected.
+  SEXP fac = rx_protect.protect(wrap(CharacterVector("factor")));
   if (Rf_isNull(oldLvl)) {
-    lvl = PROTECT(wrap(as<CharacterVector>(levs))); pro++;
+    lvl = rx_protect.protect(wrap(as<CharacterVector>(levs)));
   } else {
     // RTYPE should be INTSXP
-    SEXP levsSEXP = PROTECT(wrap(levs)); pro++;
+    SEXP levsSEXP = rx_protect.protect(wrap(levs));
     IntegerVector lvlI = as<IntegerVector>(levsSEXP);
     int hasNa = 0;
     for (int i = lvlI.size(); i--;) {
@@ -152,9 +152,9 @@ SEXP fast_factor_unsorted( const Vector<RTYPE>& x, SEXP oldLvl) {
     }
   }
   Rf_setAttrib(outS, R_LevelsSymbol, lvl);
-  SEXP cls = PROTECT(Rf_install("class")); pro++;
+  SEXP cls = rx_protect.protect(Rf_install("class"));
   Rf_setAttrib(outS, cls, fac);
-  UNPROTECT(pro);
+  // UNPROTECT
   return outS;
 }
 //[[Rcpp::export]]

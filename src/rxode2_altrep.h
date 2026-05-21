@@ -22,6 +22,20 @@ void rxode2_init_altrep_class(DllInfo *info);
  */
 SEXP rxode2_make_seqrep(int n_vals, int run_len, R_xlen_t total_len);
 
+/*
+ * Create compact ALTREP vectors representing rep(base, times=times)
+ * for integer, logical and real vectors.
+ */
+SEXP rxode2_make_rep_int(SEXP base, int times);
+SEXP rxode2_make_rep_lgl(SEXP base, int times);
+SEXP rxode2_make_rep_real(SEXP base, int times);
+SEXP rxode2_make_rep_str(SEXP base, int times);
+
+int rxInt(SEXP x, R_xlen_t i);
+double rxReal(SEXP x, R_xlen_t i);
+Rboolean is_rx_rep_int(SEXP x);
+Rboolean is_rx_seqrep(SEXP x);
+
 #ifdef __cplusplus
 }
 #endif

@@ -156,6 +156,7 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
 #include "parseDfdy.h"
 #include "parseCmtProperties.h"
 #include "parseDdt.h"
+#include "rxProtect.h"
 
 static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_ParseNode *pn, D_ParseNode *xpn,
 						 int *i, int nch, int *depth) {
@@ -683,19 +684,24 @@ SEXP getRxode2ParseDf(void);
 
 SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn){
+  rxProtectGuard;
   const char *in = NULL;
   _rxode2parse_assignTranslation(getRxode2ParseDf());
   int isStr = setupTrans(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn);
   in = CHAR(STRING_ELT(parse_file,0));
   trans_internal(in, isStr);
-  SEXP lst = PROTECT(generateModelVars());
+  SEXP lst = rxP(generateModelVars());
+  if (rx_syntax_error) {
+    rxUP(1);
+  }
   finalizeSyntaxError();
-  UNPROTECT(1);
+  rxUP(1);
   _rxode2parse_unprotect();
   return lst;
 }
 
 SEXP _rxode2_parseModel(SEXP type){
+  rxProtectGuard;
   if (!sbPm.o){
     _rxode2parse_unprotect();
     err_trans("model no longer loaded in memory");
@@ -704,37 +710,39 @@ SEXP _rxode2_parseModel(SEXP type){
   SEXP pm;
   switch (iT){
   case 1:
-    pm = PROTECT(Rf_allocVector(STRSXP, sbPmDt.n));
+    pm = rxP(Rf_allocVector(STRSXP, sbPmDt.n));
     for (int i = 0; i < sbPmDt.n; i++){
       SET_STRING_ELT(pm, i, Rf_mkChar(sbPmDt.line[i]));
     }
     break;
   default:
-    pm = PROTECT(Rf_allocVector(STRSXP, sbPm.n));
+    pm = rxP(Rf_allocVector(STRSXP, sbPm.n));
     for (int i = 0; i < sbPm.n; i++){
       SET_STRING_ELT(pm, i, Rf_mkChar(sbPm.line[i]));
     }
     break;
   }
-  UNPROTECT(1);
+  rxUP(1);
   return pm;
 }
 
 SEXP _rxode2_codeLoaded(void){
-  SEXP pm = PROTECT(Rf_allocVector(INTSXP, 1));
+  rxProtectGuard;
+  SEXP pm = rxP(Rf_allocVector(INTSXP, 1));
   if (!sbPm.o || !sbNrm.o){
     INTEGER(pm)[0]=0;
   } else {
     INTEGER(pm)[0]=1;
   }
-  UNPROTECT(1);
+  rxUP(1);
   return pm;
 }
 
 SEXP _rxode2_isLinCmt(void) {
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+  rxProtectGuard;
+  SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
   INTEGER(ret)[0]=tb.linCmt;
-  UNPROTECT(1);
+  rxUP(1);
   return ret;
 }
 

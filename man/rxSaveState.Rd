@@ -21,3 +21,4 @@ model object.
 \seealso{
 \code{\link{rxLoadState}}
 }
+\keyword{internal}

@@ -7,7 +7,7 @@ output:
 ---
 
 ```{r, echo=FALSE}
-options(cli.unicode=FALSE, crayon.enabled=FALSE)
+options(cli.unicode = FALSE, crayon.enabled = FALSE)
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -36,7 +36,9 @@ event-table workflow.
 
 The comparison below reflects:
 
-- new event table handling (at commit `6164e13cf`)
+- new event table handling (including recent ALTREP and homogeneous
+  group integrations)
+
 - old event table handling (at commit `c46571d84`)
 
 ## Architectural decisions on new event table structure
@@ -99,7 +101,48 @@ subtype instead of a proper data-frame. This allows `rxEt` to work
 seamlessly with `dplyr`, `tidyr`, and other modern R tools while
 retaining its specialized internal state.
 
-### 5. Keep C/C++ where it still matters
+### 5. ALTREP-backed data frames and optimized memory access
+
+To dramatically reduce memory overhead, the event table output layers
+are now powered by R's ALTREP (Alternative Representation)
+system. Columns that feature long repeated sequences (such as `id` or
+string factors) are no longer materialized up front. Instead, custom
+`rx_seqrep`, `rx_rep_int`, `rx_rep_real`, and `rx_rep_str` ALTREP
+classes defer materialization and generate elements on demand.
+
+Furthermore, these classes implement block-based `Get_region` methods
+utilizing $O(\\log N)$ exponential `memcpy` strategies and zero-modulo
+sequential chunking. This enables native R functions to process these
+columns via bulk block-access instead of slow $O(N)$
+element-by-element iterations.
+
+### 6. Homogeneous event groups (`rxHomGroups`)
+
+The new architecture introduces native support for "homogeneous" event
+groups. When multiple subjects share identical observation and dosing
+regimens, the solver avoids duplicating their arrays.
+
+- **Pointer sharing**: C++ memory (`_globals`) allocates only a single
+  shared block per unique regimen. The individual solvers simply map
+  their `all_times`, `cov_ptr`, and other pointers to offsets inside
+  this de-duplicated memory.
+
+- **Private memory degradation**: If a model utilizes dynamic dosing
+  (e.g. `evid_()`) or other runtime mutations, the solver detects this
+  via `indOwnAlloc` and securely triggers `memcpy()` to convert the
+  shared memory slice into a private allocation for that specific
+  subject. This isolates mutations cleanly without compromising the
+  initial memory efficiency.
+
+- **Branch-free execution**: While covariates and events are
+  de-duplicated during the ODE solve, final output arrays (`keepFcov`)
+  are physically expanded. This is a deliberate architectural
+  trade-off: it guarantees that hot loops for dataframe construction
+  (`get_fkeep`) and NA interpolation (LOCF/NOCB) remain completely
+  branch-free and robust, maximizing runtime speed at a negligible
+  memory cost.
+
+### 7. Keep C/C++ where it still matters
 
 The new event handling does **not** move everything into R.  Event
 translation and solver preparation still flow through the C/C++ side,
@@ -214,6 +257,7 @@ In short:
 - The new implementation is stronger when event tables are still being
   *built* or *combined* which is the most common use-case for `et()` event
   tables.
+- The integration of ALTREP and homogeneous tables significantly boosts memory efficiency and solver performance for multi-subject populations.
 
 ## Benchmark design
 
@@ -245,9 +289,9 @@ benchmark_results <- data.frame(
     "solve_handoff",
     "issue_724_large_sampling"
   ),
-   new_median_s = c(0.1275, 0.0104, 0.3130, 0.4240, 0.00199, 0.0260, 1.9210),
-   old_median_s = c(0.1055, 0.1396, 0.6485, 0.1640, 0.00003, 0.0200, 80.2900),
-   stringsAsFactors = FALSE
+  new_median_s = c(0.1275, 0.0104, 0.3130, 0.4240, 0.00199, 0.0260, 1.9210),
+  old_median_s = c(0.1055, 0.1396, 0.6485, 0.1640, 0.00003, 0.0200, 80.2900),
+  stringsAsFactors = FALSE
 )
 
 benchmark_results$winner <- ifelse(
@@ -331,7 +375,9 @@ above.
 The reported workload is:
 
 1. Build a subject-by-dose data set with 3 dose groups
+
 2. Create one event table row per subject for dosing
+
 3. Append a dense sampling grid from 0 to 168 hours by 0.5 hours
 
 On the original `main`-branch implementation, the elapsed time rose

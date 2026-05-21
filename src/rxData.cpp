@@ -34,6 +34,8 @@
 #include "rxomp.h"
 #include "rxMemAvail.h"
 #include "strncmp.h"
+#include "rxode2_altrep.h"
+#include "rxode2_df.h"
 #include "../inst/include/rxMemoryCalc.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
@@ -366,6 +368,9 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
 // [[Rcpp::export]]
 bool rxIs(const RObject &obj, std::string cls){
   if (obj == NULL) return false;
+  if (cls == "altrep") return ALTREP(obj);
+  if (cls == "seqrep") return is_rx_seqrep(obj);
+  if (cls == "repint") return is_rx_rep_int(obj);
   if (cls == "units"){
     if (obj.hasAttribute("class")){
       CharacterVector cls = obj.attr("class");
@@ -2923,9 +2928,8 @@ extern "C" SEXP get_fkeepChar(int col, double val) {
 extern "C" SEXP get_fkeepn() {
   SEXP names = keepFcov.attr("names");
   if (Rf_isNull(names)) {
-    SEXP ret = PROTECT(Rf_allocVector(STRSXP, 0));
-    UNPROTECT(1);
-    return ret;
+    CharacterVector ret(0);
+    return wrap(ret);
   }
   return names;
 }
@@ -3565,7 +3569,7 @@ static inline void rxSolve_simulate(const RObject &obj,
         }
         rx->nevid9 = evid9;
         // Get true number of subjects if this is a homogenous event table.
-        SEXP hgs = PROTECT(Rf_getAttrib(ev1, Rf_install("rxHomGroups")));
+        RObject hgs = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
         if (!Rf_isNull(hgs)) {
           List hgl = as<List>(hgs);
           nSub0 = 0;
@@ -3573,7 +3577,6 @@ static inline void rxSolve_simulate(const RObject &obj,
             nSub0 += (R_xlen_t)Rf_length(hgl[_hg]);
           }
         }
-        UNPROTECT(1);
       } else {
         nSub0 =1;
         DataFrame dataf = as<DataFrame>(ev1);
@@ -4753,7 +4756,23 @@ List rxSolve_df(const RObject &obj,
   int doTBS = (rx->matrix == 3);
   if (doTBS) rx->matrix=2;
   if (rx->matrix == 4 || rx->matrix == 5) rx->matrix=2;
-  List dat = rxode2_df(doDose, doTBS);
+
+  // Determine:
+  // 1. Is the id=1, 2, 3 etc
+  // 2. What are the id levels as integers (filled in lvlI)
+  bool isIdentity = false;
+  std::vector<int> lvlI;
+  if (rxSolveDat->convertInt && rx->nsub > 1) {
+    CharacterVector lvlC = rxSolveDat->idLevels;
+    lvlI.resize(lvlC.size());
+    isIdentity = true;
+    for (int j = (int)lvlC.size(); j--;) {
+      lvlI[j] = atoi(CHAR(lvlC[j]));
+      if (lvlI[j] != j + 1) isIdentity = false;
+    }
+  }
+
+  List dat = rxode2_df(doDose, doTBS, lvlI, isIdentity);
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
   }
@@ -4763,26 +4782,21 @@ List rxSolve_df(const RObject &obj,
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
-  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
-    IntegerVector did = as<IntegerVector>(dat["id"]);
-    did.attr("levels") = rxSolveDat->idLevels;
-    did.attr("class") = "factor";
-  }
-  if (rxSolveDat->convertInt && rx->nsub > 1){
-    CharacterVector lvlC = rxSolveDat->idLevels;
-    IntegerVector lvlI(lvlC.size());
-    for (int j = lvlC.size(); j--;) {
-      lvlI[j] = atoi(CHAR(lvlC[j]));
+  // Skip factor conversion for non-sequential integer IDs: the fill loop
+  // already wrote the correct lvlI values directly, so applying factor levels
+  // (which are 1-based level indices) would corrupt the column.
+  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1
+      && !(rxSolveDat->convertInt && !isIdentity)) {
+    SEXP didS = dat["id"];
+    // Skip ALTREP columns — the seqrep/repint already holds correct values.
+    if (!ALTREP(didS)) {
+      RObject did = didS;
+      did.attr("levels") = rxSolveDat->idLevels;
+      did.attr("class") = "factor";
     }
-    IntegerVector did = as<IntegerVector>(dat["id"]);
-    IntegerVector did2(did.size());
-    for (int j = did.size(); j--;){
-      did2[j] = lvlI[did[j]-1];
-    }
-    dat["id"] = did2;
   }
   if (rxSolveDat->addTimeUnits){
-    NumericVector tmpN = as<NumericVector>(dat["time"]);
+    RObject tmpN = dat["time"];
     tmpN.attr("class") = "units";
     tmpN.attr("units") = rxSolveDat->timeUnitsU;
   }
@@ -4790,11 +4804,11 @@ List rxSolve_df(const RObject &obj,
   if (rx->add_cov && (rx->matrix == 2 || rx->matrix == 0) &&
       rxSolveDat->covUnits.hasAttribute("names")){
     CharacterVector nmC = rxSolveDat->covUnits.attr("names");
-    NumericVector tmpN, tmpN2;
+    NumericVector tmpN;
     for (unsigned int i = nmC.size(); i--;){
       tmpN = rxSolveDat->covUnits[i];
       if (rxIs(tmpN, "units")){
-        tmpN2 = dat[as<std::string>(nmC[i])];
+        RObject tmpN2 = dat[as<std::string>(nmC[i])];
         tmpN2.attr("class") = "units";
         tmpN2.attr("units") = tmpN.attr("units");
       }
