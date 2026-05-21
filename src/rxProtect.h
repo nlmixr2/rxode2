@@ -71,10 +71,26 @@ static inline void _rxProtectC_dtor(rxProtectC *p) {
                            UNPROTECT(_rxpg._count); _rxpg._count = 0; \
                          } } while (0)
 #else
-#  define rxProtectGuard  /* no RAII on this compiler */
-#  define rxP(x)          PROTECT(x)
-#  define rxUP(n)         UNPROTECT(n)
-#  define rxUPAll()       /* nothing */
+static inline SEXP rxP_(SEXP x, int *count) {
+  (*count)++;
+  return PROTECT(x);
+}
+static inline void rxUP_(int n, int *count) {
+  if (n > 0) {
+    *count -= n;
+    UNPROTECT(n);
+  }
+}
+static inline void rxUPAll_(int *count) {
+  if (*count > 0) {
+    UNPROTECT(*count);
+    *count = 0;
+  }
+}
+#  define rxProtectGuard  int _rxpgCount = 0;/* no RAII on this compiler */
+#  define rxP(x)          rxP_(x, &_rxpgCount)
+#  define rxUP(n)         rxUP_(n, &_rxpgCount)
+#  define rxUPAll()       rxUPAll_()/* nothing */
 #endif
 
 #endif /* __cplusplus */
