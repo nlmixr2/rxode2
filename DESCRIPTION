@@ -85,7 +85,7 @@ Imports:
     checkmate,
     ggplot2 (>= 3.4.0),
     inline,
-    lotri (>= 1.0.5),
+    lotri (>= 1.0.4),
     memoise,
     methods,
     rex,
