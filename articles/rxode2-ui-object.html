@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="rxode2 model functions">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
@@ -1182,7 +1182,7 @@ assignments, then the <code><a href="../reference/ini.html">ini()</a></code> blo
 <span><span class="co">#&gt;         eff ~ add(eff.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x562e4d9f87e8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x55efcdd4f8f0&gt;</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1214,7 +1214,7 @@ object that appends the error-sampling code to the base ODE model, ready
 for stochastic simulation:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_a8731c370e988b49c4cc44fa0da0bc54</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_bdca56f799371e80e3f28ab098a65758</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, CMT, rxerr.C2, rxerr.eff</span></span>
@@ -1231,7 +1231,7 @@ prepended as parameter assignments, so the model is self-contained and
 can be run without supplying a parameter vector:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_7a4cf1b8e8b054ad73d1f8ee1f7bdc1f</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.0.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_13d55b19620ee76859b28870a442f73b</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, rxerr.C2, rxerr.eff, CMT</span></span>
@@ -1247,11 +1247,11 @@ rxode2 version) and are suitable for caching or comparing models:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># MD5 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">md5</span></span>
-<span><span class="co">#&gt; [1] "269b0f7c708e72e388fb0181d45133b8"</span></span>
+<span><span class="co">#&gt; [1] "65e342855e3147cf4d486e06da7014ea"</span></span>
 <span></span>
 <span><span class="co"># SHA-1 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">sha1</span></span>
-<span><span class="co">#&gt; [1] "3dc1bc111b1a914086d0e15ff51f2fb47d03b3f7"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "207127e8a25905df9d6228dee8c05d4f7a30977f"</span></span></code></pre></div>
 <p>These hashes change whenever the model equations, initial estimates,
 or error specification change, but are insensitive to label or comment
 differences.</p>

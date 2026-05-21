@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="ETA and EPS Resampling in rxode2">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
@@ -202,12 +202,12 @@ at the C level, parallel solving with OpenMP is fully supported.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   60.12   64.92   70.83   69.95   74.54   79.48</span></span></code></pre></div>
+<span><span class="co">#&gt;   60.41   65.69   71.15   70.37   74.90   79.96</span></span></code></pre></div>
 <p>All simulated weights fall within the 60–80 kg window:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span> <span class="op">&gt;=</span> <span class="fl">60</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span> <span class="op">&lt;=</span> <span class="fl">80</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 60.11514 79.48166</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 60.40967 79.96111</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="interaction-with-nstud">Interaction with <code>nStud</code><a class="anchor" aria-label="anchor" href="#interaction-with-nstud"></a>
 </h3>

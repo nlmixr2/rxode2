@@ -278,6 +278,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxIsLoaded.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxLastCompile.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxLhs.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxLoadState.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxLock.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxMd5.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxMemSummary.html</loc></url>
@@ -310,6 +311,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxResidualError.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRmvn.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxS.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxSaveState.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSeedEng.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSerialize.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetControl.html</loc></url>

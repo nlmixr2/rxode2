@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Easy rxode2 Event Tables">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
@@ -143,7 +143,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Easy rxode2 Event Tables</h1>
             
-            <h4 data-toc-skip class="date">2026-05-14</h4>
+            <h4 data-toc-skip class="date">2026-05-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-event-table.Rmd" class="external-link"><code>vignettes/rxode2-event-table.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-table.Rmd</code></div>
@@ -323,7 +323,7 @@ rxode2 tutorial:</p>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 x 5</span></span></span>
 <span><span class="co">#&gt;   time   amt  ii  addl evid        </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span>  <span style="color: #949494;">[mg]</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0 <span style="text-decoration: underline;">10</span>000  24     2 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    0  <span style="text-decoration: underline;">5</span>000  12    13 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
 <p>Notice that the units were specified in the table. When specified,
@@ -388,9 +388,9 @@ event table by <code>add.sampling</code> or <code>et</code></p>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 8 x 5</span></span></span>
 <span><span class="co">#&gt;   time   amt  ii  addl evid         </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span>  <span style="color: #949494;">[mg]</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    0 <span style="text-decoration: underline;">10</span>000  24     2 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span> </span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0 <span style="text-decoration: underline;">10</span>000  24     2 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    0    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    4    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    8    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   12    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
@@ -420,8 +420,8 @@ way to <code>add.sampling</code>:</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 8 x 5</span></span></span>
 <span><span class="co">#&gt;   time   amt  ii  addl evid         </span></span>
 <span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    0 <span style="text-decoration: underline;">10</span>000  12     6 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0 <span style="text-decoration: underline;">10</span>000  12     6 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    0    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    4    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    8    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   12    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
@@ -455,20 +455,411 @@ IDs that you want to expand;</p>
 <span><span class="co">#&gt; 800 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
 <span><span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 804 x 6</span></span></span>
-<span><span class="co">#&gt;       id  time   amt  ii  addl evid         </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1 0        <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1 0     <span style="text-decoration: underline;">10</span>000  12     6 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1 0.241    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1 0.482    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     1 0.724    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     1 0.965    <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     1 1.21     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1 1.45     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1 1.69     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1 1.93     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># i 794 more rows</span></span></span></code></pre>
+<span><span class="co">#&gt; -- compressed preview for 4 individuals (ids 1:4) --</span></span>
+<span><span class="co">#&gt;               time   amt          evid       cmt     ii addl ss      rate</span></span>
+<span><span class="co">#&gt; 1    0.0000000 [h] 10000 1:Dose (Add)  (default) 12 [h]    6  0  0       </span></span>
+<span><span class="co">#&gt; 2    0.0000000 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 3    0.2412060 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 4    0.4824121 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 5    0.7236181 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 6    0.9648241 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 7    1.2060302 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 8    1.4472362 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 9    1.6884422 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 10   1.9296482 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 11   2.1708543 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 12   2.4120603 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 13   2.6532663 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 14   2.8944724 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 15   3.1356784 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 16   3.3768844 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 17   3.6180905 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 18   3.8592965 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 19   4.1005025 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 20   4.3417085 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 21   4.5829146 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 22   4.8241206 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 23   5.0653266 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 24   5.3065327 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 25   5.5477387 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 26   5.7889447 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 27   6.0301508 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 28   6.2713568 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 29   6.5125628 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 30   6.7537688 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 31   6.9949749 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 32   7.2361809 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 33   7.4773869 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 34   7.7185930 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 35   7.9597990 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 36   8.2010050 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 37   8.4422111 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 38   8.6834171 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 39   8.9246231 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 40   9.1658291 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 41   9.4070352 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 42   9.6482412 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 43   9.8894472 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 44  10.1306533 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 45  10.3718593 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 46  10.6130653 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 47  10.8542714 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 48  11.0954774 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 49  11.3366834 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 50  11.5778894 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 51  11.8190955 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 52  12.0603015 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 53  12.3015075 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 54  12.5427136 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 55  12.7839196 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 56  13.0251256 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 57  13.2663317 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 58  13.5075377 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 59  13.7487437 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 60  13.9899497 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 61  14.2311558 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 62  14.4723618 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 63  14.7135678 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 64  14.9547739 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 65  15.1959799 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 66  15.4371859 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 67  15.6783920 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 68  15.9195980 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 69  16.1608040 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 70  16.4020101 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 71  16.6432161 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 72  16.8844221 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 73  17.1256281 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 74  17.3668342 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 75  17.6080402 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 76  17.8492462 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 77  18.0904523 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 78  18.3316583 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 79  18.5728643 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 80  18.8140704 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 81  19.0552764 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 82  19.2964824 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 83  19.5376884 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 84  19.7788945 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 85  20.0201005 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 86  20.2613065 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 87  20.5025126 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 88  20.7437186 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 89  20.9849246 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 90  21.2261307 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 91  21.4673367 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 92  21.7085427 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 93  21.9497487 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 94  22.1909548 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 95  22.4321608 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 96  22.6733668 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 97  22.9145729 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 98  23.1557789 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 99  23.3969849 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 100 23.6381910 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 101 23.8793970 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 102 24.1206030 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 103 24.3618090 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 104 24.6030151 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 105 24.8442211 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 106 25.0854271 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 107 25.3266332 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 108 25.5678392 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 109 25.8090452 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 110 26.0502513 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 111 26.2914573 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 112 26.5326633 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 113 26.7738693 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 114 27.0150754 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 115 27.2562814 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 116 27.4974874 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 117 27.7386935 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 118 27.9798995 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 119 28.2211055 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 120 28.4623116 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 121 28.7035176 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 122 28.9447236 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 123 29.1859296 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 124 29.4271357 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 125 29.6683417 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 126 29.9095477 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 127 30.1507538 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 128 30.3919598 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 129 30.6331658 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 130 30.8743719 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 131 31.1155779 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 132 31.3567839 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 133 31.5979899 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 134 31.8391960 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 135 32.0804020 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 136 32.3216080 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 137 32.5628141 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 138 32.8040201 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 139 33.0452261 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 140 33.2864322 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 141 33.5276382 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 142 33.7688442 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 143 34.0100503 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 144 34.2512563 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 145 34.4924623 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 146 34.7336683 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 147 34.9748744 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 148 35.2160804 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 149 35.4572864 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 150 35.6984925 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 151 35.9396985 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 152 36.1809045 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 153 36.4221106 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 154 36.6633166 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 155 36.9045226 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 156 37.1457286 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 157 37.3869347 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 158 37.6281407 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 159 37.8693467 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 160 38.1105528 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 161 38.3517588 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 162 38.5929648 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 163 38.8341709 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 164 39.0753769 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 165 39.3165829 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 166 39.5577889 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 167 39.7989950 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 168 40.0402010 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 169 40.2814070 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 170 40.5226131 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 171 40.7638191 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 172 41.0050251 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 173 41.2462312 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 174 41.4874372 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 175 41.7286432 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 176 41.9698492 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 177 42.2110553 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 178 42.4522613 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 179 42.6934673 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 180 42.9346734 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 181 43.1758794 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 182 43.4170854 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 183 43.6582915 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 184 43.8994975 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 185 44.1407035 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 186 44.3819095 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 187 44.6231156 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 188 44.8643216 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 189 45.1055276 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 190 45.3467337 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 191 45.5879397 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 192 45.8291457 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 193 46.0703518 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 194 46.3115578 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 195 46.5527638 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 196 46.7939698 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 197 47.0351759 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 198 47.2763819 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 199 47.5175879 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 200 47.7587940 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt; 201 48.0000000 [h]    NA 0:Observation      &lt;NA&gt; NA [h]   NA NA NA       </span></span>
+<span><span class="co">#&gt;           dur    low   high</span></span>
+<span><span class="co">#&gt; 1    0        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 2   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 3   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 4   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 5   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 6   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 7   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 8   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 9   NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 10  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 11  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 12  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 13  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 14  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 15  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 16  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 17  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 18  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 19  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 20  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 21  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 22  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 23  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 24  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 25  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 26  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 27  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 28  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 29  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 30  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 31  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 32  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 33  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 34  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 35  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 36  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 37  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 38  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 39  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 40  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 41  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 42  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 43  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 44  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 45  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 46  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 47  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 48  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 49  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 50  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 51  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 52  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 53  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 54  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 55  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 56  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 57  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 58  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 59  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 60  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 61  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 62  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 63  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 64  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 65  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 66  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 67  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 68  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 69  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 70  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 71  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 72  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 73  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 74  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 75  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 76  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 77  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 78  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 79  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 80  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 81  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 82  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 83  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 84  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 85  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 86  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 87  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 88  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 89  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 90  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 91  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 92  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 93  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 94  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 95  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 96  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 97  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 98  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 99  NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 100 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 101 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 102 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 103 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 104 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 105 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 106 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 107 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 108 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 109 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 110 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 111 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 112 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 113 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 114 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 115 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 116 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 117 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 118 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 119 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 120 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 121 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 122 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 123 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 124 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 125 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 126 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 127 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 128 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 129 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 130 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 131 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 132 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 133 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 134 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 135 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 136 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 137 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 138 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 139 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 140 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 141 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 142 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 143 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 144 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 145 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 146 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 147 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 148 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 149 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 150 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 151 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 152 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 153 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 154 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 155 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 156 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 157 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 158 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 159 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 160 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 161 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 162 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 163 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 164 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 165 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 166 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 167 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 168 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 169 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 170 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 171 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 172 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 173 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 174 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 175 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 176 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 177 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 178 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 179 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 180 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 181 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 182 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 183 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 184 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 185 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 186 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 187 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 188 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 189 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 190 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 191 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 192 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 193 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 194 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 195 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 196 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 197 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 198 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 199 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 200 NA        NA [h] NA [h]</span></span>
+<span><span class="co">#&gt; 201 NA        NA [h] NA [h]</span></span></code></pre>
 <p>You can see in the following simulation there are 4 individuals that
 are solved for:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
@@ -505,25 +896,11 @@ window:</p>
 <span><span class="co">#&gt; 0 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
 <span><span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 16 x 8</span></span></span>
-<span><span class="co">#&gt;       id low  time high   amt  ii  addl evid        </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494;">[h]</span>   <span style="color: #949494;">[h]</span>  <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1  12 14.7    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1  24 29.0    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1  36 40.4    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     2   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     2  12 16.9    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     2  24 26.3    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     2  36 40.1    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     3   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     3  12 12.0    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span>     3  24 29.0    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">12</span>     3  36 36.0    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">13</span>     4   0  5.49    6 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">14</span>     4  12 13.2    18 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">15</span>     4  24 29.4    30 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">16</span>     4  36 39.7    42 <span style="text-decoration: underline;">10</span>000   0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
+<span><span class="co">#&gt; -- compressed preview for 4 individuals (ids 1:4) --</span></span>
+<span><span class="co">#&gt;           time   amt         evid       cmt     ii addl ss      rate       dur</span></span>
+<span><span class="co">#&gt; 1 5.488836 [h] 10000 1:Dose (Add) (default) 12 [h]    3  0  0         0       </span></span>
+<span><span class="co">#&gt;     low  high</span></span>
+<span><span class="co">#&gt; 1 0 [h] 6 [h]</span></span></code></pre>
 <p>You can clearly see different dosing times in the following
 simulation:</p>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
@@ -768,18 +1145,17 @@ modifying the original data frame:</p>
 <pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 7 records --</span></span></span>
 <span><span class="co">#&gt; 7 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span></span>
 <span><span class="co">#&gt; 0 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span></span>
-<span><span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 x 5</span></span></span>
-<span><span class="co">#&gt;    time   amt    ii  addl evid        </span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     0    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     8    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    16    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    24    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    32    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    40    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>    48    50     0     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 x 4</span></span></span>
+<span><span class="co">#&gt;    time   amt    ii evid        </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     0    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     8    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    16    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    24    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    32    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    40    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>    48    50     0 <span style="color: #0000BB; font-weight: bold;">1</span>:<span style="color: #BBBB00;">Dose (Add)</span></span></span></code></pre>
 <p>You can see the <code>addl</code> events were expanded, however the
 original data frame remained intact:</p>
 <div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">

@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="rxode2 Covariates">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
@@ -143,7 +143,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Covariates</h1>
             
-            <h4 data-toc-skip class="date">2026-05-14</h4>
+            <h4 data-toc-skip class="date">2026-05-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-covariates.Rmd" class="external-link"><code>vignettes/rxode2-covariates.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-covariates.Rmd</code></div>
@@ -225,12 +225,12 @@ specify it by the <code>iCov</code> dataset:</p>
 <span><span class="co">## <span style="color: #949494;"># A tibble: 400 × 17</span></span></span>
 <span><span class="co">##      id  time    KA    CL    V2     Q    V3   Kin  Kout  EC50    C2    C3  depot</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span>     1 0     0.294  18.6  40.2  10.5   297     1     1   200   0   0     <span style="text-decoration: underline;">10</span>000 </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span>     1 0.485 0.294  18.6  40.2  10.5   297     1     1   200  27.8 0.257  <span style="text-decoration: underline;">8</span>671.</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span>     1 0.970 0.294  18.6  40.2  10.5   297     1     1   200  43.7 0.873  <span style="text-decoration: underline;">7</span>519.</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span>     1 1.45  0.294  18.6  40.2  10.5   297     1     1   200  51.7 1.68   <span style="text-decoration: underline;">6</span>520.</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span>     1 1.94  0.294  18.6  40.2  10.5   297     1     1   200  54.7 2.56   <span style="text-decoration: underline;">5</span>654.</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">6</span>     1 2.42  0.294  18.6  40.2  10.5   297     1     1   200  54.5 3.45   <span style="text-decoration: underline;">4</span>903.</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span>     3 0     0.294  15.8  40.2  10.5   297     1     1   200   0   0     <span style="text-decoration: underline;">10</span>000 </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span>     3 0.485 0.294  15.8  40.2  10.5   297     1     1   200  28.2 0.260  <span style="text-decoration: underline;">8</span>671.</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span>     3 0.970 0.294  15.8  40.2  10.5   297     1     1   200  45.1 0.892  <span style="text-decoration: underline;">7</span>519.</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span>     3 1.45  0.294  15.8  40.2  10.5   297     1     1   200  54.2 1.73   <span style="text-decoration: underline;">6</span>520.</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span>     3 1.94  0.294  15.8  40.2  10.5   297     1     1   200  58.1 2.66   <span style="text-decoration: underline;">5</span>654.</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span>     3 2.42  0.294  15.8  40.2  10.5   297     1     1   200  58.6 3.61   <span style="text-decoration: underline;">4</span>903.</span></span>
 <span><span class="co">## <span style="color: #949494;"># ℹ 394 more rows</span></span></span>
 <span><span class="co">## <span style="color: #949494;"># ℹ 4 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, WT &lt;dbl&gt;</span></span></span></code></pre>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">

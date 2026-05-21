@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Event Tables after 5.0.2: Architecture and Benchmark">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
@@ -143,7 +143,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Event Tables after 5.0.2: Architecture and Benchmark</h1>
             
-            <h4 data-toc-skip class="date">2026-05-14</h4>
+            <h4 data-toc-skip class="date">2026-05-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/rxode2-et-refactor.Rmd" class="external-link"><code>vignettes/articles/rxode2-et-refactor.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-et-refactor.Rmd</code></div>
@@ -169,8 +169,10 @@ defers full materialization until it is needed. By contrast,
 throughout the event-table workflow.</p>
 <p>The comparison below reflects:</p>
 <ul>
-<li>new event table handling (at commit <code>6164e13cf</code>)</li>
-<li>old event table handling (at commit <code>c46571d84</code>)</li>
+<li><p>new event table handling (including recent ALTREP and homogeneous
+group integrations)</p></li>
+<li><p>old event table handling (at commit
+<code>c46571d84</code>)</p></li>
 </ul>
 </div>
 <div class="section level2">
@@ -248,7 +250,51 @@ proper data-frame. This allows <code>rxEt</code> to work seamlessly with
 retaining its specialized internal state.</p>
 </div>
 <div class="section level3">
-<h3 id="keep-cc-where-it-still-matters">5. Keep C/C++ where it still matters<a class="anchor" aria-label="anchor" href="#keep-cc-where-it-still-matters"></a>
+<h3 id="altrep-backed-data-frames-and-optimized-memory-access">5. ALTREP-backed data frames and optimized memory access<a class="anchor" aria-label="anchor" href="#altrep-backed-data-frames-and-optimized-memory-access"></a>
+</h3>
+<p>To dramatically reduce memory overhead, the event table output layers
+are now powered by R’s ALTREP (Alternative Representation) system.
+Columns that feature long repeated sequences (such as <code>id</code> or
+string factors) are no longer materialized up front. Instead, custom
+<code>rx_seqrep</code>, <code>rx_rep_int</code>,
+<code>rx_rep_real</code>, and <code>rx_rep_str</code> ALTREP classes
+defer materialization and generate elements on demand.</p>
+<p>Furthermore, these classes implement block-based
+<code>Get_region</code> methods utilizing <span class="math inline">$O(\\log N)$</span> exponential <code>memcpy</code>
+strategies and zero-modulo sequential chunking. This enables native R
+functions to process these columns via bulk block-access instead of slow
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">O(N)</annotation></semantics></math>
+element-by-element iterations.</p>
+</div>
+<div class="section level3">
+<h3 id="homogeneous-event-groups-rxhomgroups">6. Homogeneous event groups (<code>rxHomGroups</code>)<a class="anchor" aria-label="anchor" href="#homogeneous-event-groups-rxhomgroups"></a>
+</h3>
+<p>The new architecture introduces native support for “homogeneous”
+event groups. When multiple subjects share identical observation and
+dosing regimens, the solver avoids duplicating their arrays.</p>
+<ul>
+<li><p><strong>Pointer sharing</strong>: C++ memory
+(<code>_globals</code>) allocates only a single shared block per unique
+regimen. The individual solvers simply map their <code>all_times</code>,
+<code>cov_ptr</code>, and other pointers to offsets inside this
+de-duplicated memory.</p></li>
+<li><p><strong>Private memory degradation</strong>: If a model utilizes
+dynamic dosing (e.g. <code><a href="../reference/evid_.html">evid_()</a></code>) or other runtime mutations,
+the solver detects this via <code>indOwnAlloc</code> and securely
+triggers <code>memcpy()</code> to convert the shared memory slice into a
+private allocation for that specific subject. This isolates mutations
+cleanly without compromising the initial memory efficiency.</p></li>
+<li><p><strong>Branch-free execution</strong>: While covariates and
+events are de-duplicated during the ODE solve, final output arrays
+(<code>keepFcov</code>) are physically expanded. This is a deliberate
+architectural trade-off: it guarantees that hot loops for dataframe
+construction (<code>get_fkeep</code>) and NA interpolation (LOCF/NOCB)
+remain completely branch-free and robust, maximizing runtime speed at a
+negligible memory cost.</p></li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="keep-cc-where-it-still-matters">7. Keep C/C++ where it still matters<a class="anchor" aria-label="anchor" href="#keep-cc-where-it-still-matters"></a>
 </h3>
 <p>The new event handling does <strong>not</strong> move everything into
 R. Event translation and solver preparation still flow through the C/C++
@@ -584,6 +630,9 @@ Currently a little faster in the benchmark below.
 <li>The new implementation is stronger when event tables are still being
 <em>built</em> or <em>combined</em> which is the most common use-case
 for <code><a href="../reference/et.html">et()</a></code> event tables.</li>
+<li>The integration of ALTREP and homogeneous tables significantly
+boosts memory efficiency and solver performance for multi-subject
+populations.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -632,9 +681,9 @@ absolute promises for every machine or every regimen.</p>
 <span>    <span class="st">"solve_handoff"</span>,</span>
 <span>    <span class="st">"issue_724_large_sampling"</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>   new_median_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1275</span>, <span class="fl">0.0104</span>, <span class="fl">0.3130</span>, <span class="fl">0.4240</span>, <span class="fl">0.00199</span>, <span class="fl">0.0260</span>, <span class="fl">1.9210</span><span class="op">)</span>,</span>
-<span>   old_median_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1055</span>, <span class="fl">0.1396</span>, <span class="fl">0.6485</span>, <span class="fl">0.1640</span>, <span class="fl">0.00003</span>, <span class="fl">0.0200</span>, <span class="fl">80.2900</span><span class="op">)</span>,</span>
-<span>   stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  new_median_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1275</span>, <span class="fl">0.0104</span>, <span class="fl">0.3130</span>, <span class="fl">0.4240</span>, <span class="fl">0.00199</span>, <span class="fl">0.0260</span>, <span class="fl">1.9210</span><span class="op">)</span>,</span>
+<span>  old_median_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1055</span>, <span class="fl">0.1396</span>, <span class="fl">0.6485</span>, <span class="fl">0.1640</span>, <span class="fl">0.00003</span>, <span class="fl">0.0200</span>, <span class="fl">80.2900</span><span class="op">)</span>,</span>
+<span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">benchmark_results</span><span class="op">$</span><span class="va">winner</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
@@ -869,9 +918,10 @@ architecture on a workload that becomes much larger than the smaller
 benchmark scenarios above.</p>
 <p>The reported workload is:</p>
 <ol style="list-style-type: decimal">
-<li>Build a subject-by-dose data set with 3 dose groups</li>
-<li>Create one event table row per subject for dosing</li>
-<li>Append a dense sampling grid from 0 to 168 hours by 0.5 hours</li>
+<li><p>Build a subject-by-dose data set with 3 dose groups</p></li>
+<li><p>Create one event table row per subject for dosing</p></li>
+<li><p>Append a dense sampling grid from 0 to 168 hours by 0.5
+hours</p></li>
 </ol>
 <p>On the original <code>main</code>-branch implementation, the elapsed
 time rose rapidly with subject count:</p>
@@ -1084,7 +1134,7 @@ construction/composition workloads that fit its lazy design.</p>
 <span><span class="co">#&gt;  [5] xfun_0.57         cachem_1.1.0      knitr_1.51        htmltools_0.5.9  </span></span>
 <span><span class="co">#&gt;  [9] rmarkdown_2.31    lifecycle_1.0.5   cli_3.6.6         sass_0.4.10      </span></span>
 <span><span class="co">#&gt; [13] pkgdown_2.2.0     textshaping_1.0.5 jquerylib_0.1.4   systemfonts_1.3.2</span></span>
-<span><span class="co">#&gt; [17] compiler_4.6.0    tools_4.6.0       ragg_1.5.2        bslib_0.10.0     </span></span>
+<span><span class="co">#&gt; [17] compiler_4.6.0    tools_4.6.0       ragg_1.5.2        bslib_0.11.0     </span></span>
 <span><span class="co">#&gt; [21] evaluate_1.0.5    yaml_2.3.12       otel_0.2.0        jsonlite_2.0.0   </span></span>
 <span><span class="co">#&gt; [25] rlang_1.2.0       fs_2.1.0          htmlwidgets_1.6.4</span></span></code></pre></div>
 </div>
