@@ -16,10 +16,6 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rversion.h>
-#if R_VERSION < R_Version(4, 6, 0)
-# define DATAPTR_RW(x) DATAPTR(x)
-#endif
-
 #include <Rinternals.h>
 #include <R_ext/Altrep.h>
 #include <string.h>
