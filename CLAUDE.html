@@ -255,6 +255,20 @@
 <li>C++ files use <code>#define R_NO_REMAP</code> to avoid R API name pollution</li>
 <li>OpenMP support is conditional via <code>rxomp.h</code>
 </li>
+<li>Instead of using PROTECT/UNPROTECT:
+<ul><li>In C:
+<ul><li>begin functions that typically need PROTECT/UNPROTECT with <code>rxProtectGuard;</code>
+</li>
+<li>Use PROTECT-&gt;rxP()/UNPROTECT-&gt;rxUP()</li>
+<li>Use rxUPAll() to unprotect everything before returning since <code>rxP()</code>/<code>rxUP()</code> counts the number of protected expressions in the functions</li>
+</ul></li>
+<li>in C++:
+<ul><li>For functions where protection is needed:</li>
+<li>Create a protection object <code>rxProtect rx_protect;</code>
+</li>
+<li>Use <code>rx_protect.protect()</code> instead of <code>PROTECT()</code>; <code>UNPROTECT</code> will be handled when the object goes out of scope.</li>
+</ul></li>
+</ul></li>
 </ul></div>
 <div class="section level3">
 <h3 id="generated-files-do-not-edit-manually">Generated Files (do not edit manually)<a class="anchor" aria-label="anchor" href="#generated-files-do-not-edit-manually"></a></h3>
