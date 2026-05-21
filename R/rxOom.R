@@ -282,12 +282,59 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   structure(list(), class = "rxSolveOom", manifest = manifest)
 }
 
+.rxOomHasParquet <- function(manifest) {
+  any(grepl("\\.parquet$", manifest$chunks))
+}
+
 #' @export
 print.rxSolveOom <- function(x, ...) {
   .m <- attr(x, "manifest")
-  cat(sprintf("<rxSolveOom: %d chunks, %d total rows, prefix='%s'>\n",
-              length(.m$chunks), sum(.m$nrows), .m$prefix))
+  .arrow <- .rxOomHasParquet(.m) && requireNamespace("arrow", quietly = TRUE)
+  cat(sprintf("<rxSolveOom: %d chunks, %d total rows, prefix='%s'%s>\n",
+              length(.m$chunks), sum(.m$nrows), .m$prefix,
+              if (.arrow) " [Arrow-backed]" else ""))
   invisible(x)
+}
+
+#' Convert an rxSolveOom result to an Arrow Table
+#'
+#' Reads all parquet chunk files and concatenates them into a single in-memory
+#' Arrow Table using \code{arrow::concat_tables()}.  Requires the \code{arrow}
+#' package.
+#'
+#' @param x An \code{rxSolveOom} object.
+#' @param ... Ignored.
+#' @return An \code{arrow::Table}.
+#' @export
+as_arrow_table.rxSolveOom <- function(x, ...) {
+  if (!requireNamespace("arrow", quietly = TRUE))
+    stop("package 'arrow' is required for as_arrow_table()")
+  .m <- attr(x, "manifest")
+  .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
+  if (length(.pq) == 0L)
+    return(arrow::as_arrow_table(as.data.frame(x)))
+  arrow::concat_tables(lapply(.pq, arrow::read_parquet))
+}
+
+#' Convert an rxSolveOom result to a lazy Arrow Dataset
+#'
+#' Opens all parquet chunk files as a single lazy \code{arrow::Dataset} using
+#' \code{arrow::open_dataset()}.  The dataset can be filtered and selected with
+#' dplyr verbs before calling \code{dplyr::collect()} to materialise.  Requires
+#' the \code{arrow} package.
+#'
+#' @param x An \code{rxSolveOom} object.
+#' @param ... Ignored.
+#' @return An \code{arrow::Dataset}.
+#' @export
+as_arrow_dataset.rxSolveOom <- function(x, ...) {
+  if (!requireNamespace("arrow", quietly = TRUE))
+    stop("package 'arrow' is required for as_arrow_dataset()")
+  .m <- attr(x, "manifest")
+  .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
+  if (length(.pq) == 0L)
+    stop("No parquet chunk files found. Re-run rxSolve() with the arrow package installed.")
+  arrow::open_dataset(.pq)
 }
 
 #' @export
@@ -296,23 +343,35 @@ as.data.frame.rxSolveOom <- function(x, ...) {
   .total <- sum(.m$nrows)
   if (.total > 1e6)
     message(sprintf("Materializing %.0f rows into memory", .total))
-  .chunks <- lapply(.m$chunks, function(.f) {
-    if (grepl("\\.parquet$", .f)) as.data.frame(arrow::read_parquet(.f))
-    else readRDS(.f)
-  })
-  do.call(rbind, .chunks)
+  if (requireNamespace("arrow", quietly = TRUE) && .rxOomHasParquet(.m))
+    return(as.data.frame(as_arrow_table.rxSolveOom(x)))
+  do.call(rbind, lapply(.m$chunks, readRDS))
+}
+
+#' @export
+as_tibble.rxSolveOom <- function(x, ...) {
+  if (requireNamespace("arrow", quietly = TRUE) && .rxOomHasParquet(attr(x, "manifest")))
+    return(tibble::as_tibble(as_arrow_table.rxSolveOom(x)))
+  tibble::as_tibble(as.data.frame(x))
+}
+
+#' @export
+as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
+  if (requireNamespace("arrow", quietly = TRUE) && .rxOomHasParquet(attr(x, "manifest")))
+    return(data.table::as.data.table(as.data.frame(as_arrow_table.rxSolveOom(x))))
+  data.table::as.data.table(as.data.frame(x), keep.rownames = keep.rownames)
 }
 
 #' @export
 `$.rxSolveOom` <- function(x, name) {
   .m <- attr(x, "manifest")
-  .cols <- lapply(.m$chunks, function(.f) {
-    if (grepl("\\.parquet$", .f))
-      as.data.frame(arrow::read_parquet(.f, col_select = name))[[1L]]
-    else
-      readRDS(.f)[[name]]
-  })
-  unlist(.cols, use.names = FALSE)
+  .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
+  if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
+    .cols <- lapply(.pq, function(.f)
+      arrow::read_parquet(.f, col_select = name)[[1L]])
+    return(unlist(.cols, use.names = FALSE))
+  }
+  unlist(lapply(.m$chunks, function(.f) readRDS(.f)[[name]]), use.names = FALSE)
 }
 
 #' @export

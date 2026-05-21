@@ -205,6 +205,87 @@ Files written will be `output/my_sim_chunk_00001.parquet`, ...,
 manifest <- readRDS("output/my_sim_manifest.rds")
 ```
 
+## Working with Arrow datasets
+
+The combination of chunked solving and Arrow datasets means rxode2 can handle
+populations that are **too large to fit in memory at any stage** — not just
+during the solve, but also when post-processing the results.  Chunk files stay
+on disk; Arrow reads only what your query needs.
+
+When the `arrow` package is installed (which it must be for parquet chunk
+files), rxode2 exposes two Arrow-native accessors on the `rxSolveOom` object.
+
+### Lazy Arrow Dataset — querying without loading everything
+
+`arrow::as_arrow_dataset()` opens all chunk files as a single lazy
+`arrow::Dataset`.  No rows are read from disk until you explicitly collect
+them.  You can push filters, column selections, and aggregations down to the
+Arrow engine so that only the result — not the full dataset — is brought into R
+memory:
+
+```{r arrow-dataset, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
+ds <- arrow::as_arrow_dataset(res)
+ds
+```
+
+Because `ds` is lazy you can chain dplyr verbs and only call `dplyr::collect()`
+at the end to materialise the (small) result:
+
+```{r arrow-dplyr, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
+# Compute the peak concentration per subject without loading all rows
+pk_summary <- ds |>
+  dplyr::group_by(id) |>
+  dplyr::summarise(cmax = max(cp, na.rm = TRUE),
+                   tmax = time[which.max(cp)]) |>
+  dplyr::collect()
+
+pk_summary
+```
+
+This is the key advantage over materialising with `as.data.frame()`: for a
+100,000-subject simulation that would require 40 GB of RAM as an R data frame,
+the summary above reads each chunk sequentially and returns only one row per
+subject — a result that fits easily in memory even when the full dataset does
+not.
+
+Other useful patterns:
+
+```{r arrow-dplyr2, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
+# Keep only observations after the first dose interval
+late_obs <- ds |>
+  dplyr::filter(time > 24) |>
+  dplyr::select(id, time, cp) |>
+  dplyr::collect()
+
+head(late_obs)
+```
+
+### In-memory Arrow Table
+
+`arrow::as_arrow_table()` reads and concatenates all chunk files into a single
+`arrow::Table` in columnar memory.  Use this when the full result fits in RAM
+but you want the speed of Arrow columnar operations rather than R's row-oriented
+`rbind()`:
+
+```{r arrow-table, eval = requireNamespace("arrow", quietly = TRUE)}
+tbl <- arrow::as_arrow_table(res)
+tbl
+```
+
+### Materialisation via Arrow
+
+When arrow is available, `as.data.frame()`, `tibble::as_tibble()`, and
+`data.table::as.data.table()` all route through `as_arrow_table()` internally,
+so they benefit from Arrow's concatenation speed rather than R's `rbind()`:
+
+```{r arrow-materialise, eval = requireNamespace("arrow", quietly = TRUE)}
+df  <- as.data.frame(res)       # Arrow path when arrow installed
+```
+
+```{r arrow-tibble, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("tibble", quietly = TRUE)}
+tib <- tibble::as_tibble(res)   # also Arrow-backed
+```
+
 ## Parallel chunk solving
 
 Each chunk is independent and can be solved on a separate CPU or compute node

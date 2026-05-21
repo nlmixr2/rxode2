@@ -45,9 +45,16 @@
   }
   if (requireNamespace("tibble", quietly = TRUE)) {
     .s3register("tibble::as_tibble", "rxEt")
+    .s3register("tibble::as_tibble", "rxSolveOom")
   }
   if (requireNamespace("data.table", quietly = TRUE)) {
     .s3register("data.table::as.data.table", "rxEt")
+    .s3register("data.table::as.data.table", "rxSolveOom")
+  }
+  if (requireNamespace("arrow", quietly = TRUE)) {
+    .s3register("arrow::as_arrow_table", "rxSolveOom")
+    if (exists("as_arrow_dataset", envir = asNamespace("arrow"), inherits = FALSE))
+      .s3register("arrow::as_arrow_dataset", "rxSolveOom")
   }
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::dplyr_reconstruct", "rxEt")
