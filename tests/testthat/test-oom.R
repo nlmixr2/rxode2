@@ -44,7 +44,7 @@ test_that("rxSolveChunked matches rxSolve with same rxSetSeed", {
   })
 })
 
-test_that("rxSolve with oomFile returns rxSolveOom and manifest is written", {
+test_that("rxSolve with file returns rxSolveOom and manifest is written", {
   rxTest({
     mod <- rxode2({
       d/dt(A) <- -k * A
@@ -53,7 +53,7 @@ test_that("rxSolve with oomFile returns rxSolveOom and manifest is written", {
 
     .prefix <- tempfile("oomsim")
     out <- rxSolve(mod, c(k = 0.1), et_pop,
-                   oomFile = .prefix, oomChunkSize = 5L)
+                   file = .prefix, chunkSize = 5L)
     expect_s3_class(out, "rxSolveOom")
     expect_true(file.exists(paste0(.prefix, "_manifest.rds")))
 

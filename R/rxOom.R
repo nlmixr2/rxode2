@@ -354,9 +354,9 @@ rxSolveChunked <- function(object, params = NULL, events = NULL, inits = NULL, .
   }
   if (!is.null(seed)) rxSetSeed(seed)
   .ctl <- rxControl(...,
-    oomFile      = tempfile("rxChunk"),
-    oomChunkSize = .chunkSize,
-    oomParallel  = as.integer(parallel))
+    file      = tempfile("rxChunk"),
+    chunkSize = .chunkSize,
+    parallel  = as.integer(parallel))
   .rxSolveOom(object, params = params, events = events, inits = inits,
               .ctl = .ctl, .envir = parent.frame())
 }

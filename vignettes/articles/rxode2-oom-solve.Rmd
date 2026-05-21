@@ -1,0 +1,215 @@
+---
+title: "Out-of-memory solving with rxode2"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+## Why chunked solving?
+
+Population pharmacokinetic/pharmacodynamic simulations can involve tens or
+hundreds of thousands of subjects.  Each subject requires solver workspace,
+output arrays, and covariate storage, so the combined memory footprint grows
+linearly with the number of subjects.  A 100,000-subject simulation with a
+two-compartment model and rich sampling can easily require 10–50 GB of RAM —
+more than many workstations or cloud instances provide.
+
+rxode2 addresses this by **chunked (out-of-memory) solving**: subjects are
+split into batches, each batch is solved independently, and the result of each
+batch is written to a temporary file (parquet or rds).  The final return value
+is a lightweight `rxSolveOom` object that reads chunks on demand rather than
+holding the entire dataset in RAM.
+
+> For running chunks in parallel across multiple CPU cores or compute nodes,
+> see the [Parallel rxode2 solving with mirai](rxode2-mirai-parallel.html)
+> vignette.
+
+## The model and event table
+
+Throughout this vignette we use a simple one-compartment oral PK model with
+10 subjects to keep run times short.  In practice the same `rxSolve()` call
+scales to arbitrarily large populations.
+
+```{r model}
+mod <- rxode2({
+  d/dt(depot)  <- -ka * depot
+  d/dt(center) <- ka * depot - cl / v * center
+  cp           <- center / v
+})
+
+ev <- et(amt = 100, ii = 24, until = 72) |>
+  et(seq(0, 72, by = 4)) |>
+  et(id = 1:10)
+
+params <- data.frame(
+  id = 1:10,
+  ka = rlnorm(10, log(0.5), 0.3),
+  cl = rlnorm(10, log(4),   0.2),
+  v  = rlnorm(10, log(70),  0.1)
+)
+```
+
+## Estimating memory usage
+
+Before solving you can inspect the expected memory footprint with
+`rxMemoryEstimate()`.  Pass the event table (as a data frame) and the compiled
+model; the function calls the same allocator formulas used internally by
+`rxSolve()`.
+
+```{r mem-estimate}
+rxMemoryEstimate(as.data.frame(ev), model = mod)
+```
+
+The output lists every major allocation (ODE state buffers, event-time arrays,
+output data, etc.) as well as the fraction of total and free RAM the solve
+would consume.  The `freeRamBytes` line is the key guard: if `total` exceeds
+90 % of free RAM, rxode2 will refuse to proceed without `file`.
+
+## Automatic OOM detection
+
+When rxode2 detects that a solve would use more than 90 % of free RAM it stops
+immediately and prints a message pointing to the `file` argument:
+
+```r
+# This would error on a machine with insufficient RAM:
+rxSolve(mod, params, ev)
+#> Error: Solve requires 12.3 GB but only 6.1 GB appears free.
+#> Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.
+```
+
+## Chunked solving with `rxSolve()`
+
+Pass `file` to opt in to chunked solving.  rxode2 will:
+
+1. Auto-compute a chunk size from available free RAM (or use `chunkSize` if
+   you supply it).
+2. Solve each chunk with a separate `rxSolve()` call.
+3. Write each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
+   the `arrow` package is unavailable).
+4. Save a manifest to `<file>_manifest.rds`.
+5. Return an `rxSolveOom` object.
+
+```{r oom-solve}
+res <- rxSolve(mod, params, ev,
+               file      = tempfile("rxChunk"),
+               chunkSize = 3)   # 3 subjects per chunk
+res
+```
+
+The print method reports how many chunks were created and the total row count.
+Because our 10-subject example with `chunkSize = 3` produces four chunks,
+the output shows four chunk files.
+
+## Accessing results
+
+### Materialise the full data frame
+
+```{r materialise}
+df <- as.data.frame(res)
+head(df)
+```
+
+This reads and `rbind`s every chunk file.  For very large results keep the
+`rxSolveOom` object in place and only materialise columns you actually need.
+
+### Lazy column access
+
+```{r lazy-col}
+cp_all <- res$cp
+length(cp_all)
+```
+
+`res$col` reads only the requested column from each chunk, avoiding loading
+columns you do not need.
+
+### Row and dimension queries
+
+```{r dims}
+nrow(res)
+dim(res)
+```
+
+## Faking low memory in demos and tests
+
+The easiest way to demonstrate or test the chunked path on a small dataset is
+to set `chunkSize` directly — no need to modify system RAM.  With
+`chunkSize = 2` on 10 subjects you get 5 chunks of 2 subjects each:
+
+```{r fake-oom}
+res_small <- rxSolve(mod, params, ev,
+                     file      = tempfile("rxDemo"),
+                     chunkSize = 2)
+res_small
+```
+
+In production code, omit `chunkSize` entirely and rxode2 auto-computes an
+appropriate chunk size from `rxMemoryEstimate()`.
+
+## File-backed event tables
+
+For datasets so large that even the event table does not fit in RAM, save it to
+a file first and wrap the path with `rxEventTableFile()`:
+
+```{r et-file, eval = requireNamespace("arrow", quietly = TRUE)}
+et_path <- tempfile(fileext = ".parquet")
+arrow::write_parquet(as.data.frame(ev), et_path)
+
+et_file <- rxEventTableFile(et_path, format = "parquet")
+
+res_file <- rxSolve(mod, params, et_file,
+                    file      = tempfile("rxFile"),
+                    chunkSize = 3)
+res_file
+```
+
+`rxEventTableFile()` also accepts `"csv"`, `"fst"`, and `"rds"` formats.
+
+## Persistent output files
+
+By default `file` points to a `tempfile()` prefix, so the chunk files and
+manifest are cleaned up when R's garbage collection removes the temp directory.
+To keep results across sessions, point `file` at a directory in your project:
+
+```r
+res_persist <- rxSolve(mod, params, ev,
+                       file      = "output/my_sim",
+                       chunkSize = 5000)
+```
+
+Files written will be `output/my_sim_chunk_00001.parquet`, ...,
+`output/my_sim_manifest.rds`.  Reload the manifest later:
+
+```r
+manifest <- readRDS("output/my_sim_manifest.rds")
+```
+
+## Parallel chunk solving
+
+Each chunk is independent and can be solved on a separate CPU or compute node
+using the `mirai` package.  Pass `parallel` to control the number of worker
+processes:
+
+```r
+res_par <- rxSolve(mod, params, ev,
+                   file      = tempfile("rxPar"),
+                   chunkSize = 3,
+                   parallel  = 2)
+```
+
+See the [Parallel rxode2 solving with mirai](rxode2-mirai-parallel.html)
+vignette for a full walkthrough of daemon setup, performance tuning, and
+custom parallel workflows.
+
+## Session information
+
+```{r session}
+sessionInfo()
+```

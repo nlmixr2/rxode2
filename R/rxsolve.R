@@ -807,19 +807,19 @@
 #'   supported for `linCmt()` models (a message is emitted and the
 #'   standard path is used instead).
 #'
-#' @param oomFile Character string giving a file path prefix for out-of-memory
+#' @param file Character string giving a file path prefix for out-of-memory
 #'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
-#'   each chunk's result to `<oomFile>_chunk_NNNNN.parquet` (or `.rds` if
+#'   each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
 #'   `arrow` is unavailable), and returns an `rxSolveOom` object. The manifest
-#'   is saved to `<oomFile>_manifest.rds`. Set to `NULL` (default) to use the
+#'   is saved to `<file>_manifest.rds`. Set to `NULL` (default) to use the
 #'   normal in-memory path.
 #'
-#' @param oomChunkSize Integer; number of subjects per chunk when `oomFile` is
+#' @param chunkSize Integer; number of subjects per chunk when `file` is
 #'   set. If `NULL` (default), the chunk size is auto-computed from available
 #'   free RAM using `rxMemoryEstimate()`.
 #'
-#' @param oomParallel Integer; number of `mirai` daemons to use for parallel
-#'   chunk solving when `oomFile` is set. `0L` (default) uses serial solving.
+#' @param parallel Integer; number of `mirai` daemons to use for parallel
+#'   chunk solving when `file` is set. `0L` (default) uses serial solving.
 #'   Requires the `mirai` package.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
@@ -965,9 +965,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     dense=FALSE,
-                    oomFile=NULL,
-                    oomChunkSize=NULL,
-                    oomParallel=0L,
+                    file=NULL,
+                    chunkSize=NULL,
+                    parallel=0L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1383,12 +1383,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
       }
     }
-    if (!is.null(oomFile))
-      checkmate::assertCharacter(oomFile, len = 1, any.missing = FALSE)
-    if (!is.null(oomChunkSize))
-      checkmate::assertIntegerish(oomChunkSize, lower = 1, len = 1)
-    checkmate::assertIntegerish(oomParallel, lower = 0, len = 1)
-    oomParallel <- as.integer(oomParallel)
+    if (!is.null(file))
+      checkmate::assertCharacter(file, len = 1, any.missing = FALSE)
+    if (!is.null(chunkSize))
+      checkmate::assertIntegerish(chunkSize, lower = 1, len = 1)
+    checkmate::assertIntegerish(parallel, lower = 0, len = 1)
+    parallel <- as.integer(parallel)
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1559,9 +1559,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
       dense=dense,
-      oomFile=oomFile,
-      oomChunkSize=oomChunkSize,
-      oomParallel=oomParallel,
+      oomFile=file,
+      oomChunkSize=chunkSize,
+      oomParallel=parallel,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2524,7 +2524,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         stop(sprintf(
           "Solve requires %.1f GB but only %.1f GB appears free.\n",
           as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
-          "Re-run with rxControl(oomFile = 'path/prefix') to solve in chunks.",
+          "Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.",
           call. = FALSE)
       }
     }
