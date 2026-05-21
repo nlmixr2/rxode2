@@ -371,6 +371,7 @@ bool rxIs(const RObject &obj, std::string cls){
   if (cls == "altrep") return ALTREP(obj);
   if (cls == "seqrep") return is_rx_seqrep(obj);
   if (cls == "repint") return is_rx_rep_int(obj);
+  if (cls == "repstr") return is_rx_rep_str(obj);
   if (cls == "units"){
     if (obj.hasAttribute("class")){
       CharacterVector cls = obj.attr("class");
