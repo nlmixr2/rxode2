@@ -6,6 +6,7 @@
 ^.vexp$
 ^.vscode$
 ^.gemini/$
+^.clangd/$
 ^CLAUDE.md$
 ^test.R$
 ^rxode2\.smproj$
