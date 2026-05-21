@@ -15,6 +15,19 @@ rxTest({
 
     expect_error(rxModelVars("params(b, a);\nlocf(a);\nnocb(a);\n ret=a+b"))
 
+  })
+
+  test_that("line number increments correctly after interpolation error", {
+    tmp <- normalizePath(tempfile(), mustWork = FALSE)
+    on.exit(unlink(tmp))
+    .rxWithSinkBoth(tmp, {
+      expect_error(rxModelVars("params(b, a);\nlocf(a);\nnocb(a);\n ret=a+b"))
+    })
+    lines <- paste(readLines(tmp), collapse = "\n")
+    expect_true(grepl(":004:", lines))
+  })
+
+  test_that("interpolation functions (continued)", {
     tmp <- rxModelVars("params(b, a);\nlinear(a);\n ret=a+b")
 
     expect_equal(as.character(tmp$interp["a"]), "linear")

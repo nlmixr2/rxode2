@@ -152,6 +152,7 @@ void trans_syntax_error_report_fn(char *err) {
     printErrorLineHighlightPoint(p);
     printErrorInfo(p, err, 0, 1);
     RSprintf("%s", sbErr1.s);
+    lastSyntaxErrorLine++;
   }
   rx_syntax_error = 1;
 }
