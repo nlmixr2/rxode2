@@ -9,12 +9,14 @@
 #include <Rdefines.h>
 #include <R_ext/Error.h>
 #include <Rmath.h>
+#include "rxProtect.h"
 SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn){
+rxProtectGuard;
 int dm=INTEGER(dms)[0];
 if (dm == 0){
-  SEXP ret=  PROTECT(Rf_allocVector(INTSXP,1));
+  SEXP ret=  rxP(Rf_allocVector(INTSXP,1));
   INTEGER(ret)[0] = 12;
-  UNPROTECT(1);
+  rxUP(1);
   return(ret);
 }else if (dm == 1) {
 #define warning Rf_warning
@@ -22,16 +24,16 @@ if (dm == 0){
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,1));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,1));
     INTEGER(ret)[0]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 1;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -3 || theta_n > 1){
@@ -41,7 +43,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 1 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 1, 1));for (int i = 0; i < 1; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 1, 1));for (int i = 0; i < 1; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
     }
@@ -51,14 +53,14 @@ if (theta_n == -2){
     else if (theta_n == 1){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 1));for(int i = 0; i < 1; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 1));for(int i = 0; i < 1; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -68,18 +70,18 @@ else if (dm == 2) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,3));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,3));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 3;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -5 || theta_n > 3){
@@ -89,7 +91,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 3 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 2, 2));for (int i = 0; i < 4; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 2, 2));for (int i = 0; i < 4; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[2] = REAL(theta)[1];
@@ -114,17 +116,17 @@ if (theta_n == -2){
     else if (theta_n == 3){
       REAL(ret)[3] = 4 * Rx_pow_di(REAL(theta)[2], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 2));for(int i = 0; i < 2; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 2));for(int i = 0; i < 2; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
     else if (theta_n == -5){
       REAL(ret)[1] = 4 * Rx_pow_di(REAL(theta)[2], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -134,21 +136,21 @@ else if (dm == 3) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,6));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,6));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
     INTEGER(ret)[3]=5;
     INTEGER(ret)[4]=5;
     INTEGER(ret)[5]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 6;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -8 || theta_n > 6){
@@ -158,7 +160,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 6 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 3, 3));for (int i = 0; i < 9; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 3, 3));for (int i = 0; i < 9; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[3] = REAL(theta)[1];
@@ -212,10 +214,10 @@ if (theta_n == -2){
     else if (theta_n == 6){
       REAL(ret)[8] = 4 * Rx_pow_di(REAL(theta)[5], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 3));for(int i = 0; i < 3; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 3));for(int i = 0; i < 3; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -225,7 +227,7 @@ if (theta_n == -2){
     else if (theta_n == -8){
       REAL(ret)[2] = 4 * Rx_pow_di(REAL(theta)[5], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -235,7 +237,7 @@ else if (dm == 4) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,10));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,10));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -246,14 +248,14 @@ else if (dm == 4) {
     INTEGER(ret)[7]=5;
     INTEGER(ret)[8]=5;
     INTEGER(ret)[9]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 10;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -12 || theta_n > 10){
@@ -263,7 +265,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 10 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 4, 4));for (int i = 0; i < 16; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 4, 4));for (int i = 0; i < 16; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[4] = REAL(theta)[1];
@@ -364,10 +366,10 @@ if (theta_n == -2){
     else if (theta_n == 10){
       REAL(ret)[15] = 4 * Rx_pow_di(REAL(theta)[9], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 4));for(int i = 0; i < 4; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 4));for(int i = 0; i < 4; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -380,7 +382,7 @@ if (theta_n == -2){
     else if (theta_n == -12){
       REAL(ret)[3] = 4 * Rx_pow_di(REAL(theta)[9], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -390,7 +392,7 @@ else if (dm == 5) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,15));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,15));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -406,14 +408,14 @@ else if (dm == 5) {
     INTEGER(ret)[12]=5;
     INTEGER(ret)[13]=5;
     INTEGER(ret)[14]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 15;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -17 || theta_n > 15){
@@ -423,7 +425,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 15 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 5, 5));for (int i = 0; i < 25; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 5, 5));for (int i = 0; i < 25; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[5] = REAL(theta)[1];
@@ -593,10 +595,10 @@ if (theta_n == -2){
     else if (theta_n == 15){
       REAL(ret)[24] = 4 * Rx_pow_di(REAL(theta)[14], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 5));for(int i = 0; i < 5; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 5));for(int i = 0; i < 5; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -612,7 +614,7 @@ if (theta_n == -2){
     else if (theta_n == -17){
       REAL(ret)[4] = 4 * Rx_pow_di(REAL(theta)[14], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -622,7 +624,7 @@ else if (dm == 6) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,21));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,21));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -644,14 +646,14 @@ else if (dm == 6) {
     INTEGER(ret)[18]=5;
     INTEGER(ret)[19]=5;
     INTEGER(ret)[20]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 21;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -23 || theta_n > 21){
@@ -661,7 +663,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 21 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 6, 6));for (int i = 0; i < 36; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 6, 6));for (int i = 0; i < 36; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[6] = REAL(theta)[1];
@@ -926,10 +928,10 @@ if (theta_n == -2){
     else if (theta_n == 21){
       REAL(ret)[35] = 4 * Rx_pow_di(REAL(theta)[20], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 6));for(int i = 0; i < 6; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 6));for(int i = 0; i < 6; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -948,7 +950,7 @@ if (theta_n == -2){
     else if (theta_n == -23){
       REAL(ret)[5] = 4 * Rx_pow_di(REAL(theta)[20], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -958,7 +960,7 @@ else if (dm == 7) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,28));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,28));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -987,14 +989,14 @@ else if (dm == 7) {
     INTEGER(ret)[25]=5;
     INTEGER(ret)[26]=5;
     INTEGER(ret)[27]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 28;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -30 || theta_n > 28){
@@ -1004,7 +1006,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 28 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 7, 7));for (int i = 0; i < 49; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 7, 7));for (int i = 0; i < 49; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[7] = REAL(theta)[1];
@@ -1394,10 +1396,10 @@ if (theta_n == -2){
     else if (theta_n == 28){
       REAL(ret)[48] = 4 * Rx_pow_di(REAL(theta)[27], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 7));for(int i = 0; i < 7; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 7));for(int i = 0; i < 7; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -1419,7 +1421,7 @@ if (theta_n == -2){
     else if (theta_n == -30){
       REAL(ret)[6] = 4 * Rx_pow_di(REAL(theta)[27], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -1429,7 +1431,7 @@ else if (dm == 8) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,36));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,36));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -1466,14 +1468,14 @@ else if (dm == 8) {
     INTEGER(ret)[33]=5;
     INTEGER(ret)[34]=5;
     INTEGER(ret)[35]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 36;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -38 || theta_n > 36){
@@ -1483,7 +1485,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 36 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 8, 8));for (int i = 0; i < 64; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 8, 8));for (int i = 0; i < 64; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[8] = REAL(theta)[1];
@@ -2032,10 +2034,10 @@ if (theta_n == -2){
     else if (theta_n == 36){
       REAL(ret)[63] = 4 * Rx_pow_di(REAL(theta)[35], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 8));for(int i = 0; i < 8; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 8));for(int i = 0; i < 8; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -2060,7 +2062,7 @@ if (theta_n == -2){
     else if (theta_n == -38){
       REAL(ret)[7] = 4 * Rx_pow_di(REAL(theta)[35], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -2070,7 +2072,7 @@ else if (dm == 9) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,45));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,45));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -2116,14 +2118,14 @@ else if (dm == 9) {
     INTEGER(ret)[42]=5;
     INTEGER(ret)[43]=5;
     INTEGER(ret)[44]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 45;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -47 || theta_n > 45){
@@ -2133,7 +2135,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 45 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 9, 9));for (int i = 0; i < 81; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 9, 9));for (int i = 0; i < 81; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[9] = REAL(theta)[1];
@@ -2879,10 +2881,10 @@ if (theta_n == -2){
     else if (theta_n == 45){
       REAL(ret)[80] = 4 * Rx_pow_di(REAL(theta)[44], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 9));for(int i = 0; i < 9; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 9));for(int i = 0; i < 9; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -2910,7 +2912,7 @@ if (theta_n == -2){
     else if (theta_n == -47){
       REAL(ret)[8] = 4 * Rx_pow_di(REAL(theta)[44], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -2920,7 +2922,7 @@ else if (dm == 10) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,55));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,55));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -2976,14 +2978,14 @@ else if (dm == 10) {
     INTEGER(ret)[52]=5;
     INTEGER(ret)[53]=5;
     INTEGER(ret)[54]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 55;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -57 || theta_n > 55){
@@ -2993,7 +2995,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 55 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 10, 10));for (int i = 0; i < 100; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 10, 10));for (int i = 0; i < 100; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[10] = REAL(theta)[1];
@@ -3978,10 +3980,10 @@ if (theta_n == -2){
     else if (theta_n == 55){
       REAL(ret)[99] = 4 * Rx_pow_di(REAL(theta)[54], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 10));for(int i = 0; i < 10; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 10));for(int i = 0; i < 10; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -4012,7 +4014,7 @@ if (theta_n == -2){
     else if (theta_n == -57){
       REAL(ret)[9] = 4 * Rx_pow_di(REAL(theta)[54], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -4022,7 +4024,7 @@ else if (dm == 11) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,66));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,66));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -4089,14 +4091,14 @@ else if (dm == 11) {
     INTEGER(ret)[63]=5;
     INTEGER(ret)[64]=5;
     INTEGER(ret)[65]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 66;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -68 || theta_n > 66){
@@ -4106,7 +4108,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 66 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 11, 11));for (int i = 0; i < 121; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 11, 11));for (int i = 0; i < 121; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[11] = REAL(theta)[1];
@@ -5376,10 +5378,10 @@ if (theta_n == -2){
     else if (theta_n == 66){
       REAL(ret)[120] = 4 * Rx_pow_di(REAL(theta)[65], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 11));for(int i = 0; i < 11; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 11));for(int i = 0; i < 11; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -5413,7 +5415,7 @@ if (theta_n == -2){
     else if (theta_n == -68){
       REAL(ret)[10] = 4 * Rx_pow_di(REAL(theta)[65], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }
@@ -5423,7 +5425,7 @@ else if (dm == 12) {
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
   if (theta_n== NA_INTEGER){
-    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,78));
+    SEXP ret=  rxP(Rf_allocVector(INTSXP,78));
     INTEGER(ret)[0]=2;
     INTEGER(ret)[1]=5;
     INTEGER(ret)[2]=2;
@@ -5502,14 +5504,14 @@ else if (dm == 12) {
     INTEGER(ret)[75]=5;
     INTEGER(ret)[76]=5;
     INTEGER(ret)[77]=2;
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);  
 }
 
 if (theta_n == -2){
-    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+    SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
     INTEGER(ret)[0] = 78;
-    UNPROTECT(1);
+    rxUP(1);
     return ret;
   }
   else if (theta_n < -80 || theta_n > 78){
@@ -5519,7 +5521,7 @@ if (theta_n == -2){
     Rf_error("requires vector with 78 arguments");
   }
   if (theta_n >= -1){
-    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 12, 12));for (int i = 0; i < 144; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocMatrix(REALSXP, 12, 12));for (int i = 0; i < 144; i++){REAL(ret)[i]=0;}
     if (theta_n == 0){
       REAL(ret)[0] = Rx_pow_di(REAL(theta)[0], 2);
       REAL(ret)[12] = REAL(theta)[1];
@@ -7124,10 +7126,10 @@ if (theta_n == -2){
     else if (theta_n == 78){
       REAL(ret)[143] = 4 * Rx_pow_di(REAL(theta)[77], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   } else {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, 12));for(int i = 0; i < 12; i++){REAL(ret)[i]=0;}
+    SEXP ret = rxP(Rf_allocVector(REALSXP, 12));for(int i = 0; i < 12; i++){REAL(ret)[i]=0;}
     if (theta_n == -3){
       REAL(ret)[0] = 4 * Rx_pow_di(REAL(theta)[0], 3);
     }
@@ -7164,7 +7166,7 @@ if (theta_n == -2){
     else if (theta_n == -80){
       REAL(ret)[11] = 4 * Rx_pow_di(REAL(theta)[77], 3);
     }
-    UNPROTECT(1);
+    rxUP(1);
     return(ret);
   }
 }

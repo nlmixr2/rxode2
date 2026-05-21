@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "parseLinCmt.h"
+#include "rxProtect.h"
 
 char errLin[errLinLen];
 int errOff = 0;
@@ -48,15 +49,15 @@ static inline void linCmtParseFinalizeStrings(linCmtStruct *lin, int verbose,
 }
 
 static inline SEXP linCmtParseSEXP(linCmtStruct *lin) {
-  int pro = 0;
-  SEXP strV = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
-  SEXP lst = PROTECT(Rf_allocVector(VECSXP, 3)); pro++;
-  SEXP lstN = PROTECT(Rf_allocVector(STRSXP, 3)); pro++;
+  rxProtectGuard;
+  SEXP strV = rxP(Rf_allocVector(STRSXP, 1));
+  SEXP lst = rxP(Rf_allocVector(VECSXP, 3));
+  SEXP lstN = rxP(Rf_allocVector(STRSXP, 3));
 
-  SEXP transSXP = PROTECT(Rf_allocVector(INTSXP, 1)); pro++;
+  SEXP transSXP = rxP(Rf_allocVector(INTSXP, 1));
   INTEGER(transSXP)[0] = lin->trans;
 
-  SEXP ncmtSXP = PROTECT(Rf_allocVector(INTSXP, 1)); pro++;
+  SEXP ncmtSXP = rxP(Rf_allocVector(INTSXP, 1));
   INTEGER(ncmtSXP)[0] = lin->ncmt;
 
   SET_STRING_ELT(strV, 0, Rf_mkChar(lin->ret.s));
@@ -72,8 +73,10 @@ static inline SEXP linCmtParseSEXP(linCmtStruct *lin) {
   Rf_setAttrib(lst, R_NamesSymbol, lstN);
   sFree(&(lin->ret0));
   sFree(&(lin->ret));
-  UNPROTECT(pro);
+  rxUPAll();
   if (lin->trans == -1) {
+    /* _linCmtParsePro tracks caller's (linCmtGenSEXP) protect count;
+     * must manually unprotect before longjmp since cleanup doesn't fire on longjmp */
     UNPROTECT(_linCmtParsePro);
     _linCmtParsePro=0;
     _rxode2parse_unprotect();
@@ -153,8 +156,8 @@ static inline int linCmtGenFinalize(linCmtGenStruct *linG, SEXP linCmt, SEXP var
 }
 
 static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose) {
-  int pro=0;
-  SEXP inStr = PROTECT(Rf_allocVector(STRSXP, 4)); pro++;
+  rxProtectGuard;
+  SEXP inStr = rxP(Rf_allocVector(STRSXP, 4));
   int doSens = 0;
   if (TYPEOF(linCmtSens) == INTSXP){
     doSens = INTEGER(linCmtSens)[0];
@@ -176,24 +179,27 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
     SET_STRING_ELT(inStr, 0, Rf_mkChar(linG->last.s));
     SET_STRING_ELT(inStr, 1, Rf_mkChar(""));
   }
-  _linCmtParsePro=pro;
-  SEXP linCmtP = PROTECT(_linCmtParse(vars, inStr, verbose)); pro++;
+  /* Tell linCmtParseSEXP how many items to manually unprotect from this
+   * frame before calling err_trans (longjmp); exactly 1 item (inStr) is
+   * on the protect stack at this point */
+  _linCmtParsePro = 1;
+  SEXP linCmtP = rxP(_linCmtParse(vars, inStr, verbose));
   switch(linCmtGenFinalize(linG, linCmt, vars, linCmtSens, verbose, linCmtP)) {
   case 1:
-    UNPROTECT(pro);
+    rxUPAll();
     _rxode2parse_unprotect();
     err_trans("linCmt() bad parse");
     return R_NilValue;
   case 2:
-    UNPROTECT(pro);
+    rxUPAll();
     _rxode2parse_unprotect();
     err_trans("linCmt() cannot have any extra parentheses in it");
     return R_NilValue;
     break;
   }
-  SEXP ret = PROTECT(Rf_allocVector(STRSXP,1)); pro++;
+  SEXP ret = rxP(Rf_allocVector(STRSXP,1));
   SET_STRING_ELT(ret, 0, Rf_mkChar(linG->last2.s));
-  UNPROTECT(pro);
+  rxUPAll();
   return ret;
 }
 

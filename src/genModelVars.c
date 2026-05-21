@@ -10,68 +10,68 @@ SEXP generateModelVars(void) {
   calcNparamsNlhsNslhs();
   calcNextra();
 
-  int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 31));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 31));pro++;
+  rxProtectGuard;
+  SEXP lst   = rxP(Rf_allocVector(VECSXP, 31));
+  SEXP names = rxP(Rf_allocVector(STRSXP, 31));
 
-  SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
+  SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
   iNeedSort[0] = needSort;
 
-  SEXP sLinCmt =PROTECT(calcSLinCmt());pro++;
+  SEXP sLinCmt =rxP(calcSLinCmt());
 
-  SEXP sMtime = PROTECT(Rf_allocVector(INTSXP,1));pro++;
+  SEXP sMtime = rxP(Rf_allocVector(INTSXP,1));
   int *iMtime  = INTEGER(sMtime);
   iMtime[0] = (int)nmtime;
 
-  SEXP tran  = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
-  SEXP trann = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
+  SEXP tran  = rxP(Rf_allocVector(STRSXP, 22));
+  SEXP trann = rxP(Rf_allocVector(STRSXP, 22));
 
   // These are the normal states
-  SEXP state      = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
-  SEXP stateProp  = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
+  SEXP state      = rxP(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));
+  SEXP stateProp  = rxP(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));
 
-  SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
+  SEXP stateRmS   = rxP(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));
   int *stateRm    = INTEGER(stateRmS);
 
-  SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
+  SEXP extraState = rxP(Rf_allocVector(STRSXP,tb.nExtra));
 
-  SEXP sens       = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
-  SEXP sensProp   = PROTECT(Rf_allocVector(INTSXP,tb.sensi));pro++;
+  SEXP sens       = rxP(Rf_allocVector(STRSXP,tb.sensi));
+  SEXP sensProp   = rxP(Rf_allocVector(INTSXP,tb.sensi));
 
-  SEXP normState  = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
-  SEXP normProp   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
+  SEXP normState  = rxP(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));
+  SEXP normProp   = rxP(Rf_allocVector(INTSXP,tb.statei-tb.sensi-tb.nExtra));
 
-  SEXP ordS = PROTECT(Rf_allocVector(INTSXP, tb.de.n));pro++;
-  SEXP ordF = PROTECT(sortStateVectors(ordS)); pro++;
+  SEXP ordS = rxP(Rf_allocVector(INTSXP, tb.de.n));
+  SEXP ordF = rxP(sortStateVectors(ordS));
   if (Rf_isNull(ordF)) {
-    UNPROTECT(pro);
+    rxUPAll();
     trans_syntax_error_report_fn0(_gbuf.s);
     return R_NilValue;
   }
   populateStateVectors(state, sens, normState, stateRm, extraState, stateProp, sensProp, normProp, INTEGER(ordF));
-  SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
+  SEXP dfdy = rxP(Rf_allocVector(STRSXP,tb.ndfdy));
   populateDfdy(dfdy);
 
-  SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
-  SEXP lhsIn  = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
-  SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
-  SEXP lhsStrIn = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
-  SEXP lhsStr = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
-  SEXP lhsOrd = PROTECT(Rf_allocVector(INTSXP, tb.li)); pro++;
-  SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
-  SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
+  SEXP params = rxP(Rf_allocVector(STRSXP, tb.pi));
+  SEXP lhsIn  = rxP(Rf_allocVector(STRSXP, tb.li));
+  SEXP lhs    = rxP(Rf_allocVector(STRSXP, tb.li));
+  SEXP lhsStrIn = rxP(Rf_allocVector(LGLSXP, tb.li));
+  SEXP lhsStr = rxP(Rf_allocVector(LGLSXP, tb.li));
+  SEXP lhsOrd = rxP(Rf_allocVector(INTSXP, tb.li));
+  SEXP slhs   = rxP(Rf_allocVector(STRSXP, tb.sli));
+  SEXP interp = rxP(Rf_allocVector(INTSXP, tb.pi));
 
-  SEXP version = PROTECT(calcVersionInfo());pro++;
-  SEXP ini = PROTECT(calcIniVals()); pro++;
+  SEXP version = rxP(calcVersionInfo());
+  SEXP ini = rxP(calcIniVals());
 
-  SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
-  SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
+  SEXP model  = rxP(Rf_allocVector(STRSXP,2));
+  SEXP modeln = rxP(Rf_allocVector(STRSXP,2));
 
   populateParamsLhsSlhs(params, lhsIn, slhs, INTEGER(interp), lhsStrIn,
                         INTEGER(lhsOrd));
 
-  SEXP lhsOrdFS = PROTECT(orderForderS1(lhsOrd)); pro++;
+  SEXP lhsOrdFS = rxP(orderForderS1(lhsOrd));
   int *lhsOrdF = INTEGER(lhsOrdFS);
   int *lhsStrInI = INTEGER(lhsStrIn);
   int *lhsStrI = INTEGER(lhsStr);
@@ -124,7 +124,7 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,  12,sMtime);
 
   SET_STRING_ELT(names, 13, Rf_mkChar("extraCmt"));
-  SEXP sExtraCmt = PROTECT(Rf_allocVector(INTSXP,1));pro++;
+  SEXP sExtraCmt = rxP(Rf_allocVector(INTSXP,1));
   INTEGER(sExtraCmt)[0] = 0;
   SET_VECTOR_ELT(lst, 13, sExtraCmt);
 
@@ -132,12 +132,12 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,   14, extraState);
 
   SET_STRING_ELT(names, 15, Rf_mkChar("dvid"));
-  SEXP sDvid = PROTECT(Rf_allocVector(INTSXP,tb.dvidn));pro++;
+  SEXP sDvid = rxP(Rf_allocVector(INTSXP,tb.dvidn));
   for (int i = 0; i < tb.dvidn; i++) INTEGER(sDvid)[i]=tb.dvid[i];
   SET_VECTOR_ELT(lst,  15, sDvid);
 
   SET_STRING_ELT(names, 16, Rf_mkChar("indLin"));
-  SEXP matLst = PROTECT(Rf_allocVector(VECSXP, 0));pro++;
+  SEXP matLst = rxP(Rf_allocVector(VECSXP, 0));
   SET_VECTOR_ELT(lst,  16, matLst);
 
   SET_STRING_ELT(names, 17, Rf_mkChar("flags"));
@@ -146,11 +146,11 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(names, 18, Rf_mkChar("slhs"));
   SET_VECTOR_ELT(lst,   18, slhs);
 
-  SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
-  SEXP splitBolusSexp = PROTECT(Rf_allocVector(INTSXP, tb.splitBolusN));pro++;
-  SEXP strCmpParams = PROTECT(Rf_allocVector(VECSXP, tb.strCmp.n));pro++;
-  SEXP strCmpParamsN = PROTECT(Rf_allocVector(STRSXP, tb.strCmp.n));pro++;
-  SEXP factorCls = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
+  SEXP alagVarSexp = rxP(Rf_allocVector(INTSXP, tb.alagn));
+  SEXP splitBolusSexp = rxP(Rf_allocVector(INTSXP, tb.splitBolusN));
+  SEXP strCmpParams = rxP(Rf_allocVector(VECSXP, tb.strCmp.n));
+  SEXP strCmpParamsN = rxP(Rf_allocVector(STRSXP, tb.strCmp.n));
+  SEXP factorCls = rxP(Rf_allocVector(STRSXP, 1));
   int *alagVar = INTEGER(alagVarSexp);
   int *splitBolus = INTEGER(splitBolusSexp);
   int *ordFI = INTEGER(ordF);
@@ -161,8 +161,8 @@ SEXP generateModelVars(void) {
   }
 
   for (int i = 0; i < tb.strCmp.n; ++i) {
-    SEXP cur = PROTECT(Rf_allocVector(INTSXP, tb.strCmpN[i]));pro++;
-    SEXP curLvl = PROTECT(Rf_allocVector(STRSXP, tb.strCmpN[i]));pro++;
+    SEXP cur = rxP(Rf_allocVector(INTSXP, tb.strCmpN[i]));
+    SEXP curLvl = rxP(Rf_allocVector(STRSXP, tb.strCmpN[i]));
     int *curI = INTEGER(cur);
     int k = 0;
     for (int j = 0; j < tb.strCmpVal.n; ++j) {
@@ -283,15 +283,15 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(model,1,Rf_mkChar(me_code));
 
   SET_STRING_ELT(names, 20, Rf_mkChar("udf"));
-  SEXP udf = PROTECT(_rxode2parse_getUdf());pro++;
+  SEXP udf = rxP(_rxode2parse_getUdf());
   SET_VECTOR_ELT(lst,   20, udf);
 
   Rf_setAttrib(interp, R_NamesSymbol, params);
-  SEXP clsInterp = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
+  SEXP clsInterp = rxP(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(clsInterp, 0, Rf_mkChar("factor"));
   Rf_classgets(interp, clsInterp);
 
-  SEXP lvlInterp = PROTECT(Rf_allocVector(STRSXP, 5));pro++;
+  SEXP lvlInterp = rxP(Rf_allocVector(STRSXP, 5));
   SET_STRING_ELT(lvlInterp, 0, Rf_mkChar("default"));
   SET_STRING_ELT(lvlInterp, 1, Rf_mkChar("linear"));
   SET_STRING_ELT(lvlInterp, 2, Rf_mkChar("locf"));
@@ -302,10 +302,10 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst, 21, interp);
   SET_STRING_ELT(names, 21, Rf_mkChar("interp"));
 
-  SEXP strAssign = PROTECT(Rf_allocVector(VECSXP, tb.str.n));pro++;
-  SEXP strAssignN = PROTECT(Rf_allocVector(STRSXP, tb.str.n));pro++;
+  SEXP strAssign = rxP(Rf_allocVector(VECSXP, tb.str.n));
+  SEXP strAssignN = rxP(Rf_allocVector(STRSXP, tb.str.n));
   for (int i = 0; i < tb.str.n; i++) {
-    SEXP cur = PROTECT(Rf_allocVector(STRSXP, tb.sin[i]));pro++;
+    SEXP cur = rxP(Rf_allocVector(STRSXP, tb.sin[i]));
     int k = 0;
     for (int j = 0; j < tb.strVal.n; j++) {
       if (tb.strValI[j] == i) {
@@ -357,10 +357,10 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);
   Rf_setAttrib(model, R_NamesSymbol, modeln);
-  SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
+  SEXP cls = rxP(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(cls, 0, Rf_mkChar("rxModelVars"));
   Rf_classgets(lst, cls);
 
-  UNPROTECT(pro);
+  rxUPAll();
   return lst;
 }
