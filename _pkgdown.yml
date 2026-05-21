@@ -384,6 +384,8 @@ navbar:
           href: articles/rxode2-covariates.html
         - text: "Adaptive rxode2 dosing"
           href: articles/adaptive-dosing.html
+        - text: "Multi-peak models with splitBolus()"
+          href: articles/rxode2-split-bolus.html
         - text: "Multiple levels of nesting (IOV, between-study)"
           href: articles/rxode2-nesting.html
         - text: "Sticky variables"
