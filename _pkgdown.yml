@@ -404,6 +404,8 @@ navbar:
           href: articles/rxode2-plot.html
         - text: "Speeding up ODE solving"
           href: articles/rxode2-speed.html
+        - text: "DOP853 dense output for fast dense-grid solves"
+          href: articles/rxode2-dop853-dense.html
         - text: "--------------------------"
         - text: "Developer tools"
         - text: "Interactive model explorer (Shiny)"

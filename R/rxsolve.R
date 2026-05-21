@@ -1283,6 +1283,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
+    if (isTRUE(dense) && method == 0L && missing(hmax)) {
+      .minfo("dop853 dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
+      hmax <- NULL
+    }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
