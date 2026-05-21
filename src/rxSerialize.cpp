@@ -512,6 +512,50 @@ static int *sReadIntBlob(MemReader *f, uint64_t *n_out, const char *what) {
   return (int *)sReadBlob(f, n_out, sizeof(int), what);
 }
 
+// Helper to read dynamically allocated double blob with exact size check
+static double *sReadDoubleBlobExpected(MemReader *f, uint64_t expected_n, const char *what) {
+  uint64_t n_out;
+  double *buf = sReadDoubleBlob(f, &n_out, what);
+  if (n_out != expected_n) {
+    if (buf) free(buf);
+    (Rf_error)("rxRestoreState: %s size mismatch (file: %llu, expected: %llu)", what, (unsigned long long)n_out, (unsigned long long)expected_n);
+  }
+  return buf;
+}
+
+// Helper to read dynamically allocated int blob with exact size check
+static int *sReadIntBlobExpected(MemReader *f, uint64_t expected_n, const char *what) {
+  uint64_t n_out;
+  int *buf = sReadIntBlob(f, &n_out, what);
+  if (n_out != expected_n) {
+    if (buf) free(buf);
+    (Rf_error)("rxRestoreState: %s size mismatch (file: %llu, expected: %llu)", what, (unsigned long long)n_out, (unsigned long long)expected_n);
+  }
+  return buf;
+}
+
+// Helper to read directly into a pre-allocated double buffer
+static void sReadDoubleDirect(MemReader *f, double *dest, uint64_t expected_n, const char *what) {
+  uint64_t n = sReadU64(f, what);
+  if (n > expected_n) {
+    (Rf_error)("rxRestoreState: buffer overflow protection, %s size mismatch (file: %llu, expected: %llu)", what, (unsigned long long)n, (unsigned long long)expected_n);
+  }
+  if (n > 0 && dest != NULL) {
+    sRead(f, dest, (size_t)n * sizeof(double), what);
+  }
+}
+
+// Helper to read directly into a pre-allocated int buffer
+static void sReadIntDirect(MemReader *f, int *dest, uint64_t expected_n, const char *what) {
+  uint64_t n = sReadU64(f, what);
+  if (n > expected_n) {
+    (Rf_error)("rxRestoreState: buffer overflow protection, %s size mismatch (file: %llu, expected: %llu)", what, (unsigned long long)n, (unsigned long long)expected_n);
+  }
+  if (n > 0 && dest != NULL) {
+    sRead(f, dest, (size_t)n * sizeof(int), what);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // vLines restore
 // ---------------------------------------------------------------------------
@@ -698,8 +742,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     if (rx->par_sample) free(rx->par_sample);
     rx->par_sample = tmp;
 
-    uint64_t nd;
-    double *dtmp = sReadDoubleBlob(f, &nd, "linCmtScale");
+    double *dtmp = sReadDoubleBlob(f, &n, "linCmtScale");
     if (rx->linCmtScale) free(rx->linCmtScale);
     rx->linCmtScale = dtmp;
   }
@@ -763,63 +806,42 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 
   // gLin (linH): read and copy into position
   {
-    uint64_t glin_n;
-    double *glin_buf = sReadDoubleBlob(f, &glin_n, "gLin");
-    if (glin_buf && glin_n > 0)
-      memcpy(_globals.gLin, glin_buf, glin_n * sizeof(double));
-    free(glin_buf);
+    uint64_t expected = (uint64_t)((int64_t)rx->linB * 7 * rx->nsub * rx->nsim);
+    sReadDoubleDirect(f, _globals.gLin, expected, "gLin");
   }
 
   // gmtime
   {
-    uint64_t n;
-    double *buf = sReadDoubleBlob(f, &n, "gmtime");
-    if (buf && n > 0) memcpy(_globals.gmtime, buf, n * sizeof(double));
-    free(buf);
+    uint64_t expected = (uint64_t)((int64_t)rx->nMtime * rx->nsub * rx->nsim);
+    sReadDoubleDirect(f, _globals.gmtime, expected, "gmtime");
   }
 
-  // ginits (n4) — the actual n4 from file may differ from op->neq proxy
+  // ginits (n4)
   {
-    uint64_t n4;
-    double *buf = sReadDoubleBlob(f, &n4, "ginits");
-    if (buf && n4 > 0) memcpy(_globals.ginits, buf, n4 * sizeof(double));
-    free(buf);
+    uint64_t expected = (uint64_t)_mem.n4;
+    sReadDoubleDirect(f, _globals.ginits, expected, "ginits");
   }
 
   // gscale (n6)
   {
-    uint64_t n6;
-    double *buf = sReadDoubleBlob(f, &n6, "gscale");
-    if (buf && n6 > 0) memcpy(_globals.gscale, buf, n6 * sizeof(double));
-    free(buf);
+    uint64_t expected = (uint64_t)_mem.n6;
+    sReadDoubleDirect(f, _globals.gscale, expected, "gscale");
   }
 
   // gIndSim
   {
-    uint64_t n;
-    double *buf = sReadDoubleBlob(f, &n, "gIndSim");
-    if (buf && n > 0) memcpy(_globals.gIndSim, buf, n * sizeof(double));
-    free(buf);
+    uint64_t expected = (uint64_t)((int64_t)rx->nIndSim * rx->nsub * rx->nsim);
+    sReadDoubleDirect(f, _globals.gIndSim, expected, "gIndSim");
   }
 
   // ypNA + tolerance arrays (5 × neq doubles)
   {
-    uint64_t n;
-    double *buf;
-    buf = sReadDoubleBlob(f, &n, "ypNA");
-    if (buf && n > 0) memcpy(rx->ypNA, buf, n * sizeof(double)); free(buf);
-
-    buf = sReadDoubleBlob(f, &n, "gatol2");
-    if (buf && n > 0) memcpy(_globals.gatol2, buf, n * sizeof(double)); free(buf);
-
-    buf = sReadDoubleBlob(f, &n, "grtol2");
-    if (buf && n > 0) memcpy(_globals.grtol2, buf, n * sizeof(double)); free(buf);
-
-    buf = sReadDoubleBlob(f, &n, "gssAtol");
-    if (buf && n > 0) memcpy(_globals.gssAtol, buf, n * sizeof(double)); free(buf);
-
-    buf = sReadDoubleBlob(f, &n, "gssRtol");
-    if (buf && n > 0) memcpy(_globals.gssRtol, buf, n * sizeof(double)); free(buf);
+    uint64_t expected = (uint64_t)(op->neq > 0 ? op->neq : 0);
+    sReadDoubleDirect(f, rx->ypNA, expected, "ypNA");
+    sReadDoubleDirect(f, _globals.gatol2, expected, "gatol2");
+    sReadDoubleDirect(f, _globals.grtol2, expected, "grtol2");
+    sReadDoubleDirect(f, _globals.gssAtol, expected, "gssAtol");
+    sReadDoubleDirect(f, _globals.gssRtol, expected, "gssRtol");
   }
 
   // Propagate global tolerances to per-thread slices
@@ -877,8 +899,8 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 
   // gall_times slab (5*nall doubles)
   {
-    uint64_t n;
-    double *buf = sReadDoubleBlob(f, &n, "gall_times_slab");
+    uint64_t expected = 5u * nall_saved;
+    double *buf = sReadDoubleBlobExpected(f, expected, "gall_times_slab");
     if (_globals.gall_times != NULL) free(_globals.gall_times);
     _globals.gall_times = buf;   // takes ownership
     // Re-establish sub-pointers within the slab
@@ -890,8 +912,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 
   // gevid slab (3*nall ints + dfN*2 ints + nlhs ints)
   {
-    uint64_t n;
-    int *buf = sReadIntBlob(f, &n, "gevid_slab");
+    uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
+    uint64_t expected = 3u * nall_saved + dfN * 2 + (uint64_t)op->nlhs;
+    int *buf = sReadIntBlobExpected(f, expected, "gevid_slab");
     if (_globals.gevid != NULL) free(_globals.gevid);
     _globals.gevid  = buf;
     _globals.gidose = _globals.gevid + nall_saved;
@@ -899,78 +922,72 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     // gpar_cov shares offset with gcens (as in rxData.cpp line 3786)
     _globals.gpar_cov = _globals.gcens;
     
-    uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
     _globals.gpar_covInterp = _globals.gpar_cov + dfN;
     _globals.glhs_str = _globals.gpar_covInterp + dfN;
   }
 
   // gcov
   {
-    uint64_t n;
-    double *buf = sReadDoubleBlob(f, &n, "gcov");
+    uint64_t expected = (uint64_t)op->ncov * nall_saved;
+    double *buf = sReadDoubleBlobExpected(f, expected, "gcov");
     if (_globals.gcov != NULL) free(_globals.gcov);
     _globals.gcov = buf;
   }
 
   // gix data: copy into gon slab at the established offset
   {
-    uint64_t n;
-    int *buf = sReadIntBlob(f, &n, "gix");
-    if (buf && n > 0)
-      memcpy(_globals.gix, buf, n * sizeof(int));
-    free(buf);
+    uint64_t expected = nall_saved * (uint64_t)rx->nsim;
+    sReadIntDirect(f, _globals.gix, expected, "gix");
   }
 
   // gpars
   {
-    uint64_t n;
-    double *buf = sReadDoubleBlob(f, &n, "gpars");
+    uint64_t expected = (uint64_t)rx->npars * rx->nsub;
+    double *buf = sReadDoubleBlobExpected(f, expected, "gpars");
     if (_globals.gpars != NULL) free(_globals.gpars);
     _globals.gpars = buf;
   }
 
   // ordId
   {
-    uint64_t n;
-    int *buf = sReadIntBlob(f, &n, "ordId");
+    uint64_t expected = nall_saved;
+    int *buf = sReadIntBlobExpected(f, expected, "ordId");
     if (rx->ordId != NULL) free(rx->ordId);
     rx->ordId = _globals.ordId = buf;
   }
 
   // gParPos, gParPos2 (gsvar, govar covered by gParPos2)
   {
-    uint64_t n;
+    uint64_t expected_gpp = (rx->npars > 0 && _globals.gParPos) ? (uint64_t)rx->npars : 0u;
     int *buf;
 
-    buf = sReadIntBlob(f, &n, "gParPos");
+    buf = sReadIntBlobExpected(f, expected_gpp, "gParPos");
     if (_globals.gParPos != NULL) free(_globals.gParPos);
     _globals.gParPos = buf;
-
-    buf = sReadIntBlob(f, &n, "gParPos2");
+    
+    uint64_t n_gpp2;
+    buf = sReadIntBlob(f, &n_gpp2, "gParPos2"); // Could be 0
     if (_globals.gParPos2 != NULL) free(_globals.gParPos2);
     _globals.gParPos2 = buf;
 
     // gsvar and govar separately
-    uint64_t svar_n, ovar_n;
-    int *svar_buf = sReadIntBlob(f, &svar_n, "gsvar");
-    int *ovar_buf = sReadIntBlob(f, &ovar_n, "govar");
-    // These are stored in _globals; copy into gParPos2-based offsets or keep as blobs.
-    // For simplicity, keep as separate allocations pointed to by gsvar/govar.
-    // Free any previous allocation if they were pointing into gParPos2.
+    uint64_t expected_svar = (uint64_t)(op->nsvar > 0 ? op->nsvar : 0);
+    uint64_t expected_ovar = (uint64_t)(rx->neta > 0 ? rx->neta : 0);
+    int *svar_buf = sReadIntBlobExpected(f, expected_svar, "gsvar");
+    int *ovar_buf = sReadIntBlobExpected(f, expected_ovar, "govar");
     _globals.gsvar = svar_buf;
     _globals.govar = ovar_buf;
   }
 
   // gall_timesS and gamtS
   {
-    uint64_t n;
-    double *buf;
-
-    buf = sReadDoubleBlob(f, &n, "gall_timesS");
+    uint64_t expected_ts = (rx->nsim > 1) ? 2u * (uint64_t)(rx->nsim - 1) * nall_saved : 0u;
+    double *buf = sReadDoubleBlobExpected(f, expected_ts, "gall_timesS");
     if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
     _globals.gall_timesS = buf;
 
-    buf = sReadDoubleBlob(f, &n, "gamtS");
+    uint64_t expected_amts = (rx->nsim > 1) ? (uint64_t)(rx->nsim - 1) * nall_saved : 0u;
+    buf = sReadDoubleBlobExpected(f, expected_amts, "gamtS");
     if (_globals.gamtS != NULL) free(_globals.gamtS);
     _globals.gamtS = buf;
   }
@@ -1043,18 +1060,20 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 
     // 9b: per-subject arrays — always restore as indOwnAlloc
     {
-      uint64_t n;
-      ind->dose      = sReadDoubleBlob(f, &n, "dose");
-      ind->ii        = sReadDoubleBlob(f, &n, "ii");
-      ind->all_times = sReadDoubleBlob(f, &n, "all_times");
-      ind->evid      = sReadIntBlob(f, &n, "evid");
-      ind->ix        = sReadIntBlob(f, &n, "ix");
-      ind->idose     = sReadIntBlob(f, &n, "idose");
-      ind->dv        = sReadDoubleBlob(f, &n, "dv");
-      // cens: stored as int, ind->cens is int*
-      ind->cens      = sReadIntBlob(f, &n, "cens");
-      ind->limit     = sReadDoubleBlob(f, &n, "limit");
-      ind->cov_ptr   = sReadDoubleBlob(f, &n, "cov_ptr");
+      uint64_t exp_nat = (uint64_t)(nat > 0 ? nat : 0);
+      uint64_t exp_nd  = (uint64_t)(nd > 0 ? nd : 0);
+      ind->dose      = sReadDoubleBlobExpected(f, exp_nat, "dose");
+      ind->ii        = sReadDoubleBlobExpected(f, exp_nat, "ii");
+      ind->all_times = sReadDoubleBlobExpected(f, exp_nat, "all_times");
+      ind->evid      = sReadIntBlobExpected(f, exp_nat, "evid");
+      ind->ix        = sReadIntBlobExpected(f, exp_nat, "ix");
+      ind->idose     = sReadIntBlobExpected(f, exp_nd, "idose");
+      ind->dv        = sReadDoubleBlobExpected(f, exp_nat, "dv");
+      ind->cens      = sReadIntBlobExpected(f, exp_nat, "cens");
+      ind->limit     = sReadDoubleBlobExpected(f, exp_nat, "limit");
+      
+      uint64_t exp_cov = (uint64_t)(nat > 0 ? (int64_t)op->ncov * nat : 0);
+      ind->cov_ptr   = sReadDoubleBlobExpected(f, exp_cov, "cov_ptr");
 
       // solve: restore initial conditions into a fresh buffer
       int solveN = nat + EVID_EXTRA_SIZE;
@@ -1063,27 +1082,28 @@ SEXP rxRestoreState_(SEXP rawSexp) {
         
         (Rf_error)("rxRestoreState: out of memory for ind->solve subject %u", si);
       }
-      double *solve_init = sReadDoubleBlob(f, &n, "solve_init");
-      if (solve_init && n > 0)
-        memcpy(ind->solve, solve_init, n * sizeof(double));
-      free(solve_init);
+      uint64_t exp_neq = (uint64_t)(neq > 0 ? neq : 0);
+      sReadDoubleDirect(f, ind->solve, exp_neq, "solve_init");
 
-      ind->par_ptr = sReadDoubleBlob(f, &n, "par_ptr");
+      uint64_t exp_npars = (uint64_t)(rx->npars > 0 ? rx->npars : 0);
+      ind->par_ptr = sReadDoubleBlobExpected(f, exp_npars, "par_ptr");
 
       // mtime / mtime0
-      ind->mtime  = sReadDoubleBlob(f, &n, "mtime");
-      ind->mtime0 = sReadDoubleBlob(f, &n, "mtime0");
+      uint64_t exp_mtime = (uint64_t)(rx->nMtime > 0 ? rx->nMtime : 0);
+      ind->mtime  = sReadDoubleBlobExpected(f, exp_mtime, "mtime");
+      ind->mtime0 = sReadDoubleBlobExpected(f, exp_mtime, "mtime0");
 
       // linH: 7 doubles per linB subject
-      double *linH_buf = sReadDoubleBlob(f, &n, "linH");
-      if (rx->linB && linH_buf && n == 7) {
-        // linH points into gLin slab at subject offset
+      uint64_t exp_linH = (uint64_t)(rx->linB ? 7 : 0);
+      if (rx->linB) {
         ind->linH = _globals.gLin + si * 7;
-        memcpy(ind->linH, linH_buf, 7 * sizeof(double));
+        sReadDoubleDirect(f, ind->linH, exp_linH, "linH");
       } else {
+        uint64_t n;
+        double *linH_buf = sReadDoubleBlob(f, &n, "linH");
+        free(linH_buf);
         ind->linH = NULL;
       }
-      free(linH_buf);
 
       // Mark as own-alloc so rxFreeInd frees the arrays we just allocated
       ind->indOwnAlloc    = 1;

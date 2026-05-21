@@ -8,6 +8,7 @@
 #include "macros2micros.h"
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
+#include "rxProtect.h"
 
 extern "C" void _rxode2parse_unprotect(void);
 
@@ -139,16 +140,17 @@ void linCmtPar3(double *v, double *k10,
 
 
 SEXP toReal(SEXP in){
+  rxProtect rx_protect;
   int type = TYPEOF(in);
   if (type == REALSXP) return in;
   if (type == INTSXP) {
-    SEXP ret = PROTECT(Rf_allocVector(REALSXP, Rf_length(in)));
+    SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, Rf_length(in)));
     int *inI = INTEGER(in);
     double *retR = REAL(ret);
     for (int i = Rf_length(in); i--;){
       retR[i] = (double)(inI[i]);
     }
-    UNPROTECT(1);
+    // UNPROTECT
     return ret;
   }
   (Rf_errorcall)(R_NilValue, _("not an integer/real"));
@@ -156,13 +158,13 @@ SEXP toReal(SEXP in){
 }
 
 extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
+  rxProtect rx_protect;
   double zer = 0;
   int lenP = Rf_length(VECTOR_ELT(inp, 0));
-  int pro=0;
-  SEXP tmp = PROTECT(toReal(VECTOR_ELT(inp, 0))); pro++;
+  SEXP tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 0)));
   double *p1 = REAL(tmp);
   int lenV = Rf_length(VECTOR_ELT(inp, 1));
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 1))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 1)));
   double *v1 = REAL(tmp);
   int lenOut = lenP;
   if (lenV != lenP){
@@ -173,54 +175,54 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
     }
   }
   // vc, kel, vss, cl, thalf, alpha, A, fracA
-  SEXP ret  = PROTECT(Rf_allocVector(VECSXP, 8)); pro++;
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 8)); pro++;
+  SEXP ret  = rx_protect.protect(Rf_allocVector(VECSXP, 8));
+  SEXP retN = rx_protect.protect(Rf_allocVector(STRSXP, 8));
 
   SET_STRING_ELT(retN,0,Rf_mkChar("vc"));
-  SEXP vcS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vcS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vc = REAL(vcS);
   SET_VECTOR_ELT(ret, 0, vcS);
 
   SET_STRING_ELT(retN,1,Rf_mkChar("kel"));
-  SEXP kelS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP kelS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *kel = REAL(kelS);
   SET_VECTOR_ELT(ret, 1, kelS);
 
   SET_STRING_ELT(retN,2,Rf_mkChar("vss"));
-  SEXP vssS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vssS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vss = REAL(vssS);
   SET_VECTOR_ELT(ret, 2, vssS);
 
   SET_STRING_ELT(retN,3,Rf_mkChar("cl"));
-  SEXP clS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP clS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *cl = REAL(clS);
   SET_VECTOR_ELT(ret, 3, clS);
 
   SET_STRING_ELT(retN,4,Rf_mkChar("t12alpha"));
-  SEXP thalfS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP thalfS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *thalf = REAL(thalfS);
   SET_VECTOR_ELT(ret, 4, thalfS);
 
   SET_STRING_ELT(retN,5,Rf_mkChar("alpha"));
-  SEXP alphaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP alphaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *alpha = REAL(alphaS);
   SET_VECTOR_ELT(ret, 5, alphaS);
 
   SET_STRING_ELT(retN,6,Rf_mkChar("A"));
-  SEXP AS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP AS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *A = REAL(AS);
   SET_VECTOR_ELT(ret, 6, AS);
 
   SET_STRING_ELT(retN,7,Rf_mkChar("fracA"));
-  SEXP fracAS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP fracAS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *fracA = REAL(fracAS);
   SET_VECTOR_ELT(ret, 7, fracAS);
 
-  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = rx_protect.protect(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
 
-  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = rx_protect.protect(Rf_allocVector(INTSXP,2));
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
   Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
@@ -257,28 +259,28 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
     vc++; kel++; vss++; cl++; A++; fracA++; alpha++; thalf++;
     p1++; v1++;
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 
 extern "C" SEXP derived2(int trans, SEXP inp, double dig) {
+  rxProtect rx_protect;
   double zer = 0;
-  int pro=0;
 
-  SEXP tmp = PROTECT(toReal(VECTOR_ELT(inp, 0))); pro++;
+  SEXP tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 0)));
   int lenP1 = Rf_length(tmp);
   double *p1 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 1))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 1)));
   int lenV = Rf_length(tmp);
   double *v1 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 2))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 2)));
   int lenP2 = Rf_length(tmp);
   double *p2 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 3))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 3)));
   int lenP3 = Rf_length(tmp);
   double *p3 = REAL(tmp);
 
@@ -296,94 +298,94 @@ extern "C" SEXP derived2(int trans, SEXP inp, double dig) {
   }
   // vc, kel, k12, k21, vp, vss, cl, q, thalfAlpha, thalfBeta,
   // alpha, beta, A, B, fracA, fracB
-  SEXP ret  = PROTECT(Rf_allocVector(VECSXP, 16)); pro++;
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 16)); pro++;
+  SEXP ret  = rx_protect.protect(Rf_allocVector(VECSXP, 16));
+  SEXP retN = rx_protect.protect(Rf_allocVector(STRSXP, 16));
 
   SET_STRING_ELT(retN,0,Rf_mkChar("vc"));
-  SEXP vcS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vcS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vc = REAL(vcS);
   SET_VECTOR_ELT(ret, 0, vcS);
 
   SET_STRING_ELT(retN,1,Rf_mkChar("kel"));
-  SEXP kelS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP kelS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *kel = REAL(kelS);
   SET_VECTOR_ELT(ret, 1, kelS);
 
   SET_STRING_ELT(retN,2,Rf_mkChar("k12"));
-  SEXP k12S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP k12S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *k12 = REAL(k12S);
   SET_VECTOR_ELT(ret, 2, k12S);
 
   SET_STRING_ELT(retN,3,Rf_mkChar("k21"));
-  SEXP k21S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP k21S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *k21 = REAL(k21S);
   SET_VECTOR_ELT(ret, 3, k21S);
 
   SET_STRING_ELT(retN,4,Rf_mkChar("vp"));
-  SEXP vpS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vpS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vp = REAL(vpS);
   SET_VECTOR_ELT(ret, 4, vpS);
 
   SET_STRING_ELT(retN,5,Rf_mkChar("vss"));
-  SEXP vssS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vssS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vss = REAL(vssS);
   SET_VECTOR_ELT(ret, 5, vssS);
 
   SET_STRING_ELT(retN,6,Rf_mkChar("cl"));
-  SEXP clS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP clS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *cl = REAL(clS);
   SET_VECTOR_ELT(ret, 6, clS);
 
   SET_STRING_ELT(retN,7,Rf_mkChar("q"));
-  SEXP qS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP qS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *q = REAL(qS);
   SET_VECTOR_ELT(ret, 7, qS);
 
   SET_STRING_ELT(retN,8,Rf_mkChar("t12alpha"));
-  SEXP thalfAlphaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP thalfAlphaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *thalfAlpha = REAL(thalfAlphaS);
   SET_VECTOR_ELT(ret, 8, thalfAlphaS);
 
   SET_STRING_ELT(retN,9,Rf_mkChar("t12beta"));
-  SEXP thalfBetaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP thalfBetaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *thalfBeta = REAL(thalfBetaS);
   SET_VECTOR_ELT(ret, 9, thalfBetaS);
 
   SET_STRING_ELT(retN,10,Rf_mkChar("alpha"));
-  SEXP alphaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP alphaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *alpha = REAL(alphaS);
   SET_VECTOR_ELT(ret, 10, alphaS);
 
   SET_STRING_ELT(retN,11,Rf_mkChar("beta"));
-  SEXP betaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP betaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *beta = REAL(betaS);
   SET_VECTOR_ELT(ret, 11, betaS);
 
   SET_STRING_ELT(retN,12,Rf_mkChar("A"));
-  SEXP AS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP AS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *A = REAL(AS);
   SET_VECTOR_ELT(ret, 12, AS);
 
   SET_STRING_ELT(retN,13,Rf_mkChar("B"));
-  SEXP BS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP BS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *B = REAL(BS);
   SET_VECTOR_ELT(ret, 13, BS);
 
   SET_STRING_ELT(retN,14,Rf_mkChar("fracA"));
-  SEXP fracAS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP fracAS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *fracA = REAL(fracAS);
   SET_VECTOR_ELT(ret, 14, fracAS);
 
   SET_STRING_ELT(retN,15,Rf_mkChar("fracB"));
-  SEXP fracBS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP fracBS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *fracB = REAL(fracBS);
   SET_VECTOR_ELT(ret, 15, fracBS);
 
-  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = rx_protect.protect(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
 
-  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = rx_protect.protect(Rf_allocVector(INTSXP,2));
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
   Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
@@ -420,33 +422,33 @@ extern "C" SEXP derived2(int trans, SEXP inp, double dig) {
     A++; B++; fracA++; fracB++; alpha++; beta++;
     thalfAlpha++; thalfBeta++;
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
-  int pro = 0;
-  SEXP tmp = PROTECT(toReal(VECTOR_ELT(inp, 0))); pro++;
+  rxProtect rx_protect;
+  SEXP tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 0)));
   int lenP1 = Rf_length(tmp);
   double *p1 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 1))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 1)));
   int lenV = Rf_length(tmp);
   double *v1 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 2))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 2)));
   int lenP2 = Rf_length(tmp);
   double *p2 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 3))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 3)));
   int lenP3 = Rf_length(tmp);
   double *p3 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 4))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 4)));
   int lenP4 = Rf_length(tmp);
   double *p4 = REAL(tmp);
 
-  tmp = PROTECT(toReal(VECTOR_ELT(inp, 5))); pro++;
+  tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 5)));
   int lenP5 = Rf_length(tmp);
   double *p5 = REAL(tmp);
 
@@ -468,135 +470,135 @@ extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
   }
   // vc, kel, k12, k21, vp, vss, cl, q, thalfAlpha, thalfBeta,
   // alpha, beta, A, B, fracA, fracB
-  SEXP ret  = PROTECT(Rf_allocVector(VECSXP, 24)); pro++;
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 24)); pro++;
+  SEXP ret  = rx_protect.protect(Rf_allocVector(VECSXP, 24));
+  SEXP retN = rx_protect.protect(Rf_allocVector(STRSXP, 24));
 
   SET_STRING_ELT(retN,0,Rf_mkChar("vc"));
-  SEXP vcS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vcS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vc = REAL(vcS);
   SET_VECTOR_ELT(ret, 0, vcS);
 
   SET_STRING_ELT(retN,1,Rf_mkChar("kel"));
-  SEXP kelS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP kelS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *kel = REAL(kelS);
   SET_VECTOR_ELT(ret, 1, kelS);
 
   SET_STRING_ELT(retN,2,Rf_mkChar("k12"));
-  SEXP k12S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP k12S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *k12 = REAL(k12S);
   SET_VECTOR_ELT(ret, 2, k12S);
 
   SET_STRING_ELT(retN,3,Rf_mkChar("k21"));
-  SEXP k21S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP k21S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *k21 = REAL(k21S);
   SET_VECTOR_ELT(ret, 3, k21S);
 
   SET_STRING_ELT(retN,4,Rf_mkChar("k13"));
-  SEXP k13S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP k13S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *k13 = REAL(k13S);
   SET_VECTOR_ELT(ret, 4, k13S);
 
   SET_STRING_ELT(retN,5,Rf_mkChar("k31"));
-  SEXP k31S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP k31S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *k31 = REAL(k31S);
   SET_VECTOR_ELT(ret, 5, k31S);
 
   SET_STRING_ELT(retN,6,Rf_mkChar("vp"));
-  SEXP vpS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vpS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vp = REAL(vpS);
   SET_VECTOR_ELT(ret, 6, vpS);
 
   SET_STRING_ELT(retN,7,Rf_mkChar("vp2"));
-  SEXP vp2S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vp2S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vp2 = REAL(vp2S);
   SET_VECTOR_ELT(ret, 7, vp2S);
 
   SET_STRING_ELT(retN,8,Rf_mkChar("vss"));
-  SEXP vssS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP vssS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *vss = REAL(vssS);
   SET_VECTOR_ELT(ret, 8, vssS);
 
   SET_STRING_ELT(retN,9,Rf_mkChar("cl"));
-  SEXP clS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP clS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *cl = REAL(clS);
   SET_VECTOR_ELT(ret, 9, clS);
 
   SET_STRING_ELT(retN,10,Rf_mkChar("q"));
-  SEXP qS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP qS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *q = REAL(qS);
   SET_VECTOR_ELT(ret, 10, qS);
 
   SET_STRING_ELT(retN,11,Rf_mkChar("q2"));
-  SEXP q2S = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP q2S = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *q2 = REAL(q2S);
   SET_VECTOR_ELT(ret, 11, q2S);
 
   SET_STRING_ELT(retN,12,Rf_mkChar("t12alpha"));
-  SEXP thalfAlphaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP thalfAlphaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *thalfAlpha = REAL(thalfAlphaS);
   SET_VECTOR_ELT(ret, 12, thalfAlphaS);
 
   SET_STRING_ELT(retN,13,Rf_mkChar("t12beta"));
-  SEXP thalfBetaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP thalfBetaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *thalfBeta = REAL(thalfBetaS);
   SET_VECTOR_ELT(ret, 13, thalfBetaS);
 
   SET_STRING_ELT(retN,14,Rf_mkChar("t12gamma"));
-  SEXP thalfGammaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP thalfGammaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *thalfGamma = REAL(thalfGammaS);
   SET_VECTOR_ELT(ret, 14, thalfGammaS);
 
   SET_STRING_ELT(retN,15,Rf_mkChar("alpha"));
-  SEXP alphaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP alphaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *alpha = REAL(alphaS);
   SET_VECTOR_ELT(ret, 15, alphaS);
 
   SET_STRING_ELT(retN,16,Rf_mkChar("beta"));
-  SEXP betaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP betaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *beta = REAL(betaS);
   SET_VECTOR_ELT(ret, 16, betaS);
 
   SET_STRING_ELT(retN,17,Rf_mkChar("gamma"));
-  SEXP gammaS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP gammaS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *gamma = REAL(gammaS);
   SET_VECTOR_ELT(ret, 17, gammaS);
 
   SET_STRING_ELT(retN,18,Rf_mkChar("A"));
-  SEXP AS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP AS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *A = REAL(AS);
   SET_VECTOR_ELT(ret, 18, AS);
 
 
   SET_STRING_ELT(retN,19,Rf_mkChar("B"));
-  SEXP BS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP BS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *B = REAL(BS);
   SET_VECTOR_ELT(ret, 19, BS);
 
   SET_STRING_ELT(retN,20,Rf_mkChar("C"));
-  SEXP CS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP CS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *C = REAL(CS);
   SET_VECTOR_ELT(ret, 20, CS);
 
   SET_STRING_ELT(retN,21,Rf_mkChar("fracA"));
-  SEXP fracAS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP fracAS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *fracA = REAL(fracAS);
   SET_VECTOR_ELT(ret, 21, fracAS);
 
   SET_STRING_ELT(retN,22,Rf_mkChar("fracB"));
-  SEXP fracBS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP fracBS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *fracB = REAL(fracBS);
   SET_VECTOR_ELT(ret, 22, fracBS);
 
   SET_STRING_ELT(retN,23,Rf_mkChar("fracC"));
-  SEXP fracCS = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+  SEXP fracCS = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
   double *fracC = REAL(fracCS);
   SET_VECTOR_ELT(ret, 23, fracCS);
 
-  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = rx_protect.protect(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
 
-  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = rx_protect.protect(Rf_allocVector(INTSXP,2));
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
   Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
@@ -648,7 +650,7 @@ extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
     A++; B++; C++; fracA++; fracB++; fracC++; alpha++; beta++; gamma++;
     thalfAlpha++; thalfBeta++; thalfGamma++;
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 

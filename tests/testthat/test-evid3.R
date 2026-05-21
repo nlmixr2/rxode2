@@ -190,4 +190,66 @@ rxTest({
     expect_warning(x <- rxSolve(mod1, et))
     expect_false(any(names(x) == "resetno"))
   })
+
+  test_that("tad is non-negative after SS dosing (EVID=3+110 reset)", {
+    # Regression test: SS dosing inserts EVID=3 (time reset) + EVID=110 (SS bolus).
+    # handleTlastInline was called for EVID=3 which has cmt=-1, corrupting tlast
+    # and producing negative tad values for observations after the SS reset.
+
+    # ODE model
+    mod_ode <- rxode2({
+      KA <- 2.94E-01
+      CL <- 1.86E+01
+      V2 <- 4.02E+01
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V2 * centr
+      cp <- centr / V2
+      t_ad <- tad()
+    })
+
+    # linCmt model
+    mod_lin <- rxode2({
+      KA <- 2.94E-01
+      CL <- 1.86E+01
+      V2 <- 4.02E+01
+      cp <- linCmt()
+      t_ad <- tad()
+    })
+
+    # Multi-subject event table: SS bolus (ss=1) then repeated doses.
+    # Using 3 subjects with slightly different observation schedules so
+    # maxShift (computed globally) is > 0, which was the trigger for the bug.
+    ev <- dplyr::bind_rows(
+      data.frame(id = 1, time = 0,  evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
+      data.frame(id = 1, time = 0,  evid = 0, amt = 0,   ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 0.5, evid = 0, amt = 0,  ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 1,  evid = 0, amt = 0,   ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 12, evid = 101, amt = 320, ii = 0, ss = 0, cmt = 1),
+      data.frame(id = 1, time = 12.5, evid = 0, amt = 0, ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 2, time = 0,  evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
+      data.frame(id = 2, time = 0.3, evid = 0, amt = 0,  ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 2, time = 1,  evid = 0, amt = 0,   ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 2, time = 12, evid = 101, amt = 320, ii = 0, ss = 0, cmt = 1),
+      data.frame(id = 2, time = 12.8, evid = 0, amt = 0, ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 3, time = 0,  evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
+      data.frame(id = 3, time = 0.2, evid = 0, amt = 0,  ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 3, time = 12, evid = 101, amt = 320, ii = 0, ss = 0, cmt = 1),
+      data.frame(id = 3, time = 12.4, evid = 0, amt = 0, ii = 0,  ss = 0, cmt = 1, dv = NA)
+    )
+
+    suppressWarnings({
+      x_ode <- rxSolve(mod_ode, ev)
+      x_lin <- rxSolve(mod_lin, ev)
+    })
+
+    obs_ode <- x_ode[!is.na(x_ode$cp), ]
+    obs_lin <- x_lin[!is.na(x_lin$cp), ]
+
+    expect_true(all(obs_ode$t_ad >= 0),
+                info = paste("ODE model: negative tad values found:",
+                             paste(obs_ode$t_ad[obs_ode$t_ad < 0], collapse = ", ")))
+    expect_true(all(obs_lin$t_ad >= 0),
+                info = paste("linCmt model: negative tad values found:",
+                             paste(obs_lin$t_ad[obs_lin$t_ad < 0], collapse = ", ")))
+  })
 })

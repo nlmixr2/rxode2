@@ -187,6 +187,15 @@ extern "C" {
     *xp = *xout;
     ind->linCmtAlast = yp ;
     ind->ixds++;
+    // Reset dose-tracking after time reset so tad is never negative post-reset.
+    // Any dose that fires after this EVID=3 re-establishes tlast from scratch.
+    int _ncmt = op->neq + op->extraCmt;
+    for (int _j = _ncmt; _j--;) {
+      ind->tlastS[_j]   = NA_REAL;
+      ind->curDoseS[_j] = NA_REAL;
+    }
+    ind->tlast   = NA_REAL;
+    ind->curDose = NA_REAL;
   }
 
 #if defined(__cplusplus)

@@ -456,8 +456,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getOrdId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getOrdId, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2solveMethodThreadSafe = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&solveMethodThreadSafe, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2atolRtolFactor_ = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&atolRtolFactor_, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxInt = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxInt, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxReal = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxReal, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 62
+#define nVec 64
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -521,6 +523,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 59, rxode2getOrdId);
   SET_VECTOR_ELT(ret, 60, rxode2solveMethodThreadSafe);
   SET_VECTOR_ELT(ret, 61, rxode2atolRtolFactor_);
+  SET_VECTOR_ELT(ret, 62, rxode2rxInt);
+  SET_VECTOR_ELT(ret, 63, rxode2rxReal);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -586,6 +590,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 59, Rf_mkChar("rxode2getOrdId"));
   SET_STRING_ELT(retN, 60, Rf_mkChar("rxode2solveMethodThreadSafe"));
   SET_STRING_ELT(retN, 61, Rf_mkChar("rxode2atolRtolFactor_"));
+  SET_STRING_ELT(retN, 62, Rf_mkChar("rxode2rxInt"));
+  SET_STRING_ELT(retN, 63, Rf_mkChar("rxode2rxReal"));
 
 #undef nVec
 

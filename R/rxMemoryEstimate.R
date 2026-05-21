@@ -655,7 +655,7 @@ print.rxMemoryEstimate <- function(x, ...) {
 
   .labels <- c(
     gsolve        = "gsolve (double buffer total)",
-    gsolve_n0     = "  └─ n0: ODE state output matrix",
+    gsolve_n0     = "  |_ n0: ODE state output matrix",
     gon           = "gon (int buffer)",
     gall_times    = "gall_times (event time/dv/amt/ii/limit)",
     gevid         = "gevid (event IDs)",

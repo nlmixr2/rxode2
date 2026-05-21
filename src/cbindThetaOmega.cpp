@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
+#include "rxProtect.h"
 #include <R.h>
 #include "../inst/include/rxode2parse.h"
 
@@ -40,7 +41,7 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
       ret[i] = cur;
     }
   } else {
-    stop("input parameter matrix does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+    rxError("input parameter matrix does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
   }
   for (int i = individualN.size(); i--; ) {
     ret[inputN.size() + i] = individualParameters[i];
@@ -73,7 +74,7 @@ List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
       ret[i] = cur;
     }
   } else {
-    stop("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+    rxError("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
   }
   for (int i = individualN.size(); i--; ) {
     ret[inputN.size() + i] = individualParameters[i];
@@ -101,7 +102,7 @@ List cbindThetaOmega(RObject inputParameters, List &individualParameters) {
      ret[1] = individualParameters;
      return ret;
   } else {
-    stop(_("unexpected parameter object"));
+    rxError(_("unexpected parameter object"));
   }
   ret[0] = List::create();
   ret[1] = individualParameters;
@@ -110,9 +111,10 @@ List cbindThetaOmega(RObject inputParameters, List &individualParameters) {
 
 
 extern "C" SEXP _rxode2_rxCbindStudyIndividual(SEXP inputParameters, SEXP individualParameters) {
+  rxProtect rx_protect;
   RObject ip = as<RObject>(inputParameters);
   List ip2 = as<List>(individualParameters);
-  SEXP ret = PROTECT(as<SEXP>(cbindThetaOmega(ip, ip2)[0]));
-  UNPROTECT(1);
+  SEXP ret = rx_protect.protect(as<SEXP>(cbindThetaOmega(ip, ip2)[0]));
+  // UNPROTECT
   return ret;
 }

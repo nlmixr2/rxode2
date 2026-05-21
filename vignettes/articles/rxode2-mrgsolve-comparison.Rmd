@@ -98,17 +98,17 @@ compartments only, and does not provide analytical gradients.
 ```{r}
 mod <- function() {
   ini({
-    TCl <- 4;
+    TCl <- 4
     eta.Cl ~ 0.09
-    V   <- 10
-    Q   <- 2;
+    V <- 10
+    Q <- 2
     V2 <- 50
-    V3  <- 200;
+    V3 <- 200
     Q2 <- 0.5
   })
   model({
     CL <- TCl * exp(eta.Cl)
-    cp <- linCmt(CL, V, Q, V2, V3, Q2)           # 3-cmt solved automatically from parameter names
+    cp <- linCmt(CL, V, Q, V2, V3, Q2) # 3-cmt solved automatically from parameter names
   })
 }
 ```
@@ -129,19 +129,21 @@ rxode2 ships three solver backends that can be selected per run:
 mrgsolve uses a single C++ LSODA backend.
 
 ```{r}
-rxSolve(mod, ev, method = "dop853")   # explicit RK8 solver
-rxSolve(mod, ev, method = "lsoda")    # default
+rxSolve(mod, ev, method = "dop853") # explicit RK8 solver
+rxSolve(mod, ev, method = "lsoda") # default
 ```
 
 ### NONMEM model import
 
 `nonmem2rx` converts NONMEM control streams directly into rxode2 model
 objects, including parameter estimates, omega/sigma matrices, and
-covariate relationships.  mrgsolve has a community package
+covariate relationships and is on CRAN.  `mrgsolve` has a community package
 `nonmem2mrgsolve` (<https://github.com/Andy00000000000/nonmem2mrgsolve>)
-that performs a similar translation, but it is not on CRAN and is not
-maintained by the mrgsolve core team.  `nonmem2rx` is on CRAN and is
-maintained as part of the nlmixr2 ecosystem.
+that performs a similar translation, that is not on CRAN.
+
+Additionally, the [`amp.sim` package](https://github.com/LeidenAdvancedPKPD/amp.sim)
+(available on CRAN) can translate NONMEM models to several R simulation
+frameworks, including both `rxode2` (using `nonmem2rx`) and `mrgsolve`.
 
 ```{r}
 library(nonmem2rx)
@@ -175,21 +177,27 @@ untouched.
 library(rxode2)
 
 base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
+  d / dt(depot) <- -KA * depot
+  d / dt(centr) <- KA * depot - CL / V * centr
 })
 
 # Add population parameters and a covariate in one pipeline
 full <- base |>
-  model({
-    KA <- exp(tka + eta.ka)
-    CL <- exp(tcl + eta.cl + cov.wt * WT)
-    V  <- exp(tv)
-  }, append = FALSE, cov = "WT") |>
+  model(
+    {
+      KA <- exp(tka + eta.ka)
+      CL <- exp(tcl + eta.cl + cov.wt * WT)
+      V <- exp(tv)
+    },
+    append = FALSE,
+    cov = "WT"
+  ) |>
   ini({
-    tka <- log(0.5);  eta.ka ~ 0.09
-    tcl <- log(4);    eta.cl ~ 0.09
-    tv  <- log(20)
+    tka <- log(0.5)
+    eta.ka ~ 0.09
+    tcl <- log(4)
+    eta.cl ~ 0.09
+    tv <- log(20)
   })
 ```
 
@@ -228,7 +236,7 @@ library(rxode2)
 Hill <- function(C, Emax, EC50) Emax * C / (EC50 + C)
 
 mod <- rxode2({
-  effect <- Hill(cp, Emax, EC50)   # calls the R function above
+  effect <- Hill(cp, Emax, EC50) # calls the R function above
 })
 ```
 
@@ -359,7 +367,9 @@ distribution functions like `rxpois()`.  This is described in
 
 ```{r}
 # Register a model-expansion function
-rxUdfUi.myFun <- function(fun) { eval(fun) }
+rxUdfUi.myFun <- function(fun) {
+  eval(fun)
+}
 rxode2::.s3register("rxode2::rxUdfUi", "myFun")
 ```
 
@@ -375,7 +385,7 @@ mod_pred <- rxode2({
   ipre <- 10 * exp(-ke * t)
 })
 
-et  <- et(seq(0, 24, length.out = 20))
+et <- et(seq(0, 24, length.out = 20))
 rxSolve(mod_pred, et, params = c(ke = 0.5))
 ```
 
@@ -406,7 +416,7 @@ Benchmarks on equivalent models show similar wall-clock times.
 | Symbolic Jacobian / sensitivities | yes | no |
 | Parameter estimation | via nlmixr2 | simulation only |
 | Model piping (`\|>`) | yes (`model()`, `ini()` pipes) | no |
-| NONMEM model import | `nonmem2rx` (CRAN, nlmixr2 ecosystem) | `nonmem2mrgsolve` (GitHub only, community) |
+| NONMEM model import | `nonmem2rx` (CRAN), `amp.sim` (CRAN) | `nonmem2mrgsolve` (GitHub), `amp.sim` (CRAN) |
 | `simeta()` / `simeps()` | yes | yes |
 | Custom C functions | `rxFun()`, `.extraC()`, package registration | `$GLOBAL`, `$PLUGIN` |
 | R functions usable inside model | yes (any function in calling env) | yes (`$ENV` block, `mrgx` plugin) |
@@ -430,3 +440,4 @@ Benchmarks on equivalent models show similar wall-clock times.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
 - [nonmem2mrgsolve](https://github.com/Andy00000000000/nonmem2mrgsolve)
+- [amp.sim package](https://github.com/LeidenAdvancedPKPD/amp.sim)

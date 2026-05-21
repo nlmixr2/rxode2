@@ -26,3 +26,4 @@ matches the supplied model.
 \seealso{
 \code{\link{rxSaveState}}
 }
+\keyword{internal}

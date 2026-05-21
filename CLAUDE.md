@@ -184,6 +184,17 @@ devtools::document()
 - C files use `#define STRICT_R_HEADERS` and `#define USE_FC_LEN_T`
 - C++ files use `#define R_NO_REMAP` to avoid R API name pollution
 - OpenMP support is conditional via `rxomp.h`
+- Instead of using PROTECT/UNPROTECT:
+  - In C:
+    - begin functions that typically need PROTECT/UNPROTECT with `rxProtectGuard;`
+    - Use PROTECT->rxP()/UNPROTECT->rxUP()
+    - Use rxUPAll() to unprotect everything before returning since
+      `rxP()`/`rxUP()` counts the number of protected expressions in the functions
+  - in C++:
+    - For functions where protection is needed:
+    - Create a protection object `rxProtect rx_protect;`
+    - Use `rx_protect.protect()` instead of `PROTECT()`; `UNPROTECT`
+      will be handled when the object goes out of scope.
 
 ### Generated Files (do not edit manually)
 

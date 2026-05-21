@@ -143,7 +143,7 @@ extern "C" SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle) {
       (Rf_errorcall)(R_NilValue, "%s", _("internal error: percent= must be TRUE or FALSE at C level"));  // # nocov
     }
     if (LOGICAL(percent)[0]) {
-      if (n<2 || n>100) Rf_error(_("internal error: threads==%d should be between 2 and 100 (percent=TRUE at C level)"), n);  // # nocov
+      if (n<2 || n>100) (Rf_error)(_("internal error: threads==%d should be between 2 and 100 (percent=TRUE at C level)"), n);  // # nocov
       n = num_procs*n/100;  // if 0 it will be reset to 1 in the imax() below
     } else {
       if (n==0 || n>num_procs) n = num_procs; // setRxThreads(0) == setRxThreads(percent=100); i.e. use all logical CPUs (the default in 1.12.0 and before, from 1.12.2 it's 50%)
