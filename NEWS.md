@@ -5,6 +5,10 @@
 
 - Parallelized the rxode2 data.frame creation.
 
+- Added parallel solving `mirai` for clusters and HPC support.
+
+- Added out of memory solve using `arrow`.
+
 - Use ALTREP for `id`, `sim.id`, repeated simulation event columns
   (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`),
   covariates and kept variables when blocks are identical across

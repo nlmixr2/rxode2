@@ -105,12 +105,11 @@ Pass `file` to opt in to chunked solving.  rxode2 will:
 
 1. Auto-compute a chunk size from available free RAM (or use `chunkSize` if
    you supply it).
-2. Pre-draw all subjects' etas in one pass to ensure reproducible results.
-3. Solve each chunk with a separate `rxSolve()` call.
-4. Write each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
+2. Solve each chunk with a separate `rxSolve()` call.
+3. Write each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
    the `arrow` package is unavailable).
-5. Save a manifest to `<file>_manifest.rds`.
-6. Return an `rxSolveOom` object.
+4. Save a manifest to `<file>_manifest.rds`.
+5. Return an `rxSolveOom` object.
 
 ```{r oom-solve}
 res <- rxSolve(pkModel, ev,
@@ -229,7 +228,7 @@ ds
 ```
 
 Because `ds` is lazy you can chain dplyr verbs and only call `dplyr::collect()`
-at the end to materialise the (small) result:
+at the end to materialize the (small) result:
 
 ```{r arrow-dplyr, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
 # Compute the peak concentration per subject without loading all rows
