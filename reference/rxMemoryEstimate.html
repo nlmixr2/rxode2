@@ -78,6 +78,7 @@ be supplied via a compiled rxode2 model object or overridden individually."><met
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -290,7 +291,7 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsigma (sigma matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_timesS (extra sim times)              0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 872 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.23 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 872 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.24 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># With rxControl: population simulation with omega and 4 cores</span></span></span>
 <span class="r-in"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="rxSolve.html">rxControl</a></span><span class="op">(</span></span></span>
@@ -316,7 +317,7 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsigma (sigma matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_timesS (extra sim times)              0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 872 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.23 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 872 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.24 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
