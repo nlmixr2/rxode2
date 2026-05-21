@@ -54,6 +54,13 @@ static SEXP rx_seqrep_materialize(SEXP x) {
   int run_len = d[1];
   R_xlen_t block = (R_xlen_t)n_vals * run_len;
 
+  if (block <= 0) {
+    for (R_xlen_t i = 0; i < len; i++) p[i] = NA_INTEGER;
+    R_set_altrep_data2(x, mat);
+    UNPROTECT(1);
+    return mat;
+  }
+
   /* Build the first repeating block element-by-element. */
   if (block > len) block = len;
   R_xlen_t idx = 0;
@@ -470,6 +477,10 @@ extern Rboolean is_rx_seqrep(SEXP x) {
 
 extern Rboolean is_rx_rep_int(SEXP x) {
   return ALTREP(x) && R_altrep_inherits(x, rx_rep_int_class);
+}
+
+extern Rboolean is_rx_rep_str(SEXP x) {
+  return ALTREP(x) && R_altrep_inherits(x, rx_rep_str_class);
 }
 
 extern int rxInt(SEXP x, R_xlen_t i) {

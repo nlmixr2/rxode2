@@ -12,6 +12,10 @@ rxTest({
     rxIs(x, "seqrep")
   }
 
+  .isRepstr <- function(x) {
+    rxIs(x, "repstr")
+  }
+
   for (rt in c("data.frame", "tibble", "rxSolve")) {
     for (ad in c(TRUE, FALSE, NA))  {
 
@@ -362,5 +366,95 @@ rxTest({
     for (.id in c(5L, 10L, 15L)) {
       expect_true(all(out$id[out$id == .id] == .id))
     }
+  })
+
+  # ── String keep columns — dedicated rx_rep_str ALTREP tests ──────────────
+
+  test_that("string keep column is rx_rep_str ALTREP via homogeneous path", {
+    mod  <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    ev   <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+    evDf <- cbind(ev, label = "low")
+    p    <- data.frame(id = 1:3, ka = 0.5, cl = 1, v = 10)
+
+    out <- rxSolve(mod, p, evDf, keep = "label")
+
+    expect_true(.isAltrep(out$label))
+    expect_true(.isRepstr(out$label))
+    expect_true(all(out$label == "low"))
+    expect_null(attr(out$label, "class"))
+  })
+
+  test_that("string keep column is rx_rep_str ALTREP via stochastic nsim path", {
+    pkKeep <- function() {
+      ini({ tka <- 0.5; tcl <- 0; tv <- log(10); eta.ka ~ 0.3 })
+      model({
+        ka <- exp(tka + eta.ka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot) <- -ka * depot
+        d/dt(centr) <- ka * depot - cl / v * centr
+        cp <- centr / v
+      })
+    }
+    evDf <- as.data.frame(
+      et(amt = 100, cmt = 1) |> et(seq(0, 24, by = 1)) |> et(id = 1:3)
+    )
+    n <- sum(evDf$id == 1L)
+    evDf$label <- rep(c("low", "high", "low"), each = n)
+
+    set.seed(42)
+    out <- rxSolve(pkKeep, evDf, nsim = 3, keep = "label")
+
+    expect_true(.isAltrep(out$label))
+    expect_true(.isRepstr(out$label))
+    for (.id in 1:3) {
+      expect_equal(unique(out$label[out$id == .id]),
+                   c("low", "high", "low")[.id])
+    }
+  })
+
+  test_that("single-sim string keep column is NOT ALTREP", {
+    mod  <- rxode2({ d/dt(A) <- -k * A })
+    ev   <- et(seq(0, 12, by = 1)) |> et(amt = 100)
+    evDf <- cbind(ev, label = "ctrl")
+
+    out <- rxSolve(mod, c(k = 0.1), evDf, keep = "label")
+
+    expect_false(.isAltrep(out$label))
+    expect_equal(unique(out$label), "ctrl")
+  })
+
+  test_that("string ALTREP column materialises correctly", {
+    mod  <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+    })
+    ev   <- et(amt = 100, cmt = 1) |> et(seq(0, 24, by = 1))
+    evDf <- cbind(ev, grp = "A")
+    p    <- data.frame(id = 1:4, ka = 0.5, cl = 1, v = 10)
+
+    out <- rxSolve(mod, p, evDf, keep = "grp")
+    expect_true(.isAltrep(out$grp))
+
+    # Force full materialisation via DATAPTR then verify values are correct
+    mat <- as.character(out$grp)
+    expect_true(all(mat == "A"))
+    expect_equal(length(mat), nrow(out))
+  })
+
+  test_that("element access on string ALTREP column exercises Elt without materialising", {
+    mod  <- rxode2({ d/dt(A) <- -k * A })
+    ev   <- et(seq(0, 10, by = 1)) |> et(amt = 1)
+    evDf <- cbind(ev, trt = "drug")
+    p    <- data.frame(id = 1:5, k = 0.2)
+
+    out <- rxSolve(mod, p, evDf, keep = "trt")
+    expect_true(.isAltrep(out$trt))
+
+    expect_equal(out$trt[[1L]], "drug")
+    expect_equal(out$trt[[nrow(out)]], "drug")
+    expect_true(.isAltrep(out$trt))
   })
 })
