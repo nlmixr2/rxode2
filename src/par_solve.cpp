@@ -63,7 +63,8 @@ extern "C" void RSprintf(const char *format, ...);
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
 extern "C" void rxEtaPreDeactivate(void);
 
-extern "C" SEXP _rxHasOpenMp(){ rxProtect rx_protect; 
+extern "C" SEXP _rxHasOpenMp(){
+  rxProtect rx_protect;
   SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
   INTEGER(ret)[0] = 1;
@@ -433,7 +434,8 @@ typedef struct {
 
 rx_tick rxt;
 
-extern "C" SEXP _rxTick(){ rxProtect rx_protect; 
+extern "C" SEXP _rxTick(){
+  rxProtect rx_protect;
   rxt.cur++;
   SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 1));
   rxt.d =par_progress(rxt.cur, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);

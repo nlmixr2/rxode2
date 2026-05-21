@@ -139,7 +139,8 @@ void linCmtPar3(double *v, double *k10,
 
 
 
-SEXP toReal(SEXP in){ rxProtect rx_protect;
+SEXP toReal(SEXP in){
+  rxProtect rx_protect;
   int type = TYPEOF(in);
   if (type == REALSXP) return in;
   if (type == INTSXP) {
@@ -156,7 +157,8 @@ SEXP toReal(SEXP in){ rxProtect rx_protect;
   return R_NilValue;
 }
 
-extern "C" SEXP derived1(int trans, SEXP inp, double dig) { rxProtect rx_protect;
+extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
+  rxProtect rx_protect;
   double zer = 0;
   int lenP = Rf_length(VECTOR_ELT(inp, 0));
   SEXP tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 0)));
@@ -262,7 +264,8 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) { rxProtect rx_protect
 }
 
 
-extern "C" SEXP derived2(int trans, SEXP inp, double dig) { rxProtect rx_protect;
+extern "C" SEXP derived2(int trans, SEXP inp, double dig) {
+  rxProtect rx_protect;
   double zer = 0;
 
   SEXP tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 0)));
@@ -423,7 +426,8 @@ extern "C" SEXP derived2(int trans, SEXP inp, double dig) { rxProtect rx_protect
   return ret;
 }
 
-extern "C" SEXP derived3(int trans, SEXP inp, double dig) { rxProtect rx_protect;
+extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
+  rxProtect rx_protect;
   SEXP tmp = rx_protect.protect(toReal(VECTOR_ELT(inp, 0)));
   int lenP1 = Rf_length(tmp);
   double *p1 = REAL(tmp);

@@ -28,7 +28,8 @@ inline SEXP sexp_unique( Rcpp::Vector< RTYPE > x ) {
 #define get_sexp_unique _rxode2parse_get_sexp_unique
 
 // returns unique values in their original input order
-extern "C" SEXP get_sexp_unique( SEXP s ) { rxProtect rx_protect;
+extern "C" SEXP get_sexp_unique( SEXP s ) {
+  rxProtect rx_protect;
 
   SEXP s2 = rx_protect.protect(Rcpp::clone( s ));
 
@@ -72,7 +73,8 @@ inline int sexp_uniqueL( Rcpp::Vector< RTYPE > x ) {
   return x.size();
 }
 
-extern "C" int get_sexp_uniqueL( SEXP s ) { rxProtect rx_protect;
+extern "C" int get_sexp_uniqueL( SEXP s ) {
+  rxProtect rx_protect;
 
   SEXP s2 = rx_protect.protect(Rcpp::clone( s ));
 
