@@ -34,27 +34,40 @@ holding the entire dataset in RAM.
 
 ## The model and event table
 
-Throughout this vignette we use a simple one-compartment oral PK model with
-10 subjects to keep run times short.  In practice the same `rxSolve()` call
-scales to arbitrarily large populations.
+Throughout this vignette we use a one-compartment oral PK model with between-
+subject variability on clearance and absorption rate.  Parameters are defined
+using `ini()` and `model()` blocks — the standard rxode2 UI approach.
 
 ```{r model}
-mod <- rxode2({
-  d/dt(depot)  <- -ka * depot
-  d/dt(center) <- ka * depot - cl / v * center
-  cp           <- center / v
-})
+pkModel <- function() {
+  ini({
+    tka      <- log(0.5);  label("Typical log Ka (1/h)")
+    tcl      <- log(4);    label("Typical log CL (L/h)")
+    tv       <- log(70);   label("Typical log V (L)")
+    eta.ka   ~ 0.09
+    eta.cl   ~ 0.04
+    prop.err <- 0.15
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp           <- center / v
+    cp ~ prop(prop.err)
+  })
+}
+```
 
+The event table includes 10 subjects.  With subject IDs in the event table,
+rxode2 draws one set of etas per subject from the `eta.ka ~ 0.09` and
+`eta.cl ~ 0.04` variances defined in `ini()`.
+
+```{r events}
 ev <- et(amt = 100, ii = 24, until = 72) |>
   et(seq(0, 72, by = 4)) |>
   et(id = 1:10)
-
-params <- data.frame(
-  id = 1:10,
-  ka = rlnorm(10, log(0.5), 0.3),
-  cl = rlnorm(10, log(4),   0.2),
-  v  = rlnorm(10, log(70),  0.1)
-)
 ```
 
 ## Estimating memory usage
@@ -65,6 +78,7 @@ model; the function calls the same allocator formulas used internally by
 `rxSolve()`.
 
 ```{r mem-estimate}
+mod <- rxode2(pkModel)
 rxMemoryEstimate(as.data.frame(ev), model = mod)
 ```
 
@@ -80,7 +94,7 @@ immediately and prints a message pointing to the `file` argument:
 
 ```r
 # This would error on a machine with insufficient RAM:
-rxSolve(mod, params, ev)
+rxSolve(pkModel, ev)
 #> Error: Solve requires 12.3 GB but only 6.1 GB appears free.
 #> Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.
 ```
@@ -91,22 +105,22 @@ Pass `file` to opt in to chunked solving.  rxode2 will:
 
 1. Auto-compute a chunk size from available free RAM (or use `chunkSize` if
    you supply it).
-2. Solve each chunk with a separate `rxSolve()` call.
-3. Write each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
+2. Pre-draw all subjects' etas in one pass to ensure reproducible results.
+3. Solve each chunk with a separate `rxSolve()` call.
+4. Write each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
    the `arrow` package is unavailable).
-4. Save a manifest to `<file>_manifest.rds`.
-5. Return an `rxSolveOom` object.
+5. Save a manifest to `<file>_manifest.rds`.
+6. Return an `rxSolveOom` object.
 
 ```{r oom-solve}
-res <- rxSolve(mod, params, ev,
+res <- rxSolve(pkModel, ev,
                file      = tempfile("rxChunk"),
                chunkSize = 3)   # 3 subjects per chunk
 res
 ```
 
 The print method reports how many chunks were created and the total row count.
-Because our 10-subject example with `chunkSize = 3` produces four chunks,
-the output shows four chunk files.
+With `chunkSize = 3` and 10 subjects, rxode2 creates four chunks (3 + 3 + 3 + 1).
 
 ## Accessing results
 
@@ -144,7 +158,7 @@ to set `chunkSize` directly — no need to modify system RAM.  With
 `chunkSize = 2` on 10 subjects you get 5 chunks of 2 subjects each:
 
 ```{r fake-oom}
-res_small <- rxSolve(mod, params, ev,
+res_small <- rxSolve(pkModel, ev,
                      file      = tempfile("rxDemo"),
                      chunkSize = 2)
 res_small
@@ -164,7 +178,7 @@ arrow::write_parquet(as.data.frame(ev), et_path)
 
 et_file <- rxEventTableFile(et_path, format = "parquet")
 
-res_file <- rxSolve(mod, params, et_file,
+res_file <- rxSolve(pkModel, et_file,
                     file      = tempfile("rxFile"),
                     chunkSize = 3)
 res_file
@@ -179,7 +193,7 @@ manifest are cleaned up when R's garbage collection removes the temp directory.
 To keep results across sessions, point `file` at a directory in your project:
 
 ```r
-res_persist <- rxSolve(mod, params, ev,
+res_persist <- rxSolve(pkModel, ev,
                        file      = "output/my_sim",
                        chunkSize = 5000)
 ```
@@ -198,7 +212,7 @@ using the `mirai` package.  Pass `parallel` to control the number of worker
 processes:
 
 ```r
-res_par <- rxSolve(mod, params, ev,
+res_par <- rxSolve(pkModel, ev,
                    file      = tempfile("rxPar"),
                    chunkSize = 3,
                    parallel  = 2)
