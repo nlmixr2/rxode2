@@ -26,13 +26,8 @@ rxTest({
     mod2 <- mod
     dir <- tempdir()
 
-tr <- try(rxPkg(mod, mod2, package = "rxm", wd = dir))
-  if (inherits(tr, "try-error")) {
-    skip("building a new package doesn't seem to work on this platform, but since it is not a major feature we are ignoring the result")
-  } else {
-    expect_true(TRUE)
+    expect_error(rxPkg(mod, mod2, package = "rxm", wd = dir), NA)
     remove.packages("rxm")
-  }
   ## unlink(dir, recursive=TRUE)
     # when load_all is used, you get
     ## Error: package ‘rxode2’ required by ‘rxm’ could not be found
