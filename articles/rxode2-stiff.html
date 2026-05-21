@@ -92,6 +92,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
     <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Adaptive rxode2 dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Multi-peak models with splitBolus()</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
@@ -269,8 +270,8 @@ sympy to calculate the Jacobian automatically.</p>
 <pre><code><span><span class="co">## [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span></code></pre>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">Vtpol</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## <span style="font-weight: bold;">rxode2 </span>5.1.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_3a934c6329d6ee50e2fcbba82d1dc775</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">## DLL: /tmp/Rtmpn3pByd/rxode2/rx_3a934c6329d6ee50e2fcbba82d1dc775__.rxd/rx_3a934c6329d6ee50e2fcbba82d1dc775_.so</span></span>
+<pre><code><span><span class="co">## <span style="font-weight: bold;">rxode2 </span>5.1.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_5d4a40941c4c53cf6c58ddb49a22d837</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">## DLL: /tmp/RtmpPJ8D6A/rxode2/rx_5d4a40941c4c53cf6c58ddb49a22d837__.rxd/rx_5d4a40941c4c53cf6c58ddb49a22d837_.so</span></span>
 <span><span class="co">## NULL</span></span>
 <span><span class="co">## <span style="font-weight: bold;">-- rxode2 Model Syntax --</span></span></span>
 <span><span class="co">## rxode2({</span></span>

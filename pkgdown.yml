@@ -34,6 +34,7 @@ articles:
   articles/rxode2-simulx-comparison: rxode2-simulx-comparison.html
   rxode2-single-subject: rxode2-single-subject.html
   rxode2-speed: rxode2-speed.html
+  articles/rxode2-split-bolus: rxode2-split-bolus.html
   articles/rxode2-sticky: rxode2-sticky.html
   rxode2-stiff: rxode2-stiff.html
   rxode2-syntax: rxode2-syntax.html
@@ -42,7 +43,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-05-21T19:00Z
+last_built: 2026-05-21T19:32Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles
