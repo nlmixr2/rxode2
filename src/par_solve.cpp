@@ -22,6 +22,7 @@
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 
 // dop853 is same time
+#include "rxProtect.h"
 
 extern "C" uint32_t getRxSeed1(int ncores);
 extern "C" void setSeedEng1(uint32_t seed);
@@ -62,14 +63,14 @@ extern "C" void RSprintf(const char *format, ...);
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
 extern "C" void rxEtaPreDeactivate(void);
 
-extern "C" SEXP _rxHasOpenMp(){
-  SEXP ret = PROTECT(Rf_allocVector(LGLSXP,1));
+extern "C" SEXP _rxHasOpenMp(){ rxProtect rx_protect; 
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
   INTEGER(ret)[0] = 1;
 #else
   INTEGER(ret)[0] = 0;
 #endif
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 
@@ -432,12 +433,12 @@ typedef struct {
 
 rx_tick rxt;
 
-extern "C" SEXP _rxTick(){
+extern "C" SEXP _rxTick(){ rxProtect rx_protect; 
   rxt.cur++;
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 1));
   rxt.d =par_progress(rxt.cur, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   INTEGER(ret)[0]=rxt.d;
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 

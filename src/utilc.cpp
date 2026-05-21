@@ -14,6 +14,7 @@
 #define _(String) (String)
 #include "../inst/include/rxode2.h"
 
+#include "rxProtect.h"
 int _setSilentErr=0, _isRstudio2=0;
 extern "C" void setSilentErr(int silent){
   _setSilentErr = silent;
@@ -51,17 +52,19 @@ extern "C" void RSprintf(const char *format, ...) {
 
 #if defined(__INTEL_LLVM_COMPILER) || defined(__INTEL_COMPILER__)
 extern "C" SEXP _rxode2_isIntel(void) {
-  SEXP ret = PROTECT(Rf_allocVector(LGLSXP, 1));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 1));
   INTEGER(ret)[0] = 1;
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 
 #else
 extern "C" SEXP _rxode2_isIntel(void) {
-  SEXP ret = PROTECT(Rf_allocVector(LGLSXP, 1));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 1));
   INTEGER(ret)[0] = 0;
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 #endif
@@ -69,9 +72,9 @@ extern "C" SEXP _rxode2_isIntel(void) {
 
 extern "C" double gamma_p(double a, double z);
 extern "C" SEXP _gammap(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -95,21 +98,21 @@ extern "C" SEXP _gammap(SEXP a, SEXP z) {
     (Rf_errorcall)(R_NilValue, _("'z' needs to be a number"));
   }
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = gamma_p(reala ? aD[j] : (double)aI[j],
 			realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = gamma_p(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -118,15 +121,15 @@ extern "C" SEXP _gammap(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double gamma_q(double a, double z);
 extern "C" SEXP _gammaq(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -150,21 +153,21 @@ extern "C" SEXP _gammaq(SEXP a, SEXP z) {
     (Rf_errorcall)(R_NilValue, _("'z' needs to be a number"));
   }
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = gamma_q(reala ? aD[j] : (double)aI[j],
 			realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = gamma_q(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -173,15 +176,15 @@ extern "C" SEXP _gammaq(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double tgamma_lower(double a, double z);
 extern "C" SEXP _lowergamma(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -205,21 +208,21 @@ extern "C" SEXP _lowergamma(SEXP a, SEXP z) {
     (Rf_errorcall)(R_NilValue, _("'z' needs to be a number"));
   }
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = tgamma_lower(reala ? aD[j] : (double)aI[j],
 			realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = tgamma_lower(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -228,15 +231,15 @@ extern "C" SEXP _lowergamma(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double tgamma_upper(double a, double z);
 extern "C" SEXP _uppergamma(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -261,21 +264,21 @@ extern "C" SEXP _uppergamma(SEXP a, SEXP z) {
   }
 
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = tgamma_upper(reala ? aD[j] : (double)aI[j],
 			realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = tgamma_upper(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -284,16 +287,16 @@ extern "C" SEXP _uppergamma(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double gamma_p_derivative(double a, double x);
 
 extern "C" SEXP _gammapDer(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -318,21 +321,21 @@ extern "C" SEXP _gammapDer(SEXP a, SEXP z) {
   }
 
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = gamma_p_derivative(reala ? aD[j] : (double)aI[j],
 			realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = gamma_p_derivative(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -341,15 +344,15 @@ extern "C" SEXP _gammapDer(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double gamma_p_inv(double a, double x);
 extern "C" SEXP _gammapInv(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -374,21 +377,21 @@ extern "C" SEXP _gammapInv(SEXP a, SEXP z) {
   }
 
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = gamma_p_inv(reala ? aD[j] : (double)aI[j],
 			realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = gamma_p_inv(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -397,15 +400,15 @@ extern "C" SEXP _gammapInv(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double gamma_p_inva(double a, double x);
 extern "C" SEXP _gammapInva(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -430,21 +433,21 @@ extern "C" SEXP _gammapInva(SEXP a, SEXP z) {
   }
 
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       retD[j] = gamma_p_inva(reala ? aD[j] : (double)aI[j],
 			     realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
       retD[j] = gamma_p_inva(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -453,17 +456,17 @@ extern "C" SEXP _gammapInva(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double gamma_q_inv(double a, double x);
 extern "C" SEXP _gammaqInv(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   // Returns a value x such that: q = gamma_q(a, x);
   // Requires: a > 0 and 1 >= p,q >= 0.
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -487,7 +490,7 @@ extern "C" SEXP _gammaqInv(SEXP a, SEXP z) {
     (Rf_errorcall)(R_NilValue, _("'z' needs to be a number"));
   }
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       // Returns a value x such that: q = gamma_q(a, x);
@@ -496,7 +499,7 @@ extern "C" SEXP _gammaqInv(SEXP a, SEXP z) {
 			    realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
@@ -505,7 +508,7 @@ extern "C" SEXP _gammaqInv(SEXP a, SEXP z) {
       retD[j] = gamma_q_inv(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -514,17 +517,17 @@ extern "C" SEXP _gammaqInv(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" double gamma_q_inva(double a, double x);
 extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
+  rxProtect rx_protect;
   // Returns a value x such that: q = gamma_q(a, x);
   // Requires: a > 0 and 1 >= p,q >= 0.
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
-  int pro=0;
   SEXP ret;
   double *aD, *zD;
   int *aI, *zI;
@@ -548,7 +551,7 @@ extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
     (Rf_errorcall)(R_NilValue, _("'z' needs to be a number"));
   }
   if (lena == lenz) {
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     for (int j = lena; j--;){
       // Returns a value x such that: q = gamma_q(a, x);
@@ -557,7 +560,7 @@ extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
 			    realz ? zD[j] : (double)zI[j]);
     }
   } else if (lena == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lenz));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lenz));
     double *retD = REAL(ret);
     double a0 = reala ? aD[0] : (int)aI[0];
     for (int j = lenz; j--;){
@@ -566,7 +569,7 @@ extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
       retD[j] = gamma_q_inva(a0, realz ? zD[j] : (double)zI[j]);
     }
   } else if (lenz == 1){
-    ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
+    ret = rx_protect.protect(Rf_allocVector(REALSXP, lena));
     double *retD = REAL(ret);
     double z0 = realz ? zD[0] : (double)zI[0];
     for (int j = lena; j--;){
@@ -575,7 +578,7 @@ extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
   } else {
     (Rf_errorcall)(R_NilValue, _("inconsistent sizes"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
@@ -731,11 +734,12 @@ extern "C" double dSwish(double x) {
 }
 
 extern "C" SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
+  rxProtect rx_protect;
   int type = INTEGER(typeS)[0];
   int typex = TYPEOF(xS);
   int typea = TYPEOF(aS);
   int lenx = Rf_length(xS);
-  SEXP ret = PROTECT(Rf_allocVector(REALSXP, lenx));
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
   for (int i = 0; i < lenx; ++i) {
     double x = (typex == REALSXP) ? REAL(xS)[i] : (double)INTEGER(xS)[i];
     double a = (typea == REALSXP) ? REAL(aS)[i] : (double)INTEGER(aS)[i];
@@ -775,15 +779,16 @@ extern "C" SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
       break;
     }
   }
-  UNPROTECT(1);
+  // UNPROTECT
   return(ret);
 }
 
 extern "C" SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
+  rxProtect rx_protect;
   int type = INTEGER(typeS)[0];
   int typex = TYPEOF(xS);
   int lenx = Rf_length(xS);
-  SEXP ret = PROTECT(Rf_allocVector(REALSXP, lenx));
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
   for (int i = 0; i < lenx; ++i) {
     double x = (typex == REALSXP) ? REAL(xS)[i] : (double)INTEGER(xS)[i];
     switch (type) {
@@ -846,12 +851,13 @@ extern "C" SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
       break;
     }
   }
-  UNPROTECT(1);
+  // UNPROTECT
   return(ret);
 }
 
 
 extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEXP yjS, SEXP inverseS) {
+  rxProtect rx_protect;
   int typex = TYPEOF(xS);
   int typelow = TYPEOF(lowS);
   int typehigh = TYPEOF(highS);
@@ -908,7 +914,7 @@ extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEX
   } else if (typex == INTSXP){
     xI = INTEGER(xS);
   }
-  SEXP ret = PROTECT(Rf_allocVector(REALSXP, lenx));
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
   double *retD = REAL(ret);
   if (inverse) {
     if (isD) {
@@ -931,11 +937,12 @@ extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEX
       }
     }
   }
-  UNPROTECT(1);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" SEXP _vecDF(SEXP cv, SEXP n_) {
+  rxProtect rx_protect;
   int n=0;
   int typ = TYPEOF(n_);
   if (typ == REALSXP) {
@@ -946,30 +953,31 @@ extern "C" SEXP _vecDF(SEXP cv, SEXP n_) {
   if (n <= 0) (Rf_errorcall)(R_NilValue, _("'n' must be greater than 0"));
   int pro = 0;
   int len = Rf_length(cv);
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, len)); pro++;
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, len)); pro++;
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, len));
+  SEXP retN = rx_protect.protect(Rf_allocVector(STRSXP, len));
   SEXP cvN = Rf_getAttrib(cv, R_NamesSymbol);
   for (int i = len; i--;) {
-    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, n)); pro++;
+    SEXP tmp = rx_protect.protect(Rf_allocVector(REALSXP, n));
     for (int j = n; j--;) {
       REAL(tmp)[j] = REAL(cv)[i];
     }
     SET_VECTOR_ELT(ret, i, tmp);
     SET_STRING_ELT(retN, i, STRING_ELT(cvN, i));
   }
-  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = rx_protect.protect(Rf_allocVector(INTSXP,2));
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -n;
   Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
-  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = rx_protect.protect(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
   Rf_setAttrib(ret, R_NamesSymbol, retN);
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
+  rxProtect rx_protect;
   int n = INTEGER(n_)[0];
   if (n <= 0) (Rf_errorcall)(R_NilValue, _("'n' must be greater than 0"));
 
@@ -1003,11 +1011,10 @@ extern "C" SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
     lenOut = INTEGER(matD)[0];
     lenItem = n;
   }
-  int pro = 0;
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, len1+len2)); pro++;
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, len1+len2)); pro++;
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, len1+len2));
+  SEXP retN = rx_protect.protect(Rf_allocVector(STRSXP, len1+len2));
   for (int i = len1; i--; ) {
-    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+    SEXP tmp = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
     SEXP in = VECTOR_ELT(et_, i);
     int l = lenOut;
     for (int j = len1a; j--;) {
@@ -1019,20 +1026,20 @@ extern "C" SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
     SET_STRING_ELT(retN, i, STRING_ELT(etN, i));
   }
   for (int i = len2; i--; ) {
-    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+    SEXP tmp = rx_protect.protect(Rf_allocVector(REALSXP, lenOut));
     memcpy(&(REAL(tmp)[0]), &(REAL(mat_)[lenOut*i]), lenOut*sizeof(double));
     SET_VECTOR_ELT(ret, i+len1, tmp);
     SET_STRING_ELT(retN, i+len1, STRING_ELT(matDN, i));
   }
-  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = rx_protect.protect(Rf_allocVector(INTSXP,2));
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
   Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
-  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = rx_protect.protect(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
   Rf_setAttrib(ret, R_NamesSymbol, retN);
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
@@ -1041,12 +1048,12 @@ extern "C" double phi(double q) {
 }
 
 extern "C" SEXP _rxode2_phi(SEXP q) {
+  rxProtect rx_protect;
   int type = TYPEOF(q);
   SEXP ret;
-  int pro = 0;
   if (type == REALSXP) {
     int len = Rf_length(q);
-    ret= PROTECT(Rf_allocVector(REALSXP, len));pro++;
+    ret= rx_protect.protect(Rf_allocVector(REALSXP, len));
     double *retD = REAL(ret);
     double *inD = REAL(q);
     for (int j = len; j--;){
@@ -1054,7 +1061,7 @@ extern "C" SEXP _rxode2_phi(SEXP q) {
     }
   } else if (type == INTSXP){
     int len = Rf_length(q);
-    ret= PROTECT(Rf_allocVector(REALSXP, len));pro++;
+    ret= rx_protect.protect(Rf_allocVector(REALSXP, len));
     double *retD = REAL(ret);
     int *inD = INTEGER(q);
     for (int j = len; j--;){
@@ -1063,18 +1070,19 @@ extern "C" SEXP _rxode2_phi(SEXP q) {
   } else {
     (Rf_errorcall)(R_NilValue, _("'phi' requires numeric values"));
   }
-  UNPROTECT(pro);
+  // UNPROTECT
   return ret;
 }
 
 #include "../inst/include/rxode2parseHandleEvid.h"
 
 extern "C" SEXP _rxode2_getWh(SEXP in) {
+  rxProtect rx_protect;
   int wh, cmt, wh100, whI, wh0;
   getWh(INTEGER(in)[0], &wh, &cmt, &wh100, &whI, &wh0);
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 5));
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 5));
   int *retI = INTEGER(ret);
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 5));
+  SEXP retN = rx_protect.protect(Rf_allocVector(STRSXP, 5));
   retI[0] = wh;
   SET_STRING_ELT(retN, 0,Rf_mkChar("wh"));
   retI[1] = cmt;
@@ -1086,12 +1094,13 @@ extern "C" SEXP _rxode2_getWh(SEXP in) {
   retI[4] = wh0;
   SET_STRING_ELT(retN, 4,Rf_mkChar("wh0"));
   Rf_setAttrib(ret, R_NamesSymbol, retN);
-  UNPROTECT(2);
+  // UNPROTECT
   return ret;
 }
 
 extern "C" SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
                                        SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
+  rxProtect rx_protect;
   int *cmt= INTEGER(cmtS);
   double *amt = REAL(amtS);
   double *dur = REAL(durS);
@@ -1099,11 +1108,11 @@ extern "C" SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
   double *ii = REAL(iiS);
   int *evid = INTEGER(evidS);
   double *ss = REAL(ssS);
-  SEXP retS = PROTECT(Rf_allocVector(INTSXP, Rf_length(cmtS)));
+  SEXP retS = rx_protect.protect(Rf_allocVector(INTSXP, Rf_length(cmtS)));
   int *ret = INTEGER(retS);
   for (int i = Rf_length(cmtS); i--;) {
     ret[i] = getEvidClassic(cmt[i], amt[i], rate[i], dur[i], ii[i], evid[i], ss[i]);
   }
-  UNPROTECT(1);
+  // UNPROTECT
   return retS;
 }
