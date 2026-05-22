@@ -1630,7 +1630,9 @@ extern "C" void setZeroMatrix(int which) {
 
 double maxAtolRtolFactor = 0.1;
 
-extern "C" void atolRtolFactor_(double factor) {
+//[[Rcpp::interfaces(cpp)]]
+//[[Rcpp::export]]
+void atolRtolFactor_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
@@ -1657,6 +1659,10 @@ extern "C" void atolRtolFactor_(double factor) {
   }
   // Note: op->ATOL and op->RTOL are deliberately NOT modified here to
   // avoid races between threads sharing the op structure.
+}
+
+extern "C" void atolRtolFactorC_(double factor) {
+  atolRtolFactor_(factor);
 }
 
 extern "C" double * getAol(int n, double atol){

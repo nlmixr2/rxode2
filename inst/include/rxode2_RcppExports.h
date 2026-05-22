@@ -363,6 +363,26 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
+    inline void atolRtolFactor_(double factor) {
+        typedef SEXP(*Ptr_atolRtolFactor_)(SEXP);
+        static Ptr_atolRtolFactor_ p_atolRtolFactor_ = NULL;
+        if (p_atolRtolFactor_ == NULL) {
+            validateSignature("void(*atolRtolFactor_)(double)");
+            p_atolRtolFactor_ = (Ptr_atolRtolFactor_)R_GetCCallable("rxode2", "_rxode2_atolRtolFactor_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_atolRtolFactor_(Shield<SEXP>(Rcpp::wrap(factor)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+    }
+
     inline List rxSimThetaOmega(const Nullable<NumericVector>& params = R_NilValue, const RObject& omega = R_NilValue, const Nullable<NumericVector>& omegaDf = R_NilValue, const NumericVector& omegaLower = NumericVector::create(R_NegInf), const NumericVector& omegaUpper = NumericVector::create(R_PosInf), const bool& omegaIsChol = false, std::string omegaSeparation = "auto", const int omegaXform = 1, int nSub = 1, const Nullable<NumericMatrix>& thetaMat = R_NilValue, const NumericVector& thetaLower = NumericVector::create(R_NegInf), const NumericVector& thetaUpper = NumericVector::create(R_PosInf), const Nullable<NumericVector>& thetaDf = R_NilValue, const bool& thetaIsChol = false, int nStud = 1, const RObject sigma = R_NilValue, const NumericVector& sigmaLower = NumericVector::create(R_NegInf), const NumericVector& sigmaUpper = NumericVector::create(R_PosInf), const Nullable<NumericVector>& sigmaDf = R_NilValue, const bool& sigmaIsChol = false, std::string sigmaSeparation = "auto", const int sigmaXform = 1, int nCoresRV = 1, int nObs = 1, double dfSub = 0, double dfObs = 0, bool simSubjects = true, const LogicalVector& simVariability = LogicalVector::create(NA_LOGICAL)) {
         typedef SEXP(*Ptr_rxSimThetaOmega)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxSimThetaOmega p_rxSimThetaOmega = NULL;

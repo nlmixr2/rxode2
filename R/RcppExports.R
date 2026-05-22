@@ -596,6 +596,10 @@ rxSetupScale <- function(obj, scale = NULL, extraArgs = NULL) {
     .Call(`_rxode2_rxSetupScale`, obj, scale, extraArgs)
 }
 
+atolRtolFactor_ <- function(factor) {
+    invisible(.Call(`_rxode2_atolRtolFactor_`, factor))
+}
+
 #' Simulate Parameters from a Theta/Omega specification
 #'
 #' @param params Named Vector of rxode2 model parameters
