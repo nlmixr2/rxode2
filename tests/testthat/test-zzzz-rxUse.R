@@ -28,7 +28,7 @@ rxTest({
 
     t <- try(rxPkg(mod, mod2, package = "rxm", wd = dir))
     if (inherits(t, "try-error")) {
-      skip("rxPkg failed: ", conditionMessage(attr(t, "condition")))
+      skip("not important")
     } else {
       expect_true(TRUE)
       try(remove.packages("rxm"))
