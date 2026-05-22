@@ -211,7 +211,7 @@ In rxode2, IOV is specified in the `ini({})` block using the `| occ`
 condition syntax, then included in the model equation:
 
 ```{r}
-mod <- rxode2(function() {
+mod <- function() {
   ini({
     tcl    <- log(4)
     eta.cl ~ 0.09          # IIV on CL
@@ -221,7 +221,8 @@ mod <- rxode2(function() {
     CL <- exp(tcl + eta.cl + iov.cl)
     d/dt(centr) <- -(CL / V) * centr
   })
-})
+}
+mod <- rxode2(mod)
 ```
 
 PKPDsim specifies IOV via the dedicated `iov` argument to
@@ -294,6 +295,68 @@ mod <- new_ode_model(
 rxode2 supports within-model mixture via the `mix()` function, but it
 is not a single dedicated argument at the model-definition level.
 
+## Converting a PKPDsim model to rxode2 / nlmixr2
+
+PKPDsim ships a built-in conversion function, `pkpdsim_to_nlmixr()`,
+that translates a compiled PKPDsim model object into an nlmixr2-
+compatible function with `ini({})` and `model({})` blocks.  Because
+nlmixr2 uses rxode2 as its model representation layer, the resulting
+object is simultaneously a valid rxode2 model that can be passed to
+`rxSolve()` for simulation or to any nlmixr2 estimator for parameter
+estimation.
+
+```{r}
+library(PKPDsim)
+library(nlmixr2)
+
+# 1. Build the PKPDsim model as usual
+mod <- new_ode_model(
+  code = "
+    dAdt[1] = -KA * A[1];
+    dAdt[2] =  KA * A[1] - (CL / V) * A[2];
+  ",
+  obs  = list(cmt = 2, scale = "V"),
+  dose = list(cmt = 1)
+)
+
+# 2. Convert to an nlmixr2 / rxode2 function
+f <- pkpdsim_to_nlmixr(
+  model         = mod,
+  parameters    = list(KA = 1, CL = 5, V = 50),
+  omega         = c(0.1, 0.05, 0.1),   # lower-diagonal BSV matrix
+  res_var       = list(prop = 0.1, add = 0.1),
+  log_transform = TRUE
+)
+```
+
+The returned object `f` is a plain R function containing `ini({})` and
+`model({})` blocks.  It can be used directly for:
+
+**Simulation with rxode2:**
+
+```{r}
+library(rxode2)
+
+ev <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 0.5))
+rxSolve(f, ev)
+```
+
+**Population estimation with nlmixr2:**
+
+```r
+fit <- nlmixr2(f, data = your_dataset, est = "focei")
+```
+
+The `fixed` argument to `pkpdsim_to_nlmixr()` accepts a character
+vector of parameter names to exclude from estimation (i.e. fix them at
+their initial values).  The `ini_code`, `model_code`, and
+`model_par_code` arguments allow manual overrides of the generated
+nlmixr2 code blocks when the automatic translation needs adjustment.
+
+See the [PKPDsim estimation with nlmixr2 vignette](https://insightrx.github.io/PKPDsim/articles/estimation-nlmixr.html)
+and the [`pkpdsim_to_nlmixr()` reference page](https://insightrx.github.io/PKPDsim/reference/pkpdsim_to_nlmixr.html)
+for further details.
+
 ## Summary table
 
 | Feature | rxode2 | PKPDsim |
@@ -323,5 +386,6 @@ is not a single dedicated argument at the model-definition level.
 - [PKPDsim website](https://insightrx.github.io/PKPDsim/)
 - [PKPDsim speed vignette](https://insightrx.github.io/PKPDsim/articles/speed.html)
 - [PKPDsim estimation with nlmixr2](https://insightrx.github.io/PKPDsim/articles/estimation-nlmixr.html)
+- [`pkpdsim_to_nlmixr()` reference](https://insightrx.github.io/PKPDsim/reference/pkpdsim_to_nlmixr.html)
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
