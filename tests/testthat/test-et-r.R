@@ -867,4 +867,20 @@ rxTest({
     # so the second table's obs at time 24 becomes 24+24=48
     expect_true(max(df$time) > 24)
   })
+
+  test_that("et() handles NONMEM-style uppercase column names", {
+    df <- data.frame(ID = c(1L, 2L), TIME = c(0, 0), EVID = c(1L, 1L),
+                     CMT = c(1L, 1L), AMT = c(10, 50))
+    ev <- et(df)
+    out <- as.data.frame(ev)
+    expect_true("id" %in% names(out))
+    expect_equal(sort(unique(out$id)), c(1L, 2L))
+  })
+
+  test_that("et() shows id column even for single-ID data frame input", {
+    df <- data.frame(ID = 1L, TIME = 0, EVID = 1L, CMT = 1L, AMT = 10)
+    ev <- et(df)
+    out <- dplyr::as_tibble(ev)
+    expect_true("id" %in% names(out))
+  })
 })
