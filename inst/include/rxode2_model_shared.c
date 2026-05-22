@@ -527,7 +527,10 @@ void _assignFuns0(void) {
 }
 
 void _assignFuns(void) {
-  if (_assign_ptr == NULL){
+  // Re-initialize if rxode2 was reloaded: the registered function pointer will
+  // differ from the one stored at last init, revealing a stale _solveData.
+  if (_assign_ptr == NULL ||
+      _assign_ptr != (rxode2_assign_ptr)R_GetCCallable("rxode2","rxode2_assign_fn_pointers")){
     _assignFuns0();
   }
 }
@@ -546,8 +549,9 @@ void __assignFuns2(rx_solve rx,
                    t_handle_evidL handleEvid,
                    t_getDur getdur) {
   // assign start
-  static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
-  if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
+  // Always look up via R_GetCCallable so that a reloaded rxode2 (new address)
+  // is used rather than a stale static pointer from a previous load session.
+  rxode2_assignFuns2_t rxode2parse_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
   rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
 }
