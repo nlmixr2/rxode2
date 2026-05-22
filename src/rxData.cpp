@@ -4783,13 +4783,10 @@ List rxSolve_df(const RObject &obj,
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
-  // Skip factor conversion for non-sequential integer IDs: the fill loop
-  // already wrote the correct lvlI values directly, so applying factor levels
-  // (which are 1-based level indices) would corrupt the column.
+  // Apply factor conversion only for character (non-integer) IDs.
   if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1
-      && !(rxSolveDat->convertInt && !isIdentity)) {
+      && !rxSolveDat->convertInt) {
     SEXP didS = dat["id"];
-    // Skip ALTREP columns — the seqrep/repint already holds correct values.
     if (!ALTREP(didS)) {
       RObject did = didS;
       did.attr("levels") = rxSolveDat->idLevels;

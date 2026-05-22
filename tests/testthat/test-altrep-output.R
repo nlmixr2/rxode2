@@ -328,6 +328,42 @@ rxTest({
     })
   }
 
+  # ── Sequential integer IDs should never be a factor ──────────────────────
+
+  test_that("sequential integer IDs are never a factor, regardless of event-table uniformity", {
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+
+    # Non-uniform event tables (arm1 vs arm2 style) — non-ALTREP path.
+    # Previously this produced a factor id due to a stale guard; verify it
+    # now returns a plain integer.
+    ev1 <- as.data.frame(et(amt = 1000, cmt = 1, time = c(0, 24, 48)) |> et(seq(0, 72, by = 5)))
+    ev2 <- as.data.frame(et(amt = 2000, cmt = 1, time = c(5, 29, 53)) |> et(seq(0, 77, by = 6)))
+    ev1$id <- 1L; ev2$id <- 2L
+    ev3 <- ev1; ev3$id <- 3L; ev4 <- ev2; ev4$id <- 4L
+    evDf <- rbind(ev1, ev2, ev3, ev4)
+    p <- data.frame(id = 1:4, ka = 0.5, cl = 1, v = 10)
+
+    out <- rxSolve(mod, p, evDf, returnType = "data.frame")
+    expect_false(is.factor(out$id))
+    expect_equal(sort(unique(out$id)), 1:4)
+
+    # Uniform event tables — ALTREP seqrep path.  Should also not be a factor.
+    ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+    evDf2 <- rbind(
+      cbind(as.data.frame(ev), id = 1L),
+      cbind(as.data.frame(ev), id = 2L),
+      cbind(as.data.frame(ev), id = 3L),
+      cbind(as.data.frame(ev), id = 4L)
+    )
+    out2 <- rxSolve(mod, p, evDf2, returnType = "data.frame")
+    expect_false(is.factor(out2$id))
+    expect_equal(sort(unique(out2$id)), 1:4)
+  })
+
   # ── Non-sequential integer IDs ────────────────────────────────────────────
 
   test_that("non-sequential integer IDs produce ALTREP repint id column (nStud > 1)", {
