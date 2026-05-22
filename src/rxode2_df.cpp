@@ -503,7 +503,16 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   for (i = i0; i < i0+nlhs; i++){
     if (op->lhs_str[i-i0] == 1) {
       // factor; from string expression
-      df[i] = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx, (R_xlen_t)rx->nr);
+      SEXP _tmp = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx, (R_xlen_t)rx->nr);
+      if (TYPEOF(_tmp) != INTSXP) {
+        IntegerVector val((R_xlen_t)rx->nr, NA_INTEGER);
+        CharacterVector cls(1);
+        SET_STRING_ELT(cls, 0, Rf_mkChar("factor"));
+        Rf_setAttrib(val, R_ClassSymbol, cls);
+        df[i] = val;
+      } else {
+        df[i] = _tmp;
+      }
     } else {
       df[i] = NumericVector((R_xlen_t)rx->nr);
     }
@@ -993,9 +1002,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                   int _len = lhsLevelCount[j];
                   if (_lhsVal < 1 || _lhsVal > _len) _lhsVal = NA_INTEGER;
                 }
-                colI[jj_p][ii] = _lhsVal; jj_p++;
+                if (colI[jj_p] != nullptr) colI[jj_p][ii] = _lhsVal;
+                jj_p++;
               } else {
-                colR[jj_p][ii] = ind->lhs[j]; jj_p++;
+                if (colR[jj_p] != nullptr) colR[jj_p][ii] = ind->lhs[j];
+                jj_p++;
               }
             }
           }
