@@ -406,6 +406,69 @@ translation unit, but includes an additional grammar parsing step.
 mrgsolve generates C++ which allows richer language features.
 Benchmarks on equivalent models show similar wall-clock times.
 
+## Converting between rxode2 and mrgsolve
+
+The [`rxode2mrgsolvebridge`](https://cran.r-project.org/package=rxode2mrgsolvebridge)
+package (available on CRAN) provides bidirectional conversion between
+rxode2 and mrgsolve model code.  It works through an intermediate
+representation so that the same translation logic handles both
+directions.
+
+### rxode2 to mrgsolve
+
+```{r}
+library(rxode2mrgsolvebridge)
+
+rx_code <- "
+  KA = THETA_KA
+  KE = THETA_KE
+  d/dt(A)  = -KA * A
+  d/dt(Cp) = KA * A - KE * Cp
+"
+
+convert_rxode2_to_mrgsolve(
+  rx_model       = rx_code,
+  theta_file     = "params.R",
+  output_basename = "model",
+  out_dir        = tempdir()
+)
+```
+
+This writes a self-contained mrgsolve model file to `out_dir`.
+
+### mrgsolve to rxode2
+
+```{r}
+convert_mrgsolve_to_rxode2(
+  mrgsolve_file  = "model.cpp",
+  output_basename = "model",
+  out_dir        = tempdir()
+)
+```
+
+This produces an rxode2 model code file and a matching theta parameter
+file in `out_dir`.
+
+### Lower-level utilities
+
+The package also exposes lower-level helpers for parsing and rendering
+when you need finer control:
+
+| Function | Purpose |
+|----------|---------|
+| `parse_rxode2_model()` | Parse rxode2 code into intermediate representation |
+| `parse_mrgsolve_model()` / `parse_mrgsolve_file()` | Parse mrgsolve code or file into intermediate representation |
+| `ir_to_mrgsolve()` | Render intermediate representation as mrgsolve code |
+| `ir_to_rxode2()` | Render intermediate representation as rxode2 code |
+| `export_mrgsolve_model()` | Write mrgsolve model to file |
+| `export_rxode2_files()` | Write rxode2 model and theta files |
+
+Note that the conversion covers model equations and parameter
+declarations; simulation-level features with no equivalent in the
+target engine (e.g., rxode2 symbolic Jacobians, mrgsolve `$GLOBAL`
+state) are either dropped or require manual adjustment after
+conversion.
+
 ## Summary table
 
 | Feature | rxode2 | mrgsolve |
@@ -441,3 +504,5 @@ Benchmarks on equivalent models show similar wall-clock times.
 - [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
 - [nonmem2mrgsolve](https://github.com/Andy00000000000/nonmem2mrgsolve)
 - [amp.sim package](https://github.com/LeidenAdvancedPKPD/amp.sim)
+- [rxode2mrgsolvebridge package (CRAN)](https://cran.r-project.org/package=rxode2mrgsolvebridge)
+- [rxode2mrgsolvebridge source (GitLab)](https://gitlab.com/fiha1/rxode2-mrgsolve-bridge)
