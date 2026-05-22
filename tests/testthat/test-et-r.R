@@ -883,4 +883,51 @@ rxTest({
     out <- dplyr::as_tibble(ev)
     expect_true("id" %in% names(out))
   })
+
+  test_that("et() accepts tibble without warnings (no ii/rate/var columns)", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = c(0, 1, 2), amt = c(100, NA, NA), evid = c(1L, 0L, 0L))
+    expect_no_warning(et(tbl))
+    ev <- et(tbl)
+    out <- as.data.frame(ev)
+    expect_equal(nrow(out), 3L)
+    expect_equal(sum(out$evid == 1L), 1L)
+  })
+
+  test_that("et() accepts tibble with ii column", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = 0, amt = 100, ii = 24, addl = 4L, evid = 1L)
+    expect_no_warning(et(tbl))
+    ev <- et(tbl)
+    out <- as.data.frame(ev)
+    expect_equal(out$ii[1], 24)
+  })
+
+  test_that("et() accepts tibble with rate column", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = 0, amt = 100, rate = 50, evid = 1L)
+    expect_no_warning(et(tbl))
+    ev <- et(tbl)
+    out <- as.data.frame(ev)
+    expect_equal(out$rate[1], 50)
+  })
+
+  test_that("et() pipe from tibble works without warnings", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = c(0, 24), amt = c(100, NA), evid = c(1L, 0L))
+    expect_no_warning({
+      ev <- tbl |> rxode2::et()
+    })
+    out <- as.data.frame(ev)
+    expect_equal(nrow(out), 2L)
+  })
+
+  test_that("import.EventTable accepts tibble without warnings", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = c(0, 1), amt = c(100, NA), evid = c(1L, 0L))
+    ev <- et()
+    expect_no_warning(ev$import.EventTable(tbl))
+    out <- as.data.frame(ev)
+    expect_equal(nrow(out), 2L)
+  })
 })

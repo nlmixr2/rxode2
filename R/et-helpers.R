@@ -241,7 +241,7 @@
 #' @author Matthew L. Fidler
 #'
 .etHandlePositionalDataFrame <- function(xVal, envRef, et) {
-  .df <- xVal
+  .df <- as.data.frame(xVal)
   .df <- .etImportNormalizeNames(.df)
   # Convert deSolve-style (var/value/method) to canonical rxEt format
   if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
