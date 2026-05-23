@@ -16,81 +16,13 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rversion.h>
-#if R_VERSION < R_Version(4, 4, 1)
-#define allocLang Rf_allocLang
-
-SEXP Rf_allocLang(int n)
-{
-  if (n > 0)
-    return LCONS(R_NilValue, Rf_allocList(n - 1));
-  else
-    return R_NilValue;
-}
-#endif
-
-#if R_VERSION < R_Version(4, 5, 0)
-# define Rf_isDataFrame(x) Rf_isFrame(x)
-# define R_ClosureFormals(x) FORMALS(x)
-# define R_ClosureEnv(x) CLOENV(x)
-# define R_ParentEnv(x) ENCLOS(x)
-
-SEXP R_mkClosure(SEXP formals, SEXP body, SEXP env)
-{
-  SEXP fun = Rf_allocSExp(CLOSXP);
-  SET_FORMALS(fun, formals);
-  SET_BODY(fun, body);
-  SET_CLOENV(fun, env);
-  return fun;
-}
-
-void CLEAR_ATTRIB(SEXP x)
-{
-  SET_ATTRIB(x, R_NilValue);
-  SET_OBJECT(x, 0);
-  UNSET_S4_OBJECT(x);
-}
-#endif
 
 #if R_VERSION < R_Version(4, 6, 0)
 # define DATAPTR_RW(x) DATAPTR(x)
 # define R_class(x) R_data_class(x, FALSE)
 # define R_resizeVector(x, newlen) SETLENGTH(x, newlen)
 
-SEXP R_allocResizableVector(SEXPTYPE type, R_xlen_t maxlen)
-{
-  SEXP ret = Rf_allocVector(type, maxlen);
-  SET_TRUELENGTH(ret, maxlen);
-  SET_GROWABLE_BIT(ret);
-  return ret;
-}
 
-SEXP R_duplicateAsResizable(SEXP x)
-{
-  SEXP ret = Rf_duplicate(x);
-  SET_TRUELENGTH(ret, Rf_xlength(x));
-  SET_GROWABLE_BIT(ret);
-  return ret;
-}
-
-SEXP R_mapAttrib(SEXP x, SEXP (*FUN)(SEXP, SEXP, void *), void *data)
-{
-  PROTECT_INDEX api;
-  SEXP a = ATTRIB(x);
-  SEXP val = NULL;
-
-  PROTECT_WITH_INDEX(a, &api);
-  while (a != R_NilValue) {
-    SEXP tag = PROTECT(TAG(a));
-    SEXP attr = PROTECT(CAR(a));
-    val = FUN(tag, attr, data);
-    UNPROTECT(2); /* tag, attr */
-    if (val != NULL)
-      break;
-    REPROTECT(a = CDR(a), api);
-  }
-  UNPROTECT(1); /* a */
-  return val;
-}
 #endif
 #include <Rinternals.h>
 #include <R_ext/Altrep.h>
