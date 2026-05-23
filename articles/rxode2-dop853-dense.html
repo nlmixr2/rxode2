@@ -318,9 +318,9 @@ argument is needed to unlock large steps.</p>
 <span>    <span class="va">by</span>, <span class="va">nobs</span>, <span class="va">std</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"dense = %5.1f ms  speedup = %.2fx\n"</span>, <span class="va">den</span>, <span class="va">std</span> <span class="op">/</span> <span class="va">den</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co">#&gt; dense =  63.0 ms  speedup = 1.00x</span></span>
-<span><span class="co">#&gt; dense =  68.2 ms  speedup = 1.04x</span></span>
-<span><span class="co">#&gt; dense = 147.9 ms  speedup = 1.06x</span></span></code></pre></div>
+<span><span class="co">#&gt; dense =  61.3 ms  speedup = 1.01x</span></span>
+<span><span class="co">#&gt; dense =  69.0 ms  speedup = 1.00x</span></span>
+<span><span class="co">#&gt; dense = 152.3 ms  speedup = 1.11x</span></span></code></pre></div>
 <p>Typical results on this machine:</p>
 <table class="table">
 <thead><tr class="header">
@@ -381,9 +381,9 @@ override explicitly (suppressing messages with
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bm</span>, unit <span class="op">=</span> <span class="st">"ms"</span>, order <span class="op">=</span> <span class="st">"median"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;                 expr      min       lq     mean   median       uq      max</span></span>
-<span><span class="co">#&gt;  dense_explicit_hmax 65.41120 66.32542 68.93166 66.94950 71.63343 75.88343</span></span>
-<span><span class="co">#&gt;     std_default_hmax 64.88442 66.22763 70.02226 67.84703 72.32662 82.24297</span></span>
-<span><span class="co">#&gt;      dense_auto_hmax 66.93008 67.65816 71.76900 71.86369 74.65236 82.47592</span></span>
+<span><span class="co">#&gt;  dense_explicit_hmax 67.47739 69.63260 73.53050 72.16793 76.65210 86.23441</span></span>
+<span><span class="co">#&gt;     std_default_hmax 66.56165 70.55970 75.41573 72.96170 77.81355 92.65463</span></span>
+<span><span class="co">#&gt;      dense_auto_hmax 69.03950 72.87878 76.95811 76.40234 80.75723 87.66672</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;     30</span></span>
 <span><span class="co">#&gt;     30</span></span>
