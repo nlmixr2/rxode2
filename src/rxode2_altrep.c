@@ -17,12 +17,11 @@
 #include <R.h>
 #include <Rversion.h>
 
+// While this gives a NOTE in the 4.5 build,
+// it is what is suggested in the WRE manual
+// so it should be OK for CRAN.
 #if R_VERSION < R_Version(4, 6, 0)
 # define DATAPTR_RW(x) DATAPTR(x)
-# define R_class(x) R_data_class(x, FALSE)
-# define R_resizeVector(x, newlen) SETLENGTH(x, newlen)
-
-
 #endif
 #include <Rinternals.h>
 #include <R_ext/Altrep.h>
