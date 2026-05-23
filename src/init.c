@@ -378,6 +378,7 @@ SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP);
 
+SEXP _rxode2_atolRtolFactor_(SEXP);
 void allocExtraDosingC(void);
 void atolRtolFactorC_(double factor);
 
@@ -815,6 +816,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxRestoreState_", (DL_FUNC) _rxode2_rxRestoreState_, 1},
     {"_rxode2_rxSolveFromRaw_", (DL_FUNC) _rxode2_rxSolveFromRaw_, 9},
     {"_rxode2_rxSolveSetCurObj_", (DL_FUNC) &_rxode2_rxSolveSetCurObj_, 1},
+    {"_rxode2_atolRtolFactor_", (DL_FUNC) &_rxode2_atolRtolFactor_, 1},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
