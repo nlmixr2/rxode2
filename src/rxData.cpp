@@ -1633,6 +1633,19 @@ double maxAtolRtolFactor = 0.1;
 //[[Rcpp::interfaces(cpp)]]
 //[[Rcpp::export]]
 void atolRtolFactor_(double factor) {
+  // this is NOT thread safe and is intended for backward compatibility only.
+  // it will eventually go away but nlmixr2est 5.0 needs this interface.
+  rx_solve* rx = getRxSolve_();
+  rx_solving_options* op = rx->op;
+  for (int i = op->neq;i--;){
+    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
+    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+  }
+  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
+  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+}
+
+extern "C" void atolRtolFactorC_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
@@ -1659,10 +1672,6 @@ void atolRtolFactor_(double factor) {
   }
   // Note: op->ATOL and op->RTOL are deliberately NOT modified here to
   // avoid races between threads sharing the op structure.
-}
-
-extern "C" void atolRtolFactorC_(double factor) {
-  atolRtolFactor_(factor);
 }
 
 extern "C" double * getAol(int n, double atol){
