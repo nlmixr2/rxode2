@@ -631,8 +631,10 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 }
 #' Get/Set the number of threads that rxode2 uses
 #'
-#' @param threads NULL (default) rereads environment variables. 0
-#'   means to use all logical CPUs available. Otherwise a number >= 1
+#' @param threads NULL (default) rereads environment variables
+#'   specified by OpenMP (`OMP_THREAD_LIMIT`).  If they are not
+#'   specified, this determines based the logical cores available. 0
+#'   means to use all logical CPU threads available. Otherwise a number >= 1
 #'
 #' @param percent If provided it should be a number between 2 and
 #'   100; the percentage of logical CPUs to use. By default on
