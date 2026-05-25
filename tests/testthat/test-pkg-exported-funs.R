@@ -285,11 +285,13 @@ rxTest({
       file.path(R.home("bin"), "R"),
       args   = c("CMD", "INSTALL", "--no-multiarch",
                  paste0("--library=", .libDir), .pkgDir),
+      env    = paste0("R_LIBS=",
+                      paste(c(.libDir, .libPaths()), collapse = .Platform$path.sep)),
       stdout = TRUE, stderr = TRUE
     )
     if (!any(grepl("DONE \\(mm\\)", .out))) {
       skip(paste0("mm package failed to install (C compiler issue?):\n",
-                  paste(tail(.out, 20), collapse = "\n")))
+                  paste(.out, collapse = "\n")))
     }
 
     ## ── attach ───────────────────────────────────────────────────────────
@@ -429,10 +431,12 @@ rxTest({
       file.path(R.home("bin"), "R"),
       args   = c("CMD", "INSTALL", "--no-multiarch",
                  paste0("--library=", .libDir), .pkgDir),
+      env    = paste0("R_LIBS=",
+                      paste(c(.libDir, .libPaths()), collapse = .Platform$path.sep)),
       stdout = TRUE, stderr = TRUE
     )
     if (!any(grepl("DONE \\(mm\\)", .out))) {
-      skip("mm package failed to install")
+      skip(paste0("mm package failed to install:\n", paste(.out, collapse = "\n")))
     }
 
     .oldPaths <- .libPaths()
