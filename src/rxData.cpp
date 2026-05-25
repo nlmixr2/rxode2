@@ -3862,7 +3862,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     std::copy(evid.begin(),evid.end(), &_globals.gevid[0]);
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
-    _globals.gpar_cov = _globals.gidose + evid.size();//[dfN];
+    _globals.gpar_cov = _globals.gcens + evid.size();//[dfN];
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
     _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
     std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
