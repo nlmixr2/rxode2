@@ -730,20 +730,28 @@ void rxUpdateFuns(SEXP trans){
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
   rxode2_assignFuns2_t assignFuns2 = (rxode2_assignFuns2_t)R_GetCCallable(lib, s_assignFuns2);
   if (assignFuns2 != NULL) {
+    // The generated model's __assignFuns2 may call back into rxode2 via a
+    // cached static function pointer.  That pointer becomes stale when rxode2
+    // is reloaded (e.g. by pkgload::load_all inside devtools::test), causing
+    // the callback to write to the OLD rx_global instead of the current one.
+    // Call it for external-package side-effects only; then unconditionally
+    // overwrite rx->fns below so the current rx_global is always correct.
     assignFuns2(rx_global, op_global, AMT, LAG, RATE, DUR, calc_mtime, ME, IndF, getTime, _locateTimeIndex, handle_evidL, _getDur);
-  } else {
-    rx->fns.f = AMT;
-    rx->fns.lag = LAG;
-    rx->fns.rate = RATE;
-    rx->fns.dur = DUR;
-    rx->fns.mtime = calc_mtime;
-    rx->fns.me = ME;
-    rx->fns.indf = IndF;
-    rx->fns.gettime = getTime;
-    rx->fns.timeindex = _locateTimeIndex;
-    rx->fns.handleEvid = handle_evidL;
-    rx->fns.getdur = _getDur;
   }
+  // Always set rx->fns directly so the current rx_global has valid pointers
+  // regardless of whether assignFuns2 was called and regardless of whether
+  // its internal cached callable was stale.
+  rx->fns.f = AMT;
+  rx->fns.lag = LAG;
+  rx->fns.rate = RATE;
+  rx->fns.dur = DUR;
+  rx->fns.mtime = calc_mtime;
+  rx->fns.me = ME;
+  rx->fns.indf = IndF;
+  rx->fns.gettime = getTime;
+  rx->fns.timeindex = _locateTimeIndex;
+  rx->fns.handleEvid = handle_evidL;
+  rx->fns.getdur = _getDur;
 }
 
 extern "C" void rxClearFuns(){

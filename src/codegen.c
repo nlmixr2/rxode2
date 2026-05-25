@@ -207,9 +207,13 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       writeBody2();
       for (int i = Rf_length(_rxode2parse_packages); i--;) {
         const char* cur = R_CHAR(STRING_ELT(_rxode2parse_packages, i));
-        sAppend(&sbOut,"    static rxode2_assignFuns2_t %s_assignFuns2 = NULL;\n", cur);
-        sAppend(&sbOut,"    if (%s_assignFuns2 == NULL) %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
-                cur, cur, cur, cur);
+        // Do not cache the callable pointer statically: the package DLL can be
+        // reloaded (e.g. by pkgload::load_all inside devtools::test), which
+        // changes the callable address.  A stale static pointer would write to
+        // the old rx_global instead of the current one.  R_GetCCallable is
+        // fast enough that the lookup cost here is negligible.
+        sAppend(&sbOut,"    rxode2_assignFuns2_t %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
+                cur, cur, cur);
         sAppend(&sbOut,"    %s_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);\n",
                 cur);
       }
