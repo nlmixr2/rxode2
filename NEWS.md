@@ -1,9 +1,9 @@
-# rxode2 (development)
+# rxode2 5.1.0
 
 - Various low level fixes to allow `nlmixr2est` to have parallelized
   focei.
 
-- Parallelized the rxode2 data.frame creation.
+- Parallelized the `rxode2` data.frame creation.
 
 - Use ALTREP for `id`, `sim.id`, repeated simulation event columns
   (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`),
