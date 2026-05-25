@@ -128,8 +128,10 @@
 
 
 <dt id="arg-threads">threads<a class="anchor" aria-label="anchor" href="#arg-threads"></a></dt>
-<dd><p>NULL (default) rereads environment variables. 0
-means to use all logical CPUs available. Otherwise a number &gt;= 1</p></dd>
+<dd><p>NULL (default) rereads environment variables
+specified by OpenMP (<code>OMP_THREAD_LIMIT</code>).  If they are not
+specified, this determines based the logical cores available. 0
+means to use all logical CPU threads available. Otherwise a number &gt;= 1</p></dd>
 
 
 <dt id="arg-percent">percent<a class="anchor" aria-label="anchor" href="#arg-percent"></a></dt>

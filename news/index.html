@@ -106,6 +106,37 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.1.0" id="rxode2-510">rxode2 5.1.0<a class="anchor" aria-label="anchor" href="#rxode2-510"></a></h2>
+<ul><li><p>Various low level fixes to allow <code>nlmixr2est</code> to have parallelized focei.</p></li>
+<li><p>Parallelized the <code>rxode2</code> data.frame creation.</p></li>
+<li><p>Use ALTREP for <code>id</code>, <code>sim.id</code>, repeated simulation event columns (<code>evid</code>, <code>cmt</code>, <code>ss</code>, <code>amt</code>, <code>rate</code>, <code>dur</code>, <code>ii</code>, <code>time</code>), covariates and kept variables when blocks are identical across simulations; falls back to filled out columns when runtime event mutation is detected (<code><a href="../reference/evid_.html">evid_()</a></code> push growth / per-individual event reallocation). Also factors cannot currently be represented by altrep, so they are forced to be fully represented.</p></li>
+<li><p>Change compile flags and compiler directives for rxode2 models to speed up how they run.</p></li>
+<li><p>Have a pre-allocated context pool for lsoda in both liblsoda and lsoda (faster because memory doesn’t need to allocated and deallocated so often)</p></li>
+<li><p>Change OMP scheduling to dynamic to try to help load-balance the ode solving per subject.</p></li>
+<li><p>Simulation normal random numbers before integrating them into your solve.</p></li>
+<li><p>Add <code><a href="../reference/evid_.html">evid_()</a></code> function to allow arbitrary doses and observations in a rxode2 model.</p></li>
+<li><p>Add <code><a href="../reference/splitBolus.html">splitBolus()</a></code> function to split or relocate doses in the final output. This is done at translation time (but is respected by <code><a href="../reference/evid_.html">evid_()</a></code>) so in general is a bit faster then arbitrary doses in an estimation step for <code>nlmixr2</code></p></li>
+<li><p>Add <code>%%</code> operator to valid rxode2 syntax</p></li>
+<li><p>Create per-individual ODE solving tolerances for use in focei.</p></li>
+<li><p>Fix potential security and memory-management issues that could lead to crashes or undefined behavior including integer overflow</p></li>
+<li><p>Change <code>dop853</code> to allow per state tolerances and parallel solving like <code>liblsoda</code>.</p></li>
+<li><p>Change <code>dop853</code> to be able to use <code>dense=TRUE</code> for the 8th order dense polynomial interpolation between dosing events.</p></li>
+<li><p>Now <code>dop853</code> can be parallelized per thread.</p></li>
+<li><p>Change mtime state-based dosing to use less memory.</p></li>
+<li><p>Add <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis()</a></code> translation inside <code>rxode2</code> to it’s c-based <code><a href="../reference/logit.html">expit()</a></code> functions</p></li>
+<li><p>Refactored <code><a href="../reference/et.html">et()</a></code> to be mostly in R, fixing many issues (<a href="https://github.com/nlmixr2/rxode2/issues/722" class="external-link">#722</a> , <a href="https://github.com/nlmixr2/rxode2/issues/725" class="external-link">#725</a>, <a href="https://github.com/nlmixr2/rxode2/issues/858" class="external-link">#858</a>, <a href="https://github.com/nlmixr2/rxode2/issues/732" class="external-link">#732</a>, <a href="https://github.com/nlmixr2/rxode2/issues/723" class="external-link">#723</a>, <a href="https://github.com/nlmixr2/rxode2/issues/721" class="external-link">#721</a>, and <a href="https://github.com/nlmixr2/rxode2/issues/724" class="external-link">#724</a>) and allowing dosing/sampling windows to use <code>ii</code>, <code>addl</code> and <code>until</code> (realized immediately)</p></li>
+<li><p>Add <code><a href="../reference/linToOde.html">linToOde()</a></code> convert <code>linCmt()</code> models to ODEs.</p></li>
+<li><p>Fix IOV simulation issue observed in <a href="https://github.com/nlmixr2/rxode2/issues/982" class="external-link">#982</a>.</p></li>
+<li><p>Fix sticky variable calculation (<a href="https://github.com/nlmixr2/rxode2/issues/1013" class="external-link">#1013</a>, <a href="https://github.com/nlmixr2/rxode2/issues/1025" class="external-link">#1025</a>)</p></li>
+<li><p>More easily identify initial conditions (<a href="https://github.com/nlmixr2/rxode2/issues/948" class="external-link">#948</a>)</p></li>
+<li><p>Fix sensitivities in the <code>linCmt()</code> that did not match the ODE (<a href="https://github.com/nlmixr2/rxode2/issues/1018" class="external-link">#1018</a>, <a href="https://github.com/nlmixr2/rxode2/issues/1012" class="external-link">#1012</a>)</p></li>
+<li><p>Added in-solve addition of observations (<code><a href="../reference/obs.html">obs()</a></code>), bolus doses <code><a href="../reference/bolus.html">bolus()</a></code>, infusion doses <code><a href="../reference/infuse.html">infuse()</a></code> or <code><a href="../reference/infuseDur.html">infuseDur()</a></code>, system resets <code><a href="../reference/reset.html">reset()</a></code>, compartment replacement <code><a href="../reference/replace.html">replace()</a></code>, multiplicaton events <code><a href="../reference/multiply.html">multiply()</a></code>, and phantom/transit compartment events <code><a href="../reference/phantom.html">phantom()</a></code>. For more granular control you can also use <code><a href="../reference/evid_.html">evid_()</a></code>.</p></li>
+<li><p>Refactor string comparison in <code>rxode2</code> so that it is actually doing an integer comparison when running the ODE solving routine (simulation and estimation) instead of using a string comparison. It makes using strings like (sex == “male”) run faster.</p></li>
+<li><p>Add <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code> and <code><a href="../reference/rxMemSummary.html">rxMemSummary()</a></code> to estimate the amount of memory that is required for a rxode2 solve.</p></li>
+<li><p>Add <code>tolFactor</code>, a per individual change of the tolerances to be used in solving. This is used have individualized tolerances from <code>nlmixr2est</code>.</p></li>
+<li><p>Add <code>serializeFile</code> as an option to save the rxode2 C fitting data and then restore as needed.</p></li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.0.2" id="rxode2-502">rxode2 5.0.2<a class="anchor" aria-label="anchor" href="#rxode2-502"></a></h2><p class="text-muted">CRAN release: 2026-03-20</p>
 <ul><li><p>Allow state-dependent <code>dur()</code>, <code>rate()</code>, <code>alag()</code>, <code>mtime()</code> now allow states to modify their behavior. The state value at the time of the event is used to calculate any changes.</p></li>
 <li><p>Fix: all six ODE solve loops now use precomputed <code>timeThread</code> values for event times instead of recomputing via <code>getTime_()</code> with <code>ypNA</code>, preventing NA propagation for any state-dependent lag scenario.</p></li>
