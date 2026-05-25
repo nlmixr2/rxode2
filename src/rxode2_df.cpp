@@ -502,17 +502,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   // nlhs
   for (i = i0; i < i0+nlhs; i++){
     if (op->lhs_str[i-i0] == 1) {
-      // factor; from string expression
-      SEXP _tmp = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx, (R_xlen_t)rx->nr);
-      if (TYPEOF(_tmp) != INTSXP) {
-        IntegerVector val((R_xlen_t)rx->nr, NA_INTEGER);
-        CharacterVector cls(1);
-        SET_STRING_ELT(cls, 0, Rf_mkChar("factor"));
-        Rf_setAttrib(val, R_ClassSymbol, cls);
-        df[i] = val;
-      } else {
-        df[i] = _tmp;
-      }
+      // factor; from string expression — use whatever getDfLevels returns.
+      // If no factor levels are registered (e.g. lhs_str corrupted by cens
+      // memory overlap, or genuinely no levels), getDfLevels returns a
+      // NumericVector; assigning it directly avoids a malformed factor.
+      df[i] = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx, (R_xlen_t)rx->nr);
     } else {
       df[i] = NumericVector((R_xlen_t)rx->nr);
     }
@@ -993,7 +987,8 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           // LHS
           if (nlhs) {
             for (j = 0; j < nlhs; j++) {
-              if (op->lhs_str[j] == 1) {
+              if (op->lhs_str[j] == 1 && colType[jj_p] == INTSXP) {
+                // Genuine factor column: write integer level index.
                 int _lhsVal;
                 if (ISNA(ind->lhs[j])) {
                   _lhsVal = NA_INTEGER;
@@ -1005,6 +1000,8 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                 if (colI[jj_p] != nullptr) colI[jj_p][ii] = _lhsVal;
                 jj_p++;
               } else {
+                // Numeric column (including lhs_str==1 with no registered
+                // factor levels — getDfLevels returned NumericVector).
                 if (colR[jj_p] != nullptr) colR[jj_p][ii] = ind->lhs[j];
                 jj_p++;
               }
