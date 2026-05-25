@@ -110,7 +110,7 @@ static inline void rxFillMemLayout(
     out->n11       +
     out->nmtime0_c +
     (int64_t)5 * neq    +  /* ypNA + gatol2 + grtol2 + gssRtol + gssAtol    */
-    4 * out->n3a_c      +  /* gTlastS, gTfirstS, gCurDoseS (3×n3a_c) + gIndSim slot */
+    3 * out->n3a_c      +  /* gTlastS, gTfirstS, gCurDoseS (each n3a_c); gIndSim counted via n7 */
     out->nllik_c;
 
   /* gon_total mirrors the calloc expression for _globals.gon in rxData.cpp */
