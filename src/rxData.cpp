@@ -5412,8 +5412,8 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
 }
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
-  // dop853, liblsoda, rkf78
-  return stiff == 2 || stiff == 0 || stiff == 5;
+  // dop853, liblsoda, rkf78, rk4
+  return stiff == 2 || stiff == 0 || stiff == 5 || stiff == 6;
 }
 
 
