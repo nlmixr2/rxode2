@@ -21,6 +21,7 @@ solving nor user Jacobian specification
 must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
+\item \code{"ck54"} -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
 }}
 }
 \value{
