@@ -60,11 +60,15 @@
 #'
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
-#'     For the `"rk4"` method, this specifies the fixed step size. If `hmin=0` (the default),
-#'     it uses a default of `0.01`. If the requested step size would cause the number of steps
-#'     to exceed `maxsteps`, the step size is automatically increased to ensure the integration
-#'     completes within the `maxsteps` limit.
+#'
+#'     For the `"rk4"` method, this specifies the fixed step size. If
+#'     `hmin=0` (the default), it uses a default of `0.01`. If the
+#'     requested step size would cause the number of steps to exceed
+#'     `maxsteps`, the step size is automatically increased to ensure
+#'     the integration completes within the `maxsteps` limit.
+#'
 #'     For the `"rkf78"` method, this specifies the initial step size.
+#'
 #' @param hmax The maximum absolute step size allowed.  When
 #'   `hmax=NA` (default), uses the average difference +
 #'   hmaxSd*sd in times and sampling events. The `hmaxSd` is a user

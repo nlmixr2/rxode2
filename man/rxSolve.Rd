@@ -342,11 +342,15 @@ during one call to the solver. (5000 by default)}
 
 \item{hmin}{The minimum absolute step size allowed. The default
 value is 0.
-For the \code{"rk4"} method, this specifies the fixed step size. If \code{hmin=0} (the default),
-it uses a default of \code{0.01}. If the requested step size would cause the number of steps
-to exceed \code{maxsteps}, the step size is automatically increased to ensure the integration
-completes within the \code{maxsteps} limit.
-For the \code{"rkf78"} method, this specifies the initial step size.}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"` method, this specifies the fixed step size. If
+`hmin=0` (the default), it uses a default of `0.01`. If the
+requested step size would cause the number of steps to exceed
+`maxsteps`, the step size is automatically increased to ensure
+the integration completes within the `maxsteps` limit.
+
+For the `"rkf78"` method, this specifies the initial step size.
+}\if{html}{\out{</div>}}}
 
 \item{hmax}{The maximum absolute step size allowed.  When
 \code{hmax=NA} (default), uses the average difference +
