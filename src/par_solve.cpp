@@ -1198,6 +1198,8 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
 		      double *InfusionRate_, int *on_,
 		      t_ME ME, t_IndF  IndF);
 
+extern "C" void rkf78_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
                                 double *InfusionRate,
@@ -1254,6 +1256,21 @@ static inline void solveWith1Pt(int *neq,
         printErr(ind->err, ind->id);
         ind->rc[0] = -2019;
         *i = ind->n_all_times-1; // Get out of here!
+        break;
+      }
+      break;
+    case 5:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        rkf78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
         break;
       }
       break;
@@ -5438,3 +5455,6 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
   }
   return 0;
 }
+
+#define IN_PAR_SOLVE
+#include "rkf78.cpp"
