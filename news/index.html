@@ -106,7 +106,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="5.1.0" id="rxode2-510">rxode2 5.1.0<a class="anchor" aria-label="anchor" href="#rxode2-510"></a></h2>
+<h2 class="pkg-version" data-toc-text="5.1.1" id="rxode2-511">rxode2 5.1.1<a class="anchor" aria-label="anchor" href="#rxode2-511"></a></h2>
 <ul><li><p>Various low level fixes to allow <code>nlmixr2est</code> to have parallelized focei.</p></li>
 <li><p>Parallelized the <code>rxode2</code> data.frame creation.</p></li>
 <li><p>Use ALTREP for <code>id</code>, <code>sim.id</code>, repeated simulation event columns (<code>evid</code>, <code>cmt</code>, <code>ss</code>, <code>amt</code>, <code>rate</code>, <code>dur</code>, <code>ii</code>, <code>time</code>), covariates and kept variables when blocks are identical across simulations; falls back to filled out columns when runtime event mutation is detected (<code><a href="../reference/evid_.html">evid_()</a></code> push growth / per-individual event reallocation). Also factors cannot currently be represented by altrep, so they are forced to be fully represented.</p></li>
