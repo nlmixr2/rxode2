@@ -1199,6 +1199,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
 		      t_ME ME, t_IndF  IndF);
 
 extern "C" void rkf78_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rk4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
@@ -1263,6 +1264,21 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         rkf78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 6:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        rk4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -5357,6 +5373,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 5:
         ind_rkf78(rx, cid, c_dydt, u_inis);
         break;
+      case 6:
+        ind_rk4(rx, cid, c_dydt, u_inis);
+        break;
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
         break;
@@ -5413,6 +5432,10 @@ extern "C" void par_solve(rx_solve *rx) {
         // rkf78
         par_rkf78(rx);
         break;
+      case 6:
+        // rk4
+        par_rk4(rx);
+        break;
       case 0:
         // dop
         par_dop(rx);
@@ -5458,3 +5481,4 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 
 #define IN_PAR_SOLVE
 #include "rkf78.cpp"
+#include "rk4.cpp"
