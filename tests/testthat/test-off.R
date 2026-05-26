@@ -1,5 +1,5 @@
 rxTest({
-  ms <- c("liblsoda", "lsoda", "dop853", "rkf78")
+  ms <- c(.methods0, "lsoda")
 
   for (m in ms) {
     # context(sprintf("Test turning compartment off (%s)", m))

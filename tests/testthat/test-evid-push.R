@@ -92,7 +92,7 @@ rxTest({
 
   test_that("bolus push via evid_() adds extra timepoints and affects trajectory", {
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       m <- rxode2({
         d/dt(depot) <- -ka * depot
         d/dt(central) <- ka * depot - cl/vd * central
@@ -163,7 +163,7 @@ rxTest({
   })
 
   test_that("infusion push via evid_() adds start+stop events", {
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       m <- rxode2({
         d/dt(central) <- -cl / vd * central
         cp <- central / vd
@@ -204,7 +204,7 @@ rxTest({
       cp <- central / v
     })
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         d/dt(central) <- -cl / v * central
         f(central) <- fc
@@ -230,7 +230,7 @@ rxTest({
       cp <- central / v
     })
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         d/dt(central) <- -cl / v * central
         f(central) <- fc
@@ -259,7 +259,7 @@ rxTest({
       et(amt = 50, time = 18) |>
       et(obs)
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         mtime(resetAt) <- 12
         d/dt(depot) <- -ka * depot
@@ -326,7 +326,7 @@ rxTest({
       et(amt = 50, time = 18) |>
       et(obs)
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         mtime(replaceAt) <- 12
         d/dt(depot) <- -ka * depot
@@ -367,7 +367,7 @@ rxTest({
       et(amt = 50, time = 18) |>
       et(obs)
 
-    for (meth in c("dop853", "rkf78",  "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         mtime(multAt) <- 12
         d/dt(depot) <- -ka * depot
@@ -404,7 +404,7 @@ rxTest({
     eRef <- et(time = 12, amt = 20, cmt = 1, evid = 7) |>
       et(obs)
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         mtime(phantomAt) <- 12
         d/dt(depot) <- 0
@@ -448,7 +448,7 @@ rxTest({
       et(time = 36, amt = 50, cmt = 1, evid = 1) |>
       et(obs)
 
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         mtime(bolusAt) <- 12
         d/dt(depot) <- -ka * depot
@@ -631,7 +631,7 @@ rxTest({
   })
 
   test_that("splitBolus applies to boluses pushed by evid_()", {
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mSplit <- rxode2({
         splitBolus(depot, depot, central)
         d/dt(depot) <- -ka * depot
@@ -849,7 +849,7 @@ rxTest({
   })
 
   test_that("splitBolus applies to a one-target bolus pushed by evid_()", {
-    for (meth in c("dop853", "rkf78", "liblsoda")) {
+    for (meth in .methods0) {
       mSplit <- rxode2({
         splitBolus(depot, central)
         d/dt(depot) <- -ka * depot

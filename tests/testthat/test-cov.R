@@ -144,7 +144,7 @@ rxTest({
   for (.homogenous in c(TRUE, FALSE)) {
     withr::with_options(list(rxode2.homogenous = .homogenous), {
 
-  for (meth in c("liblsoda", "lsoda", "dop853")) { ## Dop is very close but doesn't match precisely.
+  for (meth in .methods0) {
 
     # context(sprintf("Simple test for time-varying covariates (%s)", meth))
 

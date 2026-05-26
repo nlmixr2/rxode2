@@ -24,7 +24,7 @@ rxTest({
     expect_true(inherits(x$sigmaList[[1]], "matrix"))
   }
 
-  for (meth in c("dop853", "liblsoda", "lsoda", "rkf78")) {
+  for (meth in .methods0) {
     # context(sprintf("Test Parallel/Multi-subject Solve (%s)", meth))
 
     mod <- rxode2({

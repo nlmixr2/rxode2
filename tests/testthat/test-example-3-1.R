@@ -6,7 +6,7 @@ rxTest({
     skip_if_not(file.exists(test_path("test-example-3-1.qs2")))
     df.test <- qs2::qs_read(test_path("test-example-3-1.qs2"))
 
-    ms <- c("liblsoda", "lsoda", "rkf78", "dop853")
+    ms <- .methods0
     ode <- rxode2(model = "d/dt(y) = r * y * (1.0 - y/K);")
     .rxWithOptions(list(digits = 6), {
       for (meth in ms) {
