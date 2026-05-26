@@ -1,4 +1,4 @@
-# rxode2 5.1.0
+# rxode2 5.1.1
 
 - Various low level fixes to allow `nlmixr2est` to have parallelized
   focei.
