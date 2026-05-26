@@ -1,6 +1,8 @@
-# rxode2 5.1.0
+# rxode2 5.1.1
 
 * Tested on the Debian to fix `linux-arm64` on R 4.5, ran successfully
+
+* Bumped rxode2 for 5.1.1
 
 * Added fix for the following issue seen in the reverse dependency check:
 

@@ -344,8 +344,10 @@
       .df <- .df[.df$evid == 0L, , drop = FALSE]
     }
     if (nrow(.df) == 0L) next
-    .formattedId <- if (length(.g$ids) == 1L) as.integer(.g$ids) else .formatIds(.g$ids)
-    .df <- cbind(id = .formattedId, .df)
+    if (subset == "all") {
+      .formattedId <- if (length(.g$ids) == 1L) as.integer(.g$ids) else .formatIds(.g$ids)
+      .df <- cbind(id = .formattedId, .df)
+    }
     .ret[[length(.ret) + 1L]] <- .df
     .meta[[length(.meta) + 1L]] <- list(
       ids = as.integer(.g$ids),
@@ -357,6 +359,7 @@
   .out <- as.data.frame(data.table::rbindlist(.ret, fill = TRUE))
   rownames(.out) <- seq_len(nrow(.out))
   attr(.out, "rxEtPreviewGroups") <- .meta
+  attr(.out, "rxEtShow") <- envRef$show
   class(.out) <- c("rxEtPreview", class(.out))
   .tu <- envRef$units["time"]
   if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {

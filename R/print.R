@@ -64,6 +64,22 @@ print.rxEtPreview <- function(x, ...) {
   }
   .df <- x
   class(.df) <- "data.frame"
+  if (!("id" %in% names(.df)) && length(.groups) > 0L) {
+    .idList <- lapply(.groups, function(.g) {
+      .formattedId <- if (length(.g$ids) == 1L) as.integer(.g$ids) else .formatIds(.g$ids)
+      rep(.formattedId, .g$nRow)
+    })
+    .idCol <- unlist(.idList)
+    if (length(.idCol) == nrow(.df)) {
+      .df <- cbind(id = .idCol, .df)
+    }
+  }
+  .show <- attr(x, "rxEtShow", exact = TRUE)
+  if (!is.null(.show)) {
+    .showCols <- unique(c("id", names(.show)[.show]))
+    .showCols <- intersect(.showCols, names(.df))
+    .df <- .df[, .showCols, drop = FALSE]
+  }
   print(tibble::as_tibble(.df), ...)
   invisible(x)
 }
