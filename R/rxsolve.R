@@ -860,7 +860,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -1294,6 +1294,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (isTRUE(dense) && method == 0L && missing(hmax)) {
       .minfo("dop853 dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
+    }
+    if (isTRUE(dense) && method == 7L) {
+      warning("dense output is not supported for ck54. Ignoring dense=TRUE", call.=FALSE)
+      dense <- FALSE
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
@@ -3128,8 +3132,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {
