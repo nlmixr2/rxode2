@@ -34,7 +34,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "lsoda", "dop853", "indLin"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -312,6 +312,7 @@ solving, but allows user Jacobian specification.
 solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.
+\item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode

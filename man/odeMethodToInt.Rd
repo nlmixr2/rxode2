@@ -4,7 +4,7 @@
 \alias{odeMethodToInt}
 \title{Conversion between character and integer ODE integration methods for rxode2}
 \usage{
-odeMethodToInt(method = c("liblsoda", "lsoda", "dop853", "indLin"))
+odeMethodToInt(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78"))
 }
 \arguments{
 \item{method}{The method for solving ODEs.  Currently this supports:
@@ -17,6 +17,7 @@ solving, but allows user Jacobian specification.
 solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.
+\item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 }}
 }
 \value{

@@ -20,7 +20,7 @@ rxTest({
 
   et$add.dosing(start.time = 7.5, evid = 3, dose = 0)
 
-  ms <- c("liblsoda", "lsoda", "dop853")
+  ms <- c("liblsoda", "lsoda", "dop853", "rkf78")
 
   m <- ms[1]
 

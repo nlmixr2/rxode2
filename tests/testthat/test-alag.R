@@ -36,7 +36,7 @@ rxTest({
   ## vdiffr::expect_doppelganger("intestine-mod2b", plot(tmp, intestine))
   expect_error(plot(tmp, intestine), NA)
 
-  ms <- c("liblsoda", "lsoda", "dop853")
+  ms <- c("liblsoda", "lsoda", "dop853", "rkf78")
   for (m in ms) {
     skip_if_not_installed("units")
 

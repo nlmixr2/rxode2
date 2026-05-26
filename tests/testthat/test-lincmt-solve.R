@@ -2225,7 +2225,7 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
     d$ID <- 1
 
-    for (meth in c("liblsoda", "lsoda", "dop853")) {
+    for (meth in c("liblsoda", "lsoda", "dop853", "rkf78")) {
       dOde <- rxSolve(ode, d, meth=meth)
 
       dLin <- rxSolve(lin, d, meth=meth)
