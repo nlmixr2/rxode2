@@ -61,9 +61,9 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"` method, this specifies the fixed step size. If
-#'     `hmin=0` (the default), it uses a default of `0.01`. If the
-#'     requested step size would cause the number of steps to exceed
+#'     For the `"rk4"` and `"ab"` methods, this specifies the fixed step size. If
+#'     `hmin=0` (the default), it uses a default of `0.01` for `"rk4"` and `0.0001`
+#'     for `"ab"`. If the requested step size would cause the number of steps to exceed
 #'     `maxsteps`, the step size is automatically increased to ensure
 #'     the integration completes within the `maxsteps` limit.
 #'
@@ -86,6 +86,9 @@
 #' @param maxordn The maximum order to be allowed for the nonstiff
 #'     (Adams) method.  The default is 12.  It can be between 1 and
 #'     12.
+#'
+#' @param order The order for the `"ab"` method. The default is 5.
+#'     It can be between 1 and 8.
 #'
 #' @param maxords The maximum order to be allowed for the stiff (BDF)
 #'     method.  The default value is 5.  This can be between 1 and 5.
@@ -860,11 +863,11 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
-                    hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, ...,
+                    hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, order = 5L, ...,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
                     naInterpolation = c("locf", "nocb"),
@@ -1283,6 +1286,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(hini, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
     checkmate::assertIntegerish(maxordn, lower=1, upper=12, any.missing=FALSE, len=1)
     maxordn <- as.integer(maxordn)
+    if (method == 8L) {
+      checkmate::assertIntegerish(order, lower=1, upper=8, any.missing=FALSE, len=1)
+      maxordn <- as.integer(order)
+    }
     checkmate::assertIntegerish(maxords, lower=1, upper=5, any.missing=FALSE, len=1)
     maxods <- as.integer(maxords)
     checkmate::assertIntegerish(mxhnil, lower=0, any.missing=FALSE, len=1)
@@ -3130,12 +3137,14 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"ck54"` -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
 #'
+#' * `"ab"` -- Adams-Bashforth solver using Boost's odeint library.
+#'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {

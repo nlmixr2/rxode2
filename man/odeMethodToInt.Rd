@@ -5,7 +5,7 @@
 \title{Conversion between character and integer ODE integration methods for rxode2}
 \usage{
 odeMethodToInt(
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54")
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab")
 )
 }
 \arguments{
@@ -22,6 +22,7 @@ must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 \item \code{"ck54"} -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
+\item \code{"ab"} -- Adams-Bashforth solver using Boost's odeint library.
 }}
 }
 \value{

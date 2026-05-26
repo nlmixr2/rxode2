@@ -34,7 +34,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -45,6 +45,7 @@ rxSolve(
   hini = 0,
   maxordn = 12L,
   maxords = 5L,
+  order = 5L,
   ...,
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
@@ -315,6 +316,7 @@ must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 \item \code{"ck54"} -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
+\item \code{"ab"} -- Adams-Bashforth solver using Boost's odeint library.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -344,9 +346,9 @@ during one call to the solver. (5000 by default)}
 \item{hmin}{The minimum absolute step size allowed. The default
 value is 0.
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"` method, this specifies the fixed step size. If
-`hmin=0` (the default), it uses a default of `0.01`. If the
-requested step size would cause the number of steps to exceed
+\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"` and `"ab"` methods, this specifies the fixed step size. If
+`hmin=0` (the default), it uses a default of `0.01` for `"rk4"` and `0.0001`
+for `"ab"`. If the requested step size would cause the number of steps to exceed
 `maxsteps`, the step size is automatically increased to ensure
 the integration completes within the `maxsteps` limit.
 
@@ -373,6 +375,9 @@ default value is determined by the solver (when \code{hini = 0})}
 
 \item{maxords}{The maximum order to be allowed for the stiff (BDF)
 method.  The default value is 5.  This can be between 1 and 5.}
+
+\item{order}{The order for the \code{"ab"} method. The default is 5.
+It can be between 1 and 8.}
 
 \item{...}{Other arguments including scaling factors for each
 compartment.  This includes \code{S# =} numeric will scale a compartment
