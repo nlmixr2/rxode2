@@ -5337,6 +5337,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 1:
         ind_lsoda(rx,cid, dydt_lsoda, u_inis, jdum, jt);
         break;
+      case 5:
+        ind_rkf78(rx, cid, c_dydt, u_inis);
+        break;
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
         break;
@@ -5388,6 +5391,10 @@ extern "C" void par_solve(rx_solve *rx) {
       case 1:
         // lsoda
         par_lsoda(rx);
+        break;
+      case 5:
+        // rkf78
+        par_rkf78(rx);
         break;
       case 0:
         // dop

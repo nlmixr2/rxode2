@@ -852,7 +852,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -3108,12 +3108,13 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'         solving nor user Jacobian specification
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
 #'         must be setup specially to use this solving routine.
+#' * `"rkf78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {
@@ -3198,7 +3199,7 @@ rxUiDeparse.rxControl <- function(object, var) {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
       paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
     } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L)
       paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
     } else if (x == "naInterpolation") {
       .naInterpolation <- c("locf"=1L, "nocb"=0L)

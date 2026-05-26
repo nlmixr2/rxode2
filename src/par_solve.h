@@ -18,6 +18,8 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
+void par_rkf78(rx_solve *rx);
+extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 
 	void sortInd(rx_solving_options_ind *ind);
 
