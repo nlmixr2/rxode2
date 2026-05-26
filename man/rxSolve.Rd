@@ -34,7 +34,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -313,6 +313,7 @@ solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
+\item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -340,7 +341,12 @@ if prior doses do not add anything to the solution.}
 during one call to the solver. (5000 by default)}
 
 \item{hmin}{The minimum absolute step size allowed. The default
-value is 0.}
+value is 0.
+For the \code{"rk4"} method, this specifies the fixed step size. If \code{hmin=0} (the default),
+it uses a default of \code{0.01}. If the requested step size would cause the number of steps
+to exceed \code{maxsteps}, the step size is automatically increased to ensure the integration
+completes within the \code{maxsteps} limit.
+For the \code{"rkf78"} method, this specifies the initial step size.}
 
 \item{hmax}{The maximum absolute step size allowed.  When
 \code{hmax=NA} (default), uses the average difference +
