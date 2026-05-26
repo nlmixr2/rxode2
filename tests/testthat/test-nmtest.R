@@ -359,9 +359,7 @@ rxTest({
   p <- FALSE
 
   lapply(id, function(i) {
-    meths <- c(.methods0, .methods1,
-               "A", "B", "Ao", "Bo", "As", "Bs",
-               "Ad", "Bd", "Al", "Bl")
+    meths <- c(.methods0, .methods1, .methods2)
     modDat <- c("none", "rate", "dur")
     for (meth in meths) {
       for (modifyData in modDat) {
