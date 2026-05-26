@@ -34,7 +34,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
