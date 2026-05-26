@@ -1,6 +1,7 @@
 ^bench/$
 ^PERFORMACE_PLAN.md$
 ^AGENT_STATUS.md$
+^.antigravitycli/$
 ^.antigravity/$
 ^.claude$
 ^.vexp$
