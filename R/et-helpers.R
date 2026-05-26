@@ -435,7 +435,7 @@
 #'
 #' @author Matthew L. Fidler
 #'
-.etHandleId <- function(id, envRef, xIsRxEt, envir) {
+.etHandleId <- function(id, envRef, xIsRxEt, envir, addingEvents = FALSE) {
   .resolvedId  <- NULL
   .addedIds    <- integer(0)
   .removedIds  <- integer(0)
@@ -465,7 +465,9 @@
       .addedIds <- integer(0)
       envRef$ids <- integer(0)
       .doResize <- length(.removedIds) > 0L
-    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
+    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize &&
+               (!addingEvents || (envRef$nobs == 0L && envRef$ndose == 0L &&
+                                  length(envRef$chunks) == 0L && length(.etGroups(envRef)) == 0L))) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)

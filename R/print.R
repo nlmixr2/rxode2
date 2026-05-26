@@ -53,14 +53,18 @@ print.rxEtPreview <- function(x, ...) {
       cat(sprintf("-- compressed preview for %s --\n", .etPreviewGroupLabel(.groups[[1]]$ids)))
     } else {
       cat(sprintf("-- compressed preview for %s groups --\n", length(.groups)))
-      for (.i in seq_along(.groups)) {
+      .n <- min(5L, length(.groups))
+      for (.i in seq_len(.n)) {
         cat(sprintf("   group %s: %s\n", .i, .etPreviewGroupLabel(.groups[[.i]]$ids)))
+      }
+      if (length(.groups) > 5L) {
+        cat(sprintf("   ... (and %s more groups)\n", length(.groups) - 5L))
       }
     }
   }
   .df <- x
   class(.df) <- "data.frame"
-  print.data.frame(.df, ...)
+  print(tibble::as_tibble(.df), ...)
   invisible(x)
 }
 

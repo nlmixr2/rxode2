@@ -307,6 +307,16 @@
   list(hasWin = TRUE, groups = .outGroups, chunks = list())
 }
 
+.formatIds <- function(ids) {
+  ids <- sort(unique(as.integer(ids)))
+  if (length(ids) == 0L) return(NA_character_)
+  if (length(ids) == 1L) return(ids)
+  if (all(diff(ids) == 1L)) {
+    return(paste0(ids[1L], ":", ids[length(ids)]))
+  }
+  paste(ids, collapse = ",")
+}
+
 .etPreviewData <- function(envRef, subset = c("all", "dosing", "sampling")) {
   subset <- match.arg(subset)
   .groups <- .etGroups(envRef)
@@ -334,6 +344,8 @@
       .df <- .df[.df$evid == 0L, , drop = FALSE]
     }
     if (nrow(.df) == 0L) next
+    .formattedId <- if (length(.g$ids) == 1L) as.integer(.g$ids) else .formatIds(.g$ids)
+    .df <- cbind(id = .formattedId, .df)
     .ret[[length(.ret) + 1L]] <- .df
     .meta[[length(.meta) + 1L]] <- list(
       ids = as.integer(.g$ids),

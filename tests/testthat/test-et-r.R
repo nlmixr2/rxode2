@@ -930,4 +930,19 @@ rxTest({
     out <- as.data.frame(ev)
     expect_equal(nrow(out), 2L)
   })
+
+  test_that("et() loop with new IDs adds doses and observations to all IDs", {
+    nSub <- 5
+    dose <- c(45, 48, 52, 50, 47)
+    ev <- et()
+    for (i in seq_len(nSub)) {
+      ev <- ev |> et(id = i, amt = dose[i], time = 0, addl = 9, ii = 12)
+    }
+    ev <- ev |> add.sampling(time = 0:240)
+    df <- as.data.frame(ev)
+    expect_equal(sort(unique(df$id)), 1:5)
+    tbl_evid <- table(df$id, df$evid)
+    expect_true(all(tbl_evid[, "0"] == 241))
+    expect_true(all(tbl_evid[, "1"] == 1))
+  })
 })

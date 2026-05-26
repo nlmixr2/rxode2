@@ -479,7 +479,11 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
                  .amountUnitsMissing, .timeUnitsMissing)
 
   # ---- ID expansion ----
-  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir) # nolint
+  .addingEvents <- (!.amtMissing || !.timeMissing || !.evidMissing || !.cmtMissing ||
+                    !.iiMissing || !.addlMissing || !.ssMissing || !.rateMissing ||
+                    !.durMissing || !.untilMissing || !.addSamplingMissing ||
+                    !is.null(.dotArgs[["dose"]]) || !is.null(.listObs))
+  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir, addingEvents = .addingEvents) # nolint
   .resolvedId  <- .ret$resolvedId
   .targetIds   <- .ret$targetIds
   .doResize    <- .ret$doResize
