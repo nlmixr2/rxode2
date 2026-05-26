@@ -2,7 +2,9 @@
 
 * Tested on the Debian to fix `linux-arm64` on R 4.5, ran successfully
 
-* Bumped rxode2 for 5.1.1
+* Bumped rxode2 for 5.1.1, it seemed to not be picked up by CRAN (no
+  checking stalled in waiting queue and one small fix for event tables
+  was added).
 
 * Added fix for the following issue seen in the reverse dependency check:
 
