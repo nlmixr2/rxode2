@@ -359,7 +359,7 @@ rxTest({
   p <- FALSE
 
   lapply(id, function(i) {
-    meths <- c("liblsoda", "lsoda", "dop853", "ddop853", "rkf78",
+    meths <- c("rkf78", "liblsoda", "lsoda", "dop853", "ddop853",
                "A", "B", "Ao", "Bo", "As", "Bs",
                "Ad", "Bd", "Al", "Bl")
     modDat <- c("none", "rate", "dur")
