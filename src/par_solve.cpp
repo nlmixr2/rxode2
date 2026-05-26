@@ -1202,6 +1202,7 @@ extern "C" void rkf78_solveWith1Pt(int *neq, double *yp, double *xp, double xout
 extern "C" void rk4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void ck54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void ab_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void abm_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
@@ -1311,6 +1312,21 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         ab_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 9:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        abm_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -5414,6 +5430,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 8:
         ind_ab(rx, cid, c_dydt, u_inis);
         break;
+      case 9:
+        ind_abm(rx, cid, c_dydt, u_inis);
+        break;
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
         break;
@@ -5479,8 +5498,10 @@ extern "C" void par_solve(rx_solve *rx) {
         par_ck54(rx);
         break;
       case 8:
-        // ab
         par_ab(rx);
+        break;
+      case 9:
+        par_abm(rx);
         break;
       case 0:
         // dop
@@ -5530,3 +5551,4 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "rk4.cpp"
 #include "ck54.cpp"
 #include "ab.cpp"
+#include "abm.cpp"

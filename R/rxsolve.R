@@ -61,13 +61,16 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"` and `"ab"` methods, this specifies the fixed step size. If
-#'     `hmin=0` (the default), it uses a default of `0.01` for `"rk4"` and `0.0001`
-#'     for `"ab"`. If the requested step size would cause the number of steps to exceed
-#'     `maxsteps`, the step size is automatically increased to ensure
-#'     the integration completes within the `maxsteps` limit.
+#'     For the `"rk4"`, `"ab"`, and `"abm"` methods, this specifies
+#'     the fixed step size. If `hmin=0` (the default), it uses a
+#'     default of `0.01` for `"rk4"` and `0.0001` for `"ab"` and
+#'     `"abm"`. If the requested step size would cause the number of
+#'     steps to exceed `maxsteps`, the step size is automatically
+#'     increased to ensure the integration completes within the
+#'     `maxsteps` limit.
 #'
-#'     For the `"rkf78"` and `"ck54"` methods, this specifies the initial step size.
+#'     For the `"rkf78"` and `"ck54"` methods, this specifies the
+#'     initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
 #'   `hmax=NA` (default), uses the average difference +
@@ -87,7 +90,7 @@
 #'     (Adams) method.  The default is 12.  It can be between 1 and
 #'     12.
 #'
-#' @param order The order for the `"ab"` method. The default is 5.
+#' @param order The order for the `"ab"` and `"abm"` methods. The default is 5.
 #'     It can be between 1 and 8.
 #'
 #' @param maxords The maximum order to be allowed for the stiff (BDF)
@@ -808,13 +811,12 @@
 #'   allowed because the file already stores the solve inputs and
 #'   controls.
 #'
-#' @param dense Logical; when `TRUE` and `method="dop853"`, enables
-#'   DOP853 dense polynomial output (`iout=2`). Instead of calling the
-#'   solver once per observation time, a single solver call spans each
-#'   inter-dose interval and a 7th-order polynomial interpolates all
-#'   observation times within that interval. This can substantially
-#'   reduce the number of solver evaluations for models with dense
-#'   sampling grids. Silently ignored for non-dop853 methods. Not yet
+#' @param dense Logical; when `TRUE` and `method="dop853"` or `method="dop5"`, enables
+#'   continuous dense output. This allows the solver to take large internal
+#'   steps and use interpolation for the exact observation times, which can
+#'   dramatically speed up solves with high-frequency observations or large
+#'   sampling grids. Silently ignored for non-dense methods. Not yet
+#'   compatible with multiple dosing events in the same interval. yet
 #'   supported for `linCmt()` models (a message is emitted and the
 #'   standard path is used instead).
 #'
@@ -863,7 +865,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -1286,7 +1288,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(hini, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
     checkmate::assertIntegerish(maxordn, lower=1, upper=12, any.missing=FALSE, len=1)
     maxordn <- as.integer(maxordn)
-    if (method == 8L) {
+    if (method == 8L || method == 9L) {
       checkmate::assertIntegerish(order, lower=1, upper=8, any.missing=FALSE, len=1)
       maxordn <- as.integer(order)
     }
@@ -1298,8 +1300,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
-    if (isTRUE(dense) && method == 0L && missing(hmax)) {
-      .minfo("dop853 dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
+    if (isTRUE(dense) && method %in% c(0L, 10L) && missing(hmax)) {
+      .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
     if (isTRUE(dense) && method == 7L) {
@@ -2121,7 +2123,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     stop(sprintf(
       gettext("'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"),
       paste(.n1, collapse = "', '")
-    ), call. = FALSE)
+    ), call = FALSE)
   }
   if (!is.null(rxode2::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
     if (.serializeInput) {
@@ -3135,16 +3137,20 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"rk4"` -- Runge-Kutta 4 solver using Boost's odeint library.
 #'
-#' * `"ck54"` -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
+#' * `"ck54"` -- Cash-Karp 5(4) solver using Boost's odeint library.
 #'
 #' * `"ab"` -- Adams-Bashforth solver using Boost's odeint library.
+#'
+#' * `"abm"` -- Adams-Bashforth-Moulton solver using Boost's odeint library.
+#'
+#' * `"dop5"` -- DOPRI5 solver using Boost's odeint library (supports dense output).
 #'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {
