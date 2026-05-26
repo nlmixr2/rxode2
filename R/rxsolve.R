@@ -67,7 +67,7 @@
 #'     `maxsteps`, the step size is automatically increased to ensure
 #'     the integration completes within the `maxsteps` limit.
 #'
-#'     For the `"rkf78"` method, this specifies the initial step size.
+#'     For the `"rkf78"` and `"ck54"` methods, this specifies the initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
 #'   `hmax=NA` (default), uses the average difference +
@@ -3127,6 +3127,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"rkf78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 #'
 #' * `"rk4"` -- Runge-Kutta 4 solver using Boost's odeint library.
+#'
+#' * `"ck54"` -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
 #'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,

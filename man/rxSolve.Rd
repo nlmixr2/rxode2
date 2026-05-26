@@ -314,6 +314,7 @@ solving nor user Jacobian specification
 must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
+\item \code{"ck54"} -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -349,7 +350,7 @@ requested step size would cause the number of steps to exceed
 `maxsteps`, the step size is automatically increased to ensure
 the integration completes within the `maxsteps` limit.
 
-For the `"rkf78"` method, this specifies the initial step size.
+For the `"rkf78"` and `"ck54"` methods, this specifies the initial step size.
 }\if{html}{\out{</div>}}}
 
 \item{hmax}{The maximum absolute step size allowed.  When

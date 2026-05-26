@@ -5,7 +5,7 @@
 \title{Conversion between character and integer ODE integration methods for rxode2}
 \usage{
 odeMethodToInt(
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4")
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54")
 )
 }
 \arguments{
