@@ -120,6 +120,8 @@ int rxcLimit = -1;
 int rxcCens  = -1;
 int rxcLen   = -1;
 int rxcIi    = -1;
+int rxcAddl  = -1;
+int rxcSs    = -1;
 bool resetCache = true;
 bool rxHasEventNames(CharacterVector &nm){
   int len = nm.size();
@@ -134,6 +136,8 @@ bool rxHasEventNames(CharacterVector &nm){
     rxcIi    = -1;
     rxcLimit = -1;
     rxcCens  = -1;
+    rxcAddl  = -1;
+    rxcSs    = -1;
     rxcLen   = len;
     for (unsigned int i = len; i--;){
       if (as<std::string>(nm[i]) == "evid" ||
@@ -237,43 +241,26 @@ bool rxIs_list(const RObject &obj, std::string cls){
         rxcId   = 0;
         rxcDv   = 5;
         rxcIi   = 4;
+        rxcCens  = -1;
+        rxcLimit = -1;
+        rxcAddl  = -1;
+        rxcSs    = -1;
         List e = as<List>(classattr.attr(".rxode2.lst"));
-        int censAdd = asInt(e[RxTrans_censAdd], "censAdd");
+        int censAdd  = asInt(e[RxTrans_censAdd],  "censAdd");
         int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
+        /* addlAdd / ssAdd only present in 33-slot etTransSingle output */
+        int addlAdd = (e.size() > RxTrans_addlAdd) ? asInt(e[RxTrans_addlAdd], "addlAdd") : 0;
+        int ssAdd   = (e.size() > RxTrans_ssAdd)   ? asInt(e[RxTrans_ssAdd],   "ssAdd")   : 0;
         rx->maxShift = asDouble(e[RxTrans_maxShift],"maxShift");
         CharacterVector nDf = obj.attr("names");
         int nCol = nDf.size();
-        if (censAdd == 1 && limitAdd == 1) {
-          if (nCol > 6 && nDf[6] == "CENS") {
-            rxcCens = 6;
-            rxcLimit = 7;
-          } else if (nCol > 7 && nDf[7] == "CENS") {
-            rxcCens = 7;
-            rxcLimit = 8;
-          } else {
-            Rcpp::stop("Corrupt translation, 'cens' / 'limit' is not in expected location");
-          }
-        } else if (censAdd == 1){
-          if (nCol > 6 && nDf[6] == "CENS") {
-            rxcCens = 6;
-          } else if (nCol > 7 && nDf[7] == "CENS") {
-            rxcCens = 7;
-          } else {
-            Rcpp::stop("Corrupt translation, 'cens' is not in expected location");
-          }
-          rxcLimit = -1;
-        } else if (limitAdd == 1){
-          if (nCol > 6 && nDf[6] == "LIMIT") {
-            rxcLimit = 6;
-          } else if (nCol > 7 && nDf[7] == "LIMIT") {
-            rxcLimit = 7;
-          } else {
-            Rcpp::stop("Corrupt translation, 'limit' is not in expected location");
-          }
-          rxcCens  = -1;
-        } else {
-          rxcCens  = -1;
-          rxcLimit = -1;
+        /* Scan optional columns by name (handles CMT column at position 6) */
+        for (int ci = 6; ci < nCol; ++ci) {
+          std::string cn = as<std::string>(nDf[ci]);
+          if      (censAdd  && cn == "CENS")  rxcCens  = ci;
+          else if (limitAdd && cn == "LIMIT") rxcLimit = ci;
+          else if (addlAdd  && cn == "ADDL")  rxcAddl  = ci;
+          else if (ssAdd    && cn == "SS")    rxcSs    = ci;
         }
         return true;
       } else {
@@ -3271,11 +3258,22 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                         false, false, true, R_NilValue,
-                         rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                         rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                         R_NilValue);
+    bool singleModeEv1 = asBool(rxControl[Rxc_single], "single");
+    List ev1k;
+    if (singleModeEv1) {
+      Function etTransSingleR = getRxFn("etTransSingle");
+      ev1k = as<List>(etTransSingleR(ev1, obj,
+                                     rxSolveDat->hasCmt,
+                                     false,
+                                     rxControl[Rxc_iCov],
+                                     rxControl[Rxc_keepF]));
+    } else {
+      ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                      false, false, true, R_NilValue,
+                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                      R_NilValue);
+    }
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
     if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
@@ -3418,20 +3416,22 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     rxcId   = 0;
     rxcDv   = 5;
     rxcIi   = 4;
-    int censAdd = as<int>(tmpL["censAdd"]);
+    rxcCens  = -1;
+    rxcLimit = -1;
+    rxcAddl  = -1;
+    rxcSs    = -1;
+    int censAdd  = as<int>(tmpL["censAdd"]);
     int limitAdd = as<int>(tmpL["limitAdd"]);
-    if (censAdd == 1 && limitAdd == 1) {
-      rxcCens = 6;
-      rxcLimit = 7;
-    } else if (censAdd == 1){
-      rxcCens = 6;
-      rxcLimit = -1;
-    } else if (limitAdd == 1){
-      rxcCens  = -1;
-      rxcLimit = 6;
-    } else {
-      rxcCens  = -1;
-      rxcLimit = -1;
+    int addlAdd  = (tmpL.size() > RxTrans_addlAdd) ? as<int>(tmpL[RxTrans_addlAdd]) : 0;
+    int ssAdd    = (tmpL.size() > RxTrans_ssAdd)   ? as<int>(tmpL[RxTrans_ssAdd])   : 0;
+    CharacterVector nDfTmp = as<DataFrame>(ev1).names();
+    int nColTmp = nDfTmp.size();
+    for (int ci = 6; ci < nColTmp; ++ci) {
+      std::string cn = as<std::string>(nDfTmp[ci]);
+      if      (censAdd  && cn == "CENS")  rxcCens  = ci;
+      else if (limitAdd && cn == "LIMIT") rxcLimit = ci;
+      else if (addlAdd  && cn == "ADDL")  rxcAddl  = ci;
+      else if (ssAdd    && cn == "SS")    rxcSs    = ci;
     }
   }
   rx->hasFactors=0;
