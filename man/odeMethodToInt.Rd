@@ -6,7 +6,7 @@
 \usage{
 odeMethodToInt(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
-    "abm", "dop5", "bs")
+    "abm", "dop5", "bs", "ros4")
 )
 }
 \arguments{
@@ -27,6 +27,7 @@ must be setup specially to use this solving routine.
 \item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
 \item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
 \item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
+\item \code{"ros4"} -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
 }}
 }
 \value{

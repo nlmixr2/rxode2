@@ -35,7 +35,7 @@ rxSolve(
   inits = NULL,
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
-    "abm", "dop5", "bs"),
+    "abm", "dop5", "bs", "ros4"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -321,6 +321,7 @@ must be setup specially to use this solving routine.
 \item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
 \item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
 \item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
+\item \code{"ros4"} -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -369,7 +370,7 @@ specified parameter and which defaults to zero.  When
 \code{hmax=NULL} rxode2 uses the maximum difference in times in
 your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size. Note that for dense output methods
-(\code{"dop853"}, \code{"dop5"}, \code{"bs"}), \code{hmax} defaults to \code{NULL} to allow
+(\code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow
 the solvers to determine the step size.}
 
 \item{hmaxSd}{The number of standard deviations of the time
@@ -1048,7 +1049,8 @@ from an existing serialization file via \code{rxSolve(model, "state.rxbin")}, on
 allowed because the file already stores the solve inputs and
 controls.}
 
-\item{dense}{Logical; when \code{TRUE} and \code{method="dop853"}, \code{method="dop5"}, or \code{method="bs"}, enables
+\item{dense}{Logical; when \code{TRUE} and \code{method="dop853"}, \code{method="dop5"},
+\code{method="bs"}, or \code{method="ros4"}, enables
 continuous dense output. This allows the solver to take large internal
 steps and use interpolation for the exact observation times, which can
 dramatically speed up solves with high-frequency observations or large

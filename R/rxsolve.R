@@ -79,7 +79,7 @@
 #'   `hmax=NULL` rxode2 uses the maximum difference in times in
 #'   your sampling and events.  The value 0 is equivalent to infinite
 #'   maximum absolute step size. Note that for dense output methods
-#'   (`"dop853"`, `"dop5"`, `"bs"`), `hmax` defaults to `NULL` to allow
+#'   (`"dop853"`, `"dop5"`, `"bs"`, `"ros4"`), `hmax` defaults to `NULL` to allow
 #'   the solvers to determine the step size.
 #'
 #' @param hmaxSd The number of standard deviations of the time
@@ -813,7 +813,8 @@
 #'   allowed because the file already stores the solve inputs and
 #'   controls.
 #'
-#' @param dense Logical; when `TRUE` and `method="dop853"`, `method="dop5"`, or `method="bs"`, enables
+#' @param dense Logical; when `TRUE` and `method="dop853"`, `method="dop5"`,
+#'   `method="bs"`, or `method="ros4"`, enables
 #'   continuous dense output. This allows the solver to take large internal
 #'   steps and use interpolation for the exact observation times, which can
 #'   dramatically speed up solves with high-frequency observations or large
@@ -867,7 +868,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -1302,7 +1303,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
-    if (isTRUE(dense) && method %in% c(0L, 10L, 11L) && missing(hmax)) {
+    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) && missing(hmax)) {
       ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
@@ -2103,6 +2104,31 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmp
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
+  if (.ctl$method == 13L) {
+    .mv_cur <- rxode2::rxModelVars(object)
+    .jac_type <- .mv_cur$trans["jac"]
+    .has_dp <- any(grepl("^df\\([^)]+\\)/dp\\(", .mv_cur$dfdy))
+    if (.jac_type != "fulluser" || .has_dp) {
+      .mv <- rxode2::rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
+      .states <- .mv$state
+      .norm_code <- strsplit(rxode2::rxNorm(.mv), "\n")[[1]]
+      .filtered_code <- c()
+      for (.line in .norm_code) {
+        if (grepl("^df\\(", .line)) {
+          .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+          if (length(.parts) == 3) {
+            if (.parts[2] %in% .states && .parts[3] %in% .states) {
+              .filtered_code <- c(.filtered_code, .line)
+            }
+          }
+        } else {
+          .filtered_code <- c(.filtered_code, .line)
+        }
+      }
+      object <- rxode2::rxode2(paste(.filtered_code, collapse="\n"))
+      return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
+    }
+  }
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
     .both <- intersect(.mv$params, .ctl$keep)
@@ -3149,12 +3175,14 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"bs"` -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
 #'
+#' * `"ros4"` -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+#'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {

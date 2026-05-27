@@ -102,27 +102,79 @@ struct rxode2_system {
     rxode2_system(t_dydt dydt, int* neq, rx_solving_options_ind* ind, bool cap_t = false, double xout = 0.0, int sign = 1) 
         : dydt_(dydt), neq_(neq), ind_(ind), cap_t_(cap_t), xout_(xout), sign_(sign) {}
 
-    void operator()(const zero_copy_state& x, zero_copy_state& dxdt, const double t) {
+    template <class State, class Deriv>
+    void operator()(const State& x, Deriv& dxdt, const double t) {
         dxdt.resize(x.size());
         if (ind_->err != 0) {
-            if (dxdt.begin()) std::fill(dxdt.begin(), dxdt.end(), 0.0);
+            for(size_t i=0; i<dxdt.size(); ++i) dxdt[i] = 0.0;
             return;
         }
-        if (x.begin() && dxdt.begin()) {
-            double teval = t;
-            if (cap_t_) {
-                if (sign_ == 1 && t > xout_ - 2.0e-7) {
-                    teval = xout_ - 2.0e-7;
-                    if (teval >= xout_) teval = xout_ - 3.0e-7;
-                } else if (sign_ == -1 && t < xout_ + 2.0e-7) {
-                    teval = xout_ + 2.0e-7;
-                    if (teval <= xout_) teval = xout_ + 3.0e-7;
-                }
+        double teval = t;
+        if (cap_t_) {
+            if (sign_ == 1 && t > xout_ - 2.0e-7) {
+                teval = xout_ - 2.0e-7;
+                if (teval >= xout_) teval = xout_ - 3.0e-7;
+            } else if (sign_ == -1 && t < xout_ + 2.0e-7) {
+                teval = xout_ + 2.0e-7;
+                if (teval <= xout_) teval = xout_ + 3.0e-7;
             }
-            dydt_(neq_, teval, const_cast<double*>(x.begin()), dxdt.begin());
         }
+        dydt_(neq_, teval, const_cast<double*>(&x[0]), &dxdt[0]);
     }
 };
+
+struct rxode2_system_jac_second {
+  rx_solving_options_ind *ind;
+  t_calc_jac calc_jac;
+  int *neq;
+  int neqOde;
+  int nRowPd;
+
+  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in) : 
+    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neq_in[0]) {
+    nRowPd = neqOde; 
+  }
+
+  template<class StateType, class MatrixType>
+  void operator()(const StateType& x, MatrixType& jacobi, const double t) const {
+    unsigned int nrowpd = neqOde;
+    if (calc_jac != NULL) {
+      calc_jac(neq, t, const_cast<double*>(&x[0]), &jacobi.data()[0], nrowpd);
+    }
+  }
+};
+
+struct rxode2_system_ros4_second {
+  rx_solving_options_ind *ind;
+  t_calc_jac calc_jac;
+  int *neq;
+  int neqOde;
+  
+  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in) :
+    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neq_in[0]) {
+  }
+
+  template<class StateType, class MatrixType, class DfdtType>
+  void operator()(const StateType& x, MatrixType& jacobi, const double t, DfdtType& dfdt) const {
+    unsigned int nrowpd = neqOde;
+    if (calc_jac != NULL) {
+      calc_jac(neq, t, const_cast<double*>(&x[0]), &jacobi.data()[0], nrowpd);
+    }
+    
+    // Set dfdt to zero because rxode2 doesn't calculate explicit time derivatives
+    for(size_t i=0; i<dfdt.size(); ++i) {
+      dfdt[i] = 0.0;
+    }
+  }
+};
+
+inline std::pair<rxode2_system, rxode2_system_ros4_second>
+make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq) {
+    return std::make_pair(
+        rxode2_system(calc_dydt, neq, ind),
+        rxode2_system_ros4_second(ind, calc_jac, neq)
+    );
+}
 
 struct error_checker {
     rx_solving_options_ind *ind_;
@@ -132,7 +184,8 @@ struct error_checker {
 
     error_checker(rx_solving_options_ind* ind, int* rc, int max_steps) : ind_(ind), rc_(rc), max_steps_(max_steps), steps_(0) {}
 
-    void operator()(const zero_copy_state& x, const double t) {
+    template <class State>
+    void operator()(const State& x, const double t) {
         steps_++;
         if (steps_ > max_steps_) {
             *rc_ = -2019;

@@ -40,6 +40,12 @@ extern "C" void par_bs(rx_solve *rx);
 extern "C" void ind_bs(rx_solve *rx, int solveid,
                          t_dydt c_dydt, t_update_inis u_inis);
 
+extern "C" void par_ros4(rx_solve *rx);
+extern "C" void ind_ros4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_dros4(rx_solve *rx);
+extern "C" void ind_dros4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
 	void sortInd(rx_solving_options_ind *ind);
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);
