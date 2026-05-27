@@ -58,6 +58,12 @@ extern "C" void ind_sb3a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis
 extern "C" void par_sb3am4(rx_solve *rx);
 extern "C" void ind_sb3am4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 
+extern "C" void par_vv(rx_solve *rx);
+extern "C" void ind_vv(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_mm(rx_solve *rx);
+extern "C" void ind_mm(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
 	void sortInd(rx_solving_options_ind *ind);
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);

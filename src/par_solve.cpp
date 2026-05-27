@@ -1210,6 +1210,8 @@ extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout, 
 extern "C" void sem_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void sb3a_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void sb3am4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void vv_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void mm_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
@@ -1439,6 +1441,36 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         sb3am4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 18:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        vv_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 19:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        mm_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -5566,6 +5598,12 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 17:
         ind_sb3am4(rx, cid, c_dydt, u_inis);
         break;
+      case 18:
+        ind_vv(rx, cid, c_dydt, u_inis);
+        break;
+      case 19:
+        ind_mm(rx, cid, c_dydt, u_inis);
+        break;
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
         break;
@@ -5657,6 +5695,12 @@ extern "C" void par_solve(rx_solve *rx) {
       case 17:
         par_sb3am4(rx);
         break;
+      case 18:
+        par_vv(rx);
+        break;
+      case 19:
+        par_mm(rx);
+        break;
       case 0:
         // dop
         par_dop(rx);
@@ -5713,3 +5757,5 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "sem.cpp"
 #include "sb3a.cpp"
 #include "sb3am4.cpp"
+#include "vv.cpp"
+#include "mm.cpp"
