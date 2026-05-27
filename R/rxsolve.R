@@ -2111,32 +2111,47 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
       .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
-      if (exists(.key, envir = rxSolveCacheEnv)) {
-        .filteredCode <- get(.key, envir = rxSolveCacheEnv)
-      } else {
-        .mv <- suppressMessages({
-          rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
-        })
-        .states <- .mvCur$state
-        .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
-        .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
-        .filteredCode <- .origCode
+      .filteredCode <- tryCatch({
+        if (exists(.key, envir = rxSolveCacheEnv)) {
+          get(.key, envir = rxSolveCacheEnv)
+        } else {
+          .mv <- suppressMessages({
+            rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
+          })
+          .states <- .mvCur$state
+          .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
+          .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+          .fc <- .origCode
 
-        for (.line in .normCode) {
-          if (grepl("^df\\(", .line)) {
-            .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
-            if (length(.parts) == 3) {
-              if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                .filteredCode <- c(.filteredCode, .line)
+          for (.line in .normCode) {
+            if (grepl("^df\\(", .line)) {
+              .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+              if (length(.parts) == 3) {
+                if (.parts[2] %in% .states && .parts[3] %in% .states) {
+                  .fc <- c(.fc, .line)
+                }
               }
             }
           }
+          .fc <- paste(.fc, collapse="\n")
+          assign(.key, .fc, envir = rxSolveCacheEnv)
+          .fc
         }
-        .filteredCode <- paste(.filteredCode, collapse="\n")
-        assign(.key, .filteredCode, envir = rxSolveCacheEnv)
+      }, error = function(e) {
+        # Store NA in cache to avoid retrying on every call
+        assign(.key, NA_character_, envir = rxSolveCacheEnv)
+        NA_character_
+      })
+      if (!is.na(.filteredCode)) {
+        object <- rxode2(.filteredCode)
+        return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
+      } else {
+        warning("method requires an analytical Jacobian, but automatic ",
+                "Jacobian generation failed for this model:\n  ", conditionMessage(e),
+                "\n  Falling back to liblsoda.",
+                call. = FALSE)
+        method <- 1L
       }
-      object <- rxode2(.filteredCode)
-      return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
     }
   }
   if (.ctl$addCov && length(.ctl$keep) > 0) {
