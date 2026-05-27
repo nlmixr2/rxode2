@@ -112,10 +112,19 @@ This is a censoring geom that shows the left or right censoring specified in the
 \details{
 Requires the following aesthetics:
 \itemize{
-\item \code{x} Represents the independent variable, often the time scale
+\item \code{x} represents the independent variable, often the time scale
 \item \code{y} represents the dependent variable
-\item \code{CENS} for the censoring information; (\code{-1} right censored, \code{0} no censoring or \code{1} left censoring)
-\item \code{LIMIT} which represents the corresponding limit ()
+}
+
+Plus exactly one of these aesthetic forms (the two forms cannot be mixed):
+\itemize{
+\item \code{lower} and \code{upper} give the lower and upper bounds of the censoring
+interval directly. Both must be supplied. Use \code{-Inf}/\code{Inf} for an
+unbounded side; use \code{NA} on both for observed (non-censored) rows.
+\item \code{cens} (with optional \code{limit}) gives the censoring indicator
+(\code{-1} right censored, \code{0} not censored, \code{1} left censored) and, when
+\code{limit} is also supplied, the associated limit value. Internally
+converted to \code{lower}/\code{upper}.
 }
 
 Will add boxes representing the areas of the fit that were censored.
