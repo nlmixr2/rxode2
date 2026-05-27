@@ -2114,8 +2114,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       if (exists(.key, envir = rxSolveCacheEnv)) {
         .filteredCode <- get(.key, envir = rxSolveCacheEnv)
       } else {
-        utils::capture.output({
-          .mv <- rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
+        .mv <- suppressMessages({
+          rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
         })
         .states <- .mvCur$state
         .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
