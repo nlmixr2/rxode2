@@ -6,6 +6,9 @@
   checking stalled in waiting queue and one small fix for event tables
   was added).
 
+* For Makefile generation use compilerPath <- tools::Rcmd("config CC",
+  stdout=TRUE) as indicated by Kurt.
+
 * Added fix for the following issue seen in the reverse dependency check:
 
 Package check result: WARNING

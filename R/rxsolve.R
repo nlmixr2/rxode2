@@ -69,8 +69,8 @@
 #'     increased to ensure the integration completes within the
 #'     `maxsteps` limit.
 #'
-#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this specifies the
-#'     initial step size.
+#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this
+#'     specifies the initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
 #'   `hmax=NA` (default), uses the average difference +
@@ -78,9 +78,11 @@
 #'   specified parameter and which defaults to zero.  When
 #'   `hmax=NULL` rxode2 uses the maximum difference in times in
 #'   your sampling and events.  The value 0 is equivalent to infinite
-#'   maximum absolute step size. Note that for dense output methods
-#'   (`"dop853"`, `"dop5"`, `"bs"`, `"ros4"`), `hmax` defaults to `NULL` to allow
-#'   the solvers to determine the step size.
+#'   maximum absolute step size.
+#'
+#'   Note that for dense output methods (`"dop853"`, `"dop5"`, `"bs"`,
+#'   `"ros4"`), `hmax` defaults to `NULL` to allow the solvers to
+#'   determine the step size when `dense=TRUE`
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
@@ -1619,7 +1621,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       return(.rxEtSyncData(x))
     }
     .meta <- attr(.preview, "rxEtPreviewGroups", exact = TRUE)
-    if (!is.null(.meta) && !("id" %in% names(.preview))) {
+    if (!is.null(.meta)) {
       .preview$id <- rep.int(
         vapply(.meta, function(.g) as.integer(.g$ids[[1L]]), integer(1)),
         vapply(.meta, function(.g) as.integer(.g$nRow), integer(1))

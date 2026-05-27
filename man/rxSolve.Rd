@@ -359,8 +359,8 @@ steps to exceed `maxsteps`, the step size is automatically
 increased to ensure the integration completes within the
 `maxsteps` limit.
 
-For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this specifies the
-initial step size.
+For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this
+specifies the initial step size.
 }\if{html}{\out{</div>}}}
 
 \item{hmax}{The maximum absolute step size allowed.  When
@@ -369,9 +369,11 @@ hmaxSd*sd in times and sampling events. The \code{hmaxSd} is a user
 specified parameter and which defaults to zero.  When
 \code{hmax=NULL} rxode2 uses the maximum difference in times in
 your sampling and events.  The value 0 is equivalent to infinite
-maximum absolute step size. Note that for dense output methods
-(\code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow
-the solvers to determine the step size.}
+maximum absolute step size.
+
+Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
+\code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+determine the step size when \code{dense=TRUE}}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}

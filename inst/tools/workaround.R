@@ -27,11 +27,13 @@ if (length(w) >= 1) {
   close(RcppExports.R)
 }
 
-compilerPath <- system("R CMD config CC", intern = TRUE)
+compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
 
 # To distinguish between them, check the version output
-versionInfo <- system(paste(compilerPath, "--version"), intern = TRUE)
-if (any(grepl("clang", versionInfo, ignore.case = TRUE))) {
+versionInfo <- try(system(paste(compilerPath, "--version"), intern = TRUE))
+if (inherits(versionInfo, "try-error")) {
+  .o2 <- "-O2 "
+} else if (any(grepl("clang", versionInfo, ignore.case = TRUE))) {
   .o2 <- "-O3 -fno-math-errno -mtune=native "
 } else if (any(grepl("gcc", versionInfo, ignore.case = TRUE))) {
   .o2 <- "-O3 -fno-math-errno -mtune=native "
