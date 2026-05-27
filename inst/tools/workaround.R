@@ -27,7 +27,7 @@ if (length(w) >= 1) {
   close(RcppExports.R)
 }
 
-compilerPath <- system("R CMD config CC", intern = TRUE)
+compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
 
 # To distinguish between them, check the version output
 versionInfo <- system(paste(compilerPath, "--version"), intern = TRUE)
