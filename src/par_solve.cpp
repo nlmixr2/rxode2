@@ -5488,7 +5488,6 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
         ind_bs(rx, cid, c_dydt, u_inis);
         break;
       case 13:
-        REprintf("Calling ind_ros4\n");
         ind_ros4(rx, cid, c_dydt, u_inis);
         break;
       case 0:
