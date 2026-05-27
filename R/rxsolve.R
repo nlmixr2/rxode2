@@ -870,7 +870,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -3219,8 +3219,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {
