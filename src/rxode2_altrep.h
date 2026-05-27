@@ -37,6 +37,24 @@ Rboolean is_rx_rep_int(SEXP x);
 Rboolean is_rx_seqrep(SEXP x);
 Rboolean is_rx_rep_str(SEXP x);
 
+/*
+ * Zero-copy ALTREP column view constructors.
+ * make_rx_col_view_int/real wrap an existing R vector; Dataptr() returns
+ * the original column pointer directly (no allocation).
+ */
+SEXP make_rx_col_view_int(SEXP col);
+SEXP make_rx_col_view_real(SEXP col);
+
+/*
+ * Lazy CMT translation ALTREP.
+ * orig_col: original CMT column (INTSXP integer codes or STRSXP names)
+ * cmt_nums: INTSXP of solver compartment numbers (1-based) parallel to cmt_names
+ * cmt_names: STRSXP of compartment names matching cmt_nums
+ * Elt() translates one element without allocating n elements.
+ * Dataptr() forces full materialization on first call; cached after.
+ */
+SEXP make_rx_cmt_trans(SEXP orig_col, SEXP cmt_nums, SEXP cmt_names);
+
 #ifdef __cplusplus
 }
 #endif
