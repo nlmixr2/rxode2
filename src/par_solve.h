@@ -64,6 +64,10 @@ extern "C" void ind_vv(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u
 extern "C" void par_mm(rx_solve *rx);
 extern "C" void ind_mm(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 
+extern "C" void par_em(rx_solve *rx);
+extern "C" void ind_em(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+
 	void sortInd(rx_solving_options_ind *ind);
 
   void _setIndPointersByThread(rx_solving_options_ind *ind);
