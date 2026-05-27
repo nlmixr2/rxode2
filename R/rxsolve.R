@@ -870,7 +870,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -2108,7 +2108,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmp
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
-  if (.ctl$method == 13L) {
+  if (.ctl$method %in% c(13L, 14L)) {
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
@@ -2146,6 +2146,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       })
       if (!is.na(.filteredCode)) {
         object <- rxode2(.filteredCode)
+        force(params)
+        force(events)
+        force(inits)
+        force(indOwnAlloc)
+        force(theta)
+        force(eta)
+        force(envir)
         return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
       } else {
         warning("method requires an analytical Jacobian, but automatic ",
@@ -3204,12 +3211,16 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"ros4"` -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
 #'
+#' * `"iem"` -- Implicit Euler solver using Boost's odeint library.
+#'   Requires an explicit Jacobian (auto-generated via `calcJac=TRUE` when not provided).
+#'   Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by `hmin`).
+#'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {

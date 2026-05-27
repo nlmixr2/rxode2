@@ -1206,6 +1206,7 @@ extern "C" void abm_solveWith1Pt(int *neq, double *yp, double *xp, double xout, 
 extern "C" void dop5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void bs_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
@@ -1375,6 +1376,21 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         ros4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 14:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        iem_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -3309,7 +3325,7 @@ extern "C" void par_linCmt(rx_solve *rx) {
     for (int solveid = thread; solveid < nsolve; solveid+=cores){
       int localAbort;
 #pragma omp atomic read
-      localAbort = abort;
+        localAbort = abort;
       if (localAbort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1);
 
@@ -3398,7 +3414,7 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
     for (int solveid = thread; solveid < nsolve; solveid+=cores){
       int localAbort;
 #pragma omp atomic read
-      localAbort = abort;
+        localAbort = abort;
       if (localAbort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
         ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
@@ -3484,7 +3500,7 @@ extern "C" void par_liblsoda(rx_solve *rx){
   for (int solveid = 0; solveid < nsolve; solveid++){
     int localAbort;
 #pragma omp atomic read
-    localAbort = abort;
+        localAbort = abort;
     if (localAbort == 0){
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
       ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
@@ -5490,6 +5506,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 13:
         ind_ros4(rx, cid, c_dydt, u_inis);
         break;
+      case 14:
+        ind_iem(rx, cid, c_dydt, u_inis);
+        break;
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
         break;
@@ -5569,6 +5588,9 @@ extern "C" void par_solve(rx_solve *rx) {
       case 13:
         par_ros4(rx);
         break;
+      case 14:
+        par_iem(rx);
+        break;
       case 0:
         // dop
         par_dop(rx);
@@ -5621,3 +5643,4 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "dop5.cpp"
 #include "bs.cpp"
 #include "ros4.cpp"
+#include "iem.cpp"
