@@ -1,0 +1,206 @@
+---
+title: "A Guide to ODE Solvers in rxode2: Selection and Suitability for Pharmacometric Models"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+
+```{r setup, echo=FALSE}
+options(cli.unicode = FALSE, crayon.enabled = FALSE)
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  out.width = "100%"
+)
+options(width = 80, cli.width = 80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH = 80)
+```
+
+## Introduction
+
+In pharmacometrics, Ordinary Differential Equation (ODE) solvers are
+the computational engines driving model simulations. Whether you are
+running a simple one-compartment PK model, a complex
+physiologically-based pharmacokinetic (PBPK) model, or a stiff
+quantitative systems pharmacology (QSP) model, selecting the right
+solver can drastically impact simulation speed, accuracy, and
+numerical stability.
+
+`rxode2` provides a rich set of 18 ODE solving methods, combining
+classic solvers (like LSODA and DOP853) with modern adaptive,
+fixed-step, implicit, and symplectic steppers from the C++
+`Boost.odeint` library.
+
+This guide provides an overview of the solvers available in `rxode2`,
+explains key numerical concepts (stiffness, dense output, symplectic
+integration), and recommends when to use each method.
+
+---
+
+## Summary of ODE Solvers in `rxode2`
+
+The table below summarizes the solvers available in `rxode2` and their properties:
+
+| Method | Type | Stiff-Safe | Dense Output | Key Options | Recommended Use Case |
+|---|---|---|---|---|---|
+| **`"liblsoda"`** *(Default)* | Adaptive (BDF / Adams) | Yes | No | `atol`, `rtol`, `maxsteps` | **Default choice for general PK/PD.** Thread-parallel across subjects. |
+| **`"lsoda"`** | Adaptive (BDF / Adams) | Yes | No | `atol`, `rtol`, `maxsteps` | Fortran-based LSODA. Single-threaded. Supports user Jacobians. |
+| **`"dop853"`** | Explicit Runge-Kutta 8(5,3) | No | Yes | `atol`, `rtol`, `dense` | High-order solver. Excellent for **smooth, non-stiff models** with rich sampling. |
+| **`"rkf78"`** | Explicit Runge-Kutta-Fehlberg 7(8) | No | No | `atol`, `rtol`, `hmin` (initial dt) | Non-stiff models where high-accuracy adaptive step-sizes are desired. |
+| **`"ck54"`** | Explicit Cash-Karp 5(4) | No | No | `atol`, `rtol`, `hmin` (initial dt) | Non-stiff models with moderate accuracy requirements. |
+| **`"dop5"`** | Explicit Dormand-Prince 5(4) | No | Yes | `atol`, `rtol`, `dense` | Non-stiff models. Fast alternative to `dop853` for moderate accuracy. |
+| **`"bs"`** | Bulirsch-Stoer | No | Yes | `atol`, `rtol`, `dense` | Smooth, non-stiff systems where very high precision is required. |
+| **`"ros4"`** | Implicit Rosenbrock 4 | Yes | Yes | `atol`, `rtol`, `dense` | **Stiff systems** (e.g., target-mediated drug disposition). Supports dense output. |
+| **`"iem"`** | Implicit Euler | Yes | No | `hmin` (fixed dt), `maxsteps` | Stiff systems where a **fixed integration step** is strictly required. |
+| **`"rk4"`** | Explicit Runge-Kutta 4 | No | No | `hmin` (fixed dt), `maxsteps` | Fixed-step solver for debugging or comparing with historical code. |
+| **`"em"`** | Explicit Euler | No | No | `hmin` (fixed dt), `maxsteps` | Simple 1st-order solver. Mainly for educational use or discrete comparisons. |
+| **`"ab"`** | Adams-Bashforth | No | No | `hmin` (fixed dt), `order` (1-8) | Multi-step explicit solver. Useful for smooth non-stiff dynamics. |
+| **`"abm"`** | Adams-Bashforth-Moulton | No | No | `hmin` (fixed dt), `order` (1-8) | Predictor-corrector multi-step explicit solver. |
+| **`"mm"`** | Modified Midpoint | No | No | `hmin` (fixed dt), `order` (intermediate steps) | Explicit fixed-step mid-point formulation used internally by Bulirsch-Stoer. |
+| **`"sem"`** | Symplectic Euler | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Padded for general/odd dimensions. |
+| **`"sb3a"`** | Symplectic RKN SB3A McLachlan | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. High-order Runge-Kutta-Nyström. |
+| **`"sb3am4"`** | Symplectic RKN SB3A M4 McLachlan | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Alternative high-order RKN stepper. |
+| **`"vv"`** | Velocity Verlet | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Second-order Verlet integrator. |
+
+---
+
+## Stiffness in Pharmacometrics
+
+The choice of ODE solver should begin with assessing if your model is **stiff**.
+
+### What is stiffness?
+
+A system of differential equations is stiff if the solution has
+components that vary at extremely different timescales. In
+pharmacometrics, this commonly occurs when:
+
+1. **Target-Mediated Drug Disposition (TMDD)**: The binding rate
+   constant ($k_{on}$) is extremely fast, while elimination and
+   distribution occur over hours or days.
+
+2. **Systemic Feedback Loops**: Models with rapid signaling cascades
+   (e.g. receptor phosphorylation) coupled with slow receptor
+   synthesis/degradation.
+
+### Stiff vs. Non-Stiff Solvers
+
+- **Explicit solvers** (like `dop853`, `rk4`, `dop5`, `bs`, `em`)
+  evaluate the derivatives using only the state at the current
+  time. On stiff systems, they are forced to take micro-steps to
+  prevent numerical instability, causing the solver to stall, hang, or
+  fail.
+
+- **Implicit solvers** (like `liblsoda`, `ros4`, `iem`) solve an
+  implicit equation at each step, requiring the Jacobian matrix of the
+  system. While each step is more expensive to calculate, they can
+  take much larger steps through stiff regions.
+
+For stiff systems, **`"liblsoda"`** (adaptive automatic switching) or
+**`"ros4"`** (implicit Rosenbrock 4) should always be preferred; note
+that the Rosenbrock 4 method is often slower and requires a symbolic
+Jacobian calculation step (which is automatically done) which at times
+may fail.
+
+---
+
+## Understanding Key Solver Options
+
+### 1. Fixed-Step vs. Adaptive-Step
+
+- **Adaptive Solvers** (e.g., `liblsoda`, `dop853`, `dop5`, `bs`,
+  `ros4`, `rkf78`, `ck54`) dynamically adjust the step size ($dt$) to
+  maintain the local integration error below the specified tolerances
+  (`atol` and `rtol`). These are standard for almost all
+  pharmacometric applications.
+
+- **Fixed-Step Solvers** (e.g., `rk4`, `em`, `ab`, `abm`, `iem`,
+  `sem`, `sb3a`, `sb3am4`, `vv`, `mm`) integrate using a step size
+  strictly governed by the **`hmin`** parameter. If `hmin = 0`
+  (default), `rxode2` assigns a default of `0.01` for `rk4` and
+  `0.0001` for other fixed-step methods. If the number of steps
+  exceeds `maxsteps`, the step size is automatically scaled up to
+  prevent hangs.
+
+### 2. Dense Output (`dense = TRUE`)
+
+Normally, when integrating to an observation grid, adaptive solvers
+must stop exactly at each observation time, which resets the step-size
+selection algorithm and slows down the integration.
+
+When **`dense = TRUE`** is set for supported solvers (`dop853`,
+`dop5`, `bs`, `ros4`), the solver integrates across the interval at
+its own optimal step size. It then uses cheap, continuous
+interpolation polynomials to calculate the states at the requested
+observation times. This is highly recommended for dense simulation
+grids (e.g. generating smooth VPC lines) and can lead to a 10% to 20%
+speedup.
+
+### 3. The `order` Option
+
+- For Adams-Bashforth (`"ab"`) and Adams-Bashforth-Moulton (`"abm"`),
+  the `order` option (1 to 8, default 5) sets the number of historical
+  steps used to extrapolate the next step.
+
+- For the Modified Midpoint (`"mm"`) solver, `order` (default 5, must
+  be `>= 1`) configures the number of intermediate sub-steps taken
+  inside each interval.
+
+---
+
+## When to Use Symplectic Solvers
+
+`rxode2` includes four symplectic integrators: `"sem"`, `"sb3a"`,
+`"sb3am4"`, and `"vv"`.
+
+Symplectic solvers are designed to conserve energy and phase-space
+volume in Hamiltonian systems (conservative systems without friction
+or dissipation, such as a harmonic oscillator or planetary orbits).
+
+### Suitability for Pharmacometrics
+
+Most pharmacometric compartment models represent physical mass
+transfer with **dissipation** (e.g., drug clearance, decay,
+metabolism). Because energy or mass is constantly leaving the system,
+these are not Hamiltonian systems, and standard adaptive solvers (like
+`liblsoda`) are mathematically much more appropriate.
+
+However, symplectic solvers are highly useful in specific contexts:
+
+- **Binding Dynamics Analogies**: Modeling conservative physical
+  sub-systems or simulating idealized periodic feedback loops where
+  long-term stability without numerical dampening is crucial.
+
+- **Dimensionality Padding**: `rxode2` automatically handles general
+  and odd-dimensional systems (which do not naturally split into
+  coordinate-momentum pairs) by applying zero-derivative padding
+  variables, enabling these solvers to integrate any arbitrary ODE
+  model.
+
+---
+
+## Recommended Workflow for Solver Selection
+
+1. **Start with `"liblsoda"` (default)**: It is robust, handles
+   stiffness automatically, and scales efficiently across multiple CPU
+   cores using OpenMP.
+
+2. **If the system is non-stiff and you have a dense observation
+   grid**: Try **`method = "dop853"`** or **`method = "dop5"`** with
+   **`dense = TRUE`** to speed up simulations.
+
+3. **If the system is highly stiff (e.g. complex TMDD/QSP)**: Use
+   **`method = "ros4"`** (implicit Rosenbrock 4). If the model does
+   not contain a manual analytical Jacobian, `rxode2` will
+   automatically generate one for you via SymEngine when compiling.
+
+---
+
+## Session Information
+
+```{r session-info}
+sessionInfo()
+```

@@ -321,6 +321,8 @@ navbar:
           href: articles/rxode2-intro.html
         - text: "rxode2 mini-language syntax"
           href: articles/rxode2-syntax.html
+        - text: "ODE solvers in rxode2"
+          href: articles/ode-solvers.html
         - text: "Interactive tutorials"
           href: articles/rxode2-tutorials.html
   - text: "Model"
