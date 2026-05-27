@@ -403,7 +403,7 @@ static int rx_col_view_int_Elt(SEXP x, R_xlen_t i) {
   return INTEGER_ELT(R_altrep_data1(x), i);
 }
 static void *rx_col_view_int_Dataptr(SEXP x, Rboolean writeable) {
-  return DATAPTR(R_altrep_data1(x));
+  return DATAPTR_RW(R_altrep_data1(x));
 }
 static const void *rx_col_view_int_Dataptr_or_null(SEXP x) {
   return DATAPTR_OR_NULL(R_altrep_data1(x));
@@ -422,7 +422,7 @@ static double rx_col_view_real_Elt(SEXP x, R_xlen_t i) {
   return REAL_ELT(R_altrep_data1(x), i);
 }
 static void *rx_col_view_real_Dataptr(SEXP x, Rboolean writeable) {
-  return DATAPTR(R_altrep_data1(x));
+  return DATAPTR_RW(R_altrep_data1(x));
 }
 static const void *rx_col_view_real_Dataptr_or_null(SEXP x) {
   return DATAPTR_OR_NULL(R_altrep_data1(x));
@@ -491,7 +491,7 @@ static SEXP rx_cmt_trans_materialize(SEXP x) {
 }
 
 static void *rx_cmt_trans_Dataptr(SEXP x, Rboolean writeable) {
-  return DATAPTR(rx_cmt_trans_materialize(x));
+  return DATAPTR_RW(rx_cmt_trans_materialize(x));
 }
 
 static const void *rx_cmt_trans_Dataptr_or_null(SEXP x) {
