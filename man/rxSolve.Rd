@@ -34,7 +34,8 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
+    "abm", "dop5", "bs"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -315,8 +316,11 @@ solving nor user Jacobian specification
 must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
-\item \code{"ck54"} -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
+\item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
 \item \code{"ab"} -- Adams-Bashforth solver using Boost's odeint library.
+\item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
+\item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
+\item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -346,13 +350,16 @@ during one call to the solver. (5000 by default)}
 \item{hmin}{The minimum absolute step size allowed. The default
 value is 0.
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"` and `"ab"` methods, this specifies the fixed step size. If
-`hmin=0` (the default), it uses a default of `0.01` for `"rk4"` and `0.0001`
-for `"ab"`. If the requested step size would cause the number of steps to exceed
-`maxsteps`, the step size is automatically increased to ensure
-the integration completes within the `maxsteps` limit.
+\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"`, `"ab"`, and `"abm"` methods, this specifies
+the fixed step size. If `hmin=0` (the default), it uses a
+default of `0.01` for `"rk4"` and `0.0001` for `"ab"` and
+`"abm"`. If the requested step size would cause the number of
+steps to exceed `maxsteps`, the step size is automatically
+increased to ensure the integration completes within the
+`maxsteps` limit.
 
-For the `"rkf78"` and `"ck54"` methods, this specifies the initial step size.
+For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this specifies the
+initial step size.
 }\if{html}{\out{</div>}}}
 
 \item{hmax}{The maximum absolute step size allowed.  When
@@ -361,7 +368,9 @@ hmaxSd*sd in times and sampling events. The \code{hmaxSd} is a user
 specified parameter and which defaults to zero.  When
 \code{hmax=NULL} rxode2 uses the maximum difference in times in
 your sampling and events.  The value 0 is equivalent to infinite
-maximum absolute step size.}
+maximum absolute step size. Note that for dense output methods
+(\code{"dop853"}, \code{"dop5"}, \code{"bs"}), \code{hmax} defaults to \code{NULL} to allow
+the solvers to determine the step size.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}
@@ -376,7 +385,7 @@ default value is determined by the solver (when \code{hini = 0})}
 \item{maxords}{The maximum order to be allowed for the stiff (BDF)
 method.  The default value is 5.  This can be between 1 and 5.}
 
-\item{order}{The order for the \code{"ab"} method. The default is 5.
+\item{order}{The order for the \code{"ab"} and \code{"abm"} methods. The default is 5.
 It can be between 1 and 8.}
 
 \item{...}{Other arguments including scaling factors for each
@@ -1039,13 +1048,12 @@ from an existing serialization file via \code{rxSolve(model, "state.rxbin")}, on
 allowed because the file already stores the solve inputs and
 controls.}
 
-\item{dense}{Logical; when \code{TRUE} and \code{method="dop853"}, enables
-DOP853 dense polynomial output (\code{iout=2}). Instead of calling the
-solver once per observation time, a single solver call spans each
-inter-dose interval and a 7th-order polynomial interpolates all
-observation times within that interval. This can substantially
-reduce the number of solver evaluations for models with dense
-sampling grids. Silently ignored for non-dop853 methods. Not yet
+\item{dense}{Logical; when \code{TRUE} and \code{method="dop853"}, \code{method="dop5"}, or \code{method="bs"}, enables
+continuous dense output. This allows the solver to take large internal
+steps and use interpolation for the exact observation times, which can
+dramatically speed up solves with high-frequency observations or large
+sampling grids. Silently ignored for non-dense methods. Not yet
+compatible with multiple dosing events in the same interval. yet
 supported for \code{linCmt()} models (a message is emitted and the
 standard path is used instead).}
 

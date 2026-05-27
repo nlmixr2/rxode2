@@ -5,7 +5,8 @@
 \title{Conversion between character and integer ODE integration methods for rxode2}
 \usage{
 odeMethodToInt(
-  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab")
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
+    "abm", "dop5", "bs")
 )
 }
 \arguments{
@@ -21,8 +22,11 @@ solving nor user Jacobian specification
 must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
-\item \code{"ck54"} -- Runge-Kutta Cash-Karp 54 solver using Boost's odeint library.
+\item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
 \item \code{"ab"} -- Adams-Bashforth solver using Boost's odeint library.
+\item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
+\item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
+\item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
 }}
 }
 \value{
