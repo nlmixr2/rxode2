@@ -27,7 +27,13 @@ extern "C" void ind_ck54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis
 void par_ab(rx_solve *rx);
 extern "C" void ind_ab(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_abm(rx_solve *rx);
-extern "C" void ind_abm(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_abm(rx_solve *rx, int solveid,
+                        t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_dop5(rx_solve *rx);
+
+extern "C" void ind_dop5(rx_solve *rx, int solveid,
+                         t_dydt c_dydt, t_update_inis u_inis);
 
 	void sortInd(rx_solving_options_ind *ind);
 

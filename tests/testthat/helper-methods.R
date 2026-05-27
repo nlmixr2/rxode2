@@ -1,10 +1,10 @@
 # Helper functions for the test cases of the methods.
 # general ode methods used
-.methods0 <- c("ab", "abm", "ck54", "rk4", "dop853", "rkf78", "liblsoda")
-#.methods0 <- c("ab", "abm", "dop5")
+.methods0 <- c("dop5", "ab", "abm", "ck54", "rk4", "dop853", "rkf78", "liblsoda")
+.methods0 <- c("dop5")
 # dense methods used for nmtest
-.methods1 <- c("ddop853")
-#.methods1 <- c("dop5")
+#.methods1 <- c("ddop853", "ddop5")
+.methods1 <- "ddop5"
 # Linear compartment methods used for nmtest
 .methods2 <- c("A", "B", "Ao", "Bo", "As", "Bs", "Ad", "Bd", "Al", "Bl")
 #.methods2 <- NULL

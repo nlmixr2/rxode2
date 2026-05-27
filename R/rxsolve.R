@@ -1301,7 +1301,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
     if (isTRUE(dense) && method %in% c(0L, 10L) && missing(hmax)) {
-      .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
+      ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
     if (isTRUE(dense) && method == 7L) {
