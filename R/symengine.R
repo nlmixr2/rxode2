@@ -2062,7 +2062,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         }
       } else {
         if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
-                        "midpoint", "linear", "splitBolus", "printf", "Rprintf", "print")) return(NULL)
+                        "midpoint", "linear", "splitBolus")) return(NULL)
+        if (.fun %in% c("printf", "Rprintf", "print")) {
+          return(paste(deparse(x), collapse=""))
+        }
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
           .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)

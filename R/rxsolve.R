@@ -1985,6 +1985,8 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+rxSolveCacheEnv <- new.env(parent=emptyenv())
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -2105,27 +2107,35 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (.ctl$method == 13L) {
-    .mv_cur <- rxode2::rxModelVars(object)
-    .jac_type <- .mv_cur$trans["jac"]
-    .has_dp <- any(grepl("^df\\([^)]+\\)/dp\\(", .mv_cur$dfdy))
-    if (.jac_type != "fulluser" || .has_dp) {
-      .mv <- rxode2::rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
-      .states <- .mv$state
-      .norm_code <- strsplit(rxode2::rxNorm(.mv), "\n")[[1]]
-      .filtered_code <- c()
-      for (.line in .norm_code) {
-        if (grepl("^df\\(", .line)) {
-          .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
-          if (length(.parts) == 3) {
-            if (.parts[2] %in% .states && .parts[3] %in% .states) {
-              .filtered_code <- c(.filtered_code, .line)
+    .mvCur <- rxModelVars(object)
+    .jacType <- .mvCur$trans["jac"]
+    if (.jacType != "fulluser") {
+      .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
+      if (exists(.key, envir = rxSolveCacheEnv)) {
+        .filteredCode <- get(.key, envir = rxSolveCacheEnv)
+      } else {
+        utils::capture.output({
+          .mv <- rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
+        })
+        .states <- .mvCur$state
+        .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
+        .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+        .filteredCode <- .origCode
+
+        for (.line in .normCode) {
+          if (grepl("^df\\(", .line)) {
+            .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+            if (length(.parts) == 3) {
+              if (.parts[2] %in% .states && .parts[3] %in% .states) {
+                .filteredCode <- c(.filteredCode, .line)
+              }
             }
           }
-        } else {
-          .filtered_code <- c(.filtered_code, .line)
         }
+        .filteredCode <- paste(.filteredCode, collapse="\n")
+        assign(.key, .filteredCode, envir = rxSolveCacheEnv)
       }
-      object <- rxode2::rxode2(paste(.filtered_code, collapse="\n"))
+      object <- rxode2(.filteredCode)
       return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
     }
   }
