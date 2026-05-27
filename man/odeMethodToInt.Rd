@@ -6,7 +6,7 @@
 \usage{
 odeMethodToInt(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
-    "abm", "dop5", "bs", "ros4")
+    "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em")
 )
 }
 \arguments{
@@ -28,6 +28,25 @@ must be setup specially to use this solving routine.
 \item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
 \item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
 \item \code{"ros4"} -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+\item \code{"iem"} -- Implicit Euler solver using Boost's odeint library.
+Requires an explicit Jacobian (auto-generated via \code{calcJac=TRUE} when not provided).
+Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sem"} -- Symplectic Euler solver using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}) and uses the \code{order} parameter to configure the number of intermediate steps.
+\item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}).
 }}
 }
 \value{

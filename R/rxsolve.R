@@ -61,10 +61,10 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"`, `"ab"`, and `"abm"` methods, this specifies
+#'     For the `"rk4"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
 #'     the fixed step size. If `hmin=0` (the default), it uses a
-#'     default of `0.01` for `"rk4"` and `0.0001` for `"ab"` and
-#'     `"abm"`. If the requested step size would cause the number of
+#'     default of `0.01` for `"rk4"` and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+#'     If the requested step size would cause the number of
 #'     steps to exceed `maxsteps`, the step size is automatically
 #'     increased to ensure the integration completes within the
 #'     `maxsteps` limit.
@@ -94,8 +94,11 @@
 #'     (Adams) method.  The default is 12.  It can be between 1 and
 #'     12.
 #'
-#' @param order The order for the `"ab"` and `"abm"` methods. The default is 5.
-#'     It can be between 1 and 8.
+#' @param order The order for the `"ab"`, `"abm"`, and `"mm"` methods.
+#'     For `"ab"` and `"abm"`, the default is 5, and it can be between 1 and 8.
+#'     For `"mm"` (Modified Midpoint), it represents the number of intermediate steps,
+#'     the default is 5, and it must be a positive integer (>= 1).
+
 #'
 #' @param maxords The maximum order to be allowed for the stiff (BDF)
 #'     method.  The default value is 5.  This can be between 1 and 5.
@@ -3219,6 +3222,29 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"iem"` -- Implicit Euler solver using Boost's odeint library.
 #'   Requires an explicit Jacobian (auto-generated via `calcJac=TRUE` when not provided).
 #'   Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"sem"` -- Symplectic Euler solver using Boost's odeint library.
+#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+#'   Is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"sb3a"` -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper using Boost's odeint library.
+#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+#'   Is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"sb3am4"` -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan stepper using Boost's odeint library.
+#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+#'   Is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"vv"` -- Velocity Verlet stepper using Boost's odeint library.
+#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+#'   Is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"mm"` -- Modified Midpoint stepper using Boost's odeint library.
+#'   Is a fixed-step method (step size controlled by `hmin`) and uses the `order` parameter to configure the number of intermediate steps.
+#'
+#' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
+#'   Is a fixed-step method (step size controlled by `hmin`).
+
 #'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,

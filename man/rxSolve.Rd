@@ -35,7 +35,7 @@ rxSolve(
   inits = NULL,
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
-    "abm", "dop5", "bs", "ros4"),
+    "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -322,6 +322,25 @@ must be setup specially to use this solving routine.
 \item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
 \item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
 \item \code{"ros4"} -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+\item \code{"iem"} -- Implicit Euler solver using Boost's odeint library.
+Requires an explicit Jacobian (auto-generated via \code{calcJac=TRUE} when not provided).
+Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sem"} -- Symplectic Euler solver using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}) and uses the \code{order} parameter to configure the number of intermediate steps.
+\item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}).
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -351,10 +370,10 @@ during one call to the solver. (5000 by default)}
 \item{hmin}{The minimum absolute step size allowed. The default
 value is 0.
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"`, `"ab"`, and `"abm"` methods, this specifies
+\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
 the fixed step size. If `hmin=0` (the default), it uses a
-default of `0.01` for `"rk4"` and `0.0001` for `"ab"` and
-`"abm"`. If the requested step size would cause the number of
+default of `0.01` for `"rk4"` and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+If the requested step size would cause the number of
 steps to exceed `maxsteps`, the step size is automatically
 increased to ensure the integration completes within the
 `maxsteps` limit.
@@ -388,8 +407,10 @@ default value is determined by the solver (when \code{hini = 0})}
 \item{maxords}{The maximum order to be allowed for the stiff (BDF)
 method.  The default value is 5.  This can be between 1 and 5.}
 
-\item{order}{The order for the \code{"ab"} and \code{"abm"} methods. The default is 5.
-It can be between 1 and 8.}
+\item{order}{The order for the \code{"ab"}, \code{"abm"}, and \code{"mm"} methods.
+For \code{"ab"} and \code{"abm"}, the default is 5, and it can be between 1 and 8.
+For \code{"mm"} (Modified Midpoint), it represents the number of intermediate steps,
+the default is 5, and it must be a positive integer (>= 1).}
 
 \item{...}{Other arguments including scaling factors for each
 compartment.  This includes \code{S# =} numeric will scale a compartment
