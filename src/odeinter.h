@@ -176,6 +176,16 @@ make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_ja
     );
 }
 
+// For implicit_euler, the Jacobian is called with 3 args: (state, matrix, time)
+// rxode2_system_jac_second already has this signature.
+inline std::pair<rxode2_system, rxode2_system_jac_second>
+make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq) {
+    return std::make_pair(
+        rxode2_system(calc_dydt, neq, ind),
+        rxode2_system_jac_second(ind, calc_jac, neq)
+    );
+}
+
 struct error_checker {
     rx_solving_options_ind *ind_;
     int* rc_;
@@ -190,8 +200,10 @@ struct error_checker {
         if (steps_ > max_steps_) {
             *rc_ = -2019;
             ind_->err = 1;
+            throw std::runtime_error("max steps exceeded");
         } else if (ind_->err != 0) {
             *rc_ = -2019;
+            throw std::runtime_error("solver error");
         }
     }
 };

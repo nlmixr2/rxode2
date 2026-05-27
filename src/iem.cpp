@@ -36,7 +36,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
   stepper_type stepper(1e-6);
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
-  auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_iem(ind, c_dydt, calc_jac, neq);
 
   double *yp;
 
@@ -79,6 +79,10 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               if (neqOde > 0) {
                   state_type state(neqOde);
                   double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                  if (dt <= 0.0) dt = 1e-4;
+                  if (fabs(ind->extraDoseNewXout - xp) / dt > (double)op->mxstep) {
+                      dt = fabs(ind->extraDoseNewXout - xp) / (double)(op->mxstep - 10);
+                  }
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   sys.first.xout_ = ind->extraDoseNewXout;
                   sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -116,6 +120,10 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                 if (neqOde > 0) {
                     state_type state(neqOde);
                     double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                    if (dt <= 0.0) dt = 1e-4;
+                    if (fabs(xout - ind->extraDoseNewXout) / dt > (double)op->mxstep) {
+                        dt = fabs(xout - ind->extraDoseNewXout) / (double)(op->mxstep - 10);
+                    }
                     if (xout < ind->extraDoseNewXout) dt = -dt;
                     sys.first.xout_ = xout;
                     sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -145,6 +153,10 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
           if (neqOde > 0) {
               state_type state(neqOde);
               double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+              if (dt <= 0.0) dt = 1e-4;
+              if (fabs(xout - xp) / dt > (double)op->mxstep) {
+                  dt = fabs(xout - xp) / (double)(op->mxstep - 10);
+              }
               if (xout < xp) dt = -dt;
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -258,11 +270,15 @@ extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   typedef boost::numeric::odeint::implicit_euler<double> stepper_type;
   stepper_type stepper(1e-6);
 
-  auto sys = make_rxode2_system_ros4(ind, dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_iem(ind, dydt, calc_jac, neq);
 
   if (neqOde > 0) {
       state_type state(neqOde);
       double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+      if (dt <= 0.0) dt = 1e-4;
+      if (fabs(xout - *xp) / dt > (double)op->mxstep) {
+          dt = fabs(xout - *xp) / (double)(op->mxstep - 10);
+      }
       if (xout < *xp) dt = -dt;
       sys.first.xout_ = xout;
       sys.first.sign_ = (dt > 0) ? 1 : -1;
