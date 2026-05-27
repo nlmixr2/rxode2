@@ -95,8 +95,12 @@ struct rxode2_system {
     t_dydt dydt_;
     int* neq_;
     rx_solving_options_ind* ind_;
+    bool cap_t_;
+    double xout_;
+    int sign_;
 
-    rxode2_system(t_dydt dydt, int* neq, rx_solving_options_ind* ind) : dydt_(dydt), neq_(neq), ind_(ind) {}
+    rxode2_system(t_dydt dydt, int* neq, rx_solving_options_ind* ind, bool cap_t = false, double xout = 0.0, int sign = 1) 
+        : dydt_(dydt), neq_(neq), ind_(ind), cap_t_(cap_t), xout_(xout), sign_(sign) {}
 
     void operator()(const zero_copy_state& x, zero_copy_state& dxdt, const double t) {
         dxdt.resize(x.size());
@@ -105,7 +109,17 @@ struct rxode2_system {
             return;
         }
         if (x.begin() && dxdt.begin()) {
-            dydt_(neq_, t, const_cast<double*>(x.begin()), dxdt.begin());
+            double teval = t;
+            if (cap_t_) {
+                if (sign_ == 1 && t > xout_ - 2.0e-7) {
+                    teval = xout_ - 2.0e-7;
+                    if (teval >= xout_) teval = xout_ - 3.0e-7;
+                } else if (sign_ == -1 && t < xout_ + 2.0e-7) {
+                    teval = xout_ + 2.0e-7;
+                    if (teval <= xout_) teval = xout_ + 3.0e-7;
+                }
+            }
+            dydt_(neq_, teval, const_cast<double*>(x.begin()), dxdt.begin());
         }
     }
 };

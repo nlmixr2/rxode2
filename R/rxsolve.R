@@ -69,7 +69,7 @@
 #'     increased to ensure the integration completes within the
 #'     `maxsteps` limit.
 #'
-#'     For the `"rkf78"` and `"ck54"` methods, this specifies the
+#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this specifies the
 #'     initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
@@ -78,7 +78,9 @@
 #'   specified parameter and which defaults to zero.  When
 #'   `hmax=NULL` rxode2 uses the maximum difference in times in
 #'   your sampling and events.  The value 0 is equivalent to infinite
-#'   maximum absolute step size.
+#'   maximum absolute step size. Note that for dense output methods
+#'   (`"dop853"`, `"dop5"`, `"bs"`), `hmax` defaults to `NULL` to allow
+#'   the solvers to determine the step size.
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
@@ -811,7 +813,7 @@
 #'   allowed because the file already stores the solve inputs and
 #'   controls.
 #'
-#' @param dense Logical; when `TRUE` and `method="dop853"` or `method="dop5"`, enables
+#' @param dense Logical; when `TRUE` and `method="dop853"`, `method="dop5"`, or `method="bs"`, enables
 #'   continuous dense output. This allows the solver to take large internal
 #'   steps and use interpolation for the exact observation times, which can
 #'   dramatically speed up solves with high-frequency observations or large
@@ -865,7 +867,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -1300,7 +1302,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
-    if (isTRUE(dense) && method %in% c(0L, 10L) && missing(hmax)) {
+    if (isTRUE(dense) && method %in% c(0L, 10L, 11L) && missing(hmax)) {
       ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
@@ -3145,12 +3147,14 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"dop5"` -- DOPRI5 solver using Boost's odeint library (supports dense output).
 #'
+#' * `"bs"` -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
+#'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {
