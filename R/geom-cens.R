@@ -83,7 +83,7 @@
   if (is.null(params$width)) {
     params$width <- 0.01
   }
-  return(params)
+  params
 }
 
 GeomPolygonCens <- ggplot2::ggproto("GeomPolygonCens", ggplot2::GeomPolygon,
