@@ -5413,8 +5413,9 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
   // dop853, liblsoda, rkf78, rk4, ck54, ab, abm
-  return stiff == 2 || stiff == 0 || stiff == 5 || stiff == 6 ||
-    stiff == 7 || stiff == 8 || stiff == 9;
+  //
+  // only lsoda and indLin are not thread safe currently:
+  return stiff != 1 && stiff != 3;
 }
 
 
