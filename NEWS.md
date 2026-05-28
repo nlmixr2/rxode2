@@ -1,4 +1,4 @@
-# rxode2 5.1.1
+# rxode2 5.1.2
 
 - `geom_cens()` / `stat_cens()` no longer emit "Ignoring unknown
   aesthetics" warnings when censoring aesthetics are mapped.
@@ -7,6 +7,8 @@
   `limit`). The two forms cannot be mixed, `lower` and `upper` are
   now required together, and `limit` without `cens` is rejected
   rather than silently ignored.
+
+# rxode2 5.1.1
 
 - Various low level fixes to allow `nlmixr2est` to have parallelized
   focei.
