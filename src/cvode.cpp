@@ -56,6 +56,30 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
 
   cvode_ctx_t *cvode_ctx = NULL;
 
+  // Eagerly initialize CVODE before the main loop so cvode_ctx is non-NULL
+  // when handleSS is called for a dose at t=0 (xout==xp, so the lazy path
+  // inside the loop is never reached before handleSS fires).
+  if (neqOde > 0 && ind->n_all_times > 0) {
+    std::vector<double> atol_buf;
+    double *atol_ptr = atol_data;
+    if (atol_data == &(op->ATOL)) {
+      atol_buf.assign(neqOde, op->ATOL);
+      atol_ptr = atol_buf.data();
+    }
+    _growSolveIfNeeded(ind, op, 0, 1);
+    yp = getSolve(0);
+    cvode_ctx = cvode_ctx_create(neqOde, yp, atol_ptr, rtol,
+                                 xp, op->HMIN,
+                                 op->hmax2 > 0.0 ? op->hmax2 : 0.0,
+                                 op->mxstep, cvode_rhs_trampoline,
+                                 (void *)neq, g_cvodeLinSol);
+    if (!cvode_ctx) {
+      ind->rc[0] = -2019;
+      ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
+      return;
+    }
+  }
+
   for (i = 0; i < ind->n_all_times; i++) {
     ind->idx  = i;
     ind->linSS = 0;
@@ -87,26 +111,6 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        // Lazy-initialize CVODE on the first integration step.
-        if (neqOde > 0 && cvode_ctx == NULL) {
-          std::vector<double> atol_buf;
-          double *atol_ptr = atol_data;
-          if (atol_data == &(op->ATOL)) {
-            atol_buf.assign(neqOde, op->ATOL);
-            atol_ptr = atol_buf.data();
-          }
-          cvode_ctx = cvode_ctx_create(neqOde, yp, atol_ptr, rtol,
-                                       xp, op->HMIN,
-                                       op->hmax2 > 0.0 ? op->hmax2 : 0.0,
-                                       op->mxstep, cvode_rhs_trampoline,
-                                       (void *)neq, g_cvodeLinSol);
-          if (!cvode_ctx) {
-            ind->rc[0] = -2019;
-            badSolveExit(i);
-            localBadSolve = 1;
-          }
-        }
-
         if (!localBadSolve) {
           if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
