@@ -7,19 +7,8 @@ CXX_STD = CXX17
 
 ################################################################################
 ## Package library flags.
-PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS) @SL@ @SUNDIALR_LIBS@
+PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS) @SL@ -L"@STANHDR_LIB@" -lStanHeaders
 
 # Release options — -O3 gives meaningful speedup on the ODE hot paths
-PKG_CFLAGS  =  -D_isrxode2_ @O2@ @SUNDIALR_DEFS@
-PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" @SUNDIALR_DEFS@
-
-# sundialr include directory — set by inst/tools/workaround.R when sundialr is
-# available, otherwise "." (harmless fallback).
-SUNDIALR_INC_DIR = @SUNDIALR_INC_DIR@
-
-# Target-specific variable: put sundialr's SUNDIALS 7.x headers first for
-# cvode_solver.o so they take precedence over the older bundled SUNDIALS in
-# StanHeaders (which lacks SUNErrCode and related 7.x types).
-# Using a variable override rather than an explicit rule avoids making
-# cvode_solver.o the default make target (which would skip the main build).
-cvode_solver.o: ALL_CPPFLAGS := -I"$(SUNDIALR_INC_DIR)" $(ALL_CPPFLAGS)
+PKG_CFLAGS  =  -D_isrxode2_ @O2@ -DSUNDIALR_CVODE
+PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -DSUNDIALR_CVODE

@@ -283,6 +283,10 @@ extern "C" void bs_solveWith1Pt(int *neq, double *yp, double *xp, double xout, i
           *istate = -1;
           return;
       }
+      if (ind->rc[0] < 0 || ind->err) {
+          *istate = -1;
+          return;
+      }
   }
   *xp = xout;
   *istate = 1;

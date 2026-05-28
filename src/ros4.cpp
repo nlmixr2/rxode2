@@ -137,7 +137,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                             stepper, sys, state, ind->extraDoseNewXout, xout, dt, error_checker(ind, ind->rc, op->mxstep));
                         stepper_initialized = false;
-                      std::copy(state.begin(), state.end(), yp);
+                      if (!ind->err) std::copy(state.begin(), state.end(), yp);
                     } catch(const std::exception& e) {
                         if (ind->rc[0] == 0) ind->rc[0] = -2019;
                     }
@@ -188,19 +188,19 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       }
 
                   } else {
-                      
+
                       std::copy(yp, yp + neqOde, state.begin());
                       boost::numeric::odeint::integrate_adaptive(
 
                           stepper, sys, state, xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
-                      std::copy(state.begin(), state.end(), yp);
+                      if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   }
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
               }
           }
-          
+
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "ros4 failed";
           postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 11, true, ind, op, rx);
@@ -315,12 +315,16 @@ extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
       sys.first.xout_ = xout;
       sys.first.sign_ = (dt > 0) ? 1 : -1;
       try {
-                                std::copy(yp, yp + neqOde, state.begin());
-                        boost::numeric::odeint::integrate_adaptive(
-                stepper, sys, state, *xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
-                        std::copy(state.begin(), state.end(), yp);
-        } catch(const std::exception& e) {
-            if (ind->rc[0] == 0) ind->rc[0] = -2019;
+          std::copy(yp, yp + neqOde, state.begin());
+          boost::numeric::odeint::integrate_adaptive(
+              stepper, sys, state, *xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
+          if (!ind->err) std::copy(state.begin(), state.end(), yp);
+      } catch(const std::exception& e) {
+          if (ind->rc[0] == 0) ind->rc[0] = -2019;
+          *istate = -1;
+          return;
+      }
+      if (ind->rc[0] < 0 || ind->err) {
           *istate = -1;
           return;
       }

@@ -132,7 +132,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                         boost::numeric::odeint::integrate_const(
                             stepper, sys, state, ind->extraDoseNewXout, xout, dt,
                             error_checker(ind, ind->rc, op->mxstep));
-                        std::copy(state.begin(), state.end(), yp);
+                        if (!ind->err) std::copy(state.begin(), state.end(), yp);
                     } catch(const std::exception& e) {
                         if (ind->rc[0] == 0) ind->rc[0] = -2019;
                     }
@@ -165,7 +165,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                   boost::numeric::odeint::integrate_const(
                       stepper, sys, state, xp, xout, dt,
                       error_checker(ind, ind->rc, op->mxstep));
-                  std::copy(state.begin(), state.end(), yp);
+                  if (!ind->err) std::copy(state.begin(), state.end(), yp);
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
               }
@@ -287,9 +287,13 @@ extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
           boost::numeric::odeint::integrate_const(
               stepper, sys, state, *xp, xout, dt,
               error_checker(ind, ind->rc, op->mxstep));
-          std::copy(state.begin(), state.end(), yp);
+          if (!ind->err) std::copy(state.begin(), state.end(), yp);
       } catch(const std::exception& e) {
           if (ind->rc[0] == 0) ind->rc[0] = -2019;
+          *istate = -1;
+          return;
+      }
+      if (ind->rc[0] < 0 || ind->err) {
           *istate = -1;
           return;
       }

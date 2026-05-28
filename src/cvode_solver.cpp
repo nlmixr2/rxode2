@@ -1,12 +1,11 @@
-// CVODE solver implementation — compiled with sundialr headers taking priority
-// over any bundled SUNDIALS in StanHeaders.  See the custom cvode_solver.o
-// rule in Makevars.in which prepends the sundialr include path.
+// CVODE solver implementation using SUNDIALS 6.x from StanHeaders.
+// Uses CVODES (superset of CVODE) for plain ODE integration.
 // This file has NO dependency on Rcpp, R, or Stan math headers.
 #ifdef SUNDIALR_CVODE
 
 #include <stdlib.h>
-#include <cvode/cvode.h>
-#include <cvode/cvode_ls.h>
+#include <cvodes/cvodes.h>
+#include <cvodes/cvodes_ls.h>
 #include <nvector/nvector_serial.h>
 #include <sunmatrix/sunmatrix_dense.h>
 #include <sunlinsol/sunlinsol_dense.h>
@@ -59,7 +58,8 @@ cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
   ctx->rhs_data = rhs_data;
   ctx->neq      = (sunindextype)neq;
 
-  if (SUNContext_Create(SUN_COMM_NULL, &ctx->sunctx) != 0) {
+  // SUNDIALS 6.x: SUNContext_Create takes void* comm (NULL for serial)
+  if (SUNContext_Create(NULL, &ctx->sunctx) != 0) {
     free(ctx); return NULL;
   }
 

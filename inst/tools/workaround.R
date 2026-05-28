@@ -52,6 +52,73 @@ if (inherits(versionInfo, "try-error")) {
 .in <- gsub("@SL@", paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())), #nolint
             .in)
 
+# StanHeaders static library — provides SUNDIALS 6.x compiled for ODE integration.
+# CVODE is always enabled via the StanHeaders-bundled SUNDIALS.
+.in <- gsub("@STANHDR_LIB@", system.file("lib", package = "StanHeaders"), .in)
+
+## Provide SUNDIALS helper files in src/ at configure time.
+
+# sundials_debug.h is always available in the installed StanHeaders include/.
+# Overwrite so it stays in sync with the installed version.
+.sdh <- system.file("include", "sundials_debug.h", package = "StanHeaders")
+if (nzchar(.sdh)) {
+  file.copy(.sdh, "src/sundials_debug.h", overwrite = TRUE)
+}
+
+# sunlinsol_spgmr/spbcgs/sptfqmr C sources ship in the repository as the
+# default versions.  They only need to be fetched when they are genuinely
+# absent (e.g. a partial checkout or after manually removing them to pick up
+# a newer StanHeaders version).  This avoids any internet dependency in
+# air-gapped or restricted-network environments.
+.sp_files   <- c("sunlinsol_spgmr.c", "sunlinsol_spbcgs.c", "sunlinsol_sptfqmr.c")
+.sp_subdirs <- c("spgmr",             "spbcgs",              "sptfqmr")
+.missing    <- .sp_files[!file.exists(file.path("src", .sp_files))]
+
+if (length(.missing) > 0) {
+  .stanhdr_ver  <- as.character(packageVersion("StanHeaders"))
+  .tarball_name <- paste0("StanHeaders_", .stanhdr_ver, ".tar.gz")
+
+  # Look for a cached source tarball before attempting a download.
+  .search_dirs <- c(tempdir(),
+                    tools::R_user_dir("cache", which = "cache"),
+                    getwd())
+  .search_dirs <- .search_dirs[nzchar(.search_dirs)]
+  .tarball     <- Filter(file.exists, file.path(.search_dirs, .tarball_name))
+
+  if (length(.tarball) == 0) {
+    # Only download when there is genuinely no local copy.
+    .tarball <- tryCatch(
+      utils::download.packages("StanHeaders", destdir = tempdir(),
+                               repos  = getOption("repos"),
+                               type   = "source")[1, 2],
+      error = function(e) character(0)
+    )
+  } else {
+    .tarball <- .tarball[1]
+  }
+
+  if (length(.tarball) > 0 && file.exists(.tarball)) {
+    .td <- tempfile()
+    dir.create(.td)
+    utils::untar(.tarball, exdir = .td)
+    for (.i in which(.sp_files %in% .missing)) {
+      .src <- file.path(.td, "StanHeaders", "src", "sunlinsol",
+                        .sp_subdirs[.i], .sp_files[.i])
+      if (file.exists(.src))
+        file.copy(.src, file.path("src", .sp_files[.i]), overwrite = TRUE)
+    }
+    unlink(.td, recursive = TRUE)
+  } else {
+    warning("Could not locate the StanHeaders source package to obtain ",
+            "missing SUNDIALS iterative linear solver sources: ",
+            paste(.missing, collapse = ", "), ".  ",
+            "CVODE iterative solver options (gmres, bicgstab, tfqmr) ",
+            "require these files in src/.  ",
+            "Add them manually or reinstall from a network-accessible environment.",
+            call. = FALSE)
+  }
+}
+
 
 .badStan <- ""
 .in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",
@@ -63,32 +130,6 @@ if (inherits(versionInfo, "try-error")) {
 
 
 
-if (requireNamespace("sundialr", quietly = TRUE)) {
-  .sundialr_inc <- system.file("include", package = "sundialr")
-  .sundialr_lib <- system.file("lib",     package = "sundialr")
-  .sundialr_defs    <- "-DSUNDIALR_CVODE"
-  .sundialr_inc_dir <- .sundialr_inc
-  .sundialr_libs <- paste0(
-    "-L\"", .sundialr_lib, "\"",
-    " -lsundials_cvode",
-    " -lsundials_nvecserial",
-    " -lsundials_sunlinsoldense",
-    " -lsundials_sunmatrixdense",
-    " -lsundials_sunlinsolband",
-    " -lsundials_sunmatrixband",
-    " -lsundials_sunlinsolspgmr",
-    " -lsundials_sunlinsolspbcgs",
-    " -lsundials_sunlinsolsptfqmr",
-    " -lsundials_core"
-  )
-} else {
-  .sundialr_defs    <- ""
-  .sundialr_inc_dir <- "."   # harmless fallback; cvode_solver.cpp compiles to empty
-  .sundialr_libs    <- ""
-}
-.in <- gsub("@SUNDIALR_DEFS@",    .sundialr_defs,    .in)
-.in <- gsub("@SUNDIALR_INC_DIR@", .sundialr_inc_dir, .in)
-.in <- gsub("@SUNDIALR_LIBS@",    .sundialr_libs,    .in)
 
 if (.Platform$OS.type == "windows") {
   .makevars <- file("src/Makevars.win", "wb")

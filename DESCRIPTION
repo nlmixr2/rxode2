@@ -97,8 +97,7 @@ Imports:
     data.table (>= 1.12.4),
     qs2,
     vctrs,
-    stats,
-    sundialr (>= 0.1.7)
+    stats
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other
     compartmental models.  A compilation manager translates the ODE model
@@ -128,8 +127,7 @@ LinkingTo:
     RcppParallel,
     RcppEigen (>= 0.3.3.9.2),
     StanHeaders (>= 2.21.0.7),
-    dparser (>= 1.3.1-12),
-    sundialr (>= 0.1.7)
+    dparser (>= 1.3.1-12)
 Encoding: UTF-8
 LazyData: true
 Language: en-US
