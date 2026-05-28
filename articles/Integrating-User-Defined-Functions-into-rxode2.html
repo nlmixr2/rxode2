@@ -146,7 +146,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Integrating User Defined Functions into rxode2</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd" class="external-link"><code>vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.1.1/vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd" class="external-link"><code>vignettes/articles/Integrating-User-Defined-Functions-into-rxode2.Rmd</code></a></small>
       <div class="d-none name"><code>Integrating-User-Defined-Functions-into-rxode2.Rmd</code></div>
     </div>
 
@@ -251,8 +251,8 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;      expr       min        lq      mean    median        uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 14.610678 14.912256 15.719887 15.088645 15.485767 21.26272   100</span></span>
-<span><span class="co">#&gt;     withC  8.365518  8.588245  9.258792  8.694913  9.072736 16.61148   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  withoutC 14.966470 15.181570 15.947519 15.349649 15.802724 20.73447   100</span></span>
+<span><span class="co">#&gt;     withC  8.473112  8.617046  9.185227  8.724206  8.939212 15.32766   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -833,7 +833,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x55bafdff0200&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55f52783d760&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -843,7 +843,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x55bafd7eb590&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55f527038af0&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
