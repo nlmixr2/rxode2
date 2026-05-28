@@ -96,6 +96,26 @@ omegaListRse <- function(omegaIn) {
     .Call(`_rxode2_omegaListRse`, omegaIn)
 }
 
+#' Set the CVODE linear solver
+#'
+#' @param type Integer: 1=dense (default), 2=band, 3=gmres, 4=bicgstab,
+#'   5=tfqmr
+#' @return NULL (invisibly)
+#' @export
+#' @keywords internal
+setCvodeLinearSolver <- function(type) {
+    invisible(.Call(`_rxode2_setCvodeLinearSolver`, type))
+}
+
+#' Check if CVODE support was compiled in
+#'
+#' @return Logical TRUE if compiled with sundialr CVODE support
+#' @export
+#' @keywords internal
+rxHasCvode <- function() {
+    .Call(`_rxode2_rxHasCvode`)
+}
+
 #' Get the Linear Compartment Information based on the model variables
 #'
 #' @param obj The model variables object
@@ -1122,13 +1142,5 @@ binomProbs_ <- function(x, probs, naRm, nIn, cont) {
 
 meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
-}
-
-setCvodeLinearSolver <- function(type) {
-    invisible(.Call(`_rxode2_setCvodeLinearSolver`, type))
-}
-
-rxHasCvode <- function() {
-    .Call(`_rxode2_rxHasCvode`)
 }
 

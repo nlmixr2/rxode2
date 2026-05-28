@@ -76,8 +76,7 @@ Suggests:
     kableExtra,
     pmxTools,
     rootSolve,
-    memuse,
-    sundialr
+    memuse
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),
@@ -128,7 +127,8 @@ LinkingTo:
     RcppParallel,
     RcppEigen (>= 0.3.3.9.2),
     StanHeaders (>= 2.21.0.7),
-    dparser (>= 1.3.1-12)
+    dparser (>= 1.3.1-12),
+    sundialr (>= 0.1.7)
 Encoding: UTF-8
 LazyData: true
 Language: en-US

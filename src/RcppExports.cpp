@@ -176,6 +176,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// setCvodeLinearSolver
+void setCvodeLinearSolver(int type);
+RcppExport SEXP _rxode2_setCvodeLinearSolver(SEXP typeSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
+    setCvodeLinearSolver(type);
+    return R_NilValue;
+END_RCPP
+}
+// rxHasCvode
+bool rxHasCvode();
+RcppExport SEXP _rxode2_rxHasCvode() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(rxHasCvode());
+    return rcpp_result_gen;
+END_RCPP
+}
 // getLinInfo_
 IntegerVector getLinInfo_(List mv);
 RcppExport SEXP _rxode2_getLinInfo_(SEXP mvSEXP) {
@@ -2914,76 +2934,8 @@ RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SE
     return rcpp_result_gen;
 }
 
-// setCvodeLinearSolver
-void setCvodeLinearSolver(int type);
-static SEXP _rxode2_setCvodeLinearSolver_try(SEXP typeSEXP) {
-BEGIN_RCPP
-    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
-    setCvodeLinearSolver(type);
-    return R_NilValue;
-END_RCPP
-}
-RcppExport SEXP _rxode2_setCvodeLinearSolver(SEXP typeSEXP) {
-    SEXP rcpp_result_gen;
-    {
-        Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_setCvodeLinearSolver_try(typeSEXP));
-    }
-    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
-    if (rcpp_isInterrupt_gen) {
-        UNPROTECT(1);
-        Rf_onintr();
-    }
-    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
-    if (rcpp_isLongjump_gen) {
-        Rcpp::internal::resumeJump(rcpp_result_gen);
-    }
-    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
-    if (rcpp_isError_gen) {
-        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
-        UNPROTECT(1);
-        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
-    }
-    UNPROTECT(1);
-    return rcpp_result_gen;
-}
-
-// rxHasCvode
-bool rxHasCvode();
-static SEXP _rxode2_rxHasCvode_try() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    rcpp_result_gen = Rcpp::wrap(rxHasCvode());
-    return rcpp_result_gen;
-END_RCPP
-}
-RcppExport SEXP _rxode2_rxHasCvode() {
-    SEXP rcpp_result_gen;
-    {
-        Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_rxHasCvode_try());
-    }
-    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
-    if (rcpp_isInterrupt_gen) {
-        UNPROTECT(1);
-        Rf_onintr();
-    }
-    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
-    if (rcpp_isLongjump_gen) {
-        Rcpp::internal::resumeJump(rcpp_result_gen);
-    }
-    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
-    if (rcpp_isError_gen) {
-        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
-        UNPROTECT(1);
-        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
-    }
-    UNPROTECT(1);
-    return rcpp_result_gen;
-}
-
 // validate (ensure exported C++ functions exist before calling them)
-static int _rxode2_RcppExport_validate(const char* sig) {
+static int _rxode2_RcppExport_validate(const char* sig) { 
     static std::set<std::string> signatures;
     if (signatures.empty()) {
         signatures.insert("List(*rxExpandGrid_)(RObject&,RObject&,RObject&)");
@@ -3111,7 +3063,5 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_binomProbs_", (DL_FUNC)_rxode2_binomProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_meanProbs_", (DL_FUNC)_rxode2_meanProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_RcppExport_validate", (DL_FUNC)_rxode2_RcppExport_validate);
-    R_RegisterCCallable("rxode2", "_rxode2_setCvodeLinearSolver", (DL_FUNC)_rxode2_setCvodeLinearSolver_try);
-    R_RegisterCCallable("rxode2", "_rxode2_rxHasCvode", (DL_FUNC)_rxode2_rxHasCvode_try);
     return R_NilValue;
 }
