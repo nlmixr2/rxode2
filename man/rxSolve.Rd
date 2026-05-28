@@ -35,7 +35,8 @@ rxSolve(
   inits = NULL,
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
-    "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em"),
+    "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
+    "cvode"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -158,6 +159,7 @@ rxSolve(
   tolFactor = NULL,
   serializeFile = NULL,
   dense = FALSE,
+  cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
   envir = parent.frame()
 )
 
@@ -317,7 +319,10 @@ must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 \item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
-\item \code{"ab"} -- Adams-Bashforth solver using Boost's odeint library.
+\item \code{"ab"} -- Adams-Bashforth multi-step solver with a direct implementation
+(order 1-8, default 5). Uses RK4 to initialize the derivative history and
+then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+method (step size controlled by \code{hmin}).
 \item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
 \item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
 \item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
@@ -341,6 +346,9 @@ Is a fixed-step method (step size controlled by \code{hmin}).
 Is a fixed-step method (step size controlled by \code{hmin}) and uses the \code{order} parameter to configure the number of intermediate steps.
 \item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (requires
+the \code{sundialr} package and a build compiled with SUNDIALR_CVODE support).
+Supports thread-parallel solving and per-compartment absolute tolerances.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -1081,6 +1089,34 @@ sampling grids. Silently ignored for non-dense methods. Not yet
 compatible with multiple dosing events in the same interval. yet
 supported for \code{linCmt()} models (a message is emitted and the
 standard path is used instead).}
+
+\item{cvodeLinSolver}{Character; selects the linear solver used by the CVODE
+integrator when \code{method = "cvode"}.  Ignored for all other methods.
+Available choices and when to use them:
+\itemize{
+\item \code{"dense"} (default) -- Direct LU factorization of the full Jacobian.
+Best for small to medium systems (typically fewer than ~50 compartments).
+Requires \code{O(n^2)} storage and \code{O(n^3)} work per Newton iteration.
+\item \code{"band"} -- Banded direct factorization.  Use when the Jacobian has a
+known banded sparsity structure (i.e., each state depends only on a few
+adjacent states).  Reduces storage and factorization cost when bandwidth
+is narrow.
+\item \code{"gmres"} -- Generalized Minimal Residual iterative Krylov solver.
+Avoids explicit Jacobian formation, making it practical for large stiff
+systems (tens to hundreds of compartments) where LU factorization would
+dominate runtime.  Generally the first iterative solver to try.
+\item \code{"bicgstab"} -- Bi-Conjugate Gradient Stabilized iterative Krylov
+solver.  Similar use case to \code{"gmres"} but can converge faster on some
+non-symmetric problems.  Try if \code{"gmres"} is slow or fails to converge.
+\item \code{"tfqmr"} -- Transpose-Free Quasi-Minimal Residual iterative Krylov
+solver.  Another alternative for large systems; avoids the matrix
+transpose required by classical QMR.
+}
+
+For most pharmacometric models with fewer than ~50 compartments the default
+\code{"dense"} solver is fastest.  Switch to an iterative solver (\code{"gmres"} is
+a good first choice) only for large QSP or PBPK models where Jacobian
+factorization becomes the bottleneck.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

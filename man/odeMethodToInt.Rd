@@ -6,7 +6,8 @@
 \usage{
 odeMethodToInt(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
-    "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em")
+    "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
+    "cvode")
 )
 }
 \arguments{
@@ -23,7 +24,10 @@ must be setup specially to use this solving routine.
 \item \code{"rkf78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 \item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
-\item \code{"ab"} -- Adams-Bashforth solver using Boost's odeint library.
+\item \code{"ab"} -- Adams-Bashforth multi-step solver with a direct implementation
+(order 1-8, default 5). Uses RK4 to initialize the derivative history and
+then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+method (step size controlled by \code{hmin}).
 \item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
 \item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
 \item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
@@ -47,6 +51,9 @@ Is a fixed-step method (step size controlled by \code{hmin}).
 Is a fixed-step method (step size controlled by \code{hmin}) and uses the \code{order} parameter to configure the number of intermediate steps.
 \item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (requires
+the \code{sundialr} package and a build compiled with SUNDIALR_CVODE support).
+Supports thread-parallel solving and per-compartment absolute tolerances.
 }}
 }
 \value{

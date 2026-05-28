@@ -3256,7 +3256,10 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"ck54"` -- Cash-Karp 5(4) solver using Boost's odeint library.
 #'
-#' * `"ab"` -- Adams-Bashforth solver using Boost's odeint library.
+#' * `"ab"` -- Adams-Bashforth multi-step solver with a direct implementation
+#'   (order 1-8, default 5). Uses RK4 to initialize the derivative history and
+#'   then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+#'   method (step size controlled by `hmin`).
 #'
 #' * `"abm"` -- Adams-Bashforth-Moulton solver using Boost's odeint library.
 #'

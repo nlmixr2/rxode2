@@ -3,13 +3,37 @@
 #undef max
 #include "odeinter.h"
 
-#include <boost/numeric/odeint/stepper/adams_bashforth.hpp>
+#include <array>
 
-template <size_t N>
-static inline void ab_do_steps_N(rx_solving_options_ind *ind, rx_solving_options *op, rxode2_system& sys, zero_copy_state& state, double xp, double xout) {
-  typedef boost::numeric::odeint::adams_bashforth<N, zero_copy_state> stepper_type;
-  stepper_type stepper;
-  boost::numeric::odeint::runge_kutta4<zero_copy_state> rk4_stepper;
+// AB coefficients [most-recent first]: c[0]*f_n + c[1]*f_{n-1} + ...
+static const double ab_coef[8][8] = {
+  // AB1 (Euler)
+  {1.0, 0, 0, 0, 0, 0, 0, 0},
+  // AB2
+  {3.0/2, -1.0/2, 0, 0, 0, 0, 0, 0},
+  // AB3
+  {23.0/12, -4.0/3, 5.0/12, 0, 0, 0, 0, 0},
+  // AB4
+  {55.0/24, -59.0/24, 37.0/24, -3.0/8, 0, 0, 0, 0},
+  // AB5
+  {1901.0/720, -1387.0/360, 109.0/30, -637.0/360, 251.0/720, 0, 0, 0},
+  // AB6
+  {4277.0/1440, -2641.0/480, 4991.0/720, -3649.0/720, 959.0/480, -95.0/288, 0, 0},
+  // AB7
+  {198721.0/60480, -18637.0/2520, 235183.0/20160, -10754.0/945, 135713.0/20160, -5603.0/2520, 19087.0/60480, 0},
+  // AB8
+  {16083.0/4480, -1152169.0/120960, 242653.0/13440, -296053.0/13440, 2102243.0/120960, -115747.0/13440, 32863.0/13440, -5257.0/17280}
+};
+
+// Direct Adams-Bashforth implementation using manual history management.
+// Boost's adams_bashforth<N> has accuracy issues with zero_copy_state aliasing.
+static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *op, rxode2_system& sys, zero_copy_state& state, double xp, double xout) {
+  int neq = state.size();
+  if (neq == 0) return;
+  int order = op->MXORDN;
+  if (order < 1) order = 1;
+  if (order > 8) order = 8;
+
   double t = xp;
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.0001;
   if (dt <= 0.0) dt = 0.0001;
@@ -18,48 +42,82 @@ static inline void ab_do_steps_N(rx_solving_options_ind *ind, rx_solving_options
   }
   int sign = (xout > xp) ? 1 : -1;
   dt = sign * dt;
+  const double fp_tol = std::numeric_limits<double>::epsilon() * op->mxstep *
+                        std::max(std::abs(xp), std::abs(xout));
 
-  error_checker check(ind, ind->rc, op->mxstep);
+  const double* c = ab_coef[order - 1];
 
-  while ( (sign > 0 && t < xout) || (sign < 0 && t > xout) ) {
+  // Derivative history: hist[0] = most recent f, hist[1] = f_{n-1}, ...
+  std::vector<std::vector<double>> hist(order, std::vector<double>(neq, 0.0));
+  std::vector<double> ytmp(neq), k1(neq), k2(neq), k3(neq), k4(neq), dxdt(neq);
+
+  // RK4 helper: advance y by one step.
+  // Use block scopes to ensure zero_copy_state objects are constructed fresh
+  // each time — assigning to a non-owned state overwrites the pointed-to data,
+  // which would corrupt y.
+  auto rk4_step = [&](std::vector<double>& y, double tc, double h) {
+    { zero_copy_state xs(y.data(), neq), ds(k1.data(), neq); sys(xs, ds, tc); }
+    for (int i = 0; i < neq; i++) ytmp[i] = y[i] + 0.5*h*k1[i];
+    { zero_copy_state xs(ytmp.data(), neq), ds(k2.data(), neq); sys(xs, ds, tc + 0.5*h); }
+    for (int i = 0; i < neq; i++) ytmp[i] = y[i] + 0.5*h*k2[i];
+    { zero_copy_state xs(ytmp.data(), neq), ds(k3.data(), neq); sys(xs, ds, tc + 0.5*h); }
+    for (int i = 0; i < neq; i++) ytmp[i] = y[i] + h*k3[i];
+    { zero_copy_state xs(ytmp.data(), neq), ds(k4.data(), neq); sys(xs, ds, tc + h); }
+    for (int i = 0; i < neq; i++) y[i] += h/6.0*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
+  };
+
+  // Copy current state into working vector
+  std::vector<double> y(state.data_, state.data_ + neq);
+  int initialized = 0;
+  int steps_taken = 0;
+  int max_steps = op->mxstep;
+
+  while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
     double current_dt = dt;
-    bool is_fractional = false;
-    // We use a small tolerance to avoid taking a tiny fractional step due to floating point error
-    if ( (sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout) ) {
+    if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) {
       current_dt = xout - t;
-      is_fractional = true;
+      if (std::abs(current_dt) <= fp_tol) break;
     }
 
-    try {
-      if (is_fractional) {
-        rk4_stepper.do_step(sys, state, t, current_dt);
-      } else {
-        stepper.do_step(sys, state, t, current_dt);
+    if (ind->err != 0) { ind->rc[0] = -2019; break; }
+
+    // Evaluate f at current state (block scope avoids assignment aliasing)
+    { zero_copy_state xs(y.data(), neq), ds(dxdt.data(), neq); sys(xs, ds, t); }
+
+    if (ind->err != 0) { ind->rc[0] = -2019; break; }
+
+    if (initialized < order - 1) {
+      // Initialization: use RK4 to advance and build history.
+      // Store at reversed position so that after all init steps and the first
+      // shift, hist[0]=newest .. hist[order-1]=oldest (most-recent-first order).
+      hist[order - 2 - initialized].assign(dxdt.begin(), dxdt.end());
+      initialized++;
+      rk4_step(y, t, current_dt);
+    } else {
+      // Shift history right to make room for the newest entry at hist[0].
+      for (int i = order - 1; i > 0; i--) hist[i] = hist[i-1];
+      hist[0].assign(dxdt.begin(), dxdt.end());
+
+      // AB step
+      for (int i = 0; i < neq; i++) {
+        double sum = 0.0;
+        for (int j = 0; j < order; j++) sum += c[j] * hist[j][i];
+        y[i] += current_dt * sum;
       }
-    } catch(const std::exception& e) {
-      if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
-      break;
     }
 
     t += current_dt;
-    check(state, t);
-    if (ind->err != 0) break;
+    steps_taken++;
+    if (steps_taken > max_steps) {
+      ind->rc[0] = -2019;
+      ind->err = 1;
+      break;
+    }
+    if (ind->err != 0) { ind->rc[0] = -2019; break; }
   }
-}
 
-static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *op, rxode2_system& sys, zero_copy_state& state, double xp, double xout) {
-  switch (op->MXORDN) {
-    case 1: ab_do_steps_N<1>(ind, op, sys, state, xp, xout); break;
-    case 2: ab_do_steps_N<2>(ind, op, sys, state, xp, xout); break;
-    case 3: ab_do_steps_N<3>(ind, op, sys, state, xp, xout); break;
-    case 4: ab_do_steps_N<4>(ind, op, sys, state, xp, xout); break;
-    case 5: ab_do_steps_N<5>(ind, op, sys, state, xp, xout); break;
-    case 6: ab_do_steps_N<6>(ind, op, sys, state, xp, xout); break;
-    case 7: ab_do_steps_N<7>(ind, op, sys, state, xp, xout); break;
-    case 8: ab_do_steps_N<8>(ind, op, sys, state, xp, xout); break;
-    default: ab_do_steps_N<5>(ind, op, sys, state, xp, xout); break;
-  }
+  // Write result back to state (yp)
+  std::copy(y.begin(), y.end(), state.data_);
 }
 
 extern "C" void ind_ab_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -262,9 +320,9 @@ extern "C" void par_ab(rx_solve *rx){
 extern "C" void ab_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
-  
+
   rxode2_system sys(dydt, neq, ind);
-  
+
   if (neqOde > 0) {
       zero_copy_state state(yp, neqOde);
       ab_do_steps(ind, op, sys, state, *xp, xout);

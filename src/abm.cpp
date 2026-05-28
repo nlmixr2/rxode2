@@ -18,15 +18,19 @@ static inline void abm_do_steps_N(rx_solving_options_ind *ind, rx_solving_option
   }
   int sign = (xout > xp) ? 1 : -1;
   dt = sign * dt;
+  // Threshold to skip spurious tiny fractional steps from floating-point accumulation.
+  // Accumulated error after N steps scales with eps * N * max(|xp|, |xout|).
+  const double fp_tol = std::numeric_limits<double>::epsilon() * op->mxstep *
+                        std::max(std::abs(xp), std::abs(xout));
 
   error_checker check(ind, ind->rc, op->mxstep);
 
   while ( (sign > 0 && t < xout) || (sign < 0 && t > xout) ) {
     double current_dt = dt;
     bool is_fractional = false;
-    // We use a small tolerance to avoid taking a tiny fractional step due to floating point error
     if ( (sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout) ) {
       current_dt = xout - t;
+      if (std::abs(current_dt) <= fp_tol) break;
       is_fractional = true;
     }
 

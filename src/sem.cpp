@@ -96,6 +96,10 @@ static inline void sem_do_steps(rx_solving_options_ind *ind, rx_solving_options 
   }
   int sign = (xout > xp) ? 1 : -1;
   dt = sign * dt;
+  // Threshold to skip spurious tiny fractional steps from floating-point accumulation.
+  // Accumulated error after N steps scales with eps * N * max(|xp|, |xout|).
+  const double fp_tol = std::numeric_limits<double>::epsilon() * op->mxstep *
+                        std::max(std::abs(xp), std::abs(xout));
 
   error_checker check(ind, ind->rc, op->mxstep);
 
@@ -103,6 +107,7 @@ static inline void sem_do_steps(rx_solving_options_ind *ind, rx_solving_options 
     double current_dt = dt;
     if ( (sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout) ) {
       current_dt = xout - t;
+      if (std::abs(current_dt) <= fp_tol) break;
     }
 
     try {

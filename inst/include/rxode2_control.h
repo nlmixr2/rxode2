@@ -117,5 +117,6 @@
 #define Rxc_tolFactor 112
 #define Rxc_serializeFile 113
 #define Rxc_dense 114
-#define Rxc__zeros 115
+#define Rxc_cvodeLinSolver 115
+#define Rxc__zeros 116
 #endif // __rxode2_control_H__
