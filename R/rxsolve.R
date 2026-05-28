@@ -828,6 +828,37 @@
 #'   supported for `linCmt()` models (a message is emitted and the
 #'   standard path is used instead).
 #'
+#' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
+#'   integrator when `method = "cvode"`.  Ignored for all other methods.
+#'   Available choices and when to use them:
+#'
+#'   * `"dense"` (default) -- Direct LU factorization of the full Jacobian.
+#'     Best for small to medium systems (typically fewer than ~50 compartments).
+#'     Requires `O(n^2)` storage and `O(n^3)` work per Newton iteration.
+#'
+#'   * `"band"` -- Banded direct factorization.  Use when the Jacobian has a
+#'     known banded sparsity structure (i.e., each state depends only on a few
+#'     adjacent states).  Reduces storage and factorization cost when bandwidth
+#'     is narrow.
+#'
+#'   * `"gmres"` -- Generalized Minimal Residual iterative Krylov solver.
+#'     Avoids explicit Jacobian formation, making it practical for large stiff
+#'     systems (tens to hundreds of compartments) where LU factorization would
+#'     dominate runtime.  Generally the first iterative solver to try.
+#'
+#'   * `"bicgstab"` -- Bi-Conjugate Gradient Stabilized iterative Krylov
+#'     solver.  Similar use case to `"gmres"` but can converge faster on some
+#'     non-symmetric problems.  Try if `"gmres"` is slow or fails to converge.
+#'
+#'   * `"tfqmr"` -- Transpose-Free Quasi-Minimal Residual iterative Krylov
+#'     solver.  Another alternative for large systems; avoids the matrix
+#'     transpose required by classical QMR.
+#'
+#'   For most pharmacometric models with fewer than ~50 compartments the default
+#'   `"dense"` solver is fastest.  Switch to an iterative solver (`"gmres"` is
+#'   a good first choice) only for large QSP or PBPK models where Jacobian
+#'   factorization becomes the bottleneck.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -972,6 +1003,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     dense=FALSE,
+                    cvodeLinSolver=c("dense", "band", "gmres", "bicgstab", "tfqmr"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1081,6 +1113,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       }
     }
     method <- odeMethodToInt(method)
+    if (checkmate::testIntegerish(cvodeLinSolver, len=1, lower=1L, upper=5L,
+                                  any.missing=FALSE)) {
+      cvodeLinSolver <- as.integer(cvodeLinSolver)
+    } else {
+      cvodeLinSolver <- c("dense"=1L, "band"=2L, "gmres"=3L,
+                          "bicgstab"=4L, "tfqmr"=5L)[match.arg(cvodeLinSolver)]
+    }
     if (checkmate::testIntegerish(returnType, len=1, lower=0,
                                   upper=5, any.missing=FALSE)) {
       returnType <- as.integer(returnType)
@@ -1573,6 +1612,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
       dense=dense,
+      cvodeLinSolver=cvodeLinSolver,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2121,6 +2161,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
       .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
+      .jacEnv <- new.env(parent = emptyenv())
+      .jacEnv$errMsg <- NULL
       .filteredCode <- tryCatch({
         if (exists(.key, envir = rxSolveCacheEnv)) {
           get(.key, envir = rxSolveCacheEnv)
@@ -2148,7 +2190,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
           .fc
         }
       }, error = function(e) {
-        # Store NA in cache to avoid retrying on every call
+        assign("errMsg", conditionMessage(e), envir = .jacEnv)
         assign(.key, NA_character_, envir = rxSolveCacheEnv)
         NA_character_
       })
@@ -2163,11 +2205,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         force(envir)
         return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
       } else {
+        .jacDetail <- if (!is.null(.jacEnv$errMsg)) .jacEnv$errMsg else
+          "model previously failed Jacobian generation (cached)"
         warning("method requires an analytical Jacobian, but automatic ",
-                "Jacobian generation failed for this model:\n  ", conditionMessage(e),
+                "Jacobian generation failed for this model:\n  ", .jacDetail,
                 "\n  Falling back to liblsoda.",
                 call. = FALSE)
-        method <- 1L
+        .ctl$method <- 2L
       }
     }
   }
@@ -2596,6 +2640,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   .callSolve <- function() {
+    if (.ctl$method == 21L) {
+      setCvodeLinearSolver(.ctl$cvodeLinSolver)
+    }
     if (.isSer) {
       .bundle <- if (is.null(.preloadedSerializedBundle)) {
         .rxReadStateBundle(params)

@@ -200,10 +200,8 @@ struct error_checker {
         if (steps_ > max_steps_) {
             *rc_ = -2019;
             ind_->err = 1;
-            throw std::runtime_error("max steps exceeded");
         } else if (ind_->err != 0) {
             *rc_ = -2019;
-            throw std::runtime_error("solver error");
         }
     }
 };

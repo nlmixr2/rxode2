@@ -47,13 +47,12 @@ rxTest({
     et <- rxode2::eventTable()
     et$add.sampling(seq(0, 2, by = 0.5))
 
-    for (.lstype in 1:5) {
-      setCvodeLinearSolver(.lstype)
+    for (.lsname in c("dense", "band", "gmres", "bicgstab", "tfqmr")) {
       out <- rxode2::rxSolve(mod, params = c(), events = et,
-                             inits = c(y = 1), method = "cvode")
+                             inits = c(y = 1), method = "cvode",
+                             cvodeLinSolver = .lsname)
       expect_s3_class(out, "rxSolve")
       expect_equal(out$y, exp(-out$time), tolerance = 1e-4)
     }
-    setCvodeLinearSolver(1L)  # reset to default
   })
 })

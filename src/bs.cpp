@@ -148,13 +148,15 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                       if (xout > xp) {
                           while (dense_stepper.current_time() < xout) {
                               dense_stepper.do_step(sys);
+                              if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
                           }
                       } else {
                           while (dense_stepper.current_time() > xout) {
                               dense_stepper.do_step(sys);
+                              if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
                           }
                       }
-                      dense_stepper.calc_state(xout, state);
+                      if (!ind->err) dense_stepper.calc_state(xout, state);
                   } else {
                       boost::numeric::odeint::integrate_adaptive(
                           stepper, sys, state, xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));

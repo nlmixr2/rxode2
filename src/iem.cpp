@@ -91,7 +91,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                       boost::numeric::odeint::integrate_const(
                           stepper, sys, state, xp, ind->extraDoseNewXout, dt,
                           error_checker(ind, ind->rc, op->mxstep));
-                      std::copy(state.begin(), state.end(), yp);
+                      if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
                   }

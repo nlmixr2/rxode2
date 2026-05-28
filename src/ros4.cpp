@@ -98,7 +98,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                           stepper, sys, state, xp, ind->extraDoseNewXout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
-                      std::copy(state.begin(), state.end(), yp);
+                      if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
                   }
@@ -173,15 +173,19 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       if (xout > xp) {
                           while (dense_stepper.current_time() < xout) {
                               dense_stepper.do_step(sys);
+                              if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
                           }
                       } else {
                           while (dense_stepper.current_time() > xout) {
                               dense_stepper.do_step(sys);
+                              if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
                           }
                       }
-                      
-                      dense_stepper.calc_state(xout, state);
-                      std::copy(state.begin(), state.end(), yp);
+
+                      if (!ind->err) {
+                          dense_stepper.calc_state(xout, state);
+                          std::copy(state.begin(), state.end(), yp);
+                      }
 
                   } else {
                       
