@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -102,9 +102,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.1.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.1.2" id="rxode2-512">rxode2 5.1.2<a class="anchor" aria-label="anchor" href="#rxode2-512"></a></h2>
+<ul><li>
+<code><a href="../reference/stat_cens.html">geom_cens()</a></code> / <code><a href="../reference/stat_cens.html">stat_cens()</a></code> no longer emit “Ignoring unknown aesthetics” warnings when censoring aesthetics are mapped. Documentation corrected to describe the two supported lowercase forms: <code>lower</code>/<code>upper</code> (both required) or <code>cens</code> (with optional <code>limit</code>). The two forms cannot be mixed, <code>lower</code> and <code>upper</code> are now required together, and <code>limit</code> without <code>cens</code> is rejected rather than silently ignored.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.1" id="rxode2-511">rxode2 5.1.1<a class="anchor" aria-label="anchor" href="#rxode2-511"></a></h2><p class="text-muted">CRAN release: 2026-05-28</p>
 <ul><li><p>Various low level fixes to allow <code>nlmixr2est</code> to have parallelized focei.</p></li>
