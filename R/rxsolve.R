@@ -873,7 +873,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3244,14 +3244,18 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (requires
+#'   the `sundialr` package and a build compiled with SUNDIALR_CVODE support).
+#'   Supports thread-parallel solving and per-compartment absolute tolerances.
 
 #'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L

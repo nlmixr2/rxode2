@@ -1499,6 +1499,25 @@ static inline void solveWith1Pt(int *neq,
         break;
       }
       break;
+    case 21:
+#ifdef SUNDIALR_CVODE
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        cvode_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind, ctx);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+#else
+      (Rf_error)("CVODE solver requires the sundialr package; recompile after installing sundialr");
+#endif
+      break;
 
     case 1:
       if (!isSameTime(xout, xp)) {
@@ -5625,6 +5644,13 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 20:
         ind_em(rx, cid, c_dydt, u_inis);
         break;
+      case 21:
+#ifdef SUNDIALR_CVODE
+        ind_cvode(rx, cid, u_inis);
+#else
+        (Rf_error)("CVODE solver requires the sundialr package; recompile after installing sundialr");
+#endif
+        break;
 
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
@@ -5726,6 +5752,13 @@ extern "C" void par_solve(rx_solve *rx) {
       case 20:
         par_em(rx);
         break;
+      case 21:
+#ifdef SUNDIALR_CVODE
+        par_cvode(rx);
+#else
+        (Rf_error)("CVODE solver requires the sundialr package; recompile after installing sundialr");
+#endif
+        break;
 
       case 0:
         // dop
@@ -5786,4 +5819,5 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "vv.cpp"
 #include "mm.cpp"
 #include "em.cpp"
+#include "cvode.cpp"
 

@@ -63,6 +63,33 @@ if (inherits(versionInfo, "try-error")) {
 
 
 
+if (requireNamespace("sundialr", quietly = TRUE)) {
+  .sundialr_inc <- system.file("include", package = "sundialr")
+  .sundialr_lib <- system.file("lib",     package = "sundialr")
+  .sundialr_defs    <- "-DSUNDIALR_CVODE"
+  .sundialr_inc_dir <- .sundialr_inc
+  .sundialr_libs <- paste0(
+    "-L\"", .sundialr_lib, "\"",
+    " -lsundials_cvode",
+    " -lsundials_nvecserial",
+    " -lsundials_sunlinsoldense",
+    " -lsundials_sunmatrixdense",
+    " -lsundials_sunlinsolband",
+    " -lsundials_sunmatrixband",
+    " -lsundials_sunlinsolspgmr",
+    " -lsundials_sunlinsolspbcgs",
+    " -lsundials_sunlinsolsptfqmr",
+    " -lsundials_core"
+  )
+} else {
+  .sundialr_defs    <- ""
+  .sundialr_inc_dir <- "."   # harmless fallback; cvode_solver.cpp compiles to empty
+  .sundialr_libs    <- ""
+}
+.in <- gsub("@SUNDIALR_DEFS@",    .sundialr_defs,    .in)
+.in <- gsub("@SUNDIALR_INC_DIR@", .sundialr_inc_dir, .in)
+.in <- gsub("@SUNDIALR_LIBS@",    .sundialr_libs,    .in)
+
 if (.Platform$OS.type == "windows") {
   .makevars <- file("src/Makevars.win", "wb")
   .i <- "I"

@@ -76,7 +76,8 @@ Suggests:
     kableExtra,
     pmxTools,
     rootSolve,
-    memuse
+    memuse,
+    sundialr
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),

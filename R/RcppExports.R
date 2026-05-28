@@ -1124,3 +1124,11 @@ meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
 
+setCvodeLinearSolver <- function(type) {
+    invisible(.Call(`_rxode2_setCvodeLinearSolver`, type))
+}
+
+rxHasCvode <- function() {
+    .Call(`_rxode2_rxHasCvode`)
+}
+

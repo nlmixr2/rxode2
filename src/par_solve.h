@@ -67,6 +67,14 @@ extern "C" void ind_mm(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u
 extern "C" void par_em(rx_solve *rx);
 extern "C" void ind_em(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 
+#ifdef SUNDIALR_CVODE
+extern "C" void par_cvode(rx_solve *rx);
+extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis);
+extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
+                                    int *istate, rx_solving_options *op,
+                                    rx_solving_options_ind *ind, void *ctx_ptr);
+#endif
+
 
 	void sortInd(rx_solving_options_ind *ind);
 
