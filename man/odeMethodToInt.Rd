@@ -7,7 +7,7 @@
 odeMethodToInt(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
     "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
-    "cvode", "trapz", "ssp3", "rkf32")
+    "cvode", "trapz", "ssp3", "rkf32", "rk43")
 )
 }
 \arguments{
@@ -96,6 +96,19 @@ are chosen adaptively.  The total number of accepted and rejected steps
 is bounded by \code{maxsteps}.  Supports parallel thread-based solving and
 steady-state (\code{ss=1}) dosing with convergence governed by \code{ssAtol},
 \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"rk43"} -- Classical Runge-Kutta 4(3) with FSAL (First Same As Last),
+implemented via the libode library.  A 5-stage, 4th-order adaptive method
+with an embedded 3rd-order error estimate for automatic step-size control.
+Uses the classical RK4 as the primary solution (b1=1/6, b2=1/3, b3=1/3,
+b4=1/6) with an FSAL 3rd-order embedded pair (d1=1/6, d2=7/18, d3=5/18,
+d5=1/6).  The FSAL property means the 5th stage evaluation (at the
+accepted solution point) is reused as the first stage of the next step,
+giving effectively 4 function evaluations per step.  Uses \code{atol} and
+\code{rtol} for error control.  The \code{hmin} parameter sets the initial step
+size (default \code{0.01}); subsequent steps are chosen adaptively.  The
+total number of steps is bounded by \code{maxsteps}.  Supports parallel
+thread-based solving and steady-state (\code{ss=1}) dosing with convergence
+governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
 }}
 }
 \value{

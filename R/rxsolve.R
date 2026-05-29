@@ -72,8 +72,8 @@
 #'     than the nominal step size, so short intervals (e.g., between
 #'     closely spaced doses) are always handled correctly.
 #'
-#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, and `"rkf32"` methods, this
-#'     specifies the initial step size.
+#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, and `"rk43"` methods,
+#'     this specifies the initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
 #'   `hmax=NA` (default), uses the average difference +
@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3347,14 +3347,28 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   steady-state (`ss=1`) dosing with convergence governed by `ssAtol`,
 #'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
 #'
+#' * `"rk43"` -- Classical Runge-Kutta 4(3) with FSAL (First Same As Last),
+#'   implemented via the libode library.  A 5-stage, 4th-order adaptive method
+#'   with an embedded 3rd-order error estimate for automatic step-size control.
+#'   Uses the classical RK4 as the primary solution (b1=1/6, b2=1/3, b3=1/3,
+#'   b4=1/6) with an FSAL 3rd-order embedded pair (d1=1/6, d2=7/18, d3=5/18,
+#'   d5=1/6).  The FSAL property means the 5th stage evaluation (at the
+#'   accepted solution point) is reused as the first stage of the next step,
+#'   giving effectively 4 function evaluations per step.  Uses `atol` and
+#'   `rtol` for error control.  The `hmin` parameter sets the initial step
+#'   size (default `0.01`); subsequent steps are chosen adaptively.  The
+#'   total number of steps is bounded by `maxsteps`.  Supports parallel
+#'   thread-based solving and steady-state (`ss=1`) dosing with convergence
+#'   governed by `ssAtol`, `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
+#'
 #' @keywords Internal
 #'
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L

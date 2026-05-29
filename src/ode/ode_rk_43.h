@@ -10,7 +10,7 @@
 namespace ode {
 
 //!This class implements a 3rd and 4th order method with the FSAL (first same as last) property
-class OdeRK43 : public OdeEmbedded, private OdeRK, private OdeERK {
+class OdeRK43 : public OdeEmbedded, protected OdeRK, protected OdeERK {
 
     public:
         //!constructs
@@ -19,9 +19,9 @@ class OdeRK43 : public OdeEmbedded, private OdeRK, private OdeERK {
         */
         OdeRK43 (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single time step
-        void step_ (double dt);
+        virtual void step_ (double dt);
         //coefficents of tableau
         double c2, a21,
                c3, a31, a32,

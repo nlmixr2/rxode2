@@ -1,16 +1,14 @@
-#ifndef ODE_RKF32_BRIDGE_H_
-#define ODE_RKF32_BRIDGE_H_
+#ifndef ODE_RK43_BRIDGE_H_
+#define ODE_RK43_BRIDGE_H_
 
-// RxRkf32: bridges rxode2's t_dydt interface into libode's OdeRKF32.
-//
-// Unlike RxTrapz/RxSsp3 (fixed-step), OdeRKF32 is adaptive: each call uses
-// solve_adaptive() so the solver picks step sizes guided by atol/rtol.
-// after_step() enforces the rxode2 mxstep limit by throwing when exceeded,
-// which is caught in rkf32_do_steps.
+// RxRk43: bridges rxode2's t_dydt interface into libode's OdeRK43.
+// Design mirrors RxRkf32 exactly — see ode_rkf32_bridge.h for commentary.
+// 5-stage 4(3) FSAL: stages 1-4 advance sol_ (4th order); stage 5 (FSAL,
+// k5=f(t+dt,y_new)) feeds the 3rd-order embedded error estimate in solemb_.
 
-#include "ode/ode_rkf_32.h"
+#include "ode/ode_rk_43.h"
 
-class RxRkf32 : public ode::OdeRKF32 {
+class RxRk43 : public ode::OdeRK43 {
     t_dydt                  dydt_;
     int                    *full_neq_;
     rx_solving_options_ind *ind_;
@@ -18,10 +16,10 @@ class RxRkf32 : public ode::OdeRKF32 {
     long unsigned           max_steps_;
 
 public:
-    RxRkf32(t_dydt dydt, int *full_neq, int neqOde,
-            rx_solving_options_ind *ind, double *yp,
-            long unsigned max_steps)
-        : ode::OdeRKF32((unsigned long)neqOde),
+    RxRk43(t_dydt dydt, int *full_neq, int neqOde,
+           rx_solving_options_ind *ind, double *yp,
+           long unsigned max_steps)
+        : ode::OdeRK43((unsigned long)neqOde),
           dydt_(dydt), full_neq_(full_neq), ind_(ind),
           t_stage_(0.0), max_steps_(max_steps)
     {
@@ -64,25 +62,37 @@ protected:
         t_stage_ = t_ + c3 * dt;
         ode_fun_(soltemp_, k_[2]);
 
-        // 2nd-order embedded (before sol_ is overwritten)
+        // Stage 4: y4 = y + dt*(a41*k1 + a42*k2 + a43*k3)
         for (unsigned long i = 0; i < neq_; i++)
-            solemb_[i] = sol_[i] + dt * (d1 * k_[0][i] + d2 * k_[1][i] + d3 * k_[2][i]);
+            soltemp_[i] = sol_[i] + dt * (a41 * k_[0][i] + a42 * k_[1][i] + a43 * k_[2][i]);
+        t_stage_ = t_ + c4 * dt;
+        ode_fun_(soltemp_, k_[3]);
 
-        // 3rd-order primary (b3 = 1 - b1 - b2)
-        double b3 = 1.0 - b1 - b2;
+        // 4th-order primary update — sol_ is now y_new
         for (unsigned long i = 0; i < neq_; i++)
-            sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
+            sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i] + b4 * k_[3][i]);
+
+        // Stage 5 (FSAL): k5 = f(t+dt, y_new); a5j = bj
+        t_stage_ = t_ + c5 * dt;
+        ode_fun_(sol_, k_[4]);
+
+        // 3rd-order embedded using adjusted difference from y_new:
+        // solemb_ = y_old + dt*(d1*k1+d2*k2+d3*k3+d5*k5)
+        //         = y_new + dt*((d1-b1)*k1+(d2-b2)*k2+(d3-b3)*k3+(0-b4)*k4+d5*k5)
+        for (unsigned long i = 0; i < neq_; i++)
+            solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i]
+                                         + (d3 - b3) * k_[2][i] + (     -b4) * k_[3][i]
+                                         +        d5  * k_[4][i]);
     }
 
-    // Enforce mxstep limit: throw to break out of solve_adaptive_().
     void after_step(double /*t*/) override {
-        if (ind_->err != 0) throw std::runtime_error("rkf32: ode error");
+        if (ind_->err != 0) throw std::runtime_error("rk43: ode error");
         if (nstep_ > max_steps_) {
             if (ind_->rc[0] == 0) ind_->rc[0] = -2019;
             ind_->err = 1;
-            throw std::runtime_error("rkf32: max steps exceeded");
+            throw std::runtime_error("rk43: max steps exceeded");
         }
     }
 };
 
-#endif // ODE_RKF32_BRIDGE_H_
+#endif // ODE_RK43_BRIDGE_H_

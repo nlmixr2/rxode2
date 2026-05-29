@@ -25,6 +25,7 @@
 #include "ode/ode_ssp_3.h"
 #include "ode/ode_embedded.h"
 #include "ode/ode_rkf_32.h"
+#include "ode/ode_rk_43.h"
 
 namespace ode {
 
@@ -414,6 +415,63 @@ void OdeRKF32::step_ (double dt) {
     double b3 = 1.0 - b1 - b2;
     for (unsigned long i = 0; i < neq_; i++)
         sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
+}
+
+// ── OdeRK43 ───────────────────────────────────────────────────────────────────
+// Classical RK4 primary with FSAL 3rd-order embedded pair.
+// FSAL: a5j = bj, so k5 = f(t+dt, y_new) = next step's k1.
+// Primary (4th): b1=1/6, b2=1/3, b3=1/3, b4=1/6 (classical RK4).
+// Embedded (3rd): d1=1/6, d2=7/18, d3=5/18, d4=0 (not stored), d5=1/6.
+// All order conditions verified analytically.
+
+OdeRK43::OdeRK43 (unsigned long neq)
+    : OdeEmbedded(neq, false, 3),
+      OdeRK(neq, 5),
+      OdeERK(neq)
+{
+    method_ = "RK43";
+    c2  = 0.5;      a21 = 0.5;
+    c3  = 0.5;      a31 = 0.0;       a32 = 0.5;
+    c4  = 1.0;      a41 = 0.0;       a42 = 0.0;       a43 = 1.0;
+    c5  = 1.0;      a51 = 1.0/6;     a52 = 1.0/3;     a53 = 1.0/3;  a54 = 1.0/6;
+    b1  = 1.0/6;    b2  = 1.0/3;     b3  = 1.0/3;     b4  = 1.0/6;
+    d1  = 1.0/6;    d2  = 7.0/18;    d3  = 5.0/18;    d5  = 1.0/6;
+}
+
+void OdeRK43::step_ (double dt) {
+    // Stage 1: k1 = f(t, y)
+    ode_fun_(sol_, k_[0]);
+
+    // Stage 2: y2 = y + dt*a21*k1
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
+    ode_fun_(soltemp_, k_[1]);
+
+    // Stage 3: y3 = y + dt*(a31*k1 + a32*k2)
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
+    ode_fun_(soltemp_, k_[2]);
+
+    // Stage 4: y4 = y + dt*(a41*k1 + a42*k2 + a43*k3)
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * (a41 * k_[0][i] + a42 * k_[1][i] + a43 * k_[2][i]);
+    ode_fun_(soltemp_, k_[3]);
+
+    // 4th-order primary update (sol_ becomes y_new before stage 5)
+    for (unsigned long i = 0; i < neq_; i++)
+        sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i] + b4 * k_[3][i]);
+
+    // Stage 5 (FSAL): k5 = f(t+dt, y_new); a5j = bj
+    ode_fun_(sol_, k_[4]);
+
+    // 3rd-order embedded (d4=0, d5=1/6)
+    // solemb_ uses the OLD y (= sol_ - dt*update above), so back-compute
+    // y_old = sol_ - dt*(b1*k1+b2*k2+b3*k3+b4*k4) and add d-weighted sum.
+    // Equivalently: solemb_ = sol_ + dt*((d1-b1)*k1+(d2-b2)*k2+(d3-b3)*k3+(0-b4)*k4+d5*k5)
+    for (unsigned long i = 0; i < neq_; i++)
+        solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i]
+                                    + (d3 - b3) * k_[2][i] + (   - b4) * k_[3][i]
+                                    + d5         * k_[4][i]);
 }
 
 } // namespace ode

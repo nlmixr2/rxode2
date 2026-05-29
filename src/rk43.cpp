@@ -1,11 +1,11 @@
 #ifdef IN_PAR_SOLVE
 #undef min
 #undef max
-#include "ode_rkf32_bridge.h"
+#include "ode_rk43_bridge.h"
 
-static inline void rkf32_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
-                                    t_dydt c_dydt, int *neq, double *yp,
-                                    double xp, double xout) {
+static inline void rk43_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+                                   t_dydt c_dydt, int *neq, double *yp,
+                                   double xp, double xout) {
   double tint = xout - xp;
   if (tint == 0.0) return;
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.01;
@@ -15,7 +15,7 @@ static inline void rkf32_do_steps(rx_solving_options_ind *ind, rx_solving_option
 
   int neqOde = neq[0] - op->numLin - op->numLinSens;
 
-  RxRkf32 solver(c_dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
+  RxRk43 solver(c_dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
   solver.set_quiet(true);
   solver.set_t(xp);
   if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
@@ -31,8 +31,8 @@ static inline void rkf32_do_steps(rx_solving_options_ind *ind, rx_solving_option
   }
 }
 
-extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
-                              t_dydt c_dydt, t_update_inis u_inis) {
+extern "C" void ind_rk43_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
+                             t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
   int i;
   int istate = 1;
@@ -91,10 +91,10 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
             if (neqOde > 0)
-              rkf32_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
+              rk43_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
 
             copyLinCmt(neq, ind, op, yp);
-            const char* err_msg = "rkf32 failed";
+            const char* err_msg = "rk43 failed";
             postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 7, true, ind, op, rx);
             if (*(ind->rc) < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
@@ -114,10 +114,10 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
 
               if (neqOde > 0)
-                rkf32_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
+                rk43_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
 
               copyLinCmt(neq, ind, op, yp);
-              const char* err_msg = "rkf32 failed";
+              const char* err_msg = "rk43 failed";
               postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 9, false, ind, op, rx);
               if (*(ind->rc) < 0) localBadSolve = 1;
               ind->extraDoseNewXout = xout;
@@ -129,10 +129,10 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
 
           if (neqOde > 0)
-            rkf32_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
+            rk43_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
 
           copyLinCmt(neq, ind, op, yp);
-          const char* err_msg = "rkf32 failed";
+          const char* err_msg = "rk43 failed";
           postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 7, true, ind, op, rx);
           if (*(ind->rc) < 0) localBadSolve = 1;
         }
@@ -173,16 +173,16 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
-extern "C" void ind_rkf32(rx_solve *rx, int solveid,
-                            t_dydt c_dydt, t_update_inis u_inis) {
+extern "C" void ind_rk43(rx_solve *rx, int solveid,
+                          t_dydt c_dydt, t_update_inis u_inis) {
   rx_solving_options *op = rx->op;
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  ind_rkf32_0(rx, op, solveid, neq, c_dydt, u_inis);
+  ind_rk43_0(rx, op, solveid, neq, c_dydt, u_inis);
 }
 
-extern "C" void par_rkf32(rx_solve *rx) {
+extern "C" void par_rk43(rx_solve *rx) {
   rx_solving_options *op = rx->op;
 #ifdef _OPENMP
   int cores = op->cores;
@@ -209,7 +209,7 @@ extern "C" void par_rkf32(rx_solve *rx) {
     localAbort = abort;
     if (localAbort == 0) {
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_rkf32_0(rx, op, solveid, neq, dydt, update_inis);
+      ind_rk43_0(rx, op, solveid, neq, dydt, update_inis);
 
       if (op->badSolve) {
 #ifdef _OPENMP
@@ -221,14 +221,14 @@ extern "C" void par_rkf32(rx_solve *rx) {
   }
 }
 
-extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
-                                     int *istate, rx_solving_options *op,
-                                     rx_solving_options_ind *ind) {
+extern "C" void rk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
+                                    int *istate, rx_solving_options *op,
+                                    rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
 
   if (neqOde > 0) {
-    rkf32_do_steps(ind, op, dydt, neq, yp, *xp, xout);
+    rk43_do_steps(ind, op, dydt, neq, yp, *xp, xout);
     if (ind->rc[0] < 0) {
       *istate = -1;
       return;
