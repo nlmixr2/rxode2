@@ -4,8 +4,6 @@
 #ifndef CVODE_SOLVER_H_
 #define CVODE_SOLVER_H_
 
-#ifdef SUNDIALR_CVODE
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,5 +50,4 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout);
 }
 #endif
 
-#endif /* SUNDIALR_CVODE */
 #endif /* CVODE_SOLVER_H_ */

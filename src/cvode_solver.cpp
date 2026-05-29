@@ -1,7 +1,6 @@
 // CVODE solver implementation using SUNDIALS 6.x from StanHeaders.
 // Uses CVODES (superset of CVODE) for plain ODE integration.
 // This file has NO dependency on Rcpp, R, or Stan math headers.
-#ifdef SUNDIALR_CVODE
 
 #include <stdlib.h>
 #include <cvodes/cvodes.h>
@@ -138,5 +137,3 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   return (ret >= 0) ? 1 : -1;
 }
-
-#endif /* SUNDIALR_CVODE */

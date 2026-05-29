@@ -33,8 +33,7 @@ numerical stability.
 `rxode2` provides a rich set of ODE solving methods, combining classic
 solvers (like LSODA and DOP853) with modern adaptive, fixed-step,
 implicit, and symplectic steppers from the C++ `Boost.odeint` library.
-An optional SUNDIALS CVODE solver is also available when the
-`sundialr` package is installed at build time.
+An optional SUNDIALS CVODE solver is also available.
 
 This guide provides an overview of the solvers available in `rxode2`,
 explains key numerical concepts (stiffness, dense output, symplectic
@@ -66,7 +65,7 @@ The table below summarizes the solvers available in `rxode2` and their propertie
 | **`"sb3a"`** | Symplectic RKN SB3A McLachlan | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. High-order Runge-Kutta-Nyström. |
 | **`"sb3am4"`** | Symplectic RKN SB3A M4 McLachlan | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Alternative high-order RKN stepper. |
 | **`"vv"`** | Velocity Verlet | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Second-order Verlet integrator. |
-| **`"cvode"`** *(optional)* | Adaptive (BDF / Adams, SUNDIALS) | Yes | No | `atol`, `rtol`, `maxsteps`, `cvodeLinSolver` | Highly stiff systems. Requires `sundialr` at build time. Krylov linear solvers available for large systems. |
+| **`"cvode"`** *(optional)* | Adaptive (BDF / Adams, SUNDIALS) | Yes | No | `atol`, `rtol`, `maxsteps`, `cvodeLinSolver` | Highly stiff systems. Krylov linear solvers available for large systems. |
 
 ---
 
@@ -117,22 +116,6 @@ solver, activated by specifying `method = "cvode"`.  CVODE is a
 battle-tested C library for stiff and non-stiff initial value problems
 that underpins many large-scale scientific computing workflows.
 
-### Availability
-
-CVODE support is compiled in only when the `sundialr` R package is
-present at package build time.  You can check at runtime with:
-
-```{r cvode-check, eval=FALSE}
-rxHasCvode()
-```
-
-If this returns `FALSE`, install `sundialr` and reinstall `rxode2`:
-
-```{r cvode-install, eval=FALSE}
-install.packages("sundialr")
-install.packages("rxode2")  # or reinstall from source
-```
-
 ### How CVODE Differs from liblsoda
 
 Both `"liblsoda"` and `"cvode"` use BDF (Backward Differentiation
@@ -149,7 +132,7 @@ are:
 
 - **Origin**: `"liblsoda"` is a thread-safe C port of Fortran LSODA
   embedded directly in `rxode2`.  CVODE is from the external SUNDIALS
-  library and is linked at build time via `sundialr`.
+  library and is linked to the `StanHeaders` copy of SUNDIALS.
 
 - **Parallelism**: Both solvers run in parallel across subjects via
   OpenMP; each subject gets an independent solver context.
@@ -203,17 +186,6 @@ solve, so there is no need to manage a global setting manually.
 - **Simple PK/PD models**: For routine one- to four-compartment models
   `"liblsoda"` is faster because it has lower per-step overhead and no
   external library dependency.
-
-- **Portability**: `"cvode"` is only available when `sundialr` is
-  installed.  Code that must run on arbitrary machines (e.g., CRAN
-  submissions, shared cluster environments) should default to
-  `"liblsoda"` and fall back to CVODE conditionally:
-
-```{r cvode-fallback, eval=FALSE}
-.method <- if (rxHasCvode()) "cvode" else "liblsoda"
-out <- rxSolve(mod, params = parms, events = et,
-               method = .method, cvodeLinSolver = "dense")
-```
 
 ---
 
@@ -308,10 +280,9 @@ However, symplectic solvers are highly useful in specific contexts:
    automatically generate one for you via SymEngine when compiling.
 
 4. **If `"liblsoda"` or `"ros4"` fail on a very stiff system, or if
-   the system has many compartments**: Try **`method = "cvode"`**
-   (requires `sundialr`).  For large systems add
-   **`cvodeLinSolver = "gmres"`** to avoid the cost of full Jacobian
-   factorization.  Check availability first with `rxHasCvode()`.
+   the system has many compartments**: Try **`method = "cvode"`**.
+   For large systems add **`cvodeLinSolver = "gmres"`** to avoid the
+   cost of full Jacobian factorization.
 
 ---
 

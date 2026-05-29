@@ -1570,7 +1570,6 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   #dummy import to make check() and CRAN happy
   .r <- rex::rex(start, end)
   .d <- data.table::data.table(a=1)
-  .d <- sundialr::cvode(1, 1, function(...){1}, 1)
 }
 ## nocov end
 

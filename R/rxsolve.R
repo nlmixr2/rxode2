@@ -61,13 +61,16 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
+#'     For the `"rk4"`, `"trapz"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
 #'     the fixed step size. If `hmin=0` (the default), it uses a
-#'     default of `0.01` for `"rk4"` and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+#'     default of `0.01` for `"rk4"` and `"trapz"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 #'     If the requested step size would cause the number of
 #'     steps to exceed `maxsteps`, the step size is automatically
 #'     increased to ensure the integration completes within the
-#'     `maxsteps` limit.
+#'     `maxsteps` limit.  For `"trapz"`, the step is also silently clamped
+#'     to the interval length when the inter-event interval is shorter
+#'     than the nominal step size, so short intervals (e.g., between
+#'     closely spaced doses) are always handled correctly.
 #'
 #'     For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this
 #'     specifies the initial step size.
@@ -904,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3290,22 +3293,37 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   Is a fixed-step method (step size controlled by `hmin`).
 #'
 #' * `"mm"` -- Modified Midpoint stepper using Boost's odeint library.
-#'   Is a fixed-step method (step size controlled by `hmin`) and uses the `order` parameter to configure the number of intermediate steps.
+#'   Is a fixed-step method (step size controlled by `hmin`) and uses
+#'   the `order` parameter to configure the number of intermediate
+#'   steps.
 #'
 #' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`).
 #'
-#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (requires
-#'   the `sundialr` package and a build compiled with SUNDIALR_CVODE support).
-#'   Supports thread-parallel solving and per-compartment absolute tolerances.
-
+#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (in
+#'    the StanHeaders package).  Supports thread-parallel solving and
+#'    per-compartment absolute tolerances.
+#'
+#' * `"trapz"` -- Explicit trapezoidal rule (Heun's method), a 2nd-order
+#'   fixed-step Runge-Kutta method implemented via the libode library.
+#'   Each inter-event interval is integrated with fixed steps of size
+#'   `hmin` (default `0.01` when `hmin=0`).  If `hmin` would require
+#'   more than `maxsteps` steps to span the interval, the step size is
+#'   automatically enlarged to stay within that limit.  When an
+#'   inter-event interval is shorter than the nominal step size (e.g.,
+#'   two doses very close together), the step is silently clamped to the
+#'   interval length so that short intervals are always handled correctly.
+#'   Supports parallel thread-based solving and steady-state (`ss=1`)
+#'   dosing.  The method does not use `atol` or `rtol` (fixed-step; no
+#'   error control).  Steady-state convergence is governed by `ssAtol`,
+#'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
 #'
 #' @keywords Internal
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L

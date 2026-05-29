@@ -36,7 +36,7 @@ rxSolve(
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
     "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
-    "cvode"),
+    "cvode", "trapz"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -343,12 +343,27 @@ Is a fixed-step method (step size controlled by \code{hmin}).
 Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
 Is a fixed-step method (step size controlled by \code{hmin}).
 \item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
-Is a fixed-step method (step size controlled by \code{hmin}) and uses the \code{order} parameter to configure the number of intermediate steps.
+Is a fixed-step method (step size controlled by \code{hmin}) and uses
+the \code{order} parameter to configure the number of intermediate
+steps.
 \item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}).
-\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (requires
-the \code{sundialr} package and a build compiled with SUNDIALR_CVODE support).
-Supports thread-parallel solving and per-compartment absolute tolerances.
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (in
+the StanHeaders package).  Supports thread-parallel solving and
+per-compartment absolute tolerances.
+\item \code{"trapz"} -- Explicit trapezoidal rule (Heun's method), a 2nd-order
+fixed-step Runge-Kutta method implemented via the libode library.
+Each inter-event interval is integrated with fixed steps of size
+\code{hmin} (default \code{0.01} when \code{hmin=0}).  If \code{hmin} would require
+more than \code{maxsteps} steps to span the interval, the step size is
+automatically enlarged to stay within that limit.  When an
+inter-event interval is shorter than the nominal step size (e.g.,
+two doses very close together), the step is silently clamped to the
+interval length so that short intervals are always handled correctly.
+Supports parallel thread-based solving and steady-state (\code{ss=1})
+dosing.  The method does not use \code{atol} or \code{rtol} (fixed-step; no
+error control).  Steady-state convergence is governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -378,13 +393,16 @@ during one call to the solver. (5000 by default)}
 \item{hmin}{The minimum absolute step size allowed. The default
 value is 0.
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
+\if{html}{\out{<div class="sourceCode">}}\preformatted{For the `"rk4"`, `"trapz"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
 the fixed step size. If `hmin=0` (the default), it uses a
-default of `0.01` for `"rk4"` and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+default of `0.01` for `"rk4"` and `"trapz"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 If the requested step size would cause the number of
 steps to exceed `maxsteps`, the step size is automatically
 increased to ensure the integration completes within the
-`maxsteps` limit.
+`maxsteps` limit.  For `"trapz"`, the step is also silently clamped
+to the interval length when the inter-event interval is shorter
+than the nominal step size, so short intervals (e.g., between
+closely spaced doses) are always handled correctly.
 
 For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this
 specifies the initial step size.

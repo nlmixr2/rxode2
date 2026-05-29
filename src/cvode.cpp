@@ -1,5 +1,4 @@
 #ifdef IN_PAR_SOLVE
-#ifdef SUNDIALR_CVODE
 
 #include <vector>
 #include "cvode_solver.h"
@@ -250,5 +249,4 @@ extern "C" void par_cvode(rx_solve *rx) {
   }
 }
 
-#endif // SUNDIALR_CVODE
 #endif // IN_PAR_SOLVE
