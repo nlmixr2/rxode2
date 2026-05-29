@@ -72,7 +72,7 @@
 #'     than the nominal step size, so short intervals (e.g., between
 #'     closely spaced doses) are always handled correctly.
 #'
-#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, and `"rk43"` methods,
+#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, `"rk43"`, `"dop54"`, and `"vern65"` methods,
 #'     this specifies the initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3361,14 +3361,43 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   thread-based solving and steady-state (`ss=1`) dosing with convergence
 #'   governed by `ssAtol`, `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
 #'
+#' * `"dop54"` -- Dormand-Prince 5(4) FSAL method (Dormand & Prince 1980),
+#'   implemented via the libode library.  The same algorithm as MATLAB's
+#'   `ode45`.  A 7-stage, 5th-order adaptive method with an embedded
+#'   4th-order error estimate for automatic step-size control (FSAL: the
+#'   7th stage evaluation is reused as the 1st stage of the next step,
+#'   giving effectively 6 function evaluations per accepted step).  Uses
+#'   `atol` and `rtol` for error control.  The `hmin` parameter sets the
+#'   initial step size (default `0.01`); subsequent steps are chosen
+#'   adaptively.  The total number of steps is bounded by `maxsteps`.
+#'   Supports parallel thread-based solving and steady-state (`ss=1`)
+#'   dosing with convergence governed by `ssAtol`, `ssRtol`, `minSS`,
+#'   `maxSS`, and `strictSS`.  NaN/Inf in derivatives (e.g. from NA
+#'   parameters) is detected immediately and the solve exits with NA
+#'   output for the affected subject.
+#'
+#' * `"vern65"` -- Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+#'   implemented via the libode library using coefficients from Verner's own
+#'   website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+#'   embedded 5th-order error estimate.  The sparse tableau (many zero
+#'   a-coefficients) reduces function evaluations; the FSAL property means the
+#'   9th stage evaluation is reused as the 1st stage of the next step, giving
+#'   effectively 8 function evaluations per accepted step.  Uses `atol` and
+#'   `rtol` for error control.  The `hmin` parameter sets the initial step
+#'   size (default `0.01`); subsequent steps are chosen adaptively.  The total
+#'   number of steps is bounded by `maxsteps`.  Supports parallel thread-based
+#'   solving and steady-state (`ss=1`) dosing with convergence governed by
+#'   `ssAtol`, `ssRtol`, `minSS`, `maxSS`, and `strictSS`.  NaN/Inf in
+#'   derivatives is detected immediately and the solve exits with NA output.
+#'
 #' @keywords Internal
 #'
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L

@@ -15,7 +15,7 @@ Famous 5/4 pair from Dormand & Prince, also supposedly implemented as [ode45](ht
     + Dormand, John R., and Peter J. Prince. "A family of embedded Runge-Kutta formulae." Journal of computational and applied mathematics 6.1 (1980): 19-26.
     + https://en.wikipedia.org/wiki/Dormand%E2%80%93Prince_method
 */
-class OdeDoPri54 : public OdeEmbedded, private OdeRK, private OdeERK {
+class OdeDoPri54 : public OdeEmbedded, protected OdeRK, protected OdeERK {
 
     public:
         //!constructs
@@ -24,9 +24,9 @@ class OdeDoPri54 : public OdeEmbedded, private OdeRK, private OdeERK {
         */
         OdeDoPri54 (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single time step
-        void step_ (double dt);
+        virtual void step_ (double dt);
         //coefficents of tableau
         double c2, a21,
                c3, a31, a32,

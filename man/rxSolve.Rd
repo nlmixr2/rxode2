@@ -36,7 +36,7 @@ rxSolve(
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
     "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
-    "cvode", "trapz", "ssp3", "rkf32", "rk43"),
+    "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -404,6 +404,33 @@ size (default \code{0.01}); subsequent steps are chosen adaptively.  The
 total number of steps is bounded by \code{maxsteps}.  Supports parallel
 thread-based solving and steady-state (\code{ss=1}) dosing with convergence
 governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"dop54"} -- Dormand-Prince 5(4) FSAL method (Dormand & Prince 1980),
+implemented via the libode library.  The same algorithm as MATLAB's
+\code{ode45}.  A 7-stage, 5th-order adaptive method with an embedded
+4th-order error estimate for automatic step-size control (FSAL: the
+7th stage evaluation is reused as the 1st stage of the next step,
+giving effectively 6 function evaluations per accepted step).  Uses
+\code{atol} and \code{rtol} for error control.  The \code{hmin} parameter sets the
+initial step size (default \code{0.01}); subsequent steps are chosen
+adaptively.  The total number of steps is bounded by \code{maxsteps}.
+Supports parallel thread-based solving and steady-state (\code{ss=1})
+dosing with convergence governed by \code{ssAtol}, \code{ssRtol}, \code{minSS},
+\code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives (e.g. from NA
+parameters) is detected immediately and the solve exits with NA
+output for the affected subject.
+\item \code{"vern65"} -- Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+embedded 5th-order error estimate.  The sparse tableau (many zero
+a-coefficients) reduces function evaluations; the FSAL property means the
+9th stage evaluation is reused as the 1st stage of the next step, giving
+effectively 8 function evaluations per accepted step.  Uses \code{atol} and
+\code{rtol} for error control.  The \code{hmin} parameter sets the initial step
+size (default \code{0.01}); subsequent steps are chosen adaptively.  The total
+number of steps is bounded by \code{maxsteps}.  Supports parallel thread-based
+solving and steady-state (\code{ss=1}) dosing with convergence governed by
+\code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in
+derivatives is detected immediately and the solve exits with NA output.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -444,7 +471,7 @@ to the interval length when the inter-event interval is shorter
 than the nominal step size, so short intervals (e.g., between
 closely spaced doses) are always handled correctly.
 
-For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, and `"rk43"` methods,
+For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, `"rk43"`, `"dop54"`, and `"vern65"` methods,
 this specifies the initial step size.
 }\if{html}{\out{</div>}}}
 
