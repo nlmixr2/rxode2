@@ -14,7 +14,7 @@ namespace ode {
 This class implements the 7th and 8th order method of Dormand and Prince, as reprinted in the paper below. The tableau coefficients are terribly unweildy, but the solver is scary accurate.
     + E. Hairer, S. P. Nørsett, and G. Wanner. 1993. Solving Ordinary Differential Equations I (2nd Revised. Ed.): Nonstiff Problems. Springer-Verlag, Berlin, Heidelberg.
 */
-class OdeDoPri87 : public OdeEmbedded, private OdeRK, private OdeERK {
+class OdeDoPri87 : public OdeEmbedded, protected OdeRK, protected OdeERK {
 
     public:
         //!constructs
@@ -23,9 +23,9 @@ class OdeDoPri87 : public OdeEmbedded, private OdeRK, private OdeERK {
         */
         OdeDoPri87 (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single time step
-        void step_ (double dt);
+        virtual void step_ (double dt);
         //coefficents of tableau
         double c2,   a21,
                c3,   a31,   a32,

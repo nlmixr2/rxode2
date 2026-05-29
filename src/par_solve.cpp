@@ -1220,6 +1220,7 @@ extern "C" void rk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
 extern "C" void dop54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void dop87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 
 
 static inline void solveWith1Pt(int *neq,
@@ -1615,6 +1616,21 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         vern76_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 29:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        dop87_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -5775,6 +5791,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 28:
         ind_vern76(rx, cid, c_dydt, u_inis);
         break;
+      case 29:
+        ind_dop87(rx, cid, c_dydt, u_inis);
+        break;
 
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
@@ -5900,6 +5919,9 @@ extern "C" void par_solve(rx_solve *rx) {
       case 28:
         par_vern76(rx);
         break;
+      case 29:
+        par_dop87(rx);
+        break;
       case 0:
         // dop
         par_dop(rx);
@@ -5967,3 +5989,4 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "dop54.cpp"
 #include "vern65.cpp"
 #include "vern76.cpp"
+#include "dop87.cpp"
