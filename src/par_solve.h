@@ -44,6 +44,9 @@ extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xou
 void par_dop87(rx_solve *rx);
 extern "C" void ind_dop87(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void dop87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern98(rx_solve *rx);
+extern "C" void ind_vern98(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern98_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 void par_rk4(rx_solve *rx);
 extern "C" void ind_rk4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_ck54(rx_solve *rx);
