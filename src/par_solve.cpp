@@ -1226,24 +1226,24 @@ extern "C" void grk4a_solveWith1Pt(int *neq, double *yp, double *xp, double xout
 extern "C" void ind_grk4a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void par_grk4a(rx_solve *rx);
 extern "C" void ros6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
-extern "C" void bdf1_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void backwardEuler_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void gauss6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void iiic6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
-extern "C" void raduiiic6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void radauiia5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void geng5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void sdirk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void ind_ros6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
-extern "C" void ind_bdf1(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_backwardEuler(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_gauss6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_iiic6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
-extern "C" void ind_raduiiic6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_radauiia5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_geng5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_sdirk43(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void par_ros6(rx_solve *rx);
-extern "C" void par_bdf1(rx_solve *rx);
+extern "C" void par_backwardEuler(rx_solve *rx);
 extern "C" void par_gauss6(rx_solve *rx);
 extern "C" void par_iiic6(rx_solve *rx);
-extern "C" void par_raduiiic6(rx_solve *rx);
+extern "C" void par_radauiia5(rx_solve *rx);
 extern "C" void par_geng5(rx_solve *rx);
 extern "C" void par_sdirk43(rx_solve *rx);
 
@@ -1695,7 +1695,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); ros6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 33:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); bdf1_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); backwardEuler_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 34:
       if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); gauss6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -1704,7 +1704,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); iiic6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 36:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); raduiiic6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); radauiia5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 37:
       if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); geng5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -5869,10 +5869,10 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
         break;
       case 31: ind_grk4a(rx, cid, c_dydt, u_inis); break;
       case 32: ind_ros6(rx, cid, c_dydt, u_inis); break;
-      case 33: ind_bdf1(rx, cid, c_dydt, u_inis); break;
+      case 33: ind_backwardEuler(rx, cid, c_dydt, u_inis); break;
       case 34: ind_gauss6(rx, cid, c_dydt, u_inis); break;
       case 35: ind_iiic6(rx, cid, c_dydt, u_inis); break;
-      case 36: ind_raduiiic6(rx, cid, c_dydt, u_inis); break;
+      case 36: ind_radauiia5(rx, cid, c_dydt, u_inis); break;
       case 37: ind_geng5(rx, cid, c_dydt, u_inis); break;
       case 38: ind_sdirk43(rx, cid, c_dydt, u_inis); break;
 
@@ -6008,10 +6008,10 @@ extern "C" void par_solve(rx_solve *rx) {
         break;
       case 31: par_grk4a(rx); break;
       case 32: par_ros6(rx); break;
-      case 33: par_bdf1(rx); break;
+      case 33: par_backwardEuler(rx); break;
       case 34: par_gauss6(rx); break;
       case 35: par_iiic6(rx); break;
-      case 36: par_raduiiic6(rx); break;
+      case 36: par_radauiia5(rx); break;
       case 37: par_geng5(rx); break;
       case 38: par_sdirk43(rx); break;
       case 0:

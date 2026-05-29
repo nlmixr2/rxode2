@@ -1385,7 +1385,9 @@ OdeBackwardEuler::OdeBackwardEuler (unsigned long neq) :
     newton_->set_modified(true);
 }
 
-OdeBackwardEuler::~OdeBackwardEuler () {}
+OdeBackwardEuler::~OdeBackwardEuler () {
+    delete newton_;
+}
 
 void OdeBackwardEuler::step_ (double dt) {
     unsigned long i;
@@ -1455,6 +1457,7 @@ OdeGauss6::~OdeGauss6 () {
     for (int i=0; i<nk_; i++) delete [] a[i];
     delete [] a;
     delete [] b;
+    delete newton_;
 }
 
 void OdeGauss6::step_ (double dt) {
@@ -1526,6 +1529,7 @@ OdeLobattoIIIC6::~OdeLobattoIIIC6 () {
     for (int i=0; i<nk_; i++) delete [] a[i];
     delete [] a;
     delete [] b;
+    delete newton_;
 }
 
 void OdeLobattoIIIC6::step_ (double dt) {
@@ -1596,6 +1600,7 @@ OdeRadauIIA5::~OdeRadauIIA5 () {
     for (int i=0; i<nk_; i++) delete [] a[i];
     delete [] a;
     delete [] b;
+    delete newton_;
 }
 
 void OdeRadauIIA5::step_ (double dt) {
@@ -1666,6 +1671,7 @@ OdeGeng5::~OdeGeng5 () {
     for (int i=0; i<nk_; i++) delete [] a[i];
     delete [] a;
     delete [] b;
+    delete newton_;
 }
 
 void OdeGeng5::step_ (double dt) {
@@ -1733,6 +1739,7 @@ OdeSDIRK43::~OdeSDIRK43 () {
     delete [] a;
     delete [] b;
     delete [] d;
+    delete newton_;
 }
 
 void OdeSDIRK43::step_ (double dt) {

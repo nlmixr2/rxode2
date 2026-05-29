@@ -61,9 +61,9 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`, `"bdf1"`, `"gauss6"`, `"iiic6"`, `"raduiiic6"`, and `"geng5"` methods, this specifies
+#'     For the `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, and `"geng5"` methods, this specifies
 #'     the fixed step size. If `hmin=0` (the default), it uses a
-#'     default of `0.01` for `"rk4"`, `"trapz"`, `"ssp3"`, `"ros6"`, `"bdf1"`, `"gauss6"`, `"iiic6"`, `"raduiiic6"`, and `"geng5"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+#'     default of `0.01` for `"rk4"`, `"trapz"`, `"ssp3"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, and `"geng5"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 #'     If the requested step size would cause the number of
 #'     steps to exceed `maxsteps`, the step size is automatically
 #'     increased to ensure the integration completes within the
@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "bdf1", "gauss6", "iiic6", "raduiiic6", "geng5", "sdirk43"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3282,8 +3282,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"ros6"` **(implicit)** -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 #'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
 #'
-#' * `"bdf1"` **(implicit)** -- Backward Euler (1st-order, L-stable, fully implicit) from libode.
-#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#' * `"backwardEuler"` **(implicit)** -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
+#'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
 #'
 #' * `"gauss6"` **(implicit)** -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
 #'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
@@ -3291,8 +3291,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"iiic6"` **(implicit)** -- Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
 #'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
 #'
-#' * `"raduiiic6"` **(implicit)** -- Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
-#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#' * `"radauiia5"` **(implicit)** -- Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+#'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
 #'
 #' * `"geng5"` **(implicit)** -- Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
 #'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
@@ -3364,28 +3364,28 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   not use `atol` or `rtol` (fixed-step; no error control).  Supports
 #'   parallel thread-based solving and steady-state (`ss=1`) dosing.
 #'
-#' * `"rkf32"` -- Fehlberg's Runge-Kutta 3(2) embedded pair, implemented via the
-#'   libode library.  A 3-stage, 3rd-order adaptive method with a built-in
-#'   2nd-order error estimate for automatic step-size control.  Tableau:
-#'   c2=1/2, a21=1/2; c3=1, a31=-1, a32=2; primary (3rd-order) weights
-#'   b1=1/6, b2=2/3, b3=1/6; embedded (2nd-order) weights d1=1/2, d2=0,
-#'   d3=1/2.  Uses `atol` and `rtol` for error control.  The `hmin`
+#' * `"rkf32"` -- Heun-Euler 3(2) embedded pair from libode.  A 3-stage,
+#'   3rd-order adaptive method with a built-in 2nd-order error estimate for
+#'   automatic step-size control.  Tableau: c2=1, a21=1; c3=1/2, a31=1/4,
+#'   a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6, d3=4/6; embedded
+#'   (2nd-order, `solemb_`) weights b1=1/2, b2=1/2.  Uses `atol` and `rtol`
+#'   for error control.  The `hmin`
 #'   parameter sets the initial step size (default `0.01`); subsequent steps
 #'   are chosen adaptively.  The total number of accepted and rejected steps
 #'   is bounded by `maxsteps`.  Supports parallel thread-based solving and
 #'   steady-state (`ss=1`) dosing with convergence governed by `ssAtol`,
 #'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
 #'
-#' * `"rk43"` -- Classical Runge-Kutta 4(3) with FSAL (First Same As Last),
-#'   implemented via the libode library.  A 5-stage, 4th-order adaptive method
-#'   with an embedded 3rd-order error estimate for automatic step-size control.
-#'   Uses the classical RK4 as the primary solution (b1=1/6, b2=1/3, b3=1/3,
-#'   b4=1/6) with an FSAL 3rd-order embedded pair (d1=1/6, d2=7/18, d3=5/18,
-#'   d5=1/6).  The FSAL property means the 5th stage evaluation (at the
-#'   accepted solution point) is reused as the first stage of the next step,
-#'   giving effectively 4 function evaluations per step.  Uses `atol` and
-#'   `rtol` for error control.  The `hmin` parameter sets the initial step
-#'   size (default `0.01`); subsequent steps are chosen adaptively.  The
+#' * `"rk43"` -- Runge-Kutta 4(3) pair from libode.  A 5-stage, 4th-order
+#'   adaptive method with a built-in 3rd-order embedded error estimate for
+#'   automatic step-size control.  Tableau: c2=1/3, a21=1/3; c3=2/3,
+#'   a31=-1/3, a32=1; c4=1, a41=1, a42=-1, a43=1; a5j=bj (FSAL).
+#'   Primary (4th-order) weights b1=b4=1/8, b2=b3=3/8; embedded (3rd-order)
+#'   weights d1=1/12, d2=1/2, d3=1/4, d5=1/6.  Since a5j=bj the 5th stage
+#'   evaluation is reused as the 1st stage of the next step (FSAL).
+#'   Uses `atol` and `rtol` for error control.  The `hmin` parameter sets
+#'   the initial step size (default `0.01`); subsequent steps are chosen
+#'   adaptively.  The
 #'   total number of steps is bounded by `maxsteps`.  Supports parallel
 #'   thread-based solving and steady-state (`ss=1`) dosing with convergence
 #'   governed by `ssAtol`, `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
@@ -3463,8 +3463,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "bdf1", "gauss6", "iiic6", "raduiiic6", "geng5", "sdirk43")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "bdf1" = 33L, "gauss6" = 34L, "iiic6" = 35L, "raduiiic6" = 36L, "geng5" = 37L, "sdirk43" = 38L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
@@ -3488,7 +3488,7 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
 #'
 #' Implicit methods are:
 #' `"ros4"` (13), `"iem"` (14), `"ros43"` (31), `"ros6"` (32),
-#' `"bdf1"` (33), `"gauss6"` (34), `"iiic6"` (35), `"raduiiic6"` (36),
+#' `"backwardEuler"` (33), `"gauss6"` (34), `"iiic6"` (35), `"radauiia5"` (36),
 #' `"geng5"` (37), `"sdirk43"` (38).
 #'
 #' @param method A character vector of method names or an integerish vector of
@@ -3516,8 +3516,8 @@ rxIsImplicit <- function(method) {
     "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
     "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L,
     "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
-    "ros43" = 31L, "ros6" = 32L, "bdf1" = 33L, "gauss6" = 34L,
-    "iiic6" = 35L, "raduiiic6" = 36L, "geng5" = 37L, "sdirk43" = 38L
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L
   )
   if (is.character(method)) {
     .codes <- .methodIdx[method]
@@ -3603,7 +3603,7 @@ rxUiDeparse.rxControl <- function(object, var) {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
       paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
     } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ros43" = 31L)
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ros4" = 13L, "iem" = 14L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
       paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
     } else if (x == "naInterpolation") {
       .naInterpolation <- c("locf"=1L, "nocb"=0L)

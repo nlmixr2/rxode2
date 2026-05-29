@@ -1,6 +1,6 @@
 # Helper functions for the test cases of the methods.
 # general ode methods used
-.methods0 <- c("sdirk43","geng5", "raduiiic6", "iiic6", "gauss6", "bdf1", "ros6", "ros43", "vern98", "dop87", "vern76", "vern65", "dop54", "rk43", "rkf32", "ssp3", "trapz", "sem", "ros4", "bs", "dop5", "ab", "abm", "ck54", "rk4", "dop853", "rkf78", "liblsoda", "cvode")
+.methods0 <- c("sdirk43","geng5", "radauiia5", "iiic6", "gauss6", "backwardEuler", "ros6", "ros43", "vern98", "dop87", "vern76", "vern65", "dop54", "rk43", "rkf32", "ssp3", "trapz", "sem", "ros4", "bs", "dop5", "ab", "abm", "ck54", "rk4", "dop853", "rkf78", "liblsoda", "cvode")
 .methods0 <- c("dop853", "libsoda")
 # dense methods used for nmtest
 .methods1 <- c("ddop853", "ddop5", "dbs", "dros4")

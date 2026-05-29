@@ -1,13 +1,13 @@
 rxTest({
-  test_that("bdf1 integrates 1-compartment model correctly", {
+  test_that("backwardEuler integrates 1-compartment model correctly", {
     mod <- rxode2::rxode2({
       d/dt(y) <- -y
     })
     et <- rxode2::eventTable()
     et$add.sampling(seq(0, 5, length.out=10))
-    out <- rxode2::rxSolve(mod, params=c(), events=et, inits=c(y=1), method="bdf1", hmin=0.01)
+    out <- rxode2::rxSolve(mod, params=c(), events=et, inits=c(y=1), method="backwardEuler", hmin=0.01)
     expect_s3_class(out, "rxSolve")
-    # bdf1 is 1st-order; use loose tolerance
+    # backwardEuler is 1st-order; use loose tolerance
     expect_equal(out$y, exp(-out$time), tolerance = 0.2)
   })
 })
