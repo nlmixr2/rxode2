@@ -22,6 +22,7 @@ Authors@R: c(
    person("Jim", "Bunch", role="ctb"),
    person("Kevin", "Ushey", role="ctb"),
    person("Linda", "Petzold", role="ctb"),
+   person("Mark M.", "Baum", role="ctb"),
    person("Martin", "Maechler", role="ctb"),
    person("Matt", "Dowle", role="ctb", email="mattjdowle@gmail.com"),
    person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = "ctb"),

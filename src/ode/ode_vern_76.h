@@ -13,7 +13,7 @@ namespace ode {
 /*!
     + http://people.math.sfu.ca/~jverner/
 */
-class OdeVern76 : public OdeEmbedded, private OdeRK, private OdeERK {
+class OdeVern76 : public OdeEmbedded, protected OdeRK, protected OdeERK {
 
     public:
         //!constructs
@@ -22,9 +22,9 @@ class OdeVern76 : public OdeEmbedded, private OdeRK, private OdeERK {
         */
         OdeVern76 (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single time step
-        void step_ (double dt);
+        virtual void step_ (double dt);
         //coefficents of tableau
         double c2,   a21,
                c3,   a31,  a32,

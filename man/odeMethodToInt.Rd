@@ -7,7 +7,7 @@
 odeMethodToInt(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
     "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
-    "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65")
+    "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76")
 )
 }
 \arguments{
@@ -136,6 +136,17 @@ number of steps is bounded by \code{maxsteps}.  Supports parallel thread-based
 solving and steady-state (\code{ss=1}) dosing with convergence governed by
 \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in
 derivatives is detected immediately and the solve exits with NA output.
+\item \code{"vern76"} -- Jim Verner's "most efficient" 7(6) pair (10 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV76.IIa.Efficient).  A 7th-order adaptive method with an
+embedded 6th-order error estimate.  The sparse tableau reduces function
+evaluations per step.  Uses \code{atol} and \code{rtol} for error control.  The
+\code{hmin} parameter sets the initial step size (default \code{0.01}); subsequent
+steps are chosen adaptively.  The total number of steps is bounded by
+\code{maxsteps}.  Supports parallel thread-based solving and steady-state
+(\code{ss=1}) dosing with convergence governed by \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.
 }}
 }
 \value{
