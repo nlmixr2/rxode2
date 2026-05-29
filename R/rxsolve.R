@@ -61,9 +61,9 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"`, `"trapz"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
+#'     For the `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
 #'     the fixed step size. If `hmin=0` (the default), it uses a
-#'     default of `0.01` for `"rk4"` and `"trapz"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+#'     default of `0.01` for `"rk4"`, `"trapz"`, and `"ssp3"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 #'     If the requested step size would cause the number of
 #'     steps to exceed `maxsteps`, the step size is automatically
 #'     increased to ensure the integration completes within the
@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3277,20 +3277,26 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by `hmin`).
 #'
 #' * `"sem"` -- Symplectic Euler solver using Boost's odeint library.
-#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-#'   Is a fixed-step method (step size controlled by `hmin`).
+#'   Requires splitting the state into coordinate-momentum pairs (and
+#'   automatically pads odd-dimensional systems).  Is a fixed-step
+#'   method (step size controlled by `hmin`).
 #'
-#' * `"sb3a"` -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper using Boost's odeint library.
-#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-#'   Is a fixed-step method (step size controlled by `hmin`).
+#' * `"sb3a"` -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper
+#'   using Boost's odeint library.  Requires splitting the state into
+#'   coordinate-momentum pairs (and automatically pads odd-dimensional
+#'   systems).  Is a fixed-step method (step size controlled by
+#'   `hmin`).
 #'
-#' * `"sb3am4"` -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan stepper using Boost's odeint library.
-#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-#'   Is a fixed-step method (step size controlled by `hmin`).
+#' * `"sb3am4"` -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan
+#'   stepper using Boost's odeint library.  Requires splitting the
+#'   state into coordinate-momentum pairs (and automatically pads
+#'   odd-dimensional systems).  Is a fixed-step method (step size
+#'   controlled by `hmin`).
 #'
 #' * `"vv"` -- Velocity Verlet stepper using Boost's odeint library.
-#'   Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-#'   Is a fixed-step method (step size controlled by `hmin`).
+#'   Requires splitting the state into coordinate-momentum pairs (and
+#'   automatically pads odd-dimensional systems).  Is a fixed-step
+#'   method (step size controlled by `hmin`).
 #'
 #' * `"mm"` -- Modified Midpoint stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`) and uses
@@ -3318,12 +3324,25 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   error control).  Steady-state convergence is governed by `ssAtol`,
 #'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
 #'
+#' * `"ssp3"` -- Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+#'   Shu-Osher method), implemented via the libode library.  A 3-stage,
+#'   3rd-order explicit fixed-step method with superior non-oscillatory
+#'   properties for problems with discontinuities or sharp fronts.  Uses
+#'   the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+#'   b1=1/6, b2=1/6, b3=2/3.  The step-size behaviour, clamping, and
+#'   steady-state options (`hmin`, `maxsteps`, `ssAtol`, `ssRtol`,
+#'   `minSS`, `maxSS`, `strictSS`) are identical to `"trapz"`.  Does
+#'   not use `atol` or `rtol` (fixed-step; no error control).  Supports
+#'   parallel thread-based solving and steady-state (`ss=1`) dosing.
+#'
 #' @keywords Internal
+#'
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
+#'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L

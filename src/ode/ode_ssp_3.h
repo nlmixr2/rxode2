@@ -13,7 +13,7 @@ namespace ode {
 /*!
     + C. W. Shu and S. Osher, Effcient implementation of essentially nonoscillatory shock-capturing schemes, J. Comput. Phys., 77, 1988, pp. 439-471.
 */
-class OdeSsp3 : public OdeAdaptive, private OdeRK, private OdeERK {
+class OdeSsp3 : public OdeAdaptive, protected OdeRK, protected OdeERK {
 
     public:
         //!constructs
@@ -22,9 +22,9 @@ class OdeSsp3 : public OdeAdaptive, private OdeRK, private OdeERK {
         */
         OdeSsp3 (unsigned long neq);
 
-    private:
+    protected:
         //take a time step
-        void step_ (double dt);
+        virtual void step_ (double dt);
         //coefficents of tableau
         double c2, a21,
                c3, a31, a32,

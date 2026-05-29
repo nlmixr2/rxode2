@@ -1214,6 +1214,7 @@ extern "C" void vv_solveWith1Pt(int *neq, double *yp, double *xp, double xout, i
 extern "C" void mm_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void em_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void trapz_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void ssp3_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 
 
 static inline void solveWith1Pt(int *neq,
@@ -1519,6 +1520,21 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
         trapz_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) {
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 23:
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        ssp3_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -5661,6 +5677,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 22:
         ind_trapz(rx, cid, c_dydt, u_inis);
         break;
+      case 23:
+        ind_ssp3(rx, cid, c_dydt, u_inis);
+        break;
 
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
@@ -5768,6 +5787,9 @@ extern "C" void par_solve(rx_solve *rx) {
       case 22:
         par_trapz(rx);
         break;
+      case 23:
+        par_ssp3(rx);
+        break;
       case 0:
         // dop
         par_dop(rx);
@@ -5829,3 +5851,4 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "em.cpp"
 #include "cvode.cpp"
 #include "trapz.cpp"
+#include "ssp3.cpp"

@@ -2,7 +2,7 @@
 #define R_NO_REMAP
 #endif
 #define STRICT_R_HEADERS
-// Implementations of libode base classes needed by OdeTrapz.
+// Implementations of libode base classes needed by OdeTrapz and OdeSsp3.
 // All file-I/O stubs are replaced with R-safe equivalents.
 
 #include <cstdlib>
@@ -22,6 +22,7 @@
 #include "ode/ode_rk.h"
 #include "ode/ode_erk.h"
 #include "ode/ode_trapz.h"
+#include "ode/ode_ssp_3.h"
 
 namespace ode {
 
@@ -289,6 +290,39 @@ void OdeTrapz::step_ (double dt) {
     ode_fun_(soltemp_, k_[1]);
     for (unsigned long i = 0; i < neq_; i++)
         sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i]);
+}
+
+// ── OdeSsp3 ───────────────────────────────────────────────────────────────────
+// Shu-Osher SSP-RK3: C. W. Shu and S. Osher (1988).
+// Tableau: c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4; b1=1/6, b2=1/6, b3=2/3.
+
+OdeSsp3::OdeSsp3 (unsigned long neq)
+    : OdeAdaptive(neq, false),
+      OdeRK(neq, 3),
+      OdeERK(neq)
+{
+    method_ = "Ssp3";
+    c2  = 1.0;   a21 = 1.0;
+    c3  = 0.5;   a31 = 0.25; a32 = 0.25;
+    b1  = 1.0/6; b2  = 1.0/6; b3  = 2.0/3;
+}
+
+void OdeSsp3::step_ (double dt) {
+    // k1 = f(t, y)
+    ode_fun_(sol_, k_[0]);
+    // y2 = y + dt*a21*k1
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
+    // k2 = f(t + c2*dt, y2)
+    ode_fun_(soltemp_, k_[1]);
+    // y3 = y + dt*(a31*k1 + a32*k2)
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
+    // k3 = f(t + c3*dt, y3)
+    ode_fun_(soltemp_, k_[2]);
+    // y = y + dt*(b1*k1 + b2*k2 + b3*k3)
+    for (unsigned long i = 0; i < neq_; i++)
+        sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
 }
 
 } // namespace ode

@@ -7,7 +7,7 @@
 odeMethodToInt(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
     "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
-    "cvode", "trapz")
+    "cvode", "trapz", "ssp3")
 )
 }
 \arguments{
@@ -36,17 +36,23 @@ method (step size controlled by \code{hmin}).
 Requires an explicit Jacobian (auto-generated via \code{calcJac=TRUE} when not provided).
 Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \code{hmin}).
 \item \code{"sem"} -- Symplectic Euler solver using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-Is a fixed-step method (step size controlled by \code{hmin}).
-\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-Is a fixed-step method (step size controlled by \code{hmin}).
-\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-Is a fixed-step method (step size controlled by \code{hmin}).
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by \code{hmin}).
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper
+using Boost's odeint library.  Requires splitting the state into
+coordinate-momentum pairs (and automatically pads odd-dimensional
+systems).  Is a fixed-step method (step size controlled by
+\code{hmin}).
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan
+stepper using Boost's odeint library.  Requires splitting the
+state into coordinate-momentum pairs (and automatically pads
+odd-dimensional systems).  Is a fixed-step method (step size
+controlled by \code{hmin}).
 \item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and automatically pads odd-dimensional systems).
-Is a fixed-step method (step size controlled by \code{hmin}).
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by \code{hmin}).
 \item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}) and uses
 the \code{order} parameter to configure the number of intermediate
@@ -69,6 +75,16 @@ Supports parallel thread-based solving and steady-state (\code{ss=1})
 dosing.  The method does not use \code{atol} or \code{rtol} (fixed-step; no
 error control).  Steady-state convergence is governed by \code{ssAtol},
 \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"ssp3"} -- Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+Shu-Osher method), implemented via the libode library.  A 3-stage,
+3rd-order explicit fixed-step method with superior non-oscillatory
+properties for problems with discontinuities or sharp fronts.  Uses
+the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+b1=1/6, b2=1/6, b3=2/3.  The step-size behaviour, clamping, and
+steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
+not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
+parallel thread-based solving and steady-state (\code{ss=1}) dosing.
 }}
 }
 \value{
