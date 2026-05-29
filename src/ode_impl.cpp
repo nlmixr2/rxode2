@@ -2,7 +2,7 @@
 #define R_NO_REMAP
 #endif
 #define STRICT_R_HEADERS
-// Implementations of libode base classes needed by OdeTrapz, OdeSsp3, OdeRKF32, OdeRK43, OdeDoPri54, OdeVern65, OdeVern76, OdeDoPri87, and OdeVern98.
+// Implementations of libode base classes needed by OdeTrapz, OdeSsp3, OdeRKF32, OdeRK43, OdeDoPri54, OdeVern65, OdeVern76, OdeDoPri87, OdeVern98, OdeRosenbrock, and OdeGRK4A.
 // All file-I/O stubs are replaced with R-safe equivalents.
 
 #include <cstdlib>
@@ -31,6 +31,18 @@
 #include "ode/ode_vern_76.h"
 #include "ode/ode_dopri_87.h"
 #include "ode/ode_vern_98.h"
+#include "ode/ode_rosenbrock.h"
+#include "ode/ode_grk4a.h"
+#include "ode/ode_row6a.h"
+#include "ode/ode_irk.h"
+#include "ode/ode_newton.h"
+#include "ode/ode_newton_bridge.h"
+#include "ode/ode_backward_euler.h"
+#include "ode/ode_gauss_6.h"
+#include "ode/ode_lobatto_iiic_6.h"
+#include "ode/ode_radau_iia_5.h"
+#include "ode/ode_geng_5.h"
+#include "ode/ode_sdirk_43.h"
 
 namespace ode {
 
@@ -382,9 +394,9 @@ bool   OdeEmbedded::is_rejected () { return isrej_; }
 double OdeEmbedded::dt_adapt    () { return dtopt_; }
 
 // ── OdeRKF32 ──────────────────────────────────────────────────────────────────
-// Fehlberg's 3(2) pair.
-// Primary (3rd-order): b1=1/6, b2=2/3, b3=1/6 (b3 = 1-b1-b2, not stored).
-// Embedded (2nd-order): d1=1/2, d2=0, d3=1/2.
+// Heun-Euler 3(2) pair — coefficients match libode exactly.
+// solemb_ (2nd-order): b1=1/2, b2=1/2 (Heun).
+// sol_    (3rd-order): d1=1/6, d2=1/6, d3=4/6.
 
 OdeRKF32::OdeRKF32 (unsigned long neq)
     : OdeEmbedded(neq, false, 2),
@@ -392,42 +404,32 @@ OdeRKF32::OdeRKF32 (unsigned long neq)
       OdeERK(neq)
 {
     method_ = "RKF32";
-    c2  = 0.5;    a21 = 0.5;
-    c3  = 1.0;    a31 = -1.0;  a32 = 2.0;
-    b1  = 1.0/6;  b2  = 2.0/3;
-    d1  = 0.5;    d2  = 0.0;   d3  = 0.5;
+    c2  = 1.0;     a21 = 1.0;
+    c3  = 1.0/2;   a31 = 1.0/4;  a32 = 1.0/4;
+    b1  = 1.0/2;   b2  = 1.0/2;
+    d1  = 1.0/6;   d2  = 1.0/6;  d3  = 4.0/6;
 }
 
 void OdeRKF32::step_ (double dt) {
-    // Stage 1: k1 = f(t, y)
+    unsigned long i;
     ode_fun_(sol_, k_[0]);
 
-    // Stage 2: y2 = y + dt*a21*k1
-    for (unsigned long i = 0; i < neq_; i++)
-        soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*a21*k_[0][i];
     ode_fun_(soltemp_, k_[1]);
 
-    // Stage 3: y3 = y + dt*(a31*k1 + a32*k2)
-    for (unsigned long i = 0; i < neq_; i++)
-        soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a31*k_[0][i] + a32*k_[1][i]);
     ode_fun_(soltemp_, k_[2]);
 
-    // 2nd-order embedded (must be computed before sol_ is overwritten)
-    for (unsigned long i = 0; i < neq_; i++)
-        solemb_[i] = sol_[i] + dt * (d1 * k_[0][i] + d2 * k_[1][i] + d3 * k_[2][i]);
-
-    // 3rd-order primary update (b3 = 1 - b1 - b2)
-    double b3 = 1.0 - b1 - b2;
-    for (unsigned long i = 0; i < neq_; i++)
-        sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
+    for (i=0; i<neq_; i++) {
+        solemb_[i] = sol_[i] + dt*(b1*k_[0][i] + b2*k_[1][i]);
+        sol_[i]    = sol_[i] + dt*(d1*k_[0][i] + d2*k_[1][i] + d3*k_[2][i]);
+    }
 }
 
 // ── OdeRK43 ───────────────────────────────────────────────────────────────────
-// Classical RK4 primary with FSAL 3rd-order embedded pair.
-// FSAL: a5j = bj, so k5 = f(t+dt, y_new) = next step's k1.
-// Primary (4th): b1=1/6, b2=1/3, b3=1/3, b4=1/6 (classical RK4).
-// Embedded (3rd): d1=1/6, d2=7/18, d3=5/18, d4=0 (not stored), d5=1/6.
-// All order conditions verified analytically.
+// 4(3) pair — coefficients match libode exactly.
+// solemb_ (3rd-order): d1=1/12, d2=1/2, d3=1/4, d5=1/6.
+// sol_    (4th-order): b1=1/8,  b2=3/8, b3=3/8, b4=1/8.
 
 OdeRK43::OdeRK43 (unsigned long neq)
     : OdeEmbedded(neq, false, 3),
@@ -435,48 +437,34 @@ OdeRK43::OdeRK43 (unsigned long neq)
       OdeERK(neq)
 {
     method_ = "RK43";
-    c2  = 0.5;      a21 = 0.5;
-    c3  = 0.5;      a31 = 0.0;       a32 = 0.5;
-    c4  = 1.0;      a41 = 0.0;       a42 = 0.0;       a43 = 1.0;
-    c5  = 1.0;      a51 = 1.0/6;     a52 = 1.0/3;     a53 = 1.0/3;  a54 = 1.0/6;
-    b1  = 1.0/6;    b2  = 1.0/3;     b3  = 1.0/3;     b4  = 1.0/6;
-    d1  = 1.0/6;    d2  = 7.0/18;    d3  = 5.0/18;    d5  = 1.0/6;
+    c2 = 1.0/3;  a21 =  1.0/3;
+    c3 = 2.0/3;  a31 = -1.0/3;  a32 = 1.0;
+    c4 = 1.0;    a41 =  1.0;    a42 = -1.0;   a43 = 1.0;
+    c5 = 1.0;    a51 =  1.0/8;  a52 =  3.0/8; a53 = 3.0/8; a54 = 1.0/8;
+    b1 = 1.0/8;  b2  =  3.0/8;  b3  =  3.0/8; b4  = 1.0/8;
+    d1 = 1.0/12; d2  =  1.0/2;  d3  =  1.0/4; d5  = 1.0/6;
 }
 
 void OdeRK43::step_ (double dt) {
-    // Stage 1: k1 = f(t, y)
+    unsigned long i;
     ode_fun_(sol_, k_[0]);
 
-    // Stage 2: y2 = y + dt*a21*k1
-    for (unsigned long i = 0; i < neq_; i++)
-        soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*a21*k_[0][i];
     ode_fun_(soltemp_, k_[1]);
 
-    // Stage 3: y3 = y + dt*(a31*k1 + a32*k2)
-    for (unsigned long i = 0; i < neq_; i++)
-        soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a31*k_[0][i] + a32*k_[1][i]);
     ode_fun_(soltemp_, k_[2]);
 
-    // Stage 4: y4 = y + dt*(a41*k1 + a42*k2 + a43*k3)
-    for (unsigned long i = 0; i < neq_; i++)
-        soltemp_[i] = sol_[i] + dt * (a41 * k_[0][i] + a42 * k_[1][i] + a43 * k_[2][i]);
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a41*k_[0][i] + a42*k_[1][i] + a43*k_[2][i]);
     ode_fun_(soltemp_, k_[3]);
 
-    // 4th-order primary update (sol_ becomes y_new before stage 5)
-    for (unsigned long i = 0; i < neq_; i++)
-        sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i] + b4 * k_[3][i]);
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a51*k_[0][i] + a52*k_[1][i] + a53*k_[2][i] + a54*k_[3][i]);
+    ode_fun_(soltemp_, k_[4]);
 
-    // Stage 5 (FSAL): k5 = f(t+dt, y_new); a5j = bj
-    ode_fun_(sol_, k_[4]);
-
-    // 3rd-order embedded (d4=0, d5=1/6)
-    // solemb_ uses the OLD y (= sol_ - dt*update above), so back-compute
-    // y_old = sol_ - dt*(b1*k1+b2*k2+b3*k3+b4*k4) and add d-weighted sum.
-    // Equivalently: solemb_ = sol_ + dt*((d1-b1)*k1+(d2-b2)*k2+(d3-b3)*k3+(0-b4)*k4+d5*k5)
-    for (unsigned long i = 0; i < neq_; i++)
-        solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i]
-                                    + (d3 - b3) * k_[2][i] + (   - b4) * k_[3][i]
-                                    + d5         * k_[4][i]);
+    for (i=0; i<neq_; i++) {
+        solemb_[i] = sol_[i] + dt*(d1*k_[0][i] + d2*k_[1][i] + d3*k_[2][i] + d5*k_[4][i]);
+        sol_[i]    = sol_[i] + dt*(b1*k_[0][i] + b2*k_[1][i] + b3*k_[2][i] + b4*k_[3][i]);
+    }
 }
 
 // ── OdeDoPri54 ────────────────────────────────────────────────────────────────
@@ -1075,6 +1063,694 @@ void OdeVern98::step_ (double dt) {
                                  + d11*k_[10][i] + d12*k_[11][i] + d13*k_[12][i] + d16*k_[15][i]);
         sol_[i]    = sol_[i] + dt*(b1*k_[0][i]  + b8*k_[7][i]   + b9*k_[8][i]  + b10*k_[9][i]
                                  + b11*k_[10][i] + b12*k_[11][i] + b13*k_[12][i] + b14*k_[13][i] + b15*k_[14][i]);
+    }
+}
+
+// ── ode_linalg ────────────────────────────────────────────────────────────────
+// R-safe implementations (Rf_error instead of printf+exit).
+
+void ode_crout_forw_sub (double **L, double *b, int *p, int n, double *out) {
+    for (int i=0; i<n; i++) {
+        out[i] = b[p[i]];
+        for (int j=0; j<i; j++) out[i] -= L[i][j]*out[j];
+    }
+}
+
+void ode_back_sub (double **U, double *b, int n, double *out) {
+    for (int i=n-1; i>=0; i--) {
+        out[i] = b[i];
+        for (int j=i+1; j<n; j++) out[i] -= U[i][j]*out[j];
+        out[i] /= U[i][i];
+    }
+}
+
+void ode_crout_LU (double **A, int n, int *p) {
+    int i, j, k, idx, ti;
+    double m, td;
+    for (i=0; i<n; i++) p[i] = i;
+    for (i=0; i<n; i++) {
+        m = 0.0; idx = i;
+        for (j=i; j<n; j++) { td = fabs(A[j][i]); if (td > m) { m = td; idx = j; } }
+        if (!(fabs(m) > 0.0))
+            (Rf_error)("libode: singular matrix in Rosenbrock Jacobian factorization");
+        if (idx != i) {
+            for (j=0; j<n; j++) { td = A[i][j]; A[i][j] = A[idx][j]; A[idx][j] = td; }
+            ti = p[i]; p[i] = p[idx]; p[idx] = ti;
+        }
+        for (j=i+1; j<n; j++) A[j][i] /= A[i][i];
+        for (j=i+1; j<n; j++) for (k=i+1; k<n; k++) A[j][k] -= A[j][i]*A[i][k];
+    }
+}
+
+void ode_solve_LU (double **LU, int *p, double *b, int n, double *out) {
+    ode_crout_forw_sub(LU, b, p, n, out);
+    ode_back_sub(LU, out, n, out);
+}
+
+// ── OdeRosenbrock ─────────────────────────────────────────────────────────────
+
+OdeRosenbrock::OdeRosenbrock (unsigned long neq, int nk) {
+    nk_ = nk;
+    k_ = new double*[nk];
+    for (int i=0; i<nk; i++) k_[i] = new double[neq];
+    p_ = new int[neq];
+    rhs_ = new double[neq];
+    soltemp_ = new double[neq];
+}
+
+OdeRosenbrock::~OdeRosenbrock () {
+    for (int i=0; i<nk_; i++) delete [] k_[i];
+    delete [] k_;
+    delete [] p_;
+    delete [] rhs_;
+    delete [] soltemp_;
+}
+
+void OdeRosenbrock::prep_jac (double **Jac, unsigned long n, double dt, int *p) {
+    unsigned long i, j;
+    for (i=0; i<n; i++) {
+        for (j=0; j<n; j++) Jac[i][j] = -Jac[i][j]*gam*dt;
+        Jac[i][i] += 1.0;
+    }
+    ode_crout_LU(Jac, n, p);
+}
+
+// ── OdeGRK4A ─────────────────────────────────────────────────────────────────
+
+OdeGRK4A::OdeGRK4A (unsigned long neq) :
+    OdeEmbedded (neq, true, 3),
+    OdeRosenbrock (neq, 4) {
+
+    method_ = "GRK4A";
+    gam = 0.395;
+    gam21 = -0.767672395484;
+    gam31 = -0.851675323742; gam32 =  0.522967289188;
+    gam41 =  0.288463109545; gam42 = 0.0880214273381; gam43 = -0.337389840627;
+    g21 = gam21/gam;
+    g31 = gam31/gam; g32 = gam32/gam;
+    g41 = gam41/gam; g42 = gam42/gam; g43 = gam43/gam;
+    alp21 = 0.438;
+    alp31 = 0.796920457938; alp32 = 0.0730795420615;
+    b1 = 0.199293275701; b2 = 0.482645235674; b3 = 0.0680614886256; b4 = 0.25;
+    d1 = 0.346325833758; d2 = 0.285693175712; d3 = 0.367980990530;
+}
+
+void OdeGRK4A::step_ (double dt) {
+    unsigned long i;
+
+    ode_jac_(sol_, Jac_);
+    prep_jac(Jac_, neq_, dt, p_);
+
+    ode_fun_(sol_, k_[0]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[0][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[0]);
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + alp21*k_[0][i];
+    ode_fun_(soltemp_, k_[1]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[1][i] + g21*k_[0][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[1]);
+    for (i=0; i<neq_; i++) k_[1][i] -= g21*k_[0][i];
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + alp31*k_[0][i] + alp32*k_[1][i];
+    ode_fun_(soltemp_, k_[2]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[2][i] + g31*k_[0][i] + g32*k_[1][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[2]);
+    for (i=0; i<neq_; i++) k_[2][i] -= g31*k_[0][i] + g32*k_[1][i];
+
+    // Stage 4 uses the same soltemp as stage 3 (GRK4A property)
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + alp31*k_[0][i] + alp32*k_[1][i];
+    ode_fun_(soltemp_, k_[3]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[3][i] + g41*k_[0][i] + g42*k_[1][i] + g43*k_[2][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[3]);
+    for (i=0; i<neq_; i++) k_[3][i] -= g41*k_[0][i] + g42*k_[1][i] + g43*k_[2][i];
+
+    for (i=0; i<neq_; i++) {
+        solemb_[i] = sol_[i] + (d1*k_[0][i] + d2*k_[1][i] + d3*k_[2][i]);
+        sol_[i]    = sol_[i] + (b1*k_[0][i] + b2*k_[1][i] + b3*k_[2][i] + b4*k_[3][i]);
+    }
+}
+
+// ── OdeIRK ────────────────────────────────────────────────────────────────────
+
+OdeIRK::OdeIRK (unsigned long neq, int nk) {
+    nk_ = nk;
+    kall_ = new double[neq*nk];
+    k_ = new double*[nk];
+    for (int i=0; i<nk; i++) k_[i] = kall_ + i*neq;
+}
+
+OdeIRK::~OdeIRK () {
+    delete [] k_;
+    delete [] kall_;
+}
+
+// ── OdeNewton ─────────────────────────────────────────────────────────────────
+
+OdeNewton::OdeNewton (unsigned long n) {
+    n_ = n;
+    f_ = new double[n];
+    J_ = new double*[n];
+    for (unsigned long i=0; i<n; i++) J_[i] = new double[n];
+    delx_ = new double[n];
+    p_ = new int[n];
+    tol_Newton_ = 1e-8;
+    iter_Newton_ = 250;
+    iJLU_ = 1;
+    nJLU_ = 0;
+    n_solve_LU_ = 0;
+    icheck_ = 2;
+    modified_ = false;
+    ignore_JLU_ = false;
+}
+
+OdeNewton::~OdeNewton () {
+    delete [] f_;
+    for (unsigned long i=0; i<n_; i++) delete [] J_[i];
+    delete [] J_;
+    delete [] delx_;
+    delete [] p_;
+}
+
+void OdeNewton::err (double *errx, double *errf) {
+    double tx, tf, mx = 0, my = 0;
+    for (unsigned long i=0; i<n_; i++) {
+        if ( (tx = fabs(delx_[i])) > mx ) mx = tx;
+        if ( (tf = fabs(f_[i])) > my ) my = tf;
+    }
+    *errx = mx;
+    *errf = my;
+}
+
+void OdeNewton::JLU (double *x) {
+    J_Newton(x, J_);
+    ode_crout_LU(J_, n_, p_);
+    nJLU_++;
+}
+
+void OdeNewton::solve_LU_(double **LU, int *p, double *b, int n, double *out) {
+    ode_solve_LU(LU, p, b, n, out);
+    n_solve_LU_++;
+}
+
+int OdeNewton::check_integrity (double *x) {
+    for (unsigned long i=0; i<n_; i++) {
+        if ( std::isnan(x[i]) ) return(2);
+        if ( !std::isfinite(x[i]) ) return(3);
+    }
+    return(0);
+}
+
+int OdeNewton::solve_Newton (double *x) {
+    unsigned long i, iter;
+    int suc;
+    double errx, errf;
+
+    for (i=0; i<n_; i++) delx_[i] = INFINITY;
+    err(&errx, &errf);
+
+    if ( modified_ && (!ignore_JLU_) ) JLU(x);
+
+    iter = 0;
+    while ( (errx > tol_Newton_) || (errf > tol_Newton_) ) {
+        if ( (!ignore_JLU_) && (!modified_) && (iter % iJLU_ == 0) ) JLU(x);
+        f_Newton(x, f_);
+        for (i=0; i<n_; i++) f_[i] = -f_[i];
+        solve_LU_(J_, p_, f_, n_, delx_);
+        for (i=0; i<n_; i++) x[i] += delx_[i];
+        err(&errx, &errf);
+        iter++;
+        if ( iter > iter_Newton_ ) return(1);
+        if ( iter % icheck_ == 0 ) {
+            suc = check_integrity(x);
+            if ( suc != 0 ) return(suc);
+        }
+    }
+    return(0);
+}
+
+// ── OdeROW6A ──────────────────────────────────────────────────────────────────
+
+OdeROW6A::OdeROW6A (unsigned long neq) :
+    OdeAdaptive (neq, true),
+    OdeRosenbrock (neq, 6) {
+
+    method_ = "ROW6A";
+    gam = 0.33414236706805043;
+
+    a21 =  0.66828473413610087;
+    a31 =   0.5852480389573658; a32 = -0.048594008221492802;
+    a41 = -0.61719233202999775; a42 =  -0.83995264476522158; a43 =   0.62641917900148600;
+    a51 =   3.5406887484552165; a52 =   0.65991497772646308; a53 =  -0.63661180895697222; a54 = -1.1945984675295562;
+    a61 =  0.80783664328582613; a62 =   0.10194631616818569; a63 = -0.078396778850607012; a64 = -0.044341977375427388; a65 = 0.013074732797453325;
+
+    c21 = -5.8308828523185086;
+    c31 = -4.0175939515896193; c32 =  0.43970131925236112;
+    c41 =  7.7228006257490299; c42 =   4.3368108251435758; c43 = -2.8219574578033366;
+    c51 = -1.0516225114542007; c52 = -0.58853585181331353; c53 =  2.0433794587212771; c54 = 5.0098631723809151;
+    c61 = -6.7357785372199458; c62 = -0.53593889506199845; c63 = 0.38622517020810987; c64 = 0.21066472713931598; c65 = -0.053546655670373728;
+
+    m1 = 11.358660043232931; m2 = -6.9896898855829058; m3 = -4.5967580421042947; m4 = -3.7220984696531517; m5 = 0.96012685868421520; m6 = 12.953396234292936;
+}
+
+void OdeROW6A::step_ (double dt) {
+    unsigned long i;
+
+    ode_jac_(sol_, Jac_);
+    prep_jac(Jac_, neq_, dt, p_);
+
+    ode_fun_(sol_, k_[0]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[0][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[0]);
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a21*k_[0][i];
+    ode_fun_(soltemp_, k_[1]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[1][i] + c21*k_[0][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[1]);
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a31*k_[0][i] + a32*k_[1][i];
+    ode_fun_(soltemp_, k_[2]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[2][i] + c31*k_[0][i] + c32*k_[1][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[2]);
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a41*k_[0][i] + a42*k_[1][i] + a43*k_[2][i];
+    ode_fun_(soltemp_, k_[3]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[3][i] + c41*k_[0][i] + c42*k_[1][i] + c43*k_[2][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[3]);
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a51*k_[0][i] + a52*k_[1][i] + a53*k_[2][i] + a54*k_[3][i];
+    ode_fun_(soltemp_, k_[4]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[4][i] + c51*k_[0][i] + c52*k_[1][i] + c53*k_[2][i] + c54*k_[3][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[4]);
+
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a61*k_[0][i] + a62*k_[1][i] + a63*k_[2][i] + a64*k_[3][i] + a65*k_[4][i];
+    ode_fun_(soltemp_, k_[5]);
+    for (i=0; i<neq_; i++) rhs_[i] = dt*k_[5][i] + c61*k_[0][i] + c62*k_[1][i] + c63*k_[2][i] + c64*k_[3][i] + c65*k_[4][i];
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[5]);
+
+    for (i=0; i<neq_; i++)
+        sol_[i] = sol_[i] + (m1*k_[0][i] + m2*k_[1][i] + m3*k_[2][i] + m4*k_[3][i] + m5*k_[4][i] + m6*k_[5][i]);
+}
+
+// ── OdeBackwardEuler ──────────────────────────────────────────────────────────
+
+void NewtonBackwardEuler::f_Newton (double *x, double *y) {
+    (void)x;
+    unsigned long i;
+    double dt = *dt_;
+    for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*k_[0][i];
+    fun(soltemp_, ftemp_);
+    for (i=0; i<neq_; i++) y[i] = k_[0][i] - ftemp_[i];
+}
+
+void NewtonBackwardEuler::J_Newton (double *x, double **J) {
+    (void)x;
+    unsigned long i, j;
+    double dt = *dt_;
+    if ( get_modified() ) jac(sol_, Jac_);
+    if ( !get_modified() ) {
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*k_[0][i];
+        jac(soltemp_, Jac_);
+    }
+    for (i=0; i<neq_; i++) {
+        for (j=0; j<neq_; j++) J[i][j] = -dt*Jac_[i][j];
+        J[i][i] += 1.0;
+    }
+}
+
+OdeBackwardEuler::OdeBackwardEuler (unsigned long neq) :
+    OdeAdaptive (neq, true),
+    OdeIRK (neq, 1) {
+    method_ = "BackwardEuler";
+    newton_ = new NewtonBackwardEuler(neq, 1, this);
+    newton_->set_modified(true);
+}
+
+OdeBackwardEuler::~OdeBackwardEuler () {}
+
+void OdeBackwardEuler::step_ (double dt) {
+    unsigned long i;
+    for (i=0; i<neq_; i++) k_[0][i] = 0.0;
+    newton_->solve_Newton(k_[0]);
+    for (i=0; i<neq_; i++) sol_[i] += dt*k_[0][i];
+}
+
+// ── OdeGauss6 ─────────────────────────────────────────────────────────────────
+
+void NewtonGauss6::f_Newton (double *x, double *y) {
+    (void)x;
+    unsigned long i;
+    int j, n;
+    double dt = *dt_;
+    for (n=0; n<nk_; n++) {
+        for (i=0; i<neq_; i++) {
+            soltemp_[i] = sol_[i];
+            for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
+        }
+        fun(soltemp_, ftemp_);
+        for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
+    }
+}
+
+void NewtonGauss6::J_Newton (double *x, double **J) {
+    (void)x;
+    unsigned long i, j;
+    int m, n;
+    double dt = *dt_;
+    if ( get_modified() ) jac(sol_, Jac_);
+    for (n=0; n<nk_; n++) {
+        if ( !get_modified() ) {
+            for (i=0; i<neq_; i++) {
+                soltemp_[i] = sol_[i];
+                for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
+            }
+            jac(soltemp_, Jac_);
+        }
+        for (i=0; i<neq_; i++) {
+            for (j=0; j<neq_; j++)
+                for (m=0; m<nk_; m++)
+                    J[i+n*neq_][j+m*neq_] = -dt*a[n][m]*Jac_[i][j];
+            J[i+n*neq_][i+n*neq_] += 1.0;
+        }
+    }
+}
+
+OdeGauss6::OdeGauss6 (unsigned long neq) :
+    OdeAdaptive (neq, true),
+    OdeIRK (neq, 3) {
+    method_ = "Gauss6";
+    int nk = 3;
+    a = new double*[nk];
+    for (int i=0; i<nk; i++) a[i] = new double[nk];
+    b = new double[nk];
+    double r = sqrt(15.0);
+    a[0][0] =        5.0/36; a[0][1] = 2.0/9 - r/15; a[0][2] = 5.0/36 - r/30;
+    a[1][0] = 5.0/36 + r/24; a[1][1] =        2.0/9; a[1][2] = 5.0/36 - r/24;
+    a[2][0] = 5.0/36 + r/30; a[2][1] = 2.0/9 + r/15; a[2][2] =        5.0/36;
+    b[0] = 5.0/18; b[1] = 4.0/9; b[2] = 5.0/18;
+    newton_ = new NewtonGauss6(neq, nk, this);
+    newton_->set_modified(true);
+}
+
+OdeGauss6::~OdeGauss6 () {
+    for (int i=0; i<nk_; i++) delete [] a[i];
+    delete [] a;
+    delete [] b;
+}
+
+void OdeGauss6::step_ (double dt) {
+    unsigned long i;
+    for (i=0; i<neq_*nk_; i++) kall_[i] = 0.0;
+    newton_->solve_Newton(kall_);
+    for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i]);
+}
+
+// ── OdeLobattoIIIC6 ───────────────────────────────────────────────────────────
+
+void NewtonLobattoIIIC6::f_Newton (double *x, double *y) {
+    (void)x;
+    unsigned long i;
+    int j, n;
+    double dt = *dt_;
+    for (n=0; n<nk_; n++) {
+        for (i=0; i<neq_; i++) {
+            soltemp_[i] = sol_[i];
+            for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
+        }
+        fun(soltemp_, ftemp_);
+        for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
+    }
+}
+
+void NewtonLobattoIIIC6::J_Newton (double *x, double **J) {
+    (void)x;
+    unsigned long i, j;
+    int m, n;
+    double dt = *dt_;
+    if ( get_modified() ) jac(sol_, Jac_);
+    for (n=0; n<nk_; n++) {
+        if ( !get_modified() ) {
+            for (i=0; i<neq_; i++) {
+                soltemp_[i] = sol_[i];
+                for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
+            }
+            jac(soltemp_, Jac_);
+        }
+        for (i=0; i<neq_; i++) {
+            for (j=0; j<neq_; j++)
+                for (m=0; m<nk_; m++)
+                    J[i+n*neq_][j+m*neq_] = -dt*a[n][m]*Jac_[i][j];
+            J[i+n*neq_][i+n*neq_] += 1.0;
+        }
+    }
+}
+
+OdeLobattoIIIC6::OdeLobattoIIIC6 (unsigned long neq) :
+    OdeAdaptive (neq, true),
+    OdeIRK (neq, 4) {
+    method_ = "LobattoIIIC6";
+    int nk = 4;
+    a = new double*[nk];
+    for (int i=0; i<nk; i++) a[i] = new double[nk];
+    b = new double[nk];
+    double r = sqrt(5.0);
+    a[0][0] = 1.0/12; a[0][1] =         -r/12; a[0][2] =          r/12; a[0][3] =  -1.0/12;
+    a[1][0] = 1.0/12; a[1][1] =         1.0/4; a[1][2] = (10 - 7*r)/60; a[1][3] =     r/60;
+    a[2][0] = 1.0/12; a[2][1] = (10 + 7*r)/60; a[2][2] =         1.0/4; a[2][3] =    -r/60;
+    a[3][0] = 1.0/12; a[3][1] =        5.0/12; a[3][2] =        5.0/12; a[3][3] =   1.0/12;
+    b[0] = 1.0/12; b[1] = 5.0/12; b[2] = 5.0/12; b[3] = 1.0/12;
+    newton_ = new NewtonLobattoIIIC6(neq, nk, this);
+    newton_->set_modified(true);
+}
+
+OdeLobattoIIIC6::~OdeLobattoIIIC6 () {
+    for (int i=0; i<nk_; i++) delete [] a[i];
+    delete [] a;
+    delete [] b;
+}
+
+void OdeLobattoIIIC6::step_ (double dt) {
+    unsigned long i;
+    for (i=0; i<neq_*nk_; i++) kall_[i] = 0.0;
+    newton_->solve_Newton(kall_);
+    for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i] + b[3]*k_[3][i]);
+}
+
+// ── OdeRadauIIA5 ──────────────────────────────────────────────────────────────
+
+void NewtonRadauIIA5::f_Newton (double *x, double *y) {
+    (void)x;
+    unsigned long i;
+    int j, n;
+    double dt = *dt_;
+    for (n=0; n<nk_; n++) {
+        for (i=0; i<neq_; i++) {
+            soltemp_[i] = sol_[i];
+            for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
+        }
+        fun(soltemp_, ftemp_);
+        for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
+    }
+}
+
+void NewtonRadauIIA5::J_Newton (double *x, double **J) {
+    (void)x;
+    unsigned long i, j;
+    int m, n;
+    double dt = *dt_;
+    if ( get_modified() ) jac(sol_, Jac_);
+    for (n=0; n<nk_; n++) {
+        if ( !get_modified() ) {
+            for (i=0; i<neq_; i++) {
+                soltemp_[i] = sol_[i];
+                for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
+            }
+            jac(soltemp_, Jac_);
+        }
+        for (i=0; i<neq_; i++) {
+            for (j=0; j<neq_; j++)
+                for (m=0; m<nk_; m++)
+                    J[i+n*neq_][j+m*neq_] = -dt*a[n][m]*Jac_[i][j];
+            J[i+n*neq_][i+n*neq_] += 1.0;
+        }
+    }
+}
+
+OdeRadauIIA5::OdeRadauIIA5 (unsigned long neq) :
+    OdeAdaptive (neq, true),
+    OdeIRK (neq, 3) {
+    method_ = "RadauIIA5";
+    int nk = 3;
+    a = new double*[nk];
+    for (int i=0; i<nk; i++) a[i] = new double[nk];
+    b = new double[nk];
+    double r = sqrt(6.0);
+    a[0][0] =     (88 - 7*r)/360; a[0][1] = (296 - 169*r)/1800; a[0][2] = (-2 + 3*r)/225;
+    a[1][0] = (296 + 169*r)/1800; a[1][1] =     (88 + 7*r)/360; a[1][2] = (-2 - 3*r)/225;
+    a[2][0] =        (16 - r)/36; a[2][1] =        (16 + r)/36; a[2][2] =          1.0/9;
+    b[0] = (16 - r)/36; b[1] = (16 + r)/36; b[2] = 1.0/9;
+    newton_ = new NewtonRadauIIA5(neq, nk, this);
+    newton_->set_modified(true);
+}
+
+OdeRadauIIA5::~OdeRadauIIA5 () {
+    for (int i=0; i<nk_; i++) delete [] a[i];
+    delete [] a;
+    delete [] b;
+}
+
+void OdeRadauIIA5::step_ (double dt) {
+    unsigned long i;
+    for (i=0; i<neq_*nk_; i++) kall_[i] = 0.0;
+    newton_->solve_Newton(kall_);
+    for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i]);
+}
+
+// ── OdeGeng5 ──────────────────────────────────────────────────────────────────
+
+void NewtonGeng5::f_Newton (double *x, double *y) {
+    (void)x;
+    unsigned long i;
+    int j, n;
+    double dt = *dt_;
+    for (n=0; n<nk_; n++) {
+        for (i=0; i<neq_; i++) {
+            soltemp_[i] = sol_[i];
+            for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
+        }
+        fun(soltemp_, ftemp_);
+        for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
+    }
+}
+
+void NewtonGeng5::J_Newton (double *x, double **J) {
+    (void)x;
+    unsigned long i, j;
+    int m, n;
+    double dt = *dt_;
+    if ( get_modified() ) jac(sol_, Jac_);
+    for (n=0; n<nk_; n++) {
+        if ( !get_modified() ) {
+            for (i=0; i<neq_; i++) {
+                soltemp_[i] = sol_[i];
+                for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
+            }
+            jac(soltemp_, Jac_);
+        }
+        for (i=0; i<neq_; i++) {
+            for (j=0; j<neq_; j++)
+                for (m=0; m<nk_; m++)
+                    J[i+n*neq_][j+m*neq_] = -dt*a[n][m]*Jac_[i][j];
+            J[i+n*neq_][i+n*neq_] += 1.0;
+        }
+    }
+}
+
+OdeGeng5::OdeGeng5 (unsigned long neq) :
+    OdeAdaptive (neq, true),
+    OdeIRK (neq, 3) {
+    method_ = "Geng5";
+    int nk = 3;
+    a = new double*[nk];
+    for (int i=0; i<nk; i++) a[i] = new double[nk];
+    b = new double[nk];
+    double r = sqrt(6.0);
+    a[0][0] =        (16 - r)/72; a[0][1] = (328 - 167*r)/1800; a[0][2] = (-2 + 3*r)/450;
+    a[1][0] = (328 + 167*r)/1800; a[1][1] =        (16 + r)/72; a[1][2] = (-2 - 3*r)/450;
+    a[2][0] =    (85 - 10*r)/180; a[2][1] =    (85 + 10*r)/180; a[2][2] =         1.0/18;
+    b[0] = (16 - r)/36; b[1] = (16 + r)/36; b[2] = 1.0/9;
+    newton_ = new NewtonGeng5(neq, nk, this);
+    newton_->set_modified(true);
+}
+
+OdeGeng5::~OdeGeng5 () {
+    for (int i=0; i<nk_; i++) delete [] a[i];
+    delete [] a;
+    delete [] b;
+}
+
+void OdeGeng5::step_ (double dt) {
+    unsigned long i;
+    for (i=0; i<neq_*nk_; i++) kall_[i] = 0.0;
+    newton_->solve_Newton(kall_);
+    for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i]);
+}
+
+// ── OdeSDIRK43 ────────────────────────────────────────────────────────────────
+
+void NewtonSDIRK43::f_Newton (double *x, double *y) {
+    (void)x;
+    unsigned long i;
+    int m;
+    double dt = *dt_;
+    for (i=0; i<neq_; i++) {
+        soltemp_[i] = sol_[i] + dt*gam*k_[ik_][i];
+        for (m=0; m<ik_; m++) soltemp_[i] += dt*a[ik_][m]*k_[m][i];
+    }
+    fun(soltemp_, ftemp_);
+    for (i=0; i<neq_; i++) y[i] = k_[ik_][i] - ftemp_[i];
+}
+
+void NewtonSDIRK43::J_Newton (double *x, double **J) {
+    (void)x;
+    unsigned long i, j;
+    int m;
+    double dt = *dt_;
+    if ( !get_modified() ) {
+        for (i=0; i<neq_; i++) {
+            soltemp_[i] = sol_[i] + dt*gam*k_[ik_][i];
+            for (m=0; m<ik_; m++) soltemp_[i] += dt*a[ik_][m]*k_[m][i];
+        }
+        jac(soltemp_, Jac_);
+    }
+    for (i=0; i<neq_; i++) {
+        for (j=0; j<neq_; j++) J[i][j] = -dt*gam*Jac_[i][j];
+        J[i][i] += 1.0;
+    }
+}
+
+OdeSDIRK43::OdeSDIRK43 (unsigned long neq) :
+    OdeEmbedded (neq, true, 3),
+    OdeRK (neq, 5) {
+    method_ = "SDIRK43";
+    int nk = 5;
+    a = new double*[nk];
+    for (int i=0; i<nk; i++) a[i] = new double[nk];
+    b = new double[nk];
+    d = new double[nk];
+    gam = 1.0/4;
+    a[1][0] =      1.0/2;
+    a[2][0] =    17.0/50; a[2][1] =     -1.0/25;
+    a[3][0] = 371.0/1360; a[3][1] = -137.0/2720; a[3][2] = 15.0/544;
+    a[4][0] =    25.0/24; a[4][1] =    -49.0/48; a[4][2] = 125.0/16; a[4][3] = -85.0/12;
+    b[0] = a[4][0]; b[1] = a[4][1]; b[2] = a[4][2]; b[3] = a[4][3]; b[4] = gam;
+    d[0] =  59.0/48; d[1] = -17.0/96; d[2] = 225.0/32; d[3] = -85.0/12;
+    newton_ = new NewtonSDIRK43(neq, this);
+    newton_->set_modified(true);
+}
+
+OdeSDIRK43::~OdeSDIRK43 () {
+    for (int i=0; i<nk_; i++) delete [] a[i];
+    delete [] a;
+    delete [] b;
+    delete [] d;
+}
+
+void OdeSDIRK43::step_ (double dt) {
+    unsigned long i;
+    if ( newton_->get_modified() ) ode_jac_(sol_, Jac_);
+    for (i=0; i<neq_; i++) k_[0][i] = 0.0;
+    newton_->set_ignore_JLU(false);
+    newton_->set_ik(0);
+    newton_->solve_Newton(k_[0]);
+    newton_->set_ignore_JLU(true);
+    for (int j=1; j<nk_; j++) {
+        for (i=0; i<neq_; i++) k_[j][i] = k_[j-1][i];
+        newton_->set_ik(j);
+        newton_->solve_Newton(k_[j]);
+    }
+    for (i=0; i<neq_; i++) {
+        solemb_[i] = sol_[i] + dt*(d[0]*k_[0][i] + d[1]*k_[1][i] + d[2]*k_[2][i] + d[3]*k_[3][i]);
+        sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i] + b[3]*k_[3][i] + b[4]*k_[4][i]);
     }
 }
 

@@ -49,7 +49,7 @@ class OdeLobattoIIIC6 : public OdeAdaptive, private OdeIRK {
         //!returns a pointer to the solver's Newton system object
         NewtonLobattoIIIC6 *get_newton () { return(newton_); }
 
-    private:
+    protected:
         double **a;
         double *b;
         NewtonLobattoIIIC6 *newton_;

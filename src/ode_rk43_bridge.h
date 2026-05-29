@@ -2,9 +2,9 @@
 #define ODE_RK43_BRIDGE_H_
 
 // RxRk43: bridges rxode2's t_dydt interface into libode's OdeRK43.
-// Design mirrors RxRkf32 exactly — see ode_rkf32_bridge.h for commentary.
-// 5-stage 4(3) FSAL: stages 1-4 advance sol_ (4th order); stage 5 (FSAL,
-// k5=f(t+dt,y_new)) feeds the 3rd-order embedded error estimate in solemb_.
+// Coefficients match libode exactly (4(3) pair from libode).
+// solemb_ (3rd-order): d1=1/12, d2=1/2, d3=1/4, d5=1/6.
+// sol_    (4th-order): b1=1/8,  b2=3/8, b3=3/8, b4=1/8.
 
 #include "ode/ode_rk_43.h"
 
@@ -46,43 +46,30 @@ protected:
     }
 
     void step_(double dt) override {
-        // Stage 1: k1 = f(t, y)
+        unsigned long i;
         t_stage_ = t_;
         ode_fun_(sol_, k_[0]);
 
-        // Stage 2: y2 = y + dt*a21*k1
-        for (unsigned long i = 0; i < neq_; i++)
-            soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
-        t_stage_ = t_ + c2 * dt;
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*a21*k_[0][i];
+        t_stage_ = t_ + c2*dt;
         ode_fun_(soltemp_, k_[1]);
 
-        // Stage 3: y3 = y + dt*(a31*k1 + a32*k2)
-        for (unsigned long i = 0; i < neq_; i++)
-            soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
-        t_stage_ = t_ + c3 * dt;
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a31*k_[0][i] + a32*k_[1][i]);
+        t_stage_ = t_ + c3*dt;
         ode_fun_(soltemp_, k_[2]);
 
-        // Stage 4: y4 = y + dt*(a41*k1 + a42*k2 + a43*k3)
-        for (unsigned long i = 0; i < neq_; i++)
-            soltemp_[i] = sol_[i] + dt * (a41 * k_[0][i] + a42 * k_[1][i] + a43 * k_[2][i]);
-        t_stage_ = t_ + c4 * dt;
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a41*k_[0][i] + a42*k_[1][i] + a43*k_[2][i]);
+        t_stage_ = t_ + c4*dt;
         ode_fun_(soltemp_, k_[3]);
 
-        // 4th-order primary update — sol_ is now y_new
-        for (unsigned long i = 0; i < neq_; i++)
-            sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i] + b4 * k_[3][i]);
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a51*k_[0][i] + a52*k_[1][i] + a53*k_[2][i] + a54*k_[3][i]);
+        t_stage_ = t_ + c5*dt;
+        ode_fun_(soltemp_, k_[4]);
 
-        // Stage 5 (FSAL): k5 = f(t+dt, y_new); a5j = bj
-        t_stage_ = t_ + c5 * dt;
-        ode_fun_(sol_, k_[4]);
-
-        // 3rd-order embedded using adjusted difference from y_new:
-        // solemb_ = y_old + dt*(d1*k1+d2*k2+d3*k3+d5*k5)
-        //         = y_new + dt*((d1-b1)*k1+(d2-b2)*k2+(d3-b3)*k3+(0-b4)*k4+d5*k5)
-        for (unsigned long i = 0; i < neq_; i++)
-            solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i]
-                                         + (d3 - b3) * k_[2][i] + (     -b4) * k_[3][i]
-                                         +        d5  * k_[4][i]);
+        for (i=0; i<neq_; i++) {
+            solemb_[i] = sol_[i] + dt*(d1*k_[0][i] + d2*k_[1][i] + d3*k_[2][i] + d5*k_[4][i]);
+            sol_[i]    = sol_[i] + dt*(b1*k_[0][i] + b2*k_[1][i] + b3*k_[2][i] + b4*k_[3][i]);
+        }
     }
 
     void after_step(double /*t*/) override {

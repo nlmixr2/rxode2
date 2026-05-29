@@ -13,7 +13,7 @@ namespace ode {
 /*!
     + Kaps, Peter, and Gerhard Wanner. "A study of Rosenbrock-type methods of high order." Numerische Mathematik 38.2 (1981): 279-298.
 */
-class OdeROW6A : public OdeAdaptive, private OdeRosenbrock {
+class OdeROW6A : public OdeAdaptive, protected OdeRosenbrock {
 
     public:
         //!constructs
@@ -22,7 +22,7 @@ class OdeROW6A : public OdeAdaptive, private OdeRosenbrock {
         */
         OdeROW6A (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single step
         void step_ (double dt);
         //coefficients

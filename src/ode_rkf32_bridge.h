@@ -2,11 +2,9 @@
 #define ODE_RKF32_BRIDGE_H_
 
 // RxRkf32: bridges rxode2's t_dydt interface into libode's OdeRKF32.
-//
-// Unlike RxTrapz/RxSsp3 (fixed-step), OdeRKF32 is adaptive: each call uses
-// solve_adaptive() so the solver picks step sizes guided by atol/rtol.
-// after_step() enforces the rxode2 mxstep limit by throwing when exceeded,
-// which is caught in rkf32_do_steps.
+// Coefficients match libode exactly (Heun-Euler 3(2) pair).
+// solemb_ = 2nd-order (b1=1/2, b2=1/2); sol_ = 3rd-order (d1,d2,d3).
+// after_step() enforces the rxode2 mxstep limit by throwing when exceeded.
 
 #include "ode/ode_rkf_32.h"
 
@@ -48,30 +46,22 @@ protected:
     }
 
     void step_(double dt) override {
-        // Stage 1: k1 = f(t, y)
+        unsigned long i;
         t_stage_ = t_;
         ode_fun_(sol_, k_[0]);
 
-        // Stage 2: y2 = y + dt*a21*k1
-        for (unsigned long i = 0; i < neq_; i++)
-            soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
-        t_stage_ = t_ + c2 * dt;
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*a21*k_[0][i];
+        t_stage_ = t_ + c2*dt;
         ode_fun_(soltemp_, k_[1]);
 
-        // Stage 3: y3 = y + dt*(a31*k1 + a32*k2)
-        for (unsigned long i = 0; i < neq_; i++)
-            soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
-        t_stage_ = t_ + c3 * dt;
+        for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*(a31*k_[0][i] + a32*k_[1][i]);
+        t_stage_ = t_ + c3*dt;
         ode_fun_(soltemp_, k_[2]);
 
-        // 2nd-order embedded (before sol_ is overwritten)
-        for (unsigned long i = 0; i < neq_; i++)
-            solemb_[i] = sol_[i] + dt * (d1 * k_[0][i] + d2 * k_[1][i] + d3 * k_[2][i]);
-
-        // 3rd-order primary (b3 = 1 - b1 - b2)
-        double b3 = 1.0 - b1 - b2;
-        for (unsigned long i = 0; i < neq_; i++)
-            sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
+        for (i=0; i<neq_; i++) {
+            solemb_[i] = sol_[i] + dt*(b1*k_[0][i] + b2*k_[1][i]);
+            sol_[i]    = sol_[i] + dt*(d1*k_[0][i] + d2*k_[1][i] + d3*k_[2][i]);
+        }
     }
 
     // Enforce mxstep limit: throw to break out of solve_adaptive_().

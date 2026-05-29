@@ -49,7 +49,7 @@ class OdeRadauIIA5 : public OdeAdaptive, private OdeIRK {
         //!returns a pointer to the solver's Newton system object
         NewtonRadauIIA5 *get_newton () { return(newton_); }
 
-    private:
+    protected:
         double **a;
         double *b;
         NewtonRadauIIA5 *newton_;

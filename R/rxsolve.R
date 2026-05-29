@@ -61,9 +61,9 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#'     For the `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"` methods, this specifies
+#'     For the `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`, `"bdf1"`, `"gauss6"`, `"iiic6"`, `"raduiiic6"`, and `"geng5"` methods, this specifies
 #'     the fixed step size. If `hmin=0` (the default), it uses a
-#'     default of `0.01` for `"rk4"`, `"trapz"`, and `"ssp3"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+#'     default of `0.01` for `"rk4"`, `"trapz"`, `"ssp3"`, `"ros6"`, `"bdf1"`, `"gauss6"`, `"iiic6"`, `"raduiiic6"`, and `"geng5"`, and `0.0001` for `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 #'     If the requested step size would cause the number of
 #'     steps to exceed `maxsteps`, the step size is automatically
 #'     increased to ensure the integration completes within the
@@ -72,7 +72,7 @@
 #'     than the nominal step size, so short intervals (e.g., between
 #'     closely spaced doses) are always handled correctly.
 #'
-#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, and `"vern98"` methods,
+#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`, `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`, `"ros43"`, and `"sdirk43"` methods,
 #'     this specifies the initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "bdf1", "gauss6", "iiic6", "raduiiic6", "geng5", "sdirk43"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -2159,7 +2159,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmp
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
-  if (.ctl$method %in% c(13L, 14L)) {
+  if (rxIsImplicit(.ctl$method)) {
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
@@ -3270,9 +3270,38 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"bs"` -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
 #'
-#' * `"ros4"` -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+#' * `"ros4"` **(implicit)** -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+#'   Requires an analytical Jacobian (auto-computed from the model when not provided);
+#'   falls back to `liblsoda` if Jacobian generation fails.
 #'
-#' * `"iem"` -- Implicit Euler solver using Boost's odeint library.
+#' * `"ros43"` **(implicit)** -- Kaps-Rentrop 4th-order A-stable Rosenbrock method (GRK4A) from libode.
+#'   Adaptive step size via embedded 3rd-order error estimate.
+#'   Requires an analytical Jacobian (auto-computed from the model when not provided);
+#'   falls back to `liblsoda` if Jacobian generation fails.
+#'
+#' * `"ros6"` **(implicit)** -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
+#'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"bdf1"` **(implicit)** -- Backward Euler (1st-order, L-stable, fully implicit) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"gauss6"` **(implicit)** -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"iiic6"` **(implicit)** -- Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"raduiiic6"` **(implicit)** -- Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"geng5"` **(implicit)** -- Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"sdirk43"` **(implicit)** -- L-stable SDIRK 4(3) pair from libode.
+#'   Adaptive step size via embedded 3rd-order error estimate.
+#'   Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"iem"` **(implicit)** -- Implicit Euler solver using Boost's odeint library.
 #'   Requires an explicit Jacobian (auto-generated via `calcJac=TRUE` when not provided).
 #'   Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by `hmin`).
 #'
@@ -3434,8 +3463,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "bdf1", "gauss6", "iiic6", "raduiiic6", "geng5", "sdirk43")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "bdf1" = 33L, "gauss6" = 34L, "iiic6" = 35L, "raduiiic6" = 36L, "geng5" = 37L, "sdirk43" = 38L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
@@ -3449,7 +3478,60 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
   method
 }
 
-
+#' Check whether an ODE solving method requires a Jacobian (is implicit)
+#'
+#' Implicit ODE solvers linearise the system at each step and therefore
+#' require the Jacobian df/dy.  rxode2 auto-computes a symbolic Jacobian
+#' when one of these methods is requested and falls back to `"liblsoda"` if
+#' symbolic differentiation fails.  Use this function to test whether a
+#' method string or integer code corresponds to an implicit solver.
+#'
+#' Implicit methods are:
+#' `"ros4"` (13), `"iem"` (14), `"ros43"` (31), `"ros6"` (32),
+#' `"bdf1"` (33), `"gauss6"` (34), `"iiic6"` (35), `"raduiiic6"` (36),
+#' `"geng5"` (37), `"sdirk43"` (38).
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method is implicit and requires a Jacobian.
+#'
+#' @examples
+#' rxIsImplicit("ros4")              # TRUE
+#' rxIsImplicit("liblsoda")          # FALSE
+#' rxIsImplicit(c("ros43", "dop853", "iem"))  # TRUE FALSE TRUE
+#' rxIsImplicit(13L)                 # TRUE  (ros4)
+#' rxIsImplicit(0L)                  # FALSE (dop853)
+#'
+#' @seealso [odeMethodToInt()]
+#' @export
+rxIsImplicit <- function(method) {
+  .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "bdf1" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "raduiiic6" = 36L, "geng5" = 37L, "sdirk43" = 38L
+  )
+  if (is.character(method)) {
+    .codes <- .methodIdx[method]
+    if (any(is.na(.codes))) {
+      stop("unknown method(s): ",
+           paste(method[is.na(.codes)], collapse = ", "),
+           call. = FALSE)
+    }
+    method <- .codes
+  } else {
+    method <- as.integer(method)
+  }
+  method %in% .implicitCodes
+}
 
 #' This updates the tolerances based on the sensitivity equations
 #'
@@ -3521,7 +3603,7 @@ rxUiDeparse.rxControl <- function(object, var) {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
       paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
     } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L)
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ros43" = 31L)
       paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
     } else if (x == "naInterpolation") {
       .naInterpolation <- c("locf"=1L, "nocb"=0L)

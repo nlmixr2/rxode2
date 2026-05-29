@@ -13,7 +13,7 @@ namespace ode {
 /*!
     + Kaps, Peter, and Peter Rentrop. "Generalized Runge-Kutta methods of order four with stepsize control for stiff ordinary differential equations." Numerische Mathematik 33.1 (1979): 55-68.
 */
-class OdeGRK4A : public OdeEmbedded, private OdeRosenbrock {
+class OdeGRK4A : public OdeEmbedded, protected OdeRosenbrock {
 
     public:
         //!constructs
@@ -22,7 +22,7 @@ class OdeGRK4A : public OdeEmbedded, private OdeRosenbrock {
         */
         OdeGRK4A (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single step
         void step_ (double dt);
         //coefficients

@@ -30,7 +30,7 @@ class NewtonSDIRK43 : public OdeNewtonSDIRK<OdeSDIRK43> {
 /*!
     + Wanner, Gerhard, and Ernst Hairer. Solving ordinary differential equations II. Springer Berlin Heidelberg, 1996.
 */
-class OdeSDIRK43 : public OdeEmbedded, private OdeRK {
+class OdeSDIRK43 : public OdeEmbedded, protected OdeRK {
     //friends!
     friend class OdeNewtonBridge<OdeSDIRK43>;
     friend class OdeNewtonSDIRK<OdeSDIRK43>;
@@ -48,7 +48,7 @@ class OdeSDIRK43 : public OdeEmbedded, private OdeRK {
         //!returns a pointer to the solver's Newton system object
         NewtonSDIRK43 *get_newton () { return(newton_); }
 
-    private:
+    protected:
         double gam;
         double **a;
         double *b;

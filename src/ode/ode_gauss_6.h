@@ -50,7 +50,7 @@ class OdeGauss6 : public OdeAdaptive, private OdeIRK {
         //!returns a pointer to the solver's Newton system object
         NewtonGauss6 *get_newton () { return(newton_); }
 
-    private:
+    protected:
         double **a;
         double *b;
         NewtonGauss6 *newton_;
