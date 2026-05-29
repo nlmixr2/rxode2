@@ -26,6 +26,9 @@ extern "C" void trapz_solveWith1Pt(int *neq, double *yp, double *xp, double xout
 void par_ssp3(rx_solve *rx);
 extern "C" void ind_ssp3(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ssp3_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rkf32(rx_solve *rx);
+extern "C" void ind_rkf32(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 void par_rk4(rx_solve *rx);
 extern "C" void ind_rk4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_ck54(rx_solve *rx);

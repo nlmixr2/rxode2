@@ -72,7 +72,7 @@
 #'     than the nominal step size, so short intervals (e.g., between
 #'     closely spaced doses) are always handled correctly.
 #'
-#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this
+#'     For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, and `"rkf32"` methods, this
 #'     specifies the initial step size.
 #'
 #' @param hmax The maximum absolute step size allowed.  When
@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3335,14 +3335,26 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   not use `atol` or `rtol` (fixed-step; no error control).  Supports
 #'   parallel thread-based solving and steady-state (`ss=1`) dosing.
 #'
+#' * `"rkf32"` -- Fehlberg's Runge-Kutta 3(2) embedded pair, implemented via the
+#'   libode library.  A 3-stage, 3rd-order adaptive method with a built-in
+#'   2nd-order error estimate for automatic step-size control.  Tableau:
+#'   c2=1/2, a21=1/2; c3=1, a31=-1, a32=2; primary (3rd-order) weights
+#'   b1=1/6, b2=2/3, b3=1/6; embedded (2nd-order) weights d1=1/2, d2=0,
+#'   d3=1/2.  Uses `atol` and `rtol` for error control.  The `hmin`
+#'   parameter sets the initial step size (default `0.01`); subsequent steps
+#'   are chosen adaptively.  The total number of accepted and rejected steps
+#'   is bounded by `maxsteps`.  Supports parallel thread-based solving and
+#'   steady-state (`ss=1`) dosing with convergence governed by `ssAtol`,
+#'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
+#'
 #' @keywords Internal
 #'
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L

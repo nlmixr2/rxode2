@@ -36,7 +36,7 @@ rxSolve(
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab",
     "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em",
-    "cvode", "trapz", "ssp3"),
+    "cvode", "trapz", "ssp3", "rkf32"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -380,6 +380,17 @@ steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol}
 \code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
 not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
 parallel thread-based solving and steady-state (\code{ss=1}) dosing.
+\item \code{"rkf32"} -- Fehlberg's Runge-Kutta 3(2) embedded pair, implemented via the
+libode library.  A 3-stage, 3rd-order adaptive method with a built-in
+2nd-order error estimate for automatic step-size control.  Tableau:
+c2=1/2, a21=1/2; c3=1, a31=-1, a32=2; primary (3rd-order) weights
+b1=1/6, b2=2/3, b3=1/6; embedded (2nd-order) weights d1=1/2, d2=0,
+d3=1/2.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
+parameter sets the initial step size (default \code{0.01}); subsequent steps
+are chosen adaptively.  The total number of accepted and rejected steps
+is bounded by \code{maxsteps}.  Supports parallel thread-based solving and
+steady-state (\code{ss=1}) dosing with convergence governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -420,7 +431,7 @@ to the interval length when the inter-event interval is shorter
 than the nominal step size, so short intervals (e.g., between
 closely spaced doses) are always handled correctly.
 
-For the `"rkf78"`, `"ck54"`, `"dop5"`, and `"bs"` methods, this
+For the `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, and `"rkf32"` methods, this
 specifies the initial step size.
 }\if{html}{\out{</div>}}}
 

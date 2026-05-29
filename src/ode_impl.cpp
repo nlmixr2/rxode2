@@ -2,7 +2,7 @@
 #define R_NO_REMAP
 #endif
 #define STRICT_R_HEADERS
-// Implementations of libode base classes needed by OdeTrapz and OdeSsp3.
+// Implementations of libode base classes needed by OdeTrapz, OdeSsp3, and OdeRKF32.
 // All file-I/O stubs are replaced with R-safe equivalents.
 
 #include <cstdlib>
@@ -23,6 +23,8 @@
 #include "ode/ode_erk.h"
 #include "ode/ode_trapz.h"
 #include "ode/ode_ssp_3.h"
+#include "ode/ode_embedded.h"
+#include "ode/ode_rkf_32.h"
 
 namespace ode {
 
@@ -237,7 +239,9 @@ void OdeAdaptive::solve_adaptive (double dt0, double * /*tsnap*/, unsigned long 
 void OdeAdaptive::solve_adaptive_ (double tint, double dt0, bool extra) {
     double tend = t_ + tint;
     double dt = dt0;
-    while (!solve_done_adaptive(tend)) {
+    // Use solve_done(dt, tend) rather than solve_done_adaptive() which uses
+    // dt_ (the stored step size, initialized to 0 before the first step).
+    while (!solve_done(dt, tend)) {
         if (std::fabs(tend - t_) < std::fabs(dt)) dt = tend - t_;
         step_adaptive_(dt, extra);
         dt = dt_adapt_(tend);
@@ -321,6 +325,93 @@ void OdeSsp3::step_ (double dt) {
     // k3 = f(t + c3*dt, y3)
     ode_fun_(soltemp_, k_[2]);
     // y = y + dt*(b1*k1 + b2*k2 + b3*k3)
+    for (unsigned long i = 0; i < neq_; i++)
+        sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
+}
+
+// ── OdeEmbedded ───────────────────────────────────────────────────────────────
+// Base class for embedded RK pairs (error estimation + adaptive step control).
+
+OdeEmbedded::OdeEmbedded (unsigned long neq, bool need_jac, int lowerord)
+    : OdeAdaptive(neq, need_jac),
+      lowerord_(lowerord),
+      isrej_(false),
+      dtopt_(0.0)
+{
+    solemb_  = new double[neq]();
+    facsafe_ = 0.9;
+    facmin_  = 0.1;
+    facmax_  = 5.0;
+}
+
+OdeEmbedded::~OdeEmbedded () {
+    delete[] solemb_;
+}
+
+double OdeEmbedded::error (double abstol, double reltol) {
+    double err = 0.0;
+    for (unsigned long i = 0; i < neq_; i++) {
+        double sc = abstol + reltol * ode_max2(std::fabs(sol_[i]), std::fabs(solemb_[i]));
+        if (sc == 0.0) sc = abstol;
+        double d = (sol_[i] - solemb_[i]) / sc;
+        err += d * d;
+    }
+    return std::sqrt(err / (double)neq_);
+}
+
+double OdeEmbedded::facopt (double err) {
+    if (err == 0.0) return facmax_;
+    return facsafe_ * std::pow(err, -1.0 / (double)(lowerord_ + 1));
+}
+
+void OdeEmbedded::adapt (double abstol, double reltol) {
+    double err = error(abstol, reltol);
+    double fac = facopt(err);
+    fac    = ode_min2(facmax_, ode_max2(facmin_, fac));
+    dtopt_ = dt_ * fac;
+    isrej_ = (err > 1.0);
+}
+
+bool   OdeEmbedded::is_rejected () { return isrej_; }
+double OdeEmbedded::dt_adapt    () { return dtopt_; }
+
+// ── OdeRKF32 ──────────────────────────────────────────────────────────────────
+// Fehlberg's 3(2) pair.
+// Primary (3rd-order): b1=1/6, b2=2/3, b3=1/6 (b3 = 1-b1-b2, not stored).
+// Embedded (2nd-order): d1=1/2, d2=0, d3=1/2.
+
+OdeRKF32::OdeRKF32 (unsigned long neq)
+    : OdeEmbedded(neq, false, 2),
+      OdeRK(neq, 3),
+      OdeERK(neq)
+{
+    method_ = "RKF32";
+    c2  = 0.5;    a21 = 0.5;
+    c3  = 1.0;    a31 = -1.0;  a32 = 2.0;
+    b1  = 1.0/6;  b2  = 2.0/3;
+    d1  = 0.5;    d2  = 0.0;   d3  = 0.5;
+}
+
+void OdeRKF32::step_ (double dt) {
+    // Stage 1: k1 = f(t, y)
+    ode_fun_(sol_, k_[0]);
+
+    // Stage 2: y2 = y + dt*a21*k1
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * a21 * k_[0][i];
+    ode_fun_(soltemp_, k_[1]);
+
+    // Stage 3: y3 = y + dt*(a31*k1 + a32*k2)
+    for (unsigned long i = 0; i < neq_; i++)
+        soltemp_[i] = sol_[i] + dt * (a31 * k_[0][i] + a32 * k_[1][i]);
+    ode_fun_(soltemp_, k_[2]);
+
+    // 2nd-order embedded (must be computed before sol_ is overwritten)
+    for (unsigned long i = 0; i < neq_; i++)
+        solemb_[i] = sol_[i] + dt * (d1 * k_[0][i] + d2 * k_[1][i] + d3 * k_[2][i]);
+
+    // 3rd-order primary update (b3 = 1 - b1 - b2)
+    double b3 = 1.0 - b1 - b2;
     for (unsigned long i = 0; i < neq_; i++)
         sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
 }

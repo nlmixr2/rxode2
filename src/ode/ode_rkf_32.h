@@ -10,7 +10,7 @@
 namespace ode {
 
 //!2nd and 3rd order solver developed by Fehlberg
-class OdeRKF32 : public OdeEmbedded, private OdeRK, private OdeERK {
+class OdeRKF32 : public OdeEmbedded, protected OdeRK, protected OdeERK {
 
     public:
         //!constructs
@@ -19,9 +19,9 @@ class OdeRKF32 : public OdeEmbedded, private OdeRK, private OdeERK {
         */
         OdeRKF32 (unsigned long neq);
 
-    private:
+    protected:
         //function for taking a single time step
-        void step_ (double dt);
+        virtual void step_ (double dt);
         //coefficents of tableau
         double c2, a21,
                c3, a31, a32,
