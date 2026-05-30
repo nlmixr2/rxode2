@@ -82,6 +82,10 @@ class OdeNewtonBridge : public OdeNewton {
         \param[in] Jout Jacobian
         */
         void jac(double *solin, double **Jout) { integrator_->ode_jac_(solin, Jout); }
+        void set_fun_time(double t) { integrator_->set_ode_eval_time(t); }
+        void clear_fun_time() { integrator_->clear_ode_eval_time(); }
+        void set_jac_time(double t) { integrator_->set_jac_eval_time(t); }
+        void clear_jac_time() { integrator_->clear_jac_eval_time(); }
 };
 
 //!Extension of OdeNewtonBridge class for fully implicit methods

@@ -3,8 +3,7 @@
 #include <vector>
 #include "cvode_solver.h"
 
-// g_cvodeLinSol is defined in cvode_r.cpp; controls which linear solver is used.
-extern int g_cvodeLinSol;
+extern "C" int getCvodeLinearSolver();
 
 // dydt_liblsoda is the global RHS function pointer defined in par_solve.cpp's TU.
 // It is accessible here because cvode.cpp is #included inside par_solve.cpp.
@@ -54,6 +53,8 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
                     : &(op->ATOL);
 
   cvode_ctx_t *cvode_ctx = NULL;
+  int cvodeLinSolver = op->cvodeLinSolver > 0 ? op->cvodeLinSolver :
+    getCvodeLinearSolver();
 
   // Eagerly initialize CVODE before the main loop so cvode_ctx is non-NULL
   // when handleSS is called for a dose at t=0 (xout==xp, so the lazy path
@@ -71,7 +72,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
                                  xp, op->HMIN,
                                  op->hmax2 > 0.0 ? op->hmax2 : 0.0,
                                  op->mxstep, cvode_rhs_trampoline,
-                                 (void *)neq, g_cvodeLinSol);
+                                 (void *)neq, cvodeLinSolver);
     if (!cvode_ctx) {
       ind->rc[0] = -2019;
       ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;

@@ -98,8 +98,8 @@ omegaListRse <- function(omegaIn) {
 
 #' Set the CVODE linear solver
 #'
-#' @param type Integer: 1=dense (default), 2=band, 3=gmres, 4=bicgstab,
-#'   5=tfqmr
+#' @param type Integer: 1=dense (default), 2=band (currently aliases to dense),
+#'   3=gmres, 4=bicgstab, 5=tfqmr
 #' @return NULL (invisibly)
 #' @export
 #' @keywords internal

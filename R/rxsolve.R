@@ -839,10 +839,8 @@
 #'     Best for small to medium systems (typically fewer than ~50 compartments).
 #'     Requires `O(n^2)` storage and `O(n^3)` work per Newton iteration.
 #'
-#'   * `"band"` -- Banded direct factorization.  Use when the Jacobian has a
-#'     known banded sparsity structure (i.e., each state depends only on a few
-#'     adjacent states).  Reduces storage and factorization cost when bandwidth
-#'     is narrow.
+#'   * `"band"` -- Currently aliases to `"dense"`.  Kept for compatibility
+#'     until rxode2 can determine model bandwidth safely during solve setup.
 #'
 #'   * `"gmres"` -- Generalized Minimal Residual iterative Krylov solver.
 #'     Avoids explicit Jacobian formation, making it practical for large stiff
@@ -2039,6 +2037,31 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
 rxSolveCacheEnv <- new.env(parent=emptyenv())
+rxSolveCacheLimit <- 64L
+rxSolveCacheEnv$.order <- character()
+
+.rxSolveCacheTouch <- function(key) {
+  .order <- rxSolveCacheEnv$.order
+  rxSolveCacheEnv$.order <- c(key, .order[.order != key])
+}
+
+.rxSolveCacheGet <- function(key) {
+  if (!exists(key, envir = rxSolveCacheEnv, inherits = FALSE)) return(NULL)
+  .rxSolveCacheTouch(key)
+  get(key, envir = rxSolveCacheEnv, inherits = FALSE)
+}
+
+.rxSolveCacheSet <- function(key, value) {
+  assign(key, value, envir = rxSolveCacheEnv)
+  .rxSolveCacheTouch(key)
+  .order <- rxSolveCacheEnv$.order
+  if (length(.order) > rxSolveCacheLimit) {
+    .drop <- .order[-seq_len(rxSolveCacheLimit)]
+    rm(list = .drop, envir = rxSolveCacheEnv)
+    rxSolveCacheEnv$.order <- .order[seq_len(rxSolveCacheLimit)]
+  }
+  invisible(value)
+}
 
 #' @rdname rxSolve
 #' @export
@@ -2167,8 +2190,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .jacEnv <- new.env(parent = emptyenv())
       .jacEnv$errMsg <- NULL
       .filteredCode <- tryCatch({
-        if (exists(.key, envir = rxSolveCacheEnv)) {
-          get(.key, envir = rxSolveCacheEnv)
+        .cached <- .rxSolveCacheGet(.key)
+        if (!is.null(.cached)) {
+          .cached
         } else {
           .mv <- suppressMessages({
             rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
@@ -2189,12 +2213,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
             }
           }
           .fc <- paste(.fc, collapse="\n")
-          assign(.key, .fc, envir = rxSolveCacheEnv)
+          .rxSolveCacheSet(.key, .fc)
           .fc
         }
       }, error = function(e) {
         assign("errMsg", conditionMessage(e), envir = .jacEnv)
-        assign(.key, NA_character_, envir = rxSolveCacheEnv)
+        .rxSolveCacheSet(.key, NA_character_)
         NA_character_
       })
       if (!is.na(.filteredCode)) {
@@ -2643,9 +2667,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   .callSolve <- function() {
-    if (.ctl$method == 21L) {
-      setCvodeLinearSolver(.ctl$cvodeLinSolver)
-    }
     if (.isSer) {
       .bundle <- if (is.null(.preloadedSerializedBundle)) {
         .rxReadStateBundle(params)

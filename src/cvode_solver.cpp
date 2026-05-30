@@ -8,8 +8,6 @@
 #include <nvector/nvector_serial.h>
 #include <sunmatrix/sunmatrix_dense.h>
 #include <sunlinsol/sunlinsol_dense.h>
-#include <sunmatrix/sunmatrix_band.h>
-#include <sunlinsol/sunlinsol_band.h>
 #include <sunlinsol/sunlinsol_spgmr.h>
 #include <sunlinsol/sunlinsol_spbcgs.h>
 #include <sunlinsol/sunlinsol_sptfqmr.h>
@@ -93,11 +91,6 @@ cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
   CVodeSetMaxNumSteps(ctx->mem, (long int)(mxstep > 0 ? mxstep : 5000));
 
   switch (lin_type) {
-  case 2:
-    ctx->A  = SUNBandMatrix(ctx->neq, ctx->neq - 1, ctx->neq - 1, ctx->sunctx);
-    if (!ctx->A) { cvode_ctx_free_internals(ctx); free(ctx); return NULL; }
-    ctx->LS = SUNLinSol_Band(ctx->y, ctx->A, ctx->sunctx);
-    break;
   case 3:
     ctx->LS = SUNLinSol_SPGMR(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
     break;
@@ -107,7 +100,7 @@ cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
   case 5:
     ctx->LS = SUNLinSol_SPTFQMR(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
     break;
-  default: /* 1: dense */
+  default: /* 1: dense, 2: band aliases to dense until real bandwidth is known */
     ctx->A  = SUNDenseMatrix(ctx->neq, ctx->neq, ctx->sunctx);
     if (!ctx->A) { cvode_ctx_free_internals(ctx); free(ctx); return NULL; }
     ctx->LS = SUNLinSol_Dense(ctx->y, ctx->A, ctx->sunctx);

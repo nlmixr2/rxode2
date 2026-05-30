@@ -7,8 +7,8 @@
 setCvodeLinearSolver(type)
 }
 \arguments{
-\item{type}{Integer: 1=dense (default), 2=band, 3=gmres, 4=bicgstab,
-5=tfqmr}
+\item{type}{Integer: 1=dense (default), 2=band (currently aliases to dense),
+3=gmres, 4=bicgstab, 5=tfqmr}
 }
 \value{
 NULL (invisibly)

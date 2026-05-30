@@ -4,8 +4,8 @@
 // RxImplicit<OdeSolver>: generic rxode2 bridge for all libode implicit methods.
 // Overrides ode_fun() and ode_jac() so the Newton/Rosenbrock machinery inside
 // OdeSolver::step_() dispatches through rxode2's dydt/calc_jac interfaces.
-// All stage evaluations use t_ (step-start time); libode implicit methods do
-// not expose per-stage time nodes in their step_() implementations.
+// The rxode2 bridge threads stage-specific evaluation times through libode's
+// autonomous APIs so time-dependent models remain correct.
 
 #include <stdexcept>
 #include <vector>
@@ -18,13 +18,21 @@ class RxImplicit : public OdeSolver {
     int                    *full_neq_;
     rx_solving_options_ind *ind_;
     long unsigned           max_steps_;
+    std::vector<double>     jac_flat_;
+    double                  ode_eval_time_;
+    double                  jac_eval_time_;
+    bool                    has_ode_eval_time_;
+    bool                    has_jac_eval_time_;
 
 public:
     RxImplicit(t_dydt dydt, t_calc_jac jac, int *full_neq, int neqOde,
                rx_solving_options_ind *ind, double *yp, long unsigned max_steps)
         : OdeSolver((unsigned long)neqOde),
           dydt_(dydt), calc_jac_(jac), full_neq_(full_neq), ind_(ind),
-          max_steps_(max_steps)
+          max_steps_(max_steps),
+          jac_flat_((size_t)neqOde * (size_t)neqOde, 0.0),
+          ode_eval_time_(0.0), jac_eval_time_(0.0),
+          has_ode_eval_time_(false), has_jac_eval_time_(false)
     {
         // Use copy semantics: Newton-based IRK methods cache sol_ at
         // construction time, so set_sol_external would leave stale pointers.
@@ -49,11 +57,12 @@ public:
 
 protected:
     void ode_fun(double *solin, double *fout) override {
+        double eval_time = has_ode_eval_time_ ? ode_eval_time_ : this->t_;
         if (ind_->err != 0) {
             for (unsigned long i = 0; i < this->neq_; i++) fout[i] = 0.0;
             return;
         }
-        dydt_(full_neq_, this->t_, solin, fout);
+        dydt_(full_neq_, eval_time, solin, fout);
         for (unsigned long i = 0; i < this->neq_; i++) {
             if (!std::isfinite(fout[i])) {
                 ind_->err = 1;
@@ -68,12 +77,14 @@ protected:
             OdeSolver::ode_jac(solin, Jout);
             return;
         }
-        std::vector<double> flat(this->neq_ * this->neq_, 0.0);
+        double eval_time = has_jac_eval_time_ ? jac_eval_time_ :
+            (has_ode_eval_time_ ? ode_eval_time_ : this->t_);
+        std::fill(jac_flat_.begin(), jac_flat_.end(), 0.0);
         unsigned int nrowpd = (unsigned int)this->neq_;
-        calc_jac_(full_neq_, this->t_, solin, flat.data(), nrowpd);
+        calc_jac_(full_neq_, eval_time, solin, jac_flat_.data(), nrowpd);
         for (unsigned long r = 0; r < this->neq_; r++)
             for (unsigned long c = 0; c < this->neq_; c++)
-                Jout[r][c] = flat[r * this->neq_ + c];
+                Jout[r][c] = jac_flat_[r * this->neq_ + c];
     }
 
     void after_step(double /*t*/) override {
@@ -83,6 +94,24 @@ protected:
             ind_->err = 1;
             throw std::runtime_error("implicit solver: max steps exceeded");
         }
+    }
+
+    void set_ode_eval_time(double t) override {
+        ode_eval_time_ = t;
+        has_ode_eval_time_ = true;
+    }
+
+    void clear_ode_eval_time() override {
+        has_ode_eval_time_ = false;
+    }
+
+    void set_jac_eval_time(double t) override {
+        jac_eval_time_ = t;
+        has_jac_eval_time_ = true;
+    }
+
+    void clear_jac_eval_time() override {
+        has_jac_eval_time_ = false;
     }
 };
 
@@ -105,8 +134,8 @@ static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_opt
     solver.set_quiet(true);
     solver.set_t(xp);
     solver.prime_dt(std::fabs(dt));
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    solver.set_abstol(op->ATOL);
+    solver.set_reltol(op->RTOL);
     try {
         solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
     } catch (...) {

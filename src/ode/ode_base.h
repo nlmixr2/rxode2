@@ -246,6 +246,7 @@ class OdeBase {
         this object. The destructor will NOT free it.
         \param[in] ext external buffer of length `neq`*/
         void set_sol_external (double *ext) {
+            if (ext == NULL) ode_print_exit("Cannot set solution buffer to NULL.\n");
             if (!sol_external_) delete[] sol_;
             sol_ = ext;
             sol_external_ = true;
@@ -368,6 +369,11 @@ class OdeBase {
         */
         virtual void ode_fun (double *solin, double *fout) = 0;
 
+        //!sets the independent-variable value used for the next ode_fun() call
+        virtual void set_ode_eval_time (double /*t*/) {}
+        //!clears any ode_fun() evaluation-time override
+        virtual void clear_ode_eval_time () {}
+
         //!evaluates the system's Jacobian matrix, also in autonomous form, and can either be defined in a derived class or left to numerical approximation
         /*!
         The incoming `solin` vector contains the current values of all solution variables and has length `neq`. The output array `Jout` is a 2D array with size `neq` x `neq`. All elements of `Jout` should be set, even if they're zero, because the `Jout` array isn't cleared before it's reused. If the Jacobian is needed and there is no overriding definition of this function, a finite differences approximation is used.
@@ -375,6 +381,11 @@ class OdeBase {
             \param[out] Jout Jacobian of ode_fun
         */
         virtual void ode_jac (double *solin, double **Jout);
+
+        //!sets the independent-variable value used for the next ode_jac() call
+        virtual void set_jac_eval_time (double /*t*/) {}
+        //!clears any ode_jac() evaluation-time override
+        virtual void clear_jac_eval_time () {}
 
         //!advances a single time step (without changing counters or the time) and must be defined in the derived class implementing the solver/method
         /*!

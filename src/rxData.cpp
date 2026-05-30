@@ -5334,6 +5334,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
+  op->cvodeLinSolver = 1;
 }
 
 static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
@@ -5665,6 +5666,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
+    op->cvodeLinSolver = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
     if (op->useDense && method != 3) {
       op->useDense = 0;
     }

@@ -72,6 +72,12 @@
 
 namespace ode {
 
+static inline double ode_stage_sum(double **a, int row, int ncol) {
+    double c = 0.0;
+    for (int j = 0; j < ncol; ++j) c += a[row][j];
+    return c;
+}
+
 // ── ode_util ─────────────────────────────────────────────────────────────────
 
 double ode_max2 (double a, double b) { return (a > b) ? a : b; }
@@ -1340,36 +1346,51 @@ OdeROW6A::OdeROW6A (unsigned long neq) :
 
 void OdeROW6A::step_ (double dt) {
     unsigned long i;
+    double t0 = t_;
 
+    set_jac_eval_time(t0);
     ode_jac_(sol_, Jac_);
+    clear_jac_eval_time();
     prep_jac(Jac_, neq_, dt, p_);
 
+    set_ode_eval_time(t0);
     ode_fun_(sol_, k_[0]);
+    clear_ode_eval_time();
     for (i=0; i<neq_; i++) rhs_[i] = dt*k_[0][i];
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[0]);
 
     for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a21*k_[0][i];
+    set_ode_eval_time(t0 + dt*a21);
     ode_fun_(soltemp_, k_[1]);
+    clear_ode_eval_time();
     for (i=0; i<neq_; i++) rhs_[i] = dt*k_[1][i] + c21*k_[0][i];
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[1]);
 
     for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a31*k_[0][i] + a32*k_[1][i];
+    set_ode_eval_time(t0 + dt*(a31 + a32));
     ode_fun_(soltemp_, k_[2]);
+    clear_ode_eval_time();
     for (i=0; i<neq_; i++) rhs_[i] = dt*k_[2][i] + c31*k_[0][i] + c32*k_[1][i];
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[2]);
 
     for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a41*k_[0][i] + a42*k_[1][i] + a43*k_[2][i];
+    set_ode_eval_time(t0 + dt*(a41 + a42 + a43));
     ode_fun_(soltemp_, k_[3]);
+    clear_ode_eval_time();
     for (i=0; i<neq_; i++) rhs_[i] = dt*k_[3][i] + c41*k_[0][i] + c42*k_[1][i] + c43*k_[2][i];
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[3]);
 
     for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a51*k_[0][i] + a52*k_[1][i] + a53*k_[2][i] + a54*k_[3][i];
+    set_ode_eval_time(t0 + dt*(a51 + a52 + a53 + a54));
     ode_fun_(soltemp_, k_[4]);
+    clear_ode_eval_time();
     for (i=0; i<neq_; i++) rhs_[i] = dt*k_[4][i] + c51*k_[0][i] + c52*k_[1][i] + c53*k_[2][i] + c54*k_[3][i];
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[4]);
 
     for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + a61*k_[0][i] + a62*k_[1][i] + a63*k_[2][i] + a64*k_[3][i] + a65*k_[4][i];
+    set_ode_eval_time(t0 + dt*(a61 + a62 + a63 + a64 + a65));
     ode_fun_(soltemp_, k_[5]);
+    clear_ode_eval_time();
     for (i=0; i<neq_; i++) rhs_[i] = dt*k_[5][i] + c61*k_[0][i] + c62*k_[1][i] + c63*k_[2][i] + c64*k_[3][i] + c65*k_[4][i];
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[5]);
 
@@ -1384,7 +1405,9 @@ void NewtonBackwardEuler::f_Newton (double *x, double *y) {
     unsigned long i;
     double dt = *dt_;
     for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*k_[0][i];
+    set_fun_time(integrator_->get_t() + dt);
     fun(soltemp_, ftemp_);
+    clear_fun_time();
     for (i=0; i<neq_; i++) y[i] = k_[0][i] - ftemp_[i];
 }
 
@@ -1392,10 +1415,16 @@ void NewtonBackwardEuler::J_Newton (double *x, double **J) {
     (void)x;
     unsigned long i, j;
     double dt = *dt_;
-    if ( get_modified() ) jac(sol_, Jac_);
+    if ( get_modified() ) {
+        set_jac_time(integrator_->get_t());
+        jac(sol_, Jac_);
+        clear_jac_time();
+    }
     if ( !get_modified() ) {
         for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + dt*k_[0][i];
+        set_jac_time(integrator_->get_t() + dt);
         jac(soltemp_, Jac_);
+        clear_jac_time();
     }
     for (i=0; i<neq_; i++) {
         for (j=0; j<neq_; j++) J[i][j] = -dt*Jac_[i][j];
@@ -1434,7 +1463,9 @@ void NewtonGauss6::f_Newton (double *x, double *y) {
             soltemp_[i] = sol_[i];
             for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
         }
+        set_fun_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
         fun(soltemp_, ftemp_);
+        clear_fun_time();
         for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
     }
 }
@@ -1444,14 +1475,20 @@ void NewtonGauss6::J_Newton (double *x, double **J) {
     unsigned long i, j;
     int m, n;
     double dt = *dt_;
-    if ( get_modified() ) jac(sol_, Jac_);
+    if ( get_modified() ) {
+        set_jac_time(integrator_->get_t());
+        jac(sol_, Jac_);
+        clear_jac_time();
+    }
     for (n=0; n<nk_; n++) {
         if ( !get_modified() ) {
             for (i=0; i<neq_; i++) {
                 soltemp_[i] = sol_[i];
                 for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
             }
+            set_jac_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
             jac(soltemp_, Jac_);
+            clear_jac_time();
         }
         for (i=0; i<neq_; i++) {
             for (j=0; j<neq_; j++)
@@ -1505,7 +1542,9 @@ void NewtonLobattoIIIC6::f_Newton (double *x, double *y) {
             soltemp_[i] = sol_[i];
             for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
         }
+        set_fun_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
         fun(soltemp_, ftemp_);
+        clear_fun_time();
         for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
     }
 }
@@ -1515,14 +1554,20 @@ void NewtonLobattoIIIC6::J_Newton (double *x, double **J) {
     unsigned long i, j;
     int m, n;
     double dt = *dt_;
-    if ( get_modified() ) jac(sol_, Jac_);
+    if ( get_modified() ) {
+        set_jac_time(integrator_->get_t());
+        jac(sol_, Jac_);
+        clear_jac_time();
+    }
     for (n=0; n<nk_; n++) {
         if ( !get_modified() ) {
             for (i=0; i<neq_; i++) {
                 soltemp_[i] = sol_[i];
                 for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
             }
+            set_jac_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
             jac(soltemp_, Jac_);
+            clear_jac_time();
         }
         for (i=0; i<neq_; i++) {
             for (j=0; j<neq_; j++)
@@ -1577,7 +1622,9 @@ void NewtonRadauIIA5::f_Newton (double *x, double *y) {
             soltemp_[i] = sol_[i];
             for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
         }
+        set_fun_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
         fun(soltemp_, ftemp_);
+        clear_fun_time();
         for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
     }
 }
@@ -1587,14 +1634,20 @@ void NewtonRadauIIA5::J_Newton (double *x, double **J) {
     unsigned long i, j;
     int m, n;
     double dt = *dt_;
-    if ( get_modified() ) jac(sol_, Jac_);
+    if ( get_modified() ) {
+        set_jac_time(integrator_->get_t());
+        jac(sol_, Jac_);
+        clear_jac_time();
+    }
     for (n=0; n<nk_; n++) {
         if ( !get_modified() ) {
             for (i=0; i<neq_; i++) {
                 soltemp_[i] = sol_[i];
                 for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
             }
+            set_jac_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
             jac(soltemp_, Jac_);
+            clear_jac_time();
         }
         for (i=0; i<neq_; i++) {
             for (j=0; j<neq_; j++)
@@ -1648,7 +1701,9 @@ void NewtonGeng5::f_Newton (double *x, double *y) {
             soltemp_[i] = sol_[i];
             for (j=0; j<nk_; j++) soltemp_[i] += dt*a[n][j]*k_[j][i];
         }
+        set_fun_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
         fun(soltemp_, ftemp_);
+        clear_fun_time();
         for (i=0; i<neq_; i++) y[i+n*neq_] = k_[n][i] - ftemp_[i];
     }
 }
@@ -1658,14 +1713,20 @@ void NewtonGeng5::J_Newton (double *x, double **J) {
     unsigned long i, j;
     int m, n;
     double dt = *dt_;
-    if ( get_modified() ) jac(sol_, Jac_);
+    if ( get_modified() ) {
+        set_jac_time(integrator_->get_t());
+        jac(sol_, Jac_);
+        clear_jac_time();
+    }
     for (n=0; n<nk_; n++) {
         if ( !get_modified() ) {
             for (i=0; i<neq_; i++) {
                 soltemp_[i] = sol_[i];
                 for (m=0; m<nk_; m++) soltemp_[i] += dt*a[n][m]*k_[m][i];
             }
+            set_jac_time(integrator_->get_t() + dt*ode_stage_sum(a, n, nk_));
             jac(soltemp_, Jac_);
+            clear_jac_time();
         }
         for (i=0; i<neq_; i++) {
             for (j=0; j<neq_; j++)
@@ -1718,7 +1779,11 @@ void NewtonSDIRK43::f_Newton (double *x, double *y) {
         soltemp_[i] = sol_[i] + dt*gam*k_[ik_][i];
         for (m=0; m<ik_; m++) soltemp_[i] += dt*a[ik_][m]*k_[m][i];
     }
+    double stage_c = gam;
+    for (m=0; m<ik_; m++) stage_c += a[ik_][m];
+    set_fun_time(integrator_->get_t() + dt*stage_c);
     fun(soltemp_, ftemp_);
+    clear_fun_time();
     for (i=0; i<neq_; i++) y[i] = k_[ik_][i] - ftemp_[i];
 }
 
@@ -1732,7 +1797,11 @@ void NewtonSDIRK43::J_Newton (double *x, double **J) {
             soltemp_[i] = sol_[i] + dt*gam*k_[ik_][i];
             for (m=0; m<ik_; m++) soltemp_[i] += dt*a[ik_][m]*k_[m][i];
         }
+        double stage_c = gam;
+        for (m=0; m<ik_; m++) stage_c += a[ik_][m];
+        set_jac_time(integrator_->get_t() + dt*stage_c);
         jac(soltemp_, Jac_);
+        clear_jac_time();
     }
     for (i=0; i<neq_; i++) {
         for (j=0; j<neq_; j++) J[i][j] = -dt*gam*Jac_[i][j];
@@ -1770,7 +1839,11 @@ OdeSDIRK43::~OdeSDIRK43 () {
 
 void OdeSDIRK43::step_ (double dt) {
     unsigned long i;
-    if ( newton_->get_modified() ) ode_jac_(sol_, Jac_);
+    if ( newton_->get_modified() ) {
+        set_jac_eval_time(t_);
+        ode_jac_(sol_, Jac_);
+        clear_jac_eval_time();
+    }
     for (i=0; i<neq_; i++) k_[0][i] = 0.0;
     newton_->set_ignore_JLU(false);
     newton_->set_ik(0);
@@ -3227,7 +3300,5 @@ void OdeRkh10::step_(double dt) { STEP17_BODY }
 #undef STEP17_BODY
 
 } // namespace ode
-
-
 
 

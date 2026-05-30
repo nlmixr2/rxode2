@@ -125,6 +125,7 @@ typedef struct {
   int ssSolved;
   int useDense;
   int indOwnAlloc;
+  int cvodeLinSolver;
 } rx_solving_options;
 
 
