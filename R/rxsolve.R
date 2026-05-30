@@ -64,11 +64,11 @@
 #'     For the fixed-step Boost methods `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`,
 #'     `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`,
 #'     `"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, `"geng5"`, and the
-#'     rklib fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"rkssp22"`,
-#'     `"rk3"`, `"rkssp53"`, `"rks4"`, `"rkr4"`, `"rkls44"`, `"rkls54"`,
-#'     `"rkssp54"`, `"rks5"`, `"rk5"`, `"rkc5"`, `"rkl5"`, `"rklk5a"`, `"rklk5b"`,
-#'     `"rkb6"`, `"rk7"`, `"rk8_10"`, `"rkcv8"`, `"rk8_12"`, `"rks10"`, `"rkz10"`,
-#'     `"rko10"`, `"rkh10"`), this specifies the fixed step size.
+#'     rklib fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
+#'     `"rk3"`, `"ssp53"`, `"s4"`, `"r4"`, `"ls44"`, `"ls54"`,
+#'     `"ssp54"`, `"s5"`, `"rk5"`, `"c5"`, `"l5"`, `"lk5a"`, `"lk5b"`,
+#'     `"b6"`, `"rk7"`, `"rk8_10"`, `"cv8"`, `"rk8_12"`, `"s10"`, `"z10"`,
+#'     `"o10"`, `"h10"`), this specifies the fixed step size.
 #'     If `hmin=0` (the default), it uses a default of `0.01` for `"rk4"`,
 #'     `"trapz"`, `"ssp3"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`,
 #'     `"radauiia5"`, `"geng5"`, and all rklib fixed-step methods; `0.0001` for
@@ -80,18 +80,18 @@
 #'     interval is shorter than the nominal step size, so short intervals (e.g.,
 #'     between closely spaced doses) are always handled correctly.
 #'
-#'     For the adaptive methods `"rkf78"`, `"ck54"`, `"dop5"`, `"bs"`, `"rkf32"`,
+#'     For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 #'     `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-#'     `"ros43"`, `"sdirk43"`, and all rklib adaptive methods (`"rkbs32"`,
-#'     `"rkssp43"`, `"rkf45"`, `"rkt54"`, `"rks54"`, `"rkpp54"`, `"rkpp54b"`,
-#'     `"rkbs54"`, `"rkss54"`, `"rkdp65"`, `"rkc65"`, `"rktp64"`, `"rkv65r"`,
-#'     `"rkv65"`, `"dverk65"`, `"rktf65"`, `"rktp75"`, `"rktmy7"`, `"rktmy7s"`,
-#'     `"rkv76r"`, `"rkss76"`, `"rkv78"`, `"dverk78"`, `"rkdp85"`, `"rktp86"`,
-#'     `"rkv87e"`, `"rkv87r"`, `"rkev87"`, `"rkk87"`, `"rkf89"`, `"rkv89"`,
-#'     `"rkt98a"`, `"rkv98r"`, `"rks98"`, `"rkf108"`, `"rkc108"`, `"rkb109"`,
-#'     `"rks1110a"`, `"rkf1210"`, `"rko129"`, `"rkf1412"`, and the rklib aliases
-#'     `"rkck54"`, `"rkdp54"`, `"rkv65e"`, `"rkv76e"`, `"rkdp87"`, `"rkv98e"`,
-#'     `"rkssp33"`), this specifies the initial step size (default `0.01` when
+#'     `"ros43"`, `"sdirk43"`, and all rklib adaptive methods (`"bs32"`,
+#'     `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
+#'     `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
+#'     `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
+#'     `"v76r"`, `"ss76"`, `"v78"`, `"dverk78"`, `"dp85"`, `"tp86"`,
+#'     `"v87e"`, `"v87r"`, `"ev87"`, `"k87"`, `"f89"`, `"v89"`,
+#'     `"t98a"`, `"v98r"`, `"s98"`, `"f108"`, `"c108"`, `"b109"`,
+#'     `"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, and the rklib aliases
+#'     `"dp54"`, `"v65e"`, `"v76e"`, `"dp87"`, `"v98e"`,
+#'     `"ssp33"`), this specifies the initial step size (default `0.01` when
 #'     `hmin=0`); subsequent steps are chosen adaptively using `atol`, `rtol`,
 #'     and `maxsteps`.
 #'
@@ -925,7 +925,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "rkssp22", "rk3", "rkssp53", "rks4", "rkr4", "rkls44", "rkls54", "rkssp54", "rks5", "rk5", "rkc5", "rkl5", "rklk5a", "rklk5b", "rkb6", "rk7", "rk8_10", "rkcv8", "rk8_12", "rks10", "rkz10", "rko10", "rkh10", "rkck54", "rkdp54", "rkv65e", "rkv76e", "rkdp87", "rkv98e", "rkssp33", "rkbs32", "rkssp43", "rkf45", "rkt54", "rks54", "rkpp54", "rkpp54b", "rkbs54", "rkss54", "rkdp65", "rkc65", "rktp64", "rkv65r", "rkv65", "dverk65", "rktf65", "rktp75", "rktmy7", "rktmy7s", "rkv76r", "rkss76", "rkv78", "dverk78", "rkdp85", "rktp86", "rkv87e", "rkv87r", "rkev87", "rkk87", "rkf89", "rkv89", "rkt98a", "rkv98r", "rks98", "rkf108", "rkc108", "rkb109", "rks1110a", "rkf1210", "rko129", "rkf1412"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "rk7", "rk8_10", "cv8", "rk8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3294,7 +3294,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
 #'         must be setup specially to use this solving routine.
 #'
-#' * `"rkf78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
+#' * `"f78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 #'
 #' * `"rk4"` -- Runge-Kutta 4 solver using Boost's odeint library.
 #'
@@ -3405,7 +3405,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   not use `atol` or `rtol` (fixed-step; no error control).  Supports
 #'   parallel thread-based solving and steady-state (`ss=1`) dosing.
 #'
-#' * `"rkf32"` -- Heun-Euler 3(2) embedded pair from libode.  A 3-stage,
+#' * `"f32"` -- Heun-Euler 3(2) embedded pair from libode.  A 3-stage,
 #'   3rd-order adaptive method with a built-in 2nd-order error estimate for
 #'   automatic step-size control.  Tableau: c2=1, a21=1; c3=1/2, a31=1/4,
 #'   a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6, d3=4/6; embedded
@@ -3501,19 +3501,17 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' **Aliases for existing methods** (no additional C++ code; `hmin`, `atol`,
 #' `rtol`, and `maxsteps` follow the aliased method):
 #'
-#' * `"rkck54"` -- alias for `"ck54"` (Cash-Karp 5(4), Boost.odeint).
+#' * `"dp54"` -- alias for `"dop54"` (Dormand-Prince 5(4) FSAL, libode).
 #'
-#' * `"rkdp54"` -- alias for `"dop54"` (Dormand-Prince 5(4) FSAL, libode).
+#' * `"v65e"` -- alias for `"vern65"` (Verner 6(5) efficient, libode).
 #'
-#' * `"rkv65e"` -- alias for `"vern65"` (Verner 6(5) efficient, libode).
+#' * `"v76e"` -- alias for `"vern76"` (Verner 7(6) efficient, libode).
 #'
-#' * `"rkv76e"` -- alias for `"vern76"` (Verner 7(6) efficient, libode).
+#' * `"dp87"` -- alias for `"dop87"` (Dormand-Prince 8(7), libode).
 #'
-#' * `"rkdp87"` -- alias for `"dop87"` (Dormand-Prince 8(7), libode).
+#' * `"v98e"` -- alias for `"vern98"` (Verner 9(8) efficient, libode).
 #'
-#' * `"rkv98e"` -- alias for `"vern98"` (Verner 9(8) efficient, libode).
-#'
-#' * `"rkssp33"` -- alias for `"ssp3"` (Strong Stability-Preserving RK3, libode).
+#' * `"ssp33"` -- alias for `"ssp3"` (Strong Stability-Preserving RK3, libode).
 #'
 #' **rklib fixed-step explicit methods** (from Jacob Williams' rklib Fortran
 #' library).  All use `hmin` as the fixed step size (default `0.01` when
@@ -3531,62 +3529,62 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"heun"` -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
 #'   Identical in structure to `"trapz"` (libode) but uses the rklib driver.
 #'
-#' * `"rkssp22"` -- Strong Stability-Preserving 2-stage 2nd-order method
+#' * `"ssp22"` -- Strong Stability-Preserving 2-stage 2nd-order method
 #'   (SSP-RK22), 2 stages.  Superior non-oscillatory properties near
 #'   discontinuities.
 #'
 #' * `"rk3"` -- Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.
 #'
-#' * `"rkssp53"` -- Strong Stability-Preserving 5-stage 3rd-order method
+#' * `"ssp53"` -- Strong Stability-Preserving 5-stage 3rd-order method
 #'   (SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
 #'   event-heavy ODE systems.
 #'
-#' * `"rks4"` -- Shanks 4th-order method, 4 stages.
+#' * `"s4"` -- Shanks 4th-order method, 4 stages.
 #'
-#' * `"rkr4"` -- Ralston's 4th-order method, 4 stages.  Minimises local
+#' * `"r4"` -- Ralston's 4th-order method, 4 stages.  Minimises local
 #'   truncation error among classical 4-stage 4th-order methods.
 #'
-#' * `"rkls44"` -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
+#' * `"ls44"` -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
 #'   update scheme that minimises memory bandwidth at the cost of a less
 #'   general tableau structure.
 #'
-#' * `"rkls54"` -- Low-storage 4th-order method, 5 stages.  Five-stage
+#' * `"ls54"` -- Low-storage 4th-order method, 5 stages.  Five-stage
 #'   variant of the 2-register low-storage scheme.
 #'
-#' * `"rkssp54"` -- Strong Stability-Preserving 5-stage 4th-order method
+#' * `"ssp54"` -- Strong Stability-Preserving 5-stage 4th-order method
 #'   (SSP-RK54), 5 stages.
 #'
-#' * `"rks5"` -- Shanks 5th-order method, 5 stages.
+#' * `"s5"` -- Shanks 5th-order method, 5 stages.
 #'
 #' * `"rk5"` -- Classical 5th-order Runge-Kutta, 6 stages.
 #'
-#' * `"rkc5"` -- Cassity 5th-order method, 6 stages.
+#' * `"c5"` -- Cassity 5th-order method, 6 stages.
 #'
-#' * `"rkl5"` -- Lawson 5th-order method, 6 stages.
+#' * `"l5"` -- Lawson 5th-order method, 6 stages.
 #'
-#' * `"rklk5a"` -- Luther-Konen 5th-order method, variant A, 6 stages.
+#' * `"lk5a"` -- Luther-Konen 5th-order method, variant A, 6 stages.
 #'
-#' * `"rklk5b"` -- Luther-Konen 5th-order method, variant B, 6 stages.
+#' * `"lk5b"` -- Luther-Konen 5th-order method, variant B, 6 stages.
 #'
-#' * `"rkb6"` -- Butcher 6th-order method, 7 stages.
+#' * `"b6"` -- Butcher 6th-order method, 7 stages.
 #'
 #' * `"rk7"` -- Shanks 7th-order method, 9 stages.
 #'
 #' * `"rk8_10"` -- Shanks 8th-order method, 10 stages.
 #'
-#' * `"rkcv8"` -- Cooper-Verner 8th-order method, 11 stages.
+#' * `"cv8"` -- Cooper-Verner 8th-order method, 11 stages.
 #'
 #' * `"rk8_12"` -- Shanks 8th-order method, 12 stages.
 #'
-#' * `"rks10"` -- Stepanov 10th-order method, 15 stages.  Requires a moderate
+#' * `"s10"` -- Stepanov 10th-order method, 15 stages.  Requires a moderate
 #'   step size (e.g., `hmin=1.0`) because a single step is accurate to very
 #'   high order.
 #'
-#' * `"rkz10"` -- Zhang 10th-order method, 16 stages.
+#' * `"z10"` -- Zhang 10th-order method, 16 stages.
 #'
-#' * `"rko10"` -- Ono 10th-order method, 17 stages.
+#' * `"o10"` -- Ono 10th-order method, 17 stages.
 #'
-#' * `"rkh10"` -- Hairer 10th-order method, 17 stages.
+#' * `"h10"` -- Hairer 10th-order method, 17 stages.
 #'
 #' **rklib adaptive (variable-step) explicit methods** (from Jacob Williams'
 #' rklib Fortran library).  All use `atol` and `rtol` for error control;
@@ -3596,68 +3594,68 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' support parallel thread-based solving and steady-state (`ss=1`) dosing
 #' (convergence governed by `ssAtol`, `ssRtol`, `minSS`, `maxSS`, `strictSS`).
 #'
-#' * `"rkbs32"` -- Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &
+#' * `"bs32"` -- Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &
 #'   Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
 #'   FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
 #'   step.  The same algorithm as Julia `BS3()` and MATLAB `ode23`.
 #'
-#' * `"rkssp43"` -- Strong Stability-Preserving 4(3) pair, 4 stages.
+#' * `"ssp43"` -- Strong Stability-Preserving 4(3) pair, 4 stages.
 #'   Adaptive SSP method with a 3rd-order embedded error estimate.
 #'
-#' * `"rkf45"` -- Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+#' * `"f45"` -- Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
 #'   primary solution with a 5th-order embedded estimate used for error
 #'   control.
 #'
-#' * `"rkt54"` -- Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+#' * `"t54"` -- Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
 #'   5th-order primary with 4th-order embedded error estimate.  FSAL: the
 #'   7th stage is reused as the 1st stage of the next step.  The same
 #'   Butcher tableau as Julia's `Tsit5()`.
 #'
-#' * `"rks54"` -- Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+#' * `"s54"` -- Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
 #'   with 4th-order embedded error estimate.
 #'
-#' * `"rkpp54"` -- Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.
+#' * `"pp54"` -- Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.
 #'
-#' * `"rkpp54b"` -- Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+#' * `"pp54b"` -- Papakostas-Papageorgiou 5(4) variant B FSAL pair,
 #'   7 stages.
 #'
-#' * `"rkbs54"` -- Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+#' * `"bs54"` -- Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
 #'   with 4th-order embedded error estimate (non-FSAL).
 #'
-#' * `"rkss54"` -- Sharp-Smart 5(4) pair, 7 stages.
+#' * `"ss54"` -- Sharp-Smart 5(4) pair, 7 stages.
 #'
-#' * `"rkdp65"` -- Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+#' * `"dp65"` -- Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
 #'   with 5th-order embedded error estimate.
 #'
-#' * `"rkc65"` -- Calvo 6(5) pair, 9 stages.
+#' * `"c65"` -- Calvo 6(5) pair, 9 stages.
 #'
-#' * `"rktp64"` -- Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+#' * `"tp64"` -- Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
 #'   primary with 4th-order embedded error estimate.
 #'
-#' * `"rkv65r"` -- Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+#' * `"v65r"` -- Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
 #'   variant of Verner's 6(5) family with wider stability region.
 #'
-#' * `"rkv65"` -- Verner 6(5) pair, 8 stages (non-FSAL).
+#' * `"v65"` -- Verner 6(5) pair, 8 stages (non-FSAL).
 #'
 #' * `"dverk65"` -- Verner DVERK 6(5) pair, 8 stages.  Coefficients from
 #'   the classic DVERK Fortran code distributed by Hull and Enright.
 #'
-#' * `"rktf65"` -- Tsitouras-Famelis 6(5) FSAL pair, 9 stages.
+#' * `"tf65"` -- Tsitouras-Famelis 6(5) FSAL pair, 9 stages.
 #'
-#' * `"rktp75"` -- Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+#' * `"tp75"` -- Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
 #'   primary with 5th-order embedded error estimate.
 #'
-#' * `"rktmy7"` -- Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+#' * `"tmy7"` -- Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
 #'   The same family as Julia's `TanYam7()`.
 #'
-#' * `"rktmy7s"` -- Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+#' * `"tmy7s"` -- Tanaka-Muramatsu-Yamashita 7th-order stable variant,
 #'   10 stages.  Alternative coefficient set with wider stability region.
 #'
-#' * `"rkv76r"` -- Verner "robust" 7(6) pair, 10 stages.
+#' * `"v76r"` -- Verner "robust" 7(6) pair, 10 stages.
 #'
-#' * `"rkss76"` -- Sharp-Smart 7(6) pair, 11 stages.
+#' * `"ss76"` -- Sharp-Smart 7(6) pair, 11 stages.
 #'
-#' * `"rkv78"` -- Verner 7(8) pair, 13 stages.  7th-order primary with
+#' * `"v78"` -- Verner 7(8) pair, 13 stages.  7th-order primary with
 #'   8th-order embedded error estimate.  Closest rxode2 analog to Julia
 #'   `Vern8()`.
 #'
@@ -3665,52 +3663,52 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   the classic DVERK Fortran code; companion to `"dverk65"`.  Also close
 #'   to Julia `Vern8()`.
 #'
-#' * `"rkdp85"` -- Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+#' * `"dp85"` -- Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
 #'   with 5th-order embedded error estimate.
 #'
-#' * `"rktp86"` -- Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+#' * `"tp86"` -- Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
 #'   family as Julia's `TsitPap8()`.
 #'
-#' * `"rkv87e"` -- Verner "efficient" 8(7) pair, 13 stages.
+#' * `"v87e"` -- Verner "efficient" 8(7) pair, 13 stages.
 #'
-#' * `"rkv87r"` -- Verner "robust" 8(7) pair, 13 stages.
+#' * `"v87r"` -- Verner "robust" 8(7) pair, 13 stages.
 #'
-#' * `"rkev87"` -- Enright-Verner 8(7) pair, 13 stages.
+#' * `"ev87"` -- Enright-Verner 8(7) pair, 13 stages.
 #'
-#' * `"rkk87"` -- Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.
+#' * `"k87"` -- Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.
 #'
-#' * `"rkf89"` -- Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+#' * `"f89"` -- Fehlberg 8(9) pair, 17 stages.  8th-order primary with
 #'   9th-order embedded estimate.  Same family as MATLAB `ode89`.
 #'
-#' * `"rkv89"` -- Verner 8(9) pair, 16 stages.  Alternative to `"rkf89"`
+#' * `"v89"` -- Verner 8(9) pair, 16 stages.  Alternative to `"f89"`
 #'   in the same order bracket.  Also close to MATLAB `ode89`.
 #'
-#' * `"rkt98a"` -- Tsitouras 9(8) variant A pair, 16 stages.
+#' * `"t98a"` -- Tsitouras 9(8) variant A pair, 16 stages.
 #'
-#' * `"rkv98r"` -- Verner "robust" 9(8) pair, 16 stages.
+#' * `"v98r"` -- Verner "robust" 9(8) pair, 16 stages.
 #'
-#' * `"rks98"` -- Sharp 9(8) pair, 16 stages.
+#' * `"s98"` -- Sharp 9(8) pair, 16 stages.
 #'
-#' * `"rkf108"` -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+#' * `"f108"` -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
 #'   primary with 8th-order embedded error estimate.  The same method as
 #'   Julia's `Feagin10()`.  The large number of stages carries elevated
 #'   transcription-error risk; verified against rklib's canonical order test.
 #'
-#' * `"rkc108"` -- Curtis 10(8) pair, 21 stages.
+#' * `"c108"` -- Curtis 10(8) pair, 21 stages.
 #'
-#' * `"rkb109"` -- Baker 10(9) pair, 21 stages.
+#' * `"b109"` -- Baker 10(9) pair, 21 stages.
 #'
-#' * `"rks1110a"` -- Stone 11(10) variant A pair, 26 stages.  11th-order
+#' * `"s1110a"` -- Stone 11(10) variant A pair, 26 stages.  11th-order
 #'   primary; very few published references.
 #'
-#' * `"rkf1210"` -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+#' * `"f1210"` -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
 #'   primary with 10th-order embedded error estimate.  The same method as
 #'   Julia's `Feagin12()`.  Elevated transcription-error risk due to many
 #'   stages; verified against rklib's canonical order test.
 #'
-#' * `"rko129"` -- Ono 12(9) pair, 29 stages.
+#' * `"o129"` -- Ono 12(9) pair, 29 stages.
 #'
-#' * `"rkf1412"` -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+#' * `"f1412"` -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
 #'   primary with 12th-order embedded error estimate.  The same method as
 #'   Julia's `Feagin14()`.  The highest-order method in rxode2; elevated
 #'   transcription-error risk due to 35 stages; verified against rklib's
@@ -3722,28 +3720,28 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "rkssp22", "rk3", "rkssp53", "rks4", "rkr4", "rkls44", "rkls54", "rkssp54", "rks5", "rk5", "rkc5", "rkl5", "rklk5a", "rklk5b", "rkb6", "rk7", "rk8_10", "rkcv8", "rk8_12", "rks10", "rkz10", "rko10", "rkh10", "rkck54", "rkdp54", "rkv65e", "rkv76e", "rkdp87", "rkv98e", "rkssp33", "rkbs32", "rkssp43", "rkf45", "rkt54", "rks54", "rkpp54", "rkpp54b", "rkbs54", "rkss54", "rkdp65", "rkc65", "rktp64", "rkv65r", "rkv65", "dverk65", "rktf65", "rktp75", "rktmy7", "rktmy7s", "rkv76r", "rkss76", "rkv78", "dverk78", "rkdp85", "rktp86", "rkv87e", "rkv87r", "rkev87", "rkk87", "rkf89", "rkv89", "rkt98a", "rkv98r", "rks98", "rkf108", "rkc108", "rkb109", "rks1110a", "rkf1210", "rko129", "rkf1412")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-                  "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "rkssp22" = 42L,
-                  "rk3" = 43L, "rkssp53" = 44L, "rks4" = 45L, "rkr4" = 46L,
-                  "rkls44" = 47L, "rkls54" = 48L, "rkssp54" = 49L,
-                  "rks5" = 50L, "rk5" = 51L, "rkc5" = 52L, "rkl5" = 53L,
-                  "rklk5a" = 54L, "rklk5b" = 55L, "rkb6" = 56L, "rk7" = 57L,
-                  "rk8_10" = 58L, "rkcv8" = 59L, "rk8_12" = 60L, "rks10" = 61L,
-                  "rkz10" = 62L, "rko10" = 63L, "rkh10" = 64L,
-                  "rkck54" = 7L, "rkdp54" = 26L, "rkv65e" = 27L,
-                  "rkv76e" = 28L, "rkdp87" = 29L, "rkv98e" = 30L, "rkssp33" = 23L,
-                  "rkbs32" = 65L, "rkssp43" = 66L, "rkf45" = 67L,
-                  "rkt54" = 68L, "rks54" = 69L, "rkpp54" = 70L, "rkpp54b" = 71L,
-                  "rkbs54" = 72L, "rkss54" = 73L, "rkdp65" = 74L, "rkc65" = 75L,
-                  "rktp64" = 76L, "rkv65r" = 77L, "rkv65" = 78L, "dverk65" = 79L,
-                  "rktf65" = 80L, "rktp75" = 81L, "rktmy7" = 82L, "rktmy7s" = 83L,
-                  "rkv76r" = 84L, "rkss76" = 85L, "rkv78" = 86L, "dverk78" = 87L,
-                  "rkdp85" = 88L, "rktp86" = 89L, "rkv87e" = 90L, "rkv87r" = 91L,
-                  "rkev87" = 92L, "rkk87" = 93L, "rkf89" = 94L, "rkv89" = 95L,
-                  "rkt98a" = 96L, "rkv98r" = 97L, "rks98" = 98L, "rkf108" = 99L,
-                  "rkc108" = 100L, "rkb109" = 101L, "rks1110a" = 102L,
-                  "rkf1210" = 103L, "rko129" = 104L, "rkf1412" = 105L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "rk7", "rk8_10", "cv8", "rk8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+                  "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+                  "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+                  "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+                  "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+                  "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
+                  "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+                  "z10" = 62L, "o10" = 63L, "h10" = 64L,
+                  "dp54" = 26L, "v65e" = 27L,
+                  "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+                  "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+                  "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+                  "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+                  "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+                  "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+                  "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+                  "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+                  "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+                  "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+                  "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+                  "f1210" = 103L, "o129" = 104L, "f1412" = 105L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
@@ -3789,34 +3787,34 @@ rxIsImplicit <- function(method) {
   .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
-    "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
     "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
     "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
     "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
-    "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
     "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
     "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
     "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "rkssp22" = 42L,
-    "rk3" = 43L, "rkssp53" = 44L, "rks4" = 45L, "rkr4" = 46L,
-    "rkls44" = 47L, "rkls54" = 48L, "rkssp54" = 49L,
-    "rks5" = 50L, "rk5" = 51L, "rkc5" = 52L, "rkl5" = 53L,
-    "rklk5a" = 54L, "rklk5b" = 55L, "rkb6" = 56L, "rk7" = 57L,
-    "rk8_10" = 58L, "rkcv8" = 59L, "rk8_12" = 60L, "rks10" = 61L,
-    "rkz10" = 62L, "rko10" = 63L, "rkh10" = 64L,
-    "rkck54" = 7L, "rkdp54" = 26L, "rkv65e" = 27L,
-    "rkv76e" = 28L, "rkdp87" = 29L, "rkv98e" = 30L, "rkssp33" = 23L,
-    "rkbs32" = 65L, "rkssp43" = 66L, "rkf45" = 67L,
-    "rkt54" = 68L, "rks54" = 69L, "rkpp54" = 70L, "rkpp54b" = 71L,
-    "rkbs54" = 72L, "rkss54" = 73L, "rkdp65" = 74L, "rkc65" = 75L,
-    "rktp64" = 76L, "rkv65r" = 77L, "rkv65" = 78L, "dverk65" = 79L,
-    "rktf65" = 80L, "rktp75" = 81L, "rktmy7" = 82L, "rktmy7s" = 83L,
-    "rkv76r" = 84L, "rkss76" = 85L, "rkv78" = 86L, "dverk78" = 87L,
-    "rkdp85" = 88L, "rktp86" = 89L, "rkv87e" = 90L, "rkv87r" = 91L,
-    "rkev87" = 92L, "rkk87" = 93L, "rkf89" = 94L, "rkv89" = 95L,
-    "rkt98a" = 96L, "rkv98r" = 97L, "rks98" = 98L, "rkf108" = 99L,
-    "rkc108" = 100L, "rkb109" = 101L, "rks1110a" = 102L,
-    "rkf1210" = 103L, "rko129" = 104L, "rkf1412" = 105L
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
+    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L
   )
   if (is.character(method)) {
     .codes <- .methodIdx[method]
@@ -3902,7 +3900,7 @@ rxUiDeparse.rxControl <- function(object, var) {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
       paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
     } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ros4" = 13L, "iem" = 14L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ros4" = 13L, "iem" = 14L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
       paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
     } else if (x == "naInterpolation") {
       .naInterpolation <- c("locf"=1L, "nocb"=0L)

@@ -6,10 +6,10 @@
 ##       Adaptive methods use atol=rtol=1 (single coarse step).
 ##
 ## Flagged methods needing extra validation (transcription-error risk):
-##   ★ rkf108, rkf1210, rkf1412: very many stages; also tested to tighter
+##   ★ f108, f1210, f1412: very many stages; also tested to tighter
 ##     tolerance in the decay test.
 ##   ⚑ FSAL methods: incorrect cache logic caught by decay test (multi-step).
-##   ⚑ Low-storage (rkls44, rkls54): custom 2-register scheme, order tested here.
+##   ⚑ Low-storage (ls44, ls54): custom 2-register scheme, order tested here.
 rxTest({
   .eps <- .Machine$double.eps
   .tol <- 1e4 * .eps   # 10000*eps, same threshold as rklib
@@ -20,29 +20,29 @@ rxTest({
     list(method = "euler",   order = 1L),
     list(method = "midpoint",order = 2L),
     list(method = "heun",    order = 2L),
-    list(method = "rkssp22", order = 2L),
+    list(method = "ssp22", order = 2L),
     list(method = "rk3",     order = 3L),
-    list(method = "rkssp53", order = 3L),
-    list(method = "rks4",    order = 4L),
-    list(method = "rkr4",    order = 4L),
-    list(method = "rkls44",  order = 4L),
-    list(method = "rkls54",  order = 4L),
-    list(method = "rkssp54", order = 4L),
-    list(method = "rks5",    order = 5L),
+    list(method = "ssp53", order = 3L),
+    list(method = "s4",    order = 4L),
+    list(method = "r4",    order = 4L),
+    list(method = "ls44",  order = 4L),
+    list(method = "ls54",  order = 4L),
+    list(method = "ssp54", order = 4L),
+    list(method = "s5",    order = 5L),
     list(method = "rk5",     order = 5L),
-    list(method = "rkc5",    order = 5L),
-    list(method = "rkl5",    order = 5L),
-    list(method = "rklk5a",  order = 5L),
-    list(method = "rklk5b",  order = 5L),
-    list(method = "rkb6",    order = 6L),
+    list(method = "c5",    order = 5L),
+    list(method = "l5",    order = 5L),
+    list(method = "lk5a",  order = 5L),
+    list(method = "lk5b",  order = 5L),
+    list(method = "b6",    order = 6L),
     list(method = "rk7",     order = 7L),
     list(method = "rk8_10",  order = 8L),
-    list(method = "rkcv8",   order = 8L),
+    list(method = "cv8",   order = 8L),
     list(method = "rk8_12",  order = 8L),
-    list(method = "rks10",   order = 10L),
-    list(method = "rkz10",   order = 10L),
-    list(method = "rko10",   order = 10L),
-    list(method = "rkh10",   order = 10L)
+    list(method = "s10",   order = 10L),
+    list(method = "z10",   order = 10L),
+    list(method = "o10",   order = 10L),
+    list(method = "h10",   order = 10L)
   )
 
   for (.cfg in .fixed_cases) {
@@ -64,50 +64,50 @@ rxTest({
   ## Use atol=rtol=1 so one coarse step is taken (mimics fixed-step mode).
   .var_cases <- list(
     ## aliases
-    list(method = "rkck54",   order = 5L),
-    list(method = "rkdp54",   order = 5L),
-    list(method = "rkssp33",  order = 3L),
-    list(method = "rkdp87",   order = 8L),
-    list(method = "rkv65e",   order = 6L),
-    list(method = "rkv76e",   order = 7L),
-    list(method = "rkv98e",   order = 9L),
+    list(method = "ck54",   order = 5L),
+    list(method = "dp54",   order = 5L),
+    list(method = "ssp33",  order = 3L),
+    list(method = "dp87",   order = 8L),
+    list(method = "v65e",   order = 6L),
+    list(method = "v76e",   order = 7L),
+    list(method = "v98e",   order = 9L),
     ## new variable-step
-    list(method = "rkbs32",   order = 3L),
-    list(method = "rkf45",    order = 4L),
-    list(method = "rkt54",    order = 5L),
-    list(method = "rks54",    order = 5L),
-    list(method = "rkpp54",   order = 5L),
-    list(method = "rkpp54b",  order = 5L),
-    list(method = "rkbs54",   order = 5L),
-    list(method = "rkss54",   order = 5L),
-    list(method = "rkdp65",   order = 6L),
-    list(method = "rkc65",    order = 6L),
-    list(method = "rktp64",   order = 6L),
-    list(method = "rkv65r",   order = 6L),
-    list(method = "rkv65",    order = 6L),
+    list(method = "bs32",   order = 3L),
+    list(method = "f45",    order = 4L),
+    list(method = "t54",    order = 5L),
+    list(method = "s54",    order = 5L),
+    list(method = "pp54",   order = 5L),
+    list(method = "pp54b",  order = 5L),
+    list(method = "bs54",   order = 5L),
+    list(method = "ss54",   order = 5L),
+    list(method = "dp65",   order = 6L),
+    list(method = "c65",    order = 6L),
+    list(method = "tp64",   order = 6L),
+    list(method = "v65r",   order = 6L),
+    list(method = "v65",    order = 6L),
     list(method = "dverk65",  order = 6L),
-    list(method = "rktf65",   order = 6L),
-    list(method = "rktp75",   order = 7L),
-    list(method = "rktmy7",   order = 7L),
-    list(method = "rktmy7s",  order = 7L),
-    list(method = "rkv76r",   order = 7L),
-    list(method = "rkss76",   order = 7L),
-    list(method = "rkdp85",   order = 8L),
-    list(method = "rktp86",   order = 8L),
-    list(method = "rkv87e",   order = 8L),
-    list(method = "rkv87r",   order = 8L),
-    list(method = "rkev87",   order = 8L),
-    list(method = "rkk87",    order = 8L),
-    list(method = "rkt98a",   order = 9L),
-    list(method = "rkv98r",   order = 9L),
-    list(method = "rks98",    order = 9L),
-    list(method = "rkf108",   order = 10L),   # ★ extra transcription risk
-    list(method = "rkc108",   order = 10L),
-    list(method = "rkb109",   order = 10L),
-    list(method = "rks1110a", order = 11L),
-    list(method = "rkf1210",  order = 12L),   # ★ extra transcription risk
-    list(method = "rko129",   order = 12L),
-    list(method = "rkf1412",  order = 14L)    # ★ extra transcription risk
+    list(method = "tf65",   order = 6L),
+    list(method = "tp75",   order = 7L),
+    list(method = "tmy7",   order = 7L),
+    list(method = "tmy7s",  order = 7L),
+    list(method = "v76r",   order = 7L),
+    list(method = "ss76",   order = 7L),
+    list(method = "dp85",   order = 8L),
+    list(method = "tp86",   order = 8L),
+    list(method = "v87e",   order = 8L),
+    list(method = "v87r",   order = 8L),
+    list(method = "ev87",   order = 8L),
+    list(method = "k87",    order = 8L),
+    list(method = "t98a",   order = 9L),
+    list(method = "v98r",   order = 9L),
+    list(method = "s98",    order = 9L),
+    list(method = "f108",   order = 10L),   # ★ extra transcription risk
+    list(method = "c108",   order = 10L),
+    list(method = "b109",   order = 10L),
+    list(method = "s1110a", order = 11L),
+    list(method = "f1210",  order = 12L),   # ★ extra transcription risk
+    list(method = "o129",   order = 12L),
+    list(method = "f1412",  order = 14L)    # ★ extra transcription risk
   )
 
   for (.cfg in .var_cases) {

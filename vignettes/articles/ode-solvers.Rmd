@@ -46,7 +46,7 @@ complete method inventory split by stiffness and by adaptivity.
 | Modeling situation | Good rxode2 starting points | Why | Familiar names in other ecosystems |
 |---|---|---|---|
 | General PK/PD work, stiffness uncertain | `liblsoda`, `lsoda` | Automatically switches between non-stiff and stiff behavior; very good default for mixed event schedules | ODEPACK/deSolve `lsoda`; Julia `lsoda()`; MATLAB has no direct LSODA wrapper and usually splits this choice between `ode45` and `ode15s`; Phoenix NLME closest match is `Auto-Detect` (LSODA) |
-| Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54`, `rkt54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`rkdp54` is closest to MATLAB `ode45`; `rkt54` is the same method as Julia `Tsit5()`; `dop853` matches SciPy `DOP853`; Julia `DP5()` maps to `dop5`/`dop54`, `Vern7()` maps to `vern76`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
+| Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54`, `t54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`dp54` is closest to MATLAB `ode45`; `t54` is the same method as Julia `Tsit5()`; `dop853` matches SciPy `DOP853`; Julia `DP5()` maps to `dop5`/`dop54`, `Vern7()` maps to `vern76`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
 | Moderate stiffness: TMDD, indirect response with fast turnover, enzyme models | `ros4`, `ros43`, `sdirk43` | Stiff-aware one-step methods that often behave well across dosing discontinuities | MATLAB users can think `ode23s` / `ode15s`; Julia analogs are `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`; Phoenix NLME users usually compare against `Auto-Detect` (LSODA) or `Stiff` (LSODE/BDF) |
 | Clearly stiff or larger systems where linear solver choice matters | `cvode` | CVODE gives Adams/BDF-style behavior with configurable linear solvers | Julia `CVODE_Adams()` / `CVODE_BDF()` in Sundials; MATLAB users usually compare against `ode15s`; Phoenix NLME analog is `Stiff` (LSODE/BDF) |
 | Fixed-step comparison runs or debugging around dose/event boundaries | `rk4`, `trapz`, `backwardEuler`, `gauss6`, `iiic6`, `radauiia5`, `ros6` | Forces a controlled step size and makes solver-to-solver comparisons easier | Julia has direct families such as `Heun()`, `ImplicitEuler()`, `GaussLegendre`, `LobattoIIIC`, `RadauIIA5()`; MATLAB has fewer built-in fixed-step counterparts |
@@ -117,11 +117,11 @@ events.
 - `dop853`: a strong default for smooth, non-stiff pharmacometric
   systems with dense sampling grids
 - `dop5`: adaptive Dormand-Prince 5th-order family
-- `dop54`, `rkdp54`: the closest match in naming and behavior to
+- `dop54`, `dp54`: the closest match in naming and behavior to
   MATLAB `ode45`
-- `rkf32`: closest in role to MATLAB `ode23`
+- `f32`: closest in role to MATLAB `ode23`
 - `bs`: adaptive Bogacki-Shampine family
-- `vern65`, `rkv65e`; `vern76`, `rkv76e`; `vern98`, `rkv98e`: Verner
+- `vern65`, `v65e`; `vern76`, `v76e`; `vern98`, `v98e`: Verner
   families, conceptually closest to Julia's `Vern6`, `Vern7`, and
   `Vern9`
 
@@ -131,25 +131,25 @@ events.
 method-comparison work, benchmarking, or specialized non-stiff models.
 These accepted method names are:
 
-- core adaptive explicit methods: `dop853`, `rkf78`, `ck54`,
-  `rkck54`, `dop5`, `bs`, `rkf32`, `rk43`, `dop54`, `rkdp54`,
-  `vern65`, `rkv65e`, `vern76`, `rkv76e`, `dop87`, `rkdp87`,
-  `vern98`, `rkv98e`
+- core adaptive explicit methods: `dop853`, `f78`, `ck54`,
+  `dop5`, `bs`, `f32`, `rk43`, `dop54`, `dp54`,
+  `vern65`, `v65e`, `vern76`, `v76e`, `dop87`, `dp87`,
+  `vern98`, `v98e`
 - lower-order and SSP-style adaptive methods: `euler`, `midpoint`,
-  `heun`, `rkssp22`, `rk3`, `rkssp53`, `rkbs32`, `rkssp43`, `rkf45`
-- adaptive fourth- and fifth-order families: `rks4`, `rkr4`,
-  `rkls44`, `rkls54`, `rkssp54`, `rks5`, `rk5`, `rkc5`, `rkl5`,
-  `rklk5a`, `rklk5b`, `rkt54`, `rks54`, `rkpp54`, `rkpp54b`,
-  `rkbs54`, `rkss54`
-- adaptive sixth- and seventh-order families: `rkb6`, `rk7`,
-  `rkdp65`, `rkc65`, `rktp64`, `rkv65r`, `rkv65`, `dverk65`,
-  `rktf65`, `rktp75`, `rktmy7`, `rktmy7s`, `rkv76r`, `rkss76`,
-  `rkv78`, `dverk78`
-- adaptive eighth-order and higher families: `rk8_10`, `rkcv8`,
-  `rk8_12`, `rks10`, `rkz10`, `rko10`, `rkh10`, `rkdp85`,
-  `rktp86`, `rkv87e`, `rkv87r`, `rkev87`, `rkk87`, `rkf89`,
-  `rkv89`, `rkt98a`, `rkv98r`, `rks98`, `rkf108`, `rkc108`,
-  `rkb109`, `rks1110a`, `rkf1210`, `rko129`, `rkf1412`
+  `heun`, `ssp22`, `rk3`, `ssp53`, `bs32`, `ssp43`, `f45`
+- adaptive fourth- and fifth-order families: `s4`, `r4`,
+  `ls44`, `ls54`, `ssp54`, `s5`, `rk5`, `c5`, `l5`,
+  `lk5a`, `lk5b`, `t54`, `s54`, `pp54`, `pp54b`,
+  `bs54`, `ss54`
+- adaptive sixth- and seventh-order families: `b6`, `rk7`,
+  `dp65`, `c65`, `tp64`, `v65r`, `v65`, `dverk65`,
+  `tf65`, `tp75`, `tmy7`, `tmy7s`, `v76r`, `ss76`,
+  `v78`, `dverk78`
+- adaptive eighth-order and higher families: `rk8_10`, `cv8`,
+  `rk8_12`, `s10`, `z10`, `o10`, `h10`, `dp85`,
+  `tp86`, `v87e`, `v87r`, `ev87`, `k87`, `f89`,
+  `v89`, `t98a`, `v98r`, `s98`, `f108`, `c108`,
+  `b109`, `s1110a`, `f1210`, `o129`, `f1412`
 
 Most pharmacometric users will never need to try every method in these
 families.  The practical point is that `rxode2` lets you stay within
@@ -162,7 +162,7 @@ These methods use `hmin` as the actual fixed step size.
 
 - `rk4`: classical Runge-Kutta 4
 - `trapz`: explicit trapezoidal / Heun-style fixed-step method
-- `ssp3`, `rkssp33`: fixed-step SSP Runge-Kutta 3
+- `ssp3`, `ssp33`: fixed-step SSP Runge-Kutta 3
 - `ab`: Adams-Bashforth
 - `abm`: Adams-Bashforth-Moulton
 - `sem`: semi-explicit method
@@ -215,10 +215,10 @@ the nearest `rxode2` equivalent for each.
 
 | MATLAB solver | Closest rxode2 method(s) | Notes |
 |---|---|---|
-| `ode23` | `rkbs32` | Bogacki-Shampine 3(2) pair; same family |
-| `ode45` | `dop54`, `rkdp54` | Dormand-Prince 5(4) FSAL; same algorithm as MATLAB |
-| `ode78` | `rkf78` | Fehlberg 7(8) via Boost; same family |
-| `ode89` | `rkv89`, `rkf89` | Verner/Fehlberg 8(9) pairs from rklib |
+| `ode23` | `bs32` | Bogacki-Shampine 3(2) pair; same family |
+| `ode45` | `dop54`, `dp54` | Dormand-Prince 5(4) FSAL; same algorithm as MATLAB |
+| `ode78` | `f78` | Fehlberg 7(8) via Boost; same family |
+| `ode89` | `v89`, `f89` | Verner/Fehlberg 8(9) pairs from rklib |
 | `ode113` | `ab`, `abm` | Adams-Bashforth-Moulton predictor-corrector (variable order); `liblsoda` covers Adams/BDF switching |
 | `ode15s` | `cvode`, `liblsoda` | BDF stiff solver; `cvode` is the closest explicit match |
 | `ode23s` | `ros43` | Kaps-Rentrop Rosenbrock 4(3); structurally the same family as MATLAB `ode23s` |
@@ -238,21 +238,21 @@ commonly used Julia solvers to their rxode2 equivalents.
 | `Midpoint()` | `midpoint` | Fixed-step explicit midpoint, 2nd-order (rklib) |
 | `Heun()` | `heun`, `trapz` | Fixed-step Heun / explicit trapezoid, 2nd-order |
 | `RK4()` | `rk4` | Classical 4th-order Runge-Kutta (Boost) |
-| `SSPRK33()` | `ssp3`, `rkssp33` | Strong Stability-Preserving RK3 |
-| `SSPRK43()` | `rkssp43` | SSP 4(3) adaptive pair (rklib) |
-| `BS3()` | `rkbs32` | Bogacki-Shampine 3(2) adaptive (rklib); same as MATLAB `ode23` |
-| `Tsit5()` | `rkt54` | Tsitouras 5(4) FSAL adaptive (rklib); same Butcher tableau |
-| `DP5()` | `dop5`, `dop54`, `rkdp54` | Dormand-Prince 5th-order; same as MATLAB `ode45` |
-| `TanYam7()` | `rktmy7` | Tanaka-Muramatsu-Yamashita 7th-order (rklib) |
-| `TsitPap8()` | `rktp86` | Tsitouras-Papakostas 8(6) (rklib) |
-| `DP8()` | `dop87`, `rkdp87` | Dormand-Prince 8(7) |
-| `Vern6()` | `vern65`, `rkv65e` | Verner 6(5) efficient pair |
-| `Vern7()` | `vern76`, `rkv76e` | Verner 7(6) efficient pair |
-| `Vern8()` | `rkv78`, `dverk78` | Verner 7(8) pair |
-| `Vern9()` | `vern98`, `rkv98e` | Verner 9(8) efficient pair |
-| `Feagin10()` | `rkf108` | Feagin 10(8), 17 stages (rklib) |
-| `Feagin12()` | `rkf1210` | Feagin 12(10), 25 stages (rklib) |
-| `Feagin14()` | `rkf1412` | Feagin 14(12), 35 stages (rklib) |
+| `SSPRK33()` | `ssp3`, `ssp33` | Strong Stability-Preserving RK3 |
+| `SSPRK43()` | `ssp43` | SSP 4(3) adaptive pair (rklib) |
+| `BS3()` | `bs32` | Bogacki-Shampine 3(2) adaptive (rklib); same as MATLAB `ode23` |
+| `Tsit5()` | `t54` | Tsitouras 5(4) FSAL adaptive (rklib); same Butcher tableau |
+| `DP5()` | `dop5`, `dop54`, `dp54` | Dormand-Prince 5th-order; same as MATLAB `ode45` |
+| `TanYam7()` | `tmy7` | Tanaka-Muramatsu-Yamashita 7th-order (rklib) |
+| `TsitPap8()` | `tp86` | Tsitouras-Papakostas 8(6) (rklib) |
+| `DP8()` | `dop87`, `dp87` | Dormand-Prince 8(7) |
+| `Vern6()` | `vern65`, `v65e` | Verner 6(5) efficient pair |
+| `Vern7()` | `vern76`, `v76e` | Verner 7(6) efficient pair |
+| `Vern8()` | `v78`, `dverk78` | Verner 7(8) pair |
+| `Vern9()` | `vern98`, `v98e` | Verner 9(8) efficient pair |
+| `Feagin10()` | `f108` | Feagin 10(8), 17 stages (rklib) |
+| `Feagin12()` | `f1210` | Feagin 12(10), 25 stages (rklib) |
+| `Feagin14()` | `f1412` | Feagin 14(12), 35 stages (rklib) |
 | `ImplicitEuler()` | `backwardEuler`, `iem` | 1st-order fully implicit |
 | `Trapezoid()` | `trapz` | Explicit trapezoidal rule, fixed-step |
 | `Rosenbrock23()` | `ros43` | Kaps-Rentrop Rosenbrock 4(3), A-stable |
@@ -267,9 +267,9 @@ commonly used Julia solvers to their rxode2 equivalents.
 
 Note: for many of the very high-order Runge-Kutta families in `rxode2`, the
 closest naming culture is Julia's DifferentialEquations ecosystem rather than
-MATLAB's built-in ODE suite.  In particular, `rkt54` (`Tsit5`), `rktmy7`
-(`TanYam7`), `rktp86` (`TsitPap8`), and the three Feagin methods (`rkf108`,
-`rkf1210`, `rkf1412`) have direct Julia name equivalents that have no MATLAB
+MATLAB's built-in ODE suite.  In particular, `t54` (`Tsit5`), `tmy7`
+(`TanYam7`), `tp86` (`TsitPap8`), and the three Feagin methods (`f108`,
+`f1210`, `f1412`) have direct Julia name equivalents that have no MATLAB
 counterpart.
 
 ## NONMEM, Monolix, and Phoenix crosswalk
@@ -324,7 +324,7 @@ That makes the practical `rxode2` comparison fairly direct:
 
 | Monolix mode | Closest rxode2 comparison | Pharmacometric interpretation |
 |---|---|---|
-| nonStiff (Adams) | `ab`, `abm` for an Adams predictor-corrector match; `liblsoda` for automatic Adams/BDF switching; `dop54`, `dop5`, `dop853`, `rkt54` as practical non-stiff Runge-Kutta alternatives | Smooth PK/PD, transit, or exposure-response systems without severe time-scale separation |
+| nonStiff (Adams) | `ab`, `abm` for an Adams predictor-corrector match; `liblsoda` for automatic Adams/BDF switching; `dop54`, `dop5`, `dop853`, `t54` as practical non-stiff Runge-Kutta alternatives | Smooth PK/PD, transit, or exposure-response systems without severe time-scale separation |
 | stiff (BDF) | `cvode`, `liblsoda`, `ros4`, `ros43`, or `sdirk43` | TMDD, target binding, indirect response with fast turnover, mechanistic PD, QSP-like stiffness |
 
 Monolix's `nonStiff` mode uses Adams (predictor-corrector) methods internally.
@@ -332,12 +332,12 @@ The structurally closest rxode2 analogs are `ab` (Adams-Bashforth fixed-step)
 and `abm` (Adams-Bashforth-Moulton fixed-step), or `liblsoda` which runs
 Adams-style stepping in its non-stiff mode.  In practice, many pharmacometric
 users who were happy with Monolix `nonStiff` will find that `liblsoda`, `dop54`,
-`rkt54`, or `dop853` give equally good results on smooth PK/PD problems, with
+`t54`, or `dop853` give equally good results on smooth PK/PD problems, with
 the Runge-Kutta families often being faster on smooth outputs.
 
 - if you were happy with Monolix `nonStiff` and want the closest Adams analog,
   try `ab` or `abm`; for general-purpose non-stiff use, try `liblsoda`,
-  `dop54`, `rkt54`, or `dop853`
+  `dop54`, `t54`, or `dop853`
 
 - if you needed Monolix `stiff`, start in `rxode2` with `liblsoda`,
   `cvode`, `ros4`, or `ros43`
@@ -353,8 +353,8 @@ choices, so those can be mapped more directly.
 | Phoenix WinNonlin built-in compartmental PK models | `linCmt()` or simple `rxode2()` PK models | Best match for standard 1-, 2-, and 3-compartment PK workflows |
 | Phoenix NLME `Matrix Exponent` | `indLin` or `linCmt()` | Matrix-exponential solve for linear ODE systems with a constant Jacobian; usually the closest speed-oriented comparison |
 | Phoenix NLME `Exponent Higham` | `indLin` | Alternative matrix-exponential path with the same basic pharmacometric role as `Matrix Exponent` |
-| Phoenix NLME `Non-Stiff (DVERK)` | `vern65`, `rkv65e`, `dop5`, `dop54` | Explicit non-stiff Runge-Kutta/Verner family behavior |
-| Phoenix NLME `Non-Stiff (DOPRI5)` | `dop54`, `rkdp54`, `dop5` | Closest Phoenix analog to the Dormand-Prince family most users associate with `ode45`-like behavior |
+| Phoenix NLME `Non-Stiff (DVERK)` | `vern65`, `v65e`, `dop5`, `dop54` | Explicit non-stiff Runge-Kutta/Verner family behavior |
+| Phoenix NLME `Non-Stiff (DOPRI5)` | `dop54`, `dp54`, `dop5` | Closest Phoenix analog to the Dormand-Prince family most users associate with `ode45`-like behavior |
 | Phoenix NLME `Auto-Detect` (LSODA) | `liblsoda`, `lsoda` | Automatic Adams/BDF switching; strongest direct name-level match in rxode2 |
 | Phoenix NLME `Stiff` (LSODE/BDF) | `cvode`, `ros4`, `ros43`, `sdirk43` | Stiff-only pathway; closest to rxode2 stiff workflows rather than to one exact solver name |
 
@@ -391,7 +391,7 @@ The accepted method names below cover the full current solver menu in
 
 ### Fixed-step, primarily non-stiff
 
-- `rk4`, `trapz`, `ssp3`, `rkssp33`, `ab`, `abm`, `sem`, `sb3a`,
+- `rk4`, `trapz`, `ssp3`, `ssp33`, `ab`, `abm`, `sem`, `sb3a`,
   `sb3am4`, `vv`, `mm`, `em`
 
 ### Pharmacometric linearization special case
@@ -400,33 +400,33 @@ The accepted method names below cover the full current solver menu in
 
 ### Adaptive, primarily non-stiff: core explicit families
 
-- `dop853`, `rkf78`, `ck54`, `rkck54`, `dop5`, `bs`, `rkf32`, `rk43`,
-  `dop54`, `rkdp54`, `vern65`, `rkv65e`, `vern76`, `rkv76e`,
-  `dop87`, `rkdp87`, `vern98`, `rkv98e`
+- `dop853`, `f78`, `ck54`, `dop5`, `bs`, `f32`, `rk43`,
+  `dop54`, `dp54`, `vern65`, `v65e`, `vern76`, `v76e`,
+  `dop87`, `dp87`, `vern98`, `v98e`
 
 ### Adaptive, primarily non-stiff: lower-order and SSP families
 
-- `euler`, `midpoint`, `heun`, `rkssp22`, `rk3`, `rkssp53`,
-  `rkbs32`, `rkssp43`, `rkf45`
+- `euler`, `midpoint`, `heun`, `ssp22`, `rk3`, `ssp53`,
+  `bs32`, `ssp43`, `f45`
 
 ### Adaptive, primarily non-stiff: fourth- and fifth-order families
 
-- `rks4`, `rkr4`, `rkls44`, `rkls54`, `rkssp54`, `rks5`, `rk5`,
-  `rkc5`, `rkl5`, `rklk5a`, `rklk5b`, `rkt54`, `rks54`, `rkpp54`,
-  `rkpp54b`, `rkbs54`, `rkss54`
+- `s4`, `r4`, `ls44`, `ls54`, `ssp54`, `s5`, `rk5`,
+  `c5`, `l5`, `lk5a`, `lk5b`, `t54`, `s54`, `pp54`,
+  `pp54b`, `bs54`, `ss54`
 
 ### Adaptive, primarily non-stiff: sixth- and seventh-order families
 
-- `rkb6`, `rk7`, `rkdp65`, `rkc65`, `rktp64`, `rkv65r`, `rkv65`,
-  `dverk65`, `rktf65`, `rktp75`, `rktmy7`, `rktmy7s`, `rkv76r`,
-  `rkss76`, `rkv78`, `dverk78`
+- `b6`, `rk7`, `dp65`, `c65`, `tp64`, `v65r`, `v65`,
+  `dverk65`, `tf65`, `tp75`, `tmy7`, `tmy7s`, `v76r`,
+  `ss76`, `v78`, `dverk78`
 
 ### Adaptive, primarily non-stiff: eighth-order and higher families
 
-- `rk8_10`, `rkcv8`, `rk8_12`, `rks10`, `rkz10`, `rko10`, `rkh10`,
-  `rkdp85`, `rktp86`, `rkv87e`, `rkv87r`, `rkev87`, `rkk87`,
-  `rkf89`, `rkv89`, `rkt98a`, `rkv98r`, `rks98`, `rkf108`,
-  `rkc108`, `rkb109`, `rks1110a`, `rkf1210`, `rko129`, `rkf1412`
+- `rk8_10`, `cv8`, `rk8_12`, `s10`, `z10`, `o10`, `h10`,
+  `dp85`, `tp86`, `v87e`, `v87r`, `ev87`, `k87`,
+  `f89`, `v89`, `t98a`, `v98r`, `s98`, `f108`,
+  `c108`, `b109`, `s1110a`, `f1210`, `o129`, `f1412`
 
 ## What to try first
 

@@ -10,29 +10,29 @@ rxTest({
     euler    = list(method = "euler",    hmin = 1e-4),  # O(h): needs h<=2e-4 for err<1e-4
     midpoint = list(method = "midpoint", hmin = 1e-3),
     heun     = list(method = "heun",     hmin = 1e-3),
-    rkssp22  = list(method = "rkssp22",  hmin = 1e-3),
+    ssp22  = list(method = "ssp22",  hmin = 1e-3),
     rk3      = list(method = "rk3",      hmin = 1e-2),
-    rkssp53  = list(method = "rkssp53",  hmin = 1e-2),
-    rks4     = list(method = "rks4",     hmin = 1e-2),
-    rkr4     = list(method = "rkr4",     hmin = 1e-2),
-    rkls44   = list(method = "rkls44",   hmin = 1e-2),
-    rkls54   = list(method = "rkls54",   hmin = 1e-2),
-    rkssp54  = list(method = "rkssp54",  hmin = 1e-2),
-    rks5     = list(method = "rks5",     hmin = 1e-1),
+    ssp53  = list(method = "ssp53",  hmin = 1e-2),
+    s4     = list(method = "s4",     hmin = 1e-2),
+    r4     = list(method = "r4",     hmin = 1e-2),
+    ls44   = list(method = "ls44",   hmin = 1e-2),
+    ls54   = list(method = "ls54",   hmin = 1e-2),
+    ssp54  = list(method = "ssp54",  hmin = 1e-2),
+    s5     = list(method = "s5",     hmin = 1e-1),
     rk5      = list(method = "rk5",      hmin = 1e-1),
-    rkc5     = list(method = "rkc5",     hmin = 1e-1),
-    rkl5     = list(method = "rkl5",     hmin = 1e-1),
-    rklk5a   = list(method = "rklk5a",   hmin = 1e-1),
-    rklk5b   = list(method = "rklk5b",   hmin = 1e-1),
-    rkb6     = list(method = "rkb6",     hmin = 1e-1),
+    c5     = list(method = "c5",     hmin = 1e-1),
+    l5     = list(method = "l5",     hmin = 1e-1),
+    lk5a   = list(method = "lk5a",   hmin = 1e-1),
+    lk5b   = list(method = "lk5b",   hmin = 1e-1),
+    b6     = list(method = "b6",     hmin = 1e-1),
     rk7      = list(method = "rk7",      hmin = 1e-1),
     rk8_10   = list(method = "rk8_10",   hmin = 1e-1),
-    rkcv8    = list(method = "rkcv8",    hmin = 1e-1),
+    cv8    = list(method = "cv8",    hmin = 1e-1),
     rk8_12   = list(method = "rk8_12",   hmin = 1e-1),
-    rks10    = list(method = "rks10",    hmin = 1.0),
-    rkz10    = list(method = "rkz10",    hmin = 1.0),
-    rko10    = list(method = "rko10",    hmin = 1.0),
-    rkh10    = list(method = "rkh10",    hmin = 1.0)
+    s10    = list(method = "s10",    hmin = 1.0),
+    z10    = list(method = "z10",    hmin = 1.0),
+    o10    = list(method = "o10",    hmin = 1.0),
+    h10    = list(method = "h10",    hmin = 1.0)
   )
 
   for (.nm in names(.fixed_methods)) {
@@ -48,15 +48,15 @@ rxTest({
   ## --- Adaptive (variable-step) methods: atol=rtol=1e-6 --------------------
   .adaptive_methods <- c(
     ## aliases for existing implementations
-    "rkck54", "rkdp54", "rkv65e", "rkv76e", "rkdp87", "rkv98e", "rkssp33",
+    "ck54", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33",
     ## new variable-step methods
-    "rkbs32", "rkssp43", "rkf45",
-    "rkt54", "rks54", "rkpp54", "rkpp54b", "rkbs54", "rkss54",
-    "rkdp65", "rkc65", "rktp64", "rkv65r", "rkv65", "dverk65", "rktf65",
-    "rktp75", "rktmy7", "rktmy7s", "rkv76r", "rkss76", "rkv78", "dverk78",
-    "rkdp85", "rktp86", "rkv87e", "rkv87r", "rkev87", "rkk87", "rkf89", "rkv89",
-    "rkt98a", "rkv98r", "rks98",
-    "rkf108", "rkc108", "rkb109", "rks1110a", "rkf1210", "rko129", "rkf1412"
+    "bs32", "ssp43", "f45",
+    "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
+    "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65",
+    "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78",
+    "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89",
+    "t98a", "v98r", "s98",
+    "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412"
   )
 
   for (.meth in .adaptive_methods) {
