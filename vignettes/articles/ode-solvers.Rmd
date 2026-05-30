@@ -46,7 +46,7 @@ complete method inventory split by stiffness and by adaptivity.
 | Modeling situation | Good rxode2 starting points | Why | Familiar names in other ecosystems |
 |---|---|---|---|
 | General PK/PD work, stiffness uncertain | `liblsoda`, `lsoda` | Automatically switches between non-stiff and stiff behavior; very good default for mixed event schedules | ODEPACK/deSolve `lsoda`; Julia `lsoda()`; MATLAB has no direct LSODA wrapper and usually splits this choice between `ode45` and `ode15s`; Phoenix NLME closest match is `Auto-Detect` (LSODA) |
-| Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`rkdp54` is closest to MATLAB `ode45`; `dop853` matches SciPy `DOP853`; Julia analogs are `DP5()`, `DP8()`, `Tsit5()`, `Vern7()`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
+| Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54`, `rkt54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`rkdp54` is closest to MATLAB `ode45`; `rkt54` is the same method as Julia `Tsit5()`; `dop853` matches SciPy `DOP853`; Julia `DP5()` maps to `dop5`/`dop54`, `Vern7()` maps to `vern76`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
 | Moderate stiffness: TMDD, indirect response with fast turnover, enzyme models | `ros4`, `ros43`, `sdirk43` | Stiff-aware one-step methods that often behave well across dosing discontinuities | MATLAB users can think `ode23s` / `ode15s`; Julia analogs are `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`; Phoenix NLME users usually compare against `Auto-Detect` (LSODA) or `Stiff` (LSODE/BDF) |
 | Clearly stiff or larger systems where linear solver choice matters | `cvode` | CVODE gives Adams/BDF-style behavior with configurable linear solvers | Julia `CVODE_Adams()` / `CVODE_BDF()` in Sundials; MATLAB users usually compare against `ode15s`; Phoenix NLME analog is `Stiff` (LSODE/BDF) |
 | Fixed-step comparison runs or debugging around dose/event boundaries | `rk4`, `trapz`, `backwardEuler`, `gauss6`, `iiic6`, `radauiia5`, `ros6` | Forces a controlled step size and makes solver-to-solver comparisons easier | Julia has direct families such as `Heun()`, `ImplicitEuler()`, `GaussLegendre`, `LobattoIIIC`, `RadauIIA5()`; MATLAB has fewer built-in fixed-step counterparts |
@@ -208,38 +208,69 @@ posterior predictive checks, dense output can matter as much as the
 integrator itself because it changes how often the expensive full
 solver state has to be reconstructed at requested sample times.
 
-## MATLAB and Julia naming guide
+## MATLAB naming guide
 
-The names in `rxode2` come from several numerical-analysis families, so
-they do not always line up one-to-one with the simplified naming used
-in other ecosystems.  The nearest mental translations are:
+MATLAB's ODE suite uses a small number of solver names.  The table below gives
+the nearest `rxode2` equivalent for each.
 
-- `dop54` / `rkdp54` -> MATLAB `ode45`; Julia `DP5()` or `Tsit5()`
-  is the closest everyday non-stiff comparison point
-- `rkf32` -> MATLAB `ode23`; Julia `BS3()` is the closest common
-  low-order adaptive analog
-- `dop853` -> SciPy `DOP853`; Julia users usually compare against
-  `DP8()`, `Vern7()`, or `Vern9()`
-- `ros43` -> MATLAB `ode23s`; Julia `Rosenbrock23()`
-- `ros4` -> MATLAB `ode15s` / `ode23s` territory; Julia `Rodas4P()`
-  or related Rosenbrock-W methods
-- `sdirk43` -> closest to Julia SDIRK families and to the same
-  general stiff-use case as MATLAB `ode15s`
-- `radauiia5` -> closest in name and spirit to Julia `RadauIIA5()`;
-  SciPy users can think `Radau`
-- `backwardEuler` and `iem` -> Julia `ImplicitEuler()`; MATLAB has no
-  equally prominent built-in high-level wrapper for this exact method
-- `trapz` and `heun` -> explicit trapezoid / Heun methods; Julia
-  exposes these ideas directly, while MATLAB users often know them as
-  textbook methods rather than built-in solver names
-- `liblsoda` / `lsoda` -> ODEPACK/deSolve `lsoda`; Julia `lsoda()`;
-  MATLAB has no direct LSODA-branded default
-- `cvode` -> Julia Sundials `CVODE_Adams()` / `CVODE_BDF()`;
-  MATLAB users usually compare its use case with `ode15s`
+| MATLAB solver | Closest rxode2 method(s) | Notes |
+|---|---|---|
+| `ode23` | `rkbs32` | Bogacki-Shampine 3(2) pair; same family |
+| `ode45` | `dop54`, `rkdp54` | Dormand-Prince 5(4) FSAL; same algorithm as MATLAB |
+| `ode78` | `rkf78` | Fehlberg 7(8) via Boost; same family |
+| `ode89` | `rkv89`, `rkf89` | Verner/Fehlberg 8(9) pairs from rklib |
+| `ode113` | `ab`, `abm` | Adams-Bashforth-Moulton predictor-corrector (variable order); `liblsoda` covers Adams/BDF switching |
+| `ode15s` | `cvode`, `liblsoda` | BDF stiff solver; `cvode` is the closest explicit match |
+| `ode23s` | `ros43` | Kaps-Rentrop Rosenbrock 4(3); structurally the same family as MATLAB `ode23s` |
+| `ode23t` | `trapz` | Trapezoidal rule, fixed-step |
+| `ode23tb` | `sdirk43` | SDIRK / TR-BDF2 stiff pair |
+| `ode15i` | (none) | DAE solver; reformulate algebraic constraints as explicit ODEs before using rxode2 |
 
-For many of the very high-order Runge-Kutta families in `rxode2`, the
-closest naming culture is Julia's DifferentialEquations ecosystem
-rather than MATLAB's built-in ODE suite.
+## Julia naming guide
+
+Julia's DifferentialEquations.jl ecosystem has a large solver library with
+explicit names for many classical methods.  The table below maps the most
+commonly used Julia solvers to their rxode2 equivalents.
+
+| Julia (DifferentialEquations.jl) | Closest rxode2 method(s) | Notes |
+|---|---|---|
+| `Euler()` | `euler` | Fixed-step explicit Euler, 1st-order (rklib) |
+| `Midpoint()` | `midpoint` | Fixed-step explicit midpoint, 2nd-order (rklib) |
+| `Heun()` | `heun`, `trapz` | Fixed-step Heun / explicit trapezoid, 2nd-order |
+| `RK4()` | `rk4` | Classical 4th-order Runge-Kutta (Boost) |
+| `SSPRK33()` | `ssp3`, `rkssp33` | Strong Stability-Preserving RK3 |
+| `SSPRK43()` | `rkssp43` | SSP 4(3) adaptive pair (rklib) |
+| `BS3()` | `rkbs32` | Bogacki-Shampine 3(2) adaptive (rklib); same as MATLAB `ode23` |
+| `Tsit5()` | `rkt54` | Tsitouras 5(4) FSAL adaptive (rklib); same Butcher tableau |
+| `DP5()` | `dop5`, `dop54`, `rkdp54` | Dormand-Prince 5th-order; same as MATLAB `ode45` |
+| `TanYam7()` | `rktmy7` | Tanaka-Muramatsu-Yamashita 7th-order (rklib) |
+| `TsitPap8()` | `rktp86` | Tsitouras-Papakostas 8(6) (rklib) |
+| `DP8()` | `dop87`, `rkdp87` | Dormand-Prince 8(7) |
+| `Vern6()` | `vern65`, `rkv65e` | Verner 6(5) efficient pair |
+| `Vern7()` | `vern76`, `rkv76e` | Verner 7(6) efficient pair |
+| `Vern8()` | `rkv78`, `dverk78` | Verner 7(8) pair |
+| `Vern9()` | `vern98`, `rkv98e` | Verner 9(8) efficient pair |
+| `Feagin10()` | `rkf108` | Feagin 10(8), 17 stages (rklib) |
+| `Feagin12()` | `rkf1210` | Feagin 12(10), 25 stages (rklib) |
+| `Feagin14()` | `rkf1412` | Feagin 14(12), 35 stages (rklib) |
+| `ImplicitEuler()` | `backwardEuler`, `iem` | 1st-order fully implicit |
+| `Trapezoid()` | `trapz` | Explicit trapezoidal rule, fixed-step |
+| `Rosenbrock23()` | `ros43` | Kaps-Rentrop Rosenbrock 4(3), A-stable |
+| `RosShamp4()` | `ros4` | Rosenbrock W-method (Boost) |
+| `Rodas4P()`, `Rodas5P()` | `ros4` | Rosenbrock W-method; closest rxode2 analog |
+| `RadauIIA5()` | `radauiia5` | Radau IIA 5th-order, 3 stages |
+| `GaussLegendre6()` | `gauss6` | Gauss-Legendre 6th-order |
+| `LobattoIIIC6()` | `iiic6` | Lobatto IIIC 6th-order |
+| `lsoda()` | `liblsoda`, `lsoda` | LSODA automatic Adams/BDF switching |
+| `CVODE_Adams()` | `cvode` | SUNDIALS CVODE in Adams mode |
+| `CVODE_BDF()` | `cvode` | SUNDIALS CVODE in BDF mode (default) |
+
+Note: for many of the very high-order Runge-Kutta families in `rxode2`, the
+closest naming culture is Julia's DifferentialEquations ecosystem rather than
+MATLAB's built-in ODE suite.  In particular, `rkt54` (`Tsit5`), `rktmy7`
+(`TanYam7`), `rktp86` (`TsitPap8`), and the three Feagin methods (`rkf108`,
+`rkf1210`, `rkf1412`) have direct Julia name equivalents that have no MATLAB
+counterpart.
 
 ## NONMEM, Monolix, and Phoenix crosswalk
 
@@ -293,15 +324,20 @@ That makes the practical `rxode2` comparison fairly direct:
 
 | Monolix mode | Closest rxode2 comparison | Pharmacometric interpretation |
 |---|---|---|
-| nonStiff (Adams) | `dop54`, `dop5`, `dop853`, or `liblsoda` on mostly non-stiff models | Smooth PK/PD, transit, or exposure-response systems without severe time-scale separation |
+| nonStiff (Adams) | `ab`, `abm` for an Adams predictor-corrector match; `liblsoda` for automatic Adams/BDF switching; `dop54`, `dop5`, `dop853`, `rkt54` as practical non-stiff Runge-Kutta alternatives | Smooth PK/PD, transit, or exposure-response systems without severe time-scale separation |
 | stiff (BDF) | `cvode`, `liblsoda`, `ros4`, `ros43`, or `sdirk43` | TMDD, target binding, indirect response with fast turnover, mechanistic PD, QSP-like stiffness |
 
-This is not a one-to-one name mapping because `rxode2` exposes several
-solver families instead of one Adams choice and one BDF choice.
-Still, from a user perspective:
+Monolix's `nonStiff` mode uses Adams (predictor-corrector) methods internally.
+The structurally closest rxode2 analogs are `ab` (Adams-Bashforth fixed-step)
+and `abm` (Adams-Bashforth-Moulton fixed-step), or `liblsoda` which runs
+Adams-style stepping in its non-stiff mode.  In practice, many pharmacometric
+users who were happy with Monolix `nonStiff` will find that `liblsoda`, `dop54`,
+`rkt54`, or `dop853` give equally good results on smooth PK/PD problems, with
+the Runge-Kutta families often being faster on smooth outputs.
 
-- if you were happy with Monolix `nonStiff`, try `dop54`, `dop5`,
-  `dop853`, or simply start with `liblsoda`
+- if you were happy with Monolix `nonStiff` and want the closest Adams analog,
+  try `ab` or `abm`; for general-purpose non-stiff use, try `liblsoda`,
+  `dop54`, `rkt54`, or `dop853`
 - if you needed Monolix `stiff`, start in `rxode2` with `liblsoda`,
   `cvode`, `ros4`, or `ros43`
 

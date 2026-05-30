@@ -204,6 +204,156 @@ are chosen adaptively.  The total number of steps is bounded by
 (\code{ss=1}) dosing with convergence governed by \code{ssAtol}, \code{ssRtol},
 \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is detected
 immediately and the solve exits with NA output.
+}
+
+\strong{Aliases for existing methods} (no additional C++ code; \code{hmin}, \code{atol},
+\code{rtol}, and \code{maxsteps} follow the aliased method):
+\itemize{
+\item \code{"rkck54"} -- alias for \code{"ck54"} (Cash-Karp 5(4), Boost.odeint).
+\item \code{"rkdp54"} -- alias for \code{"dop54"} (Dormand-Prince 5(4) FSAL, libode).
+\item \code{"rkv65e"} -- alias for \code{"vern65"} (Verner 6(5) efficient, libode).
+\item \code{"rkv76e"} -- alias for \code{"vern76"} (Verner 7(6) efficient, libode).
+\item \code{"rkdp87"} -- alias for \code{"dop87"} (Dormand-Prince 8(7), libode).
+\item \code{"rkv98e"} -- alias for \code{"vern98"} (Verner 9(8) efficient, libode).
+\item \code{"rkssp33"} -- alias for \code{"ssp3"} (Strong Stability-Preserving RK3, libode).
+}
+
+\strong{rklib fixed-step explicit methods} (from Jacob Williams' rklib Fortran
+library).  All use \code{hmin} as the fixed step size (default \code{0.01} when
+\code{hmin=0}); \code{atol} and \code{rtol} are ignored (no error control); \code{maxsteps}
+bounds the total number of steps; NaN/Inf in derivatives sets \code{ind$err}
+and the subject exits with NA output.  All support parallel thread-based
+solving.
+\itemize{
+\item \code{"euler"} -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
+very small step size for accuracy (e.g., \code{hmin=1e-4}); intended for
+pedagogical use or method-comparison baselines.
+\item \code{"midpoint"} -- Explicit midpoint rule, 2nd-order, 2 stages.
+\item \code{"heun"} -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
+Identical in structure to \code{"trapz"} (libode) but uses the rklib driver.
+\item \code{"rkssp22"} -- Strong Stability-Preserving 2-stage 2nd-order method
+(SSP-RK22), 2 stages.  Superior non-oscillatory properties near
+discontinuities.
+\item \code{"rk3"} -- Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.
+\item \code{"rkssp53"} -- Strong Stability-Preserving 5-stage 3rd-order method
+(SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
+event-heavy ODE systems.
+\item \code{"rks4"} -- Shanks 4th-order method, 4 stages.
+\item \code{"rkr4"} -- Ralston's 4th-order method, 4 stages.  Minimises local
+truncation error among classical 4-stage 4th-order methods.
+\item \code{"rkls44"} -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
+update scheme that minimises memory bandwidth at the cost of a less
+general tableau structure.
+\item \code{"rkls54"} -- Low-storage 4th-order method, 5 stages.  Five-stage
+variant of the 2-register low-storage scheme.
+\item \code{"rkssp54"} -- Strong Stability-Preserving 5-stage 4th-order method
+(SSP-RK54), 5 stages.
+\item \code{"rks5"} -- Shanks 5th-order method, 5 stages.
+\item \code{"rk5"} -- Classical 5th-order Runge-Kutta, 6 stages.
+\item \code{"rkc5"} -- Cassity 5th-order method, 6 stages.
+\item \code{"rkl5"} -- Lawson 5th-order method, 6 stages.
+\item \code{"rklk5a"} -- Luther-Konen 5th-order method, variant A, 6 stages.
+\item \code{"rklk5b"} -- Luther-Konen 5th-order method, variant B, 6 stages.
+\item \code{"rkb6"} -- Butcher 6th-order method, 7 stages.
+\item \code{"rk7"} -- Shanks 7th-order method, 9 stages.
+\item \code{"rk8_10"} -- Shanks 8th-order method, 10 stages.
+\item \code{"rkcv8"} -- Cooper-Verner 8th-order method, 11 stages.
+\item \code{"rk8_12"} -- Shanks 8th-order method, 12 stages.
+\item \code{"rks10"} -- Stepanov 10th-order method, 15 stages.  Requires a moderate
+step size (e.g., \code{hmin=1.0}) because a single step is accurate to very
+high order.
+\item \code{"rkz10"} -- Zhang 10th-order method, 16 stages.
+\item \code{"rko10"} -- Ono 10th-order method, 17 stages.
+\item \code{"rkh10"} -- Hairer 10th-order method, 17 stages.
+}
+
+\strong{rklib adaptive (variable-step) explicit methods} (from Jacob Williams'
+rklib Fortran library).  All use \code{atol} and \code{rtol} for error control;
+\code{hmin} sets the initial step size (default \code{0.01} when \code{hmin=0}); \code{hmax}
+sets the maximum step size; \code{maxsteps} bounds total steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving and steady-state (\code{ss=1}) dosing
+(convergence governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, \code{strictSS}).
+\itemize{
+\item \code{"rkbs32"} -- Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &
+Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
+FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
+step.  The same algorithm as Julia \code{BS3()} and MATLAB \code{ode23}.
+\item \code{"rkssp43"} -- Strong Stability-Preserving 4(3) pair, 4 stages.
+Adaptive SSP method with a 3rd-order embedded error estimate.
+\item \code{"rkf45"} -- Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+primary solution with a 5th-order embedded estimate used for error
+control.
+\item \code{"rkt54"} -- Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+5th-order primary with 4th-order embedded error estimate.  FSAL: the
+7th stage is reused as the 1st stage of the next step.  The same
+Butcher tableau as Julia's \code{Tsit5()}.
+\item \code{"rks54"} -- Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+with 4th-order embedded error estimate.
+\item \code{"rkpp54"} -- Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.
+\item \code{"rkpp54b"} -- Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+7 stages.
+\item \code{"rkbs54"} -- Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+with 4th-order embedded error estimate (non-FSAL).
+\item \code{"rkss54"} -- Sharp-Smart 5(4) pair, 7 stages.
+\item \code{"rkdp65"} -- Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+with 5th-order embedded error estimate.
+\item \code{"rkc65"} -- Calvo 6(5) pair, 9 stages.
+\item \code{"rktp64"} -- Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+primary with 4th-order embedded error estimate.
+\item \code{"rkv65r"} -- Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+variant of Verner's 6(5) family with wider stability region.
+\item \code{"rkv65"} -- Verner 6(5) pair, 8 stages (non-FSAL).
+\item \code{"dverk65"} -- Verner DVERK 6(5) pair, 8 stages.  Coefficients from
+the classic DVERK Fortran code distributed by Hull and Enright.
+\item \code{"rktf65"} -- Tsitouras-Famelis 6(5) FSAL pair, 9 stages.
+\item \code{"rktp75"} -- Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+primary with 5th-order embedded error estimate.
+\item \code{"rktmy7"} -- Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+The same family as Julia's \code{TanYam7()}.
+\item \code{"rktmy7s"} -- Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+10 stages.  Alternative coefficient set with wider stability region.
+\item \code{"rkv76r"} -- Verner "robust" 7(6) pair, 10 stages.
+\item \code{"rkss76"} -- Sharp-Smart 7(6) pair, 11 stages.
+\item \code{"rkv78"} -- Verner 7(8) pair, 13 stages.  7th-order primary with
+8th-order embedded error estimate.  Closest rxode2 analog to Julia
+\code{Vern8()}.
+\item \code{"dverk78"} -- Verner DVERK 7(8) pair, 13 stages.  Coefficients from
+the classic DVERK Fortran code; companion to \code{"dverk65"}.  Also close
+to Julia \code{Vern8()}.
+\item \code{"rkdp85"} -- Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+with 5th-order embedded error estimate.
+\item \code{"rktp86"} -- Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+family as Julia's \code{TsitPap8()}.
+\item \code{"rkv87e"} -- Verner "efficient" 8(7) pair, 13 stages.
+\item \code{"rkv87r"} -- Verner "robust" 8(7) pair, 13 stages.
+\item \code{"rkev87"} -- Enright-Verner 8(7) pair, 13 stages.
+\item \code{"rkk87"} -- Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.
+\item \code{"rkf89"} -- Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+9th-order embedded estimate.  Same family as MATLAB \code{ode89}.
+\item \code{"rkv89"} -- Verner 8(9) pair, 16 stages.  Alternative to \code{"rkf89"}
+in the same order bracket.  Also close to MATLAB \code{ode89}.
+\item \code{"rkt98a"} -- Tsitouras 9(8) variant A pair, 16 stages.
+\item \code{"rkv98r"} -- Verner "robust" 9(8) pair, 16 stages.
+\item \code{"rks98"} -- Sharp 9(8) pair, 16 stages.
+\item \code{"rkf108"} -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+primary with 8th-order embedded error estimate.  The same method as
+Julia's \code{Feagin10()}.  The large number of stages carries elevated
+transcription-error risk; verified against rklib's canonical order test.
+\item \code{"rkc108"} -- Curtis 10(8) pair, 21 stages.
+\item \code{"rkb109"} -- Baker 10(9) pair, 21 stages.
+\item \code{"rks1110a"} -- Stone 11(10) variant A pair, 26 stages.  11th-order
+primary; very few published references.
+\item \code{"rkf1210"} -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+primary with 10th-order embedded error estimate.  The same method as
+Julia's \code{Feagin12()}.  Elevated transcription-error risk due to many
+stages; verified against rklib's canonical order test.
+\item \code{"rko129"} -- Ono 12(9) pair, 29 stages.
+\item \code{"rkf1412"} -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+primary with 12th-order embedded error estimate.  The same method as
+Julia's \code{Feagin14()}.  The highest-order method in rxode2; elevated
+transcription-error risk due to 35 stages; verified against rklib's
+canonical order test.
 }}
 }
 \value{
