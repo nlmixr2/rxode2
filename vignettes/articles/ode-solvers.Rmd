@@ -308,9 +308,9 @@ The key practical mapping is:
 - NONMEM ADVAN6 -> `rxode2` non-stiff adaptive solvers such as
   `dop54`, `dop5`, or `dop853`
 - NONMEM ADVAN8 -> `rxode2` stiff-aware solvers such as `ros4`,
-  `ros43`, `sdirk43`, `cvode`, or `liblsoda`
-- NONMEM ADVAN13/14 -> `rxode2` general-purpose adaptive workflows,
-  usually starting with `liblsoda`
+  `ros43`, `sdirk43`
+- NONMEM ADVAN13-> `liblsoda` general-purpose adaptive workflow,
+- NONMEM ADVAN14 -> `cvode` general-purpose adaptive workflows,
 
 ### Monolix crosswalk
 
@@ -338,6 +338,7 @@ the Runge-Kutta families often being faster on smooth outputs.
 - if you were happy with Monolix `nonStiff` and want the closest Adams analog,
   try `ab` or `abm`; for general-purpose non-stiff use, try `liblsoda`,
   `dop54`, `rkt54`, or `dop853`
+
 - if you needed Monolix `stiff`, start in `rxode2` with `liblsoda`,
   `cvode`, `ros4`, or `ros43`
 
@@ -372,7 +373,7 @@ So, for Phoenix users moving to `rxode2`, the practical sequence is:
 3. if it used `Auto-Detect`, compare first to `liblsoda`
 4. if it used `Stiff`, compare `cvode`, `ros4`, or `ros43`
 5. if it used `Non-Stiff (DOPRI5)` or `Non-Stiff (DVERK)`, compare
-   `dop54`, `dop5`, `vern65`, or `dop853`
+   `dop54`, `dop5`, `vern65`, or `dop853`, `dverk65` or `dverk78`
 
 ## Complete accepted solver names in rxode2
 
@@ -433,14 +434,18 @@ If you do not want to think about the entire menu, a good
 pharmacometric workflow is:
 
 1. start with `liblsoda`
+
 2. if the system is smooth and clearly non-stiff, compare against
    `dop853` or `dop54`
+
 3. if the system is stiff or nearly stiff, compare against `ros4`,
    `ros43`, `sdirk43`, or `cvode`
+
 4. if you need reproducible fixed internal stepping for diagnosis, try
    `rk4`, `backwardEuler`, `gauss6`, or `radauiia5`
+
 5. if the model is mostly linear between events, try `indLin`
 
 That strategy is usually more valuable in pharmacometric practice than
-trying to optimize across every available high-order RK family from the
-start.
+trying to optimize across every available high-order RK family from
+the start.
