@@ -198,8 +198,8 @@ void OdeBase::reset (double t, double *sol) {
 }
 
 bool OdeBase::solve_done (double dt, double tend) {
-    return (dt > 0.0) ? (t_ >= tend - std::fabs(dt) * 1e-12)
-                      : (t_ <= tend + std::fabs(dt) * 1e-12);
+    return (dt > 0.0) ? (t_ >= tend - std::fabs(dt) * 1e-6)
+                      : (t_ <= tend + std::fabs(dt) * 1e-6);
 }
 
 void OdeBase::check_sol_integrity () {
