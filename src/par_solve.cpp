@@ -1232,6 +1232,155 @@ extern "C" void iiic6_solveWith1Pt(int *neq, double *yp, double *xp, double xout
 extern "C" void radauiia5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void geng5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void sdirk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void euler_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void midpoint_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void heun_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkssp22_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rk3_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkssp53_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rks4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkr4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkls44_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkls54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkssp54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rks5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rk5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkc5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkl5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rklk5a_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rklk5b_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkb6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rk7_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rk8_10_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkcv8_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rk8_12_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rks10_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkz10_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rko10_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkh10_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkbs32_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkssp43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkf45_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkt54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rks54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkpp54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkpp54b_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkbs54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkss54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkdp65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkc65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rktp64_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv65r_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void dverk65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rktf65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rktp75_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rktmy7_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rktmy7s_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv76r_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkss76_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv78_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void dverk78_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkdp85_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rktp86_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv87e_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv87r_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkev87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkk87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkf89_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv89_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkt98a_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkv98r_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rks98_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkf108_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkc108_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkb109_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rks1110a_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkf1210_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rko129_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkf1412_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void ind_rkbs32(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkssp43(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkf45(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkt54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rks54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkpp54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkpp54b(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkbs54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkss54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkdp65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkc65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rktp64(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv65r(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_dverk65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rktf65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rktp75(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rktmy7(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rktmy7s(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv76r(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkss76(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_dverk78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkdp85(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rktp86(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv87e(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv87r(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkev87(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkk87(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkf89(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv89(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkt98a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkv98r(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rks98(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkf108(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkc108(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkb109(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rks1110a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkf1210(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rko129(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkf1412(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_rkbs32(rx_solve *rx);
+extern "C" void par_rkssp43(rx_solve *rx);
+extern "C" void par_rkf45(rx_solve *rx);
+extern "C" void par_rkt54(rx_solve *rx);
+extern "C" void par_rks54(rx_solve *rx);
+extern "C" void par_rkpp54(rx_solve *rx);
+extern "C" void par_rkpp54b(rx_solve *rx);
+extern "C" void par_rkbs54(rx_solve *rx);
+extern "C" void par_rkss54(rx_solve *rx);
+extern "C" void par_rkdp65(rx_solve *rx);
+extern "C" void par_rkc65(rx_solve *rx);
+extern "C" void par_rktp64(rx_solve *rx);
+extern "C" void par_rkv65r(rx_solve *rx);
+extern "C" void par_rkv65(rx_solve *rx);
+extern "C" void par_dverk65(rx_solve *rx);
+extern "C" void par_rktf65(rx_solve *rx);
+extern "C" void par_rktp75(rx_solve *rx);
+extern "C" void par_rktmy7(rx_solve *rx);
+extern "C" void par_rktmy7s(rx_solve *rx);
+extern "C" void par_rkv76r(rx_solve *rx);
+extern "C" void par_rkss76(rx_solve *rx);
+extern "C" void par_rkv78(rx_solve *rx);
+extern "C" void par_dverk78(rx_solve *rx);
+extern "C" void par_rkdp85(rx_solve *rx);
+extern "C" void par_rktp86(rx_solve *rx);
+extern "C" void par_rkv87e(rx_solve *rx);
+extern "C" void par_rkv87r(rx_solve *rx);
+extern "C" void par_rkev87(rx_solve *rx);
+extern "C" void par_rkk87(rx_solve *rx);
+extern "C" void par_rkf89(rx_solve *rx);
+extern "C" void par_rkv89(rx_solve *rx);
+extern "C" void par_rkt98a(rx_solve *rx);
+extern "C" void par_rkv98r(rx_solve *rx);
+extern "C" void par_rks98(rx_solve *rx);
+extern "C" void par_rkf108(rx_solve *rx);
+extern "C" void par_rkc108(rx_solve *rx);
+extern "C" void par_rkb109(rx_solve *rx);
+extern "C" void par_rks1110a(rx_solve *rx);
+extern "C" void par_rkf1210(rx_solve *rx);
+extern "C" void par_rko129(rx_solve *rx);
+extern "C" void par_rkf1412(rx_solve *rx);
 extern "C" void ind_ros6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_backwardEuler(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_gauss6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
@@ -1239,6 +1388,32 @@ extern "C" void ind_iiic6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_ini
 extern "C" void ind_radauiia5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_geng5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_sdirk43(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_euler(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_midpoint(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_heun(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkssp22(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rk3(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkssp53(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rks4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkr4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkls44(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkls54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkssp54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rks5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rk5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkc5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkl5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rklk5a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rklk5b(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkb6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rk7(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rk8_10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkcv8(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rk8_12(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rks10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkz10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rko10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ind_rkh10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void par_ros6(rx_solve *rx);
 extern "C" void par_backwardEuler(rx_solve *rx);
 extern "C" void par_gauss6(rx_solve *rx);
@@ -1246,6 +1421,32 @@ extern "C" void par_iiic6(rx_solve *rx);
 extern "C" void par_radauiia5(rx_solve *rx);
 extern "C" void par_geng5(rx_solve *rx);
 extern "C" void par_sdirk43(rx_solve *rx);
+extern "C" void par_euler(rx_solve *rx);
+extern "C" void par_midpoint(rx_solve *rx);
+extern "C" void par_heun(rx_solve *rx);
+extern "C" void par_rkssp22(rx_solve *rx);
+extern "C" void par_rk3(rx_solve *rx);
+extern "C" void par_rkssp53(rx_solve *rx);
+extern "C" void par_rks4(rx_solve *rx);
+extern "C" void par_rkr4(rx_solve *rx);
+extern "C" void par_rkls44(rx_solve *rx);
+extern "C" void par_rkls54(rx_solve *rx);
+extern "C" void par_rkssp54(rx_solve *rx);
+extern "C" void par_rks5(rx_solve *rx);
+extern "C" void par_rk5(rx_solve *rx);
+extern "C" void par_rkc5(rx_solve *rx);
+extern "C" void par_rkl5(rx_solve *rx);
+extern "C" void par_rklk5a(rx_solve *rx);
+extern "C" void par_rklk5b(rx_solve *rx);
+extern "C" void par_rkb6(rx_solve *rx);
+extern "C" void par_rk7(rx_solve *rx);
+extern "C" void par_rk8_10(rx_solve *rx);
+extern "C" void par_rkcv8(rx_solve *rx);
+extern "C" void par_rk8_12(rx_solve *rx);
+extern "C" void par_rks10(rx_solve *rx);
+extern "C" void par_rkz10(rx_solve *rx);
+extern "C" void par_rko10(rx_solve *rx);
+extern "C" void par_rkh10(rx_solve *rx);
 
 
 static inline void solveWith1Pt(int *neq,
@@ -1711,6 +1912,207 @@ static inline void solveWith1Pt(int *neq,
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 38:
       if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); sdirk43_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 39:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); euler_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 40:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); midpoint_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 41:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); heun_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 42:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp22_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 43:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk3_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 44:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp53_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 45:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 46:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkr4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 47:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkls44_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 48:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkls54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 49:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 50:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 51:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 52:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkc5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 53:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkl5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 54:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rklk5a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 55:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rklk5b_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 56:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkb6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 57:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk7_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 58:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk8_10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 59:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkcv8_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 60:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk8_12_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 61:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 62:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkz10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 63:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rko10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 64:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkh10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 65:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkbs32_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 66:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp43_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 67:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf45_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 68:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkt54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 69:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 70:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkpp54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 71:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkpp54b_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 72:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkbs54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 73:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkss54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 74:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkdp65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 75:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkc65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 76:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktp64_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 77:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv65r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 78:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 79:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); dverk65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 80:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktf65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 81:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktp75_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 82:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktmy7_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 83:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktmy7s_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 84:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv76r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 85:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkss76_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 86:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 87:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); dverk78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 88:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkdp85_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 89:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktp86_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 90:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv87e_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 91:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv87r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 92:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkev87_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 93:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkk87_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 94:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf89_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 95:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv89_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 96:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkt98a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 97:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv98r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 98:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks98_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 99:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf108_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 100:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkc108_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 101:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkb109_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 102:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks1110a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 103:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf1210_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 104:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rko129_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 105:
+      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf1412_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 1:
       if (!isSameTime(xout, xp)) {
@@ -5875,6 +6277,73 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 36: ind_radauiia5(rx, cid, c_dydt, u_inis); break;
       case 37: ind_geng5(rx, cid, c_dydt, u_inis); break;
       case 38: ind_sdirk43(rx, cid, c_dydt, u_inis); break;
+      case 39: ind_euler(rx, cid, c_dydt, u_inis); break;
+      case 40: ind_midpoint(rx, cid, c_dydt, u_inis); break;
+      case 41: ind_heun(rx, cid, c_dydt, u_inis); break;
+      case 42: ind_rkssp22(rx, cid, c_dydt, u_inis); break;
+      case 43: ind_rk3(rx, cid, c_dydt, u_inis); break;
+      case 44: ind_rkssp53(rx, cid, c_dydt, u_inis); break;
+      case 45: ind_rks4(rx, cid, c_dydt, u_inis); break;
+      case 46: ind_rkr4(rx, cid, c_dydt, u_inis); break;
+      case 47: ind_rkls44(rx, cid, c_dydt, u_inis); break;
+      case 48: ind_rkls54(rx, cid, c_dydt, u_inis); break;
+      case 49: ind_rkssp54(rx, cid, c_dydt, u_inis); break;
+      case 50: ind_rks5(rx, cid, c_dydt, u_inis); break;
+      case 51: ind_rk5(rx, cid, c_dydt, u_inis); break;
+      case 52: ind_rkc5(rx, cid, c_dydt, u_inis); break;
+      case 53: ind_rkl5(rx, cid, c_dydt, u_inis); break;
+      case 54: ind_rklk5a(rx, cid, c_dydt, u_inis); break;
+      case 55: ind_rklk5b(rx, cid, c_dydt, u_inis); break;
+      case 56: ind_rkb6(rx, cid, c_dydt, u_inis); break;
+      case 57: ind_rk7(rx, cid, c_dydt, u_inis); break;
+      case 58: ind_rk8_10(rx, cid, c_dydt, u_inis); break;
+      case 59: ind_rkcv8(rx, cid, c_dydt, u_inis); break;
+      case 60: ind_rk8_12(rx, cid, c_dydt, u_inis); break;
+      case 61: ind_rks10(rx, cid, c_dydt, u_inis); break;
+      case 62: ind_rkz10(rx, cid, c_dydt, u_inis); break;
+      case 63: ind_rko10(rx, cid, c_dydt, u_inis); break;
+      case 64: ind_rkh10(rx, cid, c_dydt, u_inis); break;
+      case 65: ind_rkbs32(rx, cid, c_dydt, u_inis); break;
+      case 66: ind_rkssp43(rx, cid, c_dydt, u_inis); break;
+      case 67: ind_rkf45(rx, cid, c_dydt, u_inis); break;
+      case 68: ind_rkt54(rx, cid, c_dydt, u_inis); break;
+      case 69: ind_rks54(rx, cid, c_dydt, u_inis); break;
+      case 70: ind_rkpp54(rx, cid, c_dydt, u_inis); break;
+      case 71: ind_rkpp54b(rx, cid, c_dydt, u_inis); break;
+      case 72: ind_rkbs54(rx, cid, c_dydt, u_inis); break;
+      case 73: ind_rkss54(rx, cid, c_dydt, u_inis); break;
+      case 74: ind_rkdp65(rx, cid, c_dydt, u_inis); break;
+      case 75: ind_rkc65(rx, cid, c_dydt, u_inis); break;
+      case 76: ind_rktp64(rx, cid, c_dydt, u_inis); break;
+      case 77: ind_rkv65r(rx, cid, c_dydt, u_inis); break;
+      case 78: ind_rkv65(rx, cid, c_dydt, u_inis); break;
+      case 79: ind_dverk65(rx, cid, c_dydt, u_inis); break;
+      case 80: ind_rktf65(rx, cid, c_dydt, u_inis); break;
+      case 81: ind_rktp75(rx, cid, c_dydt, u_inis); break;
+      case 82: ind_rktmy7(rx, cid, c_dydt, u_inis); break;
+      case 83: ind_rktmy7s(rx, cid, c_dydt, u_inis); break;
+      case 84: ind_rkv76r(rx, cid, c_dydt, u_inis); break;
+      case 85: ind_rkss76(rx, cid, c_dydt, u_inis); break;
+      case 86: ind_rkv78(rx, cid, c_dydt, u_inis); break;
+      case 87: ind_dverk78(rx, cid, c_dydt, u_inis); break;
+      case 88: ind_rkdp85(rx, cid, c_dydt, u_inis); break;
+      case 89: ind_rktp86(rx, cid, c_dydt, u_inis); break;
+      case 90: ind_rkv87e(rx, cid, c_dydt, u_inis); break;
+      case 91: ind_rkv87r(rx, cid, c_dydt, u_inis); break;
+      case 92: ind_rkev87(rx, cid, c_dydt, u_inis); break;
+      case 93: ind_rkk87(rx, cid, c_dydt, u_inis); break;
+      case 94: ind_rkf89(rx, cid, c_dydt, u_inis); break;
+      case 95: ind_rkv89(rx, cid, c_dydt, u_inis); break;
+      case 96: ind_rkt98a(rx, cid, c_dydt, u_inis); break;
+      case 97: ind_rkv98r(rx, cid, c_dydt, u_inis); break;
+      case 98: ind_rks98(rx, cid, c_dydt, u_inis); break;
+      case 99: ind_rkf108(rx, cid, c_dydt, u_inis); break;
+      case 100: ind_rkc108(rx, cid, c_dydt, u_inis); break;
+      case 101: ind_rkb109(rx, cid, c_dydt, u_inis); break;
+      case 102: ind_rks1110a(rx, cid, c_dydt, u_inis); break;
+      case 103: ind_rkf1210(rx, cid, c_dydt, u_inis); break;
+      case 104: ind_rko129(rx, cid, c_dydt, u_inis); break;
+      case 105: ind_rkf1412(rx, cid, c_dydt, u_inis); break;
 
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
@@ -6014,6 +6483,73 @@ extern "C" void par_solve(rx_solve *rx) {
       case 36: par_radauiia5(rx); break;
       case 37: par_geng5(rx); break;
       case 38: par_sdirk43(rx); break;
+      case 39: par_euler(rx); break;
+      case 40: par_midpoint(rx); break;
+      case 41: par_heun(rx); break;
+      case 42: par_rkssp22(rx); break;
+      case 43: par_rk3(rx); break;
+      case 44: par_rkssp53(rx); break;
+      case 45: par_rks4(rx); break;
+      case 46: par_rkr4(rx); break;
+      case 47: par_rkls44(rx); break;
+      case 48: par_rkls54(rx); break;
+      case 49: par_rkssp54(rx); break;
+      case 50: par_rks5(rx); break;
+      case 51: par_rk5(rx); break;
+      case 52: par_rkc5(rx); break;
+      case 53: par_rkl5(rx); break;
+      case 54: par_rklk5a(rx); break;
+      case 55: par_rklk5b(rx); break;
+      case 56: par_rkb6(rx); break;
+      case 57: par_rk7(rx); break;
+      case 58: par_rk8_10(rx); break;
+      case 59: par_rkcv8(rx); break;
+      case 60: par_rk8_12(rx); break;
+      case 61: par_rks10(rx); break;
+      case 62: par_rkz10(rx); break;
+      case 63: par_rko10(rx); break;
+      case 64: par_rkh10(rx); break;
+      case 65: par_rkbs32(rx); break;
+      case 66: par_rkssp43(rx); break;
+      case 67: par_rkf45(rx); break;
+      case 68: par_rkt54(rx); break;
+      case 69: par_rks54(rx); break;
+      case 70: par_rkpp54(rx); break;
+      case 71: par_rkpp54b(rx); break;
+      case 72: par_rkbs54(rx); break;
+      case 73: par_rkss54(rx); break;
+      case 74: par_rkdp65(rx); break;
+      case 75: par_rkc65(rx); break;
+      case 76: par_rktp64(rx); break;
+      case 77: par_rkv65r(rx); break;
+      case 78: par_rkv65(rx); break;
+      case 79: par_dverk65(rx); break;
+      case 80: par_rktf65(rx); break;
+      case 81: par_rktp75(rx); break;
+      case 82: par_rktmy7(rx); break;
+      case 83: par_rktmy7s(rx); break;
+      case 84: par_rkv76r(rx); break;
+      case 85: par_rkss76(rx); break;
+      case 86: par_rkv78(rx); break;
+      case 87: par_dverk78(rx); break;
+      case 88: par_rkdp85(rx); break;
+      case 89: par_rktp86(rx); break;
+      case 90: par_rkv87e(rx); break;
+      case 91: par_rkv87r(rx); break;
+      case 92: par_rkev87(rx); break;
+      case 93: par_rkk87(rx); break;
+      case 94: par_rkf89(rx); break;
+      case 95: par_rkv89(rx); break;
+      case 96: par_rkt98a(rx); break;
+      case 97: par_rkv98r(rx); break;
+      case 98: par_rks98(rx); break;
+      case 99: par_rkf108(rx); break;
+      case 100: par_rkc108(rx); break;
+      case 101: par_rkb109(rx); break;
+      case 102: par_rks1110a(rx); break;
+      case 103: par_rkf1210(rx); break;
+      case 104: par_rko129(rx); break;
+      case 105: par_rkf1412(rx); break;
       case 0:
         // dop
         par_dop(rx);
@@ -6085,3 +6621,70 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "vern98.cpp"
 #include "grk4a.cpp"
 #include "implicit_solvers.cpp"
+#include "euler.cpp"
+#include "midpoint.cpp"
+#include "heun.cpp"
+#include "rkssp22.cpp"
+#include "rk3.cpp"
+#include "rkssp53.cpp"
+#include "rks4.cpp"
+#include "rkr4.cpp"
+#include "rkls44.cpp"
+#include "rkls54.cpp"
+#include "rkssp54.cpp"
+#include "rks5.cpp"
+#include "rk5.cpp"
+#include "rkc5.cpp"
+#include "rkl5.cpp"
+#include "rklk5a.cpp"
+#include "rklk5b.cpp"
+#include "rkb6.cpp"
+#include "rk7.cpp"
+#include "rk8_10.cpp"
+#include "rkcv8.cpp"
+#include "rk8_12.cpp"
+#include "rks10.cpp"
+#include "rkz10.cpp"
+#include "rko10.cpp"
+#include "rkh10.cpp"
+#include "rkbs32.cpp"
+#include "rkssp43.cpp"
+#include "rkf45.cpp"
+#include "rkt54.cpp"
+#include "rks54.cpp"
+#include "rkpp54.cpp"
+#include "rkpp54b.cpp"
+#include "rkbs54.cpp"
+#include "rkss54.cpp"
+#include "rkdp65.cpp"
+#include "rkc65.cpp"
+#include "rktp64.cpp"
+#include "rkv65r.cpp"
+#include "rkv65.cpp"
+#include "dverk65.cpp"
+#include "rktf65.cpp"
+#include "rktp75.cpp"
+#include "rktmy7.cpp"
+#include "rktmy7s.cpp"
+#include "rkv76r.cpp"
+#include "rkss76.cpp"
+#include "rkv78.cpp"
+#include "dverk78.cpp"
+#include "rkdp85.cpp"
+#include "rktp86.cpp"
+#include "rkv87e.cpp"
+#include "rkv87r.cpp"
+#include "rkev87.cpp"
+#include "rkk87.cpp"
+#include "rkf89.cpp"
+#include "rkv89.cpp"
+#include "rkt98a.cpp"
+#include "rkv98r.cpp"
+#include "rks98.cpp"
+#include "rkf108.cpp"
+#include "rkc108.cpp"
+#include "rkb109.cpp"
+#include "rks1110a.cpp"
+#include "rkf1210.cpp"
+#include "rko129.cpp"
+#include "rkf1412.cpp"

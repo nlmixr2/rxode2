@@ -907,7 +907,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "rkssp22", "rk3", "rkssp53", "rks4", "rkr4", "rkls44", "rkls54", "rkssp54", "rks5", "rk5", "rkc5", "rkl5", "rklk5a", "rklk5b", "rkb6", "rk7", "rk8_10", "rkcv8", "rk8_12", "rks10", "rkz10", "rko10", "rkh10", "rkck54", "rkdp54", "rkv65e", "rkv76e", "rkdp87", "rkv98e", "rkssp33", "rkbs32", "rkssp43", "rkf45", "rkt54", "rks54", "rkpp54", "rkpp54b", "rkbs54", "rkss54", "rkdp65", "rkc65", "rktp64", "rkv65r", "rkv65", "dverk65", "rktf65", "rktp75", "rktmy7", "rktmy7s", "rkv76r", "rkss76", "rkv78", "dverk78", "rkdp85", "rktp86", "rkv87e", "rkv87r", "rkev87", "rkk87", "rkf89", "rkv89", "rkt98a", "rkv98r", "rks98", "rkf108", "rkc108", "rkb109", "rks1110a", "rkf1210", "rko129", "rkf1412"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3463,8 +3463,28 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "rkf78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "rkf32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "rkssp22", "rk3", "rkssp53", "rks4", "rkr4", "rkls44", "rkls54", "rkssp54", "rks5", "rk5", "rkc5", "rkl5", "rklk5a", "rklk5b", "rkb6", "rk7", "rk8_10", "rkcv8", "rk8_12", "rks10", "rkz10", "rko10", "rkh10", "rkck54", "rkdp54", "rkv65e", "rkv76e", "rkdp87", "rkv98e", "rkssp33", "rkbs32", "rkssp43", "rkf45", "rkt54", "rks54", "rkpp54", "rkpp54b", "rkbs54", "rkss54", "rkdp65", "rkc65", "rktp64", "rkv65r", "rkv65", "dverk65", "rktf65", "rktp75", "rktmy7", "rktmy7s", "rkv76r", "rkss76", "rkv78", "dverk78", "rkdp85", "rktp86", "rkv87e", "rkv87r", "rkev87", "rkk87", "rkf89", "rkv89", "rkt98a", "rkv98r", "rks98", "rkf108", "rkc108", "rkb109", "rks1110a", "rkf1210", "rko129", "rkf1412")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "rkf78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+                  "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "rkssp22" = 42L,
+                  "rk3" = 43L, "rkssp53" = 44L, "rks4" = 45L, "rkr4" = 46L,
+                  "rkls44" = 47L, "rkls54" = 48L, "rkssp54" = 49L,
+                  "rks5" = 50L, "rk5" = 51L, "rkc5" = 52L, "rkl5" = 53L,
+                  "rklk5a" = 54L, "rklk5b" = 55L, "rkb6" = 56L, "rk7" = 57L,
+                  "rk8_10" = 58L, "rkcv8" = 59L, "rk8_12" = 60L, "rks10" = 61L,
+                  "rkz10" = 62L, "rko10" = 63L, "rkh10" = 64L,
+                  "rkck54" = 7L, "rkdp54" = 26L, "rkv65e" = 27L,
+                  "rkv76e" = 28L, "rkdp87" = 29L, "rkv98e" = 30L, "rkssp33" = 23L,
+                  "rkbs32" = 65L, "rkssp43" = 66L, "rkf45" = 67L,
+                  "rkt54" = 68L, "rks54" = 69L, "rkpp54" = 70L, "rkpp54b" = 71L,
+                  "rkbs54" = 72L, "rkss54" = 73L, "rkdp65" = 74L, "rkc65" = 75L,
+                  "rktp64" = 76L, "rkv65r" = 77L, "rkv65" = 78L, "dverk65" = 79L,
+                  "rktf65" = 80L, "rktp75" = 81L, "rktmy7" = 82L, "rktmy7s" = 83L,
+                  "rkv76r" = 84L, "rkss76" = 85L, "rkv78" = 86L, "dverk78" = 87L,
+                  "rkdp85" = 88L, "rktp86" = 89L, "rkv87e" = 90L, "rkv87r" = 91L,
+                  "rkev87" = 92L, "rkk87" = 93L, "rkf89" = 94L, "rkv89" = 95L,
+                  "rkt98a" = 96L, "rkv98r" = 97L, "rks98" = 98L, "rkf108" = 99L,
+                  "rkc108" = 100L, "rkb109" = 101L, "rks1110a" = 102L,
+                  "rkf1210" = 103L, "rko129" = 104L, "rkf1412" = 105L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
@@ -3517,7 +3537,27 @@ rxIsImplicit <- function(method) {
     "ssp3" = 23L, "rkf32" = 24L, "rk43" = 25L, "dop54" = 26L,
     "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
     "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
-    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "rkssp22" = 42L,
+    "rk3" = 43L, "rkssp53" = 44L, "rks4" = 45L, "rkr4" = 46L,
+    "rkls44" = 47L, "rkls54" = 48L, "rkssp54" = 49L,
+    "rks5" = 50L, "rk5" = 51L, "rkc5" = 52L, "rkl5" = 53L,
+    "rklk5a" = 54L, "rklk5b" = 55L, "rkb6" = 56L, "rk7" = 57L,
+    "rk8_10" = 58L, "rkcv8" = 59L, "rk8_12" = 60L, "rks10" = 61L,
+    "rkz10" = 62L, "rko10" = 63L, "rkh10" = 64L,
+    "rkck54" = 7L, "rkdp54" = 26L, "rkv65e" = 27L,
+    "rkv76e" = 28L, "rkdp87" = 29L, "rkv98e" = 30L, "rkssp33" = 23L,
+    "rkbs32" = 65L, "rkssp43" = 66L, "rkf45" = 67L,
+    "rkt54" = 68L, "rks54" = 69L, "rkpp54" = 70L, "rkpp54b" = 71L,
+    "rkbs54" = 72L, "rkss54" = 73L, "rkdp65" = 74L, "rkc65" = 75L,
+    "rktp64" = 76L, "rkv65r" = 77L, "rkv65" = 78L, "dverk65" = 79L,
+    "rktf65" = 80L, "rktp75" = 81L, "rktmy7" = 82L, "rktmy7s" = 83L,
+    "rkv76r" = 84L, "rkss76" = 85L, "rkv78" = 86L, "dverk78" = 87L,
+    "rkdp85" = 88L, "rktp86" = 89L, "rkv87e" = 90L, "rkv87r" = 91L,
+    "rkev87" = 92L, "rkk87" = 93L, "rkf89" = 94L, "rkv89" = 95L,
+    "rkt98a" = 96L, "rkv98r" = 97L, "rks98" = 98L, "rkf108" = 99L,
+    "rkc108" = 100L, "rkb109" = 101L, "rks1110a" = 102L,
+    "rkf1210" = 103L, "rko129" = 104L, "rkf1412" = 105L
   )
   if (is.character(method)) {
     .codes <- .methodIdx[method]
