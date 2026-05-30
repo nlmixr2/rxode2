@@ -107,15 +107,6 @@ setCvodeLinearSolver <- function(type) {
     invisible(.Call(`_rxode2_setCvodeLinearSolver`, type))
 }
 
-#' Check if CVODE support was compiled in
-#'
-#' @return Logical TRUE if compiled with sundialr CVODE support
-#' @export
-#' @keywords internal
-rxHasCvode <- function() {
-    .Call(`_rxode2_rxHasCvode`)
-}
-
 #' Get the Linear Compartment Information based on the model variables
 #'
 #' @param obj The model variables object

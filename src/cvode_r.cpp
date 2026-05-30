@@ -18,17 +18,3 @@ int g_cvodeLinSol = 1;
 void setCvodeLinearSolver(int type) {
   g_cvodeLinSol = type;
 }
-
-//' Check if CVODE support was compiled in
-//'
-//' @return Logical TRUE if compiled with sundialr CVODE support
-//' @export
-//' @keywords internal
-// [[Rcpp::export]]
-bool rxHasCvode() {
-#ifdef SUNDIALR_CVODE
-  return true;
-#else
-  return false;
-#endif
-}

@@ -186,16 +186,6 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// rxHasCvode
-bool rxHasCvode();
-RcppExport SEXP _rxode2_rxHasCvode() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rxHasCvode());
-    return rcpp_result_gen;
-END_RCPP
-}
 // getLinInfo_
 IntegerVector getLinInfo_(List mv);
 RcppExport SEXP _rxode2_getLinInfo_(SEXP mvSEXP) {
