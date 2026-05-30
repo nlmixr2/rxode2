@@ -65,6 +65,8 @@ OdeRkc65::OdeRkc65(unsigned long neq)
     d7 = 7097631.0/37564021.0;
     d8 = -71226429.0/583093742.0;
     d9 = 1.0/20.0;
+    b9 = 0.0;
+
 }
 
 void OdeRkc65::step_(double dt) {

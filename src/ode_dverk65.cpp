@@ -52,6 +52,10 @@ OdeDverk65::OdeDverk65(unsigned long neq)
     d4 = 5.0    / 16.0;
     d5 = 12.0   / 85.0;
     d6 = 3.0    / 44.0;
+    b6 = 0.0;
+    d7 = 0.0;
+    d8 = 0.0;
+
 }
 
 void OdeDverk65::step_(double dt) {

@@ -55,6 +55,8 @@ OdeRkdp65::OdeRkdp65(unsigned long neq)
     d5 = 395.0 / 3672.0;
     d6 = 785.0 / 2704.0;
     d7 = 3.0 / 50.0;
+    d8 = 0.0;
+
 }
 
 void OdeRkdp65::step_(double dt) {

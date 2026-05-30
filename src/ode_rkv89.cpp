@@ -120,6 +120,9 @@ OdeRkv89::OdeRkv89(unsigned long neq)
     d14 = b14 - (-3510.0/109200.0);  // d_N = b_N - e_N
     d15 = -(39312.0/109200.0);  // d_N = -e_N (b_N = 0)
     d16 = -(6058.0/109200.0);  // d_N = -e_N (b_N = 0)
+    b15 = 0.0;
+    b16 = 0.0;
+
 }
 
 void OdeRkv89::step_(double dt) {

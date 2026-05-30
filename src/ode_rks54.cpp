@@ -42,6 +42,8 @@ OdeRks54::OdeRks54(unsigned long neq)
     d5 = b5 - (1280.0 / 1469.0);  // d_N = b_N - e_N
     d6 = b6 - (-33743.0 / 52712.0);  // d_N = b_N - e_N
     d7 = -(127.0 / 4792.0);  // d_N = -e_N (b_N = 0)
+    b7 = 0.0;
+
 }
 
 void OdeRks54::step_(double dt) {

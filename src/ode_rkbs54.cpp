@@ -56,6 +56,8 @@ OdeRkbs54::OdeRkbs54(unsigned long neq)
     d6 = 2272.0 / 6561.0;
     d7 = 79937.0 / 1113912.0;
     d8 = 3293.0 / 556956.0;
+    b8 = 0.0;
+
 }
 
 void OdeRkbs54::step_(double dt) {

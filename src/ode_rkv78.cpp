@@ -94,6 +94,9 @@ OdeRkv78::OdeRkv78(unsigned long neq)
     d11 = b11 - (-133760.0 / 3168000.0);  // d_N = b_N - e_N
     d12 = -(437400.0 / 3168000.0);  // d_N = -e_N (b_N = 0)
     d13 = -(136400.0 / 3168000.0);  // d_N = -e_N (b_N = 0)
+    b12 = 0.0;
+    b13 = 0.0;
+
 }
 
 void OdeRkv78::step_(double dt) {

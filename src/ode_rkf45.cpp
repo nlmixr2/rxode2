@@ -38,6 +38,8 @@ OdeRkf45::OdeRkf45(unsigned long neq)
     d3 = 1408.0 / 2565.0;
     d4 = 2197.0 / 4104.0;
     d5 = -1.0  / 5.0;
+    d6 = 0.0;
+
 }
 
 void OdeRkf45::step_(double dt) {
