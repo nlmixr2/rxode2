@@ -1,293 +1,410 @@
 ---
-title: "A Guide to ODE Solvers in rxode2: Selection and Suitability for Pharmacometric Models"
-date: "`r Sys.Date()`"
+title: "Choosing ODE solvers in rxode2"
 output:
-  html_document:
-    self_contained: no
+  rmarkdown::html_vignette:
+    toc: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Choosing ODE solvers in rxode2}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, echo=FALSE}
-options(cli.unicode = FALSE, crayon.enabled = FALSE)
-options(knitr.table.format = "html")
+```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  message = FALSE,
-  warning = FALSE,
-  out.width = "100%"
+  comment = "#>"
 )
-options(width = 80, cli.width = 80)
-Sys.setenv(RSTUDIO_CONSOLE_WIDTH = 80)
 ```
 
-## Introduction
+## Why solver choice matters in pharmacometrics
 
-In pharmacometrics, Ordinary Differential Equation (ODE) solvers are
-the computational engines driving model simulations. Whether you are
-running a simple one-compartment PK model, a complex
-physiologically-based pharmacokinetic (PBPK) model, or a stiff
-quantitative systems pharmacology (QSP) model, selecting the right
-solver can drastically impact simulation speed, accuracy, and
-numerical stability.
+In pharmacometrics, the "best" ODE solver is rarely the highest-order
+method on paper.  What usually matters more is whether the model is
+stiff, whether dosing creates sharp discontinuities, whether output is
+requested on a dense sampling grid, and whether you need reproducible
+fixed-step behavior for sensitivity or comparison studies.
 
-`rxode2` provides a rich set of ODE solving methods, combining classic
-solvers (like LSODA and DOP853) with modern adaptive, fixed-step,
-implicit, and symplectic steppers from the C++ `Boost.odeint` library.
-An optional SUNDIALS CVODE solver is also available.
+`rxode2` exposes a broad solver set because different model classes
+benefit from different tradeoffs:
 
-This guide provides an overview of the solvers available in `rxode2`,
-explains key numerical concepts (stiffness, dense output, symplectic
-integration), and recommends when to use each method.
+- classic PK or PK/PD models with mild stiffness often work well with
+  `liblsoda`, `dop853`, or `dop54`
+- TMDD, mechanistic PD, QSP, and transit-heavy systems often need
+  stiffness-aware methods such as `liblsoda`, `ros4`, `ros43`,
+  `sdirk43`, or `cvode`
+- fixed-step methods such as `rk4`, `backwardEuler`, `gauss6`, or
+  `radauiia5` are useful when you want controlled stepping between
+  events, method-comparison experiments, or deterministic solver
+  behavior for debugging
 
----
+The sections below first give a practical pharmacometric view, then a
+complete method inventory split by stiffness and by adaptivity.
 
-## Summary of ODE Solvers in `rxode2`
+## Practical pharmacometric starting points
 
-The table below summarizes the solvers available in `rxode2` and their properties:
+| Modeling situation | Good rxode2 starting points | Why | Familiar names in other ecosystems |
+|---|---|---|---|
+| General PK/PD work, stiffness uncertain | `liblsoda`, `lsoda` | Automatically switches between non-stiff and stiff behavior; very good default for mixed event schedules | ODEPACK/deSolve `lsoda`; Julia `lsoda()`; MATLAB has no direct LSODA wrapper and usually splits this choice between `ode45` and `ode15s`; Phoenix NLME closest match is `Auto-Detect` (LSODA) |
+| Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`rkdp54` is closest to MATLAB `ode45`; `dop853` matches SciPy `DOP853`; Julia analogs are `DP5()`, `DP8()`, `Tsit5()`, `Vern7()`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
+| Moderate stiffness: TMDD, indirect response with fast turnover, enzyme models | `ros4`, `ros43`, `sdirk43` | Stiff-aware one-step methods that often behave well across dosing discontinuities | MATLAB users can think `ode23s` / `ode15s`; Julia analogs are `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`; Phoenix NLME users usually compare against `Auto-Detect` (LSODA) or `Stiff` (LSODE/BDF) |
+| Clearly stiff or larger systems where linear solver choice matters | `cvode` | CVODE gives Adams/BDF-style behavior with configurable linear solvers | Julia `CVODE_Adams()` / `CVODE_BDF()` in Sundials; MATLAB users usually compare against `ode15s`; Phoenix NLME analog is `Stiff` (LSODE/BDF) |
+| Fixed-step comparison runs or debugging around dose/event boundaries | `rk4`, `trapz`, `backwardEuler`, `gauss6`, `iiic6`, `radauiia5`, `ros6` | Forces a controlled step size and makes solver-to-solver comparisons easier | Julia has direct families such as `Heun()`, `ImplicitEuler()`, `GaussLegendre`, `LobattoIIIC`, `RadauIIA5()`; MATLAB has fewer built-in fixed-step counterparts |
+| Mostly linear compartment structure with sparse nonlinear pieces | `indLin` | Uses the specialized inductive linearization pathway instead of a general ODE stepper | Best compared with matrix-exponential or linearization workflows, not with `ode45`/`ode15s` directly; Phoenix NLME analogs are `Matrix Exponent` and `Exponent Higham` |
 
-| Method | Type | Stiff-Safe | Dense Output | Key Options | Recommended Use Case |
-|---|---|---|---|---|---|
-| **`"liblsoda"`** *(Default)* | Adaptive (BDF / Adams) | Yes | No | `atol`, `rtol`, `maxsteps` | **Default choice for general PK/PD.** Thread-parallel across subjects. |
-| **`"lsoda"`** | Adaptive (BDF / Adams) | Yes | No | `atol`, `rtol`, `maxsteps` | Fortran-based LSODA. Single-threaded. Supports user Jacobians. |
-| **`"dop853"`** | Explicit Runge-Kutta 8(5,3) | No | Yes | `atol`, `rtol`, `dense` | High-order solver. Excellent for **smooth, non-stiff models** with rich sampling. |
-| **`"rkf78"`** | Explicit Runge-Kutta-Fehlberg 7(8) | No | No | `atol`, `rtol`, `hmin` (initial dt) | Non-stiff models where high-accuracy adaptive step-sizes are desired. |
-| **`"ck54"`** | Explicit Cash-Karp 5(4) | No | No | `atol`, `rtol`, `hmin` (initial dt) | Non-stiff models with moderate accuracy requirements. |
-| **`"dop5"`** | Explicit Dormand-Prince 5(4) | No | Yes | `atol`, `rtol`, `dense` | Non-stiff models. Fast alternative to `dop853` for moderate accuracy. |
-| **`"bs"`** | Bulirsch-Stoer | No | Yes | `atol`, `rtol`, `dense` | Smooth, non-stiff systems where very high precision is required. |
-| **`"ros4"`** | Implicit Rosenbrock 4 | Yes | Yes | `atol`, `rtol`, `dense` | **Stiff systems** (e.g., target-mediated drug disposition). Supports dense output. |
-| **`"iem"`** | Implicit Euler | Yes | No | `hmin` (fixed dt), `maxsteps` | Stiff systems where a **fixed integration step** is strictly required. |
-| **`"rk4"`** | Explicit Runge-Kutta 4 | No | No | `hmin` (fixed dt), `maxsteps` | Fixed-step solver for debugging or comparing with historical code. |
-| **`"em"`** | Explicit Euler | No | No | `hmin` (fixed dt), `maxsteps` | Simple 1st-order solver. Mainly for educational use or discrete comparisons. |
-| **`"ab"`** | Adams-Bashforth | No | No | `hmin` (fixed dt), `order` (1-8) | Multi-step explicit solver. Useful for smooth non-stiff dynamics. |
-| **`"abm"`** | Adams-Bashforth-Moulton | No | No | `hmin` (fixed dt), `order` (1-8) | Predictor-corrector multi-step explicit solver. |
-| **`"mm"`** | Modified Midpoint | No | No | `hmin` (fixed dt), `order` (intermediate steps) | Explicit fixed-step mid-point formulation used internally by Bulirsch-Stoer. |
-| **`"sem"`** | Symplectic Euler | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Padded for general/odd dimensions. |
-| **`"sb3a"`** | Symplectic RKN SB3A McLachlan | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. High-order Runge-Kutta-Nyström. |
-| **`"sb3am4"`** | Symplectic RKN SB3A M4 McLachlan | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Alternative high-order RKN stepper. |
-| **`"vv"`** | Velocity Verlet | No | No | `hmin` (fixed dt) | Hamiltonian mechanical systems. Second-order Verlet integrator. |
-| **`"cvode"`** *(optional)* | Adaptive (BDF / Adams, SUNDIALS) | Yes | No | `atol`, `rtol`, `maxsteps`, `cvodeLinSolver` | Highly stiff systems. Krylov linear solvers available for large systems. |
+## How rxode2 solvers split by stiffness and adaptivity
 
----
+For pharmacometric work, the most useful split is:
 
-## Stiffness in Pharmacometrics
+1. adaptive and stiffness-aware or stiff-suitable
+2. fixed-step and stiff-suitable
+3. adaptive and primarily non-stiff
+4. fixed-step and primarily non-stiff
+5. pharmacometric special-case linearization
 
-The choice of ODE solver should begin with assessing if your model is **stiff**.
+Some methods blur the boundary.  For example, `liblsoda` and `lsoda`
+switch automatically between non-stiff and stiff formulas, and `cvode`
+can behave more like a non-stiff Adams method or a stiff BDF method
+depending on the problem.  In practice, pharmacometric users usually
+reach for them when stiffness is possible.
 
-### What is stiffness?
+### Adaptive, stiffness-aware, or stiff-suitable methods
 
-A system of differential equations is stiff if the solution has
-components that vary at extremely different timescales. In
-pharmacometrics, this commonly occurs when:
+These are the first methods to consider when a model has fast and slow
+time scales, strong feedback, binding kinetics, or many hidden
+turnover processes.
 
-1. **Target-Mediated Drug Disposition (TMDD)**: The binding rate
-   constant ($k_{on}$) is extremely fast, while elimination and
-   distribution occur over hours or days.
+- `liblsoda`, `lsoda`: automatic stiffness detection and switching;
+  still the safest "start here" choice for many PK/PD models
+- `cvode`: Sundials CVODE backend; useful when you need a modern stiff
+  solver with linear solver control (`dense`, `band`, `gmres`,
+  `bicgstab`, `tfqmr`).  At present, `band` is kept for compatibility
+  and aliases to the dense path.
+- `ros4`, `ros43`: adaptive Rosenbrock methods for stiff or moderately
+  stiff systems
+- `sdirk43`: adaptive singly diagonally implicit Runge-Kutta method
 
-2. **Systemic Feedback Loops**: Models with rapid signaling cascades
-   (e.g. receptor phosphorylation) coupled with slow receptor
-   synthesis/degradation.
+These are closest in spirit to MATLAB `ode23s` / `ode15s` and to Julia
+methods such as `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`, and the
+Sundials `CVODE_*` wrappers.
 
-### Stiff vs. Non-Stiff Solvers
+### Fixed-step, stiff-suitable, or implicit methods
 
-- **Explicit solvers** (like `dop853`, `rk4`, `dop5`, `bs`, `em`)
-  evaluate the derivatives using only the state at the current
-  time. On stiff systems, they are forced to take micro-steps to
-  prevent numerical instability, causing the solver to stall, hang, or
-  fail.
+These are useful when you want implicit stepping but you also want to
+control the internal step size directly through `hmin`.
 
-- **Implicit solvers** (like `liblsoda`, `ros4`, `iem`) solve an
-  implicit equation at each step, requiring the Jacobian matrix of the
-  system. While each step is more expensive to calculate, they can
-  take much larger steps through stiff regions.
+- `iem`: implicit Euler-style stepping for fixed-step studies
+- `ros6`: fixed-step Rosenbrock method
+- `backwardEuler`: first-order implicit baseline
+- `gauss6`: fixed-step Gauss-Legendre IRK method
+- `iiic6`: fixed-step Lobatto IIIC method
+- `radauiia5`: fixed-step Radau IIA method
+- `geng5`: fixed-step implicit method from the libode family
 
-For stiff systems, **`"liblsoda"`** (adaptive automatic switching) or
-**`"ros4"`** (implicit Rosenbrock 4) should always be preferred; note
-that the Rosenbrock 4 method is often slower and requires a symbolic
-Jacobian calculation step (which is automatically done) which at times
-may fail.
+For pharmacometric model comparison work, these methods are especially
+useful when you want to answer questions like "is the behavior caused
+by stiffness or by adaptive step-size control?" rather than just "which
+solver is fastest?"
 
----
+### Adaptive, primarily non-stiff methods
 
-## The CVODE Solver (Optional)
+These are the main choices for smooth PK, exposure-response, and
+simulation workflows where the system is not strongly stiff between
+events.
 
-`rxode2` includes optional support for the
-[SUNDIALS CVODE](https://sundials.readthedocs.io/en/latest/cvode/)
-solver, activated by specifying `method = "cvode"`.  CVODE is a
-battle-tested C library for stiff and non-stiff initial value problems
-that underpins many large-scale scientific computing workflows.
+#### Most familiar adaptive non-stiff choices
 
-### How CVODE Differs from liblsoda
+- `dop853`: a strong default for smooth, non-stiff pharmacometric
+  systems with dense sampling grids
+- `dop5`: adaptive Dormand-Prince 5th-order family
+- `dop54`, `rkdp54`: the closest match in naming and behavior to
+  MATLAB `ode45`
+- `rkf32`: closest in role to MATLAB `ode23`
+- `bs`: adaptive Bogacki-Shampine family
+- `vern65`, `rkv65e`; `vern76`, `rkv76e`; `vern98`, `rkv98e`: Verner
+  families, conceptually closest to Julia's `Vern6`, `Vern7`, and
+  `Vern9`
 
-Both `"liblsoda"` and `"cvode"` use BDF (Backward Differentiation
-Formula) methods for stiff problems and Adams methods for non-stiff
-problems, so their accuracy is comparable.  The practical differences
-are:
+#### Broader adaptive explicit libode families
 
-- **Linear solver flexibility**: CVODE exposes a choice of linear
-  solver for its implicit Newton iterations.  `"liblsoda"` uses a
-  dense direct factorization internally.  For systems with many ODE
-  compartments (large $n$), iterative Krylov-based linear solvers
-  (GMRES, BiCGSTAB, TFQMR) can be substantially faster because they
-  avoid the $O(n^2)$ cost of a full LU factorization.
+`rxode2` also exposes a large set of adaptive explicit methods for
+method-comparison work, benchmarking, or specialized non-stiff models.
+These accepted method names are:
 
-- **Origin**: `"liblsoda"` is a thread-safe C port of Fortran LSODA
-  embedded directly in `rxode2`.  CVODE is from the external SUNDIALS
-  library and is linked to the `StanHeaders` copy of SUNDIALS.
+- core adaptive explicit methods: `dop853`, `rkf78`, `ck54`,
+  `rkck54`, `dop5`, `bs`, `rkf32`, `rk43`, `dop54`, `rkdp54`,
+  `vern65`, `rkv65e`, `vern76`, `rkv76e`, `dop87`, `rkdp87`,
+  `vern98`, `rkv98e`
+- lower-order and SSP-style adaptive methods: `euler`, `midpoint`,
+  `heun`, `rkssp22`, `rk3`, `rkssp53`, `rkbs32`, `rkssp43`, `rkf45`
+- adaptive fourth- and fifth-order families: `rks4`, `rkr4`,
+  `rkls44`, `rkls54`, `rkssp54`, `rks5`, `rk5`, `rkc5`, `rkl5`,
+  `rklk5a`, `rklk5b`, `rkt54`, `rks54`, `rkpp54`, `rkpp54b`,
+  `rkbs54`, `rkss54`
+- adaptive sixth- and seventh-order families: `rkb6`, `rk7`,
+  `rkdp65`, `rkc65`, `rktp64`, `rkv65r`, `rkv65`, `dverk65`,
+  `rktf65`, `rktp75`, `rktmy7`, `rktmy7s`, `rkv76r`, `rkss76`,
+  `rkv78`, `dverk78`
+- adaptive eighth-order and higher families: `rk8_10`, `rkcv8`,
+  `rk8_12`, `rks10`, `rkz10`, `rko10`, `rkh10`, `rkdp85`,
+  `rktp86`, `rkv87e`, `rkv87r`, `rkev87`, `rkk87`, `rkf89`,
+  `rkv89`, `rkt98a`, `rkv98r`, `rks98`, `rkf108`, `rkc108`,
+  `rkb109`, `rks1110a`, `rkf1210`, `rko129`, `rkf1412`
 
-- **Parallelism**: Both solvers run in parallel across subjects via
-  OpenMP; each subject gets an independent solver context.
+Most pharmacometric users will never need to try every method in these
+families.  The practical point is that `rxode2` lets you stay within
+the same modeling framework while comparing classical explicit RK
+families against the more familiar `dop5`/`dop853` choices.
 
-### Configuring the CVODE Linear Solver
+### Fixed-step, primarily non-stiff methods
 
-Pass `cvodeLinSolver` directly to `rxSolve()` (or `rxControl()`) to
-select the linear solver used inside CVODE's implicit Newton
-iterations:
+These methods use `hmin` as the actual fixed step size.
 
-| `cvodeLinSolver` | Solver | Best for |
+- `rk4`: classical Runge-Kutta 4
+- `trapz`: explicit trapezoidal / Heun-style fixed-step method
+- `ssp3`, `rkssp33`: fixed-step SSP Runge-Kutta 3
+- `ab`: Adams-Bashforth
+- `abm`: Adams-Bashforth-Moulton
+- `sem`: semi-explicit method
+- `sb3a`, `sb3am4`: multistep fixed-step methods from the libode set
+- `vv`: velocity-Verlet style method
+- `mm`: modified midpoint style method
+- `em`: explicit Euler-Maruyama-style fixed-step method name in the
+  libode family
+
+These methods are usually chosen for comparison studies, controlled
+co-simulation, or educational/debugging purposes rather than for
+routine production solves.
+
+### Special pharmacometric pathway: `indLin`
+
+`indLin` should not be grouped with the general-purpose ODE solvers
+above.  It uses inductive linearization and is often a strong choice
+for models that are largely linear between events, especially when the
+goal is speed on repeated PK-like solves rather than maximum solver
+generality.
+
+For pharmacometric applications, `indLin` is worth trying when:
+
+- the model is close to a linear compartment system
+- the nonlinear part is limited or localized
+- event handling dominates cost more than the actual ODE algebra
+- you want speedups for repeated simulation rather than a new solver
+  family for a fundamentally nonlinear/stiff problem
+
+## Adaptive versus fixed-step behavior in rxode2
+
+In `rxode2`, this is the practical rule of thumb:
+
+- for fixed-step methods, `hmin` is the step size you are asking the
+  solver to use
+- for adaptive methods, `hmin` is only the minimum step size, and
+  `hmax` becomes important when events or dense output matter
+- for dense output workflows, the most useful methods are currently
+  `dop853`, `dop5`, `bs`, and `ros4`
+
+For pharmacometric workflows such as VPCs, trial simulation, and
+posterior predictive checks, dense output can matter as much as the
+integrator itself because it changes how often the expensive full
+solver state has to be reconstructed at requested sample times.
+
+## MATLAB and Julia naming guide
+
+The names in `rxode2` come from several numerical-analysis families, so
+they do not always line up one-to-one with the simplified naming used
+in other ecosystems.  The nearest mental translations are:
+
+- `dop54` / `rkdp54` -> MATLAB `ode45`; Julia `DP5()` or `Tsit5()`
+  is the closest everyday non-stiff comparison point
+- `rkf32` -> MATLAB `ode23`; Julia `BS3()` is the closest common
+  low-order adaptive analog
+- `dop853` -> SciPy `DOP853`; Julia users usually compare against
+  `DP8()`, `Vern7()`, or `Vern9()`
+- `ros43` -> MATLAB `ode23s`; Julia `Rosenbrock23()`
+- `ros4` -> MATLAB `ode15s` / `ode23s` territory; Julia `Rodas4P()`
+  or related Rosenbrock-W methods
+- `sdirk43` -> closest to Julia SDIRK families and to the same
+  general stiff-use case as MATLAB `ode15s`
+- `radauiia5` -> closest in name and spirit to Julia `RadauIIA5()`;
+  SciPy users can think `Radau`
+- `backwardEuler` and `iem` -> Julia `ImplicitEuler()`; MATLAB has no
+  equally prominent built-in high-level wrapper for this exact method
+- `trapz` and `heun` -> explicit trapezoid / Heun methods; Julia
+  exposes these ideas directly, while MATLAB users often know them as
+  textbook methods rather than built-in solver names
+- `liblsoda` / `lsoda` -> ODEPACK/deSolve `lsoda`; Julia `lsoda()`;
+  MATLAB has no direct LSODA-branded default
+- `cvode` -> Julia Sundials `CVODE_Adams()` / `CVODE_BDF()`;
+  MATLAB users usually compare its use case with `ode15s`
+
+For many of the very high-order Runge-Kutta families in `rxode2`, the
+closest naming culture is Julia's DifferentialEquations ecosystem
+rather than MATLAB's built-in ODE suite.
+
+## NONMEM, Monolix, and Phoenix crosswalk
+
+For pharmacometric users, the most useful comparison is often not
+"which exact numerical method name matches?" but rather "which class of
+models and solver behavior am I used to from another platform?"
+
+### NONMEM ADVAN crosswalk
+
+NONMEM's ADVAN family mixes three distinct ideas:
+
+1. closed-form compartment models
+2. matrix-exponential linear systems
+3. general ODE/DAE solvers for nonlinear or stiff systems
+
+That means the closest `rxode2` counterpart is sometimes **not** a
+general ODE solver at all.
+
+| NONMEM family | What NONMEM uses | Closest rxode2 comparison | Practical pharmacometric note |
+|---|---|---|---|
+| ADVAN1, ADVAN2, ADVAN3, ADVAN4, ADVAN10, ADVAN11, ADVAN12 | Closed-form PK model families | `linCmt()` first, then `indLin` or general ODE methods if you need custom structure | These are best compared to rxode2's analytic or near-analytic PK pathways, not to `dop853` or `cvode` |
+| ADVAN5 | General linear model using a matrix exponential | `linCmt()` when the structure fits; otherwise `indLin` is usually the closest conceptual match | Good match for larger linear compartment systems or PBPK-like linear flows |
+| ADVAN7 | General linear model with real eigenvalues, more efficient than ADVAN5 when that assumption holds | `linCmt()` / `indLin` | Again, this is closer to a linear algebra pathway than to a general adaptive ODE solver |
+| ADVAN6 | General nonlinear model; NONMEM documents IMSL DVERK (Runge-Kutta-Verner 5/6) for nonstiff problems | `dop5`, `dop54`, `dop853`, or `liblsoda` | This is the closest NONMEM analog to rxode2's adaptive explicit non-stiff families |
+| ADVAN8 | General nonlinear stiff model; NONMEM documents IMSL DGEAR (Gear) | `ros4`, `ros43`, `sdirk43`, `cvode`, or `liblsoda` | Best comparison when TMDD/QSP turnover or multi-scale kinetics make the system clearly stiff |
+| ADVAN9 | Differential-algebraic / equilibrium-compartment model; NONMEM documents LSODI with BDF for stiff problems | `cvode` or stiff implicit methods in rxode2, but usually after rewriting the model into explicit ODE form if possible | Use this mental bucket for equilibrium or algebraic constraints rather than for ordinary PK models |
+| ADVAN13, ADVAN14 | General nonlinear stiff/nonstiff equations in later NONMEM versions | `liblsoda` first, then `cvode`, `ros4`, or `dop853` depending on observed stiffness | These are the closest "modern general-purpose ODE" ADVANs to rxode2's default ODE workflows |
+| ADVAN15 | Equilibrium-compartment extension of ADVAN13/14-style workflows | stiff implicit rxode2 workflows; sometimes custom model reformulation is the real comparison | Think "DAE-like/equilibrium-aware" rather than a one-name solver match |
+| ADVAN16, ADVAN17 | Delay-equation models using RADAR5 | no direct ODE-solver equivalent in this vignette | This is beyond ordinary ODE comparison and should be treated separately |
+| ADVAN18 | Delay-equation models using DDE solver | no direct ODE-solver equivalent in this vignette | Also outside the usual ODE-only solver menu |
+
+The key practical mapping is:
+
+- NONMEM analytic ADVANs -> `rxode2` `linCmt()` / `indLin`
+- NONMEM ADVAN6 -> `rxode2` non-stiff adaptive solvers such as
+  `dop54`, `dop5`, or `dop853`
+- NONMEM ADVAN8 -> `rxode2` stiff-aware solvers such as `ros4`,
+  `ros43`, `sdirk43`, `cvode`, or `liblsoda`
+- NONMEM ADVAN13/14 -> `rxode2` general-purpose adaptive workflows,
+  usually starting with `liblsoda`
+
+### Monolix crosswalk
+
+Monolix documents two ODE solver modes:
+
+- `odeType = nonStiff`: Adams methods for non-stiff ODEs
+- `odeType = stiff`: Backward Differentiation Formula (BDF) methods for
+  stiff ODEs
+
+That makes the practical `rxode2` comparison fairly direct:
+
+| Monolix mode | Closest rxode2 comparison | Pharmacometric interpretation |
 |---|---|---|
-| `"dense"` (default) | Dense direct (LAPACK) | Small to medium systems ($n \lesssim 50$) |
-| `"band"` | Banded direct | Banded Jacobian structure |
-| `"gmres"` | GMRES (iterative Krylov) | Large, non-banded stiff systems |
-| `"bicgstab"` | BiCGSTAB (iterative Krylov) | Large systems, alternative to GMRES |
-| `"tfqmr"` | TFQMR (iterative Krylov) | Large systems, transpose-free QMR |
+| nonStiff (Adams) | `dop54`, `dop5`, `dop853`, or `liblsoda` on mostly non-stiff models | Smooth PK/PD, transit, or exposure-response systems without severe time-scale separation |
+| stiff (BDF) | `cvode`, `liblsoda`, `ros4`, `ros43`, or `sdirk43` | TMDD, target binding, indirect response with fast turnover, mechanistic PD, QSP-like stiffness |
 
-```{r cvode-linsol, eval=FALSE}
-# Dense solver (default) — fast for small systems
-out_dense <- rxSolve(mod, params = parms, events = et,
-                     method = "cvode", cvodeLinSolver = "dense")
+This is not a one-to-one name mapping because `rxode2` exposes several
+solver families instead of one Adams choice and one BDF choice.
+Still, from a user perspective:
 
-# GMRES — better for large QSP/PBPK systems
-out_gmres <- rxSolve(mod, params = parms, events = et,
-                     method = "cvode", cvodeLinSolver = "gmres")
-```
+- if you were happy with Monolix `nonStiff`, try `dop54`, `dop5`,
+  `dop853`, or simply start with `liblsoda`
+- if you needed Monolix `stiff`, start in `rxode2` with `liblsoda`,
+  `cvode`, `ros4`, or `ros43`
 
-`rxSolve()` applies the chosen linear solver automatically before each
-solve, so there is no need to manage a global setting manually.
+### Phoenix WinNonlin / Phoenix NLME crosswalk
 
-### When to Use CVODE
+Phoenix WinNonlin's built-in compartmental tools are best compared by
+**model family**.  Phoenix NLME, however, does publish its named ODE
+choices, so those can be mapped more directly.
 
-- **Very large stiff systems** (QSP models with tens to hundreds of
-  compartments): The Krylov linear solvers (`type = 3`--`5`) avoid
-  full Jacobian factorization, reducing per-step cost from $O(n^3)$ to
-  roughly $O(n)$--$O(n^2)$.
+| Phoenix workflow / solver | Closest rxode2 comparison | Practical note |
+|---|---|---|
+| Phoenix WinNonlin built-in compartmental PK models | `linCmt()` or simple `rxode2()` PK models | Best match for standard 1-, 2-, and 3-compartment PK workflows |
+| Phoenix NLME `Matrix Exponent` | `indLin` or `linCmt()` | Matrix-exponential solve for linear ODE systems with a constant Jacobian; usually the closest speed-oriented comparison |
+| Phoenix NLME `Exponent Higham` | `indLin` | Alternative matrix-exponential path with the same basic pharmacometric role as `Matrix Exponent` |
+| Phoenix NLME `Non-Stiff (DVERK)` | `vern65`, `rkv65e`, `dop5`, `dop54` | Explicit non-stiff Runge-Kutta/Verner family behavior |
+| Phoenix NLME `Non-Stiff (DOPRI5)` | `dop54`, `rkdp54`, `dop5` | Closest Phoenix analog to the Dormand-Prince family most users associate with `ode45`-like behavior |
+| Phoenix NLME `Auto-Detect` (LSODA) | `liblsoda`, `lsoda` | Automatic Adams/BDF switching; strongest direct name-level match in rxode2 |
+| Phoenix NLME `Stiff` (LSODE/BDF) | `cvode`, `ros4`, `ros43`, `sdirk43` | Stiff-only pathway; closest to rxode2 stiff workflows rather than to one exact solver name |
 
-- **When `"liblsoda"` fails to converge**: On pathologically stiff
-  problems, the SUNDIALS implementation of BDF can sometimes succeed
-  where the embedded LSODA port cannot (different step-size control
-  heuristics and linear algebra back-ends).
+Phoenix NLME also uses a three-level solving strategy:
 
-- **When `"ros4"` is unavailable or slow**: The Rosenbrock method
-  requires a symbolic Jacobian from SymEngine; if that step fails or is
-  slow for a particular model, CVODE with a dense linear solver is a
-  practical alternative.
+1. closed-form for supported standard compartmental models
+2. matrix exponentials for linear ODE systems with a constant Jacobian
+3. numerical ODE solvers for nonlinear systems
 
-### When NOT to Use CVODE
+So, for Phoenix users moving to `rxode2`, the practical sequence is:
 
-- **Simple PK/PD models**: For routine one- to four-compartment models
-  `"liblsoda"` is faster because it has lower per-step overhead and no
-  external library dependency.
+1. if the Phoenix model is a standard compartmental PK model, compare
+   first to `linCmt()`
+2. if the Phoenix model used `Matrix Exponent` or `Exponent Higham`,
+   compare first to `indLin`
+3. if it used `Auto-Detect`, compare first to `liblsoda`
+4. if it used `Stiff`, compare `cvode`, `ros4`, or `ros43`
+5. if it used `Non-Stiff (DOPRI5)` or `Non-Stiff (DVERK)`, compare
+   `dop54`, `dop5`, `vern65`, or `dop853`
 
----
+## Complete accepted solver names in rxode2
 
-## Understanding Key Solver Options
+The accepted method names below cover the full current solver menu in
+`rxode2`.
 
-### 1. Fixed-Step vs. Adaptive-Step
+### Adaptive, stiffness-aware, or stiff-suitable
 
-- **Adaptive Solvers** (e.g., `liblsoda`, `dop853`, `dop5`, `bs`,
-  `ros4`, `rkf78`, `ck54`) dynamically adjust the step size ($dt$) to
-  maintain the local integration error below the specified tolerances
-  (`atol` and `rtol`). These are standard for almost all
-  pharmacometric applications.
+- `liblsoda`, `lsoda`, `cvode`, `ros4`, `ros43`, `sdirk43`
 
-- **Fixed-Step Solvers** (e.g., `rk4`, `em`, `ab`, `abm`, `iem`,
-  `sem`, `sb3a`, `sb3am4`, `vv`, `mm`) integrate using a step size
-  strictly governed by the **`hmin`** parameter. If `hmin = 0`
-  (default), `rxode2` assigns a default of `0.01` for `rk4` and
-  `0.0001` for other fixed-step methods. If the number of steps
-  exceeds `maxsteps`, the step size is automatically scaled up to
-  prevent hangs.
+### Fixed-step, stiff-suitable, or implicit
 
-### 2. Dense Output (`dense = TRUE`)
+- `iem`, `ros6`, `backwardEuler`, `gauss6`, `iiic6`, `radauiia5`,
+  `geng5`
 
-Normally, when integrating to an observation grid, adaptive solvers
-must stop exactly at each observation time, which resets the step-size
-selection algorithm and slows down the integration.
+### Fixed-step, primarily non-stiff
 
-When **`dense = TRUE`** is set for supported solvers (`dop853`,
-`dop5`, `bs`, `ros4`), the solver integrates across the interval at
-its own optimal step size. It then uses cheap, continuous
-interpolation polynomials to calculate the states at the requested
-observation times. This is highly recommended for dense simulation
-grids (e.g. generating smooth VPC lines) and can lead to a 10% to 20%
-speedup.
+- `rk4`, `trapz`, `ssp3`, `rkssp33`, `ab`, `abm`, `sem`, `sb3a`,
+  `sb3am4`, `vv`, `mm`, `em`
 
-### 3. The `order` Option
+### Pharmacometric linearization special case
 
-- For Adams-Bashforth (`"ab"`) and Adams-Bashforth-Moulton (`"abm"`),
-  the `order` option (1 to 8, default 5) sets the number of historical
-  steps used to extrapolate the next step.
+- `indLin`
 
-- For the Modified Midpoint (`"mm"`) solver, `order` (default 5, must
-  be `>= 1`) configures the number of intermediate sub-steps taken
-  inside each interval.
+### Adaptive, primarily non-stiff: core explicit families
 
----
+- `dop853`, `rkf78`, `ck54`, `rkck54`, `dop5`, `bs`, `rkf32`, `rk43`,
+  `dop54`, `rkdp54`, `vern65`, `rkv65e`, `vern76`, `rkv76e`,
+  `dop87`, `rkdp87`, `vern98`, `rkv98e`
 
-## When to Use Symplectic Solvers
+### Adaptive, primarily non-stiff: lower-order and SSP families
 
-`rxode2` includes four symplectic integrators: `"sem"`, `"sb3a"`,
-`"sb3am4"`, and `"vv"`.
+- `euler`, `midpoint`, `heun`, `rkssp22`, `rk3`, `rkssp53`,
+  `rkbs32`, `rkssp43`, `rkf45`
 
-Symplectic solvers are designed to conserve energy and phase-space
-volume in Hamiltonian systems (conservative systems without friction
-or dissipation, such as a harmonic oscillator or planetary orbits).
+### Adaptive, primarily non-stiff: fourth- and fifth-order families
 
-### Suitability for Pharmacometrics
+- `rks4`, `rkr4`, `rkls44`, `rkls54`, `rkssp54`, `rks5`, `rk5`,
+  `rkc5`, `rkl5`, `rklk5a`, `rklk5b`, `rkt54`, `rks54`, `rkpp54`,
+  `rkpp54b`, `rkbs54`, `rkss54`
 
-Most pharmacometric compartment models represent physical mass
-transfer with **dissipation** (e.g., drug clearance, decay,
-metabolism). Because energy or mass is constantly leaving the system,
-these are not Hamiltonian systems, and standard adaptive solvers (like
-`liblsoda`) are mathematically much more appropriate.
+### Adaptive, primarily non-stiff: sixth- and seventh-order families
 
-However, symplectic solvers are highly useful in specific contexts:
+- `rkb6`, `rk7`, `rkdp65`, `rkc65`, `rktp64`, `rkv65r`, `rkv65`,
+  `dverk65`, `rktf65`, `rktp75`, `rktmy7`, `rktmy7s`, `rkv76r`,
+  `rkss76`, `rkv78`, `dverk78`
 
-- **Binding Dynamics Analogies**: Modeling conservative physical
-  sub-systems or simulating idealized periodic feedback loops where
-  long-term stability without numerical dampening is crucial.
+### Adaptive, primarily non-stiff: eighth-order and higher families
 
-- **Dimensionality Padding**: `rxode2` automatically handles general
-  and odd-dimensional systems (which do not naturally split into
-  coordinate-momentum pairs) by applying zero-derivative padding
-  variables, enabling these solvers to integrate any arbitrary ODE
-  model.
+- `rk8_10`, `rkcv8`, `rk8_12`, `rks10`, `rkz10`, `rko10`, `rkh10`,
+  `rkdp85`, `rktp86`, `rkv87e`, `rkv87r`, `rkev87`, `rkk87`,
+  `rkf89`, `rkv89`, `rkt98a`, `rkv98r`, `rks98`, `rkf108`,
+  `rkc108`, `rkb109`, `rks1110a`, `rkf1210`, `rko129`, `rkf1412`
 
----
+## What to try first
 
-## Recommended Workflow for Solver Selection
+If you do not want to think about the entire menu, a good
+pharmacometric workflow is:
 
-1. **Start with `"liblsoda"` (default)**: It is robust, handles
-   stiffness automatically, and scales efficiently across multiple CPU
-   cores using OpenMP.
+1. start with `liblsoda`
+2. if the system is smooth and clearly non-stiff, compare against
+   `dop853` or `dop54`
+3. if the system is stiff or nearly stiff, compare against `ros4`,
+   `ros43`, `sdirk43`, or `cvode`
+4. if you need reproducible fixed internal stepping for diagnosis, try
+   `rk4`, `backwardEuler`, `gauss6`, or `radauiia5`
+5. if the model is mostly linear between events, try `indLin`
 
-2. **If the system is non-stiff and you have a dense observation
-   grid**: Try **`method = "dop853"`** or **`method = "dop5"`** with
-   **`dense = TRUE`** to speed up simulations.
-
-3. **If the system is highly stiff (e.g. complex TMDD/QSP)**: Use
-   **`method = "ros4"`** (implicit Rosenbrock 4). If the model does
-   not contain a manual analytical Jacobian, `rxode2` will
-   automatically generate one for you via SymEngine when compiling.
-
-4. **If `"liblsoda"` or `"ros4"` fail on a very stiff system, or if
-   the system has many compartments**: Try **`method = "cvode"`**.
-   For large systems add **`cvodeLinSolver = "gmres"`** to avoid the
-   cost of full Jacobian factorization.
-
----
-
-## Session Information
-
-```{r session-info}
-sessionInfo()
-```
+That strategy is usually more valuable in pharmacometric practice than
+trying to optimize across every available high-order RK family from the
+start.
