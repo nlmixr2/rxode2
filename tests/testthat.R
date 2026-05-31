@@ -8,7 +8,7 @@ if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
   Sys.setenv(OMP_NUM_THREADS = "2")
   Sys.setenv(MKL_NUM_THREADS = "2")
   if (identical(Sys.info()["sysname"], "Darwin")) {
-    rxLoadAll(set=FALSE)
+    ## rxLoadAll(set=FALSE)
   }
 }
 ## test_check("rxode2", reporter = testthat::LocationReporter)
