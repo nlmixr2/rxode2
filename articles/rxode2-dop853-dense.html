@@ -145,7 +145,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>DOP853 Dense Output: When and How to Use It</h1>
             
-            <h4 data-toc-skip class="date">2026-05-28</h4>
+            <h4 data-toc-skip class="date">2026-05-31</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/rxode2-dop853-dense.Rmd" class="external-link"><code>vignettes/articles/rxode2-dop853-dense.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-dop853-dense.Rmd</code></div>
@@ -318,9 +318,9 @@ argument is needed to unlock large steps.</p>
 <span>    <span class="va">by</span>, <span class="va">nobs</span>, <span class="va">std</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"dense = %5.1f ms  speedup = %.2fx\n"</span>, <span class="va">den</span>, <span class="va">std</span> <span class="op">/</span> <span class="va">den</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co">#&gt; dense =  60.3 ms  speedup = 0.99x</span></span>
-<span><span class="co">#&gt; dense =  67.6 ms  speedup = 1.01x</span></span>
-<span><span class="co">#&gt; dense = 149.2 ms  speedup = 1.02x</span></span></code></pre></div>
+<span><span class="co">#&gt; dense =  63.2 ms  speedup = 1.00x</span></span>
+<span><span class="co">#&gt; dense =  69.2 ms  speedup = 1.04x</span></span>
+<span><span class="co">#&gt; dense = 148.2 ms  speedup = 1.00x</span></span></code></pre></div>
 <p>Typical results on this machine:</p>
 <table class="table">
 <thead><tr class="header">
@@ -381,9 +381,9 @@ override explicitly (suppressing messages with
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bm</span>, unit <span class="op">=</span> <span class="st">"ms"</span>, order <span class="op">=</span> <span class="st">"median"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;                 expr      min       lq     mean   median       uq      max</span></span>
-<span><span class="co">#&gt;     std_default_hmax 65.74681 67.04184 71.45030 67.75989 75.23727 86.02256</span></span>
-<span><span class="co">#&gt;  dense_explicit_hmax 65.17529 67.33252 71.51575 69.36819 74.52863 81.83192</span></span>
-<span><span class="co">#&gt;      dense_auto_hmax 66.01747 68.41957 71.74495 71.09183 75.25936 79.24119</span></span>
+<span><span class="co">#&gt;     std_default_hmax 67.83389 68.59872 72.48895 69.43640 75.92324 87.27791</span></span>
+<span><span class="co">#&gt;  dense_explicit_hmax 67.54919 68.64973 71.94573 69.50740 75.21037 80.36029</span></span>
+<span><span class="co">#&gt;      dense_auto_hmax 67.89925 68.72803 72.34483 71.91935 75.20201 80.16983</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;     30</span></span>
 <span><span class="co">#&gt;     30</span></span>
