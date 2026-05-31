@@ -1,11 +1,15 @@
 library(rxode2)
 library(testthat)
-setRxThreads(1L)
 library(data.table)
-setDTthreads(1L)
-if (!identical(Sys.getenv("NOT_CRAN"), "true") &&
-      identical(Sys.info()["sysname"], "Darwin")) {
-  rxUnloadAll(set=FALSE)
+# CRAN work-arounds
+if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
+  setRxThreads(2L)
+  setDTthreads(2L)
+  Sys.setenv(OMP_NUM_THREADS = "2")
+  Sys.setenv(MKL_NUM_THREADS = "2")
+  if (identical(Sys.info()["sysname"], "Darwin")) {
+    rxLoadAll(set=FALSE)
+  }
 }
 ## test_check("rxode2", reporter = testthat::LocationReporter)
 test_check("rxode2")
