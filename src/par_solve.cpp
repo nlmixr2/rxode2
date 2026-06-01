@@ -639,6 +639,45 @@ int global_jt = 2;
 int global_mf = 22;
 int global_debug = 0;
 
+/* -----------------------------------------------------------------------
+ * DLSODE-based solvers (method 106 = lsode/Adams, method 107 = bdf/BDF)
+ *
+ * DLSODE (Hindmarsh 1983, from ODEPACK) uses a fixed method:
+ *   lsode (106): MF=10  — Adams (nonstiff), variable order 1-12
+ *   bdf   (107): MF=22  — BDF (stiff), internally generated dense Jacobian
+ *
+ * DLSODE uses non-reentrant COMMON blocks — NOT thread-safe.
+ * Both methods always run single-threaded.
+ *
+ * DLSODE's F signature: F(NEQ, T, Y, YDOT, RPAR, IPAR) — deSolve extension.
+ * We bridge via rxode2_dlsode_F which drops RPAR/IPAR and passes full NEQ[].
+ * JAC is a dummy (MF=10 = no Jacobian; MF=22 = internal finite-difference Jacobian).
+ * ----------------------------------------------------------------------- */
+extern "C" {
+  void F77_NAME(dlsode)(void (*)(int*, double*, double*, double*, double*, int*),
+                        int*, double*, double*, double*,
+                        int*, double*, double*, int*, int*, int*,
+                        double*, int*, int*, int*,
+                        void (*)(int*, double*, double*, int*, int*, double*, int*, double*, int*),
+                        int*, double*, int*);
+}
+
+/* Bridge: DLSODE calls F(NEQ, T, Y, YDOT, RPAR, IPAR).
+ * rxode2's derivative uses F(NEQ, T, Y, YDOT) — same NEQ array (solveid in NEQ[1]). */
+static void rxode2_dlsode_F(int *neq, double *t, double *y, double *ydot,
+                             double *rpar, int *ipar) {
+  (void)rpar; (void)ipar;
+  dydt_lsoda_dum(neq, t, y, ydot);
+}
+
+/* Dummy JAC — never called for MF=10 or MF=22 (both use internal Jacobian). */
+static void rxode2_dlsode_JAC(int *neq, double *t, double *y,
+                               int *ml, int *mu, double *pd, int *nrowpd,
+                               double *rpar, int *ipar) {
+  (void)neq; (void)t; (void)y; (void)ml; (void)mu;
+  (void)pd; (void)nrowpd; (void)rpar; (void)ipar;
+}
+
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
@@ -2114,6 +2153,56 @@ static inline void solveWith1Pt(int *neq,
     case 105:
       if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf1412_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 106:
+      /* lsode: DLSODE Adams MF=10 (non-stiff, variable order 1-12) */
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        neq[0] = eff - op->numLin - op->numLinSens;
+        {
+          int _lrw = 22 + op->neq * max(16, op->neq + 9);
+          int _liw = 20 + op->neq;
+          int _itol = 1, _itask = 1, _iopt = 1, _mf = 10;
+          double _rpar = 0.0; int _ipar = 0;
+          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
+                           &_itol, &(op->RTOL), &(op->ATOL), &_itask,
+                           istate, &_iopt, __rworkPool[0].rworkp,
+                           &_lrw, __rworkPool[0].iworkp, &_liw,
+                           rxode2_dlsode_JAC, &_mf, &_rpar, &_ipar);
+        }
+        neq[0] = eff;
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
+      break;
+    case 107:
+      /* bdf: DLSODE BDF MF=22 (stiff, internally generated dense Jacobian) */
+      if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
+        neq[0] = eff - op->numLin - op->numLinSens;
+        {
+          int _lrw = 22 + 9 * op->neq + 2 * op->neq * op->neq;
+          int _liw = 20 + op->neq;
+          int _itol = 1, _itask = 1, _iopt = 1, _mf = 22;
+          double _rpar = 0.0; int _ipar = 0;
+          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
+                           &_itol, &(op->RTOL), &(op->ATOL), &_itask,
+                           istate, &_iopt, __rworkPool[0].rworkp,
+                           &_lrw, __rworkPool[0].iworkp, &_liw,
+                           rxode2_dlsode_JAC, &_mf, &_rpar, &_ipar);
+        }
+        neq[0] = eff;
+        copyLinCmt(neq, ind, op, yp);
+      }
+      if (*istate <= 0) {
+        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
+      break;
     case 1:
       if (!isSameTime(xout, xp)) {
         preSolve(op, ind, xp, xout, yp);
@@ -4566,6 +4655,216 @@ extern "C" void par_lsoda(rx_solve *rx) {
 }
 
 
+/* -----------------------------------------------------------------------
+ * ind_lsode0: per-subject DLSODE solver (MF=10 Adams or MF=22 BDF).
+ * Same structure as ind_lsoda0 but calls F77_CALL(dlsode) with MF and
+ * extra RPAR/IPAR args via rxode2_dlsode_F bridge.
+ * ----------------------------------------------------------------------- */
+static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
+                       int *neq, double *rwork, int lrw, int *iwork, int liw,
+                       int mf) {
+  clock_t t0 = clock();
+  rx_solving_options_ind *ind;
+  double *yp;
+  void *ctx = NULL;
+
+  int istate = 1;
+  int itol = 1, itask = 1, iopt = 1;
+  double rpar = 0.0; int ipar = 0;
+
+  std::fill(rwork, rwork + lrw + 1, 0.0);
+  std::fill(iwork, iwork + liw + 1, 0);
+
+  neq[1] = solveid;
+  ind = &(rx->subjects[neq[1]]);
+  int eff = rxEffNeq(ind, op);
+
+  rwork[4] = op->H0;
+  rwork[5] = (ind->HMAX > 0.0 && std::isfinite(ind->HMAX)) ? ind->HMAX : 0.0;
+  rwork[6] = op->HMIN;
+  iwork[5] = op->mxstep;
+  iwork[6] = op->mxhnil;
+
+  double xp = getAllTimes(ind, 0);
+  double xout;
+  int localBadSolve = 0;
+
+  if (!iniSubject(neq[1], 0, ind, op, rx, update_inis)) return;
+  ind->solvedIdx = 0;
+  for (int i = 0; i < ind->n_all_times; i++) {
+    ind->idx = i;
+    ind->linSS = 0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF)
+            _rtime[_raw] = getAllTimes(ind, _raw);
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
+    _growSolveIfNeeded(ind, op, i, 1);
+    yp   = getSolve(i);
+    xout = ind->timeThread[ind->ix[i]];
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
+      if (ind->err) {
+        ind->rc[0] = -1000;
+        badSolveExit(i);
+        localBadSolve = 1;
+      } else {
+        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            neq[0] = eff - op->numLin - op->numLinSens;
+            F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
+                             &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
+                             rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
+            neq[0] = eff;
+            copyLinCmt(neq, ind, op, yp);
+            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            if (*(ind->rc) < 0) localBadSolve = 1;
+          }
+          if (!localBadSolve) {
+            int idx = ind->idx, ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1 - trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            istate = 1;
+            ind->ixds = ixds;
+            ind->idx  = idx;
+            ind->idxExtra++;
+            if (!isSameTime(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              neq[0] = eff - op->numLin - op->numLinSens;
+              F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &ind->extraDoseNewXout, &xout,
+                               &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
+                               rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
+              neq[0] = eff;
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+              if (*(ind->rc) < 0) localBadSolve = 1;
+            }
+            xp = ind->extraDoseNewXout;
+          }
+        }
+        if (!localBadSolve && !isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          neq[0] = eff - op->numLin - op->numLinSens;
+          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
+                           &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
+                           rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
+          neq[0] = eff;
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          if (*(ind->rc) < 0) localBadSolve = 1;
+        }
+        xp = xout;
+      }
+    }
+    ind->_newind = 2;
+    if (!localBadSolve) {
+      ind->idx = i;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &istate, update_inis);
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx);
+        if (ind->wh0 == EVID0_OFF) ind->solve[ind->cmt] = op->inits[ind->cmt];
+        if (rx->istateReset) istate = 1;
+        xp = xout;
+      }
+      int _mtime_requeued = 0;
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
+          ind->mainSorted = 0;
+          _mtime_requeued = 1;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout))
+          ind->mainSorted = 0;
+      }
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
+      if (_mtime_requeued) i--;
+    }
+    ind->solvedIdx = i;
+  }
+  ind->solveTime += ((double)(clock() - t0)) / CLOCKS_PER_SEC;
+}
+
+/* par_lsode_bdf: serial loop over subjects using DLSODE (mf=10 or 22). */
+static void par_lsode_bdf(rx_solve *rx, int mf) {
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim * nsub);
+  rx_solving_options *op = rx->op;
+  int displayProgress = (op->nDisplayProgress <= nsolve);
+  clock_t t0 = clock();
+
+  int baseNeq = op->neq;
+  int lrw = (mf == 22) ? (22 + 9 * baseNeq + 2 * baseNeq * baseNeq)
+                        : (22 + baseNeq * max(16, baseNeq + 9));
+  int liw = 20 + baseNeq;
+
+  double *rwork = __rworkPool[0].rworkp;
+  int    *iwork = __rworkPool[0].iworkp;
+
+  int curTick = 0, abort = 0;
+  uint32_t seed0 = getRxSeed1(1);
+  for (int solveid = 0; solveid < nsolve; solveid++) {
+    if (abort == 0) {
+      setSeedEng1(seed0 + solveid - 1);
+      int neq[2]; neq[0] = baseNeq; neq[1] = 0;
+      ind_lsode0(rx, op, solveid, neq, rwork, lrw, iwork, liw, mf);
+      if (displayProgress) {
+        curTick = par_progress(nsolve, solveid + 1, curTick, 1, t0, 0);
+      }
+      if (op->abort) abort = 1;
+    }
+  }
+  if (abort == 1) op->abort = 1;
+  else if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
+}
+
+extern "C" void ind_lsode(rx_solve *rx, int solveid) {
+  /* lsode: DLSODE Adams MF=10 (non-stiff, variable order 1-12).
+   * Non-reentrant COMMON blocks — always single-threaded. */
+  rx_solving_options *op = rx->op;
+  int neq[2]; neq[0] = op->neq; neq[1] = 0;
+  int lrw = 22 + neq[0] * max(16, neq[0] + 9), liw = 20 + neq[0];
+  ind_lsode0(rx, op, solveid, neq, __rworkPool[0].rworkp, lrw,
+             __rworkPool[0].iworkp, liw, 10);
+}
+
+extern "C" void ind_bdf(rx_solve *rx, int solveid) {
+  /* bdf: DLSODE BDF MF=22 (stiff, internally generated dense Jacobian).
+   * Non-reentrant COMMON blocks — always single-threaded. */
+  rx_solving_options *op = rx->op;
+  int neq[2]; neq[0] = op->neq; neq[1] = 0;
+  int lrw = 22 + 9 * neq[0] + 2 * neq[0] * neq[0], liw = 20 + neq[0];
+  ind_lsode0(rx, op, solveid, neq, __rworkPool[0].rworkp, lrw,
+             __rworkPool[0].iworkp, liw, 22);
+}
+
+extern "C" void par_lsode(rx_solve *rx) {
+  /* lsode: DLSODE Adams MF=10 — single-threaded (non-reentrant COMMON blocks). */
+  par_lsode_bdf(rx, 10);
+}
+
+extern "C" void par_bdf(rx_solve *rx) {
+  /* bdf: DLSODE BDF MF=22 — single-threaded (non-reentrant COMMON blocks). */
+  par_lsode_bdf(rx, 22);
+}
+
 extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                                t_dydt c_dydt, t_update_inis u_inis) {
   int i;
@@ -6344,6 +6643,8 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 103: ind_rkf1210(rx, cid, c_dydt, u_inis); break;
       case 104: ind_rko129(rx, cid, c_dydt, u_inis); break;
       case 105: ind_rkf1412(rx, cid, c_dydt, u_inis); break;
+      case 106: ind_lsode(rx, cid); break;
+      case 107: ind_bdf(rx, cid); break;
 
       case 0:
         ind_dop(rx, cid, c_dydt, u_inis);
@@ -6550,6 +6851,8 @@ extern "C" void par_solve(rx_solve *rx) {
       case 103: par_rkf1210(rx); break;
       case 104: par_rko129(rx); break;
       case 105: par_rkf1412(rx); break;
+      case 106: par_lsode(rx); break;
+      case 107: par_bdf(rx); break;
       case 0:
         // dop
         par_dop(rx);

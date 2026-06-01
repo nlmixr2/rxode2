@@ -5403,8 +5403,20 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
     int _bneq = (int)op->neq;
-    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
-    int _liw = 20 + _bneq;
+    int _lrw, _liw;
+    if (op->stiff == 107) {
+      /* bdf: DVODE BDF (MF=22): LRW = 22+9*NEQ+2*NEQ^2, LIW = 30+NEQ */
+      _lrw = 22 + 9 * _bneq + 2 * _bneq * _bneq;
+      _liw = 30 + _bneq;
+    } else if (op->stiff == 106) {
+      /* lsode: DVODE Adams (MF=10): LRW = 20+16*NEQ, LIW = 30.
+       * Standard LSODA sizing covers LRW; use 30+NEQ for LIW. */
+      _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw = 30 + _bneq;
+    } else {
+      _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw = 20 + _bneq;
+    }
     ensureRworkPool((int)op->cores, _lrw, _liw);
   }
 
@@ -5413,10 +5425,9 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
 }
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
-  // dop853, liblsoda, rkf78, rk4, ck54, ab, abm
-  //
-  // only lsoda and indLin are not thread safe currently:
-  return stiff != 1 && stiff != 3;
+  /* lsoda (1), indLin (3), lsode (106), and bdf (107) use non-reentrant
+   * Fortran COMMON blocks and must run single-threaded. */
+  return stiff != 1 && stiff != 3 && stiff != 106 && stiff != 107;
 }
 
 
@@ -5744,9 +5755,20 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
     int _bneq = (int)_mvState.size();
-    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
-    int _liw = 20 + _bneq;
-    ensureRworkPool((int)op->cores, _lrw, _liw);
+    int _lrw2, _liw2;
+    if (op->stiff == 107) {
+      /* bdf: DVODE BDF (MF=22): 22+9N+2N^2 doubles, 30+N ints */
+      _lrw2 = 22 + 9 * _bneq + 2 * _bneq * _bneq;
+      _liw2 = 30 + _bneq;
+    } else if (op->stiff == 106) {
+      /* lsode: DVODE Adams (MF=10): LSODA sizing for doubles, 30+N ints */
+      _lrw2 = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw2 = 30 + _bneq;
+    } else {
+      _lrw2 = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw2 = 20 + _bneq;
+    }
+    ensureRworkPool((int)op->cores, _lrw2, _liw2);
 
     // Now set up events and parameters
     RObject par0 = params;

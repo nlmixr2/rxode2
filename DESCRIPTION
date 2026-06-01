@@ -21,6 +21,7 @@ Authors@R: c(
    person("Jack", "Dongarra", role="ctb"),
    person("Jacob", "Williams"),
    person("Jim", "Bunch", role="ctb"),
+   person("Karline", "Soetaert", role="ctb"),
    person("Kevin", "Ushey", role="ctb"),
    person("Linda", "Petzold", role="ctb"),
    person("Mark M.", "Baum", role="ctb"),
@@ -32,9 +33,12 @@ Authors@R: c(
    person("Morwenn","", role="ctb"),
    person("Nicholas J.", "Higham",role="ctb"),
    person("Omar", "Elashkar", email="omar.i.elashkar@gmail.com", role="ctb"),
+   person("Peter N.", "Brown", role="ctb"),
    person("Richard", "Upton", role = "ctb"),
    person("Roger B.", "Sidje", role="ctb"),
    person("Simon", "Frost", role="ctb"),
+   person("Thomas", "Petzoldt", role="ctb"),
+   person("Woodrow",  "Setzer", role="ctb",)
    person("Yu", "Feng", role="ctb"),
    person("Zufar", "Mulyukov", role="ctb", email="zufar.mulyukov@novartis.com"))
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>

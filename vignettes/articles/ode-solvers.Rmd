@@ -398,6 +398,20 @@ The accepted method names below cover the full current solver menu in
 
 - `indLin`
 
+### DLSODE-based fixed-method solvers (single-threaded)
+
+- `lsode`, `bdf`
+
+These two methods use DLSODE (Hindmarsh 1983, ODEPACK) with a fixed method
+flag — unlike `lsoda`, they do **not** switch between Adams and BDF.
+Both use non-reentrant Fortran COMMON blocks and therefore **always run on a
+single core**, regardless of the `cores` setting.
+
+- `lsode` — DLSODE MF=10 (Adams, non-stiff), variable order 1-12; no Jacobian
+  evaluation.  Corresponds to deSolve's `lsode(method="adams")`.
+- `bdf` — DLSODE MF=22 (BDF, stiff), variable order 1-5; internally generated
+  dense Jacobian.  Corresponds to deSolve's `bdf()` / `lsode(method="bdf")`.
+
 ### Adaptive, primarily non-stiff: core explicit families
 
 - `dop853`, `f78`, `ck54`, `dop5`, `bs`, `f32`, `rk43`,
