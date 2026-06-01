@@ -230,9 +230,36 @@ final <- c("#include <time.h>",
            "char *genRandomChar(void);",
            "void writeHeader(const char *md5, const char *extra) {",
            paste0("sAppend(&sbOut, \"#define ", def, " _rx%s%s%ld_", def, "_%s\\n\", extra, md5, __timeId++, genRandomChar());"),
+           ## Emit a portable no-ASAN attribute macro into the generated model .c file.
+           ## On macOS/clang 21+ (Tahoe) ASAN registers globals via two independent
+           ## mechanisms (asan.module_ctor + dyld image scan).  Applying
+           ## no_sanitize("address") to the renamed globals removes them from both
+           ## registration tables, preventing the spurious ODR violation.
+           'sAppend(&sbOut, "%s",',
+           '  "#if defined(__has_attribute)\\n"',
+           '  "#  if __has_attribute(no_sanitize)\\n"',
+           '  "#    define _RX_NO_ASAN __attribute__((no_sanitize(\\"address\\")))\\n"',
+           '  "#  elif __has_attribute(no_sanitize_address)\\n"',
+           '  "#    define _RX_NO_ASAN __attribute__((no_sanitize_address))\\n"',
+           '  "#  else\\n"',
+           '  "#    define _RX_NO_ASAN\\n"',
+           '  "#  endif\\n"',
+           '  "#else\\n"',
+           '  "#  define _RX_NO_ASAN\\n"',
+           '  "#endif\\n");',
            "}",
            "void writeBody0(void) {",
+           ## Wrap all global-variable definitions in a clang attribute block so
+           ## that ASAN skips them in both its registration mechanisms.
+           'sAppend(&sbOut, "%s",',
+           '  "#if defined(__clang__)\\n"',
+           '  "#pragma clang attribute push(__attribute__((no_sanitize(\\"address\\"))), apply_to = any(variable(unless(is_parameter))))\\n"',
+           '  "#endif\\n");',
            paste0("sAppendN(&sbOut, ", vapply(paste0(l0, "\n"), deparse2, character(1)), ", ", nchar(l0) + 1, ");"),
+           'sAppend(&sbOut, "%s",',
+           '  "#if defined(__clang__)\\n"',
+           '  "#pragma clang attribute pop\\n"',
+           '  "#endif\\n");',
            "}",
            "void writeBody1(void) {",
            paste0("sAppendN(&sbOut, ", vapply(paste0(l1, "\n"), deparse2, character(1)), ", ", nchar(l1) + 1, ");"),
@@ -245,6 +272,7 @@ final <- c("#include <time.h>",
            "}",
            "void writeFooter(void) {",
            paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),
+           paste0("sAppendN(&sbOut, \"#undef _RX_NO_ASAN\\n\", ", nchar("_RX_NO_ASAN") + 8, ");"),
            "}"
            )
 
