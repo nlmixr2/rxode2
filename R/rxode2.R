@@ -1539,11 +1539,11 @@ rxCompile.rxModelVars <- function(model, # Model
         if (is.na(.rxCompileEnv$cc)) {
           .compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
           .versionInfo <- try(system(paste(.compilerPath, "--version"), intern = TRUE))
-          if (inherits(versionInfo, "try-error")) {
+          if (inherits(.versionInfo, "try-error")) {
             .rxCompileEnv$cc <- "unknown"
-          } else if (any(grepl("clang", versionInfo, ignore.case = TRUE))) {
+          } else if (any(grepl("clang", .versionInfo, ignore.case = TRUE))) {
             .rxCompileEnv$cc <- "clang"
-          } else if (any(grepl("gcc", versionInfo, ignore.case = TRUE))) {
+          } else if (any(grepl("gcc", .versionInfo, ignore.case = TRUE))) {
             .rxCompileEnv$cc <- "gcc"
           } else {
             .rxCompileEnv$cc <- "unknown"
