@@ -108,7 +108,7 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.2" id="rxode2-512">rxode2 5.1.2<a class="anchor" aria-label="anchor" href="#rxode2-512"></a></h2>
 <ul><li><p><code><a href="../reference/stat_cens.html">geom_cens()</a></code> / <code><a href="../reference/stat_cens.html">stat_cens()</a></code> no longer emit “Ignoring unknown aesthetics” warnings when censoring aesthetics are mapped. Documentation corrected to describe the two supported lowercase forms: <code>lower</code>/<code>upper</code> (both required) or <code>cens</code> (with optional <code>limit</code>). The two forms cannot be mixed, <code>lower</code> and <code>upper</code> are now required together, and <code>limit</code> without <code>cens</code> is rejected rather than silently ignored.</p></li>
-<li><p>Checks for <code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">is.loaded()</a></code> before loading a rxode2 model. This fixes the ODR issue shown in nlmixr2est.</p></li>
+<li><p>Checks for <code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">is.loaded()</a></code> before loading a rxode2 model. This helps fix the m1 ODR issue shown in nlmixr2est.</p></li>
 <li><p>Moved <code>dim.rxEt()</code> here instead of in nlmixr2est</p></li>
 </ul></div>
     <div class="section level2">
