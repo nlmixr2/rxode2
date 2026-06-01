@@ -318,9 +318,9 @@ argument is needed to unlock large steps.</p>
 <span>    <span class="va">by</span>, <span class="va">nobs</span>, <span class="va">std</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"dense = %5.1f ms  speedup = %.2fx\n"</span>, <span class="va">den</span>, <span class="va">std</span> <span class="op">/</span> <span class="va">den</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co">#&gt; obs spacing = 1.00 h  (n_obs =   169):  standard =  58.9 ms  dense =  59.7 ms  speedup = 0.99x</span></span>
-<span><span class="co">#&gt; obs spacing = 0.10 h  (n_obs =  1681):  standard =  67.3 ms  dense =  67.1 ms  speedup = 1.00x</span></span>
-<span><span class="co">#&gt; obs spacing = 0.01 h  (n_obs = 16801):  standard = 159.3 ms  dense = 149.2 ms  speedup = 1.07x</span></span></code></pre></div>
+<span><span class="co">#&gt; obs spacing = 1.00 h  (n_obs =   169):  standard =  58.8 ms  dense =  59.4 ms  speedup = 0.99x</span></span>
+<span><span class="co">#&gt; obs spacing = 0.10 h  (n_obs =  1681):  standard =  65.3 ms  dense =  66.7 ms  speedup = 0.98x</span></span>
+<span><span class="co">#&gt; obs spacing = 0.01 h  (n_obs = 16801):  standard = 143.4 ms  dense = 143.1 ms  speedup = 1.00x</span></span></code></pre></div>
 <p>Typical results on this machine:</p>
 <table class="table">
 <thead><tr class="header">
@@ -381,9 +381,9 @@ override explicitly (suppressing messages with
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bm</span>, unit <span class="op">=</span> <span class="st">"ms"</span>, order <span class="op">=</span> <span class="st">"median"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;                 expr      min       lq     mean   median       uq      max</span></span>
-<span><span class="co">#&gt;     std_default_hmax 64.66970 65.55743 69.29241 66.90587 73.50762 77.47257</span></span>
-<span><span class="co">#&gt;      dense_auto_hmax 64.91377 65.85750 69.32109 67.26386 72.78416 76.86931</span></span>
-<span><span class="co">#&gt;  dense_explicit_hmax 63.78378 65.97078 70.52431 68.85673 74.11040 91.87001</span></span>
+<span><span class="co">#&gt;      dense_auto_hmax 62.44865 64.60378 67.25634 65.91067 70.90171 73.48079</span></span>
+<span><span class="co">#&gt;     std_default_hmax 62.98703 64.36473 67.58771 66.85192 71.18268 74.75181</span></span>
+<span><span class="co">#&gt;  dense_explicit_hmax 62.38717 64.64171 68.59736 67.54777 71.68742 85.50916</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;     30</span></span>
 <span><span class="co">#&gt;     30</span></span>
