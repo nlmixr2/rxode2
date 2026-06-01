@@ -1552,7 +1552,7 @@ rxCompile.rxModelVars <- function(model, # Model
         if (.rxCompileEnv$cc == "clang") {
           .extra <- "-fno-math-errno -mtune=native -fno-sanitize=address "
         } else if (.rxCompileEnv$cc == "gcc") {
-          .extra <- "-fno-math-errno -mtune=native -fno-sanitize=address  "
+          .extra <- "-fno-math-errno -mtune=native "
         } else {
           .extra <- " "
         }
