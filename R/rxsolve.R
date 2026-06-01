@@ -122,7 +122,6 @@
 #'     For `"ab"` and `"abm"`, the default is 5, and it can be between 1 and 8.
 #'     For `"mm"` (Modified Midpoint), it represents the number of intermediate steps,
 #'     the default is 5, and it must be a positive integer (>= 1).
-
 #'
 #' @param maxords The maximum order to be allowed for the stiff (BDF)
 #'     method.  The default value is 5.  This can be between 1 and 5.
@@ -881,6 +880,30 @@
 #'   a good first choice) only for large QSP or PBPK models where Jacobian
 #'   factorization becomes the bottleneck.
 #'
+#' @param autoSwitchNonstifftol Numeric in `(0, 1]`; stiffness ratio threshold
+#'   used when the solver is in non-stiff mode.  If
+#'   `rho * |dt| / S(primary) > autoSwitchNonstifftol`, the interval is
+#'   considered stiff and the secondary solver is tried.  Default `9/10`.
+#'
+#' @param autoSwitchStifftol Numeric in `(0, 1]`; non-stiffness ratio threshold
+#'   used when the solver is in stiff mode.  If
+#'   `rho * |dt| / S(primary) < autoSwitchStifftol`, the interval is considered
+#'   non-stiff and the switch-back counter is incremented.  Default `9/10`.
+#'
+#' @param autoSwitchDtfac Numeric `>= 1`; factor by which the suggested step
+#'   size is multiplied when switching to the stiff solver, and divided when
+#'   switching back.  Default `2.0`.
+#'
+#' @param autoSwitchMaxStiff Integer; number of consecutive stiff-detected
+#'   intervals before permanently switching to the stiff solver.  Default `10L`.
+#'
+#' @param autoSwitchMaxNonstiff Integer; number of consecutive non-stiff
+#'   intervals (while in stiff mode) before switching back to the fast
+#'   non-stiff solver.  Default `3L`.
+#'
+#' @param autoSwitchStiffFirst Logical; when `TRUE`, start each subject solve
+#'   with the stiff solver instead of the non-stiff primary.  Default `FALSE`.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -1026,6 +1049,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     serializeFile=NULL,
                     dense=FALSE,
                     cvodeLinSolver=c("dense", "band", "gmres", "bicgstab", "tfqmr"),
+                    autoSwitchNonstifftol=9/10,
+                    autoSwitchStifftol=9/10,
+                    autoSwitchDtfac=2.0,
+                    autoSwitchMaxStiff=10L,
+                    autoSwitchMaxNonstiff=3L,
+                    autoSwitchStiffFirst=FALSE,
+                    stiff2=0L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1135,6 +1165,22 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       }
     }
     method <- odeMethodToInt(method)
+    if (length(method) == 2L && !is.null(names(method)) && "primary" %in% names(method)) {
+      stiff2 <- as.integer(unname(method["stiff"]))
+      method <- as.integer(unname(method["primary"]))
+    } else {
+      stiff2 <- as.integer(stiff2)
+    }
+    checkmate::assertNumeric(as.numeric(autoSwitchNonstifftol), lower=0, upper=1, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchStifftol), lower=0, upper=1, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchDtfac), lower=1, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(autoSwitchMaxStiff, lower=1L, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(autoSwitchMaxNonstiff, lower=1L, len=1, any.missing=FALSE)
+    if (is.logical(autoSwitchStiffFirst)) {
+      checkmate::assertLogical(autoSwitchStiffFirst, len=1, any.missing=FALSE)
+    } else {
+      checkmate::assertIntegerish(autoSwitchStiffFirst, lower=0L, upper=1L, len=1, any.missing=FALSE)
+    }
     if (checkmate::testIntegerish(cvodeLinSolver, len=1, lower=1L, upper=5L,
                                   any.missing=FALSE)) {
       cvodeLinSolver <- as.integer(cvodeLinSolver)
@@ -1635,6 +1681,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       serializeFile=serializeFile,
       dense=dense,
       cvodeLinSolver=cvodeLinSolver,
+      stiff2=stiff2,
+      autoSwitchMaxStiff=as.integer(autoSwitchMaxStiff),
+      autoSwitchMaxNonstiff=as.integer(autoSwitchMaxNonstiff),
+      autoSwitchStiffFirst=as.integer(autoSwitchStiffFirst),
+      autoSwitchNonstifftol=as.double(autoSwitchNonstifftol),
+      autoSwitchStifftol=as.double(autoSwitchStifftol),
+      autoSwitchDtfac=as.double(autoSwitchDtfac),
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2203,7 +2256,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmp
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
-  if (rxIsImplicit(.ctl$method)) {
+  if (rxIsImplicit(.ctl$method) ||
+      (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2))) {
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
@@ -2243,15 +2297,22 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         NA_character_
       })
       if (!is.na(.filteredCode)) {
-        object <- rxode2(.filteredCode)
-        force(params)
-        force(events)
-        force(inits)
-        force(indOwnAlloc)
-        force(theta)
-        force(eta)
-        force(envir)
-        return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
+        .jacObject <- rxode2(.filteredCode)
+        .jacMd5 <- rxModelVars(.jacObject)$md5["parsed_md5"]
+        if (.jacMd5 != .mvCur$md5["parsed_md5"]) {
+          # Model changed (Jacobian equations were added); recurse with new model.
+          object <- .jacObject
+          force(params)
+          force(events)
+          force(inits)
+          force(indOwnAlloc)
+          force(theta)
+          force(eta)
+          force(envir)
+          return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
+        }
+        # Model md5 unchanged: Jacobian equations were already present; calc_jac is now
+        # loaded with the real Jacobian function. Fall through to solve directly.
       } else {
         .jacDetail <- if (!is.null(.jacEnv$errMsg)) .jacEnv$errMsg else
           "model previously failed Jacobian generation (cached)"
@@ -2260,6 +2321,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
                 "\n  Falling back to liblsoda.",
                 call. = FALSE)
         .ctl$method <- 2L
+        .ctl$stiff2 <- 0L
       }
     }
   }
@@ -3769,6 +3831,8 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
     method <- .methodIdx
   } else if (checkmate::testIntegerish(method)) {
     method <- as.integer(method)
+  } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
+    method <- .parseAutoSwitchMethod(method)
   } else {
     method <- .methodIdx[match.arg(method)]
   }
@@ -3838,17 +3902,305 @@ rxIsImplicit <- function(method) {
     "lsode" = 106L, "bdf" = 107L
   )
   if (is.character(method)) {
-    .codes <- .methodIdx[method]
-    if (any(is.na(.codes))) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
       stop("unknown method(s): ",
-           paste(method[is.na(.codes)], collapse = ", "),
+           paste(method[.unknown], collapse = ", "),
            call. = FALSE)
     }
-    method <- .codes
+    return(ifelse(.composite, FALSE, .codes %in% .implicitCodes))
   } else {
     method <- as.integer(method)
   }
   method %in% .implicitCodes
+}
+
+#' Check whether an ODE solving method is a purely stiff solver
+#'
+#' Returns `TRUE` for methods that are designed exclusively for stiff systems
+#' and will never switch to a non-stiff algorithm.  Solvers like `"lsoda"` and
+#' `"liblsoda"` that automatically switch between stiff and non-stiff algorithms
+#' return `FALSE`.
+#'
+#' Stiff-only methods are:
+#' `"ros4"` (13), `"iem"` (14), `"cvode"` (21), `"ros43"` (31), `"ros6"` (32),
+#' `"backwardEuler"` (33), `"gauss6"` (34), `"iiic6"` (35), `"radauiia5"` (36),
+#' `"geng5"` (37), `"sdirk43"` (38), `"bdf"` (107).
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method is a purely stiff solver.
+#'
+#' @examples
+#' rxIsStiff("bdf")                           # TRUE
+#' rxIsStiff("lsoda")                         # FALSE (switches)
+#' rxIsStiff("liblsoda")                      # FALSE (switches)
+#' rxIsStiff(c("cvode", "dop853", "ros43"))   # TRUE FALSE TRUE
+#'
+#' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
+#' @export
+rxIsStiff <- function(method) {
+  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
+    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
+    }
+    return(ifelse(.composite, FALSE, .codes %in% .stiffCodes))
+  } else {
+    method <- as.integer(method)
+  }
+  method %in% .stiffCodes
+}
+
+#' Check whether an ODE solving method is a purely non-stiff solver
+#'
+#' Returns `TRUE` for methods that are designed exclusively for non-stiff
+#' systems.  Solvers like `"lsoda"` and `"liblsoda"` that automatically switch
+#' between stiff and non-stiff algorithms return `FALSE`, as do all stiff-only
+#' methods.
+#'
+#' Switchers (`"lsoda"` = 1, `"liblsoda"` = 2) and the inductive linearisation
+#' solver (`"indLin"` = 3) are excluded from both [rxIsStiff()] and
+#' `rxIsNonStiff()`.
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method is a purely non-stiff solver.
+#'
+#' @examples
+#' rxIsNonStiff("dop853")                        # TRUE
+#' rxIsNonStiff("lsoda")                         # FALSE (switches)
+#' rxIsNonStiff("bdf")                           # FALSE (stiff-only)
+#' rxIsNonStiff(c("lsode", "cvode", "bs32"))     # TRUE FALSE TRUE
+#'
+#' @seealso [rxIsStiff()], [rxIsImplicit()], [odeMethodToInt()]
+#' @export
+rxIsNonStiff <- function(method) {
+  .switcherCodes <- c(1L, 2L, 3L)
+  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
+    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
+    }
+    return(ifelse(.composite, FALSE, !.codes %in% c(.switcherCodes, .stiffCodes)))
+  } else {
+    method <- as.integer(method)
+  }
+  !method %in% c(.switcherCodes, .stiffCodes)
+}
+
+#' Check whether an ODE solving method supports dense output
+#'
+#' Dense output (continuous interpolation) allows the solver to reconstruct
+#' the solution at any point within a completed step without extra function
+#' evaluations.  This lets the solver take large internal steps that span many
+#' requested output times, then interpolate cheaply — improving both speed and
+#' accuracy on densely sampled grids.
+#'
+#' Dense-capable methods are:
+#' `"dop853"` (0), `"dop5"` (10), `"bs"` (11), `"ros4"` (13).
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method supports dense output.
+#'
+#' @examples
+#' rxIsDense("dop853")                       # TRUE
+#' rxIsDense("ros4")                         # TRUE
+#' rxIsDense("liblsoda")                     # FALSE
+#' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE FALSE
+#'
+#' @seealso [rxIsStiff()], [rxIsNonStiff()], [odeMethodToInt()]
+#' @export
+rxIsDense <- function(method) {
+  .denseCodes <- c(0L, 10L, 11L, 13L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
+    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
+    }
+    return(ifelse(.composite, FALSE, .codes %in% .denseCodes))
+  } else {
+    method <- as.integer(method)
+  }
+  method %in% .denseCodes
+}
+
+#' Check whether an ODE method code is thread-safe for parallel solving
+#'
+#' @param code Integer method code as returned by [odeMethodToInt()].
+#' @return `TRUE` if safe to use in parallel OpenMP loops.
+#' @noRd
+.rxIsThreadSafeMethod <- function(code) {
+  code <- as.integer(code)
+  !(code %in% c(1L, 2L, 106L, 107L))
+}
+
+#' Parse a composite AutoSwitch method string of the form "primary+stiff"
+#'
+#' @param method Character scalar like `"dop853+ros43"`.
+#' @return Named integer vector `c(primary=..., stiff=...)` or `NULL` if not composite.
+#' @noRd
+.parseAutoSwitchMethod <- function(method) {
+  if (!grepl("+", method, fixed = TRUE)) return(NULL)
+  .parts <- trimws(strsplit(method, "+", fixed = TRUE)[[1]])
+  if (length(.parts) != 2L) {
+    stop("AutoSwitch method must be 'primary+stiff', got: '", method, "'", call. = FALSE)
+  }
+  .code1 <- tryCatch(odeMethodToInt(.parts[1]), error = function(e) {
+    stop("AutoSwitch: unknown primary method '", .parts[1], "'", call. = FALSE)
+  })
+  .code2 <- tryCatch(odeMethodToInt(.parts[2]), error = function(e) {
+    stop("AutoSwitch: unknown stiff method '", .parts[2], "'", call. = FALSE)
+  })
+  if (!rxIsNonStiff(.code1)) {
+    stop("AutoSwitch primary '", .parts[1], "' must be a non-stiff method", call. = FALSE)
+  }
+  if (!.rxIsThreadSafeMethod(.code1)) {
+    stop("AutoSwitch primary '", .parts[1], "' is not thread-safe", call. = FALSE)
+  }
+  if (!rxIsStiff(.code2)) {
+    stop("AutoSwitch stiff secondary '", .parts[2], "' must be a stiff method", call. = FALSE)
+  }
+  if (!.rxIsThreadSafeMethod(.code2)) {
+    stop("AutoSwitch stiff secondary '", .parts[2], "' is not thread-safe", call. = FALSE)
+  }
+  if (.code2 == 21L) {
+    stop("AutoSwitch: CVODE ('cvode') as stiff secondary is not yet supported in composite methods",
+         call. = FALSE)
+  }
+  c(primary = as.integer(.code1), stiff = as.integer(.code2))
+}
+
+#' Check whether an ODE method string is an AutoSwitch composite pair
+#'
+#' Returns `TRUE` for strings containing `"+"`, such as `"dop853+ros43"`.
+#'
+#' @param method Character vector of method names.
+#' @return Logical vector the same length as `method`.
+#'
+#' @examples
+#' rxIsAutoSwitch("dop853+ros43")  # TRUE
+#' rxIsAutoSwitch("dop853")        # FALSE
+#' rxIsAutoSwitch(c("dop853+ros43", "liblsoda"))  # TRUE FALSE
+#'
+#' @seealso [odeMethodToInt()], [rxIsNonStiff()], [rxIsStiff()]
+#' @export
+rxIsAutoSwitch <- function(method) {
+  if (is.character(method)) return(grepl("+", method, fixed = TRUE))
+  rep(FALSE, length(method))
 }
 
 #' This updates the tolerances based on the sensitivity equations

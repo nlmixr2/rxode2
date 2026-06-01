@@ -179,6 +179,54 @@ extern "C" void freeRworkPool() {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── AutoSwitch: Gershgorin spectral radius and stability size ─────────────────
+
+static double autoSwitchStabilitySize(int method) {
+  switch (method) {
+    case  0: return 5.80;  /* dop853  */
+    case 10: return 3.00;  /* dop5    */
+    case 11: return 6.00;  /* bs      */
+    case  5: return 3.50;  /* f78     */
+    case  6: return 2.83;  /* rk4     */
+    case  7: return 3.00;  /* ck54    */
+    case  8: return 1.50;  /* ab      */
+    case  9: return 3.00;  /* abm     */
+    case 22: return 2.00;  /* trapz   */
+    case 23: return 2.00;  /* ssp3    */
+    default: return 3.00;  /* rklib adaptive; conservative fallback */
+  }
+}
+
+/* Gershgorin spectral radius from Jacobian stored column-major (Fortran order):
+   jac[i + j*neq] = df_i/dy_j.  Returns the maximum absolute row sum. */
+static double gershgorinSpectralRadius(double *jac, int neq) {
+  double rho = 0.0;
+  for (int i = 0; i < neq; i++) {
+    double row = 0.0;
+    for (int j = 0; j < neq; j++) {
+      row += fabs(jac[i + j * neq]);
+    }
+    if (row > rho) rho = row;
+  }
+  return rho;
+}
+
+static std::vector<std::vector<double>> __autoJacBuf;
+
+extern "C" void ensureAutoJacBuf(int nCores, int neq) {
+  int need = neq * neq;
+  if ((int)__autoJacBuf.size() < nCores) {
+    __autoJacBuf.resize(nCores);
+  }
+  for (int i = 0; i < nCores; i++) {
+    if ((int)__autoJacBuf[i].size() < need) {
+      __autoJacBuf[i].assign(need, 0.0);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 extern "C" void nullGlobals() {
   lineNull(&(rx_global.factors));
   lineNull(&(rx_global.factorNames));
@@ -1488,52 +1536,39 @@ extern "C" void par_rko10(rx_solve *rx);
 extern "C" void par_rkh10(rx_solve *rx);
 
 
-static inline void solveWith1Pt(int *neq,
-                                int *BadDose,
-                                double *InfusionRate,
-                                double *dose,
-                                double *yp,
-                                double xout, double xp, int id,
-                                int *i, int nx,
-                                int *istate,
-                                rx_solving_options *op,
-                                rx_solving_options_ind *ind,
-                                t_update_inis u_inis,
-                                void *ctx){
-  int idid, itol=0;
-  // Per-individual effective neq under neqOverride; allocations are still
-  // sized for op->neq, only stepping uses the smaller stride.
-  int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
-  if (neqOde == 0 && eff > 0) {
-    if (!isSameTime(xout, xp)) {
-      preSolve(op, ind, xp, xout, yp);
-      linSolve(neq, ind, yp, &xp, xout);
-    }
-  } else {
-    switch(op->stiff) {
+/* Run one ODE interval with the specified method code.
+   On entry:  *xp = interval start time; yp = current state.
+   On return: *xp = xout (if successful), yp = updated state.
+   *istate ≤ 0 or ind->rc[0] == -2019 signals failure.
+   *idid is set for dop853 (method==0); positive = success, -4 = stiff detected.
+   autoSwitchPrimary: when true, dop853 uses nstiff=50 to enable internal stiffness test. */
+static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
+                                       int *neq, double *yp, double *xp,
+                                       double xout, int *istate, int *idid,
+                                       rx_solving_options *op,
+                                       rx_solving_options_ind *ind,
+                                       int *i, void *ctx,
+                                       int eff) {
+  int itol = 0;
+  switch (method) {
     case 3:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        idid = indLin(ind->id, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
-                      (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
+        *idid = indLin(ind->id, op, ind, *xp, yp, xout, ind->InfusionRate, ind->on,
+                       (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
       }
-      if (idid <= 0) {
-        /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
-        ind->rc[0] = idid;
-        // Bad Solve => NA
+      if (*idid <= 0) {
+        ind->rc[0] = *idid;
         badSolveExit(*i);
       } else if (ind->err){
-        /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
-        ind->rc[0] = idid;
-        // Bad Solve => NA
+        ind->rc[0] = *idid;
         badSolveExit(*i);
       }
       break;
     case 2:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
+        lsoda((lsoda_context_t*)ctx, yp, xp, xout);
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
@@ -1543,627 +1578,320 @@ static inline void solveWith1Pt(int *neq,
       } else if (ind->err){
         printErr(ind->err, ind->id);
         ind->rc[0] = -2019;
-        *i = ind->n_all_times-1; // Get out of here!
+        *i = ind->n_all_times-1;
         break;
       }
       break;
     case 5:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        rkf78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf78_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 6:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        rk4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 7:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        ck54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ck54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 8:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        ab_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
-      case 9:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        abm_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ab_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+    case 9:
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); abm_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 10:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        dop5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 11:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        bs_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); bs_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 13:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        ros4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 14:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        iem_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); iem_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 15:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        sem_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sem_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 16:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        sb3a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sb3a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 17:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        sb3am4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sb3am4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 18:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        vv_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vv_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 19:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        mm_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); mm_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 20:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        em_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); em_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 21:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        cvode_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind, ctx);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); cvode_solveWith1Pt(neq, yp, xp, xout, istate, op, ind, ctx); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 22:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        trapz_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); trapz_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 23:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        ssp3_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ssp3_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 24:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        rkf32_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf32_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 25:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        rk43_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk43_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 26:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        dop54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 27:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        vern65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 28:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        vern76_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 29:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        dop87_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 30:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        vern98_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) {
-        ind->rc[0] = -2019;
-        break;
-      } else if (ind->err) {
-        printErr(ind->err, ind->id);
-        ind->rc[0] = -2019;
-        break;
-      }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern98_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 31:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        grk4a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind);
-        copyLinCmt(neq, ind, op, yp);
-      }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; }
-      else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
-      break;
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); grk4a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 32:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); ros6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 33:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); backwardEuler_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); backwardEuler_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 34:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); gauss6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); gauss6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 35:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); iiic6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); iiic6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 36:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); radauiia5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); radauiia5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 37:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); geng5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); geng5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 38:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); sdirk43_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sdirk43_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 39:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); euler_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); euler_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 40:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); midpoint_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); midpoint_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 41:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); heun_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); heun_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 42:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp22_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp22_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 43:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk3_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk3_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 44:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp53_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp53_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 45:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 46:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkr4_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkr4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 47:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkls44_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkls44_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 48:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkls54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkls54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 49:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 50:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 51:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 52:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkc5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkc5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 53:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkl5_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkl5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 54:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rklk5a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rklk5a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 55:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rklk5b_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rklk5b_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 56:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkb6_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkb6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 57:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk7_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk7_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 58:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk8_10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk8_10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 59:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkcv8_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkcv8_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 60:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rk8_12_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk8_12_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 61:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 62:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkz10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkz10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 63:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rko10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rko10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 64:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkh10_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkh10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 65:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkbs32_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkbs32_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 66:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkssp43_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp43_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 67:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf45_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf45_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 68:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkt54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkt54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 69:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 70:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkpp54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkpp54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 71:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkpp54b_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkpp54b_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 72:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkbs54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkbs54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 73:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkss54_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkss54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 74:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkdp65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkdp65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 75:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkc65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkc65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 76:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktp64_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktp64_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 77:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv65r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv65r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 78:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 79:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); dverk65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dverk65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 80:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktf65_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktf65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 81:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktp75_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktp75_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 82:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktmy7_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktmy7_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 83:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktmy7s_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktmy7s_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 84:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv76r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv76r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 85:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkss76_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkss76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 86:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv78_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 87:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); dverk78_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dverk78_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 88:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkdp85_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkdp85_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 89:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rktp86_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktp86_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 90:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv87e_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv87e_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 91:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv87r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv87r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 92:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkev87_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkev87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 93:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkk87_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkk87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 94:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf89_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf89_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 95:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv89_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv89_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 96:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkt98a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkt98a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 97:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkv98r_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv98r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 98:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks98_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks98_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 99:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf108_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf108_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 100:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkc108_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkc108_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 101:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkb109_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkb109_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 102:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rks1110a_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks1110a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 103:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf1210_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf1210_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 104:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rko129_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rko129_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 105:
-      if (!isSameTime(xout, xp)) { preSolve(op, ind, xp, xout, yp); rkf1412_solveWith1Pt(neq, yp, &xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf1412_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
     case 106:
-      /* lsode: DLSODE Adams MF=10 (non-stiff, variable order 1-12) */
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
           int _itol = 1, _itask = 1, _iopt = 1, _mf = 10;
           double _rpar = 0.0; int _ipar = 0;
-          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
+          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, xp, &xout,
                            &_itol, &(op->RTOL), &(op->ATOL), &_itask,
                            istate, &_iopt, __rworkPool[0].rworkp,
                            &_lrw, __rworkPool[0].iworkp, &_liw,
@@ -2179,16 +1907,15 @@ static inline void solveWith1Pt(int *neq,
       } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
       break;
     case 107:
-      /* bdf: DLSODE BDF MF=22 (stiff, internally generated dense Jacobian) */
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
         {
           int _lrw = 22 + 9 * op->neq + 2 * op->neq * op->neq;
           int _liw = 20 + op->neq;
           int _itol = 1, _itask = 1, _iopt = 1, _mf = 22;
           double _rpar = 0.0; int _ipar = 0;
-          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
+          F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, xp, &xout,
                            &_itol, &(op->RTOL), &(op->ATOL), &_itask,
                            istate, &_iopt, __rworkPool[0].rworkp,
                            &_lrw, __rworkPool[0].iworkp, &_liw,
@@ -2204,14 +1931,14 @@ static inline void solveWith1Pt(int *neq,
       } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
       break;
     case 1:
-      if (!isSameTime(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
           int _itol = 1, _itask = 1, _iopt = 1;
-          F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
+          F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, xp, &xout,
                            &_itol, &(op->RTOL), &(op->ATOL), &_itask,
                            istate, &_iopt, __rworkPool[0].rworkp,
                            &_lrw, __rworkPool[0].iworkp, &_liw, jdum_lsoda, &global_jt);
@@ -2221,7 +1948,7 @@ static inline void solveWith1Pt(int *neq,
       }
       if (*istate <= 0) {
         RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
-        ind->rc[0] = -2019;/* *istate; */
+        ind->rc[0] = -2019;
         break;
       } else if (ind->err){
         printErr(ind->err, ind->id);
@@ -2230,52 +1957,185 @@ static inline void solveWith1Pt(int *neq,
       }
       break;
     case 0:
-      if (!isSameTimeDop(xout, xp)) {
-        preSolve(op, ind, xp, xout, yp);
-        // change to real ODE num
+      if (!isSameTimeDop(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
-        idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                      dydt,         /* function computing the value of f(x,y) */
-                      xp,           /* initial x-value */
-                      yp,           /* initial values for y */
-                      xout,         /* final x-value (xend-x may be positive or negative) */
-                      &(op->RTOL),          /* relative error tolerance */
-                      &(op->ATOL),          /* absolute error tolerance */
-                      itol,         /* switch for rtoler and atoler */
-                      solout,         /* function providing the numerical solution during integration */
-                      0,         /* switch for calling solout */
-                      NULL,           /* messages stream */
-                      DBL_EPSILON,    /* rounding unit */
-                      0,              /* safety factor */
-                      0,              /* parameters for step size selection */
-                      0,
-                      0,              /* for stabilized step size control */
-                      ind->HMAX,              /* maximal step size */
-                      op->H0,            /* initial step size */
-                      op->mxstep,            /* maximal number of allowed steps */
-                      1,            /* switch for the choice of the coefficients */
-                      -1,                     /* test for stiffness */
-                      0,                      /* number of components for which dense outpout is required */
-                      NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                      0,                      /* declared length of icon */
-                      NULL                    /* userdata */
-                      );
-        // switch to overall states
+        *idid = dop853(neq,
+                       dydt,
+                       *xp,
+                       yp,
+                       xout,
+                       &(op->RTOL),
+                       &(op->ATOL),
+                       itol,
+                       solout,
+                       0,
+                       NULL,
+                       DBL_EPSILON,
+                       0,
+                       0,
+                       0,
+                       0,
+                       ind->HMAX,
+                       op->H0,
+                       op->mxstep,
+                       1,
+                       autoSwitchPrimary ? 50 : -1,
+                       0,
+                       NULL,
+                       0,
+                       NULL
+                       );
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
       }
-      if (idid < 0) {
+      if (*idid == -4) {
+        /* stiffness detected: signal for AutoSwitch; not treated as fatal here */
+        ind->rc[0] = -2019;
+        break;
+      }
+      if (*idid < 0) {
         ind->rc[0] = -2019;
         break;
       } else if (ind->err){
         printErr(ind->err, ind->id);
-        *i = ind->n_all_times-1; // Get out of here!
+        *i = ind->n_all_times-1;
         break;
       }
       break;
+  }
+}
+
+static inline void solveWith1Pt(int *neq,
+                                int *BadDose,
+                                double *InfusionRate,
+                                double *dose,
+                                double *yp,
+                                double xout, double xp, int id,
+                                int *i, int nx,
+                                int *istate,
+                                rx_solving_options *op,
+                                rx_solving_options_ind *ind,
+                                t_update_inis u_inis,
+                                void *ctx){
+  int idid = 1, itol=0;
+  // Per-individual effective neq under neqOverride; allocations are still
+  // sized for op->neq, only stepping uses the smaller stride.
+  int eff = rxEffNeq(ind, op);
+  int neqOde = eff - op->numLin - op->numLinSens;
+  if (neqOde == 0 && eff > 0) {
+    if (!isSameTime(xout, xp)) {
+      preSolve(op, ind, xp, xout, yp);
+      linSolve(neq, ind, yp, &xp, xout);
+    }
+  } else {
+    bool _autoSwitchActive = (op->stiff2 > 0);
+
+    /* stiffalgfirst: initialize to stiff on very first interval of a solve */
+    if (_autoSwitchActive && op->autoSwitchStiffFirst &&
+        ind->autoMethod == 0 && ind->autoCount == 0 && ind->autoHcur == 0.0) {
+      ind->autoMethod = 1;
+    }
+
+    int _effectiveMethod = (_autoSwitchActive && ind->autoMethod == 1) ? op->stiff2 : op->stiff;
+    bool _autoSwitchPrimary = _autoSwitchActive && (ind->autoMethod == 0);
+
+    /* Implicit stiff secondaries have Jacobian available; CVODE manages its own */
+    bool _jacAvailable = (_autoSwitchActive && calc_jac != NULL && op->stiff2 != 21 &&
+                          (op->stiff2 == 13 || op->stiff2 == 14 ||
+                           (op->stiff2 >= 31 && op->stiff2 <= 38)));
+
+    /* Save state before primary attempt for possible retry */
+    double _ypStack[64];
+    double *_ypDyn = NULL;
+    double *_ypSave = NULL;
+    double _xpOrig = xp;
+    if (_autoSwitchActive) {
+      _ypSave = (eff <= 64) ? _ypStack
+                            : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+      memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
+    }
+
+    /* Run primary (or stiff, when ind->autoMethod==1) interval */
+    _rxSolveOneInterval(_effectiveMethod, _autoSwitchPrimary,
+                        neq, yp, &xp, xout, istate, &idid,
+                        op, ind, i, ctx, eff);
+
+    /* AutoSwitch post-step logic */
+    if (_autoSwitchActive) {
+      double _dt = xout - _xpOrig;
+
+      /* Jacobian-based Gershgorin spectral radius estimate */
+      double _rhoEst = 0.0;
+      if (_jacAvailable && neqOde > 0 && ind->rc[0] != -2019 && !ind->err) {
+        int _tid = rx_get_thread((int)__autoJacBuf.size());
+        if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
+            (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
+          double *_jbuf = __autoJacBuf[_tid].data();
+          int _neqTmp[2] = { neqOde, neq[1] };
+          calc_jac(_neqTmp, xout, yp, _jbuf, (unsigned int)neqOde);
+          _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
+        }
+      }
+
+      /* Stability size always from the primary non-stiff method (op->stiff),
+         so the ratio answers "would the primary handle this step stably?" */
+      double _stiffRatio = (_rhoEst > 0.0 && _dt != 0.0)
+          ? _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff)
+          : 0.0;
+
+      bool _failed        = (ind->rc[0] == -2019 || ind->err != 0);
+      bool _dop853Stiff   = (_effectiveMethod == 0 && idid == -4);
+      bool _ratioStiff    = (_stiffRatio > op->autoSwitchNonstifftol);
+      bool _stiffIndicator = _failed || _dop853Stiff || _ratioStiff;
+
+      if (ind->autoMethod == 0) {
+        /* Currently using non-stiff primary */
+        if (_stiffIndicator) {
+          /* Retry with stiff secondary */
+          ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
+          memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
+          xp = _xpOrig;
+
+          ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
+          if (ind->autoHcur <= 0.0) ind->autoHcur = fabs(_dt);
+          ind->autoHcur *= op->autoSwitchDtfac;
+
+          _rxSolveOneInterval(op->stiff2, false,
+                              neq, yp, &xp, xout, istate, &idid,
+                              op, ind, i, ctx, eff);
+
+          if (ind->autoCount >= op->autoSwitchMaxStiff) {
+            ind->autoMethod = 1;
+            ind->autoCount  = 0;
+          }
+        } else {
+          if (ind->autoCount > 0) ind->autoCount = 0;
+        }
+      } else {
+        /* Currently using stiff secondary: check for switch back */
+        if (!_failed) {
+          bool _nonstiffByRatio = (_jacAvailable && _rhoEst > 0.0 &&
+                                   _stiffRatio < op->autoSwitchStifftol);
+          if (_nonstiffByRatio) {
+            ind->autoCount = (ind->autoCount < 0) ? ind->autoCount - 1 : -1;
+            if (op->autoSwitchMaxNonstiff > 0 &&
+                -ind->autoCount >= op->autoSwitchMaxNonstiff) {
+              ind->autoMethod = 0;
+              ind->autoCount  = 0;
+              if (ind->autoHcur > 0.0) ind->autoHcur /= op->autoSwitchDtfac;
+            }
+          } else {
+            if (ind->autoCount < 0) ind->autoCount = 0;
+          }
+        }
+      }
+
+      if (_ypDyn != NULL) { free(_ypDyn); _ypDyn = NULL; }
     }
   }
 }
+
 
 
 //' This function is used to check if the steady state can be handled

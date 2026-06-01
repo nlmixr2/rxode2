@@ -50,6 +50,7 @@ extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
+extern "C" void ensureAutoJacBuf(int nCores, int neq);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -3759,6 +3760,9 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->isIni            = 0;
   ind->_update_par_ptr_in = 0;
   ind->linCmtHparIndex  = -2;
+  ind->autoMethod = 0;
+  ind->autoCount  = 0;
+  ind->autoHcur   = 0.0;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
@@ -5293,6 +5297,13 @@ static inline void iniRx(rx_solve* rx) {
   op->stiff = 0;
   op->useDense = 0;
   op->ncov = 0;
+  op->stiff2 = 0;
+  op->autoSwitchMaxStiff    = 10;
+  op->autoSwitchMaxNonstiff = 3;
+  op->autoSwitchStiffFirst  = 0;
+  op->autoSwitchNonstifftol = 0.9;
+  op->autoSwitchStifftol    = 0.9;
+  op->autoSwitchDtfac       = 2.0;
   op->par_cov = NULL;
   op->par_cov_interp = NULL;
   op->lhs_str = NULL;
@@ -5677,7 +5688,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
-    op->cvodeLinSolver = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
+    op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
+    op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
+    op->autoSwitchMaxStiff    = asInt(rxControl[Rxc_autoSwitchMaxStiff], "autoSwitchMaxStiff");
+    op->autoSwitchMaxNonstiff = asInt(rxControl[Rxc_autoSwitchMaxNonstiff], "autoSwitchMaxNonstiff");
+    op->autoSwitchStiffFirst  = asInt(rxControl[Rxc_autoSwitchStiffFirst], "autoSwitchStiffFirst");
+    op->autoSwitchNonstifftol = asDouble(rxControl[Rxc_autoSwitchNonstifftol], "autoSwitchNonstifftol");
+    op->autoSwitchStifftol    = asDouble(rxControl[Rxc_autoSwitchStifftol], "autoSwitchStifftol");
+    op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
     if (op->useDense && method != 3) {
       op->useDense = 0;
     }
@@ -5769,6 +5787,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       _liw2 = 20 + _bneq;
     }
     ensureRworkPool((int)op->cores, _lrw2, _liw2);
+    if (op->stiff2 > 0) {
+      ensureAutoJacBuf((int)op->cores, _bneq);
+    }
 
     // Now set up events and parameters
     RObject par0 = params;

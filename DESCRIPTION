@@ -38,7 +38,7 @@ Authors@R: c(
    person("Roger B.", "Sidje", role="ctb"),
    person("Simon", "Frost", role="ctb"),
    person("Thomas", "Petzoldt", role="ctb"),
-   person("Woodrow",  "Setzer", role="ctb",)
+   person("Woodrow",  "Setzer", role="ctb"),
    person("Yu", "Feng", role="ctb"),
    person("Zufar", "Mulyukov", role="ctb", email="zufar.mulyukov@novartis.com"))
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>

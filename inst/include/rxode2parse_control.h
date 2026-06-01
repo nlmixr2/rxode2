@@ -117,7 +117,14 @@
 #define Rxc_serializeFile 113
 #define Rxc_dense 114
 #define Rxc_cvodeLinSolver 115
-#define Rxc__zeros 116
+#define Rxc_stiff2 116
+#define Rxc_autoSwitchMaxStiff 117
+#define Rxc_autoSwitchMaxNonstiff 118
+#define Rxc_autoSwitchStiffFirst 119
+#define Rxc_autoSwitchNonstifftol 120
+#define Rxc_autoSwitchStifftol 121
+#define Rxc_autoSwitchDtfac 122
+#define Rxc__zeros 123
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
