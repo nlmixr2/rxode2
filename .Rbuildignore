@@ -1,3 +1,5 @@
+^.cache$
+^.mcp.json$
 ^bench/$
 ^PERFORMACE_PLAN.md$
 ^AGENT_STATUS.md$
