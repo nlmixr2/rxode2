@@ -170,6 +170,13 @@ rxSolve(
   serializeFile = NULL,
   dense = FALSE,
   cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
+  autoSwitchNonstifftol = 9/10,
+  autoSwitchStifftol = 9/10,
+  autoSwitchDtfac = 2,
+  autoSwitchMaxStiff = 10L,
+  autoSwitchMaxNonstiff = 3L,
+  autoSwitchStiffFirst = FALSE,
+  stiff2 = 0L,
   envir = parent.frame()
 )
 
@@ -1454,6 +1461,30 @@ For most pharmacometric models with fewer than ~50 compartments the default
 \code{"dense"} solver is fastest.  Switch to an iterative solver (\code{"gmres"} is
 a good first choice) only for large QSP or PBPK models where Jacobian
 factorization becomes the bottleneck.}
+
+\item{autoSwitchNonstifftol}{Numeric in \verb{(0, 1]}; stiffness ratio threshold
+used when the solver is in non-stiff mode.  If
+\verb{rho * |dt| / S(primary) > autoSwitchNonstifftol}, the interval is
+considered stiff and the secondary solver is tried.  Default \code{9/10}.}
+
+\item{autoSwitchStifftol}{Numeric in \verb{(0, 1]}; non-stiffness ratio threshold
+used when the solver is in stiff mode.  If
+\verb{rho * |dt| / S(primary) < autoSwitchStifftol}, the interval is considered
+non-stiff and the switch-back counter is incremented.  Default \code{9/10}.}
+
+\item{autoSwitchDtfac}{Numeric \verb{>= 1}; factor by which the suggested step
+size is multiplied when switching to the stiff solver, and divided when
+switching back.  Default \code{2.0}.}
+
+\item{autoSwitchMaxStiff}{Integer; number of consecutive stiff-detected
+intervals before permanently switching to the stiff solver.  Default \code{10L}.}
+
+\item{autoSwitchMaxNonstiff}{Integer; number of consecutive non-stiff
+intervals (while in stiff mode) before switching back to the fast
+non-stiff solver.  Default \code{3L}.}
+
+\item{autoSwitchStiffFirst}{Logical; when \code{TRUE}, start each subject solve
+with the stiff solver instead of the non-stiff primary.  Default \code{FALSE}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

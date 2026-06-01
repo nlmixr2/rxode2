@@ -4640,7 +4640,9 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx);
         if (ind->wh0 == EVID0_OFF) ind->solve[ind->cmt] = op->inits[ind->cmt];
-        if (rx->istateReset) istate = 1;
+        if (rx->istateReset) {
+          istate = 1;
+        }
         xp = xout;
       }
       int _mtime_requeued = 0;
