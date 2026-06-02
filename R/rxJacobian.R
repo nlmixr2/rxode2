@@ -214,6 +214,17 @@ rxExpandGrid <- function(x, y, type = 0L) {
   }
 }
 
+#' Build restore lines for captured adaptive dosing calls
+#'
+#' @param captures List of capture records from `rxPrune()` attribute `"capturedEvid"`
+#' @return Character vector of restore lines, one per captured call
+#' @noRd
+.restoreAdaptiveDosing <- function(captures) {
+  vapply(captures, function(cap) {
+    paste0("if (", cap$capVar, ") { ", cap$original, " }")
+  }, character(1L), USE.NAMES = FALSE)
+}
+
 .rxLoadPrune <- function(mod, doConst = TRUE, promoteLinSens = TRUE, fullModel = FALSE,
                          addProp = c("combined2", "combined1")) {
   addProp <- match.arg(addProp)
@@ -222,7 +233,9 @@ rxExpandGrid <- function(x, y, type = 0L) {
   } else {
     .malert("pruning branches ({.code if}/{.code else})...")
   }
-  .newmod <- rxGetModel(rxPrune(mod))
+  .pruned <- rxPrune(mod)
+  .captures <- attr(.pruned, "capturedEvid")
+  .newmod <- rxGetModel(.pruned)
   .msuccess("done")
   ## message("Loading into symengine environment...", appendLF=FALSE)
   if (fullModel) {
@@ -231,6 +244,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
     .malert("loading into {.pkg symengine} environment...")
   }
   .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens)
+  if (length(.captures) > 0L) {
+    .newmod$..capturedEvid <- .captures
+    .newmod$..restoreLines <- .restoreAdaptiveDosing(.captures)
+  }
   .rxFixR(.newmod, addProp)
   .msuccess("done")
   return(.newmod)
