@@ -48,7 +48,7 @@ rxTest({
       add.dosing(dose = 100, nbr.doses = 1, start.time = 0) %>%
       add.sampling(seq(0, 10, by = 1))
 
-    res1 <- rxSolve(mod1, et1)
+    res1 <- rxSolve(mod1, et1, method = "indLin")
 
     # Solve the analytical/ode version to compare
     modOde <- rxode2({
@@ -75,7 +75,7 @@ rxTest({
       add.dosing(dose = 100, nbr.doses = 1, start.time = 0) %>%
       add.sampling(seq(0, 10, by = 1))
 
-    res2 <- rxSolve(mod2, et2)
+    res2 <- rxSolve(mod2, et2, method = "indLin")
 
     # Solve the ODE version to compare (since indLin(central) <- 1.5 adds a constant infusion/rate of 1.5 to central)
     modOde <- rxode2({
@@ -99,7 +99,7 @@ rxTest({
       add.dosing(dose = 100, rate = 10, start.time = 0) %>% # 10 hour infusion
       add.sampling(seq(0, 15, by = 1))
 
-    res3 <- rxSolve(mod3, et3)
+    res3 <- rxSolve(mod3, et3, method = "indLin")
 
     modOde <- rxode2({
       d/dt(depot) = -0.5 * depot

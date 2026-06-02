@@ -1956,7 +1956,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .ret <- paste0("(", paste(unlist(.ret0), collapse = ","), ")")
       if (.ret == "(0)") {
         return(paste0("rx_", .fun, "_ini_0__"))
-      } else if (any(.fun == c("cmt", "dvid"))) {
+      } else if (any(.fun == c("cmt", "dvid", "matExp", "indLin"))) {
         return("")
       } else if (.fun == "max") {
         .ret <- .rxToSEMax(unlist(.ret0), min=FALSE)
@@ -2062,7 +2062,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         }
       } else {
         if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
-                        "midpoint", "linear", "splitBolus")) return(NULL)
+                        "midpoint", "linear", "splitBolus", "matExp", "indLin")) return(NULL)
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
           .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
