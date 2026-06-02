@@ -14,6 +14,11 @@
   now required together, and `limit` without `cens` is rejected
   rather than silently ignored.
 
+- Checks for `is.loaded()` before loading a rxode2 model.  This helps fix
+  the m1 ODR issue shown in nlmixr2est.
+
+- Moved `dim.rxEt()` here instead of in nlmixr2est
+
 # rxode2 5.1.1
 
 - Various low level fixes to allow `nlmixr2est` to have parallelized
