@@ -674,9 +674,14 @@ static inline int handleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double
   if (!isObs(getEvid(ind, ind->ix[ind->idx]))) {
     syncIdx(ind);
   }
+  // For pushed events whose time was corrected to earlier than the integration
+  // endpoint, use the event's own time so handleTlastInline records the correct
+  // tlast (tad/podo would otherwise be off by the endpoint vs. event-time delta).
+  double evTime = ind->timeThread[ind->ix[ind->idx]];
+  double effectiveXout = (!isSameTime(evTime, *xout) && evTime < *xout) ? evTime : *xout;
   int he = handle_evid(getEvid(ind, ind->ix[ind->idx]), neq[0] + op->extraCmt,
                        ind->BadDose, ind->InfusionRate, ind->dose, yp,
-                       *xout, neq[1], ind);
+                       effectiveXout, neq[1], ind);
   return he;
 }
 

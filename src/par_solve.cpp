@@ -4585,6 +4585,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
+            if (op->indOwnAlloc) istate = 1;
             F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
                              &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                              rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -4606,6 +4607,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
+              // istate already = 1 from dose handler above
               F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &ind->extraDoseNewXout, &xout,
                                &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                                rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -4620,6 +4622,10 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
+          // For models with in-ODE push doses (indOwnAlloc), force istate=1 so
+          // the Adams initial F call is at T=xp (not T=xp+H_prev), ensuring
+          // _rxPushDose fires at the correct output point.
+          if (op->indOwnAlloc) istate = 1;
           F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
                            &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                            rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);

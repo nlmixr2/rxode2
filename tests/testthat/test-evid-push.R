@@ -145,7 +145,7 @@ rxTest({
     # rLin$time >= 19 should be non-zero
     expect_true(all(rLin$cp[rLin$time >= 19] > 0))
     # The pushed dose at t+12 should create an extra event, affecting cp after t=12
-    expect_true(nrow(r) > 0)
+    expect_true(nrow(rLin) > 0)
     # The bolus at t=12 should be visible — cp should rise after t=12
     cp12 <- rLin$cp[rLin$time == 12]
     cp14 <- rLin$cp[rLin$time == 14]
@@ -299,6 +299,15 @@ rxTest({
   }
 
   test_that(paste0("in-model reset() matches an evid=3 reset event (linCmt)"), {
+    obs <- seq(0, 24, by = 1)
+    e <- et(amt = 100, time = 0) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+    eRef <- et(amt = 100, time = 0) |>
+      et(time = 12, evid = 3) |>
+      et(amt = 50, time = 18) |>
+      et(obs)
+
     modLin <- rxode2({
       mtime(resetAt) <- 12
       cp <- linCmt(ka, cl, v)
