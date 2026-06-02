@@ -368,32 +368,21 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
     return 1;
   }
   case 2: {
-    // This will not changed with IndLin
     arma::vec u(neq);
-    arma::vec yp(yp_, neq, false, false);
     IndF(cSub, tcov, tf, u.memptr());
-    arma::mat m0(neq, neq);
-    ME(cSub, tcov, tf, m0.memptr(), yp_);
-    arma::vec w = phiv((tf-tp), m0, u, yp, op);
-    std::copy(w.begin(), w.begin()+neq, yp_);
-    return 1;
+    return meOnly(cSub, yp_, yp_, tp, tf, tcov, u.memptr(), on_, ME, op, ind);
   }
   case 4: {
     // Matrix exponential with + u and inductive linearization
-    // This will not changed with IndLin
     arma::vec u(neq);
     IndF(cSub, tcov, tf, u.memptr());
-    arma::mat m0(neq, neq);
-    ME(cSub, tcov, tf, m0.memptr(), yp_);
     arma::vec wLast(neq);
     arma::vec w(yp_, neq);
-    arma::vec yp(yp_, neq, false, false);
+    arma::vec y0 = w;
     // Update first value
-    w = phiv((tf-tp), m0, u, yp, op);
+    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, u.memptr(), on_, ME, op, ind);
     wLast = w;
-    // Now update matrix
-    ME(cSub, tcov, tf, m0.memptr(), w.memptr());
-    w = phiv((tf-tp), m0, u, yp, op);
+    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, u.memptr(), on_, ME, op, ind);
     bool converge = false;
     for (int i = 0; i < maxsteps; ++i){
       converge=true;
@@ -408,8 +397,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
     	break;
       }
       wLast = w;
-      ME(cSub, tcov, tf, m0.memptr(), w.memptr());
-      w = phiv((tf-tp), m0, u, yp, op);
+      meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, u.memptr(), on_, ME, op, ind);
     }
     std::copy(w.begin(), w.begin()+neq, yp_);
     return 1;

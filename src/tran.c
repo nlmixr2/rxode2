@@ -459,6 +459,9 @@ void reset(void) {
   tb.nLlik      = 0;
   tb.hasMix     = 0;
   tb.evid_      = 0;
+  tb.isMexp     = 0;
+  tb.hasDdt     = 0;
+  tb.hasIndLinProp = 0;
   tb.strCmpCurCov = NULL;
   tb.strCmpCurStr = NULL;
   tb.strCmpCurType = -1;

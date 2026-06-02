@@ -18,6 +18,8 @@ statement
   | mtime      end_statement
   | mat0       end_statement
   | matF       end_statement
+  | indLin_prop end_statement
+  | matExp_statement end_statement
   | printf_statement end_statement
   | param_statement end_statement
   | interp_statement end_statement
@@ -183,6 +185,10 @@ levels_str1 : 'levels' '(' identifier_r_no_output ')' ('=' | '<-' | '~' )
 mat0: '_rxM' '=' logical_or_expression;
 
 matF: '_rxF' '=' logical_or_expression;
+
+indLin_prop : 'indLin' '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
+
+matExp_statement : 'matExp' '(' ')' ;
 
 mtime     : 'mtime' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 
