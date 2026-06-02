@@ -129,6 +129,8 @@ lhs symbols?
   int hasIndLinProp;
 } symtab;
 
+extern symtab tb;
+
 static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2) {
   // Check for dot separator: k.cmt1.cmt2 or K.cmt1.cmt2
   if ((name[0] == 'k' || name[0] == 'K') && name[1] == '.') {
@@ -190,8 +192,6 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
   }
   return 0;
 }
-
-extern symtab tb;
 
 extern vLines depotLines;
 extern vLines centralLines;
