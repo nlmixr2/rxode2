@@ -130,6 +130,17 @@ static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_opt
 
     int neqOde = neq[0] - op->numLin - op->numLinSens;
 
+    // For models with in-ODE adaptive dosing (indOwnAlloc), some implicit methods
+    // evaluate their first stage at t + c1*h (c1 > 0, e.g. SDIRK, Gauss, RadauIIA).
+    // When _atEventTime=1 is consumed at that offset time, evid_()/bolus()/etc. would
+    // push doses using the wrong t value.  Pre-evaluate dydt at the canonical start
+    // time xp so that dose pushing happens at the correct event time before the solver
+    // takes any stage that evaluates at xp + c1*h.
+    if (op->indOwnAlloc && ind->_atEventTime) {
+        std::vector<double> tmp_f((size_t)neqOde, 0.0);
+        c_dydt(neq, xp, yp, tmp_f.data());   // consumes _atEventTime; pushes doses at xp
+    }
+
     RxImplicit<OdeSolver> solver(c_dydt, c_jac, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
     solver.set_t(xp);

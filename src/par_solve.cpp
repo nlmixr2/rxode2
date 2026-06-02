@@ -4585,7 +4585,11 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            if (op->indOwnAlloc) istate = 1;
+            if (op->indOwnAlloc && ind->_atEventTime) {
+              // Pre-evaluate dydt at xp so in-model evid_() pushes at the correct
+              // time before lsode's Adams predictor evaluates at xp + H_prev.
+              { std::vector<double> _tmp_f_ls((size_t)neq[0]); dydt(neq, xp, yp, _tmp_f_ls.data()); }
+            }
             F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
                              &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                              rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -4605,9 +4609,15 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
             ind->idx  = idx;
             ind->idxExtra++;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              double _xp_ls = ind->extraDoseNewXout;
+              preSolve(op, ind, _xp_ls, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
-              // istate already = 1 from dose handler above
+              // istate is already 1 from the dose handler above (needed for restart
+              // after a dose event); also pre-evaluate to push any in-model doses
+              // at the canonical sub-interval start time.
+              if (op->indOwnAlloc && ind->_atEventTime) {
+                { std::vector<double> _tmp_f_ls((size_t)neq[0]); dydt(neq, _xp_ls, yp, _tmp_f_ls.data()); }
+              }
               F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &ind->extraDoseNewXout, &xout,
                                &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                                rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -4622,10 +4632,12 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          // For models with in-ODE push doses (indOwnAlloc), force istate=1 so
-          // the Adams initial F call is at T=xp (not T=xp+H_prev), ensuring
-          // _rxPushDose fires at the correct output point.
-          if (op->indOwnAlloc) istate = 1;
+          if (op->indOwnAlloc && ind->_atEventTime) {
+            // Pre-evaluate dydt at xp so in-model evid_() pushes doses at the
+            // correct canonical start time before lsode's Adams predictor can
+            // evaluate at xp + H_prev.
+            { std::vector<double> _tmp_f_ls((size_t)neq[0]); dydt(neq, xp, yp, _tmp_f_ls.data()); }
+          }
           F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
                            &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                            rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);

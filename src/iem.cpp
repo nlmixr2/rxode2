@@ -7,6 +7,7 @@
 #include <boost/numeric/odeint/integrate/integrate_const.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
+#include <vector>
 
 
 extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -75,6 +76,10 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+              if (op->indOwnAlloc && ind->_atEventTime) {
+                std::vector<double> _tmp_f((size_t)neqOde, 0.0);
+                c_dydt(neq, xp, yp, _tmp_f.data());
+              }
 
               if (neqOde > 0) {
                   state_type state(neqOde);
@@ -115,7 +120,12 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               ind->idx = idx;
               ind->idxExtra++;
               if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+                double _xp2 = ind->extraDoseNewXout;
+                preSolve(op, ind, _xp2, xout, yp);
+                if (op->indOwnAlloc && ind->_atEventTime) {
+                  std::vector<double> _tmp_f((size_t)neqOde, 0.0);
+                  c_dydt(neq, _xp2, yp, _tmp_f.data());
+                }
 
                 if (neqOde > 0) {
                     state_type state(neqOde);
@@ -149,6 +159,10 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
+          if (op->indOwnAlloc && ind->_atEventTime) {
+            std::vector<double> _tmp_f((size_t)neqOde, 0.0);
+            c_dydt(neq, xp, yp, _tmp_f.data());
+          }
 
           if (neqOde > 0) {
               state_type state(neqOde);
