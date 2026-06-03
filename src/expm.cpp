@@ -266,7 +266,8 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   if (nInf == 0){
     arma::mat expAT(neq, neq);
     expAT = matrixExp(m0, tf-tp, type, order);
-    yc = expAT*yp;
+    arma::vec yc_temp = expAT*yp;
+    std::copy(yc_temp.begin(), yc_temp.end(), yc_);
     return 1;
   } else {
     arma::mat mout(neq+nInf, neq+nInf, arma::fill::zeros);

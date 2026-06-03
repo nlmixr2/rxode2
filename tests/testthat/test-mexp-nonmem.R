@@ -176,4 +176,72 @@ rxTest({
     expect_equal(res_mexp_forcing$depot, res_ode_forcing$depot, tolerance = 1e-4)
     expect_equal(res_mexp_forcing$central, res_ode_forcing$central, tolerance = 1e-4)
   })
+
+  test_that("NONMEM-like matrix exponential compartment naming restrictions", {
+    # Invalid names containing '_' or '.' (without 'rx' prefix) must throw syntax error
+    expect_error(rxode2({
+      matExp()
+      cmt(dep_ot)
+      k_dep_ot_central = 0.5
+    }))
+    expect_error(rxode2({
+      matExp()
+      cmt(depot)
+      cmt(cent.ral)
+      k_depot_cent.ral = 0.5
+    }))
+    
+    # Valid names (normal names or starting with 'rx' with '_' or '.') must succeed
+    expect_error(rxode2({
+      matExp()
+      cmt(depot)
+      cmt(central)
+      cmt(rx_s_depot_ka)
+      k_depot_central = 0.5
+      k_depot_rx_s_depot_ka_nd = -1.0
+    }), NA)
+  })
+
+  test_that("NONMEM-like matrix exponential forward sensitivities solve correctly", {
+    # 1. 2-compartment model
+    ode_code <- "
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - cl/v * central
+    "
+    
+    mexp_sens_code <- rxSensMatExp(ode_code, calcSens = c("ka", "cl"))
+    expect_true(any(grepl("matExp\\(\\)", mexp_sens_code)))
+    expect_true(any(grepl("cmt\\(rx_s_depot_ka\\)", mexp_sens_code)))
+    expect_true(any(grepl("k_depot_rx_s_depot_ka_nd\\s*=", mexp_sens_code)))
+    
+    mod_mexp <- rxode2(mexp_sens_code)
+    mod_ode <- rxode2(ode_code, calcSens = c("ka", "cl"))
+    
+    et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+      
+    res_mexp <- rxSolve(mod_mexp, et, method = "indLin", params = c(ka = 0.5, cl = 0.2, v = 10))
+    res_ode <- rxSolve(mod_ode, et, params = c(ka = 0.5, cl = 0.2, v = 10))
+    
+    expect_equal(res_mexp$central, res_ode$central, tolerance = 1e-4)
+    expect_equal(res_mexp$rx_s_depot_ka, res_ode$rx__sens_depot_BY_ka__, tolerance = 1e-4)
+    expect_equal(res_mexp$rx_s_central_ka, res_ode$rx__sens_central_BY_ka__, tolerance = 1e-4)
+    expect_equal(res_mexp$rx_s_central_cl, res_ode$rx__sens_central_BY_cl__, tolerance = 1e-4)
+    
+    # 2. Non-linear Michaelis-Menten elimination model
+    ode_code_mm <- "
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - Vm * central / (Km + central)
+    "
+    mexp_sens_mm <- rxSensMatExp(ode_code_mm, calcSens = c("ka", "Vm", "Km"))
+    mod_mexp_mm <- rxode2(mexp_sens_mm)
+    res_mexp_mm <- rxSolve(mod_mexp_mm, et, method = "indLin", params = c(ka = 0.5, Vm = 10, Km = 5))
+    
+    # Verify the sensitivity columns are present and contain numeric values
+    expect_true(all(c("rx_s_depot_ka", "rx_s_central_ka", "rx_s_central_Vm", "rx_s_central_Km") %in% colnames(res_mexp_mm)))
+    expect_true(is.numeric(res_mexp_mm$rx_s_central_ka))
+    expect_true(is.numeric(res_mexp_mm$rx_s_central_Vm))
+    expect_true(is.numeric(res_mexp_mm$rx_s_central_Km))
+  })
 })

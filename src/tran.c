@@ -632,6 +632,15 @@ void trans_internal(const char* parse_file, int isStr){
       }
     }
     if (tb.isMexp) {
+      for (int i = 0; i < tb.de.n; i++) {
+        const char *name = tb.de.line[i];
+        if (strncmp(name, "rx", 2) != 0) {
+          if (strchr(name, '_') != NULL || strchr(name, '.') != NULL) {
+            updateSyntaxCol();
+            trans_syntax_error_report_fn0("compartments in matrix exponential models cannot contain '_' or '.' unless they start with 'rx'");
+          }
+        }
+      }
       tb.statei = tb.de.n;
       for (int i = 0; i < tb.de.n; i++) {
         tb.didx[i] = abs(tb.didx[i]);

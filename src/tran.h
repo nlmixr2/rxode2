@@ -132,9 +132,23 @@ lhs symbols?
 extern symtab tb;
 
 static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2) {
+  int non_depleting = 0;
+  char name_copy[256];
+  int len = (int)strlen(name);
+  if (len >= 256) return 0;
+  strcpy(name_copy, name);
+
+  if (len > 3 && strcmp(name_copy + len - 3, "_nd") == 0) {
+    non_depleting = 1;
+    name_copy[len - 3] = '\0';
+  } else if (len > 3 && strcmp(name_copy + len - 3, ".nd") == 0) {
+    non_depleting = 1;
+    name_copy[len - 3] = '\0';
+  }
+
   // Check for dot separator: k.cmt1.cmt2 or K.cmt1.cmt2
-  if ((name[0] == 'k' || name[0] == 'K') && name[1] == '.') {
-    const char *first_dot = name + 1;
+  if ((name_copy[0] == 'k' || name_copy[0] == 'K') && name_copy[1] == '.') {
+    const char *first_dot = name_copy + 1;
     const char *second_dot = strchr(first_dot + 1, '.');
     if (second_dot && second_dot != first_dot + 1 && *(second_dot + 1) != '\0') {
       if (strchr(second_dot + 1, '.') == NULL) {
@@ -145,20 +159,20 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
           int len2 = (int)strlen(second_dot + 1);
           if (len2 < 100) {
             strcpy(cmt2, second_dot + 1);
-            return 1;
+            return non_depleting ? 2 : 1;
           }
         }
       }
     }
   }
   // Check for underscore separator: k_cmt1_cmt2 or K_cmt1_cmt2
-  if ((name[0] == 'k' || name[0] == 'K') && name[1] == '_') {
+  if ((name_copy[0] == 'k' || name_copy[0] == 'K') && name_copy[1] == '_') {
     // 1. Try to match against existing compartments in tb.de.line
     for (int i = 0; i < tb.de.n; i++) {
       const char *c1 = tb.de.line[i];
       int len1 = (int)strlen(c1);
-      if (strncmp(name + 2, c1, len1) == 0 && name[2 + len1] == '_') {
-        const char *c2_start = name + 2 + len1 + 1;
+      if (strncmp(name_copy + 2, c1, len1) == 0 && name_copy[2 + len1] == '_') {
+        const char *c2_start = name_copy + 2 + len1 + 1;
         // Verify c2_start is also a registered compartment
         for (int j = 0; j < tb.de.n; j++) {
           const char *c2 = tb.de.line[j];
@@ -166,14 +180,14 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
             if (len1 < 100 && strlen(c2) < 100) {
               strcpy(cmt1, c1);
               strcpy(cmt2, c2);
-              return 1;
+              return non_depleting ? 2 : 1;
             }
           }
         }
       }
     }
     // 2. Fallback: if there is exactly one more underscore in name (e.g. k_depot_central)
-    const char *first_us = name + 1;
+    const char *first_us = name_copy + 1;
     const char *second_us = strchr(first_us + 1, '_');
     if (second_us && second_us != first_us + 1 && *(second_us + 1) != '\0') {
       if (strchr(second_us + 1, '_') == NULL) {
@@ -184,7 +198,7 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
           int len2 = (int)strlen(second_us + 1);
           if (len2 < 100) {
             strcpy(cmt2, second_us + 1);
-            return 1;
+            return non_depleting ? 2 : 1;
           }
         }
       }

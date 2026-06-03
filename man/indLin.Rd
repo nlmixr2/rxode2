@@ -6,16 +6,18 @@
 \alias{rxToIndLin}
 \title{Transition ODEs written in d/dt() format to matrix exponential / inductive linearization format}
 \usage{
-indLin(model, doConst = FALSE)
+indLin(model, doConst = FALSE, calcSens = NULL)
 
-rxOdeToIndLin(model, doConst = FALSE)
+rxOdeToIndLin(model, doConst = FALSE, calcSens = NULL)
 
-rxToIndLin(model, doConst = FALSE)
+rxToIndLin(model, doConst = FALSE, calcSens = NULL)
 }
 \arguments{
 \item{model}{rxode2 model, text, or function}
 
 \item{doConst}{Replace constants with values; By default this is \code{FALSE}.}
+
+\item{calcSens}{A character vector of parameter names for which sensitivities should be calculated.}
 }
 \value{
 A character string representing the matrix exponential model code

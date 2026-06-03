@@ -571,7 +571,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       for (j = 0; j < NV; j++) {
         char cmt1[100];
         char cmt2[100];
-        if (parse_micro_constant(tb.ss.line[j], cmt1, cmt2)) {
+        int res = parse_micro_constant(tb.ss.line[j], cmt1, cmt2);
+        if (res) {
           int idx1 = -1, idx2 = -1;
           for (int k = 0; k < tb.de.n; k++) {
             if (strcmp(tb.de.line[k], cmt1) == 0) idx1 = k;
@@ -582,9 +583,11 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             doDot(&sbOut, tb.ss.line[j]);
             sAppendN(&sbOut, ";\n", 2);
 
-            sAppend(&sbOut, "  _mat[__DDT%d__ * %d + __DDT%d__] -= ", idx1, tb.de.n, idx1);
-            doDot(&sbOut, tb.ss.line[j]);
-            sAppendN(&sbOut, ";\n", 2);
+            if (res != 2) {
+              sAppend(&sbOut, "  _mat[__DDT%d__ * %d + __DDT%d__] -= ", idx1, tb.de.n, idx1);
+              doDot(&sbOut, tb.ss.line[j]);
+              sAppendN(&sbOut, ";\n", 2);
+            }
           }
         }
       }
