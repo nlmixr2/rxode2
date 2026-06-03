@@ -1,3 +1,8 @@
+# rxode2 5.1.3
+
+- Single core thread for etTrans and rxSolve to speed up solving
+  without OpenMP
+
 # rxode2 5.1.2
 
 - `geom_cens()` / `stat_cens()` no longer emit "Ignoring unknown

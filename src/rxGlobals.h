@@ -84,4 +84,8 @@ struct rx_globals {
   double *geta_pre = NULL;
   int geta_pre_n = 0;
   bool alloc=false;
+  bool singleMode=false;
+  SEXP singleDataFrame=R_NilValue;
+  int *gidose_own=NULL;
+  double *gdbl_own=NULL;
 };

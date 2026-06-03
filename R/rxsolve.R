@@ -955,6 +955,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     dense=FALSE,
+                    single=FALSE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1288,6 +1289,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
+    checkmate::assertLogical(single, len=1, any.missing=FALSE)
     if (isTRUE(dense) && method == 0L && missing(hmax)) {
       hmax <- NULL
     }
@@ -1371,6 +1373,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       } else if (checkmate::testCharacter(serializeFile, len = 1, any.missing = FALSE)) {
       } else {
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
+      }
+      if (isTRUE(single)) {
+        stop("'single=TRUE' is incompatible with 'serializeFile'", call. = FALSE)
       }
     }
     if (!is.null(nLlikAlloc)) {
@@ -1543,6 +1548,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
       dense=dense,
+      single=single,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
