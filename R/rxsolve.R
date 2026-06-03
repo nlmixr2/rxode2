@@ -64,14 +64,14 @@
 #'     For the fixed-step Boost methods `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`,
 #'     `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`,
 #'     `"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, `"geng5"`, and the
-#'     rklib fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
+#'     libode fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
 #'     `"rk3"`, `"ssp53"`, `"s4"`, `"r4"`, `"ls44"`, `"ls54"`,
 #'     `"ssp54"`, `"s5"`, `"rk5"`, `"c5"`, `"l5"`, `"lk5a"`, `"lk5b"`,
-#'     `"b6"`, `"rk7"`, `"rk8_10"`, `"cv8"`, `"rk8_12"`, `"s10"`, `"z10"`,
+#'     `"b6"`, `"s7"`, `"s8_10"`, `"cv8"`, `"s8_12"`, `"s10"`, `"z10"`,
 #'     `"o10"`, `"h10"`), this specifies the fixed step size.
 #'     If `hmin=0` (the default), it uses a default of `0.01` for `"rk4"`,
 #'     `"trapz"`, `"ssp3"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`,
-#'     `"radauiia5"`, `"geng5"`, and all rklib fixed-step methods; `0.0001` for
+#'     `"radauiia5"`, `"geng5"`, and all libode fixed-step methods; `0.0001` for
 #'     `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 #'     If the requested step size would cause the number of steps to exceed
 #'     `maxsteps`, the step size is automatically increased to ensure the
@@ -82,14 +82,14 @@
 #'
 #'     For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 #'     `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-#'     `"ros43"`, `"sdirk43"`, and all rklib adaptive methods (`"bs32"`,
+#'     `"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
 #'     `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
 #'     `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
 #'     `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
 #'     `"v76r"`, `"ss76"`, `"v78"`, `"dverk78"`, `"dp85"`, `"tp86"`,
 #'     `"v87e"`, `"v87r"`, `"ev87"`, `"k87"`, `"f89"`, `"v89"`,
 #'     `"t98a"`, `"v98r"`, `"s98"`, `"f108"`, `"c108"`, `"b109"`,
-#'     `"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, the rklib aliases
+#'     `"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, the libode aliases
 #'     `"dp54"`, `"v65e"`, `"v76e"`, `"dp87"`, `"v98e"`,
 #'     `"ssp33"`, and the deSolve-derived methods `"lsode"`, `"bdf"`),
 #'     this specifies the initial step size (default `0.01` when
@@ -949,7 +949,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "rk7", "rk8_10", "cv8", "rk8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -3468,11 +3468,11 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   not use `atol` or `rtol` (fixed-step; no error control).  Supports
 #'   parallel thread-based solving and steady-state (`ss=1`) dosing.
 #'
-#' * `"f32"` -- Heun-Euler 3(2) embedded pair from libode.  A 3-stage,
-#'   3rd-order adaptive method with a built-in 2nd-order error estimate for
-#'   automatic step-size control.  Tableau: c2=1, a21=1; c3=1/2, a31=1/4,
-#'   a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6, d3=4/6; embedded
-#'   (2nd-order, `solemb_`) weights b1=1/2, b2=1/2.  Uses `atol` and `rtol`
+#' * `"f32"` -- Fehlberg 3(2) embedded pair from libode (class `OdeRKF32`).
+#'   A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+#'   estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+#'   c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+#'   d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses `atol` and `rtol`
 #'   for error control.  The `hmin`
 #'   parameter sets the initial step size (default `0.01`); subsequent steps
 #'   are chosen adaptively.  The total number of accepted and rejected steps
@@ -3576,12 +3576,11 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"ssp33"` -- alias for `"ssp3"` (Strong Stability-Preserving RK3, libode).
 #'
-#' **rklib fixed-step explicit methods** (from Jacob Williams' rklib Fortran
-#' library).  All use `hmin` as the fixed step size (default `0.01` when
-#' `hmin=0`); `atol` and `rtol` are ignored (no error control); `maxsteps`
-#' bounds the total number of steps; NaN/Inf in derivatives sets `ind$err`
-#' and the subject exits with NA output.  All support parallel thread-based
-#' solving.
+#' **libode fixed-step explicit methods**.  All use `hmin` as the fixed step
+#' size (default `0.01` when `hmin=0`); `atol` and `rtol` are ignored (no
+#' error control); `maxsteps` bounds the total number of steps; NaN/Inf in
+#' derivatives sets `ind$err` and the subject exits with NA output.  All
+#' support parallel thread-based solving.
 #'
 #' * `"euler"` -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
 #'   very small step size for accuracy (e.g., `hmin=1e-4`); intended for
@@ -3590,7 +3589,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"midpoint"` -- Explicit midpoint rule, 2nd-order, 2 stages.
 #'
 #' * `"heun"` -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
-#'   Identical in structure to `"trapz"` (libode) but uses the rklib driver.
+#'   Identical in structure to `"trapz"` but uses the libode fixed-step driver.
 #'
 #' * `"ssp22"` -- Strong Stability-Preserving 2-stage 2nd-order method
 #'   (SSP-RK22), 2 stages.  Superior non-oscillatory properties near
@@ -3631,13 +3630,13 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"b6"` -- Butcher 6th-order method, 7 stages.
 #'
-#' * `"rk7"` -- Shanks 7th-order method, 9 stages.
+#' * `"s7"` -- Shanks 7th-order method, 9 stages.
 #'
-#' * `"rk8_10"` -- Shanks 8th-order method, 10 stages.
+#' * `"s8_10"` -- Shanks 8th-order method, 10 stages.
 #'
 #' * `"cv8"` -- Cooper-Verner 8th-order method, 11 stages.
 #'
-#' * `"rk8_12"` -- Shanks 8th-order method, 12 stages.
+#' * `"s8_12"` -- Shanks 8th-order method, 12 stages.
 #'
 #' * `"s10"` -- Stepanov 10th-order method, 15 stages.  Requires a moderate
 #'   step size (e.g., `hmin=1.0`) because a single step is accurate to very
@@ -3649,8 +3648,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"h10"` -- Hairer 10th-order method, 17 stages.
 #'
-#' **rklib adaptive (variable-step) explicit methods** (from Jacob Williams'
-#' rklib Fortran library).  All use `atol` and `rtol` for error control;
+#' **libode adaptive (variable-step) explicit methods**.  All use `atol` and
+#' `rtol` for error control;
 #' `hmin` sets the initial step size (default `0.01` when `hmin=0`); `hmax`
 #' sets the maximum step size; `maxsteps` bounds total steps; NaN/Inf in
 #' derivatives sets `ind$err` and the subject exits with NA output.  All
@@ -3755,7 +3754,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"f108"` -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
 #'   primary with 8th-order embedded error estimate.  The same method as
 #'   Julia's `Feagin10()`.  The large number of stages carries elevated
-#'   transcription-error risk; verified against rklib's canonical order test.
+#'   transcription-error risk; verified against Williams' libode canonical order test.
 #'
 #' * `"c108"` -- Curtis 10(8) pair, 21 stages.
 #'
@@ -3767,15 +3766,15 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"f1210"` -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
 #'   primary with 10th-order embedded error estimate.  The same method as
 #'   Julia's `Feagin12()`.  Elevated transcription-error risk due to many
-#'   stages; verified against rklib's canonical order test.
+#'   stages; verified against Williams' libode canonical order test.
 #'
 #' * `"o129"` -- Ono 12(9) pair, 29 stages.
 #'
 #' * `"f1412"` -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
 #'   primary with 12th-order embedded error estimate.  The same method as
 #'   Julia's `Feagin14()`.  The highest-order method in rxode2; elevated
-#'   transcription-error risk due to 35 stages; verified against rklib's
-#'   canonical order test.
+#'   transcription-error risk due to 35 stages; verified against
+#'   Williams' libode canonical order test.
 #'
 #' **deSolve-derived Fortran solvers** (from the deSolve R package).  Both
 #' use non-reentrant Fortran COMMON blocks and therefore run single-threaded
@@ -3801,14 +3800,14 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "rk7", "rk8_10", "cv8", "rk8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf")) {
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf")) {
   .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
                   "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
                   "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
                   "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
                   "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-                  "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
-                  "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+                  "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+                  "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
                   "z10" = 62L, "o10" = 63L, "h10" = 64L,
                   "dp54" = 26L, "v65e" = 27L,
                   "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
@@ -3883,8 +3882,8 @@ rxIsImplicit <- function(method) {
     "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
     "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
     "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
-    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
     "z10" = 62L, "o10" = 63L, "h10" = 64L,
     "dp54" = 26L, "v65e" = 27L,
     "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
@@ -3959,8 +3958,8 @@ rxIsStiff <- function(method) {
     "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
     "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
     "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
-    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
     "z10" = 62L, "o10" = 63L, "h10" = 64L,
     "dp54" = 26L, "v65e" = 27L,
     "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
@@ -4033,8 +4032,8 @@ rxIsNonStiff <- function(method) {
     "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
     "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
     "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
-    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
     "z10" = 62L, "o10" = 63L, "h10" = 64L,
     "dp54" = 26L, "v65e" = 27L,
     "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
@@ -4106,8 +4105,8 @@ rxIsDense <- function(method) {
     "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
     "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
     "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "rk7" = 57L,
-    "rk8_10" = 58L, "cv8" = 59L, "rk8_12" = 60L, "s10" = 61L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
     "z10" = 62L, "o10" = 63L, "h10" = 64L,
     "dp54" = 26L, "v65e" = 27L,
     "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
