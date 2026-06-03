@@ -112,4 +112,68 @@ rxTest({
     expect_equal(res3$depot, resOde$depot, tolerance = 1e-4)
     expect_equal(res3$central, resOde$central, tolerance = 1e-4)
   })
+
+  test_that("indLin, rxOdeToIndLin, and rxToIndLin transition ODEs correctly", {
+    # 1. Simple 2-compartment model
+    ode_code <- "
+      d/dt(depot) = -0.5 * depot
+      d/dt(central) = 0.5 * depot - 0.2 * central
+      cp = central / 10.0
+    "
+    mexp_code <- indLin(ode_code)
+    
+    # Verify that the generated code contains the correct elements
+    expect_true(any(grepl("matExp\\(\\)", mexp_code)))
+    expect_true(any(grepl("cmt\\(depot\\)", mexp_code)))
+    expect_true(any(grepl("cmt\\(central\\)", mexp_code)))
+    expect_true(any(grepl("k_depot_central\\s*=\\s*0.5", mexp_code)))
+    expect_true(any(grepl("k_central_output\\s*=\\s*0.2", mexp_code)))
+    expect_true(any(grepl("cp\\s*=\\s*central\\s*/\\s*10(\\.0)?", mexp_code)))
+    expect_false(any(grepl("d/dt\\(", mexp_code)))
+    
+    # Verify compilation and solve
+    mod_mexp <- rxode2(mexp_code)
+    et <- eventTable() %>%
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) %>%
+      add.sampling(seq(0, 10, by = 1))
+    res_mexp <- rxSolve(mod_mexp, et, method = "indLin")
+    
+    mod_ode <- rxode2(ode_code)
+    res_ode <- rxSolve(mod_ode, et)
+    expect_equal(res_mexp$depot, res_ode$depot, tolerance = 1e-4)
+    expect_equal(res_mexp$central, res_ode$central, tolerance = 1e-4)
+    expect_equal(res_mexp$cp, res_ode$cp, tolerance = 1e-4)
+
+    # 2. Parameter names matching micro-constants (self-assignment avoidance)
+    ode_code_params <- "
+      d/dt(depot) = -k_depot_central * depot
+      d/dt(central) = k_depot_central * depot - k_central_output * central
+    "
+    mexp_code_params <- rxToIndLin(ode_code_params)
+    expect_true(any(grepl("param\\(k_depot_central\\)", mexp_code_params)))
+    expect_true(any(grepl("param\\(k_central_output\\)", mexp_code_params)))
+    expect_false(any(grepl("k_depot_central\\s*=\\s*k_depot_central", mexp_code_params)))
+    
+    mod_mexp_params <- rxode2(mexp_code_params)
+    res_mexp_params <- rxSolve(mod_mexp_params, et, method = "indLin",
+                               params = c(k_depot_central = 0.5, k_central_output = 0.2))
+    expect_equal(res_mexp_params$depot, res_ode$depot, tolerance = 1e-4)
+    expect_equal(res_mexp_params$central, res_ode$central, tolerance = 1e-4)
+
+    # 3. Forcing functions / constant inputs (indLin property)
+    ode_code_forcing <- "
+      d/dt(depot) = -0.5 * depot
+      d/dt(central) = 0.5 * depot - 0.2 * central + 1.5
+    "
+    mexp_code_forcing <- rxOdeToIndLin(ode_code_forcing)
+    expect_true(any(grepl("indLin\\(central\\)\\s*<-\\s*1\\.5", mexp_code_forcing)))
+    
+    mod_mexp_forcing <- rxode2(mexp_code_forcing)
+    res_mexp_forcing <- rxSolve(mod_mexp_forcing, et, method = "indLin")
+    
+    mod_ode_forcing <- rxode2(ode_code_forcing)
+    res_ode_forcing <- rxSolve(mod_ode_forcing, et)
+    expect_equal(res_mexp_forcing$depot, res_ode_forcing$depot, tolerance = 1e-4)
+    expect_equal(res_mexp_forcing$central, res_ode_forcing$central, tolerance = 1e-4)
+  })
 })
