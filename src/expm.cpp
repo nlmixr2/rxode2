@@ -256,13 +256,11 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   // arma::mat mexp;
   // arma::mat ypout;
   unsigned int i, nInf=0;
-  arma::vec ypExtra(neq);
   arma::mat m0extra(neq, neq, arma::fill::zeros);
   for (i = 0; i < (unsigned int)neq; i++){
     if (InfusionRate[i] != 0.0){
       nInf++;
       m0extra[neq*(nInf-1)+i]=1;
-      ypExtra[i] = InfusionRate[i];
     }
   }
   if (nInf == 0){
@@ -280,7 +278,13 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
       std::copy(m0extra.colptr(j),m0extra.colptr(j)+neq, mout.colptr(neq+j));
     }
     std::copy(yp.begin(),yp.end(),ypout.begin());
-    std::copy(ypExtra.begin(),ypExtra.end(), ypout.begin()+neq);
+    int cur_nInf = 0;
+    for (i = 0; i < (unsigned int)neq; i++){
+      if (InfusionRate[i] != 0.0){
+        ypout[neq + cur_nInf] = InfusionRate[i];
+        cur_nInf++;
+      }
+    }
     arma::vec meSol(neq+nInf);
     arma::mat expAT(neq+nInf, neq+nInf);
     // Unfortunately the tf-tp may change so we can not cache this.

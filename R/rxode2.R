@@ -805,6 +805,11 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
     .new <- paste0(rxNorm(.ret), "\n", .code)
     assignInMyNamespace(".rxMECode", .code)
     .ret <- rxModelVars(.new)
+  } else if (length(.ret$indLin) == 4L) {
+    ## NONMEM-like matrix exponential model: the parser already set up
+    ## a 4-element indLin list via genModelVars.c (when tb.isMexp=1).
+    ## Propagate it to .indLinInfo so codegen serializes it into the DLL.
+    assignInMyNamespace(".indLinInfo", .ret$indLin)
   }
   return(.ret)
 }

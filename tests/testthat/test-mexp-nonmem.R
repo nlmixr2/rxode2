@@ -66,6 +66,8 @@ rxTest({
   test_that("NONMEM-like matrix exponential works with dot notation and indLin prop", {
     mod2 <- rxode2({
       matExp()
+      cmt(depot)
+      cmt(central)
       k.depot.central = 0.5
       k.central.output = 0.2
       indLin(central) <- 1.5
