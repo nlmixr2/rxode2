@@ -841,15 +841,18 @@
 #'   allowed because the file already stores the solve inputs and
 #'   controls.
 #'
-#' @param dense Logical; when `TRUE` and `method="dop853"`, `method="dop5"`,
-#'   `method="bs"`, or `method="ros4"`, enables
-#'   continuous dense output. This allows the solver to take large internal
-#'   steps and use interpolation for the exact observation times, which can
-#'   dramatically speed up solves with high-frequency observations or large
-#'   sampling grids. Silently ignored for non-dense methods. Not yet
-#'   compatible with multiple dosing events in the same interval. yet
-#'   supported for `linCmt()` models (a message is emitted and the
-#'   standard path is used instead).
+#' @param dense Logical; when `TRUE` and the method supports dense output,
+#'   enables continuous interpolation so the solver can take large internal
+#'   steps and reconstruct the solution cheaply at each observation time.
+#'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, and
+#'   `"ros4"`.  For composite AutoSwitch methods (e.g. `"dop5+ros4"`), dense
+#'   output is enabled only when **both** the primary and stiff secondary
+#'   support dense output; `"ros4"` is the only stiff method that does, so
+#'   valid dense composites are `"dop853+ros4"`, `"dop5+ros4"`, and
+#'   `"bs+ros4"`.  A warning is issued and `dense` is set to `FALSE` when a
+#'   composite stiff secondary does not support dense output.  Silently
+#'   ignored for non-dense single methods.  Not yet supported for `linCmt()`
+#'   models (a warning is emitted and the standard path is used instead).
 #'
 #' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
 #'   integrator when `method = "cvode"`.  Ignored for all other methods.
@@ -1420,7 +1423,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
-    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) && missing(hmax)) {
+    if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
+      warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
+              call.=FALSE)
+      dense <- FALSE
+    }
+    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) &&
+        (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
       ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
@@ -4072,8 +4081,13 @@ rxIsNonStiff <- function(method) {
 #' requested output times, then interpolate cheaply — improving both speed and
 #' accuracy on densely sampled grids.
 #'
-#' Dense-capable methods are:
+#' Dense-capable single methods are:
 #' `"dop853"` (0), `"dop5"` (10), `"bs"` (11), `"ros4"` (13).
+#'
+#' For composite AutoSwitch methods (e.g. `"dop5+ros4"`), `TRUE` is returned
+#' only when **both** the primary and stiff secondary are dense-capable.
+#' `"ros4"` is the only stiff method with dense support, so the valid dense
+#' composites are `"dop853+ros4"`, `"dop5+ros4"`, and `"bs+ros4"`.
 #'
 #' @param method A character vector of method names or an integerish vector of
 #'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
@@ -4086,6 +4100,8 @@ rxIsNonStiff <- function(method) {
 #' rxIsDense("ros4")                         # TRUE
 #' rxIsDense("liblsoda")                     # FALSE
 #' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE FALSE
+#' rxIsDense("dop5+ros4")                    # TRUE  (both dense)
+#' rxIsDense("dop5+ros43")                   # FALSE (ros43 not dense)
 #'
 #' @seealso [rxIsStiff()], [rxIsNonStiff()], [odeMethodToInt()]
 #' @export
@@ -4130,7 +4146,16 @@ rxIsDense <- function(method) {
     if (any(.unknown)) {
       stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
     }
-    return(ifelse(.composite, FALSE, .codes %in% .denseCodes))
+    .isDense <- ifelse(.composite, FALSE, .codes %in% .denseCodes)
+    if (any(.composite)) {
+      .isDense[.composite] <- vapply(method[.composite], function(.m) {
+        .parts <- .parseAutoSwitchMethod(.m)
+        !is.null(.parts) &&
+          as.integer(.parts["primary"]) %in% .denseCodes &&
+          as.integer(.parts["stiff"]) %in% .denseCodes
+      }, logical(1))
+    }
+    return(.isDense)
   } else {
     method <- as.integer(method)
   }

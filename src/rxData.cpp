@@ -5696,8 +5696,16 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->autoSwitchNonstifftol = asDouble(rxControl[Rxc_autoSwitchNonstifftol], "autoSwitchNonstifftol");
     op->autoSwitchStifftol    = asDouble(rxControl[Rxc_autoSwitchStifftol], "autoSwitchStifftol");
     op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
-    if (op->useDense && method != 3) {
-      op->useDense = 0;
+    if (op->useDense) {
+      /* Dense output is only supported for dop853(0), dop5(10), bs(11), ros4(13). */
+      int _primDense = (method == 0 || method == 10 || method == 11 || method == 13);
+      /* For AutoSwitch composites (stiff2>0), the stiff secondary must also be dense.
+         Among stiff methods, only ros4(13) supports dense output. */
+      int _autoActive = (op->stiff2 > 0);
+      int _stifDense = !_autoActive || (op->stiff2 == 13);
+      if (!_primDense || !_stifDense) {
+        op->useDense = 0;
+      }
     }
     if (op->useDense && (op->numLin > 0 || op->numLinSens > 0)) {
       Rf_warning("dense output not yet supported for linCmt models; using standard dop853");

@@ -5405,8 +5405,14 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
     if (t_obs >= xold - eps) {              // in [xold, x]: interpolate
       _growSolveIfNeeded(ind, op, idx, (idx + 1 != ind->n_all_times));
       double *slot = getSolve(idx);
-      for (int j = 0; j < n; j++)
-        slot[j] = contd8(ctx, j, t_obs);   // 0-based component index
+      if (xold == x) {
+        // Initial solout call before the first step: rcont1 not yet initialized.
+        // y holds the initial state; copy it directly for any obs at the start time.
+        for (int j = 0; j < n; j++) slot[j] = y[j];
+      } else {
+        for (int j = 0; j < n; j++)
+          slot[j] = contd8(ctx, j, t_obs);   // 0-based component index
+      }
       calc_lhs(solveid, t_obs, slot, ind->lhs);
     }
     dc->obs_next++;
@@ -5438,7 +5444,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   double *inits;
   int *rc;
   int nx;
-  neq[1] = solveid;
+  neq[1] = rx->ordId[solveid]-1;
   ind = &(rx->subjects[neq[1]]);
   int eff = rxEffNeq(ind, op);
   neq[0] = eff;
@@ -5512,6 +5518,15 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     }
 
     // KEY EVENT or last obs: close the pending segment, then process the event.
+    // Obs events use 'continue' above and skip updateSolve's carry-forward,
+    // so getSolve(i) may be uninitialized. Grow the buffer and copy current
+    // state from the last key event's slot before any integration call.
+    _growSolveIfNeeded(ind, op, i, !is_last);
+    yp = getSolve(i);
+    {
+      int _src = (last_key_i >= 0) ? last_key_i : 0;
+      if (i != _src) std::copy(getSolve(_src), getSolve(_src) + eff, yp);
+    }
     if (this_evid == 3) {
       // evid3 (reset): no extraDose, but close any pending obs segment first.
       if (!isSameTimeDop(xout, xp)) {
