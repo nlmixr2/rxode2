@@ -193,7 +193,7 @@ static double autoSwitchStabilitySize(int method) {
     case  9: return 3.00;  /* abm     */
     case 22: return 2.00;  /* trapz   */
     case 23: return 2.00;  /* ssp3    */
-    default: return 3.00;  /* rklib adaptive; conservative fallback */
+    default: return 3.00;  /* libode adaptive; conservative fallback */
   }
 }
 

@@ -79,7 +79,7 @@ OdeRkdp85::OdeRkdp85(unsigned long neq)
     b10 = -1.52160949662516078556178806805e-1;
     b11 = 2.01365400804030348374776537501e-1;
     b12 = 4.47106157277725905176885569043e-2;
-    // d_N = b_N - e_N (embedded weights; e_N given directly in rklib)
+    // d_N = b_N - e_N (embedded weights; e_N given directly in Williams' original coefficients)
     // e1=0.1312004499419488073250102996e-01, e6=-0.1225156446376204440720569753e+01, ...
     d1  = b1  - 0.1312004499419488073250102996e-01;
     d6  = b6  - (-0.1225156446376204440720569753e+01);
