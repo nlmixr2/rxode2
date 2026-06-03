@@ -61,13 +61,18 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#' @param hmax The maximum absolute step size allowed.  When
-#'   `hmax=NA` (default), uses the average difference +
-#'   hmaxSd*sd in times and sampling events. The `hmaxSd` is a user
-#'   specified parameter and which defaults to zero.  When
-#'   `hmax=NULL` rxode2 uses the maximum difference in times in
-#'   your sampling and events.  The value 0 is equivalent to infinite
-#'   maximum absolute step size.
+#' @param hmax The maximum absolute step size allowed.
+#'
+#'   When `hmax=NA` and dense=FALSE (default), uses the average
+#'   difference + hmaxSd*sd in times and sampling events. The `hmaxSd`
+#'   is a user specified parameter and which defaults to zero.
+#'
+#'   When `hmax=NA` and `dense=TRUE`, uses the maximum difference in
+#'   times in your sampling and events.
+#'
+#'   To use this for other routines specify `hmax=NULL` the maximum
+#'   difference in times in your sampling and events us used.  The
+#'   value 0 is equivalent to infinite maximum absolute step size.
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
@@ -1286,7 +1291,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
     checkmate::assertLogical(single, len=1, any.missing=FALSE)
     if (isTRUE(dense) && method == 0L && missing(hmax)) {
-      .minfo("dop853 dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
@@ -1601,7 +1605,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       return(.rxEtSyncData(x))
     }
     .meta <- attr(.preview, "rxEtPreviewGroups", exact = TRUE)
-    if (!is.null(.meta) && !("id" %in% names(.preview))) {
+    if (!is.null(.meta)) {
       .preview$id <- rep.int(
         vapply(.meta, function(.g) as.integer(.g$ids[[1L]]), integer(1)),
         vapply(.meta, function(.g) as.integer(.g$nRow), integer(1))

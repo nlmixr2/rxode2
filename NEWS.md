@@ -1,3 +1,18 @@
+# rxode2 5.1.2
+
+- `geom_cens()` / `stat_cens()` no longer emit "Ignoring unknown
+  aesthetics" warnings when censoring aesthetics are mapped.
+  Documentation corrected to describe the two supported lowercase
+  forms: `lower`/`upper` (both required) or `cens` (with optional
+  `limit`). The two forms cannot be mixed, `lower` and `upper` are
+  now required together, and `limit` without `cens` is rejected
+  rather than silently ignored.
+
+- Checks for `is.loaded()` before loading a rxode2 model.  This helps fix
+  the m1 ODR issue shown in nlmixr2est.
+
+- Moved `dim.rxEt()` here instead of in nlmixr2est
+
 # rxode2 5.1.1
 
 - Various low level fixes to allow `nlmixr2est` to have parallelized

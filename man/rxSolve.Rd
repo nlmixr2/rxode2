@@ -341,13 +341,18 @@ during one call to the solver. (5000 by default)}
 \item{hmin}{The minimum absolute step size allowed. The default
 value is 0.}
 
-\item{hmax}{The maximum absolute step size allowed.  When
-\code{hmax=NA} (default), uses the average difference +
-hmaxSd*sd in times and sampling events. The \code{hmaxSd} is a user
-specified parameter and which defaults to zero.  When
-\code{hmax=NULL} rxode2 uses the maximum difference in times in
-your sampling and events.  The value 0 is equivalent to infinite
-maximum absolute step size.}
+\item{hmax}{The maximum absolute step size allowed.
+
+When \code{hmax=NA} and dense=FALSE (default), uses the average
+difference + hmaxSd*sd in times and sampling events. The \code{hmaxSd}
+is a user specified parameter and which defaults to zero.
+
+When \code{hmax=NA} and \code{dense=TRUE}, uses the maximum difference in
+times in your sampling and events.
+
+To use this for other routines specify \code{hmax=NULL} the maximum
+difference in times in your sampling and events us used.  The
+value 0 is equivalent to infinite maximum absolute step size.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}

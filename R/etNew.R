@@ -1327,3 +1327,8 @@ is.rxEt <- function(x) {
   .env$canResize <- .env0$canResize
   .et
 }
+
+#' @export
+dim.rxEt <- function(x) {
+  dim(as.data.frame(x, all = TRUE))
+}

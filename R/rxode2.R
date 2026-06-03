@@ -1311,6 +1311,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 .rxCompileEnv <- new.env(parent = emptyenv())
 .rxCompileEnv$success <- TRUE
 .rxCompileEnv$lst <- list()
+.rxCompileEnv$cc <- NA_character_
 #' Get the last compiled model information as alist
 #'
 #' @return A list contains the following elements:
@@ -1439,7 +1440,9 @@ rxCompile.rxModelVars <- function(model, # Model
         }
       }
     } else {
-      try(dynLoad(.cDllFile), silent = TRUE)
+      if (!is.loaded(.modVars)) {
+        try(dynLoad(.cDllFile), silent = TRUE)
+      }
       if (is.loaded(.modVars)) {
         .allModVars <- eval(parse(text = sprintf(".Call(\"%s\")", .modVars)), envir = .GlobalEnv)
         .modVars <- .allModVars$md5
@@ -1532,9 +1535,31 @@ rxCompile.rxModelVars <- function(model, # Model
           )
         }
         .defs <- ""
+
+        if (is.na(.rxCompileEnv$cc)) {
+          .compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
+          .versionInfo <- try(system(paste(.compilerPath, "--version"), intern = TRUE))
+          if (inherits(.versionInfo, "try-error")) {
+            .rxCompileEnv$cc <- "unknown"
+          } else if (any(grepl("clang", .versionInfo, ignore.case = TRUE))) {
+            .rxCompileEnv$cc <- "clang"
+          } else if (any(grepl("gcc", .versionInfo, ignore.case = TRUE))) {
+            .rxCompileEnv$cc <- "gcc"
+          } else {
+            .rxCompileEnv$cc <- "unknown"
+          }
+        }
+        if (.rxCompileEnv$cc == "clang") {
+          .extra <- "-fno-math-errno -mtune=native -fno-sanitize=address "
+        } else if (.rxCompileEnv$cc == "gcc") {
+          .extra <- "-fno-math-errno -mtune=native "
+        } else {
+          .extra <- " "
+        }
         .ret <- sprintf(
-          "#rxode2 Makevars\nPKG_CFLAGS=-O%s -fno-math-errno %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
+          "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "3"),
+          .extra,
           .defs, .getIncludeDir(),
           system.file("include", package = "rxode2")
         )
