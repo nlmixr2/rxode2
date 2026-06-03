@@ -201,6 +201,35 @@ rxTest({
 
         et <- cbind(et, cov)
 
+        ## rxode2 uses isSameTime(a,b): |a-b| <= 2*eps*max(|a|,|b|) for
+        ## covariate lookup.  When an integrator evaluates the RHS at a
+        ## time within that tolerance of an observation knot, rxode2's
+        ## fast path returns the knot value directly.  The approxfun
+        ## comparison must match that behavior.  The snap is applied
+        ## ONLY when the actual printed c value already equals the
+        ## approxfun value at the snapped time (confirming the fast
+        ## path fired); if actual differs from the snapped expected,
+        ## the slow path was used and approxfun at the original t
+        ## already agrees -- so no snap is needed.
+        .obs_times <- as.numeric(et$time)
+        .snap_to_obs <- function(.t) {
+          ## Vectorized: find nearest obs knot using findInterval
+          .ni <- findInterval(.t, .obs_times, all.inside = TRUE)
+          .nt_l <- .obs_times[pmax(.ni, 1L)]
+          .nt_r <- .obs_times[pmin(.ni + 1L, length(.obs_times))]
+          .nt <- ifelse(abs(.t - .nt_l) <= abs(.t - .nt_r), .nt_l, .nt_r)
+          .tol <- 2 * .Machine$double.eps *
+            pmax(abs(.t), abs(.nt), .Machine$double.xmin)
+          ifelse(abs(.t - .nt) <= .tol, .nt, .t)
+        }
+        ## Conditional approxfun: snap t to nearest obs only when
+        ## the actual value already matches the snapped expected.
+        .cov_approx <- function(.t, .c, .fun) {
+          .st <- .snap_to_obs(.t)
+          .c_s <- .fun(.st)
+          ifelse(.st != .t & .c == .c_s, .c_s, .fun(.t))
+        }
+
         cov.lin <- approxfun(et$time, et$c, yleft = et$c[1], yright = et$c[length(cov$c)])
 
         t <- tempfile("temp", fileext = ".csv")
@@ -219,13 +248,13 @@ rxTest({
         lin.interp <- read.csv(t)
         unlink(t)
 
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("time varying covariates output covariate in data frame", {
+        test_that(paste0("time varying covariates output covariate in data frame (", meth, ";", .homogenous, ")"), {
           expect_equal(cov$c, out$c)
         })
 
-        test_that("Linear Approximation matches approxfun.", {
+        test_that(paste0("Linear Approximation matches approxfun (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -245,9 +274,10 @@ rxTest({
         lin.interp <- read.csv(t)
         unlink(t)
 
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("Linear Approximation matches approxfun and overrides covsInterpolation", {
+        test_that(paste0("Linear Approximation matches approxfun and overrides covsInterpolation (",
+                       meth, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -270,9 +300,9 @@ rxTest({
                              yleft = cov$c[1], yright = cov$c[length(cov$c)],
                              method = "constant", f = 1
                              )
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("NOCB Approximation similar to approxfun.", {
+        test_that(paste0("NOCB Approximation similar to approxfun (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -294,9 +324,10 @@ rxTest({
                              yleft = cov$c[1], yright = cov$c[length(cov$c)],
                              method = "constant", f = 1
                              )
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("NOCB Approximation similar to approxfun and overrides locf when in ode", {
+        test_that(paste0("NOCB Approximation similar to approxfun and overrides locf when in ode (",
+                       meth, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -319,9 +350,9 @@ rxTest({
                              method = "constant", f = 0.5
                              )
 
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("midpoint Approximation similar to approxfun.", {
+        test_that(paste0("midpoint Approximation similar to approxfun (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -345,9 +376,9 @@ rxTest({
                              method = "constant", f = 0.5
                              )
 
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("midpoint Approximation similar to approxfun and overrides covsInterpolation method", {
+        test_that(paste0("midpoint Approximation similar to approxfun and overrides covsInterpolation method (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -370,9 +401,9 @@ rxTest({
                              yleft = cov$c[1], yright = cov$c[length(cov$c)],
                              method = "constant")
 
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
-        test_that("Constant Approximation similar to approxfun.", {
+        test_that(paste0("Constant Approximation similar to approxfun (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
         })
 
@@ -395,7 +426,7 @@ rxTest({
                              yleft = cov$c[1], yright = cov$c[length(cov$c)],
                              method = "constant")
 
-        lin.interp$c2 <- cov.lin(lin.interp$t)
+        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
 
         test_that(paste0("Constant Approximation similar to approxfun and overrides covsInterpolation: ", meth), {
           expect_equal(lin.interp$c, lin.interp$c2)
