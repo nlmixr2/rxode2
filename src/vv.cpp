@@ -46,7 +46,7 @@ static inline void vv_do_steps(rx_solving_options_ind *ind, rx_solving_options *
   double t = xp;
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.0001;
   if (dt <= 0.0) dt = 0.0001;
-  if (std::abs(xout - xp) / dt > op->mxstep) {
+  if (std::abs(xout - xp) / dt >= op->mxstep) {
       dt = std::abs(xout - xp) / (double)(op->mxstep - 10);
   }
   int sign = (xout > xp) ? 1 : -1;

@@ -13,7 +13,7 @@ static inline void trapz_do_steps(rx_solving_options_ind *ind, rx_solving_option
   // Clamp dt so it never exceeds the interval; solve_fixed_ also does this
   // per-step, but check_pre_solve requires dt > 0 and tint > 0.
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
-  if (std::fabs(tint) / dt > (double)op->mxstep)
+  if (std::fabs(tint) / dt >= (double)op->mxstep)
     dt = std::fabs(tint) / (double)(op->mxstep - 10);
   if (tint < 0.0) dt = -dt;
 

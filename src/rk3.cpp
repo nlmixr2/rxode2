@@ -11,7 +11,7 @@ static inline void rk3_do_steps(rx_solving_options_ind *ind, rx_solving_options 
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.01;
   if (dt <= 0.0) dt = 0.01;
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
-  if (std::fabs(tint) / dt > (double)op->mxstep)
+  if (std::fabs(tint) / dt >= (double)op->mxstep)
     dt = std::fabs(tint) / (double)(op->mxstep - 10);
   if (tint < 0.0) dt = -dt;
 

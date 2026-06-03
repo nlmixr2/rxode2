@@ -85,7 +85,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                   state_type state(neqOde);
                   double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
                   if (dt <= 0.0) dt = 1e-4;
-                  if (fabs(ind->extraDoseNewXout - xp) / dt > (double)op->mxstep) {
+                  if (fabs(ind->extraDoseNewXout - xp) / dt >= (double)op->mxstep) {
                       dt = fabs(ind->extraDoseNewXout - xp) / (double)(op->mxstep - 10);
                   }
                   if (ind->extraDoseNewXout < xp) dt = -dt;
@@ -131,7 +131,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                     state_type state(neqOde);
                     double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
                     if (dt <= 0.0) dt = 1e-4;
-                    if (fabs(xout - ind->extraDoseNewXout) / dt > (double)op->mxstep) {
+                    if (fabs(xout - ind->extraDoseNewXout) / dt >= (double)op->mxstep) {
                         dt = fabs(xout - ind->extraDoseNewXout) / (double)(op->mxstep - 10);
                     }
                     if (xout < ind->extraDoseNewXout) dt = -dt;
@@ -168,7 +168,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               state_type state(neqOde);
               double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
               if (dt <= 0.0) dt = 1e-4;
-              if (fabs(xout - xp) / dt > (double)op->mxstep) {
+              if (fabs(xout - xp) / dt >= (double)op->mxstep) {
                   dt = fabs(xout - xp) / (double)(op->mxstep - 10);
               }
               if (xout < xp) dt = -dt;
@@ -290,7 +290,7 @@ extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
       state_type state(neqOde);
       double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
       if (dt <= 0.0) dt = 1e-4;
-      if (fabs(xout - *xp) / dt > (double)op->mxstep) {
+      if (fabs(xout - *xp) / dt >= (double)op->mxstep) {
           dt = fabs(xout - *xp) / (double)(op->mxstep - 10);
       }
       if (xout < *xp) dt = -dt;
