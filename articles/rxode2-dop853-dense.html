@@ -145,9 +145,9 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>DOP853 Dense Output: When and How to Use It</h1>
             
-            <h4 data-toc-skip class="date">2026-06-02</h4>
+            <h4 data-toc-skip class="date">2026-06-03</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/rxode2-dop853-dense.Rmd" class="external-link"><code>vignettes/articles/rxode2-dop853-dense.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.1.2/vignettes/articles/rxode2-dop853-dense.Rmd" class="external-link"><code>vignettes/articles/rxode2-dop853-dense.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-dop853-dense.Rmd</code></div>
     </div>
 
@@ -318,9 +318,9 @@ argument is needed to unlock large steps.</p>
 <span>    <span class="va">by</span>, <span class="va">nobs</span>, <span class="va">std</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"dense = %5.1f ms  speedup = %.2fx\n"</span>, <span class="va">den</span>, <span class="va">std</span> <span class="op">/</span> <span class="va">den</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co">#&gt; obs spacing = 1.00 h  (n_obs =   169):  standard =  63.6 ms  dense =  64.3 ms  speedup = 0.99x</span></span>
-<span><span class="co">#&gt; obs spacing = 0.10 h  (n_obs =  1681):  standard =  73.6 ms  dense =  71.1 ms  speedup = 1.04x</span></span>
-<span><span class="co">#&gt; obs spacing = 0.01 h  (n_obs = 16801):  standard = 151.1 ms  dense = 152.5 ms  speedup = 0.99x</span></span></code></pre></div>
+<span><span class="co">#&gt; obs spacing = 1.00 h  (n_obs =   169):  standard =  63.2 ms  dense =  62.9 ms  speedup = 1.00x</span></span>
+<span><span class="co">#&gt; obs spacing = 0.10 h  (n_obs =  1681):  standard =  70.2 ms  dense =  71.0 ms  speedup = 0.99x</span></span>
+<span><span class="co">#&gt; obs spacing = 0.01 h  (n_obs = 16801):  standard = 152.6 ms  dense = 148.2 ms  speedup = 1.03x</span></span></code></pre></div>
 <p>Typical results on this machine:</p>
 <table class="table">
 <thead><tr class="header">
@@ -381,9 +381,9 @@ override explicitly (suppressing messages with
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bm</span>, unit <span class="op">=</span> <span class="st">"ms"</span>, order <span class="op">=</span> <span class="st">"median"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;                 expr      min       lq     mean   median       uq      max</span></span>
-<span><span class="co">#&gt;      dense_auto_hmax 67.84203 71.07055 73.42587 72.17710 76.12847 82.03538</span></span>
-<span><span class="co">#&gt;  dense_explicit_hmax 68.02549 70.86937 74.54671 73.13482 77.34046 91.36425</span></span>
-<span><span class="co">#&gt;     std_default_hmax 67.73365 70.17860 73.61919 73.15473 76.83871 80.82695</span></span>
+<span><span class="co">#&gt;      dense_auto_hmax 67.79926 68.72892 71.20840 69.30572 73.55969 80.44640</span></span>
+<span><span class="co">#&gt;     std_default_hmax 67.11705 68.48235 71.29806 69.81847 73.92008 77.84056</span></span>
+<span><span class="co">#&gt;  dense_explicit_hmax 67.23552 68.65387 72.15205 71.63815 74.31253 88.73070</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;     30</span></span>
 <span><span class="co">#&gt;     30</span></span>
