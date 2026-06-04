@@ -5553,11 +5553,11 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         *rc = idid;
         badSolveExit(i);
       } else {
-        // extraDose: use dense output for the pre-dose sub-segment so obs
-        // before the extra-dose time are filled via dopDenseSolout.
-        // The post-dose sub-segment is handled by the main dense call below.
-        if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        // extraDose loop: use dense output for each pre-dose sub-segment so
+        // obs before every extra-dose time are filled via dopDenseSolout.
+        // The final post-dose sub-segment is handled by the main dense call below.
+        while (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             // Dense dop853 from xp to extraDoseNewXout, filling obs in this range.
             dc.obs_next    = last_key_i + 1;
@@ -5585,9 +5585,6 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           ind->idx = idx;
           ind->ixds = ixds;
           ind->idxExtra++;
-          // Do NOT run a second non-dense dop853 here. The main dense segment
-          // below integrates from xp=extraDoseNewXout to xout with dense output,
-          // correctly filling all remaining obs via dopDenseSolout.
         }
 
         // Dense segment solve from xp to xout, filling all pending obs via callback.
