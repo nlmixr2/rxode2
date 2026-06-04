@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkf108 ──────────────────────────────────────────────────
+// -- OdeRkf108 --------------------------------------------------
 // Feagin 10(8)
 OdeRkf108::OdeRkf108(unsigned long neq)
     : OdeEmbedded(neq, false, 8),

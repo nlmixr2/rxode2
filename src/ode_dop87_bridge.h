@@ -2,7 +2,7 @@
 #define ODE_DOP87_BRIDGE_H_
 
 // RxDoPri87: bridges rxode2's t_dydt interface into libode's OdeDoPri87.
-// Design mirrors RxVern65/RxVern76 — 13 stages, solemb_ and sol_ both from
+// Design mirrors RxVern65/RxVern76 -- 13 stages, solemb_ and sol_ both from
 // OLD sol_ in separate final loops.  NaN detection and mxstep guard included.
 
 #include "ode/ode_dopri_87.h"

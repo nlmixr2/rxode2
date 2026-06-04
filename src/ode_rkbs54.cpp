@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkbs54 ──────────────────────────────────────────────────
+// -- OdeRkbs54 --------------------------------------------------
 // Bogacki-Shampine 5(4)
 OdeRkbs54::OdeRkbs54(unsigned long neq)
     : OdeEmbedded(neq, false, 4),

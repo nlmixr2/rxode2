@@ -372,12 +372,12 @@ Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \co
 Requires splitting the state into coordinate-momentum pairs (and
 automatically pads odd-dimensional systems).  Is a fixed-step
 method (step size controlled by \code{hmin}).
-\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
 using Boost's odeint library.  Requires splitting the state into
 coordinate-momentum pairs (and automatically pads odd-dimensional
 systems).  Is a fixed-step method (step size controlled by
 \code{hmin}).
-\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
 stepper using Boost's odeint library.  Requires splitting the
 state into coordinate-momentum pairs (and automatically pads
 odd-dimensional systems).  Is a fixed-step method (step size
@@ -495,7 +495,7 @@ detected immediately and the solve exits with NA output.
 implemented via the libode library using coefficients from Verner's own
 website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 embedded 8th-order error estimate.  The highly sparse tableau (stages
-8–16 use only k_\link{0} and k_\link{5..}) minimises function evaluations per
+8-16 use only k_\link{0} and k_\link{5..}) minimises function evaluations per
 step.  Both solutions are computed from the original state in the final
 step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
@@ -665,12 +665,12 @@ behavior comparable to deSolve's \code{lsode()} or \code{bdf()}/\code{vode()} fu
 MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
 Corresponds to deSolve's \code{lsode(method="adams")}.  Adaptive step-size;
 error controlled by \code{atol} and \code{rtol}.
-\strong{Not thread-safe} — always runs on a single core.
+\strong{Not thread-safe} -- always runs on a single core.
 \item \code{"bdf"} -- DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
 Variable-order BDF method, order 1-5; internally generated dense Jacobian.
 Corresponds to deSolve's \code{bdf()} / \code{vode(method="bdf")}.  Adaptive
 step-size; error controlled by \code{atol} and \code{rtol}.
-\strong{Not thread-safe} — always runs on a single core.
+\strong{Not thread-safe} -- always runs on a single core.
 }}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
@@ -1389,7 +1389,7 @@ observations) that \code{evid_()} may push per individual per solve.
 When an individual exceeds this limit the solve is aborted for
 that individual (output filled with \code{NA}) and an error is raised
 after the full parallel solve completes.  Set to \code{0L} to allow
-unlimited pushes (use with care — cascading \code{evid_()} calls can
+unlimited pushes (use with care -- cascading \code{evid_()} calls can
 grow without bound).  Default is \code{100L}.}
 
 \item{tolFactor}{A per-individual tolerance multiplier (>= 1.0, or
@@ -1403,12 +1403,12 @@ problematic subjects and leave the rest at 1.0 (or omit them).
 The effective tolerance is always capped at \code{maxAtolRtolFactor}.
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{`tolFactor` may be:
-* `NULL` (default) — no adjustment applied.
-* A single numeric value — the same factor is applied to
+* `NULL` (default) -- no adjustment applied.
+* A single numeric value -- the same factor is applied to
   the first `length(tolFactor)` subjects in order.
-* A numeric vector — applied element-wise to subjects in
+* A numeric vector -- applied element-wise to subjects in
   the order they appear.
-* A **named** numeric vector — names are matched to subject
+* A **named** numeric vector -- names are matched to subject
   IDs; unmatched subjects retain `tolFactor = 1.0`.
 
 The per-subject factors used (after matching) are stored back

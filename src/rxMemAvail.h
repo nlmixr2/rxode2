@@ -22,7 +22,7 @@
 /* -----------------------------------------------------------------------
  * Windows: GlobalMemoryStatusEx reports available virtual address space
  * (ullAvailVirtual) and available commit budget (ullAvailPhys +
- * ullAvailPageFile).  Take the minimum of both — the process cannot
+ * ullAvailPageFile).  Take the minimum of both -- the process cannot
  * allocate more than either limit allows.
  * ----------------------------------------------------------------------- */
 #include <windows.h>
@@ -39,7 +39,7 @@ static inline uint64_t rxAvailableMemoryBytes(void) {
 #elif defined(__linux__)
 /* -----------------------------------------------------------------------
  * Linux: MemAvailable from /proc/meminfo (kernel 3.14+) is the most
- * accurate measure — it accounts for reclaimable caches and is the
+ * accurate measure -- it accounts for reclaimable caches and is the
  * same value shown by `free`.  Falls back to sysinfo() if unavailable.
  *
  * Caveat: Linux may overcommit memory (vm.overcommit_memory=0 default),
@@ -96,7 +96,7 @@ static inline uint64_t rxAvailableMemoryBytes(void) {
 }
 
 #else
-/* Unsupported platform — skip the check */
+/* Unsupported platform -- skip the check */
 static inline uint64_t rxAvailableMemoryBytes(void) {
   return UINT64_MAX;
 }

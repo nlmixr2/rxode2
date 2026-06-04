@@ -2,7 +2,7 @@
 #define ODE_DOP54_BRIDGE_H_
 
 // RxDoPri54: bridges rxode2's t_dydt interface into libode's OdeDoPri54.
-// Design mirrors RxRk43 exactly — see ode_rk43_bridge.h for commentary.
+// Design mirrors RxRk43 exactly -- see ode_rk43_bridge.h for commentary.
 // 7-stage 5(4) FSAL (Dormand-Prince): stages 1-6 advance sol_ (5th order);
 // stage 7 (FSAL, k7=f(t+dt,y_new)) feeds the 4th-order embedded error
 // estimate in solemb_.  NaN/Inf in derivatives triggers immediate exit.
@@ -81,7 +81,7 @@ protected:
         t_stage_ = t_ + c6 * dt;
         ode_fun_(soltemp_, k_[5]);
 
-        // 5th-order primary update — sol_ is now y_new (b7=0)
+        // 5th-order primary update -- sol_ is now y_new (b7=0)
         for (unsigned long i = 0; i < neq_; i++)
             sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]
                            + b4 * k_[3][i] + b5 * k_[4][i] + b6 * k_[5][i]);
@@ -91,7 +91,7 @@ protected:
         ode_fun_(sol_, k_[6]);
 
         // 4th-order embedded relative to y_new:
-        // solemb_ = y_new + dt*((d-b)·k[0..5] + d7*k7)
+        // solemb_ = y_new + dt*((d-b)*k[0..5] + d7*k7)
         for (unsigned long i = 0; i < neq_; i++)
             solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i]
                                          + (d3 - b3) * k_[2][i] + (d4 - b4) * k_[3][i]

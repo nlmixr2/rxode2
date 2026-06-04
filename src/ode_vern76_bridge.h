@@ -2,7 +2,7 @@
 #define ODE_VERN76_BRIDGE_H_
 
 // RxVern76: bridges rxode2's t_dydt interface into libode's OdeVern76.
-// Design mirrors RxVern65 exactly — 10 stages, same solemb_/sol_ final-loop
+// Design mirrors RxVern65 exactly -- 10 stages, same solemb_/sol_ final-loop
 // pattern (both from OLD sol_), NaN detection, mxstep guard.
 
 #include "ode/ode_vern_76.h"

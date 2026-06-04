@@ -22,7 +22,7 @@ meanProbs(x, ...)
 \arguments{
 \item{x}{numeric vector whose mean and probability based confidence
 values are wanted, NA and NaN values are not allowed in numeric
-vectors unless ‘na.rm’ is ‘TRUE’.}
+vectors unless 'na.rm' is 'TRUE'.}
 
 \item{...}{Arguments passed to default method, allows many
 different methods to be applied.}

@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkc65 ──────────────────────────────────────────────────
+// -- OdeRkc65 --------------------------------------------------
 // Calvo 6(5)
 OdeRkc65::OdeRkc65(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

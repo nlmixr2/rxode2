@@ -2,7 +2,7 @@
 #define ODE_SSP3_BRIDGE_H_
 
 // RxSsp3: bridges rxode2's t_dydt interface into libode's OdeSsp3.
-// Design mirrors RxTrapz exactly — see ode_trapz_bridge.h for commentary.
+// Design mirrors RxTrapz exactly -- see ode_trapz_bridge.h for commentary.
 
 #include "ode/ode_ssp_3.h"
 

@@ -2,7 +2,7 @@
 #define ODE_VERN65_BRIDGE_H_
 
 // RxVern65: bridges rxode2's t_dydt interface into libode's OdeVern65.
-// Design mirrors RxRk43/RxDoPri54 — see those headers for commentary.
+// Design mirrors RxRk43/RxDoPri54 -- see those headers for commentary.
 //
 // Key difference from dop54: in Vern65, solemb_ and sol_ are BOTH computed
 // from the OLD sol_ in the final step, so they are written in two separate

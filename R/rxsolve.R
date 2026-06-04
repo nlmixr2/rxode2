@@ -209,12 +209,12 @@
 #'     The effective tolerance is always capped at `maxAtolRtolFactor`.
 #'
 #'     `tolFactor` may be:
-#'     * `NULL` (default) — no adjustment applied.
-#'     * A single numeric value — the same factor is applied to
+#'     * `NULL` (default) -- no adjustment applied.
+#'     * A single numeric value -- the same factor is applied to
 #'       the first `length(tolFactor)` subjects in order.
-#'     * A numeric vector — applied element-wise to subjects in
+#'     * A numeric vector -- applied element-wise to subjects in
 #'       the order they appear.
-#'     * A **named** numeric vector — names are matched to subject
+#'     * A **named** numeric vector -- names are matched to subject
 #'       IDs; unmatched subjects retain `tolFactor = 1.0`.
 #'
 #'     The per-subject factors used (after matching) are stored back
@@ -815,7 +815,7 @@
 #'   When an individual exceeds this limit the solve is aborted for
 #'   that individual (output filled with `NA`) and an error is raised
 #'   after the full parallel solve completes.  Set to `0L` to allow
-#'   unlimited pushes (use with care — cascading `evid_()` calls can
+#'   unlimited pushes (use with care -- cascading `evid_()` calls can
 #'   grow without bound).  Default is `100L`.
 #'
 #' @param indOwnAlloc Logical; when `TRUE` each individual's `dose`,
@@ -3423,13 +3423,13 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   automatically pads odd-dimensional systems).  Is a fixed-step
 #'   method (step size controlled by `hmin`).
 #'
-#' * `"sb3a"` -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper
+#' * `"sb3a"` -- Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
 #'   using Boost's odeint library.  Requires splitting the state into
 #'   coordinate-momentum pairs (and automatically pads odd-dimensional
 #'   systems).  Is a fixed-step method (step size controlled by
 #'   `hmin`).
 #'
-#' * `"sb3am4"` -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan
+#' * `"sb3am4"` -- Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
 #'   stepper using Boost's odeint library.  Requires splitting the
 #'   state into coordinate-momentum pairs (and automatically pads
 #'   odd-dimensional systems).  Is a fixed-step method (step size
@@ -3560,7 +3560,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   implemented via the libode library using coefficients from Verner's own
 #'   website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 #'   embedded 8th-order error estimate.  The highly sparse tableau (stages
-#'   8–16 use only k_[0] and k_[5..]) minimises function evaluations per
+#'   8-16 use only k_[0] and k_[5..]) minimises function evaluations per
 #'   step.  Both solutions are computed from the original state in the final
 #'   step loop.  Uses `atol` and `rtol` for error control.  The `hmin`
 #'   parameter sets the initial step size (default `0.01`); subsequent steps
@@ -3795,13 +3795,13 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
 #'   Corresponds to deSolve's `lsode(method="adams")`.  Adaptive step-size;
 #'   error controlled by `atol` and `rtol`.
-#'   **Not thread-safe** — always runs on a single core.
+#'   **Not thread-safe** -- always runs on a single core.
 #'
 #' * `"bdf"` -- DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
 #'   Variable-order BDF method, order 1-5; internally generated dense Jacobian.
 #'   Corresponds to deSolve's `bdf()` / `vode(method="bdf")`.  Adaptive
 #'   step-size; error controlled by `atol` and `rtol`.
-#'   **Not thread-safe** — always runs on a single core.
+#'   **Not thread-safe** -- always runs on a single core.
 #'
 #' @keywords Internal
 #'
@@ -4078,7 +4078,7 @@ rxIsNonStiff <- function(method) {
 #' Dense output (continuous interpolation) allows the solver to reconstruct
 #' the solution at any point within a completed step without extra function
 #' evaluations.  This lets the solver take large internal steps that span many
-#' requested output times, then interpolate cheaply — improving both speed and
+#' requested output times, then interpolate cheaply -- improving both speed and
 #' accuracy on densely sampled grids.
 #'
 #' Dense-capable single methods are:

@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkt54 ──────────────────────────────────────────────────
+// -- OdeRkt54 --------------------------------------------------
 // Tsitouras 5(4) FSAL
 OdeRkt54::OdeRkt54(unsigned long neq)
     : OdeEmbedded(neq, false, 4),

@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkss54 ──────────────────────────────────────────────────
+// -- OdeRkss54 --------------------------------------------------
 // Sharp-Smart 5(4)
 OdeRkss54::OdeRkss54(unsigned long neq)
     : OdeEmbedded(neq, false, 4),

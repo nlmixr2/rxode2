@@ -70,12 +70,12 @@ Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \co
 Requires splitting the state into coordinate-momentum pairs (and
 automatically pads odd-dimensional systems).  Is a fixed-step
 method (step size controlled by \code{hmin}).
-\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nyström SB3A McLachlan stepper
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
 using Boost's odeint library.  Requires splitting the state into
 coordinate-momentum pairs (and automatically pads odd-dimensional
 systems).  Is a fixed-step method (step size controlled by
 \code{hmin}).
-\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nyström SB3A M4 McLachlan
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
 stepper using Boost's odeint library.  Requires splitting the
 state into coordinate-momentum pairs (and automatically pads
 odd-dimensional systems).  Is a fixed-step method (step size
@@ -193,7 +193,7 @@ detected immediately and the solve exits with NA output.
 implemented via the libode library using coefficients from Verner's own
 website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 embedded 8th-order error estimate.  The highly sparse tableau (stages
-8–16 use only k_\link{0} and k_\link{5..}) minimises function evaluations per
+8-16 use only k_\link{0} and k_\link{5..}) minimises function evaluations per
 step.  Both solutions are computed from the original state in the final
 step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
@@ -363,12 +363,12 @@ behavior comparable to deSolve's \code{lsode()} or \code{bdf()}/\code{vode()} fu
 MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
 Corresponds to deSolve's \code{lsode(method="adams")}.  Adaptive step-size;
 error controlled by \code{atol} and \code{rtol}.
-\strong{Not thread-safe} — always runs on a single core.
+\strong{Not thread-safe} -- always runs on a single core.
 \item \code{"bdf"} -- DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
 Variable-order BDF method, order 1-5; internally generated dense Jacobian.
 Corresponds to deSolve's \code{bdf()} / \code{vode(method="bdf")}.  Adaptive
 step-size; error controlled by \code{atol} and \code{rtol}.
-\strong{Not thread-safe} — always runs on a single core.
+\strong{Not thread-safe} -- always runs on a single core.
 }}
 }
 \value{

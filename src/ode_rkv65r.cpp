@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkv65r ──────────────────────────────────────────────────
+// -- OdeRkv65r --------------------------------------------------
 // Verner robust 6(5) FSAL
 OdeRkv65r::OdeRkv65r(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

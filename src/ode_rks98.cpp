@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRks98 ──────────────────────────────────────────────────
+// -- OdeRks98 --------------------------------------------------
 // Sharp 9(8)
 OdeRks98::OdeRks98(unsigned long neq)
     : OdeEmbedded(neq, false, 8),

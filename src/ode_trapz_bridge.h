@@ -28,9 +28,9 @@ class RxTrapz : public ode::OdeTrapz {
     double                  t_stage_;
 
 public:
-    // full_neq — full neq array (neq[0] = eff), forwarded unchanged to dydt_
-    // neqOde   — number of true ODE states (solver size, excludes linear cmts)
-    // yp       — state buffer; solver works on yp[0..neqOde-1] in-place
+    // full_neq -- full neq array (neq[0] = eff), forwarded unchanged to dydt_
+    // neqOde   -- number of true ODE states (solver size, excludes linear cmts)
+    // yp       -- state buffer; solver works on yp[0..neqOde-1] in-place
     RxTrapz(t_dydt dydt, int *full_neq, int neqOde,
             rx_solving_options_ind *ind, double *yp)
         : ode::OdeTrapz((unsigned long)neqOde),

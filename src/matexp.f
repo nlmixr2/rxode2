@@ -457,7 +457,7 @@
 !
 !     1) NIELS RODE KRISTENSEN, TECHNICAL UNIVERSITY OF DENMARK, 2000
 !     2) ANDREAS S. CHRISTENSEN,TECHNICAL UNIVERSITY OF DENMARK, 2006
-!     3) SØREN KLIM, IMM-DTU, 2007
+!     3) SOREN KLIM, IMM-DTU, 2007
 !-----------------------------------------------------------------------!
 !
       INTEGER  LWSP, NS, IPIV(M)

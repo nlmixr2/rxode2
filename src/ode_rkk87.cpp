@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkk87 ──────────────────────────────────────────────────
+// -- OdeRkk87 --------------------------------------------------
 // Kovalnogov 8(7)
 OdeRkk87::OdeRkk87(unsigned long neq)
     : OdeEmbedded(neq, false, 7),

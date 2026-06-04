@@ -10,7 +10,7 @@
 #include "ode/ode_geng_5.h"
 #include "ode/ode_sdirk_43.h"
 
-// ── Shared parallel driver ────────────────────────────────────────────────────
+// -- Shared parallel driver ----------------------------------------------------
 
 template <class OdeSolver>
 static void par_implicit_tmpl(rx_solve *rx, const char *err_msg) {
@@ -47,7 +47,7 @@ static void par_implicit_tmpl(rx_solve *rx, const char *err_msg) {
   }
 }
 
-// ── ros6 — OdeROW6A (32) ─────────────────────────────────────────────────────
+// -- ros6 -- OdeROW6A (32) -----------------------------------------------------
 extern "C" void ind_ros6_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeROW6A>(rx, op, solveid, neq, c_dydt, u_inis, "ros6 failed");
 }
@@ -62,7 +62,7 @@ extern "C" void ros6_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   *xp = xout; *istate = 1;
 }
 
-// ── backwardEuler — OdeBackwardEuler (33) ─────────────────────────────────────────────
+// -- backwardEuler -- OdeBackwardEuler (33) ---------------------------------------------
 extern "C" void ind_backwardEuler_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeBackwardEuler>(rx, op, solveid, neq, c_dydt, u_inis, "backwardEuler failed");
 }
@@ -77,7 +77,7 @@ extern "C" void backwardEuler_solveWith1Pt(int *neq, double *yp, double *xp, dou
   *xp = xout; *istate = 1;
 }
 
-// ── gauss6 — OdeGauss6 (34) ──────────────────────────────────────────────────
+// -- gauss6 -- OdeGauss6 (34) --------------------------------------------------
 extern "C" void ind_gauss6_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeGauss6>(rx, op, solveid, neq, c_dydt, u_inis, "gauss6 failed");
 }
@@ -92,7 +92,7 @@ extern "C" void gauss6_solveWith1Pt(int *neq, double *yp, double *xp, double xou
   *xp = xout; *istate = 1;
 }
 
-// ── iiic6 — OdeLobattoIIIC6 (35) ─────────────────────────────────────────────
+// -- iiic6 -- OdeLobattoIIIC6 (35) ---------------------------------------------
 extern "C" void ind_iiic6_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeLobattoIIIC6>(rx, op, solveid, neq, c_dydt, u_inis, "iiic6 failed");
 }
@@ -107,7 +107,7 @@ extern "C" void iiic6_solveWith1Pt(int *neq, double *yp, double *xp, double xout
   *xp = xout; *istate = 1;
 }
 
-// ── radauiia5 — OdeRadauIIA5 (36) ────────────────────────────────────────────
+// -- radauiia5 -- OdeRadauIIA5 (36) --------------------------------------------
 extern "C" void ind_radauiia5_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeRadauIIA5>(rx, op, solveid, neq, c_dydt, u_inis, "radauiia5 failed");
 }
@@ -122,7 +122,7 @@ extern "C" void radauiia5_solveWith1Pt(int *neq, double *yp, double *xp, double 
   *xp = xout; *istate = 1;
 }
 
-// ── geng5 — OdeGeng5 (37) ────────────────────────────────────────────────────
+// -- geng5 -- OdeGeng5 (37) ----------------------------------------------------
 extern "C" void ind_geng5_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeGeng5>(rx, op, solveid, neq, c_dydt, u_inis, "geng5 failed");
 }
@@ -137,7 +137,7 @@ extern "C" void geng5_solveWith1Pt(int *neq, double *yp, double *xp, double xout
   *xp = xout; *istate = 1;
 }
 
-// ── sdirk43 — OdeSDIRK43 (38) ────────────────────────────────────────────────
+// -- sdirk43 -- OdeSDIRK43 (38) ------------------------------------------------
 extern "C" void ind_sdirk43_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   ind_implicit_0<ode::OdeSDIRK43>(rx, op, solveid, neq, c_dydt, u_inis, "sdirk43 failed");
 }

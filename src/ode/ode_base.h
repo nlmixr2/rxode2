@@ -7,7 +7,7 @@
 The classes were originally styled after [Chris Rycroft](https://people.seas.harvard.edu/~chr/)'s [example classes](https://github.com/chr1shr/am225_examples/tree/master/1a_ode_solvers). Their structure makes it easy to build a templated integrator on top of an arbitrary solver class and switch the solver/method. Implicit methods can be given a function for the ODE system's Jacobian or, if none is provided, the Jacobian is estimated using finite differences.
 
 Several of the solvers and much more detail on the methods can be found in these amazing books:
-+ Hairer, E., Nørsett, S. P. & Wanner, G. Solving Ordinary Differential Equations I: Nonstiff Problems. (Springer-Verlag, 1987).
++ Hairer, E., Norsett, S. P. & Wanner, G. Solving Ordinary Differential Equations I: Nonstiff Problems. (Springer-Verlag, 1987).
 + Hairer, E. & Wanner, G. Solving Ordinary Differential Equations II: Stiff and Differential-Algebraic Problems. (Springer, 1996).
 
 The table below lists all the solvers and gives some basic information about them. All of the solvers can be used with a custom time step selection function, but those with a built-in adaptive capability are indicated below. Papers and/or links to the derivation or original publication of the methods are often copied in the headers for the solver classes and included in the documentation. Some work still needs to be done to make the implicit methods genuinely useful, and a list of things to implement is in the `todo.txt` file.
@@ -341,7 +341,7 @@ class OdeBase {
         double dt_;
         //!array for the solution, changing over time
         double *sol_;
-        //!if true, sol_ points to an external buffer — destructor must not free it
+        //!if true, sol_ points to an external buffer -- destructor must not free it
         bool sol_external_;
         //!number of time steps
         long unsigned nstep_;

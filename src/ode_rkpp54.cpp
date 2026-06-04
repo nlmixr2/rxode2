@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkpp54 ──────────────────────────────────────────────────
+// -- OdeRkpp54 --------------------------------------------------
 // Papakostas-PapaGeorgiou 5(4) FSAL
 OdeRkpp54::OdeRkpp54(unsigned long neq)
     : OdeEmbedded(neq, false, 4),

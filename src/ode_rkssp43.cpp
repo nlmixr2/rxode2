@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkssp43 ──────────────────────────────────────────────────
+// -- OdeRkssp43 --------------------------------------------------
 // SSP 4-stage 3(2)
 OdeRkssp43::OdeRkssp43(unsigned long neq)
     : OdeEmbedded(neq, false, 2),

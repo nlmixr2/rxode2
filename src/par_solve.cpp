@@ -78,7 +78,7 @@ extern "C" SEXP _rxHasOpenMp(){
 
 rx_solve rx_global;
 
-// ── Per-thread LSODA context pool ────────────────────────────────────────────
+// -- Per-thread LSODA context pool --------------------------------------------
 // Eliminates one malloc/free pair of the large alloc_mem block per subject.
 // Pattern mirrors the __linCmtA / __linCmtB pool in linCmt.cpp.
 struct lsoda_pool_t {
@@ -110,9 +110,9 @@ extern "C" void freeLsodaCtxPool() {
   }
   __lsodaCtxPool.clear();
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-// ── Per-thread Fortran LSODA rwork/iwork pool ────────────────────────────────
+// -- Per-thread Fortran LSODA rwork/iwork pool --------------------------------
 // Eliminates false-sharing on the global rwork/iwork arrays when par_lsoda runs
 // in parallel.  Each thread gets its own pre-allocated work arrays sized once
 // at setup time (22 + neq*max(16,neq+9) + 1 doubles; 20 + neq + 1 ints).
@@ -177,9 +177,9 @@ extern "C" void freeRworkPool() {
   }
   __rworkPool.clear();
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-// ── AutoSwitch: Gershgorin spectral radius and stability size ─────────────────
+// -- AutoSwitch: Gershgorin spectral radius and stability size -----------------
 
 static double autoSwitchStabilitySize(int method) {
   switch (method) {
@@ -225,7 +225,7 @@ extern "C" void ensureAutoJacBuf(int nCores, int neq) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 extern "C" void nullGlobals() {
   lineNull(&(rx_global.factors));
@@ -691,13 +691,13 @@ int global_debug = 0;
  * DLSODE-based solvers (method 106 = lsode/Adams, method 107 = bdf/BDF)
  *
  * DLSODE (Hindmarsh 1983, from ODEPACK) uses a fixed method:
- *   lsode (106): MF=10  — Adams (nonstiff), variable order 1-12
- *   bdf   (107): MF=22  — BDF (stiff), internally generated dense Jacobian
+ *   lsode (106): MF=10  -- Adams (nonstiff), variable order 1-12
+ *   bdf   (107): MF=22  -- BDF (stiff), internally generated dense Jacobian
  *
- * DLSODE uses non-reentrant COMMON blocks — NOT thread-safe.
+ * DLSODE uses non-reentrant COMMON blocks -- NOT thread-safe.
  * Both methods always run single-threaded.
  *
- * DLSODE's F signature: F(NEQ, T, Y, YDOT, RPAR, IPAR) — deSolve extension.
+ * DLSODE's F signature: F(NEQ, T, Y, YDOT, RPAR, IPAR) -- deSolve extension.
  * We bridge via rxode2_dlsode_F which drops RPAR/IPAR and passes full NEQ[].
  * JAC is a dummy (MF=10 = no Jacobian; MF=22 = internal finite-difference Jacobian).
  * ----------------------------------------------------------------------- */
@@ -711,14 +711,14 @@ extern "C" {
 }
 
 /* Bridge: DLSODE calls F(NEQ, T, Y, YDOT, RPAR, IPAR).
- * rxode2's derivative uses F(NEQ, T, Y, YDOT) — same NEQ array (solveid in NEQ[1]). */
+ * rxode2's derivative uses F(NEQ, T, Y, YDOT) -- same NEQ array (solveid in NEQ[1]). */
 static void rxode2_dlsode_F(int *neq, double *t, double *y, double *ydot,
                              double *rpar, int *ipar) {
   (void)rpar; (void)ipar;
   dydt_lsoda_dum(neq, t, y, ydot);
 }
 
-/* Dummy JAC — never called for MF=10 or MF=22 (both use internal Jacobian). */
+/* Dummy JAC -- never called for MF=10 or MF=22 (both use internal Jacobian). */
 static void rxode2_dlsode_JAC(int *neq, double *t, double *y,
                                int *ml, int *mu, double *pd, int *nrowpd,
                                double *rpar, int *ipar) {
@@ -922,10 +922,10 @@ static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
          int ea = evid[a], eb = evid[b];
          // Reset events (evid==3) must sort BEFORE dose events at the same time
          // to preserve evid=4 (reset+dose) semantics: reset zeroes compartments,
-         // then dose is applied — not the other way around.
+         // then dose is applied -- not the other way around.
          if (ea == 3 && eb != 3) return true;
          if (eb == 3 && ea != 3) return false;
-         // Otherwise: higher evid (doses) before lower evid (obs) — matches etTrans()
+         // Otherwise: higher evid (doses) before lower evid (obs) -- matches etTrans()
          if (ea != eb) return ea > eb;
          return a < b;
        });
@@ -1539,7 +1539,7 @@ extern "C" void par_rkh10(rx_solve *rx);
 /* Run one ODE interval with the specified method code.
    On entry:  *xp = interval start time; yp = current state.
    On return: *xp = xout (if successful), yp = updated state.
-   *istate ≤ 0 or ind->rc[0] == -2019 signals failure.
+   *istate <= 0 or ind->rc[0] == -2019 signals failure.
    *idid is set for dop853 (method==0); positive = success, -4 = stiff detected.
    autoSwitchPrimary: when true, dop853 uses nstiff=50 to enable internal stiffness test. */
 static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
@@ -3491,7 +3491,7 @@ void handleSS(int *neq,
 }
 
 // Grow ind->solve if slot i (and optionally i+1) are beyond the current
-// allocated capacity.  Safe to call between ODE steps — no integrator holds
+// allocated capacity.  Safe to call between ODE steps -- no integrator holds
 // a live pointer into ind->solve at those points.
 static inline void _growSolveIfNeeded(rx_solving_options_ind *ind,
                                       rx_solving_options *op,
@@ -3732,7 +3732,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   int neqOde = *neq - op->numLin - op->numLinSens;
   int localBadSolve = 0;
 
-  // ── LSODA context: use per-thread pool when available (avoids per-subject
+  // -- LSODA context: use per-thread pool when available (avoids per-subject
   //    malloc/free of the large alloc_mem working-array block).
   bool _usingPool = (!__lsodaCtxPool.empty());
   lsoda_pool_t *_pool = _usingPool
@@ -4475,7 +4475,7 @@ extern "C" void par_lsoda(rx_solve *rx) {
   if (global_debug)
     RSprintf("JT: %d\n", jt);
 
-  // Fortran dlsoda uses non-reentrant COMMON blocks — must remain single-threaded.
+  // Fortran dlsoda uses non-reentrant COMMON blocks -- must remain single-threaded.
   // Pool slot 0 is always pre-allocated by ensureRworkPool before solving begins.
   double *rwork = __rworkPool[0].rworkp;
   int    *iwork = __rworkPool[0].iworkp;
@@ -4717,7 +4717,7 @@ static void par_lsode_bdf(rx_solve *rx, int mf) {
 
 extern "C" void ind_lsode(rx_solve *rx, int solveid) {
   /* lsode: DLSODE Adams MF=10 (non-stiff, variable order 1-12).
-   * Non-reentrant COMMON blocks — always single-threaded. */
+   * Non-reentrant COMMON blocks -- always single-threaded. */
   rx_solving_options *op = rx->op;
   int neq[2]; neq[0] = op->neq; neq[1] = 0;
   int lrw = 22 + neq[0] * max(16, neq[0] + 9), liw = 20 + neq[0];
@@ -4727,7 +4727,7 @@ extern "C" void ind_lsode(rx_solve *rx, int solveid) {
 
 extern "C" void ind_bdf(rx_solve *rx, int solveid) {
   /* bdf: DLSODE BDF MF=22 (stiff, internally generated dense Jacobian).
-   * Non-reentrant COMMON blocks — always single-threaded. */
+   * Non-reentrant COMMON blocks -- always single-threaded. */
   rx_solving_options *op = rx->op;
   int neq[2]; neq[0] = op->neq; neq[1] = 0;
   int lrw = 22 + 9 * neq[0] + 2 * neq[0] * neq[0], liw = 20 + neq[0];
@@ -4736,12 +4736,12 @@ extern "C" void ind_bdf(rx_solve *rx, int solveid) {
 }
 
 extern "C" void par_lsode(rx_solve *rx) {
-  /* lsode: DLSODE Adams MF=10 — single-threaded (non-reentrant COMMON blocks). */
+  /* lsode: DLSODE Adams MF=10 -- single-threaded (non-reentrant COMMON blocks). */
   par_lsode_bdf(rx, 10);
 }
 
 extern "C" void par_bdf(rx_solve *rx) {
-  /* bdf: DLSODE BDF MF=22 — single-threaded (non-reentrant COMMON blocks). */
+  /* bdf: DLSODE BDF MF=22 -- single-threaded (non-reentrant COMMON blocks). */
   par_lsode_bdf(rx, 22);
 }
 
@@ -4764,7 +4764,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   int neq[2];
   neq[1] = rx->ordId[solveid]-1;
   ind = &(rx->subjects[neq[1]]);
-  // Per-individual effective neq (rxEffNeq) — see ind_liblsoda0 for context.
+  // Per-individual effective neq (rxEffNeq) -- see ind_liblsoda0 for context.
   neq[0] = rxEffNeq(ind, op);
 
   double ret = 0.0;
@@ -5470,7 +5470,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     ind->idx  = i;
     ind->linSS = 0;
 
-    // mainSorted re-sort — identical to ind_dop0
+    // mainSorted re-sort -- identical to ind_dop0
     if (ind->mainSorted == 0) {
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
@@ -5612,7 +5612,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       }
     }
 
-    // Handle the key event and updateSolve — identical to ind_dop0
+    // Handle the key event and updateSolve -- identical to ind_dop0
     if (!op->badSolve) {
       ind->idx = i;
       if (this_evid == 3) {

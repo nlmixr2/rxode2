@@ -56,7 +56,7 @@ double F77_NAME(d1mach)(int *i) {
  * the  msg // char(0)  pattern before every call.
  */
 
-/* rprintf(msg) — print a plain string */
+/* rprintf(msg) -- print a plain string */
 void F77_NAME(rprintf)(const char *msg
 #ifdef USE_FC_LEN_T
                        , size_t msg_len
@@ -66,7 +66,7 @@ void F77_NAME(rprintf)(const char *msg
   Rprintf("%s", msg);
 }
 
-/* rprintfd2(msg, r1, r2) — message with two doubles */
+/* rprintfd2(msg, r1, r2) -- message with two doubles */
 void F77_NAME(rprintfd2)(const char *msg, double *r1, double *r2
 #ifdef USE_FC_LEN_T
                           , size_t msg_len
@@ -76,7 +76,7 @@ void F77_NAME(rprintfd2)(const char *msg, double *r1, double *r2
   Rprintf(msg, *r1, *r2);
 }
 
-/* rprintfi1(msg, i1) — message with one integer */
+/* rprintfi1(msg, i1) -- message with one integer */
 void F77_NAME(rprintfi1)(const char *msg, int *i1
 #ifdef USE_FC_LEN_T
                           , size_t msg_len
@@ -86,7 +86,7 @@ void F77_NAME(rprintfi1)(const char *msg, int *i1
   Rprintf(msg, *i1);
 }
 
-/* rprintfi2(msg, i1, i2) — message with two integers */
+/* rprintfi2(msg, i1, i2) -- message with two integers */
 void F77_NAME(rprintfi2)(const char *msg, int *i1, int *i2
 #ifdef USE_FC_LEN_T
                           , size_t msg_len
@@ -96,7 +96,7 @@ void F77_NAME(rprintfi2)(const char *msg, int *i1, int *i2
   Rprintf(msg, *i1, *i2);
 }
 
-/* rprintfdi(msg, d1, i1) — message with one double, one integer */
+/* rprintfdi(msg, d1, i1) -- message with one double, one integer */
 void F77_NAME(rprintfdi)(const char *msg, double *d1, int *i1
 #ifdef USE_FC_LEN_T
                           , size_t msg_len
@@ -106,7 +106,7 @@ void F77_NAME(rprintfdi)(const char *msg, double *d1, int *i1
   Rprintf(msg, *d1, *i1);
 }
 
-/* rprintfd1(msg, d1) — printf-style message with one double */
+/* rprintfd1(msg, d1) -- printf-style message with one double */
 void F77_NAME(rprintfd1)(const char *msg, double *d1
 #ifdef USE_FC_LEN_T
                           , size_t msg_len
@@ -116,7 +116,7 @@ void F77_NAME(rprintfd1)(const char *msg, double *d1
   Rprintf(msg, *d1);
 }
 
-/* rprintfid(msg, i1, d1) — printf-style message with integer then double */
+/* rprintfid(msg, i1, d1) -- printf-style message with integer then double */
 void F77_NAME(rprintfid)(const char *msg, int *i1, double *d1
 #ifdef USE_FC_LEN_T
                           , size_t msg_len
@@ -126,7 +126,7 @@ void F77_NAME(rprintfid)(const char *msg, int *i1, double *d1
   Rprintf(msg, *i1, *d1);
 }
 
-/* rprintd1(msg, d1) — print label + one double (R dblepr style) */
+/* rprintd1(msg, d1) -- print label + one double (R dblepr style) */
 void F77_NAME(rprintd1)(const char *msg, double *d1
 #ifdef USE_FC_LEN_T
                          , size_t msg_len
@@ -136,7 +136,7 @@ void F77_NAME(rprintd1)(const char *msg, double *d1
   Rprintf("%s %g\n", msg, *d1);
 }
 
-/* rprintd2(msg, d1, d2) — print label + two doubles (R dblepr style) */
+/* rprintd2(msg, d1, d2) -- print label + two doubles (R dblepr style) */
 void F77_NAME(rprintd2)(const char *msg, double *d1, double *d2
 #ifdef USE_FC_LEN_T
                          , size_t msg_len
@@ -146,7 +146,7 @@ void F77_NAME(rprintd2)(const char *msg, double *d1, double *d2
   Rprintf("%s %g %g\n", msg, *d1, *d2);
 }
 
-/* rprinti1(msg, i1) — print label + one integer (R intpr style) */
+/* rprinti1(msg, i1) -- print label + one integer (R intpr style) */
 void F77_NAME(rprinti1)(const char *msg, int *i1
 #ifdef USE_FC_LEN_T
                          , size_t msg_len

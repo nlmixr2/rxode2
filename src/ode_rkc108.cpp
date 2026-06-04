@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkc108 ──────────────────────────────────────────────────
+// -- OdeRkc108 --------------------------------------------------
 // Curtis 10(8)
 OdeRkc108::OdeRkc108(unsigned long neq)
     : OdeEmbedded(neq, false, 8),

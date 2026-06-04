@@ -41,7 +41,7 @@ public:
 
     // Prime dt_ before the first step so Newton functions see a nonzero dt.
     // OdeBase::step() sets dt_ only AFTER step_() returns, but Newton reads
-    // *dt_ = &integrator_->dt_ DURING step_() — so dt_=0 on step 1 without this.
+    // *dt_ = &integrator_->dt_ DURING step_() -- so dt_=0 on step 1 without this.
     void prime_dt(double dt) { this->dt_ = dt; }
 
     // Override step_() to pre-set dt_ before the solver's step_() runs.
@@ -115,7 +115,7 @@ protected:
     }
 };
 
-// ── Template helpers ─────────────────────────────────────────────────────────
+// -- Template helpers ---------------------------------------------------------
 
 template <class OdeSolver>
 static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,

@@ -18,7 +18,7 @@ corresponding method supports dense output.
 Dense output (continuous interpolation) allows the solver to reconstruct
 the solution at any point within a completed step without extra function
 evaluations.  This lets the solver take large internal steps that span many
-requested output times, then interpolate cheaply — improving both speed and
+requested output times, then interpolate cheaply -- improving both speed and
 accuracy on densely sampled grids.
 }
 \details{

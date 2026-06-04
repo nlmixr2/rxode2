@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkf1412 ──────────────────────────────────────────────────
+// -- OdeRkf1412 --------------------------------------------------
 // Feagin 14(12)
 OdeRkf1412::OdeRkf1412(unsigned long neq)
     : OdeEmbedded(neq, false, 12),

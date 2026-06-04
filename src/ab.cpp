@@ -53,7 +53,7 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
 
   // RK4 helper: advance y by one step.
   // Use block scopes to ensure zero_copy_state objects are constructed fresh
-  // each time — assigning to a non-owned state overwrites the pointed-to data,
+  // each time -- assigning to a non-owned state overwrites the pointed-to data,
   // which would corrupt y.
   auto rk4_step = [&](std::vector<double>& y, double tc, double h) {
     { zero_copy_state xs(y.data(), neq), ds(k1.data(), neq); sys(xs, ds, tc); }

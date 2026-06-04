@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRko129 ──────────────────────────────────────────────────
+// -- OdeRko129 --------------------------------------------------
 // Ono 12(9)
 OdeRko129::OdeRko129(unsigned long neq)
     : OdeEmbedded(neq, false, 9),

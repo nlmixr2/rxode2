@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRks54 ──────────────────────────────────────────────────
+// -- OdeRks54 --------------------------------------------------
 // Stepanov 5(4) FSAL
 OdeRks54::OdeRks54(unsigned long neq)
     : OdeEmbedded(neq, false, 4),

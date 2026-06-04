@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkbs32 ──────────────────────────────────────────────────
+// -- OdeRkbs32 --------------------------------------------------
 // Bogacki-Shampine 3(2) FSAL
 OdeRkbs32::OdeRkbs32(unsigned long neq)
     : OdeEmbedded(neq, false, 2),

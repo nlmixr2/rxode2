@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRktp75 ──────────────────────────────────────────────────
+// -- OdeRktp75 --------------------------------------------------
 // Tsitouras-Papakostas 7(5)
 OdeRktp75::OdeRktp75(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

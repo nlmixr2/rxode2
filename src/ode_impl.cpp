@@ -78,7 +78,7 @@ static inline double ode_stage_sum(double **a, int row, int ncol) {
     return c;
 }
 
-// ── ode_util ─────────────────────────────────────────────────────────────────
+// -- ode_util -----------------------------------------------------------------
 
 double ode_max2 (double a, double b) { return (a > b) ? a : b; }
 double ode_min2 (double a, double b) { return (a < b) ? a : b; }
@@ -86,7 +86,7 @@ bool   ode_is_close (double a, double b, double thresh) {
     return std::fabs(a - b) <= thresh;
 }
 
-// ── ode_io ────────────────────────────────────────────────────────────────────
+// -- ode_io --------------------------------------------------------------------
 
 void ode_check_write (const char * /*fn*/) {}
 
@@ -100,7 +100,7 @@ std::string ode_int_to_string (long i) {
     return s.str();
 }
 
-// ── OdeRK ────────────────────────────────────────────────────────────────────
+// -- OdeRK --------------------------------------------------------------------
 
 OdeRK::OdeRK (unsigned long neq, int nk) : nk_(nk) {
     k_ = new double*[nk_];
@@ -114,7 +114,7 @@ OdeRK::~OdeRK () {
     delete[] k_;
 }
 
-// ── OdeERK ───────────────────────────────────────────────────────────────────
+// -- OdeERK -------------------------------------------------------------------
 
 OdeERK::OdeERK (unsigned long neq) {
     soltemp_ = new double[neq]();
@@ -124,7 +124,7 @@ OdeERK::~OdeERK () {
     delete[] soltemp_;
 }
 
-// ── OdeBase ──────────────────────────────────────────────────────────────────
+// -- OdeBase ------------------------------------------------------------------
 
 OdeBase::OdeBase (unsigned long neq, bool need_jac)
     : quiet_(true), silent_snap_(false),
@@ -252,7 +252,7 @@ void OdeBase::after_capture(double /*t*/) {}
 void OdeBase::after_snap   (std::string /*dirout*/, long /*isnap*/, double /*t*/) {}
 void OdeBase::after_solve  () {}
 
-// ── OdeAdaptive ───────────────────────────────────────────────────────────────
+// -- OdeAdaptive ---------------------------------------------------------------
 
 OdeAdaptive::OdeAdaptive (unsigned long neq, bool need_jac)
     : OdeBase(neq, need_jac),
@@ -323,7 +323,7 @@ void   OdeAdaptive::adapt     (double /*abstol*/, double /*reltol*/) {}
 bool   OdeAdaptive::is_rejected () { return false; }
 double OdeAdaptive::dt_adapt  () { return dt_; }
 
-// ── OdeTrapz ──────────────────────────────────────────────────────────────────
+// -- OdeTrapz ------------------------------------------------------------------
 
 OdeTrapz::OdeTrapz (unsigned long neq)
     : OdeAdaptive(neq, false),
@@ -346,7 +346,7 @@ void OdeTrapz::step_ (double dt) {
         sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i]);
 }
 
-// ── OdeSsp3 ───────────────────────────────────────────────────────────────────
+// -- OdeSsp3 -------------------------------------------------------------------
 // Shu-Osher SSP-RK3: C. W. Shu and S. Osher (1988).
 // Tableau: c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4; b1=1/6, b2=1/6, b3=2/3.
 
@@ -379,7 +379,7 @@ void OdeSsp3::step_ (double dt) {
         sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i] + b3 * k_[2][i]);
 }
 
-// ── OdeEmbedded ───────────────────────────────────────────────────────────────
+// -- OdeEmbedded ---------------------------------------------------------------
 // Base class for embedded RK pairs (error estimation + adaptive step control).
 
 OdeEmbedded::OdeEmbedded (unsigned long neq, bool need_jac, int lowerord)
@@ -425,8 +425,8 @@ void OdeEmbedded::adapt (double abstol, double reltol) {
 bool   OdeEmbedded::is_rejected () { return isrej_; }
 double OdeEmbedded::dt_adapt    () { return dtopt_; }
 
-// ── OdeRKF32 ──────────────────────────────────────────────────────────────────
-// Heun-Euler 3(2) pair — coefficients match libode exactly.
+// -- OdeRKF32 ------------------------------------------------------------------
+// Heun-Euler 3(2) pair -- coefficients match libode exactly.
 // solemb_ (2nd-order): b1=1/2, b2=1/2 (Heun).
 // sol_    (3rd-order): d1=1/6, d2=1/6, d3=4/6.
 
@@ -458,8 +458,8 @@ void OdeRKF32::step_ (double dt) {
     }
 }
 
-// ── OdeRK43 ───────────────────────────────────────────────────────────────────
-// 4(3) pair — coefficients match libode exactly.
+// -- OdeRK43 -------------------------------------------------------------------
+// 4(3) pair -- coefficients match libode exactly.
 // solemb_ (3rd-order): d1=1/12, d2=1/2, d3=1/4, d5=1/6.
 // sol_    (4th-order): b1=1/8,  b2=3/8, b3=3/8, b4=1/8.
 
@@ -499,7 +499,7 @@ void OdeRK43::step_ (double dt) {
     }
 }
 
-// ── OdeDoPri54 ────────────────────────────────────────────────────────────────
+// -- OdeDoPri54 ----------------------------------------------------------------
 // Dormand-Prince 5(4) FSAL pair (Dormand & Prince 1980).
 // 7 stages; 5th-order primary (b7=0, FSAL); 4th-order embedded (d1..d7).
 // FSAL: a7j = bj, so k7 = f(t+dt, y_new) = next step's k1.
@@ -560,7 +560,7 @@ void OdeDoPri54::step_ (double dt) {
     ode_fun_(sol_, k_[6]);
 
     // 4th-order embedded (expressed relative to y_new = sol_):
-    // solemb_ = y_new + dt*((d-b)·k[0..5] + d7*k7)
+    // solemb_ = y_new + dt*((d-b)*k[0..5] + d7*k7)
     for (unsigned long i = 0; i < neq_; i++)
         solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i]
                                     + (d3 - b3) * k_[2][i] + (d4 - b4) * k_[3][i]
@@ -568,7 +568,7 @@ void OdeDoPri54::step_ (double dt) {
                                     + d7         * k_[6][i]);
 }
 
-// ── OdeVern65 ─────────────────────────────────────────────────────────────────
+// -- OdeVern65 -----------------------------------------------------------------
 // Jim Verner's "most efficient" 6(5) FSAL pair, 9 stages.
 // Coefficients from: http://people.math.sfu.ca/~jverner/
 //   RKV65.IIIXb.Efficient.00000144617.081204.CoeffsOnlyFLOAT
@@ -678,7 +678,7 @@ void OdeVern65::step_ (double dt) {
     }
 }
 
-// ── OdeVern76 ─────────────────────────────────────────────────────────────────
+// -- OdeVern76 -----------------------------------------------------------------
 // Jim Verner's "most efficient" 7(6) pair, 10 stages.
 // Coefficients from: http://people.math.sfu.ca/~jverner/
 //   RKV76.IIa.Efficient.00001675585.081206.CoeffsOnlyFLOAT
@@ -800,7 +800,7 @@ void OdeVern76::step_ (double dt) {
     }
 }
 
-// ── OdeDoPri87 ────────────────────────────────────────────────────────────────
+// -- OdeDoPri87 ----------------------------------------------------------------
 // Dormand-Prince 8(7) pair, 13 stages.
 // Coefficients from: Hairer, Norsett, Wanner (1993) "Solving ODEs I" (2nd ed.)
 // Same final-loop pattern as Vern65/Vern76: solemb_ and sol_ from OLD sol_.
@@ -900,7 +900,7 @@ void OdeDoPri87::step_ (double dt) {
     }
 }
 
-// ── OdeVern98 ─────────────────────────────────────────────────────────────────
+// -- OdeVern98 -----------------------------------------------------------------
 // Jim Verner's "most efficient" 9(8) pair, 16 stages.
 // Coefficients from: http://people.math.sfu.ca/~jverner/
 //   RKV98.IIa.Efficient.000000349.081209.CoeffsOnlyFLOAT6040
@@ -1098,7 +1098,7 @@ void OdeVern98::step_ (double dt) {
     }
 }
 
-// ── ode_linalg ────────────────────────────────────────────────────────────────
+// -- ode_linalg ----------------------------------------------------------------
 // R-safe implementations (Rf_error instead of printf+exit).
 
 void ode_crout_forw_sub (double **L, double *b, int *p, int n, double *out) {
@@ -1139,7 +1139,7 @@ void ode_solve_LU (double **LU, int *p, double *b, int n, double *out) {
     ode_back_sub(LU, out, n, out);
 }
 
-// ── OdeRosenbrock ─────────────────────────────────────────────────────────────
+// -- OdeRosenbrock -------------------------------------------------------------
 
 OdeRosenbrock::OdeRosenbrock (unsigned long neq, int nk) {
     nk_ = nk;
@@ -1167,7 +1167,7 @@ void OdeRosenbrock::prep_jac (double **Jac, unsigned long n, double dt, int *p) 
     ode_crout_LU(Jac, n, p);
 }
 
-// ── OdeGRK4A ─────────────────────────────────────────────────────────────────
+// -- OdeGRK4A -----------------------------------------------------------------
 
 OdeGRK4A::OdeGRK4A (unsigned long neq) :
     OdeEmbedded (neq, true, 3),
@@ -1222,7 +1222,7 @@ void OdeGRK4A::step_ (double dt) {
     }
 }
 
-// ── OdeIRK ────────────────────────────────────────────────────────────────────
+// -- OdeIRK --------------------------------------------------------------------
 
 OdeIRK::OdeIRK (unsigned long neq, int nk) {
     nk_ = nk;
@@ -1236,7 +1236,7 @@ OdeIRK::~OdeIRK () {
     delete [] kall_;
 }
 
-// ── OdeNewton ─────────────────────────────────────────────────────────────────
+// -- OdeNewton -----------------------------------------------------------------
 
 OdeNewton::OdeNewton (unsigned long n) {
     n_ = n;
@@ -1320,7 +1320,7 @@ int OdeNewton::solve_Newton (double *x) {
     return(0);
 }
 
-// ── OdeROW6A ──────────────────────────────────────────────────────────────────
+// -- OdeROW6A ------------------------------------------------------------------
 
 OdeROW6A::OdeROW6A (unsigned long neq) :
     OdeAdaptive (neq, true),
@@ -1398,7 +1398,7 @@ void OdeROW6A::step_ (double dt) {
         sol_[i] = sol_[i] + (m1*k_[0][i] + m2*k_[1][i] + m3*k_[2][i] + m4*k_[3][i] + m5*k_[4][i] + m6*k_[5][i]);
 }
 
-// ── OdeBackwardEuler ──────────────────────────────────────────────────────────
+// -- OdeBackwardEuler ----------------------------------------------------------
 
 void NewtonBackwardEuler::f_Newton (double *x, double *y) {
     (void)x;
@@ -1451,7 +1451,7 @@ void OdeBackwardEuler::step_ (double dt) {
     for (i=0; i<neq_; i++) sol_[i] += dt*k_[0][i];
 }
 
-// ── OdeGauss6 ─────────────────────────────────────────────────────────────────
+// -- OdeGauss6 -----------------------------------------------------------------
 
 void NewtonGauss6::f_Newton (double *x, double *y) {
     (void)x;
@@ -1530,7 +1530,7 @@ void OdeGauss6::step_ (double dt) {
     for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i]);
 }
 
-// ── OdeLobattoIIIC6 ───────────────────────────────────────────────────────────
+// -- OdeLobattoIIIC6 -----------------------------------------------------------
 
 void NewtonLobattoIIIC6::f_Newton (double *x, double *y) {
     (void)x;
@@ -1610,7 +1610,7 @@ void OdeLobattoIIIC6::step_ (double dt) {
     for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i] + b[3]*k_[3][i]);
 }
 
-// ── OdeRadauIIA5 ──────────────────────────────────────────────────────────────
+// -- OdeRadauIIA5 --------------------------------------------------------------
 
 void NewtonRadauIIA5::f_Newton (double *x, double *y) {
     (void)x;
@@ -1689,7 +1689,7 @@ void OdeRadauIIA5::step_ (double dt) {
     for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i]);
 }
 
-// ── OdeGeng5 ──────────────────────────────────────────────────────────────────
+// -- OdeGeng5 ------------------------------------------------------------------
 
 void NewtonGeng5::f_Newton (double *x, double *y) {
     (void)x;
@@ -1768,7 +1768,7 @@ void OdeGeng5::step_ (double dt) {
     for (i=0; i<neq_; i++) sol_[i] += dt*(b[0]*k_[0][i] + b[1]*k_[1][i] + b[2]*k_[2][i]);
 }
 
-// ── OdeSDIRK43 ────────────────────────────────────────────────────────────────
+// -- OdeSDIRK43 ----------------------------------------------------------------
 
 void NewtonSDIRK43::f_Newton (double *x, double *y) {
     (void)x;
@@ -1860,7 +1860,7 @@ void OdeSDIRK43::step_ (double dt) {
     }
 }
 
-// ── OdeEuler ──────────────────────────────────────────────────────────────────
+// -- OdeEuler ------------------------------------------------------------------
 OdeEuler::OdeEuler(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 1), OdeERK(neq)
 { method_ = "Euler"; }
@@ -1870,7 +1870,7 @@ void OdeEuler::step_(double dt) {
     for (unsigned long i = 0; i < neq_; i++) sol_[i] += dt * k_[0][i];
 }
 
-// ── OdeMidpoint ───────────────────────────────────────────────────────────────
+// -- OdeMidpoint ---------------------------------------------------------------
 OdeMidpoint::OdeMidpoint(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 2), OdeERK(neq)
 {
@@ -1887,7 +1887,7 @@ void OdeMidpoint::step_(double dt) {
         sol_[i] += dt * k_[1][i];
 }
 
-// ── OdeHeun ───────────────────────────────────────────────────────────────────
+// -- OdeHeun -------------------------------------------------------------------
 OdeHeun::OdeHeun(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 2), OdeERK(neq)
 {
@@ -1904,7 +1904,7 @@ void OdeHeun::step_(double dt) {
         sol_[i] += dt * (b1 * k_[0][i] + b2 * k_[1][i]);
 }
 
-// ── OdeRkssp22 ────────────────────────────────────────────────────────────────
+// -- OdeRkssp22 ----------------------------------------------------------------
 // xf = x + h*fs; then xf = (x + xf + h*f(t+h,xf)) / 2
 OdeRkssp22::OdeRkssp22(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 1), OdeERK(neq)
@@ -1923,7 +1923,7 @@ void OdeRkssp22::step_(double dt) {
         sol_[i] = (sol_[i] + soltemp_[i] + dt * k_[0][i]) / 2.0;
 }
 
-// ── OdeRk3 ────────────────────────────────────────────────────────────────────
+// -- OdeRk3 --------------------------------------------------------------------
 OdeRk3::OdeRk3(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 3), OdeERK(neq)
 {
@@ -1947,7 +1947,7 @@ void OdeRk3::step_(double dt) {
         sol_[i] += dt * (a1 * k_[0][i] + a2 * k_[1][i] + a3 * k_[2][i]);
 }
 
-// ── OdeRkssp53 ────────────────────────────────────────────────────────────────
+// -- OdeRkssp53 ----------------------------------------------------------------
 OdeRkssp53::OdeRkssp53(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 2), OdeERK(neq)
 {
@@ -1986,7 +1986,7 @@ void OdeRkssp53::step_(double dt) {
         sol_[i] = a52 * soltemp_[i] + a54 * k_[0][i] + b54 * dt * k_[1][i];
 }
 
-// ── OdeRks4 ───────────────────────────────────────────────────────────────────
+// -- OdeRks4 -------------------------------------------------------------------
 OdeRks4::OdeRks4(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 4), OdeERK(neq)
 {
@@ -2018,7 +2018,7 @@ void OdeRks4::step_(double dt) {
         sol_[i] += dt * cv * (c0 * k_[0][i] + c1 * k_[1][i] + c2 * k_[2][i] + c3 * k_[3][i]);
 }
 
-// ── OdeRkr4 ───────────────────────────────────────────────────────────────────
+// -- OdeRkr4 -------------------------------------------------------------------
 OdeRkr4::OdeRkr4(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 4), OdeERK(neq)
 {
@@ -2053,7 +2053,7 @@ void OdeRkr4::step_(double dt) {
         sol_[i] += dt * (c1 * k_[0][i] + c2 * k_[1][i] + c3 * k_[2][i] + c4 * k_[3][i]);
 }
 
-// ── OdeRkls44 ─────────────────────────────────────────────────────────────────
+// -- OdeRkls44 -----------------------------------------------------------------
 // Low-storage 4-stage 4th-order (Jiang-Shu / Donnert et al.)
 // k_[0]=xs (accumulator), k_[1]=fs (derivative buffer)
 // soltemp_ holds xf (current stage state); sol_ stays as x_orig until final update
@@ -2093,7 +2093,7 @@ void OdeRkls44::step_(double dt) {
         sol_[i] = sol_[i] + dt * k_[1][i] / 6.0 + k_[0][i];
 }
 
-// ── OdeRkls54 ─────────────────────────────────────────────────────────────────
+// -- OdeRkls54 -----------------------------------------------------------------
 // 5-stage, 4th order low-storage Runge-Kutta (Carpenter-Kennedy 1994).
 // 2N scheme: ds (k_[0]) and xf (sol_) registers, fs (k_[1]) for derivative.
 OdeRkls54::OdeRkls54(unsigned long neq)
@@ -2149,7 +2149,7 @@ void OdeRkls54::step_(double dt) {
     }
 }
 
-// ── OdeRkssp54 ────────────────────────────────────────────────────────────────
+// -- OdeRkssp54 ----------------------------------------------------------------
 OdeRkssp54::OdeRkssp54(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 4), OdeERK(neq)
 {
@@ -2185,7 +2185,7 @@ void OdeRkssp54::step_(double dt) {
         sol_[i] = a52*k_[0][i] + a53*k_[1][i] + b53*dt*k_[2][i] + a54*soltemp_[i] + b54*dt*k_[3][i];
 }
 
-// ── OdeRks5 ───────────────────────────────────────────────────────────────────
+// -- OdeRks5 -------------------------------------------------------------------
 OdeRks5::OdeRks5(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 5), OdeERK(neq)
 {
@@ -2217,7 +2217,7 @@ void OdeRks5::step_(double dt) {
         sol_[i] += dt * cv * (c0*k_[0][i] + c2*k_[2][i] + c3*k_[3][i] + c4*k_[4][i]);
 }
 
-// ── OdeRk5 ────────────────────────────────────────────────────────────────────
+// -- OdeRk5 --------------------------------------------------------------------
 OdeRk5::OdeRk5(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 6), OdeERK(neq)
 {
@@ -2251,7 +2251,7 @@ void OdeRk5::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c3*k_[2][i] + c4*k_[3][i] + c5*k_[4][i] + c6*k_[5][i]);
 }
 
-// ── OdeRkc5 ───────────────────────────────────────────────────────────────────
+// -- OdeRkc5 -------------------------------------------------------------------
 OdeRkc5::OdeRkc5(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 6), OdeERK(neq)
 {
@@ -2286,7 +2286,7 @@ void OdeRkc5::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c2*k_[1][i] + c3*k_[2][i] + c4*k_[3][i] + c5*k_[4][i] + c6*k_[5][i]);
 }
 
-// ── OdeRkl5 ───────────────────────────────────────────────────────────────────
+// -- OdeRkl5 -------------------------------------------------------------------
 OdeRkl5::OdeRkl5(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 6), OdeERK(neq)
 {
@@ -2321,7 +2321,7 @@ void OdeRkl5::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c3*k_[2][i] + c4*k_[3][i] + c5*k_[4][i] + c6*k_[5][i]);
 }
 
-// ── OdeRklk5a ─────────────────────────────────────────────────────────────────
+// -- OdeRklk5a -----------------------------------------------------------------
 OdeRklk5a::OdeRklk5a(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 6), OdeERK(neq)
 {
@@ -2357,7 +2357,7 @@ void OdeRklk5a::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c3*k_[2][i] + c5*k_[4][i] + c6*k_[5][i]);
 }
 
-// ── OdeRklk5b ─────────────────────────────────────────────────────────────────
+// -- OdeRklk5b -----------------------------------------------------------------
 OdeRklk5b::OdeRklk5b(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 6), OdeERK(neq)
 {
@@ -2393,7 +2393,7 @@ void OdeRklk5b::step_(double dt) {
         sol_[i] += dt * (c3*k_[2][i] + c5*k_[4][i] + c6*k_[5][i]);
 }
 
-// ── OdeRkb6 ───────────────────────────────────────────────────────────────────
+// -- OdeRkb6 -------------------------------------------------------------------
 OdeRkb6::OdeRkb6(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 7), OdeERK(neq)
 {
@@ -2432,7 +2432,7 @@ void OdeRkb6::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c3*k_[2][i] + c4*k_[3][i] + c5*k_[4][i] + c6*k_[5][i] + c7*k_[6][i]);
 }
 
-// ── OdeRk7 ────────────────────────────────────────────────────────────────────
+// -- OdeRk7 --------------------------------------------------------------------
 OdeRk7::OdeRk7(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 9), OdeERK(neq)
 {
@@ -2480,7 +2480,7 @@ void OdeRk7::step_(double dt) {
         sol_[i] += dt * cv * (c0*k_[0][i] + c3*k_[3][i] + c4*k_[4][i] + c5*k_[5][i] + c6*k_[6][i] + c7*k_[7][i] + c8*k_[8][i]);
 }
 
-// ── OdeRk8_10 ─────────────────────────────────────────────────────────────────
+// -- OdeRk8_10 -----------------------------------------------------------------
 OdeRk8_10::OdeRk8_10(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 10), OdeERK(neq)
 {
@@ -2531,7 +2531,7 @@ void OdeRk8_10::step_(double dt) {
         sol_[i] += dt * cv * (c0*k_[0][i] + c3*k_[3][i] + c4*k_[4][i] + c5*k_[5][i] + c6*k_[6][i] + c8*k_[8][i] + c9*k_[9][i]);
 }
 
-// ── OdeRkcv8 ──────────────────────────────────────────────────────────────────
+// -- OdeRkcv8 ------------------------------------------------------------------
 OdeRkcv8::OdeRkcv8(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 11), OdeERK(neq)
 {
@@ -2588,7 +2588,7 @@ void OdeRkcv8::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c8*k_[7][i] + c9*k_[8][i] + c10*k_[9][i] + c11*k_[10][i]);
 }
 
-// ── OdeRk8_12 ─────────────────────────────────────────────────────────────────
+// -- OdeRk8_12 -----------------------------------------------------------------
 OdeRk8_12::OdeRk8_12(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 12), OdeERK(neq)
 {
@@ -2648,7 +2648,7 @@ void OdeRk8_12::step_(double dt) {
         sol_[i] += dt * cv * (c0*k_[0][i] + c5*k_[5][i] + c6*k_[6][i] + c7*k_[7][i] + c8*k_[8][i] + c9*k_[9][i] + c10*k_[10][i] + c11*k_[11][i]);
 }
 
-// ── OdeRks10 ──────────────────────────────────────────────────────────────────
+// -- OdeRks10 ------------------------------------------------------------------
 OdeRks10::OdeRks10(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 15), OdeERK(neq)
 {
@@ -2807,7 +2807,7 @@ void OdeRks10::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c9*k_[8][i] + c10*k_[9][i] + c11*k_[10][i] + c12*k_[11][i] + c13*k_[12][i] + c14*k_[13][i] + c15*k_[14][i]);
 }
 
-// ── OdeRkz10 ──────────────────────────────────────────────────────────────────
+// -- OdeRkz10 ------------------------------------------------------------------
 // Helper: computes row sum of Butcher tableau row for rkz10 c-nodes
 OdeRkz10::OdeRkz10(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 16), OdeERK(neq)
@@ -3012,7 +3012,7 @@ void OdeRkz10::step_(double dt) {
         sol_[i] += dt * (c1*k_[0][i] + c3*k_[2][i] + c6*k_[5][i] + c7*k_[6][i] + c8*k_[7][i] + c9*k_[8][i] + c10*k_[9][i] + c11*k_[10][i] + c12*k_[11][i] + c13*k_[12][i] + c14*k_[13][i] + c15*k_[14][i] + c16*k_[15][i]);
 }
 
-// ── Macro for 17-stage step bodies (rko10 and rkh10 share same sparsity) ──────
+// -- Macro for 17-stage step bodies (rko10 and rkh10 share same sparsity) ------
 #define STEP17_BODY \
     unsigned long _i; \
     ode_fun_(sol_, k_[0]); \
@@ -3051,7 +3051,7 @@ void OdeRkz10::step_(double dt) {
     for (_i=0;_i<neq_;_i++) \
         sol_[_i] += dt*(c1*k_[0][_i]+c2*k_[1][_i]+c3*k_[2][_i]+c6*k_[5][_i]+c7*k_[6][_i]+c9*k_[8][_i]+c10*k_[9][_i]+c11*k_[10][_i]+c12*k_[11][_i]+c13*k_[12][_i]+c14*k_[13][_i]+c15*k_[14][_i]+c16*k_[15][_i]+c17*k_[16][_i]);
     unsigned long i;
-// ── OdeRko10 ──────────────────────────────────────────────────────────────────
+// -- OdeRko10 ------------------------------------------------------------------
 OdeRko10::OdeRko10(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 17), OdeERK(neq)
 {
@@ -3174,7 +3174,7 @@ OdeRko10::OdeRko10(unsigned long neq)
 
 void OdeRko10::step_(double dt) { STEP17_BODY }
 
-// ── OdeRkh10 ──────────────────────────────────────────────────────────────────
+// -- OdeRkh10 ------------------------------------------------------------------
 OdeRkh10::OdeRkh10(unsigned long neq)
     : OdeAdaptive(neq, false), OdeRK(neq, 17), OdeERK(neq)
 {

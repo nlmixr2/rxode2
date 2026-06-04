@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkdp65 ──────────────────────────────────────────────────
+// -- OdeRkdp65 --------------------------------------------------
 // Dormand-Prince 6(5)
 OdeRkdp65::OdeRkdp65(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

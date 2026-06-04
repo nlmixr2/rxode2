@@ -87,7 +87,7 @@ protected:
         ode::ode_solve_LU(Jac_, p_, rhs_, neq_, k_[2]);
         for (i=0; i<neq_; i++) k_[2][i] -= g31*k_[0][i] + g32*k_[1][i];
 
-        // Stage 4 — same soltemp_ as stage 3 (GRK4A property)
+        // Stage 4 -- same soltemp_ as stage 3 (GRK4A property)
         for (i=0; i<neq_; i++) soltemp_[i] = sol_[i] + alp31*k_[0][i] + alp32*k_[1][i];
         // t_cur_ unchanged: f evaluated at same point as stage 3
         ode_fun_(soltemp_, k_[3]);

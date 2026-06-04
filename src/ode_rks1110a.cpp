@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRks1110a ──────────────────────────────────────────────────
+// -- OdeRks1110a --------------------------------------------------
 // Stone 11(10)
 OdeRks1110a::OdeRks1110a(unsigned long neq)
     : OdeEmbedded(neq, false, 10),

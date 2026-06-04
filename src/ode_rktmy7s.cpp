@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRktmy7s ──────────────────────────────────────────────────
+// -- OdeRktmy7s --------------------------------------------------
 // TMY 7 stable variant
 OdeRktmy7s::OdeRktmy7s(unsigned long neq)
     : OdeEmbedded(neq, false, 6),

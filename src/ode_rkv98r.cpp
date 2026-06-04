@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkv98r ──────────────────────────────────────────────────
+// -- OdeRkv98r --------------------------------------------------
 // Verner robust 9(8)
 OdeRkv98r::OdeRkv98r(unsigned long neq)
     : OdeEmbedded(neq, false, 8),

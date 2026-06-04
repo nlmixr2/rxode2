@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkt98a ──────────────────────────────────────────────────
+// -- OdeRkt98a --------------------------------------------------
 // Tsitouras 9(8)
 OdeRkt98a::OdeRkt98a(unsigned long neq)
     : OdeEmbedded(neq, false, 8),

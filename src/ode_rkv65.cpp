@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkv65 ──────────────────────────────────────────────────
+// -- OdeRkv65 --------------------------------------------------
 // Verner 6(5)
 OdeRkv65::OdeRkv65(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

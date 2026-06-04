@@ -186,11 +186,11 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     if (rx->nMtime) {
       if (inLhs == 0 || op->neq == 0) {
         // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
-        // Compute mtime with actual initial state → mtime_init[k].
+        // Compute mtime with actual initial state -> mtime_init[k].
         double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
         if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, ind->mtime, _initState);
 
-        // Compute mtime with zero state → base (state-independent) time mtime_base[k].
+        // Compute mtime with zero state -> base (state-independent) time mtime_base[k].
         // If base <= init, place event at base so the solver is forced to visit base,
         // then recomputeMtimeIfNeeded re-evaluates with actual state(base) and reschedules
         // to base + f(state(base)) >= base.  This is the correct semantics: state-dep offset
@@ -215,7 +215,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
           ind->mtime0[k] = ind->mtime[k];  // trigger = initial placement
         }
       }
-      // else: LHS pass (inLhs==1, neq>0) — preserve ind->mtime[k] set by the ODE
+      // else: LHS pass (inLhs==1, neq>0) -- preserve ind->mtime[k] set by the ODE
       // solve (including any recomputeMtimeIfNeeded updates).  getTime_ returns
       // ind->mtime[evid-10] so using the correct final time is essential for the
       // output dataframe to show the actual event time, not the trigger time.
@@ -234,7 +234,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       // sortInd and may have re-sorted for state-dep lag; preserve that order so
       // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
-      // Note: op->badSolve is NOT checked here — it is a shared global flag.
+      // Note: op->badSolve is NOT checked here -- it is a shared global flag.
       // In parallel mode another thread's failed solve would prevent THIS
       // individual from initializing.  Bad-solve state is handled per-individual
       // via localBadSolve / *rc in the caller.

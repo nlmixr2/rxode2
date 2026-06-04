@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkf89 ──────────────────────────────────────────────────
+// -- OdeRkf89 --------------------------------------------------
 // Fehlberg 8(9)
 OdeRkf89::OdeRkf89(unsigned long neq)
     : OdeEmbedded(neq, false, 8),

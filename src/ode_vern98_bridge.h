@@ -2,10 +2,10 @@
 #define ODE_VERN98_BRIDGE_H_
 
 // RxVern98: bridges rxode2's t_dydt interface into libode's OdeVern98.
-// Design mirrors RxVern65/76/DoPri87 — 16 stages, solemb_ and sol_ both from
+// Design mirrors RxVern65/76/DoPri87 -- 16 stages, solemb_ and sol_ both from
 // OLD sol_ in separate final loops.  NaN detection and mxstep guard included.
 // sol_   = 9th-order (b1, b8..b15, no k_[15])
-// solemb_= 8th-order (d1, d8..d13, d16 — uses k_[15], skips k_[13]/k_[14])
+// solemb_= 8th-order (d1, d8..d13, d16 -- uses k_[15], skips k_[13]/k_[14])
 
 #include "ode/ode_vern_98.h"
 

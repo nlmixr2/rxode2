@@ -3,7 +3,7 @@
 
 namespace ode {
 
-// ── OdeRkdp85 ──────────────────────────────────────────────────
+// -- OdeRkdp85 --------------------------------------------------
 // Dormand-Prince 8(5)
 OdeRkdp85::OdeRkdp85(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

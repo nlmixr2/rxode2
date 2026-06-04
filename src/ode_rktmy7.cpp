@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRktmy7 ──────────────────────────────────────────────────
+// -- OdeRktmy7 --------------------------------------------------
 // Tanaka-Muramatsu-Yamashita 7
 OdeRktmy7::OdeRktmy7(unsigned long neq)
     : OdeEmbedded(neq, false, 6),

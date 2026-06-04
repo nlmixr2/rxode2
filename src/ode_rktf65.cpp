@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRktf65 ──────────────────────────────────────────────────
+// -- OdeRktf65 --------------------------------------------------
 // Tsitouras-Famelis 6(5) FSAL
 OdeRktf65::OdeRktf65(unsigned long neq)
     : OdeEmbedded(neq, false, 5),

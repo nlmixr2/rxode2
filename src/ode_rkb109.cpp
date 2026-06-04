@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeRkb109 ──────────────────────────────────────────────────
+// -- OdeRkb109 --------------------------------------------------
 // Baker 10(9)
 OdeRkb109::OdeRkb109(unsigned long neq)
     : OdeEmbedded(neq, false, 9),

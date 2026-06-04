@@ -2,7 +2,7 @@
 
 namespace ode {
 
-// ── OdeDverk65 ──────────────────────────────────────────────────
+// -- OdeDverk65 --------------------------------------------------
 // DVERK 6(5)
 OdeDverk65::OdeDverk65(unsigned long neq)
     : OdeEmbedded(neq, false, 5),
