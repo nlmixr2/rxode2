@@ -160,6 +160,10 @@ rxTest({
       lin <- "ode"
       meth <- "ros4"
       dense <- TRUE
+    } else if (meth == "ddop853+dros4") {
+      lin <- "ode"
+      meth <- "ddop853+dros4"
+      dense <- TRUE
     } else  if (meth == "Ad") {
       lin <- "A"
       meth <- "dop853"
