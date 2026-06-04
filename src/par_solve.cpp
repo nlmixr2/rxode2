@@ -5553,18 +5553,23 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         *rc = idid;
         badSolveExit(i);
       } else {
-        // extraDose sub-steps use iout=0 (exact endpoints, not interpolated)
+        // extraDose: use dense output for the pre-dose sub-segment so obs
+        // before the extra-dose time are filled via dopDenseSolout.
+        // The post-dose sub-segment is handled by the main dense call below.
         if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
+            // Dense dop853 from xp to extraDoseNewXout, filling obs in this range.
+            dc.obs_next    = last_key_i + 1;
+            dc.segment_end = need_seg ? i : i - 1;
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = dop853(neq, c_dydt, xp, yp, ind->extraDoseNewXout,
                           op->rtol2, op->atol2, itol,
-                          solout, iout_zero,
+                          dopDenseSolout, iout_dense,
                           NULL, DBL_EPSILON, 0, 0, 0, 0,
                           ind->HMAX, op->H0, op->mxstep, 1, -1,
-                          0, NULL, 0, NULL);
+                          neq[0], NULL, 0, &dc);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5580,20 +5585,9 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           ind->idx = idx;
           ind->ixds = ixds;
           ind->idxExtra++;
-          if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq, c_dydt, ind->extraDoseNewXout, yp, xout,
-                          op->rtol2, op->atol2, itol,
-                          solout, iout_zero,
-                          NULL, DBL_EPSILON, 0, 0, 0, 0,
-                          ind->HMAX, op->H0, op->mxstep, 1, -1,
-                          0, NULL, 0, NULL);
-            neq[0] = eff;
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            xp = ind->extraDoseNewXout;
-          }
+          // Do NOT run a second non-dense dop853 here. The main dense segment
+          // below integrates from xp=extraDoseNewXout to xout with dense output,
+          // correctly filling all remaining obs via dopDenseSolout.
         }
 
         // Dense segment solve from xp to xout, filling all pending obs via callback.
