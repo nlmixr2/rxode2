@@ -6,7 +6,7 @@ rxTest({
   .target <- exp(-1)
 
   ## --- Fixed-step methods (hmin = step size) --------------------------------
-  .fixed_methods <- list(
+  .fixedMethods <- list(
     euler    = list(method = "euler",    hmin = 1e-4),  # O(h): needs h<=2e-4 for err<1e-4
     midpoint = list(method = "midpoint", hmin = 1e-3),
     heun     = list(method = "heun",     hmin = 1e-3),
@@ -19,24 +19,24 @@ rxTest({
     ls54   = list(method = "ls54",   hmin = 1e-2),
     ssp54  = list(method = "ssp54",  hmin = 1e-2),
     s5     = list(method = "s5",     hmin = 1e-1),
-    rk5      = list(method = "rk5",      hmin = 1e-1),
+    rk5    = list(method = "rk5",    hmin = 1e-1),
     c5     = list(method = "c5",     hmin = 1e-1),
     l5     = list(method = "l5",     hmin = 1e-1),
     lk5a   = list(method = "lk5a",   hmin = 1e-1),
     lk5b   = list(method = "lk5b",   hmin = 1e-1),
     b6     = list(method = "b6",     hmin = 1e-1),
-    rk7      = list(method = "rk7",      hmin = 1e-1),
-    rk8_10   = list(method = "rk8_10",   hmin = 1e-1),
+    s7     = list(method = "s7",     hmin = 1e-1),
+    s8_10  = list(method = "s8_10",  hmin = 1e-1),
     cv8    = list(method = "cv8",    hmin = 1e-1),
-    rk8_12   = list(method = "rk8_12",   hmin = 1e-1),
+    s8_12  = list(method = "s8_12",  hmin = 1e-1),
     s10    = list(method = "s10",    hmin = 1.0),
     z10    = list(method = "z10",    hmin = 1.0),
     o10    = list(method = "o10",    hmin = 1.0),
     h10    = list(method = "h10",    hmin = 1.0)
   )
 
-  for (.nm in names(.fixed_methods)) {
-    .cfg <- .fixed_methods[[.nm]]
+  for (.nm in names(.fixedMethods)) {
+    .cfg <- .fixedMethods[[.nm]]
     test_that(paste("decay test:", .nm), {
       .s <- rxode2::rxSolve(.mod, .ev, inits = c(x = 1),
                              method = .cfg$method, hmin = .cfg$hmin, cores = 1)
