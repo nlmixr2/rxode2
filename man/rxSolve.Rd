@@ -39,8 +39,8 @@ rxSolve(
     "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
     "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43",
     "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54",
-    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "rk7", "rk8_10", "cv8",
-    "rk8_12", "s10", 
+    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8",
+    "s8_12", "s10", 
      "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e",
     "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
     "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
@@ -418,11 +418,11 @@ steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol}
 \code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
 not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
 parallel thread-based solving and steady-state (\code{ss=1}) dosing.
-\item \code{"f32"} -- Heun-Euler 3(2) embedded pair from libode.  A 3-stage,
-3rd-order adaptive method with a built-in 2nd-order error estimate for
-automatic step-size control.  Tableau: c2=1, a21=1; c3=1/2, a31=1/4,
-a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6, d3=4/6; embedded
-(2nd-order, \code{solemb_}) weights b1=1/2, b2=1/2.  Uses \code{atol} and \code{rtol}
+\item \code{"f32"} -- Fehlberg 3(2) embedded pair from libode (class \code{OdeRKF32}).
+A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses \code{atol} and \code{rtol}
 for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
 are chosen adaptively.  The total number of accepted and rejected steps
@@ -495,7 +495,7 @@ detected immediately and the solve exits with NA output.
 implemented via the libode library using coefficients from Verner's own
 website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 embedded 8th-order error estimate.  The highly sparse tableau (stages
-8-16 use only k_\link{0} and k_\link{5..}) minimises function evaluations per
+8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimises function evaluations per
 step.  Both solutions are computed from the original state in the final
 step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
@@ -517,19 +517,18 @@ immediately and the solve exits with NA output.
 \item \code{"ssp33"} -- alias for \code{"ssp3"} (Strong Stability-Preserving RK3, libode).
 }
 
-\strong{rklib fixed-step explicit methods} (from Jacob Williams' rklib Fortran
-library).  All use \code{hmin} as the fixed step size (default \code{0.01} when
-\code{hmin=0}); \code{atol} and \code{rtol} are ignored (no error control); \code{maxsteps}
-bounds the total number of steps; NaN/Inf in derivatives sets \code{ind$err}
-and the subject exits with NA output.  All support parallel thread-based
-solving.
+\strong{libode fixed-step explicit methods}.  All use \code{hmin} as the fixed step
+size (default \code{0.01} when \code{hmin=0}); \code{atol} and \code{rtol} are ignored (no
+error control); \code{maxsteps} bounds the total number of steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving.
 \itemize{
 \item \code{"euler"} -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
 very small step size for accuracy (e.g., \code{hmin=1e-4}); intended for
 pedagogical use or method-comparison baselines.
 \item \code{"midpoint"} -- Explicit midpoint rule, 2nd-order, 2 stages.
 \item \code{"heun"} -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
-Identical in structure to \code{"trapz"} (libode) but uses the rklib driver.
+Identical in structure to \code{"trapz"} but uses the libode fixed-step driver.
 \item \code{"ssp22"} -- Strong Stability-Preserving 2-stage 2nd-order method
 (SSP-RK22), 2 stages.  Superior non-oscillatory properties near
 discontinuities.
@@ -554,10 +553,10 @@ variant of the 2-register low-storage scheme.
 \item \code{"lk5a"} -- Luther-Konen 5th-order method, variant A, 6 stages.
 \item \code{"lk5b"} -- Luther-Konen 5th-order method, variant B, 6 stages.
 \item \code{"b6"} -- Butcher 6th-order method, 7 stages.
-\item \code{"rk7"} -- Shanks 7th-order method, 9 stages.
-\item \code{"rk8_10"} -- Shanks 8th-order method, 10 stages.
+\item \code{"s7"} -- Shanks 7th-order method, 9 stages.
+\item \code{"s8_10"} -- Shanks 8th-order method, 10 stages.
 \item \code{"cv8"} -- Cooper-Verner 8th-order method, 11 stages.
-\item \code{"rk8_12"} -- Shanks 8th-order method, 12 stages.
+\item \code{"s8_12"} -- Shanks 8th-order method, 12 stages.
 \item \code{"s10"} -- Stepanov 10th-order method, 15 stages.  Requires a moderate
 step size (e.g., \code{hmin=1.0}) because a single step is accurate to very
 high order.
@@ -566,8 +565,8 @@ high order.
 \item \code{"h10"} -- Hairer 10th-order method, 17 stages.
 }
 
-\strong{rklib adaptive (variable-step) explicit methods} (from Jacob Williams'
-rklib Fortran library).  All use \code{atol} and \code{rtol} for error control;
+\strong{libode adaptive (variable-step) explicit methods}.  All use \code{atol} and
+\code{rtol} for error control;
 \code{hmin} sets the initial step size (default \code{0.01} when \code{hmin=0}); \code{hmax}
 sets the maximum step size; \code{maxsteps} bounds total steps; NaN/Inf in
 derivatives sets \code{ind$err} and the subject exits with NA output.  All
@@ -638,7 +637,7 @@ in the same order bracket.  Also close to MATLAB \code{ode89}.
 \item \code{"f108"} -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
 primary with 8th-order embedded error estimate.  The same method as
 Julia's \code{Feagin10()}.  The large number of stages carries elevated
-transcription-error risk; verified against rklib's canonical order test.
+transcription-error risk; verified against Williams' libode canonical order test.
 \item \code{"c108"} -- Curtis 10(8) pair, 21 stages.
 \item \code{"b109"} -- Baker 10(9) pair, 21 stages.
 \item \code{"s1110a"} -- Stone 11(10) variant A pair, 26 stages.  11th-order
@@ -646,13 +645,13 @@ primary; very few published references.
 \item \code{"f1210"} -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
 primary with 10th-order embedded error estimate.  The same method as
 Julia's \code{Feagin12()}.  Elevated transcription-error risk due to many
-stages; verified against rklib's canonical order test.
+stages; verified against Williams' libode canonical order test.
 \item \code{"o129"} -- Ono 12(9) pair, 29 stages.
 \item \code{"f1412"} -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
 primary with 12th-order embedded error estimate.  The same method as
 Julia's \code{Feagin14()}.  The highest-order method in rxode2; elevated
-transcription-error risk due to 35 stages; verified against rklib's
-canonical order test.
+transcription-error risk due to 35 stages; verified against
+Williams' libode canonical order test.
 }
 
 \strong{deSolve-derived Fortran solvers} (from the deSolve R package).  Both
@@ -703,14 +702,14 @@ value is 0.
 \if{html}{\out{<div class="sourceCode">}}\preformatted{For the fixed-step Boost methods `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`,
 `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`,
 `"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, `"geng5"`, and the
-rklib fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
+libode fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
 `"rk3"`, `"ssp53"`, `"s4"`, `"r4"`, `"ls44"`, `"ls54"`,
 `"ssp54"`, `"s5"`, `"rk5"`, `"c5"`, `"l5"`, `"lk5a"`, `"lk5b"`,
-`"b6"`, `"rk7"`, `"rk8_10"`, `"cv8"`, `"rk8_12"`, `"s10"`, `"z10"`,
+`"b6"`, `"s7"`, `"s8_10"`, `"cv8"`, `"s8_12"`, `"s10"`, `"z10"`,
 `"o10"`, `"h10"`), this specifies the fixed step size.
 If `hmin=0` (the default), it uses a default of `0.01` for `"rk4"`,
 `"trapz"`, `"ssp3"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`,
-`"radauiia5"`, `"geng5"`, and all rklib fixed-step methods; `0.0001` for
+`"radauiia5"`, `"geng5"`, and all libode fixed-step methods; `0.0001` for
 `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
 If the requested step size would cause the number of steps to exceed
 `maxsteps`, the step size is automatically increased to ensure the
@@ -721,14 +720,14 @@ between closely spaced doses) are always handled correctly.
 
 For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-`"ros43"`, `"sdirk43"`, and all rklib adaptive methods (`"bs32"`,
+`"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
 `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
 `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
 `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
 `"v76r"`, `"ss76"`, `"v78"`, `"dverk78"`, `"dp85"`, `"tp86"`,
 `"v87e"`, `"v87r"`, `"ev87"`, `"k87"`, `"f89"`, `"v89"`,
 `"t98a"`, `"v98r"`, `"s98"`, `"f108"`, `"c108"`, `"b109"`,
-`"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, the rklib aliases
+`"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, the libode aliases
 `"dp54"`, `"v65e"`, `"v76e"`, `"dp87"`, `"v98e"`,
 `"ssp33"`, and the deSolve-derived methods `"lsode"`, `"bdf"`),
 this specifies the initial step size (default `0.01` when
@@ -1426,15 +1425,18 @@ from an existing serialization file via \code{rxSolve(model, "state.rxbin")}, on
 allowed because the file already stores the solve inputs and
 controls.}
 
-\item{dense}{Logical; when \code{TRUE} and \code{method="dop853"}, \code{method="dop5"},
-\code{method="bs"}, or \code{method="ros4"}, enables
-continuous dense output. This allows the solver to take large internal
-steps and use interpolation for the exact observation times, which can
-dramatically speed up solves with high-frequency observations or large
-sampling grids. Silently ignored for non-dense methods. Not yet
-compatible with multiple dosing events in the same interval. yet
-supported for \code{linCmt()} models (a message is emitted and the
-standard path is used instead).}
+\item{dense}{Logical; when \code{TRUE} and the method supports dense output,
+enables continuous interpolation so the solver can take large internal
+steps and reconstruct the solution cheaply at each observation time.
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
+\code{"ros4"}.  For composite AutoSwitch methods (e.g. \code{"dop5+ros4"}), dense
+output is enabled only when \strong{both} the primary and stiff secondary
+support dense output; \code{"ros4"} is the only stiff method that does, so
+valid dense composites are \code{"dop853+ros4"}, \code{"dop5+ros4"}, and
+\code{"bs+ros4"}.  A warning is issued and \code{dense} is set to \code{FALSE} when a
+composite stiff secondary does not support dense output.  Silently
+ignored for non-dense single methods.  Not yet supported for \code{linCmt()}
+models (a warning is emitted and the standard path is used instead).}
 
 \item{cvodeLinSolver}{Character; selects the linear solver used by the CVODE
 integrator when \code{method = "cvode"}.  Ignored for all other methods.

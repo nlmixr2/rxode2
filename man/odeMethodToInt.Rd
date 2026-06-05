@@ -10,8 +10,8 @@ odeMethodToInt(
     "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
     "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43",
     "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54",
-    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "rk7", "rk8_10", "cv8",
-    "rk8_12", "s10", 
+    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8",
+    "s8_12", "s10", 
      "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e",
     "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
     "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
@@ -116,11 +116,11 @@ steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol}
 \code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
 not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
 parallel thread-based solving and steady-state (\code{ss=1}) dosing.
-\item \code{"f32"} -- Heun-Euler 3(2) embedded pair from libode.  A 3-stage,
-3rd-order adaptive method with a built-in 2nd-order error estimate for
-automatic step-size control.  Tableau: c2=1, a21=1; c3=1/2, a31=1/4,
-a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6, d3=4/6; embedded
-(2nd-order, \code{solemb_}) weights b1=1/2, b2=1/2.  Uses \code{atol} and \code{rtol}
+\item \code{"f32"} -- Fehlberg 3(2) embedded pair from libode (class \code{OdeRKF32}).
+A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses \code{atol} and \code{rtol}
 for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
 are chosen adaptively.  The total number of accepted and rejected steps
@@ -193,7 +193,7 @@ detected immediately and the solve exits with NA output.
 implemented via the libode library using coefficients from Verner's own
 website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 embedded 8th-order error estimate.  The highly sparse tableau (stages
-8-16 use only k_\link{0} and k_\link{5..}) minimises function evaluations per
+8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimises function evaluations per
 step.  Both solutions are computed from the original state in the final
 step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
@@ -215,19 +215,18 @@ immediately and the solve exits with NA output.
 \item \code{"ssp33"} -- alias for \code{"ssp3"} (Strong Stability-Preserving RK3, libode).
 }
 
-\strong{rklib fixed-step explicit methods} (from Jacob Williams' rklib Fortran
-library).  All use \code{hmin} as the fixed step size (default \code{0.01} when
-\code{hmin=0}); \code{atol} and \code{rtol} are ignored (no error control); \code{maxsteps}
-bounds the total number of steps; NaN/Inf in derivatives sets \code{ind$err}
-and the subject exits with NA output.  All support parallel thread-based
-solving.
+\strong{libode fixed-step explicit methods}.  All use \code{hmin} as the fixed step
+size (default \code{0.01} when \code{hmin=0}); \code{atol} and \code{rtol} are ignored (no
+error control); \code{maxsteps} bounds the total number of steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving.
 \itemize{
 \item \code{"euler"} -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
 very small step size for accuracy (e.g., \code{hmin=1e-4}); intended for
 pedagogical use or method-comparison baselines.
 \item \code{"midpoint"} -- Explicit midpoint rule, 2nd-order, 2 stages.
 \item \code{"heun"} -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
-Identical in structure to \code{"trapz"} (libode) but uses the rklib driver.
+Identical in structure to \code{"trapz"} but uses the libode fixed-step driver.
 \item \code{"ssp22"} -- Strong Stability-Preserving 2-stage 2nd-order method
 (SSP-RK22), 2 stages.  Superior non-oscillatory properties near
 discontinuities.
@@ -252,10 +251,10 @@ variant of the 2-register low-storage scheme.
 \item \code{"lk5a"} -- Luther-Konen 5th-order method, variant A, 6 stages.
 \item \code{"lk5b"} -- Luther-Konen 5th-order method, variant B, 6 stages.
 \item \code{"b6"} -- Butcher 6th-order method, 7 stages.
-\item \code{"rk7"} -- Shanks 7th-order method, 9 stages.
-\item \code{"rk8_10"} -- Shanks 8th-order method, 10 stages.
+\item \code{"s7"} -- Shanks 7th-order method, 9 stages.
+\item \code{"s8_10"} -- Shanks 8th-order method, 10 stages.
 \item \code{"cv8"} -- Cooper-Verner 8th-order method, 11 stages.
-\item \code{"rk8_12"} -- Shanks 8th-order method, 12 stages.
+\item \code{"s8_12"} -- Shanks 8th-order method, 12 stages.
 \item \code{"s10"} -- Stepanov 10th-order method, 15 stages.  Requires a moderate
 step size (e.g., \code{hmin=1.0}) because a single step is accurate to very
 high order.
@@ -264,8 +263,8 @@ high order.
 \item \code{"h10"} -- Hairer 10th-order method, 17 stages.
 }
 
-\strong{rklib adaptive (variable-step) explicit methods} (from Jacob Williams'
-rklib Fortran library).  All use \code{atol} and \code{rtol} for error control;
+\strong{libode adaptive (variable-step) explicit methods}.  All use \code{atol} and
+\code{rtol} for error control;
 \code{hmin} sets the initial step size (default \code{0.01} when \code{hmin=0}); \code{hmax}
 sets the maximum step size; \code{maxsteps} bounds total steps; NaN/Inf in
 derivatives sets \code{ind$err} and the subject exits with NA output.  All
@@ -336,7 +335,7 @@ in the same order bracket.  Also close to MATLAB \code{ode89}.
 \item \code{"f108"} -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
 primary with 8th-order embedded error estimate.  The same method as
 Julia's \code{Feagin10()}.  The large number of stages carries elevated
-transcription-error risk; verified against rklib's canonical order test.
+transcription-error risk; verified against Williams' libode canonical order test.
 \item \code{"c108"} -- Curtis 10(8) pair, 21 stages.
 \item \code{"b109"} -- Baker 10(9) pair, 21 stages.
 \item \code{"s1110a"} -- Stone 11(10) variant A pair, 26 stages.  11th-order
@@ -344,13 +343,13 @@ primary; very few published references.
 \item \code{"f1210"} -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
 primary with 10th-order embedded error estimate.  The same method as
 Julia's \code{Feagin12()}.  Elevated transcription-error risk due to many
-stages; verified against rklib's canonical order test.
+stages; verified against Williams' libode canonical order test.
 \item \code{"o129"} -- Ono 12(9) pair, 29 stages.
 \item \code{"f1412"} -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
 primary with 12th-order embedded error estimate.  The same method as
 Julia's \code{Feagin14()}.  The highest-order method in rxode2; elevated
-transcription-error risk due to 35 stages; verified against rklib's
-canonical order test.
+transcription-error risk due to 35 stages; verified against
+Williams' libode canonical order test.
 }
 
 \strong{deSolve-derived Fortran solvers} (from the deSolve R package).  Both

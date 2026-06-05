@@ -343,7 +343,7 @@ the change of the amount in the corresponding state variable
 (compartment) with respect to time e.g., \code{d/dt(depot)}:
 \item special \strong{initial-condition} assignments where the left hand
 specifies the compartment of the initial condition being specified,
-e.g. \code{depot(0) = 0}
+e.g. \code{depot(0) = 0}
 \item special model event changes including \strong{bioavailability}
 (\code{f(depot)=1}), \strong{lag time} (\code{alag(depot)=0}), \strong{modeled rate}
 (\code{rate(depot)=2}) and \strong{modeled duration} (\code{dur(depot)=2}). An
@@ -406,7 +406,7 @@ Numeric expressions can include the following numeric operators
 \verb{+, -, *, /, ^, \%\%} and those mathematical functions defined in the C or
 the R math libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
 
-You may also access the R's functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
+You may also access the R’s functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
 like \code{lgammafn} for the log gamma function.
 
 The \code{rxode2} syntax is case-sensitive, i.e., \code{ABC} is different than
@@ -424,14 +424,14 @@ pharmacokinetics model).
 \item Implied input variable, \code{t} (time), \code{tlast} (last time point), and
 \code{podo} (oral dose, in the undocumented case of absorption transit
 models).
-\item Special constants like \code{pi} or \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants}{R's predefined constants}.
+\item Special constants like \code{pi} or \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants}{R’s predefined constants}.
 \item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance, etc.)
 \item Others, as created by assignments as part of the model specification;
 these are referred as \emph{LHS} (left-hand side) variable.
 }
 
 Currently, the \code{rxode2} modeling language only recognizes system state
-variables and "parameters", thus, any values that need to be passed from
+variables and “parameters”, thus, any values that need to be passed from
 R to the ODE model (e.g., \code{age}) should be either passed in the \code{params}
 argument of the integrator function \code{rxSolve()} or be in the supplied
 event data-set.
@@ -517,7 +517,7 @@ table:\tabular{lll}{
    sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
    fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
    fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
-   fround(x, digits) \tab Round, used by R's round() \tab  \cr
+   fround(x, digits) \tab Round, used by R’s round() \tab  \cr
    ftrunc(x) \tab Truncated towards zero \tab  \cr
    abs(x) \tab absolute value of x \tab fabs \cr
    sin(x) \tab sine of x \tab  \cr
@@ -568,10 +568,10 @@ table:\tabular{lll}{
    tlast0() or tlast0(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=0 \tab  \cr
    tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=NA \tab  \cr
    tfirst0() or tfirst0(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=0 \tab  \cr
-   prod(...) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
-   sum(...) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
-   max(...) \tab maximum of a group of numbers \tab  \cr
-   min(...) \tab Min of a group of numbers \tab  \cr
+   prod(…) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
+   sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
+   max(…) \tab maximum of a group of numbers \tab  \cr
+   min(…) \tab Min of a group of numbers \tab  \cr
    lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
    lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
    diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
@@ -632,7 +632,7 @@ following table:\tabular{lll}{
    M_LN_SQRT_2PI \tab log(sqrt(2*pi)) \tab  \cr
    M_LN_SQRT_PId2 \tab log(sqrt(pi/2)) \tab  \cr
    pi \tab pi \tab  \cr
-   NA \tab R's NA value \tab  \cr
+   NA \tab R’s NA value \tab  \cr
    NaN \tab Not a Number Value \tab  \cr
    Inf \tab Infinite Value \tab  \cr
    newind \tab 1: First record of individual; 2: Subsequent record of individual \tab NEWIND \cr

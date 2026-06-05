@@ -3560,7 +3560,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   implemented via the libode library using coefficients from Verner's own
 #'   website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 #'   embedded 8th-order error estimate.  The highly sparse tableau (stages
-#'   8-16 use only k_[0] and k_[5..]) minimises function evaluations per
+#'   8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimises function evaluations per
 #'   step.  Both solutions are computed from the original state in the final
 #'   step loop.  Uses `atol` and `rtol` for error control.  The `hmin`
 #'   parameter sets the initial step size (default `0.01`); subsequent steps
