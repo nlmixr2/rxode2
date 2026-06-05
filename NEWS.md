@@ -1,3 +1,7 @@
+# rxode2 5.1.3
+
+- Bug fix for `mix()` models as well as `iCov` models.
+
 # rxode2 5.1.2
 
 - `geom_cens()` / `stat_cens()` no longer emit "Ignoring unknown
