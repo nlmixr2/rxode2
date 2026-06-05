@@ -21,7 +21,7 @@ Clinical trial simulation (CTS) uses a pharmacometric model to
 predict trial outcomes *in silico* before running an expensive study.
 Common applications include:
 
-- **Dose regimen selection** — which dose and frequency optimises
+- **Dose regimen selection** — which dose and frequency optimizes
   exposure relative to a PK/PD target?
 - **Target attainment analysis (TAA)** — what fraction of patients
   achieves the desired exposure target?

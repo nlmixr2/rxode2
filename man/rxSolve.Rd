@@ -413,7 +413,7 @@ Shu-Osher method), implemented via the libode library.  A 3-stage,
 3rd-order explicit fixed-step method with superior non-oscillatory
 properties for problems with discontinuities or sharp fronts.  Uses
 the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
-b1=1/6, b2=1/6, b3=2/3.  The step-size behaviour, clamping, and
+b1=1/6, b2=1/6, b3=2/3.  The step-size behavior, clamping, and
 steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol},
 \code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
 not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
@@ -495,7 +495,7 @@ detected immediately and the solve exits with NA output.
 implemented via the libode library using coefficients from Verner's own
 website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
 embedded 8th-order error estimate.  The highly sparse tableau (stages
-8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimises function evaluations per
+8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimizes function evaluations per
 step.  Both solutions are computed from the original state in the final
 step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
 parameter sets the initial step size (default \code{0.01}); subsequent steps
@@ -537,10 +537,10 @@ discontinuities.
 (SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
 event-heavy ODE systems.
 \item \code{"s4"} -- Shanks 4th-order method, 4 stages.
-\item \code{"r4"} -- Ralston's 4th-order method, 4 stages.  Minimises local
+\item \code{"r4"} -- Ralston's 4th-order method, 4 stages.  Minimizes local
 truncation error among classical 4-stage 4th-order methods.
 \item \code{"ls44"} -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
-update scheme that minimises memory bandwidth at the cost of a less
+update scheme that minimizes memory bandwidth at the cost of a less
 general tableau structure.
 \item \code{"ls54"} -- Low-storage 4th-order method, 5 stages.  Five-stage
 variant of the 2-register low-storage scheme.

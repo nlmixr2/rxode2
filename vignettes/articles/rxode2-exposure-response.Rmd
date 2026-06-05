@@ -82,7 +82,7 @@ ggplot(ci, aes(x = time)) +
 ## Exposure-response relationship plot
 
 Plot individual subject AUC vs PD endpoint (time-averaged effect
-over the last dosing interval at steady state) to visualise the E-R
+over the last dosing interval at steady state) to visualize the E-R
 relationship across doses.
 
 ```{r erPlot, fig.width=7, fig.height=4, message=FALSE}
@@ -140,7 +140,7 @@ idrMod <- function() {
     cp             <- center / v
     ## IDR type II: drug inhibits production (kin)
     d/dt(response) <- kin * (1 - imax * cp / (ic50 + cp)) - kout * response
-    response(0)    <- kin / kout   # initialise at baseline
+    response(0)    <- kin / kout   # initialize at baseline
   })
 }
 ```

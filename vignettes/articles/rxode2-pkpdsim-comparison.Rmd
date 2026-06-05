@@ -167,7 +167,7 @@ Boost::odeint backend with a configurable step size.
 ### Literature model libraries
 
 Both tools provide curated libraries of published PK/PD models, though
-they are organised differently.
+they are organized differently.
 
 PKPDsim ships models as self-contained installable R packages via its
 own distribution system:
@@ -273,7 +273,7 @@ mod <- new_ode_model(
 )
 ```
 
-rxode2 handles event-specific behaviour through model equations and
+rxode2 handles event-specific behavior through model equations and
 the event table but does not expose separate C++ hooks at the event
 level.
 

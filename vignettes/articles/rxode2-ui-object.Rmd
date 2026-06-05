@@ -432,7 +432,7 @@ m2$simulationIniModel
 
 ## Model identity and hashing
 
-Two hashes are computed over the normalised model structure (model expressions, `iniDf`, error lines, defined functions, and rxode2 version) and are suitable for caching or comparing models:
+Two hashes are computed over the normalized model structure (model expressions, `iniDf`, error lines, defined functions, and rxode2 version) and are suitable for caching or comparing models:
 
 ```{r modelHashes}
 # MD5 hash

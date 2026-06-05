@@ -209,7 +209,7 @@ structured approach reduces the risk of ad hoc or incomplete
 simulation setups.
 
 rxode2 imposes no workflow structure; the user is responsible for
-organising their simulation code.
+organizing their simulation code.
 
 ## Monolix-to-rxode2 import via `monolix2rx`
 
