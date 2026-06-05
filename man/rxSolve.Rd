@@ -1488,6 +1488,18 @@ non-stiff solver.  Default \code{3L}.}
 \item{autoSwitchStiffFirst}{Logical; when \code{TRUE}, start each subject solve
 with the stiff solver instead of the non-stiff primary.  Default \code{FALSE}.}
 
+\item{stiff2}{Integer method code for the stiff secondary solver used in
+AutoSwitch composite methods.  Normally set automatically when \code{method} is
+a composite string of the form \code{"primary+stiff"} (e.g.
+\code{"dop853+ros4"}); the \code{"+"} notation is the preferred way to configure
+composite solving and \code{stiff2} need not be supplied directly.  When
+supplied as a raw integer it must be a stiff method code as returned by
+\code{\link[=odeMethodToInt]{odeMethodToInt()}}; \code{0L} (the default) disables the stiff secondary and
+causes the solver to run as a plain non-composite method.  Dense output
+(\code{dense = TRUE}) is silently disabled when \code{stiff2} names a stiff method
+that does not support dense output; \code{"ros4"} (code \code{13L}) is the only
+stiff secondary that does support it.}
+
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
 

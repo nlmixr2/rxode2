@@ -907,6 +907,18 @@
 #' @param autoSwitchStiffFirst Logical; when `TRUE`, start each subject solve
 #'   with the stiff solver instead of the non-stiff primary.  Default `FALSE`.
 #'
+#' @param stiff2 Integer method code for the stiff secondary solver used in
+#'   AutoSwitch composite methods.  Normally set automatically when `method` is
+#'   a composite string of the form `"primary+stiff"` (e.g.
+#'   `"dop853+ros4"`); the `"+"` notation is the preferred way to configure
+#'   composite solving and `stiff2` need not be supplied directly.  When
+#'   supplied as a raw integer it must be a stiff method code as returned by
+#'   [odeMethodToInt()]; `0L` (the default) disables the stiff secondary and
+#'   causes the solver to run as a plain non-composite method.  Dense output
+#'   (`dense = TRUE`) is silently disabled when `stiff2` names a stiff method
+#'   that does not support dense output; `"ros4"` (code `13L`) is the only
+#'   stiff secondary that does support it.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
