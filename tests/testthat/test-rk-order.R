@@ -36,7 +36,7 @@ rxTest({
     list(method = "lk5b",  order = 5L),
     list(method = "b6",    order = 6L),
     list(method = "s7",    order = 7L),
-    list(method = "rk8_10",order = 8L),
+    list(method = "s8_10",order = 8L),
     list(method = "cv8",   order = 8L),
     list(method = "s8_12", order = 8L),
     list(method = "s10",   order = 10L),
