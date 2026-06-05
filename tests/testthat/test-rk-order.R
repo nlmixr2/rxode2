@@ -16,7 +16,7 @@ rxTest({
 
   ## -- Fixed-step methods ---------------------------------------------------
   ## Each entry: list(method, order). Uses hmin=1 for a single step.
-  .fixed_cases <- list(
+  .fixedCases <- list(
     list(method = "euler",   order = 1L),
     list(method = "midpoint",order = 2L),
     list(method = "heun",    order = 2L),
@@ -38,14 +38,14 @@ rxTest({
     list(method = "rk7",     order = 7L),
     list(method = "rk8_10",  order = 8L),
     list(method = "cv8",   order = 8L),
-    list(method = "rk8_12",  order = 8L),
+    list(method = "s8_12",  order = 8L),
     list(method = "s10",   order = 10L),
     list(method = "z10",   order = 10L),
     list(method = "o10",   order = 10L),
     list(method = "h10",   order = 10L)
   )
 
-  for (.cfg in .fixed_cases) {
+  for (.cfg in .fixedCases) {
     local({
       .meth  <- .cfg$method
       .order <- .cfg$order
