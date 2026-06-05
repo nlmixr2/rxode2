@@ -5,7 +5,7 @@ rxTest({
     })
     et <- rxode2::eventTable()
     et$add.sampling(seq(0, 5, length.out=10))
-    out <- rxode2::rxSolve(mod, params=c(), events=et, inits=c(y=1), method="yYmrrf78")
+    out <- rxode2::rxSolve(mod, params=c(), events=et, inits=c(y=1), method="f78")
     expect_s3_class(out, "rxSolve")
     expect_equal(out$y, exp(-out$time), tolerance = 0.05)
   })
