@@ -21,13 +21,13 @@ Clinical trial simulation (CTS) uses a pharmacometric model to
 predict trial outcomes *in silico* before running an expensive study.
 Common applications include:
 
-- **Dose regimen selection** — which dose and frequency optimizes
+- **Dose regimen selection** -- which dose and frequency optimizes
   exposure relative to a PK/PD target?
-- **Target attainment analysis (TAA)** — what fraction of patients
+- **Target attainment analysis (TAA)** -- what fraction of patients
   achieves the desired exposure target?
-- **Sample-size estimation by simulation** — how many subjects are
+- **Sample-size estimation by simulation** -- how many subjects are
   needed to detect a treatment difference with adequate power?
-- **Special population predictions** — paediatric, renal impairment,
+- **Special population predictions** -- paediatric, renal impairment,
   or other covariate subgroups.
 
 ## Model setup
@@ -72,7 +72,7 @@ Compare three once-daily oral doses (50, 100, 200 mg) in a
 nSub  <- 1000
 doses <- c(50, 100, 200)
 
-# Build a list of event tables — one per dose
+# Build a list of event tables -- one per dose
 evList <- lapply(doses, function(d) {
   et(amt = d, ii = 24, addl = 6) |>   # 7-day QD
     et(seq(0, 168, by = 1))            # hourly observations
@@ -106,13 +106,13 @@ ggplot(medCI, aes(x = time, group = factor(dose), colour = factor(dose),
   geom_line(aes(y = p50), linewidth = 1) +
   labs(x = "Time (h)", y = "Concentration (mg/L)",
        colour = "Dose (mg)", fill = "Dose (mg)",
-       title = "Dose comparison — steady-state concentration profiles") +
+       title = "Dose comparison -- steady-state concentration profiles") +
   theme_bw()
 ```
 
 ## Target attainment analysis (TAA)
 
-Define a PK target as trough concentration ≥ 1 mg/L at steady state
+Define a PK target as trough concentration >= 1 mg/L at steady state
 (day 7, trough = 168 h).
 
 ```{r taa, fig.width=6, fig.height=4}
@@ -123,15 +123,15 @@ trough <- dt[time == 168, .(
 ggplot(trough, aes(x = factor(dose), y = pctAbove)) +
   geom_col(fill = "steelblue", width = 0.5) +
   geom_hline(yintercept = 90, linetype = "dashed", colour = "red") +
-  labs(x = "Dose (mg)", y = "% subjects with trough ≥ 1 mg/L",
+  labs(x = "Dose (mg)", y = "% subjects with trough >= 1 mg/L",
        title = "Target attainment at steady-state trough",
        subtitle = "Dashed line: 90% target attainment criterion") +
   theme_bw()
 ```
 
-## PK/PD target: % of population with effect ≥ 50%
+## PK/PD target: % of population with effect >= 50%
 
-Using the Emax model, what fraction achieves ≥ 30% of maximum effect
+Using the Emax model, what fraction achieves >= 30% of maximum effect
 at the trough?
 
 ```{r pdTarget, fig.width=6, fig.height=4}
@@ -142,7 +142,7 @@ pdTarget <- dt[time == 168, .(
 ggplot(pdTarget, aes(x = factor(dose), y = pctTarget)) +
   geom_col(fill = "coral", width = 0.5) +
   geom_hline(yintercept = 80, linetype = "dashed", colour = "red") +
-  labs(x = "Dose (mg)", y = "% subjects with effect ≥ 30%",
+  labs(x = "Dose (mg)", y = "% subjects with effect >= 30%",
        title = "PD target attainment at steady-state trough",
        subtitle = "Dashed line: 80% target attainment criterion") +
   theme_bw()
@@ -151,7 +151,7 @@ ggplot(pdTarget, aes(x = factor(dose), y = pctTarget)) +
 ## Exposure metric distributions
 
 Compute AUC over one dosing interval at steady state (day 7,
-hours 144–168) for each dose.
+hours 144-168) for each dose.
 
 ```{r aucDist, fig.width=7, fig.height=4}
 ss <- dt[time >= 144 & time <= 168]
@@ -162,7 +162,7 @@ aucSS <- ss[, .(
 
 ggplot(aucSS, aes(x = AUCtau, fill = factor(dose))) +
   geom_density(alpha = 0.4) +
-  labs(x = "AUC_tau (mg·h/L)", y = "Density",
+  labs(x = "AUC_tau (mg.h/L)", y = "Density",
        fill = "Dose (mg)",
        title = "Steady-state AUC_tau distribution by dose") +
   theme_bw()
@@ -201,7 +201,7 @@ ggplot(powerRes, aes(x = n, y = power)) +
   geom_hline(yintercept = 0.80, linetype = "dashed", colour = "red") +
   scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
   labs(x = "Subjects per arm", y = "Power",
-       title = "Power by simulation — 100 mg vs 50 mg trough comparison",
+       title = "Power by simulation -- 100 mg vs 50 mg trough comparison",
        subtitle = "Dashed line: 80% power target. ~23 subjects/arm sufficient here.") +
   theme_bw()
 ```
@@ -245,8 +245,8 @@ ggplot(pedCI, aes(x = time)) +
   geom_ribbon(aes(ymin = p05, ymax = p95), fill = "coral", alpha = 0.3) +
   geom_line(aes(y = p50), colour = "coral", linewidth = 1) +
   labs(x = "Time (h)", y = "Concentration (mg/L)",
-       title = "Paediatric simulation — 100 mg QD with allometric scaling",
-       subtitle = "WT range 10–40 kg") +
+       title = "Paediatric simulation -- 100 mg QD with allometric scaling",
+       subtitle = "WT range 10-40 kg") +
   theme_bw()
 ```
 

@@ -1,5 +1,5 @@
 rxTest({
-  # ── Analytical background ──────────────────────────────────────────────────
+  # -- Analytical background --------------------------------------------------
   # f(depot) <- f0 + state scales the bioavailable fraction of each dose.
   # For a bolus dose of amount `amt` at time t_dose into a depot that drains
   # with first-order rate constant ka:
@@ -9,8 +9,8 @@ rxTest({
   # Multiple doses contribute additively.  Constant state (d/dt(state)=0)
   # keeps S0 fixed, making the expected trajectory fully analytical.
 
-  # ── Test 1 ─────────────────────────────────────────────────────────────────
-  # state = 0 throughout  →  f(depot) = f0 + 0 = f0 exactly.
+  # -- Test 1 -----------------------------------------------------------------
+  # state = 0 throughout  ->  f(depot) = f0 + 0 = f0 exactly.
   # Effective bioavailable amount = amt * f0; trajectory is mono-exponential.
   test_that("state-dep f with state=0 uses exactly f0 (no state shift)", {
     mod <- rxode2({
@@ -43,8 +43,8 @@ rxTest({
                  label = "depot matches amt*f0*exp(-ka*t) when state=0")
   })
 
-  # ── Test 2 ─────────────────────────────────────────────────────────────────
-  # state = S0 (constant, various values)  →  f(depot) = f0 + S0 exactly.
+  # -- Test 2 -----------------------------------------------------------------
+  # state = S0 (constant, various values)  ->  f(depot) = f0 + S0 exactly.
   # Effective bioavailable amount = amt * (f0 + S0); different for each S0.
   test_that("state-dep f shifts bioavailable amount by state value: f = f0 + state_at_dose", {
     mod <- rxode2({
@@ -85,7 +85,7 @@ rxTest({
     }
   })
 
-  # ── Test 3 ─────────────────────────────────────────────────────────────────
+  # -- Test 3 -----------------------------------------------------------------
   # Multiple doses: each dose's bioavailable amount = dose * (f0 + state_at_dose_time).
   # With a decaying state, consecutive doses get decreasing f values and
   # therefore decreasing effective amounts.
@@ -137,7 +137,7 @@ rxTest({
     }
   })
 
-  # ── Test 4 ─────────────────────────────────────────────────────────────────
+  # -- Test 4 -----------------------------------------------------------------
   # Robustness: no NAs produced when state is non-zero and f varies between
   # subjects (two-row data frame with different initial state values).
   test_that("state-dep f: no NAs across subjects with different initial state", {
@@ -158,7 +158,7 @@ rxTest({
 
     expect_false(any(is.na(s0$depot)), label = "no NAs when state=0")
     expect_false(any(is.na(s1$depot)), label = "no NAs when state=0.3")
-    # Different initial f → different trajectories
+    # Different initial f -> different trajectories
     expect_false(isTRUE(all.equal(s0$depot, s1$depot)),
                  label = "different state gives different f and depot")
   })

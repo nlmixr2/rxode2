@@ -63,7 +63,7 @@ imported model from another tool like NONMEM or Monolix.
 ## Running replicated simulations
 
 A VPC requires simulating the study design many times (typically
-100–1000 replicates).  Each replicate samples new ETAs and residual
+100-1000 replicates).  Each replicate samples new ETAs and residual
 error.
 
 ```{r simulate, message=FALSE}
@@ -155,7 +155,7 @@ ggplot() +
              aes(x = TIME, y = DV),
              alpha = 0.4, size = 1) +
   labs(x = "Time (h)", y = "Theophylline concentration (mg/L)",
-       title = "VPC — 5th/50th/95th percentiles",
+       title = "VPC -- 5th/50th/95th percentiles",
        subtitle = "Shaded: simulated PI; dashed lines: observed percentiles") +
   theme_bw()
 ```

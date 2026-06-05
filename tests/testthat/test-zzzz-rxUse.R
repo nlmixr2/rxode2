@@ -35,7 +35,7 @@ rxTest({
     }
   ## unlink(dir, recursive=TRUE)
     # when load_all is used, you get
-    ## Error: package ‘rxode2’ required by ‘rxm’ could not be found
+    ## Error: package 'rxode2' required by 'rxm' could not be found
     ## rm(list=c("mod", "mod2"))
 
     ## expect_error(library(rxm), NA)

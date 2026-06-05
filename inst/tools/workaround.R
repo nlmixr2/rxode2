@@ -52,7 +52,7 @@ if (inherits(versionInfo, "try-error")) {
 .in <- gsub("@SL@", paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())), #nolint
             .in)
 
-# StanHeaders static library — provides SUNDIALS 6.x compiled for ODE integration.
+# StanHeaders static library -- provides SUNDIALS 6.x compiled for ODE integration.
 # CVODE is always enabled via the StanHeaders-bundled SUNDIALS.
 .in <- gsub("@STANHDR_LIB@", system.file("lib", package = "StanHeaders"), .in)
 

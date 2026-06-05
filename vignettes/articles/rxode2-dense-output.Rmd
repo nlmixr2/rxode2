@@ -27,7 +27,7 @@ their step sizes dynamically to satisfy error tolerances. Normally, to
 evaluate the system states at your exact observation grid, the solver
 must adjust its step sizes and stop precisely at each observation
 time. This constant stopping and restarting restricts step sizes and
-degrades performance—especially on fine observation grids.
+degrades performance--especially on fine observation grids.
 
 **Dense Output** resolves this by allowing the solver to step forward
 at its own optimal pace. Instead of stopping at observation times, the
@@ -58,11 +58,11 @@ In `rxode2`, dense output is supported across four solvers:
 
 ---
 
-## The Critical Role of `hmax` — Handled Automatically
+## The Critical Role of `hmax` -- Handled Automatically
 
 The default `hmax` (maximum step size) in `rxode2` is computed from
 the average spacing between events in your event table. If your grid
-has `0.1` h spacing, `hmax ≈ 0.1` h. Under this default, the solver is
+has `0.1` h spacing, `hmax ~ 0.1` h. Under this default, the solver is
 prevented from taking steps larger than `0.1` h, which defeats the
 performance benefit of dense output.
 
@@ -203,8 +203,8 @@ for (m in c("dop853", "dop5", "bs", "ros4")) {
 Use `dense = TRUE` when **all** of the following hold:
 
 1. **Fine-grained observation grid (rich sampling)**: The break-even
-   point is typically around 5–10 observations per dose interval. If
-   you only have 1–3 observations, the overhead of setting up the
+   point is typically around 5-10 observations per dose interval. If
+   you only have 1-3 observations, the overhead of setting up the
    dense output callbacks exceeds the savings.
 
 

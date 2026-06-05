@@ -9,7 +9,7 @@ rxTest({
     )
     out <- .setupGroupCensBox(d, list(width = 0.01))
     expect_true(all(c("..ni", "..pi", "..width") %in% names(out)))
-    # NA-lower rows are dropped (observed rows) — two censored rows remain
+    # NA-lower rows are dropped (observed rows) -- two censored rows remain
     expect_equal(nrow(out), 2L)
   })
 

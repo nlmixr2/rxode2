@@ -104,7 +104,7 @@ rxTest({
     expect_length(caps, 1L)
     # Both conditions must appear in the combined condition string
     expect_match(caps[[1]]$condition, "t")
-    # Conditions are multiplied together (two conditions → two sets of parens with *)
+    # Conditions are multiplied together (two conditions -> two sets of parens with *)
     expect_match(caps[[1]]$condition, "\\*")
   })
 

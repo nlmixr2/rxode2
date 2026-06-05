@@ -75,7 +75,7 @@ ggplot(ci, aes(x = time)) +
   geom_ribbon(aes(ymin = p05, ymax = p95), fill = "steelblue", alpha = 0.3) +
   geom_line(aes(y = p50), colour = "steelblue", linewidth = 1) +
   labs(x = "Time (h)", y = "Effect (%)",
-       title = "Direct sigmoid Emax model — population prediction") +
+       title = "Direct sigmoid Emax model -- population prediction") +
   theme_bw()
 ```
 
@@ -105,7 +105,7 @@ er <- as.data.table(simDoses)[, .(
 ggplot(er, aes(x = AUC, y = meanEff, colour = factor(dose))) +
   geom_point(alpha = 0.3, size = 0.8) +
   geom_smooth(method = "loess", se = FALSE, linewidth = 1) +
-  labs(x = "Steady-state AUC_tau (mg·h/L)",
+  labs(x = "Steady-state AUC_tau (mg.h/L)",
        y = "Mean effect over last dosing interval (%)",
        colour = "Dose (mg)",
        title = "Exposure-response relationship") +
@@ -161,7 +161,7 @@ ggplot(ciIdr, aes(x = time)) +
   geom_line(aes(y = p50), colour = "coral", linewidth = 1) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   labs(x = "Time (h)", y = "Biomarker response (units)",
-       title = "Indirect response model — inhibition of production",
+       title = "Indirect response model -- inhibition of production",
        subtitle = "Dashed: baseline. 14-day 100 mg QD dosing") +
   theme_bw()
 ```
@@ -218,7 +218,7 @@ ggplot(dtEc_long, aes(x = time, y = value, colour = var)) +
   geom_line(linewidth = 1) +
   facet_wrap(~var, scales = "free_y") +
   labs(x = "Time (h)", y = NULL,
-       title = "Effect compartment model — single 100 mg dose") +
+       title = "Effect compartment model -- single 100 mg dose") +
   theme_bw() +
   theme(legend.position = "none")
 ```
@@ -247,7 +247,7 @@ ggplot(aucBin, aes(x = AUC, y = resp)) +
   geom_jitter(height = 0.05, alpha = 0.3, size = 0.8) +
   geom_smooth(method = "glm", method.args = list(family = "binomial"),
               colour = "steelblue", linewidth = 1) +
-  labs(x = "Steady-state AUC_tau (mg·h/L)",
+  labs(x = "Steady-state AUC_tau (mg.h/L)",
        y = "Probability of response",
        title = "Exposure-response: binary endpoint") +
   theme_bw()

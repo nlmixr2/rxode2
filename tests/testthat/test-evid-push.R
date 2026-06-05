@@ -2,7 +2,7 @@ rxTest({
   test_that("exceeding maxExtra raises an error (single subject)", {
     # This model unconditionally pushes a new event at t+0.1 on every ODE
     # evaluation step.  Each integration interval (0.1 wide) produces one push,
-    # so seq(0, 2, by=0.1) creates 20 intervals → 20 pushes, which exceeds
+    # so seq(0, 2, by=0.1) creates 20 intervals -> 20 pushes, which exceeds
     # maxExtra=10 and must raise an error.
     mCascade <- rxode2({
       d/dt(x) <- -x
@@ -109,7 +109,7 @@ rxTest({
                        r <- rxSolve(m, p, e, method = meth)
                        # The pushed dose at t+12 should create an extra event, affecting cp after t=12
                        expect_true(nrow(r) > 0)
-                       # The bolus at t=12 should be visible — cp should rise after t=12
+                       # The bolus at t=12 should be visible -- cp should rise after t=12
                        cp12 <- r$cp[r$time == 12]
                        cp14 <- r$cp[r$time == 14]
                        expect_true(length(cp12) > 0 && length(cp14) > 0)
@@ -146,7 +146,7 @@ rxTest({
     expect_true(all(rLin$cp[rLin$time >= 19] > 0))
     # The pushed dose at t+12 should create an extra event, affecting cp after t=12
     expect_true(nrow(rLin) > 0)
-    # The bolus at t=12 should be visible — cp should rise after t=12
+    # The bolus at t=12 should be visible -- cp should rise after t=12
     cp12 <- rLin$cp[rLin$time == 12]
     cp14 <- rLin$cp[rLin$time == 14]
     expect_true(length(cp12) > 0 && length(cp14) > 0)
@@ -502,7 +502,7 @@ rxTest({
     m3 <- rxode2({
       d/dt(x) <- -x
       if (t < 5) {
-        evid_(t - 1, 1, 10, 1, 0, 0, 0, 0)  # past time — should warn
+        evid_(t - 1, 1, 10, 1, 0, 0, 0, 0)  # past time -- should warn
       }
     })
     e <- et(amt = 1, time = 0) |> et(seq(0, 5, by = 1))
@@ -555,8 +555,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -577,8 +577,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -599,8 +599,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -621,8 +621,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)

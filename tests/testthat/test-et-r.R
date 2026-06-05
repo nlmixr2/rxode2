@@ -26,7 +26,7 @@ rxTest({
   })
 
   test_that("is.rxEt handles class-only rxEt (no .env)", {
-    # Should return FALSE — wrong structure, not a valid rxEt
+    # Should return FALSE -- wrong structure, not a valid rxEt
     expect_false(is.rxEt(structure(list(), class = "rxEt")))
   })
 
@@ -354,7 +354,7 @@ rxTest({
   test_that(".etMaterialize mixed dose+obs fills dose defaults correctly", {
     .ev <- .newRxEt()
     .envRef <- .rxEtEnv(.ev)
-    # Obs chunk (sparse — no dose columns)
+    # Obs chunk (sparse -- no dose columns)
     .envRef$chunks <- list(
       list(time = c(1, 2), evid = 0L),
       list(time = 0, evid = 1L, amt = 100, cmt = "(default)")

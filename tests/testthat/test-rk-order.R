@@ -6,10 +6,10 @@
 ##       Adaptive methods use atol=rtol=1 (single coarse step).
 ##
 ## Flagged methods needing extra validation (transcription-error risk):
-##   ★ f108, f1210, f1412: very many stages; also tested to tighter
+##   * f108, f1210, f1412: very many stages; also tested to tighter
 ##     tolerance in the decay test.
-##   ⚑ FSAL methods: incorrect cache logic caught by decay test (multi-step).
-##   ⚑ Low-storage (ls44, ls54): custom 2-register scheme, order tested here.
+##   (!) FSAL methods: incorrect cache logic caught by decay test (multi-step).
+##   (!) Low-storage (ls44, ls54): custom 2-register scheme, order tested here.
 rxTest({
   .eps <- .Machine$double.eps
   .tol <- 1e4 * .eps   # 10000*eps, same threshold as rklib
@@ -101,13 +101,13 @@ rxTest({
     list(method = "t98a",   order = 9L),
     list(method = "v98r",   order = 9L),
     list(method = "s98",    order = 9L),
-    list(method = "f108",   order = 10L),   # ★ extra transcription risk
+    list(method = "f108",   order = 10L),   # * extra transcription risk
     list(method = "c108",   order = 10L),
     list(method = "b109",   order = 10L),
     list(method = "s1110a", order = 11L),
-    list(method = "f1210",  order = 12L),   # ★ extra transcription risk
+    list(method = "f1210",  order = 12L),   # * extra transcription risk
     list(method = "o129",   order = 12L),
-    list(method = "f1412",  order = 14L)    # ★ extra transcription risk
+    list(method = "f1412",  order = 14L)    # * extra transcription risk
   )
 
   for (.cfg in .var_cases) {

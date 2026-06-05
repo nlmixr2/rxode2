@@ -126,8 +126,8 @@ The parameters here are:
 
 | Parameter | Meaning |
 |-----------|---------|
-| `tka1`    | Log of the fast absorption rate constant (hr⁻¹) |
-| `tka2`    | Log of the slow absorption rate constant (hr⁻¹) |
+| `tka1`    | Log of the fast absorption rate constant (hr^-1) |
+| `tka2`    | Log of the slow absorption rate constant (hr^-1) |
 | `fa`      | Fraction of the dose entering the fast pathway |
 | `tcl`     | Log of clearance (L/hr) |
 | `tv`      | Log of central volume (L) |
