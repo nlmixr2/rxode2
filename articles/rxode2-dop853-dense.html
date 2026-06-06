@@ -145,9 +145,9 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>DOP853 Dense Output: When and How to Use It</h1>
             
-            <h4 data-toc-skip class="date">2026-06-03</h4>
+            <h4 data-toc-skip class="date">2026-06-06</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.1.2/vignettes/articles/rxode2-dop853-dense.Rmd" class="external-link"><code>vignettes/articles/rxode2-dop853-dense.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/rxode2-dop853-dense.Rmd" class="external-link"><code>vignettes/articles/rxode2-dop853-dense.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-dop853-dense.Rmd</code></div>
     </div>
 
@@ -318,9 +318,9 @@ argument is needed to unlock large steps.</p>
 <span>    <span class="va">by</span>, <span class="va">nobs</span>, <span class="va">std</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"dense = %5.1f ms  speedup = %.2fx\n"</span>, <span class="va">den</span>, <span class="va">std</span> <span class="op">/</span> <span class="va">den</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co">#&gt; obs spacing = 1.00 h  (n_obs =   169):  standard =  63.2 ms  dense =  62.9 ms  speedup = 1.00x</span></span>
-<span><span class="co">#&gt; obs spacing = 0.10 h  (n_obs =  1681):  standard =  70.2 ms  dense =  71.0 ms  speedup = 0.99x</span></span>
-<span><span class="co">#&gt; obs spacing = 0.01 h  (n_obs = 16801):  standard = 152.6 ms  dense = 148.2 ms  speedup = 1.03x</span></span></code></pre></div>
+<span><span class="co">#&gt; obs spacing = 1.00 h  (n_obs =   169):  standard =  58.5 ms  dense =  58.6 ms  speedup = 1.00x</span></span>
+<span><span class="co">#&gt; obs spacing = 0.10 h  (n_obs =  1681):  standard =  65.6 ms  dense =  64.9 ms  speedup = 1.01x</span></span>
+<span><span class="co">#&gt; obs spacing = 0.01 h  (n_obs = 16801):  standard = 147.8 ms  dense = 143.6 ms  speedup = 1.03x</span></span></code></pre></div>
 <p>Typical results on this machine:</p>
 <table class="table">
 <thead><tr class="header">
@@ -381,9 +381,9 @@ override explicitly (suppressing messages with
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bm</span>, unit <span class="op">=</span> <span class="st">"ms"</span>, order <span class="op">=</span> <span class="st">"median"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;                 expr      min       lq     mean   median       uq      max</span></span>
-<span><span class="co">#&gt;      dense_auto_hmax 67.79926 68.72892 71.20840 69.30572 73.55969 80.44640</span></span>
-<span><span class="co">#&gt;     std_default_hmax 67.11705 68.48235 71.29806 69.81847 73.92008 77.84056</span></span>
-<span><span class="co">#&gt;  dense_explicit_hmax 67.23552 68.65387 72.15205 71.63815 74.31253 88.73070</span></span>
+<span><span class="co">#&gt;     std_default_hmax 62.88233 63.90652 66.90803 64.60792 69.80750 80.23659</span></span>
+<span><span class="co">#&gt;      dense_auto_hmax 61.98221 63.58172 66.52842 64.78178 69.71263 73.77111</span></span>
+<span><span class="co">#&gt;  dense_explicit_hmax 62.81349 64.18919 67.12021 66.70608 69.83841 74.05673</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;     30</span></span>
 <span><span class="co">#&gt;     30</span></span>
@@ -514,7 +514,7 @@ stiff systems.</p>
 <span><span class="co">#&gt;  [1] sass_0.4.10           generics_0.1.4        lattice_0.22-9       </span></span>
 <span><span class="co">#&gt;  [4] digest_0.6.39         magrittr_2.0.5        evaluate_1.0.5       </span></span>
 <span><span class="co">#&gt;  [7] grid_4.6.0            RColorBrewer_1.1-3    fastmap_1.2.0        </span></span>
-<span><span class="co">#&gt; [10] lotri_1.0.5           qs2_0.2.1             jsonlite_2.0.0       </span></span>
+<span><span class="co">#&gt; [10] lotri_1.0.5           qs2_0.2.2             jsonlite_2.0.0       </span></span>
 <span><span class="co">#&gt; [13] rxode2ll_2.0.14       backports_1.5.1       scales_1.4.0         </span></span>
 <span><span class="co">#&gt; [16] textshaping_1.0.5     jquerylib_0.1.4       cli_3.6.6            </span></span>
 <span><span class="co">#&gt; [19] crayon_1.5.3          rlang_1.2.0           units_1.0-1          </span></span>
