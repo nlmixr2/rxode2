@@ -13,6 +13,7 @@
 rxTest({
   .eps <- .Machine$double.eps
   .tol <- 1e4 * .eps   # 10000*eps, same threshold as rklib
+  .ev  <- rxode2::et(1)
 
   ## -- Fixed-step methods ---------------------------------------------------
   ## Each entry: list(method, order). Uses hmin=1 for a single step.
@@ -44,21 +45,6 @@ rxTest({
     list(method = "o10",   order = 10L),
     list(method = "h10",   order = 10L)
   )
-
-  for (.cfg in .fixedCases) {
-    local({
-      .meth  <- .cfg$method
-      .order <- .cfg$order
-      .mod <- rxode2::rxode2(paste0("d/dt(x) <- ", .order, "*t^", .order - 1L))
-      .ev  <- rxode2::et(1)
-      test_that(paste("order test (fixed):", .meth, "order", .order), {
-        .s <- rxode2::rxSolve(.mod, .ev, inits = c(x = 0),
-                               method = .meth, hmin = 1.0, cores = 1)
-        expect_lt(abs(.s$x[1] - 1.0), .tol,
-                  label = paste(.meth, "order test error"))
-      })
-    })
-  }
 
   ## -- Variable-step methods ------------------------------------------------
   ## Use atol=rtol=1 so one coarse step is taken (mimics fixed-step mode).
@@ -110,12 +96,36 @@ rxTest({
     list(method = "f1412",  order = 14L)    # * extra transcription risk
   )
 
+  ## Build one model per unique polynomial order before running any tests.
+  ## Methods sharing the same order reuse the same compiled model object.
+  .all_orders <- unique(c(
+    sapply(.fixedCases, `[[`, "order"),
+    sapply(.var_cases,  `[[`, "order")
+  ))
+  .poly_mods <- lapply(.all_orders, function(.p) {
+    rxode2::rxode2(paste0("d/dt(x) <- ", .p, "*t^", .p - 1L))
+  })
+  names(.poly_mods) <- as.character(.all_orders)
+
+  for (.cfg in .fixedCases) {
+    local({
+      .meth  <- .cfg$method
+      .order <- .cfg$order
+      .mod   <- .poly_mods[[as.character(.order)]]
+      test_that(paste("order test (fixed):", .meth, "order", .order), {
+        .s <- rxode2::rxSolve(.mod, .ev, inits = c(x = 0),
+                               method = .meth, hmin = 1.0, cores = 1)
+        expect_lt(abs(.s$x[1] - 1.0), .tol,
+                  label = paste(.meth, "order test error"))
+      })
+    })
+  }
+
   for (.cfg in .var_cases) {
     local({
       .meth  <- .cfg$method
       .order <- .cfg$order
-      .mod <- rxode2::rxode2(paste0("d/dt(x) <- ", .order, "*t^", .order - 1L))
-      .ev  <- rxode2::et(1)
+      .mod   <- .poly_mods[[as.character(.order)]]
       test_that(paste("order test (adaptive):", .meth, "order", .order), {
         .s <- rxode2::rxSolve(.mod, .ev, inits = c(x = 0),
                                method = .meth, atol = 1e10, rtol = 1e10, cores = 1)
