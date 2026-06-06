@@ -617,7 +617,7 @@
 #'   though it won't hurt anything if you do (just may take up more
 #'   memory for larger allocations).
 #'
-#' @inheritParams odeMethodToInt
+#' @inheritParams .odeMethodToInt
 #'
 #' @inheritParams rxode2parse
 #'
@@ -1063,7 +1063,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         nStud <- as.integer(nsim)
       }
     }
-    method <- odeMethodToInt(method)
+    method <- .odeMethodToInt(method)
     if (checkmate::testIntegerish(returnType, len=1, lower=0,
                                   upper=5, any.missing=FALSE)) {
       returnType <- as.integer(returnType)
@@ -3116,7 +3116,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) {
+odeMethodToInt <- .odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) {
   .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
