@@ -56,7 +56,7 @@ public:
     }
 
 protected:
-    void ode_fun(double *solin, double *fout) override {
+    void ode_fun(double * __restrict__ solin, double * __restrict__ fout) override {
         double eval_time = has_ode_eval_time_ ? ode_eval_time_ : this->t_;
         if (ind_->err != 0) {
             for (unsigned long i = 0; i < this->neq_; i++) fout[i] = 0.0;

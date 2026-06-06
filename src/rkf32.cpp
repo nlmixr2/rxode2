@@ -3,7 +3,7 @@
 #undef max
 #include "ode_rkf32_bridge.h"
 
-static inline void rkf32_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+static inline void rkf32_do_steps(RxRkf32 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                     t_dydt c_dydt, int *neq, double *yp,
                                     double xp, double xout) {
   double tint = xout - xp;
@@ -13,18 +13,14 @@ static inline void rkf32_do_steps(rx_solving_options_ind *ind, rx_solving_option
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
   if (tint < 0.0) dt = -dt;
 
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-
-  RxRkf32 solver(c_dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
-  solver.set_quiet(true);
-  solver.set_t(xp);
-  if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-  if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
-  try {
+  solver->reset_counters();
+  solver->set_sol_external(yp);
+  solver->set_t(xp);
+try {
     // extras=true so after_step() is called on every step (accepted and
     // rejected), which enforces the mxstep limit and prevents infinite
     // loops when step rejections shrink dtopt_ toward zero.
-    solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
+    solver->solve_adaptive(std::fabs(tint), std::fabs(dt), true);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
@@ -52,6 +48,13 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  RxRkf32 *solver = NULL;
+  if (neqOde > 0) {
+    solver = new RxRkf32(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
+      solver->set_quiet(true);
+      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+  }
   double *yp;
 
   for (i = 0; i < ind->n_all_times; i++) {
@@ -91,7 +94,7 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
             if (neqOde > 0)
-              rkf32_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
+              rkf32_do_steps(solver, ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
 
             copyLinCmt(neq, ind, op, yp);
             const char* err_msg = "rkf32 failed";
@@ -114,7 +117,7 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
 
               if (neqOde > 0)
-                rkf32_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
+                rkf32_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
 
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "rkf32 failed";
@@ -129,7 +132,7 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
 
           if (neqOde > 0)
-            rkf32_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
+            rkf32_do_steps(solver, ind, op, c_dydt, neq, yp, xp, xout);
 
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "rkf32 failed";
@@ -170,6 +173,7 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     ind->solvedIdx = i;
   }
+  if (solver != NULL) delete solver;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -227,8 +231,13 @@ extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
 
-  if (neqOde > 0) {
-    rkf32_do_steps(ind, op, dydt, neq, yp, *xp, xout);
+    if (neqOde > 0) {
+    RxRkf32 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
+    solver.set_quiet(true);
+    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    rkf32_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
     if (ind->rc[0] < 0) {
       *istate = -1;
       return;

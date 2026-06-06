@@ -131,6 +131,28 @@ for (.sp in file.path("src", .sp_files)) {
   }
 }
 
+# Generate src/implicit_euler_rxode2.hpp from BH's copy of the same header,
+# replacing the std::exit(0) call (CRAN-forbidden) with a C++ exception so
+# the error can be caught and handled via the rxode2 OpenMP-safe badSolveExit
+# pattern.  Generating from BH keeps us in sync with any future BH updates.
+.bh_ie <- system.file("include", "boost", "numeric", "odeint", "stepper",
+                       "implicit_euler.hpp", package = "BH")
+if (!nzchar(.bh_ie)) {
+  stop("BH package implicit_euler.hpp not found", call. = FALSE)
+}
+.ie_lines <- readLines(.bh_ie)
+.ie_lines <- sub(
+  "^(#include <boost/numeric/ublas/lu\\.hpp>)$",
+  "\\1\n#include <stdexcept>",
+  .ie_lines
+)
+.ie_lines <- gsub(
+  "if\\( res != 0 \\) std::exit\\(0\\);",
+  "if( res != 0 ) throw std::runtime_error(\"implicit Euler LU factorization singular\");",
+  .ie_lines
+)
+writeLines(.ie_lines, "src/implicit_euler_rxode2.hpp")
+
 
 .badStan <- ""
 .in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",

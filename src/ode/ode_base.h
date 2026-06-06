@@ -228,6 +228,12 @@ class OdeBase {
         long unsigned get_icheck () { return(icheck_); }
         //!gets the total number of Jacobian evaluations performed
         long unsigned get_nJac () { return(nJac_); }
+        //!resets step, evaluation, and Jacobian counters
+        virtual void reset_counters () {
+            nstep_ = 0;
+            neval_ = 0;
+            nJac_ = 0;
+        }
 
         //!sets the "time," or independent variable used to track progress
         /*!Because libode solves system in autonomous form, the "time" `t` is just an internal tracker for the integrating functions. See `get_t()`. Nevertheless, this function will set the internal value of the integrator's `t` variable.*/

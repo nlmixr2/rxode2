@@ -3,7 +3,7 @@
 #undef max
 #include "ode_rkssp53_bridge.h"
 
-static inline void rkssp53_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+static inline void rkssp53_do_steps(RxRkssp53 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                    t_dydt c_dydt, int *neq, double *yp,
                                    double xp, double xout) {
   double tint = xout - xp;
@@ -15,13 +15,11 @@ static inline void rkssp53_do_steps(rx_solving_options_ind *ind, rx_solving_opti
     dt = std::fabs(tint) / (double)(op->mxstep - 10);
   if (tint < 0.0) dt = -dt;
 
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-
-  RxRkssp53 solver(c_dydt, neq, neqOde, ind, yp);
-  solver.set_quiet(true);
-  solver.set_t(xp);
-  try {
-    solver.solve_fixed(std::fabs(tint), std::fabs(dt), false);
+  solver->reset_counters();
+  solver->set_sol_external(yp);
+  solver->set_t(xp);
+try {
+    solver->solve_fixed(std::fabs(tint), std::fabs(dt), false);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
@@ -49,6 +47,11 @@ extern "C" void ind_rkssp53_0(rx_solve *rx, rx_solving_options *op, int solveid,
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  RxRkssp53 *solver = NULL;
+  if (neqOde > 0) {
+    solver = new RxRkssp53(c_dydt, neq, neqOde, ind, getSolve(0));
+      solver->set_quiet(true);
+  }
   double *yp;
 
   for (i = 0; i < ind->n_all_times; i++) {
@@ -88,7 +91,7 @@ extern "C" void ind_rkssp53_0(rx_solve *rx, rx_solving_options *op, int solveid,
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
             if (neqOde > 0)
-              rkssp53_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
+              rkssp53_do_steps(solver, ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
 
             copyLinCmt(neq, ind, op, yp);
             const char* err_msg = "rkssp53 failed";
@@ -111,7 +114,7 @@ extern "C" void ind_rkssp53_0(rx_solve *rx, rx_solving_options *op, int solveid,
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
 
               if (neqOde > 0)
-                rkssp53_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
+                rkssp53_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
 
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "rkssp53 failed";
@@ -126,7 +129,7 @@ extern "C" void ind_rkssp53_0(rx_solve *rx, rx_solving_options *op, int solveid,
           preSolve(op, ind, xp, xout, yp);
 
           if (neqOde > 0)
-            rkssp53_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
+            rkssp53_do_steps(solver, ind, op, c_dydt, neq, yp, xp, xout);
 
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "rkssp53 failed";
@@ -167,6 +170,7 @@ extern "C" void ind_rkssp53_0(rx_solve *rx, rx_solving_options *op, int solveid,
     }
     ind->solvedIdx = i;
   }
+  if (solver != NULL) delete solver;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -224,8 +228,11 @@ extern "C" void rkssp53_solveWith1Pt(int *neq, double *yp, double *xp, double xo
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
 
-  if (neqOde > 0) {
-    rkssp53_do_steps(ind, op, dydt, neq, yp, *xp, xout);
+    if (neqOde > 0) {
+    RxRkssp53 solver(dydt, neq, neqOde, ind, yp);
+    solver.set_quiet(true);
+    rkssp53_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
     if (ind->rc[0] < 0) {
       *istate = -1;
       return;

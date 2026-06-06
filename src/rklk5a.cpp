@@ -3,7 +3,7 @@
 #undef max
 #include "ode_rklk5a_bridge.h"
 
-static inline void rklk5a_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+static inline void rklk5a_do_steps(RxRklk5a *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                    t_dydt c_dydt, int *neq, double *yp,
                                    double xp, double xout) {
   double tint = xout - xp;
@@ -15,13 +15,11 @@ static inline void rklk5a_do_steps(rx_solving_options_ind *ind, rx_solving_optio
     dt = std::fabs(tint) / (double)(op->mxstep - 10);
   if (tint < 0.0) dt = -dt;
 
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-
-  RxRklk5a solver(c_dydt, neq, neqOde, ind, yp);
-  solver.set_quiet(true);
-  solver.set_t(xp);
-  try {
-    solver.solve_fixed(std::fabs(tint), std::fabs(dt), false);
+  solver->reset_counters();
+  solver->set_sol_external(yp);
+  solver->set_t(xp);
+try {
+    solver->solve_fixed(std::fabs(tint), std::fabs(dt), false);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
@@ -49,6 +47,11 @@ extern "C" void ind_rklk5a_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  RxRklk5a *solver = NULL;
+  if (neqOde > 0) {
+    solver = new RxRklk5a(c_dydt, neq, neqOde, ind, getSolve(0));
+      solver->set_quiet(true);
+  }
   double *yp;
 
   for (i = 0; i < ind->n_all_times; i++) {
@@ -88,7 +91,7 @@ extern "C" void ind_rklk5a_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
             if (neqOde > 0)
-              rklk5a_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
+              rklk5a_do_steps(solver, ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
 
             copyLinCmt(neq, ind, op, yp);
             const char* err_msg = "rklk5a failed";
@@ -111,7 +114,7 @@ extern "C" void ind_rklk5a_0(rx_solve *rx, rx_solving_options *op, int solveid, 
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
 
               if (neqOde > 0)
-                rklk5a_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
+                rklk5a_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
 
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "rklk5a failed";
@@ -126,7 +129,7 @@ extern "C" void ind_rklk5a_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           preSolve(op, ind, xp, xout, yp);
 
           if (neqOde > 0)
-            rklk5a_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
+            rklk5a_do_steps(solver, ind, op, c_dydt, neq, yp, xp, xout);
 
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "rklk5a failed";
@@ -167,6 +170,7 @@ extern "C" void ind_rklk5a_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     }
     ind->solvedIdx = i;
   }
+  if (solver != NULL) delete solver;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -224,8 +228,11 @@ extern "C" void rklk5a_solveWith1Pt(int *neq, double *yp, double *xp, double xou
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
 
-  if (neqOde > 0) {
-    rklk5a_do_steps(ind, op, dydt, neq, yp, *xp, xout);
+    if (neqOde > 0) {
+    RxRklk5a solver(dydt, neq, neqOde, ind, yp);
+    solver.set_quiet(true);
+    rklk5a_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
     if (ind->rc[0] < 0) {
       *istate = -1;
       return;

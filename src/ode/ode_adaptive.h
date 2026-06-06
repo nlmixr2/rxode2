@@ -59,6 +59,11 @@ class OdeAdaptive : public OdeBase {
         void set_tol (double tol) { abstol_ = tol; reltol_ = tol; };
         //!sets the maximum allowable time step
         void set_dtmax (double dtmax) { dtmax_ = dtmax; }
+        //!resets step, evaluation, Jacobian, and rejection counters
+        void reset_counters () override {
+            OdeBase::reset_counters();
+            nrej_ = 0;
+        }
 
         //---------------------------------------
         //integration with adaptive time stepping

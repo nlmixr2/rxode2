@@ -8,7 +8,7 @@ public:
         : ode::OdeRkl5((unsigned long)neqOde), dydt_(dydt), full_neq_(full_neq), ind_(ind), t_stage_(0.0)
     { set_sol_external(yp); }
 protected:
-    void ode_fun(double *solin, double *fout) override {
+    void ode_fun(double * __restrict__ solin, double * __restrict__ fout) override {
         if (ind_->err!=0){for(unsigned long i=0;i<neq_;i++) fout[i]=0.0; return;}
         dydt_(full_neq_, t_stage_, solin, fout);
         for(unsigned long i=0;i<neq_;i++){if(!std::isfinite(fout[i])){ind_->err=1;for(unsigned long j=0;j<neq_;j++) fout[j]=0.0;return;}}

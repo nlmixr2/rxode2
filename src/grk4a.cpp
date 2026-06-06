@@ -3,7 +3,7 @@
 #undef max
 #include "ode_grk4a_bridge.h"
 
-static inline void grk4a_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+static inline void grk4a_do_steps(RxGRK4A *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                     t_dydt c_dydt, t_calc_jac c_jac, int *neq, double *yp,
                                     double xp, double xout) {
   double tint = xout - xp;
@@ -13,15 +13,11 @@ static inline void grk4a_do_steps(rx_solving_options_ind *ind, rx_solving_option
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
   if (tint < 0.0) dt = -dt;
 
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-
-  RxGRK4A solver(c_dydt, c_jac, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
-  solver.set_quiet(true);
-  solver.set_t(xp);
-  if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-  if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
-  try {
-    solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
+  solver->reset_counters();
+  solver->set_sol_external(yp);
+  solver->set_t(xp);
+try {
+    solver->solve_adaptive(std::fabs(tint), std::fabs(dt), true);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
@@ -49,6 +45,13 @@ extern "C" void ind_grk4a_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  RxGRK4A *solver = NULL;
+  if (neqOde > 0) {
+    solver = new RxGRK4A(c_dydt, calc_jac, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
+      solver->set_quiet(true);
+      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+  }
   double *yp;
 
   for (i = 0; i < ind->n_all_times; i++) {
@@ -87,7 +90,7 @@ extern "C" void ind_grk4a_0(rx_solve *rx, rx_solving_options *op, int solveid, i
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             if (neqOde > 0)
-              grk4a_do_steps(ind, op, c_dydt, calc_jac, neq, yp, xp, ind->extraDoseNewXout);
+              grk4a_do_steps(solver, ind, op, c_dydt, calc_jac, neq, yp, xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
             const char* err_msg = "grk4a failed";
             postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 7, true, ind, op, rx);
@@ -108,7 +111,7 @@ extern "C" void ind_grk4a_0(rx_solve *rx, rx_solving_options *op, int solveid, i
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               if (neqOde > 0)
-                grk4a_do_steps(ind, op, c_dydt, calc_jac, neq, yp, ind->extraDoseNewXout, xout);
+                grk4a_do_steps(solver, ind, op, c_dydt, calc_jac, neq, yp, ind->extraDoseNewXout, xout);
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "grk4a failed";
               postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 9, false, ind, op, rx);
@@ -121,7 +124,7 @@ extern "C" void ind_grk4a_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (neqOde > 0)
-            grk4a_do_steps(ind, op, c_dydt, calc_jac, neq, yp, xp, xout);
+            grk4a_do_steps(solver, ind, op, c_dydt, calc_jac, neq, yp, xp, xout);
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "grk4a failed";
           postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 7, true, ind, op, rx);
@@ -157,6 +160,7 @@ extern "C" void ind_grk4a_0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     ind->solvedIdx = i;
   }
+  if (solver != NULL) delete solver;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -206,8 +210,13 @@ extern "C" void grk4a_solveWith1Pt(int *neq, double *yp, double *xp, double xout
                                      rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
-  if (neqOde > 0) {
-    grk4a_do_steps(ind, op, dydt, calc_jac, neq, yp, *xp, xout);
+    if (neqOde > 0) {
+    RxGRK4A solver(dydt, calc_jac, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
+    solver.set_quiet(true);
+    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    grk4a_do_steps(&solver, ind, op, dydt, calc_jac, neq, yp, *xp, xout);
+
     if (ind->rc[0] < 0) { *istate = -1; return; }
   }
   *xp = xout;

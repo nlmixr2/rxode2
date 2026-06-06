@@ -19,7 +19,7 @@ public:
     }
 
 protected:
-    void ode_fun(double *solin, double *fout) override {
+    void ode_fun(double * __restrict__ solin, double * __restrict__ fout) override {
         if (ind_->err != 0) {
             for (unsigned long i = 0; i < neq_; i++) fout[i] = 0.0;
             return;

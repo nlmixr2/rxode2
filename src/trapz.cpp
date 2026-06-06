@@ -3,7 +3,7 @@
 #undef max
 #include "ode_trapz_bridge.h"
 
-static inline void trapz_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+static inline void trapz_do_steps(RxTrapz *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                     t_dydt c_dydt, int *neq, double *yp,
                                     double xp, double xout) {
   double tint = xout - xp;
@@ -17,13 +17,11 @@ static inline void trapz_do_steps(rx_solving_options_ind *ind, rx_solving_option
     dt = std::fabs(tint) / (double)(op->mxstep - 10);
   if (tint < 0.0) dt = -dt;
 
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-
-  RxTrapz solver(c_dydt, neq, neqOde, ind, yp);
-  solver.set_quiet(true);
-  solver.set_t(xp);
-  try {
-    solver.solve_fixed(std::fabs(tint), std::fabs(dt), false);
+  solver->reset_counters();
+  solver->set_sol_external(yp);
+  solver->set_t(xp);
+try {
+    solver->solve_fixed(std::fabs(tint), std::fabs(dt), false);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
@@ -51,6 +49,11 @@ extern "C" void ind_trapz_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  RxTrapz *solver = NULL;
+  if (neqOde > 0) {
+    solver = new RxTrapz(c_dydt, neq, neqOde, ind, getSolve(0));
+      solver->set_quiet(true);
+  }
   double *yp;
 
   for (i = 0; i < ind->n_all_times; i++) {
@@ -90,7 +93,7 @@ extern "C" void ind_trapz_0(rx_solve *rx, rx_solving_options *op, int solveid, i
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
             if (neqOde > 0)
-              trapz_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
+              trapz_do_steps(solver, ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
 
             copyLinCmt(neq, ind, op, yp);
             const char* err_msg = "trapz failed";
@@ -113,7 +116,7 @@ extern "C" void ind_trapz_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
 
               if (neqOde > 0)
-                trapz_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
+                trapz_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
 
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "trapz failed";
@@ -128,7 +131,7 @@ extern "C" void ind_trapz_0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
 
           if (neqOde > 0)
-            trapz_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
+            trapz_do_steps(solver, ind, op, c_dydt, neq, yp, xp, xout);
 
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "trapz failed";
@@ -169,6 +172,7 @@ extern "C" void ind_trapz_0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     ind->solvedIdx = i;
   }
+  if (solver != NULL) delete solver;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -226,8 +230,11 @@ extern "C" void trapz_solveWith1Pt(int *neq, double *yp, double *xp, double xout
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
 
-  if (neqOde > 0) {
-    trapz_do_steps(ind, op, dydt, neq, yp, *xp, xout);
+    if (neqOde > 0) {
+    RxTrapz solver(dydt, neq, neqOde, ind, yp);
+    solver.set_quiet(true);
+    trapz_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
     if (ind->rc[0] < 0) {
       *istate = -1;
       return;

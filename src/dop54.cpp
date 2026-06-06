@@ -3,7 +3,7 @@
 #undef max
 #include "ode_dop54_bridge.h"
 
-static inline void dop54_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
+static inline void dop54_do_steps(RxDoPri54 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                     t_dydt c_dydt, int *neq, double *yp,
                                     double xp, double xout) {
   double tint = xout - xp;
@@ -13,15 +13,11 @@ static inline void dop54_do_steps(rx_solving_options_ind *ind, rx_solving_option
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
   if (tint < 0.0) dt = -dt;
 
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-
-  RxDoPri54 solver(c_dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
-  solver.set_quiet(true);
-  solver.set_t(xp);
-  if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-  if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
-  try {
-    solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
+  solver->reset_counters();
+  solver->set_sol_external(yp);
+  solver->set_t(xp);
+try {
+    solver->solve_adaptive(std::fabs(tint), std::fabs(dt), true);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
@@ -49,6 +45,13 @@ extern "C" void ind_dop54_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  RxDoPri54 *solver = NULL;
+  if (neqOde > 0) {
+    solver = new RxDoPri54(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
+      solver->set_quiet(true);
+      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+  }
   double *yp;
 
   for (i = 0; i < ind->n_all_times; i++) {
@@ -88,7 +91,7 @@ extern "C" void ind_dop54_0(rx_solve *rx, rx_solving_options *op, int solveid, i
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
             if (neqOde > 0)
-              dop54_do_steps(ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
+              dop54_do_steps(solver, ind, op, c_dydt, neq, yp, xp, ind->extraDoseNewXout);
 
             copyLinCmt(neq, ind, op, yp);
             const char* err_msg = "dop54 failed";
@@ -111,7 +114,7 @@ extern "C" void ind_dop54_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
 
               if (neqOde > 0)
-                dop54_do_steps(ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
+                dop54_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
 
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "dop54 failed";
@@ -126,7 +129,7 @@ extern "C" void ind_dop54_0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
 
           if (neqOde > 0)
-            dop54_do_steps(ind, op, c_dydt, neq, yp, xp, xout);
+            dop54_do_steps(solver, ind, op, c_dydt, neq, yp, xp, xout);
 
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "dop54 failed";
@@ -167,6 +170,7 @@ extern "C" void ind_dop54_0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     ind->solvedIdx = i;
   }
+  if (solver != NULL) delete solver;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -224,8 +228,13 @@ extern "C" void dop54_solveWith1Pt(int *neq, double *yp, double *xp, double xout
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
 
-  if (neqOde > 0) {
-    dop54_do_steps(ind, op, dydt, neq, yp, *xp, xout);
+    if (neqOde > 0) {
+    RxDoPri54 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
+    solver.set_quiet(true);
+    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    dop54_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
     if (ind->rc[0] < 0) {
       *istate = -1;
       return;
