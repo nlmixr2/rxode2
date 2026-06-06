@@ -1482,6 +1482,8 @@ struct rx_globals {
   double *gscale;
   double *gatol2;
   double *grtol2;
+  double *gatol2Thread;  // [cores * neq]: per-thread atol slice
+  double *grtol2Thread;  // [cores * neq]: per-thread rtol slice
   double *gssAtol;
   double *gssRtol;
   double *gpars;
@@ -1620,6 +1622,8 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
     ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
     ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
+    ind->atol2 = _globals.gatol2Thread + op->neq*omp_get_thread_num();
+    ind->rtol2 = _globals.grtol2Thread + op->neq*omp_get_thread_num();
   } else {
     ind->InfusionRate = NULL;
     ind->tlastS = NULL;
@@ -1630,6 +1634,8 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
     ind->linCmtSave = NULL;
+    ind->atol2 = NULL;
+    ind->rtol2 = NULL;
   }
   ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
@@ -1656,10 +1662,22 @@ double maxAtolRtolFactor = 0.1;
 void atolRtolFactor_(double factor){
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
+  // Thread-safe: each thread writes only to its own slice of the per-thread
+  // tolerance arrays.  omp_get_thread_num() returns 0 outside parallel
+  // sections, giving natural single-threaded behaviour.
+  int tid = omp_get_thread_num();
+  double *atolT = _globals.gatol2Thread + (int64_t)tid * op->neq;
+  double *rtolT = _globals.grtol2Thread + (int64_t)tid * op->neq;
   for (int i = op->neq;i--;){
-    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
-    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+    rtolT[i] = min2(rtolT[i]*factor, maxAtolRtolFactor);
+    atolT[i] = min2(atolT[i]*factor, maxAtolRtolFactor);
   }
+  // op->ATOL / op->RTOL are scalar fields used only by the sequential dlsoda
+  // (par_lsoda) and dop (par_dop) paths.  When this function is called from
+  // inside a parallel solve (cores > 1) these writes race, but those reads
+  // happen only outside the parallel section, and the scalar value is
+  // overwritten on the next solve setup.  Leave them in place to preserve
+  // observable behaviour for sequential runs.
   op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
   op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
 }
@@ -5316,6 +5334,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
     int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
     int64_t n10 = (int64_t)(op->neq)*op->cores;
+    int64_t n10Tol = 2 * (int64_t)(op->neq) * op->cores; // per-thread atol/rtol slices
     int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
     // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
     // Portable, zero-cost backstop that catches the dominant overflow path.
@@ -5329,7 +5348,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + n10Tol + 5*op->neq + 4*n3a_c + nllik_c;
       uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
@@ -5341,7 +5360,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 +
+                                      n9 + n10 + n10Tol +
                                       5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -5351,7 +5370,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL){
       rxSolveFree();
       int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + 5*op->neq + 4*n3a_c + nllik_c;
+                            n7 + n8 + n9 + n10 + n10Tol + 5*op->neq + 4*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_totalElems * sizeof(double) / 1e9);
     }
@@ -5383,7 +5402,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
     _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
     _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
-    _globals.timeThread = _globals.gLinDummy + n10;
+    _globals.gatol2Thread = _globals.gLinDummy + n10;        // [op->neq * cores]
+    _globals.grtol2Thread = _globals.gatol2Thread + (int64_t)op->neq * op->cores; // [op->neq * cores]
+    _globals.timeThread = _globals.grtol2Thread + (int64_t)op->neq * op->cores;
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);
@@ -5391,12 +5412,28 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     std::copy(atolNV.begin(), atolNV.begin() + min2(op->neq, atolNV.size()), &_globals.gatol2[0]);
     std::copy(rtolNV.begin(), rtolNV.begin() + min2(op->neq, rtolNV.size()), &_globals.grtol2[0]);
 
+    // Initialize per-thread tolerance arrays: each thread starts with the same
+    // base tolerance from _globals.gatol2/grtol2.  atolRtolFactor_ writes
+    // per-thread to avoid races during parallel solves.
+    for (int _t = 0; _t < op->cores; _t++) {
+      std::copy(&_globals.gatol2[0], &_globals.gatol2[0] + op->neq,
+                &_globals.gatol2Thread[_t * op->neq]);
+      std::copy(&_globals.grtol2[0], &_globals.grtol2[0] + op->neq,
+                &_globals.grtol2Thread[_t * op->neq]);
+    }
+
     std::fill_n(&_globals.gssAtol[0],op->neq, atolNVss[0]);
     std::fill_n(&_globals.gssRtol[0],op->neq, rtolNVss[0]);
     std::copy(atolNVss.begin(), atolNVss.begin() + min2(op->neq, atolNVss.size()), &_globals.gssAtol[0]);
     std::copy(rtolNVss.begin(), rtolNVss.begin() + min2(op->neq, rtolNVss.size()), &_globals.gssRtol[0]);
-    op->atol2 = &_globals.gatol2[0];
-    op->rtol2 = &_globals.grtol2[0];
+    // Point op->atol2 / op->rtol2 at thread 0's per-thread slice.  Sequential
+    // paths (par_indLin, par_lsoda, par_dop) read from these pointers and
+    // expect atolRtolFactor_ updates to be visible.  Since
+    // omp_get_thread_num() == 0 outside a parallel region, atolRtolFactor_
+    // writes thread 0's slice in that case.  Parallel paths override
+    // opt.atol/opt.rtol per-thread inside ind_liblsoda0.
+    op->atol2 = &_globals.gatol2Thread[0];
+    op->rtol2 = &_globals.grtol2Thread[0];
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
     // Not needed since we use Calloc.

@@ -2517,6 +2517,13 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   x = ind->all_times;
   rc= ind->rc;
   double xp = x[0];
+  // Use per-thread tolerance arrays set up by iniSubject() ->
+  // _setIndPointersByThread.  This avoids the race where atolRtolFactor_
+  // mutates a single shared op->atol2/op->rtol2 buffer while parallel solves
+  // are reading from it.  When ind->atol2/rtol2 are NULL (no compartments),
+  // fall back to the shared op-level pointers.
+  if (ind->atol2 != NULL) opt.atol = ind->atol2;
+  if (ind->rtol2 != NULL) opt.rtol = ind->rtol2;
   lsoda_prepare(ctx, &opt);
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {

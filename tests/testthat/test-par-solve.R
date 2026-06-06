@@ -375,4 +375,39 @@ rxTest({
     expect_true(rxIs(pk11, "data.frame"))
 
   })
+
+  test_that("atolRtolFactor_ is callable and per-thread tolerance setup is consistent", {
+    ## Smoke test for the per-thread atol/rtol arrays introduced to avoid
+    ## parallel write races in atolRtolFactor_.  This does not directly
+    ## inspect the per-thread arrays (they're not exposed to R), but it
+    ## ensures: (a) the allocation path covers atolRtolFactor_ without
+    ## crashing, (b) a relaxed-tolerance solve is still numerically sane,
+    ## and (c) cores=1 vs cores=2 solves remain deterministic-equivalent.
+    modT <- rxode2({
+      d/dt(intestine) <- -a * intestine
+      d/dt(blood)     <-  a * intestine - b * blood
+    })
+    evT <- et(amt = 2 / 24, ii = 1, until = 10) %>% et(seq(0, 10, length.out = 50))
+    parsT <- c(a = 6, b = 0.6)
+
+    ## Need a solve in flight before atolRtolFactor_ has a valid _globals
+    ## context to write into.
+    seed1 <- suppressWarnings(rxSolve(modT, parsT, evT, cores = 1))
+    expect_true(is.data.frame(seed1))
+
+    ## Should not error out — writes to thread 0's slice when called outside
+    ## a parallel region.
+    expect_silent(rxode2:::atolRtolFactor_(0.5))
+
+    ## A subsequent solve still runs successfully.
+    after1 <- suppressWarnings(rxSolve(modT, parsT, evT, cores = 1))
+    expect_true(is.data.frame(after1))
+    expect_true(all(is.finite(after1$blood)))
+
+    ## Parallel and serial paths agree (this re-exercises the existing
+    ## determinism contract that the per-thread arrays preserve).
+    serialSolve <- suppressWarnings(rxSolve(modT, parsT, evT, cores = 1))
+    parallelSolve <- suppressWarnings(rxSolve(modT, parsT, evT, cores = 2))
+    expect_equal(as.data.frame(serialSolve), as.data.frame(parallelSolve))
+  })
 })

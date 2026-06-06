@@ -1,5 +1,15 @@
 # rxode2 (development)
 
+- Make `atolRtolFactor_` and the parallel `liblsoda` solve path thread-safe by
+  splitting the absolute/relative tolerance arrays into per-thread slices
+  (`_globals.gatol2Thread`, `_globals.grtol2Thread`, sized `cores * neq`).
+  Previously `atolRtolFactor_` mutated the shared `_globals.gatol2/grtol2`
+  arrays while parallel worker threads were reading from `op->atol2/op->rtol2`,
+  causing non-deterministic optimizer trajectories in downstream packages like
+  `nlmixr2est` (FOCEI). The per-thread slices are written by
+  `omp_get_thread_num()`, so single-threaded behavior is bit-identical to the
+  prior implementation.
+
 - Fix potential security and memory-management issues that could lead to crashes or undefined behavior
 
 - Fix integer overflow in the internal `nSize` buffer-sizing calculation that
