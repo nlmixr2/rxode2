@@ -1,5 +1,18 @@
 # rxode2 5.1.3
 
+- Make `atolRtolFactor_` thread-safe by replacing its body with the
+  per-thread / per-individual implementation that previously lived in
+  `atolRtolFactorC_`.  Loosening writes now go to the calling thread's
+  slice of `_globals.gatol2Thread / grtol2Thread / gssAtolThread /
+  gssRtolThread` and update `ind->tolFactor` for the subject currently
+  being solved on that thread, so subsequent re-solves pick up the
+  cumulative loosening regardless of which thread later runs the
+  subject.  The function signature is unchanged; existing downstream
+  binaries (including `nlmixr2est` on CRAN) pick up the fix without
+  needing a rebuild.  `atolRtolFactorC_` is retained as an alias.
+  This closes the non-determinism in parallel FOCEI optimization
+  reported in https://github.com/nlmixr2/nlmixr2est/issues/641.
+
 - Bug fix for `mix()` models as well as `iCov` models.
 
 # rxode2 5.1.2
