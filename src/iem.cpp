@@ -2,8 +2,6 @@
 #undef min
 #undef max
 #include "odeinter.h"
-
-#include "implicit_euler_rxode2.hpp"
 #include <boost/numeric/odeint/integrate/integrate_const.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>

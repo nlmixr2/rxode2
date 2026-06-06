@@ -6782,6 +6782,9 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
   return 0;
 }
 
+#undef min
+#undef max
+#include "implicit_euler_rxode2.hpp"
 #define IN_PAR_SOLVE
 #include "rkf78.cpp"
 #include "rk4.cpp"
