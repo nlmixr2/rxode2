@@ -121,7 +121,7 @@ SUNLinearSolver SUNLinSol_SPGMR(N_Vector y, int pretype, int maxl, SUNContext su
   content->cv           = NULL;
   content->Xv           = NULL;
   content->print_level  = 0;
-  content->info_file    = stdout;
+  content->info_file = NULL;
 
   /* Allocate content */
   content->xcor = N_VClone(y);

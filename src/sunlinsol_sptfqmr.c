@@ -120,7 +120,7 @@ SUNLinearSolver SUNLinSol_SPTFQMR(N_Vector y, int pretype, int maxl, SUNContext 
   content->Psolve      = NULL;
   content->PData       = NULL;
   content->print_level = 0;
-  content->info_file   = stdout;
+  content->info_file = NULL;
 
   /* Allocate content */
   content->r_star = N_VClone(y);

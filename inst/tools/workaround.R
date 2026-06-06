@@ -119,6 +119,18 @@ if (length(.missing) > 0) {
   }
 }
 
+# CRAN requires that compiled code not reference stdout.  The upstream
+# SUNDIALS sources initialise info_file to stdout; patch it to NULL.
+# print_level defaults to 0 so info_file is never dereferenced in practice.
+for (.sp in file.path("src", .sp_files)) {
+  if (file.exists(.sp)) {
+    .sl <- readLines(.sp)
+    .sl <- gsub("content->info_file\\s*=\\s*stdout;",
+                 "content->info_file = NULL;", .sl)
+    writeLines(.sl, .sp)
+  }
+}
+
 
 .badStan <- ""
 .in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",

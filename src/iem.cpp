@@ -3,7 +3,7 @@
 #undef max
 #include "odeinter.h"
 
-#include <boost/numeric/odeint/stepper/implicit_euler.hpp>
+#include "implicit_euler_rxode2.hpp"
 #include <boost/numeric/odeint/integrate/integrate_const.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -99,6 +99,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                      istate = -1;
                   }
               }
 
@@ -145,6 +146,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                         if (!ind->err) std::copy(state.begin(), state.end(), yp);
                     } catch(const std::exception& e) {
                         if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                        istate = -1;
                     }
                 }
 
@@ -182,6 +184,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                   if (!ind->err) std::copy(state.begin(), state.end(), yp);
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  istate = -1;
               }
           }
 
