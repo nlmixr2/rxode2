@@ -1,7 +1,14 @@
 #ifndef ODEINTER_H
 #define ODEINTER_H
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreorder"
+#endif
 #include <boost/numeric/odeint.hpp>
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 #include <vector>
 #include <stdexcept>
 
