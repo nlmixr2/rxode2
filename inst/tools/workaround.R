@@ -49,12 +49,75 @@ if (inherits(versionInfo, "try-error")) {
 .in <- gsub("@EG@", file.path(find.package("RcppEigen"),"include"), .in)
 
 
-.in <- gsub("@SL@", paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())), #nolint
-            .in)
+.sl <- paste(capture.output(StanHeaders:::LdFlags()),
+             capture.output(RcppParallel:::RcppParallelLibs()))
+if (.Platform$OS.type == "windows") {
+  # rpath is not meaningful on Windows and can generate noisy linker flags.
+  .sl <- gsub("\\s+-Wl,-rpath,[^[:space:]]+", "", .sl)
+}
+.in <- gsub("@SL@", .sl, .in) #nolint
 
 # StanHeaders static library -- provides SUNDIALS 6.x compiled for ODE integration.
 # CVODE is always enabled via the StanHeaders-bundled SUNDIALS.
-.in <- gsub("@STANHDR_LIB@", system.file("lib", package = "StanHeaders"), .in)
+.stanhdrLib <- system.file("lib", package = "StanHeaders")
+if (.Platform$OS.type == "windows") {
+  .stanhdrDll <- system.file("libs", "x64", "StanHeaders.dll", package = "StanHeaders")
+  if (!nzchar(.stanhdrLib)) {
+    .stanhdrLib <- system.file("libs", "x64", package = "StanHeaders")
+  }
+  .findRtoolsTool <- function(.tool) {
+    .toolPath <- Sys.which(.tool)
+    if (nzchar(.toolPath)) {
+      return(.toolPath)
+    }
+    .minor <- sub("\\..*$", "", R.Version()$minor)
+    .rtVer <- paste0(R.Version()$major, .minor)
+    .roots <- unique(c(
+      Sys.getenv(paste0("RTOOLS", .rtVer, "_HOME"), ""),
+      Sys.getenv("RTOOLS_HOME", ""),
+      paste0("C:/rtools", .rtVer),
+      "C:/rtools45",
+      "C:/rtools44"
+    ))
+    .roots <- .roots[nzchar(.roots)]
+    .subdirs <- c(
+      "x86_64-w64-mingw32.static.posix/bin",
+      "x86_64-w64-mingw32.static.ucrt/bin",
+      "usr/bin"
+    )
+    for (.root in .roots) {
+      for (.sub in .subdirs) {
+        .cand <- file.path(.root, .sub, paste0(.tool, ".exe"))
+        if (file.exists(.cand)) {
+          return(.cand)
+        }
+      }
+    }
+    ""
+  }
+  .objdump <- .findRtoolsTool("objdump")
+  .dlltool <- .findRtoolsTool("dlltool")
+  if (file.exists(.stanhdrDll) && file.exists(.objdump) && file.exists(.dlltool)) {
+    .implib <- file.path("src", "libStanHeaders.dll.a")
+    .def <- file.path("src", "StanHeaders.def")
+    file.copy(.stanhdrDll, file.path("src", "StanHeaders.dll"), overwrite = TRUE)
+    .od <- tryCatch(system2(.objdump, c("-p", .stanhdrDll), stdout = TRUE, stderr = FALSE),
+                    error = function(e) character(0))
+    .sym <- sub("^\\s*\\[\\s*[0-9]+\\]\\s+\\+base\\[\\s*[0-9]+\\]\\s+[0-9A-Fa-f]+\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*$", "\\1", .od)
+    .sym <- .sym[.sym != .od]
+    .sym <- unique(.sym[nzchar(.sym)])
+    if (length(.sym) > 0) {
+      writeLines(c("LIBRARY StanHeaders.dll", "EXPORTS", .sym), .def)
+      .ok <- tryCatch(system2(.dlltool, c("-d", .def, "-l", .implib, "-D", "StanHeaders.dll"),
+                              stdout = FALSE, stderr = FALSE) == 0L,
+                      error = function(e) FALSE)
+      if (isTRUE(.ok) && file.exists(.implib)) {
+        .stanhdrLib <- normalizePath("src", winslash = "/", mustWork = TRUE)
+      }
+    }
+  }
+}
+.in <- gsub("@STANHDR_LIB@", .stanhdrLib, .in)
 
 ## Provide SUNDIALS helper files in src/ at configure time.
 
@@ -119,34 +182,6 @@ if (length(.missing) > 0) {
   }
 }
 
-.strip_windows_stub <- function(.path) {
-  if (!file.exists(.path)) {
-    return(invisible(FALSE))
-  }
-  .lines <- readLines(.path, warn = FALSE)
-  .start <- match("#ifdef _WIN32", .lines, nomatch = 0L)
-  if (.start == 0L) {
-    return(invisible(FALSE))
-  }
-  .else <- match("#else", .lines[seq.int(.start + 1L, length(.lines))], nomatch = 0L)
-  if (.else == 0L) {
-    return(invisible(FALSE))
-  }
-  .else <- .else + .start
-  .last <- length(.lines)
-  while (.last > 0L && !nzchar(trimws(.lines[.last]))) {
-    .last <- .last - 1L
-  }
-  if (.last <= .else || trimws(.lines[.last]) != "#endif") {
-    return(invisible(FALSE))
-  }
-  .keep <- c(.lines[seq_len(.start - 1L)],
-             .lines[seq.int(.else + 1L, .last - 1L)],
-             .lines[seq.int(.last + 1L, length(.lines))])
-  writeLines(.keep, .path)
-  invisible(TRUE)
-}
-
 .fix_monitoring_endif <- function(.lines) {
   .changed <- FALSE
   .i <- 1L
@@ -198,13 +233,6 @@ for (.sp in file.path("src", .sp_files)) {
     writeLines(.sl, .sp_out, sep = "\n")
     close(.sp_out)
   }
-}
-
-for (.path in c("src/cvode_solver.cpp",
-                "src/sunlinsol_spgmr.c",
-                "src/sunlinsol_spbcgs.c",
-                "src/sunlinsol_sptfqmr.c")) {
-  .strip_windows_stub(.path)
 }
 
 # Generate src/implicit_euler_rxode2.hpp from BH's copy of the same header,
