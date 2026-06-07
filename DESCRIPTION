@@ -19,7 +19,7 @@ Authors@R: c(
    person("Hadley", "Wickham", role="ctb"),
    person("Igor", "Kushnir", email="igorkuo@gmail.com", role="ctb"),
    person("Jack", "Dongarra", role="ctb"),
-   person("Jacob", "Williams"),
+   person("Jacob", "Williams", role="ctb"),
    person("Jim", "Bunch", role="ctb"),
    person("Karline", "Soetaert", role="ctb"),
    person("Kevin", "Ushey", role="ctb"),
