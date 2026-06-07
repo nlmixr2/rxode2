@@ -4,31 +4,6 @@
 
 #include "cvode_solver.h"
 
-#ifdef _WIN32
-#include <cstddef>
-
-extern "C"
-cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
-                              double t0, double hmin, double hmax, int mxstep,
-                              cvode_rhs_fn_t rhs, void *rhs_data, int lin_type) {
-  (void)neq; (void)yp; (void)atol; (void)rtol; (void)t0;
-  (void)hmin; (void)hmax; (void)mxstep; (void)rhs; (void)rhs_data; (void)lin_type;
-  return NULL;
-}
-
-extern "C"
-void cvode_ctx_destroy(cvode_ctx_t *ctx) {
-  (void)ctx;
-}
-
-extern "C"
-int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
-  (void)ctx; (void)yp; (void)t0; (void)tout;
-  return -1;
-}
-
-#else
-
 #include <stdlib.h>
 #include <cvodes/cvodes.h>
 #include <cvodes/cvodes_ls.h>
@@ -155,5 +130,3 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   return (ret >= 0) ? 1 : -1;
 }
-
-#endif

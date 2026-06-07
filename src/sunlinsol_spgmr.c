@@ -17,31 +17,6 @@
  * the SUNLINSOL package.
  * -----------------------------------------------------------------*/
 
-#ifdef _WIN32
-#include <sunlinsol/sunlinsol_spgmr.h>
-
-SUNLinearSolver SUNLinSol_SPGMR(N_Vector y, int pretype, int maxl, SUNContext sunctx) {
-  (void)y; (void)pretype; (void)maxl; (void)sunctx;
-  return NULL;
-}
-
-int SUNLinSol_SPGMRSetPrecType(SUNLinearSolver S, int pretype) {
-  (void)S; (void)pretype;
-  return SUNLS_ILL_INPUT;
-}
-
-int SUNLinSol_SPGMRSetGSType(SUNLinearSolver S, int gstype) {
-  (void)S; (void)gstype;
-  return SUNLS_ILL_INPUT;
-}
-
-int SUNLinSol_SPGMRSetMaxRestarts(SUNLinearSolver S, int maxrs) {
-  (void)S; (void)maxrs;
-  return SUNLS_ILL_INPUT;
-}
-
-#else
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -650,8 +625,8 @@ int SUNLinSolSolve_SPGMR(SUNLinearSolver S, SUNMatrix A, N_Vector x,
                 SUNLS_MSG_RESIDUAL,
                 (long int) *nli, *res_norm);
       }
-#endif
 
+#endif
       if (rho <= delta) { converged = SUNTRUE; break; }
 
       /* Normalize V[l+1] with norm value from the Gram-Schmidt routine */
@@ -919,5 +894,3 @@ int SUNLinSolSetPrintLevel_SPGMR(SUNLinearSolver S,
   return(SUNLS_ILL_INPUT);
 #endif
 }
-
-#endif

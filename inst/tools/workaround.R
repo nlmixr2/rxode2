@@ -119,6 +119,72 @@ if (length(.missing) > 0) {
   }
 }
 
+.strip_windows_stub <- function(.path) {
+  if (!file.exists(.path)) {
+    return(invisible(FALSE))
+  }
+  .lines <- readLines(.path, warn = FALSE)
+  .start <- match("#ifdef _WIN32", .lines, nomatch = 0L)
+  if (.start == 0L) {
+    return(invisible(FALSE))
+  }
+  .else <- match("#else", .lines[seq.int(.start + 1L, length(.lines))], nomatch = 0L)
+  if (.else == 0L) {
+    return(invisible(FALSE))
+  }
+  .else <- .else + .start
+  .last <- length(.lines)
+  while (.last > 0L && !nzchar(trimws(.lines[.last]))) {
+    .last <- .last - 1L
+  }
+  if (.last <= .else || trimws(.lines[.last]) != "#endif") {
+    return(invisible(FALSE))
+  }
+  .keep <- c(.lines[seq_len(.start - 1L)],
+             .lines[seq.int(.else + 1L, .last - 1L)],
+             .lines[seq.int(.last + 1L, length(.lines))])
+  writeLines(.keep, .path)
+  invisible(TRUE)
+}
+
+.fix_monitoring_endif <- function(.lines) {
+  .changed <- FALSE
+  .i <- 1L
+  while (.i <= length(.lines)) {
+    if (trimws(.lines[.i]) == "#ifdef SUNDIALS_BUILD_WITH_MONITORING") {
+      .j <- .i + 1L
+      .inserted <- FALSE
+      while (.j <= length(.lines)) {
+        .tj <- trimws(.lines[.j])
+        if (.tj == "#endif" || .tj == "#else") {
+          break
+        }
+        if (grepl("Check if Atimes function has been set", .lines[.j], fixed = TRUE) &&
+            any(grepl("SUNLINSOL_", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))) {
+          .lines <- append(.lines, "#endif", after = .j - 1L)
+          .changed <- TRUE
+          .inserted <- TRUE
+          break
+        }
+        if (grepl("if\\s*\\(.*<=\\s*delta\\)", .lines[.j]) &&
+            any(grepl("SUNLS_MSG_RESIDUAL", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))) {
+          .lines <- append(.lines, "#endif", after = .j - 1L)
+          .changed <- TRUE
+          .inserted <- TRUE
+          break
+        }
+        .j <- .j + 1L
+      }
+      if (.inserted) {
+        .i <- .i + 1L
+      }
+    }
+    .i <- .i + 1L
+  }
+  attr(.lines, "changed") <- .changed
+  .lines
+}
+
 # CRAN requires that compiled code not reference stdout.  The upstream
 # SUNDIALS sources initialise info_file to stdout; patch it to NULL.
 # print_level defaults to 0 so info_file is never dereferenced in practice.
@@ -127,10 +193,18 @@ for (.sp in file.path("src", .sp_files)) {
     .sl <- readLines(.sp)
     .sl <- gsub("content->info_file\\s*=\\s*stdout;",
                  "content->info_file = NULL;", .sl)
+    .sl <- .fix_monitoring_endif(.sl)
     .sp_out <- file(.sp, "wb")
     writeLines(.sl, .sp_out, sep = "\n")
     close(.sp_out)
   }
+}
+
+for (.path in c("src/cvode_solver.cpp",
+                "src/sunlinsol_spgmr.c",
+                "src/sunlinsol_spbcgs.c",
+                "src/sunlinsol_sptfqmr.c")) {
+  .strip_windows_stub(.path)
 }
 
 # Generate src/implicit_euler_rxode2.hpp from BH's copy of the same header,

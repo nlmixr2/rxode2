@@ -11,11 +11,6 @@ if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
     rxode2::rxUnloadAll(set=FALSE)
   }
 }
-test_check("rxode2", reporter = testthat::LocationReporter, 
-          stop_on_failure = FALSE)
-## test_check("rxode2")
-
-## test_check("rxode2",
-##   stop_on_failure = FALSE,
-##   reporter = testthat::LocationReporter
-## )
+#test_check("rxode2", reporter = testthat::LocationReporter, 
+#          stop_on_failure = FALSE)
+test_check("rxode2")
