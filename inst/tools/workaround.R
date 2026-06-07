@@ -76,8 +76,12 @@ if (.Platform$OS.type == "windows") {
       Sys.getenv(paste0("RTOOLS", .rtVer, "_HOME"), ""),
       Sys.getenv("RTOOLS_HOME", ""),
       paste0("C:/rtools", .rtVer),
+      "C:/rtools46",
       "C:/rtools45",
-      "C:/rtools44"
+      "C:/rtools44",
+      "C:/rtools43",
+      "C:/rtools42",
+      "C:/rtools40"
     ))
     .roots <- .roots[nzchar(.roots)]
     .subdirs <- c(
