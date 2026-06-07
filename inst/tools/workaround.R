@@ -127,7 +127,9 @@ for (.sp in file.path("src", .sp_files)) {
     .sl <- readLines(.sp)
     .sl <- gsub("content->info_file\\s*=\\s*stdout;",
                  "content->info_file = NULL;", .sl)
-    writeLines(.sl, .sp)
+    .sp_out <- file(.sp, "wb")
+    writeLines(.sl, .sp_out, sep = "\n")
+    close(.sp_out)
   }
 }
 
@@ -151,7 +153,9 @@ if (!nzchar(.bh_ie)) {
   "if( res != 0 ) throw std::runtime_error(\"implicit Euler LU factorization singular\");",
   .ie_lines
 )
-writeLines(.ie_lines, "src/implicit_euler_rxode2.hpp")
+.ie_out <- file("src/implicit_euler_rxode2.hpp", "wb")
+writeLines(.ie_lines, .ie_out, sep = "\n")
+close(.ie_out)
 
 
 .badStan <- ""

@@ -16,6 +16,26 @@
  * the SUNLINSOL package.
  * -----------------------------------------------------------------*/
 
+#ifdef _WIN32
+#include <sunlinsol/sunlinsol_sptfqmr.h>
+
+SUNLinearSolver SUNLinSol_SPTFQMR(N_Vector y, int pretype, int maxl, SUNContext sunctx) {
+  (void)y; (void)pretype; (void)maxl; (void)sunctx;
+  return NULL;
+}
+
+int SUNLinSol_SPTFQMRSetPrecType(SUNLinearSolver S, int pretype) {
+  (void)S; (void)pretype;
+  return SUNLS_ILL_INPUT;
+}
+
+int SUNLinSol_SPTFQMRSetMaxl(SUNLinearSolver S, int maxl) {
+  (void)S; (void)maxl;
+  return SUNLS_ILL_INPUT;
+}
+
+#else
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -933,3 +953,5 @@ int SUNLinSolSetPrintLevel_SPTFQMR(SUNLinearSolver S,
   return(SUNLS_ILL_INPUT);
 #endif
 }
+
+#endif

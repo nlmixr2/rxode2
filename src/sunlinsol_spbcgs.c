@@ -17,6 +17,26 @@
  * the SUNLINSOL package.
  * -----------------------------------------------------------------*/
 
+#ifdef _WIN32
+#include <sunlinsol/sunlinsol_spbcgs.h>
+
+SUNLinearSolver SUNLinSol_SPBCGS(N_Vector y, int pretype, int maxl, SUNContext sunctx) {
+  (void)y; (void)pretype; (void)maxl; (void)sunctx;
+  return NULL;
+}
+
+int SUNLinSol_SPBCGSSetPrecType(SUNLinearSolver S, int pretype) {
+  (void)S; (void)pretype;
+  return SUNLS_ILL_INPUT;
+}
+
+int SUNLinSol_SPBCGSSetMaxl(SUNLinearSolver S, int maxl) {
+  (void)S; (void)maxl;
+  return SUNLS_ILL_INPUT;
+}
+
+#else
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -806,3 +826,5 @@ int SUNLinSolSetPrintLevel_SPBCGS(SUNLinearSolver S,
   return(SUNLS_ILL_INPUT);
 #endif
 }
+
+#endif
