@@ -1,4 +1,4 @@
-// CVODE solver implementation using SUNDIALS 6.x from StanHeaders.
+// CVODE solver implementation using vendored SUNDIALS sources (from sundialr).
 // Uses CVODES (superset of CVODE) for plain ODE integration.
 // This file has NO dependency on Rcpp, R, or Stan math headers.
 

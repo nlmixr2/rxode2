@@ -57,134 +57,212 @@ if (.Platform$OS.type == "windows") {
 }
 .in <- gsub("@SL@", .sl, .in) #nolint
 
-# StanHeaders static library -- provides SUNDIALS 6.x compiled for ODE integration.
-# CVODE is always enabled via the StanHeaders-bundled SUNDIALS.
-.stanhdrLib <- system.file("lib", package = "StanHeaders")
-if (.Platform$OS.type == "windows") {
-  .stanhdrDll <- system.file("libs", "x64", "StanHeaders.dll", package = "StanHeaders")
-  if (!nzchar(.stanhdrLib)) {
-    .stanhdrLib <- system.file("libs", "x64", package = "StanHeaders")
-  }
-  .findRtoolsTool <- function(.tool) {
-    .toolPath <- Sys.which(.tool)
-    if (nzchar(.toolPath)) {
-      return(.toolPath)
-    }
-    .minor <- sub("\\..*$", "", R.Version()$minor)
-    .rtVer <- paste0(R.Version()$major, .minor)
-    .roots <- unique(c(
-      Sys.getenv(paste0("RTOOLS", .rtVer, "_HOME"), ""),
-      Sys.getenv("RTOOLS_HOME", ""),
-      paste0("C:/rtools", .rtVer),
-      "C:/rtools46",
-      "C:/rtools45",
-      "C:/rtools44",
-      "C:/rtools43",
-      "C:/rtools42",
-      "C:/rtools40"
-    ))
-    .roots <- .roots[nzchar(.roots)]
-    .subdirs <- c(
-      "x86_64-w64-mingw32.static.posix/bin",
-      "x86_64-w64-mingw32.static.ucrt/bin",
-      "usr/bin"
-    )
-    for (.root in .roots) {
-      for (.sub in .subdirs) {
-        .cand <- file.path(.root, .sub, paste0(.tool, ".exe"))
-        if (file.exists(.cand)) {
-          return(.cand)
-        }
-      }
-    }
-    ""
-  }
-  .objdump <- .findRtoolsTool("objdump")
-  .dlltool <- .findRtoolsTool("dlltool")
-  if (file.exists(.stanhdrDll) && file.exists(.objdump) && file.exists(.dlltool)) {
-    .implib <- file.path("src", "libStanHeaders.dll.a")
-    .def <- file.path("src", "StanHeaders.def")
-    file.copy(.stanhdrDll, file.path("src", "StanHeaders.dll"), overwrite = TRUE)
-    .od <- tryCatch(system2(.objdump, c("-p", .stanhdrDll), stdout = TRUE, stderr = FALSE),
-                    error = function(e) character(0))
-    .sym <- sub("^\\s*\\[\\s*[0-9]+\\]\\s+\\+base\\[\\s*[0-9]+\\]\\s+[0-9A-Fa-f]+\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*$", "\\1", .od)
-    .sym <- .sym[.sym != .od]
-    .sym <- unique(.sym[nzchar(.sym)])
-    if (length(.sym) > 0) {
-      writeLines(c("LIBRARY StanHeaders.dll", "EXPORTS", .sym), .def)
-      .ok <- tryCatch(system2(.dlltool, c("-d", .def, "-l", .implib, "-D", "StanHeaders.dll"),
-                              stdout = FALSE, stderr = FALSE) == 0L,
-                      error = function(e) FALSE)
-      if (isTRUE(.ok) && file.exists(.implib)) {
-        .stanhdrLib <- normalizePath("src", winslash = "/", mustWork = TRUE)
-      }
-    }
-  }
-}
-.in <- gsub("@STANHDR_LIB@", .stanhdrLib, .in)
+## Vendor SUNDIALS sources from the installed sundialr source tarball into a
+## temporary cache, then copy them to src/ at configure time.
+.sundialsRoot <- file.path(tempdir(), "rxode2-sundials-vendor")
+.sundialsVendorSrc <- file.path(.sundialsRoot, "src")
+.sundialsVendorInc <- file.path(.sundialsRoot, "include")
+.sundialsBuildInc <- "src/sundialr_include"
 
-## Provide SUNDIALS helper files in src/ at configure time.
+.sundialsVendorFiles <- c(
+  "cvode_diag_impl.h", "cvode_impl.h", "cvode_ls_impl.h", "cvode_proj_impl.h",
+  "sundials_adiak_metadata.h", "sundials_cli.h", "sundials_cvode.c",
+  "sundials_cvode_diag.c", "sundials_cvode_io.c", "sundials_cvode_ls.c",
+  "sundials_cvode_nls.c", "sundials_cvode_proj.c", "sundials_cvode_resize.c",
+  "sundials_datanode.h", "sundials_hashmap_impl.h", "sundials_iterative_impl.h",
+  "sundials_logger_impl.h", "sundials_macros.h", "sundials_nvector_serial.c",
+  "sundials_profiler_impl.h", "sundials_stepper_impl.h",
+  "sundials_sundials_band.c", "sundials_sundials_cli.c",
+  "sundials_sundials_context.c", "sundials_sundials_dense.c",
+  "sundials_sundials_direct.c", "sundials_sundials_errors.c",
+  "sundials_sundials_futils.c", "sundials_sundials_hashmap.c",
+  "sundials_sundials_iterative.c", "sundials_sundials_linearsolver.c",
+  "sundials_sundials_logger.c", "sundials_sundials_math.c",
+  "sundials_sundials_matrix.c", "sundials_sundials_memory.c",
+  "sundials_sundials_nonlinearsolver.c", "sundials_sundials_nvector.c",
+  "sundials_sundials_nvector_senswrapper.c", "sundials_sundials_profiler.c",
+  "sundials_sundials_stepper.c", "sundials_sundials_version.c",
+  "sundials_sunlinsol_band.c", "sundials_sunlinsol_dense.c",
+  "sundials_sunlinsol_pcg.c", "sundials_sunlinsol_spfgmr.c",
+  "sundials_sunmatrix_band.c", "sundials_sunmatrix_dense.c",
+  "sundials_sunmatrix_sparse.c", "sundials_sunnonlinsol_fixedpoint.c",
+  "sundials_sunnonlinsol_newton.c", "sundials_system_memory.c",
+  "sundials_utils.h", "sundials_debug.h", "sunlinsol_spgmr.c", "sunlinsol_spbcgs.c",
+  "sunlinsol_sptfqmr.c", file.path("stl", "sunstl_vector.h")
+)
 
-# sundials_debug.h is always available in the installed StanHeaders include/.
-# Overwrite so it stays in sync with the installed version.
-.sdh <- system.file("include", "sundials_debug.h", package = "StanHeaders")
-if (nzchar(.sdh)) {
-  file.copy(.sdh, "src/sundials_debug.h", overwrite = TRUE)
-}
+.vendorFromSundialr <- function() {
+  suppressWarnings(dir.create(.sundialsVendorSrc, recursive = TRUE, showWarnings = FALSE))
+  suppressWarnings(dir.create(.sundialsVendorInc, recursive = TRUE, showWarnings = FALSE))
 
-# sunlinsol_spgmr/spbcgs/sptfqmr C sources ship in the repository as the
-# default versions.  They only need to be fetched when they are genuinely
-# absent (e.g. a partial checkout or after manually removing them to pick up
-# a newer StanHeaders version).  This avoids any internet dependency in
-# air-gapped or restricted-network environments.
-.sp_files   <- c("sunlinsol_spgmr.c", "sunlinsol_spbcgs.c", "sunlinsol_sptfqmr.c")
-.sp_subdirs <- c("spgmr",             "spbcgs",              "sptfqmr")
-.missing    <- .sp_files[!file.exists(file.path("src", .sp_files))]
-
-if (length(.missing) > 0) {
-  .stanhdr_ver  <- as.character(packageVersion("StanHeaders"))
-  .tarball_name <- paste0("StanHeaders_", .stanhdr_ver, ".tar.gz")
-
-  # Look for a cached source tarball before attempting a download.
+  .sdr_ver <- as.character(packageVersion("sundialr"))
+  .tarball_name <- paste0("sundialr_", .sdr_ver, ".tar.gz")
   .search_dirs <- c(tempdir(),
+                    Sys.getenv("TEMP", unset = ""),
+                    Sys.getenv("TMP", unset = ""),
                     tools::R_user_dir("cache", which = "cache"),
                     getwd())
   .search_dirs <- .search_dirs[nzchar(.search_dirs)]
-  .tarball     <- Filter(file.exists, file.path(.search_dirs, .tarball_name))
+  .tarball <- Filter(file.exists, file.path(.search_dirs, .tarball_name))
 
   if (length(.tarball) == 0) {
-    # Only download when there is genuinely no local copy.
     .tarball <- tryCatch(
-      utils::download.packages("StanHeaders", destdir = tempdir(),
-                               repos  = getOption("repos"),
-                               type   = "source")[1, 2],
+      utils::download.packages("sundialr", destdir = tempdir(),
+                               repos = getOption("repos"), type = "source")[1, 2],
       error = function(e) character(0)
     )
   } else {
     .tarball <- .tarball[1]
   }
-
-  if (length(.tarball) > 0 && file.exists(.tarball)) {
-    .td <- tempfile()
-    dir.create(.td)
-    utils::untar(.tarball, exdir = .td)
-    for (.i in which(.sp_files %in% .missing)) {
-      .src <- file.path(.td, "StanHeaders", "src", "sunlinsol",
-                        .sp_subdirs[.i], .sp_files[.i])
-      if (file.exists(.src))
-        file.copy(.src, file.path("src", .sp_files[.i]), overwrite = TRUE)
+  if (length(.tarball) == 0 || !file.exists(.tarball)) {
+    .curl <- Sys.which("curl")
+    if (nzchar(.curl)) {
+      .dest <- file.path(tempdir(), .tarball_name)
+      .url <- paste0("https://cran.r-project.org/src/contrib/", .tarball_name)
+      .ok <- tryCatch(
+        system2(.curl, c("-k", "-L", "--fail", "-o", .dest, .url),
+                stdout = FALSE, stderr = FALSE) == 0L,
+        error = function(e) FALSE
+      )
+      if (isTRUE(.ok) && file.exists(.dest)) {
+        .tarball <- .dest
+      }
     }
-    unlink(.td, recursive = TRUE)
-  } else {
-    warning("Could not locate the StanHeaders source package to obtain ",
-            "missing SUNDIALS iterative linear solver sources: ",
-            paste(.missing, collapse = ", "), ".  ",
-            "CVODE iterative solver options (gmres, bicgstab, tfqmr) ",
-            "require these files in src/.  ",
-            "Add them manually or reinstall from a network-accessible environment.",
-            call. = FALSE)
+  }
+  if (length(.tarball) == 0 || !file.exists(.tarball)) {
+    stop("Could not locate sundialr source tarball for vendoring.", call. = FALSE)
+  }
+
+  .td <- tempfile("sundialr-vendor-")
+  dir.create(.td)
+  on.exit(unlink(.td, recursive = TRUE), add = TRUE)
+  utils::untar(.tarball, exdir = .td)
+  .nested <- list.files(file.path(.td, "sundialr", "src"),
+                        pattern = "^sundials-mod-.*\\.tar\\.gz$",
+                        full.names = TRUE)
+  if (length(.nested) == 0) {
+    stop("sundialr source does not contain nested SUNDIALS tarball.", call. = FALSE)
+  }
+  utils::untar(.nested[1], exdir = .td)
+  .sun <- list.dirs(.td, recursive = FALSE, full.names = TRUE)
+  .sun <- .sun[grepl("sundials-[0-9]", basename(.sun))]
+  if (length(.sun) == 0) {
+    stop("Unable to locate extracted SUNDIALS source tree.", call. = FALSE)
+  }
+  .sun <- .sun[1]
+
+  unlink(.sundialsVendorInc, recursive = TRUE)
+  dir.create(.sundialsVendorInc, recursive = TRUE)
+  .upInc <- list.files(file.path(.sun, "include"), full.names = TRUE,
+                       all.files = TRUE, no.. = TRUE)
+  if (length(.upInc) > 0) {
+    file.copy(.upInc, .sundialsVendorInc, recursive = TRUE, overwrite = TRUE)
+  }
+  .instInc <- system.file("include", package = "sundialr")
+  if (nzchar(.instInc) && dir.exists(.instInc)) {
+    .instIncFiles <- list.files(.instInc, full.names = TRUE, all.files = TRUE, no.. = TRUE)
+    if (length(.instIncFiles) > 0) {
+      file.copy(.instIncFiles, .sundialsVendorInc, recursive = TRUE, overwrite = TRUE)
+    }
+  }
+
+  .map <- c(
+    "cvode/cvode.c" = "sundials_cvode.c",
+    "cvode/cvode_diag.c" = "sundials_cvode_diag.c",
+    "cvode/cvode_io.c" = "sundials_cvode_io.c",
+    "cvode/cvode_ls.c" = "sundials_cvode_ls.c",
+    "cvode/cvode_nls.c" = "sundials_cvode_nls.c",
+    "cvode/cvode_proj.c" = "sundials_cvode_proj.c",
+    "cvode/cvode_resize.c" = "sundials_cvode_resize.c",
+    "cvode/cvode_impl.h" = "cvode_impl.h",
+    "cvode/cvode_diag_impl.h" = "cvode_diag_impl.h",
+    "cvode/cvode_ls_impl.h" = "cvode_ls_impl.h",
+    "cvode/cvode_proj_impl.h" = "cvode_proj_impl.h",
+    "nvector/serial/nvector_serial.c" = "sundials_nvector_serial.c",
+    "sunmemory/system/sundials_system_memory.c" = "sundials_system_memory.c",
+    "sunmatrix/band/sunmatrix_band.c" = "sundials_sunmatrix_band.c",
+    "sunmatrix/dense/sunmatrix_dense.c" = "sundials_sunmatrix_dense.c",
+    "sunmatrix/sparse/sunmatrix_sparse.c" = "sundials_sunmatrix_sparse.c",
+    "sunlinsol/band/sunlinsol_band.c" = "sundials_sunlinsol_band.c",
+    "sunlinsol/dense/sunlinsol_dense.c" = "sundials_sunlinsol_dense.c",
+    "sunlinsol/pcg/sunlinsol_pcg.c" = "sundials_sunlinsol_pcg.c",
+    "sunlinsol/spfgmr/sunlinsol_spfgmr.c" = "sundials_sunlinsol_spfgmr.c",
+    "sunlinsol/spgmr/sunlinsol_spgmr.c" = "sunlinsol_spgmr.c",
+    "sunlinsol/spbcgs/sunlinsol_spbcgs.c" = "sunlinsol_spbcgs.c",
+    "sunlinsol/sptfqmr/sunlinsol_sptfqmr.c" = "sunlinsol_sptfqmr.c",
+    "sunnonlinsol/newton/sunnonlinsol_newton.c" = "sundials_sunnonlinsol_newton.c",
+    "sunnonlinsol/fixedpoint/sunnonlinsol_fixedpoint.c" = "sundials_sunnonlinsol_fixedpoint.c",
+    "sundials/sundials_adiak_metadata.h" = "sundials_adiak_metadata.h",
+    "sundials/sundials_cli.h" = "sundials_cli.h",
+    "sundials/sundials_datanode.h" = "sundials_datanode.h",
+    "sundials/sundials_hashmap_impl.h" = "sundials_hashmap_impl.h",
+    "sundials/sundials_iterative_impl.h" = "sundials_iterative_impl.h",
+    "sundials/sundials_logger_impl.h" = "sundials_logger_impl.h",
+    "sundials/sundials_macros.h" = "sundials_macros.h",
+    "sundials/sundials_profiler_impl.h" = "sundials_profiler_impl.h",
+    "sundials/sundials_stepper_impl.h" = "sundials_stepper_impl.h",
+    "sundials/sundials_utils.h" = "sundials_utils.h",
+    "sundials/sundials_debug.h" = "sundials_debug.h",
+    "sundials/sundials_band.c" = "sundials_sundials_band.c",
+    "sundials/sundials_cli.c" = "sundials_sundials_cli.c",
+    "sundials/sundials_context.c" = "sundials_sundials_context.c",
+    "sundials/sundials_dense.c" = "sundials_sundials_dense.c",
+    "sundials/sundials_direct.c" = "sundials_sundials_direct.c",
+    "sundials/sundials_errors.c" = "sundials_sundials_errors.c",
+    "sundials/sundials_futils.c" = "sundials_sundials_futils.c",
+    "sundials/sundials_hashmap.c" = "sundials_sundials_hashmap.c",
+    "sundials/sundials_iterative.c" = "sundials_sundials_iterative.c",
+    "sundials/sundials_linearsolver.c" = "sundials_sundials_linearsolver.c",
+    "sundials/sundials_logger.c" = "sundials_sundials_logger.c",
+    "sundials/sundials_math.c" = "sundials_sundials_math.c",
+    "sundials/sundials_matrix.c" = "sundials_sundials_matrix.c",
+    "sundials/sundials_memory.c" = "sundials_sundials_memory.c",
+    "sundials/sundials_nonlinearsolver.c" = "sundials_sundials_nonlinearsolver.c",
+    "sundials/sundials_nvector.c" = "sundials_sundials_nvector.c",
+    "sundials/sundials_nvector_senswrapper.c" = "sundials_sundials_nvector_senswrapper.c",
+    "sundials/sundials_profiler.c" = "sundials_sundials_profiler.c",
+    "sundials/sundials_stepper.c" = "sundials_sundials_stepper.c",
+    "sundials/sundials_version.c" = "sundials_sundials_version.c",
+    "sundials/stl/sunstl_vector.h" = file.path("stl", "sunstl_vector.h")
+  )
+
+  for (.rel in names(.map)) {
+    .src <- file.path(.sun, "src", .rel)
+    .dst <- file.path(.sundialsVendorSrc, .map[[.rel]])
+    if (!file.exists(.src)) {
+      stop("Missing required SUNDIALS source/header in sundialr tarball: ", .rel,
+           call. = FALSE)
+    }
+    dir.create(dirname(.dst), recursive = TRUE, showWarnings = FALSE)
+    file.copy(.src, .dst, overwrite = TRUE)
   }
 }
+
+if (!dir.exists(.sundialsVendorInc) ||
+    !all(file.exists(file.path(.sundialsVendorSrc, .sundialsVendorFiles)))) {
+  .vendorFromSundialr()
+}
+
+unlink(.sundialsBuildInc, recursive = TRUE)
+dir.create(.sundialsBuildInc, recursive = TRUE)
+.incFiles <- list.files(.sundialsVendorInc, full.names = TRUE, all.files = TRUE,
+                        no.. = TRUE)
+if (length(.incFiles) > 0) {
+  file.copy(.incFiles, .sundialsBuildInc, recursive = TRUE, overwrite = TRUE)
+}
+
+for (.vf in .sundialsVendorFiles) {
+  .src <- file.path(.sundialsVendorSrc, .vf)
+  .dst <- file.path("src", .vf)
+  dir.create(dirname(.dst), recursive = TRUE, showWarnings = FALSE)
+  file.copy(.src, .dst, overwrite = TRUE)
+}
+
+.in <- gsub("@SUNDIALR_INC@",
+            paste0("-I\"", normalizePath(.sundialsBuildInc, winslash = "/", mustWork = TRUE), "\""),
+            .in)
+
+.sp_files <- c("sunlinsol_spgmr.c", "sunlinsol_spbcgs.c", "sunlinsol_sptfqmr.c")
 
 .fix_monitoring_endif <- function(.lines) {
   .changed <- FALSE
@@ -268,6 +346,7 @@ close(.ie_out)
 .in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",
                          paste(capture.output(StanHeaders:::CxxFlags()), # nolint
                                capture.output(RcppParallel:::CxxFlags()), # nolint
+                               paste0("-@ISYSTEM@'", system.file('include', package = 'StanHeaders', mustWork = TRUE), "'"),
                                paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
                                .badStan)),
             .in)
@@ -306,7 +385,7 @@ if (file.exists("man/reexports.Rd")) {
 unlink("R/rxode2_md5.R")
 
 cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
-include <- list.files("inst/include")
+include <- list.files("inst/include", recursive = TRUE)
 #Rfiles <- list.files("R/", pattern = ".R")
 
 cmd <- file.path(R.home("bin"), "R")
