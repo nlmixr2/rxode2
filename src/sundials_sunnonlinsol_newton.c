@@ -99,6 +99,7 @@ SUNNonlinearSolver SUNNonlinSol_Newton(N_Vector y, SUNContext sunctx)
   return (NLS);
 }
 
+
 /*==============================================================================
   GetType, Initialize, Setup, Solve, and Free operations
   ============================================================================*/

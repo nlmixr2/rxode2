@@ -102,6 +102,7 @@ SUNNonlinearSolver SUNNonlinSol_FixedPoint(N_Vector y, int m, SUNContext sunctx)
   return (NLS);
 }
 
+
 /*==============================================================================
   GetType, Initialize, Setup, Solve, and Free operations
   ============================================================================*/
