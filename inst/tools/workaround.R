@@ -1,37 +1,46 @@
 ## This is only for rxode2
-## Prepend a guarded RcppArmadillo include so that RcppArmadillo.h is always
-## included before Rcpp.h (newer RcppArmadillo versions require this order).
-## The #ifndef RCPP_H guard makes the block a no-op when Rcpp.h was already
-## pulled in by an earlier translation-unit include.
-for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
-  l <- readLines(f)
-  ## Remove any stale bare RcppArmadillo / R_STRICT_HEADERS lines we may have
-  ## injected in a previous configure run, so we can re-inject the guarded form.
-  w <- which(regexpr("^[#]include <RcppArmadillo.h>", l) != -1)
-  if (length(w) > 0) {
-    l <- l[-w]
-  }
-  w <- which(regexpr("^[#]define R_STRICT_HEADERS", l) != -1)
-  if (length(w) > 0) {
-    l <- l[-w]
-  }
-  ## Remove any stale guard lines from a previous run
+## inst/include/rxode2_RcppExports.h is the header consumed by generated model
+## code — it should carry only <Rcpp.h>.  Strip RcppArmadillo and RcppEigen.
+## src/RcppExports.cpp is the package's own implementation file — it uses
+## arma:: types and needs RcppArmadillo.h, but it must come BEFORE RcppEigen.h /
+## Rcpp.h to satisfy newer RcppArmadillo's include-order requirement.
+
+.strip_rcpp_guard <- function(l) {
+  l <- l[regexpr("^[#]include <RcppArmadillo.h>", l) == -1]
+  l <- l[regexpr("^[#]define R_STRICT_HEADERS", l) == -1]
   w <- which(regexpr("^#ifndef RCPP_H$", l) != -1)
   if (length(w) > 0) {
-    ## Remove: #ifndef RCPP_H, following lines up to matching #endif
     .start <- w[1]
     .end <- which(regexpr("^#endif", l[seq(.start, length(l))]) != -1)[1] + .start - 1L
     if (!is.na(.end)) l <- l[-seq(.start, .end)]
   }
-  l <- c("#ifndef RCPP_H",
-         "#  define R_STRICT_HEADERS",
-         "#  include <RcppArmadillo.h>",
-         "#endif",
-         l)
-  file.out <- file(f, "wb")
-  writeLines(l, file.out)
-  close(file.out)
+  l
 }
+
+## Header: strip RcppArmadillo, RcppEigen, and any stale guards.
+## Generated model code needs only <Rcpp.h>.
+.hdr_f <- "inst/include/rxode2_RcppExports.h"
+.hdr_l <- .strip_rcpp_guard(readLines(.hdr_f))
+.hdr_l <- .hdr_l[regexpr("^[#]include <RcppEigen.h>", .hdr_l) == -1]
+.hdr_out <- file(.hdr_f, "wb")
+writeLines(.hdr_l, .hdr_out)
+close(.hdr_out)
+
+## Implementation: clean up stale guards, then ensure RcppArmadillo.h appears
+## BEFORE rxode2.h (which includes R.h / Rinternals.h).  RcppCommon.h defines
+## R_NO_REMAP before R headers are pulled in, suppressing macros like `length`
+## that would otherwise conflict with Armadillo / STL names.
+.cpp_f <- "src/RcppExports.cpp"
+.cpp_l <- .strip_rcpp_guard(readLines(.cpp_f))
+if (!any(grepl("RcppArmadillo", .cpp_l, fixed = TRUE))) {
+  .rx_line <- which(regexpr("#include.*rxode2\\.h", .cpp_l) != -1)
+  if (length(.rx_line) > 0) {
+    .cpp_l <- append(.cpp_l, "#include <RcppArmadillo.h>", after = .rx_line[1] - 1L)
+  }
+}
+.cpp_out <- file(.cpp_f, "wb")
+writeLines(.cpp_l, .cpp_out)
+close(.cpp_out)
 
 l <- readLines("R/RcppExports.R")
 w <- which(regexpr("# Register entry points", l, fixed=TRUE) != -1)
@@ -326,32 +335,103 @@ if (file.exists(.nvf)) {
   close(.nvf_out)
 }
 
-## Fix 3: Add #pragma GCC diagnostic suppression for SUNDIALS 7.x deprecation
-##  warnings (N_VSpace, SUNMatSpace, SUNLinSolSpace) to each affected vendored
-##  file.  Source-level pragmas are CRAN-compliant; build-flag suppression is not.
-##  Guard prevents double-prepending on repeated installs.
-.deprecated_files <- c(
-  "sundials_cvode.c", "sundials_cvode_ls.c", "sundials_nvector_serial.c",
-  "sundials_sunlinsol_band.c", "sundials_sunlinsol_dense.c",
-  "sundials_sunmatrix_band.c", "sundials_sunmatrix_dense.c",
-  "sundials_sunmatrix_sparse.c",
-  "sunlinsol_spbcgs.c", "sunlinsol_spgmr.c", "sunlinsol_sptfqmr.c"
-)
-.pragma_suppress <- c(
-  "#if defined(__GNUC__) || defined(__clang__)",
-  '#pragma GCC diagnostic ignored "-Wdeprecated-declarations"',
-  "#endif"
-)
-for (.df in file.path("src", .deprecated_files)) {
-  if (file.exists(.df)) {
-    .dl <- readLines(.df)
-    if (!any(grepl("Wdeprecated-declarations", .dl, fixed = TRUE))) {
-      .dl <- c(.pragma_suppress, .dl)
-      .df_out <- file(.df, "wb")
-      writeLines(.dl, .df_out, sep = "\n")
-      close(.df_out)
-    }
+## Fix 3: Remove deprecated SUNDIALS 7.x workspace-query function usage.
+##  Null out the deprecated function pointers (ops->space, ops->nvspace) and
+##  replace direct N_VSpace/SUNMatSpace/SUNLinSolSpace calls with zero-assignment
+##  equivalents.  Also strips any pragma block injected by a previous run.
+.strip_deprecated_pragma <- function(.lines) {
+  if (length(.lines) >= 3 &&
+      trimws(.lines[1]) == "#if defined(__GNUC__) || defined(__clang__)" &&
+      grepl("Wdeprecated-declarations", .lines[2], fixed = TRUE) &&
+      trimws(.lines[3]) == "#endif") {
+    .lines <- .lines[-c(1L, 2L, 3L)]
   }
+  .lines
+}
+
+## nvector_serial: null out deprecated N_VSpace_Serial function pointer
+.nf3 <- "src/sundials_nvector_serial.c"
+if (file.exists(.nf3)) {
+  .nl3 <- .strip_deprecated_pragma(readLines(.nf3))
+  .nl3 <- gsub("= N_VSpace_Serial;", "= NULL;", .nl3, fixed = TRUE)
+  .nf3_out <- file(.nf3, "wb")
+  writeLines(.nl3, .nf3_out, sep = "\n")
+  close(.nf3_out)
+}
+
+## sunlinsol_band: null out deprecated SUNLinSolSpace_Band function pointer
+.lbf <- "src/sundials_sunlinsol_band.c"
+if (file.exists(.lbf)) {
+  .lb <- .strip_deprecated_pragma(readLines(.lbf))
+  .lb <- gsub("= SUNLinSolSpace_Band;", "= NULL;", .lb, fixed = TRUE)
+  .lbf_out <- file(.lbf, "wb")
+  writeLines(.lb, .lbf_out, sep = "\n")
+  close(.lbf_out)
+}
+
+## sunlinsol_dense: null out deprecated SUNLinSolSpace_Dense function pointer
+.ldf <- "src/sundials_sunlinsol_dense.c"
+if (file.exists(.ldf)) {
+  .ld <- .strip_deprecated_pragma(readLines(.ldf))
+  .ld <- gsub("= SUNLinSolSpace_Dense;", "= NULL;", .ld, fixed = TRUE)
+  .ldf_out <- file(.ldf, "wb")
+  writeLines(.ld, .ldf_out, sep = "\n")
+  close(.ldf_out)
+}
+
+## sunmatrix_band: null out deprecated SUNMatSpace_Band function pointer
+.mbf <- "src/sundials_sunmatrix_band.c"
+if (file.exists(.mbf)) {
+  .mb <- .strip_deprecated_pragma(readLines(.mbf))
+  .mb <- gsub("= SUNMatSpace_Band;", "= NULL;", .mb, fixed = TRUE)
+  .mbf_out <- file(.mbf, "wb")
+  writeLines(.mb, .mbf_out, sep = "\n")
+  close(.mbf_out)
+}
+
+## sunmatrix_dense: null out deprecated SUNMatSpace_Dense function pointer
+.mdf <- "src/sundials_sunmatrix_dense.c"
+if (file.exists(.mdf)) {
+  .md <- .strip_deprecated_pragma(readLines(.mdf))
+  .md <- gsub("= SUNMatSpace_Dense;", "= NULL;", .md, fixed = TRUE)
+  .mdf_out <- file(.mdf, "wb")
+  writeLines(.md, .mdf_out, sep = "\n")
+  close(.mdf_out)
+}
+
+## sunmatrix_sparse: null out deprecated SUNMatSpace_Sparse function pointer
+.msf <- "src/sundials_sunmatrix_sparse.c"
+if (file.exists(.msf)) {
+  .ms <- .strip_deprecated_pragma(readLines(.msf))
+  .ms <- gsub("= SUNMatSpace_Sparse;", "= NULL;", .ms, fixed = TRUE)
+  .msf_out <- file(.msf, "wb")
+  writeLines(.ms, .msf_out, sep = "\n")
+  close(.msf_out)
+}
+
+## sundials_cvode: replace deprecated N_VSpace call with zero assignments
+.cvf3 <- "src/sundials_cvode.c"
+if (file.exists(.cvf3)) {
+  .cv3 <- .strip_deprecated_pragma(readLines(.cvf3))
+  .cv3 <- gsub("N_VSpace(y0, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .cv3, fixed = TRUE)
+  .cvf3_out <- file(.cvf3, "wb")
+  writeLines(.cv3, .cvf3_out, sep = "\n")
+  close(.cvf3_out)
+}
+
+## sundials_cvode_ls: replace deprecated N_VSpace/SUNMatSpace/SUNLinSolSpace calls
+.clf <- "src/sundials_cvode_ls.c"
+if (file.exists(.clf)) {
+  .cl <- .strip_deprecated_pragma(readLines(.clf))
+  .cl <- gsub("N_VSpace(cv_mem->cv_tempv, &lrw1, &liw1);",
+              "lrw1 = 0; liw1 = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("retval = SUNMatSpace(cvls_mem->savedJ, &lrw, &liw);",
+              "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);",
+              "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
+  .clf_out <- file(.clf, "wb")
+  writeLines(.cl, .clf_out, sep = "\n")
+  close(.clf_out)
 }
 
 ## ---------------------------------------------------------------------------
@@ -405,9 +485,18 @@ for (.df in file.path("src", .deprecated_files)) {
 # print_level defaults to 0 so info_file is never dereferenced in practice.
 for (.sp in file.path("src", .sp_files)) {
   if (file.exists(.sp)) {
-    .sl <- readLines(.sp)
+    .sl <- .strip_deprecated_pragma(readLines(.sp))
     .sl <- gsub("content->info_file\\s*=\\s*stdout;",
                  "content->info_file = NULL;", .sl)
+    .sl <- gsub("= SUNLinSolSpace_SPBCGS;", "= NULL;", .sl, fixed = TRUE)
+    .sl <- gsub("= SUNLinSolSpace_SPGMR;", "= NULL;", .sl, fixed = TRUE)
+    .sl <- gsub("= SUNLinSolSpace_SPTFQMR;", "= NULL;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPBCGS_CONTENT(S)->vtemp, &lrw1, &liw1);",
+                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPGMR_CONTENT(S)->vtemp, &lrw1, &liw1);",
+                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);",
+                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
     .sl <- .fix_monitoring_endif(.sl)
     .sp_out <- file(.sp, "wb")
     writeLines(.sl, .sp_out, sep = "\n")

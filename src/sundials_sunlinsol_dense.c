@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds, Ashley Crawford @ UMBC
  * -----------------------------------------------------------------
@@ -82,7 +79,7 @@ SUNLinearSolver SUNLinSol_Dense(SUNDIALS_MAYBE_UNUSED N_Vector y, SUNMatrix A,
   S->ops->setup      = SUNLinSolSetup_Dense;
   S->ops->solve      = SUNLinSolSolve_Dense;
   S->ops->lastflag   = SUNLinSolLastFlag_Dense;
-  S->ops->space      = SUNLinSolSpace_Dense;
+  S->ops->space      = NULL;
   S->ops->free       = SUNLinSolFree_Dense;
 
   /* Create content */

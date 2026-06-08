@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds @ UMBC
  *                David Gardner @ LLNL
@@ -76,7 +73,7 @@ SUNMatrix SUNDenseMatrix(sunindextype M, sunindextype N, SUNContext sunctx)
   A->ops->scaleaddi                = SUNMatScaleAddI_Dense;
   A->ops->matvec                   = SUNMatMatvec_Dense;
   A->ops->mathermitiantransposevec = SUNMatHermitianTransposeVec_Dense;
-  A->ops->space                    = SUNMatSpace_Dense;
+  A->ops->space                    = NULL;
 
   /* Create content */
   content = NULL;

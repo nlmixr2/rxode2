@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Scott D. Cohen, Alan C. Hindmarsh, Radu Serban,
  *                and Dan Shumaker @ LLNL
@@ -429,7 +426,7 @@ int CVodeInit(void* cvode_mem, CVRhsFn f, sunrealtype t0, N_Vector y0)
 
   /* Set space requirements for one N_Vector */
 
-  if (y0->ops->nvspace != NULL) { N_VSpace(y0, &lrw1, &liw1); }
+  if (y0->ops->nvspace != NULL) { lrw1 = 0; liw1 = 0; }
   else
   {
     lrw1 = 0;

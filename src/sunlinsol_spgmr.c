@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds @ UMBC
  * Based on sundials_spgmr.c code, written by Scott D. Cohen,
@@ -111,7 +108,7 @@ SUNLinearSolver SUNLinSol_SPGMR(N_Vector y, int pretype, int maxl,
   S->ops->resnorm           = SUNLinSolResNorm_SPGMR;
   S->ops->resid             = SUNLinSolResid_SPGMR;
   S->ops->lastflag          = SUNLinSolLastFlag_SPGMR;
-  S->ops->space             = SUNLinSolSpace_SPGMR;
+  S->ops->space             = NULL;
   S->ops->free              = SUNLinSolFree_SPGMR;
 
   /* Create content */
@@ -965,7 +962,7 @@ SUNErrCode SUNLinSolSpace_SPGMR(SUNLinearSolver S, long int* lenrwLS,
   maxl = SPGMR_CONTENT(S)->maxl;
   if (SPGMR_CONTENT(S)->vtemp->ops->nvspace)
   {
-    N_VSpace(SPGMR_CONTENT(S)->vtemp, &lrw1, &liw1);
+    lrw1 = 0; liw1 = 0;
     SUNCheckLastErr();
   }
   else { lrw1 = liw1 = 0; }

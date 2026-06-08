@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /*
  * -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds @ UMBC
@@ -92,7 +89,7 @@ SUNMatrix SUNBandMatrixStorage(sunindextype N, sunindextype mu, sunindextype ml,
   A->ops->scaleaddi                = SUNMatScaleAddI_Band;
   A->ops->matvec                   = SUNMatMatvec_Band;
   A->ops->mathermitiantransposevec = SUNMatHermitianTransposeVec_Band;
-  A->ops->space                    = SUNMatSpace_Band;
+  A->ops->space                    = NULL;
 
   /* Create content */
   content = NULL;

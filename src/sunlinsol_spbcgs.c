@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds @ UMBC
  * Based on sundials_spbcgs.c code, written by Peter Brown and
@@ -112,7 +109,7 @@ SUNLinearSolver SUNLinSol_SPBCGS(N_Vector y, int pretype, int maxl,
   S->ops->resnorm           = SUNLinSolResNorm_SPBCGS;
   S->ops->resid             = SUNLinSolResid_SPBCGS;
   S->ops->lastflag          = SUNLinSolLastFlag_SPBCGS;
-  S->ops->space             = SUNLinSolSpace_SPBCGS;
+  S->ops->space             = NULL;
   S->ops->free              = SUNLinSolFree_SPBCGS;
 
   /* Create content */
@@ -922,7 +919,7 @@ SUNErrCode SUNLinSolSpace_SPBCGS(SUNLinearSolver S, long int* lenrwLS,
   sunindextype liw1, lrw1;
   if (SPBCGS_CONTENT(S)->vtemp->ops->nvspace)
   {
-    N_VSpace(SPBCGS_CONTENT(S)->vtemp, &lrw1, &liw1);
+    lrw1 = 0; liw1 = 0;
     SUNCheckLastErr();
   }
   else { lrw1 = liw1 = 0; }

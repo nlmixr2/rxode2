@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* ----------------------------------------------------------------
  * Programmer(s): Daniel R. Reynolds @ UMBC
  *                Alan C. Hindmarsh and Radu Serban @ LLNL
@@ -665,7 +662,7 @@ int CVodeGetLinWorkSpace(void* cvode_mem, long int* lenrwLS, long int* leniwLS)
   /* add NVector sizes */
   if (cv_mem->cv_tempv->ops->nvspace)
   {
-    N_VSpace(cv_mem->cv_tempv, &lrw1, &liw1);
+    lrw1 = 0; liw1 = 0;
     *lenrwLS += 2 * lrw1;
     *leniwLS += 2 * liw1;
   }
@@ -675,7 +672,7 @@ int CVodeGetLinWorkSpace(void* cvode_mem, long int* lenrwLS, long int* leniwLS)
   {
     if (cvls_mem->savedJ->ops->space)
     {
-      retval = SUNMatSpace(cvls_mem->savedJ, &lrw, &liw);
+      lrw = 0; liw = 0; retval = 0;
       if (retval == 0)
       {
         *lenrwLS += lrw;
@@ -687,7 +684,7 @@ int CVodeGetLinWorkSpace(void* cvode_mem, long int* lenrwLS, long int* leniwLS)
   /* add LS sizes */
   if (cvls_mem->LS->ops->space)
   {
-    retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);
+    lrw = 0; liw = 0; retval = 0;
     if (retval == 0)
     {
       *lenrwLS += lrw;

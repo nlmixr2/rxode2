@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Scott D. Cohen, Alan C. Hindmarsh, Radu Serban,
  *                and Aaron Collier @ LLNL
@@ -100,7 +97,7 @@ N_Vector N_VNewEmpty_Serial(sunindextype length, SUNContext sunctx)
   v->ops->nvclone           = N_VClone_Serial;
   v->ops->nvcloneempty      = N_VCloneEmpty_Serial;
   v->ops->nvdestroy         = N_VDestroy_Serial;
-  v->ops->nvspace           = N_VSpace_Serial;
+  v->ops->nvspace           = NULL;
   v->ops->nvgetarraypointer = N_VGetArrayPointer_Serial;
   v->ops->nvsetarraypointer = N_VSetArrayPointer_Serial;
   v->ops->nvgetlength       = N_VGetLength_Serial;

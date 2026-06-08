@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds @ UMBC
  * Based on sundials_sptfqmr.c code, written by Aaron Collier @ LLNL
@@ -110,7 +107,7 @@ SUNLinearSolver SUNLinSol_SPTFQMR(N_Vector y, int pretype, int maxl,
   S->ops->resnorm           = SUNLinSolResNorm_SPTFQMR;
   S->ops->resid             = SUNLinSolResid_SPTFQMR;
   S->ops->lastflag          = SUNLinSolLastFlag_SPTFQMR;
-  S->ops->space             = SUNLinSolSpace_SPTFQMR;
+  S->ops->space             = NULL;
   S->ops->free              = SUNLinSolFree_SPTFQMR;
 
   /* Create content */
@@ -1158,7 +1155,7 @@ SUNErrCode SUNLinSolSpace_SPTFQMR(SUNLinearSolver S, long int* lenrwLS,
   sunindextype liw1, lrw1;
   if (SPTFQMR_CONTENT(S)->vtemp1->ops->nvspace)
   {
-    N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);
+    lrw1 = 0; liw1 = 0;
     SUNCheckLastErr();
   }
   else { lrw1 = liw1 = 0; }

@@ -1,6 +1,3 @@
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Daniel Reynolds @ UMBC
  * -----------------------------------------------------------------
@@ -86,7 +83,7 @@ SUNLinearSolver SUNLinSol_Band(SUNDIALS_MAYBE_UNUSED N_Vector y, SUNMatrix A,
   S->ops->setup      = SUNLinSolSetup_Band;
   S->ops->solve      = SUNLinSolSolve_Band;
   S->ops->lastflag   = SUNLinSolLastFlag_Band;
-  S->ops->space      = SUNLinSolSpace_Band;
+  S->ops->space      = NULL;
   S->ops->free       = SUNLinSolFree_Band;
 
   /* Create content */
