@@ -198,15 +198,20 @@ static double autoSwitchStabilitySize(int method) {
 }
 
 /* Gershgorin spectral radius from Jacobian stored column-major (Fortran order):
-   jac[i + j*neq] = df_i/dy_j.  Returns the maximum absolute row sum. */
+   jac[i + j*neq] = df_i/dy_j.
+   Each Gershgorin disk for row i has centre |J_ii| and radius R_i = sum_{j!=i} |J_ij|.
+   The spectral radius is bounded by max_i(|J_ii| + R_i), which is tighter than the
+   full row 1-norm (which double-counts the diagonal). */
 static double gershgorinSpectralRadius(double *jac, int neq) {
   double rho = 0.0;
   for (int i = 0; i < neq; i++) {
-    double row = 0.0;
+    double centre = fabs(jac[i + i * neq]);
+    double radius = 0.0;
     for (int j = 0; j < neq; j++) {
-      row += fabs(jac[i + j * neq]);
+      if (j != i) radius += fabs(jac[i + j * neq]);
     }
-    if (row > rho) rho = row;
+    double disk = centre + radius;
+    if (disk > rho) rho = disk;
   }
   return rho;
 }
