@@ -3,14 +3,39 @@
 #include <rxode2.h>
 #include <float.h>
 
+/* Thread-safe Rprintf wrapper for generated model code.
+ * On non-master OpenMP threads calling Rprintf directly crashes R on Windows
+ * (R_MAIN must be accessed from the R thread only).  This wrapper suppresses
+ * output on worker threads so the model can compile printf() statements
+ * safely even when subjects are solved in parallel. */
+#include <stdarg.h>
+#ifdef _OPENMP
+#include <omp.h>
+static inline void _rxPrintf(const char *fmt, ...) {
+  if (omp_get_thread_num() == 0) {
+    va_list args;
+    va_start(args, fmt);
+    Rvprintf(fmt, args);
+    va_end(args);
+  }
+}
+#else
+static inline void _rxPrintf(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  Rvprintf(fmt, args);
+  va_end(args);
+}
+#endif
+
 #define _evid getEvid(_ind, _ind->ix[_ind->idx])
 #define amt (isDose(_evid) ?  getDose(_ind,_ind->ixds) : NA_REAL)
-#define JAC_Rprintf Rprintf
+#define JAC_Rprintf _rxPrintf
 #define _idx (_solveData->subjects[_cSub]).idx
-#define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) Rprintf
-#define ODE_Rprintf Rprintf
-#define ODE0_Rprintf if ((_solveData->subjects[_cSub]).dadt_counter == 0) Rprintf
-#define LHS_Rprintf Rprintf
+#define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) _rxPrintf
+#define ODE_Rprintf _rxPrintf
+#define ODE0_Rprintf if ((_solveData->subjects[_cSub]).dadt_counter == 0) _rxPrintf
+#define LHS_Rprintf _rxPrintf
 static inline double _safe_log_(double a, rx_solve *rx) {
   if (rx->safeLog) {
     return (a <= 0) ? log(DBL_EPSILON) : log(a);

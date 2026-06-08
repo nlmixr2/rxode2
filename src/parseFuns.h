@@ -888,7 +888,7 @@ static inline int handlePrintf(nodeInfo ni, char *name, int i, D_ParseNode *xpn)
       sbt.o=0;
       tb.thread = notThreadSafe;
       aType(PPRN);
-      aAppendN("Rprintf(", 8);
+      aAppendN("_rxPrintf(", 10);
       sAppendN(&sbt,"printf(", 7);
       sb.o--;sbDt.o--;sbt.o--;
     }
