@@ -2113,10 +2113,9 @@ static inline void solveWith1Pt(int *neq,
       bool _hardStiff   = _failed || _dop853Stiff;
 
       if (ind->autoMethod == 0) {
-        /* Non-stiff primary was used.
-           Pre-interval ratio check already handled soft stiffness (_preStiff path).
-           Only hard failures (solver died or dop853 stiff flag) need retry here. */
+        /* Non-stiff primary was used. */
         if (_hardStiff) {
+          /* Hard failure (solver died or dop853 stiff flag): retry with stiff. */
           ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
           memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
           xp = _xpOrig;
@@ -2132,8 +2131,40 @@ static inline void solveWith1Pt(int *neq,
             ind->autoLastSwitchIntervals = 0;
           }
         } else {
-          if (ind->autoCount > 0) ind->autoCount = 0;
-          ind->autoLastSwitchIntervals++;
+          /* Solver succeeded. Post-interval Gershgorin check catches stiffness
+             that developed mid-interval (interval-granularity fix).  By
+             accumulating evidence here rather than resetting the counter on
+             every success, we also get hysteresis: the stiff count builds
+             gradually across intervals instead of triggering an expensive
+             hard-failure retry on the next interval when stiffness is growing.
+             This is the analogue of Julia's per-step is_stiff() + do_error_check
+             suppression during the detection phase. */
+          bool _postStiff = false;
+          if (_jacAvailable && neqOde > 0) {
+            int _tid = rx_get_thread((int)__autoJacBuf.size());
+            if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
+                (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
+              double *_jbuf = __autoJacBuf[_tid].data();
+              int _neqTmp[2] = { neqOde, neq[1] };
+              calc_jac(_neqTmp, xout, yp, _jbuf, (unsigned int)neqOde);
+              _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
+              _stiffRatio = (_rhoEst > 0.0 && _dt != 0.0)
+                  ? _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff)
+                  : 0.0;
+              _postStiff = (_stiffRatio > op->autoSwitchNonstifftol);
+            }
+          }
+          if (_postStiff) {
+            ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
+            if (ind->autoCount >= op->autoSwitchMaxStiff) {
+              ind->autoMethod = 1;
+              ind->autoCount  = 0;
+              ind->autoLastSwitchIntervals = 0;
+            }
+          } else {
+            if (ind->autoCount > 0) ind->autoCount = 0;
+            ind->autoLastSwitchIntervals++;
+          }
         }
       } else {
         /* Stiff secondary was used: check for switch-back.
