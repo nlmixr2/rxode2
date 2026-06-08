@@ -1,12 +1,12 @@
 // CVODE solver implementation using vendored SUNDIALS sources (from sundialr).
-// Uses CVODES (superset of CVODE) for plain ODE integration.
+// Uses CVODE for plain ODE integration (no sensitivity analysis).
 // This file has NO dependency on Rcpp, R, or Stan math headers.
 
 #include "cvode_solver.h"
 
 #include <stdlib.h>
-#include <cvodes/cvodes.h>
-#include <cvodes/cvodes_ls.h>
+#include <cvode/cvode.h>
+#include <cvode/cvode_ls.h>
 #include <nvector/nvector_serial.h>
 #include <sunmatrix/sunmatrix_dense.h>
 #include <sunlinsol/sunlinsol_dense.h>
