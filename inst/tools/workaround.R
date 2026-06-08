@@ -57,13 +57,15 @@ if (.Platform$OS.type == "windows") {
 }
 .in <- gsub("@SL@", .sl, .in) #nolint
 
-## Vendor SUNDIALS sources from the installed sundialr source tarball into a
-## temporary cache, then copy them to src/ at configure time.
-.sundialsRoot <- file.path(tempdir(), "rxode2-sundials-vendor")
-.sundialsVendorSrc <- file.path(.sundialsRoot, "src")
-.sundialsVendorInc <- file.path(.sundialsRoot, "include")
-.sundialsBuildInc <- "src/sundialr_include"
+## Get SUNDIALS public headers from the installed sundialr package.
+.sundialrInc <- system.file("include", package = "sundialr")
+if (!nzchar(.sundialrInc) || !dir.exists(.sundialrInc)) {
+  stop("sundialr package is required for building rxode2. Please install sundialr.", call. = FALSE)
+}
 
+## CVODE C source and private impl headers are committed to src/.
+## The tarball extraction only runs when any file is absent (e.g., before
+## the initial commit or after a clean that removed vendored files).
 .sundialsVendorFiles <- c(
   "cvode_diag_impl.h", "cvode_impl.h", "cvode_ls_impl.h", "cvode_proj_impl.h",
   "sundials_adiak_metadata.h", "sundials_cli.h", "sundials_cvode.c",
@@ -92,8 +94,7 @@ if (.Platform$OS.type == "windows") {
 )
 
 .vendorFromSundialr <- function() {
-  suppressWarnings(dir.create(.sundialsVendorSrc, recursive = TRUE, showWarnings = FALSE))
-  suppressWarnings(dir.create(.sundialsVendorInc, recursive = TRUE, showWarnings = FALSE))
+  suppressWarnings(dir.create("src/stl", recursive = TRUE, showWarnings = FALSE))
 
   .sdr_ver <- as.character(packageVersion("sundialr"))
   .tarball_name <- paste0("sundialr_", .sdr_ver, ".tar.gz")
@@ -150,21 +151,6 @@ if (.Platform$OS.type == "windows") {
     stop("Unable to locate extracted SUNDIALS source tree.", call. = FALSE)
   }
   .sun <- .sun[1]
-
-  unlink(.sundialsVendorInc, recursive = TRUE)
-  dir.create(.sundialsVendorInc, recursive = TRUE)
-  .upInc <- list.files(file.path(.sun, "include"), full.names = TRUE,
-                       all.files = TRUE, no.. = TRUE)
-  if (length(.upInc) > 0) {
-    file.copy(.upInc, .sundialsVendorInc, recursive = TRUE, overwrite = TRUE)
-  }
-  .instInc <- system.file("include", package = "sundialr")
-  if (nzchar(.instInc) && dir.exists(.instInc)) {
-    .instIncFiles <- list.files(.instInc, full.names = TRUE, all.files = TRUE, no.. = TRUE)
-    if (length(.instIncFiles) > 0) {
-      file.copy(.instIncFiles, .sundialsVendorInc, recursive = TRUE, overwrite = TRUE)
-    }
-  }
 
   .map <- c(
     "cvode/cvode.c" = "sundials_cvode.c",
@@ -228,7 +214,7 @@ if (.Platform$OS.type == "windows") {
 
   for (.rel in names(.map)) {
     .src <- file.path(.sun, "src", .rel)
-    .dst <- file.path(.sundialsVendorSrc, .map[[.rel]])
+    .dst <- file.path("src", .map[[.rel]])
     if (!file.exists(.src)) {
       stop("Missing required SUNDIALS source/header in sundialr tarball: ", .rel,
            call. = FALSE)
@@ -238,28 +224,12 @@ if (.Platform$OS.type == "windows") {
   }
 }
 
-if (!dir.exists(.sundialsVendorInc) ||
-    !all(file.exists(file.path(.sundialsVendorSrc, .sundialsVendorFiles)))) {
+if (!all(file.exists(file.path("src", .sundialsVendorFiles)))) {
   .vendorFromSundialr()
 }
 
-unlink(.sundialsBuildInc, recursive = TRUE)
-dir.create(.sundialsBuildInc, recursive = TRUE)
-.incFiles <- list.files(.sundialsVendorInc, full.names = TRUE, all.files = TRUE,
-                        no.. = TRUE)
-if (length(.incFiles) > 0) {
-  file.copy(.incFiles, .sundialsBuildInc, recursive = TRUE, overwrite = TRUE)
-}
-
-for (.vf in .sundialsVendorFiles) {
-  .src <- file.path(.sundialsVendorSrc, .vf)
-  .dst <- file.path("src", .vf)
-  dir.create(dirname(.dst), recursive = TRUE, showWarnings = FALSE)
-  file.copy(.src, .dst, overwrite = TRUE)
-}
-
 .in <- gsub("@SUNDIALR_INC@",
-            paste0("-I\"", normalizePath(.sundialsBuildInc, winslash = "/", mustWork = TRUE), "\""),
+            paste0("-I\"", normalizePath(.sundialrInc, winslash = "/", mustWork = TRUE), "\""),
             .in)
 
 .sp_files <- c("sunlinsol_spgmr.c", "sunlinsol_spbcgs.c", "sunlinsol_sptfqmr.c")

@@ -47,15 +47,6 @@ docs/
 revdep/
 /src/sbuf.c
 docs
-/src/sundials_debug.h
 /src/implicit_euler_rxode2.hpp
 inst/tools/workaround.Rout
 src/StanHeaders.def
-src/sundialr_include/
-src/stl/
-src/sundials_*
-src/cvode_*_impl.h
-src/sunlinsol_spgmr.c
-src/sunlinsol_spbcgs.c
-src/sunlinsol_sptfqmr.c
-src/cvode_impl.h
