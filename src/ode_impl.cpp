@@ -91,7 +91,7 @@ bool   ode_is_close (double a, double b, double thresh) {
 void ode_check_write (const char * /*fn*/) {}
 
 void ode_print_exit (const char *msg) {
-    (Rf_error)("%s", msg);
+    throw std::runtime_error(msg);
 }
 
 std::string ode_int_to_string (long i) {
@@ -205,14 +205,14 @@ bool OdeBase::solve_done (double dt, double tend) {
 void OdeBase::check_sol_integrity () {
     for (unsigned long i = 0; i < neq_; i++) {
         if (!std::isfinite(sol_[i])) {
-            (Rf_error)("libode: non-finite value in solution at step %lu", nstep_);
+            throw std::runtime_error("libode: non-finite value in solution");
         }
     }
 }
 
 void OdeBase::check_pre_solve (double tint, double dt) {
-    if (tint <= 0.0) (Rf_error)("libode: tint must be positive");
-    if (dt   <= 0.0) (Rf_error)("libode: dt must be positive");
+    if (tint <= 0.0) throw std::runtime_error("libode: tint must be positive");
+    if (dt   <= 0.0) throw std::runtime_error("libode: dt must be positive");
     // dt > tint is allowed: solve_fixed_() clamps the step on the first
     // iteration, so a single oversized step integrates exactly to tint.
 }
@@ -1124,7 +1124,7 @@ void ode_crout_LU (double **A, int n, int *p) {
         m = 0.0; idx = i;
         for (j=i; j<n; j++) { td = fabs(A[j][i]); if (td > m) { m = td; idx = j; } }
         if (!(fabs(m) > 0.0))
-            (Rf_error)("libode: singular matrix in Rosenbrock Jacobian factorization");
+            throw std::runtime_error("libode: singular matrix in Rosenbrock Jacobian factorization");
         if (idx != i) {
             for (j=0; j<n; j++) { td = A[i][j]; A[i][j] = A[idx][j]; A[idx][j] = td; }
             ti = p[i]; p[i] = p[idx]; p[idx] = ti;
