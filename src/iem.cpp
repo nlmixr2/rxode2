@@ -84,7 +84,8 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               }
 
               if (neqOde > 0) {
-                  double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                  double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
                   if (dt <= 0.0) dt = 1e-4;
                   if (fabs(ind->extraDoseNewXout - xp) / dt >= (double)op->mxstep) {
                       dt = fabs(ind->extraDoseNewXout - xp) / (double)(op->mxstep - 10);
@@ -129,7 +130,8 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                 }
 
                 if (neqOde > 0) {
-                    double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                    double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
                     if (dt <= 0.0) dt = 1e-4;
                     if (fabs(xout - ind->extraDoseNewXout) / dt >= (double)op->mxstep) {
                         dt = fabs(xout - ind->extraDoseNewXout) / (double)(op->mxstep - 10);
@@ -165,7 +167,8 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
           }
 
           if (neqOde > 0) {
-              double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+              double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
               if (dt <= 0.0) dt = 1e-4;
               if (fabs(xout - xp) / dt >= (double)op->mxstep) {
                   dt = fabs(xout - xp) / (double)(op->mxstep - 10);
@@ -288,7 +291,8 @@ extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
 
   if (neqOde > 0) {
       state_type state(neqOde);
-      double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+      double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
       if (dt <= 0.0) dt = 1e-4;
       if (fabs(xout - *xp) / dt >= (double)op->mxstep) {
           dt = fabs(xout - *xp) / (double)(op->mxstep - 10);

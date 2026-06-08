@@ -3763,6 +3763,7 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->autoMethod = 0;
   ind->autoCount  = 0;
   ind->autoHcur   = 0.0;
+  ind->autoLastSwitchIntervals = 0;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
@@ -5304,6 +5305,7 @@ static inline void iniRx(rx_solve* rx) {
   op->autoSwitchNonstifftol = 0.9;
   op->autoSwitchStifftol    = 0.9;
   op->autoSwitchDtfac       = 2.0;
+  op->autoSwitchSwitchMax   = 5;
   op->par_cov = NULL;
   op->par_cov_interp = NULL;
   op->lhs_str = NULL;
@@ -5690,12 +5692,28 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
     op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
     op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
+    if (op->stiff2 > 0) {
+      /* LSODA (1,2), CVODE (21), DLSODE (106,107) have internal switching and
+         cannot be cleanly retried within an interval. */
+      if (op->stiff2 == 1 || op->stiff2 == 2 ||
+          op->stiff2 == 21 ||
+          op->stiff2 == 106 || op->stiff2 == 107) {
+        (Rf_error)("stiff2=%d is not allowed for AutoSwitch; use a single-step "
+                   "stiff method (e.g. ros4=13, grk4a=31)", op->stiff2);
+      }
+      if (method == 1 || method == 2 || method == 21 ||
+          method == 106 || method == 107) {
+        (Rf_error)("AutoSwitch (stiff2>0) requires a single-step primary method; "
+                   "stiff=%d is not compatible", method);
+      }
+    }
     op->autoSwitchMaxStiff    = asInt(rxControl[Rxc_autoSwitchMaxStiff], "autoSwitchMaxStiff");
     op->autoSwitchMaxNonstiff = asInt(rxControl[Rxc_autoSwitchMaxNonstiff], "autoSwitchMaxNonstiff");
     op->autoSwitchStiffFirst  = asInt(rxControl[Rxc_autoSwitchStiffFirst], "autoSwitchStiffFirst");
     op->autoSwitchNonstifftol = asDouble(rxControl[Rxc_autoSwitchNonstifftol], "autoSwitchNonstifftol");
     op->autoSwitchStifftol    = asDouble(rxControl[Rxc_autoSwitchStifftol], "autoSwitchStifftol");
     op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
+    op->autoSwitchSwitchMax   = asInt(rxControl[Rxc_autoSwitchSwitchMax], "autoSwitchSwitchMax");
     if (op->useDense) {
       /* Dense output is only supported for dop853(0), dop5(10), bs(11), ros4(13). */
       int _primDense = (method == 0 || method == 10 || method == 11 || method == 13);

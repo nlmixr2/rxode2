@@ -1960,6 +1960,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (!isSameTimeDop(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
+        double _h0use = (ind->autoHcur > 0.0) ? ind->autoHcur : op->H0;
         *idid = dop853(neq,
                        dydt,
                        *xp,
@@ -1977,7 +1978,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                        0,
                        0,
                        ind->HMAX,
-                       op->H0,
+                       _h0use,
                        op->mxstep,
                        1,
                        autoSwitchPrimary ? 50 : -1,
@@ -2050,89 +2051,125 @@ static inline void solveWith1Pt(int *neq,
     double *_ypDyn = NULL;
     double *_ypSave = NULL;
     double _xpOrig = xp;
+    double _dt = xout - _xpOrig;
     if (_autoSwitchActive) {
       _ypSave = (eff <= 64) ? _ypStack
                             : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
       memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
     }
 
-    /* Run primary (or stiff, when ind->autoMethod==1) interval */
-    _rxSolveOneInterval(_effectiveMethod, _autoSwitchPrimary,
-                        neq, yp, &xp, xout, istate, &idid,
-                        op, ind, i, ctx, eff);
-
-    /* AutoSwitch post-step logic */
-    if (_autoSwitchActive) {
-      double _dt = xout - _xpOrig;
-
-      /* Jacobian-based Gershgorin spectral radius estimate */
-      double _rhoEst = 0.0;
-      if (_jacAvailable && neqOde > 0 && ind->rc[0] != -2019 && !ind->err) {
-        int _tid = rx_get_thread((int)__autoJacBuf.size());
-        if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
-            (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
-          double *_jbuf = __autoJacBuf[_tid].data();
-          int _neqTmp[2] = { neqOde, neq[1] };
-          calc_jac(_neqTmp, xout, yp, _jbuf, (unsigned int)neqOde);
-          _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
+    /* --- Pre-interval Gershgorin check (non-stiff mode only) ---
+       Computed on current yp at xpOrig — catches stiffness already present at
+       interval start, avoiding a doomed primary solve.  Replaces the post-interval
+       ratio check for autoMethod==0 so there is still only one Jacobian call per
+       interval. */
+    double _rhoEst = 0.0;
+    double _stiffRatio = 0.0;
+    bool _preStiff = false;
+    if (_autoSwitchActive && _jacAvailable && ind->autoMethod == 0 && neqOde > 0 && _dt != 0.0) {
+      int _tid = rx_get_thread((int)__autoJacBuf.size());
+      if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
+          (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
+        double *_jbuf = __autoJacBuf[_tid].data();
+        int _neqTmp[2] = { neqOde, neq[1] };
+        calc_jac(_neqTmp, _xpOrig, yp, _jbuf, (unsigned int)neqOde);
+        _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
+        if (_rhoEst > 0.0) {
+          _stiffRatio = _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff);
+          _preStiff = (_stiffRatio > op->autoSwitchNonstifftol);
         }
       }
+    }
 
-      /* Stability size always from the primary non-stiff method (op->stiff),
-         so the ratio answers "would the primary handle this step stably?" */
-      double _stiffRatio = (_rhoEst > 0.0 && _dt != 0.0)
-          ? _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff)
-          : 0.0;
+    if (_autoSwitchActive && _preStiff) {
+      /* Stiff at interval start: skip primary entirely, use stiff secondary */
+      ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
+      if (ind->autoHcur <= 0.0) ind->autoHcur = fabs(_dt);
+      ind->autoHcur *= op->autoSwitchDtfac;
+      _rxSolveOneInterval(op->stiff2, false,
+                          neq, yp, &xp, xout, istate, &idid,
+                          op, ind, i, ctx, eff);
+      if (ind->autoCount >= op->autoSwitchMaxStiff) {
+        ind->autoMethod = 1;
+        ind->autoCount  = 0;
+        ind->autoLastSwitchIntervals = 0;
+      }
+    } else {
+      /* Run primary (or stiff, when ind->autoMethod==1) interval */
+      _rxSolveOneInterval(_effectiveMethod, _autoSwitchPrimary,
+                          neq, yp, &xp, xout, istate, &idid,
+                          op, ind, i, ctx, eff);
+    }
 
-      bool _failed        = (ind->rc[0] == -2019 || ind->err != 0);
-      bool _dop853Stiff   = (_effectiveMethod == 0 && idid == -4);
-      bool _ratioStiff    = (_stiffRatio > op->autoSwitchNonstifftol);
-      bool _stiffIndicator = _failed || _dop853Stiff || _ratioStiff;
+    /* AutoSwitch post-step logic */
+    if (_autoSwitchActive && !_preStiff) {
+      bool _failed      = (ind->rc[0] == -2019 || ind->err != 0);
+      bool _dop853Stiff = (_effectiveMethod == 0 && idid == -4);
+      bool _hardStiff   = _failed || _dop853Stiff;
 
       if (ind->autoMethod == 0) {
-        /* Currently using non-stiff primary */
-        if (_stiffIndicator) {
-          /* Retry with stiff secondary */
+        /* Non-stiff primary was used.
+           Pre-interval ratio check already handled soft stiffness (_preStiff path).
+           Only hard failures (solver died or dop853 stiff flag) need retry here. */
+        if (_hardStiff) {
           ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
           memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
           xp = _xpOrig;
-
           ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
           if (ind->autoHcur <= 0.0) ind->autoHcur = fabs(_dt);
           ind->autoHcur *= op->autoSwitchDtfac;
-
           _rxSolveOneInterval(op->stiff2, false,
                               neq, yp, &xp, xout, istate, &idid,
                               op, ind, i, ctx, eff);
-
           if (ind->autoCount >= op->autoSwitchMaxStiff) {
             ind->autoMethod = 1;
             ind->autoCount  = 0;
+            ind->autoLastSwitchIntervals = 0;
           }
         } else {
           if (ind->autoCount > 0) ind->autoCount = 0;
+          ind->autoLastSwitchIntervals++;
         }
       } else {
-        /* Currently using stiff secondary: check for switch back */
+        /* Stiff secondary was used: check for switch-back.
+           Post-interval Gershgorin gives an accurate end-of-interval assessment. */
+        ind->autoLastSwitchIntervals++;
+        if (!_failed && _jacAvailable && neqOde > 0) {
+          int _tid = rx_get_thread((int)__autoJacBuf.size());
+          if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
+              (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
+            double *_jbuf = __autoJacBuf[_tid].data();
+            int _neqTmp[2] = { neqOde, neq[1] };
+            calc_jac(_neqTmp, xout, yp, _jbuf, (unsigned int)neqOde);
+            _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
+            _stiffRatio = (_rhoEst > 0.0 && _dt != 0.0)
+                ? _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff)
+                : 0.0;
+          }
+        }
         if (!_failed) {
           bool _nonstiffByRatio = (_jacAvailable && _rhoEst > 0.0 &&
                                    _stiffRatio < op->autoSwitchStifftol);
-          if (_nonstiffByRatio) {
+          /* Oscillation guard: require min intervals since last switch before switching back */
+          bool _guardOk = (op->autoSwitchSwitchMax == 0 ||
+                           ind->autoLastSwitchIntervals >= op->autoSwitchSwitchMax);
+          if (_nonstiffByRatio && _guardOk) {
             ind->autoCount = (ind->autoCount < 0) ? ind->autoCount - 1 : -1;
             if (op->autoSwitchMaxNonstiff > 0 &&
                 -ind->autoCount >= op->autoSwitchMaxNonstiff) {
               ind->autoMethod = 0;
               ind->autoCount  = 0;
+              ind->autoLastSwitchIntervals = 0;
               if (ind->autoHcur > 0.0) ind->autoHcur /= op->autoSwitchDtfac;
             }
-          } else {
+          } else if (!_nonstiffByRatio) {
             if (ind->autoCount < 0) ind->autoCount = 0;
           }
         }
       }
-
-      if (_ypDyn != NULL) { free(_ypDyn); _ypDyn = NULL; }
     }
+
+    if (_ypDyn != NULL) { free(_ypDyn); _ypDyn = NULL; }
   }
 }
 

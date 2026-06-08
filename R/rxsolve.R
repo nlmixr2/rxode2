@@ -1070,6 +1070,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     autoSwitchMaxStiff=10L,
                     autoSwitchMaxNonstiff=3L,
                     autoSwitchStiffFirst=FALSE,
+                    autoSwitchSwitchMax=5L,
                     stiff2=0L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
@@ -1191,6 +1192,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(as.numeric(autoSwitchDtfac), lower=1, len=1, any.missing=FALSE)
     checkmate::assertIntegerish(autoSwitchMaxStiff, lower=1L, len=1, any.missing=FALSE)
     checkmate::assertIntegerish(autoSwitchMaxNonstiff, lower=1L, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(autoSwitchSwitchMax, lower=0L, len=1, any.missing=FALSE)
     if (is.logical(autoSwitchStiffFirst)) {
       checkmate::assertLogical(autoSwitchStiffFirst, len=1, any.missing=FALSE)
     } else {
@@ -1709,6 +1711,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       autoSwitchNonstifftol=as.double(autoSwitchNonstifftol),
       autoSwitchStifftol=as.double(autoSwitchStifftol),
       autoSwitchDtfac=as.double(autoSwitchDtfac),
+      autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2275,6 +2278,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .tmp <- events
     events <- params
     params <- .tmp
+  }
+  if (inherits(inits, "rxControl")) {
+    stop("'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')",
+         call. = FALSE)
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (rxIsImplicit(.ctl$method) ||

@@ -133,6 +133,7 @@ typedef struct {
   double autoSwitchNonstifftol; /* stiffness ratio threshold in non-stiff mode (default 0.9) */
   double autoSwitchStifftol;    /* non-stiffness ratio threshold in stiff mode (default 0.9) */
   double autoSwitchDtfac;       /* dt multiplier on switch-to-stiff; divides on switch-back (default 2.0) */
+  int    autoSwitchSwitchMax;   /* min intervals after a switch before switch-back allowed (default 5) */
 } rx_solving_options;
 
 
@@ -310,9 +311,10 @@ struct rx_solving_options_ind_s {
   int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
   int _atEventTime;     // set before each event-table interval; consumed once in dydt
   int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
-  int    autoMethod;  /* 0 = using primary (non-stiff), 1 = using secondary (stiff) */
-  int    autoCount;   /* positive = consecutive stiff detections; negative = nonstiff */
-  double autoHcur;    /* current suggested step size for autoswitch (tracks dtfac scaling) */
+  int    autoMethod;             /* 0 = using primary (non-stiff), 1 = using secondary (stiff) */
+  int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */
+  double autoHcur;               /* current suggested step size for autoswitch (tracks dtfac scaling) */
+  int    autoLastSwitchIntervals; /* intervals elapsed since last permanent method switch */
   rx_fn_pointers *fns;
   rx_solving_options *op;
   rx_solve *rx;

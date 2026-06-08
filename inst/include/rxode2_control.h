@@ -125,5 +125,6 @@
 #define Rxc_autoSwitchNonstifftol 120
 #define Rxc_autoSwitchStifftol 121
 #define Rxc_autoSwitchDtfac 122
-#define Rxc__zeros 123
+#define Rxc_autoSwitchSwitchMax 123
+#define Rxc__zeros 124
 #endif // __rxode2_control_H__

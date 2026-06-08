@@ -87,7 +87,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
               if (neqOde > 0) {
                   state_type state(neqOde);
-                  double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                  double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   sys.first.xout_ = ind->extraDoseNewXout;
                   sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -126,7 +127,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                 if (neqOde > 0) {
                     state_type state(neqOde);
-                    double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                    double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
                     if (xout < ind->extraDoseNewXout) dt = -dt;
                     sys.first.xout_ = xout;
                     sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -157,7 +159,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           
           if (neqOde > 0) {
               state_type state(neqOde);
-              double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+              double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
               if (xout < xp) dt = -dt;
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -310,7 +313,8 @@ extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   
   if (neqOde > 0) {
       state_type state(neqOde);
-      double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+      double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
       if (xout < *xp) dt = -dt;
       sys.first.xout_ = xout;
       sys.first.sign_ = (dt > 0) ? 1 : -1;

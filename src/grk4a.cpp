@@ -8,7 +8,8 @@ static inline void grk4a_do_steps(RxGRK4A *solver, rx_solving_options_ind *ind, 
                                     double xp, double xout) {
   double tint = xout - xp;
   if (tint == 0.0) return;
-  double dt = op->HMIN > 0.0 ? op->HMIN : 0.01;
+  double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
+            : (op->HMIN > 0.0) ? op->HMIN : 0.01;
   if (dt <= 0.0) dt = 0.01;
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
   if (tint < 0.0) dt = -dt;

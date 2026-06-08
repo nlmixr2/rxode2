@@ -124,7 +124,8 @@
 #define Rxc_autoSwitchNonstifftol 120
 #define Rxc_autoSwitchStifftol 121
 #define Rxc_autoSwitchDtfac 122
-#define Rxc__zeros 123
+#define Rxc_autoSwitchSwitchMax 123
+#define Rxc__zeros 124
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
