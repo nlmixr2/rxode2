@@ -558,66 +558,16 @@ writeLines(gsub("@ISYSTEM@", .i, .in),
              .makevars)
 close(.makevars)
 
-if (file.exists("man/reexports.Rd")) {
-  l <- readLines("man/reexports.Rd")
-  if (!any(regexpr("[\\]value", l) != -1)) {
-    l <- c(l, "\\value{ Inherited from parent routine }")
-    file.out <- file("man/reexports.Rd", "wb")
-    writeLines(l, file.out)
-    close(file.out)
-  }
-}
-
-
-unlink("R/rxode2_md5.R")
-
-cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
-include <- list.files("inst/include", recursive = TRUE)
-#Rfiles <- list.files("R/", pattern = ".R")
-
-cmd <- file.path(R.home("bin"), "R")
-args <- c("CMD", "config")
-
-md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
-                                 paste0("inst/include/", include)#,
-                                 #paste0("R/", Rfiles)
-                                 ), digest::digest, file = TRUE),
-                        ## vapply(c("BLAS_LIBS", "CC",  "CFLAGS", "CPICFLAGS",
-                        ##          "CXX", "CXXFLAGS", "CXXPICFLAGS",
-                        ##          "CXX11", "CXX11STD", "CXX11FLAGS", "CXX11PICFLAGS",
-                        ##          "CXX14", "CXX14STD", "CXX14FLAGS", "CXX14PICFLAGS",
-                        ##          "CXX17", "CXX17STD", "CXX17FLAGS", "CXX17PICFLAGS",
-                        ##          "CXX20", "CXX20STD", "CXX20FLAGS", "CXX20PICFLAGS",
-                        ##          "FC", "FFLAGS", "FCFLAGS",  "FPICFLAGS"),
-                        ##        function(cfg) {
-                        ##          rawToChar(sys::exec_internal(cmd, c(args, cfg))$stdout)
-                        ##        }, character(1)
-                        ##       ),
-                        ""
-                        ))
-unlink("R/rxode2_md5.R")
-md5file <- file("R/rxode2_md5.R", "wb")
-writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)
-close(md5file)
-
-l <- readLines("DESCRIPTION")
-w <- which(regexpr("Version[:] *(.*)$", l) != -1)
-v <- gsub("Version[:] *(.*)$", "\\1", l[w])
-
-unlink("inst/include/rxode2parseVer.h")
-ode.h <- file("inst/include/rxode2parseVer.h", "wb")
-writeLines(c(sprintf("#define __VER_md5__ \"%s\"", md5),
-             "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
-             sprintf("#define __VER_ver__ \"%s\"", v)),
-           ode.h)
-close(ode.h)
+## --- Compilation prerequisites: generate before anything that may fail ---
+## sbuf.c and codegen2.h are required for compilation.  They must be written
+## before the digest::digest() call below, which needs the 'digest' package
+## (Suggests, not Imports) and may be absent on --no-suggests CI runners.
 
 unlink("src/sbuf.c")
 l <- readLines("inst/include/sbuf.c")
 sbuf.c <- file("src/sbuf.c", "wb")
 writeLines(l, sbuf.c)
 close(sbuf.c)
-
 
 unlink("src/codegen2.h")
 l <- readLines("inst/include/rxode2_model_shared.c")
@@ -730,3 +680,42 @@ codegen2.h <- file("src/codegen2.h", "wb")
 writeLines(final,
            codegen2.h)
 close(codegen2.h)
+
+## --- Optional: model-cache MD5 (needs 'digest', which is in Suggests) ---
+## Skipped gracefully when digest is not installed (e.g. --no-suggests CI).
+
+if (file.exists("man/reexports.Rd")) {
+  l <- readLines("man/reexports.Rd")
+  if (!any(regexpr("[\\]value", l) != -1)) {
+    l <- c(l, "\\value{ Inherited from parent routine }")
+    file.out <- file("man/reexports.Rd", "wb")
+    writeLines(l, file.out)
+    close(file.out)
+  }
+}
+
+if (requireNamespace("digest", quietly = TRUE)) {
+  cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
+  include <- list.files("inst/include", recursive = TRUE)
+
+  md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
+                                   paste0("inst/include/", include)
+                                   ), digest::digest, file = TRUE),
+                          ""))
+  unlink("R/rxode2_md5.R")
+  md5file <- file("R/rxode2_md5.R", "wb")
+  writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)
+  close(md5file)
+
+  l <- readLines("DESCRIPTION")
+  w <- which(regexpr("Version[:] *(.*)$", l) != -1)
+  v <- gsub("Version[:] *(.*)$", "\\1", l[w])
+
+  unlink("inst/include/rxode2parseVer.h")
+  ode.h <- file("inst/include/rxode2parseVer.h", "wb")
+  writeLines(c(sprintf("#define __VER_md5__ \"%s\"", md5),
+               "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
+               sprintf("#define __VER_ver__ \"%s\"", v)),
+             ode.h)
+  close(ode.h)
+}
