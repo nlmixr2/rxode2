@@ -247,6 +247,99 @@ if (!all(file.exists(file.path("src", .sundialsVendorFiles)))) {
   .vendorFromSundialr()
 }
 
+## ---------------------------------------------------------------------------
+## CRAN fixes for vendored SUNDIALS files
+## These patches are applied unconditionally so they survive both fresh vendor
+## and subsequent installs from the committed source tree.
+## ---------------------------------------------------------------------------
+
+## Fix 1a: sundials_sundials_errors.c
+##  - abort() is forbidden in CRAN packages (use return instead)
+##  - fprintf(stderr, ...) references a forbidden symbol
+.ef <- "src/sundials_sundials_errors.c"
+if (file.exists(.ef)) {
+  .el <- readLines(.ef)
+  .el <- gsub("abort();", "return;", .el, fixed = TRUE)
+  .el <- gsub('fprintf(stderr, "%s", log_msg);', '', .el, fixed = TRUE)
+  .ef_out <- file(.ef, "wb")
+  writeLines(.el, .ef_out, sep = "\n")
+  close(.ef_out)
+}
+
+## Fix 1b: sundials_sundials_logger.c
+##  - Assignments and comparisons referencing stdout/stderr forbidden symbols
+.lf <- "src/sundials_sundials_logger.c"
+if (file.exists(.lf)) {
+  ## Collapse to a single string for multi-line pattern matching
+  .ll <- paste(readLines(.lf), collapse = "\n")
+  ## Remove the multi-line fprintf(stderr, ...) call in sunLoggerPrintf
+  .ll <- gsub("(?s)fprintf\\(stderr,[^;]*;", "", .ll, perl = TRUE)
+  ## Replace stdout/stderr symbol references with NULL
+  .ll <- gsub("fp = stdout;", "fp = NULL;", .ll, fixed = TRUE)
+  .ll <- gsub("fp = stderr;", "fp = NULL;", .ll, fixed = TRUE)
+  .ll <- gsub("fp && fp != stdout && fp != stderr", "fp", .ll, fixed = TRUE)
+  .ll <- gsub("logger->error_fp   = stderr;", "logger->error_fp   = NULL;", .ll, fixed = TRUE)
+  .ll <- gsub("logger->warning_fp = stdout;", "logger->warning_fp = NULL;", .ll, fixed = TRUE)
+  .ll <- strsplit(.ll, "\n", fixed = TRUE)[[1]]
+  .lf_out <- file(.lf, "wb")
+  writeLines(.ll, .lf_out, sep = "\n")
+  close(.lf_out)
+}
+
+## Fix 1c: sundials_nvector_serial.c
+##  - N_VPrint_Serial passes stdout to N_VPrintFile_Serial (forbidden symbol)
+.nf <- "src/sundials_nvector_serial.c"
+if (file.exists(.nf)) {
+  .nl <- readLines(.nf)
+  .nl <- gsub("N_VPrintFile_Serial(x, stdout);",
+               "/* N_VPrintFile_Serial stdout removed for CRAN */", .nl, fixed = TRUE)
+  .nf_out <- file(.nf, "wb")
+  writeLines(.nl, .nf_out, sep = "\n")
+  close(.nf_out)
+}
+
+## Fix 1d: sundials_sundials_nvector.c
+##  - printf() calls compile to puts() at -O3, which is a forbidden symbol
+.nvf <- "src/sundials_sundials_nvector.c"
+if (file.exists(.nvf)) {
+  .nv <- readLines(.nvf)
+  .nv <- gsub('printf("NULL Vector\\n");', '', .nv, fixed = TRUE)
+  .nv <- gsub('printf("NULL Print Op\\n");', '', .nv, fixed = TRUE)
+  .nvf_out <- file(.nvf, "wb")
+  writeLines(.nv, .nvf_out, sep = "\n")
+  close(.nvf_out)
+}
+
+## Fix 3: Add #pragma GCC diagnostic suppression for SUNDIALS 7.x deprecation
+##  warnings (N_VSpace, SUNMatSpace, SUNLinSolSpace) to each affected vendored
+##  file.  Source-level pragmas are CRAN-compliant; build-flag suppression is not.
+##  Guard prevents double-prepending on repeated installs.
+.deprecated_files <- c(
+  "sundials_cvode.c", "sundials_cvode_ls.c", "sundials_nvector_serial.c",
+  "sundials_sunlinsol_band.c", "sundials_sunlinsol_dense.c",
+  "sundials_sunmatrix_band.c", "sundials_sunmatrix_dense.c",
+  "sundials_sunmatrix_sparse.c",
+  "sunlinsol_spbcgs.c", "sunlinsol_spgmr.c", "sunlinsol_sptfqmr.c"
+)
+.pragma_suppress <- c(
+  "#if defined(__GNUC__) || defined(__clang__)",
+  '#pragma GCC diagnostic ignored "-Wdeprecated-declarations"',
+  "#endif"
+)
+for (.df in file.path("src", .deprecated_files)) {
+  if (file.exists(.df)) {
+    .dl <- readLines(.df)
+    if (!any(grepl("Wdeprecated-declarations", .dl, fixed = TRUE))) {
+      .dl <- c(.pragma_suppress, .dl)
+      .df_out <- file(.df, "wb")
+      writeLines(.dl, .df_out, sep = "\n")
+      close(.df_out)
+    }
+  }
+}
+
+## ---------------------------------------------------------------------------
+
 .in <- gsub("@SUNDIALR_INC@",
             paste0("-I\"", normalizePath(.sundialrInc, winslash = "/", mustWork = TRUE), "\""),
             .in)

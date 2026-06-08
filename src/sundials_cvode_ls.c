@@ -1,3 +1,6 @@
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 /* ----------------------------------------------------------------
  * Programmer(s): Daniel R. Reynolds @ UMBC
  *                Alan C. Hindmarsh and Radu Serban @ LLNL

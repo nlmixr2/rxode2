@@ -55,8 +55,8 @@ cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
   ctx->rhs_data = rhs_data;
   ctx->neq      = (sunindextype)neq;
 
-  // SUNDIALS 6.x: SUNContext_Create takes void* comm (NULL for serial)
-  if (SUNContext_Create(NULL, &ctx->sunctx) != 0) {
+  // SUNComm is int (non-MPI serial build); pass 0 not NULL to avoid -Wconversion-null
+  if (SUNContext_Create(0, &ctx->sunctx) != 0) {
     free(ctx); return NULL;
   }
 

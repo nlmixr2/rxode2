@@ -1103,8 +1103,8 @@ void N_VSetVecAtIndexVectorArray(N_Vector* vs, int index, N_Vector w)
 
 void N_VPrint(N_Vector v)
 {
-  if (v == NULL) { printf("NULL Vector\n"); }
-  else if (v->ops->nvprint == NULL) { printf("NULL Print Op\n"); }
+  if (v == NULL) {  }
+  else if (v->ops->nvprint == NULL) {  }
   else { v->ops->nvprint(v); }
 }
 

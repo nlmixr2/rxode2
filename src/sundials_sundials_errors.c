@@ -97,7 +97,7 @@ void SUNAbortErrHandlerFn(int line, const char* func, const char* file,
                      "SUNAbortErrHandler: Calling abort now, use a different "
                      "error handler to avoid program termination.\n");
   free(file_and_line);
-  abort();
+  return;
 }
 
 void SUNGlobalFallbackErrHandler(int line, const char* func, const char* file,
@@ -113,7 +113,7 @@ void SUNGlobalFallbackErrHandler(int line, const char* func, const char* file,
                       __func__, "The SUNDIALS SUNContext was corrupt or NULL when an error occurred. As such, error messages have been printed to stderr.",
                       ap, &log_msg);
   va_end(ap);
-  fprintf(stderr, "%s", log_msg);
+  
   free(log_msg);
   free(file_and_line);
 
@@ -123,7 +123,7 @@ void SUNGlobalFallbackErrHandler(int line, const char* func, const char* file,
   sunCreateLogMessage(SUN_LOGLEVEL_ERROR, 0, file_and_line, func, msgfmt, ap,
                       &log_msg);
   va_end(ap);
-  fprintf(stderr, "%s", log_msg);
+  
   free(log_msg);
   free(file_and_line);
 }

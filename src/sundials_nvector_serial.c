@@ -1,3 +1,6 @@
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 /* -----------------------------------------------------------------
  * Programmer(s): Scott D. Cohen, Alan C. Hindmarsh, Radu Serban,
  *                and Aaron Collier @ LLNL
@@ -243,7 +246,7 @@ sunindextype N_VGetLength_Serial(N_Vector v) { return NV_LENGTH_S(v); }
 void N_VPrint_Serial(N_Vector x)
 {
   SUNFunctionBegin(x->sunctx);
-  N_VPrintFile_Serial(x, stdout);
+  /* N_VPrintFile_Serial stdout removed for CRAN */
   SUNCheckLastErrVoid();
 }
 

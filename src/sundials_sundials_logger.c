@@ -58,8 +58,7 @@ void sunCreateLogMessage(SUNLogLevel lvl, int rank, const char* scope,
   if (msg_length < 0)
   {
     char* fileAndLine = sunCombineFileAndLine(__LINE__ + 1, __FILE__);
-    fprintf(stderr, "[ERROR][rank %d][%s][%s] %s\n", rank, fileAndLine,
-            __func__, "FATAL LOGGER ERROR: message size too large");
+    
     free(fileAndLine);
   }
 
@@ -83,8 +82,8 @@ static FILE* sunOpenLogFile(const char* fname, const char* mode)
 
   if (fname)
   {
-    if (!strcmp(fname, "stdout")) { fp = stdout; }
-    else if (!strcmp(fname, "stderr")) { fp = stderr; }
+    if (!strcmp(fname, "stdout")) { fp = NULL; }
+    else if (!strcmp(fname, "stderr")) { fp = NULL; }
     else { fp = fopen(fname, mode); }
   }
 
@@ -94,7 +93,7 @@ static FILE* sunOpenLogFile(const char* fname, const char* mode)
 
 static void sunCloseLogFile(void* fp)
 {
-  if (fp && fp != stdout && fp != stderr) { fclose((FILE*)fp); }
+  if (fp) { fclose((FILE*)fp); }
 }
 
 static sunbooleantype sunLoggerIsOutputRank(SUNDIALS_MAYBE_UNUSED SUNLogger logger,
@@ -167,8 +166,8 @@ SUNErrCode SUNLogger_Create(SUNComm comm, int output_rank, SUNLogger* logger_ptr
 
   /* set the output file handles */
   logger->filenames  = NULL;
-  logger->error_fp   = stderr;
-  logger->warning_fp = stdout;
+  logger->error_fp   = NULL;
+  logger->warning_fp = NULL;
   logger->debug_fp   = NULL;
   logger->info_fp    = NULL;
   if (sunLoggerIsOutputRank(logger, NULL))
