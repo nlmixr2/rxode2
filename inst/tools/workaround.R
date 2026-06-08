@@ -1,6 +1,12 @@
 ## This is only for rxode2
+## Prepend a guarded RcppArmadillo include so that RcppArmadillo.h is always
+## included before Rcpp.h (newer RcppArmadillo versions require this order).
+## The #ifndef RCPP_H guard makes the block a no-op when Rcpp.h was already
+## pulled in by an earlier translation-unit include.
 for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   l <- readLines(f)
+  ## Remove any stale bare RcppArmadillo / R_STRICT_HEADERS lines we may have
+  ## injected in a previous configure run, so we can re-inject the guarded form.
   w <- which(regexpr("^[#]include <RcppArmadillo.h>", l) != -1)
   if (length(w) > 0) {
     l <- l[-w]
@@ -9,8 +15,18 @@ for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   if (length(w) > 0) {
     l <- l[-w]
   }
-  l <- c("#define R_STRICT_HEADERS",
-         "#include <RcppArmadillo.h>",
+  ## Remove any stale guard lines from a previous run
+  w <- which(regexpr("^#ifndef RCPP_H$", l) != -1)
+  if (length(w) > 0) {
+    ## Remove: #ifndef RCPP_H, following lines up to matching #endif
+    .start <- w[1]
+    .end <- which(regexpr("^#endif", l[seq(.start, length(l))]) != -1)[1] + .start - 1L
+    if (!is.na(.end)) l <- l[-seq(.start, .end)]
+  }
+  l <- c("#ifndef RCPP_H",
+         "#  define R_STRICT_HEADERS",
+         "#  include <RcppArmadillo.h>",
+         "#endif",
          l)
   file.out <- file(f, "wb")
   writeLines(l, file.out)
