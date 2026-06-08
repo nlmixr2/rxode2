@@ -16,6 +16,7 @@
 
 
 void RSprintf(const char *format, ...);
+#include "solveWarn.h"
 
 int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 
@@ -53,7 +54,11 @@ int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 	}
 	tp = _rxC(tn) - _rxC(hu) - 100. * ETA * (_rxC(tn) + _rxC(hu));
 	if ((t - tp) * (t - _rxC(tn)) > 0.) {
-	  RSprintf(_("intdy -- t = %g illegal. t not in interval tcur - _rxC(hu) to tcur\n"), t);
+	  /* The integrator was asked to interpolate the solution at a time
+	     outside [tcur - hu, tcur]. Aggregate instead of printing per
+	     occurrence; the flusher in par_solve / nlmixr2est prints one
+	     summary line. */
+	  rxSolveWarnPush(RX_WARN_INTDY, _rxC(id));
 	  return -2;
 	}
 	s = (t - _rxC(tn)) / _rxC(h);

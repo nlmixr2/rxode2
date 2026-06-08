@@ -32,6 +32,7 @@ extern "C" void setRxSeedFinal(uint32_t seed);
 extern "C" {
 #include "dop853.h"
 #include "common.h"
+#include "solveWarn.h"
 #include "lsoda.h"
 #include "rxode2_df.h"
 }
@@ -2996,6 +2997,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   } else {
     lsoda_prepare(ctx, &opt);
   }
+  /* Record the rxode2 subject id on the LSODA context so intdy.c can
+     attribute its warnings to the correct subject. Placed before `memory`
+     in lsoda_common_t so lsoda_reset's memset doesn't clobber it on
+     pooled-context reuse. */
+  ctx->common->id = ind->id;
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
@@ -5411,6 +5417,11 @@ extern "C" void par_solve(rx_solve *rx) {
       iniSubject((int)_sid, 1, &rx->subjects[_sid], op, rx, update_inis);
     }
   }
+  /* Standalone rxSolve users see one summary line per call instead of a
+     flood. nlmixr2est does not enter through par_solve for inner iterations
+     (it calls ind_solve per subject) and flushes from its own iteration
+     printout — so this flush will not interfere with that aggregation. */
+  rxSolveWarnFlush(5);
   par_progress_0=0;
 }
 
