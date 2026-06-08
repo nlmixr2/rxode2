@@ -166,3 +166,4 @@ tests/testthat/test-lincmt-parse.R
 ^src/sunlinsol_spgmr\.c$
 ^src/sunlinsol_spbcgs\.c$
 ^src/sunlinsol_sptfqmr\.c$
+^src/cvode_impl\.h$

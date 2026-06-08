@@ -6567,9 +6567,15 @@ extern "C" void par_solve(rx_solve *rx) {
 #else
       int cores = 1;
 #endif
+      int etaCores = cores;
+      // DLSODA/DLSODE backends are intentionally single-threaded (COMMON blocks).
+      // Keep ETA pre-generation single-threaded too for these methods on Windows.
+      if (op->stiff == 1 || op->stiff == 106 || op->stiff == 107) {
+        etaCores = 1;
+      }
       // Pre-generate all eta draws before the parallel loop.
       // simeta() reads from the buffer instead of calling rxRmvnA() per subject.
-      rxPreGenEta(rx, cores);
+      rxPreGenEta(rx, etaCores);
       switch(op->stiff){
       case 3:
         par_indLin(rx);

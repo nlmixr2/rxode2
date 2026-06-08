@@ -58,3 +58,4 @@ src/cvode_*_impl.h
 src/sunlinsol_spgmr.c
 src/sunlinsol_spbcgs.c
 src/sunlinsol_sptfqmr.c
+src/cvode_impl.h
