@@ -1649,7 +1649,7 @@ extern "C" void atolRtolFactorC_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
-  // Modify only the current thread's tolerance arrays — fully thread-safe,
+  // Modify only the current thread's tolerance arrays - fully thread-safe,
   // no critical section needed because each thread has its own slice.
   int _threadId = omp_get_thread_num();
   double *_atol2  = _globals.gatol2Thread  + op->neq * _threadId;
@@ -1745,7 +1745,7 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   double *newAT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
   // Allocate solve with EVID_EXTRA_SIZE extra event slots so that _rxPushDose
   // can grow n_all_times by up to EVID_EXTRA_SIZE without OOB in the solve loop.
-  // updateSolve() will realloc further if needed (safe there — between ODE steps).
+  // updateSolve() will realloc further if needed (safe there - between ODE steps).
   int solveN = nat + EVID_EXTRA_SIZE;
   double *newSolve = (double*)calloc((int64_t)op->neq * solveN, sizeof(double));
   // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
@@ -2787,7 +2787,7 @@ LogicalVector rxSolveFree(){
   if (rx->splitBolus != NULL) free(rx->splitBolus);
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
-  // linCmtScale points into an R vector (via REAL()), never malloc'd — just null it
+  // linCmtScale points into an R vector (via REAL()), never malloc'd - just null it
   rx->linCmtScale = NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
@@ -5375,7 +5375,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   rxAssignPtr(SEXP(obj));
 
   // Build a minimal rxSolveDat for the finalize path.
-  // DO NOT memset — rxSolve_t contains Rcpp objects (List, RObject, etc.)
+  // DO NOT memset - rxSolve_t contains Rcpp objects (List, RObject, etc.)
   // whose constructors initialize internal SEXP to R_NilValue; memset would
   // corrupt those to NULL pointer, causing VECTOR_ELT crashes.
   rxSolve_t rxSolveDat{};
@@ -5527,22 +5527,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       object = obj;
     }
-    if (method == 3){
-      rxSolveDat->mv = rxModelVars(object);
-      rxSolveFreeObj = object;
-      List indLin = rxSolveDat->mv[RxMv_indLin];
-      if (indLin.size() == 0){
-        Function rxode2 = getRxFn("rxode2");
-        object = rxode2(object, _["indLin"]=true);
-        rxSolveDat->mv = rxModelVars(object);
-        rxSolveFreeObj = object;
-      } // else {
-      //  object =obj;
-      // }
-    } else {
-      rxSolveDat->mv = rxModelVars(object);
-      rxSolveFreeObj = object;
-    }
+    rxSolveDat->mv = rxModelVars(object);
+    rxSolveFreeObj = object;
   }
   if (rxSolveDat->mv.size() == 0) {
     // sometimes the model variables have not been assigned, but this
@@ -6022,7 +6008,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       (int64_t)scaleC.size(),                 /* n6_actual */
       &_mem);
 
-    // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
+    // Guard 1: fast hard limit - n0 > INT_MAX means gsolve alone exceeds ~16 GB.
     // Portable, zero-cost backstop that catches the dominant overflow path.
     if (_mem.n0 > (int64_t)INT_MAX) {
       rxSolveFree();
@@ -6053,7 +6039,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_mem.gsolve_total * sizeof(double) / 1e9);
     }
-    // Pointer layout within gsolve — field names match rx_mem_layout members.
+    // Pointer layout within gsolve - field names match rx_mem_layout members.
     _globals.gLin        = _globals.gsolve     + _mem.n0;
     _globals.gLlikSave   = _globals.gLin        + _mem.nlin;
     _globals.gSolveSave  = _globals.gLlikSave   + _mem.nllik_c;

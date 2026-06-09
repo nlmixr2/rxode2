@@ -801,10 +801,11 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
     }
   }
   if (indLin) {
-    .code <- .rxIndLin(.ret)
-    .new <- paste0(rxNorm(.ret), "\n", .code)
-    assignInMyNamespace(".rxMECode", .code)
-    .ret <- rxModelVars(.new)
+    ## Convert the ODE model to a pure matrix exponential model using
+    ## rxToIndLin() so it uses doIndLin == 1/2 (not the old 3/4 paths).
+    .mexpCode <- rxToIndLin(.ret, calcSens = calcSens)
+    .ret <- rxModelVars(.mexpCode)
+    assignInMyNamespace(".indLinInfo", .ret$indLin)
   } else if (length(.ret$indLin) == 4L) {
     ## NONMEM-like matrix exponential model: the parser already set up
     ## a 4-element indLin list via genModelVars.c (when tb.isMexp=1).

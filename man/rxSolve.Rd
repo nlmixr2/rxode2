@@ -990,7 +990,7 @@ observations) that \code{evid_()} may push per individual per solve.
 When an individual exceeds this limit the solve is aborted for
 that individual (output filled with \code{NA}) and an error is raised
 after the full parallel solve completes.  Set to \code{0L} to allow
-unlimited pushes (use with care — cascading \code{evid_()} calls can
+unlimited pushes (use with care - cascading \code{evid_()} calls can
 grow without bound).  Default is \code{100L}.}
 
 \item{tolFactor}{A per-individual tolerance multiplier (>= 1.0, or
@@ -1004,12 +1004,12 @@ problematic subjects and leave the rest at 1.0 (or omit them).
 The effective tolerance is always capped at \code{maxAtolRtolFactor}.
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{`tolFactor` may be:
-* `NULL` (default) — no adjustment applied.
-* A single numeric value — the same factor is applied to
+* `NULL` (default) - no adjustment applied.
+* A single numeric value - the same factor is applied to
   the first `length(tolFactor)` subjects in order.
-* A numeric vector — applied element-wise to subjects in
+* A numeric vector - applied element-wise to subjects in
   the order they appear.
-* A **named** numeric vector — names are matched to subject
+* A **named** numeric vector - names are matched to subject
   IDs; unmatched subjects retain `tolFactor = 1.0`.
 
 The per-subject factors used (after matching) are stored back

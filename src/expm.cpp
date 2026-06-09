@@ -343,69 +343,10 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   case 1: {
     return meOnly(cSub, yp_, yp_, tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
   }
-  case 3: {
-    // Matrix exponential  +  inductive linearzation
-    arma::vec wLast(neq);
-    arma::vec w(yp_, neq);
-    arma::vec y0 = w;
-    // Update first value
-    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
-    // Don't update rest
-    wLast = w;
-    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
-    bool converge = false;
-    for (int i = 0; i < maxsteps; ++i){
-      converge=true;
-      for (int j=op->indLinN;j--;){
-    	if (fabs(w[op->indLin[j]]-wLast[op->indLin[j]]) >= rtol[op->indLin[j]]*fabs(w[op->indLin[j]])+
-	    atol[op->indLin[j]]){
-    	  converge = false;
-    	  break;
-    	}
-      }
-      if (converge){
-    	break;
-      }
-      wLast = w;
-      meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, InfusionRate_, on_, ME, op, ind);
-    }
-    std::copy(w.begin(), w.begin()+neq, yp_);
-    return 1;
-  }
   case 2: {
     arma::vec u(neq);
     IndF(cSub, tcov, tf, u.memptr());
     return meOnly(cSub, yp_, yp_, tp, tf, tcov, u.memptr(), on_, ME, op, ind);
-  }
-  case 4: {
-    // Matrix exponential with + u and inductive linearization
-    arma::vec u(neq);
-    IndF(cSub, tcov, tf, u.memptr());
-    arma::vec wLast(neq);
-    arma::vec w(yp_, neq);
-    arma::vec y0 = w;
-    // Update first value
-    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, u.memptr(), on_, ME, op, ind);
-    wLast = w;
-    meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, u.memptr(), on_, ME, op, ind);
-    bool converge = false;
-    for (int i = 0; i < maxsteps; ++i){
-      converge=true;
-      for (int j=op->indLinN;j--;){
-    	if (fabs(w[op->indLin[j]]-wLast[op->indLin[j]]) >= rtol[op->indLin[j]]*fabs(w[op->indLin[j]])+
-	    atol[op->indLin[j]]){
-    	  converge = false;
-    	  break;
-    	}
-      }
-      if (converge){
-    	break;
-      }
-      wLast = w;
-      meOnly(cSub, w.memptr(), y0.memptr(), tp, tf, tcov, u.memptr(), on_, ME, op, ind);
-    }
-    std::copy(w.begin(), w.begin()+neq, yp_);
-    return 1;
   }
   default:
     stop(_("unsupported indLin code: %d"), doIndLin);

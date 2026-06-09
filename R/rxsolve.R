@@ -170,12 +170,12 @@
 #'     The effective tolerance is always capped at `maxAtolRtolFactor`.
 #'
 #'     `tolFactor` may be:
-#'     * `NULL` (default) — no adjustment applied.
-#'     * A single numeric value — the same factor is applied to
+#'     * `NULL` (default) - no adjustment applied.
+#'     * A single numeric value - the same factor is applied to
 #'       the first `length(tolFactor)` subjects in order.
-#'     * A numeric vector — applied element-wise to subjects in
+#'     * A numeric vector - applied element-wise to subjects in
 #'       the order they appear.
-#'     * A **named** numeric vector — names are matched to subject
+#'     * A **named** numeric vector - names are matched to subject
 #'       IDs; unmatched subjects retain `tolFactor = 1.0`.
 #'
 #'     The per-subject factors used (after matching) are stored back
@@ -776,7 +776,7 @@
 #'   When an individual exceeds this limit the solve is aborted for
 #'   that individual (output filled with `NA`) and an error is raised
 #'   after the full parallel solve completes.  Set to `0L` to allow
-#'   unlimited pushes (use with care — cascading `evid_()` calls can
+#'   unlimited pushes (use with care - cascading `evid_()` calls can
 #'   grow without bound).  Default is `100L`.
 #'
 #' @param indOwnAlloc Logical; when `TRUE` each individual's `dose`,
@@ -2084,6 +2084,24 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmp
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
+  if (length(rxModelVars(object)$indLin) > 0L) {
+    if (.ctl$method != 3L) {
+      .ctl$method <- 3L
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+    }
+  } else if (.ctl$method == 3L) {
+    if (length(rxModelVars(object)$state) > 0L) {
+      .calcSens <- NULL
+      if (rxIs(object, "rxode2")) {
+        .e <- attr(class(object), ".rxode2.env")
+        if (is.environment(.e)) {
+          .calcSens <- .e$calcSens
+        }
+      }
+      .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
+      object <- rxode2(.mexpCode)
+    }
+  }
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
     .both <- intersect(.mv$params, .ctl$keep)
