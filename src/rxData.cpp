@@ -50,6 +50,7 @@ extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
+extern "C" void ensureAutoJacBuf(int nCores, int neq);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -1649,7 +1650,7 @@ extern "C" void atolRtolFactorC_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
-  // Modify only the current thread's tolerance arrays - fully thread-safe,
+  // Modify only the current thread's tolerance arrays -- fully thread-safe,
   // no critical section needed because each thread has its own slice.
   int _threadId = omp_get_thread_num();
   double *_atol2  = _globals.gatol2Thread  + op->neq * _threadId;
@@ -1745,7 +1746,7 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   double *newAT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
   // Allocate solve with EVID_EXTRA_SIZE extra event slots so that _rxPushDose
   // can grow n_all_times by up to EVID_EXTRA_SIZE without OOB in the solve loop.
-  // updateSolve() will realloc further if needed (safe there - between ODE steps).
+  // updateSolve() will realloc further if needed (safe there -- between ODE steps).
   int solveN = nat + EVID_EXTRA_SIZE;
   double *newSolve = (double*)calloc((int64_t)op->neq * solveN, sizeof(double));
   // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
@@ -2787,7 +2788,7 @@ LogicalVector rxSolveFree(){
   if (rx->splitBolus != NULL) free(rx->splitBolus);
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
-  // linCmtScale points into an R vector (via REAL()), never malloc'd - just null it
+  // linCmtScale points into an R vector (via REAL()), never malloc'd -- just null it
   rx->linCmtScale = NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
@@ -3759,6 +3760,10 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->isIni            = 0;
   ind->_update_par_ptr_in = 0;
   ind->linCmtHparIndex  = -2;
+  ind->autoMethod = 0;
+  ind->autoCount  = 0;
+  ind->autoHcur   = 0.0;
+  ind->autoLastSwitchIntervals = 0;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
@@ -5293,6 +5298,14 @@ static inline void iniRx(rx_solve* rx) {
   op->stiff = 0;
   op->useDense = 0;
   op->ncov = 0;
+  op->stiff2 = 0;
+  op->autoSwitchMaxStiff    = 10;
+  op->autoSwitchMaxNonstiff = 3;
+  op->autoSwitchStiffFirst  = 0;
+  op->autoSwitchNonstifftol = 0.9;
+  op->autoSwitchStifftol    = 0.9;
+  op->autoSwitchDtfac       = 2.0;
+  op->autoSwitchSwitchMax   = 5;
   op->par_cov = NULL;
   op->par_cov_interp = NULL;
   op->lhs_str = NULL;
@@ -5334,6 +5347,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
+  op->cvodeLinSolver = 1;
 }
 
 static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
@@ -5375,7 +5389,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   rxAssignPtr(SEXP(obj));
 
   // Build a minimal rxSolveDat for the finalize path.
-  // DO NOT memset - rxSolve_t contains Rcpp objects (List, RObject, etc.)
+  // DO NOT memset -- rxSolve_t contains Rcpp objects (List, RObject, etc.)
   // whose constructors initialize internal SEXP to R_NilValue; memset would
   // corrupt those to NULL pointer, causing VECTOR_ELT crashes.
   rxSolve_t rxSolveDat{};
@@ -5402,8 +5416,20 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
     int _bneq = (int)op->neq;
-    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
-    int _liw = 20 + _bneq;
+    int _lrw, _liw;
+    if (op->stiff == 107) {
+      /* bdf: DVODE BDF (MF=22): LRW = 22+9*NEQ+2*NEQ^2, LIW = 30+NEQ */
+      _lrw = 22 + 9 * _bneq + 2 * _bneq * _bneq;
+      _liw = 30 + _bneq;
+    } else if (op->stiff == 106) {
+      /* lsode: DVODE Adams (MF=10): LRW = 20+16*NEQ, LIW = 30.
+       * Standard LSODA sizing covers LRW; use 30+NEQ for LIW. */
+      _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw = 30 + _bneq;
+    } else {
+      _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw = 20 + _bneq;
+    }
     ensureRworkPool((int)op->cores, _lrw, _liw);
   }
 
@@ -5412,7 +5438,9 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
 }
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
-  return stiff == 2 || stiff == 0;
+  /* lsoda (1), indLin (3), lsode (106), and bdf (107) use non-reentrant
+   * Fortran COMMON blocks and must run single-threaded. */
+  return stiff != 1 && stiff != 3 && stiff != 106 && stiff != 107;
 }
 
 
@@ -5648,8 +5676,40 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
-    if (op->useDense && method != 3) {
-      op->useDense = 0;
+    op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
+    op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
+    if (op->stiff2 > 0) {
+      /* LSODA (1,2), CVODE (21), DLSODE (106,107) have internal switching and
+         cannot be cleanly retried within an interval. */
+      if (op->stiff2 == 1 || op->stiff2 == 2 ||
+          op->stiff2 == 21 ||
+          op->stiff2 == 106 || op->stiff2 == 107) {
+        (Rf_error)("stiff2=%d is not allowed for AutoSwitch; use a single-step "
+                   "stiff method (e.g. ros4=13, grk4a=31)", op->stiff2);
+      }
+      if (method == 1 || method == 2 || method == 21 ||
+          method == 106 || method == 107) {
+        (Rf_error)("AutoSwitch (stiff2>0) requires a single-step primary method; "
+                   "stiff=%d is not compatible", method);
+      }
+    }
+    op->autoSwitchMaxStiff    = asInt(rxControl[Rxc_autoSwitchMaxStiff], "autoSwitchMaxStiff");
+    op->autoSwitchMaxNonstiff = asInt(rxControl[Rxc_autoSwitchMaxNonstiff], "autoSwitchMaxNonstiff");
+    op->autoSwitchStiffFirst  = asInt(rxControl[Rxc_autoSwitchStiffFirst], "autoSwitchStiffFirst");
+    op->autoSwitchNonstifftol = asDouble(rxControl[Rxc_autoSwitchNonstifftol], "autoSwitchNonstifftol");
+    op->autoSwitchStifftol    = asDouble(rxControl[Rxc_autoSwitchStifftol], "autoSwitchStifftol");
+    op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
+    op->autoSwitchSwitchMax   = asInt(rxControl[Rxc_autoSwitchSwitchMax], "autoSwitchSwitchMax");
+    if (op->useDense) {
+      /* Dense output is only supported for dop853(0), dop5(10), bs(11), ros4(13). */
+      int _primDense = (method == 0 || method == 10 || method == 11 || method == 13);
+      /* For AutoSwitch composites (stiff2>0), the stiff secondary must also be dense.
+         Among stiff methods, only ros4(13) supports dense output. */
+      int _autoActive = (op->stiff2 > 0);
+      int _stifDense = !_autoActive || (op->stiff2 == 13);
+      if (!_primDense || !_stifDense) {
+        op->useDense = 0;
+      }
     }
     if (op->useDense && (op->numLin > 0 || op->numLinSens > 0)) {
       Rf_warning("dense output not yet supported for linCmt models; using standard dop853");
@@ -5725,9 +5785,23 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
     int _bneq = (int)_mvState.size();
-    int _lrw = 22 + _bneq * std::max(16, _bneq + 9);
-    int _liw = 20 + _bneq;
-    ensureRworkPool((int)op->cores, _lrw, _liw);
+    int _lrw2, _liw2;
+    if (op->stiff == 107) {
+      /* bdf: DVODE BDF (MF=22): 22+9N+2N^2 doubles, 30+N ints */
+      _lrw2 = 22 + 9 * _bneq + 2 * _bneq * _bneq;
+      _liw2 = 30 + _bneq;
+    } else if (op->stiff == 106) {
+      /* lsode: DVODE Adams (MF=10): LSODA sizing for doubles, 30+N ints */
+      _lrw2 = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw2 = 30 + _bneq;
+    } else {
+      _lrw2 = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw2 = 20 + _bneq;
+    }
+    ensureRworkPool((int)op->cores, _lrw2, _liw2);
+    if (op->stiff2 > 0) {
+      ensureAutoJacBuf((int)op->cores, _bneq);
+    }
 
     // Now set up events and parameters
     RObject par0 = params;
@@ -6008,7 +6082,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       (int64_t)scaleC.size(),                 /* n6_actual */
       &_mem);
 
-    // Guard 1: fast hard limit - n0 > INT_MAX means gsolve alone exceeds ~16 GB.
+    // Guard 1: fast hard limit -- n0 > INT_MAX means gsolve alone exceeds ~16 GB.
     // Portable, zero-cost backstop that catches the dominant overflow path.
     if (_mem.n0 > (int64_t)INT_MAX) {
       rxSolveFree();
@@ -6039,7 +6113,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
            (double)_mem.gsolve_total * sizeof(double) / 1e9);
     }
-    // Pointer layout within gsolve - field names match rx_mem_layout members.
+    // Pointer layout within gsolve -- field names match rx_mem_layout members.
     _globals.gLin        = _globals.gsolve     + _mem.n0;
     _globals.gLlikSave   = _globals.gLin        + _mem.nlin;
     _globals.gSolveSave  = _globals.gLlikSave   + _mem.nllik_c;

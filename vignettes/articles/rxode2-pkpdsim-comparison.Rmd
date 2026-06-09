@@ -147,12 +147,12 @@ sensitivity equations used by nlmixr2's FOCEi algorithm for exact
 gradient-based estimation.  PKPDsim's nlmixr2 integration uses
 finite-difference gradients.
 
-### 1–3 compartment analytical solutions with exact gradients
+### 1-3 compartment analytical solutions with exact gradients
 
 `linCmt()` provides one-, two-, and three-compartment analytical PK
 solutions with gradients computed via Stan math auto-differentiation.
 PKPDsim's `reparametrization` argument offers standardised
-re-parameterisation for 1–3-compartment models, but these are still
+re-parameterisation for 1-3-compartment models, but these are still
 solved as ODEs rather than analytically.
 
 ### Multiple ODE solver backends
@@ -167,7 +167,7 @@ Boost::odeint backend with a configurable step size.
 ### Literature model libraries
 
 Both tools provide curated libraries of published PK/PD models, though
-they are organised differently.
+they are organized differently.
 
 PKPDsim ships models as self-contained installable R packages via its
 own distribution system:
@@ -262,8 +262,8 @@ but there is no single-function model-package export workflow.
 
 `new_ode_model()` accepts `pk_code` (C++ code executed at every event)
 and `dose_code` (C++ code executed only at dose events).  These allow
-model-specific logic — such as parameter recomputation at dose time or
-post-dose state resets — to be embedded directly in the compiled model.
+model-specific logic -- such as parameter recomputation at dose time or
+post-dose state resets -- to be embedded directly in the compiled model.
 
 ```{r}
 mod <- new_ode_model(
@@ -273,7 +273,7 @@ mod <- new_ode_model(
 )
 ```
 
-rxode2 handles event-specific behaviour through model equations and
+rxode2 handles event-specific behavior through model equations and
 the event table but does not expose separate C++ hooks at the event
 level.
 
@@ -361,14 +361,14 @@ for further details.
 
 | Feature | rxode2 | PKPDsim |
 |---------|--------|---------|
-| License | GPL ≥ 3 | MIT |
+| License | GPL >= 3 | MIT |
 | CRAN | yes | yes |
 | ODE language | rxode2 mini-language (`d/dt(cmt)`) | C++ array notation (`dAdt[1]`) |
 | Solver | thread-safe C LSODA; Fortran LSODA; DOP853 | Boost::odeint C++ |
 | OpenMP parallelism | yes (thread-safe solver) | no (R loop over subjects) |
 | Iterative-use speed | fast by default (separated pre/post) | use `sim_core()` explicitly |
 | NONMEM-format datasets | yes | no (`new_regimen()` API) |
-| 1–3 cmt analytical solution | `linCmt()` with exact gradients | `reparametrization` (ODE-based) |
+| 1-3 cmt analytical solution | `linCmt()` with exact gradients | `reparametrization` (ODE-based) |
 | Symbolic Jacobians / sensitivities | yes | no (finite differences) |
 | nlmixr2 estimation | yes (exact gradients via FOCEi) | yes (finite-difference gradients) |
 | Model piping (`\|>`) | yes | no |

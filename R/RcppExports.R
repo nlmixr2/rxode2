@@ -96,6 +96,17 @@ omegaListRse <- function(omegaIn) {
     .Call(`_rxode2_omegaListRse`, omegaIn)
 }
 
+#' Set the CVODE linear solver
+#'
+#' @param type Integer: 1=dense (default), 2=band (currently aliases to dense),
+#'   3=gmres, 4=bicgstab, 5=tfqmr
+#' @return NULL (invisibly)
+#' @export
+#' @keywords internal
+setCvodeLinearSolver <- function(type) {
+    invisible(.Call(`_rxode2_setCvodeLinearSolver`, type))
+}
+
 #' Get the Linear Compartment Information based on the model variables
 #'
 #' @param obj The model variables object

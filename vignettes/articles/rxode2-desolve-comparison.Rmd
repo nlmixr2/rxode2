@@ -20,7 +20,7 @@ different niches.
 - **deSolve** is a general-purpose ODE/DAE/DDE solver library that
   accepts ODE right-hand sides written as plain R functions (or
   optionally compiled C/Fortran).  It exposes a broad collection of
-  solvers (LSODA, LSODE, LSODES, vode, daspk, radau, rkF45, …) and is
+  solvers (LSODA, LSODE, LSODES, vode, daspk, radau, rkF45, ...) and is
   the de-facto standard for ODE solving in R across ecology, chemistry,
   epidemiology, and many other fields.
 
@@ -31,7 +31,7 @@ different niches.
   with nlmixr2 for population parameter estimation and accepts
   NONMEM-format event datasets directly.
 
-Both are on CRAN.  deSolve is BSD-licensed; rxode2 is GPL (≥ 3).
+Both are on CRAN.  deSolve is BSD-licensed; rxode2 is GPL (>= 3).
 
 ---
 
@@ -169,7 +169,7 @@ mod_err <- rxode2({
 deSolve returns only the deterministic ODE trajectory; residual error
 must be added as a post-processing step.
 
-### Analytical 1–3 compartment PK solutions with exact gradients
+### Analytical 1-3 compartment PK solutions with exact gradients
 
 `linCmt()` provides closed-form solutions for one-, two-, and
 three-compartment pharmacokinetic models.  Gradients are computed via
@@ -234,7 +234,7 @@ fit <- nlmixr(mod_lincmt, theo_sd, est = "focei")
 
 ### Phantom / transit dose event type
 
-rxode2 supports EVID=7 for phantom / transit doses — a concept with no
+rxode2 supports EVID=7 for phantom / transit doses -- a concept with no
 direct equivalent in deSolve.
 
 ### deSolve-format event data frames accepted by rxode2
@@ -254,7 +254,7 @@ eventdat <- data.frame(
 ```
 
 rxode2 translates this automatically to its internal EVID codes
-(`"add"` → EVID=1, `"mult"` → EVID=6, `"rep"` → EVID=5) via
+(`"add"` -> EVID=1, `"mult"` -> EVID=6, `"rep"` -> EVID=5) via
 `etTrans()`, so the same event data frame can be used with either
 package:
 
@@ -263,7 +263,7 @@ package:
 deSolve::ode(y0, times, func = derivs, parms = NULL,
              events = list(data = eventdat))
 
-# rxode2 usage — accepts the same data frame via et()
+# rxode2 usage -- accepts the same data frame via et()
 e <- et(eventdat) |> et(seq(0, 10, by = 0.1))
 rxSolve(mod, e)
 ```
@@ -280,7 +280,7 @@ The rxode2 EVID equivalents are:
 ### Time-after-dose tracking
 
 rxode2 provides built-in functions for tracking time after the most
-recent dose — `tad()`, `tad0()`, `tad(cmt)`, and `tad0(cmt)` — usable
+recent dose -- `tad()`, `tad0()`, `tad(cmt)`, and `tad0(cmt)` -- usable
 directly inside model equations.  deSolve has no equivalent; the user
 must track this manually.
 
@@ -357,8 +357,8 @@ not expose solver internals to the same degree.
 
 ### General-purpose use outside pharmacometrics
 
-deSolve imposes no domain-specific structure.  Any system of ODEs —
-ecological, chemical, mechanical, epidemiological — can be solved by
+deSolve imposes no domain-specific structure.  Any system of ODEs --
+ecological, chemical, mechanical, epidemiological -- can be solved by
 writing a function with the signature `f(t, y, parms)`.  rxode2's
 feature set (dosing events, omega matrices, NONMEM datasets) is
 designed specifically for pharmacometric workflows and is unnecessary
@@ -366,7 +366,7 @@ overhead for general ODE work.
 
 ### Solving a model in pure R (no compilation)
 
-deSolve can solve any R-function ODE right away — no compilation step.
+deSolve can solve any R-function ODE right away -- no compilation step.
 This makes it simple for quick explorations, teaching, or prototyping
 where compilation latency matters:
 
@@ -393,7 +393,7 @@ differences arise at scale:
 
 | Scenario | deSolve | rxode2 |
 |----------|---------|--------|
-| Single trajectory, R RHS | baseline | ~10–100× faster (compiled C) |
+| Single trajectory, R RHS | baseline | ~10-100x faster (compiled C) |
 | Single trajectory, C RHS | fast | comparable |
 | Population (n = 1000) | requires manual parallelism | parallel by default (OpenMP) |
 | Iterative estimation calls | no built-in support | fast (pre/post overhead separated) |
@@ -408,7 +408,7 @@ compiled C code and OpenMP parallelism.
 
 | Feature | rxode2 | deSolve |
 |---------|--------|---------|
-| License | GPL ≥ 3 | BSD |
+| License | GPL >= 3 | BSD |
 | CRAN | yes | yes |
 | Model language | compiled C (mini-language) | R function (or C/Fortran) |
 | Compilation step | yes (cached) | no (for R RHS) |
@@ -425,7 +425,7 @@ compiled C code and OpenMP parallelism.
 | `et()` dosing API | yes | no |
 | Multiple dosing (addl, ii) | yes | manual |
 | Infusion rate/duration | yes | manual |
-| Analytical 1–3 cmt PK | `linCmt()` | no |
+| Analytical 1-3 cmt PK | `linCmt()` | no |
 | Symbolic Jacobians | yes | no |
 | Parameter estimation | via nlmixr2 | via `FME` or manual |
 | Model piping (`\|>`) | yes | no |

@@ -1032,7 +1032,7 @@ is.latex <- function() {
 #'
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
-#'   vectors unless ‘na.rm’ is ‘TRUE’.
+#'   vectors unless 'na.rm' is 'TRUE'.
 #' @param probs numeric vector of probabilities with values in the
 #'   interval from 0 to 1 .
 #' @param na.rm logical; if true, any NA and NaN's are removed from
@@ -1189,7 +1189,7 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #' - Newcombe, R. G. (1998). "Two-sided confidence intervals for the single
 #'   proportion: comparison of seven methods". Statistics
 #'   in Medicine. 17 (8):
-#'   857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+#'   857-872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
 #'   9595616.
 #'
 #' - Hezhi Lu, Hua Jin,

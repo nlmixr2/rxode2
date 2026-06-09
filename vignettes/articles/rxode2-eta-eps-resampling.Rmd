@@ -20,7 +20,7 @@ rxode2 supports resampling of between-subject variability (ETAs) and
 residual variability (EPSs) within the model code itself using
 `simeta()` and `simeps()`.  This allows you to implement rejection
 sampling, truncated distributions, or any custom sampling logic
-directly in the model definition — without post-processing the
+directly in the model definition -- without post-processing the
 simulated output.
 
 This is analogous to the `SIMETA` and `SIMEPS` functions available
@@ -65,7 +65,7 @@ f <- rxSolve(
 summary(f$wt)
 ```
 
-All simulated weights fall within the 60–80 kg window:
+All simulated weights fall within the 60-80 kg window:
 
 ```{r simeta-check}
 stopifnot(all(f$wt >= 60), all(f$wt <= 80))
@@ -155,7 +155,7 @@ filtering or replacing values after `rxSolve()`:
 
 1. **Self-consistency**: downstream model quantities (e.g., PK
    parameters computed from body weight) always reflect the accepted
-   draw — no risk of a filtered row having inconsistent derived
+   draw -- no risk of a filtered row having inconsistent derived
    variables.
 2. **Parallelism**: resampling happens inside the C solver loop,
    so OpenMP parallelism across subjects is fully preserved.

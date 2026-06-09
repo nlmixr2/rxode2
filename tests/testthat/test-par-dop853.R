@@ -6,7 +6,7 @@ rxTest({
     d/dt(peri)  <- Q / V * centr - Q / V2 * peri
   })
 
-  # 16 subjects — large enough to span multiple OMP threads
+  # 16 subjects -- large enough to span multiple OMP threads
   p <- data.frame(
     KA = 0.3,
     CL = seq(1, 8, length.out = 16),

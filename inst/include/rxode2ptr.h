@@ -206,7 +206,7 @@ extern "C" {
 
   typedef int (*solveMethodThreadSafe_t)(rx_solving_options* op);
   extern solveMethodThreadSafe_t solveMethodThreadSafe;
-  // Thread-safe C-level tolerance adjustment — no Rcpp/PROTECT overhead, safe from OMP threads
+  // Thread-safe C-level tolerance adjustment -- no Rcpp/PROTECT overhead, safe from OMP threads
   typedef void (*atolRtolFactor_t)(double factor);
   extern atolRtolFactor_t atolRtolFactor_;
 

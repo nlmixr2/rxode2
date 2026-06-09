@@ -207,7 +207,7 @@ etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar =
     .chunks <- Filter(Negate(is.null), .env$chunks)
     if (length(.chunks) > 0L) {
       .raw <- as.data.frame(data.table::rbindlist(.chunks, fill = TRUE, use.names = TRUE))
-      # deSolve-style: 'value' present but no 'amt' → drop auto-added 'evid' so C++ uses method/var
+      # deSolve-style: 'value' present but no 'amt' -> drop auto-added 'evid' so C++ uses method/var
       if (!is.null(.raw[["value"]]) && is.null(.raw[["amt"]])) {
         .raw[["evid"]] <- NULL
       }

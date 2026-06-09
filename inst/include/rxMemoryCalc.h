@@ -24,26 +24,26 @@
  * --------------------------------------------------------------------------- */
 typedef struct {
   /* --- gsolve components (all double) --- */
-  int64_t n0;          /* nall * state_size * nsim  — ODE output matrix      */
-  int64_t nlin;        /* linB * 7 * nsub * nsim    — linCmt scratch          */
-  int64_t nsave;       /* neq * cores               — used ×3 (Save/Last/Last2) */
-  int64_t n2;          /* nMtime * nsub * nsim      — mtime arrays            */
-  int64_t n3a_c;       /* (neq + extraCmt) * cores  — gTlastS/firstS/CurDose  */
-  int64_t n4;          /* initsC.size()  (≈ neq for estimates)                */
-  int64_t n5_c;        /* nlhs * cores              — per-thread LHS buffer   */
-  int64_t n6;          /* scaleC.size()  (≈ neq for estimates)                */
-  int64_t n7;          /* nIndSim * nsub * nsim     — per-individual sim info  */
-  int64_t n8;          /* maxAllTimes * cores       — per-thread time buffer   */
-  int64_t n9;          /* (numLinSens+numLin)*cores — linSens (FOCEi)          */
-  int64_t n10;         /* neq * cores               — linDummy                */
-  int64_t n11;         /* 4 * neq * cores           — per-thread tol arrays   */
-  int64_t nmtime0_c;   /* nMtime * cores            — per-thread mtime copy   */
-  int64_t nllik_c;     /* rxLlikSaveSize * nLlik * cores — llik save buffer   */
-  int64_t gsolve_total;/* sum of all above — passed directly to calloc        */
+  int64_t n0;          /* nall * state_size * nsim  -- ODE output matrix      */
+  int64_t nlin;        /* linB * 7 * nsub * nsim    -- linCmt scratch          */
+  int64_t nsave;       /* neq * cores               -- used x3 (Save/Last/Last2) */
+  int64_t n2;          /* nMtime * nsub * nsim      -- mtime arrays            */
+  int64_t n3a_c;       /* (neq + extraCmt) * cores  -- gTlastS/firstS/CurDose  */
+  int64_t n4;          /* initsC.size()  (~ neq for estimates)                */
+  int64_t n5_c;        /* nlhs * cores              -- per-thread LHS buffer   */
+  int64_t n6;          /* scaleC.size()  (~ neq for estimates)                */
+  int64_t n7;          /* nIndSim * nsub * nsim     -- per-individual sim info  */
+  int64_t n8;          /* maxAllTimes * cores       -- per-thread time buffer   */
+  int64_t n9;          /* (numLinSens+numLin)*cores -- linSens (FOCEi)          */
+  int64_t n10;         /* neq * cores               -- linDummy                */
+  int64_t n11;         /* 4 * neq * cores           -- per-thread tol arrays   */
+  int64_t nmtime0_c;   /* nMtime * cores            -- per-thread mtime copy   */
+  int64_t nllik_c;     /* rxLlikSaveSize * nLlik * cores -- llik save buffer   */
+  int64_t gsolve_total;/* sum of all above -- passed directly to calloc        */
 
   /* --- gon components (all int) --- */
   int64_t nSize;       /* nsim * nsub                                          */
-  int64_t n3;          /* neq * nSize               — BadDose array            */
+  int64_t n3;          /* neq * nSize               -- BadDose array            */
   int64_t gon_total;   /* n3a_c + n3 + 4*nSize + nall*nsim                    */
 } rx_mem_layout;
 
@@ -53,13 +53,13 @@ typedef struct {
  * Computes every element count and stores them in *out.
  *
  * Parameters that differ between the estimate path and the actual-alloc path:
- *   state_size  — use state.size() in rxData.cpp; use neq for estimates
- *   n4_actual   — use initsC.size() in rxData.cpp; use neq for estimates
- *   n6_actual   — use scaleC.size() in rxData.cpp; use neq for estimates
+ *   state_size  -- use state.size() in rxData.cpp; use neq for estimates
+ *   n4_actual   -- use initsC.size() in rxData.cpp; use neq for estimates
+ *   n6_actual   -- use scaleC.size() in rxData.cpp; use neq for estimates
  * --------------------------------------------------------------------------- */
 static inline void rxFillMemLayout(
   int     neq,
-  int     state_size,   /* state.size() from modVars — equals neq for pure ODE */
+  int     state_size,   /* state.size() from modVars -- equals neq for pure ODE */
   int     nlhs,
   int     nsim,
   int     cores,

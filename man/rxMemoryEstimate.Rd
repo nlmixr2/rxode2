@@ -89,7 +89,7 @@ elements are raw byte counts plus \code{outputData},
 \code{sizeofInd}, and \code{rxLlikSaveSize}.
 }
 \description{
-Accepts either a pre-summarised per-ID table (an \code{\link{rxMemSummary}}
+Accepts either a pre-summarized per-ID table (an \code{\link{rxMemSummary}}
 or any data.frame with \code{nobs} and \code{ndoses} columns) or a full
 event-table data.frame with an \code{evid} column.  Model dimensions can
 be supplied via a compiled rxode2 model object or overridden individually.

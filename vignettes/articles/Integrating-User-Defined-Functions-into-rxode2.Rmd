@@ -147,7 +147,7 @@ There are some requirements for R functions to be integrated into the
 rxode2 system:
 
 -    The function must have a set number of arguments, variable
-     arguments like `f(…)` are currently not allowed.
+     arguments like `f(...)` are currently not allowed.
 
 -   The function is given each argument as a single number, and the
     function should return a single number
