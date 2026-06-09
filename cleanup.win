@@ -4,7 +4,3 @@ rm -f src/Makevars.win
 rm -f src/Makevars
 rm -f inst/include/*.gch
 rm -rf src/sundialr_include
-rm -rf src/stl
-rm -f src/sundials_*
-rm -f src/cvode_*_impl.h
-rm -f src/sunlinsol_spgmr.c src/sunlinsol_spbcgs.c src/sunlinsol_sptfqmr.c
