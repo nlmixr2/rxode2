@@ -54,13 +54,13 @@ rxTest({
 
   test_that("sticky vars do not accumulate across separate rxSolve calls", {
 
-    # First solve: large dose — C_max ~100 (amt=1000, V=10)
+    # First solve: large dose -- C_max ~100 (amt=1000, V=10)
     ev_large <- et(amt=1000) |> et(seq(0, 24))
     s1 <- rxSolve(m, ev_large,
                   param=c(tv=log(10), tcl=log(1), tka=log(1),
                           eta.v=0, eta.cl=0, eta.ka=0))
 
-    # Second solve: small dose — C_max ~1 (amt=10)
+    # Second solve: small dose -- C_max ~1 (amt=10)
     ev_small <- et(amt=10) |> et(seq(0, 24))
     s2 <- rxSolve(m, ev_small,
                   param=c(tv=log(10), tcl=log(1), tka=log(1),

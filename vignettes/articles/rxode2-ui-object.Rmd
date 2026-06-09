@@ -364,7 +364,7 @@ m2$lstChr
 
 ### `$funTxt`: model as a single string
 
-`$funTxt` is `$lstChr` collapsed with newlines — the entire model body as one character string:
+`$funTxt` is `$lstChr` collapsed with newlines -- the entire model body as one character string:
 
 ```{r funTxt}
 cat(m2$funTxt)
@@ -432,7 +432,7 @@ m2$simulationIniModel
 
 ## Model identity and hashing
 
-Two hashes are computed over the normalised model structure (model expressions, `iniDf`, error lines, defined functions, and rxode2 version) and are suitable for caching or comparing models:
+Two hashes are computed over the normalized model structure (model expressions, `iniDf`, error lines, defined functions, and rxode2 version) and are suitable for caching or comparing models:
 
 ```{r modelHashes}
 # MD5 hash
@@ -462,7 +462,7 @@ So adding a new property is simply a matter of defining `rxUiGet.myProperty`.
 ```{r rxUiGetSignature, eval=FALSE}
 rxUiGet.myProperty <- function(x, ...) {
   .ui <- x[[1]]   # the decompressed rxUi environment
-  # x[[2]] is the `exact` logical — rarely needed
+  # x[[2]] is the `exact` logical -- rarely needed
   # compute and return your value
 }
 ```
@@ -480,7 +480,7 @@ attr(rxUiGet.myProperty, "desc") <- "A short description for autocomplete"
 The `rstudio` attribute sets the placeholder value that RStudio shows during tab-completion (so it does not have to evaluate the property while you type):
 
 ```{r rxUiGetRstudio, eval=FALSE}
-# Use a representative example value — character, numeric, NA (passthrough), etc.
+# Use a representative example value -- character, numeric, NA (passthrough), etc.
 attr(rxUiGet.myProperty, "rstudio") <- "example value"
 # NA means: evaluate for real even during completion
 attr(rxUiGet.myProperty, "rstudio") <- NA

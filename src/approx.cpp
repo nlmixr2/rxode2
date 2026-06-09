@@ -49,7 +49,7 @@ extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
       i = ij;
   }
   /* if (i == 0) return 0; */
-  while(i != 0 && obs_time == (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind))){
+  while(i != 0 && isSameTime(obs_time, (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind)))){
     i--;
   }
   if (i == 0){
@@ -149,8 +149,10 @@ extern "C" double rx_approxP(double v, double *y, int is_locf, int n,
 
   /* interpolation */
 
-  if(v == T(j)) return V(j, 1);
-  if(v == T(i)) return V(i, -1);
+  double tj = T(j);
+  double ti = T(i);
+  if(isSameTime(v, tj)) return V(j, 1);
+  if(isSameTime(v, ti)) return V(i, -1);
   /* impossible: if(T(j) == T(i)) return V(i); */
 
   switch (is_locf) {

@@ -342,6 +342,8 @@ SEXP _rxode2_rxSolveSetup(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
+SEXP _rxode2_setCvodeLinearSolver(SEXP);
+
 double _rxode2_evalUdf(const char *fun, int n, const double *args);
 
 SEXP _rxode2_rxode2parseSetRstudio(SEXP isRstudioSEXP);
@@ -817,6 +819,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSolveFromRaw_", (DL_FUNC) _rxode2_rxSolveFromRaw_, 9},
     {"_rxode2_rxSolveSetCurObj_", (DL_FUNC) &_rxode2_rxSolveSetCurObj_, 1},
     {"_rxode2_atolRtolFactor_", (DL_FUNC) &_rxode2_atolRtolFactor_, 1},
+    {"_rxode2_setCvodeLinearSolver", (DL_FUNC) &_rxode2_setCvodeLinearSolver, 1},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.

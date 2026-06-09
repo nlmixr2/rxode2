@@ -47,3 +47,6 @@ docs/
 revdep/
 /src/sbuf.c
 docs
+/src/implicit_euler_rxode2.hpp
+inst/tools/workaround.Rout
+src/StanHeaders.def

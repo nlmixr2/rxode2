@@ -27,8 +27,8 @@ integration.
   (part of the MonolixSuite, distributed by Simulations Plus / Lixoft).
   It provides a graphical user interface (GUI) as its primary
   interaction mode, and an R scripting interface via the
-  `lixoftConnectors` package.  Models are specified in mlxtran — the
-  same language used by Monolix for estimation — so Monolix projects
+  `lixoftConnectors` package.  Models are specified in mlxtran -- the
+  same language used by Monolix for estimation -- so Monolix projects
   can be imported directly with no re-implementation.  A commercial or
   academic license is required.
 
@@ -48,7 +48,7 @@ integration.
 
 ### No license required
 
-rxode2 is entirely open-source (GPL ≥ 3).  Simulx requires a
+rxode2 is entirely open-source (GPL >= 3).  Simulx requires a
 commercial license from Simulations Plus; an academic license is
 available free of charge but must be requested and renewed.  rxode2
 runs without any registration or license file on any machine with R
@@ -69,7 +69,7 @@ and R scripts are partially coupled.
 ```{r}
 library(rxode2)
 
-# Entirely self-contained R script — no GUI, no license file
+# Entirely self-contained R script -- no GUI, no license file
 mod <- rxode2({
   KA <- exp(tka + eta.ka)
   CL <- exp(tcl + eta.cl)
@@ -140,7 +140,7 @@ rxode2 automatically derives the symbolic Jacobian and forward-
 sensitivity equations, used by nlmixr2's FOCEi algorithm for exact
 gradient-based parameter estimation.
 
-### 1–3 compartment analytical solutions with exact gradients
+### 1-3 compartment analytical solutions with exact gradients
 
 `linCmt()` provides analytical solutions for one-, two-, and
 three-compartment PK models with gradients via Stan math
@@ -155,7 +155,7 @@ based solver.
 
 ### Runs anywhere without infrastructure
 
-rxode2 runs on any machine with R — laptops, CI servers, Docker
+rxode2 runs on any machine with R -- laptops, CI servers, Docker
 containers, or Shiny apps.  Simulx requires the MonolixSuite
 installation and a valid license to be present on the machine.
 
@@ -166,7 +166,7 @@ installation and a valid license to be present on the machine.
 Simulx's primary strength is its point-and-click GUI.  The
 **Exploration** workflow lets modelers interactively sweep parameter
 values and dosing regimens for a typical individual with real-time
-graphical output — no code required.  This low-friction interface is
+graphical output -- no code required.  This low-friction interface is
 valuable for non-programmers and for rapid "what-if" exploration
 before committing to a full simulation script.
 
@@ -193,7 +193,7 @@ review.
 Simulx provides a structured GUI workflow for defining named
 simulation scenarios (groups with different doses, covariates, or
 parameter values), running them, and visualizing results in
-interactive tables and plots — all within the application.
+interactive tables and plots -- all within the application.
 
 In rxode2 all scenario management, tabulation, and plotting is done
 in R using general-purpose packages (e.g., `ggplot2`, `data.table`),
@@ -201,15 +201,15 @@ which gives more flexibility but requires more code.
 
 ### Standardized clinical trial simulation workflow
 
-Simulx's GUI enforces a clear three-step workflow — **Definition**
+Simulx's GUI enforces a clear three-step workflow -- **Definition**
 (parameters, treatments, outputs, covariates), **Exploration**
-(typical individual), and **Simulation** (population) — that guides
+(typical individual), and **Simulation** (population) -- that guides
 users toward a complete and well-structured simulation.  This
 structured approach reduces the risk of ad hoc or incomplete
 simulation setups.
 
 rxode2 imposes no workflow structure; the user is responsible for
-organising their simulation code.
+organizing their simulation code.
 
 ## Monolix-to-rxode2 import via `monolix2rx`
 
@@ -237,14 +237,14 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 
 | Feature | rxode2 | Simulx |
 |---------|--------|--------|
-| License | open-source (GPL ≥ 3) | commercial (free academic) |
+| License | open-source (GPL >= 3) | commercial (free academic) |
 | Primary interface | R code | GUI + `lixoftConnectors` R API |
 | Model language | rxode2 mini-language | mlxtran |
 | Monolix project import | `monolix2rx` (with auto-validation) | direct (same language) |
 | Re-implementation risk | mitigated: `monolix2rx` auto-validates PRED/IPRED | none |
 | Simulation engine | rxode2 C/Fortran solver | Simulx C++ solver |
 | ODE solver options | LSODA (C), LSODA (Fortran), DOP853 | single C++ LSODA-based |
-| 1–3 cmt analytical solution | `linCmt()` with gradients | ODE-based only |
+| 1-3 cmt analytical solution | `linCmt()` with gradients | ODE-based only |
 | Symbolic Jacobians / sensitivities | yes | no |
 | Parameter estimation | via nlmixr2 | no (Monolix only) |
 | OpenMP parallelism (R-controlled) | yes | engine-internal |
