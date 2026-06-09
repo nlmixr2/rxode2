@@ -284,6 +284,11 @@ reference:
   - rxHtml
   - rxIndLinState
   - rxIndLinStrategy
+  - rxIsAutoSwitch
+  - rxIsDense
+  - rxIsImplicit
+  - rxIsNonStiff
+  - rxIsStiff
   - rxParseSuppressMsg
   - rxPreferredDistributionName
   - rxRateDur
