@@ -1,0 +1,578 @@
+---
+title: "Matrix Exponentials and Inductive Linearization in rxode2"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Background
+
+Nonlinear ordinary differential equations (ODEs) arise naturally in
+pharmacokinetic--pharmacodynamic (PKPD) models.  Consider a drug that
+undergoes Michaelis--Menten (saturable) elimination: the clearance
+depends on the current concentration, making the ODE nonlinear.
+Standard time-stepping solvers (LSODA, Runge--Kutta) handle this by
+advancing one small step at a time, using only local information about
+the solution.
+
+**Inductive Linearization** (IndLin), introduced by Duffull and Hegarty
+(2014) and further explored by Sharif, Hasegawa and Duffull (2022),
+offers an alternative.  Rather than stepping forward in time, it
+iteratively converts the nonlinear ODE into a linear time-varying (LTV)
+system.  The LTV system is of the form
+
+```
+dy/dt = f(t) + A(t, y^[n-1]) * y^[n]
+```
+
+where the matrix `A` is formed using the solution from the previous
+iteration `y^[n-1]`.  Starting from `y^[0] = 0`, each iteration
+produces a more accurate approximation of the true solution.  Crucially,
+because the system is now linear, it can be solved exactly over the
+whole time span using the **matrix exponential** (ME), rather than
+approximated with finite steps.
+
+rxode2 pairs IndLin with the matrix-exponential integrator using
+eigenvalue decomposition (EVD):
+
+```
+y^[n](t) = V * diag(exp(lambda * t)) * V^{-1} * y0
+```
+
+where `V` are the eigenvectors and `lambda` the eigenvalues of the rate
+matrix `K`.
+
+### Key properties
+
+- The solution is available at **all** times in `[0, T]`
+  simultaneously, not just at local steps.  Perturbations such as dose
+  events at any time are handled globally.
+- For purely **linear** ODE systems the iteration converges in one
+  step, giving an exact solution via ME alone.
+- For **nonlinear** systems the method is approximate but converges
+  with a user-controlled tolerance.
+
+The reference comparing IndLin to MATLAB's `ode45` (Sharif et al.
+2022) showed that IndLin with an adaptive step size and a convergence
+stopping rule was six times faster than `ode45` for a
+Michaelis--Menten PK example, while recovering parameter estimates of
+comparable accuracy.
+
+---
+
+## Quick start
+
+### Step 1 -- build the model with `indLin = TRUE`
+
+Activate inductive linearization by passing `indLin = TRUE` to
+`rxode2()`:
+
+```{r}
+library(rxode2)
+
+mmPK <- rxode2(
+  {
+    d/dt(depot)  <- -ka * depot
+    Cp           <- center / V
+    d/dt(center) <- ka * depot - Vmax * Cp / (Km + Cp)
+  },
+  indLin = TRUE
+)
+```
+
+This step uses the `symengine` computer-algebra system to factor each
+ODE right-hand side into a rate matrix `A` (the part linear in the
+state variables) and an inhomogeneous forcing vector `f` (the part that
+depends only on time and parameters).  A summary of the factorization
+is printed when you inspect the model:
+
+```{r}
+summary(mmPK)
+```
+
+### Step 2 -- solve with `method = "indLin"`
+
+```{r}
+library(rxode2)
+
+params <- c(ka = 1, Km = 0.5, Vmax = 0.2, V = 1)
+
+ev <- eventTable()
+ev$add.dosing(dose = 3, start.time = 0)
+ev$add.sampling(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
+
+sol_indlin <- rxSolve(mmPK, params, ev, method = "indLin")
+sol_lsoda  <- rxSolve(mmPK, params, ev, method = "liblsoda")
+
+plot(sol_indlin)
+```
+
+For a purely linear model the two solutions are numerically identical;
+for a Michaelis--Menten model they are close, with differences
+controlled by the convergence tolerance.
+
+### Comparing against LSODA
+
+```{r}
+library(ggplot2)
+
+df <- merge(
+  as.data.frame(sol_lsoda)[, c("time", "Cp")],
+  as.data.frame(sol_indlin)[, c("time", "Cp")],
+  by = "time", suffixes = c(".lsoda", ".indlin")
+)
+
+ggplot(df, aes(time)) +
+  geom_line(aes(y = Cp.lsoda,  colour = "LSODA")) +
+  geom_line(aes(y = Cp.indlin, colour = "IndLin"), linetype = 2) +
+  labs(x = "Time (h)", y = "Concentration (mg/L)", colour = "Solver")
+```
+
+---
+
+## Purely linear systems: matrix exponential alone
+
+When every ODE is linear in the state variables, the inductive
+linearization loop converges immediately and the solution is exact.
+This includes all standard compartmental PK models.
+
+```{r}
+simplePK <- rxode2(
+  {
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - (CL / V) * center
+    Cp           <- center / V
+  },
+  indLin = TRUE
+)
+
+params2 <- c(ka = 1, CL = 0.1, V = 1)
+
+ev2 <- eventTable()
+ev2$add.dosing(dose = 100, start.time = 0, nbr.doses = 5, dosing.interval = 12)
+ev2$add.sampling(seq(0, 72, by = 0.5))
+
+pk_me    <- rxSolve(simplePK, params2, ev2, method = "indLin")
+pk_lsoda <- rxSolve(simplePK, params2, ev2, method = "liblsoda")
+
+## Differences should be at machine precision
+max(abs(pk_me$Cp - pk_lsoda$Cp))
+```
+
+---
+
+## Matrix exponential algorithms
+
+Three ME algorithms are available via `indLinMatExpType`:
+
+| Value | Algorithm | Notes |
+|---|---|---|
+| `"Al-Mohy"` | Al-Mohy & Higham (2009) scaling and squaring | Accurate; order controlled by `indLinMatExpOrder` |
+| `"expokit"` | Sidje (1998) Krylov/Pade | Good for sparse/large matrices; controlled by `indLinPhiTol` and `indLinPhiM` |
+| `"arma"` | RcppArmadillo `expmat` | Fastest for small dense matrices |
+
+The default is `"expokit"`.
+
+```{r}
+## Al-Mohy / Higham algorithm, Pade order 8
+sol_almohy <- rxSolve(mmPK, params, ev,
+                      method          = "indLin",
+                      indLinMatExpType  = "Al-Mohy",
+                      indLinMatExpOrder = 8L)
+
+## RcppArmadillo expmat
+sol_arma <- rxSolve(mmPK, params, ev,
+                    method         = "indLin",
+                    indLinMatExpType = "arma")
+```
+
+For the expokit method, two additional controls are available:
+
+- `indLinPhiTol` (default `1e-7`): tolerance for the exponential-matrix
+  action computation.
+- `indLinPhiM` (default `0L`, meaning automatic): maximum Krylov basis
+  size.
+
+---
+
+## Controlling the linearization strategy
+
+### `rxIndLinStrategy()`
+
+When an ODE term contains the product of two or more state variables
+(e.g., `y * z`), the solver must decide which state to use as the
+linear factor.  `rxIndLinStrategy()` selects the algorithm:
+
+- `"curState"` (default): prefer the state whose derivative is being
+  computed (`d/dt(y) <- ... y*z ...` factors by `y`).  When the
+  current state is not present, fall back to the first state found.
+- `"split"`: divide the term equally among all states involved.
+
+```{r}
+## Use split strategy for the Van der Pol equation
+rxIndLinStrategy("split")
+
+vanPol <- rxode2(
+  {
+    y(0)  <- 2
+    dy(0) <- 0
+    d/dt(y)  <- dy
+    d/dt(dy) <- mu * (1 - y^2) * dy - y
+  },
+  indLin = TRUE
+)
+
+rxIndLinStrategy("curState") # restore default
+```
+
+### `rxIndLinState()`
+
+For fine-grained control you can specify, per state, which state
+variable should appear as the linear factor for each ODE.
+
+```{r}
+## For the Van der Pol equation: factor d/dt(y) by dy, and d/dt(dy) by y
+rxIndLinState(list(y = "dy", dy = "y"))
+
+vanPol2 <- rxode2(
+  {
+    y(0)  <- 2
+    dy(0) <- 0
+    d/dt(y)  <- dy
+    d/dt(dy) <- mu * (1 - y^2) * dy - y
+  },
+  indLin = TRUE
+)
+
+rxIndLinState(NULL)  # clear preferences
+```
+
+---
+
+## A full example: Michaelis--Menten PK
+
+This example reproduces the scenario from Sharif et al. (2022): oral
+absorption with Michaelis--Menten elimination.
+
+```{r}
+library(rxode2)
+library(ggplot2)
+
+mmPK <- rxode2(
+  {
+    d/dt(depot)  <- -ka * depot
+    Cp           <- center / V
+    d/dt(center) <- ka * depot - Vmax * Cp / (Km + Cp)
+  },
+  indLin = TRUE
+)
+
+params <- c(ka = 1, Km = 0.5, Vmax = 0.2, V = 1)
+
+ev <- eventTable()
+ev$add.dosing(dose = 3, start.time = 0)
+ev$add.sampling(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
+
+## Three solvers
+sol_ll  <- rxSolve(mmPK, params, ev, method = "liblsoda")
+sol_il  <- rxSolve(mmPK, params, ev, method = "indLin")
+sol_ila <- rxSolve(mmPK, params, ev,
+                   method = "indLin", indLinMatExpType = "Al-Mohy")
+
+df <- rbind(
+  cbind(as.data.frame(sol_ll),  solver = "liblsoda"),
+  cbind(as.data.frame(sol_il),  solver = "IndLin/expokit"),
+  cbind(as.data.frame(sol_ila), solver = "IndLin/Al-Mohy")
+)
+
+ggplot(df, aes(time, Cp, colour = solver, linetype = solver)) +
+  geom_line() +
+  labs(x = "Time (h)", y = "Concentration (mg/L)",
+       title = "Michaelis-Menten PK: solver comparison")
+```
+
+---
+
+## Direct coefficient specification with `matExp()`: the most stable approach
+
+The auto-factorization path (`indLin = TRUE`) uses the `symengine`
+computer-algebra system to symbolically factor each ODE into a rate
+matrix and a forcing vector.  For complex expressions this symbolic
+step can fail or produce unexpected factorizations.
+
+The `matExp()` model declaration bypasses symbolic manipulation
+entirely.  You write rate constants in the form `k_from_to` (or
+`k.from.to`), and rxode2 constructs the rate matrix directly from
+those coefficients at compile time.  This is:
+
+- **The most stable approach** -- no CAS factorization, no symengine
+  dependency, no expression simplification.
+- **Familiar to NONMEM users** -- mirrors NONMEM's ADVAN5/7 `K(i,j)`
+  notation with the same source-first index convention.
+- **Self-documenting** -- every rate constant name encodes what it
+  connects.
+
+### `matExp()` model syntax
+
+A `matExp()` model has three kinds of statements:
+
+| Statement | Meaning |
+|---|---|
+| `matExp()` | Declare this model uses matrix exponential integration. **Required.** Cannot be combined with `d/dt()`. |
+| `k_from_to = expr` | First-order rate from compartment `from` to compartment `to`. |
+| `k.from.to = expr` | Dot-separator alternative (identical meaning). |
+| `k_cmt_output = expr` | Elimination from `cmt` to outside the system (like NONMEM's `K(i,0)`). |
+| `k_from_to_nd = expr` | Non-depleting transfer: only `to` gains; `from` is unchanged. |
+| `indLin(state) <- expr` | Add a time-varying forcing term to `state` (inhomogeneous part). |
+| `cmt(name)` | Optionally declare a compartment explicitly. Usually not needed. |
+| `other = expr` | Standard derived-variable assignment (output calculation). |
+
+Compartments are **auto-detected** from the `k_from_to` names -- no
+explicit `cmt()` declarations are required.  The diagonal entries of
+the rate matrix (self-decay) are computed automatically from the
+outflow terms.
+
+### Optional: declaring compartment order with `cmt()`
+
+By default the compartment ordering in the rate matrix (and therefore
+the CMT numbers used in the event table) follows the order in which
+compartment names first appear in the `k_from_to` assignments.  If you
+need a specific CMT numbering -- for example, to match a NONMEM control
+stream where the depot is CMT=1 and central is CMT=2 -- you can pin the
+order with explicit `cmt()` declarations placed before the rate
+constants:
+
+```{r}
+mmOrdered <- rxode2({
+  matExp()
+  cmt(depot)      ## CMT = 1
+  cmt(central)    ## CMT = 2
+  Cp = central / V
+  k_depot_central  = ka                ## absorption: depot -> central
+  k_central_output = Vmax / (Km + Cp) ## MM elimination: state-dependent rate
+})
+```
+
+Any compartment listed in a `cmt()` call is assigned CMT numbers in
+declaration order.  Compartments that appear in rate constants but have
+no `cmt()` declaration are appended after the declared ones in their
+first-appearance order.  This lets you fix the positions that matter
+(e.g., the dosing compartment) while letting the rest be auto-ordered.
+
+`cmt()` declarations are purely for ordering; they do not change the
+model mathematics.
+
+### Rules and restrictions
+
+```{r}
+library(rxode2)
+
+## ERROR: matExp() cannot be combined with d/dt()
+rxode2({
+  matExp()
+  d/dt(depot) <- -ka * depot   # error
+})
+
+## ERROR: self-transfer is not allowed
+rxode2({
+  matExp()
+  k_depot_depot = 0.1          # error
+})
+
+## ERROR: indLin() without matExp()
+rxode2({
+  cmt(depot)
+  indLin(depot) <- 0.5         # error
+})
+```
+
+### Michaelis-Menten elimination
+
+Rate expressions in `matExp()` can reference derived variables that
+depend on the current state.  When such a rate is state-dependent the
+system is no longer strictly linear, but `method = "indLin"` handles
+this via iteration: at each IndLin pass the rate matrix is recomputed
+using the current state estimate, and the matrix exponential is then
+solved exactly for that linearised system.  Michaelis-Menten
+elimination is the canonical example.
+
+```{r}
+library(rxode2)
+
+mmComp <- rxode2({
+  matExp()
+  Cp = central / V                   ## derived variable (used in rate expression)
+  k_depot_central  = ka              ## absorption: depot -> central
+  k_central_output = Vmax / (Km + Cp) ## MM elimination expressed as effective clearance
+})
+
+params <- c(ka = 1, Km = 0.5, Vmax = 0.2, V = 1)
+
+ev <- eventTable()
+ev$add.dosing(dose = 3, start.time = 0)
+ev$add.sampling(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
+
+## method = "indLin" iterates to account for the state-dependent rate
+sol <- rxSolve(mmComp, params, ev, method = "indLin")
+plot(sol, Cp)
+```
+
+rxode2 infers `depot` and `central` as state compartments from the rate
+constant names.  The `output` label is reserved for the elimination
+sink, analogous to compartment 0 in NONMEM.
+
+### Three-compartment PK with peripheral
+
+```{r}
+threeComp <- rxode2({
+  matExp()
+  k_depot_central   = ka            ## absorption
+  k_central_output  = CL / Vc       ## central elimination
+  k_central_periph  = Q  / Vc       ## distribution to peripheral
+  k_periph_central  = Q  / Vp       ## redistribution from peripheral
+  Cp = central / Vc
+})
+
+params3 <- c(ka = 1, CL = 2, Vc = 10, Q = 1, Vp = 20)
+sol3 <- rxSolve(threeComp, params3, ev, method = "indLin")
+```
+
+### Adding a forcing term with `indLin()`
+
+The `indLin(state)` statement adds a time-varying (inhomogeneous) term
+to a compartment.  This is useful for constant infusions that are not
+handled by the dosing event table, or for steady-state baseline inputs:
+
+```{r}
+glucoseModel <- rxode2({
+  matExp()
+  k_Gc_output = Clg / Vg       ## glucose clearance
+  k_Gp_Gc    = Q   / Vp        ## peripheral to central
+  k_Gc_Gp    = Q   / Vg        ## central to peripheral
+  ## Constant endogenous glucose production enters Gc
+  indLin(Gc) <- Gprod
+})
+```
+
+### Comparison with NONMEM ADVAN5/7
+
+NONMEM's general linear solver (ADVAN5 for non-steady-state, ADVAN7
+for steady-state) specifies rate constants as `K(i,j)` scalars in
+`$PK`, where **`K(i,j)` is the first-order transfer rate from
+compartment `i` to compartment `j`** (source first, destination
+second).
+
+rxode2's `matExp()` uses the **same source-first convention**:
+`k_from_to`.
+
+| NONMEM | rxode2 `matExp()` | Meaning |
+|---|---|---|
+| `K12 = ka` | `k_cmt1_cmt2 = ka` | depot (1) to central (2) |
+| `K20 = ke` | `k_cmt2_output = ke` | central (2) elimination |
+| `K23 = Q/V2` | `k_cmt2_cmt3 = Q/V2` | central to peripheral |
+| `K32 = Q/V3` | `k_cmt3_cmt2 = Q/V3` | peripheral to central |
+
+Differences from NONMEM:
+
+- **Compartment naming**: NONMEM numbers compartments (1, 2, 3, ...);
+  rxode2 uses descriptive names (`depot`, `central`, `periph`).
+- **Compartment declarations**: NONMEM requires explicit `COMP`
+  declarations; rxode2 auto-detects from rate constant names.
+- **Elimination sink**: NONMEM uses `K(i,0)` (compartment 0 = outside);
+  rxode2 uses `k_cmt_output` (`output` is the reserved sink label).
+- **Diagonal**: Both tools compute the diagonal (self-decay) entries
+  automatically from the listed outflow rates.
+- **Non-depleting inputs**: rxode2 supports `k_from_to_nd` for
+  zero-depletion transfers; NONMEM has no direct equivalent.
+- **Forcing terms**: rxode2's `indLin(state) <- expr` adds an
+  inhomogeneous term; in NONMEM this requires explicit ODE (ADVAN6+).
+
+### Why `matExp()` is the most stable path
+
+When using `indLin = TRUE` (ODE auto-factorization), rxode2 must:
+
+1. Parse the ODE right-hand sides symbolically via `symengine`
+2. Factor each expression into linear-in-state terms vs. remaining
+   (forcing) terms
+3. Handle multi-state products using heuristics
+   (`rxIndLinStrategy`, `rxIndLinState`)
+
+Any of these steps can fail or produce a suboptimal factorization for
+complex models.  With `matExp()`, none of this happens: you specify
+the rate matrix entries directly, and rxode2 generates the matrix
+exponential code without any symbolic processing.
+
+### When to use `matExp()` vs `indLin = TRUE`
+
+| Situation | Recommendation |
+|---|---|
+| Linear compartmental PK/PD (known rate constants) | `matExp()` -- most stable, no symengine |
+| Model migrated from NONMEM ADVAN5/7 | `matExp()` -- direct `K(i,j)` translation |
+| Nonlinear ODE (Michaelis--Menten, etc.) | `indLin = TRUE` -- auto-factorization required |
+| Exploratory model with changing ODE structure | `indLin = TRUE` -- faster iteration |
+| Complex nonlinear ODE where auto-factorization fails | Consider `matExp()` if you can state the rate matrix analytically |
+
+---
+
+## When to use inductive linearization
+
+| Scenario | Recommendation |
+|---|---|
+| Multi-subject population simulation, linear PK | `method = "liblsoda"` (default) is typically fastest overall |
+| Purely linear system, single subject | `method = "indLin"` gives an exact, closed-form solution |
+| Mildly nonlinear system (Michaelis--Menten saturation) | `method = "indLin"` can be faster than LSODA when parameters are evaluated many times (e.g., in estimation) |
+| Heavily nonlinear or chaotic ODE | Time-stepping solvers (`liblsoda`, `dop853`) are safer; IndLin convergence is not guaranteed |
+| Stiff system | `liblsoda` or `lsoda` with Jacobian specification; IndLin with EVD can struggle when eigenvalues span many orders of magnitude |
+
+### Advantages over time-stepping solvers
+
+1. **All-time domain access**: because the linearization is performed
+   over the entire interval, information from all time points is
+   available.  Dose events at any time are incorporated without the
+   solver needing an explicit hint about discontinuities.
+2. **Exact solution for linear systems**: no discretization error.
+3. **Estimation warm-start**: during iterative parameter estimation, the
+   previous parameter vector's solution can seed the next IndLin
+   iteration (the "smart update" described in Sharif et al. 2022),
+   reducing the number of linearization iterations needed.
+
+### Limitations
+
+1. EVD does not exist for all square matrices (defective matrices).
+2. For large systems (many ODEs) the matrix operations become
+   expensive; EVD scales as O(n^3).
+3. Convergence for highly nonlinear systems may be slow or fail.
+4. The current implementation is under active development; results may
+   change between versions.
+
+---
+
+## References
+
+- Sharif, Hasegawa, Duffull (2022). Exploring *Inductive Linearization*
+  for simulation and estimation with an application to the
+  Michaelis--Menten model. *Journal of Pharmacokinetics and
+  Pharmacodynamics* 49:445--453. <https://doi.org/10.1007/s10928-022-09813-z>
+
+- Duffull SB, Hegarty G (2014). An inductive approximation to the
+  solution of systems of nonlinear ordinary differential equations in
+  pharmacokinetics-pharmacodynamics. *J Theor Comput Sci* 1(4):1000119.
+
+- Hasegawa C, Duffull SB (2018). Exploring inductive linearization for
+  pharmacokinetic-pharmacodynamic systems of nonlinear ordinary
+  differential equations. *J Pharmacokinet Pharmacodyn* 20(1):35--47.
+
+- Al-Mohy AH, Higham NJ (2009). A new scaling and squaring algorithm
+  for the matrix exponential. *SIAM J Matrix Anal Appl* 31(3):970--989.
+
+- Sidje RB (1998). Expokit: a software package for computing matrix
+  exponentials. *ACM Trans Math Softw* 24(1):130--156.
+
+- Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users
+  Guides (1989--2009). Icon Development Solutions, Ellicott City, MD.
+  (ADVAN5/7 documentation for K(i,j) rate-constant specification.)
