@@ -46,6 +46,19 @@ void cvode_ctx_destroy(cvode_ctx_t *ctx);
 // Returns 1 on success, -1 on failure.
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout);
 
+// Dense output interface (mirrors the odeint dense-stepper API).
+// Reinitialize at a new initial state; call after dose events.
+void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0);
+// Return the time at the end of the last internal step.
+double cvode_ctx_dense_current_time(const cvode_ctx_t *ctx);
+// Take one internal CV_ONE_STEP toward tout_dir; yp receives the step result.
+// Returns 1 on success, -1 on failure.
+int cvode_ctx_dense_do_step(cvode_ctx_t *ctx, double *yp, double tout_dir);
+// Interpolate the solution at t via CVodeGetDky and write into yp.
+// t must lie within the last completed step interval.
+// Returns 1 on success, -1 on failure.
+int cvode_ctx_dense_calc_state(cvode_ctx_t *ctx, double t, double *yp);
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,11 +19,13 @@ struct cvode_ctx_t {
   SUNContext      sunctx;
   N_Vector        y;
   N_Vector        atol_v;
+  N_Vector        dky;    // scratch for CVodeGetDky (dense output)
   SUNMatrix       A;
   SUNLinearSolver LS;
   sunindextype    neq;
   cvode_rhs_fn_t  rhs;
   void           *rhs_data;
+  double          tret;   // time at end of last CV_ONE_STEP (dense output)
 };
 
 static int cvode_rhs_wrapper(sunrealtype t, N_Vector y, N_Vector ydot,
@@ -38,6 +40,7 @@ static int cvode_rhs_wrapper(sunrealtype t, N_Vector y, N_Vector ydot,
 static void cvode_ctx_free_internals(cvode_ctx_t *ctx) {
   if (ctx->LS)     { SUNLinSolFree(ctx->LS);      ctx->LS     = NULL; }
   if (ctx->A)      { SUNMatDestroy(ctx->A);        ctx->A      = NULL; }
+  if (ctx->dky)    { N_VDestroy(ctx->dky);          ctx->dky    = NULL; }
   if (ctx->atol_v) { N_VDestroy(ctx->atol_v);      ctx->atol_v = NULL; }
   if (ctx->y)      { N_VDestroy(ctx->y);            ctx->y      = NULL; }
   if (ctx->mem)    { CVodeFree(&ctx->mem);          ctx->mem    = NULL; }
@@ -86,6 +89,11 @@ cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
     cvode_ctx_free_internals(ctx); free(ctx); return NULL;
   }
 
+  ctx->dky = N_VNew_Serial(ctx->neq, ctx->sunctx);
+  if (!ctx->dky) { cvode_ctx_free_internals(ctx); free(ctx); return NULL; }
+
+  ctx->tret = t0;
+
   if (hmin > 0.0) CVodeSetMinStep(ctx->mem, (sunrealtype)hmin);
   if (hmax > 0.0) CVodeSetMaxStep(ctx->mem, (sunrealtype)hmax);
   CVodeSetMaxNumSteps(ctx->mem, (long int)(mxstep > 0 ? mxstep : 5000));
@@ -128,5 +136,36 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   if (CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
   sunrealtype tret;
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
+  ctx->tret = (double)tret;
   return (ret >= 0) ? 1 : -1;
+}
+
+extern "C"
+void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0) {
+  N_VSetArrayPointer(yp, ctx->y);
+  CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y);
+  ctx->tret = t0;
+}
+
+extern "C"
+double cvode_ctx_dense_current_time(const cvode_ctx_t *ctx) {
+  return ctx->tret;
+}
+
+extern "C"
+int cvode_ctx_dense_do_step(cvode_ctx_t *ctx, double *yp, double tout_dir) {
+  N_VSetArrayPointer(yp, ctx->y);
+  sunrealtype tret;
+  int ret = CVode(ctx->mem, (sunrealtype)tout_dir, ctx->y, &tret, CV_ONE_STEP);
+  if (ret < 0) return -1;
+  ctx->tret = (double)tret;
+  return 1;
+}
+
+extern "C"
+int cvode_ctx_dense_calc_state(cvode_ctx_t *ctx, double t, double *yp) {
+  if (CVodeGetDky(ctx->mem, (sunrealtype)t, 0, ctx->dky) < 0) return -1;
+  double *d = N_VGetArrayPointer(ctx->dky);
+  for (sunindextype i = 0; i < ctx->neq; i++) yp[i] = d[i];
+  return 1;
 }

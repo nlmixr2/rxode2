@@ -3,28 +3,11 @@
 #include <vector>
 #include "cvode_solver.h"
 
-extern "C" int getCvodeLinearSolver();
+// cvode_rhs_trampoline is defined (static) in cvode.cpp, included before this
+// file in the same translation unit, so it is visible here.
 
-// dydt_liblsoda is the global RHS function pointer defined in par_solve.cpp's TU.
-// It is accessible here because cvode.cpp is #included inside par_solve.cpp.
-static int cvode_rhs_trampoline(double t, double *y, double *ydot, void *data) {
-  return dydt_liblsoda(t, y, ydot, data);
-}
-
-// Called from the handleSS dispatch (case 21).
-extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
-                                    int *istate, rx_solving_options *op,
-                                    rx_solving_options_ind *ind, void *ctx_ptr) {
-  if (!ctx_ptr) { *istate = -1; return; }
-  cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
-  if (neqOde <= 0) { *xp_ptr = xout; *istate = 1; return; }
-  *istate = cvode_ctx_integrate(ctx, yp, *xp_ptr, xout);
-  if (*istate >= 0) *xp_ptr = xout;
-}
-
-extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
-                             t_update_inis u_inis) {
+extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
+                                   t_update_inis u_inis) {
   clock_t t0_clock = clock();
   int i;
   int istate = 1;
@@ -56,9 +39,14 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   int cvodeLinSolver = op->cvodeLinSolver > 0 ? op->cvodeLinSolver :
     getCvodeLinearSolver();
 
-  // Eagerly initialize CVODE before the main loop so cvode_ctx is non-NULL
-  // when handleSS is called for a dose at t=0 (xout==xp, so the lazy path
-  // inside the loop is never reached before handleSS fires).
+  bool dense_initialized = false;
+
+  // Far target for CV_ONE_STEP: past the last observation so CVODE can take
+  // natural adaptive steps that span multiple observation intervals.
+  double tout_dir = (ind->n_all_times > 0)
+    ? getAllTimes(ind, ind->n_all_times - 1) + 1.0
+    : 1e10;
+
   if (neqOde > 0 && ind->n_all_times > 0) {
     std::vector<double> atol_buf;
     double *atol_ptr = atol_data;
@@ -119,6 +107,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0 && cvode_ctx) {
                 istate = cvode_ctx_integrate(cvode_ctx, yp, xp, ind->extraDoseNewXout);
+                dense_initialized = false;
               }
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -142,6 +131,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
                 if (neqOde > 0 && cvode_ctx) {
                   istate = cvode_ctx_integrate(cvode_ctx, yp,
                                                ind->extraDoseNewXout, xout);
+                  dense_initialized = false;
                 }
                 copyLinCmt(neq, ind, op, yp);
                 postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -156,7 +146,33 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (neqOde > 0 && cvode_ctx) {
-            istate = cvode_ctx_integrate(cvode_ctx, yp, xp, xout);
+            if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
+              if (!dense_initialized) {
+                cvode_ctx_dense_reinit(cvode_ctx, yp, xp);
+                dense_initialized = true;
+              }
+              while (cvode_ctx_dense_current_time(cvode_ctx) < xout) {
+                if (cvode_ctx_dense_do_step(cvode_ctx, yp, tout_dir) < 0) {
+                  if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  ind->err = 1;
+                  break;
+                }
+                if (ind->err) {
+                  if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  break;
+                }
+              }
+              if (!ind->err) {
+                if (cvode_ctx_dense_calc_state(cvode_ctx, xout, yp) < 0) {
+                  if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  ind->err = 1;
+                }
+              }
+              istate = ind->err ? -1 : 1;
+            } else {
+              istate = cvode_ctx_integrate(cvode_ctx, yp, xp, xout);
+              dense_initialized = false;
+            }
           }
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -171,6 +187,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &istate, u_inis);
+        dense_initialized = false;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
@@ -180,6 +197,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
+        dense_initialized = false;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -203,21 +221,16 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
 }
 
-extern "C" void ind_cvode_dense(rx_solve *rx, int solveid, t_update_inis u_inis);
-extern "C" void par_cvode_dense(rx_solve *rx);
-
-extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis) {
+extern "C" void ind_cvode_dense(rx_solve *rx, int solveid, t_update_inis u_inis) {
   rx_solving_options *op = rx->op;
-  if (op->useDense) { ind_cvode_dense(rx, solveid, u_inis); return; }
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  ind_cvode_0(rx, op, solveid, neq, u_inis);
+  ind_cvode_dense_0(rx, op, solveid, neq, u_inis);
 }
 
-extern "C" void par_cvode(rx_solve *rx) {
+extern "C" void par_cvode_dense(rx_solve *rx) {
   rx_solving_options *op = rx->op;
-  if (op->useDense) { par_cvode_dense(rx); return; }
 #ifdef _OPENMP
   int cores = op->cores;
 #else
@@ -244,7 +257,7 @@ extern "C" void par_cvode(rx_solve *rx) {
     localAbort = abort;
     if (localAbort == 0) {
       setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_cvode_0(rx, op, solveid, neq, update_inis);
+      ind_cvode_dense_0(rx, op, solveid, neq, update_inis);
       if (op->badSolve) {
 #ifdef _OPENMP
 #pragma omp atomic write

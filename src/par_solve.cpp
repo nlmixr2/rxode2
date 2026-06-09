@@ -6881,6 +6881,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "mm.cpp"
 #include "em.cpp"
 #include "cvode.cpp"
+#include "cvode_dense.cpp"
 #include "trapz.cpp"
 #include "ssp3.cpp"
 #include "rkf32.cpp"
