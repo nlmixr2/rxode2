@@ -63,6 +63,7 @@ reference:
   - assertRxUiIovNoCor
   - assertVariableExists
   - assertVariableNew
+  - indLin
   - ini
   - ini<-
   - linToOde
@@ -290,6 +291,7 @@ reference:
   - rxRemoveControl
   - rxReservedKeywords
   - rxS
+  - rxSensMatExp
   - rxSetControl
   - rxSetIni0
   - rxSetProgressBar
