@@ -89,8 +89,7 @@ if (!nzchar(.sundialrInc) || !dir.exists(.sundialrInc)) {
 }
 
 ## CVODE C source and private impl headers are committed to src/.
-## The tarball extraction only runs when any file is absent (e.g., before
-## the initial commit or after a clean that removed vendored files).
+## All of these files must be present; they are part of the package source.
 .sundialsVendorFiles <- c(
   "cvode_diag_impl.h", "cvode_impl.h", "cvode_ls_impl.h", "cvode_proj_impl.h",
   "sundials_adiak_metadata.h", "sundials_cli.h", "sundials_cvode.c",
@@ -117,159 +116,15 @@ if (!nzchar(.sundialrInc) || !dir.exists(.sundialrInc)) {
   "sunlinsol_sptfqmr.c", file.path("stl", "sunstl_vector.h")
 )
 
-.vendorFromSundialr <- function() {
-  suppressWarnings(dir.create("src/stl", recursive = TRUE, showWarnings = FALSE))
-
-  .sdr_ver <- as.character(packageVersion("sundialr"))
-  .tarball_name <- paste0("sundialr_", .sdr_ver, ".tar.gz")
-  .search_dirs <- c(tempdir(),
-                    Sys.getenv("TEMP", unset = ""),
-                    Sys.getenv("TMP", unset = ""),
-                    tools::R_user_dir("cache", which = "cache"),
-                    getwd())
-  .search_dirs <- .search_dirs[nzchar(.search_dirs)]
-  .tarball <- Filter(file.exists, file.path(.search_dirs, .tarball_name))
-
-  if (length(.tarball) == 0) {
-    .tarball <- tryCatch(
-      utils::download.packages("sundialr", destdir = tempdir(),
-                               repos = getOption("repos"), type = "source")[1, 2],
-      error = function(e) character(0)
-    )
-  } else {
-    .tarball <- .tarball[1]
-  }
-  if (length(.tarball) == 0 || !file.exists(.tarball)) {
-    .curl <- Sys.which("curl")
-    if (nzchar(.curl)) {
-      .dest <- file.path(tempdir(), .tarball_name)
-      .url <- paste0("https://cran.r-project.org/src/contrib/", .tarball_name)
-      .ok <- tryCatch(
-        system2(.curl, c("-k", "-L", "--fail", "-o", .dest, .url),
-                stdout = FALSE, stderr = FALSE) == 0L,
-        error = function(e) FALSE
-      )
-      if (isTRUE(.ok) && file.exists(.dest)) {
-        .tarball <- .dest
-      }
-    }
-  }
-  if (length(.tarball) == 0 || !file.exists(.tarball)) {
-    stop("Could not locate sundialr source tarball for vendoring.", call. = FALSE)
-  }
-
-  .td <- tempfile("sundialr-vendor-")
-  dir.create(.td)
-  on.exit(unlink(.td, recursive = TRUE), add = TRUE)
-  utils::untar(.tarball, exdir = .td)
-  .nested <- list.files(file.path(.td, "sundialr", "src"),
-                        pattern = "^sundials-mod-.*\\.tar\\.gz$",
-                        full.names = TRUE)
-  if (length(.nested) == 0) {
-    stop("sundialr source does not contain nested SUNDIALS tarball.", call. = FALSE)
-  }
-  utils::untar(.nested[1], exdir = .td)
-  .sun <- list.dirs(.td, recursive = FALSE, full.names = TRUE)
-  .sun <- .sun[grepl("sundials-[0-9]", basename(.sun))]
-  if (length(.sun) == 0) {
-    stop("Unable to locate extracted SUNDIALS source tree.", call. = FALSE)
-  }
-  .sun <- .sun[1]
-
-  .map <- c(
-    "cvode/cvode.c" = "sundials_cvode.c",
-    "cvode/cvode_diag.c" = "sundials_cvode_diag.c",
-    "cvode/cvode_io.c" = "sundials_cvode_io.c",
-    "cvode/cvode_ls.c" = "sundials_cvode_ls.c",
-    "cvode/cvode_nls.c" = "sundials_cvode_nls.c",
-    "cvode/cvode_proj.c" = "sundials_cvode_proj.c",
-    "cvode/cvode_impl.h" = "cvode_impl.h",
-    "cvode/cvode_diag_impl.h" = "cvode_diag_impl.h",
-    "cvode/cvode_ls_impl.h" = "cvode_ls_impl.h",
-    "cvode/cvode_proj_impl.h" = "cvode_proj_impl.h",
-    "nvector/serial/nvector_serial.c" = "sundials_nvector_serial.c",
-    "sunmemory/system/sundials_system_memory.c" = "sundials_system_memory.c",
-    "sunmatrix/band/sunmatrix_band.c" = "sundials_sunmatrix_band.c",
-    "sunmatrix/dense/sunmatrix_dense.c" = "sundials_sunmatrix_dense.c",
-    "sunmatrix/sparse/sunmatrix_sparse.c" = "sundials_sunmatrix_sparse.c",
-    "sunlinsol/band/sunlinsol_band.c" = "sundials_sunlinsol_band.c",
-    "sunlinsol/dense/sunlinsol_dense.c" = "sundials_sunlinsol_dense.c",
-    "sunlinsol/spgmr/sunlinsol_spgmr.c" = "sunlinsol_spgmr.c",
-    "sunlinsol/spbcgs/sunlinsol_spbcgs.c" = "sunlinsol_spbcgs.c",
-    "sunlinsol/sptfqmr/sunlinsol_sptfqmr.c" = "sunlinsol_sptfqmr.c",
-    "sunnonlinsol/newton/sunnonlinsol_newton.c" = "sundials_sunnonlinsol_newton.c",
-    "sunnonlinsol/fixedpoint/sunnonlinsol_fixedpoint.c" = "sundials_sunnonlinsol_fixedpoint.c",
-    "sundials/sundials_adiak_metadata.h" = "sundials_adiak_metadata.h",
-    "sundials/sundials_cli.h" = "sundials_cli.h",
-    "sundials/sundials_datanode.h" = "sundials_datanode.h",
-    "sundials/sundials_hashmap_impl.h" = "sundials_hashmap_impl.h",
-    "sundials/sundials_iterative_impl.h" = "sundials_iterative_impl.h",
-    "sundials/sundials_logger_impl.h" = "sundials_logger_impl.h",
-    "sundials/sundials_macros.h" = "sundials_macros.h",
-    "sundials/sundials_profiler_impl.h" = "sundials_profiler_impl.h",
-    "sundials/sundials_utils.h" = "sundials_utils.h",
-    "sundials/sundials_debug.h" = "sundials_debug.h",
-    "sundials/sundials_band.c" = "sundials_sundials_band.c",
-    "sundials/sundials_cli.c" = "sundials_sundials_cli.c",
-    "sundials/sundials_context.c" = "sundials_sundials_context.c",
-    "sundials/sundials_dense.c" = "sundials_sundials_dense.c",
-    "sundials/sundials_direct.c" = "sundials_sundials_direct.c",
-    "sundials/sundials_errors.c" = "sundials_sundials_errors.c",
-    "sundials/sundials_hashmap.c" = "sundials_sundials_hashmap.c",
-    "sundials/sundials_iterative.c" = "sundials_sundials_iterative.c",
-    "sundials/sundials_linearsolver.c" = "sundials_sundials_linearsolver.c",
-    "sundials/sundials_logger.c" = "sundials_sundials_logger.c",
-    "sundials/sundials_math.c" = "sundials_sundials_math.c",
-    "sundials/sundials_matrix.c" = "sundials_sundials_matrix.c",
-    "sundials/sundials_memory.c" = "sundials_sundials_memory.c",
-    "sundials/sundials_nonlinearsolver.c" = "sundials_sundials_nonlinearsolver.c",
-    "sundials/sundials_nvector.c" = "sundials_sundials_nvector.c",
-    "sundials/sundials_profiler.c" = "sundials_sundials_profiler.c",
-    "sundials/sundials_version.c" = "sundials_sundials_version.c",
-    "sundials/stl/sunstl_vector.h" = file.path("stl", "sunstl_vector.h")
+.missing <- .sundialsVendorFiles[!file.exists(file.path("src", .sundialsVendorFiles))]
+if (length(.missing) > 0) {
+  stop(
+    "Required SUNDIALS source files are missing from src/:\n  ",
+    paste(.missing, collapse = "\n  "),
+    "\nThese files are committed to the repository and must be present.\n",
+    "Please ensure you have a complete checkout of the package source.",
+    call. = FALSE
   )
-
-  for (.rel in names(.map)) {
-    .src <- file.path(.sun, "src", .rel)
-    .dst <- file.path("src", .map[[.rel]])
-    if (!file.exists(.src)) {
-      stop("Missing required SUNDIALS source/header in sundialr tarball: ", .rel,
-           call. = FALSE)
-    }
-    dir.create(dirname(.dst), recursive = TRUE, showWarnings = FALSE)
-    file.copy(.src, .dst, overwrite = TRUE)
-  }
-
-  ## Strip the sensitivity-only wrapper constructor and its #include from the
-  ## nonlinear solver files.  CVODE (not CVODES) does not need sensitivity
-  ## wrapping, and sundials_nvector_senswrapper.h is not shipped in the
-  ## installed sundialr headers.
-  .strip_sens_functions <- function(.path, .fn_name) {
-    .lines <- readLines(.path)
-    ## Remove the #include line for senswrapper
-    .lines <- .lines[!grepl("sundials_nvector_senswrapper\\.h", .lines)]
-    ## Find and remove the comment block + function body for the Sens wrapper
-    .start <- grep(paste0("SUNNonlinearSolver\\s+", .fn_name, "\\s*\\("), .lines)
-    if (length(.start) > 0) {
-      ## Walk back to the comment block opening
-      .cb <- .start[1] - 1L
-      while (.cb >= 1L && !grepl("^/\\*={10,}", .lines[.cb])) .cb <- .cb - 1L
-      .cb <- max(.cb, 1L)
-      ## Walk forward to the closing brace (first standalone "}" at column 0)
-      .end <- .start[1]
-      while (.end <= length(.lines) && !grepl("^\\}", .lines[.end])) .end <- .end + 1L
-      .lines <- .lines[-seq(.cb, .end)]
-    }
-    .out <- file(.path, "wb")
-    writeLines(.lines, .out, sep = "\n")
-    close(.out)
-  }
-  .strip_sens_functions("src/sundials_sunnonlinsol_newton.c",    "SUNNonlinSol_NewtonSens")
-  .strip_sens_functions("src/sundials_sunnonlinsol_fixedpoint.c", "SUNNonlinSol_FixedPointSens")
-}
-
-if (!all(file.exists(file.path("src", .sundialsVendorFiles)))) {
-  .vendorFromSundialr()
 }
 
 ## ---------------------------------------------------------------------------
