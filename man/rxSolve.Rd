@@ -1489,6 +1489,13 @@ non-stiff solver.  Default \code{3L}.}
 \item{autoSwitchStiffFirst}{Logical; when \code{TRUE}, start each subject solve
 with the stiff solver instead of the non-stiff primary.  Default \code{FALSE}.}
 
+\item{autoSwitchSwitchMax}{Non-negative integer; minimum number of
+integration intervals that must elapse after a switch before the solver
+is allowed to switch back in the opposite direction.  Acts as an
+oscillation guard: if the stiffness ratio fluctuates near a threshold,
+this prevents rapid back-and-forth between solvers.  Set to \code{0L} to
+disable the guard entirely.  Default \code{5L}.}
+
 \item{stiff2}{Integer method code for the stiff secondary solver used in
 AutoSwitch composite methods.  Normally set automatically when \code{method} is
 a composite string of the form \code{"primary+stiff"} (e.g.

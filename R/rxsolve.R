@@ -907,6 +907,13 @@
 #' @param autoSwitchStiffFirst Logical; when `TRUE`, start each subject solve
 #'   with the stiff solver instead of the non-stiff primary.  Default `FALSE`.
 #'
+#' @param autoSwitchSwitchMax Non-negative integer; minimum number of
+#'   integration intervals that must elapse after a switch before the solver
+#'   is allowed to switch back in the opposite direction.  Acts as an
+#'   oscillation guard: if the stiffness ratio fluctuates near a threshold,
+#'   this prevents rapid back-and-forth between solvers.  Set to `0L` to
+#'   disable the guard entirely.  Default `5L`.
+#'
 #' @param stiff2 Integer method code for the stiff secondary solver used in
 #'   AutoSwitch composite methods.  Normally set automatically when `method` is
 #'   a composite string of the form `"primary+stiff"` (e.g.
