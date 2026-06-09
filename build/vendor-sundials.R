@@ -211,4 +211,28 @@ message("Copied ", length(.copied), " files to src/.")
 .strip_sens("src/sundials_sunnonlinsol_newton.c",    "SUNNonlinSol_NewtonSens")
 .strip_sens("src/sundials_sunnonlinsol_fixedpoint.c","SUNNonlinSol_FixedPointSens")
 
+## ---------------------------------------------------------------------------
+## Replace sprintf(name, "...") with snprintf(name, N, "...") so CRAN's
+## _FORTIFY_SOURCE check does not flag ___sprintf_chk in the compiled .so.
+## The buffer size N matches the malloc(N * sizeof(char)) call in each file.
+## ---------------------------------------------------------------------------
+
+.fix_sprintf <- function(.path, .bufsz) {
+  if (!file.exists(.path)) return(invisible(NULL))
+  .lines <- readLines(.path)
+  .lines <- gsub(
+    sprintf("\\bsprintf\\(name,"),
+    sprintf("snprintf(name, %d,", .bufsz),
+    .lines, perl = TRUE
+  )
+  .out <- file(.path, "wb")
+  writeLines(.lines, .out, sep = "\n")
+  close(.out)
+  message("Fixed sprintf -> snprintf (buf=", .bufsz, ") in ", .path)
+}
+
+.fix_sprintf("src/sundials_cvode_diag.c", 30L)
+.fix_sprintf("src/sundials_cvode_io.c",   24L)
+.fix_sprintf("src/sundials_cvode_ls.c",   30L)
+
 message("Done. Review 'git diff src/' and commit any updated files.")
