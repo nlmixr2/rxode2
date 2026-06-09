@@ -48,7 +48,7 @@ complete method inventory split by stiffness and by adaptivity.
 | General PK/PD work, stiffness uncertain | `liblsoda`, `lsoda` | Automatically switches between non-stiff and stiff behavior; very good default for mixed event schedules | ODEPACK/deSolve `lsoda`; Julia `lsoda()`; MATLAB has no direct LSODA wrapper and usually splits this choice between `ode45` and `ode15s`; Phoenix NLME closest match is `Auto-Detect` (LSODA) |
 | Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54`, `t54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`dp54` is closest to MATLAB `ode45`; `t54` is the same method as Julia `Tsit5()`; `dop853` matches SciPy `DOP853`; Julia `DP5()` maps to `dop5`/`dop54`, `Vern7()` maps to `vern76`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
 | Moderate stiffness: TMDD, indirect response with fast turnover, enzyme models | `ros4`, `ros43`, `sdirk43` | Stiff-aware one-step methods that often behave well across dosing discontinuities | MATLAB users can think `ode23s` / `ode15s`; Julia analogs are `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`; Phoenix NLME users usually compare against `Auto-Detect` (LSODA) or `Stiff` (LSODE/BDF) |
-| Clearly stiff or larger systems where linear solver choice matters | `cvode` | CVODE gives Adams/BDF-style behavior with configurable linear solvers | Julia `CVODE_Adams()` / `CVODE_BDF()` in Sundials; MATLAB users usually compare against `ode15s`; Phoenix NLME analog is `Stiff` (LSODE/BDF) |
+| Clearly stiff or larger systems where linear solver choice matters | `cvode` | CVODE gives Adams/BDF-style behavior with configurable linear solvers; supports `dense=TRUE` for efficient dense output using CVODE's native `CVodeGetDky` interpolation | Julia `CVODE_Adams()` / `CVODE_BDF()` in Sundials; MATLAB users usually compare against `ode15s`; Phoenix NLME analog is `Stiff` (LSODE/BDF) |
 | Stiffness uncertain, want fast non-stiff speed with automatic fallback | `"t54+ros4"`, `"t54+ros43"`, `"vern76+ros43"`, `"vern76+sdirk43"` | AutoSwitch: starts with the non-stiff solver; detects stiffness mid-solve and retries the interval with the implicit solver; switches back if the region becomes non-stiff again | Closest to Julia `AutoTsit5(RosShamp4())`/`AutoVern7(Rodas4P())`; note Julia's `Rosenbrock23()` has no exact rxode2 match (use `ros4` as the lowest-order Rosenbrock-family secondary); no direct MATLAB or NONMEM analog |
 | Fixed-step comparison runs or debugging around dose/event boundaries | `rk4`, `trapz`, `backwardEuler`, `gauss6`, `iiic6`, `radauiia5`, `ros6` | Forces a controlled step size and makes solver-to-solver comparisons easier | Julia has direct families such as `Heun()`, `ImplicitEuler()`, `GaussLegendre`, `LobattoIIIC`, `RadauIIA5()`; MATLAB has fewer built-in fixed-step counterparts |
 | Mostly linear compartment structure with sparse nonlinear pieces | `indLin` | Uses the specialized inductive linearization pathway instead of a general ODE stepper | Best compared with matrix-exponential or linearization workflows, not with `ode45`/`ode15s` directly; Phoenix NLME analogs are `Matrix Exponent` and `Exponent Higham` |
@@ -80,7 +80,13 @@ turnover processes.
 - `cvode`: Sundials CVODE backend; useful when you need a modern stiff
   solver with linear solver control (`dense`, `band`, `gmres`,
   `bicgstab`, `tfqmr`).  At present, `band` is kept for compatibility
-  and aliases to the dense path.
+  and aliases to the dense path.  `cvode` supports `dense=TRUE`: the
+  BDF or Adams history is preserved across consecutive observation
+  points by using `CV_ONE_STEP` + CVODE's native `CVodeGetDky`
+  interpolation rather than reinitializing at each output time.  This
+  is particularly beneficial for BDF, which maintains a multi-step
+  history polynomial and a Jacobian factorization that would otherwise
+  be discarded on every reinitialize.
 - `ros4`, `ros43`: adaptive Rosenbrock methods for stiff or moderately
   stiff systems
 - `sdirk43`: adaptive singly diagonally implicit Runge-Kutta method
@@ -323,13 +329,15 @@ In `rxode2`, this is the practical rule of thumb:
   solver to use
 - for adaptive methods, `hmin` is only the minimum step size, and
   `hmax` becomes important when events or dense output matter
-- for dense output workflows, the most useful methods are currently
-  `dop853`, `dop5`, `bs`, and `ros4`
+- for dense output workflows, pass `dense=TRUE` to `rxControl()` or
+  `rxSolve()`; the methods that support it are `dop853`, `dop5`,
+  `bs`, `ros4`, and now `cvode`
 
 For pharmacometric workflows such as VPCs, trial simulation, and
 posterior predictive checks, dense output can matter as much as the
 integrator itself because it changes how often the expensive full
 solver state has to be reconstructed at requested sample times.
+
 
 ## MATLAB naming guide
 

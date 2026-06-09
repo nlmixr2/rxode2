@@ -35,14 +35,15 @@ solver records polynomial coefficients for each accepted step. We then
 use these cheap, continuous polynomials to interpolate the system
 states at any observation times falling within that step.
 
-In `rxode2`, dense output is supported across four solvers:
+In `rxode2`, dense output is supported across five solvers:
 
-| Method | Type | Stiff-Safe | Dense Polynomial Order / Method |
+| Method | Type | Stiff-Safe | Dense Polynomial / Method |
 |---|---|---|---|
-| `"dop853"` | Explicit Runge-Kutta 8(5,3) | No | 7th-order polynomial (`contd8`) |
-| `"dop5"` | Explicit Runge-Kutta 5(4) | No | 4th-order polynomial (`dopri5`) |
-| `"bs"` | Bulirsch-Stoer | No | Neville-Aitken polynomial interpolation |
-| `"ros4"` | Implicit Rosenbrock 4 | Yes | Implicit Rosenbrock dense output |
+| `"dop853"` | Explicit Runge-Kutta 8(5,3) | No | 7th-order `contd8` polynomial (Hairer native) |
+| `"dop5"` | Explicit Runge-Kutta 5(4) | No | 4th-order Shampine continuous extension |
+| `"bs"` | Bulirsch-Stoer | No | Extrapolation polynomial dense output (odeint) |
+| `"ros4"` | Implicit Rosenbrock 4 | Yes | Implicit Rosenbrock dense output (odeint) |
+| `"cvode"` | SUNDIALS CVODE (BDF/Adams) | Yes | CVODE native `CVodeGetDky` interpolation |
 
 ### The standard path (`dense = FALSE`) vs. the dense path (`dense = TRUE`)
 
@@ -50,11 +51,36 @@ In `rxode2`, dense output is supported across four solvers:
   observation time, advancing from one event to the next. The adaptive
   step-size control re-enters from scratch at every observation point.
 
+- **`dense = TRUE` (`dop853`):** The native Hairer C solver runs the
+  entire segment from one dose to the next in a single `dop853()`
+  call. A `solout` callback fires after each accepted step and calls
+  `contd8()` to evaluate the 7th-order dense polynomial at every
+  observation time falling within that step. This is not
+  Boost.Odeint-based; it uses Dormand & Prince's original Fortran
+  algorithm ported to C.
 
-- **`dense = TRUE`:** The solver integrates across the whole
-  inter-dose interval without stopping for observations. A callback
-  evaluates the dense output polynomial at each observation time that
-  falls within the solver's step.
+- **`dense = TRUE` (odeint-based solvers: `dop5`, `bs`, `ros4`):**
+  An odeint dense stepper is initialized at the start of each
+  inter-dose interval. The event loop visits each observation
+  individually; for any observation already within the stepper's
+  last completed step, `calc_state()` recovers the solution by
+  polynomial interpolation without new derivative evaluations. The
+  stepper state (current time, step size, history polynomial) is
+  preserved across consecutive observations so the solver never
+  restarts within an inter-dose interval.
+
+- **`dense = TRUE` (`cvode`):** Uses a different but complementary
+  mechanism. CVODE advances in `CV_ONE_STEP` mode toward the simulation
+  end, taking natural adaptive steps that can span many consecutive
+  observation times. At each observation, `CVodeGetDky` interpolates
+  the solution using CVODE's internal Nordsieck polynomial -- the same
+  polynomial CVODE already maintains for its own error control. This
+  avoids the `CVodeReInit` call that the standard path requires at
+  every observation, preserving the BDF order-selection state, the
+  step-size history, and any cached Jacobian factorization across
+  the entire inter-dose interval. `CVodeReInit` is called only when a
+  dose event, reset event, or steady-state calculation introduces a
+  true state discontinuity.
 
 ---
 
@@ -125,6 +151,7 @@ invisible(rxSolve(mod, et(amt = 100) |> et(0:5), method = "dop853"))
 invisible(rxSolve(mod, et(amt = 100) |> et(0:5), method = "dop5"))
 invisible(rxSolve(mod, et(amt = 100) |> et(0:5), method = "bs"))
 invisible(rxSolve(mod, et(amt = 100) |> et(0:5), method = "ros4"))
+invisible(rxSolve(mod, et(amt = 100) |> et(0:5), method = "cvode"))
 ```
 
 ### Correctness Check
@@ -162,7 +189,7 @@ run_benchmark <- function(method, ev, dense) {
   median(bm$time) / 1e6 # nanoseconds -> milliseconds
 }
 
-for (m in c("dop853", "dop5", "bs", "ros4")) {
+for (m in c("dop853", "dop5", "bs", "ros4", "cvode")) {
   cat(sprintf("\n=== Solver: %s ===\n", m))
   for (by in c(1.0, 0.1, 0.01)) {
     ev_grid <- doses |> et(seq(0, 168, by = by))
@@ -189,12 +216,24 @@ for (m in c("dop853", "dop5", "bs", "ros4")) {
   output. It is highly robust and performs beautifully on smooth,
   high-precision non-stiff systems.
 
-- **`"ros4"` (Rosenbrock 4)**: The implicit stiff-safe dense
-  solver. Since it is implicit, it evaluates Jacobians and solves
-  linear systems at each step. On stiff systems with dense grids,
-  `"ros4"` with `dense = TRUE` yields significant speedups by avoiding
-  frequent Newton-Raphson solver restarts.
+- **`"ros4"` (Rosenbrock 4)**: The implicit stiff-safe dense solver.
+  Each step requires a Jacobian evaluation and an LU-factorized
+  linear-system solve (one per stage), but Rosenbrock is linearly
+  implicit -- there is no Newton iteration. On stiff systems with
+  dense observation grids, `"ros4"` with `dense = TRUE` yields
+  speedups by taking large natural steps and interpolating, rather
+  than being forced to stop and restart step-size selection at every
+  observation.
 
+- **`"cvode"` (SUNDIALS CVODE BDF)**: The stiff-optimized dense solver
+  using CVODE's native `CVodeGetDky` interpolation. Unlike the
+  odeint-based dense solvers, CVODE advances in `CV_ONE_STEP` mode,
+  taking natural adaptive steps across the entire inter-dose interval.
+  The speedup over the standard path comes from avoiding `CVodeReInit`
+  at every observation, which preserves the BDF order-selection state,
+  step-size history, and cached Jacobian factorization. Speedups are
+  most pronounced on very fine grids with stiff systems, where the BDF
+  multi-step history carries most of the convergence benefit.
 
 ---
 
@@ -222,7 +261,19 @@ Use `dense = TRUE` when **all** of the following hold:
 - **For very smooth non-stiff systems requiring high precision**: Use
   `"bs"`.
 
-- **For stiff systems (e.g., TMDD models)**: Use `"ros4"`.
+- **For stiff systems with moderate sampling grids**: Use `"ros4"`.
+  It is linearly implicit, evaluates the Jacobian once per step, and
+  the dense output avoids restarting step-size selection at each
+  observation.
+
+- **For stiff systems with very fine sampling grids** (e.g., TMDD,
+  QSP models with rich PK sampling, or mechanistic models where
+  observations are spaced much closer than the solver's natural step
+  size): Use `"cvode"`. The BDF method preserves its multi-step
+  history polynomial and cached Jacobian factorization across
+  observation points, so the dense path avoids repeated
+  `CVodeReInit` calls that would otherwise discard accumulated
+  convergence state.
 
 ---
 
