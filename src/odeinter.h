@@ -1,6 +1,7 @@
 #ifndef ODEINTER_H
 #define ODEINTER_H
 
+#include "odeint_bsd.h"
 #include <boost/numeric/odeint.hpp>
 #include <vector>
 #include <stdexcept>

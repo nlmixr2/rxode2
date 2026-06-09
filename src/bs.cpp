@@ -25,11 +25,11 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   
   typedef boost::numeric::odeint::bulirsch_stoer<zero_copy_state> error_stepper_type;
   error_stepper_type stepper(ind->atol2[0], ind->rtol2[0]);
-      
+
   typedef boost::numeric::odeint::bulirsch_stoer_dense_out<zero_copy_state> dense_stepper_type;
   dense_stepper_type dense_stepper(ind->atol2[0], ind->rtol2[0]);
   bool stepper_initialized = false;
-      
+
   int neqOde = op->neq - op->numLin - op->numLinSens;
   rxode2_system sys(c_dydt, neq, ind);
   sys.cap_t_ = true;
