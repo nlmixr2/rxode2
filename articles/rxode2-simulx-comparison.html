@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -103,7 +104,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -168,8 +169,8 @@ integrates with nlmixr2 for parameter estimation.</p></li>
 application (part of the MonolixSuite, distributed by Simulations Plus /
 Lixoft). It provides a graphical user interface (GUI) as its primary
 interaction mode, and an R scripting interface via the
-<code>lixoftConnectors</code> package. Models are specified in mlxtran —
-the same language used by Monolix for estimation — so Monolix projects
+<code>lixoftConnectors</code> package. Models are specified in mlxtran –
+the same language used by Monolix for estimation – so Monolix projects
 can be imported directly with no re-implementation. A commercial or
 academic license is required.</p></li>
 </ul>
@@ -195,7 +196,7 @@ academic license is required.</p></li>
 <div class="section level3">
 <h3 id="no-license-required">No license required<a class="anchor" aria-label="anchor" href="#no-license-required"></a>
 </h3>
-<p>rxode2 is entirely open-source (GPL ≥ 3). Simulx requires a
+<p>rxode2 is entirely open-source (GPL &gt;= 3). Simulx requires a
 commercial license from Simulations Plus; an academic license is
 available free of charge but must be requested and renewed. rxode2 runs
 without any registration or license file on any machine with R and a C
@@ -215,7 +216,7 @@ GUI state and R scripts are partially coupled.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Entirely self-contained R script — no GUI, no license file</span></span>
+<span><span class="co"># Entirely self-contained R script -- no GUI, no license file</span></span>
 <span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">KA</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">+</span> <span class="va">eta.ka</span><span class="op">)</span></span>
 <span>  <span class="va">CL</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span><span class="op">)</span></span>
@@ -289,7 +290,7 @@ sensitivity equations, used by nlmixr2’s FOCEi algorithm for exact
 gradient-based parameter estimation.</p>
 </div>
 <div class="section level3">
-<h3 id="compartment-analytical-solutions-with-exact-gradients">1–3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
+<h3 id="compartment-analytical-solutions-with-exact-gradients">1-3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
 </h3>
 <p><code>linCmt()</code> provides analytical solutions for one-, two-,
 and three-compartment PK models with gradients via Stan math
@@ -306,7 +307,7 @@ based solver.</p>
 <div class="section level3">
 <h3 id="runs-anywhere-without-infrastructure">Runs anywhere without infrastructure<a class="anchor" aria-label="anchor" href="#runs-anywhere-without-infrastructure"></a>
 </h3>
-<p>rxode2 runs on any machine with R — laptops, CI servers, Docker
+<p>rxode2 runs on any machine with R – laptops, CI servers, Docker
 containers, or Shiny apps. Simulx requires the MonolixSuite installation
 and a valid license to be present on the machine.</p>
 </div>
@@ -320,7 +321,7 @@ and a valid license to be present on the machine.</p>
 <p>Simulx’s primary strength is its point-and-click GUI. The
 <strong>Exploration</strong> workflow lets modelers interactively sweep
 parameter values and dosing regimens for a typical individual with
-real-time graphical output — no code required. This low-friction
+real-time graphical output – no code required. This low-friction
 interface is valuable for non-programmers and for rapid “what-if”
 exploration before committing to a full simulation script.</p>
 <p>rxode2 is code-only; interactive exploration requires writing R code
@@ -347,7 +348,7 @@ manual review.</p>
 <p>Simulx provides a structured GUI workflow for defining named
 simulation scenarios (groups with different doses, covariates, or
 parameter values), running them, and visualizing results in interactive
-tables and plots — all within the application.</p>
+tables and plots – all within the application.</p>
 <p>In rxode2 all scenario management, tabulation, and plotting is done
 in R using general-purpose packages (e.g., <code>ggplot2</code>,
 <code>data.table</code>), which gives more flexibility but requires more
@@ -356,14 +357,14 @@ code.</p>
 <div class="section level3">
 <h3 id="standardized-clinical-trial-simulation-workflow">Standardized clinical trial simulation workflow<a class="anchor" aria-label="anchor" href="#standardized-clinical-trial-simulation-workflow"></a>
 </h3>
-<p>Simulx’s GUI enforces a clear three-step workflow —
+<p>Simulx’s GUI enforces a clear three-step workflow –
 <strong>Definition</strong> (parameters, treatments, outputs,
 covariates), <strong>Exploration</strong> (typical individual), and
-<strong>Simulation</strong> (population) — that guides users toward a
+<strong>Simulation</strong> (population) – that guides users toward a
 complete and well-structured simulation. This structured approach
 reduces the risk of ad hoc or incomplete simulation setups.</p>
 <p>rxode2 imposes no workflow structure; the user is responsible for
-organising their simulation code.</p>
+organizing their simulation code.</p>
 </div>
 </div>
 <div class="section level2">
@@ -404,7 +405,7 @@ rxode2.</p>
 <tbody>
 <tr class="odd">
 <td>License</td>
-<td>open-source (GPL ≥ 3)</td>
+<td>open-source (GPL &gt;= 3)</td>
 <td>commercial (free academic)</td>
 </tr>
 <tr class="even">
@@ -439,7 +440,7 @@ rxode2.</p>
 <td>single C++ LSODA-based</td>
 </tr>
 <tr class="even">
-<td>1–3 cmt analytical solution</td>
+<td>1-3 cmt analytical solution</td>
 <td>
 <code>linCmt()</code> with gradients</td>
 <td>ODE-based only</td>

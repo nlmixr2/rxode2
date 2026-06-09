@@ -5,12 +5,13 @@ articles:
   articles/adaptive-dosing: adaptive-dosing.html
   articles/Integrating-User-Defined-Functions-into-rxode2: Integrating-User-Defined-Functions-into-rxode2.html
   articles/Modifying-Models: Modifying-Models.html
+  articles/ode-solvers: ode-solvers.html
   articles/rxode2-clinical-trial-sim: rxode2-clinical-trial-sim.html
   rxode2-cmt: rxode2-cmt.html
   rxode2-covariates: rxode2-covariates.html
   rxode2-data-frame: rxode2-data-frame.html
+  articles/rxode2-dense-output: rxode2-dense-output.html
   articles/rxode2-desolve-comparison: rxode2-desolve-comparison.html
-  articles/rxode2-dop853-dense: rxode2-dop853-dense.html
   articles/rxode2-et-refactor: rxode2-et-refactor.html
   articles/rxode2-eta-eps-resampling: rxode2-eta-eps-resampling.html
   rxode2-event-table: rxode2-event-table.html
@@ -44,7 +45,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-06-09T08:49Z
+last_built: 2026-06-09T16:33Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

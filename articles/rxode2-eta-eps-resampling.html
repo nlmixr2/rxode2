@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -103,7 +104,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -154,7 +155,7 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 5.1.2 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 5.1.3 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/lotri/" class="external-link">lotri</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
@@ -164,7 +165,7 @@
 residual variability (EPSs) within the model code itself using
 <code>simeta()</code> and <code>simeps()</code>. This allows you to
 implement rejection sampling, truncated distributions, or any custom
-sampling logic directly in the model definition — without
+sampling logic directly in the model definition – without
 post-processing the simulated output.</p>
 <p>This is analogous to the <code>SIMETA</code> and <code>SIMEPS</code>
 functions available in NONMEM, though the implementation and the context
@@ -205,7 +206,7 @@ at the C level, parallel solving with OpenMP is fully supported.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#&gt;   60.41   65.69   71.15   70.37   74.90   79.96</span></span></code></pre></div>
-<p>All simulated weights fall within the 60–80 kg window:</p>
+<p>All simulated weights fall within the 60-80 kg window:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span> <span class="op">&gt;=</span> <span class="fl">60</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span> <span class="op">&lt;=</span> <span class="fl">80</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
@@ -294,7 +295,7 @@ has two advantages over filtering or replacing values after
 <li>
 <strong>Self-consistency</strong>: downstream model quantities
 (e.g., PK parameters computed from body weight) always reflect the
-accepted draw — no risk of a filtered row having inconsistent derived
+accepted draw – no risk of a filtered row having inconsistent derived
 variables.</li>
 <li>
 <strong>Parallelism</strong>: resampling happens inside the C solver

@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -103,7 +104,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -194,14 +195,14 @@ in <code>.onAttach</code> using
 <h2 id="package-skeleton">Package skeleton<a class="anchor" aria-label="anchor" href="#package-skeleton"></a>
 </h2>
 <pre><code>mm/
-├── DESCRIPTION
-├── NAMESPACE
-├── R/
-│   ├── mm.R           # R interface + roxygen docs
-│   └── zzz.R          # .onAttach / .onUnload hooks
-└── src/
-    ├── myfuns.c        # scalar C functions and SEXP vector wrappers
-    └── init.c          # R_init_mm: registers callables and routines</code></pre>
++-- DESCRIPTION
++-- NAMESPACE
++-- R/
+|   +-- mm.R           # R interface + roxygen docs
+|   \\-- zzz.R          # .onAttach / .onUnload hooks
+\\-- src/
+    +-- myfuns.c        # scalar C functions and SEXP vector wrappers
+    \\-- init.c          # R_init_mm: registers callables and routines</code></pre>
 <div class="section level3">
 <h3 id="description">DESCRIPTION<a class="anchor" aria-label="anchor" href="#description"></a>
 </h3>
@@ -234,11 +235,11 @@ hand. The relevant tags are shown with each file below.</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Scalar functions</strong> (<code>double</code> in,
-<code>double</code> out) — these are what rxode2 calls inside the ODE
+<code>double</code> out) – these are what rxode2 calls inside the ODE
 solver.</li>
 <li>
 <strong>SEXP vector wrappers</strong> (<code>SEXP</code> in,
-<code>SEXP</code> out) — these are what the thin R interface calls; they
+<code>SEXP</code> out) – these are what the thin R interface calls; they
 loop over equal-length double vectors and return the result as an R
 numeric vector.</li>
 </ol>
@@ -324,12 +325,12 @@ numeric vector.</li>
 <ul>
 <li>Return type is <code>double</code>.</li>
 <li>All arguments are <code>double</code> scalars, not vectors.</li>
-<li>No R API calls inside the body — pure numeric C.</li>
+<li>No R API calls inside the body – pure numeric C.</li>
 </ul>
 </div>
 <div class="section level3">
 <h3 id="srcinit-c-registering-the-callables">
-<code>src/init.c</code> — registering the callables<a class="anchor" aria-label="anchor" href="#srcinit-c-registering-the-callables"></a>
+<code>src/init.c</code> – registering the callables<a class="anchor" aria-label="anchor" href="#srcinit-c-registering-the-callables"></a>
 </h3>
 <div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;R.h&gt;</span></span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;Rinternals.h&gt;</span></span>
@@ -648,7 +649,7 @@ as C with no R overhead and full OpenMP thread safety.</p></li>
 <li><p>When <code>nlmixr2</code> needs the gradient it calls the
 derivative expressions registered by <code>rxD("mm", ...)</code>, which
 expand to <code>mm_dC(...)</code>, <code>mm_dVmax(...)</code>, and
-<code>mm_dKm(...)</code> — also resolved directly as C.</p></li>
+<code>mm_dKm(...)</code> – also resolved directly as C.</p></li>
 </ol>
 </div>
 </div>
@@ -674,7 +675,7 @@ character string in the canonical positional form that the C translator
 expects.</p>
 <div class="section level3">
 <h3 id="rmm-r-adding-rxudfui-mm">
-<code>R/mm.R</code> — adding <code>rxUdfUi.mm</code><a class="anchor" aria-label="anchor" href="#rmm-r-adding-rxudfui-mm"></a>
+<code>R/mm.R</code> – adding <code>rxUdfUi.mm</code><a class="anchor" aria-label="anchor" href="#rmm-r-adding-rxudfui-mm"></a>
 </h3>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
@@ -710,7 +711,7 @@ expects.</p>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Exporting <code>rxUdfUi.mm</code> with <code>@export</code> is
 sufficient for roxygen2 to register the S3 method when the package is
-installed — no <code>.s3register</code> call is needed in
+installed – no <code>.s3register</code> call is needed in
 <code>.onAttach</code>.</p>
 <p>With this method in place, all of the following are equivalent inside
 a ui model:</p>
@@ -730,7 +731,7 @@ a ui model:</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co">## Named in a different order — rxUdfUi.mm reorders before compilation:</span></span>
+<span><span class="co">## Named in a different order -- rxUdfUi.mm reorders before compilation:</span></span>
 <span><span class="va">m3</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">A1</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fu">mm</span><span class="op">(</span>Km <span class="op">=</span> <span class="va">Km</span>, Vmax <span class="op">=</span> <span class="va">Vmax</span>, C <span class="op">=</span> <span class="va">Cp</span><span class="op">)</span></span>
@@ -870,11 +871,11 @@ registration</td>
 <ul>
 <li>
 <a href="Integrating-User-Defined-Functions-into-rxode2.html">Integrating
-User Defined Functions into rxode2</a> — the inline / R-function
+User Defined Functions into rxode2</a> – the inline / R-function
 approach</li>
 <li>
 <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines" class="external-link">Writing
-R Extensions 5.4</a> — <code>R_RegisterCCallable</code>,
+R Extensions 5.4</a> – <code>R_RegisterCCallable</code>,
 <code>R_GetCCallable</code>
 </li>
 <li>

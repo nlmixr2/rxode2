@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -103,7 +104,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -173,7 +174,8 @@ LSODA implementation accelerated by OpenMP across subjects. It
 integrates with nlmixr2 for population parameter estimation and accepts
 NONMEM-format event datasets directly.</p></li>
 </ul>
-<p>Both are on CRAN. deSolve is BSD-licensed; rxode2 is GPL (≥ 3).</p>
+<p>Both are on CRAN. deSolve is BSD-licensed; rxode2 is GPL (&gt;=
+3).</p>
 <hr>
 </div>
 <div class="section level2">
@@ -304,7 +306,7 @@ returned alongside the deterministic prediction:</p>
 must be added as a post-processing step.</p>
 </div>
 <div class="section level3">
-<h3 id="analytical-13-compartment-pk-solutions-with-exact-gradients">Analytical 1–3 compartment PK solutions with exact gradients<a class="anchor" aria-label="anchor" href="#analytical-13-compartment-pk-solutions-with-exact-gradients"></a>
+<h3 id="analytical-1-3-compartment-pk-solutions-with-exact-gradients">Analytical 1-3 compartment PK solutions with exact gradients<a class="anchor" aria-label="anchor" href="#analytical-1-3-compartment-pk-solutions-with-exact-gradients"></a>
 </h3>
 <p><code>linCmt()</code> provides closed-form solutions for one-, two-,
 and three-compartment pharmacokinetic models. Gradients are computed via
@@ -366,7 +368,7 @@ wrappers).</p>
 <div class="section level3">
 <h3 id="phantom-transit-dose-event-type">Phantom / transit dose event type<a class="anchor" aria-label="anchor" href="#phantom-transit-dose-event-type"></a>
 </h3>
-<p>rxode2 supports EVID=7 for phantom / transit doses — a concept with
+<p>rxode2 supports EVID=7 for phantom / transit doses – a concept with
 no direct equivalent in deSolve.</p>
 </div>
 <div class="section level3">
@@ -385,15 +387,15 @@ uses a data frame with columns <code>var</code>, <code>time</code>,
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="st">"mult"</span>, <span class="st">"rep"</span>, <span class="st">"add"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>rxode2 translates this automatically to its internal EVID codes
-(<code>"add"</code> → EVID=1, <code>"mult"</code> → EVID=6,
-<code>"rep"</code> → EVID=5) via <code><a href="../reference/etTrans.html">etTrans()</a></code>, so the same
+(<code>"add"</code> -&gt; EVID=1, <code>"mult"</code> -&gt; EVID=6,
+<code>"rep"</code> -&gt; EVID=5) via <code><a href="../reference/etTrans.html">etTrans()</a></code>, so the same
 event data frame can be used with either package:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># deSolve usage</span></span>
 <span><span class="fu">deSolve</span><span class="fu">::</span><span class="fu">ode</span><span class="op">(</span><span class="va">y0</span>, <span class="va">times</span>, func <span class="op">=</span> <span class="va">derivs</span>, parms <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>             events <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">eventdat</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># rxode2 usage — accepts the same data frame via et()</span></span>
+<span><span class="co"># rxode2 usage -- accepts the same data frame via et()</span></span>
 <span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="va">eventdat</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, by <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">e</span><span class="op">)</span></span></code></pre></div>
 <p>The rxode2 EVID equivalents are:</p>
@@ -431,8 +433,8 @@ event data frame can be used with either package:</p>
 <h3 id="time-after-dose-tracking">Time-after-dose tracking<a class="anchor" aria-label="anchor" href="#time-after-dose-tracking"></a>
 </h3>
 <p>rxode2 provides built-in functions for tracking time after the most
-recent dose — <code>tad()</code>, <code>tad0()</code>,
-<code>tad(cmt)</code>, and <code>tad0(cmt)</code> — usable directly
+recent dose – <code>tad()</code>, <code>tad0()</code>,
+<code>tad(cmt)</code>, and <code>tad0(cmt)</code> – usable directly
 inside model equations. deSolve has no equivalent; the user must track
 this manually.</p>
 <hr>
@@ -549,8 +551,8 @@ not expose solver internals to the same degree.</p>
 <div class="section level3">
 <h3 id="general-purpose-use-outside-pharmacometrics">General-purpose use outside pharmacometrics<a class="anchor" aria-label="anchor" href="#general-purpose-use-outside-pharmacometrics"></a>
 </h3>
-<p>deSolve imposes no domain-specific structure. Any system of ODEs —
-ecological, chemical, mechanical, epidemiological — can be solved by
+<p>deSolve imposes no domain-specific structure. Any system of ODEs –
+ecological, chemical, mechanical, epidemiological – can be solved by
 writing a function with the signature <code>f(t, y, parms)</code>.
 rxode2’s feature set (dosing events, omega matrices, NONMEM datasets) is
 designed specifically for pharmacometric workflows and is unnecessary
@@ -559,7 +561,7 @@ overhead for general ODE work.</p>
 <div class="section level3">
 <h3 id="solving-a-model-in-pure-r-no-compilation">Solving a model in pure R (no compilation)<a class="anchor" aria-label="anchor" href="#solving-a-model-in-pure-r-no-compilation"></a>
 </h3>
-<p>deSolve can solve any R-function ODE right away — no compilation
+<p>deSolve can solve any R-function ODE right away – no compilation
 step. This makes it simple for quick explorations, teaching, or
 prototyping where compilation latency matters:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -596,7 +598,7 @@ differences arise at scale:</p>
 <tr class="odd">
 <td>Single trajectory, R RHS</td>
 <td>baseline</td>
-<td>~10–100× faster (compiled C)</td>
+<td>~10-100x faster (compiled C)</td>
 </tr>
 <tr class="even">
 <td>Single trajectory, C RHS</td>
@@ -637,7 +639,7 @@ compiled C code and OpenMP parallelism.</p>
 <tbody>
 <tr class="odd">
 <td>License</td>
-<td>GPL ≥ 3</td>
+<td>GPL &gt;= 3</td>
 <td>BSD</td>
 </tr>
 <tr class="even">
@@ -722,7 +724,7 @@ compiled C code and OpenMP parallelism.</p>
 <td>manual</td>
 </tr>
 <tr class="even">
-<td>Analytical 1–3 cmt PK</td>
+<td>Analytical 1-3 cmt PK</td>
 <td><code>linCmt()</code></td>
 <td>no</td>
 </tr>

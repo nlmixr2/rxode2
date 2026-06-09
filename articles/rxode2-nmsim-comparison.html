@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -103,7 +104,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -198,7 +199,7 @@ replicates)</li>
 <div class="section level3">
 <h3 id="no-nonmem-license-required">No NONMEM license required<a class="anchor" aria-label="anchor" href="#no-nonmem-license-required"></a>
 </h3>
-<p>rxode2 is entirely open-source (GPL ≥ 3) and self-contained.
+<p>rxode2 is entirely open-source (GPL &gt;= 3) and self-contained.
 Simulation runs without any external software. NMsim requires a working,
 licensed NONMEM installation configured via
 <code>NMdataConf(path.nonmem = ...)</code> before any simulation can be
@@ -288,7 +289,7 @@ algorithm for exact gradient-based estimation. This capability is
 irrelevant to NMsim, which delegates all numerical work to NONMEM.</p>
 </div>
 <div class="section level3">
-<h3 id="compartment-analytical-solutions-with-exact-gradients">1–3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
+<h3 id="compartment-analytical-solutions-with-exact-gradients">1-3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
 </h3>
 <p><code>linCmt()</code> in rxode2 provides analytical solutions for
 one-, two-, and three-compartment models with gradients computed via
@@ -306,7 +307,7 @@ whichever ADVAN is specified in the NONMEM control stream.</p>
 <div class="section level3">
 <h3 id="runs-anywhere-without-infrastructure">Runs anywhere without infrastructure<a class="anchor" aria-label="anchor" href="#runs-anywhere-without-infrastructure"></a>
 </h3>
-<p>rxode2 simulations run on any machine with R and a C compiler — a
+<p>rxode2 simulations run on any machine with R and a C compiler – a
 laptop, a CI server, a Docker container, or Shiny. NMsim requires a
 NONMEM license and a configured executable path, which typically
 restricts it to specific workstations or servers.</p>
@@ -319,7 +320,7 @@ restricts it to specific workstations or servers.</p>
 <h3 id="zero-model-re-implementation-risk">Zero model re-implementation risk<a class="anchor" aria-label="anchor" href="#zero-model-re-implementation-risk"></a>
 </h3>
 <p>NMsim’s core value proposition is that it simulates the
-<em>exact</em> NONMEM model used for estimation — the same control
+<em>exact</em> NONMEM model used for estimation – the same control
 stream, the same ADVAN, the same
 <code>$PRED</code>/<code>$DES</code>/<code>$ERROR</code> code. There is
 no translation step, so there is no risk of introducing bugs when
@@ -337,7 +338,7 @@ does not pass.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nmautoverse.github.io/NMsim/" class="external-link">NMsim</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Simulate the exact estimation model — no reimplementation</span></span>
+<span><span class="co"># Simulate the exact estimation model -- no reimplementation</span></span>
 <span><span class="va">simres</span> <span class="op">&lt;-</span> <span class="fu">NMsim</span><span class="op">(</span></span>
 <span>  file.mod <span class="op">=</span> <span class="st">"path/to/run001.mod"</span>,</span>
 <span>  data     <span class="op">=</span> <span class="va">data.sim</span></span>
@@ -347,7 +348,7 @@ does not pass.</p>
 <h3 id="full-nonmem-feature-coverage">Full NONMEM feature coverage<a class="anchor" aria-label="anchor" href="#full-nonmem-feature-coverage"></a>
 </h3>
 <p>Because NMsim runs NONMEM itself, it supports the entire NONMEM
-feature set: all ADVAN routines (ADVAN1–ADVAN13), <code>$MIXTURE</code>
+feature set: all ADVAN routines (ADVAN1-ADVAN13), <code>$MIXTURE</code>
 models, any <code>$PRED</code>/<code>$DES</code> code, inter-occasion
 variability, <code>$PRIOR</code>, and any NONMEM-compatible extension.
 rxode2’s own solver covers the most common pharmacometric models but
@@ -433,7 +434,7 @@ output. A passing validation confirms the rxode2 model is numerically
 equivalent to the NONMEM model.</li>
 <li>
 <strong>Simulate</strong> with rxode2 for fast exploratory analyses,
-sensitivity analyses, and trial-design work — with confidence from the
+sensitivity analyses, and trial-design work – with confidence from the
 validation step.</li>
 <li>
 <strong>Simulate</strong> with NMsim when exact NONMEM fidelity is
@@ -497,17 +498,17 @@ NONMEM</td>
 </tr>
 <tr class="even">
 <td>EBE-based simulation</td>
-<td>yes — <code>nonmem2rx</code> imports EBEs into
+<td>yes – <code>nonmem2rx</code> imports EBEs into
 <code>$etaData</code>
 </td>
-<td>yes — <code>NMsim_EBE</code>
+<td>yes – <code>NMsim_EBE</code>
 </td>
 </tr>
 <tr class="odd">
 <td>Uncertainty from covariance step</td>
-<td>yes — <code>nonmem2rx</code> imports covariance matrix for
+<td>yes – <code>nonmem2rx</code> imports covariance matrix for
 draws</td>
-<td>yes — <code>NMsim_VarCov</code> / <code>NMsim_NWPRI</code>
+<td>yes – <code>NMsim_VarCov</code> / <code>NMsim_NWPRI</code>
 </td>
 </tr>
 <tr class="even">
@@ -541,7 +542,7 @@ draws</td>
 <td>no</td>
 </tr>
 <tr class="even">
-<td>1–3 cmt analytical solutions</td>
+<td>1-3 cmt analytical solutions</td>
 <td>
 <code>linCmt()</code> with gradients</td>
 <td>ADVAN1/2/3/4/11/12 via NONMEM</td>

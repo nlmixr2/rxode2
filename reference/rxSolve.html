@@ -13,7 +13,7 @@ some-times optional params and inits."><meta property="og:image" content="https:
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,6 +25,7 @@ some-times optional params and inits."><meta property="og:image" content="https:
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -78,7 +79,7 @@ some-times optional params and inits."><meta property="og:image" content="https:
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -127,7 +128,19 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scale <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span>, <span class="st">"f78"</span>, <span class="st">"rk4"</span>, <span class="st">"ck54"</span>, <span class="st">"ab"</span>, <span class="st">"abm"</span>,</span>
+<span>    <span class="st">"dop5"</span>, <span class="st">"bs"</span>, <span class="st">"ros4"</span>, <span class="st">"iem"</span>, <span class="st">"sem"</span>, <span class="st">"sb3a"</span>, <span class="st">"sb3am4"</span>, <span class="st">"vv"</span>, <span class="st">"mm"</span>, <span class="st">"em"</span>, <span class="st">"cvode"</span>,</span>
+<span>    <span class="st">"trapz"</span>, <span class="st">"ssp3"</span>, <span class="st">"f32"</span>, <span class="st">"rk43"</span>, <span class="st">"dop54"</span>, <span class="st">"vern65"</span>, <span class="st">"vern76"</span>, <span class="st">"dop87"</span>, <span class="st">"vern98"</span>,</span>
+<span>    <span class="st">"ros43"</span>, <span class="st">"ros6"</span>, <span class="st">"backwardEuler"</span>, <span class="st">"gauss6"</span>, <span class="st">"iiic6"</span>, <span class="st">"radauiia5"</span>, <span class="st">"geng5"</span>, <span class="st">"sdirk43"</span>,</span>
+<span>    <span class="st">"euler"</span>, <span class="st">"midpoint"</span>, <span class="st">"heun"</span>, <span class="st">"ssp22"</span>, <span class="st">"rk3"</span>, <span class="st">"ssp53"</span>, <span class="st">"s4"</span>, <span class="st">"r4"</span>, <span class="st">"ls44"</span>, <span class="st">"ls54"</span>,</span>
+<span>    <span class="st">"ssp54"</span>, <span class="st">"s5"</span>, <span class="st">"rk5"</span>, <span class="st">"c5"</span>, <span class="st">"l5"</span>, <span class="st">"lk5a"</span>, <span class="st">"lk5b"</span>, <span class="st">"b6"</span>, <span class="st">"s7"</span>, <span class="st">"s8_10"</span>, <span class="st">"cv8"</span>,</span>
+<span>    <span class="st">"s8_12"</span>, <span class="st">"s10"</span>, </span>
+<span>     <span class="st">"z10"</span>, <span class="st">"o10"</span>, <span class="st">"h10"</span>, <span class="st">"dp54"</span>, <span class="st">"v65e"</span>, <span class="st">"v76e"</span>, <span class="st">"dp87"</span>, <span class="st">"v98e"</span>,</span>
+<span>    <span class="st">"ssp33"</span>, <span class="st">"bs32"</span>, <span class="st">"ssp43"</span>, <span class="st">"f45"</span>, <span class="st">"t54"</span>, <span class="st">"s54"</span>, <span class="st">"pp54"</span>, <span class="st">"pp54b"</span>, <span class="st">"bs54"</span>, <span class="st">"ss54"</span>,</span>
+<span>    <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>, <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>,</span>
+<span>    <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>, <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>,</span>
+<span>    <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>, <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>,</span>
+<span>    <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span><span class="op">)</span>,</span>
 <span>  sigdig <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  atol <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  rtol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
@@ -138,6 +151,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  hini <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  maxordn <span class="op">=</span> <span class="fl">12L</span>,</span>
 <span>  maxords <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  order <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  <span class="va">cores</span>,</span>
 <span>  covsInterpolation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"locf"</span>, <span class="st">"linear"</span>, <span class="st">"nocb"</span>, <span class="st">"midpoint"</span><span class="op">)</span>,</span>
@@ -249,6 +263,15 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  tolFactor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  serializeFile <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dense <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cvodeLinSolver <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dense"</span>, <span class="st">"band"</span>, <span class="st">"gmres"</span>, <span class="st">"bicgstab"</span>, <span class="st">"tfqmr"</span><span class="op">)</span>,</span>
+<span>  autoSwitchNonstifftol <span class="op">=</span> <span class="fl">9</span><span class="op">/</span><span class="fl">10</span>,</span>
+<span>  autoSwitchStifftol <span class="op">=</span> <span class="fl">9</span><span class="op">/</span><span class="fl">10</span>,</span>
+<span>  autoSwitchDtfac <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  autoSwitchMaxStiff <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  autoSwitchMaxNonstiff <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  autoSwitchStiffFirst <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  autoSwitchSwitchMax <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  stiff2 <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -441,6 +464,327 @@ solving, but allows user Jacobian specification.</p></li>
 solving nor user Jacobian specification</p></li>
 <li><p><code>"indLin"</code> – Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.</p></li>
+<li><p><code>"f78"</code> – Runge-Kutta Fehlberg 78 solver using Boost's odeint library.</p></li>
+<li><p><code>"rk4"</code> – Runge-Kutta 4 solver using Boost's odeint library.</p></li>
+<li><p><code>"ck54"</code> – Cash-Karp 5(4) solver using Boost's odeint library.</p></li>
+<li><p><code>"ab"</code> – Adams-Bashforth multi-step solver with a direct implementation
+(order 1-8, default 5). Uses RK4 to initialize the derivative history and
+then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"abm"</code> – Adams-Bashforth-Moulton solver using Boost's odeint library.</p></li>
+<li><p><code>"dop5"</code> – DOPRI5 solver using Boost's odeint library (supports dense output).</p></li>
+<li><p><code>"bs"</code> – Bulirsch-Stoer solver using Boost's odeint library (supports dense output).</p></li>
+<li><p><code>"ros4"</code> <strong>(implicit)</strong> – Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to <code>liblsoda</code> if Jacobian generation fails.</p></li>
+<li><p><code>"ros43"</code> <strong>(implicit)</strong> – Kaps-Rentrop 4th-order A-stable Rosenbrock method (GRK4A) from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to <code>liblsoda</code> if Jacobian generation fails.</p></li>
+<li><p><code>"ros6"</code> <strong>(implicit)</strong> – Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
+Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"backwardEuler"</code> <strong>(implicit)</strong> – Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
+Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"gauss6"</code> <strong>(implicit)</strong> – Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"iiic6"</code> <strong>(implicit)</strong> – Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"radauiia5"</code> <strong>(implicit)</strong> – Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"geng5"</code> <strong>(implicit)</strong> – Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"sdirk43"</code> <strong>(implicit)</strong> – L-stable SDIRK 4(3) pair from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"iem"</code> <strong>(implicit)</strong> – Implicit Euler solver using Boost's odeint library.
+Requires an explicit Jacobian (auto-generated via <code>calcJac=TRUE</code> when not provided).
+Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"sem"</code> – Symplectic Euler solver using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"sb3a"</code> – Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
+using Boost's odeint library.  Requires splitting the state into
+coordinate-momentum pairs (and automatically pads odd-dimensional
+systems).  Is a fixed-step method (step size controlled by
+<code>hmin</code>).</p></li>
+<li><p><code>"sb3am4"</code> – Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
+stepper using Boost's odeint library.  Requires splitting the
+state into coordinate-momentum pairs (and automatically pads
+odd-dimensional systems).  Is a fixed-step method (step size
+controlled by <code>hmin</code>).</p></li>
+<li><p><code>"vv"</code> – Velocity Verlet stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"mm"</code> – Modified Midpoint stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by <code>hmin</code>) and uses
+the <code>order</code> parameter to configure the number of intermediate
+steps.</p></li>
+<li><p><code>"em"</code> – Explicit Euler stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"cvode"</code> – CVODE BDF stiff solver from the SUNDIALS library (vendored
+from the sundialr package sources).  Supports thread-parallel solving and
+per-compartment absolute tolerances.</p></li>
+<li><p><code>"trapz"</code> – Explicit trapezoidal rule (Heun's method), a 2nd-order
+fixed-step Runge-Kutta method implemented via the libode library.
+Each inter-event interval is integrated with fixed steps of size
+<code>hmin</code> (default <code>0.01</code> when <code>hmin=0</code>).  If <code>hmin</code> would require
+more than <code>maxsteps</code> steps to span the interval, the step size is
+automatically enlarged to stay within that limit.  When an
+inter-event interval is shorter than the nominal step size (e.g.,
+two doses very close together), the step is silently clamped to the
+interval length so that short intervals are always handled correctly.
+Supports parallel thread-based solving and steady-state (<code>ss=1</code>)
+dosing.  The method does not use <code>atol</code> or <code>rtol</code> (fixed-step; no
+error control).  Steady-state convergence is governed by <code>ssAtol</code>,
+<code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.</p></li>
+<li><p><code>"ssp3"</code> – Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+Shu-Osher method), implemented via the libode library.  A 3-stage,
+3rd-order explicit fixed-step method with superior non-oscillatory
+properties for problems with discontinuities or sharp fronts.  Uses
+the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+b1=1/6, b2=1/6, b3=2/3.  The step-size behavior, clamping, and
+steady-state options (<code>hmin</code>, <code>maxsteps</code>, <code>ssAtol</code>, <code>ssRtol</code>,
+<code>minSS</code>, <code>maxSS</code>, <code>strictSS</code>) are identical to <code>"trapz"</code>.  Does
+not use <code>atol</code> or <code>rtol</code> (fixed-step; no error control).  Supports
+parallel thread-based solving and steady-state (<code>ss=1</code>) dosing.</p></li>
+<li><p><code>"f32"</code> – Fehlberg 3(2) embedded pair from libode (class <code>OdeRKF32</code>).
+A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses <code>atol</code> and <code>rtol</code>
+for error control.  The <code>hmin</code>
+parameter sets the initial step size (default <code>0.01</code>); subsequent steps
+are chosen adaptively.  The total number of accepted and rejected steps
+is bounded by <code>maxsteps</code>.  Supports parallel thread-based solving and
+steady-state (<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>,
+<code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.</p></li>
+<li><p><code>"rk43"</code> – Runge-Kutta 4(3) pair from libode.  A 5-stage, 4th-order
+adaptive method with a built-in 3rd-order embedded error estimate for
+automatic step-size control.  Tableau: c2=1/3, a21=1/3; c3=2/3,
+a31=-1/3, a32=1; c4=1, a41=1, a42=-1, a43=1; a5j=bj (FSAL).
+Primary (4th-order) weights b1=b4=1/8, b2=b3=3/8; embedded (3rd-order)
+weights d1=1/12, d2=1/2, d3=1/4, d5=1/6.  Since a5j=bj the 5th stage
+evaluation is reused as the 1st stage of the next step (FSAL).
+Uses <code>atol</code> and <code>rtol</code> for error control.  The <code>hmin</code> parameter sets
+the initial step size (default <code>0.01</code>); subsequent steps are chosen
+adaptively.  The
+total number of steps is bounded by <code>maxsteps</code>.  Supports parallel
+thread-based solving and steady-state (<code>ss=1</code>) dosing with convergence
+governed by <code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.</p></li>
+<li><p><code>"dop54"</code> – Dormand-Prince 5(4) FSAL method (Dormand &amp; Prince 1980),
+implemented via the libode library.  The same algorithm as MATLAB's
+<code>ode45</code>.  A 7-stage, 5th-order adaptive method with an embedded
+4th-order error estimate for automatic step-size control (FSAL: the
+7th stage evaluation is reused as the 1st stage of the next step,
+giving effectively 6 function evaluations per accepted step).  Uses
+<code>atol</code> and <code>rtol</code> for error control.  The <code>hmin</code> parameter sets the
+initial step size (default <code>0.01</code>); subsequent steps are chosen
+adaptively.  The total number of steps is bounded by <code>maxsteps</code>.
+Supports parallel thread-based solving and steady-state (<code>ss=1</code>)
+dosing with convergence governed by <code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>,
+<code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives (e.g. from NA
+parameters) is detected immediately and the solve exits with NA
+output for the affected subject.</p></li>
+<li><p><code>"vern65"</code> – Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+embedded 5th-order error estimate.  The sparse tableau (many zero
+a-coefficients) reduces function evaluations; the FSAL property means the
+9th stage evaluation is reused as the 1st stage of the next step, giving
+effectively 8 function evaluations per accepted step.  Uses <code>atol</code> and
+<code>rtol</code> for error control.  The <code>hmin</code> parameter sets the initial step
+size (default <code>0.01</code>); subsequent steps are chosen adaptively.  The total
+number of steps is bounded by <code>maxsteps</code>.  Supports parallel thread-based
+solving and steady-state (<code>ss=1</code>) dosing with convergence governed by
+<code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in
+derivatives is detected immediately and the solve exits with NA output.</p></li>
+<li><p><code>"vern76"</code> – Jim Verner's "most efficient" 7(6) pair (10 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV76.IIa.Efficient).  A 7th-order adaptive method with an
+embedded 6th-order error estimate.  The sparse tableau reduces function
+evaluations per step.  Uses <code>atol</code> and <code>rtol</code> for error control.  The
+<code>hmin</code> parameter sets the initial step size (default <code>0.01</code>); subsequent
+steps are chosen adaptively.  The total number of steps is bounded by
+<code>maxsteps</code>.  Supports parallel thread-based solving and steady-state
+(<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>, <code>ssRtol</code>,
+<code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.</p></li>
+<li><p><code>"dop87"</code> – Dormand-Prince 8(7) pair (13 stages), implemented via the
+libode library using coefficients from Hairer, Norsett and Wanner (1993)
+"Solving ODEs I" (2nd ed.).  An 8th-order adaptive method with an
+embedded 7th-order error estimate.  Both solutions are computed from the
+original state in the final step loop.  Uses <code>atol</code> and <code>rtol</code> for error
+control.  The <code>hmin</code> parameter sets the initial step size (default
+<code>0.01</code>); subsequent steps are chosen adaptively.  The total number of
+steps is bounded by <code>maxsteps</code>.  Supports parallel thread-based solving
+and steady-state (<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>,
+<code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives is
+detected immediately and the solve exits with NA output.</p></li>
+<li><p><code>"vern98"</code> – Jim Verner's "most efficient" 9(8) pair (16 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
+embedded 8th-order error estimate.  The highly sparse tableau (stages
+8-16 use only \(k_{0}\) and \(k_{5..}\)) minimizes function evaluations per
+step.  Both solutions are computed from the original state in the final
+step loop.  Uses <code>atol</code> and <code>rtol</code> for error control.  The <code>hmin</code>
+parameter sets the initial step size (default <code>0.01</code>); subsequent steps
+are chosen adaptively.  The total number of steps is bounded by
+<code>maxsteps</code>.  Supports parallel thread-based solving and steady-state
+(<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>, <code>ssRtol</code>,
+<code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.</p></li>
+</ul><p><strong>Aliases for existing methods</strong> (no additional C++ code; <code>hmin</code>, <code>atol</code>,
+<code>rtol</code>, and <code>maxsteps</code> follow the aliased method):</p><ul><li><p><code>"dp54"</code> – alias for <code>"dop54"</code> (Dormand-Prince 5(4) FSAL, libode).</p></li>
+<li><p><code>"v65e"</code> – alias for <code>"vern65"</code> (Verner 6(5) efficient, libode).</p></li>
+<li><p><code>"v76e"</code> – alias for <code>"vern76"</code> (Verner 7(6) efficient, libode).</p></li>
+<li><p><code>"dp87"</code> – alias for <code>"dop87"</code> (Dormand-Prince 8(7), libode).</p></li>
+<li><p><code>"v98e"</code> – alias for <code>"vern98"</code> (Verner 9(8) efficient, libode).</p></li>
+<li><p><code>"ssp33"</code> – alias for <code>"ssp3"</code> (Strong Stability-Preserving RK3, libode).</p></li>
+</ul><p><strong>libode fixed-step explicit methods</strong>.  All use <code>hmin</code> as the fixed step
+size (default <code>0.01</code> when <code>hmin=0</code>); <code>atol</code> and <code>rtol</code> are ignored (no
+error control); <code>maxsteps</code> bounds the total number of steps; NaN/Inf in
+derivatives sets <code>ind$err</code> and the subject exits with NA output.  All
+support parallel thread-based solving.</p><ul><li><p><code>"euler"</code> – Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
+very small step size for accuracy (e.g., <code>hmin=1e-4</code>); intended for
+pedagogical use or method-comparison baselines.</p></li>
+<li><p><code>"midpoint"</code> – Explicit midpoint rule, 2nd-order, 2 stages.</p></li>
+<li><p><code>"heun"</code> – Heun's method (explicit trapezoid), 2nd-order, 2 stages.
+Identical in structure to <code>"trapz"</code> but uses the libode fixed-step driver.</p></li>
+<li><p><code>"ssp22"</code> – Strong Stability-Preserving 2-stage 2nd-order method
+(SSP-RK22), 2 stages.  Superior non-oscillatory properties near
+discontinuities.</p></li>
+<li><p><code>"rk3"</code> – Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.</p></li>
+<li><p><code>"ssp53"</code> – Strong Stability-Preserving 5-stage 3rd-order method
+(SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
+event-heavy ODE systems.</p></li>
+<li><p><code>"s4"</code> – Shanks 4th-order method, 4 stages.</p></li>
+<li><p><code>"r4"</code> – Ralston's 4th-order method, 4 stages.  Minimizes local
+truncation error among classical 4-stage 4th-order methods.</p></li>
+<li><p><code>"ls44"</code> – Low-storage 4th-order method, 4 stages.  Uses a 2-register
+update scheme that minimizes memory bandwidth at the cost of a less
+general tableau structure.</p></li>
+<li><p><code>"ls54"</code> – Low-storage 4th-order method, 5 stages.  Five-stage
+variant of the 2-register low-storage scheme.</p></li>
+<li><p><code>"ssp54"</code> – Strong Stability-Preserving 5-stage 4th-order method
+(SSP-RK54), 5 stages.</p></li>
+<li><p><code>"s5"</code> – Shanks 5th-order method, 5 stages.</p></li>
+<li><p><code>"rk5"</code> – Classical 5th-order Runge-Kutta, 6 stages.</p></li>
+<li><p><code>"c5"</code> – Cassity 5th-order method, 6 stages.</p></li>
+<li><p><code>"l5"</code> – Lawson 5th-order method, 6 stages.</p></li>
+<li><p><code>"lk5a"</code> – Luther-Konen 5th-order method, variant A, 6 stages.</p></li>
+<li><p><code>"lk5b"</code> – Luther-Konen 5th-order method, variant B, 6 stages.</p></li>
+<li><p><code>"b6"</code> – Butcher 6th-order method, 7 stages.</p></li>
+<li><p><code>"s7"</code> – Shanks 7th-order method, 9 stages.</p></li>
+<li><p><code>"s8_10"</code> – Shanks 8th-order method, 10 stages.</p></li>
+<li><p><code>"cv8"</code> – Cooper-Verner 8th-order method, 11 stages.</p></li>
+<li><p><code>"s8_12"</code> – Shanks 8th-order method, 12 stages.</p></li>
+<li><p><code>"s10"</code> – Stepanov 10th-order method, 15 stages.  Requires a moderate
+step size (e.g., <code>hmin=1.0</code>) because a single step is accurate to very
+high order.</p></li>
+<li><p><code>"z10"</code> – Zhang 10th-order method, 16 stages.</p></li>
+<li><p><code>"o10"</code> – Ono 10th-order method, 17 stages.</p></li>
+<li><p><code>"h10"</code> – Hairer 10th-order method, 17 stages.</p></li>
+</ul><p><strong>libode adaptive (variable-step) explicit methods</strong>.  All use <code>atol</code> and
+<code>rtol</code> for error control;
+<code>hmin</code> sets the initial step size (default <code>0.01</code> when <code>hmin=0</code>); <code>hmax</code>
+sets the maximum step size; <code>maxsteps</code> bounds total steps; NaN/Inf in
+derivatives sets <code>ind$err</code> and the subject exits with NA output.  All
+support parallel thread-based solving and steady-state (<code>ss=1</code>) dosing
+(convergence governed by <code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, <code>strictSS</code>).</p><ul><li><p><code>"bs32"</code> – Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &amp;
+Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
+FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
+step.  The same algorithm as Julia <code>BS3()</code> and MATLAB <code>ode23</code>.</p></li>
+<li><p><code>"ssp43"</code> – Strong Stability-Preserving 4(3) pair, 4 stages.
+Adaptive SSP method with a 3rd-order embedded error estimate.</p></li>
+<li><p><code>"f45"</code> – Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+primary solution with a 5th-order embedded estimate used for error
+control.</p></li>
+<li><p><code>"t54"</code> – Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+5th-order primary with 4th-order embedded error estimate.  FSAL: the
+7th stage is reused as the 1st stage of the next step.  The same
+Butcher tableau as Julia's <code>Tsit5()</code>.</p></li>
+<li><p><code>"s54"</code> – Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+with 4th-order embedded error estimate.</p></li>
+<li><p><code>"pp54"</code> – Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.</p></li>
+<li><p><code>"pp54b"</code> – Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+7 stages.</p></li>
+<li><p><code>"bs54"</code> – Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+with 4th-order embedded error estimate (non-FSAL).</p></li>
+<li><p><code>"ss54"</code> – Sharp-Smart 5(4) pair, 7 stages.</p></li>
+<li><p><code>"dp65"</code> – Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+with 5th-order embedded error estimate.</p></li>
+<li><p><code>"c65"</code> – Calvo 6(5) pair, 9 stages.</p></li>
+<li><p><code>"tp64"</code> – Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+primary with 4th-order embedded error estimate.</p></li>
+<li><p><code>"v65r"</code> – Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+variant of Verner's 6(5) family with wider stability region.</p></li>
+<li><p><code>"v65"</code> – Verner 6(5) pair, 8 stages (non-FSAL).</p></li>
+<li><p><code>"dverk65"</code> – Verner DVERK 6(5) pair, 8 stages.  Coefficients from
+the classic DVERK Fortran code distributed by Hull and Enright.</p></li>
+<li><p><code>"tf65"</code> – Tsitouras-Famelis 6(5) FSAL pair, 9 stages.</p></li>
+<li><p><code>"tp75"</code> – Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+primary with 5th-order embedded error estimate.</p></li>
+<li><p><code>"tmy7"</code> – Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+The same family as Julia's <code>TanYam7()</code>.</p></li>
+<li><p><code>"tmy7s"</code> – Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+10 stages.  Alternative coefficient set with wider stability region.</p></li>
+<li><p><code>"v76r"</code> – Verner "robust" 7(6) pair, 10 stages.</p></li>
+<li><p><code>"ss76"</code> – Sharp-Smart 7(6) pair, 11 stages.</p></li>
+<li><p><code>"v78"</code> – Verner 7(8) pair, 13 stages.  7th-order primary with
+8th-order embedded error estimate.  Closest rxode2 analog to Julia
+<code>Vern8()</code>.</p></li>
+<li><p><code>"dverk78"</code> – Verner DVERK 7(8) pair, 13 stages.  Coefficients from
+the classic DVERK Fortran code; companion to <code>"dverk65"</code>.  Also close
+to Julia <code>Vern8()</code>.</p></li>
+<li><p><code>"dp85"</code> – Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+with 5th-order embedded error estimate.</p></li>
+<li><p><code>"tp86"</code> – Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+family as Julia's <code>TsitPap8()</code>.</p></li>
+<li><p><code>"v87e"</code> – Verner "efficient" 8(7) pair, 13 stages.</p></li>
+<li><p><code>"v87r"</code> – Verner "robust" 8(7) pair, 13 stages.</p></li>
+<li><p><code>"ev87"</code> – Enright-Verner 8(7) pair, 13 stages.</p></li>
+<li><p><code>"k87"</code> – Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.</p></li>
+<li><p><code>"f89"</code> – Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+9th-order embedded estimate.  Same family as MATLAB <code>ode89</code>.</p></li>
+<li><p><code>"v89"</code> – Verner 8(9) pair, 16 stages.  Alternative to <code>"f89"</code>
+in the same order bracket.  Also close to MATLAB <code>ode89</code>.</p></li>
+<li><p><code>"t98a"</code> – Tsitouras 9(8) variant A pair, 16 stages.</p></li>
+<li><p><code>"v98r"</code> – Verner "robust" 9(8) pair, 16 stages.</p></li>
+<li><p><code>"s98"</code> – Sharp 9(8) pair, 16 stages.</p></li>
+<li><p><code>"f108"</code> – Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+primary with 8th-order embedded error estimate.  The same method as
+Julia's <code>Feagin10()</code>.  The large number of stages carries elevated
+transcription-error risk; verified against Williams' libode canonical order test.</p></li>
+<li><p><code>"c108"</code> – Curtis 10(8) pair, 21 stages.</p></li>
+<li><p><code>"b109"</code> – Baker 10(9) pair, 21 stages.</p></li>
+<li><p><code>"s1110a"</code> – Stone 11(10) variant A pair, 26 stages.  11th-order
+primary; very few published references.</p></li>
+<li><p><code>"f1210"</code> – Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+primary with 10th-order embedded error estimate.  The same method as
+Julia's <code>Feagin12()</code>.  Elevated transcription-error risk due to many
+stages; verified against Williams' libode canonical order test.</p></li>
+<li><p><code>"o129"</code> – Ono 12(9) pair, 29 stages.</p></li>
+<li><p><code>"f1412"</code> – Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+primary with 12th-order embedded error estimate.  The same method as
+Julia's <code>Feagin14()</code>.  The highest-order method in rxode2; elevated
+transcription-error risk due to 35 stages; verified against
+Williams' libode canonical order test.</p></li>
+</ul><p><strong>deSolve-derived Fortran solvers</strong> (from the deSolve R package).  Both
+use non-reentrant Fortran COMMON blocks and therefore run single-threaded
+only, regardless of the <code>cores</code> setting.  They are BDF (Backward
+Differentiation Formula) stiff solvers and are most useful when you want
+behavior comparable to deSolve's <code>lsode()</code> or <code>bdf()</code>/<code>vode()</code> functions.</p><ul><li><p><code>"lsode"</code> – DLSODE (Hindmarsh 1983, ODEPACK) in Adams (non-stiff) mode,
+MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
+Corresponds to deSolve's <code>lsode(method="adams")</code>.  Adaptive step-size;
+error controlled by <code>atol</code> and <code>rtol</code>.
+<strong>Not thread-safe</strong> – always runs on a single core.</p></li>
+<li><p><code>"bdf"</code> – DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
+Variable-order BDF method, order 1-5; internally generated dense Jacobian.
+Corresponds to deSolve's <code>bdf()</code> / <code>vode(method="bdf")</code>.  Adaptive
+step-size; error controlled by <code>atol</code> and <code>rtol</code>.
+<strong>Not thread-safe</strong> – always runs on a single core.</p></li>
 </ul></dd>
 
 
@@ -478,19 +822,54 @@ during one call to the solver. (5000 by default)</p></dd>
 
 <dt id="arg-hmin">hmin<a class="anchor" aria-label="anchor" href="#arg-hmin"></a></dt>
 <dd><p>The minimum absolute step size allowed. The default
-value is 0.</p></dd>
+value is 0.</p>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>For the fixed<span class="sc">-</span>step Boost methods <span class="st">`</span><span class="at">"rk4"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"trapz"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ssp3"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ab"</span><span class="st">`</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="st">`</span><span class="at">"abm"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sem"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sb3a"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sb3am4"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vv"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"mm"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"em"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ros6"</span><span class="st">`</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="st">`</span><span class="at">"backwardEuler"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"gauss6"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"iiic6"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"radauiia5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"geng5"</span><span class="st">`</span>, and the</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>libode fixed<span class="sc">-</span>step <span class="fu">family</span> (<span class="st">`</span><span class="at">"euler"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"midpoint"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"heun"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ssp22"</span><span class="st">`</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="st">`</span><span class="at">"rk3"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ssp53"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s4"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"r4"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ls44"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ls54"</span><span class="st">`</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="st">`</span><span class="at">"ssp54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"rk5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"c5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"l5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"lk5a"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"lk5b"</span><span class="st">`</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="st">`</span><span class="at">"b6"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s7"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s8_10"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"cv8"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s8_12"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s10"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"z10"</span><span class="st">`</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="st">`</span><span class="at">"o10"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"h10"</span><span class="st">`</span>), this specifies the fixed step size.</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>If <span class="st">`</span><span class="at">hmin=0</span><span class="st">`</span> (the default), it uses a default of <span class="st">`</span><span class="at">0.01</span><span class="st">`</span> <span class="cf">for</span> <span class="st">`</span><span class="at">"rk4"</span><span class="st">`</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="st">`</span><span class="at">"trapz"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ssp3"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ros6"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"backwardEuler"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"gauss6"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"iiic6"</span><span class="st">`</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="st">`</span><span class="at">"radauiia5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"geng5"</span><span class="st">`</span>, and all libode fixed<span class="sc">-</span>step methods; <span class="st">`</span><span class="at">0.0001</span><span class="st">`</span> <span class="cf">for</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="st">`</span><span class="at">"ab"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"abm"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sem"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sb3a"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sb3am4"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vv"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"mm"</span><span class="st">`</span>, and <span class="st">`</span><span class="at">"em"</span><span class="st">`</span>.</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>If the requested step size would cause the number of steps to exceed</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="st">`</span><span class="at">maxsteps</span><span class="st">`</span>, the step size is automatically increased to ensure the</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>integration completes within the <span class="st">`</span><span class="at">maxsteps</span><span class="st">`</span> limit.  For <span class="st">`</span><span class="at">"trapz"</span><span class="st">`</span>, the step</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>is also silently clamped to the interval length when the inter<span class="sc">-</span>event</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>interval is shorter than the nominal step size, so short <span class="fu">intervals</span> (e.g.,</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>between closely spaced doses) are always handled correctly.</span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>For the adaptive methods <span class="st">`</span><span class="at">"f78"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ck54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dop5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"bs"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f32"</span><span class="st">`</span>,</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="st">`</span><span class="at">"rk43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dop54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vern65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vern76"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dop87"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vern98"</span><span class="st">`</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="st">`</span><span class="at">"ros43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sdirk43"</span><span class="st">`</span>, and all libode adaptive <span class="fu">methods</span> (<span class="st">`</span><span class="at">"bs32"</span><span class="st">`</span>,</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="st">`</span><span class="at">"ssp43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f45"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"t54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"pp54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"pp54b"</span><span class="st">`</span>,</span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a><span class="st">`</span><span class="at">"bs54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ss54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dp65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"c65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tp64"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v65r"</span><span class="st">`</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a><span class="st">`</span><span class="at">"v65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dverk65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tf65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tp75"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tmy7"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tmy7s"</span><span class="st">`</span>,</span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a><span class="st">`</span><span class="at">"v76r"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ss76"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v78"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dverk78"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dp85"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tp86"</span><span class="st">`</span>,</span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a><span class="st">`</span><span class="at">"v87e"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v87r"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ev87"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"k87"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f89"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v89"</span><span class="st">`</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a><span class="st">`</span><span class="at">"t98a"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v98r"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s98"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f108"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"c108"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"b109"</span><span class="st">`</span>,</span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a><span class="st">`</span><span class="at">"s1110a"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f1210"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"o129"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f1412"</span><span class="st">`</span>, the libode aliases</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a><span class="st">`</span><span class="at">"dp54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v65e"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v76e"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dp87"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v98e"</span><span class="st">`</span>,</span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a><span class="st">`</span><span class="at">"ssp33"</span><span class="st">`</span>, and the deSolve<span class="sc">-</span>derived methods <span class="st">`</span><span class="at">"lsode"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"bdf"</span><span class="st">`</span>),</span>
+<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a>this specifies the initial step <span class="fu">size</span> (default <span class="st">`</span><span class="at">0.01</span><span class="st">`</span> when</span>
+<span id="cb1-33"><a href="#cb1-33" tabindex="-1"></a><span class="st">`</span><span class="at">hmin=0</span><span class="st">`</span>); subsequent steps are chosen adaptively using <span class="st">`</span><span class="at">atol</span><span class="st">`</span>, <span class="st">`</span><span class="at">rtol</span><span class="st">`</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a>and <span class="st">`</span><span class="at">maxsteps</span><span class="st">`</span>.</span></code></pre><p></p></div></dd>
 
 
 <dt id="arg-hmax">hmax<a class="anchor" aria-label="anchor" href="#arg-hmax"></a></dt>
-<dd><p>The maximum absolute step size allowed.</p>
-<p>When <code>hmax=NA</code> and dense=FALSE (default), uses the average
-difference + hmaxSd*sd in times and sampling events. The <code>hmaxSd</code>
-is a user specified parameter and which defaults to zero.</p>
-<p>When <code>hmax=NA</code> and <code>dense=TRUE</code>, uses the maximum difference in
-times in your sampling and events.</p>
-<p>To use this for other routines specify <code>hmax=NULL</code> the maximum
-difference in times in your sampling and events us used.  The
-value 0 is equivalent to infinite maximum absolute step size.</p></dd>
+<dd><p>The maximum absolute step size allowed.  When
+<code>hmax=NA</code> (default), uses the average difference +
+hmaxSd*sd in times and sampling events. The <code>hmaxSd</code> is a user
+specified parameter and which defaults to zero.  When
+<code>hmax=NULL</code> rxode2 uses the maximum difference in times in
+your sampling and events.  The value 0 is equivalent to infinite
+maximum absolute step size.</p>
+<p>Note that for dense output methods (<code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>,
+<code>"ros4"</code>), <code>hmax</code> defaults to <code>NULL</code> to allow the solvers to
+determine the step size when <code>dense=TRUE</code></p></dd>
 
 
 <dt id="arg-hmaxsd">hmaxSd<a class="anchor" aria-label="anchor" href="#arg-hmaxsd"></a></dt>
@@ -512,6 +891,13 @@ default value is determined by the solver (when <code>hini = 0</code>)</p></dd>
 <dt id="arg-maxords">maxords<a class="anchor" aria-label="anchor" href="#arg-maxords"></a></dt>
 <dd><p>The maximum order to be allowed for the stiff (BDF)
 method.  The default value is 5.  This can be between 1 and 5.</p></dd>
+
+
+<dt id="arg-order">order<a class="anchor" aria-label="anchor" href="#arg-order"></a></dt>
+<dd><p>The order for the <code>"ab"</code>, <code>"abm"</code>, and <code>"mm"</code> methods.
+For <code>"ab"</code> and <code>"abm"</code>, the default is 5, and it can be between 1 and 8.
+For <code>"mm"</code> (Modified Midpoint), it represents the number of intermediate steps,
+the default is 5, and it must be a positive integer (&gt;= 1).</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -1299,7 +1685,7 @@ observations) that <code><a href="evid_.html">evid_()</a></code> may push per in
 When an individual exceeds this limit the solve is aborted for
 that individual (output filled with <code>NA</code>) and an error is raised
 after the full parallel solve completes.  Set to <code>0L</code> to allow
-unlimited pushes (use with care — cascading <code><a href="evid_.html">evid_()</a></code> calls can
+unlimited pushes (use with care – cascading <code><a href="evid_.html">evid_()</a></code> calls can
 grow without bound).  Default is <code>100L</code>.</p></dd>
 
 
@@ -1314,12 +1700,12 @@ cause solve failures: pass a larger factor for the
 problematic subjects and leave the rest at 1.0 (or omit them).
 The effective tolerance is always capped at <code>maxAtolRtolFactor</code>.</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="st">`</span><span class="at">tolFactor</span><span class="st">`</span> may be<span class="sc">:</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="er">*</span> <span class="st">`</span><span class="at">NULL</span><span class="st">`</span> (default) — no adjustment applied.</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="sc">*</span> A single numeric value — the same factor is applied to</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="er">*</span> <span class="st">`</span><span class="at">NULL</span><span class="st">`</span> (default) <span class="sc">--</span> no adjustment applied.</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="sc">*</span> A single numeric value <span class="sc">--</span> the same factor is applied to</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  the first <span class="st">`</span><span class="at">length(tolFactor)</span><span class="st">`</span> subjects <span class="cf">in</span> order.</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="sc">*</span> A numeric vector — applied element<span class="sc">-</span>wise to subjects <span class="cf">in</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="sc">*</span> A numeric vector <span class="sc">--</span> applied element<span class="sc">-</span>wise to subjects <span class="cf">in</span></span>
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  the order they appear.</span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="sc">*</span> A <span class="sc">**</span>named<span class="sc">**</span> numeric vector — names are matched to subject</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="sc">*</span> A <span class="sc">**</span>named<span class="sc">**</span> numeric vector <span class="sc">--</span> names are matched to subject</span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  IDs; unmatched subjects retain <span class="st">`</span><span class="at">tolFactor = 1.0</span><span class="st">`</span>.</span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>The per<span class="sc">-</span>subject factors <span class="fu">used</span> (after matching) are stored back</span>
@@ -1340,15 +1726,101 @@ controls.</p></dd>
 
 
 <dt id="arg-dense">dense<a class="anchor" aria-label="anchor" href="#arg-dense"></a></dt>
-<dd><p>Logical; when <code>TRUE</code> and <code>method="dop853"</code>, enables
-DOP853 dense polynomial output (<code>iout=2</code>). Instead of calling the
-solver once per observation time, a single solver call spans each
-inter-dose interval and a 7th-order polynomial interpolates all
-observation times within that interval. This can substantially
-reduce the number of solver evaluations for models with dense
-sampling grids. Silently ignored for non-dop853 methods. Not yet
-supported for <code>linCmt()</code> models (a message is emitted and the
-standard path is used instead).</p></dd>
+<dd><p>Logical; when <code>TRUE</code> and the method supports dense output,
+enables continuous interpolation so the solver can take large internal
+steps and reconstruct the solution cheaply at each observation time.
+Dense-capable single methods are <code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>, and
+<code>"ros4"</code>.  For composite AutoSwitch methods (e.g. <code>"dop5+ros4"</code>), dense
+output is enabled only when <strong>both</strong> the primary and stiff secondary
+support dense output; <code>"ros4"</code> is the only stiff method that does, so
+valid dense composites are <code>"dop853+ros4"</code>, <code>"dop5+ros4"</code>, and
+<code>"bs+ros4"</code>.  A warning is issued and <code>dense</code> is set to <code>FALSE</code> when a
+composite stiff secondary does not support dense output.  Silently
+ignored for non-dense single methods.  Not yet supported for <code>linCmt()</code>
+models (a warning is emitted and the standard path is used instead).</p></dd>
+
+
+<dt id="arg-cvodelinsolver">cvodeLinSolver<a class="anchor" aria-label="anchor" href="#arg-cvodelinsolver"></a></dt>
+<dd><p>Character; selects the linear solver used by the CVODE
+integrator when <code>method = "cvode"</code>.  Ignored for all other methods.
+Available choices and when to use them:</p><ul><li><p><code>"dense"</code> (default) – Direct LU factorization of the full Jacobian.
+Best for small to medium systems (typically fewer than ~50 compartments).
+Requires <code>O(n^2)</code> storage and <code>O(n^3)</code> work per Newton iteration.</p></li>
+<li><p><code>"band"</code> – Currently aliases to <code>"dense"</code>.  Kept for compatibility
+until rxode2 can determine model bandwidth safely during solve setup.</p></li>
+<li><p><code>"gmres"</code> – Generalized Minimal Residual iterative Krylov solver.
+Avoids explicit Jacobian formation, making it practical for large stiff
+systems (tens to hundreds of compartments) where LU factorization would
+dominate runtime.  Generally the first iterative solver to try.</p></li>
+<li><p><code>"bicgstab"</code> – Bi-Conjugate Gradient Stabilized iterative Krylov
+solver.  Similar use case to <code>"gmres"</code> but can converge faster on some
+non-symmetric problems.  Try if <code>"gmres"</code> is slow or fails to converge.</p></li>
+<li><p><code>"tfqmr"</code> – Transpose-Free Quasi-Minimal Residual iterative Krylov
+solver.  Another alternative for large systems; avoids the matrix
+transpose required by classical QMR.</p></li>
+</ul><p>For most pharmacometric models with fewer than ~50 compartments the default
+<code>"dense"</code> solver is fastest.  Switch to an iterative solver (<code>"gmres"</code> is
+a good first choice) only for large QSP or PBPK models where Jacobian
+factorization becomes the bottleneck.</p></dd>
+
+
+<dt id="arg-autoswitchnonstifftol">autoSwitchNonstifftol<a class="anchor" aria-label="anchor" href="#arg-autoswitchnonstifftol"></a></dt>
+<dd><p>Numeric in <code>(0, 1]</code>; stiffness ratio threshold
+used when the solver is in non-stiff mode.  If
+<code>rho * |dt| / S(primary) &gt; autoSwitchNonstifftol</code>, the interval is
+considered stiff and the secondary solver is tried.  Default <code>9/10</code>.</p></dd>
+
+
+<dt id="arg-autoswitchstifftol">autoSwitchStifftol<a class="anchor" aria-label="anchor" href="#arg-autoswitchstifftol"></a></dt>
+<dd><p>Numeric in <code>(0, 1]</code>; non-stiffness ratio threshold
+used when the solver is in stiff mode.  If
+<code>rho * |dt| / S(primary) &lt; autoSwitchStifftol</code>, the interval is considered
+non-stiff and the switch-back counter is incremented.  Default <code>9/10</code>.</p></dd>
+
+
+<dt id="arg-autoswitchdtfac">autoSwitchDtfac<a class="anchor" aria-label="anchor" href="#arg-autoswitchdtfac"></a></dt>
+<dd><p>Numeric <code>&gt;= 1</code>; factor by which the suggested step
+size is multiplied when switching to the stiff solver, and divided when
+switching back.  Default <code>2.0</code>.</p></dd>
+
+
+<dt id="arg-autoswitchmaxstiff">autoSwitchMaxStiff<a class="anchor" aria-label="anchor" href="#arg-autoswitchmaxstiff"></a></dt>
+<dd><p>Integer; number of consecutive stiff-detected
+intervals before permanently switching to the stiff solver.  Default <code>10L</code>.</p></dd>
+
+
+<dt id="arg-autoswitchmaxnonstiff">autoSwitchMaxNonstiff<a class="anchor" aria-label="anchor" href="#arg-autoswitchmaxnonstiff"></a></dt>
+<dd><p>Integer; number of consecutive non-stiff
+intervals (while in stiff mode) before switching back to the fast
+non-stiff solver.  Default <code>3L</code>.</p></dd>
+
+
+<dt id="arg-autoswitchstifffirst">autoSwitchStiffFirst<a class="anchor" aria-label="anchor" href="#arg-autoswitchstifffirst"></a></dt>
+<dd><p>Logical; when <code>TRUE</code>, start each subject solve
+with the stiff solver instead of the non-stiff primary.  Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-autoswitchswitchmax">autoSwitchSwitchMax<a class="anchor" aria-label="anchor" href="#arg-autoswitchswitchmax"></a></dt>
+<dd><p>Non-negative integer; minimum number of
+integration intervals that must elapse after a switch before the solver
+is allowed to switch back in the opposite direction.  Acts as an
+oscillation guard: if the stiffness ratio fluctuates near a threshold,
+this prevents rapid back-and-forth between solvers.  Set to <code>0L</code> to
+disable the guard entirely.  Default <code>5L</code>.</p></dd>
+
+
+<dt id="arg-stiff-">stiff2<a class="anchor" aria-label="anchor" href="#arg-stiff-"></a></dt>
+<dd><p>Integer method code for the stiff secondary solver used in
+AutoSwitch composite methods.  Normally set automatically when <code>method</code> is
+a composite string of the form <code>"primary+stiff"</code> (e.g.
+<code>"dop853+ros4"</code>); the <code>"+"</code> notation is the preferred way to configure
+composite solving and <code>stiff2</code> need not be supplied directly.  When
+supplied as a raw integer it must be a stiff method code as returned by
+<code><a href="odeMethodToInt.html">odeMethodToInt()</a></code>; <code>0L</code> (the default) disables the stiff secondary and
+causes the solver to run as a plain non-composite method.  Dense output
+(<code>dense = TRUE</code>) is silently disabled when <code>stiff2</code> names a stiff method
+that does not support dense output; <code>"ros4"</code> (code <code>13L</code>) is the only
+stiff secondary that does support it.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>

@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -103,7 +104,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -154,7 +155,7 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 5.1.2 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 5.1.3 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="rxode2-model-function-object">rxode2 model function object<a class="anchor" aria-label="anchor" href="#rxode2-model-function-object"></a>
@@ -1035,7 +1036,7 @@ lines:</p>
 <code>$funTxt</code>: model as a single string<a class="anchor" aria-label="anchor" href="#funtxt-model-as-a-single-string"></a>
 </h3>
 <p><code>$funTxt</code> is <code>$lstChr</code> collapsed with newlines
-— the entire model body as one character string:</p>
+– the entire model body as one character string:</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">m2</span><span class="op">$</span><span class="va">funTxt</span><span class="op">)</span></span>
 <span><span class="co">#&gt; KA &lt;- exp(tka + eta.ka)</span></span>
@@ -1184,7 +1185,7 @@ assignments, then the <code><a href="../reference/ini.html">ini()</a></code> blo
 <span><span class="co">#&gt;         eff ~ add(eff.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55eaab3fa728&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x558401fcebc0&gt;</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1216,7 +1217,7 @@ object that appends the error-sampling code to the base ODE model, ready
 for stochastic simulation:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_16c283f3620c392e2c8c8a70b94dc83d</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.3 model named <span style="color: #BBBB00; font-weight: bold;">rx_4cdfb525d944ba471764d19dcc06938a</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, CMT, rxerr.C2, rxerr.eff</span></span>
@@ -1233,7 +1234,7 @@ prepended as parameter assignments, so the model is self-contained and
 can be run without supplying a parameter vector:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.2 model named <span style="color: #BBBB00; font-weight: bold;">rx_ca306b7f4a58e5ad96b08043cf411c95</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.3 model named <span style="color: #BBBB00; font-weight: bold;">rx_49d2a999b93969ea57847db42e6d854c</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, rxerr.C2, rxerr.eff, CMT</span></span>
@@ -1243,17 +1244,17 @@ can be run without supplying a parameter vector:</p>
 <div class="section level2">
 <h2 id="model-identity-and-hashing">Model identity and hashing<a class="anchor" aria-label="anchor" href="#model-identity-and-hashing"></a>
 </h2>
-<p>Two hashes are computed over the normalised model structure (model
+<p>Two hashes are computed over the normalized model structure (model
 expressions, <code>iniDf</code>, error lines, defined functions, and
 rxode2 version) and are suitable for caching or comparing models:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># MD5 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">md5</span></span>
-<span><span class="co">#&gt; [1] "9113a2b5dc8725412a04fcde2f900caf"</span></span>
+<span><span class="co">#&gt; [1] "277775ecb1063bd3adffb06d88b3a87c"</span></span>
 <span></span>
 <span><span class="co"># SHA-1 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">sha1</span></span>
-<span><span class="co">#&gt; [1] "b0bcf981c99b501058ce5502e39a9ac28c313bcb"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "a5dcda1cfa2afb8115726e27429a81fc9e502795"</span></span></code></pre></div>
 <p>These hashes change whenever the model equations, initial estimates,
 or error specification change, but are insensitive to label or comment
 differences.</p>
@@ -1286,7 +1287,7 @@ list and sets its class to <code>c("myProperty", "rxUiGet")</code>.</li>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rxUiGet.myProperty</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">.ui</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>   <span class="co"># the decompressed rxUi environment</span></span>
-<span>  <span class="co"># x[[2]] is the `exact` logical — rarely needed</span></span>
+<span>  <span class="co"># x[[2]] is the `exact` logical -- rarely needed</span></span>
 <span>  <span class="co"># compute and return your value</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p><code>x[[1]]</code> is the fully decompressed <code>rxUi</code>
@@ -1307,7 +1308,7 @@ helpers):</p>
 RStudio shows during tab-completion (so it does not have to evaluate the
 property while you type):</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Use a representative example value — character, numeric, NA (passthrough), etc.</span></span>
+<code class="sourceCode R"><span><span class="co"># Use a representative example value -- character, numeric, NA (passthrough), etc.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">rxUiGet.myProperty</span>, <span class="st">"rstudio"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"example value"</span></span>
 <span><span class="co"># NA means: evaluate for real even during completion</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">rxUiGet.myProperty</span>, <span class="st">"rstudio"</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span></code></pre></div>

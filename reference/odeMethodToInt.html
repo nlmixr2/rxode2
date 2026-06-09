@@ -9,7 +9,7 @@ vector."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/log
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,7 @@ vector."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/log
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -74,7 +75,7 @@ vector."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/log
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dop853-dense.html">DOP853 dense output for fast dense-grid solves</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
@@ -115,7 +116,21 @@ vector.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">odeMethodToInt</span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">odeMethodToInt</span><span class="op">(</span></span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span>, <span class="st">"f78"</span>, <span class="st">"rk4"</span>, <span class="st">"ck54"</span>, <span class="st">"ab"</span>, <span class="st">"abm"</span>,</span>
+<span>    <span class="st">"dop5"</span>, <span class="st">"bs"</span>, <span class="st">"ros4"</span>, <span class="st">"iem"</span>, <span class="st">"sem"</span>, <span class="st">"sb3a"</span>, <span class="st">"sb3am4"</span>, <span class="st">"vv"</span>, <span class="st">"mm"</span>, <span class="st">"em"</span>, <span class="st">"cvode"</span>,</span>
+<span>    <span class="st">"trapz"</span>, <span class="st">"ssp3"</span>, <span class="st">"f32"</span>, <span class="st">"rk43"</span>, <span class="st">"dop54"</span>, <span class="st">"vern65"</span>, <span class="st">"vern76"</span>, <span class="st">"dop87"</span>, <span class="st">"vern98"</span>,</span>
+<span>    <span class="st">"ros43"</span>, <span class="st">"ros6"</span>, <span class="st">"backwardEuler"</span>, <span class="st">"gauss6"</span>, <span class="st">"iiic6"</span>, <span class="st">"radauiia5"</span>, <span class="st">"geng5"</span>, <span class="st">"sdirk43"</span>,</span>
+<span>    <span class="st">"euler"</span>, <span class="st">"midpoint"</span>, <span class="st">"heun"</span>, <span class="st">"ssp22"</span>, <span class="st">"rk3"</span>, <span class="st">"ssp53"</span>, <span class="st">"s4"</span>, <span class="st">"r4"</span>, <span class="st">"ls44"</span>, <span class="st">"ls54"</span>,</span>
+<span>    <span class="st">"ssp54"</span>, <span class="st">"s5"</span>, <span class="st">"rk5"</span>, <span class="st">"c5"</span>, <span class="st">"l5"</span>, <span class="st">"lk5a"</span>, <span class="st">"lk5b"</span>, <span class="st">"b6"</span>, <span class="st">"s7"</span>, <span class="st">"s8_10"</span>, <span class="st">"cv8"</span>,</span>
+<span>    <span class="st">"s8_12"</span>, <span class="st">"s10"</span>, </span>
+<span>     <span class="st">"z10"</span>, <span class="st">"o10"</span>, <span class="st">"h10"</span>, <span class="st">"dp54"</span>, <span class="st">"v65e"</span>, <span class="st">"v76e"</span>, <span class="st">"dp87"</span>, <span class="st">"v98e"</span>,</span>
+<span>    <span class="st">"ssp33"</span>, <span class="st">"bs32"</span>, <span class="st">"ssp43"</span>, <span class="st">"f45"</span>, <span class="st">"t54"</span>, <span class="st">"s54"</span>, <span class="st">"pp54"</span>, <span class="st">"pp54b"</span>, <span class="st">"bs54"</span>, <span class="st">"ss54"</span>,</span>
+<span>    <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>, <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>,</span>
+<span>    <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>, <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>,</span>
+<span>    <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>, <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>,</span>
+<span>    <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -131,6 +146,327 @@ solving, but allows user Jacobian specification.</p></li>
 solving nor user Jacobian specification</p></li>
 <li><p><code>"indLin"</code> – Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.</p></li>
+<li><p><code>"f78"</code> – Runge-Kutta Fehlberg 78 solver using Boost's odeint library.</p></li>
+<li><p><code>"rk4"</code> – Runge-Kutta 4 solver using Boost's odeint library.</p></li>
+<li><p><code>"ck54"</code> – Cash-Karp 5(4) solver using Boost's odeint library.</p></li>
+<li><p><code>"ab"</code> – Adams-Bashforth multi-step solver with a direct implementation
+(order 1-8, default 5). Uses RK4 to initialize the derivative history and
+then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"abm"</code> – Adams-Bashforth-Moulton solver using Boost's odeint library.</p></li>
+<li><p><code>"dop5"</code> – DOPRI5 solver using Boost's odeint library (supports dense output).</p></li>
+<li><p><code>"bs"</code> – Bulirsch-Stoer solver using Boost's odeint library (supports dense output).</p></li>
+<li><p><code>"ros4"</code> <strong>(implicit)</strong> – Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to <code>liblsoda</code> if Jacobian generation fails.</p></li>
+<li><p><code>"ros43"</code> <strong>(implicit)</strong> – Kaps-Rentrop 4th-order A-stable Rosenbrock method (GRK4A) from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to <code>liblsoda</code> if Jacobian generation fails.</p></li>
+<li><p><code>"ros6"</code> <strong>(implicit)</strong> – Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
+Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"backwardEuler"</code> <strong>(implicit)</strong> – Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
+Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"gauss6"</code> <strong>(implicit)</strong> – Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"iiic6"</code> <strong>(implicit)</strong> – Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"radauiia5"</code> <strong>(implicit)</strong> – Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"geng5"</code> <strong>(implicit)</strong> – Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"sdirk43"</code> <strong>(implicit)</strong> – L-stable SDIRK 4(3) pair from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"iem"</code> <strong>(implicit)</strong> – Implicit Euler solver using Boost's odeint library.
+Requires an explicit Jacobian (auto-generated via <code>calcJac=TRUE</code> when not provided).
+Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"sem"</code> – Symplectic Euler solver using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"sb3a"</code> – Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
+using Boost's odeint library.  Requires splitting the state into
+coordinate-momentum pairs (and automatically pads odd-dimensional
+systems).  Is a fixed-step method (step size controlled by
+<code>hmin</code>).</p></li>
+<li><p><code>"sb3am4"</code> – Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
+stepper using Boost's odeint library.  Requires splitting the
+state into coordinate-momentum pairs (and automatically pads
+odd-dimensional systems).  Is a fixed-step method (step size
+controlled by <code>hmin</code>).</p></li>
+<li><p><code>"vv"</code> – Velocity Verlet stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"mm"</code> – Modified Midpoint stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by <code>hmin</code>) and uses
+the <code>order</code> parameter to configure the number of intermediate
+steps.</p></li>
+<li><p><code>"em"</code> – Explicit Euler stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by <code>hmin</code>).</p></li>
+<li><p><code>"cvode"</code> – CVODE BDF stiff solver from the SUNDIALS library (vendored
+from the sundialr package sources).  Supports thread-parallel solving and
+per-compartment absolute tolerances.</p></li>
+<li><p><code>"trapz"</code> – Explicit trapezoidal rule (Heun's method), a 2nd-order
+fixed-step Runge-Kutta method implemented via the libode library.
+Each inter-event interval is integrated with fixed steps of size
+<code>hmin</code> (default <code>0.01</code> when <code>hmin=0</code>).  If <code>hmin</code> would require
+more than <code>maxsteps</code> steps to span the interval, the step size is
+automatically enlarged to stay within that limit.  When an
+inter-event interval is shorter than the nominal step size (e.g.,
+two doses very close together), the step is silently clamped to the
+interval length so that short intervals are always handled correctly.
+Supports parallel thread-based solving and steady-state (<code>ss=1</code>)
+dosing.  The method does not use <code>atol</code> or <code>rtol</code> (fixed-step; no
+error control).  Steady-state convergence is governed by <code>ssAtol</code>,
+<code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.</p></li>
+<li><p><code>"ssp3"</code> – Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+Shu-Osher method), implemented via the libode library.  A 3-stage,
+3rd-order explicit fixed-step method with superior non-oscillatory
+properties for problems with discontinuities or sharp fronts.  Uses
+the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+b1=1/6, b2=1/6, b3=2/3.  The step-size behavior, clamping, and
+steady-state options (<code>hmin</code>, <code>maxsteps</code>, <code>ssAtol</code>, <code>ssRtol</code>,
+<code>minSS</code>, <code>maxSS</code>, <code>strictSS</code>) are identical to <code>"trapz"</code>.  Does
+not use <code>atol</code> or <code>rtol</code> (fixed-step; no error control).  Supports
+parallel thread-based solving and steady-state (<code>ss=1</code>) dosing.</p></li>
+<li><p><code>"f32"</code> – Fehlberg 3(2) embedded pair from libode (class <code>OdeRKF32</code>).
+A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses <code>atol</code> and <code>rtol</code>
+for error control.  The <code>hmin</code>
+parameter sets the initial step size (default <code>0.01</code>); subsequent steps
+are chosen adaptively.  The total number of accepted and rejected steps
+is bounded by <code>maxsteps</code>.  Supports parallel thread-based solving and
+steady-state (<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>,
+<code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.</p></li>
+<li><p><code>"rk43"</code> – Runge-Kutta 4(3) pair from libode.  A 5-stage, 4th-order
+adaptive method with a built-in 3rd-order embedded error estimate for
+automatic step-size control.  Tableau: c2=1/3, a21=1/3; c3=2/3,
+a31=-1/3, a32=1; c4=1, a41=1, a42=-1, a43=1; a5j=bj (FSAL).
+Primary (4th-order) weights b1=b4=1/8, b2=b3=3/8; embedded (3rd-order)
+weights d1=1/12, d2=1/2, d3=1/4, d5=1/6.  Since a5j=bj the 5th stage
+evaluation is reused as the 1st stage of the next step (FSAL).
+Uses <code>atol</code> and <code>rtol</code> for error control.  The <code>hmin</code> parameter sets
+the initial step size (default <code>0.01</code>); subsequent steps are chosen
+adaptively.  The
+total number of steps is bounded by <code>maxsteps</code>.  Supports parallel
+thread-based solving and steady-state (<code>ss=1</code>) dosing with convergence
+governed by <code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.</p></li>
+<li><p><code>"dop54"</code> – Dormand-Prince 5(4) FSAL method (Dormand &amp; Prince 1980),
+implemented via the libode library.  The same algorithm as MATLAB's
+<code>ode45</code>.  A 7-stage, 5th-order adaptive method with an embedded
+4th-order error estimate for automatic step-size control (FSAL: the
+7th stage evaluation is reused as the 1st stage of the next step,
+giving effectively 6 function evaluations per accepted step).  Uses
+<code>atol</code> and <code>rtol</code> for error control.  The <code>hmin</code> parameter sets the
+initial step size (default <code>0.01</code>); subsequent steps are chosen
+adaptively.  The total number of steps is bounded by <code>maxsteps</code>.
+Supports parallel thread-based solving and steady-state (<code>ss=1</code>)
+dosing with convergence governed by <code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>,
+<code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives (e.g. from NA
+parameters) is detected immediately and the solve exits with NA
+output for the affected subject.</p></li>
+<li><p><code>"vern65"</code> – Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+embedded 5th-order error estimate.  The sparse tableau (many zero
+a-coefficients) reduces function evaluations; the FSAL property means the
+9th stage evaluation is reused as the 1st stage of the next step, giving
+effectively 8 function evaluations per accepted step.  Uses <code>atol</code> and
+<code>rtol</code> for error control.  The <code>hmin</code> parameter sets the initial step
+size (default <code>0.01</code>); subsequent steps are chosen adaptively.  The total
+number of steps is bounded by <code>maxsteps</code>.  Supports parallel thread-based
+solving and steady-state (<code>ss=1</code>) dosing with convergence governed by
+<code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in
+derivatives is detected immediately and the solve exits with NA output.</p></li>
+<li><p><code>"vern76"</code> – Jim Verner's "most efficient" 7(6) pair (10 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV76.IIa.Efficient).  A 7th-order adaptive method with an
+embedded 6th-order error estimate.  The sparse tableau reduces function
+evaluations per step.  Uses <code>atol</code> and <code>rtol</code> for error control.  The
+<code>hmin</code> parameter sets the initial step size (default <code>0.01</code>); subsequent
+steps are chosen adaptively.  The total number of steps is bounded by
+<code>maxsteps</code>.  Supports parallel thread-based solving and steady-state
+(<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>, <code>ssRtol</code>,
+<code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.</p></li>
+<li><p><code>"dop87"</code> – Dormand-Prince 8(7) pair (13 stages), implemented via the
+libode library using coefficients from Hairer, Norsett and Wanner (1993)
+"Solving ODEs I" (2nd ed.).  An 8th-order adaptive method with an
+embedded 7th-order error estimate.  Both solutions are computed from the
+original state in the final step loop.  Uses <code>atol</code> and <code>rtol</code> for error
+control.  The <code>hmin</code> parameter sets the initial step size (default
+<code>0.01</code>); subsequent steps are chosen adaptively.  The total number of
+steps is bounded by <code>maxsteps</code>.  Supports parallel thread-based solving
+and steady-state (<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>,
+<code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives is
+detected immediately and the solve exits with NA output.</p></li>
+<li><p><code>"vern98"</code> – Jim Verner's "most efficient" 9(8) pair (16 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
+embedded 8th-order error estimate.  The highly sparse tableau (stages
+8-16 use only \(k_{0}\) and \(k_{5..}\)) minimizes function evaluations per
+step.  Both solutions are computed from the original state in the final
+step loop.  Uses <code>atol</code> and <code>rtol</code> for error control.  The <code>hmin</code>
+parameter sets the initial step size (default <code>0.01</code>); subsequent steps
+are chosen adaptively.  The total number of steps is bounded by
+<code>maxsteps</code>.  Supports parallel thread-based solving and steady-state
+(<code>ss=1</code>) dosing with convergence governed by <code>ssAtol</code>, <code>ssRtol</code>,
+<code>minSS</code>, <code>maxSS</code>, and <code>strictSS</code>.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.</p></li>
+</ul><p><strong>Aliases for existing methods</strong> (no additional C++ code; <code>hmin</code>, <code>atol</code>,
+<code>rtol</code>, and <code>maxsteps</code> follow the aliased method):</p><ul><li><p><code>"dp54"</code> – alias for <code>"dop54"</code> (Dormand-Prince 5(4) FSAL, libode).</p></li>
+<li><p><code>"v65e"</code> – alias for <code>"vern65"</code> (Verner 6(5) efficient, libode).</p></li>
+<li><p><code>"v76e"</code> – alias for <code>"vern76"</code> (Verner 7(6) efficient, libode).</p></li>
+<li><p><code>"dp87"</code> – alias for <code>"dop87"</code> (Dormand-Prince 8(7), libode).</p></li>
+<li><p><code>"v98e"</code> – alias for <code>"vern98"</code> (Verner 9(8) efficient, libode).</p></li>
+<li><p><code>"ssp33"</code> – alias for <code>"ssp3"</code> (Strong Stability-Preserving RK3, libode).</p></li>
+</ul><p><strong>libode fixed-step explicit methods</strong>.  All use <code>hmin</code> as the fixed step
+size (default <code>0.01</code> when <code>hmin=0</code>); <code>atol</code> and <code>rtol</code> are ignored (no
+error control); <code>maxsteps</code> bounds the total number of steps; NaN/Inf in
+derivatives sets <code>ind$err</code> and the subject exits with NA output.  All
+support parallel thread-based solving.</p><ul><li><p><code>"euler"</code> – Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
+very small step size for accuracy (e.g., <code>hmin=1e-4</code>); intended for
+pedagogical use or method-comparison baselines.</p></li>
+<li><p><code>"midpoint"</code> – Explicit midpoint rule, 2nd-order, 2 stages.</p></li>
+<li><p><code>"heun"</code> – Heun's method (explicit trapezoid), 2nd-order, 2 stages.
+Identical in structure to <code>"trapz"</code> but uses the libode fixed-step driver.</p></li>
+<li><p><code>"ssp22"</code> – Strong Stability-Preserving 2-stage 2nd-order method
+(SSP-RK22), 2 stages.  Superior non-oscillatory properties near
+discontinuities.</p></li>
+<li><p><code>"rk3"</code> – Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.</p></li>
+<li><p><code>"ssp53"</code> – Strong Stability-Preserving 5-stage 3rd-order method
+(SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
+event-heavy ODE systems.</p></li>
+<li><p><code>"s4"</code> – Shanks 4th-order method, 4 stages.</p></li>
+<li><p><code>"r4"</code> – Ralston's 4th-order method, 4 stages.  Minimizes local
+truncation error among classical 4-stage 4th-order methods.</p></li>
+<li><p><code>"ls44"</code> – Low-storage 4th-order method, 4 stages.  Uses a 2-register
+update scheme that minimizes memory bandwidth at the cost of a less
+general tableau structure.</p></li>
+<li><p><code>"ls54"</code> – Low-storage 4th-order method, 5 stages.  Five-stage
+variant of the 2-register low-storage scheme.</p></li>
+<li><p><code>"ssp54"</code> – Strong Stability-Preserving 5-stage 4th-order method
+(SSP-RK54), 5 stages.</p></li>
+<li><p><code>"s5"</code> – Shanks 5th-order method, 5 stages.</p></li>
+<li><p><code>"rk5"</code> – Classical 5th-order Runge-Kutta, 6 stages.</p></li>
+<li><p><code>"c5"</code> – Cassity 5th-order method, 6 stages.</p></li>
+<li><p><code>"l5"</code> – Lawson 5th-order method, 6 stages.</p></li>
+<li><p><code>"lk5a"</code> – Luther-Konen 5th-order method, variant A, 6 stages.</p></li>
+<li><p><code>"lk5b"</code> – Luther-Konen 5th-order method, variant B, 6 stages.</p></li>
+<li><p><code>"b6"</code> – Butcher 6th-order method, 7 stages.</p></li>
+<li><p><code>"s7"</code> – Shanks 7th-order method, 9 stages.</p></li>
+<li><p><code>"s8_10"</code> – Shanks 8th-order method, 10 stages.</p></li>
+<li><p><code>"cv8"</code> – Cooper-Verner 8th-order method, 11 stages.</p></li>
+<li><p><code>"s8_12"</code> – Shanks 8th-order method, 12 stages.</p></li>
+<li><p><code>"s10"</code> – Stepanov 10th-order method, 15 stages.  Requires a moderate
+step size (e.g., <code>hmin=1.0</code>) because a single step is accurate to very
+high order.</p></li>
+<li><p><code>"z10"</code> – Zhang 10th-order method, 16 stages.</p></li>
+<li><p><code>"o10"</code> – Ono 10th-order method, 17 stages.</p></li>
+<li><p><code>"h10"</code> – Hairer 10th-order method, 17 stages.</p></li>
+</ul><p><strong>libode adaptive (variable-step) explicit methods</strong>.  All use <code>atol</code> and
+<code>rtol</code> for error control;
+<code>hmin</code> sets the initial step size (default <code>0.01</code> when <code>hmin=0</code>); <code>hmax</code>
+sets the maximum step size; <code>maxsteps</code> bounds total steps; NaN/Inf in
+derivatives sets <code>ind$err</code> and the subject exits with NA output.  All
+support parallel thread-based solving and steady-state (<code>ss=1</code>) dosing
+(convergence governed by <code>ssAtol</code>, <code>ssRtol</code>, <code>minSS</code>, <code>maxSS</code>, <code>strictSS</code>).</p><ul><li><p><code>"bs32"</code> – Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &amp;
+Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
+FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
+step.  The same algorithm as Julia <code>BS3()</code> and MATLAB <code>ode23</code>.</p></li>
+<li><p><code>"ssp43"</code> – Strong Stability-Preserving 4(3) pair, 4 stages.
+Adaptive SSP method with a 3rd-order embedded error estimate.</p></li>
+<li><p><code>"f45"</code> – Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+primary solution with a 5th-order embedded estimate used for error
+control.</p></li>
+<li><p><code>"t54"</code> – Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+5th-order primary with 4th-order embedded error estimate.  FSAL: the
+7th stage is reused as the 1st stage of the next step.  The same
+Butcher tableau as Julia's <code>Tsit5()</code>.</p></li>
+<li><p><code>"s54"</code> – Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+with 4th-order embedded error estimate.</p></li>
+<li><p><code>"pp54"</code> – Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.</p></li>
+<li><p><code>"pp54b"</code> – Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+7 stages.</p></li>
+<li><p><code>"bs54"</code> – Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+with 4th-order embedded error estimate (non-FSAL).</p></li>
+<li><p><code>"ss54"</code> – Sharp-Smart 5(4) pair, 7 stages.</p></li>
+<li><p><code>"dp65"</code> – Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+with 5th-order embedded error estimate.</p></li>
+<li><p><code>"c65"</code> – Calvo 6(5) pair, 9 stages.</p></li>
+<li><p><code>"tp64"</code> – Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+primary with 4th-order embedded error estimate.</p></li>
+<li><p><code>"v65r"</code> – Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+variant of Verner's 6(5) family with wider stability region.</p></li>
+<li><p><code>"v65"</code> – Verner 6(5) pair, 8 stages (non-FSAL).</p></li>
+<li><p><code>"dverk65"</code> – Verner DVERK 6(5) pair, 8 stages.  Coefficients from
+the classic DVERK Fortran code distributed by Hull and Enright.</p></li>
+<li><p><code>"tf65"</code> – Tsitouras-Famelis 6(5) FSAL pair, 9 stages.</p></li>
+<li><p><code>"tp75"</code> – Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+primary with 5th-order embedded error estimate.</p></li>
+<li><p><code>"tmy7"</code> – Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+The same family as Julia's <code>TanYam7()</code>.</p></li>
+<li><p><code>"tmy7s"</code> – Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+10 stages.  Alternative coefficient set with wider stability region.</p></li>
+<li><p><code>"v76r"</code> – Verner "robust" 7(6) pair, 10 stages.</p></li>
+<li><p><code>"ss76"</code> – Sharp-Smart 7(6) pair, 11 stages.</p></li>
+<li><p><code>"v78"</code> – Verner 7(8) pair, 13 stages.  7th-order primary with
+8th-order embedded error estimate.  Closest rxode2 analog to Julia
+<code>Vern8()</code>.</p></li>
+<li><p><code>"dverk78"</code> – Verner DVERK 7(8) pair, 13 stages.  Coefficients from
+the classic DVERK Fortran code; companion to <code>"dverk65"</code>.  Also close
+to Julia <code>Vern8()</code>.</p></li>
+<li><p><code>"dp85"</code> – Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+with 5th-order embedded error estimate.</p></li>
+<li><p><code>"tp86"</code> – Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+family as Julia's <code>TsitPap8()</code>.</p></li>
+<li><p><code>"v87e"</code> – Verner "efficient" 8(7) pair, 13 stages.</p></li>
+<li><p><code>"v87r"</code> – Verner "robust" 8(7) pair, 13 stages.</p></li>
+<li><p><code>"ev87"</code> – Enright-Verner 8(7) pair, 13 stages.</p></li>
+<li><p><code>"k87"</code> – Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.</p></li>
+<li><p><code>"f89"</code> – Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+9th-order embedded estimate.  Same family as MATLAB <code>ode89</code>.</p></li>
+<li><p><code>"v89"</code> – Verner 8(9) pair, 16 stages.  Alternative to <code>"f89"</code>
+in the same order bracket.  Also close to MATLAB <code>ode89</code>.</p></li>
+<li><p><code>"t98a"</code> – Tsitouras 9(8) variant A pair, 16 stages.</p></li>
+<li><p><code>"v98r"</code> – Verner "robust" 9(8) pair, 16 stages.</p></li>
+<li><p><code>"s98"</code> – Sharp 9(8) pair, 16 stages.</p></li>
+<li><p><code>"f108"</code> – Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+primary with 8th-order embedded error estimate.  The same method as
+Julia's <code>Feagin10()</code>.  The large number of stages carries elevated
+transcription-error risk; verified against Williams' libode canonical order test.</p></li>
+<li><p><code>"c108"</code> – Curtis 10(8) pair, 21 stages.</p></li>
+<li><p><code>"b109"</code> – Baker 10(9) pair, 21 stages.</p></li>
+<li><p><code>"s1110a"</code> – Stone 11(10) variant A pair, 26 stages.  11th-order
+primary; very few published references.</p></li>
+<li><p><code>"f1210"</code> – Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+primary with 10th-order embedded error estimate.  The same method as
+Julia's <code>Feagin12()</code>.  Elevated transcription-error risk due to many
+stages; verified against Williams' libode canonical order test.</p></li>
+<li><p><code>"o129"</code> – Ono 12(9) pair, 29 stages.</p></li>
+<li><p><code>"f1412"</code> – Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+primary with 12th-order embedded error estimate.  The same method as
+Julia's <code>Feagin14()</code>.  The highest-order method in rxode2; elevated
+transcription-error risk due to 35 stages; verified against
+Williams' libode canonical order test.</p></li>
+</ul><p><strong>deSolve-derived Fortran solvers</strong> (from the deSolve R package).  Both
+use non-reentrant Fortran COMMON blocks and therefore run single-threaded
+only, regardless of the <code>cores</code> setting.  They are BDF (Backward
+Differentiation Formula) stiff solvers and are most useful when you want
+behavior comparable to deSolve's <code>lsode()</code> or <code>bdf()</code>/<code>vode()</code> functions.</p><ul><li><p><code>"lsode"</code> – DLSODE (Hindmarsh 1983, ODEPACK) in Adams (non-stiff) mode,
+MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
+Corresponds to deSolve's <code>lsode(method="adams")</code>.  Adaptive step-size;
+error controlled by <code>atol</code> and <code>rtol</code>.
+<strong>Not thread-safe</strong> – always runs on a single core.</p></li>
+<li><p><code>"bdf"</code> – DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
+Variable-order BDF method, order 1-5; internally generated dense Jacobian.
+Corresponds to deSolve's <code>bdf()</code> / <code>vode(method="bdf")</code>.  Adaptive
+step-size; error controlled by <code>atol</code> and <code>rtol</code>.
+<strong>Not thread-safe</strong> – always runs on a single core.</p></li>
 </ul></dd>
 
 </dl></div>
