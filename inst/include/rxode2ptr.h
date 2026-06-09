@@ -216,6 +216,9 @@ extern "C" {
   typedef double (*rxReal_t)(SEXP x, R_xlen_t i);
   extern rxReal_t rxReal;
 
+  typedef int (*getRxNsim_t)(rx_solve *rx);
+  extern getRxNsim_t getRxNsim;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -282,6 +285,7 @@ extern "C" {
       atolRtolFactor_ = (atolRtolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 61));
       rxInt = (rxInt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 62));
       rxReal = (rxReal_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 63));
+      getRxNsim = (getRxNsim_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 64));
     }
     return R_NilValue;
   }
@@ -351,6 +355,7 @@ extern "C" {
   atolRtolFactor_t atolRtolFactor_ = NULL;              \
   rxInt_t rxInt = NULL;                                 \
   rxReal_t rxReal = NULL;                               \
+  getRxNsim_t getRxNsim = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

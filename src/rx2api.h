@@ -132,6 +132,9 @@ extern "C" {
   // Get the number of observations excluding evid=2
   int getRxNobs2(rx_solve *rx);
 
+  // Get the number of simulations (nsim); equals nPopPar/nsub when evenly divisible
+  int getRxNsim(rx_solve *rx);
+
   // Get the number of parameters loaded
   int getRxNpars(rx_solve *rx);
 

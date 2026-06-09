@@ -238,6 +238,10 @@ int getRxNobs2(rx_solve *rx) {
   return rx->nobs2;
 }
 
+int getRxNsim(rx_solve *rx) {
+  return (int)rx->nsim;
+}
+
 int getRxNpars(rx_solve *rx) {
   return rx->npars;
 }
