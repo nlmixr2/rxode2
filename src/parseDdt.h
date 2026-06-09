@@ -122,8 +122,9 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
   if (nodeHas(derivative) && i==2) {
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     if (!new_or_ith(v)) {
-      if (tb.lh[tb.ix] == isSuppressedLHSstr ||
-          tb.lh[tb.ix] == isLHSstr) {
+      if (tb.ix >= 0 &&
+          (tb.lh[tb.ix] == isSuppressedLHSstr ||
+           tb.lh[tb.ix] == isLHSstr)) {
         updateSyntaxCol();
         sPrint(&_gbuf,"'%s' cannot be a derivative and string variable", v);
         trans_syntax_error_report_fn(_gbuf.s);
