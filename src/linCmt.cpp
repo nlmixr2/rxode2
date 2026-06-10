@@ -272,7 +272,11 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   // get the linear solved system object.
-  linA_t lca = __linCmtA[omp_get_thread_num()];
+  // rx_get_thread() honors the cross-DLL thread-id override (see rxData.cpp /
+  // setRxThreadId): under an external OpenMP team rxode2's omp_get_thread_num()
+  // would return 0 for every worker, collapsing this per-thread linCmt scratch
+  // onto slot 0.  __linCmtB (line ~489) already uses rx_get_thread().
+  linA_t lca = __linCmtA[rx_get_thread((int)__linCmtA.size())];
   int idx = ind->idx;
   // Create the solved system object
   if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {

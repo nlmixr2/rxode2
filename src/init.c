@@ -645,6 +645,9 @@ SEXP _rxode2_mlogit_j(SEXP x);
 SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
+// Cross-DLL OpenMP thread-id override (defined in rxData.cpp); see comment there.
+void setRxThreadId(int id);
+
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
@@ -828,6 +831,7 @@ void R_init_rxode2(DllInfo *info){
   // C callable to assign environments.
   R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
   R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
+  R_RegisterCCallable("rxode2", "setRxThreadId", (DL_FUNC) &setRxThreadId);
   R_RegisterCCallable("rxode2", "_rxode2_rxRmvnSEXP",
                       (DL_FUNC) &_rxode2_rxRmvnSEXP);
   R_RegisterCCallable("rxode2", "_rxode2_evalUdf", (DL_FUNC) &_rxode2_evalUdf);

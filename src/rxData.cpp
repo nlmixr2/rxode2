@@ -1513,26 +1513,47 @@ extern "C" {
 
 } // extern "C"
 
+// --- Cross-DLL OpenMP thread-id override (Windows static-libgomp fix) --------
+// When rxode2's per-individual solve is driven from an EXTERNAL OpenMP team
+// (e.g. nlmixr2est's FOCEi innerOpt), rxode2's own statically-linked libgomp
+// returns omp_get_thread_num()==0 for every foreign thread, collapsing all
+// per-thread buffers (LSODA ctx pool, glhs, gon, tol arrays, ...) onto slot 0
+// -> concurrent writes / lsoda_free -> heap corruption (Windows segment heap;
+// benign on Linux's single shared libgomp).  The external driver supplies the
+// correct per-thread id via setRxThreadId(); when set (>=0) rxode2 uses it
+// instead of omp_get_thread_num().  thread_local is compiler TLS (per-OS-
+// thread), so the same OS thread that sets the id also runs the solve.  Inside
+// rxode2's own par_solve the override stays -1 and omp_get_thread_num()
+// (correct within rxode2's own team) is used.
+static thread_local int _rxThreadIdOverride = -1;
+extern "C" void setRxThreadId(int id) { _rxThreadIdOverride = id; }
+extern "C" int getRxThreadId(void) { return _rxThreadIdOverride; }
+static inline int _rxTid(void) {
+  int t = _rxThreadIdOverride;
+  if (t < 0) t = omp_get_thread_num();
+  return (t < 0) ? 0 : t;
+}
+
 static inline double *getLinCmtSaveThread() {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return _globals.gLinSave + (op->numLinSens+op->numLin)*omp_get_thread_num();
+  return _globals.gLinSave + (op->numLinSens+op->numLin)*_rxTid();
 }
 
 static inline double *getLinCmtDummyThread() {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return _globals.gLinDummy + (op->neq)*omp_get_thread_num();
+  return _globals.gLinDummy + (op->neq)*_rxTid();
 }
 
 static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return ptr + (op->neq + op->extraCmt)*omp_get_thread_num();
+  return ptr + (op->neq + op->extraCmt)*_rxTid();
 }
 
 static inline double *getInfusionRateThread() {
-  return _globals.gInfusionRate[omp_get_thread_num()];
+  return _globals.gInfusionRate[_rxTid()];
 }
 
 static inline double *getTlastSThread() {
@@ -1560,30 +1581,30 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->linCmtSave = getLinCmtSaveThread();
     ind->linCmtDummy = getLinCmtDummyThread();
 
-    ind->ignoredDoses = _globals.ignoredDoses[omp_get_thread_num()];
-    ind->ignoredDosesN = &(_globals.nIgnoredDoses[omp_get_thread_num()]);
+    ind->ignoredDoses = _globals.ignoredDoses[_rxTid()];
+    ind->ignoredDosesN = &(_globals.nIgnoredDoses[_rxTid()]);
     ind->ignoredDosesN[0] = 0; // reset
-    ind->ignoredDosesAllocN = &(_globals.nAllocIgnoredDoses[omp_get_thread_num()]);
+    ind->ignoredDosesAllocN = &(_globals.nAllocIgnoredDoses[_rxTid()]);
 
-    ind->pendingDoses = _globals.pendingDoses[omp_get_thread_num()];
-    ind->pendingDosesN = &(_globals.nPendingDoses[omp_get_thread_num()]);
+    ind->pendingDoses = _globals.pendingDoses[_rxTid()];
+    ind->pendingDosesN = &(_globals.nPendingDoses[_rxTid()]);
     ind->pendingDosesN[0] = 0; // reset
-    ind->pendingDosesAllocN = &(_globals.nAllocPendingDoses[omp_get_thread_num()]);
+    ind->pendingDosesAllocN = &(_globals.nAllocPendingDoses[_rxTid()]);
 
-    ind->extraDoseN = &(_globals.extraDoseN[omp_get_thread_num()]);
+    ind->extraDoseN = &(_globals.extraDoseN[_rxTid()]);
     ind->extraDoseN[0] = 0; //reset
-    ind->extraDoseAllocN = &(_globals.extraDoseAllocN[omp_get_thread_num()]);
-    ind->extraDoseTimeIdx = _globals.extraDoseTimeIdx[omp_get_thread_num()];
-    ind->extraDoseTime = _globals.extraDoseTime[omp_get_thread_num()];
-    ind->extraDoseEvid = _globals.extraDoseEvid[omp_get_thread_num()];
-    ind->extraDoseDose = _globals.extraDoseDose[omp_get_thread_num()];
+    ind->extraDoseAllocN = &(_globals.extraDoseAllocN[_rxTid()]);
+    ind->extraDoseTimeIdx = _globals.extraDoseTimeIdx[_rxTid()];
+    ind->extraDoseTime = _globals.extraDoseTime[_rxTid()];
+    ind->extraDoseEvid = _globals.extraDoseEvid[_rxTid()];
+    ind->extraDoseDose = _globals.extraDoseDose[_rxTid()];
     ind->idxExtra = 0;
     ind->extraSorted = 0;
 
-    ind->on = _globals.gon + ncmt*omp_get_thread_num();
-    ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
-    ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
-    ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
+    ind->on = _globals.gon + ncmt*_rxTid();
+    ind->solveSave = _globals.gSolveSave + op->neq*_rxTid();
+    ind->solveLast = _globals.gSolveLast + op->neq*_rxTid();
+    ind->solveLast2 = _globals.gSolveLast2 + op->neq*_rxTid();
   } else {
     ind->InfusionRate = NULL;
     ind->tlastS = NULL;
@@ -1596,23 +1617,23 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->linCmtSave = NULL;
   }
   if (rx->nMtime > 0) {
-    ind->mtime0 = _globals.gmtime0 + rx->nMtime * omp_get_thread_num();
+    ind->mtime0 = _globals.gmtime0 + rx->nMtime * _rxTid();
   } else {
     ind->mtime0 = NULL;
   }
   if (!ind->indOwnAlloc) {
-    ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
+    ind->timeThread = _globals.timeThread + rx->maxAllTimes*_rxTid();
   }
-  ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
-  ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+  ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*_rxTid();
+  ind->lhs = _globals.glhs+op->nlhs*_rxTid();
   // Point the individual's tolerance arrays at the current thread's
   // slice.  iniSubject() will then multiply them by ind->tolFactor to
   // apply any sticky loosening.  No conditional needed here: tolFactor
   // is always valid (set to 1.0 by setupRxInd() on first allocation).
-  ind->atol2  = _globals.gatol2Thread  + op->neq * omp_get_thread_num();
-  ind->rtol2  = _globals.grtol2Thread  + op->neq * omp_get_thread_num();
-  ind->ssAtol = _globals.gssAtolThread + op->neq * omp_get_thread_num();
-  ind->ssRtol = _globals.gssRtolThread + op->neq * omp_get_thread_num();
+  ind->atol2  = _globals.gatol2Thread  + op->neq * _rxTid();
+  ind->rtol2  = _globals.grtol2Thread  + op->neq * _rxTid();
+  ind->ssAtol = _globals.gssAtolThread + op->neq * _rxTid();
+  ind->ssRtol = _globals.gssRtolThread + op->neq * _rxTid();
 }
 
 extern "C" void setZeroMatrix(int which) {
@@ -1652,7 +1673,7 @@ extern "C" void atolRtolFactorC_(double factor) {
 
   // Modify only the current thread's tolerance arrays -- fully thread-safe,
   // no critical section needed because each thread has its own slice.
-  int _threadId = omp_get_thread_num();
+  int _threadId = _rxTid();
   double *_atol2  = _globals.gatol2Thread  + op->neq * _threadId;
   double *_rtol2  = _globals.grtol2Thread  + op->neq * _threadId;
   double *_ssAtol = _globals.gssAtolThread + op->neq * _threadId;
@@ -6905,12 +6926,12 @@ void rxAssignPtr(SEXP object = R_NilValue){
 }
 
 extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind) {
-  _globals.ignoredDoses[omp_get_thread_num()] = ind->ignoredDoses;
-  _globals.pendingDoses[omp_get_thread_num()] = ind->pendingDoses;
-  _globals.extraDoseTimeIdx[omp_get_thread_num()] = ind->extraDoseTimeIdx;
-  _globals.extraDoseTime[omp_get_thread_num()] = ind->extraDoseTime;
-  _globals.extraDoseEvid[omp_get_thread_num()] = ind->extraDoseEvid;
-  _globals.extraDoseDose[omp_get_thread_num()] = ind->extraDoseDose;
+  _globals.ignoredDoses[_rxTid()] = ind->ignoredDoses;
+  _globals.pendingDoses[_rxTid()] = ind->pendingDoses;
+  _globals.extraDoseTimeIdx[_rxTid()] = ind->extraDoseTimeIdx;
+  _globals.extraDoseTime[_rxTid()] = ind->extraDoseTime;
+  _globals.extraDoseEvid[_rxTid()] = ind->extraDoseEvid;
+  _globals.extraDoseDose[_rxTid()] = ind->extraDoseDose;
 }
 
 extern "C" void rxAssignPtrC(SEXP obj){
