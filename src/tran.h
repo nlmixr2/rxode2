@@ -154,7 +154,7 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
       if (strchr(second_dot + 1, '.') == NULL) {
         int len1 = (int)(second_dot - (first_dot + 1));
         if (len1 < 100) {
-          strncpy(cmt1, first_dot + 1, len1);
+          memcpy(cmt1, first_dot + 1, len1);
           cmt1[len1] = '\0';
           int len2 = (int)strlen(second_dot + 1);
           if (len2 < 100) {
@@ -193,7 +193,7 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
       if (strchr(second_us + 1, '_') == NULL) {
         int len1 = (int)(second_us - (first_us + 1));
         if (len1 < 100) {
-          strncpy(cmt1, first_us + 1, len1);
+          memcpy(cmt1, first_us + 1, len1);
           cmt1[len1] = '\0';
           int len2 = (int)strlen(second_us + 1);
           if (len2 < 100) {
