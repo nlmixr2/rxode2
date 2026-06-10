@@ -7,8 +7,9 @@
 #include "rxomp.h"
 #include "solveWarn.h"
 
+#include <map>
 #include <set>
-#include <vector>
+#include <string>
 
 #define _(String) (String)
 
@@ -19,93 +20,96 @@ extern "C" void RSprintf(const char *format, ...);
 extern "C" const char *rxGetId(int id);
 extern "C" int getSilentErr(void);
 
-/* Aggregator state — kept tiny and global. Mutation is gated by an OpenMP
-   critical section named `rxSolveWarn` so the hot Push path in intdy.c can
-   be called from multiple parallel solves without corrupting the buffers.
-   The Push call rate is bounded by how often the integrator misses its
-   interpolation window — not per-step — so contention on this critical
-   section is far cheaper than the equivalent flood of RSprintf calls it
-   replaces.
+/* Aggregator state. Keyed by exact message string so any caller can plug
+   in their own template and have its repeats coalesced. Mutation is gated
+   by an OpenMP critical section named `rxSolveWarn` so the hot Push path
+   inside parallel solves can be called concurrently from many threads
+   without corrupting the buffers. The critical-region overhead is far
+   cheaper than the formatted RSprintf calls it replaces — the warning
+   rate may be high during sticky-recalc but never as high as the per-step
+   solver hot path.
 
-   Capping at MAX_IDS distinct IDs per family bounds memory; further IDs
-   still increment `count` but are not added to the set. The flush message
-   reports overflow as "... (N more)". */
+   MAX_MESSAGES caps the number of distinct message strings tracked at
+   once (overflow drops new messages but doesn't crash); MAX_IDS caps the
+   distinct-subject set per message (overflow drops ids but keeps
+   counting). Both bound memory; both also bound the per-flush print
+   length. The caps are deliberately generous — overflow under normal
+   workloads is a sign something pathological is happening, not a routine
+   case to optimise. */
+static const std::size_t MAX_MESSAGES = 64;
 static const std::size_t MAX_IDS = 256;
 
-struct WarnState {
+struct WarnEntry {
   int count;
   std::set<int> ids;
-  WarnState() : count(0) {}
+  WarnEntry() : count(0) {}
 };
 
-static WarnState g_warn[RX_WARN_N];
+static std::map<std::string, WarnEntry> g_warn;
 
 extern "C" void rxSolveWarnReset(void) {
 #ifdef _OPENMP
 #pragma omp critical(rxSolveWarn)
 #endif
   {
-    for (int f = 0; f < RX_WARN_N; f++) {
-      g_warn[f].count = 0;
-      g_warn[f].ids.clear();
-    }
+    g_warn.clear();
   }
 }
 
-extern "C" void rxSolveWarnPush(int family, int id) {
-  if (family < 0 || family >= RX_WARN_N) return;
+extern "C" void rxSolveWarnPush(int id, const char *msg) {
+  if (msg == NULL) return;
   if (getSilentErr() != 0) return;
 #ifdef _OPENMP
 #pragma omp critical(rxSolveWarn)
 #endif
   {
-    g_warn[family].count++;
-    if (g_warn[family].ids.size() < MAX_IDS) {
-      g_warn[family].ids.insert(id);
+    std::string key(msg);
+    std::map<std::string, WarnEntry>::iterator it = g_warn.find(key);
+    if (it == g_warn.end()) {
+      if (g_warn.size() < MAX_MESSAGES) {
+        WarnEntry e;
+        e.count = 1;
+        if (id >= 0) e.ids.insert(id);
+        g_warn[key] = e;
+      }
+      /* Silently drop new messages once the dedup table is full. The
+         existing entries continue to aggregate their own occurrences. */
+    } else {
+      it->second.count++;
+      if (id >= 0 && it->second.ids.size() < MAX_IDS) {
+        it->second.ids.insert(id);
+      }
     }
-  }
-}
-
-static const char *familyLabel(int family) {
-  switch (family) {
-  case RX_WARN_INTDY:
-    return "integrator window-miss (intdy)";
-  default:
-    return "unknown";
   }
 }
 
 extern "C" void rxSolveWarnFlush(int maxIds) {
   if (maxIds < 1) maxIds = 1;
-  /* Snapshot under the lock, print outside it. R's console writer is not
-     thread-safe but flush should normally be called from serial code; we
-     hold the lock briefly anyway to be safe against a stray concurrent
-     Push. */
-  int snapCount[RX_WARN_N];
-  std::vector<int> snapIds[RX_WARN_N];
+  /* Snapshot under the lock so the print loop runs without holding it.
+     R's console writer isn't thread-safe; we expect flush to be called
+     from serial code, but the critical region is cheap and bounds the
+     race against a stray concurrent Push. */
+  std::map<std::string, WarnEntry> snap;
 #ifdef _OPENMP
 #pragma omp critical(rxSolveWarn)
 #endif
   {
-    for (int f = 0; f < RX_WARN_N; f++) {
-      snapCount[f] = g_warn[f].count;
-      if (snapCount[f] > 0) {
-        snapIds[f].assign(g_warn[f].ids.begin(), g_warn[f].ids.end());
-      }
-      g_warn[f].count = 0;
-      g_warn[f].ids.clear();
-    }
+    snap.swap(g_warn);
   }
-  for (int f = 0; f < RX_WARN_N; f++) {
-    if (snapCount[f] <= 0) continue;
-    int nIds = (int)snapIds[f].size();
+  for (std::map<std::string, WarnEntry>::const_iterator it = snap.begin();
+       it != snap.end(); ++it) {
+    const std::string &msg = it->first;
+    const WarnEntry &e = it->second;
+    int nIds = (int)e.ids.size();
     int nShow = (nIds < maxIds) ? nIds : maxIds;
-    RSprintf(_("%s: %d warning(s)"), familyLabel(f), snapCount[f]);
+    RSprintf("[%s]: %d warning(s)", msg.c_str(), e.count);
     if (nIds > 0) {
       RSprintf(_(" for subject(s): "));
-      for (int k = 0; k < nShow; k++) {
+      int k = 0;
+      for (std::set<int>::const_iterator iit = e.ids.begin();
+           iit != e.ids.end() && k < nShow; ++iit, ++k) {
         if (k > 0) RSprintf(", ");
-        RSprintf("%s", rxGetId(snapIds[f][k]));
+        RSprintf("%s", rxGetId(*iit));
       }
       if (nIds > nShow) {
         RSprintf(_(", ... (%d more)"), nIds - nShow);

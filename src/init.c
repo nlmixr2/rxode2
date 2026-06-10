@@ -304,7 +304,7 @@ SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
 int getSilentErr(void);
 void setSilentErr(int silent);
 
-void rxSolveWarnPush(int family, int id);
+void rxSolveWarnPush(int id, const char *msg);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
 

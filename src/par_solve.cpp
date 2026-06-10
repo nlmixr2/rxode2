@@ -1991,7 +1991,8 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                        0,
                        NULL,
                        0,
-                       NULL
+                       NULL,
+                       ind->id
                        );
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
@@ -5329,7 +5330,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,                      /* number of components for which dense outpout is required */
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0,                      /* declared length of icon */
-                          NULL                    /* userdata */
+                          NULL,                   /* userdata */
+                          ind->id                 /* rxode2 subject id for message aggregator */
                           );
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -5373,7 +5375,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,                      /* number of components for which dense outpout is required */
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0,                      /* declared length of icon */
-                          NULL                    /* userdata */
+                          NULL,                   /* userdata */
+                          ind->id                 /* rxode2 subject id for message aggregator */
                           );
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -5408,7 +5411,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         0,                      /* number of components for which dense outpout is required */
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
                         0,                      /* declared length of icon */
-                        NULL                    /* userdata */
+                        NULL,                   /* userdata */
+                        ind->id                 /* rxode2 subject id for message aggregator */
                         );
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
@@ -5619,7 +5623,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                         dopDenseSolout, iout_dense,
                         NULL, DBL_EPSILON, 0, 0, 0, 0,
                         ind->HMAX, op->H0, op->mxstep, 1, -1,
-                        neq[0], NULL, 0, &dc);
+                        neq[0], NULL, 0, &dc, ind->id);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5648,7 +5652,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                           dopDenseSolout, iout_dense,
                           NULL, DBL_EPSILON, 0, 0, 0, 0,
                           ind->HMAX, op->H0, op->mxstep, 1, -1,
-                          neq[0], NULL, 0, &dc);
+                          neq[0], NULL, 0, &dc, ind->id);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5682,7 +5686,9 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                         ind->HMAX, op->H0, op->mxstep, 1, -1,
                         neq[0],  // nrdens = all ODE states
                         NULL, 0, // icont = NULL (full component 0-based)
-                        &dc);    // userdata
+                        &dc,     // userdata
+                        ind->id  // rxode2 subject id for message aggregator
+                        );
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
