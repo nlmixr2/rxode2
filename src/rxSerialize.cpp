@@ -20,10 +20,10 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 1u;
+static const uint32_t rxSerializeFormatVer = 2u;
 
 // ---------------------------------------------------------------------------
-// Low-level write helpers — all abort via Rf_error on failure
+// Low-level write helpers -- all abort via Rf_error on failure
 // ---------------------------------------------------------------------------
 
 static void sWrite(std::vector<uint8_t> *f, const void *buf, size_t n, const char *what) {
@@ -102,7 +102,7 @@ SEXP rxSaveState_() {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
-  // ── Section 1: Header ────────────────────────────────────────────────────
+  // -- Section 1: Header ----------------------------------------------------
   sWrite(f, rxSerializeMagic, 8, "magic");
   sWriteU32(f, rxSerializeFormatVer, "format_ver");
 
@@ -123,7 +123,7 @@ SEXP rxSaveState_() {
   sWriteU32(f, (uint32_t)sizeof(rx_solving_options_ind), "sizeof_ind");
   sWriteU32(f, (uint32_t)sizeof(rx_solve),               "sizeof_solve");
 
-  // ── Section 2: rx_solving_options scalar POD fields ──────────────────────
+  // -- Section 2: rx_solving_options scalar POD fields ----------------------
   // Write each field individually (skip pointer fields).
 #define W_I32(field) sWriteI32(f, (int32_t)(op->field), #field)
 #define W_U32(field) sWriteU32(f, (uint32_t)(op->field), #field)
@@ -154,7 +154,7 @@ SEXP rxSaveState_() {
 #undef W_DBL
 #undef W_BOOL
 
-  // ── Section 3: rx_solve scalar POD fields ────────────────────────────────
+  // -- Section 3: rx_solve scalar POD fields --------------------------------
 #define W_RX_U32(field) sWriteU32(f, (uint32_t)(rx->field), #field)
 #define W_RX_I32(field) sWriteI32(f, (int32_t)(rx->field), #field)
 #define W_RX_I64(field) sWrite(f, &(rx->field), sizeof(int64_t), #field)
@@ -195,11 +195,11 @@ SEXP rxSaveState_() {
 #undef W_RX_DBL
 #undef W_RX_BOOL
 
-  // ── Section 4: vLines ────────────────────────────────────────────────────
+  // -- Section 4: vLines ----------------------------------------------------
   sWriteVLines(f, &rx->factors,     "factors");
   sWriteVLines(f, &rx->factorNames, "factorNames");
 
-  // ── Section 5: rx_solve auxiliary arrays ─────────────────────────────────
+  // -- Section 5: rx_solve auxiliary arrays ---------------------------------
   sWriteIntBlob(f, rx->cov0,       (uint64_t)(rx->nCov0 > 0 ? rx->nCov0 : 0),
                 "cov0");
   sWriteIntBlob(f, rx->splitBolus, (uint64_t)(rx->splitBolusN > 0 ? rx->splitBolusN : 0),
@@ -215,7 +215,7 @@ SEXP rxSaveState_() {
     sWriteDoubleBlob(f, rx->linCmtScale, lcsn, "linCmtScale");
   }
 
-  // ── Section 6: gsolve meaningful subsections ─────────────────────────────
+  // -- Section 6: gsolve meaningful subsections -----------------------------
   // state_size: needed to compute n0 layout on restore.
   // At pre-integration time, ind->solve = &gsolve[n0_offset] where n0 = nall*state_size*nsim.
   // We recover state_size as: if gsolve != NULL and nall > 0 and nsim > 0, compute from
@@ -241,7 +241,7 @@ SEXP rxSaveState_() {
                    (uint64_t)((int64_t)rx->nMtime * rx->nsub * rx->nsim),
                    "gmtime");
 
-  // ginits: n4 = initsC.size() — stored in op->neq when pure ODE; use pointer arithmetic
+  // ginits: n4 = initsC.size() -- stored in op->neq when pure ODE; use pointer arithmetic
   // ginits pointer in gsolve: gsolve + n0 + nlin + 3*nsave + n2
   // Easiest: compute size as scaleC offset - ginits
   // But we don't have scaleC.size() directly. Use _globals.gscale - _globals.ginits.
@@ -272,32 +272,37 @@ SEXP rxSaveState_() {
   sWriteDoubleBlob(f, op->ssAtol, (uint64_t)(op->neq > 0 ? op->neq : 0), "gssAtol");
   sWriteDoubleBlob(f, op->ssRtol, (uint64_t)(op->neq > 0 ? op->neq : 0), "gssRtol");
 
-  // ── Section 7: Global event-indexed bulk arrays ───────────────────────────
+  // -- Section 7: Global event-indexed bulk arrays ---------------------------
+  // nall: expanded total events (rx->nall = representative * nsub for homGroups)
+  // nall_rep: representative event count = actual allocation size of gall_times/gevid/gcov
+  // For non-homGroups solves, nall_rep == nall.
   uint64_t nall = (uint64_t)rx->nall;
+  uint64_t nall_rep = (_globals.gall_times_n > 0) ? (uint64_t)_globals.gall_times_n : nall;
   sWriteU64(f, nall, "nall");
+  sWriteU64(f, nall_rep, "nall_rep");
   sWriteU32(f, (uint32_t)op->ncov, "ncov");
 
-  // gall_times slab: 5*nall doubles (all_times, dv, amt, ii, limit)
-  sWriteDoubleBlob(f, _globals.gall_times, 5u * nall, "gall_times_slab");
+  // gall_times slab: 5*nall_rep doubles (all_times, dv, amt, ii, limit)
+  // Allocated for the representative events only, not the expanded subject count.
+  sWriteDoubleBlob(f, _globals.gall_times, 5u * nall_rep, "gall_times_slab");
 
-  // gevid slab: allocated as 3*nall + dfN*2 + strLhs.size() ints.
-  // We save from gevid start to glhs_str end in one contiguous block.
+  // gevid slab: allocated as 3*nall_rep + dfN*2 + strLhs.size() ints.
   uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
-  uint64_t gevid_n = 3u * nall + dfN * 2 + (uint64_t)op->nlhs;
+  uint64_t gevid_n = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
   sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
 
-  // gcov: ncov * nall doubles
-  sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall, "gcov");
+  // gcov: ncov * nall_rep doubles (representative events only)
+  sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall_rep, "gcov");
 
-  // gix: nall * nsim ints (in gon slab, pointed to by _globals.gix)
+  // gix: nall * nsim ints — correctly allocated for the full expanded count
   sWriteIntBlob(f, _globals.gix, nall * (uint64_t)rx->nsim, "gix");
 
   // gpars: npars * nsub doubles
   sWriteDoubleBlob(f, _globals.gpars,
                    (uint64_t)rx->npars * rx->nsub, "gpars");
 
-  // ordId: nall ints (subject ordering)
-  sWriteIntBlob(f, rx->ordId, nall, "ordId");
+  // ordId: nsub * nsim ints (subject ordering index, not an event-indexed array)
+  sWriteIntBlob(f, rx->ordId, (uint64_t)rx->nsub * rx->nsim, "ordId");
 
   // gParPos: npars ints
   {
@@ -345,7 +350,7 @@ SEXP rxSaveState_() {
     sWriteDoubleBlob(f, _globals.gamtS, gamsn, "gamtS");
   }
 
-  // ── Section 8: Per-subject blocks ────────────────────────────────────────
+  // -- Section 8: Per-subject blocks ----------------------------------------
   uint32_t nsub = rx->nsub;
   for (uint32_t si = 0; si < nsub; si++) {
     rx_solving_options_ind *ind = &rx->subjects[si];
@@ -396,7 +401,7 @@ SEXP rxSaveState_() {
 #undef W_IND_DBL
 #undef W_IND_BOOL
 
-    // 8b: array data — always read from wherever ind-> points (own or global slab)
+    // 8b: array data -- always read from wherever ind-> points (own or global slab)
     int nat = ind->n_all_times;
     int nd  = ind->ndoses;
     int neq = op->neq;
@@ -411,7 +416,7 @@ SEXP rxSaveState_() {
     // idose
     sWriteIntBlob(f, ind->idose, (uint64_t)(nd > 0 ? nd : 0), "idose");
 
-    // observation arrays (dv, cens, limit) — nat elements each
+    // observation arrays (dv, cens, limit) -- nat elements each
     sWriteDoubleBlob(f, ind->dv,    (uint64_t)(nat > 0 ? nat : 0), "dv");
     sWriteIntBlob(f,    ind->cens,  (uint64_t)(nat > 0 ? nat : 0), "cens");
     sWriteDoubleBlob(f, ind->limit, (uint64_t)(nat > 0 ? nat : 0), "limit");
@@ -421,7 +426,7 @@ SEXP rxSaveState_() {
                      (uint64_t)(nat > 0 ? (int64_t)op->ncov * nat : 0),
                      "cov_ptr");
 
-    // solve: initial ODE state — neq doubles from ind->solve[0..neq-1]
+    // solve: initial ODE state -- neq doubles from ind->solve[0..neq-1]
     sWriteDoubleBlob(f, ind->solve, (uint64_t)(neq > 0 ? neq : 0), "solve_init");
 
     // par_ptr: npars doubles (the original parameter values for this subject)
@@ -445,7 +450,7 @@ SEXP rxSaveState_() {
 }
 
 // ---------------------------------------------------------------------------
-// rxIsSerializeFile: check magic bytes — used for rxSolve dispatch
+// rxIsSerializeFile: check magic bytes -- used for rxSolve dispatch
 // ---------------------------------------------------------------------------
 
 //' Check whether a file was written by rxSaveState_
@@ -600,7 +605,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   _reader.pos = 0;
   MemReader *f = &_reader;
 
-  // ── Section 1: Header validation ─────────────────────────────────────────
+  // -- Section 1: Header validation -----------------------------------------
   char magic[8];
   sRead(f, magic, 8, "magic");
   if (memcmp(magic, rxSerializeMagic, 8) != 0) {
@@ -639,7 +644,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
       sz_ind   != (uint32_t)sizeof(rx_solving_options_ind) ||
       sz_solve != (uint32_t)sizeof(rx_solve)) {
     
-    (Rf_error)("rxRestoreState: struct size mismatch — file was built against a "
+    (Rf_error)("rxRestoreState: struct size mismatch -- file was built against a "
                "different rxode2 ABI (opts %u vs %u, ind %u vs %u, solve %u vs %u)",
                sz_opts,  (uint32_t)sizeof(rx_solving_options),
                sz_ind,   (uint32_t)sizeof(rx_solving_options_ind),
@@ -652,7 +657,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
-  // ── Section 2: rx_solving_options scalar fields ───────────────────────────
+  // -- Section 2: rx_solving_options scalar fields ---------------------------
 #define R_I32(field) op->field = (decltype(op->field))sReadI32(f, #field)
 #define R_DBL(field) op->field = sReadDbl(f, #field)
 #define R_BOOL(field) op->field = (decltype(op->field))sReadU8(f, #field)
@@ -680,7 +685,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 #undef R_DBL
 #undef R_BOOL
 
-  // ── Section 3: rx_solve scalar fields ─────────────────────────────────────
+  // -- Section 3: rx_solve scalar fields -------------------------------------
 #define R_RX_U32(field) rx->field = (decltype(rx->field))sReadU32(f, #field)
 #define R_RX_I32(field) rx->field = (decltype(rx->field))sReadI32(f, #field)
 #define R_RX_I64(field) sRead(f, &(rx->field), sizeof(int64_t), #field)
@@ -721,11 +726,11 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 #undef R_RX_DBL
 #undef R_RX_BOOL
 
-  // ── Section 4: vLines ─────────────────────────────────────────────────────
+  // -- Section 4: vLines -----------------------------------------------------
   sReadVLines(f, &rx->factors,     "factors");
   sReadVLines(f, &rx->factorNames, "factorNames");
 
-  // ── Section 5: rx_solve auxiliary arrays ──────────────────────────────────
+  // -- Section 5: rx_solve auxiliary arrays ----------------------------------
   {
     uint64_t n;
     int *tmp;
@@ -747,7 +752,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     rx->linCmtScale = dtmp;
   }
 
-  // ── Section 6: gsolve meaningful subsections ──────────────────────────────
+  // -- Section 6: gsolve meaningful subsections ------------------------------
   int32_t state_size_saved = sReadI32(f, "state_size");
 
   // Allocate gsolve using rxFillMemLayout with saved dimensions
@@ -834,7 +839,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     sReadDoubleDirect(f, _globals.gIndSim, expected, "gIndSim");
   }
 
-  // ypNA + tolerance arrays (5 × neq doubles)
+  // ypNA + tolerance arrays (5 * neq doubles)
   {
     uint64_t expected = (uint64_t)(op->neq > 0 ? op->neq : 0);
     sReadDoubleDirect(f, rx->ypNA, expected, "ypNA");
@@ -854,7 +859,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     }
   }
 
-  // ── Section 7: gon slab (zero-initialized) + gix data ────────────────────
+  // -- Section 7: gon slab (zero-initialized) + gix data --------------------
   if (_globals.gon != NULL) free(_globals.gon);
   _globals.gon = (int *)calloc(_mem.gon_total, sizeof(int));
   if (!_globals.gon) {
@@ -893,48 +898,49 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     }
   }
 
-  // ── Section 8: Global event-indexed bulk arrays ───────────────────────────
+  // -- Section 8: Global event-indexed bulk arrays ---------------------------
+  // nall_saved: expanded total (rx->nall, already restored in Section 3)
+  // nall_rep: representative event count = actual allocation of gall_times/gevid/gcov
   uint64_t nall_saved = sReadU64(f, "nall");
+  uint64_t nall_rep   = sReadU64(f, "nall_rep");
+  _globals.gall_times_n = (int64_t)nall_rep;
   uint32_t ncov_saved = sReadU32(f, "ncov");
 
-  // gall_times slab (5*nall doubles)
+  // gall_times slab (5*nall_rep doubles — representative events only)
   {
-    uint64_t expected = 5u * nall_saved;
+    uint64_t expected = 5u * nall_rep;
     double *buf = sReadDoubleBlobExpected(f, expected, "gall_times_slab");
     if (_globals.gall_times != NULL) free(_globals.gall_times);
-    _globals.gall_times = buf;   // takes ownership
-    // Re-establish sub-pointers within the slab
-    _globals.gdv    = _globals.gall_times + nall_saved;
-    _globals.gamt   = _globals.gdv        + nall_saved;
-    _globals.gii    = _globals.gamt       + nall_saved;
-    _globals.glimit = _globals.gii        + nall_saved;
+    _globals.gall_times = buf;
+    _globals.gdv    = _globals.gall_times + nall_rep;
+    _globals.gamt   = _globals.gdv        + nall_rep;
+    _globals.gii    = _globals.gamt       + nall_rep;
+    _globals.glimit = _globals.gii        + nall_rep;
   }
 
-  // gevid slab (3*nall ints + dfN*2 ints + nlhs ints)
+  // gevid slab (3*nall_rep + dfN*2 + nlhs ints)
   {
     uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
-    uint64_t expected = 3u * nall_saved + dfN * 2 + (uint64_t)op->nlhs;
+    uint64_t expected = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
     int *buf = sReadIntBlobExpected(f, expected, "gevid_slab");
     if (_globals.gevid != NULL) free(_globals.gevid);
     _globals.gevid  = buf;
-    _globals.gidose = _globals.gevid + nall_saved;
-    _globals.gcens  = _globals.gidose + nall_saved;
-    // gpar_cov shares offset with gcens (as in rxData.cpp line 3786)
+    _globals.gidose = _globals.gevid + nall_rep;
+    _globals.gcens  = _globals.gidose + nall_rep;
     _globals.gpar_cov = _globals.gcens;
-    
     _globals.gpar_covInterp = _globals.gpar_cov + dfN;
     _globals.glhs_str = _globals.gpar_covInterp + dfN;
   }
 
-  // gcov
+  // gcov (ncov * nall_rep doubles)
   {
-    uint64_t expected = (uint64_t)op->ncov * nall_saved;
+    uint64_t expected = (uint64_t)op->ncov * nall_rep;
     double *buf = sReadDoubleBlobExpected(f, expected, "gcov");
     if (_globals.gcov != NULL) free(_globals.gcov);
     _globals.gcov = buf;
   }
 
-  // gix data: copy into gon slab at the established offset
+  // gix: nall_saved * nsim ints (correctly allocated for the full expanded count)
   {
     uint64_t expected = nall_saved * (uint64_t)rx->nsim;
     sReadIntDirect(f, _globals.gix, expected, "gix");
@@ -948,9 +954,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     _globals.gpars = buf;
   }
 
-  // ordId
+  // ordId: nsub * nsim ints (subject ordering, not event count)
   {
-    uint64_t expected = nall_saved;
+    uint64_t expected = (uint64_t)rx->nsub * rx->nsim;
     int *buf = sReadIntBlobExpected(f, expected, "ordId");
     if (rx->ordId != NULL) free(rx->ordId);
     rx->ordId = _globals.ordId = buf;
@@ -992,7 +998,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     _globals.gamtS = buf;
   }
 
-  // ── Section 9: Per-subject blocks ─────────────────────────────────────────
+  // -- Section 9: Per-subject blocks -----------------------------------------
   uint32_t nsub = rx->nsub;
   // rxOptionsIniEnsure resets rx->ordId = NULL; save the restored pointer first.
   int *savedOrdId = rx->ordId;
@@ -1058,7 +1064,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     int nd  = ind->ndoses;
     int neq = op->neq;
 
-    // 9b: per-subject arrays — always restore as indOwnAlloc
+    // 9b: per-subject arrays -- always restore as indOwnAlloc
     {
       uint64_t exp_nat = (uint64_t)(nat > 0 ? nat : 0);
       uint64_t exp_nd  = (uint64_t)(nd > 0 ? nd : 0);
@@ -1119,7 +1125,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     }
 
     // Allocate per-thread scratch slots that setupRxInd would normally set.
-    // These point to global per-thread slabs; use thread 0 as placeholder —
+    // These point to global per-thread slabs; use thread 0 as placeholder --
     // setupRxInd() in the solve loop will re-point them before use.
     ind->on           = _globals.gon;    // thread 0 slice placeholder
     ind->InfusionRate = (_globals.gInfusionRate && _globals.gInfusionRate[0]) ? _globals.gInfusionRate[0] : NULL;

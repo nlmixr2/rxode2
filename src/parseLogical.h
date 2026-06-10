@@ -41,7 +41,7 @@ static inline int isOperatorOrPrintingIdentifier(nodeInfo ni, const char *name){
 static inline int isSkipChild(nodeInfo ni, const char *name, int i) {
   return ((i == 3 || i == 4 || i < 2) &&
           (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
-           nodeHas(rate) || nodeHas(dur))) ||
+           nodeHas(rate) || nodeHas(dur) || nodeHas(indLin_prop))) ||
     ((i == 3 || i < 2) && nodeHas(der_rhs)) ||
     (nodeHas(dfdy)     && i< 2)  ||
     (nodeHas(dfdy_rhs) && i< 2) ||

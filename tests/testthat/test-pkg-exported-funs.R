@@ -7,7 +7,7 @@
 
 rxTest({
 
-  ## ── package-building helpers ─────────────────────────────────────────────
+  ## -- package-building helpers ---------------------------------------------
 
   .writeMmPackage <- function(pkgDir) {
 
@@ -263,7 +263,7 @@ rxTest({
     invisible(pkgDir)
   }
 
-  ## ── main test ────────────────────────────────────────────────────────────
+  ## -- main test ------------------------------------------------------------
 
   test_that("mm package: install, attach, verify integration, detach, verify cleanup", {
 
@@ -280,7 +280,7 @@ rxTest({
 
     .writeMmPackage(.pkgDir)
 
-    ## ── install ──────────────────────────────────────────────────────────
+    ## -- install ----------------------------------------------------------
     .out <- system2(
       file.path(R.home("bin"), "R"),
       args   = c("CMD", "INSTALL", "--no-multiarch",
@@ -294,7 +294,7 @@ rxTest({
                   paste(.out, collapse = "\n")))
     }
 
-    ## ── attach ───────────────────────────────────────────────────────────
+    ## -- attach -----------------------------------------------------------
     .oldPaths <- .libPaths()
     on.exit(.libPaths(.oldPaths), add = TRUE)
     .libPaths(c(.libDir, .oldPaths))
@@ -304,7 +304,7 @@ rxTest({
       suppressPackageStartupMessages(library(mm, lib.loc = .libDir))
     )
 
-    ## ── translation table ────────────────────────────────────────────────
+    ## -- translation table ------------------------------------------------
     .trans <- rxode2::rxode2parseGetTranslation()
     .mm    <- .trans[.trans$package == "mm", , drop = FALSE]
 
@@ -324,7 +324,7 @@ rxTest({
     expect_true("mm_dVmax" %in% .funs)
     expect_true("mm_dKm"   %in% .funs)
 
-    ## ── R vector interface ───────────────────────────────────────────────
+    ## -- R vector interface -----------------------------------------------
     ## mm(C, Vmax, Km) = Vmax * C / (Km + C)
     expect_equal(mm(2,  10, 2), 10 * 2  / (2 + 2))     # 5
     expect_equal(mm(0,  10, 2), 0)
@@ -342,8 +342,8 @@ rxTest({
     ## mm_dKm(C, Vmax, Km) = -Vmax * C / (Km + C)^2
     expect_equal(mm_dKm(2, 10, 2), -10 * 2 / (2 + 2)^2)
 
-    ## ── rxUdfUi named-argument reordering ────────────────────────────────
-    ## Positional call — already canonical
+    ## -- rxUdfUi named-argument reordering --------------------------------
+    ## Positional call -- already canonical
     .c1 <- quote(mm(Cp, Vmax, Km))
     class(.c1) <- "mm"
     expect_equal(rxode2::rxUdfUi(.c1)$replace, "mm(Cp,Vmax,Km)")
@@ -353,12 +353,12 @@ rxTest({
     class(.c2) <- "mm"
     expect_equal(rxode2::rxUdfUi(.c2)$replace, "mm(Cp,Vmax,Km)")
 
-    ## Named in different order — must be reordered to C, Vmax, Km
+    ## Named in different order -- must be reordered to C, Vmax, Km
     .c3 <- quote(mm(Km = Km, Vmax = Vmax, C = Cp))
     class(.c3) <- "mm"
     expect_equal(rxode2::rxUdfUi(.c3)$replace, "mm(Cp,Vmax,Km)")
 
-    ## ── ODE simulation ───────────────────────────────────────────────────
+    ## -- ODE simulation ---------------------------------------------------
     .mod <- rxode2::rxode2({
       Cp       <- A1 / Vc
       d/dt(A1) <- -mm(Cp, Vmax, Km)
@@ -377,7 +377,7 @@ rxTest({
     ## Substantially cleared after 24 h (> 90% eliminated)
     expect_lt(.A1[length(.A1)], 0.1 * .A1[1])
 
-    ## ── conflict detection ───────────────────────────────────────────────
+    ## -- conflict detection -----------------------------------------------
     ## Attempting to add the same names from a different package is
     ## detected by the conflict-check logic in .onAttach.
     .cur <- rxode2::rxode2parseGetTranslation()
@@ -393,7 +393,7 @@ rxTest({
     expect_true(nrow(.fromOther) > 0L)
     expect_equal(.fromOther$package[1], "mm")
 
-    ## ── detach and verify cleanup ────────────────────────────────────────
+    ## -- detach and verify cleanup ----------------------------------------
     detach("package:mm", unload = TRUE, force = TRUE)
 
     .trans2 <- rxode2::rxode2parseGetTranslation()
@@ -411,7 +411,7 @@ rxTest({
     expect_false("package:mm" %in% search())
   })
 
-  ## ── reload (re-attach) test ───────────────────────────────────────────────
+  ## -- reload (re-attach) test -----------------------------------------------
 
   test_that("mm package: re-attach emits startup message, does not error", {
 
@@ -443,14 +443,14 @@ rxTest({
     on.exit(.libPaths(.oldPaths), add = TRUE)
     .libPaths(c(.libDir, .oldPaths))
 
-    ## First attach — no startup message about re-registering
+    ## First attach -- no startup message about re-registering
     suppressPackageStartupMessages(library(mm, lib.loc = .libDir))
 
     ## Simulate a "reload" by directly calling .onAttach again; the
     ## existing rows from "mm" are still in the table so the re-register
     ## path should fire (emitting a packageStartupMessage).
     ## rxD() also warns "replacing defined derivatives" on re-registration
-    ## — those warnings are expected and suppressed here.
+    ## -- those warnings are expected and suppressed here.
     expect_message(
       suppressWarnings(mm:::.onAttach("", "mm")),
       "re-registering"

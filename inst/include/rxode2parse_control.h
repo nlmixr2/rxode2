@@ -116,7 +116,16 @@
 #define Rxc_tolFactor 112
 #define Rxc_serializeFile 113
 #define Rxc_dense 114
-#define Rxc__zeros 115
+#define Rxc_cvodeLinSolver 115
+#define Rxc_stiff2 116
+#define Rxc_autoSwitchMaxStiff 117
+#define Rxc_autoSwitchMaxNonstiff 118
+#define Rxc_autoSwitchStiffFirst 119
+#define Rxc_autoSwitchNonstifftol 120
+#define Rxc_autoSwitchStifftol 121
+#define Rxc_autoSwitchDtfac 122
+#define Rxc_autoSwitchSwitchMax 123
+#define Rxc__zeros 124
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

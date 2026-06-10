@@ -61,18 +61,52 @@
 #' @param hmin The minimum absolute step size allowed. The default
 #'     value is 0.
 #'
-#' @param hmax The maximum absolute step size allowed.
+#'     For the fixed-step Boost methods `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`,
+#'     `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`,
+#'     `"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, `"geng5"`, and the
+#'     libode fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
+#'     `"rk3"`, `"ssp53"`, `"s4"`, `"r4"`, `"ls44"`, `"ls54"`,
+#'     `"ssp54"`, `"s5"`, `"rk5"`, `"c5"`, `"l5"`, `"lk5a"`, `"lk5b"`,
+#'     `"b6"`, `"s7"`, `"s8_10"`, `"cv8"`, `"s8_12"`, `"s10"`, `"z10"`,
+#'     `"o10"`, `"h10"`), this specifies the fixed step size.
+#'     If `hmin=0` (the default), it uses a default of `0.01` for `"rk4"`,
+#'     `"trapz"`, `"ssp3"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`,
+#'     `"radauiia5"`, `"geng5"`, and all libode fixed-step methods; `0.0001` for
+#'     `"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+#'     If the requested step size would cause the number of steps to exceed
+#'     `maxsteps`, the step size is automatically increased to ensure the
+#'     integration completes within the `maxsteps` limit.  For `"trapz"`, the step
+#'     is also silently clamped to the interval length when the inter-event
+#'     interval is shorter than the nominal step size, so short intervals (e.g.,
+#'     between closely spaced doses) are always handled correctly.
 #'
-#'   When `hmax=NA` and dense=FALSE (default), uses the average
-#'   difference + hmaxSd*sd in times and sampling events. The `hmaxSd`
-#'   is a user specified parameter and which defaults to zero.
+#'     For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
+#'     `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
+#'     `"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
+#'     `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
+#'     `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
+#'     `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
+#'     `"v76r"`, `"ss76"`, `"v78"`, `"dverk78"`, `"dp85"`, `"tp86"`,
+#'     `"v87e"`, `"v87r"`, `"ev87"`, `"k87"`, `"f89"`, `"v89"`,
+#'     `"t98a"`, `"v98r"`, `"s98"`, `"f108"`, `"c108"`, `"b109"`,
+#'     `"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, the libode aliases
+#'     `"dp54"`, `"v65e"`, `"v76e"`, `"dp87"`, `"v98e"`,
+#'     `"ssp33"`, and the deSolve-derived methods `"lsode"`, `"bdf"`),
+#'     this specifies the initial step size (default `0.01` when
+#'     `hmin=0`); subsequent steps are chosen adaptively using `atol`, `rtol`,
+#'     and `maxsteps`.
 #'
-#'   When `hmax=NA` and `dense=TRUE`, uses the maximum difference in
-#'   times in your sampling and events.
+#' @param hmax The maximum absolute step size allowed.  When
+#'   `hmax=NA` (default), uses the average difference +
+#'   hmaxSd*sd in times and sampling events. The `hmaxSd` is a user
+#'   specified parameter and which defaults to zero.  When
+#'   `hmax=NULL` rxode2 uses the maximum difference in times in
+#'   your sampling and events.  The value 0 is equivalent to infinite
+#'   maximum absolute step size.
 #'
-#'   To use this for other routines specify `hmax=NULL` the maximum
-#'   difference in times in your sampling and events us used.  The
-#'   value 0 is equivalent to infinite maximum absolute step size.
+#'   Note that for dense output methods (`"dop853"`, `"dop5"`, `"bs"`,
+#'   `"ros4"`), `hmax` defaults to `NULL` to allow the solvers to
+#'   determine the step size when `dense=TRUE`
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
@@ -83,6 +117,11 @@
 #' @param maxordn The maximum order to be allowed for the nonstiff
 #'     (Adams) method.  The default is 12.  It can be between 1 and
 #'     12.
+#'
+#' @param order The order for the `"ab"`, `"abm"`, and `"mm"` methods.
+#'     For `"ab"` and `"abm"`, the default is 5, and it can be between 1 and 8.
+#'     For `"mm"` (Modified Midpoint), it represents the number of intermediate steps,
+#'     the default is 5, and it must be a positive integer (>= 1).
 #'
 #' @param maxords The maximum order to be allowed for the stiff (BDF)
 #'     method.  The default value is 5.  This can be between 1 and 5.
@@ -170,12 +209,12 @@
 #'     The effective tolerance is always capped at `maxAtolRtolFactor`.
 #'
 #'     `tolFactor` may be:
-#'     * `NULL` (default) — no adjustment applied.
-#'     * A single numeric value — the same factor is applied to
+#'     * `NULL` (default) -- no adjustment applied.
+#'     * A single numeric value -- the same factor is applied to
 #'       the first `length(tolFactor)` subjects in order.
-#'     * A numeric vector — applied element-wise to subjects in
+#'     * A numeric vector -- applied element-wise to subjects in
 #'       the order they appear.
-#'     * A **named** numeric vector — names are matched to subject
+#'     * A **named** numeric vector -- names are matched to subject
 #'       IDs; unmatched subjects retain `tolFactor = 1.0`.
 #'
 #'     The per-subject factors used (after matching) are stored back
@@ -776,7 +815,7 @@
 #'   When an individual exceeds this limit the solve is aborted for
 #'   that individual (output filled with `NA`) and an error is raised
 #'   after the full parallel solve completes.  Set to `0L` to allow
-#'   unlimited pushes (use with care — cascading `evid_()` calls can
+#'   unlimited pushes (use with care -- cascading `evid_()` calls can
 #'   grow without bound).  Default is `100L`.
 #'
 #' @param indOwnAlloc Logical; when `TRUE` each individual's `dose`,
@@ -802,15 +841,90 @@
 #'   allowed because the file already stores the solve inputs and
 #'   controls.
 #'
-#' @param dense Logical; when `TRUE` and `method="dop853"`, enables
-#'   DOP853 dense polynomial output (`iout=2`). Instead of calling the
-#'   solver once per observation time, a single solver call spans each
-#'   inter-dose interval and a 7th-order polynomial interpolates all
-#'   observation times within that interval. This can substantially
-#'   reduce the number of solver evaluations for models with dense
-#'   sampling grids. Silently ignored for non-dop853 methods. Not yet
-#'   supported for `linCmt()` models (a message is emitted and the
-#'   standard path is used instead).
+#' @param dense Logical; when `TRUE` and the method supports dense output,
+#'   enables continuous interpolation so the solver can take large internal
+#'   steps and reconstruct the solution cheaply at each observation time.
+#'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, and
+#'   `"ros4"`.  For composite AutoSwitch methods (e.g. `"dop5+ros4"`), dense
+#'   output is enabled only when **both** the primary and stiff secondary
+#'   support dense output; `"ros4"` is the only stiff method that does, so
+#'   valid dense composites are `"dop853+ros4"`, `"dop5+ros4"`, and
+#'   `"bs+ros4"`.  A warning is issued and `dense` is set to `FALSE` when a
+#'   composite stiff secondary does not support dense output.  Silently
+#'   ignored for non-dense single methods.  Not yet supported for `linCmt()`
+#'   models (a warning is emitted and the standard path is used instead).
+#'
+#' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
+#'   integrator when `method = "cvode"`.  Ignored for all other methods.
+#'   Available choices and when to use them:
+#'
+#'   * `"dense"` (default) -- Direct LU factorization of the full Jacobian.
+#'     Best for small to medium systems (typically fewer than ~50 compartments).
+#'     Requires `O(n^2)` storage and `O(n^3)` work per Newton iteration.
+#'
+#'   * `"band"` -- Currently aliases to `"dense"`.  Kept for compatibility
+#'     until rxode2 can determine model bandwidth safely during solve setup.
+#'
+#'   * `"gmres"` -- Generalized Minimal Residual iterative Krylov solver.
+#'     Avoids explicit Jacobian formation, making it practical for large stiff
+#'     systems (tens to hundreds of compartments) where LU factorization would
+#'     dominate runtime.  Generally the first iterative solver to try.
+#'
+#'   * `"bicgstab"` -- Bi-Conjugate Gradient Stabilized iterative Krylov
+#'     solver.  Similar use case to `"gmres"` but can converge faster on some
+#'     non-symmetric problems.  Try if `"gmres"` is slow or fails to converge.
+#'
+#'   * `"tfqmr"` -- Transpose-Free Quasi-Minimal Residual iterative Krylov
+#'     solver.  Another alternative for large systems; avoids the matrix
+#'     transpose required by classical QMR.
+#'
+#'   For most pharmacometric models with fewer than ~50 compartments the default
+#'   `"dense"` solver is fastest.  Switch to an iterative solver (`"gmres"` is
+#'   a good first choice) only for large QSP or PBPK models where Jacobian
+#'   factorization becomes the bottleneck.
+#'
+#' @param autoSwitchNonstifftol Numeric in `(0, 1]`; stiffness ratio threshold
+#'   used when the solver is in non-stiff mode.  If
+#'   `rho * |dt| / S(primary) > autoSwitchNonstifftol`, the interval is
+#'   considered stiff and the secondary solver is tried.  Default `9/10`.
+#'
+#' @param autoSwitchStifftol Numeric in `(0, 1]`; non-stiffness ratio threshold
+#'   used when the solver is in stiff mode.  If
+#'   `rho * |dt| / S(primary) < autoSwitchStifftol`, the interval is considered
+#'   non-stiff and the switch-back counter is incremented.  Default `9/10`.
+#'
+#' @param autoSwitchDtfac Numeric `>= 1`; factor by which the suggested step
+#'   size is multiplied when switching to the stiff solver, and divided when
+#'   switching back.  Default `2.0`.
+#'
+#' @param autoSwitchMaxStiff Integer; number of consecutive stiff-detected
+#'   intervals before permanently switching to the stiff solver.  Default `10L`.
+#'
+#' @param autoSwitchMaxNonstiff Integer; number of consecutive non-stiff
+#'   intervals (while in stiff mode) before switching back to the fast
+#'   non-stiff solver.  Default `3L`.
+#'
+#' @param autoSwitchStiffFirst Logical; when `TRUE`, start each subject solve
+#'   with the stiff solver instead of the non-stiff primary.  Default `FALSE`.
+#'
+#' @param autoSwitchSwitchMax Non-negative integer; minimum number of
+#'   integration intervals that must elapse after a switch before the solver
+#'   is allowed to switch back in the opposite direction.  Acts as an
+#'   oscillation guard: if the stiffness ratio fluctuates near a threshold,
+#'   this prevents rapid back-and-forth between solvers.  Set to `0L` to
+#'   disable the guard entirely.  Default `5L`.
+#'
+#' @param stiff2 Integer method code for the stiff secondary solver used in
+#'   AutoSwitch composite methods.  Normally set automatically when `method` is
+#'   a composite string of the form `"primary+stiff"` (e.g.
+#'   `"dop853+ros4"`); the `"+"` notation is the preferred way to configure
+#'   composite solving and `stiff2` need not be supplied directly.  When
+#'   supplied as a raw integer it must be a stiff method code as returned by
+#'   [odeMethodToInt()]; `0L` (the default) disables the stiff secondary and
+#'   causes the solver to run as a plain non-composite method.  Dense output
+#'   (`dense = TRUE`) is silently disabled when `stiff2` names a stiff method
+#'   that does not support dense output; `"ros4"` (code `13L`) is the only
+#'   stiff secondary that does support it.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -857,11 +971,12 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf"),
+
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
-                    hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, ...,
+                    hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, order = 5L, ...,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
                     naInterpolation = c("locf", "nocb"),
@@ -955,6 +1070,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     dense=FALSE,
+                    cvodeLinSolver=c("dense", "band", "gmres", "bicgstab", "tfqmr"),
+                    autoSwitchNonstifftol=9/10,
+                    autoSwitchStifftol=9/10,
+                    autoSwitchDtfac=2.0,
+                    autoSwitchMaxStiff=10L,
+                    autoSwitchMaxNonstiff=3L,
+                    autoSwitchStiffFirst=FALSE,
+                    autoSwitchSwitchMax=5L,
+                    stiff2=0L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1064,6 +1188,30 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       }
     }
     method <- odeMethodToInt(method)
+    if (length(method) == 2L && !is.null(names(method)) && "primary" %in% names(method)) {
+      stiff2 <- as.integer(unname(method["stiff"]))
+      method <- as.integer(unname(method["primary"]))
+    } else {
+      stiff2 <- as.integer(stiff2)
+    }
+    checkmate::assertNumeric(as.numeric(autoSwitchNonstifftol), lower=0, upper=1, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchStifftol), lower=0, upper=1, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchDtfac), lower=1, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(autoSwitchMaxStiff, lower=1L, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(autoSwitchMaxNonstiff, lower=1L, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(autoSwitchSwitchMax, lower=0L, len=1, any.missing=FALSE)
+    if (is.logical(autoSwitchStiffFirst)) {
+      checkmate::assertLogical(autoSwitchStiffFirst, len=1, any.missing=FALSE)
+    } else {
+      checkmate::assertIntegerish(autoSwitchStiffFirst, lower=0L, upper=1L, len=1, any.missing=FALSE)
+    }
+    if (checkmate::testIntegerish(cvodeLinSolver, len=1, lower=1L, upper=5L,
+                                  any.missing=FALSE)) {
+      cvodeLinSolver <- as.integer(cvodeLinSolver)
+    } else {
+      cvodeLinSolver <- c("dense"=1L, "band"=2L, "gmres"=3L,
+                          "bicgstab"=4L, "tfqmr"=5L)[match.arg(cvodeLinSolver)]
+    }
     if (checkmate::testIntegerish(returnType, len=1, lower=0,
                                   upper=5, any.missing=FALSE)) {
       returnType <- as.integer(returnType)
@@ -1280,6 +1428,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(hini, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
     checkmate::assertIntegerish(maxordn, lower=1, upper=12, any.missing=FALSE, len=1)
     maxordn <- as.integer(maxordn)
+    if (method == 8L || method == 9L || method == 19L) {
+      if (method == 19L) {
+        checkmate::assertIntegerish(order, lower=1, any.missing=FALSE, len=1)
+      } else {
+        checkmate::assertIntegerish(order, lower=1, upper=8, any.missing=FALSE, len=1)
+      }
+      maxordn <- as.integer(order)
+    }
     checkmate::assertIntegerish(maxords, lower=1, upper=5, any.missing=FALSE, len=1)
     maxods <- as.integer(maxords)
     checkmate::assertIntegerish(mxhnil, lower=0, any.missing=FALSE, len=1)
@@ -1288,8 +1444,19 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
-    if (isTRUE(dense) && method == 0L && missing(hmax)) {
+    if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
+      warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
+              call.=FALSE)
+      dense <- FALSE
+    }
+    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) &&
+        (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
+      ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
+    }
+    if (isTRUE(dense) && method == 7L) {
+      warning("dense output is not supported for ck54. Ignoring dense=TRUE", call.=FALSE)
+      dense <- FALSE
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
@@ -1543,6 +1710,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       tolFactor=tolFactor,
       serializeFile=serializeFile,
       dense=dense,
+      cvodeLinSolver=cvodeLinSolver,
+      stiff2=stiff2,
+      autoSwitchMaxStiff=as.integer(autoSwitchMaxStiff),
+      autoSwitchMaxNonstiff=as.integer(autoSwitchMaxNonstiff),
+      autoSwitchStiffFirst=as.integer(autoSwitchStiffFirst),
+      autoSwitchNonstifftol=as.double(autoSwitchNonstifftol),
+      autoSwitchStifftol=as.double(autoSwitchStifftol),
+      autoSwitchDtfac=as.double(autoSwitchDtfac),
+      autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1965,6 +2141,33 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+rxSolveCacheEnv <- new.env(parent=emptyenv())
+rxSolveCacheLimit <- 64L
+rxSolveCacheEnv$.order <- character()
+
+.rxSolveCacheTouch <- function(key) {
+  .order <- rxSolveCacheEnv$.order
+  rxSolveCacheEnv$.order <- c(key, .order[.order != key])
+}
+
+.rxSolveCacheGet <- function(key) {
+  if (!exists(key, envir = rxSolveCacheEnv, inherits = FALSE)) return(NULL)
+  .rxSolveCacheTouch(key)
+  get(key, envir = rxSolveCacheEnv, inherits = FALSE)
+}
+
+.rxSolveCacheSet <- function(key, value) {
+  assign(key, value, envir = rxSolveCacheEnv)
+  .rxSolveCacheTouch(key)
+  .order <- rxSolveCacheEnv$.order
+  if (length(.order) > rxSolveCacheLimit) {
+    .drop <- .order[-seq_len(rxSolveCacheLimit)]
+    rm(list = .drop, envir = rxSolveCacheEnv)
+    rxSolveCacheEnv$.order <- .order[seq_len(rxSolveCacheLimit)]
+  }
+  invisible(value)
+}
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -2083,7 +2286,98 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     events <- params
     params <- .tmp
   }
+  if (inherits(inits, "rxControl")) {
+    stop("'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')",
+         call. = FALSE)
+  }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
+  if (length(rxModelVars(object)$indLin) > 0L) {
+    if (.ctl$method != 3L) {
+      .ctl$method <- 3L
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+    }
+  } else if (.ctl$method == 3L) {
+    if (length(rxModelVars(object)$state) > 0L) {
+      .calcSens <- NULL
+      if (rxIs(object, "rxode2")) {
+        .e <- attr(class(object), ".rxode2.env")
+        if (is.environment(.e)) {
+          .calcSens <- .e$calcSens
+        }
+      }
+      .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
+      object <- rxode2(.mexpCode)
+    }
+  }
+  if (rxIsImplicit(.ctl$method) ||
+      (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2))) {
+    .mvCur <- rxModelVars(object)
+    .jacType <- .mvCur$trans["jac"]
+    if (.jacType != "fulluser") {
+      .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
+      .jacEnv <- new.env(parent = emptyenv())
+      .jacEnv$errMsg <- NULL
+      .filteredCode <- tryCatch({
+        .cached <- .rxSolveCacheGet(.key)
+        if (!is.null(.cached)) {
+          .cached
+        } else {
+          .mv <- suppressMessages({
+            rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
+          })
+          .states <- .mvCur$state
+          .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
+          .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+          .fc <- .origCode
+
+          for (.line in .normCode) {
+            if (grepl("^df\\(", .line)) {
+              .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+              if (length(.parts) == 3) {
+                if (.parts[2] %in% .states && .parts[3] %in% .states) {
+                  .fc <- c(.fc, .line)
+                }
+              }
+            }
+          }
+          .fc <- paste(.fc, collapse="\n")
+          .rxSolveCacheSet(.key, .fc)
+          .fc
+        }
+      }, error = function(e) {
+        assign("errMsg", conditionMessage(e), envir = .jacEnv)
+        .rxSolveCacheSet(.key, NA_character_)
+        NA_character_
+      })
+      if (!is.na(.filteredCode)) {
+        .jacObject <- rxode2(.filteredCode)
+        .jacMd5 <- rxModelVars(.jacObject)$md5["parsed_md5"]
+        if (.jacMd5 != .mvCur$md5["parsed_md5"]) {
+          # Model changed (Jacobian equations were added); recurse with new model.
+          object <- .jacObject
+          force(params)
+          force(events)
+          force(inits)
+          force(indOwnAlloc)
+          force(theta)
+          force(eta)
+          force(envir)
+          return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
+        }
+        # Model md5 unchanged: Jacobian equations were already present; calc_jac is now
+        # loaded with the real Jacobian function. Fall through to solve directly.
+      } else {
+        .jacDetail <- if (!is.null(.jacEnv$errMsg)) .jacEnv$errMsg else
+          "model previously failed Jacobian generation (cached)"
+        warning("method requires an analytical Jacobian, but automatic ",
+                "Jacobian generation failed for this model:\n  ", .jacDetail,
+                "\n  Falling back to liblsoda.",
+                call. = FALSE)
+        .ctl$method <- 2L
+        .ctl$stiff2 <- 0L
+      }
+    }
+  }
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
     .both <- intersect(.mv$params, .ctl$keep)
@@ -2106,7 +2400,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     stop(sprintf(
       gettext("'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"),
       paste(.n1, collapse = "', '")
-    ), call. = FALSE)
+    ), call = FALSE)
   }
   if (!is.null(rxode2::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
     if (.serializeInput) {
@@ -3106,31 +3400,876 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"liblsoda"` thread safe lsoda.  This supports parallel
 #'            thread-based solving, and ignores user Jacobian specification.
+#'
 #' * `"lsoda"` -- LSODA solver.  Does not support parallel thread-based
 #'       solving, but allows user Jacobian specification.
+#'
 #' * `"dop853"` -- DOP853 solver.  Does not support parallel thread-based
 #'         solving nor user Jacobian specification
+#'
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
 #'         must be setup specially to use this solving routine.
+#'
+#' * `"f78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
+#'
+#' * `"rk4"` -- Runge-Kutta 4 solver using Boost's odeint library.
+#'
+#' * `"ck54"` -- Cash-Karp 5(4) solver using Boost's odeint library.
+#'
+#' * `"ab"` -- Adams-Bashforth multi-step solver with a direct implementation
+#'   (order 1-8, default 5). Uses RK4 to initialize the derivative history and
+#'   then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+#'   method (step size controlled by `hmin`).
+#'
+#' * `"abm"` -- Adams-Bashforth-Moulton solver using Boost's odeint library.
+#'
+#' * `"dop5"` -- DOPRI5 solver using Boost's odeint library (supports dense output).
+#'
+#' * `"bs"` -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
+#'
+#' * `"ros4"` **(implicit)** -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+#'   Requires an analytical Jacobian (auto-computed from the model when not provided);
+#'   falls back to `liblsoda` if Jacobian generation fails.
+#'
+#' * `"ros43"` **(implicit)** -- Kaps-Rentrop 4th-order A-stable Rosenbrock method (GRK4A) from libode.
+#'   Adaptive step size via embedded 3rd-order error estimate.
+#'   Requires an analytical Jacobian (auto-computed from the model when not provided);
+#'   falls back to `liblsoda` if Jacobian generation fails.
+#'
+#' * `"ros6"` **(implicit)** -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
+#'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"backwardEuler"` **(implicit)** -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
+#'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"gauss6"` **(implicit)** -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"iiic6"` **(implicit)** -- Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"radauiia5"` **(implicit)** -- Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+#'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"geng5"` **(implicit)** -- Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
+#'   Fixed step size. Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"sdirk43"` **(implicit)** -- L-stable SDIRK 4(3) pair from libode.
+#'   Adaptive step size via embedded 3rd-order error estimate.
+#'   Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"iem"` **(implicit)** -- Implicit Euler solver using Boost's odeint library.
+#'   Requires an explicit Jacobian (auto-generated via `calcJac=TRUE` when not provided).
+#'   Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"sem"` -- Symplectic Euler solver using Boost's odeint library.
+#'   Requires splitting the state into coordinate-momentum pairs (and
+#'   automatically pads odd-dimensional systems).  Is a fixed-step
+#'   method (step size controlled by `hmin`).
+#'
+#' * `"sb3a"` -- Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
+#'   using Boost's odeint library.  Requires splitting the state into
+#'   coordinate-momentum pairs (and automatically pads odd-dimensional
+#'   systems).  Is a fixed-step method (step size controlled by
+#'   `hmin`).
+#'
+#' * `"sb3am4"` -- Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
+#'   stepper using Boost's odeint library.  Requires splitting the
+#'   state into coordinate-momentum pairs (and automatically pads
+#'   odd-dimensional systems).  Is a fixed-step method (step size
+#'   controlled by `hmin`).
+#'
+#' * `"vv"` -- Velocity Verlet stepper using Boost's odeint library.
+#'   Requires splitting the state into coordinate-momentum pairs (and
+#'   automatically pads odd-dimensional systems).  Is a fixed-step
+#'   method (step size controlled by `hmin`).
+#'
+#' * `"mm"` -- Modified Midpoint stepper using Boost's odeint library.
+#'   Is a fixed-step method (step size controlled by `hmin`) and uses
+#'   the `order` parameter to configure the number of intermediate
+#'   steps.
+#'
+#' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
+#'   Is a fixed-step method (step size controlled by `hmin`).
+#'
+#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (vendored
+#'    from the sundialr package sources).  Supports thread-parallel solving and
+#'    per-compartment absolute tolerances.
+#'
+#' * `"trapz"` -- Explicit trapezoidal rule (Heun's method), a 2nd-order
+#'   fixed-step Runge-Kutta method implemented via the libode library.
+#'   Each inter-event interval is integrated with fixed steps of size
+#'   `hmin` (default `0.01` when `hmin=0`).  If `hmin` would require
+#'   more than `maxsteps` steps to span the interval, the step size is
+#'   automatically enlarged to stay within that limit.  When an
+#'   inter-event interval is shorter than the nominal step size (e.g.,
+#'   two doses very close together), the step is silently clamped to the
+#'   interval length so that short intervals are always handled correctly.
+#'   Supports parallel thread-based solving and steady-state (`ss=1`)
+#'   dosing.  The method does not use `atol` or `rtol` (fixed-step; no
+#'   error control).  Steady-state convergence is governed by `ssAtol`,
+#'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
+#'
+#' * `"ssp3"` -- Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+#'   Shu-Osher method), implemented via the libode library.  A 3-stage,
+#'   3rd-order explicit fixed-step method with superior non-oscillatory
+#'   properties for problems with discontinuities or sharp fronts.  Uses
+#'   the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+#'   b1=1/6, b2=1/6, b3=2/3.  The step-size behavior, clamping, and
+#'   steady-state options (`hmin`, `maxsteps`, `ssAtol`, `ssRtol`,
+#'   `minSS`, `maxSS`, `strictSS`) are identical to `"trapz"`.  Does
+#'   not use `atol` or `rtol` (fixed-step; no error control).  Supports
+#'   parallel thread-based solving and steady-state (`ss=1`) dosing.
+#'
+#' * `"f32"` -- Fehlberg 3(2) embedded pair from libode (class `OdeRKF32`).
+#'   A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+#'   estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+#'   c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+#'   d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses `atol` and `rtol`
+#'   for error control.  The `hmin`
+#'   parameter sets the initial step size (default `0.01`); subsequent steps
+#'   are chosen adaptively.  The total number of accepted and rejected steps
+#'   is bounded by `maxsteps`.  Supports parallel thread-based solving and
+#'   steady-state (`ss=1`) dosing with convergence governed by `ssAtol`,
+#'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
+#'
+#' * `"rk43"` -- Runge-Kutta 4(3) pair from libode.  A 5-stage, 4th-order
+#'   adaptive method with a built-in 3rd-order embedded error estimate for
+#'   automatic step-size control.  Tableau: c2=1/3, a21=1/3; c3=2/3,
+#'   a31=-1/3, a32=1; c4=1, a41=1, a42=-1, a43=1; a5j=bj (FSAL).
+#'   Primary (4th-order) weights b1=b4=1/8, b2=b3=3/8; embedded (3rd-order)
+#'   weights d1=1/12, d2=1/2, d3=1/4, d5=1/6.  Since a5j=bj the 5th stage
+#'   evaluation is reused as the 1st stage of the next step (FSAL).
+#'   Uses `atol` and `rtol` for error control.  The `hmin` parameter sets
+#'   the initial step size (default `0.01`); subsequent steps are chosen
+#'   adaptively.  The
+#'   total number of steps is bounded by `maxsteps`.  Supports parallel
+#'   thread-based solving and steady-state (`ss=1`) dosing with convergence
+#'   governed by `ssAtol`, `ssRtol`, `minSS`, `maxSS`, and `strictSS`.
+#'
+#' * `"dop54"` -- Dormand-Prince 5(4) FSAL method (Dormand & Prince 1980),
+#'   implemented via the libode library.  The same algorithm as MATLAB's
+#'   `ode45`.  A 7-stage, 5th-order adaptive method with an embedded
+#'   4th-order error estimate for automatic step-size control (FSAL: the
+#'   7th stage evaluation is reused as the 1st stage of the next step,
+#'   giving effectively 6 function evaluations per accepted step).  Uses
+#'   `atol` and `rtol` for error control.  The `hmin` parameter sets the
+#'   initial step size (default `0.01`); subsequent steps are chosen
+#'   adaptively.  The total number of steps is bounded by `maxsteps`.
+#'   Supports parallel thread-based solving and steady-state (`ss=1`)
+#'   dosing with convergence governed by `ssAtol`, `ssRtol`, `minSS`,
+#'   `maxSS`, and `strictSS`.  NaN/Inf in derivatives (e.g. from NA
+#'   parameters) is detected immediately and the solve exits with NA
+#'   output for the affected subject.
+#'
+#' * `"vern65"` -- Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+#'   implemented via the libode library using coefficients from Verner's own
+#'   website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+#'   embedded 5th-order error estimate.  The sparse tableau (many zero
+#'   a-coefficients) reduces function evaluations; the FSAL property means the
+#'   9th stage evaluation is reused as the 1st stage of the next step, giving
+#'   effectively 8 function evaluations per accepted step.  Uses `atol` and
+#'   `rtol` for error control.  The `hmin` parameter sets the initial step
+#'   size (default `0.01`); subsequent steps are chosen adaptively.  The total
+#'   number of steps is bounded by `maxsteps`.  Supports parallel thread-based
+#'   solving and steady-state (`ss=1`) dosing with convergence governed by
+#'   `ssAtol`, `ssRtol`, `minSS`, `maxSS`, and `strictSS`.  NaN/Inf in
+#'   derivatives is detected immediately and the solve exits with NA output.
+#'
+#' * `"vern76"` -- Jim Verner's "most efficient" 7(6) pair (10 stages),
+#'   implemented via the libode library using coefficients from Verner's own
+#'   website (RKV76.IIa.Efficient).  A 7th-order adaptive method with an
+#'   embedded 6th-order error estimate.  The sparse tableau reduces function
+#'   evaluations per step.  Uses `atol` and `rtol` for error control.  The
+#'   `hmin` parameter sets the initial step size (default `0.01`); subsequent
+#'   steps are chosen adaptively.  The total number of steps is bounded by
+#'   `maxsteps`.  Supports parallel thread-based solving and steady-state
+#'   (`ss=1`) dosing with convergence governed by `ssAtol`, `ssRtol`,
+#'   `minSS`, `maxSS`, and `strictSS`.  NaN/Inf in derivatives is detected
+#'   immediately and the solve exits with NA output.
+#'
+#' * `"dop87"` -- Dormand-Prince 8(7) pair (13 stages), implemented via the
+#'   libode library using coefficients from Hairer, Norsett and Wanner (1993)
+#'   "Solving ODEs I" (2nd ed.).  An 8th-order adaptive method with an
+#'   embedded 7th-order error estimate.  Both solutions are computed from the
+#'   original state in the final step loop.  Uses `atol` and `rtol` for error
+#'   control.  The `hmin` parameter sets the initial step size (default
+#'   `0.01`); subsequent steps are chosen adaptively.  The total number of
+#'   steps is bounded by `maxsteps`.  Supports parallel thread-based solving
+#'   and steady-state (`ss=1`) dosing with convergence governed by `ssAtol`,
+#'   `ssRtol`, `minSS`, `maxSS`, and `strictSS`.  NaN/Inf in derivatives is
+#'   detected immediately and the solve exits with NA output.
+#'
+#' * `"vern98"` -- Jim Verner's "most efficient" 9(8) pair (16 stages),
+#'   implemented via the libode library using coefficients from Verner's own
+#'   website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
+#'   embedded 8th-order error estimate.  The highly sparse tableau (stages
+#'   8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimizes function evaluations per
+#'   step.  Both solutions are computed from the original state in the final
+#'   step loop.  Uses `atol` and `rtol` for error control.  The `hmin`
+#'   parameter sets the initial step size (default `0.01`); subsequent steps
+#'   are chosen adaptively.  The total number of steps is bounded by
+#'   `maxsteps`.  Supports parallel thread-based solving and steady-state
+#'   (`ss=1`) dosing with convergence governed by `ssAtol`, `ssRtol`,
+#'   `minSS`, `maxSS`, and `strictSS`.  NaN/Inf in derivatives is detected
+#'   immediately and the solve exits with NA output.
+#'
+#' **Aliases for existing methods** (no additional C++ code; `hmin`, `atol`,
+#' `rtol`, and `maxsteps` follow the aliased method):
+#'
+#' * `"dp54"` -- alias for `"dop54"` (Dormand-Prince 5(4) FSAL, libode).
+#'
+#' * `"v65e"` -- alias for `"vern65"` (Verner 6(5) efficient, libode).
+#'
+#' * `"v76e"` -- alias for `"vern76"` (Verner 7(6) efficient, libode).
+#'
+#' * `"dp87"` -- alias for `"dop87"` (Dormand-Prince 8(7), libode).
+#'
+#' * `"v98e"` -- alias for `"vern98"` (Verner 9(8) efficient, libode).
+#'
+#' * `"ssp33"` -- alias for `"ssp3"` (Strong Stability-Preserving RK3, libode).
+#'
+#' **libode fixed-step explicit methods**.  All use `hmin` as the fixed step
+#' size (default `0.01` when `hmin=0`); `atol` and `rtol` are ignored (no
+#' error control); `maxsteps` bounds the total number of steps; NaN/Inf in
+#' derivatives sets `ind$err` and the subject exits with NA output.  All
+#' support parallel thread-based solving.
+#'
+#' * `"euler"` -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
+#'   very small step size for accuracy (e.g., `hmin=1e-4`); intended for
+#'   pedagogical use or method-comparison baselines.
+#'
+#' * `"midpoint"` -- Explicit midpoint rule, 2nd-order, 2 stages.
+#'
+#' * `"heun"` -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
+#'   Identical in structure to `"trapz"` but uses the libode fixed-step driver.
+#'
+#' * `"ssp22"` -- Strong Stability-Preserving 2-stage 2nd-order method
+#'   (SSP-RK22), 2 stages.  Superior non-oscillatory properties near
+#'   discontinuities.
+#'
+#' * `"rk3"` -- Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.
+#'
+#' * `"ssp53"` -- Strong Stability-Preserving 5-stage 3rd-order method
+#'   (SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
+#'   event-heavy ODE systems.
+#'
+#' * `"s4"` -- Shanks 4th-order method, 4 stages.
+#'
+#' * `"r4"` -- Ralston's 4th-order method, 4 stages.  Minimizes local
+#'   truncation error among classical 4-stage 4th-order methods.
+#'
+#' * `"ls44"` -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
+#'   update scheme that minimizes memory bandwidth at the cost of a less
+#'   general tableau structure.
+#'
+#' * `"ls54"` -- Low-storage 4th-order method, 5 stages.  Five-stage
+#'   variant of the 2-register low-storage scheme.
+#'
+#' * `"ssp54"` -- Strong Stability-Preserving 5-stage 4th-order method
+#'   (SSP-RK54), 5 stages.
+#'
+#' * `"s5"` -- Shanks 5th-order method, 5 stages.
+#'
+#' * `"rk5"` -- Classical 5th-order Runge-Kutta, 6 stages.
+#'
+#' * `"c5"` -- Cassity 5th-order method, 6 stages.
+#'
+#' * `"l5"` -- Lawson 5th-order method, 6 stages.
+#'
+#' * `"lk5a"` -- Luther-Konen 5th-order method, variant A, 6 stages.
+#'
+#' * `"lk5b"` -- Luther-Konen 5th-order method, variant B, 6 stages.
+#'
+#' * `"b6"` -- Butcher 6th-order method, 7 stages.
+#'
+#' * `"s7"` -- Shanks 7th-order method, 9 stages.
+#'
+#' * `"s8_10"` -- Shanks 8th-order method, 10 stages.
+#'
+#' * `"cv8"` -- Cooper-Verner 8th-order method, 11 stages.
+#'
+#' * `"s8_12"` -- Shanks 8th-order method, 12 stages.
+#'
+#' * `"s10"` -- Stepanov 10th-order method, 15 stages.  Requires a moderate
+#'   step size (e.g., `hmin=1.0`) because a single step is accurate to very
+#'   high order.
+#'
+#' * `"z10"` -- Zhang 10th-order method, 16 stages.
+#'
+#' * `"o10"` -- Ono 10th-order method, 17 stages.
+#'
+#' * `"h10"` -- Hairer 10th-order method, 17 stages.
+#'
+#' **libode adaptive (variable-step) explicit methods**.  All use `atol` and
+#' `rtol` for error control;
+#' `hmin` sets the initial step size (default `0.01` when `hmin=0`); `hmax`
+#' sets the maximum step size; `maxsteps` bounds total steps; NaN/Inf in
+#' derivatives sets `ind$err` and the subject exits with NA output.  All
+#' support parallel thread-based solving and steady-state (`ss=1`) dosing
+#' (convergence governed by `ssAtol`, `ssRtol`, `minSS`, `maxSS`, `strictSS`).
+#'
+#' * `"bs32"` -- Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &
+#'   Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
+#'   FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
+#'   step.  The same algorithm as Julia `BS3()` and MATLAB `ode23`.
+#'
+#' * `"ssp43"` -- Strong Stability-Preserving 4(3) pair, 4 stages.
+#'   Adaptive SSP method with a 3rd-order embedded error estimate.
+#'
+#' * `"f45"` -- Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+#'   primary solution with a 5th-order embedded estimate used for error
+#'   control.
+#'
+#' * `"t54"` -- Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+#'   5th-order primary with 4th-order embedded error estimate.  FSAL: the
+#'   7th stage is reused as the 1st stage of the next step.  The same
+#'   Butcher tableau as Julia's `Tsit5()`.
+#'
+#' * `"s54"` -- Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+#'   with 4th-order embedded error estimate.
+#'
+#' * `"pp54"` -- Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.
+#'
+#' * `"pp54b"` -- Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+#'   7 stages.
+#'
+#' * `"bs54"` -- Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+#'   with 4th-order embedded error estimate (non-FSAL).
+#'
+#' * `"ss54"` -- Sharp-Smart 5(4) pair, 7 stages.
+#'
+#' * `"dp65"` -- Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+#'   with 5th-order embedded error estimate.
+#'
+#' * `"c65"` -- Calvo 6(5) pair, 9 stages.
+#'
+#' * `"tp64"` -- Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+#'   primary with 4th-order embedded error estimate.
+#'
+#' * `"v65r"` -- Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+#'   variant of Verner's 6(5) family with wider stability region.
+#'
+#' * `"v65"` -- Verner 6(5) pair, 8 stages (non-FSAL).
+#'
+#' * `"dverk65"` -- Verner DVERK 6(5) pair, 8 stages.  Coefficients from
+#'   the classic DVERK Fortran code distributed by Hull and Enright.
+#'
+#' * `"tf65"` -- Tsitouras-Famelis 6(5) FSAL pair, 9 stages.
+#'
+#' * `"tp75"` -- Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+#'   primary with 5th-order embedded error estimate.
+#'
+#' * `"tmy7"` -- Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+#'   The same family as Julia's `TanYam7()`.
+#'
+#' * `"tmy7s"` -- Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+#'   10 stages.  Alternative coefficient set with wider stability region.
+#'
+#' * `"v76r"` -- Verner "robust" 7(6) pair, 10 stages.
+#'
+#' * `"ss76"` -- Sharp-Smart 7(6) pair, 11 stages.
+#'
+#' * `"v78"` -- Verner 7(8) pair, 13 stages.  7th-order primary with
+#'   8th-order embedded error estimate.  Closest rxode2 analog to Julia
+#'   `Vern8()`.
+#'
+#' * `"dverk78"` -- Verner DVERK 7(8) pair, 13 stages.  Coefficients from
+#'   the classic DVERK Fortran code; companion to `"dverk65"`.  Also close
+#'   to Julia `Vern8()`.
+#'
+#' * `"dp85"` -- Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+#'   with 5th-order embedded error estimate.
+#'
+#' * `"tp86"` -- Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+#'   family as Julia's `TsitPap8()`.
+#'
+#' * `"v87e"` -- Verner "efficient" 8(7) pair, 13 stages.
+#'
+#' * `"v87r"` -- Verner "robust" 8(7) pair, 13 stages.
+#'
+#' * `"ev87"` -- Enright-Verner 8(7) pair, 13 stages.
+#'
+#' * `"k87"` -- Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.
+#'
+#' * `"f89"` -- Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+#'   9th-order embedded estimate.  Same family as MATLAB `ode89`.
+#'
+#' * `"v89"` -- Verner 8(9) pair, 16 stages.  Alternative to `"f89"`
+#'   in the same order bracket.  Also close to MATLAB `ode89`.
+#'
+#' * `"t98a"` -- Tsitouras 9(8) variant A pair, 16 stages.
+#'
+#' * `"v98r"` -- Verner "robust" 9(8) pair, 16 stages.
+#'
+#' * `"s98"` -- Sharp 9(8) pair, 16 stages.
+#'
+#' * `"f108"` -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+#'   primary with 8th-order embedded error estimate.  The same method as
+#'   Julia's `Feagin10()`.  The large number of stages carries elevated
+#'   transcription-error risk; verified against Williams' libode canonical order test.
+#'
+#' * `"c108"` -- Curtis 10(8) pair, 21 stages.
+#'
+#' * `"b109"` -- Baker 10(9) pair, 21 stages.
+#'
+#' * `"s1110a"` -- Stone 11(10) variant A pair, 26 stages.  11th-order
+#'   primary; very few published references.
+#'
+#' * `"f1210"` -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+#'   primary with 10th-order embedded error estimate.  The same method as
+#'   Julia's `Feagin12()`.  Elevated transcription-error risk due to many
+#'   stages; verified against Williams' libode canonical order test.
+#'
+#' * `"o129"` -- Ono 12(9) pair, 29 stages.
+#'
+#' * `"f1412"` -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+#'   primary with 12th-order embedded error estimate.  The same method as
+#'   Julia's `Feagin14()`.  The highest-order method in rxode2; elevated
+#'   transcription-error risk due to 35 stages; verified against
+#'   Williams' libode canonical order test.
+#'
+#' **deSolve-derived Fortran solvers** (from the deSolve R package).  Both
+#' use non-reentrant Fortran COMMON blocks and therefore run single-threaded
+#' only, regardless of the `cores` setting.  They are BDF (Backward
+#' Differentiation Formula) stiff solvers and are most useful when you want
+#' behavior comparable to deSolve's `lsode()` or `bdf()`/`vode()` functions.
+#'
+#' * `"lsode"` -- DLSODE (Hindmarsh 1983, ODEPACK) in Adams (non-stiff) mode,
+#'   MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
+#'   Corresponds to deSolve's `lsode(method="adams")`.  Adaptive step-size;
+#'   error controlled by `atol` and `rtol`.
+#'   **Not thread-safe** -- always runs on a single core.
+#'
+#' * `"bdf"` -- DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
+#'   Variable-order BDF method, order 1-5; internally generated dense Jacobian.
+#'   Corresponds to deSolve's `bdf()` / `vode(method="bdf")`.  Adaptive
+#'   step-size; error controlled by `atol` and `rtol`.
+#'   **Not thread-safe** -- always runs on a single core.
+#'
 #' @keywords Internal
+#'
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
+#'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+                  "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+                  "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+                  "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+                  "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+                  "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+                  "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
+                  "z10" = 62L, "o10" = 63L, "h10" = 64L,
+                  "dp54" = 26L, "v65e" = 27L,
+                  "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+                  "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+                  "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+                  "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+                  "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+                  "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+                  "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+                  "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+                  "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+                  "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+                  "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+                  "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+                  "lsode" = 106L, "bdf" = 107L)
+
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
   } else if (is.null(method)) {
     method <- .methodIdx
   } else if (checkmate::testIntegerish(method)) {
     method <- as.integer(method)
+  } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
+    method <- .parseAutoSwitchMethod(method)
   } else {
     method <- .methodIdx[match.arg(method)]
   }
   method
 }
 
+#' Check whether an ODE solving method requires a Jacobian (is implicit)
+#'
+#' Implicit ODE solvers linearise the system at each step and therefore
+#' require the Jacobian df/dy.  rxode2 auto-computes a symbolic Jacobian
+#' when one of these methods is requested and falls back to `"liblsoda"` if
+#' symbolic differentiation fails.  Use this function to test whether a
+#' method string or integer code corresponds to an implicit solver.
+#'
+#' Implicit methods are:
+#' `"ros4"` (13), `"iem"` (14), `"ros43"` (31), `"ros6"` (32),
+#' `"backwardEuler"` (33), `"gauss6"` (34), `"iiic6"` (35), `"radauiia5"` (36),
+#' `"geng5"` (37), `"sdirk43"` (38).
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method is implicit and requires a Jacobian.
+#'
+#' @examples
+#' rxIsImplicit("ros4")              # TRUE
+#' rxIsImplicit("liblsoda")          # FALSE
+#' rxIsImplicit(c("ros43", "dop853", "iem"))  # TRUE FALSE TRUE
+#' rxIsImplicit(13L)                 # TRUE  (ros4)
+#' rxIsImplicit(0L)                  # FALSE (dop853)
+#'
+#' @seealso [odeMethodToInt()]
+#' @export
+rxIsImplicit <- function(method) {
+  .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ",
+           paste(method[.unknown], collapse = ", "),
+           call. = FALSE)
+    }
+    return(ifelse(.composite, FALSE, .codes %in% .implicitCodes))
+  } else {
+    method <- as.integer(method)
+  }
+  method %in% .implicitCodes
+}
 
+#' Check whether an ODE solving method is a purely stiff solver
+#'
+#' Returns `TRUE` for methods that are designed exclusively for stiff systems
+#' and will never switch to a non-stiff algorithm.  Solvers like `"lsoda"` and
+#' `"liblsoda"` that automatically switch between stiff and non-stiff algorithms
+#' return `FALSE`.
+#'
+#' Stiff-only methods are:
+#' `"ros4"` (13), `"iem"` (14), `"cvode"` (21), `"ros43"` (31), `"ros6"` (32),
+#' `"backwardEuler"` (33), `"gauss6"` (34), `"iiic6"` (35), `"radauiia5"` (36),
+#' `"geng5"` (37), `"sdirk43"` (38), `"bdf"` (107).
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method is a purely stiff solver.
+#'
+#' @examples
+#' rxIsStiff("bdf")                           # TRUE
+#' rxIsStiff("lsoda")                         # FALSE (switches)
+#' rxIsStiff("liblsoda")                      # FALSE (switches)
+#' rxIsStiff(c("cvode", "dop853", "ros43"))   # TRUE FALSE TRUE
+#'
+#' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
+#' @export
+rxIsStiff <- function(method) {
+  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
+    }
+    return(ifelse(.composite, FALSE, .codes %in% .stiffCodes))
+  } else {
+    method <- as.integer(method)
+  }
+  method %in% .stiffCodes
+}
+
+#' Check whether an ODE solving method is a purely non-stiff solver
+#'
+#' Returns `TRUE` for methods that are designed exclusively for non-stiff
+#' systems.  Solvers like `"lsoda"` and `"liblsoda"` that automatically switch
+#' between stiff and non-stiff algorithms return `FALSE`, as do all stiff-only
+#' methods.
+#'
+#' Switchers (`"lsoda"` = 1, `"liblsoda"` = 2) and the inductive linearisation
+#' solver (`"indLin"` = 3) are excluded from both [rxIsStiff()] and
+#' `rxIsNonStiff()`.
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method is a purely non-stiff solver.
+#'
+#' @examples
+#' rxIsNonStiff("dop853")                        # TRUE
+#' rxIsNonStiff("lsoda")                         # FALSE (switches)
+#' rxIsNonStiff("bdf")                           # FALSE (stiff-only)
+#' rxIsNonStiff(c("lsode", "cvode", "bs32"))     # TRUE FALSE TRUE
+#'
+#' @seealso [rxIsStiff()], [rxIsImplicit()], [odeMethodToInt()]
+#' @export
+rxIsNonStiff <- function(method) {
+  .switcherCodes <- c(1L, 2L, 3L)
+  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
+    }
+    return(ifelse(.composite, FALSE, !.codes %in% c(.switcherCodes, .stiffCodes)))
+  } else {
+    method <- as.integer(method)
+  }
+  !method %in% c(.switcherCodes, .stiffCodes)
+}
+
+#' Check whether an ODE solving method supports dense output
+#'
+#' Dense output (continuous interpolation) allows the solver to reconstruct
+#' the solution at any point within a completed step without extra function
+#' evaluations.  This lets the solver take large internal steps that span many
+#' requested output times, then interpolate cheaply -- improving both speed and
+#' accuracy on densely sampled grids.
+#'
+#' Dense-capable single methods are:
+#' `"dop853"` (0), `"dop5"` (10), `"bs"` (11), `"ros4"` (13).
+#'
+#' For composite AutoSwitch methods (e.g. `"dop5+ros4"`), `TRUE` is returned
+#' only when **both** the primary and stiff secondary are dense-capable.
+#' `"ros4"` is the only stiff method with dense support, so the valid dense
+#' composites are `"dop853+ros4"`, `"dop5+ros4"`, and `"bs+ros4"`.
+#'
+#' @param method A character vector of method names or an integerish vector of
+#'   method codes (as returned by [odeMethodToInt()]).  Vectorised.
+#'
+#' @return A logical vector the same length as `method`.  `TRUE` if the
+#'   corresponding method supports dense output.
+#'
+#' @examples
+#' rxIsDense("dop853")                       # TRUE
+#' rxIsDense("ros4")                         # TRUE
+#' rxIsDense("liblsoda")                     # FALSE
+#' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE FALSE
+#' rxIsDense("dop5+ros4")                    # TRUE  (both dense)
+#' rxIsDense("dop5+ros43")                   # FALSE (ros43 not dense)
+#'
+#' @seealso [rxIsStiff()], [rxIsNonStiff()], [odeMethodToInt()]
+#' @export
+rxIsDense <- function(method) {
+  .denseCodes <- c(0L, 10L, 11L, 13L)
+  .methodIdx <- c(
+    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
+    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
+    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
+    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
+    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
+    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
+    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
+    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
+    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
+    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
+    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
+    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
+    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
+    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
+    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
+    "z10" = 62L, "o10" = 63L, "h10" = 64L,
+    "dp54" = 26L, "v65e" = 27L,
+    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
+    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
+    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
+    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
+    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
+    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
+    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
+    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
+    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
+    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
+    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
+    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
+    "lsode" = 106L, "bdf" = 107L
+  )
+  if (is.character(method)) {
+    .composite <- rxIsAutoSwitch(method)
+    .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
+    .unknown <- is.na(.codes) & !.composite
+    if (any(.unknown)) {
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
+    }
+    .isDense <- ifelse(.composite, FALSE, .codes %in% .denseCodes)
+    if (any(.composite)) {
+      .isDense[.composite] <- vapply(method[.composite], function(.m) {
+        .parts <- .parseAutoSwitchMethod(.m)
+        !is.null(.parts) &&
+          as.integer(.parts["primary"]) %in% .denseCodes &&
+          as.integer(.parts["stiff"]) %in% .denseCodes
+      }, logical(1))
+    }
+    return(.isDense)
+  } else {
+    method <- as.integer(method)
+  }
+  method %in% .denseCodes
+}
+
+#' Check whether an ODE method code is thread-safe for parallel solving
+#'
+#' @param code Integer method code as returned by [odeMethodToInt()].
+#' @return `TRUE` if safe to use in parallel OpenMP loops.
+#' @noRd
+.rxIsThreadSafeMethod <- function(code) {
+  code <- as.integer(code)
+  !(code %in% c(1L, 2L, 106L, 107L))
+}
+
+#' Parse a composite AutoSwitch method string of the form "primary+stiff"
+#'
+#' @param method Character scalar like `"dop853+ros43"`.
+#' @return Named integer vector `c(primary=..., stiff=...)` or `NULL` if not composite.
+#' @noRd
+.parseAutoSwitchMethod <- function(method) {
+  if (!grepl("+", method, fixed = TRUE)) return(NULL)
+  .parts <- trimws(strsplit(method, "+", fixed = TRUE)[[1]])
+  if (length(.parts) != 2L) {
+    stop("AutoSwitch method must be 'primary+stiff', got: '", method, "'", call. = FALSE)
+  }
+  .code1 <- tryCatch(odeMethodToInt(.parts[1]), error = function(e) {
+    stop("AutoSwitch: unknown primary method '", .parts[1], "'", call. = FALSE)
+  })
+  .code2 <- tryCatch(odeMethodToInt(.parts[2]), error = function(e) {
+    stop("AutoSwitch: unknown stiff method '", .parts[2], "'", call. = FALSE)
+  })
+  if (!rxIsNonStiff(.code1)) {
+    stop("AutoSwitch primary '", .parts[1], "' must be a non-stiff method", call. = FALSE)
+  }
+  if (!.rxIsThreadSafeMethod(.code1)) {
+    stop("AutoSwitch primary '", .parts[1], "' is not thread-safe", call. = FALSE)
+  }
+  if (!rxIsStiff(.code2)) {
+    stop("AutoSwitch stiff secondary '", .parts[2], "' must be a stiff method", call. = FALSE)
+  }
+  if (!.rxIsThreadSafeMethod(.code2)) {
+    stop("AutoSwitch stiff secondary '", .parts[2], "' is not thread-safe", call. = FALSE)
+  }
+  if (.code2 == 21L) {
+    stop("AutoSwitch: CVODE ('cvode') as stiff secondary is not yet supported in composite methods",
+         call. = FALSE)
+  }
+  c(primary = as.integer(.code1), stiff = as.integer(.code2))
+}
+
+#' Check whether an ODE method string is an AutoSwitch composite pair
+#'
+#' Returns `TRUE` for strings containing `"+"`, such as `"dop853+ros43"`.
+#'
+#' @param method Character vector of method names.
+#' @return Logical vector the same length as `method`.
+#'
+#' @examples
+#' rxIsAutoSwitch("dop853+ros43")  # TRUE
+#' rxIsAutoSwitch("dop853")        # FALSE
+#' rxIsAutoSwitch(c("dop853+ros43", "liblsoda"))  # TRUE FALSE
+#'
+#' @seealso [odeMethodToInt()], [rxIsNonStiff()], [rxIsStiff()]
+#' @export
+rxIsAutoSwitch <- function(method) {
+  if (is.character(method)) return(grepl("+", method, fixed = TRUE))
+  rep(FALSE, length(method))
+}
 
 #' This updates the tolerances based on the sensitivity equations
 #'
@@ -3202,7 +4341,7 @@ rxUiDeparse.rxControl <- function(object, var) {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
       paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
     } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ros4" = 13L, "iem" = 14L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
       paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
     } else if (x == "naInterpolation") {
       .naInterpolation <- c("locf"=1L, "nocb"=0L)

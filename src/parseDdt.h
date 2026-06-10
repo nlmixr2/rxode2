@@ -120,10 +120,12 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
 
 static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   if (nodeHas(derivative) && i==2) {
+    tb.hasDdt = 1;
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     if (!new_or_ith(v)) {
-      if (tb.lh[tb.ix] == isSuppressedLHSstr ||
-          tb.lh[tb.ix] == isLHSstr) {
+      if (tb.ix >= 0 &&
+          (tb.lh[tb.ix] == isSuppressedLHSstr ||
+           tb.lh[tb.ix] == isLHSstr)) {
         updateSyntaxCol();
         sPrint(&_gbuf,"'%s' cannot be a derivative and string variable", v);
         trans_syntax_error_report_fn(_gbuf.s);

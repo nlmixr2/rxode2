@@ -836,6 +836,21 @@ static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
   return 0;
 }
 
+static inline int handleMatExpStatement(nodeInfo ni, char *name, int *i, int nch,
+                                         D_ParseNode *pn) {
+  if (nodeHas(matExp_statement) && *i == 0) {
+    tb.isMexp = 1;
+    *i = nch; // skip all children
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    sAppend(&sbt, "matExp();");
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
                                        D_ParseNode *pn) {
   if (nodeHas(evid_statement) && *i == 0) {
@@ -888,7 +903,7 @@ static inline int handlePrintf(nodeInfo ni, char *name, int i, D_ParseNode *xpn)
       sbt.o=0;
       tb.thread = notThreadSafe;
       aType(PPRN);
-      aAppendN("Rprintf(", 8);
+      aAppendN("_rxPrintf(", 10);
       sAppendN(&sbt,"printf(", 7);
       sb.o--;sbDt.o--;sbt.o--;
     }

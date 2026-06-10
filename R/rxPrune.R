@@ -1,3 +1,7 @@
+# Adaptive dosing function names that must be captured before symengine sees them
+.adaptiveDosingFns <- c("evid_", "bolus", "infuse", "infuseDur",
+                          "reset", "replace", "multiply", "phantom", "obs")
+
 #' Replace strings with numbers for the strAssign
 #'
 #' @param lhs string for the left hand side of equation or variable
@@ -152,6 +156,25 @@
       ## Since only THETA/ETA are allowed with rxode2 pruning
       ## only will take legal rxode2; Therefore just paste these.
       return(paste0(.type, "[", x[[3]], "]"))
+    } else if (exists("..captureN", envir = envir, inherits = FALSE) &&
+               as.character(x[[1]]) %in% .adaptiveDosingFns) {
+      # Adaptive dosing call: replace with rxCaptureId<N> <- condition so that
+      # symengine can process the model without encountering unknown functions.
+      .cond <- if (length(envir$.if) > 0L) {
+        paste0(paste0("(", envir$.if, ")"), collapse = "*")
+      } else {
+        "1"
+      }
+      envir$..captureN <- envir$..captureN + 1L
+      .n <- envir$..captureN
+      .var <- paste0("rxCaptureId", .n)
+      envir$..capturedEvid[[.n]] <- list(
+        id        = .n,
+        original  = deparse1(x),
+        condition = .cond,
+        capVar    = .var
+      )
+      return(paste0(.var, " <- ", .cond))
     } else {
       .ret0 <- lapply(x, .rxPrune, envir = envir, strAssign=strAssign)
       .ret <- paste0(.ret0[[1]], "(")
@@ -180,6 +203,11 @@ rxPrune <- function(x) {
   .mv <- rxModelVars(x)
   .env$.if <- NULL
   .env$.def1 <- NULL
+  .env$..captureN <- 0L
+  .env$..capturedEvid <- list()
   .ret <- .rxPrune(eval(parse(text = paste0("quote({", rxNorm(x), "})"))), envir = .env, strAssign=.mv$strAssign)
+  if (length(.env$..capturedEvid) > 0L) {
+    attr(.ret, "capturedEvid") <- .env$..capturedEvid
+  }
   return(.ret)
 }

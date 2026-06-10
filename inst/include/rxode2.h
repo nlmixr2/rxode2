@@ -45,12 +45,14 @@ static inline int rxEffNeq(const rx_solving_options_ind *ind,
 #define getAdvan(idx) ind->solve + op->linOffset + (rxEffNeq(ind, op))*(idx)
 #endif
 
-#ifdef _isrxode2_
-
+#ifndef max2
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
+#endif
 #define isSameTime(xout, xp) (fabs((xout)-(xp))  <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 // use ~dop853 definition of same time
 #define isSameTimeDop(xout, xp) (0.1 * fabs((xout)-(xp)) <= fabs(xout) * 2.3E-16)
+
+#ifdef _isrxode2_
 
 #else
 

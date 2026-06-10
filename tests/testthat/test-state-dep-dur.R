@@ -1,5 +1,5 @@
 rxTest({
-  # ── Analytical background ──────────────────────────────────────────────────
+  # -- Analytical background --------------------------------------------------
   # dur(depot) <- dur0 + state sets the infusion DURATION directly (rate=-2).
   # The infusion rate is derived as:  R = amt / (dur0 + state_at_start)
   #
@@ -8,14 +8,14 @@ rxTest({
   #   D = dur0 + S0                        (infusion duration)
   #   R = amt / D                          (derived rate)
   #
-  # During infusion (0 ≤ t ≤ D):
+  # During infusion (0 <= t <= D):
   #   depot(t) = (R/ka) * (1 - exp(-ka*t))
   #
   # After infusion (t > D):
   #   depot(t) = depot(D) * exp(-ka*(t-D))
   #            = (R/ka) * (1-exp(-ka*D)) * exp(-ka*(t-D))
 
-  # ── Helper ─────────────────────────────────────────────────────────────────
+  # -- Helper -----------------------------------------------------------------
   .depotAnalytic <- function(t, R, D, ka) {
     vapply(t, function(ti) {
       if (ti <= 0) return(0)
@@ -28,8 +28,8 @@ rxTest({
     }, numeric(1))
   }
 
-  # ── Test 1 ─────────────────────────────────────────────────────────────────
-  # state = 0 throughout  →  dur(depot) = dur0 exactly.
+  # -- Test 1 -----------------------------------------------------------------
+  # state = 0 throughout  ->  dur(depot) = dur0 exactly.
   # Infusion duration = dur0; rate = amt/dur0; trajectory is the standard
   # fixed-duration analytical solution.
   test_that("state-dep dur with state=0 uses exactly dur0 (no state shift)", {
@@ -44,12 +44,12 @@ rxTest({
     amt  <- 100
     dur0 <- 10
     ka   <- 0.5
-    D    <- dur0          # state=0 → effective duration = dur0
+    D    <- dur0          # state=0 -> effective duration = dur0
     R    <- amt / D       # derived rate
     times <- seq(0, 30, by = 0.5)
 
     et <- eventTable() |>
-      add.dosing(dose = amt, rate = -2) |>  # rate=-2 → use modelled duration
+      add.dosing(dose = amt, rate = -2) |>  # rate=-2 -> use modelled duration
       add.sampling(times)
 
     s <- solve(mod, et,
@@ -65,8 +65,8 @@ rxTest({
                  label = "depot matches dur0-only analytical solution when state=0")
   })
 
-  # ── Test 2 ─────────────────────────────────────────────────────────────────
-  # state = S0 (constant)  →  dur(depot) = dur0 + S0; rate = amt/(dur0+S0).
+  # -- Test 2 -----------------------------------------------------------------
+  # state = S0 (constant)  ->  dur(depot) = dur0 + S0; rate = amt/(dur0+S0).
   # The full depot trajectory must match the closed-form solution for that rate.
   test_that("state-dep dur shifts infusion duration by state value: dur = dur0 + state_at_start", {
     mod <- rxode2({
@@ -105,7 +105,7 @@ rxTest({
                    label = paste0("depot matches analytic solution for dur=",
                                   D, " (S0=", S0, ")"))
 
-      # Confirm the trajectory with S0≠0 differs from the S0=0 baseline,
+      # Confirm the trajectory with S0!=0 differs from the S0=0 baseline,
       # i.e., the state contribution to duration is not silently ignored.
       if (S0 != 0) {
         expected_s0 <- .depotAnalytic(times, amt / dur0, dur0, ka)
@@ -116,7 +116,7 @@ rxTest({
     }
   })
 
-  # ── Test 3 ─────────────────────────────────────────────────────────────────
+  # -- Test 3 -----------------------------------------------------------------
   # Infusion end time must be exactly dur0 + state_at_start.
   # We verify this by checking that depot(D) matches the analytical peak value
   # (R/ka)*(1-exp(-ka*D)).  A wrong duration would shift the peak.
@@ -161,7 +161,7 @@ rxTest({
     }
   })
 
-  # ── Test 4 ─────────────────────────────────────────────────────────────────
+  # -- Test 4 -----------------------------------------------------------------
   # Multiple doses: each dose's duration is evaluated at the state present when
   # THAT dose's infusion begins.  With decaying state, consecutive doses get
   # shorter (or longer) durations.
@@ -176,8 +176,8 @@ rxTest({
     })
 
     et <- et() |>
-      et(amt = 50, rate = -2, time = 0) |>    # dose 1 – state is large
-      et(amt = 50, rate = -2, time = 20) |>   # dose 2 – state has decayed
+      et(amt = 50, rate = -2, time = 0) |>    # dose 1 - state is large
+      et(amt = 50, rate = -2, time = 20) |>   # dose 2 - state has decayed
       et(seq(0, 35, by = 0.5))
 
     s <- rxSolve(mod, et,

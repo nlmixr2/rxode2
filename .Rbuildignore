@@ -1,3 +1,4 @@
+^.RData$
 ^compile_commands.json$
 ^package-lock.json$
 ^vexp.toml$

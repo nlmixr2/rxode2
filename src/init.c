@@ -346,6 +346,8 @@ SEXP _rxode2_rxSolveSetup(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
+SEXP _rxode2_setCvodeLinearSolver(SEXP);
+
 double _rxode2_evalUdf(const char *fun, int n, const double *args);
 
 SEXP _rxode2_rxode2parseSetRstudio(SEXP isRstudioSEXP);
@@ -464,8 +466,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2atolRtolFactor_ = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&atolRtolFactorC_, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxInt = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxInt, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxReal = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxReal, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getRxNsim = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNsim, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 64
+#define nVec 65
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -531,6 +534,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 61, rxode2atolRtolFactor_);
   SET_VECTOR_ELT(ret, 62, rxode2rxInt);
   SET_VECTOR_ELT(ret, 63, rxode2rxReal);
+  SET_VECTOR_ELT(ret, 64, rxode2getRxNsim);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -598,6 +602,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 61, Rf_mkChar("rxode2atolRtolFactor_"));
   SET_STRING_ELT(retN, 62, Rf_mkChar("rxode2rxInt"));
   SET_STRING_ELT(retN, 63, Rf_mkChar("rxode2rxReal"));
+  SET_STRING_ELT(retN, 64, Rf_mkChar("rxode2getRxNsim"));
 
 #undef nVec
 
@@ -821,6 +826,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSolveFromRaw_", (DL_FUNC) _rxode2_rxSolveFromRaw_, 9},
     {"_rxode2_rxSolveSetCurObj_", (DL_FUNC) &_rxode2_rxSolveSetCurObj_, 1},
     {"_rxode2_atolRtolFactor_", (DL_FUNC) &_rxode2_atolRtolFactor_, 1},
+    {"_rxode2_setCvodeLinearSolver", (DL_FUNC) &_rxode2_setCvodeLinearSolver, 1},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.

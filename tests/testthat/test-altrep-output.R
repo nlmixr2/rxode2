@@ -62,7 +62,7 @@ rxTest({
         expect_false(.isAltrep(out$time))
       })
 
-      # ── covariate (addCov = TRUE) columns ──────────────────────────────────────
+      # -- covariate (addCov = TRUE) columns --------------------------------------
 
       test_that(sprintf("covariate column is ALTREP via homogenous event-table path (%s %s)",
                         rt, ad), {
@@ -91,7 +91,7 @@ rxTest({
                         rt, ad), {
 
         # Multiple virtual studies from omega draws; covariate values are fixed
-        # per-subject across sims -> each sim block is identical → ALTREP.
+        # per-subject across sims -> each sim block is identical -> ALTREP.
         pkCov <- function() {
           ini({
             tka <- 0.5
@@ -131,7 +131,7 @@ rxTest({
         }
       })
 
-      # ── keep columns ───────────────────────────────────────────────────────────
+      # -- keep columns -----------------------------------------------------------
 
       test_that(paste0("keep columns (double, integer, logical, factor) are ALTREP via homogenous event-table path, %s %s", rt, ad), {
         mod <- rxode2({
@@ -271,7 +271,7 @@ rxTest({
     }
   }
 
-  # ── TBS columns (returnType = "data.frame.TBS") ───────────────────────────
+  # -- TBS columns (returnType = "data.frame.TBS") ---------------------------
 
   for (ad in c(TRUE, FALSE, NA)) {
 
@@ -328,7 +328,7 @@ rxTest({
     })
   }
 
-  # ── Sequential integer IDs should never be a factor ──────────────────────
+  # -- Sequential integer IDs should never be a factor ----------------------
 
   test_that("sequential integer IDs are never a factor, regardless of event-table uniformity", {
     mod <- rxode2({
@@ -337,7 +337,7 @@ rxTest({
       cp <- centr / v
     })
 
-    # Non-uniform event tables (arm1 vs arm2 style) — non-ALTREP path.
+    # Non-uniform event tables (arm1 vs arm2 style) -- non-ALTREP path.
     # Previously this produced a factor id due to a stale guard; verify it
     # now returns a plain integer.
     ev1 <- as.data.frame(et(amt = 1000, cmt = 1, time = c(0, 24, 48)) |> et(seq(0, 72, by = 5)))
@@ -351,7 +351,7 @@ rxTest({
     expect_false(is.factor(out$id))
     expect_equal(sort(unique(out$id)), 1:4)
 
-    # Uniform event tables — ALTREP seqrep path.  Should also not be a factor.
+    # Uniform event tables -- ALTREP seqrep path.  Should also not be a factor.
     ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
     evDf2 <- rbind(
       cbind(as.data.frame(ev), id = 1L),
@@ -364,7 +364,7 @@ rxTest({
     expect_equal(sort(unique(out2$id)), 1:4)
   })
 
-  # ── Non-sequential integer IDs ────────────────────────────────────────────
+  # -- Non-sequential integer IDs --------------------------------------------
 
   test_that("non-sequential integer IDs produce ALTREP repint id column (nStud > 1)", {
     pkMod <- function() {
@@ -404,7 +404,7 @@ rxTest({
     }
   })
 
-  # ── String keep columns — dedicated rx_rep_str ALTREP tests ──────────────
+  # -- String keep columns -- dedicated rx_rep_str ALTREP tests --------------
 
   test_that("string keep column is rx_rep_str ALTREP via homogeneous path", {
     mod  <- rxode2({

@@ -1,5 +1,9 @@
 # rxode2 5.1.3
 
+- Added Jacobian handling of adaptive dosing events (retaining them
+  when calculating Jacobian).  Should be able to be applied in forward
+  sensitivity analysis as well.
+
 - Bug fix for `mix()` models as well as `iCov` models.
 
 # rxode2 5.1.2

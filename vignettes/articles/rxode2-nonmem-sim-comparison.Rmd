@@ -19,7 +19,7 @@ for generating simulated datasets used in visual predictive checks
 
 [rxode2](https://nlmixr2.github.io/rxode2/) is an open-source R
 package that can perform the same population simulation tasks entirely
-within R — without a NONMEM license — while offering a faster
+within R -- without a NONMEM license -- while offering a faster
 iteration cycle and tighter integration with modern R workflows.
 
 This article focuses specifically on the **simulation** use case.  For
@@ -117,7 +117,7 @@ No external process, no file I/O, no parsing step.
 ### No license required
 
 rxode2 is open-source (GPL >= 3) and runs on any machine with R and a
-C compiler — a laptop, a CI server, a Docker container, or a Shiny
+C compiler -- a laptop, a CI server, a Docker container, or a Shiny
 app.  NONMEM requires a commercial license and a configured executable,
 which typically restricts simulations to specific workstations or
 servers.
@@ -127,11 +127,11 @@ servers.
 rxode2 compiles the model once (result is cached) and solves in-process
 thereafter.  Iterating on parameters, event schedules, or sample sizes
 takes milliseconds to seconds.  Each NONMEM simulation run incurs
-startup, I/O, and table-writing overhead — typically seconds to
-minutes even for simple models — making rapid exploration impractical.
+startup, I/O, and table-writing overhead -- typically seconds to
+minutes even for simple models -- making rapid exploration impractical.
 
 ```{r}
-# Instant parameter sweep — no file I/O, no process launch
+# Instant parameter sweep -- no file I/O, no process launch
 rxSolve(mod, ev, params = c(tka = log(1), tcl = log(4), tv = log(20)),
         omega = omega, nSub = 200)
 rxSolve(mod, ev, params = c(tka = log(1), tcl = log(6), tv = log(20)),
@@ -154,7 +154,7 @@ NONMEM's `$SIMULATION` step solves subjects sequentially within a
 single run.  Parallelism requires submitting multiple NONMEM runs to
 an HPC cluster (e.g., via PsN).
 
-### Native R workflow — no file I/O
+### Native R workflow -- no file I/O
 
 Simulation inputs (parameters, event tables, covariate datasets) and
 outputs (data frames) are ordinary R objects.  Results pipe directly
@@ -169,8 +169,8 @@ sim_result |>
       sim_cols  = list(idv = "time", dv = "cp_obs"))
 ```
 
-With NONMEM, each step — preparing the input CSV, running the model,
-reading the table file — requires explicit file handling.
+With NONMEM, each step -- preparing the input CSV, running the model,
+reading the table file -- requires explicit file handling.
 
 ### Model piping for scenario analysis
 
@@ -231,10 +231,10 @@ rxSolve(mod, ev, thetaMat = mod$thetaMat, nStud = 500)
 rxSolve(mod, ev, iCov = mod$etaData)
 ```
 
-### Analytical 1–3 compartment solutions with gradients
+### Analytical 1-3 compartment solutions with gradients
 
 `linCmt()` provides closed-form one-, two-, and three-compartment
-solutions with Stan math auto-differentiation gradients — equivalent
+solutions with Stan math auto-differentiation gradients -- equivalent
 to ADVAN1/2/3/4/11/12 but usable for both simulation and nlmixr2
 estimation:
 
@@ -285,7 +285,7 @@ systems.
 ### Exact fidelity to the estimation model
 
 When you simulate in NONMEM using the same control stream as
-estimation, there is zero risk of transcription error — the same
+estimation, there is zero risk of transcription error -- the same
 `$PK`, `$DES`, and `$ERROR` code runs in both contexts.
 
 rxode2 requires the model to be expressed in its own mini-language or
@@ -297,7 +297,7 @@ pass.
 
 ### Full NONMEM ADVAN coverage
 
-NONMEM ships ADVAN1–ADVAN13, covering all standard PK compartmental
+NONMEM ships ADVAN1-ADVAN13, covering all standard PK compartmental
 models, steady-state solutions (ADVAN3 SS, ADVAN4 SS), and general
 nonlinear ODE solving (ADVAN6, ADVAN8, ADVAN9).  rxode2 covers the
 most common models but does not replicate every ADVAN:
@@ -395,10 +395,10 @@ passed to the `vpc` R package or Xpose for VPC plots.
 | Cluster submission | via R (`future`, etc.) | via PsN |
 | Model re-implementation needed | yes (or `nonmem2rx`) | no |
 | Re-implementation validation | `nonmem2rx` auto-checks PRED/IPRED/IWRES | N/A |
-| Full ADVAN coverage | partial (most common models) | yes (ADVAN1–13) |
+| Full ADVAN coverage | partial (most common models) | yes (ADVAN1-13) |
 | `$MIXTURE` models | partial (`nonmem2rx` import, no auto-validation) | yes |
 | Verbatim Fortran in model | no | yes |
-| Analytical 1–3 cmt solutions | `linCmt()` with gradients | ADVAN1/2/3/4/11/12 |
+| Analytical 1-3 cmt solutions | `linCmt()` with gradients | ADVAN1/2/3/4/11/12 |
 | Model piping / scenario analysis | yes (`\|>`) | edit control stream + re-run |
 | Native R output (data frame) | yes | parse table file |
 | File I/O required | no | yes |

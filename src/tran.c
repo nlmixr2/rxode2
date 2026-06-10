@@ -179,6 +179,7 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
       handleInfuseDurStatement(ni, name, i, nch, pn) ||
       handleReplaceStatement(ni, name, i, nch, pn) ||
       handleResetStatement(ni, name, i, nch, pn) ||
+      handleMatExpStatement(ni, name, i, nch, pn) ||
       handleMultiplyStatement(ni, name, i, nch, pn) ||
       handlePhantomStatement(ni, name, i, nch, pn) ||
       handleStringEqualityStatements(ni, name, *i, xpn) ||
@@ -459,6 +460,9 @@ void reset(void) {
   tb.nLlik      = 0;
   tb.hasMix     = 0;
   tb.evid_      = 0;
+  tb.isMexp     = 0;
+  tb.hasDdt     = 0;
+  tb.hasIndLinProp = 0;
   tb.strCmpCurCov = NULL;
   tb.strCmpCurStr = NULL;
   tb.strCmpCurType = -1;
@@ -600,6 +604,49 @@ void trans_internal(const char* parse_file, int isStr){
     wprint_parsetree(parser_tables_rxode2parse, _pn, 0, wprint_node, NULL);
     // Determine Jacobian vs df/dvar
     assertCorrectDfDy();
+
+    if (tb.isMexp && tb.hasDdt) {
+      trans_syntax_error_report_fn0("Matrix exponential models cannot be used with any ODEs");
+    }
+    if (tb.hasIndLinProp && !tb.isMexp) {
+      trans_syntax_error_report_fn0("indLin() cannot be used without matExp() defined in the model");
+    }
+    nodeInfo dummyNi;
+    niReset(&dummyNi);
+    for (int j = 0; j < NV; j++) {
+      char cmt1[100];
+      char cmt2[100];
+      if (parse_micro_constant(tb.ss.line[j], cmt1, cmt2)) {
+        if (!strcmp(cmt1, cmt2)) {
+          updateSyntaxCol();
+          trans_syntax_error_report_fn0("transfer from a compartment to itself (e.g., k_cmt1_cmt1) is not allowed");
+        }
+        if (tb.isMexp) {
+          if (new_de(cmt1, fromCMT)) {
+            add_de(dummyNi, "matExp", cmt1, 0, fromCMT);
+          }
+          if (new_de(cmt2, fromCMT)) {
+            add_de(dummyNi, "matExp", cmt2, 0, fromCMT);
+          }
+        }
+      }
+    }
+    if (tb.isMexp) {
+      for (int i = 0; i < tb.de.n; i++) {
+        const char *name = tb.de.line[i];
+        if (strncmp(name, "rx", 2) != 0) {
+          if (strchr(name, '_') != NULL || strchr(name, '.') != NULL) {
+            updateSyntaxCol();
+            trans_syntax_error_report_fn0("compartments in matrix exponential models cannot contain '_' or '.' unless they start with 'rx'");
+          }
+        }
+      }
+      tb.statei = tb.de.n;
+      for (int i = 0; i < tb.de.n; i++) {
+        tb.didx[i] = abs(tb.didx[i]);
+        tb.idu[i] = 1;
+      }
+    }
   }
 }
 

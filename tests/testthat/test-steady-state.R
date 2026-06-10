@@ -1,5 +1,5 @@
 rxTest({
-  ms <- c("liblsoda", "lsoda", "dop853")
+  ms <- .methods0
   for (m in ms) {
 
     et <- eventTable() |>
