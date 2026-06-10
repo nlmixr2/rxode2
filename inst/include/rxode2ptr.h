@@ -219,6 +219,9 @@ extern "C" {
   typedef int (*getRxNsim_t)(rx_solve *rx);
   extern getRxNsim_t getRxNsim;
 
+  typedef void (*setRxThreadId_t)(int id);
+  extern setRxThreadId_t setRxThreadId;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -286,6 +289,7 @@ extern "C" {
       rxInt = (rxInt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 62));
       rxReal = (rxReal_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 63));
       getRxNsim = (getRxNsim_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 64));
+      setRxThreadId = (setRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 65));
     }
     return R_NilValue;
   }
@@ -356,6 +360,7 @@ extern "C" {
   rxInt_t rxInt = NULL;                                 \
   rxReal_t rxReal = NULL;                               \
   getRxNsim_t getRxNsim = NULL;                         \
+  setRxThreadId_t setRxThreadId = NULL;                 \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
