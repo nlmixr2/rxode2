@@ -2291,6 +2291,24 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
          call. = FALSE)
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
+  if (length(rxModelVars(object)$indLin) > 0L) {
+    if (.ctl$method != 3L) {
+      .ctl$method <- 3L
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+    }
+  } else if (.ctl$method == 3L) {
+    if (length(rxModelVars(object)$state) > 0L) {
+      .calcSens <- NULL
+      if (rxIs(object, "rxode2")) {
+        .e <- attr(class(object), ".rxode2.env")
+        if (is.environment(.e)) {
+          .calcSens <- .e$calcSens
+        }
+      }
+      .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
+      object <- rxode2(.mexpCode)
+    }
+  }
   if (rxIsImplicit(.ctl$method) ||
       (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2))) {
     .mvCur <- rxModelVars(object)

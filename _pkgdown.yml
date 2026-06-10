@@ -63,6 +63,7 @@ reference:
   - assertRxUiIovNoCor
   - assertVariableExists
   - assertVariableNew
+  - indLin
   - ini
   - ini<-
   - linToOde
@@ -295,6 +296,7 @@ reference:
   - rxRemoveControl
   - rxReservedKeywords
   - rxS
+  - rxSensMatExp
   - rxSetControl
   - rxSetIni0
   - rxSetProgressBar
@@ -326,8 +328,10 @@ navbar:
           href: articles/rxode2-intro.html
         - text: "rxode2 mini-language syntax"
           href: articles/rxode2-syntax.html
-        - text: "ODE solvers in rxode2"
+        - text: "ODE solvers"
           href: articles/ode-solvers.html
+        - text: "Matrix Exponentials / Inductive Linearization"
+          href: articles/rxode2-ind-lin.html
         - text: "Interactive tutorials"
           href: articles/rxode2-tutorials.html
   - text: "Model"

@@ -20,7 +20,7 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 1u;
+static const uint32_t rxSerializeFormatVer = 2u;
 
 // ---------------------------------------------------------------------------
 // Low-level write helpers -- all abort via Rf_error on failure
@@ -273,31 +273,36 @@ SEXP rxSaveState_() {
   sWriteDoubleBlob(f, op->ssRtol, (uint64_t)(op->neq > 0 ? op->neq : 0), "gssRtol");
 
   // -- Section 7: Global event-indexed bulk arrays ---------------------------
+  // nall: expanded total events (rx->nall = representative * nsub for homGroups)
+  // nall_rep: representative event count = actual allocation size of gall_times/gevid/gcov
+  // For non-homGroups solves, nall_rep == nall.
   uint64_t nall = (uint64_t)rx->nall;
+  uint64_t nall_rep = (_globals.gall_times_n > 0) ? (uint64_t)_globals.gall_times_n : nall;
   sWriteU64(f, nall, "nall");
+  sWriteU64(f, nall_rep, "nall_rep");
   sWriteU32(f, (uint32_t)op->ncov, "ncov");
 
-  // gall_times slab: 5*nall doubles (all_times, dv, amt, ii, limit)
-  sWriteDoubleBlob(f, _globals.gall_times, 5u * nall, "gall_times_slab");
+  // gall_times slab: 5*nall_rep doubles (all_times, dv, amt, ii, limit)
+  // Allocated for the representative events only, not the expanded subject count.
+  sWriteDoubleBlob(f, _globals.gall_times, 5u * nall_rep, "gall_times_slab");
 
-  // gevid slab: allocated as 3*nall + dfN*2 + strLhs.size() ints.
-  // We save from gevid start to glhs_str end in one contiguous block.
+  // gevid slab: allocated as 3*nall_rep + dfN*2 + strLhs.size() ints.
   uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
-  uint64_t gevid_n = 3u * nall + dfN * 2 + (uint64_t)op->nlhs;
+  uint64_t gevid_n = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
   sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
 
-  // gcov: ncov * nall doubles
-  sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall, "gcov");
+  // gcov: ncov * nall_rep doubles (representative events only)
+  sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall_rep, "gcov");
 
-  // gix: nall * nsim ints (in gon slab, pointed to by _globals.gix)
+  // gix: nall * nsim ints — correctly allocated for the full expanded count
   sWriteIntBlob(f, _globals.gix, nall * (uint64_t)rx->nsim, "gix");
 
   // gpars: npars * nsub doubles
   sWriteDoubleBlob(f, _globals.gpars,
                    (uint64_t)rx->npars * rx->nsub, "gpars");
 
-  // ordId: nall ints (subject ordering)
-  sWriteIntBlob(f, rx->ordId, nall, "ordId");
+  // ordId: nsub * nsim ints (subject ordering index, not an event-indexed array)
+  sWriteIntBlob(f, rx->ordId, (uint64_t)rx->nsub * rx->nsim, "ordId");
 
   // gParPos: npars ints
   {
@@ -894,47 +899,48 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   }
 
   // -- Section 8: Global event-indexed bulk arrays ---------------------------
+  // nall_saved: expanded total (rx->nall, already restored in Section 3)
+  // nall_rep: representative event count = actual allocation of gall_times/gevid/gcov
   uint64_t nall_saved = sReadU64(f, "nall");
+  uint64_t nall_rep   = sReadU64(f, "nall_rep");
+  _globals.gall_times_n = (int64_t)nall_rep;
   uint32_t ncov_saved = sReadU32(f, "ncov");
 
-  // gall_times slab (5*nall doubles)
+  // gall_times slab (5*nall_rep doubles — representative events only)
   {
-    uint64_t expected = 5u * nall_saved;
+    uint64_t expected = 5u * nall_rep;
     double *buf = sReadDoubleBlobExpected(f, expected, "gall_times_slab");
     if (_globals.gall_times != NULL) free(_globals.gall_times);
-    _globals.gall_times = buf;   // takes ownership
-    // Re-establish sub-pointers within the slab
-    _globals.gdv    = _globals.gall_times + nall_saved;
-    _globals.gamt   = _globals.gdv        + nall_saved;
-    _globals.gii    = _globals.gamt       + nall_saved;
-    _globals.glimit = _globals.gii        + nall_saved;
+    _globals.gall_times = buf;
+    _globals.gdv    = _globals.gall_times + nall_rep;
+    _globals.gamt   = _globals.gdv        + nall_rep;
+    _globals.gii    = _globals.gamt       + nall_rep;
+    _globals.glimit = _globals.gii        + nall_rep;
   }
 
-  // gevid slab (3*nall ints + dfN*2 ints + nlhs ints)
+  // gevid slab (3*nall_rep + dfN*2 + nlhs ints)
   {
     uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
-    uint64_t expected = 3u * nall_saved + dfN * 2 + (uint64_t)op->nlhs;
+    uint64_t expected = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
     int *buf = sReadIntBlobExpected(f, expected, "gevid_slab");
     if (_globals.gevid != NULL) free(_globals.gevid);
     _globals.gevid  = buf;
-    _globals.gidose = _globals.gevid + nall_saved;
-    _globals.gcens  = _globals.gidose + nall_saved;
-    // gpar_cov shares offset with gcens (as in rxData.cpp line 3786)
+    _globals.gidose = _globals.gevid + nall_rep;
+    _globals.gcens  = _globals.gidose + nall_rep;
     _globals.gpar_cov = _globals.gcens;
-    
     _globals.gpar_covInterp = _globals.gpar_cov + dfN;
     _globals.glhs_str = _globals.gpar_covInterp + dfN;
   }
 
-  // gcov
+  // gcov (ncov * nall_rep doubles)
   {
-    uint64_t expected = (uint64_t)op->ncov * nall_saved;
+    uint64_t expected = (uint64_t)op->ncov * nall_rep;
     double *buf = sReadDoubleBlobExpected(f, expected, "gcov");
     if (_globals.gcov != NULL) free(_globals.gcov);
     _globals.gcov = buf;
   }
 
-  // gix data: copy into gon slab at the established offset
+  // gix: nall_saved * nsim ints (correctly allocated for the full expanded count)
   {
     uint64_t expected = nall_saved * (uint64_t)rx->nsim;
     sReadIntDirect(f, _globals.gix, expected, "gix");
@@ -948,9 +954,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     _globals.gpars = buf;
   }
 
-  // ordId
+  // ordId: nsub * nsim ints (subject ordering, not event count)
   {
-    uint64_t expected = nall_saved;
+    uint64_t expected = (uint64_t)rx->nsub * rx->nsim;
     int *buf = sReadIntBlobExpected(f, expected, "ordId");
     if (rx->ordId != NULL) free(rx->ordId);
     rx->ordId = _globals.ordId = buf;

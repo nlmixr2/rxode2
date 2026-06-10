@@ -1840,6 +1840,7 @@ extern "C" void gFree(){
   _globals.gevid=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
+  _globals.gall_times_n = 0;
   if (_globals.gcov != NULL) free(_globals.gcov);
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
@@ -3915,6 +3916,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     rxOptionsIniEnsure(ntot, op->cores);
     if (_globals.gall_times != NULL) free(_globals.gall_times);
     _globals.gall_times = (double*)calloc(5*time0.size(), sizeof(double));
+    _globals.gall_times_n = (int64_t)time0.size();
     std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
     _globals.gdv = _globals.gall_times + time0.size(); // Perhaps allocate zero size if missing?
     _globals.gamt = _globals.gdv + time0.size();
@@ -5555,22 +5557,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       object = obj;
     }
-    if (method == 3){
-      rxSolveDat->mv = rxModelVars(object);
-      rxSolveFreeObj = object;
-      List indLin = rxSolveDat->mv[RxMv_indLin];
-      if (indLin.size() == 0){
-        Function rxode2 = getRxFn("rxode2");
-        object = rxode2(object, _["indLin"]=true);
-        rxSolveDat->mv = rxModelVars(object);
-        rxSolveFreeObj = object;
-      } // else {
-      //  object =obj;
-      // }
-    } else {
-      rxSolveDat->mv = rxModelVars(object);
-      rxSolveFreeObj = object;
-    }
+    rxSolveDat->mv = rxModelVars(object);
+    rxSolveFreeObj = object;
   }
   if (rxSolveDat->mv.size() == 0) {
     // sometimes the model variables have not been assigned, but this

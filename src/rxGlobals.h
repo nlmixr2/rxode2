@@ -84,4 +84,5 @@ struct rx_globals {
   double *geta_pre = NULL;
   int geta_pre_n = 0;
   bool alloc=false;
+  int64_t gall_times_n = 0; // actual allocation count of gall_times (representative, not expanded)
 };
