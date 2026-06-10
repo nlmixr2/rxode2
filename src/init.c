@@ -384,6 +384,9 @@ SEXP _rxode2_atolRtolFactor_(SEXP);
 void allocExtraDosingC(void);
 void atolRtolFactorC_(double factor);
 
+// Cross-DLL OpenMP thread-id override (defined in rxData.cpp); see comment there.
+void setRxThreadId(int id);
+
 SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
   // Create an external pointer for _lotriLstToMat
@@ -647,9 +650,6 @@ SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
 SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
-
-// Cross-DLL OpenMP thread-id override (defined in rxData.cpp); see comment there.
-void setRxThreadId(int id);
 
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
