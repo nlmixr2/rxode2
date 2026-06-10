@@ -40,7 +40,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponentials / Inductive Linearization</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -178,8 +179,159 @@ stiffness-aware methods such as <code>liblsoda</code>,
 between events, method-comparison experiments, or deterministic solver
 behavior for debugging</li>
 </ul>
-<p>The sections below first give a practical pharmacometric view, then a
-complete method inventory split by stiffness and by adaptivity.</p>
+<p>The <code>method</code> argument to <code><a href="../reference/rxSolve.html">rxSolve()</a></code> selects
+the solver. The four historic and therefore most commonly used methods
+are:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th><code>method</code></th>
+<th>Algorithm</th>
+<th>Best for</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>"liblsoda"</code></td>
+<td>Thread-safe C LSODA</td>
+<td>
+<strong>Default.</strong> Parallel multi-subject simulations</td>
+</tr>
+<tr class="even">
+<td><code>"lsoda"</code></td>
+<td>FORTRAN LSODA</td>
+<td>Single-threaded; numerical comparison with deSolve</td>
+</tr>
+<tr class="odd">
+<td><code>"dop853"</code></td>
+<td>Dormand–Prince 8th-order RK</td>
+<td>Smooth non-stiff ODEs; dense output</td>
+</tr>
+<tr class="even">
+<td><code>"indLin"</code></td>
+<td>Inductive linearization + matrix exponential</td>
+<td>Linear/mildly-nonlinear systems; estimation loops</td>
+</tr>
+</tbody>
+</table>
+<p>All methods accept NONMEM-format event tables and handle dosing
+discontinuities automatically. The sections below first cover these four
+methods with code examples, then give a practical pharmacometric view
+and a complete method inventory split by stiffness and adaptivity.</p>
+</div>
+<div class="section level2">
+<h2 id="the-four-main-methods">The four main methods<a class="anchor" aria-label="anchor" href="#the-four-main-methods"></a>
+</h2>
+<div class="section level3">
+<h3 id="liblsoda-default">
+<code>liblsoda</code> (default)<a class="anchor" aria-label="anchor" href="#liblsoda-default"></a>
+</h3>
+<p><code>liblsoda</code> is a thread-safe C rewrite of the classic LSODA
+algorithm. LSODA (Livermore Solver for Ordinary Differential Equations
+with Automatic Switching) automatically detects stiffness and switches
+between Adams (non-stiff) and BDF (stiff) integration formulas.</p>
+<p>Because it is thread-safe, <code>liblsoda</code> runs in parallel
+across subjects via OpenMP when <code>cores &gt; 1</code>:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="op">(</span><span class="va">CL</span> <span class="op">/</span> <span class="va">V</span><span class="op">)</span> <span class="op">*</span> <span class="va">center</span></span>
+<span>  <span class="va">Cp</span>           <span class="op">&lt;-</span> <span class="va">center</span> <span class="op">/</span> <span class="va">V</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">72</span><span class="op">)</span></span>
+<span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, CL <span class="op">=</span> <span class="fl">0.1</span>, V <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.ka</span> <span class="op">~</span> <span class="fl">0.04</span>, <span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">0.09</span>, <span class="va">eta.v</span> <span class="op">~</span> <span class="fl">0.04</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">theta</span>, <span class="va">ev</span>,</span>
+<span>               omega  <span class="op">=</span> <span class="va">omega</span>,</span>
+<span>               nSub   <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>               method <span class="op">=</span> <span class="st">"liblsoda"</span>,</span>
+<span>               cores  <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
+<p>Tolerance is controlled with <code>atol</code> and <code>rtol</code>
+(default <code>1e-8</code> and <code>1e-6</code>). For estimation,
+<code>nlmixr2</code> uses <code>liblsoda</code> internally because it
+supports sensitivity equations.</p>
+</div>
+<div class="section level3">
+<h3 id="lsoda">
+<code>lsoda</code><a class="anchor" aria-label="anchor" href="#lsoda"></a>
+</h3>
+<p>The original FORTRAN LSODA from Hindmarsh (ODEPACK). Not thread-safe,
+so it cannot exploit OpenMP for parallel subjects. For single-subject
+use or when evaluating numerical agreement with deSolve (which also
+wraps this FORTRAN code), <code>lsoda</code> is appropriate:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">theta</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"lsoda"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="dop853">
+<code>dop853</code><a class="anchor" aria-label="anchor" href="#dop853"></a>
+</h3>
+<p>An explicit 8th-order Dormand–Prince Runge–Kutta method with 5th- and
+3rd-order error estimates for step-size control. It does not switch to a
+stiff algorithm, so it is unsuitable for stiff systems. It is, however,
+very efficient for smooth problems and provides dense output (accurate
+solutions at any requested time point, not just the grid).</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">theta</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"dop853"</span><span class="op">)</span></span></code></pre></div>
+<p>For non-stiff problems it is often faster than LSODA because it
+avoids the stiffness-detection overhead.</p>
+</div>
+<div class="section level3">
+<h3 id="indlin">
+<code>indLin</code><a class="anchor" aria-label="anchor" href="#indlin"></a>
+</h3>
+<p>Inductive linearization with matrix exponential integration. Rather
+than advancing one time step at a time, the ODE is iteratively converted
+to a linear time-varying (LTV) system and solved exactly with the matrix
+exponential. Details and usage are covered in the companion article <a href="rxode2-ind-lin.html">Matrix Exponentials and Inductive
+Linearization in rxode2</a>.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmPK</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span></span>
+<span>  <span class="op">{</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">Cp</span>           <span class="op">&lt;-</span> <span class="va">center</span> <span class="op">/</span> <span class="va">V</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">Vmax</span> <span class="op">*</span> <span class="va">Cp</span> <span class="op">/</span> <span class="op">(</span><span class="va">Km</span> <span class="op">+</span> <span class="va">Cp</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  indLin <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, Km <span class="op">=</span> <span class="fl">0.5</span>, Vmax <span class="op">=</span> <span class="fl">0.2</span>, V <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>               <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="stiffness-and-jacobians">Stiffness and Jacobians<a class="anchor" aria-label="anchor" href="#stiffness-and-jacobians"></a>
+</h2>
+<p>Stiff systems contain processes operating on widely different time
+scales. The default <code>liblsoda</code> handles stiffness
+automatically. For very stiff problems you can improve performance and
+stability by providing an analytic Jacobian with
+<code>df(state)/dy(variable)</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">vanPol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">dy</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">2</span> <span class="op">*</span> <span class="va">dy</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">y</span> <span class="op">-</span> <span class="fl">1</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span>  <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>  <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">vanPol</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">20</span>, length.out <span class="op">=</span> <span class="fl">500</span><span class="op">)</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"lsoda"</span><span class="op">)</span></span></code></pre></div>
+<p>rxode2 can also compute the Jacobian symbolically via the
+<code>symengine</code> CAS using <code>calcJac = TRUE</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">vanPol_auto</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">vanPol</span><span class="op">$</span><span class="va">symengineModelNoPrune</span>, calcJac <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="practical-pharmacometric-starting-points">Practical pharmacometric starting points<a class="anchor" aria-label="anchor" href="#practical-pharmacometric-starting-points"></a>
@@ -303,11 +455,11 @@ analogs are <code>Matrix Exponent</code> and
 </h2>
 <p>For pharmacometric work, the most useful split is:</p>
 <ol style="list-style-type: decimal">
-<li>adaptive and stiffness-aware or stiff-suitable</li>
-<li>fixed-step and stiff-suitable</li>
-<li>adaptive and primarily non-stiff</li>
-<li>fixed-step and primarily non-stiff</li>
-<li>pharmacometric special-case linearization</li>
+<li><p>adaptive and stiffness-aware or stiff-suitable</p></li>
+<li><p>fixed-step and stiff-suitable</p></li>
+<li><p>adaptive and primarily non-stiff</p></li>
+<li><p>fixed-step and primarily non-stiff</p></li>
+<li><p>pharmacometric special-case linearization</p></li>
 </ol>
 <p>Some methods blur the boundary. For example, <code>liblsoda</code>
 and <code>lsoda</code> switch automatically between non-stiff and stiff
@@ -322,13 +474,11 @@ possible.</p>
 slow time scales, strong feedback, binding kinetics, or many hidden
 turnover processes.</p>
 <ul>
-<li>
-<code>liblsoda</code>, <code>lsoda</code>: automatic stiffness
+<li><p><code>liblsoda</code>, <code>lsoda</code>: automatic stiffness
 detection and switching; still the safest “start here” choice for many
-PK/PD models</li>
-<li>
-<code>cvode</code>: Sundials CVODE backend; useful when you need a
-modern stiff solver with linear solver control (<code>dense</code>,
+PK/PD models</p></li>
+<li><p><code>cvode</code>: Sundials CVODE backend; useful when you need
+a modern stiff solver with linear solver control (<code>dense</code>,
 <code>band</code>, <code>gmres</code>, <code>bicgstab</code>,
 <code>tfqmr</code>). At present, <code>band</code> is kept for
 compatibility and aliases to the dense path. <code>cvode</code> supports
@@ -338,13 +488,11 @@ CVODE’s native <code>CVodeGetDky</code> interpolation rather than
 reinitializing at each output time. This is particularly beneficial for
 BDF, which maintains a multi-step history polynomial and a Jacobian
 factorization that would otherwise be discarded on every
-reinitialize.</li>
-<li>
-<code>ros4</code>, <code>ros43</code>: adaptive Rosenbrock methods
-for stiff or moderately stiff systems</li>
-<li>
-<code>sdirk43</code>: adaptive singly diagonally implicit
-Runge-Kutta method</li>
+reinitialize.</p></li>
+<li><p><code>ros4</code>, <code>ros43</code>: adaptive Rosenbrock
+methods for stiff or moderately stiff systems</p></li>
+<li><p><code>sdirk43</code>: adaptive singly diagonally implicit
+Runge-Kutta method</p></li>
 </ul>
 <p>These are closest in spirit to MATLAB <code>ode23s</code> /
 <code>ode15s</code> and to Julia methods such as
@@ -358,7 +506,7 @@ wrappers.</p>
 <p>AutoSwitch methods let you combine a fast non-stiff primary solver
 with a stiff fallback solver using a <code>"primary+stiff"</code>
 string:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, <span class="va">params</span>, method <span class="op">=</span> <span class="st">"t54+ros43"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, <span class="va">params</span>, method <span class="op">=</span> <span class="st">"vern76+ros43"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, <span class="va">params</span>, method <span class="op">=</span> <span class="st">"dop853+sdirk43"</span><span class="op">)</span></span></code></pre></div>
@@ -397,7 +545,8 @@ stepping.</p></li>
 built and tested in Julia with <code>AutoTsit5(Rosenbrock23())</code> or
 <code>AutoVern7(Rodas5P())</code> can be matched closely by
 <code>"t54+ros43"</code> or <code>"vern76+ros43"</code> in
-<code>rxode2</code>.</p></li>
+<code>rxode2</code> (though the switching methods are
+different).</p></li>
 </ul>
 </div>
 <div class="section level4">
@@ -674,103 +823,25 @@ families, conceptually closest to Julia’s <code>Vern6</code>,
 <code>Vern7</code>, and <code>Vern9</code>
 </li>
 </ul>
-</div>
-<div class="section level4">
-<h4 id="broader-adaptive-explicit-libode-families">Broader adaptive explicit libode families<a class="anchor" aria-label="anchor" href="#broader-adaptive-explicit-libode-families"></a>
-</h4>
-<p><code>rxode2</code> also exposes a large set of adaptive explicit
-methods for method-comparison work, benchmarking, or specialized
-non-stiff models. These accepted method names are:</p>
-<ul>
-<li>core adaptive explicit methods: <code>dop853</code>,
-<code>f78</code>, <code>ck54</code>, <code>dop5</code>, <code>bs</code>,
-<code>f32</code>, <code>rk43</code>, <code>dop54</code>,
-<code>dp54</code>, <code>vern65</code>, <code>v65e</code>,
-<code>vern76</code>, <code>v76e</code>, <code>dop87</code>,
-<code>dp87</code>, <code>vern98</code>, <code>v98e</code>
-</li>
-<li>lower-order and SSP-style adaptive methods: <code>euler</code>,
-<code>midpoint</code>, <code>heun</code>, <code>ssp22</code>,
-<code>rk3</code>, <code>ssp53</code>, <code>bs32</code>,
-<code>ssp43</code>, <code>f45</code>
-</li>
-<li>adaptive fourth- and fifth-order families: <code>s4</code>,
-<code>r4</code>, <code>ls44</code>, <code>ls54</code>,
-<code>ssp54</code>, <code>s5</code>, <code>rk5</code>, <code>c5</code>,
-<code>l5</code>, <code>lk5a</code>, <code>lk5b</code>, <code>t54</code>,
-<code>s54</code>, <code>pp54</code>, <code>pp54b</code>,
-<code>bs54</code>, <code>ss54</code>
-</li>
-<li>adaptive sixth- and seventh-order families: <code>b6</code>,
-<code>rk7</code>, <code>dp65</code>, <code>c65</code>,
-<code>tp64</code>, <code>v65r</code>, <code>v65</code>,
-<code>dverk65</code>, <code>tf65</code>, <code>tp75</code>,
-<code>tmy7</code>, <code>tmy7s</code>, <code>v76r</code>,
-<code>ss76</code>, <code>v78</code>, <code>dverk78</code>
-</li>
-<li>adaptive eighth-order and higher families: <code>rk8_10</code>,
-<code>cv8</code>, <code>rk8_12</code>, <code>s10</code>,
-<code>z10</code>, <code>o10</code>, <code>h10</code>, <code>dp85</code>,
-<code>tp86</code>, <code>v87e</code>, <code>v87r</code>,
-<code>ev87</code>, <code>k87</code>, <code>f89</code>, <code>v89</code>,
-<code>t98a</code>, <code>v98r</code>, <code>s98</code>,
-<code>f108</code>, <code>c108</code>, <code>b109</code>,
-<code>s1110a</code>, <code>f1210</code>, <code>o129</code>,
-<code>f1412</code>
-</li>
-</ul>
-<p>Most pharmacometric users will never need to try every method in
-these families. The practical point is that <code>rxode2</code> lets you
-stay within the same modeling framework while comparing classical
-explicit RK families against the more familiar
-<code>dop5</code>/<code>dop853</code> choices.</p>
+<p>The full list of accepted names for these families appears in the <a href="#complete-accepted-solver-names-in-rxode2">Complete accepted
+solver names</a> section.</p>
 </div>
 </div>
 <div class="section level3">
 <h3 id="fixed-step-primarily-non-stiff-methods">Fixed-step, primarily non-stiff methods<a class="anchor" aria-label="anchor" href="#fixed-step-primarily-non-stiff-methods"></a>
 </h3>
-<p>These methods use <code>hmin</code> as the actual fixed step
-size.</p>
-<ul>
-<li>
-<code>rk4</code>: classical Runge-Kutta 4</li>
-<li>
-<code>trapz</code>: explicit trapezoidal / Heun-style fixed-step
-method</li>
-<li>
-<code>ssp3</code>, <code>ssp33</code>: fixed-step SSP Runge-Kutta
-3</li>
-<li>
-<code>ab</code>: Adams-Bashforth</li>
-<li>
-<code>abm</code>: Adams-Bashforth-Moulton</li>
-<li>
-<code>sem</code>: semi-explicit method</li>
-<li>
-<code>sb3a</code>, <code>sb3am4</code>: multistep fixed-step methods
-from the libode set</li>
-<li>
-<code>vv</code>: velocity-Verlet style method</li>
-<li>
-<code>mm</code>: modified midpoint style method</li>
-<li>
-<code>em</code>: explicit Euler-Maruyama-style fixed-step method
-name in the libode family</li>
-</ul>
-<p>These methods are usually chosen for comparison studies, controlled
-co-simulation, or educational/debugging purposes rather than for routine
-production solves.</p>
+<p>These methods use <code>hmin</code> as the actual fixed step size
+(<code>rk4</code>, <code>trapz</code>, <code>ab</code>,
+<code>abm</code>, and related methods – see the complete names section
+for the full list). They are usually chosen for comparison studies,
+controlled co-simulation, or educational/debugging purposes rather than
+for routine production solves.</p>
 </div>
 <div class="section level3">
 <h3 id="special-pharmacometric-pathway-indlin">Special pharmacometric pathway: <code>indLin</code><a class="anchor" aria-label="anchor" href="#special-pharmacometric-pathway-indlin"></a>
 </h3>
-<p><code>indLin</code> should not be grouped with the general-purpose
-ODE solvers above. It uses inductive linearization and is often a strong
-choice for models that are largely linear between events, especially
-when the goal is speed on repeated PK-like solves rather than maximum
-solver generality.</p>
-<p>For pharmacometric applications, <code>indLin</code> is worth trying
-when:</p>
+<p><code>indLin</code> (see <a href="#the-four-main-methods">The four
+main methods</a>) is worth trying when:</p>
 <ul>
 <li>the model is close to a linear compartment system</li>
 <li>the nonlinear part is limited or localized</li>
@@ -793,13 +864,29 @@ output matter</li>
 <li>for dense output workflows, pass <code>dense=TRUE</code> to
 <code><a href="../reference/rxSolve.html">rxControl()</a></code> or <code><a href="../reference/rxSolve.html">rxSolve()</a></code>; the methods that
 support it are <code>dop853</code>, <code>dop5</code>, <code>bs</code>,
-<code>ros4</code>, and now <code>cvode</code>
+<code>ros4</code>, and <code>cvode</code>
 </li>
 </ul>
 <p>For pharmacometric workflows such as VPCs, trial simulation, and
 posterior predictive checks, dense output can matter as much as the
 integrator itself because it changes how often the expensive full solver
 state has to be reconstructed at requested sample times.</p>
+</div>
+<div class="section level2">
+<h2 id="solver-tolerance">Solver tolerance<a class="anchor" aria-label="anchor" href="#solver-tolerance"></a>
+</h2>
+<p>All numerical solvers respond to <code>atol</code> and
+<code>rtol</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">theta</span>, <span class="va">ev</span>,</span>
+<span>               method <span class="op">=</span> <span class="st">"liblsoda"</span>,</span>
+<span>               atol   <span class="op">=</span> <span class="fl">1e-10</span>,</span>
+<span>               rtol   <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span></span></code></pre></div>
+<p>Tighter tolerances increase accuracy at the cost of more function
+evaluations. The defaults (<code>atol = 1e-8</code>,
+<code>rtol = 1e-6</code>) match NONMEM’s recommended values for
+ADVAN8/ADVAN13 and are tighter than MATLAB’s <code>ode45</code> defaults
+(<code>RelTol = 1e-3</code>, <code>AbsTol = 1e-6</code>).</p>
 </div>
 <div class="section level2">
 <h2 id="matlab-naming-guide">MATLAB naming guide<a class="anchor" aria-label="anchor" href="#matlab-naming-guide"></a>
@@ -883,6 +970,33 @@ before using rxode2</td>
 </tr>
 </tbody>
 </table>
+<div class="section level3">
+<h3 id="key-differences-from-matlab">Key differences from MATLAB<a class="anchor" aria-label="anchor" href="#key-differences-from-matlab"></a>
+</h3>
+<ul>
+<li>
+<strong>Parallel subjects</strong>: rxode2 runs thousands of
+subjects in parallel via OpenMP. MATLAB requires explicit vectorization
+or Parallel Computing Toolbox.</li>
+<li>
+<strong>Compiled model</strong>: rxode2 compiles the ODE to C once.
+MATLAB’s <code>ode45</code> calls an R/MATLAB function on every step
+unless you hand-code C with <code>mex</code>.</li>
+<li>
+<strong>Event handling</strong>: rxode2 accepts NONMEM-format event
+tables (infusions, steady state, lag times) natively. MATLAB requires
+manual event functions.</li>
+<li>
+<strong>Order</strong>: rxode2’s <code>dop853</code> uses 8th-order
+steps; <code>ode45</code> uses 5th. <code>dop853</code> is typically
+more efficient per function evaluation on smooth problems.</li>
+<li>
+<strong>IndLin vs <code>ode45</code></strong>: Sharif et al. (2022)
+showed that IndLin with adaptive step size was approximately six times
+faster than <code>ode45</code> on a Michaelis–Menten example with
+comparable parameter estimate accuracy.</li>
+</ul>
+</div>
 </div>
 <div class="section level2">
 <h2 id="julia-naming-guide">Julia naming guide<a class="anchor" aria-label="anchor" href="#julia-naming-guide"></a>
@@ -1164,6 +1278,35 @@ Julia’s <code>AutoTsit5</code>, <code>AutoVern7</code>, and
 2nd/3rd-order Rosenbrock matching Julia’s <code>Rosenbrock23()</code> –
 use <code>ros4</code> (4th-order Boost W-method) as the closest
 available lower-overhead Rosenbrock-family secondary.</p>
+<div class="section level3">
+<h3 id="key-differences-from-julia">Key differences from Julia<a class="anchor" aria-label="anchor" href="#key-differences-from-julia"></a>
+</h3>
+<ul>
+<li>
+<strong>Language</strong>: rxode2 is R-native; the model language
+feels like writing NONMEM or ordinary PK equations. Julia models use
+Julia syntax and the ModelingToolkit.jl DSL.</li>
+<li>
+<strong>Solver breadth</strong>: Julia’s ecosystem offers dozens of
+solvers. rxode2 provides a large set focused on the most useful methods
+for pharmacometrics.</li>
+<li>
+<strong>Performance</strong>: Julia achieves near-C speeds after JIT
+compilation. rxode2 compiles models to C ahead of time, reaching
+comparable speeds for repeated evaluations. Julia has an advantage for
+single, long integrations; rxode2 has an advantage for large population
+simulations via OpenMP.</li>
+<li>
+<strong>Sensitivity / gradients</strong>: Julia’s
+<code>sensealg</code> supports adjoint and forward sensitivity for large
+systems; rxode2 computes forward sensitivities (for nlmixr2 FOCEi) via
+symbolic differentiation.</li>
+<li>
+<strong>Interoperability</strong>: The <code>JuliaCall</code> or
+<code>JuliaConnectoR</code> packages allow calling Julia’s ODE solvers
+from R.</li>
+</ul>
+</div>
 </div>
 <div class="section level2">
 <h2 id="nonmem-monolix-and-phoenix-crosswalk">NONMEM, Monolix, and Phoenix crosswalk<a class="anchor" aria-label="anchor" href="#nonmem-monolix-and-phoenix-crosswalk"></a>
@@ -1262,9 +1405,9 @@ rather than for ordinary PK models</td>
 <td>General nonlinear stiff/nonstiff equations in later NONMEM
 versions</td>
 <td>
-<code>liblsoda</code> first, then <code>cvode</code>,
-<code>ros4</code>, or <code>dop853</code> depending on observed
-stiffness</td>
+<code>liblsoda</code> first(ADVAN13), then
+<code>cvode</code>(ADVAN14). You can also use <code>ros4</code>, or
+<code>dop853</code> depending on observed stiffness</td>
 <td>These are the closest “modern general-purpose ODE” ADVANs to
 rxode2’s default ODE workflows</td>
 </tr>
@@ -1303,11 +1446,79 @@ such as <code>dop54</code>, <code>dop5</code>, or
 <li>NONMEM ADVAN8 -&gt; <code>rxode2</code> stiff-aware solvers such as
 <code>ros4</code>, <code>ros43</code>, <code>sdirk43</code>
 </li>
-<li>NONMEM ADVAN13-&gt; <code>liblsoda</code> general-purpose adaptive
-workflow,</li>
+<li>NONMEM ADVAN13 -&gt; <code>liblsoda</code> general-purpose adaptive
+workflow</li>
 <li>NONMEM ADVAN14 -&gt; <code>cvode</code> general-purpose adaptive
-workflows,</li>
+workflows</li>
 </ul>
+<div class="section level4">
+<h4 id="key-differences-from-nonmem">Key differences from NONMEM<a class="anchor" aria-label="anchor" href="#key-differences-from-nonmem"></a>
+</h4>
+<ul>
+<li>
+<strong>Open source</strong>: rxode2 is GPL-3; NONMEM requires a
+commercial license.</li>
+<li>
+<strong>Simulation speed</strong>: rxode2 simulates thousands of
+subjects in seconds via OpenMP. NONMEM simulation (<code>$SIM</code>) is
+single-threaded.</li>
+<li>
+<strong>Estimation</strong>: rxode2 itself is a simulator;
+population estimation is done through <code>nlmixr2</code>, which wraps
+rxode2. NONMEM integrates estimation and simulation in one tool.</li>
+<li>
+<strong>Tolerance</strong>: NONMEM’s <code>TOL</code> is a single
+scalar; rxode2 exposes separate <code>atol</code> and
+<code>rtol</code>.</li>
+<li>
+<strong>Analytical solutions</strong>: Both tools provide analytical
+compartment solutions. NONMEM uses <code>ADVAN1--4</code>; rxode2 uses
+<code>linCmt()</code>, which supports 1–3 compartments and is compatible
+with stan-math gradients for FOCEi estimation in nlmixr2.</li>
+<li>
+<strong>NONMEM datasets</strong>: rxode2 accepts NONMEM-compatible
+event data frames directly (EVID 0–4).</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="translating-advan57-rate-constants-with-matexp">Translating ADVAN5/7 rate constants with <code>matExp()</code><a class="anchor" aria-label="anchor" href="#translating-advan57-rate-constants-with-matexp"></a>
+</h4>
+<p>NONMEM ADVAN5/7 models specify the rate matrix via
+<code>K(i,j)</code> scalars in <code>$PK</code>, where
+<code>K(i,j)</code> is the transfer rate <strong>from</strong>
+compartment <code>i</code> <strong>to</strong> compartment
+<code>j</code>. rxode2’s <code>matExp()</code> declaration uses the
+<strong>same source-first convention</strong> (<code>k_from_to</code>),
+making translation direct and avoiding all symbolic manipulation. This
+is the most numerically stable approach for linear compartmental
+models:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">threeComp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="va">k_depot_central</span>  <span class="op">=</span> <span class="va">ka</span></span>
+<span>  <span class="va">k_central_output</span> <span class="op">=</span> <span class="va">k20</span></span>
+<span>  <span class="va">k_central_periph</span> <span class="op">=</span> <span class="va">k23</span></span>
+<span>  <span class="va">k_periph_central</span> <span class="op">=</span> <span class="va">k32</span></span>
+<span>  <span class="va">Cp</span> <span class="op">=</span> <span class="va">central</span> <span class="op">/</span> <span class="va">Vc</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">threeComp</span>, <span class="va">params</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span></code></pre></div>
+<p>Compartments (<code>depot</code>, <code>central</code>,
+<code>periph</code>) are auto-detected from the rate constant names; no
+explicit declarations are needed.</p>
+<p>See the companion article <a href="rxode2-ind-lin.html">Matrix
+Exponentials and Inductive Linearization</a> for a full description of
+<code>matExp()</code> syntax, the NONMEM index mapping, and the
+<code>indLin(state)</code> forcing-term syntax.</p>
+</div>
+<div class="section level4">
+<h4 id="translating-a-full-nonmem-control-stream">Translating a full NONMEM control stream<a class="anchor" aria-label="anchor" href="#translating-a-full-nonmem-control-stream"></a>
+</h4>
+<p>The <code>nonmem2rx</code> package (part of the nlmixr2 ecosystem)
+can import NONMEM control streams into rxode2/nlmixr2 models
+automatically.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># nonmem2rx::nonmem2rx("run001.ctl")</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level3">
 <h3 id="monolix-crosswalk">Monolix crosswalk<a class="anchor" aria-label="anchor" href="#monolix-crosswalk"></a>
@@ -1348,8 +1559,8 @@ time-scale separation</td>
 <tr class="even">
 <td>stiff (BDF)</td>
 <td>
-<code>cvode</code>, <code>liblsoda</code>, <code>ros4</code>,
-<code>ros43</code>, or <code>sdirk43</code>
+<code>bdf</code>, <code>cvode</code>, <code>liblsoda</code>,
+<code>ros4</code>, <code>ros43</code>, or <code>sdirk43</code>
 </td>
 <td>TMDD, target binding, indirect response with fast turnover,
 mechanistic PD, QSP-like stiffness</td>
@@ -1372,9 +1583,36 @@ closest Adams analog, try <code>ab</code> or <code>abm</code>; for
 general-purpose non-stiff use, try <code>liblsoda</code>,
 <code>dop54</code>, <code>t54</code>, or <code>dop853</code></p></li>
 <li><p>if you needed Monolix <code>stiff</code>, start in
-<code>rxode2</code> with <code>liblsoda</code>, <code>cvode</code>,
-<code>ros4</code>, or <code>ros43</code></p></li>
+<code>rxode2</code> with <code>bdf</code>, <code>liblsoda</code>,
+<code>cvode</code>, <code>ros4</code>, or <code>ros43</code></p></li>
 </ul>
+<div class="section level4">
+<h4 id="key-differences-from-monolix">Key differences from Monolix<a class="anchor" aria-label="anchor" href="#key-differences-from-monolix"></a>
+</h4>
+<ul>
+<li>
+<strong>Free and open source</strong>: rxode2 and nlmixr2 are freely
+available on CRAN; Monolix requires a commercial license (free academic
+licenses exist).</li>
+<li>
+<strong>Model language</strong>: Monolix uses a proprietary model
+language (Mlxtran); rxode2 uses an R-embedded mini-language that is a
+superset of common PK notation.</li>
+<li>
+<strong>Customization</strong>: rxode2 models can call arbitrary
+C/C++ functions registered at the R level; Monolix has limited
+extensibility.</li>
+<li>
+<strong>Ecosystem</strong>: nlmixr2 integrates with ggPMX, xpose4,
+and vpc for diagnostics; Monolix has Datxplore and Pkanalix (could use
+PKNCA instead).</li>
+<li>
+<strong>Simulation platform</strong>: <code>rxode2</code> /
+<code>RxODE</code> underpins <code>simulx()</code> via the
+<code>RsSimulx</code> R package (PKPD simulations driven by Monolix
+parameter estimates).</li>
+</ul>
+</div>
 </div>
 <div class="section level3">
 <h3 id="phoenix-winnonlin-phoenix-nlme-crosswalk">Phoenix WinNonlin / Phoenix NLME crosswalk<a class="anchor" aria-label="anchor" href="#phoenix-winnonlin-phoenix-nlme-crosswalk"></a>
@@ -1485,6 +1723,114 @@ first to <code>linCmt()</code>
 </div>
 </div>
 <div class="section level2">
+<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+</h2>
+<p>The table below compares rxode2 against other common pharmacometric
+and scientific computing platforms across key features.</p>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+</colgroup>
+<thead><tr class="header">
+<th>Feature</th>
+<th>rxode2</th>
+<th>MATLAB</th>
+<th>NONMEM</th>
+<th>Monolix</th>
+<th>Julia (SciML)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Open source</td>
+<td>Yes (GPL-3)</td>
+<td>No</td>
+<td>No</td>
+<td>No (free academic)</td>
+<td>Yes (MIT)</td>
+</tr>
+<tr class="even">
+<td>Language</td>
+<td>R + C</td>
+<td>MATLAB</td>
+<td>NONMEM7</td>
+<td>Mlxtran</td>
+<td>Julia</td>
+</tr>
+<tr class="odd">
+<td>Stiff solver</td>
+<td>LSODA (auto)</td>
+<td>ode15s</td>
+<td>ADVAN8/13</td>
+<td>ode23s</td>
+<td>CVODE_BDF, Rodas5P</td>
+</tr>
+<tr class="even">
+<td>Non-stiff solver</td>
+<td>dop853, LSODA Adams</td>
+<td>ode45</td>
+<td>ADVAN6/9</td>
+<td>ode45</td>
+<td>Tsit5, DP8</td>
+</tr>
+<tr class="odd">
+<td>Analytical PK</td>
+<td>linCmt (1-3 cmt)</td>
+<td>Manual</td>
+<td>ADVAN1-4</td>
+<td>PKanalix</td>
+<td>ModelingToolkit</td>
+</tr>
+<tr class="even">
+<td>Matrix exponential</td>
+<td>
+<code>matExp()</code> / <code>indLin</code>
+</td>
+<td>expm()</td>
+<td>ADVAN5/7</td>
+<td>–</td>
+<td>LinearAlgebra.exp</td>
+</tr>
+<tr class="odd">
+<td>Parallel subjects</td>
+<td>OpenMP (built-in)</td>
+<td>PCT add-on</td>
+<td>–</td>
+<td>–</td>
+<td>Threads.@threads</td>
+</tr>
+<tr class="even">
+<td>NONMEM datasets</td>
+<td>Native</td>
+<td>Manual</td>
+<td>Native</td>
+<td>Via import</td>
+<td>Manual</td>
+</tr>
+<tr class="odd">
+<td>Population estimation</td>
+<td>nlmixr2</td>
+<td>–</td>
+<td>Native</td>
+<td>Native</td>
+<td>Turing.jl</td>
+</tr>
+<tr class="even">
+<td>Sensitivity equations</td>
+<td>Forward (liblsoda)</td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+<td>ForwardDiff, adjoint</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level2">
 <h2 id="complete-accepted-solver-names-in-rxode2">Complete accepted solver names in rxode2<a class="anchor" aria-label="anchor" href="#complete-accepted-solver-names-in-rxode2"></a>
 </h2>
 <p>The accepted method names below cover the full current solver menu in
@@ -1492,55 +1838,12 @@ first to <code>linCmt()</code>
 <div class="section level3">
 <h3 id="autoswitch-composite-methods-1">AutoSwitch composite methods<a class="anchor" aria-label="anchor" href="#autoswitch-composite-methods-1"></a>
 </h3>
-<p>These methods use the <code>"primary+stiff"</code> syntax where
-<code>primary</code> is any thread-safe non-stiff method and
-<code>stiff</code> is any thread-safe implicit method. The solver starts
-with the primary; the stiff secondary is invoked automatically when
-stiffness is detected.</p>
-<p>Recommended pairs (Julia-inspired):</p>
-<ul>
-<li>
-<code>"t54+ros4"</code> – closest to
-<code>AutoTsit5(Rosenbrock23())</code> (<code>ros4</code> is 4th order;
-no exact 2nd/3rd-order Rosenbrock exists in rxode2)</li>
-<li>
-<code>"t54+ros43"</code> – equivalent of
-<code>AutoTsit5(Rodas4P())</code>
-</li>
-<li>
-<code>"t54+sdirk43"</code> – equivalent of
-<code>AutoTsit5(SDIRK43())</code>
-</li>
-<li>
-<code>"vern65+ros4"</code>, <code>"vern65+ros43"</code>,
-<code>"vern65+sdirk43"</code> – Verner 6(5) primary</li>
-<li>
-<code>"vern76+ros4"</code> – closest to
-<code>AutoVern7(Rosenbrock23())</code>
-</li>
-<li>
-<code>"vern76+ros43"</code> – equivalent of
-<code>AutoVern7(Rodas4P())</code>
-</li>
-<li>
-<code>"vern76+sdirk43"</code> – equivalent of
-<code>AutoVern7(SDIRK43())</code>
-</li>
-<li>
-<code>"vern98+ros4"</code>, <code>"vern98+ros43"</code>,
-<code>"vern98+sdirk43"</code> – Verner 9(8) primary</li>
-<li>
-<code>"dop853+ros4"</code>, <code>"dop853+ros43"</code>,
-<code>"dop853+sdirk43"</code> – DOP853 primary (supports
-<code>dense=TRUE</code>)</li>
-<li>
-<code>"bs32+ros4"</code> – closest to
-<code>AutoBS3(Rosenbrock23())</code>
-</li>
-</ul>
-<p>Any non-stiff primary and any stiff secondary can be combined, as
-long as both are thread-safe (excludes <code>lsoda</code>,
-<code>liblsoda</code>, <code>lsode</code>, <code>bdf</code>).</p>
+<p>Use the <code>"primary+stiff"</code> syntax; any thread-safe
+non-stiff primary with any thread-safe implicit secondary (excludes
+<code>lsoda</code>, <code>liblsoda</code>, <code>lsode</code>,
+<code>bdf</code> as primary). Recommended pairs and Julia analogs are in
+the <a href="#autoswitch-composite-methods">AutoSwitch composite
+methods</a> section above.</p>
 </div>
 <div class="section level3">
 <h3 id="adaptive-stiffness-aware-or-stiff-suitable">Adaptive, stiffness-aware, or stiff-suitable<a class="anchor" aria-label="anchor" href="#adaptive-stiffness-aware-or-stiff-suitable"></a>
@@ -1689,17 +1992,10 @@ pharmacometric workflow is:</p>
 <li><p>if the system is stiff or nearly stiff, compare against
 <code>ros4</code>, <code>ros43</code>, <code>sdirk43</code>, or
 <code>cvode</code></p></li>
-<li><p>if you are unsure whether the system is stiff, or if it has
-regions of both stiff and non-stiff behavior, try an AutoSwitch pair:
-<code>"t54+ros4"</code> is the closest available analog to Julia’s
-<code>AutoTsit5(Rosenbrock23())</code> (<code>ros4</code> is a 4th-order
-Rosenbrock W-method – rxode2 has no 2nd/3rd-order Rosenbrock, so
-<code>ros4</code> is the lowest-overhead Rosenbrock-family stiff
-secondary available); <code>"t54+ros43"</code> or
-<code>"vern76+ros43"</code> match <code>AutoTsit5(Rodas4P())</code> and
-<code>AutoVern7(Rodas4P())</code> respectively and give more robust
-stiff handling; all of these start with the fast explicit solver and
-fall back only when stiffness is detected</p></li>
+<li><p>if stiffness is uncertain, try an AutoSwitch pair such as
+<code>"t54+ros4"</code>, <code>"t54+ros43"</code>, or
+<code>"vern76+ros43"</code> – see the <a href="#autoswitch-composite-methods">AutoSwitch section</a> for
+recommended pairs and Julia analogs</p></li>
 <li><p>if you need reproducible fixed internal stepping for diagnosis,
 try <code>rk4</code>, <code>backwardEuler</code>, <code>gauss6</code>,
 or <code>radauiia5</code></p></li>
@@ -1709,33 +2005,28 @@ or <code>radauiia5</code></p></li>
 <p>That strategy is usually more valuable in pharmacometric practice
 than trying to optimize across every available high-order RK family from
 the start.</p>
-<div class="section level3">
-<h3 id="when-autoswitch-is-worth-trying-over-liblsoda">When AutoSwitch is worth trying over <code>liblsoda</code><a class="anchor" aria-label="anchor" href="#when-autoswitch-is-worth-trying-over-liblsoda"></a>
-</h3>
-<p>Use AutoSwitch (<code>"t54+ros43"</code>,
-<code>"vern76+ros43"</code>, etc.) instead of <code>liblsoda</code>
-when:</p>
-<ul>
-<li>benchmark runs show <code>liblsoda</code> is the bottleneck and you
-suspect most of the time is spent in the non-stiff Adams steps rather
-than the stiff BDF steps – the explicit primary in an AutoSwitch pair is
-typically faster on those non-stiff intervals</li>
-<li>you are porting a model from Julia where <code>AutoTsit5</code> or
-<code>AutoVern7</code> was used, and you want numerical behavior as
-close as possible to the original</li>
-<li>you want explicit, user-controllable thresholds for when stiffness
-triggers the fallback rather than relying on <code>liblsoda</code>’s
-internal Adams/BDF heuristics</li>
-</ul>
-<p>Stick with <code>liblsoda</code> when:</p>
-<ul>
-<li>the solve is fast enough already</li>
-<li>the model has many brief stiff episodes spread throughout the
-interval, making the AutoSwitch retry overhead significant</li>
-<li>you want the simplest general-purpose option without choosing a
-primary or secondary solver method</li>
-</ul>
 </div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<ul>
+<li><p>Sharif S, Hasegawa C, Duffull SB (2022). Exploring Inductive
+Linearization for simulation and estimation with an application to the
+Michaelis–Menten model. <em>J Pharmacokinet Pharmacodyn</em>
+49:445–453.</p></li>
+<li><p>Shampine LF, Reichelt MW (1997). The MATLAB ODE suite. <em>SIAM J
+Sci Comput</em> 18(1):1–22.</p></li>
+<li><p>Hindmarsh AC (1983). ODEPACK, a systematized collection of ODE
+solvers. In Stepleman RS (ed), Scientific Computing, pp. 55–64.</p></li>
+<li><p>Rackauckas C, Nie Q (2017). DifferentialEquations.jl – a
+performant and feature-rich ecosystem for solving differential equations
+in Julia. <em>J Open Res Softw</em> 5(1):15.</p></li>
+<li><p>Hairer E, Norsett SP, Wanner G (1993). Solving Ordinary
+Differential Equations I: Nonstiff Problems. 2nd ed. Springer.</p></li>
+<li><p>Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users
+Guides. (1989–2009). Icon Development Solutions, Ellicott City,
+MD.</p></li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

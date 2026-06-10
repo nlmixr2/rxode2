@@ -20,6 +20,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-exposure-response.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-ind-lin.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-intro.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-model-types.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-mrgsolve-comparison.html</loc></url>
@@ -170,6 +171,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/getBaseSymengineModel.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/getRxThreads.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/guide_none.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/indLin.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/index.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/infuse.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/infuseDur.html</loc></url>
@@ -322,6 +324,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxS.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSaveState.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSeedEng.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxSensMatExp.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSerialize.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetControl.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetCovariateNamesForPiping.html</loc></url>

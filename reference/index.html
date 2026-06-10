@@ -19,7 +19,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers in rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponentials / Inductive Linearization</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -416,6 +417,13 @@
 
         </dt>
         <dd>Assert a variable would be new to the model</dd>
+
+        <dt>
+
+          <code><a href="indLin.html">indLin()</a></code> <code><a href="indLin.html">rxOdeToIndLin()</a></code> <code><a href="indLin.html">rxToIndLin()</a></code>
+
+        </dt>
+        <dd>Transition ODEs written in d/dt() format to matrix exponential / inductive linearization format</dd>
 
         <dt>
 
@@ -1848,6 +1856,13 @@
 
         </dt>
         <dd>Load a model into a symengine environment</dd>
+
+        <dt>
+
+          <code><a href="rxSensMatExp.html">rxSensMatExp()</a></code>
+
+        </dt>
+        <dd>Differentiate and expand a matrix exponential model with forward sensitivities</dd>
 
         <dt>
 
