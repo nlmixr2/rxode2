@@ -132,6 +132,7 @@ LinkingTo:
     BH,
     RcppParallel,
     RcppEigen (>= 0.3.3.9.2),
+    sundialr (>= 0.1.7),
     dparser (>= 1.3.1-12),
     StanHeaders (>= 2.21.0.7)
 Encoding: UTF-8
