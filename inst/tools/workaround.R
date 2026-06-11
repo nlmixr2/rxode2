@@ -291,10 +291,6 @@ if (file.exists(.clf)) {
 
 ## ---------------------------------------------------------------------------
 
-.in <- gsub("@SUNDIALR_INC@",
-            paste0("-I\"", normalizePath(.sundialrInc, winslash = "/", mustWork = TRUE), "\""),
-            .in)
-
 .sp_files <- c("sunlinsol_spgmr.c", "sunlinsol_spbcgs.c", "sunlinsol_sptfqmr.c")
 
 .fix_monitoring_endif <- function(.lines) {

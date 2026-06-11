@@ -3,4 +3,3 @@ rm -f src/Makevars
 rm -f config.*
 rm -f src/Makevars.win
 rm -f inst/include/*.gch
-rm -rf src/sundialr_include
