@@ -4715,6 +4715,9 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->nevid2 = indS.nevid2;
             ind->ii   = &(indS.ii[0]);
             ind->evid =&(indS.evid[0]);
+            ind->dv    = &(indS.dv[0]);
+            ind->limit = &(indS.limit[0]);
+            ind->cens  = &(indS.cens[0]);
             ind->id=id+1;
             ind->idReal = indS.idReal;
             if (rx->needSort == 0) {
