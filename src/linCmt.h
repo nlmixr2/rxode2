@@ -529,7 +529,7 @@ namespace stan {
       //' @param j The current index of the full theta parameter being updated
       //'
       void trueThetaElt(int d,
-                        const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                        const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
                         Eigen::Matrix<double, Eigen::Dynamic, 1>& fullTheta,
                         int nd, int& i, int& j) const {
         if ((nd & d) != 0) {
@@ -553,7 +553,7 @@ namespace stan {
       //' instead of double
       //'
       void trueThetaElt(int d,
-                        const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> theta,
+                        const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& theta,
                         Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& fullTheta,
                         int &nd, int& i, int& j) const {
 
@@ -570,7 +570,7 @@ namespace stan {
       //' (straight passthrough, no scaling) so forward AD differentiates the
       //' identical function the reverse path does.
       void trueThetaElt(int d,
-                        const Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> theta,
+                        const Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1>& theta,
                         Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1>& fullTheta,
                         int &nd, int& i, int& j) const {
         if ((nd & d) != 0) {
@@ -850,7 +850,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan1ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan1ssInf8(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                         T ka, Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
 #define k     g(0, 1)
@@ -900,7 +900,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan1ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan1ssInf(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                        T ka,
                        Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
@@ -954,7 +954,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan1ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan1ssBolus(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                          T ka, Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
 #define k     g(0, 1)
@@ -1009,8 +1009,8 @@ namespace stan {
       //' @return nothing, updates ret instead
       //'
       template <typename T>
-      void linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
-                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
+      void linCmtStan1(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
+                       const Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                        T ka,
                        Eigen::Matrix<T, Eigen::Dynamic, 1> &ret) const {
 #define k10   g(0, 1)
@@ -1059,7 +1059,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan2ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan2ssInf8(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                         T ka,
                         Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
@@ -1134,7 +1134,7 @@ namespace stan {
       //' @return nothing, updates ret instead
       template <typename T>
       void
-      linCmtStan2ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan2ssInf(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                        T ka,
                        Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
@@ -1251,7 +1251,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan2ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan2ssBolus(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                          T ka,
                          Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 
@@ -1356,8 +1356,8 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
-                  Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
+      linCmtStan2(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
+                  const Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                   T ka,
                   Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define k12   g(1, 0)
@@ -1428,7 +1428,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan3ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan3ssInf8(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                         T ka,
                         Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
@@ -1562,7 +1562,7 @@ namespace stan {
 
       template <typename T>
       void
-      linCmtStan3ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan3ssInf(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                        T ka,
                        Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
@@ -1776,7 +1776,7 @@ namespace stan {
       //'
       template <typename T>
       void
-      linCmtStan3ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+      linCmtStan3ssBolus(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
                          T ka,
                          Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define v     g(0, 0)
@@ -1946,8 +1946,8 @@ namespace stan {
       //' @return nothing, called for side effects
       template <typename T>
       void
-      linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
-                  Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
+      linCmtStan3(const Eigen::Matrix<T, Eigen::Dynamic, 2>& g,
+                  const Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                   T ka,
                   Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
 #define k12   g(1, 0)
@@ -2417,8 +2417,8 @@ namespace stan {
 
       Eigen::Matrix<double, Eigen::Dynamic, 1>
       fdouble(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
-              Eigen::Matrix<double, Eigen::Dynamic, 2> g,
-              Eigen::Matrix<double, Eigen::Dynamic, 1> yp) {
+              const Eigen::Matrix<double, Eigen::Dynamic, 2>& g,
+              const Eigen::Matrix<double, Eigen::Dynamic, 1>& yp) {
 
         double ka = 0.0;
         if (oral0_) {
