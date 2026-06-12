@@ -227,11 +227,23 @@ rxCreateCache <- function() {
 #' @return nothing; called for side effects
 #' @keywords internal
 #' @export
+## Cache of memoised function names; computed once on first rxForget() call.
+.rxMemoisedFns <- NULL
+
 rxForget <- function() {
-  for (fn in ls(envir = getNamespace("rxode2"))) {
-    if (memoise::is.memoised(getFromNamespace(fn, "rxode2"))) {
-      memoise::forget(getFromNamespace(fn, "rxode2"))
-    }
+  if (is.null(.rxMemoisedFns)) {
+    .ns <- getNamespace("rxode2")
+    .fns <- Filter(
+      function(fn) {
+        .v <- get(fn, envir=.ns, inherits=FALSE)
+        is.function(.v) && memoise::is.memoised(.v)
+      },
+      ls(envir=.ns)
+    )
+    assignInMyNamespace(".rxMemoisedFns", .fns)
+  }
+  for (.fn in .rxMemoisedFns) {
+    memoise::forget(getFromNamespace(.fn, "rxode2"))
   }
 }
 

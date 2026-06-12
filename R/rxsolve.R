@@ -967,6 +967,10 @@
 #' 2nd edition, Springer Series in Computational Mathematics,
 #' Springer-Verlag (1993).
 #'
+## Package-level cache: function object digest → rxUi (list form).
+## Populated by rxSolve.function; entries for uiUseData models are skipped.
+.rxFunctionUiCache <- new.env(hash = TRUE, parent = emptyenv())
+
 #' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
@@ -1758,7 +1762,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     rxUdfUiReset()
   })
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
-  .object <- rxode2(object) # nolint
+  ## Cache the rxUi (function → rxUi conversion) to avoid re-parsing on every
+  ## call.  Key is digest of the whole function object (body + closure), so
+  ## factory-pattern closures with different captured values get separate
+  ## entries.  UDF models (uiUseData=TRUE) bypass the cache because their rxUi
+  ## depends on data that can change between calls.
+  .fkey <- digest::digest(object)
+  .object <- .rxFunctionUiCache[[.fkey]]
+  if (is.null(.object) || isTRUE(.object$uiUseData)) {
+    .object <- rxode2(object) # nolint
+    if (!isTRUE(.object$uiUseData)) {
+      .rxFunctionUiCache[[.fkey]] <- .object
+    }
+  }
   do.call("rxSolve", c(list(object=.object, params = params, events = events,
                             inits = inits),
                        list(...),
@@ -1789,27 +1805,48 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
 }
 
+## Default rxControl object cached once; avoids rebuilding 125-field list each
+## call.  Only used by .uiRxControl to probe field names and as a fast-path
+## return when no overrides exist.
+.rxControlDefault <- NULL
+.rxControlNames   <- NULL
+
 .uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL) {
-  .ctl <- rxControl()
+  if (is.null(.rxControlDefault) ||
+        !is.null(getOption("rxode2.naTimeHandle", NULL))) {
+    .d <- rxControl()
+    if (is.null(getOption("rxode2.naTimeHandle", NULL))) {
+      assignInMyNamespace(".rxControlDefault", .d)
+    }
+    if (is.null(.rxControlNames)) {
+      assignInMyNamespace(".rxControlNames", names(.d))
+    }
+  }
   .meta <- try(ui$meta, silent=TRUE)
   if (!is.environment(.meta))  {
     .meta <- new.env(parent=emptyenv())
   }
   .lst <- list(...)
   .nlst <- names(.lst)
-  .w <- which(vapply(names(.ctl), function(x) {
+  .w <- which(vapply(.rxControlNames, function(x) {
     !(x %in% .nlst) && exists(x, envir=.meta)
   }, logical(1), USE.NAMES=FALSE))
   .extra <- NULL
   if (length(.w) > 0) {
-    .v <- names(.ctl)[.w]
+    .v <- .rxControlNames[.w]
     .minfo(paste0("rxControl items read from fun: '",
                   paste(.v, collapse="', '"), "'"))
     .extra <- setNames(lapply(.v, function(x) {
       get(x, envir=.meta)
     }), .v)
-
+  }
+  ## Fast path: no per-model overrides and no caller-supplied options — return
+  ## the cached default control directly without a second rxSolve(NULL) round.
+  if (!is.null(.rxControlDefault) &&
+        is.null(.extra) && length(.lst) == 0 &&
+        is.null(theta) && is.null(eta)) {
+    return(.rxControlDefault)
   }
   do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
                      .lst, .extra,
