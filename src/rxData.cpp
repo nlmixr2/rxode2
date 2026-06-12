@@ -5683,8 +5683,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtSuspect = asDouble(rxControl[Rxc_linCmtSuspect], "linCmtSuspect");
     rx->linCmtForwardMax = asInt(rxControl[Rxc_linCmtForwardMax], "linCmtForwardMax");
 
-    // since linCmtB is not parallel, no need to copy into
-    // a different solving memory space
+    // linCmtScale is read-only during parallel solving; shared pointer is safe
     rx->linCmtScale = REAL(rxControl[Rxc_linCmtScale]);
 
     rx->needSort = as<int>(rxSolveDat->mv[RxMv_needSort]);
