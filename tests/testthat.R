@@ -11,11 +11,11 @@ if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
     rxode2::rxUnloadAll(set=FALSE)
   }
 }
-#test_check("rxode2", reporter = testthat::LocationReporter, 
+#test_check("rxode2", reporter = testthat::LocationReporter,
 #          stop_on_failure = FALSE)
-if (.Platform$OS.type == "windows") {
-  test_check("rxode2", reporter = testthat::LocationReporter, 
+## if (.Platform$OS.type == "windows") {
+  test_check("rxode2", reporter = testthat::LocationReporter,
              stop_on_failure = TRUE)
-} else {
-  test_check("rxode2")
-}
+## } else {
+##   test_check("rxode2")
+## }
