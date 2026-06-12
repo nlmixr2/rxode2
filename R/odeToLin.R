@@ -324,7 +324,10 @@
 #' @examples
 #' oneCmtOde <- function() {
 #'   ini({
-#'     tka <- 0.45; tcl <- log(2.7); tv <- 3.45; add.sd <- 0.7
+#'     tka <- 0.45
+#'     tcl <- log(2.7)
+#'     tv <- 3.45
+#'     add.sd <- 0.7
 #'   })
 #'   model({
 #'     ka  <- exp(tka)
@@ -343,7 +346,10 @@
 #'     tcl <- 1; tv <- 3; tq <- 0.5; tvp <- 6; add.sd <- 0.7
 #'   })
 #'   model({
-#'     cl <- exp(tcl); v <- exp(tv); q <- exp(tq); vp <- exp(tvp)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     q <- exp(tq)
+#'     vp <- exp(tvp)
 #'     d/dt(central)    <- -(cl+q)/v * central + q/vp * peripheral
 #'     d/dt(peripheral) <-  q/v * central - q/vp * peripheral
 #'     cp <- central / v

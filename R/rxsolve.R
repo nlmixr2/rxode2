@@ -1,3 +1,7 @@
+## Package-level cache: function object digest → rxUi (list form).
+## Populated by rxSolve.function; entries for uiUseData models are skipped.
+.rxFunctionUiCache <- new.env(hash = TRUE, parent = emptyenv())
+
 #' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
@@ -975,10 +979,6 @@
 #' 2nd edition, Springer Series in Computational Mathematics,
 #' Springer-Verlag (1993).
 #'
-## Package-level cache: function object digest → rxUi (list form).
-## Populated by rxSolve.function; entries for uiUseData models are skipped.
-.rxFunctionUiCache <- new.env(hash = TRUE, parent = emptyenv())
-
 #' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
@@ -2058,7 +2058,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                         useLinCmt = FALSE,
+                         useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)

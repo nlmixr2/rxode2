@@ -149,8 +149,8 @@ rxSolve(
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
   linCmtSensType = c("auto", "endpoint5", "endpoint5G", "forward3", "forward3G", "AD",
-    "central", "forward", "forwardG", "forwardH", "centralH", "forward3H", "endpointH5",
-    "forwardG"),
+    "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
+    "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -198,6 +198,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  useLinCmt = FALSE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -209,6 +210,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  useLinCmt = FALSE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -1278,7 +1280,14 @@ sensitivity/gradients to use.  The current options are:
 \itemize{
 \item \code{auto} -- for one compartment models this will use the \code{AD}
 method, for 2 and 3 compartment model this will use \code{forwardG}.
-\item \code{AD} -- automatic differentiation (using stan math)
+\item \code{AD} -- automatic differentiation (using stan math).  This now
+uses forward-mode AD (\verb{stan::math::fvar}), which differentiates the
+same analytic solution as the reverse-mode path but on the C++
+stack with no reverse autodiff tape, matching the reverse result to
+round-off while avoiding the per-call tape setup/teardown.
+\item \code{ADr} -- reverse-mode automatic differentiation (the prior \code{AD}
+behavior, \verb{stan::math::jacobian}).  Kept as an escape hatch for
+validation; \code{AD} (forward) is preferred.
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{forwardG} -- forward sensitivity where the step size is determined by the
