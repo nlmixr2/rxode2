@@ -122,7 +122,9 @@ RObject linCmtModelDouble(double dt,
   Eigen::Matrix<double, 7, 1> scale;
   scale.setZero();
 
-  lc.sensTheta(theta, thetaSens, sensType == 3, scale.data());
+  // sensType 3 (reverse AD) and 30 (forward AD, fvar) both use the unscaled
+  // (isAD = true) path so the Jacobian comes out in true-theta units.
+  lc.sensTheta(theta, thetaSens, sensType == 3 || sensType == 30, scale.data());
 
   double *a = new double[nAlast];
   double *asave = new double[nAlast];
@@ -158,6 +160,9 @@ RObject linCmtModelDouble(double dt,
       break;
     case 3:
       stan::math::jacobian(lc, thetaSens, fx, Js);
+      break;
+    case 30:  // forward-mode AD (fvar); should match case 3 to round-off
+      lc.linCmtFwdJac(thetaSens, fx, Js);
       break;
     case 10:
       h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
