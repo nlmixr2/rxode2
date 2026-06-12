@@ -710,7 +710,16 @@ mutate.rxEt <- function(.data, ...) {
 
 #' @export
 names.rxEt <- function(x) {
-  names(as.data.frame(x, all = TRUE))
+  .env <- .rxEtEnv(x) # nolint
+  .n <- names(.env$show)
+  for (.ch in .env$chunks) {
+    if (!is.null(.ch)) {
+      .extra <- setdiff(names(.ch), .n)
+      if (length(.extra) > 0L) .n <- c(.n, .extra)
+      break
+    }
+  }
+  .n
 }
 
 # rxEt data-frame methods -------------------------------------------------
