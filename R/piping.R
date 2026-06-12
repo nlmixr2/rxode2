@@ -18,7 +18,10 @@
   }
   .ret <- new.env(parent=emptyenv())
   assign(.addr, .ret, envir=visited)
-  lapply(ls(envir=env, all.names=TRUE), function(item){
+  lapply(ls(envir=env, all.names=TRUE), function(item) {
+    if (item == ".simModelBase") {
+      return(NULL)
+    }
     if (is.environment(get(item, envir=env))) {
       assign(item, .copyEnv(get(item, envir=env), visited), envir=.ret)
     } else {
@@ -41,7 +44,10 @@
   }
   .ret <- new.env(parent=emptyenv())
   .visited <- new.env(hash=TRUE, parent=emptyenv())
-  lapply(ls(envir=ui, all.names=TRUE), function(item){
+  lapply(ls(envir=ui, all.names=TRUE), function(item) {
+    if (item == ".simModelBase") {
+      return(NULL)
+    }
     if (is.environment(get(item, envir=ui))) {
       assign(item, .copyEnv(get(item, envir=ui), .visited), envir=.ret)
     } else {

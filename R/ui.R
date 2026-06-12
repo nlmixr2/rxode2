@@ -319,7 +319,9 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     .meta <- new.env(parent=emptyenv())
     if (!identical(envir, globalenv())) {
       for (.i in ls(envir, all.names=TRUE)) {
-        assign(.i, get(.i, envir), .meta)
+        if (.i != ".simModelBase") {
+          assign(.i, get(.i, envir), .meta)
+        }
       }
     }
     .mod$meta <- .meta

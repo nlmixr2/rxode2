@@ -10,7 +10,9 @@
   # Add the meta information from model2 into the meta information of new model
   .ls <- ls(model2$meta, all.names=TRUE)
   for (.i in seq_along(.ls)) {
-    assign(.ls[.i], model2$meta[[.ls[.i]]], envir=model1$meta)
+    if (.i != ".simModelBase") {
+      assign(.ls[.i], model2$meta[[.ls[.i]]], envir=model1$meta)
+    }
   }
   model1$iniDf <- ini
   model1$lstExpr <- c(model1$lstExpr, model2$lstExpr)
