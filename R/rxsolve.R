@@ -2103,9 +2103,16 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (isTRUE(useLinCmt)) {
     .linInfo <- .odeToLinDetect(object) # nolint
     if (!is.null(.linInfo)) {
-      .linExpr <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
-      object <- suppressMessages(.rebuildRxUiFromExpr(object, .linExpr)) # nolint
-      object <- rxUiDecompress(object) # nolint
+      .cacheKey <- .odeToLinCacheKey(object) # nolint
+      if (exists(.cacheKey, envir = .odeToLinCache, inherits = FALSE)) { # nolint
+        object <- .odeToLinCache[[.cacheKey]] # nolint
+      } else {
+        .linExpr   <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
+        .converted <- suppressMessages(.rebuildRxUiFromExpr(object, .linExpr)) # nolint
+        .converted <- rxUiDecompress(.converted) # nolint
+        assign(.cacheKey, .converted, envir = .odeToLinCache) # nolint
+        object <- .converted
+      }
     }
   }
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)

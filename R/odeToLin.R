@@ -257,6 +257,16 @@
   .ret
 }
 
+## Package-scope cache: maps model-text key -> compiled converted rxUi.
+## Prevents recompilation when rxSolve(..., useLinCmt=TRUE) is called repeatedly
+## with the same model.
+.odeToLinCache <- new.env(parent = emptyenv(), hash = TRUE)
+
+## Cheap cache key: normalized text of all model lines.
+.odeToLinCacheKey <- function(ui) {
+  paste0(vapply(ui$lstExpr, deparse1, character(1)), collapse = "\n")
+}
+
 ## Rebuild an rxUi from a modified lstExpr (following the linToOde pattern).
 .rebuildRxUiFromExpr <- function(ui, expr) {
   .ls  <- ls(ui$meta, all.names = TRUE)
