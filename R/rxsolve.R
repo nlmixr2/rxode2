@@ -2058,6 +2058,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                         useLinCmt = FALSE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
@@ -2098,6 +2099,14 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
+  }
+  if (isTRUE(useLinCmt)) {
+    .linInfo <- .odeToLinDetect(object) # nolint
+    if (!is.null(.linInfo)) {
+      .linExpr <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
+      object <- suppressMessages(.rebuildRxUiFromExpr(object, .linExpr)) # nolint
+      object <- rxUiDecompress(object) # nolint
+    }
   }
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
