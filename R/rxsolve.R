@@ -703,7 +703,15 @@
 #' - `auto` -- for one compartment models this will use the `AD`
 #'   method, for 2 and 3 compartment model this will use `forwardG`.
 #'
-#' - `AD` -- automatic differentiation (using stan math)
+#' - `AD` -- automatic differentiation (using stan math).  This now
+#'   uses forward-mode AD (`stan::math::fvar`), which differentiates the
+#'   same analytic solution as the reverse-mode path but on the C++
+#'   stack with no reverse autodiff tape, matching the reverse result to
+#'   round-off while avoiding the per-call tape setup/teardown.
+#'
+#' - `ADr` -- reverse-mode automatic differentiation (the prior `AD`
+#'   behavior, `stan::math::jacobian`).  Kept as an escape hatch for
+#'   validation; `AD` (forward) is preferred.
 #'
 #' - `forward` -- forward sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
@@ -1052,7 +1060,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtSensType=c("auto",
                                      "endpoint5", "endpoint5G",
                                      "forward3", "forward3G",
-                                     "AD", "central",
+                                     "AD", "ADr", "central",
                                      "forward", "forwardG",
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
@@ -1296,7 +1304,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (checkmate::testIntegerish(linCmtSensType)) {
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
-      .linCmtSensType <- c("AD"=3L,
+      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar) -- default AD
+                           "ADr"=31L,      # reverse-mode AD (escape hatch)
                            "forward"=1L,
                            "central"=2L,
                            "forward3"=4L,

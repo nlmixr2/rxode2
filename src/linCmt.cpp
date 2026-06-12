@@ -484,6 +484,20 @@ extern "C" int linCmtZeroJac(int i) {
  * @author Matthew Fidler
  *
 */
+// True for the automatic-differentiation jacobian methods (forward-mode
+// fvar = 3/30, reverse-mode = 31, and the auto/default path), which all want
+// the unscaled thetaSens + passthrough trueTheta. The finite-difference
+// methods (1,2,4,5,6,7,10,20,40,50) keep the scaled path.
+static inline bool linCmtSensIsAD(int sensType) {
+  switch (sensType) {
+  case 1: case 2: case 4: case 5: case 6: case 7:
+  case 10: case 20: case 40: case 50:
+    return false;
+  default:
+    return true;
+  }
+}
+
 extern "C" double linCmtB(rx_solve *rx, int id,
                           double _t, int linCmt,
                           int ncmt, int oral0,
@@ -571,7 +585,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
     thetaSens(getLinCmtDoubleAddr(lcb, linCmtBaddrThetaSens), lcb.numSens);
 
-  lc.sensTheta(theta, thetaSens, rx->sensType == 3, rx->linCmtScale);
+  // isAD (unscaled thetaSens + passthrough trueTheta) is used by every AD
+  // jacobian path: forward-mode (3/30/auto), reverse-mode (31). The finite
+  // difference methods keep the scaled path.
+  lc.sensTheta(theta, thetaSens, linCmtSensIsAD(rx->sensType), rx->linCmtScale);
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
   } else if (ind->linSS == linCmtSsBolus) {
@@ -679,9 +696,14 @@ extern "C" double linCmtB(rx_solve *rx, int id,
           lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
           break;
 
-        case 3:
-        default:
+        case 31: // reverse-mode AD (escape hatch / validation)
           stan::math::jacobian(lc, thetaSens, fx, Js);
+          break;
+
+        case 3:  // "AD": now forward-mode (fvar); matches reverse to round-off
+        case 30: // explicit forward-mode AD
+        default: // auto and anything unspecified -> forward-mode AD
+          lc.linCmtFwdJac(thetaSens, fx, Js);
           break;
         }
         lc.updateJfromJs(J, Js);
