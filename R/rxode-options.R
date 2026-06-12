@@ -230,6 +230,11 @@ rxCreateCache <- function() {
 ## Cache of memoised function names; computed once on first rxForget() call.
 .rxMemoisedFns <- NULL
 
+#' Clear memoise caches for rxode2
+#'
+#' @return nothing; called for side effects
+#' @keywords internal
+#' @export
 rxForget <- function() {
   if (is.null(.rxMemoisedFns)) {
     .ns <- getNamespace("rxode2")

@@ -938,6 +938,15 @@
 #'   that does not support dense output; `"ros4"` (code `13L`) is the only
 #'   stiff secondary that does support it.
 #'
+#' @param useLinCmt Logical; when `TRUE` (default) and the model contains
+#'   linear-compartment ODEs that can be solved analytically, automatically
+#'   convert them to a `linCmt()` call before solving.  The detection and
+#'   conversion use [odeToLin()]; the converted model is cached so the
+#'   compilation cost is paid only once.  Set to `FALSE` to keep the
+#'   original ODE solver.  This flag is also stored in the returned
+#'   [rxControl()] object so that downstream hooks (e.g. in nlmixr2) can
+#'   read and apply it.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -1091,6 +1100,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     autoSwitchStiffFirst=FALSE,
                     autoSwitchSwitchMax=5L,
                     stiff2=0L,
+                    useLinCmt=TRUE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1732,6 +1742,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       autoSwitchStifftol=as.double(autoSwitchStifftol),
       autoSwitchDtfac=as.double(autoSwitchDtfac),
       autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
+      useLinCmt=isTRUE(useLinCmt),
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2115,7 +2126,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       }
     }
   }
-  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
+  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., useLinCmt = useLinCmt, theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
   .pred <- FALSE
   .mv <- rxModelVars(object)
