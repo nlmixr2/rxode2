@@ -1,5 +1,5 @@
 ## Collect additive terms from an expression tree, tracking sign.
-## Returns list of {sign=±1, expr}.
+## Returns list of {sign=+-1, expr}.
 .collectAddTerms <- function(expr, sign = 1L) {
   if (!is.call(expr)) return(list(list(sign = sign, expr = expr)))
   .fn <- expr[[1]]
@@ -31,39 +31,39 @@
   unique(unlist(lapply(as.list(expr)[-1], .statesInExpr, states = states)))
 }
 
-## Extract the coefficient from `coef * state_nm` or `state_nm * coef`,
+## Extract the coefficient from `coef * stateNm` or `stateNm * coef`,
 ## where coef does not reference any state variable.
 ## Returns the coefficient expression, or NULL if the term is not that form.
-.extractMultCoef <- function(expr, state_nm, states) {
+.extractMultCoef <- function(expr, stateNm, states) {
   if (is.name(expr)) {
-    if (as.character(expr) == state_nm) return(quote(1))
+    if (as.character(expr) == stateNm) return(quote(1))
     return(NULL)
   }
   if (!is.call(expr)) return(NULL)
   .fn <- expr[[1]]
   if (identical(.fn, quote(`(`)) && length(expr) == 2L) {
-    return(.extractMultCoef(expr[[2]], state_nm, states))
+    return(.extractMultCoef(expr[[2]], stateNm, states))
   }
   if (!identical(.fn, quote(`*`))) return(NULL)
   .lhs <- expr[[2]]; .rhs <- expr[[3]]
   .lu <- length(.statesInExpr(.lhs, states)) > 0L
   .ru <- length(.statesInExpr(.rhs, states)) > 0L
-  if (.lu && !.ru && is.name(.lhs) && as.character(.lhs) == state_nm) return(.rhs)
-  if (!.lu && .ru && is.name(.rhs) && as.character(.rhs) == state_nm) return(.lhs)
+  if (.lu && !.ru && is.name(.lhs) && as.character(.lhs) == stateNm) return(.rhs)
+  if (!.lu && .ru && is.name(.rhs) && as.character(.rhs) == stateNm) return(.lhs)
   NULL
 }
 
 ## Parse one additive term: returns {sign, coef, state} where state=NA means
 ## a non-state (input/forcing) term. Returns NULL if the term is nonlinear
 ## (references multiple states or uses a state nonlinearly).
-.parseOneLinTerm <- function(sign, term_expr, states) {
-  .refs <- .statesInExpr(term_expr, states)
+.parseOneLinTerm <- function(sign, termExpr, states) {
+  .refs <- .statesInExpr(termExpr, states)
   if (length(.refs) == 0L) {
-    return(list(sign = sign, coef = term_expr, state = NA_character_))
+    return(list(sign = sign, coef = termExpr, state = NA_character_))
   }
   if (length(.refs) > 1L) return(NULL)
   .state <- .refs[1L]
-  .coef  <- .extractMultCoef(term_expr, .state, states)
+  .coef  <- .extractMultCoef(termExpr, .state, states)
   if (is.null(.coef)) return(NULL)
   list(sign = sign, coef = .coef, state = .state)
 }
@@ -80,57 +80,57 @@
 ## Detect the topology of a linear ODE system and classify each compartment.
 ##
 ## odes: list of {cmt=name, terms=parsed_terms} for each ODE
-## output_cmt: the state variable identified as the central compartment
+## outputCmt: the state variable identified as the central compartment
 ##   (from the output line var <- cmt / v).
 ##
 ## Returns list(ncmt, oral0, central, depot, peripheral1, peripheral2) or NULL.
-.odeToLinDetectTopology <- function(odes, output_cmt, cmt_names) {
+.odeToLinDetectTopology <- function(odes, outputCmt, cmtNames) {
   .n <- length(odes)
   if (.n == 0L || .n > 4L) return(NULL)
 
-  ## Build inflow map: flows_in[[cmt]] = list of {from, coef} for positive
+  ## Build inflow map: flowsIn[[cmt]] = list of {from, coef} for positive
   ## cross-compartment terms in cmt's ODE.
-  .flows_in  <- setNames(vector("list", .n), cmt_names)
-  .flows_out <- setNames(vector("list", .n), cmt_names)
+  .flowsIn  <- setNames(vector("list", .n), cmtNames)
+  .flowsOut <- setNames(vector("list", .n), cmtNames)
 
   for (.ode in odes) {
     .cmt <- .ode$cmt
     for (.t in .ode$terms) {
       if (is.na(.t$state) || .t$state == .cmt) next
       if (.t$sign > 0L) {
-        .flows_in[[.cmt]] <- c(.flows_in[[.cmt]],
-                               list(list(from = .t$state, coef = .t$coef)))
+        .flowsIn[[.cmt]] <- c(.flowsIn[[.cmt]],
+                              list(list(from = .t$state, coef = .t$coef)))
       }
     }
   }
   ## Derive outflow map from inflow map.
-  for (.cmt in cmt_names) {
-    for (.f in .flows_in[[.cmt]]) {
-      .flows_out[[.f$from]] <- c(.flows_out[[.f$from]], list(list(to = .cmt)))
+  for (.cmt in cmtNames) {
+    for (.f in .flowsIn[[.cmt]]) {
+      .flowsOut[[.f$from]] <- c(.flowsOut[[.f$from]], list(list(to = .cmt)))
     }
   }
 
-  .central <- output_cmt
-  if (!.central %in% cmt_names) return(NULL)
+  .central <- outputCmt
+  if (!.central %in% cmtNames) return(NULL)
 
   .depot       <- NULL
   .peripherals <- character(0)
 
-  for (.cmt in cmt_names[cmt_names != .central]) {
-    .n_in  <- length(.flows_in[[.cmt]])
-    .out   <- .flows_out[[.cmt]]
-    .n_out <- length(.out)
+  for (.cmt in cmtNames[cmtNames != .central]) {
+    .nIn  <- length(.flowsIn[[.cmt]])
+    .out  <- .flowsOut[[.cmt]]
+    .nOut <- length(.out)
 
-    .all_out_to_central  <- .n_out > 0L &&
+    .allOutToCentral  <- .nOut > 0L &&
       all(vapply(.out, function(.f) .f$to == .central, logical(1)))
-    .all_in_from_central <- .n_in > 0L &&
-      all(vapply(.flows_in[[.cmt]], function(.f) .f$from == .central, logical(1)))
+    .allInFromCentral <- .nIn > 0L &&
+      all(vapply(.flowsIn[[.cmt]], function(.f) .f$from == .central, logical(1)))
 
-    if (.n_in == 0L && .n_out == 1L && .all_out_to_central) {
+    if (.nIn == 0L && .nOut == 1L && .allOutToCentral) {
       ## Depot: no inflows, exactly one outflow to central
       if (!is.null(.depot)) return(NULL)
       .depot <- .cmt
-    } else if (.n_in > 0L && .all_in_from_central && .all_out_to_central) {
+    } else if (.nIn > 0L && .allInFromCentral && .allOutToCentral) {
       ## Peripheral: inflow from central, outflow to central
       .peripherals <- c(.peripherals, .cmt)
     } else {
@@ -151,8 +151,8 @@
   )
 }
 
-## Find a line of the form  var <- cmt / v_expr  where cmt is a state variable.
-## Returns {var, cmt, v_expr, line_idx} or NULL.
+## Find a line of the form  var <- cmt / vExpr  where cmt is a state variable.
+## Returns {var, cmt, vExpr, lineIdx} or NULL.
 .odeToLinFindOutput <- function(lstExpr, states) {
   for (.i in seq_along(lstExpr)) {
     .e <- lstExpr[[.i]]
@@ -164,13 +164,13 @@
     if (!identical(.rhs[[1]], quote(`/`))) next
     .num <- .rhs[[2]]
     if (!is.name(.num)) next
-    .cmt_nm <- as.character(.num)
-    if (!.cmt_nm %in% states) next
+    .cmtNm <- as.character(.num)
+    if (!.cmtNm %in% states) next
     return(list(
-      var      = as.character(.e[[2]]),
-      cmt      = .cmt_nm,
-      v_expr   = .rhs[[3]],
-      line_idx = .i
+      var     = as.character(.e[[2]]),
+      cmt     = .cmtNm,
+      vExpr   = .rhs[[3]],
+      lineIdx = .i
     ))
   }
   NULL
@@ -194,54 +194,54 @@
 ## Returns a list with topology + output info, or NULL if not convertible.
 .odeToLinDetect <- function(ui) {
   .lstExpr <- ui$lstExpr
-  .states   <- rxModelVars(ui)$state # nolint
+  .states  <- rxModelVars(ui)$state # nolint
 
   if (length(.states) == 0L) return(NULL)
 
   ## Gather ODE lines and their compartment names.
-  .ode_idx   <- integer(0)
-  .cmt_names <- character(0)
+  .odeIdx  <- integer(0)
+  .cmtNames <- character(0)
   for (.i in seq_along(.lstExpr)) {
     .e <- .lstExpr[[.i]]
     if (!is.call(.e)) next
     if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
     if (length(.e) < 3L || !is.call(.e[[2]])) next
     if (!.isDtExpr(.e[[2]])) next
-    .ode_idx   <- c(.ode_idx, .i)
-    .cmt_names <- c(.cmt_names, .getDtCmt(.e[[2]]))
+    .odeIdx   <- c(.odeIdx, .i)
+    .cmtNames <- c(.cmtNames, .getDtCmt(.e[[2]]))
   }
 
-  if (length(.ode_idx) == 0L || length(.ode_idx) > 4L) return(NULL)
-  if (!all(.cmt_names %in% .states)) return(NULL)
+  if (length(.odeIdx) == 0L || length(.odeIdx) > 4L) return(NULL)
+  if (!all(.cmtNames %in% .states)) return(NULL)
 
   ## Parse each ODE RHS; bail if any is nonlinear in state variables.
-  .odes <- lapply(seq_along(.ode_idx), function(.j) {
-    .e <- .lstExpr[[.ode_idx[.j]]]
+  .odes <- lapply(seq_along(.odeIdx), function(.j) {
+    .e <- .lstExpr[[.odeIdx[.j]]]
     .terms <- .parseLinearRhs(.e[[3]], .states)
     if (is.null(.terms)) return(NULL)
-    list(cmt = .cmt_names[.j], terms = .terms)
+    list(cmt = .cmtNames[.j], terms = .terms)
   })
   if (any(vapply(.odes, is.null, logical(1)))) return(NULL)
 
-  ## Find output line: var <- central_cmt / v_expr
+  ## Find output line: var <- centralCmt / vExpr
   .out <- .odeToLinFindOutput(.lstExpr, .states)
   if (is.null(.out)) return(NULL)
 
   ## Classify topology.
-  .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmt_names)
+  .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmtNames)
   if (is.null(.topo)) return(NULL)
 
   c(.topo, list(
-    output_var = .out$var,
-    output_cmt = .out$cmt,
-    v_expr     = .out$v_expr,
-    output_idx = .out$line_idx,
-    ode_idx    = .ode_idx
+    outputVar = .out$var,
+    outputCmt = .out$cmt,
+    vExpr     = .out$vExpr,
+    outputIdx = .out$lineIdx,
+    odeIdx    = .odeIdx
   ))
 }
 
 ## Build a new lstExpr with ODE lines removed and the output line replaced by
-## `output_var <- linCmt()`.
+## `outputVar <- linCmt()`.
 ## Map ODE compartment names to the standard linCmt names ("depot", "central").
 ## linCmt() models always use these two names regardless of what the ODE called them.
 .odeToLinCmtMap <- function(info) {
@@ -273,13 +273,13 @@
 }
 
 .odeToLinBuildExpr <- function(lstExpr, info) {
-  .linCmtLine <- call("<-", as.name(info$output_var), str2lang("linCmt()"))
+  .linCmtLine <- call("<-", as.name(info$outputVar), str2lang("linCmt()"))
   .cmtMap <- .odeToLinCmtMap(info)
   .ret <- list()
   for (.i in seq_along(lstExpr)) {
-    if (.i %in% info$ode_idx) {
+    if (.i %in% info$odeIdx) {
       next  # remove ODE lines
-    } else if (.i == info$output_idx) {
+    } else if (.i == info$outputIdx) {
       .ret[[length(.ret) + 1L]] <- .linCmtLine  # replace output with linCmt()
     } else {
       .e <- .odeToLinRenameCmt(lstExpr[[.i]], .cmtMap)
@@ -301,15 +301,15 @@
 
 ## Rebuild an rxUi from a modified lstExpr (following the linToOde pattern).
 .rebuildRxUiFromExpr <- function(ui, expr) {
-  .ls  <- ls(ui$meta, all.names = TRUE)
-  .has_ini <- length(ui$iniDf$cond) > 0L
-  .ret <- vector("list", length(.ls) + if (.has_ini) 3L else 2L)
+  .ls     <- ls(ui$meta, all.names = TRUE)
+  .hasIni <- length(ui$iniDf$cond) > 0L
+  .ret <- vector("list", length(.ls) + if (.hasIni) 3L else 2L)
   .ret[[1L]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
     .ret[[.i + 1L]] <- rxUiDeparse(ui$meta[[.ls[.i]]], .ls[.i]) # nolint
   }
   .len <- length(.ls)
-  if (.has_ini) {
+  if (.hasIni) {
     .ret[[.len + 2L]] <- ui$iniFun
     .ret[[.len + 3L]] <- bquote(model(.(as.call(c(quote(`{`), expr)))))
   } else {
@@ -375,7 +375,11 @@
 #'
 #' twoCmtOde <- function() {
 #'   ini({
-#'     tcl <- 1; tv <- 3; tq <- 0.5; tvp <- 6; add.sd <- 0.7
+#'     tcl <- 1
+#'     tv <- 3
+#'     tq <- 0.5
+#'     tvp <- 6
+#'     add.sd <- 0.7
 #'   })
 #'   model({
 #'     cl <- exp(tcl)

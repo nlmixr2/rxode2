@@ -63,7 +63,11 @@ linCmtModel <- odeToLin(oneCmtOde)
 
 twoCmtOde <- function() {
   ini({
-    tcl <- 1; tv <- 3; tq <- 0.5; tvp <- 6; add.sd <- 0.7
+    tcl <- 1
+    tv <- 3
+    tq <- 0.5
+    tvp <- 6
+    add.sd <- 0.7
   })
   model({
     cl <- exp(tcl)
