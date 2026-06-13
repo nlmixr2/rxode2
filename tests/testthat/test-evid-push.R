@@ -982,6 +982,37 @@ rxTest({
     expect_true(all(r$cp[r$time > 0] > 0))
   })
 
+  test_that("bolus() works in a mixed linCmt + ODE model (both compartments)", {
+    # Mixed model: analytical linCmt PK feeding an ODE effect compartment.
+    # bolus() to the linCmt depot AND (string cmt) to the ODE effect cmt.
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10; ke0 <- 0.3 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        d/dt(effect) <- ke0 * (cp - effect)
+        if (t > 11 && t < 13) {
+          bolus(20, cmt = "effect")
+        }
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = depot)
+        }
+      })
+    }))
+    # String cmt should generate a bare compartment name
+    .txt <- paste(vapply(m$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("bolus(20, effect", .txt, fixed = TRUE))
+    expect_false(grepl("\"effect\"", .txt, fixed = TRUE))
+
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_false(any(is.na(r$effect)))
+    expect_true(all(r$cp[r$time > 0] > 0))
+    # effect compartment jumps after the bolus at t=12
+    expect_true(r$effect[r$time == 13] > r$effect[r$time == 11])
+  })
+
   test_that("bolus() in linCmt fires exactly once per qualifying observation", {
     # Bolus fires when t == 24 (t %% 24 == 0 && t > 0).
     # The extra dose should appear exactly once in the solved output.

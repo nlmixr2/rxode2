@@ -2119,8 +2119,13 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
         object <- .odeToLinCache[[.cacheKey]] # nolint
       } else {
         .linExpr   <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
-        .converted <- suppressMessages(.rebuildRxUiFromExpr(object, .linExpr)) # nolint
-        .converted <- rxUiDecompress(.converted) # nolint
+        # fall back to the original ODE model
+        .converted <- tryCatch(
+          rxUiDecompress(suppressMessages(.rebuildRxUiFromExpr(object, .linExpr))), # nolint
+          error = function(e) NULL)
+        if (is.null(.converted)) {
+          .converted <- object
+        }
         assign(.cacheKey, .converted, envir = .odeToLinCache) # nolint
         object <- .converted
       }
