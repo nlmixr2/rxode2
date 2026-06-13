@@ -1,13 +1,14 @@
 # rxode2 5.1.3
 
+- Add automatic conversion of ode models to linear models when
+  detected.
+
+- Added a forward automatic derivative linear compartment model, which
+  beats the reverse mode automatic derivatives for linear compartment
+  models
+
 - Added `setRxThreadId()` so a package that drives rxode2's per-subject
-  solve from its OWN OpenMP team (e.g. nlmixr2est's FOCEi inner loop)
-  can supply the real thread id.  On Windows each package statically
-  links its own libgomp, so rxode2's `omp_get_thread_num()` returns 0
-  for every foreign worker thread, which collapsed all of rxode2's
-  per-thread solve buffers onto one slot and corrupted the heap at more
-  than one core.  When the id is set (>= 0) rxode2 uses it for per-thread
-  buffer indexing instead of `omp_get_thread_num()`.
+  solve from its OWN OpenMP team for windows interaction with `nlmixr2`.
 
 - Added Jacobian handling of adaptive dosing events (retaining them
   when calculating Jacobian).  Should be able to be applied in forward
