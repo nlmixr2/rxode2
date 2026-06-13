@@ -557,6 +557,7 @@ static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt)
   int hasLhs = isCmtLhsStatement(ni, name, vCmt);
   if (new_de(vCmt, fromCMTprop)) {
     add_de(ni, name, vCmt, hasLhs, fromCMTprop);
+    tb.dprop[tb.id] |= propDoseRef;  // dose target — not an ODE state, must not conflict with linCmt
     aProp(tb.de.n);
   } else {
     new_or_ith(vCmt);
