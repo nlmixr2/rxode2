@@ -242,8 +242,39 @@
 
 ## Build a new lstExpr with ODE lines removed and the output line replaced by
 ## `output_var <- linCmt()`.
+## Map ODE compartment names to the standard linCmt names ("depot", "central").
+## linCmt() models always use these two names regardless of what the ODE called them.
+.odeToLinCmtMap <- function(info) {
+  .map <- character(0)
+  if (isTRUE(info$oral0 == 1L) && !is.null(info$depot)) {
+    .map[info$depot] <- "depot"
+  }
+  if (!is.null(info$central)) {
+    .map[info$central] <- "central"
+  }
+  .map
+}
+
+## Apply compartment renaming to a single f/rate/dur/alag assignment line.
+## Returns the line unchanged if it is not a modifier or its compartment is
+## not in the mapping.
+.odeToLinRenameCmt <- function(e, cmtMap) {
+  if (!is.call(e)) return(e)
+  if (!identical(e[[1]], quote(`<-`)) && !identical(e[[1]], quote(`=`))) return(e)
+  if (length(e) < 3L || !is.call(e[[2]])) return(e)
+  .fn <- as.character(e[[2]][[1]])
+  if (!(.fn %in% c("f", "rate", "dur", "alag"))) return(e)
+  if (length(e[[2]]) < 2L) return(e)
+  .cmt <- as.character(e[[2]][[2]])
+  .newCmt <- cmtMap[.cmt]
+  if (is.na(.newCmt)) return(e)
+  e[[2]][[2]] <- as.name(.newCmt)
+  e
+}
+
 .odeToLinBuildExpr <- function(lstExpr, info) {
   .linCmtLine <- call("<-", as.name(info$output_var), str2lang("linCmt()"))
+  .cmtMap <- .odeToLinCmtMap(info)
   .ret <- list()
   for (.i in seq_along(lstExpr)) {
     if (.i %in% info$ode_idx) {
@@ -251,7 +282,8 @@
     } else if (.i == info$output_idx) {
       .ret[[length(.ret) + 1L]] <- .linCmtLine  # replace output with linCmt()
     } else {
-      .ret[[length(.ret) + 1L]] <- lstExpr[[.i]]
+      .e <- .odeToLinRenameCmt(lstExpr[[.i]], .cmtMap)
+      .ret[[length(.ret) + 1L]] <- .e
     }
   }
   .ret
