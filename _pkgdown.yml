@@ -70,6 +70,7 @@ reference:
   - model
   - model<-
   - modelExtract
+  - odeToLin
   - rxAppendModel
   - rxFixPop
   - rxFixRes
