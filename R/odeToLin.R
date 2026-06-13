@@ -272,6 +272,60 @@
   e
 }
 
+## Rename the compartment argument in an adaptive dosing call.
+## Argument positions (AST index, where e[[1]] is the function name):
+##   bolus(amt, cmt, ...)       -> e[[3]]
+##   replace(amt, cmt)          -> e[[3]]
+##   multiply(amt, cmt)         -> e[[3]]
+##   phantom(amt, cmt, ...)     -> e[[3]]
+##   infuse(amt, rate, cmt, ...) -> e[[4]]
+##   infuseDur(amt, dur, cmt, ...) -> e[[4]]
+##   evid_(time, evid, amt, cmt, ...) -> e[[5]]
+## obs() and reset() have no compartment argument and are left unchanged.
+.odeToLinRenameAdaptiveCall <- function(e, cmtMap) {
+  if (!is.call(e)) return(e)
+  .fn <- as.character(e[[1]])
+  .cmtIdx <- switch(.fn,
+    bolus = 3L, replace = 3L, multiply = 3L, phantom = 3L,
+    infuse = 4L, infuseDur = 4L,
+    `evid_` = 5L,
+    NULL
+  )
+  if (is.null(.cmtIdx)) return(e)
+  if (length(e) < .cmtIdx) return(e)
+  .cmtArg <- e[[.cmtIdx]]
+  if (!is.name(.cmtArg)) return(e)
+  .cmtNm <- as.character(.cmtArg)
+  .newNm <- cmtMap[.cmtNm]
+  if (is.na(.newNm)) return(e)
+  e[[.cmtIdx]] <- as.name(.newNm)
+  e
+}
+
+## Recursively rename compartments throughout an expression tree.
+## Handles f/rate/dur/alag assignments and adaptive dosing calls.
+## Recurses into if/block/other constructs to find nested calls.
+.odeToLinRenameExpr <- function(e, cmtMap) {
+  if (!is.call(e)) return(e)
+  .fn <- as.character(e[[1]])
+  if (.fn %in% c("<-", "=") && length(e) >= 3L && is.call(e[[2]])) {
+    .innerFn <- as.character(e[[2]][[1]])
+    if (.innerFn %in% c("f", "rate", "dur", "alag")) {
+      return(.odeToLinRenameCmt(e, cmtMap))
+    }
+  }
+  if (.fn %in% c("bolus", "infuse", "infuseDur", "replace", "multiply", "phantom", "evid_")) {
+    return(.odeToLinRenameAdaptiveCall(e, cmtMap))
+  }
+  for (.i in seq_along(e)) {
+    .child <- e[[.i]]
+    if (is.call(.child)) {
+      e[[.i]] <- .odeToLinRenameExpr(.child, cmtMap)
+    }
+  }
+  e
+}
+
 .odeToLinBuildExpr <- function(lstExpr, info) {
   .linCmtLine <- call("<-", as.name(info$outputVar), str2lang("linCmt()"))
   .cmtMap <- .odeToLinCmtMap(info)
@@ -282,7 +336,7 @@
     } else if (.i == info$outputIdx) {
       .ret[[length(.ret) + 1L]] <- .linCmtLine  # replace output with linCmt()
     } else {
-      .e <- .odeToLinRenameCmt(lstExpr[[.i]], .cmtMap)
+      .e <- .odeToLinRenameExpr(lstExpr[[.i]], .cmtMap)
       .ret[[length(.ret) + 1L]] <- .e
     }
   }

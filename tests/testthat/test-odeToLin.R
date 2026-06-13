@@ -339,4 +339,92 @@ rxTest({
                  label = "useLinCmt=FALSE must use original ODE DLL, not linCmt DLL")
   })
 
+  ## -----------------------------------------------------------------------
+  ## odeToLin + adaptive dosing
+  ## -----------------------------------------------------------------------
+
+  test_that("odeToLin preserves bolus() in model and converted model runs", {
+    # An ODE model with in-model bolus push. odeToLin must convert the ODE to
+    # linCmt AND keep the bolus() call intact. PK parameters must be model-body
+    # assignments so linCmt() can infer the parameterization.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- log(0.5); tcl <- log(1); tv <- log(10) })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - cl/v * central
+        cp <- central / v
+      })
+    }))
+    .mLin <- suppressMessages(odeToLin(.m))
+    # Converted model should use linCmt
+    .mLinTxt <- paste(vapply(.mLin$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("linCmt", .mLinTxt))
+
+    # Solve both without adaptive dosing to confirm trajectories agree
+    .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
+    .rLin <- suppressMessages(rxSolve(.mLin, .ev))
+    expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5,
+                 label = "odeToLin result matches ODE solution")
+  })
+
+  test_that("odeToLin preserves standard depot/central compartment in bolus()", {
+    # Model uses standard names (depot, central) — odeToLin should
+    # compile and solve cleanly; adaptive dosing calls are preserved as-is.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- log(0.5); tcl <- log(1); tv <- log(10); add.sd <- 0.1 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - cl/v * central
+        cp <- central / v
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = depot)
+        }
+        cp ~ add(add.sd)
+      })
+    }))
+    .mLin <- suppressMessages(odeToLin(.m))
+    .mLinTxt <- paste(vapply(.mLin$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("linCmt", .mLinTxt))
+
+    .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .rLin <- suppressMessages(rxSolve(.mLin, .ev))
+    expect_true(nrow(.rLin) > 0)
+    expect_false(any(is.na(.rLin$cp)))
+    expect_true(all(.rLin$cp >= 0))
+    expect_true(all(.rLin$cp[.rLin$time > 0] > 0))
+  })
+
+  test_that("odeToLin renames non-standard ODE compartment names in bolus()", {
+    # Model uses non-standard compartment names (abs, center).
+    # odeToLin must rename them to depot/central in both linCmt() and bolus().
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- log(0.5); tcl <- log(1); tv <- log(10) })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(abs)    <- -ka * abs
+        d/dt(center) <- ka * abs - cl/v * center
+        cp <- center / v
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = abs)
+        }
+      })
+    }))
+    .mLin <- suppressMessages(odeToLin(.m))
+    # Confirm the converted model no longer references the old compartment names
+    .mLinTxt <- paste(vapply(.mLin$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("linCmt", .mLinTxt))
+    expect_false(grepl("\\babs\\b",    .mLinTxt),
+                 label = "non-standard cmt name 'abs' should be renamed in converted model")
+
+    .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .rLin <- suppressMessages(rxSolve(.mLin, .ev))
+    expect_true(nrow(.rLin) > 0)
+    expect_false(any(is.na(.rLin$cp)))
+    expect_true(all(.rLin$cp >= 0))
+    expect_true(all(.rLin$cp[.rLin$time > 0] > 0))
+  })
+
 })
