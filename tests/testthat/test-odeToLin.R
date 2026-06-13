@@ -340,6 +340,76 @@ rxTest({
   })
 
   ## -----------------------------------------------------------------------
+  ## Explicit linCmt() parameters (works when params are only in ini())
+  ## -----------------------------------------------------------------------
+
+  test_that("odeToLin emits explicit linCmt() parameter names (1-cmt oral)", {
+    # Parameters live only in ini() (no model-body assignment).  The
+    # converted model must pass the parameter names explicitly to linCmt()
+    # so the parameterization can still be inferred.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10 })
+      model({
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - cl/v * central
+        cp <- central / v
+      })
+    }))
+    .info <- rxode2:::.odeToLinDetect(.m)
+    expect_setequal(.info$params, c("ka", "cl", "v"))
+
+    .conv <- suppressMessages(odeToLin(.m))
+    .linLine <- Find(function(x) grepl("linCmt", deparse1(x)), .conv$lstExpr)
+    # Bare linCmt() (no args) would fail param inference for ini-only params
+    expect_false(identical(deparse1(.linLine[[3L]]), "linCmt()"))
+    expect_true(grepl("linCmt(", deparse1(.linLine), fixed = TRUE))
+
+    .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
+    .rLin <- suppressMessages(rxSolve(.conv, .ev))
+    expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5)
+  })
+
+  test_that("odeToLin emits explicit linCmt() parameter names (2-cmt IV)", {
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tcl <- log(1); tv <- log(10); tq <- log(0.5); tvp <- log(20) })
+      model({
+        cl <- exp(tcl); v <- exp(tv); q <- exp(tq); vp <- exp(tvp)
+        d/dt(central)    <- -(cl+q)/v * central + q/vp * peripheral
+        d/dt(peripheral) <-  q/v * central - q/vp * peripheral
+        cp <- central / v
+      })
+    }))
+    .info <- rxode2:::.odeToLinDetect(.m)
+    expect_setequal(.info$params, c("cl", "v", "q", "vp"))
+
+    .conv <- suppressMessages(odeToLin(.m))
+    .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
+    .rLin <- suppressMessages(rxSolve(.conv, .ev))
+    expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5)
+  })
+
+  test_that("rxSolve(useLinCmt=TRUE) transparently solves ini-only-param ODE models", {
+    # Regression: the transparent useLinCmt auto-conversion must not break an
+    # otherwise-valid ODE model whose parameters are defined only in ini().
+    .m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10 })
+      model({
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - cl/v * central
+        cp <- central / v
+      })
+    }))
+    .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .rAuto <- suppressMessages(rxSolve(.m, .ev))                   # useLinCmt=TRUE default
+    .rOde  <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    expect_true(nrow(.rAuto) > 0)
+    expect_false(any(is.na(.rAuto$cp)))
+    expect_equal(.rAuto$cp, .rOde$cp, tolerance = 1e-5)
+  })
+
+  ## -----------------------------------------------------------------------
   ## odeToLin + adaptive dosing
   ## -----------------------------------------------------------------------
 

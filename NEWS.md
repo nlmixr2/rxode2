@@ -1,7 +1,24 @@
 # rxode2 5.1.3
 
 - Add automatic conversion of ode models to linear models when
-  detected.
+  detected.  This conversion is applied transparently at solve time
+  (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
+  parameters are passed explicitly to `linCmt()` so the
+  parameterization is inferred even when the parameters are defined
+  only in the `ini()` block.  If a converted model cannot be compiled
+  the original ODE model is used instead, so the conversion never
+  breaks an otherwise-valid solve.
+
+- Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
+  now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
+  referencing the linear compartment names (`depot`, `central`)
+  directly.  `odeToLin()` preserves these calls when converting, and
+  renames non-standard ODE compartment names to the linear-compartment
+  names.
+
+- Fixed the string form of the compartment argument in the adaptive
+  dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
+  correct compartment reference.
 
 - Added a forward automatic derivative linear compartment model, which
   beats the reverse mode automatic derivatives for linear compartment
