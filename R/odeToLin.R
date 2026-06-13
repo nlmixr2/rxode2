@@ -31,6 +31,16 @@
   unique(unlist(lapply(as.list(expr)[-1], .statesInExpr, states = states)))
 }
 
+## Return all free symbol names referenced in an expression, excluding the
+## heads of calls (i.e. function names).  Used to gather the PK parameter
+## names appearing in ODE rate coefficients so they can be passed explicitly
+## to linCmt().
+.freeSymbolsInExpr <- function(expr) {
+  if (is.name(expr)) return(as.character(expr))
+  if (!is.call(expr)) return(character(0))
+  unique(unlist(lapply(as.list(expr)[-1L], .freeSymbolsInExpr)))
+}
+
 ## Extract the coefficient from `coef * stateNm` or `stateNm * coef`,
 ## where coef does not reference any state variable.
 ## Returns the coefficient expression, or NULL if the term is not that form.
@@ -231,12 +241,29 @@
   .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmtNames)
   if (is.null(.topo)) return(NULL)
 
+  ## Collect the PK parameter names referenced in the rate coefficients and
+  ## the volume expression so they can be passed explicitly to linCmt().
+  ## Passing them explicitly lets linCmt() infer the parameterization even
+  ## when the parameters are defined only in ini() (no model-body assignment).
+  .params <- character(0)
+  for (.ode in .odes) {
+    for (.t in .ode$terms) {
+      if (!is.na(.t$state)) {
+        .params <- c(.params, .freeSymbolsInExpr(.t$coef))
+      }
+    }
+  }
+  .params <- c(.params, .freeSymbolsInExpr(.out$vExpr))
+  .params <- setdiff(unique(.params),
+                     c(.states, .out$var, "t", "time", "pi"))
+
   c(.topo, list(
     outputVar = .out$var,
     outputCmt = .out$cmt,
     vExpr     = .out$vExpr,
     outputIdx = .out$lineIdx,
-    odeIdx    = .odeIdx
+    odeIdx    = .odeIdx,
+    params    = .params
   ))
 }
 
@@ -327,7 +354,16 @@
 }
 
 .odeToLinBuildExpr <- function(lstExpr, info) {
-  .linCmtLine <- call("<-", as.name(info$outputVar), str2lang("linCmt()"))
+  ## Build `linCmt(<params>)` with the detected PK parameter names so the
+  ## parameterization is inferred even when parameters live only in ini().
+  ## linCmt() resolves its parameters by name, so the argument order does not
+  ## matter.  Fall back to a bare linCmt() if no parameters were detected.
+  .linCmtCall <- if (length(info$params) > 0L) {
+    as.call(c(list(as.name("linCmt")), lapply(info$params, as.name)))
+  } else {
+    str2lang("linCmt()")
+  }
+  .linCmtLine <- call("<-", as.name(info$outputVar), .linCmtCall)
   .cmtMap <- .odeToLinCmtMap(info)
   .ret <- list()
   for (.i in seq_along(lstExpr)) {
