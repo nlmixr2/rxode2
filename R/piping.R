@@ -103,7 +103,7 @@
       .drop <- c(.drop, .dn)
     } else  {
       .drop <- c(.drop, .dn[-.w])
-      .curLotri <- .curLotri[.w, .w]
+      .curLotri <- .curLotri[.w, .w, drop = FALSE]
       class(.curLotri) <- c("lotriFix", "matrix", "array")
       .ini2 <- as.data.frame(.curLotri)
     }
