@@ -13,9 +13,6 @@ if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
 }
 #test_check("rxode2", reporter = testthat::LocationReporter,
 #          stop_on_failure = FALSE)
-## if (.Platform$OS.type == "windows") {
-  test_check("rxode2", reporter = testthat::LocationReporter,
-             stop_on_failure = TRUE)
-## } else {
-##   test_check("rxode2")
-## }
+## test_check("rxode2", reporter = testthat::LocationReporter,
+##            stop_on_failure = TRUE)
+  test_check("rxode2")
