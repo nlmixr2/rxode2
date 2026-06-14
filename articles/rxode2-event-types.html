@@ -147,7 +147,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Datasets and Event Types</h1>
             
-            <h4 data-toc-skip class="date">2026-06-11</h4>
+            <h4 data-toc-skip class="date">2026-06-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-event-types.Rmd" class="external-link"><code>vignettes/rxode2-event-types.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-types.Rmd</code></div>
@@ -709,14 +709,12 @@ data frames are also accepted.</li>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level4">
 <h4 id="using-rate">Using <code>rate</code><a class="anchor" aria-label="anchor" href="#using-rate"></a>
 </h4>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -741,29 +739,23 @@ data frames are also accepted.</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="700"></p>
 <p>The two specifications produce the same nominal infusion. The
 difference appears when bioavailability changes.</p>
 <p>When <code>rate</code> is fixed in the event table, a bioavailability
 decrease shortens the infusion <em>duration</em> (as in NONMEM):</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">0.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="700"></p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">1.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-12-2.png" class="r-plt" alt="" width="700"></p>
 <p>When <code>dur</code> is fixed instead, a bioavailability change
 alters the infusion <em>rate</em>:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, dur<span class="op">=</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -772,16 +764,11 @@ alters the infusion <em>rate</em>:</p>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">1.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">0.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">p1</span> <span class="op">*</span> <span class="va">p2</span></span></code></pre></div>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5000</span><span class="op">)</span></span>
+<span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fdepot<span class="op">=</span><span class="fl">0.25</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5000</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p1</span> <span class="op">*</span> <span class="va">p2</span></span></code></pre></div>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 </div>
@@ -790,7 +777,7 @@ alters the infusion <em>rate</em>:</p>
 </h3>
 <p>Model the infusion duration (<code>rate=-2</code>, equivalent to
 NONMEM <code>RATE=-2</code>):</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="op">-</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -815,14 +802,12 @@ NONMEM <code>RATE=-2</code>):</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>durDepot<span class="op">=</span><span class="fl">7</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="700"></p>
 <p>Model the infusion rate (<code>rate=-1</code>, equivalent to NONMEM
 <code>RATE=-1</code>):</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, until<span class="op">=</span><span class="fl">24</span>, rate<span class="op">=</span><span class="op">-</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -847,10 +832,8 @@ NONMEM <code>RATE=-2</code>):</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rateDepot<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">xlab</a></span><span class="op">(</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 </div>
@@ -859,7 +842,7 @@ NONMEM <code>RATE=-2</code>):</p>
 </h2>
 <p>Steady-state doses are solved until a constant inter-dose interval
 produces a repeating cycle.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, ss<span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -883,10 +866,8 @@ produces a repeating cycle.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.70     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span>    <span style="color: #BB0000;">NA</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.94     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span>    <span style="color: #BB0000;">NA</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 91 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="700"></p>
 <div class="section level3">
 <h3 id="steady-state-for-complex-dosing-ss2">Steady state for complex dosing (<code>ss=2</code>)<a class="anchor" aria-label="anchor" href="#steady-state-for-complex-dosing-ss2"></a>
@@ -898,7 +879,7 @@ non-uniform dosing regimens (e.g. morning 100 mg vs evening 150 mg):</p>
 <li>States are reset and solved to steady state.</li>
 <li>Saved state values are added back.</li>
 </ul>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">24</span>, ss<span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">12</span>, amt<span class="op">=</span><span class="fl">15000</span>, ii<span class="op">=</span><span class="fl">24</span>, ss<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -912,8 +893,6 @@ non-uniform dosing regimens (e.g. morning 100 mg vs evening 150 mg):</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"rect"</span>, xmin<span class="op">=</span><span class="fl">0</span>, xmax<span class="op">=</span><span class="fl">24</span>, ymin<span class="op">=</span><span class="op">-</span><span class="cn">Inf</span>, ymax<span class="op">=</span><span class="cn">Inf</span>, alpha<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"text"</span>, x<span class="op">=</span><span class="fl">12.5</span>, y<span class="op">=</span><span class="fl">7</span>, label<span class="op">=</span><span class="st">"Initial Steady State Period"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/annotate.html" class="external-link">annotate</a></span><span class="op">(</span><span class="st">"text"</span>, x<span class="op">=</span><span class="fl">44</span>,   y<span class="op">=</span><span class="fl">7</span>, label<span class="op">=</span><span class="st">"Steady State AM/PM dosing"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" alt="" width="700"></p>
 <p>It takes a full dose cycle to reach the true complex
 steady-state.</p>
@@ -935,23 +914,19 @@ steady-state.</p>
 <p>The infusion is turned off once steady state is reached, just like
 NONMEM. Note that <code>rate=-2</code> (modeled duration) and modeled
 bioavailability have no effect for this event type.</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">0</span>, ss<span class="op">=</span><span class="fl">1</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">200000</span>, rate<span class="op">=</span><span class="fl">10000</span><span class="op">/</span><span class="fl">8</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, length.out<span class="op">=</span><span class="fl">1000</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
+<span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span><span class="va">p1</span> <span class="op">/</span> <span class="va">p2</span></span></code></pre></div>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" alt="" width="700"></p>
 <p>This technique can also be used for steady-state disease
@@ -964,7 +939,7 @@ processes.</p>
 <p><code>evid=3</code> (or <code>evid=reset</code>) resets all
 compartments to their initial values. <code>evid=4</code> resets and
 then applies a dose.</p>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, evid<span class="op">=</span><span class="va">reset</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -990,21 +965,17 @@ then applies a dose.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.45     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.70     <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 92 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" alt="" width="700"></p>
 <p>All compartments are reset to their initial values at 6 hours.</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, amt<span class="op">=</span><span class="fl">10000</span>, evid<span class="op">=</span><span class="fl">4</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" alt="" width="700"></p>
 </div>
 <div class="section level2">
@@ -1014,7 +985,7 @@ then applies a dose.</p>
 a compartment: its value is set to the initial value, but other
 compartments are unchanged. A subsequent dose to that compartment turns
 it back on.</p>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-depot"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -1040,27 +1011,23 @@ it back on.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.45  <span style="color: #BB0000;">NA</span>           <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.70  <span style="color: #BB0000;">NA</span>           <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 92 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" alt="" width="700"></p>
 <p>Note that a dose turns back on only the compartment that was dosed.
 Turning off the effect compartment keeps it off even after a new depot
 dose:</p>
-<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" alt="" width="700"></p>
 <p>To re-enable it, send a zero dose or an <code>evid=2</code> event to
 the compartment:</p>
-<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>,  cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -1068,8 +1035,6 @@ the compartment:</p>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> parameter labels from comments are typically ignored in non-interactive mode</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="color: #00BBBB;">i</span> Need to run with the source intact to parse comments</span></span></code></pre>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

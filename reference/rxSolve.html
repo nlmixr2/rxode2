@@ -244,8 +244,8 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  ss2cancelAllPending <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ssSolved <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  linCmtSensType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"endpoint5"</span>, <span class="st">"endpoint5G"</span>, <span class="st">"forward3"</span>, <span class="st">"forward3G"</span>, <span class="st">"AD"</span>,</span>
-<span>    <span class="st">"central"</span>, <span class="st">"forward"</span>, <span class="st">"forwardG"</span>, <span class="st">"forwardH"</span>, <span class="st">"centralH"</span>, <span class="st">"forward3H"</span>, <span class="st">"endpointH5"</span>,</span>
-<span>    <span class="st">"forwardG"</span><span class="op">)</span>,</span>
+<span>    <span class="st">"ADr"</span>, <span class="st">"central"</span>, <span class="st">"forward"</span>, <span class="st">"forwardG"</span>, <span class="st">"forwardH"</span>, <span class="st">"centralH"</span>, <span class="st">"forward3H"</span>,</span>
+<span>    <span class="st">"endpointH5"</span>, <span class="st">"forwardG"</span><span class="op">)</span>,</span>
 <span>  linCmtSensH <span class="op">=</span> <span class="fl">1e-04</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
@@ -273,6 +273,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  autoSwitchStiffFirst <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  autoSwitchSwitchMax <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>  stiff2 <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  useLinCmt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.useLinCmt"</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -295,6 +296,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
+<span>  useLinCmt <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -307,6 +309,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
+<span>  useLinCmt <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -1551,7 +1554,14 @@ and does not mix ODEs with the solution.  The default is <code>TRUE</code>.</p><
 <dd><p>The type of linear compartment
 sensitivity/gradients to use.  The current options are:</p><ul><li><p><code>auto</code> – for one compartment models this will use the <code>AD</code>
 method, for 2 and 3 compartment model this will use <code>forwardG</code>.</p></li>
-<li><p><code>AD</code> – automatic differentiation (using stan math)</p></li>
+<li><p><code>AD</code> – automatic differentiation (using stan math).  This now
+uses forward-mode AD (<code>stan::math::fvar</code>), which differentiates the
+same analytic solution as the reverse-mode path but on the C++
+stack with no reverse autodiff tape, matching the reverse result to
+round-off while avoiding the per-call tape setup/teardown.</p></li>
+<li><p><code>ADr</code> – reverse-mode automatic differentiation (the prior <code>AD</code>
+behavior, <code>stan::math::jacobian</code>).  Kept as an escape hatch for
+validation; <code>AD</code> (forward) is preferred.</p></li>
 <li><p><code>forward</code> – forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)</p></li>
 <li><p><code>forwardG</code> – forward sensitivity where the step size is determined by the
@@ -1822,6 +1832,19 @@ causes the solver to run as a plain non-composite method.  Dense output
 (<code>dense = TRUE</code>) is silently disabled when <code>stiff2</code> names a stiff method
 that does not support dense output; <code>"ros4"</code> (code <code>13L</code>) is the only
 stiff secondary that does support it.</p></dd>
+
+
+<dt id="arg-uselincmt">useLinCmt<a class="anchor" aria-label="anchor" href="#arg-uselincmt"></a></dt>
+<dd><p>Logical; when <code>TRUE</code> and the model contains
+linear-compartment ODEs that can be solved analytically,
+automatically convert them to a <code>linCmt()</code> call before solving.
+The detection and conversion use <code><a href="odeToLin.html">odeToLin()</a></code>; the converted
+model is cached so the compilation cost is paid only once.  Set
+to <code>FALSE</code> to keep the original ODE solver.  This flag is also
+stored in the returned <code>rxControl()</code> object so that downstream
+hooks (e.g. in nlmixr2) can read and apply it.  The default is to
+use the value of <code>rxode2.useLinCmt</code> option (which when specified
+is <code>TRUE</code> by default).</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>

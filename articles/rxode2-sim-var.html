@@ -147,7 +147,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Simulation</h1>
             
-            <h4 data-toc-skip class="date">2026-06-11</h4>
+            <h4 data-toc-skip class="date">2026-06-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-sim-var.Rmd" class="external-link"><code>vignettes/rxode2-sim-var.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-sim-var.Rmd</code></div>
@@ -384,8 +384,6 @@ vignette talks more about how these datasets should be created.</p>
 <span></span>
 <span><span class="co">## Note the number of subject is not needed since it is determined by the data</span></span>
 <span><span class="va">sim</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">dat</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="va">sim</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, <span class="va">time</span>, <span class="va">eff</span>, <span class="va">C2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    id          time      eff          C2</span></span>

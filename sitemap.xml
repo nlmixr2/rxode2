@@ -124,6 +124,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxLinCmt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxLinCmtGen.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxLinNcmt.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxMemoisedFns.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxPrune.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxSEeqUsr.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxSens.html</loc></url>
@@ -211,6 +212,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/multiply.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/obs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/odeMethodToInt.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/odeToLin.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/phantom.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/phi.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/plot.rxSolve.html</loc></url>
