@@ -225,6 +225,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
   if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
   rx_solving_options *op = rx->op;
+  if (!op->do_par_cov) return;
   // handle extra dose, and out of bounds idx values
   if (idx < 0 && ind->extraDoseN[0] > 0) {
     if (-1-idx >= ind->extraDoseN[0]) {

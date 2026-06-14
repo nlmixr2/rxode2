@@ -200,6 +200,92 @@ Overall, this pattern is useful for:
 If you need a repeating pushed regimen instead of a single titration
 step, `bolus()` also supports `ii`, `addl`, and `ss`.
 
+## Using `linCmt()` with adaptive dosing
+
+Adaptive dosing works the same way in analytical linear compartment
+models as it does in ODE models. You can reference the linear
+compartment names (`depot`, `central`) directly in `bolus()`,
+`infuse()`, and the other helpers.
+
+In the `rxode2({})` solving form, supply the full set of positional
+arguments to `bolus()`:
+
+```{r lincmt-bolus-positional}
+titrateModelLin <- rxode2({
+  cp <- linCmt(ka, cl, v)
+  # Check every 24 hours, add a bolus dose if needed
+  if (t %% 24 == 0 && cp < 1) {
+    bolus(50, depot, 0, 0, 0)
+  }
+})
+
+titrateEventsLin <- et(amt = 100, time = 0) |>
+  et(seq(0, 96, by = 1))
+
+titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
+titrateSolveLin <- rxSolve(titrateModelLin, titratePars, titrateEventsLin)
+
+plot(titrateSolveLin, cp)
+```
+
+In the functional model form you can use named arguments, and the
+remaining `bolus()` arguments take their defaults:
+
+```{r lincmt-bolus-functional}
+titrateModelLin <- function() {
+  ini({
+    ka <- 0.5
+    cl <- 1.2
+    v <- 20
+  })
+  model({
+    cp <- linCmt(ka, cl, v)
+    # Check every 24 hours, add a bolus dose if needed
+    if (t %% 24 == 0 && cp < 1) {
+      bolus(50, cmt = depot)
+    }
+  })
+}
+
+titrateSolveLin <- rxSolve(titrateModelLin, titrateEventsLin)
+
+plot(titrateSolveLin, cp)
+```
+
+If you already have an ODE model that uses adaptive dosing, you do not
+have to rewrite it by hand. `odeToLin()` detects compatible 1-3
+compartment linear PK systems and converts them to a `linCmt()` model,
+preserving any in-model `bolus()`/`infuse()` calls (and renaming
+non-standard compartment names to `depot`/`central` automatically):
+
+```{r lincmt-odetolin}
+titrateOde <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(1.2)
+    tv  <- log(20)
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v  <- exp(tv)
+    d/dt(depot)   <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    if (t %% 24 == 0 && cp < 1) {
+      bolus(50, cmt = depot)
+    }
+  })
+}
+
+# Convert explicitly ...
+titrateLin <- odeToLin(titrateOde)
+rxSolve(titrateLin, titrateEventsLin) |> plot(cp)
+
+# ... or transparently at solve time with useLinCmt = TRUE
+rxSolve(titrateOde, titrateEventsLin, useLinCmt = TRUE) |> plot(cp)
+```
+
 ## Starting adaptive infusions
 
 Two helper functions support adaptive infusion starts:

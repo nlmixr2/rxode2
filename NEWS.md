@@ -1,13 +1,31 @@
 # rxode2 5.1.3
 
+- Add automatic conversion of ode models to linear models when
+  detected.  This conversion is applied transparently at solve time
+  (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
+  parameters are passed explicitly to `linCmt()` so the
+  parameterization is inferred even when the parameters are defined
+  only in the `ini()` block.  If a converted model cannot be compiled
+  the original ODE model is used instead, so the conversion never
+  breaks an otherwise-valid solve.
+
+- Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
+  now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
+  referencing the linear compartment names (`depot`, `central`)
+  directly.  `odeToLin()` preserves these calls when converting, and
+  renames non-standard ODE compartment names to the linear-compartment
+  names.
+
+- Fixed the string form of the compartment argument in the adaptive
+  dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
+  correct compartment reference.
+
+- Added a forward automatic derivative linear compartment model, which
+  beats the reverse mode automatic derivatives for linear compartment
+  models
+
 - Added `setRxThreadId()` so a package that drives rxode2's per-subject
-  solve from its OWN OpenMP team (e.g. nlmixr2est's FOCEi inner loop)
-  can supply the real thread id.  On Windows each package statically
-  links its own libgomp, so rxode2's `omp_get_thread_num()` returns 0
-  for every foreign worker thread, which collapsed all of rxode2's
-  per-thread solve buffers onto one slot and corrupted the heap at more
-  than one core.  When the id is set (>= 0) rxode2 uses it for per-thread
-  buffer indexing instead of `omp_get_thread_num()`.
+  solve from its OWN OpenMP team for windows interaction with `nlmixr2`.
 
 - Added Jacobian handling of adaptive dosing events (retaining them
   when calculating Jacobian).  Should be able to be applied in forward

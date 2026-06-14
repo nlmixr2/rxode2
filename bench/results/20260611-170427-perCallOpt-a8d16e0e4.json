@@ -1,0 +1,17 @@
+{
+  "label": "perCallOpt-a8d16e0e4",
+  "timestamp": "2026-06-11T17:04:27",
+  "git": "a8d16e0e4",
+  "quick": false,
+  "nbig": 5000,
+  "cores": null,
+  "cases": {
+    "compile_ode": 0.060307,
+    "solve_single_ode": 0.022451,
+    "solve_single_lin": 0.028965,
+    "solve_pop_ode": 2.205715,
+    "solve_pop_lin": 2.662365,
+    "solve_pop_cov": 5.772326,
+    "et_build": 0.00759
+  }
+}
