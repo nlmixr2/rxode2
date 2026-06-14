@@ -178,7 +178,7 @@ rxSolve(
   autoSwitchStiffFirst = FALSE,
   autoSwitchSwitchMax = 5L,
   stiff2 = 0L,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", TRUE),
   envir = parent.frame()
 )
 
@@ -1518,14 +1518,16 @@ causes the solver to run as a plain non-composite method.  Dense output
 that does not support dense output; \code{"ros4"} (code \code{13L}) is the only
 stiff secondary that does support it.}
 
-\item{useLinCmt}{Logical; when \code{TRUE} (default) and the model contains
-linear-compartment ODEs that can be solved analytically, automatically
-convert them to a \code{linCmt()} call before solving.  The detection and
-conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted model is cached so the
-compilation cost is paid only once.  Set to \code{FALSE} to keep the
-original ODE solver.  This flag is also stored in the returned
-\code{\link[=rxControl]{rxControl()}} object so that downstream hooks (e.g. in nlmixr2) can
-read and apply it.}
+\item{useLinCmt}{Logical; when \code{TRUE} and the model contains
+linear-compartment ODEs that can be solved analytically,
+automatically convert them to a \code{linCmt()} call before solving.
+The detection and conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted
+model is cached so the compilation cost is paid only once.  Set
+to \code{FALSE} to keep the original ODE solver.  This flag is also
+stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
+hooks (e.g. in nlmixr2) can read and apply it.  The default is to
+use the value of \code{rxode2.useLinCmt} option (which when specified
+is \code{TRUE} by default).}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
