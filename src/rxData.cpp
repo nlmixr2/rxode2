@@ -2896,11 +2896,15 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid
         while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
           i--;
         }
-        // if it can't be found find the next non-NA value
-        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+        // if it can't be found (i < fid) find the next non-NA value;
+        // guard the index so we never dereference vals[fid-1] / past the id block
+        if (i < fid) {
           i = id;
-          while (i < fid  + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+          while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
             i++;
+          }
+          if (i >= fid + ind->n_all_times) {
+            return val; // entire id block is NA
           }
         }
         return vals[i];
@@ -2910,11 +2914,14 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid
         while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
           i++;
         }
-        // if it can't be found find the previous non-NA value
-        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+        // if it can't be found find the previous non-NA value; guard the index
+        if (i >= fid + ind->n_all_times) {
           i = id;
           while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
             i--;
+          }
+          if (i < fid) {
+            return val; // entire id block is NA
           }
         }
         return vals[i];

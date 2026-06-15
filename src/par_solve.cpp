@@ -2467,10 +2467,10 @@ extern "C" void solveSSinf(int *neq,
         }
       }
       for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
+        ind->solveLast[k] = yp[k];
       }
     }
     // yp is last solve or y0
@@ -2605,10 +2605,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
       }
       for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
+        ind->solveLast[k] = yp[k];
       }
     }
     // yp is last solve or y0
@@ -4498,7 +4498,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
-          ind->solve[ind->cmt] = op->inits[ind->cmt];
+          yp[ind->cmt] = op->inits[ind->cmt];
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
