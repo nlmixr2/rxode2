@@ -144,6 +144,8 @@
   index `1..nSub*nStud`, but now represents the study index, while
   `id` represents the subject index.
 
+- Add out of memory solve capabilities
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
