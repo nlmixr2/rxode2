@@ -3966,6 +3966,12 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
   } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
     method <- .parseAutoSwitchMethod(method)
   } else {
+    # A multi-element character method is a set of choices (e.g. rxSolve()'s
+    # own default, or a downstream caller's stale 4-element default such as
+    # c("liblsoda","lsoda","dop853","indLin")); pick the first. match.arg()
+    # only tolerates a multi-element arg when it is byte-identical to this
+    # function's formal default, so reduce to length 1 first.
+    if (length(method) > 1L) method <- method[1L]
     method <- .methodIdx[match.arg(method)]
   }
   method
