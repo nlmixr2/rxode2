@@ -139,6 +139,11 @@
 - Add `serializeFile` as an option to save the rxode2 C fitting data and
   then restore as needed.
 
+- Change rxSolve() behavior to always add id when `nSub > 1` (#1013);
+  in the no-id event-table case, `sim.id` is no longer the combined
+  index `1..nSub*nStud`, but now represents the study index, while
+  `id` represents the subject index.
+
 # rxode2 5.0.2
 
 - Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
