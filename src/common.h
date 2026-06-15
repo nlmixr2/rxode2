@@ -16,6 +16,9 @@ extern double   sm1[13];
 /* newly added static variables */
 
 struct lsoda_common_t {
+	int      id; /* rxode2 subject id; set per solve in ind_liblsoda0. Placed before
+	                `memory` so lsoda_reset's memset (which starts after `memory`)
+	                leaves it untouched between subjects sharing a pooled ctx. */
 	double **yh, **wm, *ewt, *savf, *acor;
 	int     *ipvt;
 	void * memory;

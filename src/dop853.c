@@ -14,6 +14,7 @@
 #include <Rinternals.h>
 
 void RSprintf(const char *format, ...);
+#include "solveWarn.h"
 #define _(String) (String)
 
 /* All former static variables are now in dop853_ctx_t (see dop853.h).
@@ -402,7 +403,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (ctx->nstep > nmax)
         {
           /* if (fileout) */
-	  RSprintf(_("exit of dop853 at x = %.16e, more than nmax = %li are needed\n"), x, nmax);
+	  rxSolveWarnPush(ctx->subject_id, "exit of dop853 at x = %.16e, more than nmax = %li are needed");
           ctx->xout = x;
           ctx->hout = h;
           return -2;
@@ -411,7 +412,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (0.1 * fabs(h) <= fabs(x) * uround)
         {
           /* if (fileout) */
-	  RSprintf(_("exit of dop853 at x = %.16e, step size too small h = %.16e\n"), x, h);
+	  rxSolveWarnPush(ctx->subject_id, "exit of dop853 at x = %.16e, step size too small h = %.16e");
           ctx->xout = x;
           ctx->hout = h;
           return -3;
@@ -543,7 +544,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
                   iasti++;
                   if (iasti == 15)
                     {
-		      RSprintf(_("the problem seems to become stiff at x = %.16e\n"), x);
+		      rxSolveWarnPush(ctx->subject_id, "the problem seems to become stiff at x = %.16e");
 		      ctx->xout = x;
 		      ctx->hout = h;
 		      return -4;
@@ -705,7 +706,7 @@ int dop853
  double* atoler, int itoler, SolTrait solout, int iout, FILE* fileout, double uround,
  double safe, double fac1, double fac2, double beta, double hmax, double h,
  long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont,
- void *userdata)
+ void *userdata, int subject_id)
 {
   dop853_ctx_t ctx;
   int          arret, idid;
@@ -722,6 +723,7 @@ int dop853
   ctx.yy1 = ctx.k1 = ctx.k2 = ctx.k3 = ctx.k4 = ctx.k5 = NULL;
   ctx.k6 = ctx.k7 = ctx.k8 = ctx.k9 = ctx.k10 = NULL;
   ctx.userdata = userdata;
+  ctx.subject_id = subject_id;
 
   arret = 0;
 
