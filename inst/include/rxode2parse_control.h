@@ -126,7 +126,11 @@
 #define Rxc_autoSwitchDtfac 122
 #define Rxc_autoSwitchSwitchMax 123
 #define Rxc_useLinCmt 124
-#define Rxc__zeros 125
+#define Rxc_file 125
+#define Rxc_chunkSize 126
+#define Rxc_parallel 127
+#define Rxc_single 128
+#define Rxc__zeros 129
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -229,6 +233,9 @@
 #define RxTrans_keepL 28
 #define RxTrans_maxItemsPerId 29
 #define RxTrans_mixUnif 30
+#define RxTrans_addlAdd 31
+#define RxTrans_ssAdd   32
 #define RxTransNames CharacterVector _en(31);_en[0]="ndose";_en[1]="nobs";_en[2]="nid";_en[3]="cov1";_en[4]="covParPos";_en[5]="covParPosTV";_en[6]="sub0";_en[7]="baseSize";_en[8]="nTv";_en[9]="lst";_en[10]="nme";_en[11]="covParPos0";_en[12]="covUnits";_en[13]="pars";_en[14]="allBolus";_en[15]="allInf";_en[16]="mxCmt";_en[17]="lib_name";_en[18]="addCmt";_en[19]="cmtInfo";_en[20]="idLvl";_en[21]="allTimeVar";_en[22]="keepDosingOnly";_en[23]="censAdd";_en[24]="limitAdd";_en[25]="levelInfo";_en[26]="idInfo";_en[27]="maxShift";_en[28]="keepL";_en[29]="maxItemsPerId";_en[30]="mixUnif";e.names() = _en;
+#define RxTransNamesSingle CharacterVector _en(33);_en[0]="ndose";_en[1]="nobs";_en[2]="nid";_en[3]="cov1";_en[4]="covParPos";_en[5]="covParPosTV";_en[6]="sub0";_en[7]="baseSize";_en[8]="nTv";_en[9]="lst";_en[10]="nme";_en[11]="covParPos0";_en[12]="covUnits";_en[13]="pars";_en[14]="allBolus";_en[15]="allInf";_en[16]="mxCmt";_en[17]="lib_name";_en[18]="addCmt";_en[19]="cmtInfo";_en[20]="idLvl";_en[21]="allTimeVar";_en[22]="keepDosingOnly";_en[23]="censAdd";_en[24]="limitAdd";_en[25]="levelInfo";_en[26]="idInfo";_en[27]="maxShift";_en[28]="keepL";_en[29]="maxItemsPerId";_en[30]="mixUnif";_en[31]="addlAdd";_en[32]="ssAdd";e.names() = _en;
 
 #endif // __rxode2parse_control_H__

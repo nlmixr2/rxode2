@@ -86,4 +86,8 @@ struct rx_globals {
   int geta_pre_n = 0;            // capacity of geta_pre_alloc
   bool alloc=false;
   int64_t gall_times_n = 0; // actual allocation count of gall_times (representative, not expanded)
+  bool singleMode=false;
+  SEXP singleDataFrame=R_NilValue;
+  int *gidose_own=NULL;
+  double *gdbl_own=NULL;
 };

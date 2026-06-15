@@ -121,6 +121,8 @@ int rxcLimit = -1;
 int rxcCens  = -1;
 int rxcLen   = -1;
 int rxcIi    = -1;
+int rxcAddl  = -1;
+int rxcSs    = -1;
 bool resetCache = true;
 bool rxHasEventNames(CharacterVector &nm){
   int len = nm.size();
@@ -135,6 +137,8 @@ bool rxHasEventNames(CharacterVector &nm){
     rxcIi    = -1;
     rxcLimit = -1;
     rxcCens  = -1;
+    rxcAddl  = -1;
+    rxcSs    = -1;
     rxcLen   = len;
     for (unsigned int i = len; i--;){
       if (as<std::string>(nm[i]) == "evid" ||
@@ -238,43 +242,26 @@ bool rxIs_list(const RObject &obj, std::string cls){
         rxcId   = 0;
         rxcDv   = 5;
         rxcIi   = 4;
+        rxcCens  = -1;
+        rxcLimit = -1;
+        rxcAddl  = -1;
+        rxcSs    = -1;
         List e = as<List>(classattr.attr(".rxode2.lst"));
-        int censAdd = asInt(e[RxTrans_censAdd], "censAdd");
+        int censAdd  = asInt(e[RxTrans_censAdd],  "censAdd");
         int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
+        /* addlAdd / ssAdd only present in 33-slot etTransSingle output */
+        int addlAdd = (e.size() > RxTrans_addlAdd) ? asInt(e[RxTrans_addlAdd], "addlAdd") : 0;
+        int ssAdd   = (e.size() > RxTrans_ssAdd)   ? asInt(e[RxTrans_ssAdd],   "ssAdd")   : 0;
         rx->maxShift = asDouble(e[RxTrans_maxShift],"maxShift");
         CharacterVector nDf = obj.attr("names");
         int nCol = nDf.size();
-        if (censAdd == 1 && limitAdd == 1) {
-          if (nCol > 6 && nDf[6] == "CENS") {
-            rxcCens = 6;
-            rxcLimit = 7;
-          } else if (nCol > 7 && nDf[7] == "CENS") {
-            rxcCens = 7;
-            rxcLimit = 8;
-          } else {
-            Rcpp::stop("Corrupt translation, 'cens' / 'limit' is not in expected location");
-          }
-        } else if (censAdd == 1){
-          if (nCol > 6 && nDf[6] == "CENS") {
-            rxcCens = 6;
-          } else if (nCol > 7 && nDf[7] == "CENS") {
-            rxcCens = 7;
-          } else {
-            Rcpp::stop("Corrupt translation, 'cens' is not in expected location");
-          }
-          rxcLimit = -1;
-        } else if (limitAdd == 1){
-          if (nCol > 6 && nDf[6] == "LIMIT") {
-            rxcLimit = 6;
-          } else if (nCol > 7 && nDf[7] == "LIMIT") {
-            rxcLimit = 7;
-          } else {
-            Rcpp::stop("Corrupt translation, 'limit' is not in expected location");
-          }
-          rxcCens  = -1;
-        } else {
-          rxcCens  = -1;
-          rxcLimit = -1;
+        /* Scan optional columns by name (handles CMT column at position 6) */
+        for (int ci = 6; ci < nCol; ++ci) {
+          std::string cn = as<std::string>(nDf[ci]);
+          if      (censAdd  && cn == "CENS")  rxcCens  = ci;
+          else if (limitAdd && cn == "LIMIT") rxcLimit = ci;
+          else if (addlAdd  && cn == "ADDL")  rxcAddl  = ci;
+          else if (ssAdd    && cn == "SS")    rxcSs    = ci;
         }
         return true;
       } else {
@@ -1859,11 +1846,34 @@ extern "C" void gFree(){
   _globals.gParPos2=NULL;
   _globals.gsvar=NULL;
   _globals.govar=NULL;
-  if (_globals.gevid != NULL) free(_globals.gevid);
-  _globals.gevid=NULL;
-  if (_globals.gall_times != NULL) free(_globals.gall_times);
-  _globals.gall_times=NULL;
-  _globals.gall_times_n = 0;
+  if (_globals.singleMode) {
+    if (_globals.singleDataFrame != R_NilValue) {
+      R_ReleaseObject(_globals.singleDataFrame);
+      _globals.singleDataFrame = R_NilValue;
+    }
+    // These point into R SEXP memory — do NOT free
+    _globals.gevid          = NULL;
+    _globals.gall_times     = NULL;
+    _globals.gall_times_n   = 0;
+    _globals.gamt           = NULL;
+    _globals.gdv            = NULL;
+    _globals.gcens          = NULL;
+    _globals.gii            = NULL;
+    _globals.glimit         = NULL;
+    _globals.gidose         = NULL;
+    _globals.gpar_cov       = NULL;
+    _globals.gpar_covInterp = NULL;
+    _globals.glhs_str       = NULL;
+    if (_globals.gidose_own != NULL) { free(_globals.gidose_own); _globals.gidose_own = NULL; }
+    if (_globals.gdbl_own   != NULL) { free(_globals.gdbl_own);   _globals.gdbl_own   = NULL; }
+    _globals.singleMode = false;
+  } else {
+    if (_globals.gevid != NULL) free(_globals.gevid);
+    _globals.gevid=NULL;
+    if (_globals.gall_times != NULL) free(_globals.gall_times);
+    _globals.gall_times=NULL;
+    _globals.gall_times_n = 0;
+  }
   if (_globals.gcov != NULL) free(_globals.gcov);
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
@@ -3281,11 +3291,22 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                         false, false, true, R_NilValue,
-                         rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                         rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                         R_NilValue);
+    bool singleModeEv1 = asBool(rxControl[Rxc_single], "single");
+    List ev1k;
+    if (singleModeEv1) {
+      Function etTransSingleR = getRxFn("etTransSingle");
+      ev1k = as<List>(etTransSingleR(ev1, obj,
+                                     rxSolveDat->hasCmt,
+                                     false,
+                                     rxControl[Rxc_iCov],
+                                     rxControl[Rxc_keepF]));
+    } else {
+      ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                      false, false, true, R_NilValue,
+                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                      R_NilValue);
+    }
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
     if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
@@ -3428,20 +3449,22 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     rxcId   = 0;
     rxcDv   = 5;
     rxcIi   = 4;
-    int censAdd = as<int>(tmpL["censAdd"]);
+    rxcCens  = -1;
+    rxcLimit = -1;
+    rxcAddl  = -1;
+    rxcSs    = -1;
+    int censAdd  = as<int>(tmpL["censAdd"]);
     int limitAdd = as<int>(tmpL["limitAdd"]);
-    if (censAdd == 1 && limitAdd == 1) {
-      rxcCens = 6;
-      rxcLimit = 7;
-    } else if (censAdd == 1){
-      rxcCens = 6;
-      rxcLimit = -1;
-    } else if (limitAdd == 1){
-      rxcCens  = -1;
-      rxcLimit = 6;
-    } else {
-      rxcCens  = -1;
-      rxcLimit = -1;
+    int addlAdd  = (tmpL.size() > RxTrans_addlAdd) ? as<int>(tmpL[RxTrans_addlAdd]) : 0;
+    int ssAdd    = (tmpL.size() > RxTrans_ssAdd)   ? as<int>(tmpL[RxTrans_ssAdd])   : 0;
+    CharacterVector nDfTmp = as<DataFrame>(ev1).names();
+    int nColTmp = nDfTmp.size();
+    for (int ci = 6; ci < nColTmp; ++ci) {
+      std::string cn = as<std::string>(nDfTmp[ci]);
+      if      (censAdd  && cn == "CENS")  rxcCens  = ci;
+      else if (limitAdd && cn == "LIMIT") rxcLimit = ci;
+      else if (addlAdd  && cn == "ADDL")  rxcAddl  = ci;
+      else if (ssAdd    && cn == "SS")    rxcSs    = ci;
     }
   }
   rx->hasFactors=0;
@@ -3889,19 +3912,44 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     IntegerVector strLhs = as<IntegerVector>(rxSolveDat->mv[RxMv_lhsStr]);
-    if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+ strLhs.size(), sizeof(int));
-    if (_globals.gevid == NULL){
-      rxSolveFree();
-      stop(_("can not allocate enough memory to load 'evid'"));
+    bool singleMode = asBool(rxControl[Rxc_single], "single");
+    _globals.singleMode = singleMode;
+    if (singleMode) {
+      R_PreserveObject(SEXP(dataf));
+      _globals.singleDataFrame = SEXP(dataf);
+      _globals.gevid = INTEGER(VECTOR_ELT(SEXP(dataf), rxcEvid));
+      int n = (int)evid.size();
+      bool needCensBuf = (rxcCens == -1);
+      int ownSz = n + (needCensBuf ? n : 0) + dfN * 2 + (int)strLhs.size();
+      if (_globals.gidose_own != NULL) free(_globals.gidose_own);
+      _globals.gidose_own = (int*)calloc(ownSz, sizeof(int));
+      if (_globals.gidose_own == NULL) {
+        rxSolveFree();
+        stop(_("can not allocate enough memory for single-mode buffers"));
+      }
+      int *ptr = _globals.gidose_own;
+      _globals.gidose = ptr;  ptr += n;
+      _globals.gcens = needCensBuf ? ptr : INTEGER(VECTOR_ELT(SEXP(dataf), rxcCens));
+      if (needCensBuf) ptr += n;
+      _globals.gpar_cov = ptr;  ptr += dfN;
+      _globals.gpar_covInterp = ptr;  ptr += dfN;
+      _globals.glhs_str = ptr;
+      std::copy(strLhs.begin(), strLhs.end(), _globals.glhs_str);
+    } else {
+      if (_globals.gevid != NULL) free(_globals.gevid);
+      _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+ strLhs.size(), sizeof(int));
+      if (_globals.gevid == NULL){
+        rxSolveFree();
+        stop(_("can not allocate enough memory to load 'evid'"));
+      }
+      std::copy(evid.begin(),evid.end(), &_globals.gevid[0]);
+      _globals.gidose = _globals.gevid + evid.size();
+      _globals.gcens = _globals.gidose + evid.size();
+      _globals.gpar_cov = _globals.gcens + evid.size();//[dfN];
+      _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
+      _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
+      std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
     }
-    std::copy(evid.begin(),evid.end(), &_globals.gevid[0]);
-    _globals.gidose = _globals.gevid + evid.size();
-    _globals.gcens = _globals.gidose + evid.size();
-    _globals.gpar_cov = _globals.gcens + evid.size();//[dfN];
-    _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
-    _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
-    std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -3944,24 +3992,43 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       stop(_("nothing to solve"));
     }
     rxOptionsIniEnsure(ntot, op->cores);
-    if (_globals.gall_times != NULL) free(_globals.gall_times);
-    _globals.gall_times = (double*)calloc(5*time0.size(), sizeof(double));
-    _globals.gall_times_n = (int64_t)time0.size();
-    std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
-    _globals.gdv = _globals.gall_times + time0.size(); // Perhaps allocate zero size if missing?
-    _globals.gamt = _globals.gdv + time0.size();
-    _globals.gii = _globals.gamt + time0.size();
-    _globals.glimit=_globals.gii + time0.size();
+    if (singleMode) {
+      _globals.gall_times = REAL(VECTOR_ELT(SEXP(dataf), rxcTime));
+      _globals.gall_times_n = (int64_t)time0.size();
+      _globals.gamt       = REAL(VECTOR_ELT(SEXP(dataf), rxcAmt));
+      int n = (int)time0.size();
+      bool needDvBuf    = (rxcDv    == -1);
+      bool needIiBuf    = (rxcIi    == -1);
+      bool needLimitBuf = (rxcLimit == -1);
+      int dblSz = (needDvBuf ? n : 0) + (needIiBuf ? n : 0) + (needLimitBuf ? n : 0);
+      if (_globals.gdbl_own != NULL) free(_globals.gdbl_own);
+      _globals.gdbl_own = dblSz > 0 ? (double*)calloc(dblSz, sizeof(double)) : NULL;
+      double *dptr = _globals.gdbl_own;
+      _globals.gdv    = needDvBuf    ? dptr : REAL(VECTOR_ELT(SEXP(dataf), rxcDv));
+      if (needDvBuf)    dptr += n;
+      _globals.gii    = needIiBuf    ? dptr : REAL(VECTOR_ELT(SEXP(dataf), rxcIi));
+      if (needIiBuf)    dptr += n;
+      _globals.glimit = needLimitBuf ? dptr : REAL(VECTOR_ELT(SEXP(dataf), rxcLimit));
+    } else {
+      if (_globals.gall_times != NULL) free(_globals.gall_times);
+      _globals.gall_times = (double*)calloc(5*time0.size(), sizeof(double));
+      _globals.gall_times_n = (int64_t)time0.size();
+      std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
+      _globals.gdv = _globals.gall_times + time0.size(); // Perhaps allocate zero size if missing?
+      _globals.gamt = _globals.gdv + time0.size();
+      _globals.gii = _globals.gamt + time0.size();
+      _globals.glimit=_globals.gii + time0.size();
+    }
     NumericVector dv;
     if (rxcDv > -1){
       dv = as<NumericVector>(dataf[rxcDv]);
-      std::copy(dv.begin(), dv.end(), &_globals.gdv[0]);
+      if (!singleMode) std::copy(dv.begin(), dv.end(), &_globals.gdv[0]);
     }
     IntegerVector cens;
     rx->cens=0;
     if (rxcCens > -1){
       cens = as<IntegerVector>(dataf[rxcCens]);
-      std::copy(cens.begin(), cens.end(), &_globals.gcens[0]);
+      if (!singleMode) std::copy(cens.begin(), cens.end(), &_globals.gcens[0]);
       rx->cens=1;
     }
     NumericVector limit;
@@ -3969,7 +4036,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     if (rxcLimit > -1){
       rx->limit=1;
       limit = as<NumericVector>(dataf[rxcLimit]);
-      std::copy(limit.begin(), limit.end(), &_globals.glimit[0]);
+      if (!singleMode) std::copy(limit.begin(), limit.end(), &_globals.glimit[0]);
     }
     NumericVector amt   = dataf[rxcAmt];
     NumericVector datIi(amt.size());
@@ -4125,8 +4192,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           groupHmax1 = 0.0;
           tlast = NA_REAL;
         }
-        _globals.gii[i] = datIi[i];
-        _globals.gamt[i] = amt[i];
+        if (!singleMode) {
+          _globals.gii[i] = datIi[i];
+          _globals.gamt[i] = amt[i];
+        }
         if (isDose(_globals.gevid[i])){
           _globals.gidose[j] = i-lasti;
           ndoses++;
@@ -4248,8 +4317,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           tlast = NA_REAL;
         }
         // Create index
-        _globals.gii[i] = datIi[i];
-        _globals.gamt[i] = amt[i];
+        if (!singleMode) {
+          _globals.gii[i] = datIi[i];
+          _globals.gamt[i] = amt[i];
+        }
 
         if (isDose(_globals.gevid[i])){
           _globals.gidose[j] = i-lasti;

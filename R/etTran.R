@@ -199,6 +199,27 @@ as.data.frame.rxEtTran <- function(x, row.names = NULL, optional = FALSE, ...) {
 
 #' @rdname etTrans
 #' @export
+#' Zero-copy event table translation for single-core solving
+#'
+#' Wraps original data frame columns via ALTREP to avoid copying.
+#' CMT translation is lazy. ADDL/SS columns are kept as views.
+#' Only supports single-subject, sorted, numeric-time input.
+#'
+#' @param inData A data frame with event records
+#' @param obj The model object (rxUi or compiled rxode2 model)
+#' @param addCmt Add compartment information
+#' @param dropUnits Drop unit attributes
+#' @param iCov Individual covariate data frame
+#' @param keep Character vector of column names to keep
+#' @return An `rxEtTran` data frame with ALTREP columns
+#' @noRd
+etTransSingle <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE,
+                          iCov = NULL, keep = character(0)) {
+  .Call(`_rxode2_etTransSingle`, inData, obj, addCmt, dropUnits, iCov, keep)
+}
+
+#' @rdname etTrans
+#' @export
 etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE,
                     keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0),
                     addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL) {

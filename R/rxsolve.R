@@ -1121,6 +1121,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     file=NULL,
                     chunkSize=NULL,
                     parallel=0L,
+                    single=FALSE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1487,6 +1488,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
+    checkmate::assertLogical(single, len=1, any.missing=FALSE)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
       warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
               call.=FALSE)
@@ -1581,6 +1583,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       } else if (checkmate::testCharacter(serializeFile, len = 1, any.missing = FALSE)) {
       } else {
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
+      }
+      if (isTRUE(single)) {
+        stop("'single=TRUE' is incompatible with 'serializeFile'", call. = FALSE)
       }
     }
     if (!is.null(file))
@@ -1772,6 +1777,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       file=file,
       chunkSize=chunkSize,
       parallel=parallel,
+      single=single,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

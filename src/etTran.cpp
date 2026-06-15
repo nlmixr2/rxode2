@@ -3435,3 +3435,362 @@ List rxEtTransAsDataFrame_(List inData1) {
   Rf_setAttrib(inData, R_ClassSymbol, cls);
   return inData;
 }
+
+/* =========================================================================
+ * etTransSingle — zero-copy etTrans for single=TRUE solve path
+ *
+ * Wraps original data frame columns via ALTREP (no allocation for passthrough
+ * columns). CMT translation is lazy. ADDL and SS columns are kept as ALTREP
+ * views and handled per-record in rxSolve_datSetupHmax.
+ * ========================================================================= */
+
+extern "C" {
+#include "rxode2_altrep.h"
+}
+
+//[[Rcpp::export]]
+List etTransSingle(List inData, const RObject &obj,
+                   bool addCmt = false,
+                   bool dropUnits = false,
+                   Nullable<List> iCov = R_NilValue,
+                   CharacterVector keep = CharacterVector(0)) {
+  List mv = rxModelVars_(obj);
+  CharacterVector pars    = as<CharacterVector>(mv[RxMv_params]);
+  CharacterVector state   = as<CharacterVector>(mv[RxMv_state]);
+  CharacterVector sensCV  = as<CharacterVector>(mv[RxMv_sens]);
+  CharacterVector trans   = mv[RxMv_trans];
+
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens, numLin, depotLin);
+  int numCmt  = state.size();
+  int numSens = sensCV.size();
+  int cmt1    = getCmtNum(1, numLin, numLinSens, depotLin, numCmt, numSens, false);
+
+  /* ------------------------------------------------------------------
+   * 1. Scan column names (case-insensitive)
+   * ------------------------------------------------------------------ */
+  CharacterVector dName = as<CharacterVector>(Rf_getAttrib(inData, R_NamesSymbol));
+  int n = dName.size();
+
+  int idCol=-1, timeCol=-1, evidCol=-1, amtCol=-1, iiCol=-1, dvCol=-1,
+    cmtCol=-1, rateCol=-1, addlCol=-1, ssCol=-1, censCol=-1, limitCol=-1;
+  bool amtExplicit = false;
+
+  std::vector<int> covCol;
+  std::vector<int> covParPos;
+  std::vector<int> keepCol;
+  std::vector<bool> keepCovFlags;
+  CharacterVector keepNameLc = clone(keep);
+  for (int j = keepNameLc.size(); j--;) {
+    std::string ks = as<std::string>(keepNameLc[j]);
+    std::transform(ks.begin(), ks.end(), ks.begin(), ::tolower);
+    keepNameLc[j] = ks;
+  }
+
+  for (int i = 0; i < n; ++i) {
+    std::string raw = as<std::string>(dName[i]);
+    std::string s   = raw;
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+
+    if      (s == "id")                                   idCol   = i;
+    else if (s == "time")                                 timeCol = i;
+    else if (s == "evid")                                 evidCol = i;
+    else if ((s == "amt" || s == "dose" || s == "value") && !amtExplicit) {
+      amtCol = i;
+      if (s == "amt") amtExplicit = true;
+    }
+    else if (s == "ii")                                   iiCol    = i;
+    else if (s == "dv")                                   dvCol    = i;
+    else if (s == "cmt" || s == "ytype" || s == "state" || s == "var") cmtCol  = i;
+    else if (s == "rate")                                 rateCol  = i;
+    else if (s == "addl")                                 addlCol  = i;
+    else if (s == "ss")                                   ssCol    = i;
+    else if (s == "cens")                                 censCol  = i;
+    else if (s == "limit")                                limitCol = i;
+
+    /* covariate detection (skip dv; mirror etTrans logic) */
+    if (s != "dv") {
+      for (int j = pars.size(); j--;) {
+        std::string pj = as<std::string>(pars[j]);
+        std::string pjLo = pj;
+        std::transform(pjLo.begin(), pjLo.end(), pjLo.begin(), ::tolower);
+        if (s == pjLo || raw == pj) {
+          covCol.push_back(i);
+          covParPos.push_back(j);
+          break;
+        }
+      }
+    }
+
+    /* keep column detection */
+    for (int j = keepNameLc.size(); j--;) {
+      if (s == as<std::string>(keepNameLc[j])) {
+        keepCol.push_back(i);
+        break;
+      }
+    }
+  }
+
+  if (timeCol < 0) Rcpp::stop("etTransSingle: 'time' column not found");
+  if (evidCol < 0) Rcpp::stop("etTransSingle: 'evid' column not found");
+  if (amtCol  < 0) Rcpp::stop("etTransSingle: 'amt' column not found");
+
+  /* ------------------------------------------------------------------
+   * 2. Build CMT translation table
+   * ------------------------------------------------------------------ */
+  IntegerVector cmtNums;
+  CharacterVector cmtNames;
+  if (cmtCol >= 0) {
+    cmtNames = CharacterVector(numCmt);
+    cmtNums  = IntegerVector(numCmt);
+    for (int j = 0; j < numCmt; ++j) {
+      cmtNames[j] = state[j];
+      cmtNums[j]  = getCmtNum(j+1, numLin, numLinSens, depotLin, numCmt, numSens, false);
+    }
+  }
+
+  /* ------------------------------------------------------------------
+   * 3. One-pass EVID scan: ndose, nobs, nid, idLvl, maxItemsPerId,
+   *    allBolus, allInf, mxCmt
+   * ------------------------------------------------------------------ */
+  SEXP evidSexp = VECTOR_ELT(SEXP(inData), evidCol);
+  SEXP amtSexp  = VECTOR_ELT(SEXP(inData), amtCol);
+  SEXP rateSexp = rateCol >= 0 ? VECTOR_ELT(SEXP(inData), rateCol) : R_NilValue;
+  SEXP cmtSexp  = cmtCol  >= 0 ? VECTOR_ELT(SEXP(inData), cmtCol)  : R_NilValue;
+
+  R_xlen_t nrow   = XLENGTH(evidSexp);
+  int ndose = 0, nobs = 0, nid = 0;
+  int maxItemsPerId = 0;
+  bool allBolus = true, allInf = true;
+  int mxCmt = 0;
+  int lastId = NA_INTEGER;
+  int curItems = 0;
+  int mxCmt1 = cmt1;
+
+  SEXP idSexp = idCol >= 0 ? VECTOR_ELT(SEXP(inData), idCol) : R_NilValue;
+
+  for (R_xlen_t i = 0; i < nrow; ++i) {
+    int ev = INTEGER_ELT(evidSexp, i);
+
+    if (idSexp != R_NilValue) {
+      int curId = INTEGER_ELT(idSexp, i);
+      if (curId != lastId) {
+        if (curItems > maxItemsPerId) maxItemsPerId = curItems;
+        curItems = 0;
+        lastId = curId;
+        nid++;
+      }
+    }
+    curItems++;
+
+    if (ev == 0 || ev == 2) {
+      nobs++;
+    } else {
+      ndose++;
+      double rate = (rateSexp != R_NilValue) ? REAL_ELT(rateSexp, i) : 0.0;
+      if (rate == 0.0)        allInf   = false;
+      if (rate != 0.0)        allBolus = false;
+
+      /* track max cmt */
+      int cmt_raw = mxCmt1;
+      if (cmtSexp != R_NilValue) {
+        if (TYPEOF(cmtSexp) == INTSXP) {
+          cmt_raw = INTEGER_ELT(cmtSexp, i);
+        } else if (TYPEOF(cmtSexp) == STRSXP) {
+          const char *cn = CHAR(STRING_ELT(cmtSexp, i));
+          for (int j = 0; j < numCmt; ++j) {
+            if (strcmp(cn, CHAR(STRING_ELT(state, j))) == 0) { cmt_raw = j+1; break; }
+          }
+        }
+      }
+      int cmt_sol = getCmtNum(cmt_raw, numLin, numLinSens, depotLin, numCmt, numSens, false);
+      if (cmt_sol < 0) cmt_sol = -cmt_sol;
+      if (cmt_sol > mxCmt) mxCmt = cmt_sol;
+    }
+  }
+  if (idSexp == R_NilValue) { nid = 1; maxItemsPerId = (int)nrow; }
+  else { if (curItems > maxItemsPerId) maxItemsPerId = curItems; }
+  if (nid == 0) nid = 1;
+
+  /* ------------------------------------------------------------------
+   * 4. Build output List with ALTREP column wrappers
+   *
+   * Fixed order: ID(0) TIME(1) EVID(2) AMT(3) II(4) DV(5)
+   *              [CMT(6)] [CENS] [LIMIT] [ADDL] [SS] [covariates...]
+   * ------------------------------------------------------------------ */
+  int censAdd  = (censCol  >= 0) ? 1 : 0;
+  int limitAdd = (limitCol >= 0) ? 1 : 0;
+  int addlAdd  = (addlCol  >= 0) ? 1 : 0;
+  int ssAdd    = (ssCol    >= 0) ? 1 : 0;
+  int hasCmtCol = (cmtCol  >= 0) ? 1 : 0;
+
+  int nFixed = 6 + hasCmtCol + censAdd + limitAdd + addlAdd + ssAdd;
+  int nOut   = nFixed + (int)covCol.size();
+
+  List lstF(nOut);
+  CharacterVector nmeF(nOut);
+
+  /* helper: wrap or create zero column */
+  auto wrapInt = [&](int col) -> SEXP {
+    if (col >= 0) return make_rx_col_view_int(VECTOR_ELT(SEXP(inData), col));
+    /* absent column: scalar 1 repeated */
+    return rxode2_make_rep_int(Rf_ScalarInteger(1), (int)nrow);
+  };
+  auto wrapReal = [&](int col, double fill) -> SEXP {
+    if (col >= 0) return make_rx_col_view_real(VECTOR_ELT(SEXP(inData), col));
+    SEXP s = PROTECT(Rf_ScalarReal(fill));
+    SEXP r = rxode2_make_rep_real(s, (int)nrow);
+    UNPROTECT(1);
+    return r;
+  };
+
+  int pos = 0;
+  lstF[pos] = wrapInt(idCol);    nmeF[pos++] = "ID";
+  lstF[pos] = wrapReal(timeCol, 0.0); nmeF[pos++] = "TIME";
+  lstF[pos] = wrapInt(evidCol);  nmeF[pos++] = "EVID";
+  lstF[pos] = wrapReal(amtCol, 0.0);  nmeF[pos++] = "AMT";
+  lstF[pos] = wrapReal(iiCol, 0.0);   nmeF[pos++] = "II";
+  lstF[pos] = wrapReal(dvCol, NA_REAL); nmeF[pos++] = "DV";
+
+  if (hasCmtCol) {
+    lstF[pos] = make_rx_cmt_trans(cmtSexp, cmtNums, cmtNames);
+    nmeF[pos++] = "CMT";
+  }
+  if (censAdd)  { lstF[pos] = wrapInt(censCol);   nmeF[pos++] = "CENS"; }
+  if (limitAdd) { lstF[pos] = wrapReal(limitCol, NA_REAL); nmeF[pos++] = "LIMIT"; }
+  if (addlAdd)  { lstF[pos] = wrapInt(addlCol);   nmeF[pos++] = "ADDL"; }
+  if (ssAdd)    { lstF[pos] = wrapInt(ssCol);      nmeF[pos++] = "SS"; }
+
+  /* time-varying covariate columns */
+  std::vector<int> covParPosTV;
+  for (int ci = 0; ci < (int)covCol.size(); ++ci) {
+    int col = covCol[ci];
+    lstF[pos] = make_rx_col_view_real(VECTOR_ELT(SEXP(inData), col));
+    nmeF[pos++] = as<std::string>(dName[col]);
+    covParPosTV.push_back(covParPos[ci]);
+  }
+
+  Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
+  Rf_setAttrib(lstF, R_ClassSymbol,
+               CharacterVector::create("rxEtTran", "data.frame"));
+  Rf_setAttrib(lstF, R_RowNamesSymbol,
+               IntegerVector::create(NA_INTEGER, -(int)nrow));
+
+  /* ------------------------------------------------------------------
+   * 5. iCov support: merge per-subject individual covariate into cov1
+   * ------------------------------------------------------------------ */
+  List cov1;
+  if (!iCov.isNull()) {
+    List iCov_ = as<List>(iCov);
+    /* just pass iCov rows through as a per-subject constant cov frame;
+       the solver's gcov machinery handles it via covParPos0 */
+    cov1 = iCov_;
+  }
+
+  /* ------------------------------------------------------------------
+   * 6. keep= columns as ALTREP passthrough data frame
+   * ------------------------------------------------------------------ */
+  List keepL;
+  CharacterVector keepN(keepCol.size());
+  IntegerVector   keepLtype(keepCol.size(), 0); /* 0 = default type */
+  {
+    List kl(keepCol.size());
+    for (int ki = 0; ki < (int)keepCol.size(); ++ki) {
+      int col = keepCol[ki];
+      SEXP kcol = VECTOR_ELT(SEXP(inData), col);
+      if (TYPEOF(kcol) == REALSXP) {
+        kl[ki] = make_rx_col_view_real(kcol);
+      } else if (TYPEOF(kcol) == INTSXP) {
+        kl[ki] = make_rx_col_view_int(kcol);
+      } else {
+        /* character / other: pass through as-is */
+        kl[ki] = kcol;
+      }
+      keepN[ki] = as<std::string>(dName[keepCol[ki]]);
+    }
+    Rf_setAttrib(kl, R_NamesSymbol, keepN);
+    Rf_setAttrib(kl, R_ClassSymbol, wrap("data.frame"));
+    Rf_setAttrib(kl, R_RowNamesSymbol, IntegerVector::create(NA_INTEGER, -(int)nrow));
+    keepL = kl;
+  }
+
+  /* ------------------------------------------------------------------
+   * 7. Build metadata list e (33 slots)
+   * ------------------------------------------------------------------ */
+
+  /* pars matrix: (npars × 1) NA matrix, one column per subject */
+  int npars = pars.size();
+  NumericVector fPars(npars * nid, NA_REAL);
+  Rf_setAttrib(fPars, R_DimSymbol, IntegerVector::create(npars, nid));
+  Rf_setAttrib(fPars, R_DimNamesSymbol, List::create(pars, R_NilValue));
+
+  /* Build idLvl from ID column (if integer IDs, convert to character factor levels) */
+  CharacterVector idLvl;
+  if (idSexp != R_NilValue) {
+    std::vector<int> seen;
+    seen.reserve(nid);
+    int lid = NA_INTEGER;
+    for (R_xlen_t i = 0; i < nrow; ++i) {
+      int cur = INTEGER_ELT(idSexp, i);
+      if (cur != lid) { seen.push_back(cur); lid = cur; }
+    }
+    idLvl = CharacterVector(seen.size());
+    for (int k = 0; k < (int)seen.size(); ++k) idLvl[k] = std::to_string(seen[k]);
+  } else {
+    idLvl = CharacterVector::create("1");
+  }
+
+  /* cmtInfo: use existing model var */
+  RObject cmtInfo = mv[RxMv_extraCmt];
+
+  List e(33);
+  RxTransNamesSingle;
+  e[RxTrans_ndose]         = IntegerVector::create(ndose);
+  e[RxTrans_nobs]          = IntegerVector::create(nobs);
+  e[RxTrans_nid]           = IntegerVector::create(nid);
+  if (cov1.size() > 0) { e[RxTrans_cov1] = cov1; } else { e[RxTrans_cov1] = R_NilValue; }
+  e[RxTrans_covParPos]     = wrap(covParPosTV);
+  e[RxTrans_covParPosTV]   = wrap(covParPosTV);
+  e[RxTrans_sub0]          = R_NilValue;
+  e[RxTrans_baseSize]      = R_NilValue;
+  e[RxTrans_nTv]           = R_NilValue;
+  e[RxTrans_lst]           = R_NilValue;
+  e[RxTrans_nme]           = R_NilValue;
+  e[RxTrans_covParPos0]    = IntegerVector(0); /* no constant covariates pre-filled */
+  e[RxTrans_covUnits]      = R_NilValue;
+  e[RxTrans_pars]          = fPars;
+  e[RxTrans_allBolus]      = allBolus;
+  e[RxTrans_allInf]        = allInf;
+  e[RxTrans_mxCmt]         = mxCmt;
+  e[RxTrans_lib_name]      = trans[RxMvTrans_lib_name];
+  e[RxTrans_addCmt]        = addCmt;
+  e[RxTrans_cmtInfo]       = cmtInfo;
+  e[RxTrans_idLvl]         = idLvl;
+  e[RxTrans_allTimeVar]    = !covParPosTV.empty();
+  e[RxTrans_keepDosingOnly]= true;
+  e[RxTrans_censAdd]       = censAdd;
+  e[RxTrans_limitAdd]      = limitAdd;
+  e[RxTrans_levelInfo]     = List(0);
+  e[RxTrans_idInfo]        = IntegerVector(0);
+  e[RxTrans_maxShift]      = 0.0;
+  e[RxTrans_keepL]         = List::create(_["keepL"] = keepL, _["keepLtype"] = keepLtype);
+  e[RxTrans_maxItemsPerId] = maxItemsPerId;
+  e[RxTrans_mixUnif]       = false;
+  e[RxTrans_addlAdd]       = addlAdd;
+  e[RxTrans_ssAdd]         = ssAdd;
+
+  Rf_setAttrib(e, R_ClassSymbol, wrap("rxHidden"));
+
+  CharacterVector cls = CharacterVector::create("rxEtTran", "data.frame");
+  cls.attr(".rxode2.lst") = e;
+  Rf_setAttrib(lstF, R_ClassSymbol, cls);
+
+  /* ID column: set factor levels for the solver */
+  if (idSexp != R_NilValue && !dropUnits) {
+    SEXP idOut = VECTOR_ELT(SEXP(lstF), 0);
+    Rf_setAttrib(idOut, R_ClassSymbol, wrap("factor"));
+    Rf_setAttrib(idOut, R_LevelsSymbol, idLvl);
+  }
+
+  return lstF;
+}

@@ -288,6 +288,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// etTransSingle
+List etTransSingle(List inData, const RObject& obj, bool addCmt, bool dropUnits, Nullable<List> iCov, CharacterVector keep);
+RcppExport SEXP _rxode2_etTransSingle(SEXP inDataSEXP, SEXP objSEXP, SEXP addCmtSEXP, SEXP dropUnitsSEXP, SEXP iCovSEXP, SEXP keepSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type inData(inDataSEXP);
+    Rcpp::traits::input_parameter< const RObject& >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< bool >::type addCmt(addCmtSEXP);
+    Rcpp::traits::input_parameter< bool >::type dropUnits(dropUnitsSEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type iCov(iCovSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type keep(keepSEXP);
+    rcpp_result_gen = Rcpp::wrap(etTransSingle(inData, obj, addCmt, dropUnits, iCov, keep));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxExpandGrid_
 List rxExpandGrid_(RObject& c1, RObject& c2, RObject& type);
 static SEXP _rxode2_rxExpandGrid__try(SEXP c1SEXP, SEXP c2SEXP, SEXP typeSEXP) {
