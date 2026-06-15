@@ -72,4 +72,21 @@ rxTest({
     expect_equal(length(rinvchisq(3, 4, 1)), 3) ## Scale = 1, degrees of freedom = 4
     expect_equal(length(rinvchisq(3, 4, 1)), 3) ## Scale = 1, degrees of freedom = 4
   })
+
+  test_that("rcvC1 single-variance (1x1) case does not abort", {
+    ## Before the fix the 1x1 branch did `ret = ret(1,1)` -- element access on a
+    ## default-constructed 0x0 matrix -> "Mat::operator(): index out of bounds".
+    r <- rcvC1(sdEst = 2.0, diagXformType = 1L)
+    expect_equal(dim(r), c(1L, 1L))
+    ## diagXformType=1 (sqrt): sd = 1/sdEst^2 = 0.25; ret = sd^2 = 0.0625
+    expect_equal(as.numeric(r), 0.0625)
+  })
+
+  test_that("rcvC1 separation strategy passes (d, nu) in the correct order", {
+    ## Before the fix rinvWRcv1 called invWR1d(nu, d) with the arguments swapped
+    ## (signature is invWR1d(int d, double nu)), so a valid d=3, nu=5 request
+    ## failed with "'nu' must be greater than 'd'-1".
+    expect_error(r <- rcvC1(sdEst = c(1, 1, 1), nu = 5, rType = 2L), NA)
+    expect_equal(dim(r), c(3L, 3L))
+  })
 })

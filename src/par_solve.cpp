@@ -2643,7 +2643,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
         ind->solveLast2[k] = yp[k];
       }
-      if (canBreak){
+      if (*canBreak){
         nDup++;
         if (nDup >= 7) {
           break;
@@ -4786,7 +4786,7 @@ static void par_lsode_bdf(rx_solve *rx, int mf) {
       int neq[2]; neq[0] = baseNeq; neq[1] = 0;
       ind_lsode0(rx, op, solveid, neq, rwork, lrw, iwork, liw, mf);
       if (displayProgress) {
-        curTick = par_progress(nsolve, solveid + 1, curTick, 1, t0, 0);
+        curTick = par_progress(solveid + 1, nsolve, curTick, 1, t0, 0);
       }
       if (op->abort) abort = 1;
     }

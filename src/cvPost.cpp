@@ -266,7 +266,7 @@ arma::mat invWR1d(int d, double nu, bool omegaIsChol = false){
 
 arma::mat rinvWRcv1(arma::vec sd, double nu = 1.0){
   int d = sd.size();
-  arma::mat r = invWR1d(nu, d, false);
+  arma::mat r = invWR1d(d, nu, false);
   arma::mat dSd = diagmat(sd);
   return dSd*r*dSd;
 }
@@ -333,7 +333,7 @@ arma::mat rcvC1(arma::vec sdEst, double nu = 3.0,
   }
   arma::mat ret;
   if (sd.size() == 1) {
-    ret = ret(1,1);
+    ret.set_size(1, 1);
     ret(0,0) = sd[0]*sd[0];
   } else {
     if (rType == 1) {
