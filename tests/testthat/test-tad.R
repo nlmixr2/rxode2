@@ -456,6 +456,121 @@ rxTest({
     expect_equal(s$dose, s$dosec)
   })
 
+  test_that("tad(<state>)/tlast(<state>) survive an injected cmt() observable (nlmixr2est#685)", {
+    # An algebraic observable in a residual-error tilde makes rxUi inject a
+    # cmt() compartment for the observable *after* the linCmt() compartments.
+    # That extra compartment must not shift the slot indices that
+    # tad(<state>)/tlast(<state>) resolve to.  In a linCmt() model the
+    # depot/central compartments are added last (calcLinCmt()), so an earlier
+    # cmt() observable used to sort before them and shifted every per-state
+    # lookup -- tad(depot) returned NA and tad(central) returned the current
+    # time instead of NA.
+    et <-
+      et(amt = 100, time = c(0, 24, 48), cmt = "depot") |>
+      et(time = c(72, 96, 120), cmt = "central")
+
+    pars <- c(lka = log(1), lkel = log(0.1), lvc = log(10))
+
+    # mirrors the structure of an rxUi simulation model: tad()/tlast() before
+    # linCmt(), with cmt(Cc) injected for the algebraic observable
+    withCmt <- rxode2({
+      ka  <- exp(lka)
+      kel <- exp(lkel)
+      vc  <- exp(lvc)
+      tdDepot   <- tad(depot)
+      tdCentral <- tad(central)
+      tlDepot   <- tlast(depot)
+      tdAny     <- tad()
+      Cc <- linCmt()
+      cmt(Cc)
+    })
+
+    withoutCmt <- rxode2({
+      ka  <- exp(lka)
+      kel <- exp(lkel)
+      vc  <- exp(lvc)
+      tdDepot   <- tad(depot)
+      tdCentral <- tad(central)
+      tlDepot   <- tlast(depot)
+      tdAny     <- tad()
+      Cc <- linCmt()
+    })
+
+    # the injected cmt() observable does not change the ODE-state ordering
+    expect_equal(rxState(withCmt), c("depot", "central"))
+    expect_equal(rxState(withCmt), rxState(withoutCmt))
+    expect_equal(withCmt$stateExtra, "Cc")
+
+    s1 <- rxSolve(withCmt, pars, et)
+    s2 <- rxSolve(withoutCmt, pars, et)
+
+    # the cmt() observable must not perturb the per-state lookups
+    expect_equal(s1$tdDepot, s2$tdDepot)
+    expect_equal(s1$tdCentral, s2$tdCentral)
+    expect_equal(s1$tlDepot, s2$tlDepot)
+
+    # only depot was dosed (at 0, 24, 48); observations are at 72, 96, 120
+    obs <- s1[s1$time %in% c(72, 96, 120), ]
+    expect_equal(obs$tdDepot, c(24, 48, 72))     # time since last depot dose
+    expect_equal(obs$tdAny, c(24, 48, 72))       # tad(depot) == tad() here
+    expect_equal(obs$tlDepot, c(48, 48, 48))     # last depot dose time
+    expect_true(all(is.na(obs$tdCentral)))       # central was never dosed
+  })
+
+  test_that("tad(<state>) survives a cmt() observable declared before d/dt (nlmixr2est#685)", {
+    # The same slot-shift bug can be triggered in a pure-ODE model when the
+    # algebraic-observable cmt() compartment is declared *before* the d/dt
+    # block.  The d/dt states only get their compartment index when the d/dt
+    # line is parsed, so an earlier cmt() observable used to sort before them.
+    # (When the cmt() observable comes after the d/dt block, as the nlmixr2 ui
+    # appends it, the ODE states are already numbered and there is no shift.)
+    et <-
+      et(amt = 100, time = c(0, 24, 48), cmt = "depot") |>
+      et(time = c(72, 96, 120), cmt = "central")
+
+    pars <- c(lka = log(1), lkel = log(0.1), lvc = log(10))
+
+    cmtBefore <- rxode2({
+      tdDepot   <- tad(depot)
+      tdCentral <- tad(central)
+      ka  <- exp(lka)
+      kel <- exp(lkel)
+      vc  <- exp(lvc)
+      Cc <- central / vc
+      cmt(Cc)                  # declared before the d/dt block
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - kel * central
+    })
+
+    cmtAfter <- rxode2({
+      tdDepot   <- tad(depot)
+      tdCentral <- tad(central)
+      ka  <- exp(lka)
+      kel <- exp(lkel)
+      vc  <- exp(lvc)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - kel * central
+      Cc <- central / vc
+      cmt(Cc)
+    })
+
+    # the observable does not change the ODE-state ordering, regardless of
+    # where cmt() is declared relative to the d/dt block
+    expect_equal(rxState(cmtBefore), c("depot", "central"))
+    expect_equal(rxState(cmtBefore), rxState(cmtAfter))
+    expect_equal(cmtBefore$stateExtra, "Cc")
+
+    s1 <- rxSolve(cmtBefore, pars, et)
+    s2 <- rxSolve(cmtAfter, pars, et)
+
+    expect_equal(s1$tdDepot, s2$tdDepot)
+    expect_equal(s1$tdCentral, s2$tdCentral)
+
+    obs <- s1[s1$time %in% c(72, 96, 120), ]
+    expect_equal(obs$tdDepot, c(24, 48, 72))   # depot dose history is tracked
+    expect_true(all(is.na(obs$tdCentral)))     # central was never dosed
+  })
+
   # context("tad family of functions with linCmt()/ode mix")
 
   test_that("ode mixed", {
