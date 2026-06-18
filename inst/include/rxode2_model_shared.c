@@ -306,8 +306,7 @@ double _max(unsigned int n, ...) {
     mx = va_arg(valist, double);
     for (unsigned int i = 1; i < n; i++) {
       tmp = va_arg(valist, double);
-      if (ISNA(mx)) mx = tmp;
-      else if (!ISNA(tmp) && tmp > mx) mx = tmp;
+      if (tmp>mx) mx=tmp;
     }
     va_end(valist);
   }
@@ -323,8 +322,7 @@ double _min(unsigned int n, ...){
     mn = va_arg(valist, double);
     for (unsigned int i = 1; i < n; i++){
       tmp = va_arg(valist, double);
-      if (ISNA(mn)) mn = tmp;
-      else if (!ISNA(tmp) && tmp < mn) mn = tmp;
+      if (tmp<mn) mn=tmp;
     }
     va_end(valist);
   }
