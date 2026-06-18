@@ -2515,17 +2515,29 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   if (is.null(.ctl$file) && !.serializeInput && .setupOnly == 0L) {
-    .oomEst <- tryCatch(
-      rxMemoryEstimate(.eventsForSolve, model = object, control = .ctl),
-      error = function(e) NULL
-    )
-    if (!is.null(.oomEst) && !is.na(.oomEst$freeRamBytes) && .oomEst$freeRamBytes > 0) {
-      if (as.numeric(.oomEst$total) > .oomEst$freeRamBytes * 0.90) {
-        stop(sprintf(
-          "Solve requires %.1f GB but only %.1f GB appears free.\n",
-          as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
-          "Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.",
-          call. = FALSE)
+    .nStud  <- if (is.null(.ctl$nStud)) 1 else as.numeric(.ctl$nStud)
+    .nSub   <- if (is.null(.ctl$nSub))  1 else as.numeric(.ctl$nSub)
+    .nrowEv <- as.numeric(NROW(.eventsForSolve))
+    # Out-of-memory chunking (file=) only makes sense for solves whose
+    # dimensions are valid (within INT_MAX). When the subject*study or output
+    # row counts overflow INT_MAX, the dedicated "too large" guards in the C
+    # solver give the correct diagnostic, so don't pre-empt them with a file=
+    # suggestion (chunking would not make an INT_MAX-overflowing solve fit).
+    .dimOverflow <- (.nSub * .nStud > .Machine$integer.max) ||
+      (.nStud * .nrowEv > .Machine$integer.max)
+    if (!.dimOverflow) {
+      .oomEst <- tryCatch(
+        rxMemoryEstimate(.eventsForSolve, model = object, control = .ctl),
+        error = function(e) NULL
+      )
+      if (!is.null(.oomEst) && !is.na(.oomEst$freeRamBytes) && .oomEst$freeRamBytes > 0) {
+        if (as.numeric(.oomEst$total) > .oomEst$freeRamBytes * 0.90) {
+          stop(sprintf(
+            "Solve requires %.1f GB but only %.1f GB appears free.\n",
+            as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
+            "Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.",
+            call. = FALSE)
+        }
       }
     }
   }

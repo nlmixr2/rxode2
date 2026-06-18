@@ -313,7 +313,9 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
   .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
   if (length(.pq) == 0L)
     return(arrow::as_arrow_table(as.data.frame(x)))
-  arrow::concat_tables(lapply(.pq, arrow::read_parquet))
+  # concat_tables() takes tables as individual `...` arguments, not a list,
+  # so splice the per-chunk tables in with do.call().
+  do.call(arrow::concat_tables, lapply(.pq, arrow::read_parquet))
 }
 
 #' Convert an rxSolveOom result to a lazy Arrow Dataset
@@ -374,9 +376,10 @@ as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
   unlist(lapply(.m$chunks, function(.f) readRDS(.f)[[name]]), use.names = FALSE)
 }
 
-#' @export
-nrow.rxSolveOom <- function(x) sum(attr(x, "manifest")$nrows)
-
+# nrow() is not an S3 generic, so a `nrow.rxSolveOom` method is never
+# dispatched (and exporting it as a plain function trips an "undocumented
+# code object" check).  base::nrow(x) is dim(x)[1L], and dim() *is* generic,
+# so dim.rxSolveOom() below already makes nrow() return the right value.
 #' @export
 dim.rxSolveOom <- function(x) c(sum(attr(x, "manifest")$nrows), NA_integer_)
 
