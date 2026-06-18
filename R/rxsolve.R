@@ -964,6 +964,11 @@
 #'   chunk solving when `file` is set. `0L` (default) uses serial solving.
 #'   Requires the `mirai` package.
 #'
+#' @param single Logical; when `TRUE` use a single-threaded, zero-copy
+#'   solve path that avoids duplicating the event table and solved-data
+#'   matrix. This can lower peak memory use and per-solve overhead for
+#'   single-core solves at the cost of parallelism. Defaults to `FALSE`.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are

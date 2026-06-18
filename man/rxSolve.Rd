@@ -182,6 +182,7 @@ rxSolve(
   file = NULL,
   chunkSize = NULL,
   parallel = 0L,
+  single = FALSE,
   envir = parent.frame()
 )
 
@@ -1546,6 +1547,11 @@ free RAM using \code{rxMemoryEstimate()}.}
 \item{parallel}{Integer; number of \code{mirai} daemons to use for parallel
 chunk solving when \code{file} is set. \code{0L} (default) uses serial solving.
 Requires the \code{mirai} package.}
+
+\item{single}{Logical; when \code{TRUE} use a single-threaded, zero-copy
+solve path that avoids duplicating the event table and solved-data
+matrix. This can lower peak memory use and per-solve overhead for
+single-core solves at the cost of parallelism. Defaults to \code{FALSE}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
