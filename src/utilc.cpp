@@ -1075,6 +1075,7 @@ extern "C" SEXP _rxode2_phi(SEXP q) {
 }
 
 #include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h" // defines updateRate/updateDur forward-declared in handleEvid.h
 
 extern "C" SEXP _rxode2_getWh(SEXP in) {
   rxProtect rx_protect;
