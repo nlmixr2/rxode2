@@ -20,6 +20,14 @@
   dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
   correct compartment reference.
 
+- Fixed `tad(<state>)` / `tlast(<state>)` (and the rest of the per-state
+  dose-timing family) returning `NA` or the wrong value in `linCmt()`
+  models that also declare an extra `cmt()` compartment for an algebraic
+  observable (e.g. an nlmixr2 ui model with `Cc ~ prop(propSd)`).  The
+  injected observable compartment used to sort before the linear
+  compartments (which are added last) and shifted the slot indices the
+  generated code used for the per-state lookups (nlmixr2est#685).
+
 - Added a forward automatic derivative linear compartment model, which
   beats the reverse mode automatic derivatives for linear compartment
   models
