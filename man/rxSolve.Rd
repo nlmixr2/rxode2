@@ -156,6 +156,7 @@ rxSolve(
   tolFactor = NULL,
   serializeFile = NULL,
   dense = FALSE,
+  single = FALSE,
   envir = parent.frame()
 )
 
@@ -1036,6 +1037,11 @@ reduce the number of solver evaluations for models with dense
 sampling grids. Silently ignored for non-dop853 methods. Not yet
 supported for \code{linCmt()} models (a message is emitted and the
 standard path is used instead).}
+
+\item{single}{Logical; when \code{TRUE} use a single-threaded, zero-copy
+solve path that avoids duplicating the event table and solved-data
+matrix. This can lower peak memory use and per-solve overhead for
+single-core solves at the cost of parallelism. Defaults to \code{FALSE}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
