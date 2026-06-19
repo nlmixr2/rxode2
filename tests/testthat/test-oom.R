@@ -187,3 +187,38 @@ test_that("rxEventTableFile works with rds format", {
     expect_s3_class(.etf, "rxEtFile")
   })
 })
+
+test_that("rxSolve(parallel=) mirai path matches the serial chunked solve", {
+  rxTest({
+    skip_if_not_installed("mirai")
+    skip_if_not_installed("arrow")
+    mod <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v  <- exp(tv)
+      d/dt(depot)  <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp           <- center / v
+    })
+    et_pop <- et(amt = 100) |> et(seq(0, 24, by = 4)) |> et(id = 1:6)
+    pars   <- c(tka = log(0.5), tcl = log(4), tv = log(70))
+    omega  <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+
+    rxSetSeed(42)
+    ser <- rxSolve(mod, pars, et_pop, omega = omega,
+                   file = tempfile("rxSer"), chunkSize = 2)
+    rxSetSeed(42)
+    par <- rxSolve(mod, pars, et_pop, omega = omega,
+                   file = tempfile("rxPar"), chunkSize = 2, parallel = 2)
+
+    expect_s3_class(par, "rxSolveOom")
+    ser_df <- as.data.frame(ser)
+    par_df <- as.data.frame(par)
+    ser_df <- ser_df[order(ser_df$id, ser_df$time), ]
+    par_df <- par_df[order(par_df$id, par_df$time), ]
+    expect_equal(nrow(par_df), nrow(ser_df))
+    expect_equal(sort(unique(par_df$id)), 1:6)
+    # parallel chunking must not change the eta draws -> identical solve
+    expect_equal(par_df$cp, ser_df$cp, tolerance = 1e-8)
+  })
+})
