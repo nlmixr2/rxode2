@@ -324,7 +324,14 @@ rxTest({
     .mLin <- suppressMessages(odeToLin(.m))
 
     .getDll <- function(r) {
-      get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE)
+      # normalizePath() canonicalizes the path so that the comparison is robust
+      # to Windows 8.3 short-name mangling: the .rxd cache directory name is too
+      # long for an 8.3 path, so one solve can report it in long form
+      # (rx_..._x64_.rxd) while another reports the shortened form
+      # (RX_...~1.RXD).  Both point to the same DLL; normalizing makes them equal.
+      normalizePath(
+        get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
+        winslash = "/", mustWork = FALSE)
     }
 
     # useLinCmt=TRUE must use the same DLL as explicit odeToLin conversion
