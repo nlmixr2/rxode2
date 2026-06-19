@@ -13,6 +13,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
+void RSprintf(const char *format, ...);
 #define _(String) (String)
 
 /* All former static variables are now in dop853_ctx_t (see dop853.h).
@@ -132,7 +133,7 @@ double contd8 (dop853_ctx_t *ctx, int ii, double x)
 
   if (i == INT_MAX)
     {
-      Rprintf (_("no dense output available for %uth component"), ii);
+      RSprintf(_("no dense output available for %uth component"), ii);
       return 0.0;
     }
 
@@ -390,7 +391,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (irtrn < 0)
         {
           /* if (fileout) */
-	  Rprintf(_("exit of dop853 at x = %.16e\n"), x);
+	  RSprintf(_("exit of dop853 at x = %.16e\n"), x);
           return 2;
         }
     }
@@ -401,7 +402,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (ctx->nstep > nmax)
         {
           /* if (fileout) */
-	  Rprintf (_("exit of dop853 at x = %.16e, more than nmax = %li are needed\n"), x, nmax);
+	  RSprintf(_("exit of dop853 at x = %.16e, more than nmax = %li are needed\n"), x, nmax);
           ctx->xout = x;
           ctx->hout = h;
           return -2;
@@ -410,7 +411,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (0.1 * fabs(h) <= fabs(x) * uround)
         {
           /* if (fileout) */
-	  Rprintf (_("exit of dop853 at x = %.16e, step size too small h = %.16e\n"), x, h);
+	  RSprintf(_("exit of dop853 at x = %.16e, step size too small h = %.16e\n"), x, h);
           ctx->xout = x;
           ctx->hout = h;
           return -3;
@@ -542,7 +543,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
                   iasti++;
                   if (iasti == 15)
                     {
-		      Rprintf (_("the problem seems to become stiff at x = %.16e\n"), x);
+		      RSprintf(_("the problem seems to become stiff at x = %.16e\n"), x);
 		      ctx->xout = x;
 		      ctx->hout = h;
 		      return -4;
@@ -657,7 +658,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
               if (irtrn < 0)
                 {
                   /* if (fileout) */
-		  Rprintf ( _("exit of dop853 at x = %.16e\n"), x);
+		  RSprintf( _("exit of dop853 at x = %.16e\n"), x);
                   return 2;
                 }
             }
@@ -688,6 +689,11 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
         }
 
       h = hnew;
+      if (!R_FINITE(h)) {
+        ctx->xout = x;
+        ctx->hout = h;
+        return -3;
+      }
     }
 
 } /* dopcor */
@@ -723,7 +729,7 @@ int dop853
   if (n == INT_MAX)
     {
       /* if (fileout) */
-      Rprintf (_("system too big, max. n = %u\n"), INT_MAX-1);
+      RSprintf(_("system too big, max. n = %u\n"), INT_MAX-1);
       arret = 1;
     }
 
@@ -733,7 +739,7 @@ int dop853
   else if (nmax <= 0)
     {
       /* if (fileout) */
-      Rprintf ( _("wrong input, nmax = %li\n"), nmax);
+      RSprintf( _("wrong input, nmax = %li\n"), nmax);
       arret = 1;
     }
 
@@ -743,7 +749,7 @@ int dop853
   else if ((meth <= 0) || (meth >= 2))
     {
       /* if (fileout) */
-      Rprintf (_("curious input, meth = %i\n"), meth);
+      RSprintf(_("curious input, meth = %i\n"), meth);
       arret = 1;
     }
 
@@ -757,7 +763,7 @@ int dop853
   if ((iout < 0) || (iout > 2))
     {
       /* if (fileout) */
-      Rprintf ( _("wrong input, iout = %i\n"), iout);
+      RSprintf( _("wrong input, iout = %i\n"), iout);
       arret = 1;
     }
 
@@ -765,7 +771,7 @@ int dop853
   if (nrdens > n)
     {
       /* if (fileout) */
-      Rprintf ( _("curious input, nrdens = %u\n"), nrdens);
+      RSprintf( _("curious input, nrdens = %u\n"), nrdens);
       arret = 1;
     }
   else if (nrdens)
@@ -786,7 +792,7 @@ int dop853
           !ctx.rcont6 || !ctx.rcont7 || !ctx.rcont8 || (!ctx.indir && (nrdens < n)))
         {
           /* if (fileout) */
-	  Rprintf ( _("not enough free memory for rcont12345678&indir\n"));
+	  RSprintf( _("not enough free memory for rcont12345678&indir\n"));
           arret = 1;
         }
 
@@ -794,13 +800,13 @@ int dop853
       if (nrdens == n)
         {
           if (icont)
-            Rprintf ( _("warning : when nrdens = n there is no need allocating memory for icont\n"));
+            RSprintf( _("warning : when nrdens = n there is no need allocating memory for icont\n"));
           ctx.nrds = n;
         }
       else if (licont < nrdens)
         {
           /* if (fileout) */
-	  Rprintf ( _("insufficient storage for icont, min. licont = %u\n"), nrdens);
+	  RSprintf( _("insufficient storage for icont, min. licont = %u\n"), nrdens);
           arret = 1;
         }
       else

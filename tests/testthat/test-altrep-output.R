@@ -12,6 +12,10 @@ rxTest({
     rxIs(x, "seqrep")
   }
 
+  .isRepstr <- function(x) {
+    rxIs(x, "repstr")
+  }
+
   for (rt in c("data.frame", "tibble", "rxSolve")) {
     for (ad in c(TRUE, FALSE, NA))  {
 
@@ -58,7 +62,7 @@ rxTest({
         expect_false(.isAltrep(out$time))
       })
 
-      # ── covariate (addCov = TRUE) columns ──────────────────────────────────────
+      # -- covariate (addCov = TRUE) columns --------------------------------------
 
       test_that(sprintf("covariate column is ALTREP via homogenous event-table path (%s %s)",
                         rt, ad), {
@@ -87,7 +91,7 @@ rxTest({
                         rt, ad), {
 
         # Multiple virtual studies from omega draws; covariate values are fixed
-        # per-subject across sims -> each sim block is identical → ALTREP.
+        # per-subject across sims -> each sim block is identical -> ALTREP.
         pkCov <- function() {
           ini({
             tka <- 0.5
@@ -127,7 +131,7 @@ rxTest({
         }
       })
 
-      # ── keep columns ───────────────────────────────────────────────────────────
+      # -- keep columns -----------------------------------------------------------
 
       test_that(paste0("keep columns (double, integer, logical, factor) are ALTREP via homogenous event-table path, %s %s", rt, ad), {
         mod <- rxode2({
@@ -267,7 +271,7 @@ rxTest({
     }
   }
 
-  # ── TBS columns (returnType = "data.frame.TBS") ───────────────────────────
+  # -- TBS columns (returnType = "data.frame.TBS") ---------------------------
 
   for (ad in c(TRUE, FALSE, NA)) {
 
@@ -324,7 +328,43 @@ rxTest({
     })
   }
 
-  # ── Non-sequential integer IDs ────────────────────────────────────────────
+  # -- Sequential integer IDs should never be a factor ----------------------
+
+  test_that("sequential integer IDs are never a factor, regardless of event-table uniformity", {
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+
+    # Non-uniform event tables (arm1 vs arm2 style) -- non-ALTREP path.
+    # Previously this produced a factor id due to a stale guard; verify it
+    # now returns a plain integer.
+    ev1 <- as.data.frame(et(amt = 1000, cmt = 1, time = c(0, 24, 48)) |> et(seq(0, 72, by = 5)))
+    ev2 <- as.data.frame(et(amt = 2000, cmt = 1, time = c(5, 29, 53)) |> et(seq(0, 77, by = 6)))
+    ev1$id <- 1L; ev2$id <- 2L
+    ev3 <- ev1; ev3$id <- 3L; ev4 <- ev2; ev4$id <- 4L
+    evDf <- rbind(ev1, ev2, ev3, ev4)
+    p <- data.frame(id = 1:4, ka = 0.5, cl = 1, v = 10)
+
+    out <- rxSolve(mod, p, evDf, returnType = "data.frame")
+    expect_false(is.factor(out$id))
+    expect_equal(sort(unique(out$id)), 1:4)
+
+    # Uniform event tables -- ALTREP seqrep path.  Should also not be a factor.
+    ev <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+    evDf2 <- rbind(
+      cbind(as.data.frame(ev), id = 1L),
+      cbind(as.data.frame(ev), id = 2L),
+      cbind(as.data.frame(ev), id = 3L),
+      cbind(as.data.frame(ev), id = 4L)
+    )
+    out2 <- rxSolve(mod, p, evDf2, returnType = "data.frame")
+    expect_false(is.factor(out2$id))
+    expect_equal(sort(unique(out2$id)), 1:4)
+  })
+
+  # -- Non-sequential integer IDs --------------------------------------------
 
   test_that("non-sequential integer IDs produce ALTREP repint id column (nStud > 1)", {
     pkMod <- function() {
@@ -362,5 +402,95 @@ rxTest({
     for (.id in c(5L, 10L, 15L)) {
       expect_true(all(out$id[out$id == .id] == .id))
     }
+  })
+
+  # -- String keep columns -- dedicated rx_rep_str ALTREP tests --------------
+
+  test_that("string keep column is rx_rep_str ALTREP via homogeneous path", {
+    mod  <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+      cp <- centr / v
+    })
+    ev   <- et(amt = 100, cmt = 1, ii = 12, addl = 1) |> et(seq(0, 24, by = 1))
+    evDf <- cbind(ev, label = "low")
+    p    <- data.frame(id = 1:3, ka = 0.5, cl = 1, v = 10)
+
+    out <- rxSolve(mod, p, evDf, keep = "label")
+
+    expect_true(.isAltrep(out$label))
+    expect_true(.isRepstr(out$label))
+    expect_true(all(out$label == "low"))
+    expect_null(attr(out$label, "class"))
+  })
+
+  test_that("string keep column is rx_rep_str ALTREP via stochastic nsim path", {
+    pkKeep <- function() {
+      ini({ tka <- 0.5; tcl <- 0; tv <- log(10); eta.ka ~ 0.3 })
+      model({
+        ka <- exp(tka + eta.ka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot) <- -ka * depot
+        d/dt(centr) <- ka * depot - cl / v * centr
+        cp <- centr / v
+      })
+    }
+    evDf <- as.data.frame(
+      et(amt = 100, cmt = 1) |> et(seq(0, 24, by = 1)) |> et(id = 1:3)
+    )
+    n <- sum(evDf$id == 1L)
+    evDf$label <- rep(c("low", "high", "low"), each = n)
+
+    set.seed(42)
+    out <- rxSolve(pkKeep, evDf, nsim = 3, keep = "label")
+
+    expect_true(.isAltrep(out$label))
+    expect_true(.isRepstr(out$label))
+    for (.id in 1:3) {
+      expect_equal(unique(out$label[out$id == .id]),
+                   c("low", "high", "low")[.id])
+    }
+  })
+
+  test_that("single-sim string keep column is NOT ALTREP", {
+    mod  <- rxode2({ d/dt(A) <- -k * A })
+    ev   <- et(seq(0, 12, by = 1)) |> et(amt = 100)
+    evDf <- cbind(ev, label = "ctrl")
+
+    out <- rxSolve(mod, c(k = 0.1), evDf, keep = "label")
+
+    expect_false(.isAltrep(out$label))
+    expect_equal(unique(out$label), "ctrl")
+  })
+
+  test_that("string ALTREP column materialises correctly", {
+    mod  <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(centr) <- ka * depot - cl / v * centr
+    })
+    ev   <- et(amt = 100, cmt = 1) |> et(seq(0, 24, by = 1))
+    evDf <- cbind(ev, grp = "A")
+    p    <- data.frame(id = 1:4, ka = 0.5, cl = 1, v = 10)
+
+    out <- rxSolve(mod, p, evDf, keep = "grp")
+    expect_true(.isAltrep(out$grp))
+
+    # Force full materialisation via DATAPTR then verify values are correct
+    mat <- as.character(out$grp)
+    expect_true(all(mat == "A"))
+    expect_equal(length(mat), nrow(out))
+  })
+
+  test_that("element access on string ALTREP column exercises Elt without materialising", {
+    mod  <- rxode2({ d/dt(A) <- -k * A })
+    ev   <- et(seq(0, 10, by = 1)) |> et(amt = 1)
+    evDf <- cbind(ev, trt = "drug")
+    p    <- data.frame(id = 1:5, k = 0.2)
+
+    out <- rxSolve(mod, p, evDf, keep = "trt")
+    expect_true(.isAltrep(out$trt))
+
+    expect_equal(out$trt[[1L]], "drug")
+    expect_equal(out$trt[[nrow(out)]], "drug")
+    expect_true(.isAltrep(out$trt))
   })
 })

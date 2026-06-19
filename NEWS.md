@@ -1,9 +1,59 @@
-# rxode2 (development)
+# rxode2 5.1.3
+
+- Add automatic conversion of ode models to linear models when
+  detected.  This conversion is applied transparently at solve time
+  (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
+  parameters are passed explicitly to `linCmt()` so the
+  parameterization is inferred even when the parameters are defined
+  only in the `ini()` block.  If a converted model cannot be compiled
+  the original ODE model is used instead, so the conversion never
+  breaks an otherwise-valid solve.
+
+- Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
+  now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
+  referencing the linear compartment names (`depot`, `central`)
+  directly.  `odeToLin()` preserves these calls when converting, and
+  renames non-standard ODE compartment names to the linear-compartment
+  names.
+
+- Fixed the string form of the compartment argument in the adaptive
+  dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
+  correct compartment reference.
+
+- Added a forward automatic derivative linear compartment model, which
+  beats the reverse mode automatic derivatives for linear compartment
+  models
+
+- Added `setRxThreadId()` so a package that drives rxode2's per-subject
+  solve from its OWN OpenMP team for windows interaction with `nlmixr2`.
+
+- Added Jacobian handling of adaptive dosing events (retaining them
+  when calculating Jacobian).  Should be able to be applied in forward
+  sensitivity analysis as well.
+
+- Bug fix for `mix()` models as well as `iCov` models.
+
+# rxode2 5.1.2
+
+- `geom_cens()` / `stat_cens()` no longer emit "Ignoring unknown
+  aesthetics" warnings when censoring aesthetics are mapped.
+  Documentation corrected to describe the two supported lowercase
+  forms: `lower`/`upper` (both required) or `cens` (with optional
+  `limit`). The two forms cannot be mixed, `lower` and `upper` are
+  now required together, and `limit` without `cens` is rejected
+  rather than silently ignored.
+
+- Checks for `is.loaded()` before loading a rxode2 model.  This helps fix
+  the m1 ODR issue shown in nlmixr2est.
+
+- Moved `dim.rxEt()` here instead of in nlmixr2est
+
+# rxode2 5.1.1
 
 - Various low level fixes to allow `nlmixr2est` to have parallelized
   focei.
 
-- Parallelized the rxode2 data.frame creation.
+- Parallelized the `rxode2` data.frame creation.
 
 - Use ALTREP for `id`, `sim.id`, repeated simulation event columns
   (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`),

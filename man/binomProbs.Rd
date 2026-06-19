@@ -123,7 +123,7 @@ binomProbs(x, na.rm=TRUE)
 \item Newcombe, R. G. (1998). "Two-sided confidence intervals for the single
 proportion: comparison of seven methods". Statistics
 in Medicine. 17 (8):
-857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+857-872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
 9595616.
 \item Hezhi Lu, Hua Jin,
 A new prediction interval for binomial random variable based on inferential models,

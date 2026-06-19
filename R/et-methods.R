@@ -399,6 +399,7 @@
 #' @author Matthew L. Fidler
 .etMethodImportEventTable2 <- function(env, df, ...) {
   if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+  df <- as.data.frame(df)
   df <- .etImportNormalizeNames(df)
   df <- .etImportIdToInteger(df)
   df <- .etImportDropNaTime(df)

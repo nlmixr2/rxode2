@@ -42,6 +42,7 @@ jobs:
             nlmixr2/lotri
             nlmixr2/rxode2ll
             nlmixr2/PreciseSums
+            any::rxode2mrgsolvebridge
             local::.
           needs: website
 

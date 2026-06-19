@@ -479,7 +479,11 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
                  .amountUnitsMissing, .timeUnitsMissing)
 
   # ---- ID expansion ----
-  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir) # nolint
+  .addingEvents <- (!.amtMissing || !.timeMissing || !.evidMissing || !.cmtMissing ||
+                    !.iiMissing || !.addlMissing || !.ssMissing || !.rateMissing ||
+                    !.durMissing || !.untilMissing || !.addSamplingMissing ||
+                    !is.null(.dotArgs[["dose"]]) || !is.null(.listObs))
+  .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir, addingEvents = .addingEvents) # nolint
   .resolvedId  <- .ret$resolvedId
   .targetIds   <- .ret$targetIds
   .doResize    <- .ret$doResize
@@ -706,7 +710,16 @@ mutate.rxEt <- function(.data, ...) {
 
 #' @export
 names.rxEt <- function(x) {
-  names(as.data.frame(x, all = TRUE))
+  .env <- .rxEtEnv(x) # nolint
+  .n <- names(.env$show)
+  for (.ch in .env$chunks) {
+    if (!is.null(.ch)) {
+      .extra <- setdiff(names(.ch), .n)
+      if (length(.extra) > 0L) .n <- c(.n, .extra)
+      break
+    }
+  }
+  .n
 }
 
 # rxEt data-frame methods -------------------------------------------------

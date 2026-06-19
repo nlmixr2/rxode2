@@ -32,7 +32,7 @@ below.
 
 ## Shared capabilities
 
-- NONMEM-compatible datasets (EVID, AMT, CMT, TIME, ID, …)
+- NONMEM-compatible datasets (EVID, AMT, CMT, TIME, ID, ...)
 - Simulation of new subjects with sampled ETAs
 - Simulation of typical subjects (all ETAs = 0)
 - Covariate sampling and prediction-interval generation
@@ -50,7 +50,7 @@ below.
 
 ### No NONMEM license required
 
-rxode2 is entirely open-source (GPL ≥ 3) and self-contained.
+rxode2 is entirely open-source (GPL >= 3) and self-contained.
 Simulation runs without any external software.  NMsim requires a
 working, licensed NONMEM installation configured via
 `NMdataConf(path.nonmem = ...)` before any simulation can be
@@ -140,7 +140,7 @@ and forward-sensitivity equations, which are used by nlmixr2's FOCEi
 algorithm for exact gradient-based estimation.  This capability is
 irrelevant to NMsim, which delegates all numerical work to NONMEM.
 
-### 1–3 compartment analytical solutions with exact gradients
+### 1-3 compartment analytical solutions with exact gradients
 
 `linCmt()` in rxode2 provides analytical solutions for one-, two-,
 and three-compartment models with gradients computed via Stan math
@@ -156,7 +156,7 @@ NMsim uses whichever ADVAN is specified in the NONMEM control stream.
 
 ### Runs anywhere without infrastructure
 
-rxode2 simulations run on any machine with R and a C compiler — a
+rxode2 simulations run on any machine with R and a C compiler -- a
 laptop, a CI server, a Docker container, or Shiny.  NMsim requires
 a NONMEM license and a configured executable path, which typically
 restricts it to specific workstations or servers.
@@ -166,7 +166,7 @@ restricts it to specific workstations or servers.
 ### Zero model re-implementation risk
 
 NMsim's core value proposition is that it simulates the *exact*
-NONMEM model used for estimation — the same control stream, the same
+NONMEM model used for estimation -- the same control stream, the same
 ADVAN, the same `$PRED`/`$DES`/`$ERROR` code.  There is no
 translation step, so there is no risk of introducing bugs when
 converting the model to a different syntax.
@@ -184,7 +184,7 @@ manual adjustment when the automated comparison does not pass.
 ```{r}
 library(NMsim)
 
-# Simulate the exact estimation model — no reimplementation
+# Simulate the exact estimation model -- no reimplementation
 simres <- NMsim(
   file.mod = "path/to/run001.mod",
   data     = data.sim
@@ -194,7 +194,7 @@ simres <- NMsim(
 ### Full NONMEM feature coverage
 
 Because NMsim runs NONMEM itself, it supports the entire NONMEM
-feature set: all ADVAN routines (ADVAN1–ADVAN13), `$MIXTURE` models,
+feature set: all ADVAN routines (ADVAN1-ADVAN13), `$MIXTURE` models,
 any `$PRED`/`$DES` code, inter-occasion variability, `$PRIOR`, and
 any NONMEM-compatible extension.  rxode2's own solver covers the
 most common pharmacometric models but does not replicate every NONMEM
@@ -272,7 +272,7 @@ common workflow is:
    validation confirms the rxode2 model is numerically equivalent to
    the NONMEM model.
 3. **Simulate** with rxode2 for fast exploratory analyses, sensitivity
-   analyses, and trial-design work — with confidence from the
+   analyses, and trial-design work -- with confidence from the
    validation step.
 4. **Simulate** with NMsim when exact NONMEM fidelity is required
    for regulatory submissions, when the automated `nonmem2rx`
@@ -290,15 +290,15 @@ common workflow is:
 | Simulation speed | sub-second to seconds | seconds to minutes |
 | Full NONMEM feature set | partial | yes |
 | `$MIXTURE` models | `nonmem2rx` imports; no auto-validation | yes |
-| EBE-based simulation | yes — `nonmem2rx` imports EBEs into `$etaData` | yes — `NMsim_EBE` |
-| Uncertainty from covariance step | yes — `nonmem2rx` imports covariance matrix for draws | yes — `NMsim_VarCov` / `NMsim_NWPRI` |
+| EBE-based simulation | yes -- `nonmem2rx` imports EBEs into `$etaData` | yes -- `NMsim_EBE` |
+| Uncertainty from covariance step | yes -- `nonmem2rx` imports covariance matrix for draws | yes -- `NMsim_VarCov` / `NMsim_NWPRI` |
 | Bootstrap uncertainty | manual (supply draws) | built-in (simulate all bootstrap models) |
 | OpenMP within-process parallelism | yes | no |
 | Cluster submission | no | yes (via PSN) |
 | Model piping (`\|>`) | yes | no |
 | Parameter estimation | via nlmixr2 | no (NONMEM only) |
 | Symbolic Jacobians / sensitivities | yes | no |
-| 1–3 cmt analytical solutions | `linCmt()` with gradients | ADVAN1/2/3/4/11/12 via NONMEM |
+| 1-3 cmt analytical solutions | `linCmt()` with gradients | ADVAN1/2/3/4/11/12 via NONMEM |
 | Multiple ODE solver backends | LSODA (C), LSODA (Fortran), DOP853 | NONMEM ADVAN |
 | Runs without licensed software | yes | no |
 | CRAN | yes | yes |

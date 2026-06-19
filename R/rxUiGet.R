@@ -384,6 +384,9 @@ rxUiGet.funPrint <- function(x, ...) {
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
+    if (.i == ".simModelBase") {
+      next
+    }
     .var <- .ls[.i]
     .val <- .x$meta[[.ls[.i]]]
     .ret[[.i + 1]] <- rxUiDeparse(.val, .var)

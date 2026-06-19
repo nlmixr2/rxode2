@@ -18,6 +18,87 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
+void par_rkf78(rx_solve *rx);
+extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_trapz(rx_solve *rx);
+extern "C" void ind_trapz(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void trapz_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_ssp3(rx_solve *rx);
+extern "C" void ind_ssp3(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ssp3_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rkf32(rx_solve *rx);
+extern "C" void ind_rkf32(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rk43(rx_solve *rx);
+extern "C" void ind_rk43(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void rk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_dop54(rx_solve *rx);
+extern "C" void ind_dop54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void dop54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern65(rx_solve *rx);
+extern "C" void ind_vern65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern76(rx_solve *rx);
+extern "C" void ind_vern76(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_dop87(rx_solve *rx);
+extern "C" void ind_dop87(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void dop87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern98(rx_solve *rx);
+extern "C" void ind_vern98(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern98_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rk4(rx_solve *rx);
+extern "C" void ind_rk4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_ck54(rx_solve *rx);
+extern "C" void ind_ck54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_ab(rx_solve *rx);
+extern "C" void ind_ab(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_abm(rx_solve *rx);
+extern "C" void ind_abm(rx_solve *rx, int solveid,
+                        t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_dop5(rx_solve *rx);
+
+extern "C" void ind_dop5(rx_solve *rx, int solveid,
+                         t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_bs(rx_solve *rx);
+
+extern "C" void ind_bs(rx_solve *rx, int solveid,
+                         t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_ros4(rx_solve *rx);
+extern "C" void ind_ros4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_dros4(rx_solve *rx);
+extern "C" void ind_dros4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_iem(rx_solve *rx);
+extern "C" void ind_iem(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_sem(rx_solve *rx);
+extern "C" void ind_sem(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_sb3a(rx_solve *rx);
+extern "C" void ind_sb3a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_sb3am4(rx_solve *rx);
+extern "C" void ind_sb3am4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_vv(rx_solve *rx);
+extern "C" void ind_vv(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_mm(rx_solve *rx);
+extern "C" void ind_mm(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_em(rx_solve *rx);
+extern "C" void ind_em(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_cvode(rx_solve *rx);
+extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis);
+extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
+                                    int *istate, rx_solving_options *op,
+                                    rx_solving_options_ind *ind, void *ctx_ptr);
 
 	void sortInd(rx_solving_options_ind *ind);
 
@@ -41,12 +122,7 @@ extern "C" {
     ind->ssTime = NA_REAL;
     _setIndPointersByThread(ind);
     // Apply this individual's sticky tolerance factor to the thread-local
-    // tolerance arrays.  _setIndPointersByThread() has already reset
-    // ind->atol2/rtol2/ssAtol/ssRtol to the per-thread global baseline.
-    // Multiplying by tolFactor here means the ODE solver immediately sees
-    // the correct loosened tolerances without any further call to
-    // atolRtolFactor_().  For most individuals tolFactor == 1.0 (set by
-    // setupRxInd()), so this loop costs only a few multiplications.
+    // tolerance arrays.
     if (ind->atol2 != NULL) {
       for (int _i = op->neq; _i--;) {
         ind->atol2[_i]  = min2(ind->atol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
@@ -110,11 +186,11 @@ extern "C" {
     if (rx->nMtime) {
       if (inLhs == 0 || op->neq == 0) {
         // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
-        // Compute mtime with actual initial state → mtime_init[k].
+        // Compute mtime with actual initial state -> mtime_init[k].
         double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
         if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, ind->mtime, _initState);
 
-        // Compute mtime with zero state → base (state-independent) time mtime_base[k].
+        // Compute mtime with zero state -> base (state-independent) time mtime_base[k].
         // If base <= init, place event at base so the solver is forced to visit base,
         // then recomputeMtimeIfNeeded re-evaluates with actual state(base) and reschedules
         // to base + f(state(base)) >= base.  This is the correct semantics: state-dep offset
@@ -139,7 +215,7 @@ extern "C" {
           ind->mtime0[k] = ind->mtime[k];  // trigger = initial placement
         }
       }
-      // else: LHS pass (inLhs==1, neq>0) — preserve ind->mtime[k] set by the ODE
+      // else: LHS pass (inLhs==1, neq>0) -- preserve ind->mtime[k] set by the ODE
       // solve (including any recomputeMtimeIfNeeded updates).  getTime_ returns
       // ind->mtime[evid-10] so using the correct final time is essential for the
       // output dataframe to show the actual event time, not the trigger time.
@@ -158,7 +234,7 @@ extern "C" {
       // sortInd and may have re-sorted for state-dep lag; preserve that order so
       // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
-      // Note: op->badSolve is NOT checked here — it is a shared global flag.
+      // Note: op->badSolve is NOT checked here -- it is a shared global flag.
       // In parallel mode another thread's failed solve would prevent THIS
       // individual from initializing.  Bad-solve state is handled per-individual
       // via localBadSolve / *rc in the caller.
@@ -168,10 +244,9 @@ extern "C" {
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
-  static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
-                                 int *neq, double *xp, double *xout,  double *yp,
-                                 int *idid,
-                                 t_update_inis u_inis) {
+  static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
+                                 rx_solve *rx, int *neq, double *xp, double *xout,
+                                 double *yp, int *idid, t_update_inis u_inis) {
     ind->curShift -= rx->maxShift;
     for (unsigned int j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;

@@ -26,7 +26,7 @@ rxTest({
   })
 
   test_that("is.rxEt handles class-only rxEt (no .env)", {
-    # Should return FALSE — wrong structure, not a valid rxEt
+    # Should return FALSE -- wrong structure, not a valid rxEt
     expect_false(is.rxEt(structure(list(), class = "rxEt")))
   })
 
@@ -354,7 +354,7 @@ rxTest({
   test_that(".etMaterialize mixed dose+obs fills dose defaults correctly", {
     .ev <- .newRxEt()
     .envRef <- .rxEtEnv(.ev)
-    # Obs chunk (sparse — no dose columns)
+    # Obs chunk (sparse -- no dose columns)
     .envRef$chunks <- list(
       list(time = c(1, 2), evid = 0L),
       list(time = 0, evid = 1L, amt = 100, cmt = "(default)")
@@ -866,5 +866,83 @@ rxTest({
     # second table should start after first table's last event (at 24),
     # so the second table's obs at time 24 becomes 24+24=48
     expect_true(max(df$time) > 24)
+  })
+
+  test_that("et() handles NONMEM-style uppercase column names", {
+    df <- data.frame(ID = c(1L, 2L), TIME = c(0, 0), EVID = c(1L, 1L),
+                     CMT = c(1L, 1L), AMT = c(10, 50))
+    ev <- et(df)
+    out <- as.data.frame(ev)
+    expect_true("id" %in% names(out))
+    expect_equal(sort(unique(out$id)), c(1L, 2L))
+  })
+
+  test_that("et() shows id column even for single-ID data frame input", {
+    df <- data.frame(ID = 1L, TIME = 0, EVID = 1L, CMT = 1L, AMT = 10)
+    ev <- et(df)
+    out <- dplyr::as_tibble(ev)
+    expect_true("id" %in% names(out))
+  })
+
+  test_that("et() accepts tibble without warnings (no ii/rate/var columns)", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = c(0, 1, 2), amt = c(100, NA, NA), evid = c(1L, 0L, 0L))
+    expect_no_warning(et(tbl))
+    ev <- et(tbl)
+    out <- as.data.frame(ev)
+    expect_equal(nrow(out), 3L)
+    expect_equal(sum(out$evid == 1L), 1L)
+  })
+
+  test_that("et() accepts tibble with ii column", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = 0, amt = 100, ii = 24, addl = 4L, evid = 1L)
+    expect_no_warning(et(tbl))
+    ev <- et(tbl)
+    out <- as.data.frame(ev)
+    expect_equal(out$ii[1], 24)
+  })
+
+  test_that("et() accepts tibble with rate column", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = 0, amt = 100, rate = 50, evid = 1L)
+    expect_no_warning(et(tbl))
+    ev <- et(tbl)
+    out <- as.data.frame(ev)
+    expect_equal(out$rate[1], 50)
+  })
+
+  test_that("et() pipe from tibble works without warnings", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = c(0, 24), amt = c(100, NA), evid = c(1L, 0L))
+    expect_no_warning({
+      ev <- tbl |> rxode2::et()
+    })
+    out <- as.data.frame(ev)
+    expect_equal(nrow(out), 2L)
+  })
+
+  test_that("import.EventTable accepts tibble without warnings", {
+    skip_if_not_installed("tibble")
+    tbl <- tibble::tibble(time = c(0, 1), amt = c(100, NA), evid = c(1L, 0L))
+    ev <- et()
+    expect_no_warning(ev$import.EventTable(tbl))
+    out <- as.data.frame(ev)
+    expect_equal(nrow(out), 2L)
+  })
+
+  test_that("et() loop with new IDs adds doses and observations to all IDs", {
+    nSub <- 5
+    dose <- c(45, 48, 52, 50, 47)
+    ev <- et()
+    for (i in seq_len(nSub)) {
+      ev <- ev |> et(id = i, amt = dose[i], time = 0, addl = 9, ii = 12)
+    }
+    ev <- ev |> add.sampling(time = 0:240)
+    df <- as.data.frame(ev)
+    expect_equal(sort(unique(df$id)), 1:5)
+    tbl_evid <- table(df$id, df$evid)
+    expect_true(all(tbl_evid[, "0"] == 241))
+    expect_true(all(tbl_evid[, "1"] == 1))
   })
 })

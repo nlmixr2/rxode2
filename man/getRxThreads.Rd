@@ -15,8 +15,10 @@ rxCores(verbose = FALSE)
 \arguments{
 \item{verbose}{Display the value of relevant OpenMP settings}
 
-\item{threads}{NULL (default) rereads environment variables. 0
-means to use all logical CPUs available. Otherwise a number >= 1}
+\item{threads}{NULL (default) rereads environment variables
+specified by OpenMP (\code{OMP_THREAD_LIMIT}).  If they are not
+specified, this determines based the logical cores available. 0
+means to use all logical CPU threads available. Otherwise a number >= 1}
 
 \item{percent}{If provided it should be a number between 2 and
 100; the percentage of logical CPUs to use. By default on

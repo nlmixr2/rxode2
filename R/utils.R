@@ -631,8 +631,10 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 }
 #' Get/Set the number of threads that rxode2 uses
 #'
-#' @param threads NULL (default) rereads environment variables. 0
-#'   means to use all logical CPUs available. Otherwise a number >= 1
+#' @param threads NULL (default) rereads environment variables
+#'   specified by OpenMP (`OMP_THREAD_LIMIT`).  If they are not
+#'   specified, this determines based the logical cores available. 0
+#'   means to use all logical CPU threads available. Otherwise a number >= 1
 #'
 #' @param percent If provided it should be a number between 2 and
 #'   100; the percentage of logical CPUs to use. By default on
@@ -704,6 +706,9 @@ rxCores <- getRxThreads
 #' @export
 #'
 rxUnloadAll <- function(set=TRUE) {
+  if (missing(set) && !.rxUnloadAllEnv$reallyUnload) {
+    return(invisible(FALSE))
+  }
   if (!missing(set) && isTRUE(set)) {
     .rxUnloadAllEnv$reallyUnload <- TRUE
   }
@@ -1027,7 +1032,7 @@ is.latex <- function() {
 #'
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
-#'   vectors unless ‘na.rm’ is ‘TRUE’.
+#'   vectors unless 'na.rm' is 'TRUE'.
 #' @param probs numeric vector of probabilities with values in the
 #'   interval from 0 to 1 .
 #' @param na.rm logical; if true, any NA and NaN's are removed from
@@ -1184,7 +1189,7 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #' - Newcombe, R. G. (1998). "Two-sided confidence intervals for the single
 #'   proportion: comparison of seven methods". Statistics
 #'   in Medicine. 17 (8):
-#'   857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+#'   857-872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
 #'   9595616.
 #'
 #' - Hezhi Lu, Hua Jin,

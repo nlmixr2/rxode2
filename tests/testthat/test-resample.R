@@ -95,15 +95,14 @@ rxTest({
 
           expect_false(isTRUE(all.equal(r1, r2)))
 
-          ## now test that the covariates are all shifted correctly
-          expect_true(all(r1$WT - r1$CRCL == 30))
-          expect_true(all(r2$WT - r2$CRCL == 30))
+          expect_true(isTRUE(all.equal(r1$WT - r1$CRCL, rep(30, nrow(r1)))))
+          expect_true(isTRUE(all.equal(r2$WT - r2$CRCL, rep(30, nrow(r2)))))
 
-          expect_true(all(r1$SEX[r1$CRCL <= 44] == 0))
-          expect_true(all(r1$SEX[r1$CRCL > 44] == 1))
+          expect_true(all(r1$SEX[floor(r1$CRCL) <= 44] == 0))
+          expect_true(all(r1$SEX[floor(r1$CRCL) > 44] == 1))
 
-          expect_true(all(r2$SEX[r2$CRCL <= 44] == 0))
-          expect_true(all(r2$SEX[r2$CRCL > 44] == 1))
+          expect_true(all(r2$SEX[floor(r2$CRCL) <= 44] == 0))
+          expect_true(all(r2$SEX[floor(r2$CRCL) > 44] == 1))
 
           f3 <- rxSolve(m1, e,
                         ## Lotri uses lower-triangular matrix rep. for named matrix
@@ -131,8 +130,10 @@ rxTest({
           ## Now these should be false
           expect_false(all(r3$WT - r3$CRCL == 30))
 
-          expect_false(all(r3$SEX[r3$CRCL <= 44] == 0))
-          expect_false(all(r3$SEX[r3$CRCL > 44] == 1))
+          ## Use floor() so boundary subjects (base CRCL=44) are classified
+          ## correctly regardless of time-varying shift.
+          expect_false(all(r3$SEX[floor(r3$CRCL) <= 44] == 0))
+          expect_false(all(r3$SEX[floor(r3$CRCL) > 44] == 1))
 
 
           f3 <- rxSolve(m1, e,
@@ -161,8 +162,10 @@ rxTest({
           ## Now these should be false
           expect_false(all(r3$WT - r3$CRCL == 30))
 
-          expect_false(all(r3$SEX[r3$CRCL <= 44] == 0))
-          expect_false(all(r3$SEX[r3$CRCL > 44] == 1))
+          ## Use floor() so boundary subjects (base CRCL=44) are classified
+          ## correctly regardless of time-varying shift.
+          expect_false(all(r3$SEX[floor(r3$CRCL) <= 44] == 0))
+          expect_false(all(r3$SEX[floor(r3$CRCL) > 44] == 1))
 
           f2 <- rxSolve(m1, e,
                         ## Lotri uses lower-triangular matrix rep. for named matrix
@@ -188,14 +191,21 @@ rxTest({
           expect_false(isTRUE(all.equal(r1, r2)))
 
           ## now test that the covariates are all shifted correctly
-          expect_true(all(r1$WT - r1$CRCL == 30))
-          expect_true(all(r2$WT - r2$CRCL == 30))
+          ## Use all.equal tolerance: time-varying covariates go through
+          ## rx_approxP interpolation which accumulates FP rounding errors,
+          ## so exact == 30 is not guaranteed even when WT and CRCL come from
+          ## the same subject.
+          expect_true(isTRUE(all.equal(r1$WT - r1$CRCL, rep(30, nrow(r1)))))
+          expect_true(isTRUE(all.equal(r2$WT - r2$CRCL, rep(30, nrow(r2)))))
 
-          expect_true(all(r1$SEX[r1$CRCL <= 44] == 0))
-          expect_true(all(r1$SEX[r1$CRCL > 44] == 1))
+          ## CRCL = base_CRCL + time/30; base values are integers and
+          ## max time-shift is 26.4/30 < 1, so floor() recovers the base
+          ## integer for correct SEX-CRCL co-resample categorisation.
+          expect_true(all(r1$SEX[floor(r1$CRCL) <= 44] == 0))
+          expect_true(all(r1$SEX[floor(r1$CRCL) > 44] == 1))
 
-          expect_true(all(r2$SEX[r2$CRCL <= 44] == 0))
-          expect_true(all(r2$SEX[r2$CRCL > 44] == 1))
+          expect_true(all(r2$SEX[floor(r2$CRCL) <= 44] == 0))
+          expect_true(all(r2$SEX[floor(r2$CRCL) > 44] == 1))
 
           if (nStud == 1) {
             f1 <- rxSolve(m1, e,

@@ -53,14 +53,34 @@ print.rxEtPreview <- function(x, ...) {
       cat(sprintf("-- compressed preview for %s --\n", .etPreviewGroupLabel(.groups[[1]]$ids)))
     } else {
       cat(sprintf("-- compressed preview for %s groups --\n", length(.groups)))
-      for (.i in seq_along(.groups)) {
+      .n <- min(5L, length(.groups))
+      for (.i in seq_len(.n)) {
         cat(sprintf("   group %s: %s\n", .i, .etPreviewGroupLabel(.groups[[.i]]$ids)))
+      }
+      if (length(.groups) > 5L) {
+        cat(sprintf("   ... (and %s more groups)\n", length(.groups) - 5L))
       }
     }
   }
   .df <- x
   class(.df) <- "data.frame"
-  print.data.frame(.df, ...)
+  if (!("id" %in% names(.df)) && length(.groups) > 0L) {
+    .idList <- lapply(.groups, function(.g) {
+      .formattedId <- if (length(.g$ids) == 1L) as.integer(.g$ids) else .formatIds(.g$ids)
+      rep(.formattedId, .g$nRow)
+    })
+    .idCol <- unlist(.idList)
+    if (length(.idCol) == nrow(.df)) {
+      .df <- cbind(id = .idCol, .df)
+    }
+  }
+  .show <- attr(x, "rxEtShow", exact = TRUE)
+  if (!is.null(.show)) {
+    .showCols <- unique(c("id", names(.show)[.show]))
+    .showCols <- intersect(.showCols, names(.df))
+    .df <- .df[, .showCols, drop = FALSE]
+  }
+  print(tibble::as_tibble(.df), ...)
   invisible(x)
 }
 

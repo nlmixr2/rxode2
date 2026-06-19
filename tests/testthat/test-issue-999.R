@@ -112,7 +112,7 @@ rxTest({
     )
 
     expect_true(nrow(result) > 0)
-    # sim.id should range from 1 to nSub*nStud=50 (nSub=10 subjects × nStud=5 studies)
+    # sim.id should range from 1 to nSub*nStud=50 (nSub=10 subjects x nStud=5 studies)
     expect_equal(sort(unique(result$sim.id)), 1:50)
 
     rm(result); gc()
@@ -125,7 +125,7 @@ rxTest({
   # After the fix, an informative error is thrown before allocation.
   # Test that the nr (output row count) overflow guard provides an informative
   # error rather than a crash when nobs * nStud > INT_MAX.
-  # nobs = 46,342 timepoints for 1 subject; nStud = 46,342 → nr = 2,147,580,964 > INT_MAX.
+  # nobs = 46,342 timepoints for 1 subject; nStud = 46,342 -> nr = 2,147,580,964 > INT_MAX.
   # The overflow guard fires before any ODE solving (fast, lightweight test).
   # Before the fix: "negative length vectors are not allowed".
   # After the fix: informative "too large" error.

@@ -65,14 +65,15 @@ their specific \code{rxode2} models.
 }
 \examples{
 \donttest{
-# remove myapp when the example is complete
-on.exit(unlink("myapp", recursive = TRUE, force = TRUE))
+# create in a temp dir so nothing is left in the working directory
+.appDir <- tempfile("myapp")
+on.exit(unlink(.appDir, recursive = TRUE, force = TRUE))
 # create the shiny app example (template)
-genShinyApp.template(appDir = "myapp")
+genShinyApp.template(appDir = .appDir)
 # run the shiny app
 if (requireNamespace("shiny", quietly=TRUE)) {
   library(shiny)
-  # runApp("myapp") # Won't launch in environments without browsers
+  # runApp(.appDir) # Won't launch in environments without browsers
 }
 }
 }

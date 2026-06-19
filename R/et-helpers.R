@@ -241,7 +241,8 @@
 #' @author Matthew L. Fidler
 #'
 .etHandlePositionalDataFrame <- function(xVal, envRef, et) {
-  .df <- xVal
+  .df <- as.data.frame(xVal)
+  .df <- .etImportNormalizeNames(.df)
   # Convert deSolve-style (var/value/method) to canonical rxEt format
   if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
     .df$cmt   <- .df$var
@@ -264,6 +265,7 @@
     }
   }
   .df$evid <- as.integer(.df$evid)
+  .hadId <- !is.null(.df$id)
   if (is.null(.df$id)) {
     .df$id <- 1L
   }
@@ -280,7 +282,7 @@
   envRef$ids    <- sort(unique(.df$id))
   envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
   envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
-  if (length(envRef$ids) > 1L) {
+  if (length(envRef$ids) > 1L || .hadId) {
     envRef$show["id"] <- TRUE
   }
   if (sum(!.obsIdx) > 0L) {
@@ -433,7 +435,7 @@
 #'
 #' @author Matthew L. Fidler
 #'
-.etHandleId <- function(id, envRef, xIsRxEt, envir) {
+.etHandleId <- function(id, envRef, xIsRxEt, envir, addingEvents = FALSE) {
   .resolvedId  <- NULL
   .addedIds    <- integer(0)
   .removedIds  <- integer(0)
@@ -463,7 +465,9 @@
       .addedIds <- integer(0)
       envRef$ids <- integer(0)
       .doResize <- length(.removedIds) > 0L
-    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize) {
+    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize &&
+               (!addingEvents || (envRef$nobs == 0L && envRef$ndose == 0L &&
+                                  length(envRef$chunks) == 0L && length(.etGroups(envRef)) == 0L))) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
       .addedIds   <- setdiff(.posIds, .existingIds)

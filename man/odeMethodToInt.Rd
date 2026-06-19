@@ -4,7 +4,21 @@
 \alias{odeMethodToInt}
 \title{Conversion between character and integer ODE integration methods for rxode2}
 \usage{
-odeMethodToInt(method = c("liblsoda", "lsoda", "dop853", "indLin"))
+odeMethodToInt(
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm",
+    "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode",
+    "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
+    "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43",
+    "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54",
+    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8",
+    "s8_12", "s10", 
+     "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e",
+    "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
+    "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
+    "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
+    "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
+    "o129", "f1412", "lsode", "bdf")
+)
 }
 \arguments{
 \item{method}{The method for solving ODEs.  Currently this supports:
@@ -17,6 +31,343 @@ solving, but allows user Jacobian specification.
 solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.
+\item \code{"f78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
+\item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
+\item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
+\item \code{"ab"} -- Adams-Bashforth multi-step solver with a direct implementation
+(order 1-8, default 5). Uses RK4 to initialize the derivative history and
+then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+method (step size controlled by \code{hmin}).
+\item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
+\item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
+\item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
+\item \code{"ros4"} \strong{(implicit)} -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to \code{liblsoda} if Jacobian generation fails.
+\item \code{"ros43"} \strong{(implicit)} -- Kaps-Rentrop 4th-order A-stable Rosenbrock method (GRK4A) from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to \code{liblsoda} if Jacobian generation fails.
+\item \code{"ros6"} \strong{(implicit)} -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
+Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"backwardEuler"} \strong{(implicit)} -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
+Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"gauss6"} \strong{(implicit)} -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"iiic6"} \strong{(implicit)} -- Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"radauiia5"} \strong{(implicit)} -- Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"geng5"} \strong{(implicit)} -- Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"sdirk43"} \strong{(implicit)} -- L-stable SDIRK 4(3) pair from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"iem"} \strong{(implicit)} -- Implicit Euler solver using Boost's odeint library.
+Requires an explicit Jacobian (auto-generated via \code{calcJac=TRUE} when not provided).
+Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sem"} -- Symplectic Euler solver using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by \code{hmin}).
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
+using Boost's odeint library.  Requires splitting the state into
+coordinate-momentum pairs (and automatically pads odd-dimensional
+systems).  Is a fixed-step method (step size controlled by
+\code{hmin}).
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
+stepper using Boost's odeint library.  Requires splitting the
+state into coordinate-momentum pairs (and automatically pads
+odd-dimensional systems).  Is a fixed-step method (step size
+controlled by \code{hmin}).
+\item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by \code{hmin}).
+\item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}) and uses
+the \code{order} parameter to configure the number of intermediate
+steps.
+\item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (vendored
+from the sundialr package sources).  Supports thread-parallel solving and
+per-compartment absolute tolerances.
+\item \code{"trapz"} -- Explicit trapezoidal rule (Heun's method), a 2nd-order
+fixed-step Runge-Kutta method implemented via the libode library.
+Each inter-event interval is integrated with fixed steps of size
+\code{hmin} (default \code{0.01} when \code{hmin=0}).  If \code{hmin} would require
+more than \code{maxsteps} steps to span the interval, the step size is
+automatically enlarged to stay within that limit.  When an
+inter-event interval is shorter than the nominal step size (e.g.,
+two doses very close together), the step is silently clamped to the
+interval length so that short intervals are always handled correctly.
+Supports parallel thread-based solving and steady-state (\code{ss=1})
+dosing.  The method does not use \code{atol} or \code{rtol} (fixed-step; no
+error control).  Steady-state convergence is governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"ssp3"} -- Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+Shu-Osher method), implemented via the libode library.  A 3-stage,
+3rd-order explicit fixed-step method with superior non-oscillatory
+properties for problems with discontinuities or sharp fronts.  Uses
+the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+b1=1/6, b2=1/6, b3=2/3.  The step-size behavior, clamping, and
+steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
+not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
+parallel thread-based solving and steady-state (\code{ss=1}) dosing.
+\item \code{"f32"} -- Fehlberg 3(2) embedded pair from libode (class \code{OdeRKF32}).
+A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses \code{atol} and \code{rtol}
+for error control.  The \code{hmin}
+parameter sets the initial step size (default \code{0.01}); subsequent steps
+are chosen adaptively.  The total number of accepted and rejected steps
+is bounded by \code{maxsteps}.  Supports parallel thread-based solving and
+steady-state (\code{ss=1}) dosing with convergence governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"rk43"} -- Runge-Kutta 4(3) pair from libode.  A 5-stage, 4th-order
+adaptive method with a built-in 3rd-order embedded error estimate for
+automatic step-size control.  Tableau: c2=1/3, a21=1/3; c3=2/3,
+a31=-1/3, a32=1; c4=1, a41=1, a42=-1, a43=1; a5j=bj (FSAL).
+Primary (4th-order) weights b1=b4=1/8, b2=b3=3/8; embedded (3rd-order)
+weights d1=1/12, d2=1/2, d3=1/4, d5=1/6.  Since a5j=bj the 5th stage
+evaluation is reused as the 1st stage of the next step (FSAL).
+Uses \code{atol} and \code{rtol} for error control.  The \code{hmin} parameter sets
+the initial step size (default \code{0.01}); subsequent steps are chosen
+adaptively.  The
+total number of steps is bounded by \code{maxsteps}.  Supports parallel
+thread-based solving and steady-state (\code{ss=1}) dosing with convergence
+governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"dop54"} -- Dormand-Prince 5(4) FSAL method (Dormand & Prince 1980),
+implemented via the libode library.  The same algorithm as MATLAB's
+\code{ode45}.  A 7-stage, 5th-order adaptive method with an embedded
+4th-order error estimate for automatic step-size control (FSAL: the
+7th stage evaluation is reused as the 1st stage of the next step,
+giving effectively 6 function evaluations per accepted step).  Uses
+\code{atol} and \code{rtol} for error control.  The \code{hmin} parameter sets the
+initial step size (default \code{0.01}); subsequent steps are chosen
+adaptively.  The total number of steps is bounded by \code{maxsteps}.
+Supports parallel thread-based solving and steady-state (\code{ss=1})
+dosing with convergence governed by \code{ssAtol}, \code{ssRtol}, \code{minSS},
+\code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives (e.g. from NA
+parameters) is detected immediately and the solve exits with NA
+output for the affected subject.
+\item \code{"vern65"} -- Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+embedded 5th-order error estimate.  The sparse tableau (many zero
+a-coefficients) reduces function evaluations; the FSAL property means the
+9th stage evaluation is reused as the 1st stage of the next step, giving
+effectively 8 function evaluations per accepted step.  Uses \code{atol} and
+\code{rtol} for error control.  The \code{hmin} parameter sets the initial step
+size (default \code{0.01}); subsequent steps are chosen adaptively.  The total
+number of steps is bounded by \code{maxsteps}.  Supports parallel thread-based
+solving and steady-state (\code{ss=1}) dosing with convergence governed by
+\code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in
+derivatives is detected immediately and the solve exits with NA output.
+\item \code{"vern76"} -- Jim Verner's "most efficient" 7(6) pair (10 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV76.IIa.Efficient).  A 7th-order adaptive method with an
+embedded 6th-order error estimate.  The sparse tableau reduces function
+evaluations per step.  Uses \code{atol} and \code{rtol} for error control.  The
+\code{hmin} parameter sets the initial step size (default \code{0.01}); subsequent
+steps are chosen adaptively.  The total number of steps is bounded by
+\code{maxsteps}.  Supports parallel thread-based solving and steady-state
+(\code{ss=1}) dosing with convergence governed by \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.
+\item \code{"dop87"} -- Dormand-Prince 8(7) pair (13 stages), implemented via the
+libode library using coefficients from Hairer, Norsett and Wanner (1993)
+"Solving ODEs I" (2nd ed.).  An 8th-order adaptive method with an
+embedded 7th-order error estimate.  Both solutions are computed from the
+original state in the final step loop.  Uses \code{atol} and \code{rtol} for error
+control.  The \code{hmin} parameter sets the initial step size (default
+\code{0.01}); subsequent steps are chosen adaptively.  The total number of
+steps is bounded by \code{maxsteps}.  Supports parallel thread-based solving
+and steady-state (\code{ss=1}) dosing with convergence governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is
+detected immediately and the solve exits with NA output.
+\item \code{"vern98"} -- Jim Verner's "most efficient" 9(8) pair (16 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
+embedded 8th-order error estimate.  The highly sparse tableau (stages
+8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimizes function evaluations per
+step.  Both solutions are computed from the original state in the final
+step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
+parameter sets the initial step size (default \code{0.01}); subsequent steps
+are chosen adaptively.  The total number of steps is bounded by
+\code{maxsteps}.  Supports parallel thread-based solving and steady-state
+(\code{ss=1}) dosing with convergence governed by \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.
+}
+
+\strong{Aliases for existing methods} (no additional C++ code; \code{hmin}, \code{atol},
+\code{rtol}, and \code{maxsteps} follow the aliased method):
+\itemize{
+\item \code{"dp54"} -- alias for \code{"dop54"} (Dormand-Prince 5(4) FSAL, libode).
+\item \code{"v65e"} -- alias for \code{"vern65"} (Verner 6(5) efficient, libode).
+\item \code{"v76e"} -- alias for \code{"vern76"} (Verner 7(6) efficient, libode).
+\item \code{"dp87"} -- alias for \code{"dop87"} (Dormand-Prince 8(7), libode).
+\item \code{"v98e"} -- alias for \code{"vern98"} (Verner 9(8) efficient, libode).
+\item \code{"ssp33"} -- alias for \code{"ssp3"} (Strong Stability-Preserving RK3, libode).
+}
+
+\strong{libode fixed-step explicit methods}.  All use \code{hmin} as the fixed step
+size (default \code{0.01} when \code{hmin=0}); \code{atol} and \code{rtol} are ignored (no
+error control); \code{maxsteps} bounds the total number of steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving.
+\itemize{
+\item \code{"euler"} -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
+very small step size for accuracy (e.g., \code{hmin=1e-4}); intended for
+pedagogical use or method-comparison baselines.
+\item \code{"midpoint"} -- Explicit midpoint rule, 2nd-order, 2 stages.
+\item \code{"heun"} -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
+Identical in structure to \code{"trapz"} but uses the libode fixed-step driver.
+\item \code{"ssp22"} -- Strong Stability-Preserving 2-stage 2nd-order method
+(SSP-RK22), 2 stages.  Superior non-oscillatory properties near
+discontinuities.
+\item \code{"rk3"} -- Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.
+\item \code{"ssp53"} -- Strong Stability-Preserving 5-stage 3rd-order method
+(SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
+event-heavy ODE systems.
+\item \code{"s4"} -- Shanks 4th-order method, 4 stages.
+\item \code{"r4"} -- Ralston's 4th-order method, 4 stages.  Minimizes local
+truncation error among classical 4-stage 4th-order methods.
+\item \code{"ls44"} -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
+update scheme that minimizes memory bandwidth at the cost of a less
+general tableau structure.
+\item \code{"ls54"} -- Low-storage 4th-order method, 5 stages.  Five-stage
+variant of the 2-register low-storage scheme.
+\item \code{"ssp54"} -- Strong Stability-Preserving 5-stage 4th-order method
+(SSP-RK54), 5 stages.
+\item \code{"s5"} -- Shanks 5th-order method, 5 stages.
+\item \code{"rk5"} -- Classical 5th-order Runge-Kutta, 6 stages.
+\item \code{"c5"} -- Cassity 5th-order method, 6 stages.
+\item \code{"l5"} -- Lawson 5th-order method, 6 stages.
+\item \code{"lk5a"} -- Luther-Konen 5th-order method, variant A, 6 stages.
+\item \code{"lk5b"} -- Luther-Konen 5th-order method, variant B, 6 stages.
+\item \code{"b6"} -- Butcher 6th-order method, 7 stages.
+\item \code{"s7"} -- Shanks 7th-order method, 9 stages.
+\item \code{"s8_10"} -- Shanks 8th-order method, 10 stages.
+\item \code{"cv8"} -- Cooper-Verner 8th-order method, 11 stages.
+\item \code{"s8_12"} -- Shanks 8th-order method, 12 stages.
+\item \code{"s10"} -- Stepanov 10th-order method, 15 stages.  Requires a moderate
+step size (e.g., \code{hmin=1.0}) because a single step is accurate to very
+high order.
+\item \code{"z10"} -- Zhang 10th-order method, 16 stages.
+\item \code{"o10"} -- Ono 10th-order method, 17 stages.
+\item \code{"h10"} -- Hairer 10th-order method, 17 stages.
+}
+
+\strong{libode adaptive (variable-step) explicit methods}.  All use \code{atol} and
+\code{rtol} for error control;
+\code{hmin} sets the initial step size (default \code{0.01} when \code{hmin=0}); \code{hmax}
+sets the maximum step size; \code{maxsteps} bounds total steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving and steady-state (\code{ss=1}) dosing
+(convergence governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, \code{strictSS}).
+\itemize{
+\item \code{"bs32"} -- Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &
+Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
+FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
+step.  The same algorithm as Julia \code{BS3()} and MATLAB \code{ode23}.
+\item \code{"ssp43"} -- Strong Stability-Preserving 4(3) pair, 4 stages.
+Adaptive SSP method with a 3rd-order embedded error estimate.
+\item \code{"f45"} -- Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+primary solution with a 5th-order embedded estimate used for error
+control.
+\item \code{"t54"} -- Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+5th-order primary with 4th-order embedded error estimate.  FSAL: the
+7th stage is reused as the 1st stage of the next step.  The same
+Butcher tableau as Julia's \code{Tsit5()}.
+\item \code{"s54"} -- Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+with 4th-order embedded error estimate.
+\item \code{"pp54"} -- Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.
+\item \code{"pp54b"} -- Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+7 stages.
+\item \code{"bs54"} -- Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+with 4th-order embedded error estimate (non-FSAL).
+\item \code{"ss54"} -- Sharp-Smart 5(4) pair, 7 stages.
+\item \code{"dp65"} -- Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+with 5th-order embedded error estimate.
+\item \code{"c65"} -- Calvo 6(5) pair, 9 stages.
+\item \code{"tp64"} -- Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+primary with 4th-order embedded error estimate.
+\item \code{"v65r"} -- Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+variant of Verner's 6(5) family with wider stability region.
+\item \code{"v65"} -- Verner 6(5) pair, 8 stages (non-FSAL).
+\item \code{"dverk65"} -- Verner DVERK 6(5) pair, 8 stages.  Coefficients from
+the classic DVERK Fortran code distributed by Hull and Enright.
+\item \code{"tf65"} -- Tsitouras-Famelis 6(5) FSAL pair, 9 stages.
+\item \code{"tp75"} -- Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+primary with 5th-order embedded error estimate.
+\item \code{"tmy7"} -- Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+The same family as Julia's \code{TanYam7()}.
+\item \code{"tmy7s"} -- Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+10 stages.  Alternative coefficient set with wider stability region.
+\item \code{"v76r"} -- Verner "robust" 7(6) pair, 10 stages.
+\item \code{"ss76"} -- Sharp-Smart 7(6) pair, 11 stages.
+\item \code{"v78"} -- Verner 7(8) pair, 13 stages.  7th-order primary with
+8th-order embedded error estimate.  Closest rxode2 analog to Julia
+\code{Vern8()}.
+\item \code{"dverk78"} -- Verner DVERK 7(8) pair, 13 stages.  Coefficients from
+the classic DVERK Fortran code; companion to \code{"dverk65"}.  Also close
+to Julia \code{Vern8()}.
+\item \code{"dp85"} -- Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+with 5th-order embedded error estimate.
+\item \code{"tp86"} -- Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+family as Julia's \code{TsitPap8()}.
+\item \code{"v87e"} -- Verner "efficient" 8(7) pair, 13 stages.
+\item \code{"v87r"} -- Verner "robust" 8(7) pair, 13 stages.
+\item \code{"ev87"} -- Enright-Verner 8(7) pair, 13 stages.
+\item \code{"k87"} -- Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.
+\item \code{"f89"} -- Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+9th-order embedded estimate.  Same family as MATLAB \code{ode89}.
+\item \code{"v89"} -- Verner 8(9) pair, 16 stages.  Alternative to \code{"f89"}
+in the same order bracket.  Also close to MATLAB \code{ode89}.
+\item \code{"t98a"} -- Tsitouras 9(8) variant A pair, 16 stages.
+\item \code{"v98r"} -- Verner "robust" 9(8) pair, 16 stages.
+\item \code{"s98"} -- Sharp 9(8) pair, 16 stages.
+\item \code{"f108"} -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+primary with 8th-order embedded error estimate.  The same method as
+Julia's \code{Feagin10()}.  The large number of stages carries elevated
+transcription-error risk; verified against Williams' libode canonical order test.
+\item \code{"c108"} -- Curtis 10(8) pair, 21 stages.
+\item \code{"b109"} -- Baker 10(9) pair, 21 stages.
+\item \code{"s1110a"} -- Stone 11(10) variant A pair, 26 stages.  11th-order
+primary; very few published references.
+\item \code{"f1210"} -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+primary with 10th-order embedded error estimate.  The same method as
+Julia's \code{Feagin12()}.  Elevated transcription-error risk due to many
+stages; verified against Williams' libode canonical order test.
+\item \code{"o129"} -- Ono 12(9) pair, 29 stages.
+\item \code{"f1412"} -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+primary with 12th-order embedded error estimate.  The same method as
+Julia's \code{Feagin14()}.  The highest-order method in rxode2; elevated
+transcription-error risk due to 35 stages; verified against
+Williams' libode canonical order test.
+}
+
+\strong{deSolve-derived Fortran solvers} (from the deSolve R package).  Both
+use non-reentrant Fortran COMMON blocks and therefore run single-threaded
+only, regardless of the \code{cores} setting.  They are BDF (Backward
+Differentiation Formula) stiff solvers and are most useful when you want
+behavior comparable to deSolve's \code{lsode()} or \code{bdf()}/\code{vode()} functions.
+\itemize{
+\item \code{"lsode"} -- DLSODE (Hindmarsh 1983, ODEPACK) in Adams (non-stiff) mode,
+MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
+Corresponds to deSolve's \code{lsode(method="adams")}.  Adaptive step-size;
+error controlled by \code{atol} and \code{rtol}.
+\strong{Not thread-safe} -- always runs on a single core.
+\item \code{"bdf"} -- DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
+Variable-order BDF method, order 1-5; internally generated dense Jacobian.
+Corresponds to deSolve's \code{bdf()} / \code{vode(method="bdf")}.  Adaptive
+step-size; error controlled by \code{atol} and \code{rtol}.
+\strong{Not thread-safe} -- always runs on a single core.
 }}
 }
 \value{

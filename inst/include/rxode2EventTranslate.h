@@ -4,8 +4,8 @@
 /* Result of translating one NONMEM/rxode2 event: 1 or 2 internal events.
  *
  * This header is shared by:
- *   src/etTran.cpp   – batch event-table translation
- *   inst/include/rxode2parseHandleEvid.h – runtime evid_() push
+ *   src/etTran.cpp   - batch event-table translation
+ *   inst/include/rxode2parseHandleEvid.h - runtime evid_() push
  */
 
 typedef struct {
@@ -54,7 +54,7 @@ static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, i
  *
  * For evid >= 100: passed through verbatim; isDose determined by flg = evid%100.
  * For evid == 0 or 2: observation row pushed, isDose=0.
- * For evid 1–7: translated from NONMEM semantics.
+ * For evid 1-7: translated from NONMEM semantics.
  */
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,

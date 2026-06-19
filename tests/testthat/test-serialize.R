@@ -16,7 +16,7 @@ rxTest({
     set.seed(42)
     ref <- rxSolve(mod, theta, ev, serializeFile = NULL)
 
-    # Solve with serialization — saves state before integration
+    # Solve with serialization -- saves state before integration
     stateFile <- tempfile(fileext = ".rxbin")
     set.seed(42)
     ser <- rxSolve(mod, theta, ev, serializeFile = stateFile)
@@ -37,7 +37,7 @@ rxTest({
 
     test_that("rxIsSerializeFile detects magic bytes", {
       expect_true(.rxIsSerializeFile(stateFile))
-      expect_false(.rxIsSerializeFile(tempfile()))  # non-existent → FALSE
+      expect_false(.rxIsSerializeFile(tempfile()))  # non-existent -> FALSE
     })
 
     mod2 <- rxode2({
@@ -70,7 +70,7 @@ rxTest({
       )
     })
 
-    # Solve from file — dispatch via rxSolve(mod, stateFile)
+    # Solve from file -- dispatch via rxSolve(mod, stateFile)
     set.seed(42)
     fromFile <- rxSolve(mod, stateFile)
 

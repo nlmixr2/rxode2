@@ -66,12 +66,14 @@ reference:
   - assertRxUiIovNoCor
   - assertVariableExists
   - assertVariableNew
+  - indLin
   - ini
   - ini<-
   - linToOde
   - model
   - model<-
   - modelExtract
+  - odeToLin
   - rxAppendModel
   - rxFixPop
   - rxFixRes
@@ -287,12 +289,18 @@ reference:
   - rxHtml
   - rxIndLinState
   - rxIndLinStrategy
+  - rxIsAutoSwitch
+  - rxIsDense
+  - rxIsImplicit
+  - rxIsNonStiff
+  - rxIsStiff
   - rxParseSuppressMsg
   - rxPreferredDistributionName
   - rxRateDur
   - rxRemoveControl
   - rxReservedKeywords
   - rxS
+  - rxSensMatExp
   - rxSetControl
   - rxSetIni0
   - rxSetProgressBar
@@ -324,6 +332,10 @@ navbar:
           href: articles/rxode2-intro.html
         - text: "rxode2 mini-language syntax"
           href: articles/rxode2-syntax.html
+        - text: "ODE solvers"
+          href: articles/ode-solvers.html
+        - text: "Matrix Exponentials / Inductive Linearization"
+          href: articles/rxode2-ind-lin.html
         - text: "Interactive tutorials"
           href: articles/rxode2-tutorials.html
   - text: "Model"
@@ -387,6 +399,8 @@ navbar:
           href: articles/rxode2-covariates.html
         - text: "Adaptive rxode2 dosing"
           href: articles/adaptive-dosing.html
+        - text: "Multi-peak models with splitBolus()"
+          href: articles/rxode2-split-bolus.html
         - text: "Multiple levels of nesting (IOV, between-study)"
           href: articles/rxode2-nesting.html
         - text: "Sticky variables"
@@ -405,6 +419,8 @@ navbar:
           href: articles/rxode2-plot.html
         - text: "Speeding up ODE solving"
           href: articles/rxode2-speed.html
+        - text: "Dense output for fast dense-grid solves"
+          href: articles/rxode2-dense-output.html
         - text: "--------------------------"
         - text: "Developer tools"
         - text: "Interactive model explorer (Shiny)"

@@ -16,6 +16,13 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rversion.h>
+
+// While this gives a NOTE in the 4.5 build,
+// it is what is suggested in the WRE manual
+// so it should be OK for CRAN.
+#if R_VERSION < R_Version(4, 6, 0)
+# define DATAPTR_RW(x) DATAPTR(x)
+#endif
 #include <Rinternals.h>
 #include <R_ext/Altrep.h>
 #include <string.h>
@@ -477,6 +484,10 @@ extern Rboolean is_rx_seqrep(SEXP x) {
 
 extern Rboolean is_rx_rep_int(SEXP x) {
   return ALTREP(x) && R_altrep_inherits(x, rx_rep_int_class);
+}
+
+extern Rboolean is_rx_rep_str(SEXP x) {
+  return ALTREP(x) && R_altrep_inherits(x, rx_rep_str_class);
 }
 
 extern int rxInt(SEXP x, R_xlen_t i) {

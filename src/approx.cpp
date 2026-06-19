@@ -49,7 +49,7 @@ extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
       i = ij;
   }
   /* if (i == 0) return 0; */
-  while(i != 0 && obs_time == (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind))){
+  while(i != 0 && isSameTime(obs_time, (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind)))){
     i--;
   }
   if (i == 0){
@@ -149,8 +149,10 @@ extern "C" double rx_approxP(double v, double *y, int is_locf, int n,
 
   /* interpolation */
 
-  if(v == T(j)) return V(j, 1);
-  if(v == T(i)) return V(i, -1);
+  double tj = T(j);
+  double ti = T(i);
+  if(isSameTime(v, tj)) return V(j, 1);
+  if(isSameTime(v, ti)) return V(i, -1);
   /* impossible: if(T(j) == T(i)) return V(i); */
 
   switch (is_locf) {
@@ -223,6 +225,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
   if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
   rx_solving_options *op = rx->op;
+  if (!op->do_par_cov) return;
   // handle extra dose, and out of bounds idx values
   if (idx < 0 && ind->extraDoseN[0] > 0) {
     if (-1-idx >= ind->extraDoseN[0]) {
@@ -340,11 +343,11 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
           if (idxSample == 0 &&
-              isSameTimeOp(t, (indSample->fns ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+              isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, (indSample->fns ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+                     isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,

@@ -161,7 +161,7 @@ rxode2_llikCauchyFun _llikCauchyDscale;
 rxode2_compareFactorVal_fn _compareFactorVal;
 rxode2_compareFactorInt_fn _compareFactorInt;
 
-double _prod(double *input, double *p, int type, int n, ...){
+static double _prod(double *input, double *p, int type, int n, ...){
   va_list valist;
   va_start(valist, n);
   for (unsigned int i = 0; i < n; i++){
@@ -171,7 +171,7 @@ double _prod(double *input, double *p, int type, int n, ...){
   return _prodPS(input, p, n, type);
 }
 
-double _udf(const char *funName, double *input, int n, ...) {
+static double _udf(const char *funName, double *input, int n, ...) {
   if (n == -42) (Rf_error)("%s", "this has a ui user function that cannot be called directly");
   va_list valist;
   va_start(valist, n);
@@ -182,7 +182,7 @@ double _udf(const char *funName, double *input, int n, ...) {
   return _evalUdf(funName, n, input);
 }
 
-double _sum(double *input, double *pld, int m, int type, int n, ...){
+static double _sum(double *input, double *pld, int m, int type, int n, ...){
   va_list valist;
   va_start(valist, n);
   for (unsigned int i = 0; i < n; i++){
@@ -198,7 +198,7 @@ double _sum(double *input, double *pld, int m, int type, int n, ...){
   return ret;
 }
 
-double _sign(unsigned int n, ...) {
+static double _sign(unsigned int n, ...) {
   va_list valist;
   va_start(valist, n);
   double s = 1;
@@ -212,7 +212,7 @@ double _sign(unsigned int n, ...) {
   return s;
 }
 
-double _mix(int _cSub, unsigned int n,  ...) {
+static double _mix(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
   va_list valist;
   double ret = NA_REAL;
@@ -329,7 +329,7 @@ double _min(unsigned int n, ...){
   return mn;
 }
 
-void _obs(int _cSub, double _curTime, unsigned int n,  ...) {
+static void _obs(int _cSub, double _curTime, unsigned int n,  ...) {
   rx_solving_options_ind* _ind = &(_solveData->subjects[_cSub]);
   if (_ind->inLhs) {
     return; // only push observations in ode solving
@@ -527,7 +527,10 @@ void _assignFuns0(void) {
 }
 
 void _assignFuns(void) {
-  if (_assign_ptr == NULL){
+  // Re-initialize if rxode2 was reloaded: the registered function pointer will
+  // differ from the one stored at last init, revealing a stale _solveData.
+  if (_assign_ptr == NULL ||
+      _assign_ptr != (rxode2_assign_ptr)R_GetCCallable("rxode2","rxode2_assign_fn_pointers")){
     _assignFuns0();
   }
 }
@@ -546,8 +549,9 @@ void __assignFuns2(rx_solve rx,
                    t_handle_evidL handleEvid,
                    t_getDur getdur) {
   // assign start
-  static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
-  if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
+  // Always look up via R_GetCCallable so that a reloaded rxode2 (new address)
+  // is used rather than a stale static pointer from a previous load session.
+  rxode2_assignFuns2_t rxode2parse_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
   rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
 }

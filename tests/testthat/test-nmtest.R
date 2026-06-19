@@ -145,8 +145,28 @@ rxTest({
       lin <- "B"
       meth <- "liblsoda"
     } else  if (meth == "ddop853") {
-      lin <- "A"
+      lin <- "ode"
       meth <- "dop853"
+      dense <- TRUE
+    } else  if (meth == "dcvode") {
+      lin <- "ode"
+      meth <- "cvode"
+      dense <- TRUE
+    } else  if (meth == "ddop5") {
+      lin <- "ode"
+      meth <- "dop5"
+      dense <- TRUE
+    } else  if (meth == "dbs") {
+      lin <- "ode"
+      meth <- "bs"
+      dense <- TRUE
+    } else  if (meth == "dros4") {
+      lin <- "ode"
+      meth <- "ros4"
+      dense <- TRUE
+    } else if (meth == "ddop853+dros4") {
+      lin <- "ode"
+      meth <- "dop853+ros4"
       dense <- TRUE
     } else  if (meth == "Ad") {
       lin <- "A"
@@ -359,8 +379,7 @@ rxTest({
   p <- FALSE
 
   lapply(id, function(i) {
-    meths <- c("liblsoda", "lsoda", "dop853", "ddop853", "A", "B", "Ao", "Bo", "As", "Bs",
-               "Ad", "Bd", "Al", "Bl")
+    meths <- c(.methods0, .methods1, .methods2)
     modDat <- c("none", "rate", "dur")
     for (meth in meths) {
       for (modifyData in modDat) {

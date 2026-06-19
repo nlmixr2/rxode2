@@ -206,7 +206,7 @@ extern "C" {
 
   typedef int (*solveMethodThreadSafe_t)(rx_solving_options* op);
   extern solveMethodThreadSafe_t solveMethodThreadSafe;
-  // Thread-safe C-level tolerance adjustment — no Rcpp/PROTECT overhead, safe from OMP threads
+  // Thread-safe C-level tolerance adjustment -- no Rcpp/PROTECT overhead, safe from OMP threads
   typedef void (*atolRtolFactor_t)(double factor);
   extern atolRtolFactor_t atolRtolFactor_;
 
@@ -215,6 +215,12 @@ extern "C" {
 
   typedef double (*rxReal_t)(SEXP x, R_xlen_t i);
   extern rxReal_t rxReal;
+
+  typedef int (*getRxNsim_t)(rx_solve *rx);
+  extern getRxNsim_t getRxNsim;
+
+  typedef void (*setRxThreadId_t)(int id);
+  extern setRxThreadId_t setRxThreadId;
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
@@ -282,6 +288,8 @@ extern "C" {
       atolRtolFactor_ = (atolRtolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 61));
       rxInt = (rxInt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 62));
       rxReal = (rxReal_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 63));
+      getRxNsim = (getRxNsim_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 64));
+      setRxThreadId = (setRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 65));
     }
     return R_NilValue;
   }
@@ -351,6 +359,8 @@ extern "C" {
   atolRtolFactor_t atolRtolFactor_ = NULL;              \
   rxInt_t rxInt = NULL;                                 \
   rxReal_t rxReal = NULL;                               \
+  getRxNsim_t getRxNsim = NULL;                         \
+  setRxThreadId_t setRxThreadId = NULL;                 \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

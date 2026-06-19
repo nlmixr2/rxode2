@@ -25,7 +25,7 @@ Both packages are moving targets; details may change as each evolves.
 Before comparing differences it helps to establish how much the two
 tools have in common:
 
-- NONMEM-compatible data sets (EVID, AMT, CMT, TIME, ID, …)
+- NONMEM-compatible data sets (EVID, AMT, CMT, TIME, ID, ...)
 - ODE solving with adaptive step-size solvers (LSODA-family)
 - Analytical PK compartment models (though parameterization differs)
 - Between-subject variability (omega) and residual variability (sigma)
@@ -87,7 +87,7 @@ nlmixr2's FOCEi algorithm for parameter estimation without finite
 differences.  mrgsolve does not currently support symbolic
 differentiation.
 
-### 1–3 compartment analytical solutions with exact gradients
+### 1-3 compartment analytical solutions with exact gradients
 
 `linCmt()` in rxode2 supports one-, two-, and three-compartment
 analytical solutions.  Gradients are computed via Stan math
@@ -170,7 +170,7 @@ relies on forked processes or future-based backends.
 rxode2 model objects support R's native pipe operator (`|>`) to
 incrementally build or modify models without rewriting the full
 specification.  `model()` and `ini()` pipes copy the model,
-apply the change, and return a new object — leaving the original
+apply the change, and return a new object -- leaving the original
 untouched.
 
 ```{r}
@@ -225,7 +225,7 @@ there is no equivalent incremental piping API.
 
 rxode2 allows R function defined in the calling environment (session,
 script, or package) to be automatically available for use inside an
-rxode2 model.  No special block or registration step is needed —
+rxode2 model.  No special block or registration step is needed --
 rxode2 finds the function by name in the parent environment and calls
 it at solve time.
 
@@ -287,7 +287,7 @@ event-object API, not the existence of adaptive dosing itself.
 ### `nm-vars` plugin for verbatim NONMEM-style ODE syntax
 
 mrgsolve's `nm-vars` plugin lets you write `A(1)`, `DADT(1)`, `F1`,
-`R1` etc. inside ODE and PK blocks — effectively copy-pasting NONMEM
+`R1` etc. inside ODE and PK blocks -- effectively copy-pasting NONMEM
 `$DES`/`$PK` code with minimal changes.  This is a syntax convenience
 within a *new* mrgsolve model file, not a full NONMEM import.  rxode2
 uses its own ODE notation (`d/dt(cmt)`) and `nonmem2rx` handles the
@@ -297,9 +297,9 @@ translation programmatically.
 
 mrgsolve's `$PLUGIN` block can link model C++ code against:
 
-- `Rcpp` — full Rcpp header access inside the model
-- `BH` — Boost headers
-- `RcppArmadillo` — Armadillo linear algebra
+- `Rcpp` -- full Rcpp header access inside the model
+- `BH` -- Boost headers
+- `RcppArmadillo` -- Armadillo linear algebra
 
 rxode2's extension system (via `rxFun()`, `.extraC()`, or package
 registration) provides custom C/C++ function injection but does not
@@ -359,7 +359,7 @@ nlmixr2) is described in the vignette
 ### Custom R code / model expansion
 
 rxode2's `rxUdfUi` S3 dispatch system allows R functions to rewrite
-model code at parse time — inserting lines, modifying initial
+model code at parse time -- inserting lines, modifying initial
 estimates, or expanding a single function call into multi-line model
 code.  Built-in examples include `linCmt()`, `linMod()`, and
 distribution functions like `rxpois()`.  This is described in
@@ -406,13 +406,76 @@ translation unit, but includes an additional grammar parsing step.
 mrgsolve generates C++ which allows richer language features.
 Benchmarks on equivalent models show similar wall-clock times.
 
+## Converting between rxode2 and mrgsolve
+
+The [`rxode2mrgsolvebridge`](https://cran.r-project.org/package=rxode2mrgsolvebridge)
+package (available on CRAN) provides bidirectional conversion between
+rxode2 and mrgsolve model code.  It works through an intermediate
+representation so that the same translation logic handles both
+directions.
+
+### rxode2 to mrgsolve
+
+```{r}
+library(rxode2mrgsolvebridge)
+
+rx_code <- "
+  KA = THETA_KA
+  KE = THETA_KE
+  d/dt(A)  = -KA * A
+  d/dt(Cp) = KA * A - KE * Cp
+"
+
+convert_rxode2_to_mrgsolve(
+  rx_model       = rx_code,
+  theta_file     = "params.R",
+  output_basename = "model",
+  out_dir        = tempdir()
+)
+```
+
+This writes a self-contained mrgsolve model file to `out_dir`.
+
+### mrgsolve to rxode2
+
+```{r}
+convert_mrgsolve_to_rxode2(
+  mrgsolve_file  = "model.cpp",
+  output_basename = "model",
+  out_dir        = tempdir()
+)
+```
+
+This produces an rxode2 model code file and a matching theta parameter
+file in `out_dir`.
+
+### Lower-level utilities
+
+The package also exposes lower-level helpers for parsing and rendering
+when you need finer control:
+
+| Function | Purpose |
+|----------|---------|
+| `parse_rxode2_model()` | Parse rxode2 code into intermediate representation |
+| `parse_mrgsolve_model()` / `parse_mrgsolve_file()` | Parse mrgsolve code or file into intermediate representation |
+| `ir_to_mrgsolve()` | Render intermediate representation as mrgsolve code |
+| `ir_to_rxode2()` | Render intermediate representation as rxode2 code |
+| `export_mrgsolve_model()` | Write mrgsolve model to file |
+| `export_rxode2_files()` | Write rxode2 model and theta files |
+
+Note that the conversion covers model equations and parameter
+declarations; simulation-level features with no equivalent in the
+target engine (e.g., rxode2 symbolic Jacobians, mrgsolve `$GLOBAL`
+state) are either dropped or require manual adjustment after
+conversion.
+
 ## Summary table
 
 | Feature | rxode2 | mrgsolve |
 |---------|--------|----------|
 | ODE solving | LSODA (C, thread-safe), Fortran LSODA, DOP853 | C++ LSODA |
 | Parallel solving (OpenMP) | yes (thread-safe solver) | process-based |
-| 1–3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1–2 cmt, no gradients |
+| 1-3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1-2 cmt, no gradients |
 | Symbolic Jacobian / sensitivities | yes | no |
 | Parameter estimation | via nlmixr2 | simulation only |
 | Model piping (`\|>`) | yes (`model()`, `ini()` pipes) | no |
@@ -441,3 +504,5 @@ Benchmarks on equivalent models show similar wall-clock times.
 - [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
 - [nonmem2mrgsolve](https://github.com/Andy00000000000/nonmem2mrgsolve)
 - [amp.sim package](https://github.com/LeidenAdvancedPKPD/amp.sim)
+- [rxode2mrgsolvebridge package (CRAN)](https://cran.r-project.org/package=rxode2mrgsolvebridge)
+- [rxode2mrgsolvebridge source (GitLab)](https://gitlab.com/fiha1/rxode2-mrgsolve-bridge)

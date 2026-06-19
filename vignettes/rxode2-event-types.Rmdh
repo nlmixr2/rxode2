@@ -160,7 +160,7 @@ Use `addDosing=NA` to see classic `EVID` equivalents instead.
 ### `ID` column
 
 `ID` separates individuals (persons, animals, etc.).  The solver
-re-initialises the numerical integrator and samples new random effects
+re-initializes the numerical integrator and samples new random effects
 with each new `ID`.  It may be an integer, character, or factor.
 
 ### `RATE` column

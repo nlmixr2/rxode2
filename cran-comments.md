@@ -1,28 +1,18 @@
-# rxode2 5.0.2
+# rxode2 5.1.2
 
-- Allow state-dependent `dur()`, `rate()`, `alag()`, `mtime()` now
-  allow states to modify their behavior.  The state value at the time
-  of the event is used to calculate any changes.
+* CRAN has asked us to fix `nlmixr2est` `m1-san` which seems to be
+  transient (it was flagged to us and then has been removed from the
+  CRAN issues).  We could reproduce it using the rhub runners, but it
+  was an issue with rxode2 instead of nlmixr2est with loading and
+  unloading the same model.  We have fixed rxode2 so this issue no longer occurs.
 
-- Fix: all six ODE solve loops now use precomputed `timeThread` values for
-  event times instead of recomputing via `getTime_()` with `ypNA`, preventing
-  NA propagation for any state-dependent lag scenario.
+To validate we performed a `m1-san` check using `rxode2` found here:
 
-- Export the internal `.rxGetSeed()` and `.rxSetSeed()` for use in the
-  `nlmixr2save` package.
+- https://github.com/nlmixr2/rxode2/actions/runs/26737546575
 
-- Bug fix for `.copyUi()` with the new format (5.0+) of rxode2 ui models
+And also validated with a `m1-san` check using `nlmixr2est` found here:
 
-- With new versions of R, `getOption()` is no longer a bottleneck, so
-  syncing to local variables is no longer done internally
+- https://github.com/nlmixr2/nlmixr2est/actions/runs/26737555793
 
-- Allow transforms to return `NA`.
-
-- Drop `magrittr` and use `|>` instead of `%>%` in the examples
-  (requires R 4.1)
-
-- Change default model serialization to `bzip2` and move binary code
-  generation inside of C.
-
-- Fix where getting seed saves/modifies the RNG scope, as well as a bug fix
-  for restoring the random seed state
+Both were successful.  Hence we are submitting `rxode2` quickly after
+our first submission because of this fix.

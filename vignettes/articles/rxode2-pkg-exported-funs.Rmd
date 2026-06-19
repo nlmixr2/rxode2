@@ -55,14 +55,14 @@ using `rxode2::rxode2parseAssignTranslation()`.
 
 ```
 mm/
-├── DESCRIPTION
-├── NAMESPACE
-├── R/
-│   ├── mm.R           # R interface + roxygen docs
-│   └── zzz.R          # .onAttach / .onUnload hooks
-└── src/
-    ├── myfuns.c        # scalar C functions and SEXP vector wrappers
-    └── init.c          # R_init_mm: registers callables and routines
++-- DESCRIPTION
++-- NAMESPACE
++-- R/
+|   +-- mm.R           # R interface + roxygen docs
+|   \\-- zzz.R          # .onAttach / .onUnload hooks
+\\-- src/
+    +-- myfuns.c        # scalar C functions and SEXP vector wrappers
+    \\-- init.c          # R_init_mm: registers callables and routines
 ```
 
 ### DESCRIPTION
@@ -92,9 +92,9 @@ with each file below.
 
 The file contains two layers:
 
-1. **Scalar functions** (`double` in, `double` out) — these are what
+1. **Scalar functions** (`double` in, `double` out) -- these are what
    rxode2 calls inside the ODE solver.
-2. **SEXP vector wrappers** (`SEXP` in, `SEXP` out) — these are what
+2. **SEXP vector wrappers** (`SEXP` in, `SEXP` out) -- these are what
    the thin R interface calls; they loop over equal-length double
    vectors and return the result as an R numeric vector.
 
@@ -183,9 +183,9 @@ Rules every rxode2-compatible scalar C function must follow:
 
 - Return type is `double`.
 - All arguments are `double` scalars, not vectors.
-- No R API calls inside the body — pure numeric C.
+- No R API calls inside the body -- pure numeric C.
 
-### `src/init.c` — registering the callables
+### `src/init.c` -- registering the callables
 
 ```c
 #include <R.h>
@@ -476,7 +476,7 @@ When a user writes `rxode2({ dA1/dt <- -mm(Cp, Vmax, Km) })`:
    no R overhead and full OpenMP thread safety.
 5. When `nlmixr2` needs the gradient it calls the derivative
    expressions registered by `rxD("mm", ...)`, which expand to
-   `mm_dC(...)`, `mm_dVmax(...)`, and `mm_dKm(...)` — also resolved
+   `mm_dC(...)`, `mm_dVmax(...)`, and `mm_dKm(...)` -- also resolved
    directly as C.
 
 ## Named and variable-length arguments via `rxUdfUi`
@@ -498,7 +498,7 @@ method must return a list with at minimum a `$replace` element
 containing the rewritten call as a character string in the canonical
 positional form that the C translator expects.
 
-### `R/mm.R` — adding `rxUdfUi.mm`
+### `R/mm.R` -- adding `rxUdfUi.mm`
 
 ```r
 
@@ -535,7 +535,7 @@ rxUdfUi.mm <- function(fun) {
 ```
 
 Exporting `rxUdfUi.mm` with `@export` is sufficient for roxygen2 to
-register the S3 method when the package is installed — no
+register the S3 method when the package is installed -- no
 `.s3register` call is needed in `.onAttach`.
 
 With this method in place, all of the following are equivalent inside
@@ -557,7 +557,7 @@ m2 <- function() {
   })
 }
 
-## Named in a different order — rxUdfUi.mm reorders before compilation:
+## Named in a different order -- rxUdfUi.mm reorders before compilation:
 m3 <- function() {
   model({
     d/dt(A1) <- -mm(Km = Km, Vmax = Vmax, C = Cp)
@@ -629,6 +629,6 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 
 ## Further reading
 
-- [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) — the inline / R-function approach
-- [Writing R Extensions 5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines) — `R_RegisterCCallable`, `R_GetCCallable`
+- [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) -- the inline / R-function approach
+- [Writing R Extensions 5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines) -- `R_RegisterCCallable`, `R_GetCCallable`
 - `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`
