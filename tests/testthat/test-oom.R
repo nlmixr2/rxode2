@@ -96,17 +96,13 @@ test_that("as_arrow_dataset.rxSolveOom returns a lazy Arrow Dataset", {
   rxTest({
     skip_if_not_installed("arrow")
     skip_if_not_installed("dplyr")
-    # arrow::as_arrow_dataset is not a generic in all arrow versions; the
-    # rxSolveOom method is only registered/usable when it exists.
-    skip_if_not(exists("as_arrow_dataset", envir = asNamespace("arrow"), inherits = FALSE),
-                "arrow has no as_arrow_dataset generic")
     mod <- rxode2({
       d/dt(A) <- -k * A
     })
     et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:10)
     chnk <- rxSolveChunked(mod, c(k = 0.1), et_pop, chunkSize = 3)
 
-    ds <- arrow::as_arrow_dataset(chnk)
+    ds <- as_arrow_dataset(chnk)
     expect_true(inherits(ds, "Dataset"))
 
     collected <- dplyr::collect(ds)

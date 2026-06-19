@@ -53,8 +53,6 @@
   }
   if (requireNamespace("arrow", quietly = TRUE)) {
     .s3register("arrow::as_arrow_table", "rxSolveOom")
-    if (exists("as_arrow_dataset", envir = asNamespace("arrow"), inherits = FALSE))
-      .s3register("arrow::as_arrow_dataset", "rxSolveOom")
   }
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::dplyr_reconstruct", "rxEt")
