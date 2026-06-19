@@ -215,7 +215,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .chunkIdsList <- .chunkList
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
-      function(.i) {
+      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .inits, .fwdCtlArgs, .mainTmp) {
         library(rxode2)
         .result <- do.call(rxSolve,
                            c(list(object = .modelObj, params = .chunkParamsList[[.i]],
@@ -227,21 +227,32 @@ rxMemSummary.rxEtFile <- function(x, ...) {
           .nPerSub <- nrow(.df) %/% max(length(.ids), 1L)
           .df <- cbind(id = rep(.ids, each = .nPerSub), .df)
         }
+        # Write to the parent process's tempdir (shared filesystem). A daemon's
+        # own session tempdir is removed when the daemon shuts down, which would
+        # leave the manifest pointing at deleted chunk files.
         if (requireNamespace("arrow", quietly = TRUE)) {
-          .f <- tempfile(fileext = ".parquet")
+          .f <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
           arrow::write_parquet(.df, .f)
         } else {
-          .f <- tempfile(fileext = ".rds")
+          .f <- tempfile(fileext = ".rds", tmpdir = .mainTmp)
           saveRDS(.df, .f)
         }
         list(file = .f, nrows = nrow(.df))
       },
-      .args = list(.chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
+      .args = list(.modelObj = .modelObj,
+                   .chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
                    .chunkParamsList = .chunkParamsList,
-                   .inits = inits, .fwdCtlArgs = .fwdCtlArgs)
+                   .inits = inits, .fwdCtlArgs = .fwdCtlArgs,
+                   .mainTmp = tempdir())
     )
     for (.i in seq_len(.nChunks)) {
       .r <- .tasks[[.i]][]
+      if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || is.null(.r$file)) {
+        stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
+                     tryCatch(conditionMessage(.r),
+                              error = function(e) paste(utils::head(unclass(.r), 1L), collapse = ""))),
+             call. = FALSE)
+      }
       .outFiles[.i] <- .r$file
       .manifest$nrows[.i] <- .r$nrows
     }
