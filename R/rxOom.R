@@ -313,9 +313,11 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
   .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
   if (length(.pq) == 0L)
     return(arrow::as_arrow_table(as.data.frame(x)))
-  # concat_tables() takes tables as individual `...` arguments, not a list,
-  # so splice the per-chunk tables in with do.call().
-  do.call(arrow::concat_tables, lapply(.pq, arrow::read_parquet))
+  # read_parquet() returns a tibble by default; concat_tables() needs Arrow
+  # Tables, so read with as_data_frame = FALSE. concat_tables() also takes the
+  # tables as individual `...` arguments, not a list, hence do.call().
+  do.call(arrow::concat_tables,
+          lapply(.pq, function(.f) arrow::read_parquet(.f, as_data_frame = FALSE)))
 }
 
 #' Convert an rxSolveOom result to a lazy Arrow Dataset
