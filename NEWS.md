@@ -33,6 +33,36 @@
 
 - Bug fix for `mix()` models as well as `iCov` models.
 
+- Fixed an out-of-bounds heap read in `syncIdx()`
+  (`inst/include/rxode2parseHandleEvid.h`) that occurred on the main
+  ODE solve path.  `handle_evid()` advances `ind->ixds` past the last
+  dose and `syncIdx()` dereferenced `ind->idose[ind->ixds]` before
+  bounds-checking `ixds` against `ind->ndoses`, reading one element
+  past the `idose` array.  The stray value is normally discarded by
+  the subsequent re-sync (so solve results are unchanged), but the
+  out-of-bounds read corrupted the heap on some toolchains and
+  surfaced as an intermittent segfault at an unrelated allocation
+  (observed on the R 4.5.3 CI runner).  Confirmed and fixed with
+  AddressSanitizer; reproduced by a modeled-duration + lag-time model
+  dosed into multiple compartments (see
+  `tests/testthat/test-syncidx-dose-index-oob.R`).
+
+- Fixed three further out-of-bounds memory accesses found alongside it
+  (memory-safety hardening; none changes results):
+
+    - `cvPost()` / `rcvC1`: the single-variance (1x1 `omega`) branch
+      indexed the result matrix (`ret(1,1)`) before sizing it.
+
+    - `linCmt.h` (`linCmtStan2ssInf8`): the oral two-compartment
+      steady-state-infusion branch where both infusion rates are
+      non-positive wrote `ret(3,0)` on a three-row vector (valid rows
+      0-2), a one-row out-of-bounds heap write.
+
+    - `etTran()`: `combineDvid` read element `[1]` of a length-1 logical.
+
+    - `rxDerived()` (`derived1`): a recycled length-1 parameter pointer
+      was incremented past its one-element buffer.
+
 # rxode2 5.1.2
 
 - `geom_cens()` / `stat_cens()` no longer emit "Ignoring unknown

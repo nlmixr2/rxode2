@@ -257,7 +257,11 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
       (*thalf) = Rf_fprec((*thalf), dig);
     }
     vc++; kel++; vss++; cl++; A++; fracA++; alpha++; thalf++;
-    p1++; v1++;
+    // A length-1 parameter is recycled across the output; incrementing its
+    // pointer unconditionally reads past the length-1 buffer.  Guard the
+    // increment as derived2()/derived3() do for their length-1 inputs.
+    if (lenP != 1) p1++;
+    if (lenV != 1) v1++;
   }
   // UNPROTECT
   return ret;
