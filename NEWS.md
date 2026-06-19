@@ -44,6 +44,15 @@
 - Single core thread for etTrans and rxSolve to speed up solving
   without OpenMP
 
+- Fixed an out-of-bounds heap read in `rxSolve()` parameter setup
+  (`rxSolve_normalizeParms`, `src/rxData.cpp`).  When subjects share a
+  single event table, the table is stored once but the per-replicate
+  copy for an `nsim > 1` solve that needs sorting (e.g. a model with
+  modeled `rate()` / `dur()`) read `rx->nall` (the full per-sim total)
+  doubles from the single-subject-sized source, over-reading the event
+  arrays.  The base table is now tiled across each replicate's block
+  (AddressSanitizer-confirmed; results are unchanged).
+
 - Fixed an out-of-bounds heap read in `syncIdx()`
   (`inst/include/rxode2parseHandleEvid.h`) that occurred on the main
   ODE solve path.  `handle_evid()` advances `ind->ixds` past the last

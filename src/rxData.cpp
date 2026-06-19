@@ -4746,11 +4746,24 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           stop(_("ran out of memory"));
         }
         _globals.gamtS= _globals.gall_timesS + (rx->nsim-1)*rx->nall;
-        for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
-          std::copy(_globals.gamt, _globals.gamt + rx->nall,
-                    _globals.gamtS + iii*rx->nall);
-          std::copy(_globals.gall_times, _globals.gall_times + rx->nall,
-                    _globals.gall_timesS + iii*rx->nall);
+        // _globals.gamt / _globals.gall_times hold _globals.gall_times_n base
+        // events.  When subjects share one event table that is a single
+        // subject's worth and rx->nall is the full per-sim total
+        // (== nsub * gall_times_n); copying rx->nall from the gall_times_n-sized
+        // source is a heap over-read.  Tile the base table across each
+        // replicate's nall-sized block so every subject sub-region is filled and
+        // the source is never read past its gall_times_n elements.
+        int64_t _base = (int64_t)_globals.gall_times_n;
+        if (_base > 0) {
+          for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
+            for (int64_t _off = 0; _off < (int64_t)rx->nall; _off += _base) {
+              int64_t _len = ((int64_t)rx->nall - _off < _base) ? ((int64_t)rx->nall - _off) : _base;
+              std::copy(_globals.gamt, _globals.gamt + _len,
+                        _globals.gamtS + (int64_t)iii*rx->nall + _off);
+              std::copy(_globals.gall_times, _globals.gall_times + _len,
+                        _globals.gall_timesS + (int64_t)iii*rx->nall + _off);
+            }
+          }
         }
       }
       for (unsigned int simNum = rx->nsim; simNum--;) {
