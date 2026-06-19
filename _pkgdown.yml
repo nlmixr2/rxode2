@@ -52,6 +52,7 @@ reference:
   - rxSolve
   - rxSolveChunked
   - rxCbindStudyIndividual
+  - as_arrow_dataset
 - title: Model UI & Piping
   desc: Work with rxUi model objects, piping, and model modification.
   contents:
