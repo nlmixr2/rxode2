@@ -150,7 +150,7 @@ tasks <- lapply(doses, function(d) {
   )
 })
 
-results <- lapply(tasks, `[]`)   # block until each task finishes
+results <- lapply(tasks, `[`)   # block until each task finishes (m[] collects)
 
 mirai::daemons(0)
 
