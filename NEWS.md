@@ -9,6 +9,17 @@
   the original ODE model is used instead, so the conversion never
   breaks an otherwise-valid solve.
 
+- The automatic `linCmt()` conversion no longer linearizes a central
+  sub-system that is coupled to an additional `d/dt()` state which is
+  referenced elsewhere in the model (for example a peripheral or
+  metabolite observable such as `Cp <- periph / vp`, or a second
+  endpoint keyed to that state).  Because `linCmt()` exposes only the
+  central concentration, folding such states away dropped the coupled
+  state and demoted it to a required input parameter, so the default
+  solve aborted with "parameter(s) are required for solving:
+  &lt;state&gt;".  These models now keep their explicit ODE states under
+  the default solve.
+
 - Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
   now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
   referencing the linear compartment names (`depot`, `central`)

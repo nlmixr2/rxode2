@@ -504,4 +504,130 @@ rxTest({
     expect_true(all(.rLin$cp[.rLin$time > 0] > 0))
   })
 
+  ## -----------------------------------------------------------------------
+  ## Coupled / separately-observed states must NOT auto-linearize.
+  ##
+  ## A central sub-system can be linear-compartment-eligible yet have an
+  ## additional state that is referenced by another model line (a peripheral
+  ## or metabolite observable like `Cp <- periph / vp`, possibly with its own
+  ## endpoint).  linCmt() exposes only the central concentration, so folding
+  ## the states into linCmt() drops the coupled state and demotes it to a
+  ## required input parameter -- the default solve then aborts with
+  ## "parameter(s) are required for solving: <state>".  Detection must return
+  ## NULL for these models so the explicit ODE states are preserved.
+  ## -----------------------------------------------------------------------
+
+  test_that("odeToLin returns NULL when a peripheral state has its own observable", {
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50); propSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        kel <- cl/vc; k12 <- q/vc; k21 <- q/vp
+        d/dt(central) <- -kel*central - k12*central + k21*periph
+        d/dt(periph)  <-  k12*central - k21*periph
+        Cc <- central / vc
+        Cp <- periph / vp        # observable referencing the coupled state
+        Cc ~ prop(propSd)
+      })
+    }))
+    expect_null(rxode2:::.odeToLinDetect(.m))
+  })
+
+  test_that("odeToLin returns NULL for a metabolite-like coupled, observed state", {
+    # Parent 2-cmt + observed metabolite with its own elimination.  The
+    # metabolite exchanges with central (kbt) so the topology *looks* like a
+    # peripheral, but it is separately observed (Cc_mhd) and carries an
+    # independent elimination -- it must remain a solved ODE state.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lka <- log(1); lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50)
+            lclm <- log(3); lvcm <- log(20); lkbt <- log(0.5); propSd <- 0.1; propSdM <- 0.1 })
+      model({
+        ka <- exp(lka); cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        cl_mhd <- exp(lclm); vc_mhd <- exp(lvcm); kbt <- exp(lkbt)
+        kel <- cl/vc; kelm <- cl_mhd/vc_mhd; k12 <- q/vc; k21 <- q/vp
+        d/dt(depot)       <- -ka*depot
+        d/dt(central)     <-  ka*depot - (kel+k12)*central + k21*peripheral1 + kbt*central_mhd
+        d/dt(peripheral1) <-  k12*central - k21*peripheral1
+        d/dt(central_mhd) <-  kel*central - kelm*central_mhd - kbt*central_mhd
+        f(depot) <- 1
+        Cc     <- central / vc
+        Cc_mhd <- central_mhd / vc_mhd
+        Cc     ~ prop(propSd)
+        Cc_mhd ~ prop(propSdM)
+      })
+    }))
+    expect_null(rxode2:::.odeToLinDetect(.m))
+  })
+
+  test_that("default rxSolve keeps a coupled ODE state instead of dropping it", {
+    # Regression: useLinCmt=TRUE (the default) used to auto-linearize this
+    # model, drop `periph`, and abort with
+    # "parameter(s) are required for solving: periph".  The default solve must
+    # now succeed, keep `periph` as a solved state, and agree numerically with
+    # the explicit ODE (useLinCmt=FALSE) solve.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50); propSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        kel <- cl/vc; k12 <- q/vc; k21 <- q/vp
+        d/dt(central) <- -kel*central - k12*central + k21*periph
+        d/dt(periph)  <-  k12*central - k21*periph
+        Cc <- central / vc
+        Cp <- periph / vp
+        Cc ~ prop(propSd)
+      })
+    }))
+    .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2), cmt = "Cc")
+    .rDef <- suppressMessages(rxSolve(.m, .ev))                  # default useLinCmt
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    # `periph` survives as a solved state and the coupled observable is present
+    expect_true("periph" %in% names(.rDef))
+    expect_true("Cp"     %in% names(.rDef))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-6)
+    expect_equal(.rDef$Cp, .rOde$Cp, tolerance = 1e-6)
+  })
+
+  test_that("default rxSolve handles a multi-endpoint coupled (fetus) model", {
+    # Two endpoints (Cc and Cfetus); the second is keyed to a coupled state.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50)
+            lqmf <- log(1); lvf <- log(10); propSd <- 0.1; propSdF <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        qmf <- exp(lqmf); vfetus <- exp(lvf)
+        kel <- cl/vc; k12 <- q/vc; k21 <- q/vp; k1f <- qmf/vc; kf1 <- qmf/vfetus
+        d/dt(central)     <- -kel*central - k12*central + k21*peripheral1 - k1f*central + kf1*fetus
+        d/dt(peripheral1) <-  k12*central - k21*peripheral1
+        d/dt(fetus)       <-  k1f*central - kf1*fetus
+        Cc     <- central / vc
+        Cfetus <- fetus / vfetus
+        Cc     ~ prop(propSd)
+        Cfetus ~ prop(propSdF)
+      })
+    }))
+    expect_null(rxode2:::.odeToLinDetect(.m))
+    .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2), cmt = "Cc")
+    .rDef <- suppressMessages(rxSolve(.m, .ev))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    expect_true(all(c("peripheral1", "fetus", "Cfetus") %in% names(.rDef)))
+    expect_equal(.rDef$Cfetus, .rOde$Cfetus, tolerance = 1e-6)
+  })
+
+  test_that("odeToLin still converts when an observable derives from the central output", {
+    # Boundary: a non-state quantity built from the central *output variable*
+    # (cp, not the `central` state) must NOT block conversion.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tcl <- 1; tv <- 3.45; emax <- 10; ec50 <- 1; add.sd <- 0.7 })
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl/v * central
+        cp  <- central / v
+        eff <- emax * cp / (ec50 + cp)   # references cp (output var), not the state
+        cp ~ add(add.sd)
+      })
+    }))
+    .info <- rxode2:::.odeToLinDetect(.m)
+    expect_equal(.info$ncmt, 1L)
+  })
+
 })
