@@ -200,6 +200,56 @@
 ## Extract compartment name from d/dt(name) expression.
 .getDtCmt <- function(expr) as.character(expr[[3]][[2]])
 
+## Collect the names of state variables referenced as *values* in an
+## expression.  The compartment-position argument of an `f`/`rate`/`dur`/`alag`
+## modifier or an adaptive-dosing call (`bolus`, `infuse`, ...) is NOT a value
+## reference: those positions are rewritten to the standard linCmt compartment
+## names by .odeToLinRenameExpr, so they never block conversion.  Anything else
+## that names a state -- e.g. a peripheral observable `periph` in
+## `Cp <- periph / vp` -- is a value reference.
+.odeToLinValueStateRefs <- function(expr, states) {
+  if (is.name(expr)) {
+    .nm <- as.character(expr)
+    return(if (.nm %in% states) .nm else character(0))
+  }
+  if (!is.call(expr)) return(character(0))
+  .fn <- if (is.name(expr[[1L]])) as.character(expr[[1L]]) else ""
+  ## f/rate/dur/alag(<cmt>, ...): the first argument is a compartment position.
+  if (.fn %in% c("f", "rate", "dur", "alag")) {
+    .rest <- as.list(expr)[-1L]
+    if (length(.rest) >= 1L) .rest <- .rest[-1L]
+    return(unique(unlist(lapply(.rest, .odeToLinValueStateRefs, states = states))))
+  }
+  ## Adaptive dosing calls: the compartment-position argument is rewritten too.
+  ## Indices mirror .odeToLinRenameAdaptiveCall.
+  .cmtIdx <- switch(.fn,
+    bolus = 3L, replace = 3L, multiply = 3L, phantom = 3L,
+    infuse = 4L, infuseDur = 4L,
+    `evid_` = 5L,
+    NULL)
+  .idx <- seq_along(expr)[-1L]
+  if (!is.null(.cmtIdx)) .idx <- setdiff(.idx, .cmtIdx)
+  unique(unlist(lapply(.idx, function(.k) .odeToLinValueStateRefs(expr[[.k]], states))))
+}
+
+## TRUE when a compartment state is referenced as a value by some model line
+## other than the ODE equations and the single central output line.  Folding
+## the ODE states into linCmt() exposes only the central concentration (the
+## output line); any other reference -- a peripheral/metabolite observable, a
+## second endpoint keyed to a coupled compartment, or a state alias -- would be
+## left dangling and demoted to a required input parameter, so rxSolve would
+## abort with "parameter(s) are required for solving: <state>".  Such models
+## must keep their explicit ODE states and must not be auto-linearized.
+.odeToLinStateReferencedElsewhere <- function(lstExpr, cmtNames, odeIdx, outputIdx) {
+  for (.i in seq_along(lstExpr)) {
+    if (.i %in% odeIdx || .i == outputIdx) next
+    if (length(.odeToLinValueStateRefs(lstExpr[[.i]], cmtNames)) > 0L) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
 ## Attempt to detect whether ui is a linear compartment ODE model.
 ## Returns a list with topology + output info, or NULL if not convertible.
 .odeToLinDetect <- function(ui) {
@@ -240,6 +290,16 @@
   ## Classify topology.
   .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmtNames)
   if (is.null(.topo)) return(NULL)
+
+  ## Refuse to convert when a compartment state is referenced as a value outside
+  ## the ODE equations and the central output line (e.g. a peripheral or
+  ## metabolite observable `Cp <- periph / vp`).  linCmt() only exposes the
+  ## central concentration, so auto-linearizing such a model would drop the
+  ## coupled state and demote it to a required input parameter, breaking the
+  ## default solve.  These models must keep their explicit ODE states.
+  if (.odeToLinStateReferencedElsewhere(.lstExpr, .cmtNames, .odeIdx, .out$lineIdx)) {
+    return(NULL)
+  }
 
   ## Collect the PK parameter names referenced in the rate coefficients and
   ## the volume expression so they can be passed explicitly to linCmt().
