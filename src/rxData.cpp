@@ -54,6 +54,7 @@ extern "C" void ensureAutoJacBuf(int nCores, int neq);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h" // defines updateRate/updateDur forward-declared in handleEvid.h
 #include "rxThreadData.h"
 
 #include "threadSafeConstants.h"
