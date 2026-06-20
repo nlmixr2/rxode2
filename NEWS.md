@@ -1,5 +1,9 @@
 # rxode2 5.1.3
 
+- Defensive `drop = FALSE` on omega/covariance matrix subsetting
+  (`rxsolve()`, `ini()` piping) so a single-random-effect (1x1) omega
+  is not silently collapsed to a scalar.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK

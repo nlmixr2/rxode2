@@ -2050,7 +2050,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
     } else {
-      .omega <- .omega[.v, .v]
+      .omega <- .omega[.v, .v, drop = FALSE]
       if (all(dim(.omega) == c(0L, 0L))) {
         .rxControl$omega <- NULL
       } else {
