@@ -881,7 +881,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool combineDvidB = false;
   Environment b=Rcpp::Environment::base_namespace();
   if (!combineDvid.isNull()){
-    combineDvidB = (as<LogicalVector>(combineDvid))[1];
+    combineDvidB = (as<LogicalVector>(combineDvid))[0];
   } else {
     Function getOption = b["getOption"];
     combineDvidB = as<bool>(getOption("rxode2.combine.dvid", true));

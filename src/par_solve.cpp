@@ -32,6 +32,7 @@ extern "C" void setRxSeedFinal(uint32_t seed);
 extern "C" {
 #include "dop853.h"
 #include "common.h"
+#include "solveWarn.h"
 #include "lsoda.h"
 #include "rxode2_df.h"
 }
@@ -1990,7 +1991,8 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                        0,
                        NULL,
                        0,
-                       NULL
+                       NULL,
+                       ind->id
                        );
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
@@ -2465,10 +2467,10 @@ extern "C" void solveSSinf(int *neq,
         }
       }
       for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
+        ind->solveLast[k] = yp[k];
       }
     }
     // yp is last solve or y0
@@ -2603,10 +2605,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
       }
       for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
+        ind->solveLast[k] = yp[k];
       }
     }
     // yp is last solve or y0
@@ -2641,7 +2643,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
         ind->solveLast2[k] = yp[k];
       }
-      if (canBreak){
+      if (*canBreak){
         nDup++;
         if (nDup >= 7) {
           break;
@@ -3875,6 +3877,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   } else {
     lsoda_prepare(ctx, &opt);
   }
+  /* Record the rxode2 subject id on the LSODA context so intdy.c can
+     attribute its warnings to the correct subject. Placed before `memory`
+     in lsoda_common_t so lsoda_reset's memset doesn't clobber it on
+     pooled-context reuse. */
+  ctx->common->id = ind->id;
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
@@ -4491,7 +4498,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
-          ind->solve[ind->cmt] = op->inits[ind->cmt];
+          yp[ind->cmt] = op->inits[ind->cmt];
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
@@ -4779,7 +4786,7 @@ static void par_lsode_bdf(rx_solve *rx, int mf) {
       int neq[2]; neq[0] = baseNeq; neq[1] = 0;
       ind_lsode0(rx, op, solveid, neq, rwork, lrw, iwork, liw, mf);
       if (displayProgress) {
-        curTick = par_progress(nsolve, solveid + 1, curTick, 1, t0, 0);
+        curTick = par_progress(solveid + 1, nsolve, curTick, 1, t0, 0);
       }
       if (op->abort) abort = 1;
     }
@@ -5347,7 +5354,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,                      /* number of components for which dense outpout is required */
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0,                      /* declared length of icon */
-                          NULL                    /* userdata */
+                          NULL,                   /* userdata */
+                          ind->id                 /* rxode2 subject id for message aggregator */
                           );
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -5391,7 +5399,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,                      /* number of components for which dense outpout is required */
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0,                      /* declared length of icon */
-                          NULL                    /* userdata */
+                          NULL,                   /* userdata */
+                          ind->id                 /* rxode2 subject id for message aggregator */
                           );
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -5426,7 +5435,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         0,                      /* number of components for which dense outpout is required */
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
                         0,                      /* declared length of icon */
-                        NULL                    /* userdata */
+                        NULL,                   /* userdata */
+                        ind->id                 /* rxode2 subject id for message aggregator */
                         );
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
@@ -5637,7 +5647,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                         dopDenseSolout, iout_dense,
                         NULL, DBL_EPSILON, 0, 0, 0, 0,
                         ind->HMAX, op->H0, op->mxstep, 1, -1,
-                        neq[0], NULL, 0, &dc);
+                        neq[0], NULL, 0, &dc, ind->id);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5666,7 +5676,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                           dopDenseSolout, iout_dense,
                           NULL, DBL_EPSILON, 0, 0, 0, 0,
                           ind->HMAX, op->H0, op->mxstep, 1, -1,
-                          neq[0], NULL, 0, &dc);
+                          neq[0], NULL, 0, &dc, ind->id);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5700,7 +5710,9 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                         ind->HMAX, op->H0, op->mxstep, 1, -1,
                         neq[0],  // nrdens = all ODE states
                         NULL, 0, // icont = NULL (full component 0-based)
-                        &dc);    // userdata
+                        &dc,     // userdata
+                        ind->id  // rxode2 subject id for message aggregator
+                        );
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -6864,6 +6876,11 @@ extern "C" void par_solve(rx_solve *rx) {
       iniSubject((int)_sid, 1, &rx->subjects[_sid], op, rx, update_inis);
     }
   }
+  /* Standalone rxSolve users see one summary line per call instead of a
+     flood. nlmixr2est does not enter through par_solve for inner iterations
+     (it calls ind_solve per subject) and flushes from its own iteration
+     printout — so this flush will not interfere with that aggregation. */
+  rxSolveWarnFlush(5);
   par_progress_0=0;
 }
 

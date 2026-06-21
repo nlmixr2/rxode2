@@ -257,7 +257,8 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
       (*thalf) = Rf_fprec((*thalf), dig);
     }
     vc++; kel++; vss++; cl++; A++; fracA++; alpha++; thalf++;
-    p1++; v1++;
+    if (lenP != 1) p1++;  // recycle a length-1 parameter (matches derived2/derived3)
+    if (lenV != 1) v1++;
   }
   // UNPROTECT
   return ret;

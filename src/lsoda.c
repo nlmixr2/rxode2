@@ -9,6 +9,7 @@
 #include <Rinternals.h>
 
 void RSprintf(const char *format, ...);
+#include "solveWarn.h"
 
 /*
   This is a reentrant-friendly version of the LSODA library.
@@ -767,16 +768,16 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				softfailure(-2, "lsoda -- at t = %g, too much accuracy requested\n  for precision of machine, suggested\n scaling factor = %g\n", *t, tolsf);
 			}
 			if ((_rxC(tn) + _rxC(h)) == _rxC(tn)) {
+				/* Floor-rounding step size: t + h is indistinguishable from t,
+				   so the solver is about to take a no-op step. Aggregate the
+				   warning by message text so a flood across subjects/
+				   iterations collapses to one summary line. The legacy
+				   `mxhnil`-based throttle (per-ctx counter) is now redundant
+				   for our purposes; keep _rxC(nhnil) ticking so anything that
+				   introspects it still sees the count. */
 				_rxC(nhnil)++;
-				if (_rxC(nhnil) <= opt->mxhnil) {
-				  RSprintf(_("lsoda -- warning..internal t = %g and _rxC(h) = %g are\n"), _rxC(tn), _rxC(h));
-				  RSprintf(_("         such that in the machine, t + _rxC(h) = t on the next step\n"));
-				  RSprintf(_("         solver will continue anyway.\n"));
-					if (_rxC(nhnil) == opt->mxhnil) {
-					  RSprintf(_("lsoda -- above warning has been issued %d times,\n"), _rxC(nhnil));
-					  RSprintf(_("         it will not be issued again for this problem\n"));
-					}
-				}
+				rxSolveWarnPush(_rxC(id),
+				                "lsoda -- internal t + h = t (h too small for machine precision)");
 			}
 			/*
 			   Call stoda

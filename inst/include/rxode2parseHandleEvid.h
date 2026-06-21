@@ -229,7 +229,15 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
 
 static inline int syncIdx(rx_solving_options_ind *ind) {
   if (ind->idx < 0) return 1; // additional dose; technically the idx doesn't relate to idose/ix
-  if (ind->ix[ind->idx] != ind->idose[ind->ixds]) {
+  // ind->ixds can be advanced past the last dose: handle_evid() does an
+  // unconditional ind->ixds++ after handling a dose, and handleEvid1() ignores
+  // syncIdx()'s return value, so a failed re-sync can leave ixds == ndoses and
+  // the next dose pushes it past the end.  idose holds ndoses entries (+1 guard
+  // slot), so dereferencing idose[ixds] when ixds >= ndoses reads out of bounds
+  // (ASAN: heap-buffer-overflow in syncIdx).  Treat an out-of-range ixds as
+  // "needs re-sync" instead of reading past the array.
+  if (ind->ixds < 0 || ind->ixds >= ind->ndoses ||
+      ind->ix[ind->idx] != ind->idose[ind->ixds]) {
     // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
     int m = getDoseNumberFromIndex(ind, ind->ix[ind->idx]);
     if (m != -1) {

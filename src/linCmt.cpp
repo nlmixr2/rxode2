@@ -281,7 +281,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   // setRxThreadId): under an external OpenMP team rxode2's omp_get_thread_num()
   // would return 0 for every worker, collapsing this per-thread linCmt scratch
   // onto slot 0.  __linCmtB (line ~489) already uses rx_get_thread().
-  linA_t lca = __linCmtA[rx_get_thread((int)__linCmtA.size())];
+  linA_t &lca = __linCmtA[rx_get_thread((int)__linCmtA.size())];
   int idx = ind->idx;
   // Create the solved system object
   if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
