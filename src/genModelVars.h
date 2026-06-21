@@ -236,7 +236,7 @@ static inline SEXP calcIniVals(void) {
 SEXP orderForderS1(SEXP ordIn);
 
 static inline int sortStateVectorsErrHandle(int prop, int i) {
-  if (prop == 0 || tb.dummyLhs == 1) {
+  if ((prop & ~propDoseRef) == 0 || tb.dummyLhs == 1) {
     return 1;
   }
   char *buf = NULL;

@@ -51,6 +51,134 @@ namespace stan {
     using std::cos;
     using stan::math::cos;
 
+    // In-place variant: writes into caller-pre-allocated g (avoids heap alloc).
+    template<class T>
+    void macros2microsInplace(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p,
+                              const int& ncmt,
+                              const int& trans,
+                              Eigen::Matrix<T, Eigen::Dynamic, 2>& g) {
+      T btemp, ctemp, dtemp;
+#define p1    p[0]
+#define v1    p[1]
+#define p2    p[2]
+#define p3    p[3]
+#define p4    p[4]
+#define p5    p[5]
+#define v     g(0, 0)
+#define k     g(0, 1)
+
+#define k12   g(1, 0)
+#define k23   g(1, 0)
+
+#define k21   g(1, 1)
+#define k32   g(1, 1)
+
+#define k13   g(2, 0)
+#define k24   g(2, 0)
+
+#define k31   g(2, 1)
+#define k42   g(2, 1)
+      switch (ncmt) {
+      case 3: {
+        switch (trans) {
+        case 1:
+          k = p1/v1; v = v1; k12 = p2/v1; k21 = p2/p3; k13 = p4/v1; k31 = p4/p5;
+          break;
+        case 2:
+          k = p1; v = v1; k12 = p2; k21 = p3; k13 = p4; k31 = p5;
+          break;
+        case 11:
+#undef beta
+#define A (1/v1)
+#define B (p3)
+#define C (p5)
+#define alpha (p1)
+#define beta (p2)
+#define gamma (p4)
+          v=1/(A+B+C);
+          btemp = -(alpha*C + alpha*B + gamma*A + gamma*B + beta*A + beta*C)*v;
+          ctemp = (alpha*beta*C + alpha*gamma*B + beta*gamma*A)*v;
+          dtemp = sqrt(btemp*btemp-4*ctemp);
+          k21 = 0.5*(-btemp+dtemp);
+          k31 = 0.5*(-btemp-dtemp);
+          k   = alpha*beta*gamma/k21/k31;
+          k12 = ((beta*gamma + alpha*beta + alpha*gamma) -
+                 k21*(alpha+beta+gamma) - k * k31 + k21*k21)/(k31 - k21);
+          k13 = alpha + beta + gamma - (k + k12 + k21 + k31);
+          break;
+        case 10:
+#undef A
+#define A v1
+          v=1/(A+B+C);
+          btemp = -(alpha*C + alpha*B + gamma*A + gamma*B + beta*A + beta*C)*v;
+          ctemp = (alpha*beta*C + alpha*gamma*B + beta*gamma*A)*v;
+          dtemp = sqrt(btemp*btemp-4*ctemp);
+          k21 = 0.5*(-btemp+dtemp);
+          k31 = 0.5*(-btemp-dtemp);
+          k   = alpha*beta*gamma/k21/k31;
+          k12 = ((beta*gamma + alpha*beta + alpha*gamma) -
+                 k21*(alpha+beta+gamma) - k * k31 + k21*k21)/(k31 - k21);
+          k13 = alpha + beta + gamma - (k + k12 + k21 + k31);
+#undef A
+#undef B
+#undef C
+#undef alpha
+#undef beta
+#undef gamma
+#define beta Rf_beta
+          break;
+        }
+      } break;
+      case 2: {
+        switch (trans) {
+        case 1:  k = p1/v1; v = v1; k12 = p2/v1; k21 = p2/p3; break;
+        case 2:  k = p1; v = v1; k12 = p2; k21 = p3; break;
+        case 3:  k = p1/v1; v = v1; k12 = p2/v1; k21 = p2/(p3-v1); break;
+        case 4:  v = v1; k21 = p3; k = p1*p2/k21; k12 = p1+p2-k21-k; break;
+        case 5:  v = v1; k21 = (p3*p2+p1)/(p3+1); k = (p1*p2)/k21; k12 = p1+p2-k21-k; break;
+        case 11:
+#undef beta
+#define A (1/v1)
+#define B (p3)
+#define alpha (p1)
+#define beta (p2)
+          v = 1/(A+B); k21 = (A*beta+B*alpha)*v; k = alpha*beta/k21; k12 = alpha+beta-k21-k;
+          break;
+        case 10:
+#undef A
+#define A (v1)
+          v = 1/(A+B); k21 = (A*beta+B*alpha)*v; k = alpha*beta/k21; k12 = alpha+beta-k21-k;
+#undef A
+#undef B
+#undef alpha
+#undef beta
+#define beta Rf_beta
+          break;
+        }
+      } break;
+      case 1: {
+        switch (trans) {
+        case 1:  k = p1/v1; v = v1; break;
+        case 2:  k = p1; v = v1; break;
+        case 11: k = p1; v = v1; break;
+        case 10: k = p1; v = 1/v1; break;
+        }
+      } break;
+      }
+#undef p1
+#undef v1
+#undef p2
+#undef p3
+#undef p4
+#undef p5
+#undef k
+#undef v
+#undef k12
+#undef k21
+#undef k13
+#undef k31
+    }
+
     template<class T>
     Eigen::Matrix<T, Eigen::Dynamic, 2>
     macros2micros(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p,

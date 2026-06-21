@@ -8,6 +8,8 @@
 #' # Determines if rstudio is running completion
 #' .rstudioComplete()
 .rstudioComplete <- function() {
+  ## sys.calls() is expensive; autocomplete can only fire in interactive sessions
+  if (!interactive()) return(FALSE)
   .sc <- try(sys.calls(), silent=TRUE)
   if (inherits(.sc, "try-error")) {
     return(FALSE)

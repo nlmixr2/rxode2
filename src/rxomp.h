@@ -5,8 +5,22 @@
 #include <pthread.h>
 #include <omp.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+// Cross-DLL OpenMP thread-id override (defined in rxData.cpp).  Returns the
+// id supplied by an external OpenMP driver (e.g. nlmixr2est FOCEi) or -1 when
+// unset.  See the long comment in rxData.cpp.  Needed because rxode2's static
+// libgomp reports omp_get_thread_num()==0 for threads created by another DLL's
+// libgomp, which would collapse all per-thread buffers onto slot 0.
+int getRxThreadId(void);
+#ifdef __cplusplus
+}
+#endif
+
 static inline int rx_get_thread(int mx) {
-  int tn = omp_get_thread_num();
+  int tn = getRxThreadId();
+  if (tn < 0) tn = omp_get_thread_num();
   if (tn < 0) return 0;
   if (tn < mx) return tn;
   // Clamp to last valid index rather than collapsing to 0,

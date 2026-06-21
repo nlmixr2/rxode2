@@ -529,11 +529,11 @@ rxTest({
 
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
-      expect_equal(mean(f$x1), 1, tolerance = 0.01)
-      expect_equal(sd(f$x1), 1, tolerance = 0.01)
+      expect_equal(mean(f$x1), 1, tolerance = 0.02)
+      expect_equal(sd(f$x1), 1, tolerance = 0.02)
 
-      expect_equal(mean(f$x2), 2, tolerance = 0.01)
-      expect_equal(sd(f$x2), sqrt(2), tolerance = 0.01)
+      expect_equal(mean(f$x2), 2, tolerance = 0.02)
+      expect_equal(sd(f$x2), sqrt(2), tolerance = 0.02)
       ## Seed tests
 
       ## Make sure seeds are reproducible

@@ -4,6 +4,7 @@
 ${R_HOME}/bin/R CMD BATCH  inst/tools/workaround.R
 cat workaround.Rout
 rm workaround.Rout
+rm -f .RData
 #echo --------[end Workaround]--------
 
 echo --------[begin src/Makevars]--------

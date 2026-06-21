@@ -12,7 +12,7 @@ rxTest({
                   inits = c(depot = 0, central = 0))
     s5 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
                   inits = c(depot = 0, central = 5))
-    # With central=5, rate is higher so infusion ends sooner →
+    # With central=5, rate is higher so infusion ends sooner ->
     # the subsequent trajectories should differ
     expect_false(isTRUE(all.equal(s0$central, s5$central)))
     expect_false(any(is.na(s0$central)))

@@ -35,6 +35,7 @@ int rxInt(SEXP x, R_xlen_t i);
 double rxReal(SEXP x, R_xlen_t i);
 Rboolean is_rx_rep_int(SEXP x);
 Rboolean is_rx_seqrep(SEXP x);
+Rboolean is_rx_rep_str(SEXP x);
 
 #ifdef __cplusplus
 }

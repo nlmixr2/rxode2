@@ -1684,13 +1684,13 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
   rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
 }
 // ---------------------------------------------------------------------------
-// rxPreGenEta: pre-generate all nsolve × neta eta draws before the parallel
+// rxPreGenEta: pre-generate all nsolve * neta eta draws before the parallel
 // solve loop.  Subjects then read from the buffer in simeta() without calling
-// rxRmvnA() per subject — eliminating per-subject Cholesky + draw overhead.
+// rxRmvnA() per subject -- eliminating per-subject Cholesky + draw overhead.
 //
 // Handles two cases:
-//   nOmega == 1: single omega matrix → generate all nsolve rows in one call
-//   nOmega  > 1: per-simulation omega → generate nsub rows per simulation
+//   nOmega == 1: single omega matrix -> generate all nsolve rows in one call
+//   nOmega  > 1: per-simulation omega -> generate nsub rows per simulation
 // ---------------------------------------------------------------------------
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
   if (rx->neta <= 0 || rxIsZeroOmega()) return;
@@ -1699,14 +1699,14 @@ extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
   int neta   = rx->neta;
 
   double *buf = rxEtaPreGetOrAlloc(nsolve * neta);
-  if (!buf) return; // allocation failure — fall back to per-subject draws
+  if (!buf) return; // allocation failure -- fall back to per-subject draws
 
   arma::vec lower = getLowerVec(1, rx);
   arma::vec upper = getUpperVec(1, rx);
   arma::rowvec mu(neta, arma::fill::zeros);
 
   if (rxGetNOmega() == 1) {
-    // All subjects share the same omega — one big batch call
+    // All subjects share the same omega -- one big batch call
     arma::mat A(buf, nsolve, neta, false, true);
     arma::mat sigma = getArmaMat(1, 0, rx);
     rxRmvnA(A, mu, sigma, lower, upper, ncores, false, 0.4, 2.05, 1e-10, 100);

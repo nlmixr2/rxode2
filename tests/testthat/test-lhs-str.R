@@ -420,4 +420,36 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
                  list(timeText = c("time > 10", "time <= 10")))
 
   })
+
+  test_that("CENS column does not produce malformed factor LHS columns", {
+    rx <- rxode2({
+      ka <- exp(tka)
+      cl <- exp(tcl)
+      v  <- exp(tv)
+      d/dt(depot) = -ka * depot
+      d/dt(cent)  = ka * depot - cl / v * cent
+      cp = cent / v
+    })
+    # 3 subjects x 6 rows = 18 events; dfN = 7 (ID, TIME, EVID, AMT, DV, CMT, CENS).
+    # glhs_str starts at gcens[2*7=14]; events 14-17 have CENS=1, which corrupts
+    # glhs_str[0..3] = lhs_str for ka, cl, v, cp.
+    dat <- data.frame(
+      ID   = rep(1:3, each = 6),
+      TIME = rep(c(0, 0.5, 1.0, 1.5, 2.0, 2.5), 3),
+      EVID = rep(c(1L, 0L, 0L, 0L, 0L, 0L), 3),
+      AMT  = rep(c(10, NA, NA, NA, NA, NA), 3),
+      DV   = rep(c(NA, 3.0, 2.0, 1.5, 1.0, 0.5), 3),
+      CMT  = rep(c(1L, 2L, 2L, 2L, 2L, 2L), 3),
+      CENS = c(rep(0L, 14), rep(1L, 4))
+    )
+    params <- c(tka = log(0.5), tcl = log(0.3), tv = log(8))
+    ret <- rxSolve(rx, params, dat)
+    df  <- as.data.frame(ret)
+    for (col in c("ka", "cl", "v", "cp")) {
+      expect_true(is.numeric(df[[col]]),
+                  label = paste0(col, " must be numeric, not a factor"))
+      expect_true(any(!is.na(df[[col]])),
+                  label = paste0(col, " must not be all NA"))
+    }
+  })
 })

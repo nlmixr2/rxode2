@@ -137,7 +137,27 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,  15, sDvid);
 
   SET_STRING_ELT(names, 16, Rf_mkChar("indLin"));
-  SEXP matLst = rxP(Rf_allocVector(VECSXP, 0));
+  SEXP matLst;
+  if (tb.isMexp) {
+    matLst = rxP(Rf_allocVector(VECSXP, 4));
+    SEXP matLstNames = rxP(Rf_allocVector(STRSXP, 4));
+    SET_STRING_ELT(matLstNames, 0, Rf_mkChar("A"));
+    SET_STRING_ELT(matLstNames, 1, Rf_mkChar("f"));
+    SET_STRING_ELT(matLstNames, 2, Rf_mkChar("fullIndLin"));
+    SET_STRING_ELT(matLstNames, 3, Rf_mkChar("wIndLin"));
+    Rf_setAttrib(matLst, R_NamesSymbol, matLstNames);
+
+    SET_VECTOR_ELT(matLst, 0, R_NilValue);
+    if (tb.hasIndLinProp) {
+      SET_VECTOR_ELT(matLst, 1, rxP(Rf_ScalarInteger(1)));
+    } else {
+      SET_VECTOR_ELT(matLst, 1, R_NilValue);
+    }
+    SET_VECTOR_ELT(matLst, 2, rxP(Rf_ScalarLogical(0)));
+    SET_VECTOR_ELT(matLst, 3, rxP(Rf_allocVector(INTSXP, 0)));
+  } else {
+    matLst = rxP(Rf_allocVector(VECSXP, 0));
+  }
   SET_VECTOR_ELT(lst,  16, matLst);
 
   SET_STRING_ELT(names, 17, Rf_mkChar("flags"));

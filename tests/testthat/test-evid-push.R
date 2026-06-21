@@ -2,7 +2,7 @@ rxTest({
   test_that("exceeding maxExtra raises an error (single subject)", {
     # This model unconditionally pushes a new event at t+0.1 on every ODE
     # evaluation step.  Each integration interval (0.1 wide) produces one push,
-    # so seq(0, 2, by=0.1) creates 20 intervals → 20 pushes, which exceeds
+    # so seq(0, 2, by=0.1) creates 20 intervals -> 20 pushes, which exceeds
     # maxExtra=10 and must raise an error.
     mCascade <- rxode2({
       d/dt(x) <- -x
@@ -90,44 +90,47 @@ rxTest({
     expect_no_error(rxSolve(m, c(x = 1), e, maxExtra = 0L))
   })
 
-  test_that("bolus push via evid_() adds extra timepoints and affects trajectory", {
+  for (meth in .methods0) {
+    test_that(paste0("bolus push via evid_() adds extra timepoints and affects trajectory (",
+                     meth,
+                     ")"), {
 
-    for (meth in c("dop853", "liblsoda")) {
-      m <- rxode2({
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl/vd * central
-        cp <- central / vd
-        if (t < 24) {
-          evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
-        }
-      })
-      e <- et(amt = 100, time = 0) |>
-        et(seq(0, 24, by = 1))
-      p <- c(ka = 0.5, cl = 1, vd = 10)
-      r <- rxSolve(m, p, e, method = meth)
-      # The pushed dose at t+12 should create an extra event, affecting cp after t=12
-      expect_true(nrow(r) > 0)
-      # The bolus at t=12 should be visible — cp should rise after t=12
-      cp12 <- r$cp[r$time == 12]
-      cp14 <- r$cp[r$time == 14]
-      expect_true(length(cp12) > 0 && length(cp14) > 0)
-      expect_true(cp14 > cp12)
+                       m <- rxode2({
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl/vd * central
+                         cp <- central / vd
+                         if (t < 24) {
+                           evid_(t + 12, 1, 50, 1, 0, 0, 0, 0)  # bolus 50 units to cmt 1 at t+12
+                         }
+                       })
+                       e <- et(amt = 100, time = 0) |>
+                         et(seq(0, 24, by = 1))
+                       p <- c(ka = 0.5, cl = 1, vd = 10)
+                       r <- rxSolve(m, p, e, method = meth)
+                       # The pushed dose at t+12 should create an extra event, affecting cp after t=12
+                       expect_true(nrow(r) > 0)
+                       # The bolus at t=12 should be visible -- cp should rise after t=12
+                       cp12 <- r$cp[r$time == 12]
+                       cp14 <- r$cp[r$time == 14]
+                       expect_true(length(cp12) > 0 && length(cp14) > 0)
+                       expect_true(cp14 > cp12)
 
-      m2 <- rxode2({
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl/vd * central
-        cp <- central / vd
-      })
-      e2 <- et(amt = 100, time = 0) |>
-        et(seq(0, 24, by = 1)) |>
-        et(amt = 50, time = 12, ii=1, until=30)
+                       m2 <- rxode2({
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl/vd * central
+                         cp <- central / vd
+                       })
+                       e2 <- et(amt = 100, time = 0) |>
+                         et(seq(0, 24, by = 1)) |>
+                         et(amt = 50, time = 12, ii=1, until=30)
 
-      p <- c(ka = 0.5, cl = 1, vd = 10)
-      r2 <- rxSolve(m2, p, e2, method = meth)
+                       p <- c(ka = 0.5, cl = 1, vd = 10)
+                       r2 <- rxSolve(m2, p, e2, method = meth)
 
-      expect_equal(r$cp, r2$cp, tolerance = 1e-5)
-    }
-
+                       expect_equal(r$cp, r2$cp, tolerance = 1e-5)
+                     })
+  }
+  test_that(paste0("bolus push via evid_() adds extra timepoints and affects trajectory (linCmt)"), {
     # Now try with linCmt() only
     m <- rxode2({
       cp <- linCmt(ka, cl, v)
@@ -142,8 +145,8 @@ rxTest({
     # rLin$time >= 19 should be non-zero
     expect_true(all(rLin$cp[rLin$time >= 19] > 0))
     # The pushed dose at t+12 should create an extra event, affecting cp after t=12
-    expect_true(nrow(r) > 0)
-    # The bolus at t=12 should be visible — cp should rise after t=12
+    expect_true(nrow(rLin) > 0)
+    # The bolus at t=12 should be visible -- cp should rise after t=12
     cp12 <- rLin$cp[rLin$time == 12]
     cp14 <- rLin$cp[rLin$time == 14]
     expect_true(length(cp12) > 0 && length(cp14) > 0)
@@ -159,11 +162,9 @@ rxTest({
     rLin2 <- rxSolve(m, p, e)
 
     expect_equal(rLin$cp, rLin2$cp)
-
   })
-
-  test_that("infusion push via evid_() adds start+stop events", {
-    for (meth in c("dop853", "liblsoda")) {
+  for (meth in .methods0) {
+    test_that(paste0("infusion push via evid_() adds start+stop events (", meth, ")"), {
       m <- rxode2({
         d/dt(central) <- -cl / vd * central
         cp <- central / vd
@@ -194,62 +195,110 @@ rxTest({
       r2 <- rxSolve(m2, p, e2, method=meth)
 
       expect_equal(r$cp, r2$cp, tolerance = 1e-5)
-    }
-  })
-
-  test_that("in-model infuse() changes duration with bioavailability", {
-    obs <- c(0, 1e-8, seq(0.5, 12, by = 0.5))
-    ref <- rxode2({
-      d/dt(central) <- -cl / v * central
-      cp <- central / v
     })
+  }
 
-    for (meth in c("dop853", "liblsoda")) {
-      mod <- rxode2({
-        d/dt(central) <- -cl / v * central
-        f(central) <- fc
-        cp <- central / v
-        if (t < 1e-8) {
-          infuse(100, 10, 1, 0, 0, 0)
-        }
-      })
-      p <- c(cl = 1, v = 10, fc = 0.5)
-      got <- rxSolve(mod, p, et(obs), method = meth)
-      want <- rxSolve(ref, c(cl = 1, v = 10),
-                      et(amt = 50, time = 0, rate = 10) |> et(obs),
-                      method = meth)
-      expect_equal(got$time, want$time)
-      expect_equal(got$cp, want$cp, tolerance = 1e-5)
-    }
-  })
+  for (meth in .methods0) {
+    test_that(paste0("in-model infuse() changes duration with bioavailability (",
+                     meth,
+                     ")"), {
+                       obs <- c(0, 1e-8, seq(0.5, 12, by = 0.5))
+                       ref <- rxode2({
+                         d/dt(central) <- -cl / v * central
+                         cp <- central / v
+                       })
 
-  test_that("in-model infuseDur() changes rate with bioavailability", {
-    obs <- c(0, 1e-8, seq(0.5, 12, by = 0.5))
-    ref <- rxode2({
-      d/dt(central) <- -cl / v * central
-      cp <- central / v
-    })
+                       mod <- rxode2({
+                         d/dt(central) <- -cl / v * central
+                         f(central) <- fc
+                         cp <- central / v
+                         if (t < 1e-8) {
+                           infuse(100, 10, 1, 0, 0, 0)
+                         }
+                       })
+                       p <- c(cl = 1, v = 10, fc = 0.5)
+                       got <- rxSolve(mod, p, et(obs), method = meth)
+                       want <- rxSolve(ref, c(cl = 1, v = 10),
+                                       et(amt = 50, time = 0, rate = 10) |> et(obs),
+                                       method = meth)
+                       expect_equal(got$time, want$time)
+                       expect_equal(got$cp, want$cp, tolerance = 1e-5)
+                     })
+  }
 
-    for (meth in c("dop853", "liblsoda")) {
-      mod <- rxode2({
-        d/dt(central) <- -cl / v * central
-        f(central) <- fc
-        cp <- central / v
-        if (t < 1e-8) {
-          infuseDur(100, 10, 1, 0, 0, 0)
-        }
-      })
-      p <- c(cl = 1, v = 10, fc = 0.5)
-      got <- rxSolve(mod, p, et(obs), method = meth)
-      want <- rxSolve(ref, c(cl = 1, v = 10),
-                      et(amt = 50, time = 0, dur = 10) |> et(obs),
-                      method = meth)
-      expect_equal(got$time, want$time)
-      expect_equal(got$cp, want$cp, tolerance = 1e-5)
-    }
-  })
+  for (meth in .methods0) {
+    test_that(paste0("in-model infuseDur() changes rate with bioavailability (",
+                     meth, ")"), {
+                       obs <- c(0, 1e-8, seq(0.5, 12, by = 0.5))
+                       ref <- rxode2({
+                         d/dt(central) <- -cl / v * central
+                         cp <- central / v
+                       })
 
-  test_that("in-model reset() matches an evid=3 reset event", {
+                       mod <- rxode2({
+                         d/dt(central) <- -cl / v * central
+                         f(central) <- fc
+                         cp <- central / v
+                         if (t < 1e-8) {
+                           infuseDur(100, 10, 1, 0, 0, 0)
+                         }
+                       })
+                       p <- c(cl = 1, v = 10, fc = 0.5)
+                       got <- rxSolve(mod, p, et(obs), method = meth)
+                       want <- rxSolve(ref, c(cl = 1, v = 10),
+                                       et(amt = 50, time = 0, dur = 10) |> et(obs),
+                                       method = meth)
+                       expect_equal(got$time, want$time)
+                       expect_equal(got$cp, want$cp, tolerance = 1e-5)
+                     })
+  }
+
+  for (meth in .methods0) {
+    test_that(paste0("in-model reset() matches an evid=3 reset event (",
+                     meth,
+                     ")"), {
+                       obs <- seq(0, 24, by = 1)
+                       e <- et(amt = 100, time = 0) |>
+                         et(amt = 50, time = 18) |>
+                         et(obs)
+                       eRef <- et(amt = 100, time = 0) |>
+                         et(time = 12, evid = 3) |>
+                         et(amt = 50, time = 18) |>
+                         et(obs)
+
+                       mod <- rxode2({
+                         mtime(resetAt) <- 12
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl / v * central
+                         cp <- central / v
+                         if (t >= resetAt && t < resetAt + 0.5 && cp > 0) {
+                           reset()
+                         }
+                       })
+
+                       ref <- rxode2({
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl / v * central
+                         cp <- central / v
+                       })
+
+                       p <- c(ka = 0.5, cl = 1, v = 10)
+                       got <- rxSolve(mod, p, e, method = meth)
+                       want <- rxSolve(ref, p, eRef, method = meth)
+                       gotReset <- got[got$time >= 13, ]
+                       wantReset <- want[want$time >= 13, ]
+
+                       expect_equal(sum(got$time == 12), 2)
+                       expect_true(all(got$cp[got$time == 12] > 0))
+                       expect_true(all(gotReset$cp[gotReset$time < 18] == 0))
+                       expect_equal(gotReset$time, wantReset$time)
+                       expect_equal(gotReset$depot, wantReset$depot, tolerance = 1e-5)
+                       expect_equal(gotReset$central, wantReset$central, tolerance = 1e-5)
+                       expect_equal(gotReset$cp, wantReset$cp, tolerance = 1e-5)
+                     })
+  }
+
+  test_that(paste0("in-model reset() matches an evid=3 reset event (linCmt)"), {
     obs <- seq(0, 24, by = 1)
     e <- et(amt = 100, time = 0) |>
       et(amt = 50, time = 18) |>
@@ -258,38 +307,6 @@ rxTest({
       et(time = 12, evid = 3) |>
       et(amt = 50, time = 18) |>
       et(obs)
-
-    for (meth in c("dop853", "liblsoda")) {
-      mod <- rxode2({
-        mtime(resetAt) <- 12
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl / v * central
-        cp <- central / v
-        if (t >= resetAt && t < resetAt + 0.5 && cp > 0) {
-          reset()
-        }
-      })
-
-      ref <- rxode2({
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl / v * central
-        cp <- central / v
-      })
-
-      p <- c(ka = 0.5, cl = 1, v = 10)
-      got <- rxSolve(mod, p, e, method = meth)
-      want <- rxSolve(ref, p, eRef, method = meth)
-      gotReset <- got[got$time >= 13, ]
-      wantReset <- want[want$time >= 13, ]
-
-      expect_equal(sum(got$time == 12), 2)
-      expect_true(all(got$cp[got$time == 12] > 0))
-      expect_true(all(gotReset$cp[gotReset$time < 18] == 0))
-      expect_equal(gotReset$time, wantReset$time)
-      expect_equal(gotReset$depot, wantReset$depot, tolerance = 1e-5)
-      expect_equal(gotReset$central, wantReset$central, tolerance = 1e-5)
-      expect_equal(gotReset$cp, wantReset$cp, tolerance = 1e-5)
-    }
 
     modLin <- rxode2({
       mtime(resetAt) <- 12
@@ -326,7 +343,7 @@ rxTest({
       et(amt = 50, time = 18) |>
       et(obs)
 
-    for (meth in c("dop853", "liblsoda")) {
+    for (meth in .methods0) {
       mod <- rxode2({
         mtime(replaceAt) <- 12
         d/dt(depot) <- -ka * depot
@@ -357,54 +374,56 @@ rxTest({
     }
   })
 
-  test_that("in-model multiply() pushes a multiplication event", {
-    obs <- seq(0, 24, by = 1)
-    e <- et(amt = 100, time = 0) |>
-      et(amt = 50, time = 18) |>
-      et(obs)
-    eRef <- et(amt = 100, time = 0) |>
-      et(time = 13, amt = 2, cmt = 1, evid = 6) |>
-      et(amt = 50, time = 18) |>
-      et(obs)
+  for (meth in .methods0) {
+    test_that(paste0("in-model multiply() pushes a multiplication event (",
+                     meth,
+                     ")"), {
+                       obs <- seq(0, 24, by = 1)
+                       e <- et(amt = 100, time = 0) |>
+                         et(amt = 50, time = 18) |>
+                         et(obs)
+                       eRef <- et(amt = 100, time = 0) |>
+                         et(time = 13, amt = 2, cmt = 1, evid = 6) |>
+                         et(amt = 50, time = 18) |>
+                         et(obs)
 
-    for (meth in c("dop853", "liblsoda")) {
-      mod <- rxode2({
-        mtime(multAt) <- 12
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl / v * central
-        cp <- central / v
-        if (t >= multAt && t < multAt + 0.5 && depot > 0) {
-          multiply(2, depot)
-        }
-      })
+                       mod <- rxode2({
+                         mtime(multAt) <- 12
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl / v * central
+                         cp <- central / v
+                         if (t >= multAt && t < multAt + 0.5 && depot > 0) {
+                           multiply(2, depot)
+                         }
+                       })
 
-      ref <- rxode2({
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl / v * central
-        cp <- central / v
-      })
+                       ref <- rxode2({
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl / v * central
+                         cp <- central / v
+                       })
 
-      p <- c(ka = 0.5, cl = 1, v = 10)
-      got <- rxSolve(mod, p, e, method = meth)
-      want <- rxSolve(ref, p, eRef, method = meth)
-      gotMult <- got[got$time >= 13, ]
-      wantMult <- want[want$time >= 13, ]
+                       p <- c(ka = 0.5, cl = 1, v = 10)
+                       got <- rxSolve(mod, p, e, method = meth)
+                       want <- rxSolve(ref, p, eRef, method = meth)
+                       gotMult <- got[got$time >= 13, ]
+                       wantMult <- want[want$time >= 13, ]
 
-      expect_equal(sum(got$time == 12), 2)
-      expect_equal(gotMult$time, wantMult$time)
-      expect_equal(gotMult$depot, wantMult$depot, tolerance = 1e-5)
-      expect_equal(gotMult$central, wantMult$central, tolerance = 1e-5)
-      expect_equal(gotMult$cp, wantMult$cp, tolerance = 1e-5)
-    }
-  })
+                       expect_equal(sum(got$time == 12), 2)
+                       expect_equal(gotMult$time, wantMult$time)
+                       expect_equal(gotMult$depot, wantMult$depot, tolerance = 1e-5)
+                       expect_equal(gotMult$central, wantMult$central, tolerance = 1e-5)
+                       expect_equal(gotMult$cp, wantMult$cp, tolerance = 1e-5)
+                     })
+  }
 
-  test_that("in-model phantom() pushes a phantom event", {
-    obs <- seq(0, 20, by = 1)
-    e <- et(obs)
-    eRef <- et(time = 12, amt = 20, cmt = 1, evid = 7) |>
-      et(obs)
+  for (meth in .methods0) {
+    test_that(paste0("in-model phantom() pushes a phantom event (", meth, ")"), {
+      obs <- seq(0, 20, by = 1)
+      e <- et(obs)
+      eRef <- et(time = 12, amt = 20, cmt = 1, evid = 7) |>
+        et(obs)
 
-    for (meth in c("dop853", "liblsoda")) {
       mod <- rxode2({
         mtime(phantomAt) <- 12
         d/dt(depot) <- 0
@@ -435,20 +454,20 @@ rxTest({
       expect_equal(gotPhantom$x, wantPhantom$x, tolerance = 1e-5)
       expect_equal(gotPhantom$pd, wantPhantom$pd, tolerance = 1e-5)
       expect_equal(gotPhantom$td, wantPhantom$td, tolerance = 1e-5)
-    }
-  })
+    })
+  }
 
-  test_that("in-model bolus() passes ii to repeated bolus events", {
-    obs <- seq(0, 40, by = 1)
-    e <- et(amt = 100, time = 0) |>
-      et(obs)
-    eRef <- et(amt = 100, time = 0) |>
-      et(time = 13, amt = 50, cmt = 1, evid = 1) |>
-      et(time = 24, amt = 50, cmt = 1, evid = 1) |>
-      et(time = 36, amt = 50, cmt = 1, evid = 1) |>
-      et(obs)
+  for (meth in .methods0) {
+    test_that(paste0("in-model bolus() passes ii to repeated bolus events (", meth, ")"), {
+      obs <- seq(0, 40, by = 1)
+      e <- et(amt = 100, time = 0) |>
+        et(obs)
+      eRef <- et(amt = 100, time = 0) |>
+        et(time = 13, amt = 50, cmt = 1, evid = 1) |>
+        et(time = 24, amt = 50, cmt = 1, evid = 1) |>
+        et(time = 36, amt = 50, cmt = 1, evid = 1) |>
+        et(obs)
 
-    for (meth in c("dop853", "liblsoda")) {
       mod <- rxode2({
         mtime(bolusAt) <- 12
         d/dt(depot) <- -ka * depot
@@ -476,14 +495,14 @@ rxTest({
       expect_equal(gotBolus$depot, wantBolus$depot, tolerance = 1e-5)
       expect_equal(gotBolus$central, wantBolus$central, tolerance = 1e-5)
       expect_equal(gotBolus$cp, wantBolus$cp, tolerance = 1e-5)
-    }
-  })
+    })
+  }
 
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
       if (t < 5) {
-        evid_(t - 1, 1, 10, 1, 0, 0, 0, 0)  # past time — should warn
+        evid_(t - 1, 1, 10, 1, 0, 0, 0, 0)  # past time -- should warn
       }
     })
     e <- et(amt = 1, time = 0) |> et(seq(0, 5, by = 1))
@@ -536,8 +555,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -558,8 +577,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -580,8 +599,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -602,8 +621,8 @@ rxTest({
     p <- c(ka = 0.5, cl = 1, vd = 10)
     r <- rxSolve(m6, p, e)
     expect_true(nrow(r) > 0)
-    # At t=28: long after t=18 dose, before t=30 dose — cp should be low
-    # At t=31: 1h after t=30 pushed dose — cp should be rising
+    # At t=28: long after t=18 dose, before t=30 dose -- cp should be low
+    # At t=31: 1h after t=30 pushed dose -- cp should be rising
     cp28 <- r$cp[r$time == 28]
     cp31 <- r$cp[r$time == 31]
     expect_true(length(cp28) > 0 && length(cp31) > 0)
@@ -630,8 +649,8 @@ rxTest({
     expect_true(cp14 > cp12)
   })
 
-  test_that("splitBolus applies to boluses pushed by evid_()", {
-    for (meth in c("dop853", "liblsoda")) {
+  for (meth in .methods0) {
+    test_that(paste0("splitBolus applies to boluses pushed by evid_() [",meth, "]"), {
       mSplit <- rxode2({
         splitBolus(depot, depot, central)
         d/dt(depot) <- -ka * depot
@@ -664,9 +683,8 @@ rxTest({
       expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
       expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
       expect_equal(rSplit$cp, rBase$cp, tolerance = 1e-5)
-    }
-  })
-
+    })
+  }
   test_that("evid_() ui changes work", {
 
     f <- function() {
@@ -848,36 +866,168 @@ rxTest({
     expect_equal(unname(rxModelVars(mod)$splitBolus), c(1L, 1L, 2L, 3L))
   })
 
-  test_that("splitBolus applies to a one-target bolus pushed by evid_()", {
-    for (meth in c("dop853", "liblsoda")) {
-      mSplit <- rxode2({
-        splitBolus(depot, central)
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl / v * central
-        cp <- central / v
-        if (t < 1) {
-          evid_(t + 6, 1, 50, 1, 0, 12, 1, 0)
+  for (meth in .methods0) {
+    test_that(paste0("splitBolus applies to a one-target bolus pushed by evid_() [",
+                     meth, "]"), {
+                       mSplit <- rxode2({
+                         splitBolus(depot, central)
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl / v * central
+                         cp <- central / v
+                         if (t < 1) {
+                           evid_(t + 6, 1, 50, 1, 0, 12, 1, 0)
+                         }
+                       })
+
+                       mBase <- rxode2({
+                         d/dt(depot) <- -ka * depot
+                         d/dt(central) <- ka * depot - cl / v * central
+                         cp <- central / v
+                       })
+
+                       e <- et(seq(0, 30, by = 1))
+                       eBase <- e |>
+                         et(amt = 50, time = 6, cmt = 2) |>
+                         et(amt = 50, time = 18, cmt = 2)
+
+                       p <- c(ka = 0.5, cl = 1, v = 10)
+                       rSplit <- rxSolve(mSplit, p, e, method = meth)
+                       rBase <- rxSolve(mBase, p, eBase, method = meth)
+
+                       expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
+                       expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
+                       expect_equal(rSplit$cp, rBase$cp, tolerance = 1e-5)
+                     })
+  }
+
+  ## -------------------------------------------------------------------------
+  ## bolus() with linCmt models (positional and functional forms)
+  ## -------------------------------------------------------------------------
+
+  test_that("bolus() positional form works with linCmt 1-cmt oral model", {
+    m <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      if (t > 23 && t < 25) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    r <- suppressMessages(rxSolve(m, p, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    # cp >= 0 (0 at t=0 before absorption, positive thereafter)
+    expect_true(all(r$cp >= 0))
+    cp30 <- r$cp[r$time == 30]
+    expect_true(length(cp30) > 0)
+    expect_true(cp30 > 0)
+  })
+
+  test_that("bolus() positional form works with linCmt 1-cmt IV model", {
+    m <- rxode2({
+      cp <- linCmt(cl, v)
+      if (t > 23 && t < 25) {
+        bolus(50, central, 0, 0, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    p <- c(cl = 1, v = 10)
+    r <- suppressMessages(rxSolve(m, p, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    # IV model: cp > 0 immediately after t=0 dose, except possibly t=0 itself
+    expect_true(all(r$cp[r$time > 0] > 0))
+  })
+
+  test_that("bolus() functional form (named args) works with linCmt", {
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = depot)
         }
       })
+    }))
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_true(all(r$cp >= 0))
+    expect_true(all(r$cp[r$time > 0] > 0))
+  })
 
-      mBase <- rxode2({
-        d/dt(depot) <- -ka * depot
-        d/dt(central) <- ka * depot - cl / v * central
-        cp <- central / v
+  test_that("bolus() functional form (string cmt) works with linCmt", {
+    # cmt = "depot" (string literal) must produce the bare compartment name
+    # in the generated model, not a quoted token.
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = "depot")
+        }
       })
+    }))
+    # The generated dosing line should use the bare name `depot`, no quotes
+    .txt <- paste(vapply(m$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("bolus(50, depot", .txt, fixed = TRUE))
+    expect_false(grepl("\"depot\"", .txt, fixed = TRUE))
 
-      e <- et(seq(0, 30, by = 1))
-      eBase <- e |>
-        et(amt = 50, time = 6, cmt = 2) |>
-        et(amt = 50, time = 18, cmt = 2)
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_true(all(r$cp >= 0))
+    expect_true(all(r$cp[r$time > 0] > 0))
+  })
 
-      p <- c(ka = 0.5, cl = 1, v = 10)
-      rSplit <- rxSolve(mSplit, p, e, method = meth)
-      rBase <- rxSolve(mBase, p, eBase, method = meth)
+  test_that("bolus() works in a mixed linCmt + ODE model (both compartments)", {
+    # Mixed model: analytical linCmt PK feeding an ODE effect compartment.
+    # bolus() to the linCmt depot AND (string cmt) to the ODE effect cmt.
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10; ke0 <- 0.3 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        d/dt(effect) <- ke0 * (cp - effect)
+        if (t > 11 && t < 13) {
+          bolus(20, cmt = "effect")
+        }
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = depot)
+        }
+      })
+    }))
+    # String cmt should generate a bare compartment name
+    .txt <- paste(vapply(m$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("bolus(20, effect", .txt, fixed = TRUE))
+    expect_false(grepl("\"effect\"", .txt, fixed = TRUE))
 
-      expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
-      expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
-      expect_equal(rSplit$cp, rBase$cp, tolerance = 1e-5)
-    }
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_false(any(is.na(r$effect)))
+    expect_true(all(r$cp[r$time > 0] > 0))
+    # effect compartment jumps after the bolus at t=12
+    expect_true(r$effect[r$time == 13] > r$effect[r$time == 11])
+  })
+
+  test_that("bolus() in linCmt fires exactly once per qualifying observation", {
+    # Bolus fires when t == 24 (t %% 24 == 0 && t > 0).
+    # The extra dose should appear exactly once in the solved output.
+    m <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      if (t == 24) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    r <- suppressMessages(rxSolve(m, p, e, addDosing = TRUE))
+    # Exactly one extra dose event at t=24 (from bolus push)
+    doses <- r[r$evid == 1L & r$time == 24, ]
+    expect_equal(nrow(doses), 1L,
+                 label = "bolus() should fire exactly once at t=24")
   })
 })

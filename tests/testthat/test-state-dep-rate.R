@@ -1,5 +1,5 @@
 rxTest({
-  # ── Analytical helper ──────────────────────────────────────────────────────
+  # -- Analytical helper ------------------------------------------------------
   # depot(t) for a single constant-rate infusion into a one-compartment depot
   # that drains with first-order rate constant ka.
   #
@@ -7,7 +7,7 @@ rxTest({
   #   D  = duration      = amt / R   (infusion starts at t = 0)
   #   ka = depot elimination rate constant
   #
-  # During infusion (0 ≤ t ≤ D):
+  # During infusion (0 <= t <= D):
   #   depot(t) = (R/ka) * (1 - exp(-ka*t))
   #
   # After infusion (t > D):
@@ -25,8 +25,8 @@ rxTest({
     }, numeric(1))
   }
 
-  # ── Test 1 ─────────────────────────────────────────────────────────────────
-  # state = 0 throughout  →  rate(depot) = rate0 + 0 = rate0 exactly.
+  # -- Test 1 -----------------------------------------------------------------
+  # state = 0 throughout  ->  rate(depot) = rate0 + 0 = rate0 exactly.
   # This is the baseline: no state dependence, behaviour identical to a fixed
   # rate infusion.
   test_that("state-dep rate with state=0 uses exactly rate0 (no state shift)", {
@@ -41,12 +41,12 @@ rxTest({
     amt   <- 100
     rate0 <- 10
     ka    <- 0.5
-    R     <- rate0            # state=0 → effective rate = rate0
+    R     <- rate0            # state=0 -> effective rate = rate0
     D     <- amt / R          # expected infusion duration
     times <- seq(0, 30, by = 0.5)
 
     et <- eventTable() |>
-      add.dosing(dose = amt, rate = -1) |>  # rate=-1 → use modeled rate
+      add.dosing(dose = amt, rate = -1) |>  # rate=-1 -> use modeled rate
       add.sampling(times)
 
     s <- solve(mod, et,
@@ -62,7 +62,7 @@ rxTest({
                  label = "depot matches rate0-only analytical solution when state=0")
   })
 
-  # ── Test 2 ─────────────────────────────────────────────────────────────────
+  # -- Test 2 -----------------------------------------------------------------
   # state = S0 (constant, positive and negative) throughout.
   # The effective rate at infusion start is rate0 + S0; duration = amt/(rate0+S0).
   # The full depot trajectory must match the analytical formula for that rate.
@@ -103,7 +103,7 @@ rxTest({
                    label = paste0("depot matches analytic solution for rate=",
                                   R, " (S0=", S0, ")"))
 
-      # Confirm the trajectory with S0≠0 differs from the S0=0 baseline,
+      # Confirm the trajectory with S0!=0 differs from the S0=0 baseline,
       # i.e., state truly shifts the rate and is not silently ignored.
       if (S0 != 0) {
         expected_s0 <- .depotAnalytic(times, rate0, amt / rate0, ka)
@@ -114,7 +114,7 @@ rxTest({
     }
   })
 
-  # ── Test 3 ─────────────────────────────────────────────────────────────────
+  # -- Test 3 -----------------------------------------------------------------
   # The infusion end time must be exactly amt / (rate0 + state_at_start).
   # We probe this by checking depot at the expected stop time D and well after.
   # During the infusion depot is rising; after it decays.  Confirming depot(D)
@@ -161,7 +161,7 @@ rxTest({
     }
   })
 
-  # ── Test 4 ─────────────────────────────────────────────────────────────────
+  # -- Test 4 -----------------------------------------------------------------
   # Multiple doses: each dose's rate is evaluated at the state present when
   # THAT dose's infusion begins.  Because state changes over time (exponential
   # decay here), consecutive doses get different effective rates and therefore
@@ -178,8 +178,8 @@ rxTest({
     })
 
     et <- et() |>
-      et(amt = 50, rate = -1, time = 0) |>    # dose 1 – state is large
-      et(amt = 50, rate = -1, time = 15) |>   # dose 2 – state has decayed
+      et(amt = 50, rate = -1, time = 0) |>    # dose 1 - state is large
+      et(amt = 50, rate = -1, time = 15) |>   # dose 2 - state has decayed
       et(seq(0, 30, by = 0.5))
 
     s <- rxSolve(mod, et,

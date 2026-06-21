@@ -207,9 +207,13 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       writeBody2();
       for (int i = Rf_length(_rxode2parse_packages); i--;) {
         const char* cur = R_CHAR(STRING_ELT(_rxode2parse_packages, i));
-        sAppend(&sbOut,"    static rxode2_assignFuns2_t %s_assignFuns2 = NULL;\n", cur);
-        sAppend(&sbOut,"    if (%s_assignFuns2 == NULL) %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
-                cur, cur, cur, cur);
+        // Do not cache the callable pointer statically: the package DLL can be
+        // reloaded (e.g. by pkgload::load_all inside devtools::test), which
+        // changes the callable address.  A stale static pointer would write to
+        // the old rx_global instead of the current one.  R_GetCCallable is
+        // fast enough that the lookup cost here is negligible.
+        sAppend(&sbOut,"    rxode2_assignFuns2_t %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
+                cur, cur, cur);
         sAppend(&sbOut,"    %s_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);\n",
                 cur);
       }
@@ -339,8 +343,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode == ode_ini && foundF0) ||
         (show_ode == ode_lhs && tb.li) ||
         (show_ode == ode_mtime && nmtime) ||
-        (show_ode == ode_mexp && tb.matn) ||
-        (show_ode == ode_indLinVec && tb.matnf)){
+        (show_ode == ode_mexp && (tb.matn || tb.isMexp)) ||
+        (show_ode == ode_indLinVec && (tb.matnf || tb.isMexp))){
       prnt_vars(print_double, 0, "", "\n",show_ode);     /* declare all used vars */
       if (maxSumProdN > 0 || SumProdLD > 0){
         int mx = maxSumProdN;
@@ -426,8 +430,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           }
           break;
         case TASSIGN:
-          if (show_ode != ode_mexp && show_ode != ode_indLinVec){
-            sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+          if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
+            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
           }
           break;
         case TINI:
@@ -477,8 +481,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           }
           break;
         case TLOGIC:
-          if (show_ode != ode_mexp && show_ode != ode_indLinVec){
-            sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+          if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
+            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
           }
           break;
         case TMAT0:
@@ -560,6 +564,52 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         doDot(&sbOut, buf);
         sAppendN(&sbOut,  ";\n", 2);
         j++;
+      }
+      sAppendN(&sbOut,  "}\n", 2);
+    } else if (show_ode == ode_mexp && tb.isMexp) {
+      sAppend(&sbOut, "\n  for (int _i = 0; _i < %d; _i++) _mat[_i] = 0.0;\n", tb.de.n * tb.de.n);
+      for (j = 0; j < NV; j++) {
+        char cmt1[100];
+        char cmt2[100];
+        int res = parse_micro_constant(tb.ss.line[j], cmt1, cmt2);
+        if (res) {
+          int idx1 = -1, idx2 = -1;
+          for (int k = 0; k < tb.de.n; k++) {
+            if (strcmp(tb.de.line[k], cmt1) == 0) idx1 = k;
+            if (strcmp(tb.de.line[k], cmt2) == 0) idx2 = k;
+          }
+          if (idx1 != -1 && idx2 != -1) {
+            sAppend(&sbOut, "  _mat[__DDT%d__ * %d + __DDT%d__] += ", idx1, tb.de.n, idx2);
+            doDot(&sbOut, tb.ss.line[j]);
+            sAppendN(&sbOut, ";\n", 2);
+
+            if (res != 2) {
+              sAppend(&sbOut, "  _mat[__DDT%d__ * %d + __DDT%d__] -= ", idx1, tb.de.n, idx1);
+              doDot(&sbOut, tb.ss.line[j]);
+              sAppendN(&sbOut, ";\n", 2);
+            }
+          }
+        }
+      }
+      sAppendN(&sbOut,  "}\n", 2);
+    } else if (show_ode == ode_indLinVec && tb.isMexp) {
+      sAppend(&sbOut, "\n  for (int _i = 0; _i < %d; _i++) _matf[_i] = _IR[_i];\n", tb.de.n);
+      for (j = 0; j < NV; j++) {
+        if (strncmp(tb.ss.line[j], "rx_indLin_", 10) == 0) {
+          const char *cmt = tb.ss.line[j] + 10;
+          int idx = -1;
+          for (int k = 0; k < tb.de.n; k++) {
+            if (strcmp(tb.de.line[k], cmt) == 0) {
+              idx = k;
+              break;
+            }
+          }
+          if (idx != -1) {
+            sAppend(&sbOut, "  _matf[__DDT%d__] += ", idx);
+            doDot(&sbOut, tb.ss.line[j]);
+            sAppendN(&sbOut, ";\n", 2);
+          }
+        }
       }
       sAppendN(&sbOut,  "}\n", 2);
     } else {

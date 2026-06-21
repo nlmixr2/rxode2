@@ -215,7 +215,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .chunkIdsList <- .chunkList
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
-      function(.i) {
+      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .inits, .fwdCtlArgs, .mainTmp) {
         library(rxode2)
         .result <- do.call(rxSolve,
                            c(list(object = .modelObj, params = .chunkParamsList[[.i]],
@@ -227,21 +227,32 @@ rxMemSummary.rxEtFile <- function(x, ...) {
           .nPerSub <- nrow(.df) %/% max(length(.ids), 1L)
           .df <- cbind(id = rep(.ids, each = .nPerSub), .df)
         }
+        # Write to the parent process's tempdir (shared filesystem). A daemon's
+        # own session tempdir is removed when the daemon shuts down, which would
+        # leave the manifest pointing at deleted chunk files.
         if (requireNamespace("arrow", quietly = TRUE)) {
-          .f <- tempfile(fileext = ".parquet")
+          .f <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
           arrow::write_parquet(.df, .f)
         } else {
-          .f <- tempfile(fileext = ".rds")
+          .f <- tempfile(fileext = ".rds", tmpdir = .mainTmp)
           saveRDS(.df, .f)
         }
         list(file = .f, nrows = nrow(.df))
       },
-      .args = list(.chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
+      .args = list(.modelObj = .modelObj,
+                   .chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
                    .chunkParamsList = .chunkParamsList,
-                   .inits = inits, .fwdCtlArgs = .fwdCtlArgs)
+                   .inits = inits, .fwdCtlArgs = .fwdCtlArgs,
+                   .mainTmp = tempdir())
     )
     for (.i in seq_len(.nChunks)) {
       .r <- .tasks[[.i]][]
+      if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || is.null(.r$file)) {
+        stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
+                     tryCatch(conditionMessage(.r),
+                              error = function(e) paste(utils::head(unclass(.r), 1L), collapse = ""))),
+             call. = FALSE)
+      }
       .outFiles[.i] <- .r$file
       .manifest$nrows[.i] <- .r$nrows
     }
@@ -313,7 +324,11 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
   .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
   if (length(.pq) == 0L)
     return(arrow::as_arrow_table(as.data.frame(x)))
-  arrow::concat_tables(lapply(.pq, arrow::read_parquet))
+  # read_parquet() returns a tibble by default; concat_tables() needs Arrow
+  # Tables, so read with as_data_frame = FALSE. concat_tables() also takes the
+  # tables as individual `...` arguments, not a list, hence do.call().
+  do.call(arrow::concat_tables,
+          lapply(.pq, function(.f) arrow::read_parquet(.f, as_data_frame = FALSE)))
 }
 
 #' Convert an rxSolveOom result to a lazy Arrow Dataset
@@ -323,9 +338,16 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
 #' dplyr verbs before calling \code{dplyr::collect()} to materialise.  Requires
 #' the \code{arrow} package.
 #'
+#' This is an rxode2 generic: \pkg{arrow} provides \code{open_dataset()} but no
+#' \code{as_arrow_dataset()} generic to dispatch on, so rxode2 defines its own.
+#'
 #' @param x An \code{rxSolveOom} object.
 #' @param ... Ignored.
 #' @return An \code{arrow::Dataset}.
+#' @export
+as_arrow_dataset <- function(x, ...) UseMethod("as_arrow_dataset")
+
+#' @rdname as_arrow_dataset
 #' @export
 as_arrow_dataset.rxSolveOom <- function(x, ...) {
   if (!requireNamespace("arrow", quietly = TRUE))
@@ -374,9 +396,10 @@ as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
   unlist(lapply(.m$chunks, function(.f) readRDS(.f)[[name]]), use.names = FALSE)
 }
 
-#' @export
-nrow.rxSolveOom <- function(x) sum(attr(x, "manifest")$nrows)
-
+# nrow() is not an S3 generic, so a `nrow.rxSolveOom` method is never
+# dispatched (and exporting it as a plain function trips an "undocumented
+# code object" check).  base::nrow(x) is dim(x)[1L], and dim() *is* generic,
+# so dim.rxSolveOom() below already makes nrow() return the right value.
 #' @export
 dim.rxSolveOom <- function(x) c(sum(attr(x, "manifest")$nrows), NA_integer_)
 

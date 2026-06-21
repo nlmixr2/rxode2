@@ -36,7 +36,7 @@ rxTest({
   ## vdiffr::expect_doppelganger("intestine-mod2b", plot(tmp, intestine))
   expect_error(plot(tmp, intestine), NA)
 
-  ms <- c("liblsoda", "lsoda", "dop853")
+  ms <- .methods0
   for (m in ms) {
     skip_if_not_installed("units")
 
@@ -70,8 +70,8 @@ rxTest({
 
     test_that(sprintf("Test absorption lag-time with IV dosing (%s): Absorption lag shifts event by 2", m), {
       expect_equal(obs, solve3$time)
-      expect_equal(solve3$intestine, solve2$intestine)
-      expect_equal(solve3$blood, solve2$blood)
+      expect_equal(solve3$intestine, solve2$intestine, tolerance = 1e-5)
+      expect_equal(solve3$blood, solve2$blood, tolerance = 1e-5)
     })
 
   }

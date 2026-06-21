@@ -20,7 +20,7 @@ rxTest({
       add.dosing(start.time = 0.5, dose = 3, nbr.doses = 6, dosing.interval = 8) |>
       add.sampling(0:4)
 
-    ms <- c("liblsoda", "lsoda", "dop853")
+    ms <- .methods0
 
     for (m in ms) {
       s <- solve(ode.1c, et, addDosing = TRUE, method = m)

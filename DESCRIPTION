@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 5.0.2
+Version: 5.1.3
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
@@ -19,9 +19,12 @@ Authors@R: c(
    person("Hadley", "Wickham", role="ctb"),
    person("Igor", "Kushnir", email="igorkuo@gmail.com", role="ctb"),
    person("Jack", "Dongarra", role="ctb"),
+   person("Jacob", "Williams", role="ctb"),
    person("Jim", "Bunch", role="ctb"),
+   person("Karline", "Soetaert", role="ctb"),
    person("Kevin", "Ushey", role="ctb"),
    person("Linda", "Petzold", role="ctb"),
+   person("Mark M.", "Baum", role="ctb"),
    person("Martin", "Maechler", role="ctb"),
    person("Matt", "Dowle", role="ctb", email="mattjdowle@gmail.com"),
    person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = "ctb"),
@@ -30,9 +33,12 @@ Authors@R: c(
    person("Morwenn","", role="ctb"),
    person("Nicholas J.", "Higham",role="ctb"),
    person("Omar", "Elashkar", email="omar.i.elashkar@gmail.com", role="ctb"),
+   person("Peter N.", "Brown", role="ctb"),
    person("Richard", "Upton", role = "ctb"),
    person("Roger B.", "Sidje", role="ctb"),
    person("Simon", "Frost", role="ctb"),
+   person("Thomas", "Petzoldt", role="ctb"),
+   person("Woodrow",  "Setzer", role="ctb"),
    person("Yu", "Feng", role="ctb"),
    person("Zufar", "Mulyukov", role="ctb", email="zufar.mulyukov@novartis.com"))
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
@@ -129,8 +135,9 @@ LinkingTo:
     BH,
     RcppParallel,
     RcppEigen (>= 0.3.3.9.2),
-    StanHeaders (>= 2.21.0.7),
-    dparser (>= 1.3.1-12)
+    sundialr (>= 0.1.7),
+    dparser (>= 1.3.1-12),
+    StanHeaders (>= 2.21.0.7)
 Encoding: UTF-8
 LazyData: true
 Language: en-US
