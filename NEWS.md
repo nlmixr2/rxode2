@@ -104,9 +104,8 @@
 
 - Added parallel solving `mirai` for clusters and HPC support.
 
-- Added out of memory solve using `arrow`.
-
-- The out-of-memory (`rxSolveOom`) result now behaves like a standard
+- Added out of memory solve using `arrow`/`duckdb`.  These
+  out-of-memory (`rxSolveOom`) solves behave like a standard
   solved object: it prints the `$params` and `$inits` (mirroring the
   `rxSolve` console output), supports `$`, `head()`, `nrow()`,
   `ncol()`/`dim()` and the usual `as.data.frame()`/`as_tibble()`/
@@ -116,7 +115,8 @@
   for lazy access (`head()`, single-column extraction, schema) when
   available.  The storage/query engine can be pinned with the
   `rxode2.oom.backend` option (`"auto"`, `"duckdb"`, `"arrow"` or
-  `"rds"`); the option is also forwarded to parallel (`mirai`) workers.
+  `"rds"`); the option is also forwarded to parallel (`mirai`)
+  workers.
 
 - Use ALTREP for `id`, `sim.id`, repeated simulation event columns
   (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`),
