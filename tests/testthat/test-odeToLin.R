@@ -671,4 +671,39 @@ rxTest({
     expect_equal(.info$ncmt, 1L)
   })
 
+  test_that("a hand-written linCmt() model reads a peripheral compartment under an error model", {
+    # UI-system fix (rxUiGet.cmtLines): an endpoint injects a fresh observation
+    # compartment, which previously shifted linCmt()'s materialized compartment
+    # indices so an in-equation `peripheral1` read 0.  The peripheral observable
+    # must now resolve to the solved amount even with an error model present and
+    # WITHOUT anchoring the central endpoint to the central compartment.  This is
+    # the general fix that also lets odeToLin keep coupled models analytic.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50); propSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        Cc <- linCmt()
+        Cp <- peripheral1 / vp     # in-equation reference to a linCmt compartment
+        Cc ~ prop(propSd)          # error model present, central endpoint NOT anchored
+      })
+    }))
+    .mOde <- suppressMessages(rxode2(function() {
+      ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50) })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        kel <- cl/vc; k12 <- q/vc; k21 <- q/vp
+        d/dt(central) <- -kel*central - k12*central + k21*periph
+        d/dt(periph)  <-  k12*central - k21*periph
+        Cc <- central / vc
+        Cp <- periph / vp
+      })
+    }))
+    .ev   <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2))
+    .r    <- suppressMessages(rxSolve(.m,    .ev))
+    .rOde <- suppressMessages(rxSolve(.mOde, .ev, useLinCmt = FALSE))
+    expect_false(all(.r$Cp == 0))                    # the bug produced an all-zero Cp
+    expect_equal(.r$Cp, .rOde$Cp, tolerance = 1e-4)  # peripheral amount now resolves
+    expect_equal(.r$Cc, .rOde$Cc, tolerance = 1e-4)
+  })
+
 })

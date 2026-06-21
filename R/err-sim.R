@@ -175,7 +175,34 @@ rxUiGet.cmtLines <- function(x, ...) {
   .x <- x[[1]]
   .len <- length(.x$mv0$state)
   .predDf <- get("predDf", .x)
-  lapply(.predDf[.predDf$cmt > .len, "cond"], function(cmt) {
+  .conds <- .predDf[.predDf$cmt > .len, "cond"]
+  ## An endpoint whose prediction is not an existing ODE state injects a fresh
+  ## observation compartment (`cmt(<cond>)`).  In a linCmt() model that also
+  ## reads a materialized linCmt compartment (central / peripheral1 / peripheral2
+  ## / depot) in an equation, that injected compartment is registered ahead of
+  ## the linCmt compartments (which calcLinCmt appends last) and shifts their
+  ## solved-state indices, so the in-equation reference reads an unwritten slot
+  ## (== 0).  Suppress the injected observation compartment for such
+  ## linCmt-output endpoints (keep genuine extra-ODE compartments); each
+  ## prediction value still comes from its own equation and the dvid() matching
+  ## is unaffected.  Only triggers when a linCmt compartment is actually
+  ## referenced, so models that already worked are untouched.
+  if (!is.null(.x$mvL)) {
+    .lin <- .rxLinCmt(.x$mvL)
+    .rhsVars <- unique(unlist(lapply(.x$lstExpr, function(.e) {
+      if (is.call(.e) && length(.e) >= 3L &&
+          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`)) ||
+             identical(.e[[1]], quote(`~`)))) {
+        all.vars(.e[[3L]])
+      } else {
+        all.vars(.e)
+      }
+    })))
+    if (length(intersect(.lin, .rhsVars)) > 0L) {
+      .conds <- .conds[.conds %in% rxStateOde(.x$mvL)]
+    }
+  }
+  lapply(.conds, function(cmt) {
     call("cmt", str2lang(cmt))
   })
 }

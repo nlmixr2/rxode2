@@ -1,5 +1,14 @@
 # rxode2 5.1.3
 
+- Fixed a UI-system bug where, in a `linCmt()` model that both has an
+  error model and reads a materialized linCmt compartment in an equation
+  (e.g. `Cp <- peripheral1 / vp`), the observation compartment injected
+  for the endpoint shifted the linCmt compartments' solved-state indices,
+  so the in-equation reference read an unwritten slot (`0`) instead of the
+  solved amount.  Such references now resolve correctly, so `central`,
+  `peripheral1`, `peripheral2` and `depot` amounts can be used in model
+  equations alongside an error model.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
