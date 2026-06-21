@@ -289,3 +289,60 @@ test_that("rxSolveOom print mirrors rxSolve output with a chunk footer", {
     expect_true(any(grepl("rxSolveOom", out)))
   })
 })
+
+# The `rxode2.oom.backend` option pins the storage/query engine so each of the
+# three interfaces (plain rds, arrow parquet, duckdb over parquet) can be
+# exercised deterministically regardless of what is installed by default.
+for (.oomBackend in c("rds", "arrow", "duckdb")) {
+  local({
+    .backend <- .oomBackend
+    test_that(sprintf("rxSolveOom round-trips through the '%s' backend", .backend), {
+      rxTest({
+        if (.backend %in% c("arrow", "duckdb")) skip_if_not_installed("arrow")
+        if (.backend == "duckdb") {
+          skip_if_not_installed("duckdb")
+          skip_if_not_installed("DBI")
+        }
+        withr::local_options(rxode2.oom.backend = .backend)
+
+        mod <- rxode2({
+          cl <- exp(lcl + eta.cl)
+          v  <- exp(lv)
+          d/dt(central) <- -cl / v * central
+          cp <- central / v
+        })
+        et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:4)
+        chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 5,
+                                omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
+
+        # chunks are written in the format the active backend dictates
+        m <- attr(chnk, "manifest")
+        .ext <- if (.backend == "rds") "\\.rds$" else "\\.parquet$"
+        expect_true(all(grepl(.ext, m$chunks)))
+        expect_true(all(grepl(.ext, m$paramChunks)))
+
+        # data-frame-like behavior is identical across all three backends
+        .df <- as.data.frame(chnk)
+        expect_equal(nrow(chnk), nrow(.df))
+        expect_equal(ncol(chnk), ncol(.df))
+        expect_equal(nrow(head(chnk, 3)), 3L)
+        expect_length(chnk$cp, nrow(chnk))
+        expect_equal(chnk$cp, .df$cp, tolerance = 1e-8)
+
+        # params / inits round-trip
+        expect_equal(nrow(chnk$params), 4L)
+        expect_setequal(names(chnk$inits), "central")
+
+        # the print footer reflects the active backend
+        out <- capture.output(print(chnk))
+        if (.backend == "rds") {
+          expect_false(any(grepl("Arrow|DuckDB", out)))
+        } else if (.backend == "arrow") {
+          expect_true(any(grepl("\\[Arrow-backed\\]", out)))
+        } else {
+          expect_true(any(grepl("\\[DuckDB/Arrow-backed\\]", out)))
+        }
+      })
+    })
+  })
+}

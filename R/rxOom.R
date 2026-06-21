@@ -173,7 +173,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 
   .writeResult <- function(.result, .chunkIds) {
     .df <- .normalizeResult(.result, .chunkIds)
-    if (requireNamespace("arrow", quietly = TRUE)) {
+    if (.rxOomHasArrow()) {
       .f <- tempfile(fileext = ".parquet")
       arrow::write_parquet(.df, .f)
     } else {
@@ -192,7 +192,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     if (!("id" %in% names(.pars)) && nrow(.pars) == length(.chunkIds)) {
       .pars <- cbind(id = .chunkIds, .pars)
     }
-    if (requireNamespace("arrow", quietly = TRUE)) {
+    if (.rxOomHasArrow()) {
       .f <- tempfile(fileext = ".parquet")
       arrow::write_parquet(.pars, .f)
     } else {
@@ -352,10 +352,33 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # pushes the LIMIT / column projection into the parquet reader instead of
 # materializing whole files.  Everything is guarded so the arrow (and rds)
 # fallbacks remain when duckdb/DBI are unavailable.
+#
+# The backend can be pinned with the `rxode2.oom.backend` option, which makes
+# every code path deterministically exercisable (e.g. in tests):
+#   "auto"   - duckdb if installed, else arrow, else rds (default)
+#   "duckdb" - duckdb query layer over arrow-written parquet
+#   "arrow"  - arrow reads/writes, no duckdb
+#   "rds"    - plain rds files, no arrow or duckdb
+# A requested engine that is not installed silently degrades (duckdb -> arrow
+# -> rds), so the option is a preference cap, never a hard requirement.
+
+.rxOomBackendOpt <- function() {
+  match.arg(getOption("rxode2.oom.backend", "auto"),
+            c("auto", "duckdb", "arrow", "rds"))
+}
 
 .rxOomHasDuckdb <- function() {
+  if (!(.rxOomBackendOpt() %in% c("auto", "duckdb"))) return(FALSE)
   requireNamespace("duckdb", quietly = TRUE) &&
     requireNamespace("DBI", quietly = TRUE)
+}
+
+# Wrapper around the arrow availability check.  Pulling it out (instead of
+# calling requireNamespace() inline) lets the `rxode2.oom.backend` option pin
+# the rds / arrow / duckdb code paths.
+.rxOomHasArrow <- function() {
+  if (.rxOomBackendOpt() == "rds") return(FALSE)
+  requireNamespace("arrow", quietly = TRUE)
 }
 
 # parquet files for a given set of paths
@@ -386,7 +409,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     if (.rxOomHasDuckdb()) {
       return(.rxOomDuckQuery(.pq, "SELECT * FROM {tbl}"))
     }
-    if (requireNamespace("arrow", quietly = TRUE)) {
+    if (.rxOomHasArrow()) {
       return(do.call(rbind, lapply(.pq, function(.f)
         as.data.frame(arrow::read_parquet(.f)))))
     }
@@ -400,7 +423,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 .rxOomBackend <- function(manifest) {
   if (.rxOomHasParquet(manifest)) {
     if (.rxOomHasDuckdb()) return(" [DuckDB/Arrow-backed]")
-    if (requireNamespace("arrow", quietly = TRUE)) return(" [Arrow-backed]")
+    if (.rxOomHasArrow()) return(" [Arrow-backed]")
   }
   ""
 }
@@ -507,21 +530,21 @@ as.data.frame.rxSolveOom <- function(x, ...) {
   .total <- sum(.m$nrows)
   if (.total > 1e6)
     message(sprintf("Materializing %.0f rows into memory", .total))
-  if (requireNamespace("arrow", quietly = TRUE) && .rxOomHasParquet(.m))
+  if (.rxOomHasArrow() && .rxOomHasParquet(.m))
     return(as.data.frame(as_arrow_table.rxSolveOom(x)))
   do.call(rbind, lapply(.m$chunks, readRDS))
 }
 
 #' @export
 as_tibble.rxSolveOom <- function(x, ...) {
-  if (requireNamespace("arrow", quietly = TRUE) && .rxOomHasParquet(attr(x, "manifest")))
+  if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
     return(tibble::as_tibble(as_arrow_table.rxSolveOom(x)))
   tibble::as_tibble(as.data.frame(x))
 }
 
 #' @export
 as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
-  if (requireNamespace("arrow", quietly = TRUE) && .rxOomHasParquet(attr(x, "manifest")))
+  if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
     return(data.table::as.data.table(as.data.frame(as_arrow_table.rxSolveOom(x))))
   data.table::as.data.table(as.data.frame(x), keep.rownames = keep.rownames)
 }
@@ -543,7 +566,7 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
   if (length(.pq) > 0L && .rxOomHasDuckdb()) {
     return(.rxOomDuckQuery(.pq, sprintf("SELECT * FROM {tbl} LIMIT %d", as.integer(n))))
   }
-  if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
+  if (length(.pq) > 0L && .rxOomHasArrow()) {
     # Walk chunks until we have n rows; only the first chunk(s) are read.
     .acc <- vector("list", 0L)
     .got <- 0L
@@ -580,7 +603,7 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
     .r <- .rxOomDuckQuery(.pq, sprintf('SELECT "%s" FROM {tbl}', gsub('"', '""', name)))
     return(.r[[1L]])
   }
-  if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
+  if (length(.pq) > 0L && .rxOomHasArrow()) {
     .cols <- lapply(.pq, function(.f)
       arrow::read_parquet(.f, col_select = name)[[1L]])
     return(unlist(.cols, use.names = FALSE))
@@ -594,7 +617,7 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
   if (length(.pq) > 0L && .rxOomHasDuckdb()) {
     return(nrow(.rxOomDuckQuery(.pq[1L], "DESCRIBE SELECT * FROM {tbl}")))
   }
-  if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
+  if (length(.pq) > 0L && .rxOomHasArrow()) {
     return(length(arrow::open_dataset(.pq[1L])$schema$names))
   }
   if (length(manifest$chunks) > 0L) return(ncol(readRDS(manifest$chunks[1L])))
@@ -618,6 +641,17 @@ dim.rxSolveOom <- function(x) {
 #' Splits subjects into chunks sized to fit in available RAM, solves each chunk,
 #' and writes output to parquet (or rds) files. Returns an \code{rxSolveOom}
 #' object that lazily reads chunks on demand.
+#'
+#' The storage/query engine used by the resulting \code{rxSolveOom} object is
+#' controlled by the \code{rxode2.oom.backend} option:
+#' \describe{
+#'   \item{\code{"auto"}}{(default) DuckDB if installed, else arrow, else rds.}
+#'   \item{\code{"duckdb"}}{lazy DuckDB SQL queries over arrow-written parquet.}
+#'   \item{\code{"arrow"}}{arrow parquet reads/writes, no DuckDB.}
+#'   \item{\code{"rds"}}{plain rds files, no arrow or DuckDB.}
+#' }
+#' A requested engine that is not installed silently degrades
+#' (duckdb \eqn{\to} arrow \eqn{\to} rds).
 #'
 #' @param object rxode2 model
 #' @param params model parameters

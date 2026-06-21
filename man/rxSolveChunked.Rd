@@ -40,3 +40,15 @@ Splits subjects into chunks sized to fit in available RAM, solves each chunk,
 and writes output to parquet (or rds) files. Returns an \code{rxSolveOom}
 object that lazily reads chunks on demand.
 }
+\details{
+The storage/query engine used by the resulting \code{rxSolveOom} object is
+controlled by the \code{rxode2.oom.backend} option:
+\describe{
+\item{\code{"auto"}}{(default) DuckDB if installed, else arrow, else rds.}
+\item{\code{"duckdb"}}{lazy DuckDB SQL queries over arrow-written parquet.}
+\item{\code{"arrow"}}{arrow parquet reads/writes, no DuckDB.}
+\item{\code{"rds"}}{plain rds files, no arrow or DuckDB.}
+}
+A requested engine that is not installed silently degrades
+(duckdb \eqn{\to} arrow \eqn{\to} rds).
+}
