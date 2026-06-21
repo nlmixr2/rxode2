@@ -191,6 +191,8 @@ typedef struct {
   double       *rcont1, *rcont2, *rcont3, *rcont4;
   double       *rcont5, *rcont6, *rcont7, *rcont8;
   void         *userdata;
+  int          subject_id; /* rxode2 subject id (-1 if unknown); used by the
+                              message aggregator to attribute warnings */
 } dop853_ctx_t;
 
 /* SolTrait defined after dop853_ctx_t so the callback can receive ctx and userdata */
@@ -226,5 +228,6 @@ extern int dop853
   int nrdens, /* number of components for which dense outpout is required */
   int* icont, /* indexes of components for which dense output is required, >= nrdens */
   int licont, /* declared length of icon */
-  void *userdata /* passed through to solout callback */
+  void *userdata, /* passed through to solout callback */
+  int subject_id /* rxode2 subject id (-1 if N/A); used by message aggregator */
  );

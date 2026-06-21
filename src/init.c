@@ -304,6 +304,10 @@ SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
 int getSilentErr(void);
 void setSilentErr(int silent);
 
+void rxSolveWarnPush(int id, const char *msg);
+void rxSolveWarnFlush(int maxIds);
+void rxSolveWarnReset(void);
+
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                 t_update_inis u_inis);
 
@@ -842,6 +846,9 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", (DL_FUNC) &_rxode2_rxModelVars_);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "setSilentErr", (DL_FUNC) &setSilentErr);
+  R_RegisterCCallable("rxode2", "rxSolveWarnPush", (DL_FUNC) &rxSolveWarnPush);
+  R_RegisterCCallable("rxode2", "rxSolveWarnFlush", (DL_FUNC) &rxSolveWarnFlush);
+  R_RegisterCCallable("rxode2", "rxSolveWarnReset", (DL_FUNC) &rxSolveWarnReset);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
 
