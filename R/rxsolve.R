@@ -1,3 +1,7 @@
+## Package-level cache: function object digest → rxUi (list form).
+## Populated by rxSolve.function; entries for uiUseData models are skipped.
+.rxFunctionUiCache <- new.env(hash = TRUE, parent = emptyenv())
+
 #' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
@@ -703,7 +707,15 @@
 #' - `auto` -- for one compartment models this will use the `AD`
 #'   method, for 2 and 3 compartment model this will use `forwardG`.
 #'
-#' - `AD` -- automatic differentiation (using stan math)
+#' - `AD` -- automatic differentiation (using stan math).  This now
+#'   uses forward-mode AD (`stan::math::fvar`), which differentiates the
+#'   same analytic solution as the reverse-mode path but on the C++
+#'   stack with no reverse autodiff tape, matching the reverse result to
+#'   round-off while avoiding the per-call tape setup/teardown.
+#'
+#' - `ADr` -- reverse-mode automatic differentiation (the prior `AD`
+#'   behavior, `stan::math::jacobian`).  Kept as an escape hatch for
+#'   validation; `AD` (forward) is preferred.
 #'
 #' - `forward` -- forward sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
@@ -926,6 +938,17 @@
 #'   that does not support dense output; `"ros4"` (code `13L`) is the only
 #'   stiff secondary that does support it.
 #'
+#' @param useLinCmt Logical; when `TRUE` and the model contains
+#'   linear-compartment ODEs that can be solved analytically,
+#'   automatically convert them to a `linCmt()` call before solving.
+#'   The detection and conversion use [odeToLin()]; the converted
+#'   model is cached so the compilation cost is paid only once.  Set
+#'   to `FALSE` to keep the original ODE solver.  This flag is also
+#'   stored in the returned [rxControl()] object so that downstream
+#'   hooks (e.g. in nlmixr2) can read and apply it.  The default is to
+#'   use the value of `rxode2.useLinCmt` option (which when specified
+#'   is `TRUE` by default).
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -1048,7 +1071,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtSensType=c("auto",
                                      "endpoint5", "endpoint5G",
                                      "forward3", "forward3G",
-                                     "AD", "central",
+                                     "AD", "ADr", "central",
                                      "forward", "forwardG",
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
@@ -1079,6 +1102,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     autoSwitchStiffFirst=FALSE,
                     autoSwitchSwitchMax=5L,
                     stiff2=0L,
+                    useLinCmt=getOption("rxode2.useLinCmt", TRUE),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1292,7 +1316,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (checkmate::testIntegerish(linCmtSensType)) {
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
-      .linCmtSensType <- c("AD"=3L,
+      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar) -- default AD
+                           "ADr"=31L,      # reverse-mode AD (escape hatch)
                            "forward"=1L,
                            "central"=2L,
                            "forward3"=4L,
@@ -1719,6 +1744,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       autoSwitchStifftol=as.double(autoSwitchStifftol),
       autoSwitchDtfac=as.double(autoSwitchDtfac),
       autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
+      useLinCmt=isTRUE(useLinCmt),
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1758,7 +1784,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     rxUdfUiReset()
   })
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
-  .object <- rxode2(object) # nolint
+  ## Cache the rxUi (function → rxUi conversion) to avoid re-parsing on every
+  ## call.  Key is digest of the whole function object (body + closure), so
+  ## factory-pattern closures with different captured values get separate
+  ## entries.  UDF models (uiUseData=TRUE) bypass the cache because their rxUi
+  ## depends on data that can change between calls.
+  .fkey <- digest::digest(object)
+  .object <- .rxFunctionUiCache[[.fkey]]
+  if (is.null(.object) || isTRUE(.object$uiUseData)) {
+    .object <- rxode2(object) # nolint
+    if (!isTRUE(.object$uiUseData)) {
+      .rxFunctionUiCache[[.fkey]] <- .object
+    }
+  }
   do.call("rxSolve", c(list(object=.object, params = params, events = events,
                             inits = inits),
                        list(...),
@@ -1789,27 +1827,48 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
 }
 
+## Default rxControl object cached once; avoids rebuilding 125-field list each
+## call.  Only used by .uiRxControl to probe field names and as a fast-path
+## return when no overrides exist.
+.rxControlDefault <- NULL
+.rxControlNames   <- NULL
+
 .uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL) {
-  .ctl <- rxControl()
+  if (is.null(.rxControlDefault) ||
+        !is.null(getOption("rxode2.naTimeHandle", NULL))) {
+    .d <- rxControl()
+    if (is.null(getOption("rxode2.naTimeHandle", NULL))) {
+      assignInMyNamespace(".rxControlDefault", .d)
+    }
+    if (is.null(.rxControlNames)) {
+      assignInMyNamespace(".rxControlNames", names(.d))
+    }
+  }
   .meta <- try(ui$meta, silent=TRUE)
   if (!is.environment(.meta))  {
     .meta <- new.env(parent=emptyenv())
   }
   .lst <- list(...)
   .nlst <- names(.lst)
-  .w <- which(vapply(names(.ctl), function(x) {
+  .w <- which(vapply(.rxControlNames, function(x) {
     !(x %in% .nlst) && exists(x, envir=.meta)
   }, logical(1), USE.NAMES=FALSE))
   .extra <- NULL
   if (length(.w) > 0) {
-    .v <- names(.ctl)[.w]
+    .v <- .rxControlNames[.w]
     .minfo(paste0("rxControl items read from fun: '",
                   paste(.v, collapse="', '"), "'"))
     .extra <- setNames(lapply(.v, function(x) {
       get(x, envir=.meta)
     }), .v)
-
+  }
+  ## Fast path: no per-model overrides and no caller-supplied options — return
+  ## the cached default control directly without a second rxSolve(NULL) round.
+  if (!is.null(.rxControlDefault) &&
+        is.null(.extra) && length(.lst) == 0 &&
+        is.null(theta) && is.null(eta)) {
+    return(.rxControlDefault)
   }
   do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
                      .lst, .extra,
@@ -2012,6 +2071,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                         useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
@@ -2053,7 +2113,27 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
-  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
+  if (isTRUE(useLinCmt)) {
+    .linInfo <- .odeToLinDetect(object) # nolint
+    if (!is.null(.linInfo)) {
+      .cacheKey <- .odeToLinCacheKey(object) # nolint
+      if (exists(.cacheKey, envir = .odeToLinCache, inherits = FALSE)) { # nolint
+        object <- .odeToLinCache[[.cacheKey]] # nolint
+      } else {
+        .linExpr   <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
+        # fall back to the original ODE model
+        .converted <- tryCatch(
+          rxUiDecompress(suppressMessages(.rebuildRxUiFromExpr(object, .linExpr))), # nolint
+          error = function(e) NULL)
+        if (is.null(.converted)) {
+          .converted <- object
+        }
+        assign(.cacheKey, .converted, envir = .odeToLinCache) # nolint
+        object <- .converted
+      }
+    }
+  }
+  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., useLinCmt = useLinCmt, theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
   .pred <- FALSE
   .mv <- rxModelVars(object)

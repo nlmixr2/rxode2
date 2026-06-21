@@ -2465,10 +2465,10 @@ extern "C" void solveSSinf(int *neq,
         }
       }
       for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
+        ind->solveLast[k] = yp[k];
       }
     }
     // yp is last solve or y0
@@ -2603,10 +2603,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
       }
       for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
+        ind->solveLast[k] = yp[k];
       }
     }
     // yp is last solve or y0
@@ -4491,7 +4491,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
-          ind->solve[ind->cmt] = op->inits[ind->cmt];
+          yp[ind->cmt] = op->inits[ind->cmt];
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
@@ -5101,6 +5101,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   rc= ind->rc;
   double xp = ind->all_times[0];
   ind->solvedIdx = 0;
+  bool _skipEvid = false;
   for(i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -5128,6 +5129,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     if (global_debug) {
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
+    bool _linSolveCalled = false;
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err) {
         printErr(ind->err, ind->id);
@@ -5160,10 +5162,21 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           }
         }
         if (!isSameTime(xout, xp)) {
+          // Keep ind->idx=i so _rxPushDose uses sortStart=i: pushed events at
+          // the same time as the current obs sort before it (doses before obs),
+          // which preserves the correct reset-before-dose-before-obs ordering.
+          // If a push displaced the current obs to ix[i+1], _skipEvid prevents
+          // evid_() from double-firing when the displaced obs is re-processed.
+          int _nBeforePush = ind->n_all_times;
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
+          _linSolveCalled = true;
+          if (ind->n_all_times > _nBeforePush) {
+            _skipEvid = true;
+            nx = ind->n_all_times;
+          }
         }
       }
     }
@@ -5192,11 +5205,22 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           ind->mainSorted = 0;
         }
       }
-      // For linCmt-only models with evid_() (indOwnAlloc), set _atEventTime=1
-      // so that calc_lhs (called inside updateSolve) fires any evid_() calls.
-      // This replicates the ODE behaviour where preSolve sets _atEventTime=1
-      // before dydt, which fires evid_() at the first sub-step.
-      if (op->indOwnAlloc) ind->_atEventTime = 1;
+      ind->idx = i + 1;
+      // Fire evid_() via calc_lhs only for same-time obs (when linSolve was
+      // not called).  For non-same-time obs, preSolve already set
+      // _atEventTime=1 and linSolve's internal dydt(xout) captured and
+      // cleared it, firing evid_() once at the observation time.  Setting
+      // _atEventTime=1 again here would cause calc_lhs to fire a second time,
+      // double-counting pushed doses.
+      // _skipEvid: set when a push displaced the current obs to ix[i+1]; consume
+      // the flag here to prevent the displaced obs from re-firing evid_().
+      if (op->indOwnAlloc && isObs(getEvid(ind, ind->ix[i])) && !_linSolveCalled) {
+        if (_skipEvid) {
+          _skipEvid = false;
+        } else {
+          ind->_atEventTime = 1;
+        }
+      }
       updateSolve(ind, op, neq, xout, i, nx);
       // Refresh nx after updateSolve: evid_() inside calc_lhs may have pushed
       // new events into the timeline, growing ind->n_all_times.

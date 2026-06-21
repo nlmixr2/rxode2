@@ -149,8 +149,8 @@ rxSolve(
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
   linCmtSensType = c("auto", "endpoint5", "endpoint5G", "forward3", "forward3G", "AD",
-    "central", "forward", "forwardG", "forwardH", "centralH", "forward3H", "endpointH5",
-    "forwardG"),
+    "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
+    "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -178,6 +178,7 @@ rxSolve(
   autoSwitchStiffFirst = FALSE,
   autoSwitchSwitchMax = 5L,
   stiff2 = 0L,
+  useLinCmt = getOption("rxode2.useLinCmt", TRUE),
   envir = parent.frame()
 )
 
@@ -198,6 +199,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  useLinCmt = TRUE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -209,6 +211,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  useLinCmt = TRUE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -1278,7 +1281,14 @@ sensitivity/gradients to use.  The current options are:
 \itemize{
 \item \code{auto} -- for one compartment models this will use the \code{AD}
 method, for 2 and 3 compartment model this will use \code{forwardG}.
-\item \code{AD} -- automatic differentiation (using stan math)
+\item \code{AD} -- automatic differentiation (using stan math).  This now
+uses forward-mode AD (\verb{stan::math::fvar}), which differentiates the
+same analytic solution as the reverse-mode path but on the C++
+stack with no reverse autodiff tape, matching the reverse result to
+round-off while avoiding the per-call tape setup/teardown.
+\item \code{ADr} -- reverse-mode automatic differentiation (the prior \code{AD}
+behavior, \verb{stan::math::jacobian}).  Kept as an escape hatch for
+validation; \code{AD} (forward) is preferred.
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{forwardG} -- forward sensitivity where the step size is determined by the
@@ -1507,6 +1517,17 @@ causes the solver to run as a plain non-composite method.  Dense output
 (\code{dense = TRUE}) is silently disabled when \code{stiff2} names a stiff method
 that does not support dense output; \code{"ros4"} (code \code{13L}) is the only
 stiff secondary that does support it.}
+
+\item{useLinCmt}{Logical; when \code{TRUE} and the model contains
+linear-compartment ODEs that can be solved analytically,
+automatically convert them to a \code{linCmt()} call before solving.
+The detection and conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted
+model is cached so the compilation cost is paid only once.  Set
+to \code{FALSE} to keep the original ODE solver.  This flag is also
+stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
+hooks (e.g. in nlmixr2) can read and apply it.  The default is to
+use the value of \code{rxode2.useLinCmt} option (which when specified
+is \code{TRUE} by default).}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

@@ -899,4 +899,135 @@ rxTest({
                        expect_equal(rSplit$cp, rBase$cp, tolerance = 1e-5)
                      })
   }
+
+  ## -------------------------------------------------------------------------
+  ## bolus() with linCmt models (positional and functional forms)
+  ## -------------------------------------------------------------------------
+
+  test_that("bolus() positional form works with linCmt 1-cmt oral model", {
+    m <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      if (t > 23 && t < 25) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    r <- suppressMessages(rxSolve(m, p, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    # cp >= 0 (0 at t=0 before absorption, positive thereafter)
+    expect_true(all(r$cp >= 0))
+    cp30 <- r$cp[r$time == 30]
+    expect_true(length(cp30) > 0)
+    expect_true(cp30 > 0)
+  })
+
+  test_that("bolus() positional form works with linCmt 1-cmt IV model", {
+    m <- rxode2({
+      cp <- linCmt(cl, v)
+      if (t > 23 && t < 25) {
+        bolus(50, central, 0, 0, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    p <- c(cl = 1, v = 10)
+    r <- suppressMessages(rxSolve(m, p, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    # IV model: cp > 0 immediately after t=0 dose, except possibly t=0 itself
+    expect_true(all(r$cp[r$time > 0] > 0))
+  })
+
+  test_that("bolus() functional form (named args) works with linCmt", {
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = depot)
+        }
+      })
+    }))
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_true(all(r$cp >= 0))
+    expect_true(all(r$cp[r$time > 0] > 0))
+  })
+
+  test_that("bolus() functional form (string cmt) works with linCmt", {
+    # cmt = "depot" (string literal) must produce the bare compartment name
+    # in the generated model, not a quoted token.
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = "depot")
+        }
+      })
+    }))
+    # The generated dosing line should use the bare name `depot`, no quotes
+    .txt <- paste(vapply(m$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("bolus(50, depot", .txt, fixed = TRUE))
+    expect_false(grepl("\"depot\"", .txt, fixed = TRUE))
+
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_true(all(r$cp >= 0))
+    expect_true(all(r$cp[r$time > 0] > 0))
+  })
+
+  test_that("bolus() works in a mixed linCmt + ODE model (both compartments)", {
+    # Mixed model: analytical linCmt PK feeding an ODE effect compartment.
+    # bolus() to the linCmt depot AND (string cmt) to the ODE effect cmt.
+    m <- suppressMessages(rxode2(function() {
+      ini({ ka <- 0.5; cl <- 1; v <- 10; ke0 <- 0.3 })
+      model({
+        cp <- linCmt(ka, cl, v)
+        d/dt(effect) <- ke0 * (cp - effect)
+        if (t > 11 && t < 13) {
+          bolus(20, cmt = "effect")
+        }
+        if (t > 23 && t < 25) {
+          bolus(50, cmt = depot)
+        }
+      })
+    }))
+    # String cmt should generate a bare compartment name
+    .txt <- paste(vapply(m$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("bolus(20, effect", .txt, fixed = TRUE))
+    expect_false(grepl("\"effect\"", .txt, fixed = TRUE))
+
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    r <- suppressMessages(rxSolve(m, e))
+    expect_true(nrow(r) > 0)
+    expect_false(any(is.na(r$cp)))
+    expect_false(any(is.na(r$effect)))
+    expect_true(all(r$cp[r$time > 0] > 0))
+    # effect compartment jumps after the bolus at t=12
+    expect_true(r$effect[r$time == 13] > r$effect[r$time == 11])
+  })
+
+  test_that("bolus() in linCmt fires exactly once per qualifying observation", {
+    # Bolus fires when t == 24 (t %% 24 == 0 && t > 0).
+    # The extra dose should appear exactly once in the solved output.
+    m <- rxode2({
+      cp <- linCmt(ka, cl, v)
+      if (t == 24) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    r <- suppressMessages(rxSolve(m, p, e, addDosing = TRUE))
+    # Exactly one extra dose event at t=24 (from bolus push)
+    doses <- r[r$evid == 1L & r$time == 24, ]
+    expect_equal(nrow(doses), 1L,
+                 label = "bolus() should fire exactly once at t=24")
+  })
 })

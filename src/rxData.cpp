@@ -54,6 +54,7 @@ extern "C" void ensureAutoJacBuf(int nCores, int neq);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h" // defines updateRate/updateDur forward-declared in handleEvid.h
 #include "rxThreadData.h"
 
 #include "threadSafeConstants.h"
@@ -2896,11 +2897,15 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid
         while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
           i--;
         }
-        // if it can't be found find the next non-NA value
-        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+        // if it can't be found (i < fid) find the next non-NA value;
+        // guard the index so we never dereference vals[fid-1] / past the id block
+        if (i < fid) {
           i = id;
-          while (i < fid  + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+          while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
             i++;
+          }
+          if (i >= fid + ind->n_all_times) {
+            return val; // entire id block is NA
           }
         }
         return vals[i];
@@ -2910,11 +2915,14 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid
         while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
           i++;
         }
-        // if it can't be found find the previous non-NA value
-        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+        // if it can't be found find the previous non-NA value; guard the index
+        if (i >= fid + ind->n_all_times) {
           i = id;
           while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
             i--;
+          }
+          if (i < fid) {
+            return val; // entire id block is NA
           }
         }
         return vals[i];
@@ -4666,11 +4674,24 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           stop(_("ran out of memory"));
         }
         _globals.gamtS= _globals.gall_timesS + (rx->nsim-1)*rx->nall;
-        for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
-          std::copy(_globals.gamt, _globals.gamt + rx->nall,
-                    _globals.gamtS + iii*rx->nall);
-          std::copy(_globals.gall_times, _globals.gall_times + rx->nall,
-                    _globals.gall_timesS + iii*rx->nall);
+        // _globals.gamt / _globals.gall_times hold _globals.gall_times_n base
+        // events.  When subjects share one event table that is a single
+        // subject's worth and rx->nall is the full per-sim total
+        // (== nsub * gall_times_n); copying rx->nall from the gall_times_n-sized
+        // source is a heap over-read.  Tile the base table across each
+        // replicate's nall-sized block so every subject sub-region is filled and
+        // the source is never read past its gall_times_n elements.
+        int64_t _base = (int64_t)_globals.gall_times_n;
+        if (_base > 0) {
+          for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
+            for (int64_t _off = 0; _off < (int64_t)rx->nall; _off += _base) {
+              int64_t _len = ((int64_t)rx->nall - _off < _base) ? ((int64_t)rx->nall - _off) : _base;
+              std::copy(_globals.gamt, _globals.gamt + _len,
+                        _globals.gamtS + (int64_t)iii*rx->nall + _off);
+              std::copy(_globals.gall_times, _globals.gall_times + _len,
+                        _globals.gall_timesS + (int64_t)iii*rx->nall + _off);
+            }
+          }
         }
       }
       for (unsigned int simNum = rx->nsim; simNum--;) {
@@ -5683,8 +5704,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtSuspect = asDouble(rxControl[Rxc_linCmtSuspect], "linCmtSuspect");
     rx->linCmtForwardMax = asInt(rxControl[Rxc_linCmtForwardMax], "linCmtForwardMax");
 
-    // since linCmtB is not parallel, no need to copy into
-    // a different solving memory space
+    // linCmtScale is read-only during parallel solving; shared pointer is safe
     rx->linCmtScale = REAL(rxControl[Rxc_linCmtScale]);
 
     rx->needSort = as<int>(rxSolveDat->mv[RxMv_needSort]);

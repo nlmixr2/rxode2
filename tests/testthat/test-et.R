@@ -1112,6 +1112,36 @@ rxTest({
         expect_equal(d |>
                        dplyr::filter(evid==1 & cmt==2) |> dplyr::pull(time) |> unique(),
                      c(0, 72))
+
+        function() {
+          ini({
+            tka <- 0.45
+            label("Ka (first order absorption)")
+            trate <- 0.4
+            label("Zero order rate")
+            tcl <- 1
+            label("Cl")
+            tv <- 3.45
+            label("V")
+            fDepot <- 0
+            label("amount of dose in first order absorption")
+            add.sd <- c(0, 0.7)
+            eta.ka ~ 0.6
+            eta.cl ~ 0.3
+            eta.v ~ 0.1
+          })
+          model({
+            ka <- exp(tka + eta.ka)
+            cl <- exp(tcl + eta.cl)
+            v <- exp(tv + eta.v)
+
+            f(depot) <- expit(fDepot, 0, 1)
+            f(center) <- 1 - expit(fDepot, 0, 1)
+            rate(center) <- exp(trate)
+            cp = linCmt()
+            cp ~ add(add.sd)
+          })
+        }
     }, rxseed = 123)
   })
 

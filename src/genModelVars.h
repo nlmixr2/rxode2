@@ -236,7 +236,7 @@ static inline SEXP calcIniVals(void) {
 SEXP orderForderS1(SEXP ordIn);
 
 static inline int sortStateVectorsErrHandle(int prop, int i) {
-  if (prop == 0 || tb.dummyLhs == 1) {
+  if ((prop & ~propDoseRef) == 0 || tb.dummyLhs == 1) {
     return 1;
   }
   char *buf = NULL;
@@ -317,9 +317,22 @@ static inline SEXP sortStateVectors(SEXP ordS) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
       ord[i] = -cur;
+      // Extra states (idu == 0) are algebraic observables that also appear
+      // in a cmt() statement; they are not real ODE/dosing compartments and
+      // etTran() numbers them after the real states (state ++ extraState).
+      // Push them to the end of this ordering too so the generated
+      // __DDT__/_DEPOT_/_CENTRAL_ slot indices stay aligned with the runtime
+      // compartment numbering.  Otherwise an observable whose cmt() is seen
+      // before the real compartments are numbered sorts ahead of them and
+      // shifts every tad()/tlast(<state>) lookup.  This happens whenever the
+      // cmt() precedes the d/dt() block, and always in linCmt() models, where
+      // the linear compartments (depot, central, ...) are added last in
+      // calcLinCmt().
+      if (tb.idu[i] == 0) ord[i] += tb.de.n;
       if (sortStateVectorsErrHandle(prop, i)) continue;
     } else {
       ord[i] = cur;
+      if (tb.idu[i] == 0) ord[i] += tb.de.n;
     }
   }
   if (sbt.o != 0) {

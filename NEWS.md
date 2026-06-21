@@ -1,19 +1,84 @@
 # rxode2 5.1.3
 
+- Add automatic conversion of ode models to linear models when
+  detected.  This conversion is applied transparently at solve time
+  (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
+  parameters are passed explicitly to `linCmt()` so the
+  parameterization is inferred even when the parameters are defined
+  only in the `ini()` block.  If a converted model cannot be compiled
+  the original ODE model is used instead, so the conversion never
+  breaks an otherwise-valid solve.
+
+- Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
+  now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
+  referencing the linear compartment names (`depot`, `central`)
+  directly.  `odeToLin()` preserves these calls when converting, and
+  renames non-standard ODE compartment names to the linear-compartment
+  names.
+
+- Fixed the string form of the compartment argument in the adaptive
+  dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
+  correct compartment reference.
+
+- Fixed `tad(<state>)` / `tlast(<state>)` (and the rest of the per-state
+  dose-timing family) returning `NA` or the wrong value in `linCmt()`
+  models that also declare an extra `cmt()` compartment for an algebraic
+  observable (e.g. an nlmixr2 ui model with `Cc ~ prop(propSd)`).  The
+  injected observable compartment used to sort before the linear
+  compartments (which are added last) and shifted the slot indices the
+  generated code used for the per-state lookups (nlmixr2est#685).
+
+- Added a forward automatic derivative linear compartment model, which
+  beats the reverse mode automatic derivatives for linear compartment
+  models
+
 - Added `setRxThreadId()` so a package that drives rxode2's per-subject
-  solve from its OWN OpenMP team (e.g. nlmixr2est's FOCEi inner loop)
-  can supply the real thread id.  On Windows each package statically
-  links its own libgomp, so rxode2's `omp_get_thread_num()` returns 0
-  for every foreign worker thread, which collapsed all of rxode2's
-  per-thread solve buffers onto one slot and corrupted the heap at more
-  than one core.  When the id is set (>= 0) rxode2 uses it for per-thread
-  buffer indexing instead of `omp_get_thread_num()`.
+  solve from its OWN OpenMP team for windows interaction with `nlmixr2`.
 
 - Added Jacobian handling of adaptive dosing events (retaining them
   when calculating Jacobian).  Should be able to be applied in forward
   sensitivity analysis as well.
 
 - Bug fix for `mix()` models as well as `iCov` models.
+
+- Fixed an out-of-bounds heap read in `rxSolve()` parameter setup
+  (`rxSolve_normalizeParms`, `src/rxData.cpp`).  When subjects share a
+  single event table, the table is stored once but the per-replicate
+  copy for an `nsim > 1` solve that needs sorting (e.g. a model with
+  modeled `rate()` / `dur()`) read `rx->nall` (the full per-sim total)
+  doubles from the single-subject-sized source, over-reading the event
+  arrays.  The base table is now tiled across each replicate's block
+  (AddressSanitizer-confirmed; results are unchanged).
+
+- Fixed an out-of-bounds heap read in `syncIdx()`
+  (`inst/include/rxode2parseHandleEvid.h`) that occurred on the main
+  ODE solve path.  `handle_evid()` advances `ind->ixds` past the last
+  dose and `syncIdx()` dereferenced `ind->idose[ind->ixds]` before
+  bounds-checking `ixds` against `ind->ndoses`, reading one element
+  past the `idose` array.  The stray value is normally discarded by
+  the subsequent re-sync (so solve results are unchanged), but the
+  out-of-bounds read corrupted the heap on some toolchains and
+  surfaced as an intermittent segfault at an unrelated allocation
+  (observed on the R 4.5.3 CI runner).  Confirmed and fixed with
+  AddressSanitizer; reproduced by a modeled-duration + lag-time model
+  dosed into multiple compartments (see
+  `tests/testthat/test-syncidx-dose-index-oob.R`).
+
+- Fixed three further out-of-bounds memory accesses found alongside it
+  (memory-safety hardening; none changes results):
+
+    - `cvPost()` / `rcvC1`: the single-variance (1x1 `omega`) branch
+      indexed the result matrix (`ret(1,1)`) before sizing it.
+
+    - `linCmt.h` (`linCmtStan2ssInf8`): the oral two-compartment
+      steady-state-infusion branch where both infusion rates are
+      non-positive wrote `ret(3,0)` on a three-row vector (valid rows
+      0-2), a one-row out-of-bounds heap write.
+
+    - `etTran()`: `combineDvid` read element `[1]` of a length-1 logical.
+
+    - `rxDerived()` (`derived1`): a recycled length-1 parameter pointer
+      was incremented past its one-element buffer.
 
 # rxode2 5.1.2
 

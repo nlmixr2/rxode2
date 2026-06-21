@@ -312,8 +312,26 @@ attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
 #' @rdname rxUiGet
 rxUiGet.simulationModel <- function(x, ...) {
   .x <- x[[1]]
-  .exact <- x[[2]]
-  .simulationModelAssignTOS(.x, eval(getBaseSimModel(.x)))
+  ## meta is a reference-type environment shared across all rxUiDecompress
+  ## calls for the same model, so it is the right place for per-model caches.
+  ## All cached values are invalidated automatically when the model is modified
+  ## via piping/.copyUi(), because those operations create a new meta env.
+  .meta <- .x$meta
+  .cached <- .meta$.simModelBase
+  if (!is.null(.cached)) {
+    return(.cached)
+  }
+  ## Cold path: build the compiled simulation model and cache the full TOS.
+  ## theta/omega/simulationSigma/uiFun are derived from the rxUi which is
+  ## immutable until the next piping step, so they are safe to cache.
+  .cached <- eval(getBaseSimModel(.x))
+  assign("theta",           .x$theta,           envir=.cached)
+  assign("omega",           .x$omega,           envir=.cached)
+  assign("simulationSigma", .x$simulationSigma, envir=.cached)
+  assign("uiFun",           as.function(.x),    envir=.cached)
+  class(.cached) <- c("rxode2tos", "rxode2")
+  .meta$.simModelBase <- .cached
+  .cached
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 attr(rxUiGet.simulationModel, "rstudio") <- quote(rxode2()) # for rstudio completion

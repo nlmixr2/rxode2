@@ -236,4 +236,30 @@ rxTest({
 
     })
   }
+
+  test_that("keep column with leading/trailing NA for the first subject (no OOB)", {
+    ## Before the fix, get_fkeep's LOCF/NOCB scan could exit at i = fid-1 (reads
+    ## vals[-1] for the first subject) or i = fid + n_all_times (past the id
+    ## block) and dereference that out-of-bounds element.  Here the first
+    ## subject's leading/trailing keep values are NA, forcing the scan off the
+    ## end of the id block.
+    mod <- rxode2({
+      d/dt(center) <- -kel * center
+      cp <- center / v
+    })
+    d <- data.frame(ID = 1L, TIME = 0:3, AMT = c(100, 0, 0, 0),
+                    EVID = c(1L, 0L, 0L, 0L), WT = c(NA, NA, 70, 72))
+    s <- rxSolve(mod, d, params = c(kel = 0.2, v = 10),
+                 keep = "WT", keepInterpolation = "locf")
+    ## leading NA at the first observation forward-fills to the first available
+    ## value (70), not garbage read from vals[-1]
+    expect_equal(s$WT, c(70, 70, 72))
+
+    d2 <- data.frame(ID = 1L, TIME = 0:3, AMT = c(100, 0, 0, 0),
+                     EVID = c(1L, 0L, 0L, 0L), WT = c(70, 72, NA, NA))
+    s2 <- rxSolve(mod, d2, params = c(kel = 0.2, v = 10),
+                  keep = "WT", keepInterpolation = "nocb")
+    ## trailing NA falls back to the last available value (72)
+    expect_equal(s2$WT, c(72, 72, 72))
+  })
 })
