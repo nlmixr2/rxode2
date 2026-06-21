@@ -234,10 +234,17 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     }
     .cumSub <- 0L
     .chunkIdsList <- .chunkList
+    # Resolve the backend in the parent (where the rxode2.oom.backend option
+    # lives) and forward it to the daemons: the option for faithful propagation,
+    # and the already-resolved write decision because the daemon closure cannot
+    # reach the unexported .rxOomHasArrow() helper.
+    .backendOpt    <- .rxOomBackendOpt()
+    .useArrowWrite <- .rxOomHasArrow()
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
-      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .inits, .fwdCtlArgs, .mainTmp) {
+      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .inits, .fwdCtlArgs, .mainTmp, .backendOpt, .useArrowWrite) {
         library(rxode2)
+        options(rxode2.oom.backend = .backendOpt)
         .result <- do.call(rxSolve,
                            c(list(object = .modelObj, params = .chunkParamsList[[.i]],
                                   events = .chunkEvList[[.i]], inits = .inits),
@@ -258,7 +265,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
             !("id" %in% names(.pars)) && nrow(.pars) == length(.ids)) {
           .pars <- cbind(id = .ids, .pars)
         }
-        if (requireNamespace("arrow", quietly = TRUE)) {
+        if (.useArrowWrite) {
           .f <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
           arrow::write_parquet(.df, .f)
           .pf <- if (!is.null(.pars) && nrow(.pars) > 0L) {
@@ -282,7 +289,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
                    .chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
                    .chunkParamsList = .chunkParamsList,
                    .inits = inits, .fwdCtlArgs = .fwdCtlArgs,
-                   .mainTmp = tempdir())
+                   .mainTmp = tempdir(),
+                   .backendOpt = .backendOpt, .useArrowWrite = .useArrowWrite)
     )
     for (.i in seq_len(.nChunks)) {
       .r <- .tasks[[.i]][]

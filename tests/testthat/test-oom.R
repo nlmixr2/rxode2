@@ -223,6 +223,32 @@ test_that("rxSolve(parallel=) mirai path matches the serial chunked solve", {
   })
 })
 
+test_that("rxode2.oom.backend option is forwarded to the mirai workers", {
+  rxTest({
+    skip_if_not_installed("mirai")
+    withr::local_options(rxode2.oom.backend = "rds")
+    mod <- rxode2({
+      cl <- exp(lcl + eta.cl)
+      v  <- exp(lv)
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+    et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:4)
+
+    par <- rxSolve(mod, c(lcl = 1, lv = 3.45), et_pop,
+                   omega = lotri::lotri(eta.cl ~ 0.04),
+                   file = tempfile("rxParRds"), chunkSize = 2, parallel = 2)
+
+    expect_s3_class(par, "rxSolveOom")
+    m <- attr(par, "manifest")
+    # Daemons honored the "rds" backend instead of writing parquet.
+    expect_true(all(grepl("\\.rds$", m$chunks)))
+    expect_true(all(grepl("\\.rds$", m$paramChunks)))
+    expect_equal(nrow(par), 4L * 4L)
+    expect_equal(nrow(par$params), 4L)
+  })
+})
+
 test_that("rxSolveOom persists params and inits like an rxSolve object", {
   rxTest({
     mod <- rxode2({
