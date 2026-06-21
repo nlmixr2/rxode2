@@ -505,33 +505,18 @@ rxTest({
   })
 
   ## -----------------------------------------------------------------------
-  ## Coupled / separately-observed states must NOT auto-linearize.
+  ## Coupled / separately-observed states.
   ##
   ## A central sub-system can be linear-compartment-eligible yet have an
-  ## additional state that is referenced by another model line (a peripheral
-  ## or metabolite observable like `Cp <- periph / vp`, possibly with its own
-  ## endpoint).  linCmt() exposes only the central concentration, so folding
-  ## the states into linCmt() drops the coupled state and demotes it to a
-  ## required input parameter -- the default solve then aborts with
-  ## "parameter(s) are required for solving: <state>".  Detection must return
-  ## NULL for these models so the explicit ODE states are preserved.
+  ## additional state referenced by another model line (a peripheral observable
+  ## like `Cp <- periph / vp`, possibly with its own endpoint).  When the
+  ## coupled state is an output-only peripheral, odeToLin() converts it by
+  ## renaming the ODE compartments to their canonical linCmt names and anchoring
+  ## the central endpoint to the central compartment (see the conversion tests
+  ## below).  When linCmt() cannot represent the system -- a compartment with
+  ## independent loss (metabolite), or a peripheral with its own estimated
+  ## endpoint -- detection returns NULL so the explicit ODE states are preserved.
   ## -----------------------------------------------------------------------
-
-  test_that("odeToLin returns NULL when a peripheral state has its own observable", {
-    .m <- suppressMessages(rxode2(function() {
-      ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50); propSd <- 0.1 })
-      model({
-        cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
-        kel <- cl/vc; k12 <- q/vc; k21 <- q/vp
-        d/dt(central) <- -kel*central - k12*central + k21*periph
-        d/dt(periph)  <-  k12*central - k21*periph
-        Cc <- central / vc
-        Cp <- periph / vp        # observable referencing the coupled state
-        Cc ~ prop(propSd)
-      })
-    }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
-  })
 
   test_that("odeToLin returns NULL for a metabolite-like coupled, observed state", {
     # Parent 2-cmt + observed metabolite with its own elimination.  The
@@ -559,12 +544,14 @@ rxTest({
     expect_null(rxode2:::.odeToLinDetect(.m))
   })
 
-  test_that("default rxSolve keeps a coupled ODE state instead of dropping it", {
-    # Regression: useLinCmt=TRUE (the default) used to auto-linearize this
-    # model, drop `periph`, and abort with
-    # "parameter(s) are required for solving: periph".  The default solve must
-    # now succeed, keep `periph` as a solved state, and agree numerically with
-    # the explicit ODE (useLinCmt=FALSE) solve.
+  test_that("odeToLin converts a coupled output-peripheral model and stays numerically correct", {
+    # Regression: useLinCmt=TRUE (the default) used to auto-linearize this model,
+    # drop `periph`, and abort with "parameter(s) are required for solving:
+    # periph".  It now CONVERTS analytically instead: `periph` is renamed to the
+    # canonical `peripheral1`, the central endpoint is anchored to the `central`
+    # compartment (so no observation compartment is injected), and the peripheral
+    # observable reads linCmt()'s solved peripheral amount -- so the default solve
+    # stays fully analytic and agrees with the explicit ODE (useLinCmt=FALSE).
     .m <- suppressMessages(rxode2(function() {
       ini({ lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50); propSd <- 0.1 })
       model({
@@ -577,14 +564,68 @@ rxTest({
         Cc ~ prop(propSd)
       })
     }))
-    .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2), cmt = "Cc")
-    .rDef <- suppressMessages(rxSolve(.m, .ev))                  # default useLinCmt
+    .info <- rxode2:::.odeToLinDetect(.m)
+    expect_true(isTRUE(.info$coupled))
+    .conv    <- suppressMessages(odeToLin(.m))
+    .convTxt <- paste(vapply(.conv$lstExpr, deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("linCmt", .convTxt))
+    expect_true(grepl("peripheral1", .convTxt))   # periph renamed to canonical name
+    expect_true(grepl("[|] *central", .convTxt))  # central endpoint anchored
+    expect_false(grepl("d/dt", .convTxt))         # no ODE left
+
+    .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2))
+    .rDef <- suppressMessages(rxSolve(.m, .ev))                  # default -> converts
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
-    # `periph` survives as a solved state and the coupled observable is present
-    expect_true("periph" %in% names(.rDef))
-    expect_true("Cp"     %in% names(.rDef))
-    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-6)
-    expect_equal(.rDef$Cp, .rOde$Cp, tolerance = 1e-6)
+    expect_true("Cp" %in% names(.rDef))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-4)
+    expect_equal(.rDef$Cp, .rOde$Cp, tolerance = 1e-4)           # peripheral observable correct
+  })
+
+  test_that("odeToLin converts a 2-cmt oral coupled model (depot amount + peripheral)", {
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lka <- log(0.8); lcl <- log(5); lvc <- log(30); lq <- log(2); lvp <- log(50); propSd <- 0.1 })
+      model({
+        ka <- exp(lka); cl <- exp(lcl); vc <- exp(lvc); q <- exp(lq); vp <- exp(lvp)
+        kel <- cl/vc; k12 <- q/vc; k21 <- q/vp
+        d/dt(depot)   <- -ka*depot
+        d/dt(central) <-  ka*depot - kel*central - k12*central + k21*periph
+        d/dt(periph)  <-  k12*central - k21*periph
+        Cc     <- central / vc
+        Cp     <- periph / vp
+        Adepot <- depot            # depot amount as a secondary output
+        Cc ~ prop(propSd)
+      })
+    }))
+    .info <- rxode2:::.odeToLinDetect(.m)
+    expect_true(isTRUE(.info$coupled))
+    .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 2))
+    .rDef <- suppressMessages(rxSolve(.m, .ev))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    expect_equal(.rDef$Cc,     .rOde$Cc,     tolerance = 1e-4)
+    expect_equal(.rDef$Cp,     .rOde$Cp,     tolerance = 1e-4)
+    expect_equal(.rDef$Adepot, .rOde$Adepot, tolerance = 1e-4)
+  })
+
+  test_that("odeToLin returns NULL for an output-only metabolite (mass-balance guard)", {
+    # Single endpoint (would pass the endpoint guard), but the metabolite carries
+    # an independent elimination (kelm) on top of the kbt it returns to central,
+    # so mass is not conserved across the exchange.  linCmt() cannot represent
+    # that, so the system must stay an explicit ODE.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ lcl <- log(5); lvc <- log(30); lkpm <- log(1); lkbt <- log(0.5)
+            lclm <- log(3); lvcm <- log(20); propSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); kpm <- exp(lkpm); kbt <- exp(lkbt)
+        cl_mhd <- exp(lclm); vc_mhd <- exp(lvcm)
+        kel <- cl/vc; kelm <- cl_mhd/vc_mhd
+        d/dt(central) <- -kel*central - kpm*central + kbt*met
+        d/dt(met)     <-  kpm*central - kelm*met - kbt*met   # extra independent loss
+        Cc <- central / vc
+        Cm <- met / vc_mhd
+        Cc ~ prop(propSd)
+      })
+    }))
+    expect_null(rxode2:::.odeToLinDetect(.m))
   })
 
   test_that("default rxSolve handles a multi-endpoint coupled (fetus) model", {

@@ -87,6 +87,50 @@
   .parsed
 }
 
+## Net signed coefficient (sum of sign*coef) of state `s` across a parsed term
+## list, returned as a single expression; NULL when `s` does not appear.  Note
+## the parsed sign is not enough on its own: a standalone `-ka*depot` RHS parses
+## (by R precedence) as `(-ka)*depot`, i.e. a positive-sign term whose
+## coefficient is `-ka` -- so the sign must be folded into the coefficient here.
+.odeToLinNetCoef <- function(terms, s) {
+  .rel <- Filter(function(.t) !is.na(.t$state) && .t$state == s, terms)
+  if (length(.rel) == 0L) return(NULL)
+  .signed <- lapply(.rel, function(.t) if (.t$sign < 0L) bquote(-(.(.t$coef))) else .t$coef)
+  Reduce(function(.a, .b) bquote(.(.a) + .(.b)), .signed)
+}
+
+## Verify mass balance for every non-central compartment.  A genuine depot or
+## peripheral exchanges with central with no independent loss: the flux it loses
+## (its net coefficient of itself in its own ODE) exactly equals the flux central
+## gains from it (central's net coefficient of that state), so the two cancel.  A
+## metabolite (e.g. `d/dt(met) <- kpm*central - kelm*met - kbt*met`) carries an
+## extra independent-elimination term, so its loss (kelm + kbt) exceeds the kbt
+## returned to central; linCmt() would silently model it as a lossless peripheral
+## and give wrong results, so such systems must NOT convert.  The cancellation is
+## checked numerically (robust to how the coefficients are written) at two
+## distinct positive parameter assignments.
+.odeToLinMassBalanced <- function(odes, central, others) {
+  .byCmt <- setNames(odes, vapply(odes, function(.o) .o$cmt, character(1)))
+  .centralOde <- .byCmt[[central]]
+  if (is.null(.centralOde)) return(FALSE)
+  for (.c in others) {
+    .ode <- .byCmt[[.c]]
+    if (is.null(.ode)) return(FALSE)
+    .selfNet <- .odeToLinNetCoef(.ode$terms, .c)        # what C loses (a net outflow)
+    .centNet <- .odeToLinNetCoef(.centralOde$terms, .c) # what central gains from C
+    if (is.null(.selfNet) || is.null(.centNet)) return(FALSE)
+    .syms <- unique(c(.freeSymbolsInExpr(.selfNet), .freeSymbolsInExpr(.centNet)))
+    .balanced <- function(.offset) {
+      .vals <- as.list(setNames(seq_along(.syms) + .offset, .syms))
+      .v <- tryCatch(eval(bquote(.(.selfNet) + .(.centNet)), .vals, baseenv()),
+                     error = function(e) NA_real_)
+      length(.v) == 1L && is.finite(.v) && abs(.v) < 1e-8
+    }
+    if (!.balanced(1.5) || !.balanced(3.7)) return(FALSE)
+  }
+  TRUE
+}
+
 ## Detect the topology of a linear ODE system and classify each compartment.
 ##
 ## odes: list of {cmt=name, terms=parsed_terms} for each ODE
@@ -150,6 +194,11 @@
 
   .ncmt <- 1L + length(.peripherals)
   if (.ncmt > 3L) return(NULL)
+
+  ## Reject systems where a depot/peripheral has independent loss (e.g. a
+  ## metabolite), which linCmt() cannot represent.
+  .others <- c(.peripherals, if (is.null(.depot)) character(0) else .depot)
+  if (!.odeToLinMassBalanced(odes, .central, .others)) return(NULL)
 
   list(
     ncmt        = .ncmt,
@@ -233,13 +282,12 @@
 }
 
 ## TRUE when a compartment state is referenced as a value by some model line
-## other than the ODE equations and the single central output line.  Folding
-## the ODE states into linCmt() exposes only the central concentration (the
-## output line); any other reference -- a peripheral/metabolite observable, a
-## second endpoint keyed to a coupled compartment, or a state alias -- would be
-## left dangling and demoted to a required input parameter, so rxSolve would
-## abort with "parameter(s) are required for solving: <state>".  Such models
-## must keep their explicit ODE states and must not be auto-linearized.
+## other than the ODE equations and the single central output line (e.g. a
+## peripheral observable `Cp <- periph / vp`, or a state alias).  Such a
+## reference cannot be served by a bare central-only linCmt() output, so the
+## caller takes the coupled-conversion path (rename the compartments to their
+## canonical linCmt names) when it is safe, and otherwise keeps the explicit
+## ODEs.
 .odeToLinStateReferencedElsewhere <- function(lstExpr, cmtNames, odeIdx, outputIdx) {
   for (.i in seq_along(lstExpr)) {
     if (.i %in% odeIdx || .i == outputIdx) next
@@ -248,6 +296,50 @@
     }
   }
   FALSE
+}
+
+## TRUE when every residual/endpoint (`~`) line predicts the central output
+## variable.  A linCmt() model can only observe the central concentration as an
+## estimated endpoint: mapping a peripheral observable to its own endpoint
+## (`Cp ~ ... | peripheral1`) collides with linCmt()'s internal peripheral
+## compartment ("required for linCmt() but defined in ODE too").  So a coupled
+## system converts only when the peripheral references are *output-only*.
+.odeToLinAllEndpointsCentral <- function(lstExpr, outputVar) {
+  for (.e in lstExpr) {
+    if (!is.call(.e) || !identical(.e[[1]], quote(`~`)) || length(.e) < 3L) next
+    .lhs <- .e[[2]]
+    if (!is.name(.lhs) || as.character(.lhs) != outputVar) return(FALSE)
+  }
+  TRUE
+}
+
+## Recursively rename every reference to an ODE compartment name to its
+## canonical linCmt name throughout an expression (value references included,
+## e.g. `Cp <- periph / vp` -> `Cp <- peripheral1 / vp`).  Used only on the
+## coupled-conversion path; compartment names live in a separate namespace from
+## parameters, so a name match is unambiguous.
+.odeToLinRenameValueRefs <- function(e, cmtMap) {
+  if (is.name(e)) {
+    .new <- cmtMap[as.character(e)]
+    if (!is.na(.new)) return(as.name(.new))
+    return(e)
+  }
+  if (!is.call(e)) return(e)
+  for (.i in seq_along(e)) e[[.i]] <- .odeToLinRenameValueRefs(e[[.i]], cmtMap)
+  e
+}
+
+## Map the central endpoint to the `central` compartment (`Cc ~ err` ->
+## `Cc ~ err | central`).  Anchoring the endpoint to the existing central
+## compartment stops rxode2 injecting a fresh `cmt(<pred>)` observation slot,
+## which would otherwise flip the model into explicit-compartment mode and make
+## in-model peripheral references resolve to 0.  Left unchanged if already
+## conditioned with `|`.
+.odeToLinAddCentralCond <- function(e) {
+  .rhs <- e[[3]]
+  if (is.call(.rhs) && identical(.rhs[[1]], quote(`|`))) return(e)
+  e[[3]] <- call("|", .rhs, as.name("central"))
+  e
 }
 
 ## Attempt to detect whether ui is a linear compartment ODE model.
@@ -291,14 +383,19 @@
   .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmtNames)
   if (is.null(.topo)) return(NULL)
 
-  ## Refuse to convert when a compartment state is referenced as a value outside
-  ## the ODE equations and the central output line (e.g. a peripheral or
-  ## metabolite observable `Cp <- periph / vp`).  linCmt() only exposes the
-  ## central concentration, so auto-linearizing such a model would drop the
-  ## coupled state and demote it to a required input parameter, breaking the
-  ## default solve.  These models must keep their explicit ODE states.
+  ## Handle compartment states referenced as a value outside the ODE equations
+  ## and the central output line (e.g. a peripheral observable `Cp <- periph /
+  ## vp`).  linCmt() materializes central/peripheral1/peripheral2/depot as
+  ## accessible solved compartments, so rather than dropping the coupled state
+  ## we keep the model analytic by renaming the ODE compartments to their
+  ## canonical linCmt names (the coupled path; see .odeToLinBuildExpr).  This is
+  ## only valid when every estimated endpoint predicts the central output --
+  ## a peripheral with its own `~` endpoint collides with linCmt()'s internal
+  ## compartment -- so such models keep their explicit ODE states instead.
+  .coupled <- FALSE
   if (.odeToLinStateReferencedElsewhere(.lstExpr, .cmtNames, .odeIdx, .out$lineIdx)) {
-    return(NULL)
+    if (!.odeToLinAllEndpointsCentral(.lstExpr, .out$var)) return(NULL)
+    .coupled <- TRUE
   }
 
   ## Collect the PK parameter names referenced in the rate coefficients and
@@ -323,7 +420,8 @@
     vExpr     = .out$vExpr,
     outputIdx = .out$lineIdx,
     odeIdx    = .odeIdx,
-    params    = .params
+    params    = .params,
+    coupled   = .coupled
   ))
 }
 
@@ -338,6 +436,13 @@
   }
   if (!is.null(info$central)) {
     .map[info$central] <- "central"
+  }
+  ## On the coupled path the peripheral compartments are referenced by retained
+  ## model lines (observables), so they too must map to their canonical linCmt
+  ## names to resolve against the analytic solution's solved compartments.
+  if (isTRUE(info$coupled)) {
+    if (!is.null(info$peripheral1)) .map[info$peripheral1] <- "peripheral1"
+    if (!is.null(info$peripheral2)) .map[info$peripheral2] <- "peripheral2"
   }
   .map
 }
@@ -431,6 +536,16 @@
       next  # remove ODE lines
     } else if (.i == info$outputIdx) {
       .ret[[length(.ret) + 1L]] <- .linCmtLine  # replace output with linCmt()
+    } else if (isTRUE(info$coupled)) {
+      ## Coupled path: rename every compartment reference (values included) to
+      ## its canonical linCmt name, and anchor the central endpoint to the
+      ## central compartment so no observation compartment is injected.
+      .e <- lstExpr[[.i]]
+      if (is.call(.e) && identical(.e[[1]], quote(`~`)) && length(.e) >= 3L &&
+          is.name(.e[[2]]) && as.character(.e[[2]]) == info$outputVar) {
+        .e <- .odeToLinAddCentralCond(.e)
+      }
+      .ret[[length(.ret) + 1L]] <- .odeToLinRenameValueRefs(.e, .cmtMap)
     } else {
       .e <- .odeToLinRenameExpr(lstExpr[[.i]], .cmtMap)
       .ret[[length(.ret) + 1L]] <- .e
