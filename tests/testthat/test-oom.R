@@ -222,3 +222,70 @@ test_that("rxSolve(parallel=) mirai path matches the serial chunked solve", {
     expect_equal(par_df$cp, ser_df$cp, tolerance = 1e-8)
   })
 })
+
+test_that("rxSolveOom persists params and inits like an rxSolve object", {
+  rxTest({
+    mod <- rxode2({
+      ka <- exp(lka + eta.ka)
+      cl <- exp(lcl + eta.cl)
+      v  <- exp(lv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+      cp <- central / v
+    })
+    pars   <- c(lka = 0.45, lcl = 1, lv = 3.45)
+    et_pop <- et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:6)
+    omega  <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+
+    chnk <- rxSolveChunked(mod, pars, et_pop, seed = 7,
+                            omega = omega, chunkSize = 2)
+
+    # res$params: one row per subject, NOT NULL
+    .pars <- chnk$params
+    expect_s3_class(.pars, "data.frame")
+    expect_equal(nrow(.pars), 6L)
+    expect_true(all(c("id", "eta.ka", "eta.cl") %in% names(.pars)))
+
+    # res$inits: named numeric vector matching the model states
+    .inits <- chnk$inits
+    expect_true(is.numeric(.inits))
+    expect_setequal(names(.inits), c("depot", "central"))
+  })
+})
+
+test_that("head.rxSolveOom reads only the first rows", {
+  rxTest({
+    mod <- rxode2({
+      d/dt(A) <- -k * A
+    })
+    et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:10)
+    chnk <- rxSolveChunked(mod, c(k = 0.1), et_pop, chunkSize = 3)
+
+    h <- head(chnk, 4)
+    expect_equal(nrow(h), 4L)
+    expect_true(all(c("id", "time", "A") %in% names(h)))
+    # ncol via dim() resolves from the schema (not NA)
+    expect_equal(ncol(chnk), ncol(as.data.frame(chnk)))
+  })
+})
+
+test_that("rxSolveOom print mirrors rxSolve output with a chunk footer", {
+  rxTest({
+    mod <- rxode2({
+      cl <- exp(lcl + eta.cl)
+      v  <- exp(lv)
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+    et_pop <- et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:6)
+    chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 3,
+                            omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
+
+    out <- capture.output(print(chnk))
+    expect_true(any(grepl("Solved rxode2 object", out)))
+    expect_true(any(grepl("Parameters", out)))
+    expect_true(any(grepl("Initial Conditions", out)))
+    expect_true(any(grepl("First part of data", out)))
+    expect_true(any(grepl("rxSolveOom", out)))
+  })
+})

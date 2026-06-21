@@ -85,7 +85,9 @@ Suggests:
     memuse,
     arrow,
     mirai,
-    fst
+    fst,
+    duckdb,
+    DBI
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),

@@ -108,10 +108,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .manifest <- list(
     version = 1L, prefix = .prefix,
     chunks  = character(.nChunks), nrows = integer(.nChunks),
+    paramChunks = character(.nChunks), inits = NULL,
     seed    = .baseSeed
   )
-  .outFiles <- character(.nChunks)
-  .cumSub   <- 0L
+  .outFiles    <- character(.nChunks)
+  .paramFiles  <- character(.nChunks)
+  .cumSub      <- 0L
 
   # Control args forwarded to each chunk rxSolve call (strip OOM-specific fields)
   .fwdCtlArgs <- as.list(.ctl)
@@ -181,6 +183,25 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .f
   }
 
+  # Persist the per-subject parameter table (res$params) for one chunk. The id
+  # column is stamped from .chunkIds so the chunk param tables concatenate
+  # cleanly (single-subject solves drop the id column).
+  .writeParams <- function(.result, .chunkIds) {
+    .pars <- tryCatch(as.data.frame(.result$params), error = function(e) NULL)
+    if (is.null(.pars) || nrow(.pars) == 0L) return(NA_character_)
+    if (!("id" %in% names(.pars)) && nrow(.pars) == length(.chunkIds)) {
+      .pars <- cbind(id = .chunkIds, .pars)
+    }
+    if (requireNamespace("arrow", quietly = TRUE)) {
+      .f <- tempfile(fileext = ".parquet")
+      arrow::write_parquet(.pars, .f)
+    } else {
+      .f <- tempfile(fileext = ".rds")
+      saveRDS(.pars, .f)
+    }
+    .f
+  }
+
   .extractChunkEvents <- function(.chunkIds) {
     if (inherits(events, "rxEtFile")) {
       .rxEtFileReadChunk(events, .chunkIds)
@@ -230,14 +251,32 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         # Write to the parent process's tempdir (shared filesystem). A daemon's
         # own session tempdir is removed when the daemon shuts down, which would
         # leave the manifest pointing at deleted chunk files.
+        # Per-subject parameter table; stamp id so chunks concatenate cleanly.
+        .pars <- tryCatch(as.data.frame(.result$params), error = function(e) NULL)
+        .ids  <- .chunkIdsList[[.i]]
+        if (!is.null(.pars) && nrow(.pars) > 0L &&
+            !("id" %in% names(.pars)) && nrow(.pars) == length(.ids)) {
+          .pars <- cbind(id = .ids, .pars)
+        }
         if (requireNamespace("arrow", quietly = TRUE)) {
           .f <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
           arrow::write_parquet(.df, .f)
+          .pf <- if (!is.null(.pars) && nrow(.pars) > 0L) {
+            .p <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
+            arrow::write_parquet(.pars, .p)
+            .p
+          } else NA_character_
         } else {
           .f <- tempfile(fileext = ".rds", tmpdir = .mainTmp)
           saveRDS(.df, .f)
+          .pf <- if (!is.null(.pars) && nrow(.pars) > 0L) {
+            .p <- tempfile(fileext = ".rds", tmpdir = .mainTmp)
+            saveRDS(.pars, .p)
+            .p
+          } else NA_character_
         }
-        list(file = .f, nrows = nrow(.df))
+        list(file = .f, nrows = nrow(.df), paramFile = .pf,
+             inits = tryCatch(.result$inits, error = function(e) NULL))
       },
       .args = list(.modelObj = .modelObj,
                    .chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
@@ -254,7 +293,11 @@ rxMemSummary.rxEtFile <- function(x, ...) {
              call. = FALSE)
       }
       .outFiles[.i] <- .r$file
+      .paramFiles[.i] <- if (is.null(.r$paramFile)) NA_character_ else .r$paramFile
       .manifest$nrows[.i] <- .r$nrows
+      if (is.null(.manifest$inits) && !is.null(.r$inits)) {
+        .manifest$inits <- .r$inits
+      }
     }
   } else {
     for (.i in seq_len(.nChunks)) {
@@ -273,8 +316,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
                          c(list(object = object, params = .chunkParams,
                                 events = .chunkEvents, inits = inits,
                                 envir = .envir), .fwdCtlArgs))
-      .outFiles[.i] <- .writeResult(.result, .chunkIds)
+      .outFiles[.i]   <- .writeResult(.result, .chunkIds)
+      .paramFiles[.i] <- .writeParams(.result, .chunkIds)
       .manifest$nrows[.i] <- nrow(.result)
+      if (is.null(.manifest$inits)) {
+        .manifest$inits <- tryCatch(.result$inits, error = function(e) NULL)
+      }
       .cumSub <- .cumSub + .nThis
     }
   }
@@ -282,6 +329,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   for (.i in seq_len(.nChunks)) {
     .manifest$chunks[.i] <- .outFiles[.i]
   }
+  # Drop param chunks that failed to write (NA); keep only valid files.
+  .manifest$paramChunks <- .paramFiles[!is.na(.paramFiles)]
 
   saveRDS(.manifest, paste0(.prefix, "_manifest.rds"))
   .rxSolveOomFromManifest(.manifest)
@@ -297,13 +346,106 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   any(grepl("\\.parquet$", manifest$chunks))
 }
 
+# ── DuckDB lazy query layer over the parquet chunks ──────────────────────────
+#
+# DuckDB is preferred for lazy access (head, single column, schema) because it
+# pushes the LIMIT / column projection into the parquet reader instead of
+# materializing whole files.  Everything is guarded so the arrow (and rds)
+# fallbacks remain when duckdb/DBI are unavailable.
+
+.rxOomHasDuckdb <- function() {
+  requireNamespace("duckdb", quietly = TRUE) &&
+    requireNamespace("DBI", quietly = TRUE)
+}
+
+# parquet files for a given set of paths
+.rxOomParquetFiles <- function(files) {
+  files[grepl("\\.parquet$", files)]
+}
+
+# Build a DuckDB SQL list literal of parquet paths: ['a.parquet','b.parquet']
+.rxOomDuckFileList <- function(files) {
+  paste0("[", paste0("'", gsub("'", "''", files), "'", collapse = ", "), "]")
+}
+
+# Run a SELECT against a set of parquet files via an in-memory DuckDB and return
+# a data.frame.  `sql` must reference the placeholder {tbl}, which is replaced
+# with read_parquet([...]).
+.rxOomDuckQuery <- function(files, sql) {
+  con <- DBI::dbConnect(duckdb::duckdb())
+  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  .tbl <- paste0("read_parquet(", .rxOomDuckFileList(files), ")")
+  DBI::dbGetQuery(con, gsub("{tbl}", .tbl, sql, fixed = TRUE))
+}
+
+# Read the persisted per-subject parameter table (res$params).
+.rxOomParams <- function(manifest) {
+  .pc <- manifest$paramChunks
+  .pq <- .rxOomParquetFiles(.pc)
+  if (length(.pq) > 0L) {
+    if (.rxOomHasDuckdb()) {
+      return(.rxOomDuckQuery(.pq, "SELECT * FROM {tbl}"))
+    }
+    if (requireNamespace("arrow", quietly = TRUE)) {
+      return(do.call(rbind, lapply(.pq, function(.f)
+        as.data.frame(arrow::read_parquet(.f)))))
+    }
+  }
+  do.call(rbind, lapply(.pc, readRDS))
+}
+
+.rxOomInits <- function(manifest) manifest$inits
+
+# Backend label for the print footer.
+.rxOomBackend <- function(manifest) {
+  if (.rxOomHasParquet(manifest)) {
+    if (.rxOomHasDuckdb()) return(" [DuckDB/Arrow-backed]")
+    if (requireNamespace("arrow", quietly = TRUE)) return(" [Arrow-backed]")
+  }
+  ""
+}
+
 #' @export
 print.rxSolveOom <- function(x, ...) {
   .m <- attr(x, "manifest")
-  .arrow <- .rxOomHasParquet(.m) && requireNamespace("arrow", quietly = TRUE)
+  .args <- as.list(match.call(expand.dots = TRUE))
+  .n <- if (any(names(.args) == "n")) .args$n else 6L
+  .bound <- .getBound(x, parent.frame(2))
+
+  cat(cli::cli_format_method({
+    .h2(crayon::bold("Solved rxode2 object"))
+  }), sep = "\n")
+
+  # Parameters (res$params)
+  cat(format.boundParams(.bound), sep = "\n")
+  .pars <- .rxOomParams(.m)
+  if (requireNamespace("tibble", quietly = TRUE)) {
+    print(tibble::as_tibble(.pars))
+  } else {
+    print(utils::head(.pars))
+  }
+
+  # Initial Conditions (res$inits)
+  cat(format.boundInits(.bound), sep = "\n")
+  print(.rxOomInits(.m))
+
+  # First part of data (object)
+  cat(cli::cli_format_method({
+    .h2(crayon::bold("First part of data (object):"))
+  }), sep = "\n")
+  .isDplyr <- requireNamespace("tibble", quietly = TRUE) &&
+    getOption("rxode2.display.tbl", TRUE)
+  .head <- utils::head(x, n = .n)
+  if (.isDplyr) {
+    print(tibble::as_tibble(.head), n = .n)
+  } else {
+    print(.head)
+  }
+
+  # Footer: chunk / backend note
   cat(sprintf("<rxSolveOom: %d chunks, %d total rows, prefix='%s'%s>\n",
               length(.m$chunks), sum(.m$nrows), .m$prefix,
-              if (.arrow) " [Arrow-backed]" else ""))
+              .rxOomBackend(.m)))
   invisible(x)
 }
 
@@ -384,10 +526,60 @@ as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
   data.table::as.data.table(as.data.frame(x), keep.rownames = keep.rownames)
 }
 
+#' First rows of an out-of-memory solved object
+#'
+#' Reads only the first \code{n} rows from the parquet (or rds) chunks,
+#' preferring DuckDB (which pushes the row limit into the parquet reader) and
+#' falling back to arrow / rds.
+#'
+#' @param x An \code{rxSolveOom} object.
+#' @param n Number of rows to return.
+#' @param ... Ignored.
+#' @return A \code{data.frame} with the first \code{n} rows.
+#' @export
+head.rxSolveOom <- function(x, n = 6L, ...) {
+  .m <- attr(x, "manifest")
+  .pq <- .rxOomParquetFiles(.m$chunks)
+  if (length(.pq) > 0L && .rxOomHasDuckdb()) {
+    return(.rxOomDuckQuery(.pq, sprintf("SELECT * FROM {tbl} LIMIT %d", as.integer(n))))
+  }
+  if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
+    # Walk chunks until we have n rows; only the first chunk(s) are read.
+    .acc <- vector("list", 0L)
+    .got <- 0L
+    for (.f in .pq) {
+      .d <- as.data.frame(arrow::read_parquet(.f))
+      .acc[[length(.acc) + 1L]] <- utils::head(.d, n - .got)
+      .got <- .got + nrow(.acc[[length(.acc)]])
+      if (.got >= n) break
+    }
+    return(do.call(rbind, .acc))
+  }
+  .acc <- vector("list", 0L)
+  .got <- 0L
+  for (.f in .m$chunks) {
+    .d <- readRDS(.f)
+    .acc[[length(.acc) + 1L]] <- utils::head(.d, n - .got)
+    .got <- .got + nrow(.acc[[length(.acc)]])
+    if (.got >= n) break
+  }
+  do.call(rbind, .acc)
+}
+
 #' @export
 `$.rxSolveOom` <- function(x, name) {
   .m <- attr(x, "manifest")
-  .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
+  if (name %in% c("params", "par", "pars", "param")) {
+    return(.rxOomParams(.m))
+  }
+  if (name %in% c("inits", "init")) {
+    return(.rxOomInits(.m))
+  }
+  .pq <- .rxOomParquetFiles(.m$chunks)
+  if (length(.pq) > 0L && .rxOomHasDuckdb()) {
+    .r <- .rxOomDuckQuery(.pq, sprintf('SELECT "%s" FROM {tbl}', gsub('"', '""', name)))
+    return(.r[[1L]])
+  }
   if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
     .cols <- lapply(.pq, function(.f)
       arrow::read_parquet(.f, col_select = name)[[1L]])
@@ -396,12 +588,28 @@ as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
   unlist(lapply(.m$chunks, function(.f) readRDS(.f)[[name]]), use.names = FALSE)
 }
 
+# Column count from the first chunk's schema (cheap: header-only for parquet).
+.rxOomNcol <- function(manifest) {
+  .pq <- .rxOomParquetFiles(manifest$chunks)
+  if (length(.pq) > 0L && .rxOomHasDuckdb()) {
+    return(nrow(.rxOomDuckQuery(.pq[1L], "DESCRIBE SELECT * FROM {tbl}")))
+  }
+  if (length(.pq) > 0L && requireNamespace("arrow", quietly = TRUE)) {
+    return(length(arrow::open_dataset(.pq[1L])$schema$names))
+  }
+  if (length(manifest$chunks) > 0L) return(ncol(readRDS(manifest$chunks[1L])))
+  NA_integer_
+}
+
 # nrow() is not an S3 generic, so a `nrow.rxSolveOom` method is never
 # dispatched (and exporting it as a plain function trips an "undocumented
 # code object" check).  base::nrow(x) is dim(x)[1L], and dim() *is* generic,
 # so dim.rxSolveOom() below already makes nrow() return the right value.
 #' @export
-dim.rxSolveOom <- function(x) c(sum(attr(x, "manifest")$nrows), NA_integer_)
+dim.rxSolveOom <- function(x) {
+  .m <- attr(x, "manifest")
+  c(sum(.m$nrows), .rxOomNcol(.m))
+}
 
 # ── User-facing convenience wrapper ──────────────────────────────────────────
 
