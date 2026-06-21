@@ -372,3 +372,110 @@ for (.oomBackend in c("rds", "arrow", "duckdb")) {
     })
   })
 }
+
+# A possibly-out-of-memory rxSolveOom object must be queryable with dplyr
+# verbs *lazily* -- the filtering/aggregation is pushed down to the
+# on-disk parquet chunks and only the reduced result is materialized, so
+# the full data set is never loaded into memory.
+test_that("dplyr filter/select on rxSolveOom stays lazy (no full materialization)", {
+  rxTest({
+    skip_if_not_installed("arrow")
+    skip_if_not_installed("dplyr")
+    mod <- rxode2({
+      cl <- exp(lcl)
+      v  <- exp(lv)
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+    et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:6)
+    chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, chunkSize = 2)
+
+    ds <- as_arrow_dataset(chnk)
+    # The data stays on disk: a file-backed Dataset, not an in-memory Table.
+    expect_true(inherits(ds, "Dataset"))
+    expect_false(inherits(ds, "Table"))
+
+    # Building the query does NOT execute it -- it is a deferred arrow query,
+    # not a materialized data.frame.
+    q <- ds |>
+      dplyr::filter(id == 1L) |>
+      dplyr::select(id, time, cp)
+    expect_s3_class(q, "arrow_dplyr_query")
+    expect_false(is.data.frame(q))
+
+    # Only the matching rows are pulled into memory on collect().
+    got <- dplyr::collect(q)
+    expect_true(is.data.frame(got))
+    expect_lt(nrow(got), nrow(chnk))
+    expect_setequal(unique(got$id), 1L)
+    expect_setequal(names(got), c("id", "time", "cp"))
+
+    # ... and they match the reference subset.
+    ref <- as.data.frame(chnk)
+    ref <- ref[ref$id == 1L, c("id", "time", "cp")]
+    got <- got[order(got$time), ]
+    ref <- ref[order(ref$time), ]
+    expect_equal(got$cp, ref$cp, tolerance = 1e-8)
+  })
+})
+
+test_that("dplyr group_by/summarise on rxSolveOom is pushed to the arrow backend", {
+  rxTest({
+    skip_if_not_installed("arrow")
+    skip_if_not_installed("dplyr")
+    mod <- rxode2({
+      cl <- exp(lcl + eta.cl)
+      v  <- exp(lv)
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+    et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:6)
+    chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 11,
+                            omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
+
+    agg <- as_arrow_dataset(chnk) |>
+      dplyr::group_by(id) |>
+      dplyr::summarise(mcp = mean(cp), n = dplyr::n())
+    # aggregation is deferred until collect()
+    expect_s3_class(agg, "arrow_dplyr_query")
+
+    out <- dplyr::collect(agg)
+    out <- out[order(out$id), ]
+    expect_equal(nrow(out), 6L)              # one row per subject, not per record
+    expect_true(all(out$n == 4L))            # 4 time points each
+
+    ref <- as.data.frame(chnk)
+    ref <- tapply(ref$cp, ref$id, mean)
+    expect_equal(out$mcp, as.numeric(ref[as.character(out$id)]), tolerance = 1e-8)
+  })
+})
+
+test_that("rxSolveOom supports lazy dplyr queries through a DuckDB connection", {
+  rxTest({
+    skip_if_not_installed("arrow")
+    skip_if_not_installed("duckdb")
+    skip_if_not_installed("dbplyr")
+    skip_if_not_installed("dplyr")
+    mod <- rxode2({
+      cl <- exp(lcl)
+      v  <- exp(lv)
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+    et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:6)
+    chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, chunkSize = 2)
+
+    # Register the on-disk parquet chunks as a lazy DuckDB-backed table.
+    tbl <- arrow::to_duckdb(as_arrow_dataset(chnk))
+    expect_s3_class(tbl, "tbl_lazy")
+    expect_false(is.data.frame(tbl))
+
+    q <- tbl |> dplyr::filter(time == 0)
+    expect_s3_class(q, "tbl_lazy")
+
+    got <- dplyr::collect(q)
+    expect_lt(nrow(got), nrow(chnk))
+    expect_true(all(got$time == 0))
+    expect_equal(nrow(got), 6L)              # one t=0 row per subject
+  })
+})
