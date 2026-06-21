@@ -423,38 +423,6 @@ symengineC[["/"]] <- function(e1, e2) {
 }
 
 
-unknownCsymengine <- function(op) {
-  force(op)
-  function(...) {
-    stop(sprintf(gettext("rxode2 doesn't support '%s' translation for 'omega' translation"), op), call. = FALSE)
-  }
-}
-
-symengineCEnv <- function(expr) {
-  ## Known functions
-  calls <- allCalls(expr)
-  callList <- setNames(lapply(calls, unknownCsymengine), calls)
-  callEnv <- list2env(callList)
-  rxSymPyFEnv <- cloneEnv(symengineC, callEnv)
-  names <- allNames(expr)
-  ## Replace time with t.
-  n1 <- names
-  n2 <- names
-  n2 <- gsub(rex::rex("t", capture(numbers)), "REAL(theta)[\\1]", n2)
-  n2 <- gsub(rex::rex("pi"), "M_PI", n2)
-  n2 <- gsub(rex::rex("rx_SymPy_Res_"), "", n2)
-  n2 <- gsub("None", "NA_REAL", n2)
-  w <- n2[n2 == "t"]
-  symbolList <- setNames(as.list(n2), n1)
-  symbolEnv <- list2env(symbolList, parent = symengineC)
-  return(symbolEnv)
-}
-
-seC <- function(x) {
-  expr <- str2lang(x)
-  .ret <- eval(expr, symengineCEnv(expr))
-}
-
 sympyTransit4 <- function(t, n, mtt, bio, podo = "podo", tlast = "tlast") {
   ktr <- paste0("((", n, " + 1)/(", mtt, "))")
   lktr <- paste0("(log((", n, ") + 1) - log(", mtt, "))")
@@ -483,53 +451,6 @@ allStrs <- function(x) {
     )
   }
 }
-
-allNames <- function(x) {
-  if (is.atomic(x)) {
-    character()
-  } else if (is.name(x)) {
-    as.character(x)
-  } else if (is.call(x) || is.pairlist(x)) {
-    children <- lapply(x[-1], allNames)
-    unique(unlist(children))
-  } else {
-    stop(sprintf(gettext("do not know how to handle type '%s'"), typeof(x)),
-      call. = FALSE
-    )
-  }
-}
-
-allCalls <- function(x) {
-  if (is.atomic(x) || is.name(x)) {
-    character()
-  } else if (is.call(x)) {
-    fname <- as.character(x[[1]])
-    children <- lapply(x[-1], allCalls)
-    unique(c(fname, unlist(children)))
-  } else if (is.pairlist(x)) {
-    unique(unlist(lapply(x[-1], allCalls), use.names = FALSE))
-  } else {
-    stop(sprintf(gettext("do not know how to handle type '%s'"), typeof(x)),
-      call. = FALSE
-    )
-  }
-}
-
-cloneEnv <- function(env, parent = parent.env(env)) {
-  list2env(as.list(env), parent = parent)
-}
-
-.exists2 <- function(x, where) {
-  .nc <- try(nchar(x) < 1000, silent = TRUE)
-  if (inherits(.nc, "try-error")) .nc <- FALSE
-  if (rxIs(.nc, "logical")) .nc <- FALSE
-  if (.nc) {
-    return(exists(x, where))
-  } else {
-    return(FALSE)
-  }
-}
-
 
 ## Start error function DSL
 sumProdEnv <- new.env(parent = emptyenv())
