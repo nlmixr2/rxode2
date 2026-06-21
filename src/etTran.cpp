@@ -881,8 +881,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool combineDvidB = false;
   Environment b=Rcpp::Environment::base_namespace();
   if (!combineDvid.isNull()){
-    // combineDvid is a length-1 logical; element [1] reads past it (the warned
-    // 'subscript out of bounds').  Use the first (and only) element.
     combineDvidB = (as<LogicalVector>(combineDvid))[0];
   } else {
     Function getOption = b["getOption"];

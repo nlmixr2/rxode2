@@ -182,9 +182,8 @@ namespace stan {
       }
 
       void setForwardOpts(double suspect, int forwardMax) {
-        double suspect_ = suspect;
-        int forwardMax_ = forwardMax;
-
+        suspect_ = suspect;
+        forwardMax_ = forwardMax;
       }
 
       // This will get the initial parameter value
@@ -1095,11 +1094,6 @@ namespace stan {
           } else {
             ret(0, 0) = NA_REAL;
             ret(1, 0) = NA_REAL;
-            // ret is sized (ncmt_ + oral0_) = 3 rows here (oral 2-cmt), so valid
-            // row indices are 0..2.  Writing ret(3,0) is a one-row out-of-bounds
-            // write past the heap-allocated Eigen vector (silent under the TU's
-            // NDEBUG) that corrupts the heap.  The sibling branches above set
-            // rows 0,1,2 -> this must be ret(2,0).
             ret(2, 0) = NA_REAL;
             return;
           }
