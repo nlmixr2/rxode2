@@ -1358,23 +1358,19 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 .rxToSEDelay <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
-  # delay(state, T) is the value of `state` at the past time t - T.  It does not
-  # depend on the current state values, so for symbolic differentiation (the
-  # Jacobian used by stiff solvers such as ros4) it is an opaque constant: its
-  # derivative with respect to any state is zero.  Represent it as a unique
-  # symengine symbol so differentiation drops the delay terms.
+  # delay(state, T) is the value of `state` at the past time t - T.  It is kept
+  # as a function call so it round-trips back to delay() in any generated code,
+  # and its derivative with respect to any variable is zero (a delayed/past
+  # state does not depend on the current state); see the lag/lead handling in
+  # rxFromSE().
   if (length(x) != 3L) {
     stop("'delay' takes 2 arguments 'delay(state, T)'", call. = FALSE)
   }
-  .sym <- paste0("rx_delay_",
-                 gsub("[^a-zA-Z0-9]+", "_", deparse1(x[[2]])), "_",
-                 gsub("[^a-zA-Z0-9]+", "_", deparse1(x[[3]])))
-  if (isEnv && is.environment(envir)) {
-    if (!exists(.sym, envir = envir)) {
-      assign(.sym, symengine::Symbol(.sym), envir = envir)
-    }
+  if (length(x[[2]]) != 1) {
+    stop("the first argument to 'delay' must be an ODE state 'delay(state, T)'", call. = FALSE)
   }
-  .sym
+  .t <- .rxToSE(x[[3]], envir = envir)
+  paste0("delay(", as.character(x[[2]]), ", ", .t, ")")
 }
 
 .rxToSEPsigamma <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
@@ -2549,6 +2545,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
       } else {
         return(paste0(.fun, "(", .a, ")"))
       }
+    } else if (identical(x[[1]], quote(`delay`))) {
+      return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`polygamma`))) {
       if (length(x == 3)) {
         .a <- .rxFromSE(x[[2]])
@@ -2811,7 +2809,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag"))) {
+          if (any(.fun[1] == c("lead", "lag", "delay"))) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -2962,7 +2960,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
-    "rxTBSi"
+    "delay", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }

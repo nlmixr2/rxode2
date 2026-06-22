@@ -2393,7 +2393,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # solver so delay() can interpolate past states.  When delays are present,
   # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense
   # output; a non-dense method requested explicitly is an error.
-  if (isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)) {
+  .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
+  if (.hasDelay) {
     # Dense history for delay() is recorded only on the dop853 dense path, so
     # delay models need a dop853 primary (optionally with the ros4 stiff
     # secondary, i.e. the "dop853+ros4" composite).
@@ -2412,8 +2413,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     }
   }
-  if (rxIsImplicit(.ctl$method) ||
-      (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2))) {
+  if (!.hasDelay &&
+      (rxIsImplicit(.ctl$method) ||
+       (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2)))) {
+    # Note: delay() models always solve on the dense dop853 path, which does
+    # not use the stiff secondary's Jacobian, so Jacobian generation is skipped
+    # for them (delay() also has no analytic Jacobian).
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {

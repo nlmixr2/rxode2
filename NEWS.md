@@ -1,5 +1,18 @@
 # rxode2 5.1.3
 
+- Add support for delay differential equations (DDEs) via the new
+  `delay(state, T)` model function, which evaluates an ODE `state` at
+  the past time `t - T` (the same semantics as Monolix's `delay()`).
+  Delayed states are interpolated from the solver's dense output
+  (using the 8th-order Dormand-Prince interpolant), so they are
+  obtained to the full accuracy of the integration.  Models that use
+  `delay()` are solved on a dense `dop853` path and default to the
+  dense AutoSwitch composite `"dop853+ros4"`; non-dense solvers are
+  rejected with an informative error.  The DDE dense-output and
+  history machinery is adapted from the 'dde' package (Rich FitzJohn,
+  Wes Hinsley, Imperial College of Science, Technology and Medicine),
+  whose authors are added as contributors.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK

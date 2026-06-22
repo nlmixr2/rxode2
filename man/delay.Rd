@@ -1,0 +1,70 @@
+\name{delay}
+\alias{delay}
+\title{Delayed state for delay differential equations}
+\usage{
+delay(state, T)
+}
+\arguments{
+\item{state}{An ODE state (compartment) defined in the model whose
+past value is required.}
+
+\item{T}{The delay duration.  May be a constant, a parameter, a
+covariate, or any model expression.  The value returned is the state
+at time \code{t - T}.}
+}
+\value{
+Inside an rxode2 model, the value of \code{state} at the past time
+\code{t - T}.  Before the start of integration the constant
+initial-condition history is used.
+}
+\description{
+\code{delay(state, T)} evaluates an ODE state at the past time
+\code{t - T}, turning an ordinary differential equation model into a
+delay differential equation (DDE).  The semantics match the
+\code{delay()} function of Monolix.
+}
+\details{
+Delayed states are interpolated from the solver's dense output using
+the same 8th-order Dormand-Prince interpolant as the integrator, so a
+delayed value is obtained to the full accuracy of the solution.
+
+Because this requires dense output, delay models are solved on a dense
+\code{dop853} path.  When a model uses \code{delay()}, the default
+solving method becomes the dense AutoSwitch composite
+\code{"dop853+ros4"} and dense output is enabled automatically;
+\code{method = "dop853"} also works.  Methods that cannot record dense
+history raise an error.
+
+The dense-output and delay-history machinery is adapted from the
+\code{dde} package by Rich FitzJohn and Wes Hinsley (Imperial College
+of Science, Technology and Medicine), following the approach of
+Hairer, Norsett and Wanner.
+}
+\examples{
+\donttest{
+# Classic linear delay differential equation y'(t) = -y(t - 1)
+dde <- rxode2({
+  y(0) <- 1
+  d/dt(y) <- -delay(y, 1)
+})
+
+s <- rxSolve(dde, et(seq(0, 5, by = 0.1)))
+
+# Delayed (Hutchinson) logistic growth
+hutch <- rxode2({
+  r <- 0.5
+  K <- 10
+  tau <- 1
+  N(0) <- 2
+  d/dt(N) <- r * N * (1 - delay(N, tau) / K)
+})
+
+s2 <- rxSolve(hutch, et(seq(0, 40, by = 0.5)))
+}
+}
+\seealso{
+\code{\link[=rxSolve]{rxSolve()}}
+}
+\author{
+Matthew L. Fidler
+}
