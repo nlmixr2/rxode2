@@ -379,6 +379,9 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
 // contd8(), so delayed states are obtained to the full accuracy of the solve.
 double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
   double td = t - T;
+  // Learn the smallest delay so the solver can cap its step size and never
+  // step over the delay (keeping the lagged time inside recorded history).
+  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return _solveData->op->inits[i];   // constant initial history before t0
   }

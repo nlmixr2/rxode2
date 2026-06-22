@@ -327,6 +327,8 @@ struct rx_solving_options_ind_s {
   int     delayHistNeq;    /* neq used when building records */
   int     delayHistOn;     /* 1 while recording is active for this subject */
   double  delayT0;         /* initial time; history before this is the IC */
+  double  delayMinT;       /* smallest delay duration seen; caps the step size */
+  int     delayWarmed;     /* 1 once the RHS has been evaluated to learn delays */
   rx_fn_pointers *fns;
   rx_solving_options *op;
   rx_solve *rx;

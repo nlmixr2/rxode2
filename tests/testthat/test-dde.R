@@ -37,6 +37,23 @@ rxTest({
     expect_true(max(abs(.s3$y - .exact(.s3$time))) < 1e-6)
   })
 
+  test_that("small delays (below the natural step size) stay accurate", {
+    ## y'(t) = -delay(y, 0.5), history 1.  Method of steps:
+    ##   [0,0.5]:   y = 1 - t
+    ##   [0.5,1]:   y = t^2/2 - 1.5 t + 1.125
+    .exact05 <- function(t) {
+      ifelse(t <= 0.5, 1 - t, t^2 / 2 - 1.5 * t + 1.125)
+    }
+    .dde05 <- rxode2({
+      y(0) <- 1
+      d/dt(y) <- -delay(y, 0.5)
+    })
+    .tt <- seq(0, 1, by = 0.1)
+    ## an intentionally huge hmax must be overridden by the delay step cap
+    .s <- rxSolve(.dde05, et(.tt), atol = 1e-10, rtol = 1e-10, hmax = 100)
+    expect_true(max(abs(.s$y - .exact05(.tt))) < 1e-6)
+  })
+
   test_that("delay models reject solvers that cannot record dense history", {
     .tt <- seq(0, 2, by = 0.5)
     for (.m in c("lsoda", "liblsoda", "dop5", "bs", "ros4")) {

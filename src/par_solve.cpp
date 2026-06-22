@@ -5515,6 +5515,17 @@ static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
   ind->delayHistN++;
 }
 
+// Cap the maximum step size so the integrator never steps over the smallest
+// delay; this keeps every delay() lookup inside already-recorded history
+// instead of extrapolating off the current (not yet recorded) step.
+static inline double rxDelayCapHmax(rx_solving_options_ind *ind) {
+  double h = ind->HMAX;
+  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) {
+    if (h <= 0.0 || ind->delayMinT < h) h = ind->delayMinT;
+  }
+  return h;
+}
+
 // Dense-output context passed as userdata to dopDenseSolout
 struct DopDenseCtx {
   rx_solving_options_ind *ind;
@@ -5613,6 +5624,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   ind->delayHistOn = op->hasDelay;
   ind->delayHistN  = 0;
   ind->delayT0     = x[0];
+  ind->delayMinT   = R_PosInf;
+  ind->delayWarmed = 0;
 
   // Track the last key event index so we know where each segment starts.
   // -1 means we haven't seen any key event yet; segment scans start at 0.
@@ -5696,7 +5709,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                         op->rtol2, op->atol2, itol,
                         dopDenseSolout, iout_dense,
                         NULL, DBL_EPSILON, 0, 0, 0, 0,
-                        ind->HMAX, op->H0, op->mxstep, 1, -1,
+                        rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
                         neq[0], NULL, 0, &dc, ind->id);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
@@ -5725,7 +5738,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
                           op->rtol2, op->atol2, itol,
                           dopDenseSolout, iout_dense,
                           NULL, DBL_EPSILON, 0, 0, 0, 0,
-                          ind->HMAX, op->H0, op->mxstep, 1, -1,
+                          rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
                           neq[0], NULL, 0, &dc, ind->id);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -5753,11 +5766,18 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
 
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
+          // Before the first delay step, evaluate the RHS once so delay()
+          // learns the minimum delay used to cap the step size.
+          if (ind->delayHistOn && !ind->delayWarmed) {
+            std::vector<double> _ddt((size_t)neq[0]);
+            c_dydt(neq, xp, yp, _ddt.data());
+            ind->delayWarmed = 1;
+          }
           idid = dop853(neq, c_dydt, xp, yp, xout,
                         op->rtol2, op->atol2, itol,
                         dopDenseSolout, iout_dense,
                         NULL, DBL_EPSILON, 0, 0, 0, 0,
-                        ind->HMAX, op->H0, op->mxstep, 1, -1,
+                        rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
                         neq[0],  // nrdens = all ODE states
                         NULL, 0, // icont = NULL (full component 0-based)
                         &dc,     // userdata
