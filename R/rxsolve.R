@@ -2395,9 +2395,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # output; a non-dense method requested explicitly is an error.
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
-    # Dense history for delay() is recorded only on the dop853 dense path, so
-    # delay models need a dop853 primary (optionally with the ros4 stiff
-    # secondary, i.e. the "dop853+ros4" composite).
+    # delay() history is recorded on the dense dop853 path (default, and the
+    # dop853 leg of "dop853+ros4") and on the dense ros4 path (for stiff delay
+    # models).  Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
     if (.ctl$method == 2L) {
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
@@ -2405,20 +2405,25 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl$stiff2 <- 13L
       .ctl$dense <- TRUE
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
-    } else if (.ctl$method != 0L || (.stiff2 != 0L && .stiff2 != 13L)) {
-      stop("delay differential equations require a dense dop853 solver; use method='dop853+ros4' (the default for delay models) or method='dop853'",
+    } else if ((.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
+                 (.ctl$method == 13L && .stiff2 == 0L)) {
+      # dop853 (optionally + ros4 secondary), or pure ros4 for stiff delays
+      if (!isTRUE(.ctl$dense)) {
+        .ctl$dense <- TRUE
+        .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+      }
+    } else {
+      stop("delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)",
            call. = FALSE)
-    } else if (!isTRUE(.ctl$dense)) {
-      .ctl$dense <- TRUE
-      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     }
   }
-  if (!.hasDelay &&
+  if ((!.hasDelay || .ctl$method != 0L) &&
       (rxIsImplicit(.ctl$method) ||
        (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2)))) {
-    # Note: delay() models always solve on the dense dop853 path, which does
-    # not use the stiff secondary's Jacobian, so Jacobian generation is skipped
-    # for them (delay() also has no analytic Jacobian).
+    # A delay() model on the dop853 dense primary (method 0) does not use the
+    # stiff secondary's Jacobian, so Jacobian generation is skipped there.  The
+    # ros4 stiff path (method 13) is a Rosenbrock method and does need the
+    # Jacobian, which is generated normally (delay() differentiates to zero).
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {

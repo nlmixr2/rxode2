@@ -56,10 +56,27 @@ rxTest({
 
   test_that("delay models reject solvers that cannot record dense history", {
     .tt <- seq(0, 2, by = 0.5)
-    for (.m in c("lsoda", "liblsoda", "dop5", "bs", "ros4")) {
-      if (.m == "liblsoda") next # the default token is silently switched
-      expect_error(rxSolve(.dde, et(.tt), method = .m), "dop853")
+    for (.m in c("lsoda", "dop5", "bs", "cvode")) {
+      expect_error(rxSolve(.dde, et(.tt), method = .m), "dense")
     }
+  })
+
+  test_that("stiff delay models solve with the dense ros4 path", {
+    .tt <- seq(0, 2, by = 0.1)
+    ## ros4 dense output is recorded and interpolated for delay(); the linear
+    ## DDE must match the analytic solution on the ros4 path too
+    .s <- rxSolve(.dde, et(.tt), method = "ros4", atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s$y - .exact(.tt))) < 1e-5)
+
+    ## a genuinely stiff DDE that overwhelms dop853 (too many steps) solves
+    ## fine with ros4
+    .stiff <- rxode2({
+      y(0) <- 1
+      d/dt(y) <- -1e5 * (y - delay(y, 0.2)) - delay(y, 0.2)
+    })
+    .ss <- rxSolve(.stiff, et(seq(0, 3, by = 0.5)), method = "ros4")
+    expect_false(any(is.na(.ss$y)))
+    expect_true(all(.ss$y > 0))
   })
 
   test_that("delay() works with an expression for the delay duration", {

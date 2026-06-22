@@ -29,11 +29,14 @@ the same 8th-order Dormand-Prince interpolant as the integrator, so a
 delayed value is obtained to the full accuracy of the solution.
 
 Because this requires dense output, delay models are solved on a dense
-\code{dop853} path.  When a model uses \code{delay()}, the default
-solving method becomes the dense AutoSwitch composite
-\code{"dop853+ros4"} and dense output is enabled automatically;
-\code{method = "dop853"} also works.  Methods that cannot record dense
-history raise an error.
+path.  When a model uses \code{delay()}, the default solving method
+becomes the dense AutoSwitch composite \code{"dop853+ros4"} and dense
+output is enabled automatically; \code{method = "dop853"} also works.
+Stiff delay models can be solved with \code{method = "ros4"}, whose
+dense Rosenbrock output is likewise recorded and interpolated for
+\code{delay()}.  The integrator step size is automatically capped to the
+smallest delay so that short delays remain accurate.  Methods that
+cannot record dense history raise an error.
 
 The dense-output and delay-history machinery is adapted from the
 \code{dde} package by Rich FitzJohn and Wes Hinsley (Imperial College

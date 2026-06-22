@@ -323,8 +323,9 @@ struct rx_solving_options_ind_s {
   double *delayHist;       /* flat ring/grow buffer, or NULL when unused */
   int     delayHistN;      /* number of step records currently stored */
   int     delayHistCap;    /* capacity in records */
-  int     delayHistStride; /* doubles per record = 8*neq + 2 */
+  int     delayHistStride; /* doubles per record (8*neq+2 dop853, 4*neq+2 ros4) */
   int     delayHistNeq;    /* neq used when building records */
+  int     delayHistType;   /* 0 = dop853 dense (rcont), 1 = ros4 cubic samples */
   int     delayHistOn;     /* 1 while recording is active for this subject */
   double  delayT0;         /* initial time; history before this is the IC */
   double  delayMinT;       /* smallest delay duration seen; caps the step size */

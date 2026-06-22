@@ -5488,10 +5488,12 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
 static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
                             double xold, double h, dop853_ctx_t *ctx) {
   int stride = 8 * n + 2;
-  if (ind->delayHistStride != stride || ind->delayHistNeq != n) {
+  if (ind->delayHistStride != stride || ind->delayHistNeq != n ||
+      ind->delayHistType != 0) {
     ind->delayHistN = 0;                 // layout changed: start a fresh buffer
     ind->delayHistStride = stride;
     ind->delayHistNeq = n;
+    ind->delayHistType = 0;              // dop853 dense (rcont) records
   }
   if (ind->delayHistN >= ind->delayHistCap) {
     int newCap = ind->delayHistCap > 0 ? ind->delayHistCap * 2 : 256;
@@ -5512,6 +5514,40 @@ static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
   memcpy(rec + 7 * n, ctx->rcont8, n * sizeof(double));
   rec[8 * n]     = xold;
   rec[8 * n + 1] = h;
+  ind->delayHistN++;
+}
+
+// Record one ros4 (Rosenbrock) dense step.  ros4's dense output is a cubic in
+// the normalized step variable, so four samples taken at s = 0, 1/3, 2/3, 1
+// (via the stepper's public calc_state) reconstruct it exactly.  Layout per
+// record: sample0[n], sample1[n], sample2[n], sample3[n], t_old, h.
+static void rxDelayHistPushSamples(rx_solving_options_ind *ind, int n,
+                                   double xold, double h,
+                                   const double *s0, const double *s1,
+                                   const double *s2, const double *s3) {
+  int stride = 4 * n + 2;
+  if (ind->delayHistStride != stride || ind->delayHistNeq != n ||
+      ind->delayHistType != 1) {
+    ind->delayHistN = 0;                 // layout changed: start a fresh buffer
+    ind->delayHistStride = stride;
+    ind->delayHistNeq = n;
+    ind->delayHistType = 1;              // ros4 cubic-sample records
+  }
+  if (ind->delayHistN >= ind->delayHistCap) {
+    int newCap = ind->delayHistCap > 0 ? ind->delayHistCap * 2 : 256;
+    double *np = (double*) realloc(ind->delayHist,
+                                   (size_t) newCap * stride * sizeof(double));
+    if (np == NULL) return;
+    ind->delayHist = np;
+    ind->delayHistCap = newCap;
+  }
+  double *rec = ind->delayHist + (size_t) ind->delayHistN * stride;
+  memcpy(rec + 0 * n, s0, n * sizeof(double));
+  memcpy(rec + 1 * n, s1, n * sizeof(double));
+  memcpy(rec + 2 * n, s2, n * sizeof(double));
+  memcpy(rec + 3 * n, s3, n * sizeof(double));
+  rec[4 * n]     = xold;
+  rec[4 * n + 1] = h;
   ind->delayHistN++;
 }
 

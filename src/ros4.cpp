@@ -29,22 +29,52 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
-  
+
+  int neqOde = op->neq - op->numLin - op->numLinSens;
+
+  // Delay differential equation history for the ros4 (stiff) dense path.
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayWarmed = 0;
+  double _ros4MaxDt = 0.0; // 0 = no cap (default rosenbrock4_controller behavior)
+  if (ind->delayHistOn && neqOde > 0) {
+    // one RHS evaluation so delay() learns the minimum delay, which both caps
+    // the step size and confirms whether any delay is present
+    std::vector<double> _ddt((size_t)neqOde), _y0((size_t)neqOde);
+    for (int _j = 0; _j < neqOde; _j++) _y0[_j] = op->inits[_j];
+    c_dydt(neq, xp, _y0.data(), _ddt.data());
+    ind->delayWarmed = 1;
+    if (R_FINITE(ind->delayMinT)) _ros4MaxDt = ind->delayMinT;
+  }
 
   typedef boost::numeric::ublas::vector<double> state_type;
   typedef boost::numeric::ublas::matrix<double> matrix_type;
   typedef boost::numeric::odeint::rosenbrock4<double> stepper_base_type;
   typedef boost::numeric::odeint::rosenbrock4_controller<stepper_base_type> error_stepper_type;
-  error_stepper_type stepper(ind->atol2[0], ind->rtol2[0], stepper_base_type());
-      
+  error_stepper_type stepper(ind->atol2[0], ind->rtol2[0], _ros4MaxDt, stepper_base_type());
 
-  typedef boost::numeric::ublas::vector<double> state_type;
-  typedef boost::numeric::ublas::matrix<double> matrix_type;
+
   typedef boost::numeric::odeint::rosenbrock4_dense_output<error_stepper_type> dense_stepper_type;
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
-      
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+
+  // scratch vectors for sampling ros4 dense output when recording delay history
+  state_type _dq0(neqOde), _dq1(neqOde), _dq2(neqOde), _dq3(neqOde);
+  auto recordDelayStep = [&](void) {
+    if (!ind->delayHistOn || ind->err) return;
+    double t_old = dense_stepper.previous_time();
+    double t_cur = dense_stepper.current_time();
+    double hh = t_cur - t_old;
+    dense_stepper.calc_state(t_old,                _dq0);
+    dense_stepper.calc_state(t_old + hh / 3.0,     _dq1);
+    dense_stepper.calc_state(t_old + 2.0*hh / 3.0, _dq2);
+    dense_stepper.calc_state(t_cur,                _dq3);
+    rxDelayHistPushSamples(ind, neqOde, t_old, hh,
+                           &_dq0[0], &_dq1[0], &_dq2[0], &_dq3[0]);
+  };
+
   auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
   
   double *yp;
@@ -165,9 +195,12 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
               try {
-                  if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
+                  // delay models always use the dense stepper (even toward
+                  // non-observation events) so every step is recorded into the
+                  // delay history with no gaps.
+                  if ((op->useDense && isObs(getEvid(ind, ind->ix[i]))) || ind->delayHistOn) {
                       if (!stepper_initialized) {
-                          
+
                           std::copy(yp, yp + neqOde, state.begin());
                           dense_stepper.initialize(state, xp, dt);
 
@@ -177,11 +210,13 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                           while (dense_stepper.current_time() < xout) {
                               dense_stepper.do_step(sys);
                               if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
+                              recordDelayStep();
                           }
                       } else {
                           while (dense_stepper.current_time() > xout) {
                               dense_stepper.do_step(sys);
                               if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
+                              recordDelayStep();
                           }
                       }
 
@@ -245,6 +280,16 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     }
     ind->solvedIdx = i;
   }
+  // release this subject's delay history (only needed during its own solve)
+  if (ind->delayHist != NULL) {
+    free(ind->delayHist);
+    ind->delayHist = NULL;
+    ind->delayHistCap = 0;
+    ind->delayHistStride = 0;
+    ind->delayHistNeq = 0;
+  }
+  ind->delayHistN = 0;
+  ind->delayHistOn = 0;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
