@@ -266,6 +266,26 @@ rxExpandSens2_ <- function(state, s1, s2) {
     .Call(`_rxode2_rxExpandSens2_`, state, s1, s2)
 }
 
+#' Expand third order sensitivity
+#'
+#' Builds the symengine code for the third order forward sensitivity
+#' d/dt(d^3 state / d s1 d s2 d s3) by total-differentiating the stored
+#' second order sensitivity RHS (for the pair s2,s3) with respect to the
+#' newly added variable s1.  Mirrors \code{rxExpandSens2_}; assumes the
+#' first and second order sensitivities (and the Jacobian) are already
+#' loaded in the symengine \code{model} environment.
+#'
+#' @param state is the state to expand
+#' @param s1 is the newly added (outer) sensitivity variable
+#' @param s2 is the second sensitivity variable
+#' @param s3 is the third sensitivity variable
+#' @keywords internal
+#' @return data frame of symengine third order sensitivity code
+#' @export
+rxExpandSens3_ <- function(state, s1, s2, s3) {
+    .Call(`_rxode2_rxExpandSens3_`, state, s1, s2, s3)
+}
+
 #' Expand d(f)/d(eta)
 #'
 #' @param state is the state to expand
@@ -1135,3 +1155,7 @@ meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
 
+# Register entry points for exported C++ functions
+methods::setLoadAction(function(ns) {
+    .Call(`_rxode2_RcppExport_registerCCallable`)
+})

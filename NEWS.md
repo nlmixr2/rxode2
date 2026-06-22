@@ -1,5 +1,13 @@
 # rxode2 5.1.3
 
+- Add `rxExpandSens3_()`, which generates the analytic third-order forward
+  sensitivity equations (`d^3 state / d s1 d s2 d s3`) by total-differentiating
+  the second-order sensitivity right-hand side.  `.rxSens()` gained a `vars3`
+  argument that drives it and stores the result in `..sens3`, extending the
+  existing first- and second-order (`rxExpandSens_()`, `rxExpandSens2_()`)
+  machinery.  This supplies the exact, finite-difference-free sensitivities
+  needed for analytic FOCEI/FOCE covariance Hessians downstream.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK

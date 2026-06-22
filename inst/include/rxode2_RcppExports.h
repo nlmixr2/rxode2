@@ -4,6 +4,8 @@
 #ifndef RCPP_rxode2_RCPPEXPORTS_H_GEN_
 #define RCPP_rxode2_RCPPEXPORTS_H_GEN_
 
+#include <RcppArmadillo.h>
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 namespace rxode2 {
@@ -77,6 +79,27 @@ namespace rxode2 {
         {
             RNGScope RCPP_rngScope_gen;
             rcpp_result_gen = p_rxExpandSens2_(Shield<SEXP>(Rcpp::wrap(state)), Shield<SEXP>(Rcpp::wrap(s1)), Shield<SEXP>(Rcpp::wrap(s2)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<List >(rcpp_result_gen);
+    }
+
+    inline List rxExpandSens3_(CharacterVector state, CharacterVector s1, CharacterVector s2, CharacterVector s3) {
+        typedef SEXP(*Ptr_rxExpandSens3_)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxExpandSens3_ p_rxExpandSens3_ = NULL;
+        if (p_rxExpandSens3_ == NULL) {
+            validateSignature("List(*rxExpandSens3_)(CharacterVector,CharacterVector,CharacterVector,CharacterVector)");
+            p_rxExpandSens3_ = (Ptr_rxExpandSens3_)R_GetCCallable("rxode2", "_rxode2_rxExpandSens3_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxExpandSens3_(Shield<SEXP>(Rcpp::wrap(state)), Shield<SEXP>(Rcpp::wrap(s1)), Shield<SEXP>(Rcpp::wrap(s2)), Shield<SEXP>(Rcpp::wrap(s3)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

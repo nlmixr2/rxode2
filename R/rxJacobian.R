@@ -94,15 +94,20 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @param model symengine model environment
 #' @param vars Variables for single sensitivity
 #' @param vars2 if present, 2 parameter sensitivity
+#' @param vars3 if present, 3 parameter (third order) sensitivity;
+#'     requires the first and second order sensitivities to have already
+#'     been loaded into \code{model}
 #' @return Sensitivity
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxSens <- function(model, vars, vars2) {
+.rxSens <- function(model, vars, vars2, vars3) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
-    if (!missing(vars2)) {
+    if (!missing(vars3)) {
+      .grd <- rxode2::rxExpandSens3_(.state, vars, vars2, vars3)
+    } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
@@ -132,10 +137,12 @@ rxExpandGrid <- function(x, y, type = 0L) {
       rxTick()
       return(.ret)
     })
-    if (missing(vars2)) {
-      assign("..sens", .ret, envir = model)
-    } else {
+    if (!missing(vars3)) {
+      assign("..sens3", .ret, envir = model)
+    } else if (!missing(vars2)) {
       assign("..sens2", .ret, envir = model)
+    } else {
+      assign("..sens", .ret, envir = model)
     }
     rxProgressStop()
   } else {
