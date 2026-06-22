@@ -1357,6 +1357,26 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(paste0(as.character(x[[1]]), "()"))
 }
 
+.rxToSEDelay <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  # delay(state, T) is the value of `state` at the past time t - T.  It does not
+  # depend on the current state values, so for symbolic differentiation (the
+  # Jacobian used by stiff solvers such as ros4) it is an opaque constant: its
+  # derivative with respect to any state is zero.  Represent it as a unique
+  # symengine symbol so differentiation drops the delay terms.
+  if (length(x) != 3L) {
+    stop("'delay' takes 2 arguments 'delay(state, T)'", call. = FALSE)
+  }
+  .sym <- paste0("rx_delay_",
+                 gsub("[^a-zA-Z0-9]+", "_", deparse1(x[[2]])), "_",
+                 gsub("[^a-zA-Z0-9]+", "_", deparse1(x[[3]])))
+  if (isEnv && is.environment(envir)) {
+    if (!exists(.sym, envir = envir)) {
+      assign(.sym, symengine::Symbol(.sym), envir = envir)
+    }
+  }
+  .sym
+}
+
 .rxToSEPsigamma <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x == 3)) {
     if (isEnv) {
@@ -1792,6 +1812,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`lag`)) ||
                identical(x[[1]], quote(`lead`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`delay`))) {
+    return(.rxToSEDelay(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd0`))) {

@@ -2389,6 +2389,29 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       object <- rxode2(.mexpCode)
     }
   }
+  # Delay differential equations (models using delay()) require a dense ODE
+  # solver so delay() can interpolate past states.  When delays are present,
+  # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense
+  # output; a non-dense method requested explicitly is an error.
+  if (isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)) {
+    # Dense history for delay() is recorded only on the dop853 dense path, so
+    # delay models need a dop853 primary (optionally with the ros4 stiff
+    # secondary, i.e. the "dop853+ros4" composite).
+    .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
+    if (.ctl$method == 2L) {
+      # liblsoda is the overall default; switch DDE models to dop853 + ros4
+      .ctl$method <- 0L
+      .ctl$stiff2 <- 13L
+      .ctl$dense <- TRUE
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+    } else if (.ctl$method != 0L || (.stiff2 != 0L && .stiff2 != 13L)) {
+      stop("delay differential equations require a dense dop853 solver; use method='dop853+ros4' (the default for delay models) or method='dop853'",
+           call. = FALSE)
+    } else if (!isTRUE(.ctl$dense)) {
+      .ctl$dense <- TRUE
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+    }
+  }
   if (rxIsImplicit(.ctl$method) ||
       (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2))) {
     .mvCur <- rxModelVars(object)
