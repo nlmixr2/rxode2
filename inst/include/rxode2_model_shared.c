@@ -372,18 +372,37 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
 }
 
 // delay(state, T): value of ODE state `i` at time (t - T), used for delay
-// differential equations (Monolix delay() semantics).  When the requested
-// lagged time precedes the start of integration the constant initial-history
-// value is returned.  Dense interpolation from the per-subject solver history
-// is filled in by the DDE solver; until history is available this falls back
-// to the state's initial condition (a constant history function).
+// differential equations (Monolix delay() semantics).  Before the start of
+// integration the constant initial-condition history is returned.  Otherwise
+// the value is interpolated from the per-subject dense history recorded by the
+// solver, using the same 8th-order Dormand-Prince interpolant as dop853's
+// contd8(), so delayed states are obtained to the full accuracy of the solve.
 double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double tDelay = t - T;
-  // TODO(dde): interpolate state i at tDelay from the per-subject dense
-  // history buffer when tDelay is within the integrated window.
-  (void) _ind;
-  (void) tDelay;
-  return _solveData->op->inits[i];
+  double td = t - T;
+  if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
+    return _solveData->op->inits[i];   // constant initial history before t0
+  }
+  int n = _ind->delayHistNeq;
+  int stride = _ind->delayHistStride;
+  double *hist = _ind->delayHist;
+  // Records are sorted by increasing step start time (xold) and cover
+  // contiguous intervals [xold, xold+h].  Find the largest xold <= td; that
+  // record's dense polynomial interpolates td (extrapolating slightly when td
+  // falls in the in-progress, not-yet-recorded step, i.e. a delay below the
+  // current step size).
+  int lo = 0, hi = _ind->delayHistN - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + 8 * n] <= td) lo = mid; else hi = mid - 1;
+  }
+  double *rec = hist + (size_t) lo * stride;
+  double xold = rec[8 * n];
+  double h    = rec[8 * n + 1];
+  double s  = (td - xold) / h;
+  double s1 = 1.0 - s;
+  return rec[0 * n + i] + s * (rec[1 * n + i] + s1 * (rec[2 * n + i] +
+         s * (rec[3 * n + i] + s1 * (rec[4 * n + i] + s * (rec[5 * n + i] +
+         s1 * (rec[6 * n + i] + s * rec[7 * n + i]))))));
 }
 
 void _assignFuns0(void) {

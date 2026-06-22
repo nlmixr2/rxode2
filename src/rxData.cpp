@@ -5344,6 +5344,7 @@ static inline void iniRx(rx_solve* rx) {
   op->neq = 0;
   op->stiff = 0;
   op->useDense = 0;
+  op->hasDelay = 0;
   op->ncov = 0;
   op->stiff2 = 0;
   op->autoSwitchMaxStiff    = 10;
@@ -5722,6 +5723,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
+    op->hasDelay = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasDelay];
     op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
     op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
     if (op->stiff2 > 0) {

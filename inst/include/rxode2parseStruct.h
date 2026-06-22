@@ -124,6 +124,7 @@ typedef struct {
   int linOffset;
   int ssSolved;
   int useDense;
+  int hasDelay; /* model uses delay() -- record dense history for DDE lookups */
   int indOwnAlloc;
   int cvodeLinSolver;
   int    stiff2;                /* secondary method code (stiff); 0 = no autoswitch */
@@ -315,6 +316,17 @@ struct rx_solving_options_ind_s {
   int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */
   double autoHcur;               /* current suggested step size for autoswitch (tracks dtfac scaling) */
   int    autoLastSwitchIntervals; /* intervals elapsed since last permanent method switch */
+  // Delay differential equation (DDE) dense history.  Each record stores the
+  // dop853 dense-output coefficients for one accepted step so that delay()
+  // can interpolate any past state.  Layout per record (stride doubles):
+  //   rcont1[0..neq-1], rcont2[..], ..., rcont8[..], xold, h
+  double *delayHist;       /* flat ring/grow buffer, or NULL when unused */
+  int     delayHistN;      /* number of step records currently stored */
+  int     delayHistCap;    /* capacity in records */
+  int     delayHistStride; /* doubles per record = 8*neq + 2 */
+  int     delayHistNeq;    /* neq used when building records */
+  int     delayHistOn;     /* 1 while recording is active for this subject */
+  double  delayT0;         /* initial time; history before this is the IC */
   rx_fn_pointers *fns;
   rx_solving_options *op;
   rx_solve *rx;

@@ -5479,6 +5479,42 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
+// --- Delay differential equation (DDE) dense history -------------------------
+// Record the dop853 dense-output coefficients for one accepted step so that
+// delay(state, T) lookups can later interpolate any earlier state to the full
+// accuracy of the integrator (the approach used by Hairer's RETARD method and
+// the 'dde' package).  Each record stores rcont1..8 for every component plus
+// the step's xold and h; records accumulate in increasing time order.
+static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
+                            double xold, double h, dop853_ctx_t *ctx) {
+  int stride = 8 * n + 2;
+  if (ind->delayHistStride != stride || ind->delayHistNeq != n) {
+    ind->delayHistN = 0;                 // layout changed: start a fresh buffer
+    ind->delayHistStride = stride;
+    ind->delayHistNeq = n;
+  }
+  if (ind->delayHistN >= ind->delayHistCap) {
+    int newCap = ind->delayHistCap > 0 ? ind->delayHistCap * 2 : 256;
+    double *np = (double*) realloc(ind->delayHist,
+                                   (size_t) newCap * stride * sizeof(double));
+    if (np == NULL) return;  // out of memory: stop growing; lookups extrapolate
+    ind->delayHist = np;
+    ind->delayHistCap = newCap;
+  }
+  double *rec = ind->delayHist + (size_t) ind->delayHistN * stride;
+  memcpy(rec + 0 * n, ctx->rcont1, n * sizeof(double));
+  memcpy(rec + 1 * n, ctx->rcont2, n * sizeof(double));
+  memcpy(rec + 2 * n, ctx->rcont3, n * sizeof(double));
+  memcpy(rec + 3 * n, ctx->rcont4, n * sizeof(double));
+  memcpy(rec + 4 * n, ctx->rcont5, n * sizeof(double));
+  memcpy(rec + 5 * n, ctx->rcont6, n * sizeof(double));
+  memcpy(rec + 6 * n, ctx->rcont7, n * sizeof(double));
+  memcpy(rec + 7 * n, ctx->rcont8, n * sizeof(double));
+  rec[8 * n]     = xold;
+  rec[8 * n + 1] = h;
+  ind->delayHistN++;
+}
+
 // Dense-output context passed as userdata to dopDenseSolout
 struct DopDenseCtx {
   rx_solving_options_ind *ind;
@@ -5497,6 +5533,13 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   int solveid = dc->neq[1];
   int n = nptr[0];
   double eps = 1e-8;
+
+  // For delay differential equations, record this accepted step's dense
+  // coefficients so delay() lookups can interpolate it later.  The very first
+  // solout call (xold == x) carries no dense coefficients yet, so skip it.
+  if (ind->delayHistOn && x != xold) {
+    rxDelayHistPush(ind, n, ctx->xold, ctx->hout, ctx);
+  }
 
   while (dc->obs_next <= dc->segment_end) {
     int    idx   = dc->obs_next;
@@ -5563,6 +5606,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   rc = ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
+
+  // Delay differential equation history: start recording dense steps for this
+  // subject when the model uses delay().  The history before x[0] is the
+  // constant initial condition (handled in _rxDelay).
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = x[0];
 
   // Track the last key event index so we know where each segment starts.
   // -1 means we haven't seen any key event yet; segment scans start at 0.
@@ -5752,6 +5802,16 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     last_key_i = i;
     ind->solvedIdx = i;
   }
+  // Release this subject's delay history (only needed during its own solve).
+  if (ind->delayHist != NULL) {
+    free(ind->delayHist);
+    ind->delayHist = NULL;
+    ind->delayHistCap = 0;
+    ind->delayHistStride = 0;
+    ind->delayHistNeq = 0;
+  }
+  ind->delayHistN = 0;
+  ind->delayHistOn = 0;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
