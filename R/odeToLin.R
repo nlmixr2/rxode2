@@ -342,6 +342,34 @@
   e
 }
 
+## Names of model-defined variables whose value transitively depends on a
+## compartment state -- e.g. the central concentration `Cc <- central / vc`,
+## or anything built from it.  A term in an ODE RHS that references one of
+## these is state-dependent even when it names no state directly, so it must
+## block linCmt() conversion (see `.odeToLinDetect`).  Lines defining the ODEs
+## themselves are excluded; only assignments to a plain name are tracked.
+.odeToLinStateDerivedVars <- function(lstExpr, states, odeIdx) {
+  .tainted <- character(0)
+  repeat {
+    .added <- FALSE
+    for (.i in seq_along(lstExpr)) {
+      if (.i %in% odeIdx) next
+      .e <- lstExpr[[.i]]
+      if (!is.call(.e)) next
+      if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
+      if (length(.e) < 3L || !is.name(.e[[2]])) next
+      .lhs <- as.character(.e[[2]])
+      if (.lhs %in% .tainted) next
+      if (any(all.vars(.e[[3]]) %in% c(states, .tainted))) {
+        .tainted <- c(.tainted, .lhs)
+        .added <- TRUE
+      }
+    }
+    if (!.added) break
+  }
+  unique(.tainted)
+}
+
 ## Attempt to detect whether ui is a linear compartment ODE model.
 ## Returns a list with topology + output info, or NULL if not convertible.
 .odeToLinDetect <- function(ui) {
@@ -374,6 +402,26 @@
     list(cmt = .cmtNames[.j], terms = .terms)
   })
   if (any(vapply(.odes, is.null, logical(1)))) return(NULL)
+
+  ## Bail when an ODE RHS depends on a compartment state *indirectly* through a
+  ## state-derived value.  The linearity check above only inspects direct state
+  ## references, so a Michaelis-Menten elimination written via the central
+  ## concentration -- `Cc <- central / vc` then
+  ## `... - vmax * Cc * vc / (km + Cc)` -- looks state-free (a constant forcing
+  ## term) and slips through even though it is genuinely nonlinear in `central`.
+  ## Auto-linearizing such a model silently drops the nonlinear term and demotes
+  ## the coupled rate constants to required input parameters, so rxSolve aborts
+  ## with "parameter(s) are required for solving: <par>".  Keep the explicit
+  ## ODE states for these models.
+  .stateDerived <- .odeToLinStateDerivedVars(.lstExpr, .states, .odeIdx)
+  if (length(.stateDerived) > 0L &&
+        any(vapply(.odes, function(.o) {
+          any(vapply(.o$terms,
+                     function(.t) any(all.vars(.t$coef) %in% .stateDerived),
+                     logical(1)))
+        }, logical(1)))) {
+    return(NULL)
+  }
 
   ## Find output line: var <- centralCmt / vExpr
   .out <- .odeToLinFindOutput(.lstExpr, .states)

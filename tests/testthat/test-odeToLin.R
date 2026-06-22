@@ -159,6 +159,47 @@ rxTest({
     expect_null(rxode2:::.odeToLinDetect(.m))
   })
 
+  ## A genuinely nonlinear model whose nonlinearity is hidden behind a
+  ## state-derived observable must NOT auto-linearize.  Here Michaelis-Menten
+  ## elimination is written through the central concentration
+  ## `Cc <- central / vc` -- `... - vmax * Cc * vc / (km + Cc)` -- so the
+  ## linearity scan (which looks only for *direct* state references) saw no
+  ## state and treated the term as a constant forcing input.  useLinCmt=TRUE
+  ## (the default) then folded the 2-cmt system into linCmt(), dropped the MM
+  ## term, and demoted k12/k21 to required inputs, so rxSolve aborted with
+  ## "parameter(s) are required for solving: k21, k12".
+  .mmObs <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lka <- -0.5; lcl <- -2; lvc <- 2; lvp <- 1.5; lq <- -1.6
+            lvmax <- 1; lkm <- 0.2; addSd <- 0.02 })
+      model({
+        ka <- exp(lka); cl <- exp(lcl); vc <- exp(lvc); vp <- exp(lvp); q <- exp(lq)
+        vmax <- exp(lvmax); km <- exp(lkm)
+        Cc <- central / vc
+        kel <- cl / vc; k12 <- q / vc; k21 <- q / vp
+        d/dt(depot)       <- -ka * depot
+        d/dt(central)     <-  ka * depot - kel * central - k12 * central +
+          k21 * peripheral1 - vmax * Cc * vc / (km + Cc)
+        d/dt(peripheral1) <-  k12 * central - k21 * peripheral1
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  test_that("odeToLin returns NULL for MM elimination written via the central observable", {
+    expect_null(rxode2:::.odeToLinDetect(.mmObs()))
+  })
+
+  test_that("default rxSolve keeps the explicit ODE states for an MM-via-observable model", {
+    .m  <- .mmObs()
+    .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 4), cmt = "Cc")
+    .rDef <- suppressMessages(rxSolve(.m, .ev))                  # default useLinCmt=TRUE
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    # the coupled peripheral state survives and the nonlinear (MM) solve agrees
+    expect_true("peripheral1" %in% names(.rDef))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-6)
+  })
+
   ## -----------------------------------------------------------------------
   ## Correctness: converted model matches ODE (tight tolerances)
   ## -----------------------------------------------------------------------

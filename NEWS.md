@@ -37,6 +37,18 @@
   own estimated `~` endpoint (which collides with linCmt()'s internal
   compartment).
 
+- Fixed the automatic `linCmt()` conversion incorrectly firing on a
+  genuinely nonlinear model when the nonlinearity is written through a
+  state-derived observable instead of the state itself -- e.g.
+  Michaelis-Menten elimination `Cc <- central / vc` then
+  `... - vmax * Cc * vc / (km + Cc)`.  The linearity scan only inspected
+  *direct* state references, so the MM term looked like a constant and
+  the model was linearized, silently dropping the nonlinear term and
+  demoting the inter-compartmental rate constants (`k12`, `k21`) to
+  required input parameters.  The default solve then aborted with
+  `The following parameter(s) are required for solving: k21, k12`.
+  Such models now keep their explicit ODE states.
+
 - Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
   now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
   referencing the linear compartment names (`depot`, `central`)
