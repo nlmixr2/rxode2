@@ -607,6 +607,16 @@ rxMemoryEstimate <- function(
   .ret
 }
 
+.rxOomChunkSize <- function(model, summary, control, safetyFactor = 0.80) {
+  .est <- rxMemoryEstimate(summary, model = model, control = control)
+  if (is.na(.est$freeRamBytes) || .est$freeRamBytes <= 0 || .est$effectiveSubs <= 0) {
+    return(1L)
+  }
+  .memPerSub <- as.numeric(.est$total) / max(1L, .est$effectiveSubs)
+  .avail <- .est$freeRamBytes * safetyFactor
+  max(1L, as.integer(floor(.avail / .memPerSub)))
+}
+
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
   .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")

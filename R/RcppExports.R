@@ -231,6 +231,10 @@ rxEtTransAsDataFrame_ <- function(inData1) {
     .Call(`_rxode2_rxEtTransAsDataFrame_`, inData1)
 }
 
+etTransSingle <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, iCov = NULL, keep = character(0)) {
+    .Call(`_rxode2_etTransSingle`, inData, obj, addCmt, dropUnits, iCov, keep)
+}
+
 #' Expand grid internal function
 #'
 #' @param c1 character vector of items to be expanded

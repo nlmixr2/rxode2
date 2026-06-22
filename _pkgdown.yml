@@ -31,6 +31,7 @@ reference:
   - etRep
   - etSeq
   - eventTable
+  - rxEventTableFile
   - splitBolus
   - toTrialDuration
 - title: Model based addition of events
@@ -49,7 +50,9 @@ reference:
   desc: Solve ODEs and simulate populations.
   contents:
   - rxSolve
+  - rxSolveChunked
   - rxCbindStudyIndividual
+  - as_arrow_dataset
 - title: Model UI & Piping
   desc: Work with rxUi model objects, piping, and model modification.
   contents:

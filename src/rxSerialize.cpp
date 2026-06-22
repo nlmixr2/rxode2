@@ -570,8 +570,13 @@ static void sReadVLines(MemReader *f, vLines *vl, const char *what) {
   uint32_t n = sReadU32(f, what);
   for (uint32_t i = 0; i < n; i++) {
     uint32_t len = sReadU32(f, what);
+    if (len == 0) {
+      addLine(vl, "%s", "");
+      continue;
+    }
     char *buf = (char *)R_alloc(len, 1);
     sRead(f, buf, len, what);
+    buf[len - 1] = '\0';
     addLine(vl, "%s", buf);
   }
   if (n > 0) {

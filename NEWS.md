@@ -1,5 +1,9 @@
 # rxode2 5.1.3
 
+- Defensive `drop = FALSE` on omega/covariance matrix subsetting
+  (`rxsolve()`, `ini()` piping) so a single-random-effect (1x1) omega
+  is not silently collapsed to a scalar.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
@@ -8,6 +12,17 @@
   only in the `ini()` block.  If a converted model cannot be compiled
   the original ODE model is used instead, so the conversion never
   breaks an otherwise-valid solve.
+
+- The automatic `linCmt()` conversion no longer linearizes a central
+  sub-system that is coupled to an additional `d/dt()` state which is
+  referenced elsewhere in the model (for example a peripheral or
+  metabolite observable such as `Cp <- periph / vp`, or a second
+  endpoint keyed to that state).  Because `linCmt()` exposes only the
+  central concentration, folding such states away dropped the coupled
+  state and demoted it to a required input parameter, so the default
+  solve aborted with "parameter(s) are required for solving:
+  &lt;state&gt;".  These models now keep their explicit ODE states under
+  the default solve.
 
 - Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
   now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
@@ -41,6 +56,9 @@
 
 - Bug fix for `mix()` models as well as `iCov` models.
 
+- Single core thread for etTrans and rxSolve to speed up solving
+  without OpenMP
+
 - Fixed an out-of-bounds heap read in `rxSolve()` parameter setup
   (`rxSolve_normalizeParms`, `src/rxData.cpp`).  When subjects share a
   single event table, the table is stored once but the per-replicate
@@ -64,7 +82,7 @@
   dosed into multiple compartments (see
   `tests/testthat/test-syncidx-dose-index-oob.R`).
 
-- Fixed three further out-of-bounds memory accesses found alongside it
+- Fixed four further out-of-bounds memory accesses found alongside it
   (memory-safety hardening; none changes results):
 
     - `cvPost()` / `rcvC1`: the single-variance (1x1 `omega`) branch
@@ -185,6 +203,8 @@
 
 - Add `serializeFile` as an option to save the rxode2 C fitting data and
   then restore as needed.
+
+- Add out of memory solve capabilities
 
 # rxode2 5.0.2
 
@@ -386,6 +406,11 @@
 - Bug fix for parameters that are in both input (`$params`) and output
   (`$lhs`) that respects the order of the `$lhs` declaration (Fixes
   #876)
+  
+- `if()` blocks may be removed by model piping (#878)
+
+- Model piping now removes endpoint and assignments using `NULL` assignment. For
+  example, `fit |> model(a ~ NULL)` and `fit |> model(a <- NULL)` now work.
 
 - Add `rxFixRes` to literally fix the residual estimates in a model (#889)
 

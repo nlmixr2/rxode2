@@ -949,6 +949,26 @@
 #'   use the value of `rxode2.useLinCmt` option (which when specified
 #'   is `TRUE` by default).
 #'
+#' @param file Character string giving a file path prefix for out-of-memory
+#'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
+#'   each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
+#'   `arrow` is unavailable), and returns an `rxSolveOom` object. The manifest
+#'   is saved to `<file>_manifest.rds`. Set to `NULL` (default) to use the
+#'   normal in-memory path.
+#'
+#' @param chunkSize Integer; number of subjects per chunk when `file` is
+#'   set. If `NULL` (default), the chunk size is auto-computed from available
+#'   free RAM using `rxMemoryEstimate()`.
+#'
+#' @param parallel Integer; number of `mirai` daemons to use for parallel
+#'   chunk solving when `file` is set. `0L` (default) uses serial solving.
+#'   Requires the `mirai` package.
+#'
+#' @param single Logical; when `TRUE` use a single-threaded, zero-copy
+#'   solve path that avoids duplicating the event table and solved-data
+#'   matrix. This can lower peak memory use and per-solve overhead for
+#'   single-core solves at the cost of parallelism. Defaults to `FALSE`.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -1103,6 +1123,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     autoSwitchSwitchMax=5L,
                     stiff2=0L,
                     useLinCmt=getOption("rxode2.useLinCmt", TRUE),
+                    file=NULL,
+                    chunkSize=NULL,
+                    parallel=0L,
+                    single=FALSE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1469,6 +1493,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
+    checkmate::assertLogical(single, len=1, any.missing=FALSE)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
       warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
               call.=FALSE)
@@ -1564,7 +1589,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       } else {
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
       }
+      if (isTRUE(single)) {
+        stop("'single=TRUE' is incompatible with 'serializeFile'", call. = FALSE)
+      }
     }
+    if (!is.null(file))
+      checkmate::assertCharacter(file, len = 1, any.missing = FALSE)
+    if (!is.null(chunkSize))
+      checkmate::assertIntegerish(chunkSize, lower = 1, len = 1)
+    checkmate::assertIntegerish(parallel, lower = 0, len = 1)
+    parallel <- as.integer(parallel)
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1745,6 +1779,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       autoSwitchDtfac=as.double(autoSwitchDtfac),
       autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
       useLinCmt=isTRUE(useLinCmt),
+      file=file,
+      chunkSize=chunkSize,
+      parallel=parallel,
+      single=single,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -2012,7 +2050,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
     } else {
-      .omega <- .omega[.v, .v]
+      .omega <- .omega[.v, .v, drop = FALSE]
       if (all(dim(.omega) == c(0L, 0L))) {
         .rxControl$omega <- NULL
       } else {
@@ -2863,6 +2901,40 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     events
   }
+
+  if (!is.null(.ctl$file)) {
+    return(.rxSolveOom(object, params = params, events = events,
+                       inits = inits, .ctl = .ctl, .envir = envir))
+  }
+
+  if (is.null(.ctl$file) && !.serializeInput && .setupOnly == 0L) {
+    .nStud  <- if (is.null(.ctl$nStud)) 1 else as.numeric(.ctl$nStud)
+    .nSub   <- if (is.null(.ctl$nSub))  1 else as.numeric(.ctl$nSub)
+    .nrowEv <- as.numeric(NROW(.eventsForSolve))
+    # Out-of-memory chunking (file=) only makes sense for solves whose
+    # dimensions are valid (within INT_MAX). When the subject*study or output
+    # row counts overflow INT_MAX, the dedicated "too large" guards in the C
+    # solver give the correct diagnostic, so don't pre-empt them with a file=
+    # suggestion (chunking would not make an INT_MAX-overflowing solve fit).
+    .dimOverflow <- (.nSub * .nStud > .Machine$integer.max) ||
+      (.nStud * .nrowEv > .Machine$integer.max)
+    if (!.dimOverflow) {
+      .oomEst <- tryCatch(
+        rxMemoryEstimate(.eventsForSolve, model = object, control = .ctl),
+        error = function(e) NULL
+      )
+      if (!is.null(.oomEst) && !is.na(.oomEst$freeRamBytes) && .oomEst$freeRamBytes > 0) {
+        if (as.numeric(.oomEst$total) > .oomEst$freeRamBytes * 0.90) {
+          stop(sprintf(
+            "Solve requires %.1f GB but only %.1f GB appears free.\n",
+            as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
+            "Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.",
+            call. = FALSE)
+        }
+      }
+    }
+  }
+
   .replayFallbackParams <- params
   .replayFallbackEvents <- .eventsForSolve
   .replayFallbackInits <- inits
@@ -3966,6 +4038,12 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
   } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
     method <- .parseAutoSwitchMethod(method)
   } else {
+    # A multi-element character method is a set of choices (e.g. rxSolve()'s
+    # own default, or a downstream caller's stale 4-element default such as
+    # c("liblsoda","lsoda","dop853","indLin")); pick the first. match.arg()
+    # only tolerates a multi-element arg when it is byte-identical to this
+    # function's formal default, so reduce to length 1 first.
+    if (length(method) > 1L) method <- method[1L]
     method <- .methodIdx[match.arg(method)]
   }
   method

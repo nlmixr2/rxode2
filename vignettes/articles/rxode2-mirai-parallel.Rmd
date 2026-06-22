@@ -1,0 +1,222 @@
+---
+title: "Parallel rxode2 solving with mirai"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+> This vignette builds on
+> [Out-of-memory solving with rxode2](rxode2-oom-solve.html), which introduces
+> chunked solving in detail.  Read that vignette first if you are new to the
+> `file` / `chunkSize` arguments.
+
+## Two parallelism layers in rxode2
+
+rxode2 has two independent parallelism mechanisms:
+
+| Layer | Mechanism | Granularity | When active |
+|-------|-----------|-------------|-------------|
+| 1 | OpenMP threads | Subject-level, within one `rxSolve()` call | Always; controlled by `rxControl(cores=)` |
+| 2 | mirai daemons | Chunk-level, across separate processes | When `parallel > 0` |
+
+**Layer 1** is always on and works well for most use cases.  **Layer 2** adds
+process-level parallelism on top: each chunk is an independent `rxSolve()` call
+dispatched to a separate background process (daemon).
+
+## When mirai parallelism helps
+
+mirai chunk-level parallelism is most beneficial when:
+
+- Each chunk requires enough RAM that the solve is I/O-bound on a single core.
+- You have more physical cores than OpenMP threads per solve (e.g., a 48-core
+  machine solving 4-thread chunks gives 12 chunks in parallel).
+- You want to distribute chunks across compute nodes on a cluster or HPC.
+- You want true memory isolation between chunks so one chunk's peak usage does
+  not interfere with another.
+
+If your population fits comfortably in RAM and OpenMP is already saturating your
+cores, Layer 1 alone is usually sufficient.
+
+## Model and event table
+
+We reuse the same one-compartment oral PK model from the
+[OOM vignette](rxode2-oom-solve.html), defined with `ini()` and `model()`
+blocks.
+
+```{r model}
+pkModel <- function() {
+  ini({
+    tka      <- log(0.5);  label("Typical log Ka (1/h)")
+    tcl      <- log(4);    label("Typical log CL (L/h)")
+    tv       <- log(70);   label("Typical log V (L)")
+    eta.ka   ~ 0.09
+    eta.cl   ~ 0.04
+    prop.err <- 0.15
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp           <- center / v
+    cp ~ prop(prop.err)
+  })
+}
+
+ev <- et(amt = 100, ii = 24, until = 72) |>
+  et(seq(0, 72, by = 4)) |>
+  et(id = 1:10)
+```
+
+## Parallel chunked solving with `rxSolve()`
+
+Add `parallel = n` alongside `file` and (optionally) `chunkSize`.  rxode2
+calls `mirai::daemons(n)` internally, dispatches one chunk per daemon, and
+shuts the daemons down when done.
+
+```{r parallel-solve, eval = requireNamespace("mirai", quietly = TRUE)}
+res <- rxSolve(pkModel, ev,
+               file      = tempfile("rxPar"),
+               chunkSize = 3,
+               parallel  = 2)
+res
+```
+
+```{r parallel-df, eval = requireNamespace("mirai", quietly = TRUE)}
+head(as.data.frame(res))
+```
+
+`chunkSize = 3` gives four chunks of up to 3 subjects; `parallel = 2` means
+two daemons solve chunks concurrently (chunks 1 and 2 run together, then 3
+and 4).
+
+### Persistent daemons
+
+When you call `rxSolve()` with `parallel > 0`, rxode2 creates **and destroys**
+daemons around the solve.  If you run many consecutive chunked solves, spinning
+daemons up and down for each one adds overhead.  Instead, start them yourself
+before the first solve:
+
+```{r persistent-daemons, eval = requireNamespace("mirai", quietly = TRUE)}
+mirai::daemons(2)
+
+res1 <- rxSolve(pkModel, ev,
+                file      = tempfile("rxPar1"),
+                chunkSize = 3,
+                parallel  = 2)
+
+res2 <- rxSolve(pkModel, ev,
+                file      = tempfile("rxPar2"),
+                chunkSize = 3,
+                parallel  = 2)
+
+mirai::daemons(0)  # shut down when done
+```
+
+When daemons are already running rxode2 reuses them rather than creating new
+ones.
+
+## Custom mirai workflows
+
+Not every parallel use case fits the `file` pattern.  You can dispatch
+arbitrary `rxSolve()` calls across mirai daemons for independent scenarios such
+as sensitivity analyses or dose–response simulations.
+
+```{r custom-mirai, eval = requireNamespace("mirai", quietly = TRUE)}
+doses <- c(50, 100, 200)
+
+mirai::daemons(3)
+
+tasks <- lapply(doses, function(d) {
+  mirai::mirai(
+    {
+      library(rxode2)
+      ev_d <- et(amt = d, ii = 24, until = 72) |>
+        et(seq(0, 72, by = 4)) |>
+        et(id = 1:10)
+      as.data.frame(rxSolve(pkModel, ev_d))
+    },
+    pkModel = pkModel,
+    d       = d
+  )
+})
+
+results <- lapply(tasks, `[`)   # block until each task finishes (m[] collects)
+
+mirai::daemons(0)
+
+# Each element of results is a data frame for one dose level
+sapply(results, nrow)
+```
+
+This pattern is useful for:
+
+- **Sensitivity analysis** — vary one parameter at a time across daemons.
+- **Dose–response** — simulate many dose levels simultaneously.
+- **Bootstrap replicates** — each daemon processes an independent replicate
+  data set.
+
+## Reproducibility with seeds
+
+rxode2's OOM path uses its own internal seed engine (`rxSetSeed()` /
+`rxGetSeed()`), which is separate from R's `set.seed()`.  To make a chunked
+parallel solve reproducible, call `rxSetSeed()` **before** `rxSolve()`:
+
+```{r seeds, eval = requireNamespace("mirai", quietly = TRUE)}
+rxSetSeed(42)
+res_seed <- rxSolve(pkModel, ev,
+                    file      = tempfile("rxSeed"),
+                    chunkSize = 3,
+                    parallel  = 2)
+
+head(as.data.frame(res_seed)[, c("id", "time", "cp")])
+```
+
+When `parallel` is set, rxode2 pre-draws **all** subjects' etas in one pass
+before splitting into chunks.  This means the eta draws match those of an
+equivalent single-call `rxSolve()` at the same rxode2 seed — chunk boundaries
+do not affect the random-number sequence.
+
+For custom mirai workflows, seed each task independently:
+
+```r
+tasks <- lapply(seq_along(reps), function(i) {
+  mirai::mirai(
+    {
+      library(rxode2)
+      rxSetSeed(seed)
+      ev_i <- et(id = reps[[i]]) |> et(amt = 100, ii = 24, until = 72) |>
+        et(seq(0, 72, by = 4))
+      as.data.frame(rxSolve(pkModel, ev_i))
+    },
+    pkModel = pkModel, reps = reps, seed = base_seed + i, i = i
+  )
+})
+```
+
+## Performance tips
+
+| Guideline | Reasoning |
+|-----------|-----------|
+| Chunk size ≈ total_subjects / (2 × ndaemons) | Keeps daemons busy without under-utilising them |
+| Start with `parallel = 4` for 4-core machines | Match physical cores; OpenMP within each chunk uses 1 thread by default in daemon processes |
+| Avoid `chunkSize = 1` | Per-chunk mirai overhead outweighs any parallelism gain |
+| Profile before tuning | `system.time(rxSolve(...))` is the fastest way to find the sweet spot |
+
+For cluster / HPC use, see `mirai::daemons()` with the `url` and `remote`
+arguments; the rxode2 `parallel` path works unchanged with remote daemons.
+
+## Session information
+
+```{r session}
+sessionInfo()
+```

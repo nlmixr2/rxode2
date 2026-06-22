@@ -1,0 +1,310 @@
+---
+title: "Out-of-memory solving with rxode2"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+## Why chunked solving?
+
+Population pharmacokinetic/pharmacodynamic simulations can involve tens or
+hundreds of thousands of subjects.  Each subject requires solver workspace,
+output arrays, and covariate storage, so the combined memory footprint grows
+linearly with the number of subjects.  A 100,000-subject simulation with a
+two-compartment model and rich sampling can easily require 10–50 GB of RAM —
+more than many workstations or cloud instances provide.
+
+rxode2 addresses this by **chunked (out-of-memory) solving**: subjects are
+split into batches, each batch is solved independently, and the result of each
+batch is written to a temporary file (parquet or rds).  The final return value
+is a lightweight `rxSolveOom` object that reads chunks on demand rather than
+holding the entire dataset in RAM.
+
+> For running chunks in parallel across multiple CPU cores or compute nodes,
+> see the [Parallel rxode2 solving with mirai](rxode2-mirai-parallel.html)
+> vignette.
+
+## The model and event table
+
+Throughout this vignette we use a one-compartment oral PK model with between-
+subject variability on clearance and absorption rate.  Parameters are defined
+using `ini()` and `model()` blocks — the standard rxode2 UI approach.
+
+```{r model}
+pkModel <- function() {
+  ini({
+    tka      <- log(0.5);  label("Typical log Ka (1/h)")
+    tcl      <- log(4);    label("Typical log CL (L/h)")
+    tv       <- log(70);   label("Typical log V (L)")
+    eta.ka   ~ 0.09
+    eta.cl   ~ 0.04
+    prop.err <- 0.15
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp           <- center / v
+    cp ~ prop(prop.err)
+  })
+}
+```
+
+The event table includes 10 subjects.  With subject IDs in the event table,
+rxode2 draws one set of etas per subject from the `eta.ka ~ 0.09` and
+`eta.cl ~ 0.04` variances defined in `ini()`.
+
+```{r events}
+ev <- et(amt = 100, ii = 24, until = 72) |>
+  et(seq(0, 72, by = 4)) |>
+  et(id = 1:10)
+```
+
+## Estimating memory usage
+
+Before solving you can inspect the expected memory footprint with
+`rxMemoryEstimate()`.  Pass the event table (as a data frame) and the compiled
+model; the function calls the same allocator formulas used internally by
+`rxSolve()`.
+
+```{r mem-estimate}
+mod <- rxode2(pkModel)
+rxMemoryEstimate(as.data.frame(ev), model = mod)
+```
+
+The output lists every major allocation (ODE state buffers, event-time arrays,
+output data, etc.) as well as the fraction of total and free RAM the solve
+would consume.  The `freeRamBytes` line is the key guard: if `total` exceeds
+90 % of free RAM, rxode2 will refuse to proceed without `file`.
+
+## Automatic OOM detection
+
+When rxode2 detects that a solve would use more than 90 % of free RAM it stops
+immediately and prints a message pointing to the `file` argument:
+
+```r
+# This would error on a machine with insufficient RAM:
+rxSolve(pkModel, ev)
+#> Error: Solve requires 12.3 GB but only 6.1 GB appears free.
+#> Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.
+```
+
+## Chunked solving with `rxSolve()`
+
+Pass `file` to opt in to chunked solving.  rxode2 will:
+
+1. Auto-compute a chunk size from available free RAM (or use `chunkSize` if
+   you supply it).
+2. Pre-draw all subjects' etas in one pass to ensure reproducible results.
+3. Solve each chunk with a separate `rxSolve()` call.
+4. Write each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
+   the `arrow` package is unavailable).
+5. Save a manifest to `<file>_manifest.rds`.
+6. Return an `rxSolveOom` object.
+
+```{r oom-solve}
+res <- rxSolve(pkModel, ev,
+               file      = tempfile("rxChunk"),
+               chunkSize = 3)   # 3 subjects per chunk
+res
+```
+
+The print method reports how many chunks were created and the total row count.
+With `chunkSize = 3` and 10 subjects, rxode2 creates four chunks (3 + 3 + 3 + 1).
+
+## Accessing results
+
+### Materialise the full data frame
+
+```{r materialise}
+df <- as.data.frame(res)
+head(df)
+```
+
+This reads and `rbind`s every chunk file.  For very large results keep the
+`rxSolveOom` object in place and only materialise columns you actually need.
+
+### Lazy column access
+
+```{r lazy-col}
+cp_all <- res$cp
+length(cp_all)
+```
+
+`res$col` reads only the requested column from each chunk, avoiding loading
+columns you do not need.
+
+### Row and dimension queries
+
+```{r dims}
+nrow(res)
+dim(res)
+```
+
+## Faking low memory in demos and tests
+
+The easiest way to demonstrate or test the chunked path on a small dataset is
+to set `chunkSize` directly — no need to modify system RAM.  With
+`chunkSize = 2` on 10 subjects you get 5 chunks of 2 subjects each:
+
+```{r fake-oom}
+res_small <- rxSolve(pkModel, ev,
+                     file      = tempfile("rxDemo"),
+                     chunkSize = 2)
+res_small
+```
+
+In production code, omit `chunkSize` entirely and rxode2 auto-computes an
+appropriate chunk size from `rxMemoryEstimate()`.
+
+## File-backed event tables
+
+For datasets so large that even the event table does not fit in RAM, save it to
+a file first and wrap the path with `rxEventTableFile()`:
+
+```{r et-file, eval = requireNamespace("arrow", quietly = TRUE)}
+et_path <- tempfile(fileext = ".parquet")
+arrow::write_parquet(as.data.frame(ev), et_path)
+
+et_file <- rxEventTableFile(et_path, format = "parquet")
+
+res_file <- rxSolve(pkModel, et_file,
+                    file      = tempfile("rxFile"),
+                    chunkSize = 3)
+res_file
+```
+
+`rxEventTableFile()` also accepts `"csv"`, `"fst"`, and `"rds"` formats.
+
+## Persistent output files
+
+By default `file` points to a `tempfile()` prefix, so the chunk files and
+manifest are cleaned up when R's garbage collection removes the temp directory.
+To keep results across sessions, point `file` at a directory in your project:
+
+```r
+res_persist <- rxSolve(pkModel, ev,
+                       file      = "output/my_sim",
+                       chunkSize = 5000)
+```
+
+Files written will be `output/my_sim_chunk_00001.parquet`, ...,
+`output/my_sim_manifest.rds`.  Reload the manifest later:
+
+```r
+manifest <- readRDS("output/my_sim_manifest.rds")
+```
+
+## Working with Arrow datasets
+
+The combination of chunked solving and Arrow datasets means rxode2 can handle
+populations that are **too large to fit in memory at any stage** — not just
+during the solve, but also when post-processing the results.  Chunk files stay
+on disk; Arrow reads only what your query needs.
+
+When the `arrow` package is installed (which it must be for parquet chunk
+files), rxode2 exposes two Arrow-native accessors on the `rxSolveOom` object.
+
+### Lazy Arrow Dataset — querying without loading everything
+
+`arrow::as_arrow_dataset()` opens all chunk files as a single lazy
+`arrow::Dataset`.  No rows are read from disk until you explicitly collect
+them.  You can push filters, column selections, and aggregations down to the
+Arrow engine so that only the result — not the full dataset — is brought into R
+memory:
+
+```{r arrow-dataset, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
+ds <- arrow::as_arrow_dataset(res)
+ds
+```
+
+Because `ds` is lazy you can chain dplyr verbs and only call `dplyr::collect()`
+at the end to materialise the (small) result:
+
+```{r arrow-dplyr, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
+# Compute the peak concentration per subject without loading all rows
+pk_summary <- ds |>
+  dplyr::group_by(id) |>
+  dplyr::summarise(cmax = max(cp, na.rm = TRUE),
+                   tmax = time[which.max(cp)]) |>
+  dplyr::collect()
+
+pk_summary
+```
+
+This is the key advantage over materialising with `as.data.frame()`: for a
+100,000-subject simulation that would require 40 GB of RAM as an R data frame,
+the summary above reads each chunk sequentially and returns only one row per
+subject — a result that fits easily in memory even when the full dataset does
+not.
+
+Other useful patterns:
+
+```{r arrow-dplyr2, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
+# Keep only observations after the first dose interval
+late_obs <- ds |>
+  dplyr::filter(time > 24) |>
+  dplyr::select(id, time, cp) |>
+  dplyr::collect()
+
+head(late_obs)
+```
+
+### In-memory Arrow Table
+
+`arrow::as_arrow_table()` reads and concatenates all chunk files into a single
+`arrow::Table` in columnar memory.  Use this when the full result fits in RAM
+but you want the speed of Arrow columnar operations rather than R's row-oriented
+`rbind()`:
+
+```{r arrow-table, eval = requireNamespace("arrow", quietly = TRUE)}
+tbl <- arrow::as_arrow_table(res)
+tbl
+```
+
+### Materialisation via Arrow
+
+When arrow is available, `as.data.frame()`, `tibble::as_tibble()`, and
+`data.table::as.data.table()` all route through `as_arrow_table()` internally,
+so they benefit from Arrow's concatenation speed rather than R's `rbind()`:
+
+```{r arrow-materialise, eval = requireNamespace("arrow", quietly = TRUE)}
+df  <- as.data.frame(res)       # Arrow path when arrow installed
+```
+
+```{r arrow-tibble, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("tibble", quietly = TRUE)}
+tib <- tibble::as_tibble(res)   # also Arrow-backed
+```
+
+## Parallel chunk solving
+
+Each chunk is independent and can be solved on a separate CPU or compute node
+using the `mirai` package.  Pass `parallel` to control the number of worker
+processes:
+
+```r
+res_par <- rxSolve(pkModel, ev,
+                   file      = tempfile("rxPar"),
+                   chunkSize = 3,
+                   parallel  = 2)
+```
+
+See the [Parallel rxode2 solving with mirai](rxode2-mirai-parallel.html)
+vignette for a full walkthrough of daemon setup, performance tuning, and
+custom parallel workflows.
+
+## Session information
+
+```{r session}
+sessionInfo()
+```
