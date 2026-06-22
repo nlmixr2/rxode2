@@ -10,7 +10,7 @@ rxTest({
   m <- "d/dt(depot)  = -ka*depot\nd/dt(center) = ka*depot - (cl/v)*center"
   model <- rxode2::rxS(rxode2::rxGetModel(m), TRUE, promoteLinSens = FALSE)
   vars  <- c("ka", "cl", "v")
-  st    <- rxode2:::rxStateOde(model)
+  st    <- rxode2::rxStateOde(model)
 
   invisible(rxode2::.rxJacobian(model, c(st, vars)))
   s1 <- rxode2::.rxSens(model, vars)              # first order
