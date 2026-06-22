@@ -127,6 +127,7 @@ lhs symbols?
   int isMexp;
   int hasDdt;
   int hasIndLinProp;
+  int hasDelay; // Has delay() function (delay differential equation)
 } symtab;
 
 extern symtab tb;

@@ -463,6 +463,7 @@ void reset(void) {
   tb.isMexp     = 0;
   tb.hasDdt     = 0;
   tb.hasIndLinProp = 0;
+  tb.hasDelay   = 0;
   tb.strCmpCurCov = NULL;
   tb.strCmpCurStr = NULL;
   tb.strCmpCurType = -1;

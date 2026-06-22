@@ -197,6 +197,8 @@ typedef struct transFunctions {
   int isTfirst0;
 
   int isInd;
+
+  int isDelay;
   nodeInfo ni;
   char *name;
   int *i;
@@ -246,6 +248,8 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isTfirst0 = 0;
 
   tf->isInd=0;
+
+  tf->isDelay=0;
 }
 
 transFunctions _tf;
@@ -355,6 +359,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
 
 static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
   return handleFunctionDosenum(tf) ||
+    handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
     handleFunctionSum(tf) ||
     handleFunctionLogit(tf) ||

@@ -371,6 +371,21 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
+// delay(state, T): value of ODE state `i` at time (t - T), used for delay
+// differential equations (Monolix delay() semantics).  When the requested
+// lagged time precedes the start of integration the constant initial-history
+// value is returned.  Dense interpolation from the per-subject solver history
+// is filled in by the DDE solver; until history is available this falls back
+// to the state's initial condition (a constant history function).
+double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
+  double tDelay = t - T;
+  // TODO(dde): interpolate state i at tDelay from the per-subject dense
+  // history buffer when tDelay is within the integrated window.
+  (void) _ind;
+  (void) tDelay;
+  return _solveData->op->inits[i];
+}
+
 void _assignFuns0(void) {
   _evalUdf = (_udf_type) R_GetCCallable("rxode2", "_rxode2_evalUdf");
   _getRxSolve_ = (_getRxSolve_t) R_GetCCallable("rxode2","getRxSolve_");
