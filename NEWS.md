@@ -6,12 +6,14 @@
   Delayed states are interpolated from the solver's dense output
   (using the 8th-order Dormand-Prince interpolant), so they are
   obtained to the full accuracy of the integration.  Models that use
-  `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`;
-  stiff delay models can instead be solved with `method = "ros4"`, whose
-  dense Rosenbrock output is recorded and interpolated for `delay()` as
-  well.  The step size is automatically capped to the smallest delay so
-  short delays stay accurate.  Non-dense solvers are rejected with an
-  informative error.  The DDE dense-output and
+  `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`,
+  which now switches between dop853 and ros4 per segment in dense mode,
+  so a delay model that is non-stiff early and stiff later is solved
+  efficiently in a single pass (the dop853 and ros4 dense histories are
+  recorded together).  Stiff delay models can also be solved with
+  `method = "ros4"` directly.  The step size is automatically capped to
+  the smallest delay so short delays stay accurate.  Non-dense solvers
+  are rejected with an informative error.  The DDE dense-output and
   history machinery is adapted from the 'dde' package (Rich FitzJohn,
   Wes Hinsley, Imperial College of Science, Technology and Medicine),
   whose authors are added as contributors.

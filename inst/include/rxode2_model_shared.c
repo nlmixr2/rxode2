@@ -393,18 +393,20 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
   // record's dense polynomial interpolates td (extrapolating slightly when td
   // falls in the in-progress, not-yet-recorded step, i.e. a delay below the
   // current step size).
-  // t_old and h are stored in the last two slots of every record, regardless
-  // of solver (dop853 or ros4), so the bracketing search is uniform.
+  // t_old, h and the per-record solver type are stored in the last three slots
+  // of every record, regardless of solver, so the bracketing search and the
+  // interpolation dispatch are uniform even when a solve mixes dop853 and ros4
+  // steps (the dense AutoSwitch composite).
   int lo = 0, hi = _ind->delayHistN - 1;
   while (lo < hi) {
     int mid = (lo + hi + 1) / 2;
-    if (hist[(size_t) mid * stride + (stride - 2)] <= td) lo = mid; else hi = mid - 1;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
   }
   double *rec = hist + (size_t) lo * stride;
-  double xold = rec[stride - 2];
-  double h    = rec[stride - 1];
+  double xold = rec[stride - 3];
+  double h    = rec[stride - 2];
   double s  = (td - xold) / h;
-  if (_ind->delayHistType == 1) {
+  if (rec[stride - 1] == 1.0) {
     // ros4 dense output is a cubic; reconstruct it from the four samples
     // stored at s = 0, 1/3, 2/3, 1 via Lagrange interpolation.
     double L0 = -4.5 * (s - 1.0/3.0) * (s - 2.0/3.0) * (s - 1.0);

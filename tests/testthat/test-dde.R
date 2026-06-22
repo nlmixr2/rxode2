@@ -90,6 +90,37 @@ rxTest({
     expect_equal(.s$y, 2 - 2 * .s$time, tolerance = 1e-6)
   })
 
+  test_that("the dop853+ros4 composite switches to ros4 mid-solve for stiff DDEs", {
+    ## A very stiff delay model that pure dop853 cannot handle (too many steps).
+    .st <- rxode2({
+      y(0) <- 1
+      d/dt(y) <- -1e5 * (y - delay(y, 0.2)) - delay(y, 0.2)
+    })
+    .ev <- et(seq(0, 3, by = 0.5))
+    ## pure dop853 fails on this stiff problem ...
+    expect_error(rxSolve(.st, .ev, method = "dop853"))
+    ## ... but the composite default solves it by switching to ros4, matching
+    ## the pure ros4 solution.
+    .comp <- rxSolve(.st, .ev)
+    .ros  <- rxSolve(.st, .ev, method = "ros4")
+    expect_false(any(is.na(.comp$y)))
+    expect_equal(.comp$y, .ros$y, tolerance = 1e-4)
+
+    ## Mixed stiffness: non-stiff early (dop853), very stiff after t=1.5 (ros4).
+    ## The composite must switch mid-solve and mix dop853/ros4 dense history.
+    .mix <- rxode2({
+      kk <- 0.5 + 1e5 / (1 + exp(-(t - 1.5) * 40))
+      y(0) <- 1
+      d/dt(y) <- -kk * (y - delay(y, 0.2)) - delay(y, 0.2)
+    })
+    .evm <- et(seq(0, 3, by = 0.25))
+    expect_error(rxSolve(.mix, .evm, method = "dop853")) # dop853 alone fails
+    .cm <- rxSolve(.mix, .evm)                           # composite switches
+    .rm <- rxSolve(.mix, .evm, method = "ros4")
+    expect_false(any(is.na(.cm$y)))
+    expect_equal(.cm$y, .rm$y, tolerance = 1e-3)
+  })
+
   test_that("multi-subject DDE solves keep per-subject history isolated", {
     .tt <- seq(0, 2, by = 0.25)
     .ev <- et(.tt)

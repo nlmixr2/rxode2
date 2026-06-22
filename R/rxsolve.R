@@ -2417,13 +2417,15 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
            call. = FALSE)
     }
   }
-  if ((!.hasDelay || .ctl$method != 0L) &&
+  .ddeNoJac <- .hasDelay && .ctl$method == 0L &&
+    (is.null(.ctl$stiff2) || isTRUE(.ctl$stiff2 == 0L))
+  if (!.ddeNoJac &&
       (rxIsImplicit(.ctl$method) ||
        (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2)))) {
-    # A delay() model on the dop853 dense primary (method 0) does not use the
-    # stiff secondary's Jacobian, so Jacobian generation is skipped there.  The
-    # ros4 stiff path (method 13) is a Rosenbrock method and does need the
-    # Jacobian, which is generated normally (delay() differentiates to zero).
+    # A pure dop853 delay model (method 0, no stiff secondary) does not use a
+    # Jacobian, so generation is skipped there.  The ros4 stiff path and the
+    # dop853+ros4 dense composite (which switches to ros4 mid-solve) both need
+    # the Jacobian; it is generated normally (delay() differentiates to zero).
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {

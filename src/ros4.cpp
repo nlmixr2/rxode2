@@ -382,4 +382,75 @@ extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   *istate = 1;
 }
 
+// Solve one dense segment [xp, xout] with ros4, filling the observation slots
+// obs_first..obs_last by dense interpolation and recording each step into the
+// delay history.  Mirrors what the dop853 dense path does via dopDenseSolout,
+// so the dop853+ros4 composite can switch to ros4 for a stiff segment and keep
+// filling observations and history continuously.  Leaves yp = state at xout and
+// returns 1 on success, -4 on failure.
+int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                       int obs_first, int obs_last, int solveid) {
+  (void) rx;
+  int eff = rxEffNeq(ind, op);
+  int neqOde = eff - op->numLin - op->numLinSens;
+  if (neqOde <= 0) { return 1; }
+  double maxdt = 0.0;
+  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) maxdt = ind->delayMinT;
+
+  typedef boost::numeric::ublas::vector<double> state_type;
+  typedef boost::numeric::odeint::rosenbrock4<double> stepper_base_type;
+  typedef boost::numeric::odeint::rosenbrock4_controller<stepper_base_type> error_stepper_type;
+  typedef boost::numeric::odeint::rosenbrock4_dense_output<error_stepper_type> dense_stepper_type;
+  error_stepper_type stepper(ind->atol2[0], ind->rtol2[0], maxdt, stepper_base_type());
+  dense_stepper_type dense_stepper(stepper);
+  auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
+
+  state_type state(neqOde), q0(neqOde), q1(neqOde), q2(neqOde), q3(neqOde);
+  double dt = (ind->autoHcur > 0.0) ? ind->autoHcur : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
+  bool fwd = (xout >= xp);
+  if (!fwd) dt = -dt;
+  sys.first.xout_ = xout;
+  sys.first.sign_ = fwd ? 1 : -1;
+
+  int obs = obs_first;
+  try {
+    std::copy(yp, yp + neqOde, state.begin());
+    dense_stepper.initialize(state, xp, dt);
+    while ((fwd && dense_stepper.current_time() < xout) ||
+           (!fwd && dense_stepper.current_time() > xout)) {
+      dense_stepper.do_step(sys);
+      if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; return -4; }
+      double t_old = dense_stepper.previous_time();
+      double t_cur = dense_stepper.current_time();
+      double hh = t_cur - t_old;
+      if (ind->delayHistOn) {
+        dense_stepper.calc_state(t_old,                q0);
+        dense_stepper.calc_state(t_old + hh / 3.0,     q1);
+        dense_stepper.calc_state(t_old + 2.0*hh / 3.0, q2);
+        dense_stepper.calc_state(t_cur,                q3);
+        rxDelayHistPushSamples(ind, neqOde, t_old, hh, &q0[0], &q1[0], &q2[0], &q3[0]);
+      }
+      while (obs <= obs_last) {
+        int raw = ind->ix[obs];
+        double t_obs = ind->timeThread[raw];
+        if ((fwd && t_obs > t_cur + 1e-8) || (!fwd && t_obs < t_cur - 1e-8)) break;
+        if (!isObs(getEvid(ind, raw))) { obs++; continue; }
+        _growSolveIfNeeded(ind, op, obs, (obs + 1 != ind->n_all_times));
+        double *slot = getSolve(obs);
+        dense_stepper.calc_state(t_obs, state);
+        for (int j = 0; j < neqOde; j++) slot[j] = state[j];
+        calc_lhs(solveid, t_obs, slot, ind->lhs);
+        obs++;
+      }
+    }
+    dense_stepper.calc_state(xout, state);
+    std::copy(state.begin(), state.end(), yp);
+  } catch (const std::exception &e) {
+    if (ind->rc[0] == 0) ind->rc[0] = -2019;
+    return -4;
+  }
+  return 1;
+}
+
 #endif // IN_PAR_SOLVE

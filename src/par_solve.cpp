@@ -5480,30 +5480,44 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
 }
 
 // --- Delay differential equation (DDE) dense history -------------------------
-// Record the dop853 dense-output coefficients for one accepted step so that
-// delay(state, T) lookups can later interpolate any earlier state to the full
-// accuracy of the integrator (the approach used by Hairer's RETARD method and
-// the 'dde' package).  Each record stores rcont1..8 for every component plus
-// the step's xold and h; records accumulate in increasing time order.
-static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
-                            double xold, double h, dop853_ctx_t *ctx) {
-  int stride = 8 * n + 2;
-  if (ind->delayHistStride != stride || ind->delayHistNeq != n ||
-      ind->delayHistType != 0) {
-    ind->delayHistN = 0;                 // layout changed: start a fresh buffer
+// Records of accepted dense steps so that delay(state, T) lookups can later
+// interpolate any earlier state to the accuracy of the integrator (the
+// approach of Hairer's RETARD method and the 'dde' package).  A single subject
+// solve may mix dop853 and ros4 steps (the dense AutoSwitch composite), so a
+// uniform record layout with a per-record solver tag is used:
+//
+//   slots [0 .. 8n-1] : dop853 rcont1..8, or ros4 4 cubic samples (first 4n)
+//   slot   8n         : t_old
+//   slot   8n+1       : h
+//   slot   8n+2       : type (0 = dop853 8th-order, 1 = ros4 cubic)
+//
+// t_old/h/type live in the last three slots regardless of solver, so the
+// bracketing search and dispatch in _rxDelay are uniform.
+#define RX_DELAY_STRIDE(n) (8 * (n) + 3)
+
+static double *rxDelayHistSlot(rx_solving_options_ind *ind, int n) {
+  int stride = RX_DELAY_STRIDE(n);
+  if (ind->delayHistStride != stride || ind->delayHistNeq != n) {
+    ind->delayHistN = 0;                 // neq changed: start a fresh buffer
     ind->delayHistStride = stride;
     ind->delayHistNeq = n;
-    ind->delayHistType = 0;              // dop853 dense (rcont) records
   }
   if (ind->delayHistN >= ind->delayHistCap) {
     int newCap = ind->delayHistCap > 0 ? ind->delayHistCap * 2 : 256;
     double *np = (double*) realloc(ind->delayHist,
                                    (size_t) newCap * stride * sizeof(double));
-    if (np == NULL) return;  // out of memory: stop growing; lookups extrapolate
+    if (np == NULL) return NULL;  // out of memory: stop growing
     ind->delayHist = np;
     ind->delayHistCap = newCap;
   }
-  double *rec = ind->delayHist + (size_t) ind->delayHistN * stride;
+  return ind->delayHist + (size_t) ind->delayHistN * stride;
+}
+
+// Record one dop853 dense step (8th-order Dormand-Prince interpolant).
+static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
+                            double xold, double h, dop853_ctx_t *ctx) {
+  double *rec = rxDelayHistSlot(ind, n);
+  if (rec == NULL) return;
   memcpy(rec + 0 * n, ctx->rcont1, n * sizeof(double));
   memcpy(rec + 1 * n, ctx->rcont2, n * sizeof(double));
   memcpy(rec + 2 * n, ctx->rcont3, n * sizeof(double));
@@ -5514,40 +5528,26 @@ static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
   memcpy(rec + 7 * n, ctx->rcont8, n * sizeof(double));
   rec[8 * n]     = xold;
   rec[8 * n + 1] = h;
+  rec[8 * n + 2] = 0.0;  // dop853 record
   ind->delayHistN++;
 }
 
 // Record one ros4 (Rosenbrock) dense step.  ros4's dense output is a cubic in
-// the normalized step variable, so four samples taken at s = 0, 1/3, 2/3, 1
-// (via the stepper's public calc_state) reconstruct it exactly.  Layout per
-// record: sample0[n], sample1[n], sample2[n], sample3[n], t_old, h.
+// the normalized step variable, so four samples at s = 0, 1/3, 2/3, 1 (via the
+// stepper's public calc_state) reconstruct it exactly.
 static void rxDelayHistPushSamples(rx_solving_options_ind *ind, int n,
                                    double xold, double h,
                                    const double *s0, const double *s1,
                                    const double *s2, const double *s3) {
-  int stride = 4 * n + 2;
-  if (ind->delayHistStride != stride || ind->delayHistNeq != n ||
-      ind->delayHistType != 1) {
-    ind->delayHistN = 0;                 // layout changed: start a fresh buffer
-    ind->delayHistStride = stride;
-    ind->delayHistNeq = n;
-    ind->delayHistType = 1;              // ros4 cubic-sample records
-  }
-  if (ind->delayHistN >= ind->delayHistCap) {
-    int newCap = ind->delayHistCap > 0 ? ind->delayHistCap * 2 : 256;
-    double *np = (double*) realloc(ind->delayHist,
-                                   (size_t) newCap * stride * sizeof(double));
-    if (np == NULL) return;
-    ind->delayHist = np;
-    ind->delayHistCap = newCap;
-  }
-  double *rec = ind->delayHist + (size_t) ind->delayHistN * stride;
+  double *rec = rxDelayHistSlot(ind, n);
+  if (rec == NULL) return;
   memcpy(rec + 0 * n, s0, n * sizeof(double));
   memcpy(rec + 1 * n, s1, n * sizeof(double));
   memcpy(rec + 2 * n, s2, n * sizeof(double));
   memcpy(rec + 3 * n, s3, n * sizeof(double));
-  rec[4 * n]     = xold;
-  rec[4 * n + 1] = h;
+  rec[8 * n]     = xold;
+  rec[8 * n + 1] = h;
+  rec[8 * n + 2] = 1.0;  // ros4 cubic-sample record
   ind->delayHistN++;
 }
 
@@ -5616,12 +5616,123 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   }
 }
 
+// Defined in ros4.cpp (included later in this translation unit).
+int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                       int obs_first, int obs_last, int solveid);
+
+// Solve one dense segment [xp, xout], filling the segment's observations and
+// recording delay history.  When the AutoSwitch composite is active (stiff2>0)
+// this picks dop853 or ros4 per segment using the same Gershgorin pre/post
+// stiffness checks and autoMethod hysteresis as the non-dense path, so the
+// dop853+ros4 composite switches to ros4 mid-solve in dense mode.  The caller
+// must set neq[0] = eff - numLin - numLinSens and dc->obs_next/segment_end.
+// Leaves yp = state at xout and returns the dop853/ros4 idid.
+static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
+                             rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
+                             double xp, double xout, double *yp,
+                             DopDenseCtx *dc, int itol, int eff) {
+  int neqOde  = neq[0];
+  int solveid = neq[1];
+  // Non-composite: plain dop853 dense output (unchanged behavior).
+  if (op->stiff2 <= 0) {
+    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
+                  neqOde, NULL, 0, dc, ind->id);
+  }
+  double _dt = xout - xp;
+  bool jacOk = (calc_jac != NULL && neqOde > 0 && _dt != 0.0);
+  double rho = 0.0, ratio = 0.0;
+  bool useStiff = (ind->autoMethod == 1);
+  // Pre-interval Gershgorin check while on the non-stiff primary.
+  if (!useStiff && jacOk) {
+    int tid = rx_get_thread((int)__autoJacBuf.size());
+    if (tid >= 0 && tid < (int)__autoJacBuf.size() &&
+        (int)__autoJacBuf[tid].size() >= neqOde * neqOde) {
+      double *jbuf = __autoJacBuf[tid].data();
+      int nt[2] = { neqOde, solveid };
+      calc_jac(nt, xp, yp, jbuf, (unsigned int)neqOde);
+      rho = gershgorinSpectralRadius(jbuf, neqOde);
+      if (rho > 0.0) {
+        ratio = rho * fabs(_dt) / autoSwitchStabilitySize(op->stiff);
+        if (ratio > op->autoSwitchNonstifftol) useStiff = true;
+      }
+    }
+  }
+  int idid;
+  bool usedStiff = useStiff;
+  if (useStiff) {
+    idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+  } else {
+    int hist0 = ind->delayHistN;
+    double _ypStack[64];
+    double *_ypDyn = NULL;
+    double *ypSave = (eff <= 64) ? _ypStack
+                                 : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+    memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
+                  neqOde, NULL, 0, dc, ind->id);
+    if (idid <= 0 || ind->err) {
+      // dop853 failed (severe stiffness): discard its partial delay history,
+      // restore the segment-start state, and re-solve the segment with ros4
+      // (which re-fills all observations in the segment).
+      ind->delayHistN = hist0;
+      ind->rc[0] = 0;
+      ind->err = 0;
+      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+      idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                dc->obs_next, dc->segment_end, solveid);
+      usedStiff = true;
+    }
+    if (_ypDyn) free(_ypDyn);
+  }
+  // Post-interval Gershgorin check + autoMethod hysteresis.
+  if (jacOk && idid > 0 && !ind->err) {
+    int tid = rx_get_thread((int)__autoJacBuf.size());
+    if (tid >= 0 && tid < (int)__autoJacBuf.size() &&
+        (int)__autoJacBuf[tid].size() >= neqOde * neqOde) {
+      double *jbuf = __autoJacBuf[tid].data();
+      int nt[2] = { neqOde, solveid };
+      calc_jac(nt, xout, yp, jbuf, (unsigned int)neqOde);
+      rho = gershgorinSpectralRadius(jbuf, neqOde);
+      ratio = (rho > 0.0) ? rho * fabs(_dt) / autoSwitchStabilitySize(op->stiff) : 0.0;
+    }
+  }
+  if (usedStiff) {
+    ind->autoLastSwitchIntervals++;
+    bool nonstiff = (jacOk && rho > 0.0 && ratio < op->autoSwitchStifftol);
+    bool guardOk = (op->autoSwitchSwitchMax == 0 ||
+                    ind->autoLastSwitchIntervals >= op->autoSwitchSwitchMax);
+    if (nonstiff && guardOk) {
+      ind->autoMethod = 0;
+      ind->autoCount = 0;
+      ind->autoLastSwitchIntervals = 0;
+    }
+  } else {
+    bool postStiff = (jacOk && rho > 0.0 && ratio > op->autoSwitchNonstifftol);
+    if (postStiff) {
+      ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
+      if (ind->autoCount >= op->autoSwitchMaxStiff) {
+        ind->autoMethod = 1;
+        ind->autoCount = 0;
+        ind->autoLastSwitchIntervals = 0;
+      }
+    } else {
+      if (ind->autoCount > 0) ind->autoCount = 0;
+      ind->autoLastSwitchIntervals++;
+    }
+  }
+  return idid;
+}
+
 extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,
                                int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
   int itol=1;
-  int iout_dense=2;
-  int iout_zero=0;
   int idid=0;
   int i;
   double xout;
@@ -5741,12 +5852,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         if (dc.obs_next <= dc.segment_end) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          idid = dop853(neq, c_dydt, xp, yp, xout,
-                        op->rtol2, op->atol2, itol,
-                        dopDenseSolout, iout_dense,
-                        NULL, DBL_EPSILON, 0, 0, 0, 0,
-                        rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
-                        neq[0], NULL, 0, &dc, ind->id);
+          idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                   &dc, itol, eff);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5770,12 +5877,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             dc.segment_end = need_seg ? i : i - 1;
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq, c_dydt, xp, yp, ind->extraDoseNewXout,
-                          op->rtol2, op->atol2, itol,
-                          dopDenseSolout, iout_dense,
-                          NULL, DBL_EPSILON, 0, 0, 0, 0,
-                          rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
-                          neq[0], NULL, 0, &dc, ind->id);
+            idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp,
+                                     ind->extraDoseNewXout, yp, &dc, itol, eff);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5809,16 +5912,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             c_dydt(neq, xp, yp, _ddt.data());
             ind->delayWarmed = 1;
           }
-          idid = dop853(neq, c_dydt, xp, yp, xout,
-                        op->rtol2, op->atol2, itol,
-                        dopDenseSolout, iout_dense,
-                        NULL, DBL_EPSILON, 0, 0, 0, 0,
-                        rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
-                        neq[0],  // nrdens = all ODE states
-                        NULL, 0, // icont = NULL (full component 0-based)
-                        &dc,     // userdata
-                        ind->id  // rxode2 subject id for message aggregator
-                        );
+          idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                   &dc, itol, eff);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
