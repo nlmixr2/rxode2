@@ -2417,6 +2417,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
            call. = FALSE)
     }
   }
+  # Generate the analytical Jacobian whenever the solve uses an implicit method
+  # that needs one -- either as the primary method or as the stiff secondary of
+  # an AutoSwitch composite ("primary+stiff").  rxIsImplicit() flags exactly the
+  # methods the C solver consumes a Jacobian for (its `_jacAvailable` check):
+  # ros4(13), iem(14), and ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/
+  # geng5/sdirk43 (31-38).  Solvers that build their own Jacobian internally
+  # (lsoda, liblsoda, cvode, bdf) are not flagged and need no generation here.
   .ddeNoJac <- .hasDelay && .ctl$method == 0L &&
     (is.null(.ctl$stiff2) || isTRUE(.ctl$stiff2 == 0L))
   if (!.ddeNoJac &&

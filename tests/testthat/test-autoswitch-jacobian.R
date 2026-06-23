@@ -1,0 +1,45 @@
+rxTest({
+  # AutoSwitch composite "primary+stiff": the stiff secondary's analytical
+  # Jacobian must be generated and used whenever the secondary is an implicit
+  # (Rosenbrock / implicit-RK) method.  These methods are exactly the ones for
+  # which rxIsImplicit() is TRUE and which the C solver's _jacAvailable check
+  # expects: ros4(13), iem(14), ros43(31), ros6(32), backwardEuler(33),
+  # gauss6(34), iiic6(35), radauiia5(36), geng5(37), sdirk43(38).
+
+  ## A well-conditioned stiff linear system (eigenvalues -100, -1).
+  .stiff <- rxode2({
+    d/dt(a) <- -100 * a + 99 * b
+    d/dt(b) <- a - b
+    a(0) <- 1
+    b(0) <- 0
+  })
+  .ev <- et(seq(0, 3, by = 0.5))
+  .ref <- rxSolve(.stiff, .ev, method = "lsoda", atol = 1e-10, rtol = 1e-10)
+
+  .implicit <- c("ros4", "iem", "ros43", "ros6", "backwardEuler",
+                 "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43")
+
+  test_that("rxIsImplicit() flags exactly the Jacobian-needing methods", {
+    expect_true(all(rxIsImplicit(.implicit)))
+    ## solvers that supply their own Jacobian internally are NOT flagged
+    expect_false(any(rxIsImplicit(c("dop853", "lsoda", "liblsoda", "cvode", "bdf"))))
+  })
+
+  test_that("dop853 + <implicit> composites generate and use the Jacobian", {
+    for (.s in .implicit) {
+      .m <- paste0("dop853+", .s)
+      .x <- rxSolve(.stiff, .ev, method = .m, atol = 1e-8, rtol = 1e-8)
+      expect_false(any(is.na(.x$a)),
+                   info = paste(.m, "produced NA (Jacobian not hooked up?)"))
+      expect_true(max(abs(.x$a - .ref$a)) < 1e-5,
+                  info = paste(.m, "did not match the reference solution"))
+    }
+  })
+
+  test_that("the dense dop853+ros4 composite generates and uses the Jacobian", {
+    .x <- rxSolve(.stiff, .ev, method = "dop853+ros4", dense = TRUE,
+                  atol = 1e-8, rtol = 1e-8)
+    expect_false(any(is.na(.x$a)))
+    expect_true(max(abs(.x$a - .ref$a)) < 1e-5)
+  })
+})
