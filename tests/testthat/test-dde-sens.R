@@ -60,6 +60,60 @@ rxTest({
     expect_true(.rxDelayValidateTau(.mc, c("tcl", "tv")))
   })
 
+  test_that("delay() sensitivity ODEs include the delayed variational term", {
+    .m <- rxode2({
+      d/dt(cen) <- -k * cen + kin * delay(cen, tau)
+      cen(0) <- 10
+      k <- 0.2; kin <- 0.5; tau <- 1
+    })
+    .ms <- rxode2(.m, calcSens = c("k", "kin"))
+    .n <- rxNorm(.ms)
+    ## dS_k/dt has the delayed sensitivity of cen w.r.t. k
+    expect_match(.n, "delay(rx__sens_cen_BY_k__,tau)", fixed = TRUE)
+    expect_match(.n, "delay(rx__sens_cen_BY_kin__,tau)", fixed = TRUE)
+    ## and the sens states inherit the DDE flag once re-parsed
+    expect_equal(unname(rxModelVars(.ms)$flags[["hasDelay"]]), 1L)
+  })
+
+  test_that("delay() forward sensitivities match central finite differences", {
+    .mk <- function(k, kin) {
+      rxode2(paste0("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\n",
+                    "cen(0) <- 10\nk <- ", k, "; kin <- ", kin, "; tau <- 1"))
+    }
+    .ev <- et(seq(0, 8, by = 0.5))
+    .s <- rxSolve(rxode2(.mk(0.2, 0.5), calcSens = c("k", "kin")), .ev,
+                  atol = 1e-12, rtol = 1e-12)
+    .h <- 1e-4
+    .fdk <- (rxSolve(.mk(0.2 + .h, 0.5), .ev, atol = 1e-12, rtol = 1e-12)$cen -
+             rxSolve(.mk(0.2 - .h, 0.5), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+    .fdkin <- (rxSolve(.mk(0.2, 0.5 + .h), .ev, atol = 1e-12, rtol = 1e-12)$cen -
+               rxSolve(.mk(0.2, 0.5 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+    ## non-trivial sensitivities (delay feedback amplifies them)
+    expect_gt(diff(range(.s[["rx__sens_cen_BY_k__"]])), 1)
+    expect_lt(max(abs(.s[["rx__sens_cen_BY_k__"]] - .fdk)), 1e-2)
+    expect_lt(max(abs(.s[["rx__sens_cen_BY_kin__"]] - .fdkin)), 1e-2)
+  })
+
+  test_that("delay() sensitivities are correct in a 2-state model (delay on one state)", {
+    ## depot is not delayed; cen is.  The depot sens must have no delay term and
+    ## the cen sens must include delay(S_cen, tau).
+    .mk <- function(ka, ke) {
+      rxode2(paste0("d/dt(depot) <- -ka*depot\n",
+                    "d/dt(cen) <- ka*depot - ke*cen + 0.3*delay(cen, 1)\n",
+                    "depot(0) <- 100\nka <- ", ka, "; ke <- ", ke))
+    }
+    .ev <- et(seq(0, 10, by = 0.5))
+    .ms <- rxode2(.mk(1.0, 0.3), calcSens = c("ka", "ke"))
+    .n <- rxNorm(.ms)
+    expect_match(.n, "delay(rx__sens_cen_BY_ka__,1)", fixed = TRUE)
+    expect_false(grepl("delay(rx__sens_depot", .n, fixed = TRUE))
+    .s <- rxSolve(.ms, .ev, atol = 1e-12, rtol = 1e-12)
+    .h <- 1e-4
+    .fdke <- (rxSolve(.mk(1.0, 0.3 + .h), .ev, atol = 1e-12, rtol = 1e-12)$cen -
+              rxSolve(.mk(1.0, 0.3 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+    expect_lt(max(abs(.s[["rx__sens_cen_BY_ke__"]] - .fdke)), 1e-2)
+  })
+
   test_that(".rxDelayValidateTau errors for parameter-dependent delays", {
     .m <- rxode2({
       d/dt(cen) <- -cl / v * cen + delay(cen, tau)

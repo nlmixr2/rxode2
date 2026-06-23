@@ -102,6 +102,83 @@
   unique(.roots)
 }
 
+#' Augment forward-sensitivity equations with the delayed (variational) terms
+#'
+#' For a model with `delay(y_j, T)` terms, each forward-sensitivity ODE gains
+#' `+ (d f_i / d[delay(y_j, T)]) * delay(rx__sens_<y_j>_BY_<p>__, T)`.  The
+#' delayed Jacobian `d f_i / d[delay(y_j, T)]` is obtained by substituting the
+#' delay subexpression with a fresh symbol in symengine and differentiating; the
+#' delayed sensitivity is `delay()` applied to the sensitivity state, which reuses
+#' the existing DDE dense-history machinery once the augmented model is parsed.
+#'
+#' @param model symengine environment from [.rxLoadPrune()] (holds the original
+#'   ODE RHS as `rx__d_dt_<state>__`).
+#' @param sensVec the `..sens` character vector produced by [.rxSens()].
+#' @param params character vector of sensitivity parameters.
+#' @return `sensVec` with the delayed terms spliced into each matching equation.
+#' @author Matthew L. Fidler
+#' @noRd
+.rxDelaySensAugment <- function(model, sensVec, params) {
+  if (length(sensVec) == 0L) return(sensVec)
+  .states <- rxStateOde(model)
+  ## Per original state, the delay terms in its RHS and their delayed Jacobians.
+  .delayJac <- lapply(.states, function(.si) {
+    .f <- get(paste0("rx__d_dt_", .si, "__"), envir = model)
+    .fns <- tryCatch(symengine::function_symbols(.f), error = function(e) NULL)
+    if (is.null(.fns) || length(.fns) == 0L) {
+      return(list())
+    }
+    .out <- list()
+    for (.k in seq_along(.fns)) {
+      .fn <- .fns[[.k]]
+      ## Identify delay() function symbols and pull out the state / duration via
+      ## the rxFromSE text -- symengine intercepts as.character() and VecBasic
+      ## `[[` inside this pipeline, so avoid get_args() here.
+      .fnTxt <- rxFromSE(.fn)
+      if (!grepl("^delay\\(", .fnTxt)) next
+      .call <- parse(text = .fnTxt)[[1L]]
+      .stateJ <- deparse1(.call[[2L]])
+      .tau <- deparse1(.call[[3L]])
+      .gName <- paste0("rx__gdly", .k, "TMP__")
+      .g <- symengine::S(.gName)
+      .dj <- symengine::D(symengine::subs(.f, .fn, .g), .g)
+      .djTxt <- rxFromSE(.dj)
+      ## restore the substituted symbol back to the delay() subexpression
+      .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"),
+                     .djTxt, fixed = TRUE)
+      .out[[length(.out) + 1L]] <- list(stateJ = .stateJ, tau = .tau, djac = .djTxt)
+    }
+    .out
+  })
+  names(.delayJac) <- .states
+  if (all(lengths(.delayJac) == 0L)) {
+    return(sensVec)
+  }
+  vapply(sensVec, function(.entry) {
+    .m <- regmatches(.entry, regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
+    if (length(.m) != 3L) {
+      return(.entry)
+    }
+    .si <- .m[2L]
+    .p <- .m[3L]
+    .dj <- .delayJac[[.si]]
+    if (is.null(.dj) || length(.dj) == 0L) {
+      return(.entry)
+    }
+    .add <- vapply(.dj, function(z) {
+      paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p, "__,", z$tau, ")")
+    }, character(1L))
+    .add <- paste(.add, collapse = "")
+    ## insert before the initial-condition line (if any), otherwise append
+    .nl <- regexpr("\n", .entry, fixed = TRUE)
+    if (.nl > 0L) {
+      paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
+    } else {
+      paste0(.entry, .add)
+    }
+  }, character(1L), USE.NAMES = FALSE)
+}
+
 #' Validate that delay durations do not depend on the sensitivity parameters
 #'
 #' v1 forward sensitivities require `d tau / d p == 0` for every sensitivity
