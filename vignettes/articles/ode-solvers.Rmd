@@ -241,14 +241,23 @@ rxSolve(model, events, params, method = "vern76+ros43")
 rxSolve(model, events, params, method = "dop853+sdirk43")
 ```
 
-Within each ODE interval, `rxode2` runs the primary (non-stiff) solver
-first.  If that interval appears stiff -- either because the solver
-failed, because DOP853's internal stiffness test fired, or because the
-Gershgorin spectral radius of the Jacobian exceeds the method's stability
-region -- the interval is retried with the stiff secondary solver.  Once
-consecutive stiff detections cross a threshold, the solver switches
-permanently to the stiff method for that subject.  It switches back if
-enough consecutive non-stiff intervals are observed.
+Within each ODE interval (the segment between events/observations),
+`rxode2` runs the primary (non-stiff) solver first.  If that probe
+reports stiffness -- because the non-stiff solver failed (its adaptive
+step size collapsed) or because DOP853's built-in dominant-eigenvalue
+stiffness estimator fired -- the interval is re-solved from its start
+with the stiff secondary.  This is a *reactive* scheme: rather than
+computing a separate stiffness estimate at the composite level, it
+delegates detection to the primary's own per-step estimator and to solve
+success/failure.  Once consecutive stiff detections cross a threshold the
+solver stops probing and uses the stiff method directly for that subject;
+it returns to the primary after enough consecutive non-stiff intervals.
+
+(Earlier versions of `rxode2` used a proactive estimate -- the Gershgorin
+spectral radius of the Jacobian scaled by the interval length -- but on
+the long inter-dose intervals typical of pharmacometric models that
+over-estimated stiffness and switched too eagerly, so it was replaced by
+the reactive scheme above.)
 
 #### Why use AutoSwitch instead of `liblsoda`?
 
@@ -352,6 +361,74 @@ For pharmacometric applications:
 - Lowering `autoSwitchNonstifftol` (e.g., `0.5`) makes switching more
   aggressive; raising it toward `1.0` makes the solver more willing to
   stay with the non-stiff primary even in borderline intervals.
+
+#### How rxode2 AutoSwitch compares to Julia's `AutoSwitch`
+
+`rxode2`'s composite methods and Julia's `AutoTsit5`/`AutoVern7`/...
+wrappers (the `AutoSwitch` algorithm in `OrdinaryDiffEq.jl`) share the
+*same underlying stiffness signal* but apply it differently.
+
+**The shared signal.**  Julia's `is_stiff` test computes a stiffness
+ratio `stiffness = |eigen_est * dt / alg_stability_size(alg)|` and
+declares the step stiff when this exceeds a tolerance (`nonstifftol`
+= `stifftol` = `0.9` by default).  Here `eigen_est` is the stepper's
+cheap estimate of the dominant Jacobian eigenvalue (for explicit
+Runge-Kutta methods, Hairer's estimate from the last stages), `dt` is
+the **actual step size**, and `stability_size` is the method's
+stability-region radius.  DOP853's built-in stiffness test computes
+exactly this quantity (Hairer & Wanner's `nstiff` heuristic), so when
+`rxode2` probes an interval with `dop853`, the primary is using Julia's
+`eigen_est * dt / stability_size` criterion internally.
+
+**The differences.**
+
+| | Julia `AutoSwitch` | rxode2 composite |
+|---|---|---|
+| Granularity | per accepted **step** | per ODE **interval** (event-to-event segment) |
+| Decision style | **proactive** -- `is_stiff` chooses the algorithm for the *next* step | **reactive** -- run the primary, re-solve the interval with the stiff method only if it reports stiffness or fails |
+| Stiffness source | the integrator's `eigen_est` (every stepper supplies one) | the primary's own per-step estimator (e.g. DOP853's `nstiff`) **or** an outright solve failure (step-size collapse) |
+| Hysteresis | `maxstiffstep` / `maxnonstiffstep` / `dtfac` / `stiffalgfirst` | `autoSwitchMaxStiff` / `autoSwitchMaxNonstiff` / `autoSwitchDtfac` / `autoSwitchStiffFirst` (same defaults: `10` / `3` / `2` / `FALSE`) |
+
+The practical upshot: because `rxode2` solves a whole inter-dose interval
+as one unit, it does not re-pick the algorithm at every internal step the
+way Julia does.  Instead it lets the non-stiff primary run (and detect
+stiffness with the same Hairer estimate, or simply fail on a stiff
+region), then re-solves that interval with the stiff secondary and uses a
+short hysteresis so a persistently stiff subject stops paying for the
+non-stiff probe.  A non-stiff primary that has no internal eigenvalue
+estimate still triggers a switch through its step-size collapse, which is
+why the reactive scheme works for every primary, not only `dop853`.
+
+### Delay differential equations (DDEs)
+
+`rxode2` solves delay differential equations through the same dense-output
+machinery the composite methods use.  Writing `delay(state, T)` inside a
+`d/dt()` equation evaluates an ODE compartment at the past time `t - T`
+(Monolix `delay()` semantics):
+
+```{r eval=FALSE}
+dde <- rxode2({
+  y(0) <- 1
+  d/dt(y) <- -delay(y, 1)        # y'(t) = -y(t - 1)
+})
+rxSolve(dde, et(seq(0, 10, by = 0.1)))
+```
+
+The delayed value is interpolated from the solver's recorded dense
+history, so it is obtained to the full order of the method.  Because this
+requires dense output, a model that uses `delay()` is automatically
+solved on a dense path and the default method becomes the AutoSwitch
+composite `"dop853+ros4"` (which records the dop853 and ros4 dense
+histories together and switches between them per segment).  `"dop853"`
+and `"ros4"` may also be requested explicitly; non-dense methods raise an
+error.  The step size is capped to the smallest delay so short delays
+stay accurate, and forward sensitivities are generated for `delay()`
+models so they can be fit with `nlmixr2`'s FOCEi.
+
+For the full treatment -- worked examples, how the dense history is
+recorded and interpolated, mixed delay + ODE models, and estimation --
+see the dedicated article
+[Delay differential equations in rxode2](rxode2-delay-differential-equations.html).
 
 ### Fixed-step, stiff-suitable, or implicit methods
 
@@ -558,7 +635,14 @@ Rosenbrock-family secondary.
   simulations via OpenMP.
 - **Sensitivity / gradients**: Julia's `sensealg` supports adjoint and
   forward sensitivity for large systems; rxode2 computes forward
-  sensitivities (for nlmixr2 FOCEi) via symbolic differentiation.
+  sensitivities (for nlmixr2 FOCEi) via symbolic differentiation,
+  including for `delay()` models.
+- **Automatic stiffness switching**: Julia's `AutoSwitch` re-picks the
+  algorithm proactively at every step from its `eigen_est`; rxode2's
+  `"primary+stiff"` composites switch reactively per interval using the
+  same Hairer stiffness estimate (or a solve failure).  See *How rxode2
+  AutoSwitch compares to Julia's `AutoSwitch`* under the AutoSwitch
+  composite methods section above.
 - **Interoperability**: The `JuliaCall` or `JuliaConnectoR` packages
   allow calling Julia's ODE solvers from R.
 
