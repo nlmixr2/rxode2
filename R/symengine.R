@@ -1370,7 +1370,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     stop("the first argument to 'delay' must be an ODE state 'delay(state, T)'", call. = FALSE)
   }
   .t <- .rxToSE(x[[3]], envir = envir)
-  paste0("delay(", as.character(x[[2]]), ", ", .t, ")")
+  ## also handles rxDelayD() (the delayed time-derivative); keep the function
+  ## name so it round-trips and differentiates to 0 like delay().
+  paste0(as.character(x[[1]]), "(", as.character(x[[2]]), ", ", .t, ")")
 }
 
 .rxToSEPsigamma <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
@@ -1808,7 +1810,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`lag`)) ||
                identical(x[[1]], quote(`lead`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
-  } else if (identical(x[[1]], quote(`delay`))) {
+  } else if (identical(x[[1]], quote(`delay`)) ||
+               identical(x[[1]], quote(`rxDelayD`))) {
     return(.rxToSEDelay(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
@@ -2547,6 +2550,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
       }
     } else if (identical(x[[1]], quote(`delay`))) {
       return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
+    } else if (identical(x[[1]], quote(`rxDelayD`))) {
+      return(paste0("rxDelayD(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`polygamma`))) {
       if (length(x == 3)) {
         .a <- .rxFromSE(x[[2]])
@@ -2809,7 +2814,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag", "delay"))) {
+          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD"))) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -2960,7 +2965,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
-    "delay", "rxTBSi"
+    "delay", "rxDelayD", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }

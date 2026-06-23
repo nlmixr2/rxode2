@@ -436,7 +436,7 @@ def <- def[1:w]
 def <- gsub("=NULL", "", def)
 def <- gsub("[^ ]* *[*]?([^;]*);", "\\1", def)
 
-def <- unique(c(def, c("_sum", "_udf", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_rxDelay", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord", "__assignFuns2")))
+def <- unique(c(def, c("_sum", "_udf", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_rxDelay", "_rxDelayD", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord", "__assignFuns2")))
 
 w0 <- which(grepl("double +_prod", l))[1]
 r <- 1:(w0 - 1)

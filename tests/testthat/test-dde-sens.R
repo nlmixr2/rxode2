@@ -153,9 +153,8 @@ rxTest({
 cen(0) <- 10
 k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     .ms <- rxode2(.m, calcSens = "ltau")
-    ## the correction term (central difference of delay() in tau) is emitted
-    expect_match(rxNorm(.ms), "0.999", fixed = TRUE)
-    expect_match(rxNorm(.ms), "1.001", fixed = TRUE)
+    ## the correction term uses the analytic delayed time-derivative rxDelayD()
+    expect_match(rxNorm(.ms), "rxDelayD(cen,exp(ltau))", fixed = TRUE)
     .ev <- et(seq(0, 8, by = 0.25))
     .l0 <- log(1.5)
     .s <- rxSolve(.ms, .ev, params = c(ltau = .l0), atol = 1e-12, rtol = 1e-12)
@@ -164,7 +163,25 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
             rxSolve(.ms, .ev, params = c(ltau = .l0 - .h), atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
     .an <- .s[["rx__sens_cen_BY_ltau__"]]
     expect_gt(diff(range(.an)), 1) # non-trivial
-    expect_lt(max(abs(.an - .fd)), 5e-2)
+    ## analytic delayed derivative: matches the FD reference to its own accuracy
+    expect_lt(max(abs(.an - .fd)), 1e-3)
+  })
+
+  test_that("rxDelayD() is the exact time-derivative of the delayed state", {
+    ## d/dt(w) = rxDelayD(y, 1) with y = 10 exp(-t) integrates the delayed
+    ## derivative ydot(t-1), so w(t) = y(t-1) - y(prehistory) = 10 exp(-(t-1)) - 10
+    ## for t > 1 and 0 for t <= 1.  Validates the analytic dense-interpolant
+    ## derivative against a closed form (machine precision).
+    .m <- rxode2({
+      d/dt(y) <- -y
+      d/dt(w) <- rxDelayD(y, 1)
+      y(0) <- 10
+      w(0) <- 0
+    })
+    .tt <- seq(0, 4, by = 0.5)
+    .s <- rxSolve(.m, et(.tt), atol = 1e-12, rtol = 1e-12)
+    .expect <- ifelse(.tt > 1, 10 * exp(-(.tt - 1)) - 10, 0)
+    expect_lt(max(abs(.s$w - .expect)), 1e-7)
   })
 
   test_that("state-dependent delays are rejected for sensitivities", {

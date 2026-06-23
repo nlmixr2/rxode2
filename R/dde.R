@@ -271,14 +271,13 @@
       .term <- paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p,
                       "__,", z$tau, ")")
       ## parameter-dependent delay: d/dp[y_j(t-tau(p))] also has the term
-      ## -ydot_j(t-tau)*dtau/dp.  ydot_j(t-tau) = -d/dtau[delay(y_j,tau)] is
-      ## obtained by a central difference of delay() in tau (reusing the dense
-      ## history); dtau/dp was differentiated symbolically above.
+      ## -ydot_j(t-tau)*dtau/dp.  ydot_j(t-tau) = rxDelayD(y_j, tau) is the exact
+      ## time-derivative of the delayed state (analytic derivative of the dense
+      ## history interpolant); dtau/dp was differentiated symbolically above.
       .dtau <- z$dtauByP[[.p]]
       if (!is.null(.dtau) && !identical(.dtau, "0")) {
-        .ydot <- paste0("(delay(", z$stateJ, ",(", z$tau, ")*0.999)-delay(",
-                        z$stateJ, ",(", z$tau, ")*1.001))/((", z$tau, ")*0.002)")
-        .term <- paste0(.term, "-(", z$djac, ")*(", .ydot, ")*(", .dtau, ")")
+        .term <- paste0(.term, "-(", z$djac, ")*rxDelayD(", z$stateJ, ",", z$tau,
+                        ")*(", .dtau, ")")
       }
       .term
     }, character(1L))

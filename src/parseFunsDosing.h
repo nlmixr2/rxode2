@@ -119,7 +119,13 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 // into the prefix, while T flows through the normal recursive codegen so
 // that parameters/covariates/states are translated correctly.
 static inline int handleFunctionDelay(transFunctions *tf) {
-  if ((tf->isDelay = !strcmp("delay", tf->v))) {
+  // rxDelayD(state, T) is the time-derivative of the delayed state, emitted by
+  // the forward-sensitivity machinery for parameter-dependent delays; it shares
+  // delay()'s argument handling and history recording.
+  int isDeriv = !strcmp("rxDelayD", tf->v);
+  if ((tf->isDelay = (isDeriv || !strcmp("delay", tf->v)))) {
+    const char *cFun = isDeriv ? "_rxDelayD" : "_rxDelay";
+    const char *normFun = isDeriv ? "rxDelayD" : "delay";
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2) {
       updateSyntaxCol();
@@ -156,9 +162,9 @@ static inline int handleFunctionDelay(transFunctions *tf) {
     // delay() actually looks back on (compartment-level history compaction).
     if ((tb.dprop[tb.id] & propDelay) == 0) tb.dprop[tb.id] += propDelay;
     // history is stored per-subject in _ind, so delay() is thread-safe
-    sAppend(&sb,  "_rxDelay(_ind, __DDT%d__, t", tb.id);
-    sAppend(&sbDt, "_rxDelay(_ind, __DDT%d__, t", tb.id);
-    sAppend(&sbt, "delay(%s", v2);
+    sAppend(&sb,  "%s(_ind, __DDT%d__, t", cFun, tb.id);
+    sAppend(&sbDt, "%s(_ind, __DDT%d__, t", cFun, tb.id);
+    sAppend(&sbt, "%s(%s", normFun, v2);
     tf->i[0] = 2;    // skip the function name, '(', and the state argument
     tf->depth[0] = 1; // emit the remaining (T) argument as a function arg
     return 1;
