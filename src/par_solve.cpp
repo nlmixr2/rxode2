@@ -5251,41 +5251,27 @@ extern "C" void ind_linCmt(rx_solve *rx, int solveid,
 }
 
 // --- AutoSwitch helpers -------------------------------------------------------
-// Gershgorin estimate of rho*|dt|/stability_size of the analytical Jacobian at
-// time t (0 when no Jacobian is available).  This is the per-interval stiffness
-// indicator used to decide between the non-stiff primary (dop853) and the stiff
-// secondary (ros4) of the "dop853+ros4" AutoSwitch composite.
-static double rxAutoStiffRatio(rx_solving_options *op, rx_solving_options_ind *ind,
-                               int neqOde, double t, double *yp, double dt, int solveid) {
-  if (calc_jac == NULL || neqOde <= 0 || dt == 0.0) return 0.0;
-  int tid = rx_get_thread((int)__autoJacBuf.size());
-  if (tid < 0 || tid >= (int)__autoJacBuf.size() ||
-      (int)__autoJacBuf[tid].size() < neqOde * neqOde) return 0.0;
-  double *jbuf = __autoJacBuf[tid].data();
-  int nt[2] = { neqOde, solveid };
-  calc_jac(nt, t, yp, jbuf, (unsigned int)neqOde);
-  double rho = gershgorinSpectralRadius(jbuf, neqOde);
-  if (rho <= 0.0) return 0.0;
-  return rho * fabs(dt) / autoSwitchStabilitySize(op->stiff);
-}
-
-// AutoSwitch hysteresis update after solving one interval.  `ratio` is the
-// post-interval stiffness ratio (0 if unavailable); `usedStiff` says whether
-// the stiff secondary solved this interval.
-static void rxAutoSwitchUpdate(rx_solving_options *op, rx_solving_options_ind *ind,
-                               bool usedStiff, double ratio) {
-  if (usedStiff) {
-    ind->autoLastSwitchIntervals++;
-    bool nonstiff = (ratio > 0.0 && ratio < op->autoSwitchStifftol);
-    bool guardOk = (op->autoSwitchSwitchMax == 0 ||
-                    ind->autoLastSwitchIntervals >= op->autoSwitchSwitchMax);
-    if (nonstiff && guardOk) {
-      ind->autoMethod = 0;
-      ind->autoCount = 0;
-      ind->autoLastSwitchIntervals = 0;
-    }
-  } else {
-    if (ratio > op->autoSwitchNonstifftol) {
+// AutoSwitch is reactive: each interval the non-stiff primary (dop853) is tried
+// first with its built-in stiffness estimator enabled (nstiff=50 -- the Hairer
+// II dominant-eigenvalue estimate hlamb = h*||k4-k3||/||k5-yhat|| using the
+// ACTUAL step h, the same quantity Julia's AutoSwitch calls eigen_est).  If
+// dop853 reports/encounters stiffness (idid<=0) the interval is re-solved with
+// the stiff secondary.  A Gershgorin pre-check on the full interval length is
+// deliberately NOT used: it overestimates stiffness (rho*interval vs rho*step)
+// and false-triggers switches on non-stiff problems whose Jacobian norm is
+// large but whose accuracy-limited step is small (e.g. Lorenz-type systems).
+//
+// rxAutoSwitchCount keeps a little hysteresis so a persistently stiff problem
+// stops paying the wasted dop853 probe every interval:
+//   dop853Tried + failed  -> count stiff intervals; after maxStiff, stick on
+//                            the stiff secondary (autoMethod=1)
+//   dop853Tried + ok      -> reset the stiff counter
+//   stiff secondary used  -> after maxNonstiff intervals, optimistically try
+//                            the primary again (autoMethod=0)
+static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *ind,
+                              bool dop853Tried, bool dop853Failed) {
+  if (dop853Tried) {
+    if (dop853Failed) {
       ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
       if (ind->autoCount >= op->autoSwitchMaxStiff) {
         ind->autoMethod = 1;
@@ -5294,25 +5280,30 @@ static void rxAutoSwitchUpdate(rx_solving_options *op, rx_solving_options_ind *i
       }
     } else {
       if (ind->autoCount > 0) ind->autoCount = 0;
-      ind->autoLastSwitchIntervals++;
+    }
+  } else {
+    ind->autoLastSwitchIntervals++;
+    int back = (op->autoSwitchMaxNonstiff > 0) ? op->autoSwitchMaxNonstiff : 3;
+    if (ind->autoLastSwitchIntervals >= back) {
+      ind->autoMethod = 0;
+      ind->autoLastSwitchIntervals = 0;
     }
   }
 }
 
 // Solve one non-dense interval [xp, xout] with the dop853+ros4 AutoSwitch
 // composite (point-to-point, no dense output): the analogue of
-// denseSegmentSolve for the standard non-dense path.  Picks dop853 or ros4 per
-// interval from the Gershgorin pre-check + autoMethod hysteresis, retries with
-// ros4 if dop853 hits stiffness (idid<=0, with nstiff=50 enabling the dop853
-// stiffness estimator), and updates the switch state.  The caller has already
-// run preSolve() and set neq[0] to the ODE dimension.
+// denseSegmentSolve for the standard non-dense path.  Reactive switching --
+// dop853 (with its stiffness estimator on) is tried first, and the interval is
+// re-solved with the requested stiff secondary (op->stiff2) if dop853 reports
+// stiffness; once a problem is persistently stiff the probe is skipped
+// (autoMethod==1).  The caller has already run preSolve() and set neq[0] to the
+// ODE dimension.
 static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                 rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                 double xp, double xout, double *yp,
                                 int *istate, int itol, int eff) {
   (void) rx;
-  int neqOde = neq[0];
-  int solveid = neq[1];
   // Non-composite: plain dop853 (unchanged behavior).
   if (op->stiff2 <= 0) {
     return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
@@ -5320,20 +5311,9 @@ static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                   ind->HMAX, op->H0, op->mxstep, 1, -1,
                   0, NULL, 0, NULL, ind->id);
   }
-  double _dt = xout - xp;
-  double ratio = 0.0;
-  bool useStiff = (ind->autoMethod == 1);
-  if (!useStiff) {
-    ratio = rxAutoStiffRatio(op, ind, neqOde, xp, yp, _dt, solveid);
-    if (ratio > op->autoSwitchNonstifftol) useStiff = true;
-  }
   int idid;
-  bool usedStiff = useStiff;
-  if (useStiff) {
-    double xpLoc = xp;
-    ros4_solveWith1Pt(neq, yp, &xpLoc, xout, istate, op, ind);
-    idid = (*istate > 0 && !ind->err) ? 1 : -4;
-  } else {
+  if (ind->autoMethod == 0) {
+    // Probe with dop853; nstiff=50 enables its built-in stiffness estimator.
     double _ypStack[64];
     double *_ypDyn = NULL;
     double *ypSave = (eff <= 64) ? _ypStack
@@ -5343,24 +5323,32 @@ static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                   solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
                   ind->HMAX, op->H0, op->mxstep, 1, 50,
                   0, NULL, 0, NULL, ind->id);
-    if (idid <= 0 || ind->err) {
-      // dop853 detected/encountered stiffness: restore the interval-start state
-      // and re-solve with the stiff secondary (ros4).
+    bool failed = (idid <= 0 || ind->err);
+    if (failed) {
+      // Stiffness: restore the interval-start state and re-solve with the
+      // requested stiff secondary (op->stiff2) via the shared per-method
+      // interval solver (its preSolve() is idempotent).
       ind->rc[0] = 0;
       ind->err = 0;
       *istate = 1;
       memcpy(yp, ypSave, (size_t)eff * sizeof(double));
       double xpLoc = xp;
-      ros4_solveWith1Pt(neq, yp, &xpLoc, xout, istate, op, ind);
+      int _di = 0, _sd = 1;
+      _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
+                          &_sd, op, ind, &_di, NULL, eff);
       idid = (*istate > 0 && !ind->err) ? 1 : -4;
-      usedStiff = true;
     }
     if (_ypDyn) free(_ypDyn);
+    rxAutoSwitchCount(op, ind, true, failed);
+  } else {
+    // Persistently stiff: go straight to the stiff secondary.
+    double xpLoc = xp;
+    int _di = 0, _sd = 1;
+    _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
+                        &_sd, op, ind, &_di, NULL, eff);
+    idid = (*istate > 0 && !ind->err) ? 1 : -4;
+    rxAutoSwitchCount(op, ind, false, false);
   }
-  if (idid > 0 && !ind->err) {
-    ratio = rxAutoStiffRatio(op, ind, neqOde, xout, yp, _dt, solveid);
-  }
-  rxAutoSwitchUpdate(op, ind, usedStiff, ratio);
   return idid;
 }
 
@@ -5679,54 +5667,41 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
                   rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
                   neqOde, NULL, 0, dc, ind->id);
   }
-  double _dt = xout - xp;
-  double ratio = 0.0;
-  bool useStiff = (ind->autoMethod == 1);
-  // Pre-interval stiffness check while on the non-stiff primary.
-  if (!useStiff) {
-    ratio = rxAutoStiffRatio(op, ind, neqOde, xp, yp, _dt, solveid);
-    if (ratio > op->autoSwitchNonstifftol) useStiff = true;
-  }
+  // Reactive switching, mirroring dopSegmentAutoSwitch (see its comment): probe
+  // with dop853 (nstiff=50 enables its built-in stiffness estimator) and re-solve
+  // the segment with ros4 if it reports stiffness; skip the probe once
+  // persistently stiff (autoMethod==1).  No interval-length Gershgorin pre-check.
   int idid;
-  bool usedStiff = useStiff;
-  if (useStiff) {
-    idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
-                              dc->obs_next, dc->segment_end, solveid);
-  } else {
+  if (ind->autoMethod == 0) {
     int hist0 = ind->delayHistN;
     double _ypStack[64];
     double *_ypDyn = NULL;
     double *ypSave = (eff <= 64) ? _ypStack
                                  : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
-    // nstiff=50 enables dop853's built-in stiffness estimator (the Hairer II
-    // dominant-eigenvalue estimate, the same quantity Julia's AutoSwitch uses
-    // as eigen_est), so the primary returns idid=-4 the moment it detects
-    // stiffness and we switch to ros4 proactively rather than grinding to the
-    // step-count limit first.
     idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
                   rxDelayCapHmax(ind), op->H0, op->mxstep, 1, 50,
                   neqOde, NULL, 0, dc, ind->id);
-    if (idid <= 0 || ind->err) {
-      // dop853 failed (severe stiffness): discard its partial delay history,
-      // restore the segment-start state, and re-solve the segment with ros4
-      // (which re-fills all observations in the segment).
+    bool failed = (idid <= 0 || ind->err);
+    if (failed) {
+      // Stiffness: discard dop853's partial delay history, restore the
+      // segment-start state, and re-solve the whole segment with ros4 (which
+      // re-fills all observations in the segment).
       ind->delayHistN = hist0;
       ind->rc[0] = 0;
       ind->err = 0;
       memcpy(yp, ypSave, (size_t)eff * sizeof(double));
       idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                 dc->obs_next, dc->segment_end, solveid);
-      usedStiff = true;
     }
     if (_ypDyn) free(_ypDyn);
+    rxAutoSwitchCount(op, ind, true, failed);
+  } else {
+    idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+    rxAutoSwitchCount(op, ind, false, false);
   }
-  // Post-interval stiffness check + AutoSwitch hysteresis.
-  if (idid > 0 && !ind->err) {
-    ratio = rxAutoStiffRatio(op, ind, neqOde, xout, yp, _dt, solveid);
-  }
-  rxAutoSwitchUpdate(op, ind, usedStiff, ratio);
   return idid;
 }
 
