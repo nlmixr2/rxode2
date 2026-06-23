@@ -102,6 +102,84 @@
   unique(.roots)
 }
 
+#' Root symbols an expression depends on, resolving through a symengine env
+#'
+#' Env-based analogue of [.rxResolveRootVars()] used inside [.rxSens()], where
+#' only the loaded symengine environment (not the model text) is available.
+#' Bindings are read with `get0(envir=)` (a bare `get(x, env)` is intercepted by
+#' symengine's masked functions here).
+#'
+#' @param exprText expression text (e.g. a delay duration).
+#' @param model symengine environment.
+#' @return character vector of root symbol names.
+#' @noRd
+.rxResolveRootVarsSE <- function(exprText, model) {
+  .seen <- character(0)
+  .roots <- character(0)
+  .stack <- all.vars(parse(text = exprText))
+  while (length(.stack) > 0L) {
+    .v <- .stack[[1L]]
+    .stack <- .stack[-1L]
+    if (.v %in% .seen) next
+    .seen <- c(.seen, .v)
+    .def <- get0(.v, envir = model, inherits = FALSE)
+    if (is.null(.def)) {
+      .roots <- c(.roots, .v)
+      next
+    }
+    .fv <- tryCatch(all.vars(parse(text = rxFromSE(.def))), error = function(e) .v)
+    if (length(.fv) == 0L) {
+      ## numeric constant: not a parameter root
+    } else if (length(.fv) == 1L && .fv == .v) {
+      .roots <- c(.roots, .v) # symbol defined as itself
+    } else {
+      .stack <- c(.stack, .fv)
+    }
+  }
+  unique(.roots)
+}
+
+#' Validate that delay durations do not depend on the sensitivity parameters (env)
+#'
+#' Env-based companion to [.rxDelayValidateTau()] used inside [.rxSens()] (which
+#' only has the loaded symengine environment).  v1 forward sensitivities require
+#' a delay duration to be independent of every sensitivity parameter; a
+#' parameter/eta-dependent (random) delay needs the delayed-RHS term (v2).
+#'
+#' @param model symengine environment from the model loader.
+#' @param params character vector of sensitivity parameters.
+#' @return invisibly `TRUE`; stops with an informative error otherwise.
+#' @noRd
+.rxDelayValidateTauSE <- function(model, params) {
+  ## Walk each RHS as rxFromSE text (base-R `[[` on language objects is safe;
+  ## symengine intercepts VecBasic `[[` before the sensitivity loop warms up
+  ## its method dispatch).
+  for (.si in rxStateOde(model)) {
+    .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
+    if (is.null(.f)) next
+    .e <- parse(text = rxFromSE(.f))
+    .walk <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .stateJ <- deparse1(x[[2L]])
+          .tau <- deparse1(x[[3L]])
+          .bad <- intersect(.rxResolveRootVarsSE(.tau, model), params)
+          if (length(.bad) > 0L) {
+            stop("delay duration 'delay(", .stateJ, ", ", .tau,
+                 ")' depends on the sensitivity parameter(s) ",
+                 paste(.bad, collapse = ", "),
+                 "; parameter-dependent delays are not yet supported for sensitivities",
+                 call. = FALSE)
+          }
+        }
+        for (.i in seq_along(x)) .walk(x[[.i]])
+      }
+    }
+    for (.i in seq_along(.e)) .walk(.e[[.i]])
+  }
+  invisible(TRUE)
+}
+
 #' Augment forward-sensitivity equations with the delayed (variational) terms
 #'
 #' For a model with `delay(y_j, T)` terms, each forward-sensitivity ODE gains

@@ -686,14 +686,9 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
           calcSens <- .rxParams(model, TRUE)
         }
       }
+      ## .rxSens augments the sensitivity ODEs with the delayed (variational)
+      ## terms for delay() models (no-op otherwise).
       .rxSens(.s, calcSens)
-      ## Delay differential equations: add the delayed (variational) terms
-      ## d f_i/d[delay(y_j,T)] * delay(S_j,T) to each sensitivity ODE.  Reuses the
-      ## dense-history machinery once the augmented model is re-parsed.
-      if (isTRUE(rxModelVars(model)$flags[["hasDelay"]] == 1L)) {
-        .rxDelayValidateTau(model, calcSens)
-        .s$..sens <- .rxDelaySensAugment(.s, .s$..sens, calcSens)
-      }
       .tmp1 <- .s$..jacobian
       if (!calcJac) .tmp1 <- ""
       .tmp2 <- .s$..lhs
