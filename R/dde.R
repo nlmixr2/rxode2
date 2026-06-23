@@ -139,22 +139,23 @@
   unique(.roots)
 }
 
-#' Validate that delay durations do not depend on the sensitivity parameters (env)
+#' Validate that delay durations do not depend on a state (env)
 #'
-#' Env-based companion to [.rxDelayValidateTau()] used inside [.rxSens()] (which
-#' only has the loaded symengine environment).  v1 forward sensitivities require
-#' a delay duration to be independent of every sensitivity parameter; a
-#' parameter/eta-dependent (random) delay needs the delayed-RHS term (v2).
+#' Used inside [.rxSens()] (which only has the loaded symengine environment).
+#' Parameter/eta-dependent delay durations ARE supported (the variational term
+#' gains a delayed-derivative correction).  A delay that depends on a *state*,
+#' however, would require the state's own sensitivity inside the duration and is
+#' rejected.
 #'
 #' @param model symengine environment from the model loader.
-#' @param params character vector of sensitivity parameters.
 #' @return invisibly `TRUE`; stops with an informative error otherwise.
 #' @noRd
-.rxDelayValidateTauSE <- function(model, params) {
+.rxDelayValidateTauSE <- function(model) {
+  .states <- rxStateOde(model)
   ## Walk each RHS as rxFromSE text (base-R `[[` on language objects is safe;
   ## symengine intercepts VecBasic `[[` before the sensitivity loop warms up
   ## its method dispatch).
-  for (.si in rxStateOde(model)) {
+  for (.si in .states) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) next
     .e <- parse(text = rxFromSE(.f))
@@ -163,12 +164,11 @@
         if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
           .stateJ <- deparse1(x[[2L]])
           .tau <- deparse1(x[[3L]])
-          .bad <- intersect(.rxResolveRootVarsSE(.tau, model), params)
+          .bad <- intersect(.rxResolveRootVarsSE(.tau, model), .states)
           if (length(.bad) > 0L) {
             stop("delay duration 'delay(", .stateJ, ", ", .tau,
-                 ")' depends on the sensitivity parameter(s) ",
-                 paste(.bad, collapse = ", "),
-                 "; parameter-dependent delays are not yet supported for sensitivities",
+                 ")' depends on the state(s) ", paste(.bad, collapse = ", "),
+                 "; state-dependent delays are not supported for sensitivities",
                  call. = FALSE)
           }
         }
@@ -224,7 +224,30 @@
       ## restore the substituted symbol back to the delay() subexpression
       .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"),
                      .djTxt, fixed = TRUE)
-      .out[[length(.out) + 1L]] <- list(stateJ = .stateJ, tau = .tau, djac = .djTxt)
+      ## Parameter-dependent delay: precompute d tau / d p for every sensitivity
+      ## parameter here (all symengine work is done in this lapply, where S/subs/D
+      ## are reliable; the splice below is pure string assembly).  tau is resolved
+      ## through the model definitions first so intermediate assignments are
+      ## differentiated correctly.
+      .dtauByP <- stats::setNames(rep("0", length(params)), params)
+      ## Build the duration expression by evaluating its text in the symengine
+      ## env (like .rxJacobian) -- this resolves intermediate definitions and
+      ## avoids symengine::S() on a function expression, which is intercepted in
+      ## this context.
+      .tauRes <- tryCatch(eval(parse(text = .tau), envir = model),
+                          error = function(e) NULL)
+      if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
+        for (.pp in params) {
+          ## Assign each symengine result to its own variable before rxFromSE:
+          ## rxFromSE captures its argument (NSE), so a nested symengine::D()
+          ## call would be parsed literally (the `::` is rejected).
+          .psym <- symengine::S(.pp)
+          .dD <- tryCatch(symengine::D(.tauRes, .psym), error = function(e) NULL)
+          if (!is.null(.dD)) .dtauByP[.pp] <- rxFromSE(.dD)
+        }
+      }
+      .out[[length(.out) + 1L]] <- list(stateJ = .stateJ, tau = .tau,
+                                        djac = .djTxt, dtauByP = .dtauByP)
     }
     .out
   })
@@ -244,7 +267,20 @@
       return(.entry)
     }
     .add <- vapply(.dj, function(z) {
-      paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p, "__,", z$tau, ")")
+      ## delay(S_j, tau): the value-sensitivity of the delayed state.
+      .term <- paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p,
+                      "__,", z$tau, ")")
+      ## parameter-dependent delay: d/dp[y_j(t-tau(p))] also has the term
+      ## -ydot_j(t-tau)*dtau/dp.  ydot_j(t-tau) = -d/dtau[delay(y_j,tau)] is
+      ## obtained by a central difference of delay() in tau (reusing the dense
+      ## history); dtau/dp was differentiated symbolically above.
+      .dtau <- z$dtauByP[[.p]]
+      if (!is.null(.dtau) && !identical(.dtau, "0")) {
+        .ydot <- paste0("(delay(", z$stateJ, ",(", z$tau, ")*0.999)-delay(",
+                        z$stateJ, ",(", z$tau, ")*1.001))/((", z$tau, ")*0.002)")
+        .term <- paste0(.term, "-(", z$djac, ")*(", .ydot, ")*(", .dtau, ")")
+      }
+      .term
     }, character(1L))
     .add <- paste(.add, collapse = "")
     ## insert before the initial-condition line (if any), otherwise append

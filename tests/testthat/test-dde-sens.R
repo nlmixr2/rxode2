@@ -145,4 +145,34 @@ rxTest({
     })
     expect_error(.rxDelayValidateTau(.m2, c("tau")), "parameter")
   })
+
+  test_that("parameter-dependent delay sensitivities match finite differences", {
+    ## tau depends on the sensitivity parameter ltau (tau = exp(ltau)).  The
+    ## sensitivity gains the delayed-derivative correction -ydot(t-tau)*dtau/dp.
+    .m <- rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)
+cen(0) <- 10
+k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
+    .ms <- rxode2(.m, calcSens = "ltau")
+    ## the correction term (central difference of delay() in tau) is emitted
+    expect_match(rxNorm(.ms), "0.999", fixed = TRUE)
+    expect_match(rxNorm(.ms), "1.001", fixed = TRUE)
+    .ev <- et(seq(0, 8, by = 0.25))
+    .l0 <- log(1.5)
+    .s <- rxSolve(.ms, .ev, params = c(ltau = .l0), atol = 1e-12, rtol = 1e-12)
+    .h <- 1e-4
+    .fd <- (rxSolve(.ms, .ev, params = c(ltau = .l0 + .h), atol = 1e-12, rtol = 1e-12)$cen -
+            rxSolve(.ms, .ev, params = c(ltau = .l0 - .h), atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+    .an <- .s[["rx__sens_cen_BY_ltau__"]]
+    expect_gt(diff(range(.an)), 1) # non-trivial
+    expect_lt(max(abs(.an - .fd)), 5e-2)
+  })
+
+  test_that("state-dependent delays are rejected for sensitivities", {
+    .m <- rxode2({
+      d/dt(cen) <- -k * cen + delay(cen, tau)
+      tau <- 1 + 0.01 * cen
+      k <- 0.2
+    })
+    expect_error(rxode2(.m, calcSens = "k"), "state-dependent")
+  })
 })

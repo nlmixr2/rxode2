@@ -103,9 +103,9 @@ rxExpandGrid <- function(x, y, type = 0L) {
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
     if (missing(vars2)) {
-      ## delay differential equations: reject parameter-dependent delays before
-      ## the progress bar opens (so the error message is not masked).
-      .rxDelayValidateTauSE(model, vars)
+      ## delay differential equations: reject state-dependent delays before the
+      ## progress bar opens (so the error message is not masked).
+      .rxDelayValidateTauSE(model)
     }
     if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
