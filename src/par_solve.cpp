@@ -5672,9 +5672,14 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
     double *ypSave = (eff <= 64) ? _ypStack
                                  : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    // nstiff=50 enables dop853's built-in stiffness estimator (the Hairer II
+    // dominant-eigenvalue estimate, the same quantity Julia's AutoSwitch uses
+    // as eigen_est), so the primary returns idid=-4 the moment it detects
+    // stiffness and we switch to ros4 proactively rather than grinding to the
+    // step-count limit first.
     idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
+                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, 50,
                   neqOde, NULL, 0, dc, ind->id);
     if (idid <= 0 || ind->err) {
       // dop853 failed (severe stiffness): discard its partial delay history,
