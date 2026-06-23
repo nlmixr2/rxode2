@@ -114,6 +114,24 @@ rxTest({
     expect_lt(max(abs(.s[["rx__sens_cen_BY_ke__"]] - .fdke)), 1e-2)
   })
 
+  test_that("delay() sensitivity is correct when the initial condition depends on a parameter", {
+    ## cen(0) = base, so S_base(0) = 1 and the delayed pre-history of the sens
+    ## state (for t < tau) must return that initial sensitivity.
+    .mk <- function(base) {
+      rxode2(paste0("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\n",
+                    "cen(0) <- base\nk <- 0.2; kin <- 0.5; tau <- 1; base <- ", base))
+    }
+    .ev <- et(seq(0, 6, by = 0.5))
+    .ms <- rxode2(.mk(10), calcSens = "base")
+    expect_match(rxNorm(.ms), "rx__sens_cen_BY_base__(0)=1", fixed = TRUE)
+    .s <- rxSolve(.ms, .ev, atol = 1e-12, rtol = 1e-12)
+    expect_equal(.s[["rx__sens_cen_BY_base__"]][1], 1, tolerance = 1e-8)
+    .h <- 1e-3
+    .fd <- (rxSolve(.mk(10 + .h), .ev, atol = 1e-12, rtol = 1e-12)$cen -
+            rxSolve(.mk(10 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+    expect_lt(max(abs(.s[["rx__sens_cen_BY_base__"]] - .fd)), 1e-4)
+  })
+
   test_that(".rxDelayValidateTau errors for parameter-dependent delays", {
     .m <- rxode2({
       d/dt(cen) <- -cl / v * cen + delay(cen, tau)
