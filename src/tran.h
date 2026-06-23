@@ -126,6 +126,7 @@ lhs symbols?
   int splitBolusN;
   int isMexp;
   int hasDdt;
+  int curDdt; // currently parsing the RHS of a d/dt() statement
   int hasIndLinProp;
   int hasDelay; // Has delay() function (delay differential equation)
 } symtab;

@@ -126,6 +126,14 @@ static inline int handleFunctionDelay(transFunctions *tf) {
   if ((tf->isDelay = (isDeriv || !strcmp("delay", tf->v)))) {
     const char *cFun = isDeriv ? "_rxDelayD" : "_rxDelay";
     const char *normFun = isDeriv ? "rxDelayD" : "delay";
+    // delay()/rxDelayD() interpolate the dense solver history, which is only
+    // recorded during integration; they are only meaningful inside a d/dt() RHS.
+    if (!tb.curDdt) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, "'%s' can only be used on a 'd/dt()' line", normFun);
+      trans_syntax_error_report_fn(_gbuf.s);
+      return 1;
+    }
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2) {
       updateSyntaxCol();

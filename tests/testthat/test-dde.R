@@ -18,6 +18,34 @@ rxTest({
     expect_equal(unname(rxModelVars(.dde)$flags[["hasDelay"]]), 1L)
   })
 
+  test_that("delay()/rxDelayD() are only valid on a d/dt() line", {
+    ## delay() interpolates the dense solver history, which is only recorded
+    ## during integration -- it is meaningful only inside a d/dt() right-hand
+    ## side, not in an output (lhs) assignment.
+    ## the model is otherwise valid, so the only error is the d/dt restriction
+    ## (the detailed "can only be used on a 'd/dt()' line" message prints to the
+    ## parser error stream; the condition is the generic syntax error)
+    expect_error(rxode2({
+      d/dt(y) <- -y
+      y(0) <- 10
+      z <- delay(y, 1)
+    }), "syntax error")
+    expect_error(rxode2({
+      d/dt(y) <- -y
+      y(0) <- 10
+      z <- rxDelayD(y, 1)
+    }), "syntax error")
+    ## the diagnostic names the offending function and the d/dt() requirement
+    expect_output(
+      try(rxode2({
+        d/dt(y) <- -y
+        y(0) <- 10
+        z <- delay(y, 1)
+      }), silent = TRUE),
+      "delay"
+    )
+  })
+
   test_that("delay differential equation matches the analytic solution", {
     .tt <- seq(0, 2, by = 0.1)
     .s <- rxSolve(.dde, et(.tt), atol = 1e-10, rtol = 1e-10)
