@@ -50,7 +50,6 @@ extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
-extern "C" void ensureAutoJacBuf(int nCores, int neq);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -5847,9 +5846,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       _liw2 = 20 + _bneq;
     }
     ensureRworkPool((int)op->cores, _lrw2, _liw2);
-    if (op->stiff2 > 0) {
-      ensureAutoJacBuf((int)op->cores, _bneq);
-    }
 
     // Now set up events and parameters
     RObject par0 = params;
