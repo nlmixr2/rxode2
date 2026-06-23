@@ -4,7 +4,7 @@
 \alias{.rxSens}
 \title{Sensitivity for model}
 \usage{
-.rxSens(model, vars, vars2)
+.rxSens(model, vars, vars2, vars3)
 }
 \arguments{
 \item{model}{symengine model environment}
@@ -12,6 +12,10 @@
 \item{vars}{Variables for single sensitivity}
 
 \item{vars2}{if present, 2 parameter sensitivity}
+
+\item{vars3}{if present, 3 parameter (third order) sensitivity;
+requires the first and second order sensitivities to have already
+been loaded into \code{model}}
 }
 \value{
 Sensitivity

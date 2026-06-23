@@ -39,5 +39,5 @@ pieces a FOCEI/FOCE observed-information covariance contracts against for the
 \code{Omega} block.
 }
 \author{
-Matthew Fidler
+Hidde van de Beek
 }

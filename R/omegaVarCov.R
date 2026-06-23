@@ -25,7 +25,7 @@
 #'   `elements` (each row `c(a, b)`, `a >= b`), first derivatives
 #'   `dOmegaInv` / `dLogDet`, and (when `order = 2`) second derivatives
 #'   `d2OmegaInv` / `d2LogDet`.
-#' @author Matthew Fidler
+#' @author Hidde van de Beek
 #' @export
 rxOmegaVarCovDeriv <- function(omega, order = 2L) {
   omega <- as.matrix(omega)
