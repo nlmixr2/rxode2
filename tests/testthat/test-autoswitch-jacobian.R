@@ -42,4 +42,28 @@ rxTest({
     expect_false(any(is.na(.x$a)))
     expect_true(max(abs(.x$a - .ref$a)) < 1e-5)
   })
+
+  test_that("the non-dense dop853+ros4 composite switches to ros4 mid-solve", {
+    ## A stiff Robertson problem with widely spaced output times that overwhelms
+    ## the non-stiff dop853 primary.  The composite must switch to ros4 per
+    ## interval and solve it; pure dop853 cannot.
+    .rob <- rxode2({
+      d/dt(a)  <- -0.04 * a + 1e4 * b * cc
+      d/dt(b)  <-  0.04 * a - 1e4 * b * cc - 3e7 * b * b
+      d/dt(cc) <-  3e7 * b * b
+      a(0) <- 1
+      b(0) <- 0
+      cc(0) <- 0
+    })
+    .evr <- et(c(0.1, 1, 10, 100))
+    .refr <- rxSolve(.rob, .evr, method = "lsoda", atol = 1e-10, rtol = 1e-10)
+
+    ## pure dop853 cannot solve it ...
+    expect_error(rxSolve(.rob, .evr, method = "dop853", atol = 1e-8, rtol = 1e-8))
+
+    ## ... but the non-dense composite (no dense=TRUE) does, matching lsoda.
+    .xr <- rxSolve(.rob, .evr, method = "dop853+ros4", atol = 1e-8, rtol = 1e-8)
+    expect_false(any(is.na(.xr$a)))
+    expect_true(max(abs(.xr$a - .refr$a)) < 1e-5)
+  })
 })

@@ -5250,12 +5250,125 @@ extern "C" void ind_linCmt(rx_solve *rx, int solveid,
   ind_linCmt0(rx, op, solveid, neq, dydt, u_inis);
 }
 
+// --- AutoSwitch helpers -------------------------------------------------------
+// Gershgorin estimate of rho*|dt|/stability_size of the analytical Jacobian at
+// time t (0 when no Jacobian is available).  This is the per-interval stiffness
+// indicator used to decide between the non-stiff primary (dop853) and the stiff
+// secondary (ros4) of the "dop853+ros4" AutoSwitch composite.
+static double rxAutoStiffRatio(rx_solving_options *op, rx_solving_options_ind *ind,
+                               int neqOde, double t, double *yp, double dt, int solveid) {
+  if (calc_jac == NULL || neqOde <= 0 || dt == 0.0) return 0.0;
+  int tid = rx_get_thread((int)__autoJacBuf.size());
+  if (tid < 0 || tid >= (int)__autoJacBuf.size() ||
+      (int)__autoJacBuf[tid].size() < neqOde * neqOde) return 0.0;
+  double *jbuf = __autoJacBuf[tid].data();
+  int nt[2] = { neqOde, solveid };
+  calc_jac(nt, t, yp, jbuf, (unsigned int)neqOde);
+  double rho = gershgorinSpectralRadius(jbuf, neqOde);
+  if (rho <= 0.0) return 0.0;
+  return rho * fabs(dt) / autoSwitchStabilitySize(op->stiff);
+}
+
+// AutoSwitch hysteresis update after solving one interval.  `ratio` is the
+// post-interval stiffness ratio (0 if unavailable); `usedStiff` says whether
+// the stiff secondary solved this interval.
+static void rxAutoSwitchUpdate(rx_solving_options *op, rx_solving_options_ind *ind,
+                               bool usedStiff, double ratio) {
+  if (usedStiff) {
+    ind->autoLastSwitchIntervals++;
+    bool nonstiff = (ratio > 0.0 && ratio < op->autoSwitchStifftol);
+    bool guardOk = (op->autoSwitchSwitchMax == 0 ||
+                    ind->autoLastSwitchIntervals >= op->autoSwitchSwitchMax);
+    if (nonstiff && guardOk) {
+      ind->autoMethod = 0;
+      ind->autoCount = 0;
+      ind->autoLastSwitchIntervals = 0;
+    }
+  } else {
+    if (ratio > op->autoSwitchNonstifftol) {
+      ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
+      if (ind->autoCount >= op->autoSwitchMaxStiff) {
+        ind->autoMethod = 1;
+        ind->autoCount = 0;
+        ind->autoLastSwitchIntervals = 0;
+      }
+    } else {
+      if (ind->autoCount > 0) ind->autoCount = 0;
+      ind->autoLastSwitchIntervals++;
+    }
+  }
+}
+
+// Solve one non-dense interval [xp, xout] with the dop853+ros4 AutoSwitch
+// composite (point-to-point, no dense output): the analogue of
+// denseSegmentSolve for the standard non-dense path.  Picks dop853 or ros4 per
+// interval from the Gershgorin pre-check + autoMethod hysteresis, retries with
+// ros4 if dop853 hits stiffness (idid<=0, with nstiff=50 enabling the dop853
+// stiffness estimator), and updates the switch state.  The caller has already
+// run preSolve() and set neq[0] to the ODE dimension.
+static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
+                                double xp, double xout, double *yp,
+                                int *istate, int itol, int eff) {
+  (void) rx;
+  int neqOde = neq[0];
+  int solveid = neq[1];
+  // Non-composite: plain dop853 (unchanged behavior).
+  if (op->stiff2 <= 0) {
+    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  ind->HMAX, op->H0, op->mxstep, 1, -1,
+                  0, NULL, 0, NULL, ind->id);
+  }
+  double _dt = xout - xp;
+  double ratio = 0.0;
+  bool useStiff = (ind->autoMethod == 1);
+  if (!useStiff) {
+    ratio = rxAutoStiffRatio(op, ind, neqOde, xp, yp, _dt, solveid);
+    if (ratio > op->autoSwitchNonstifftol) useStiff = true;
+  }
+  int idid;
+  bool usedStiff = useStiff;
+  if (useStiff) {
+    double xpLoc = xp;
+    ros4_solveWith1Pt(neq, yp, &xpLoc, xout, istate, op, ind);
+    idid = (*istate > 0 && !ind->err) ? 1 : -4;
+  } else {
+    double _ypStack[64];
+    double *_ypDyn = NULL;
+    double *ypSave = (eff <= 64) ? _ypStack
+                                 : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+    memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  ind->HMAX, op->H0, op->mxstep, 1, 50,
+                  0, NULL, 0, NULL, ind->id);
+    if (idid <= 0 || ind->err) {
+      // dop853 detected/encountered stiffness: restore the interval-start state
+      // and re-solve with the stiff secondary (ros4).
+      ind->rc[0] = 0;
+      ind->err = 0;
+      *istate = 1;
+      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+      double xpLoc = xp;
+      ros4_solveWith1Pt(neq, yp, &xpLoc, xout, istate, op, ind);
+      idid = (*istate > 0 && !ind->err) ? 1 : -4;
+      usedStiff = true;
+    }
+    if (_ypDyn) free(_ypDyn);
+  }
+  if (idid > 0 && !ind->err) {
+    ratio = rxAutoStiffRatio(op, ind, neqOde, xout, yp, _dt, solveid);
+  }
+  rxAutoSwitchUpdate(op, ind, usedStiff, ratio);
+  return idid;
+}
+
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                          t_dydt c_dydt,
                          t_update_inis u_inis) {
   clock_t t0 = clock();
   int itol=1;           //1: rtol/atol are vectors (per-compartment), matching liblsoda
-  int iout=0;           //iout=0: solout() NEVER called
   int idid=0;
   int i;
   double xout;
@@ -5330,33 +5443,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                          c_dydt,       /* function computing the value of f(x,y) */
-                          xp,           /* initial x-value */
-                          yp,           /* initial values for y */
-                          ind->extraDoseNewXout, /* final x-value (xend-x may be positive or negative) */
-                          op->rtol2,      /* relative error tolerance (per-compartment vector) */
-                          op->atol2,      /* absolute error tolerance (per-compartment vector) */
-                          itol,         /* switch for rtoler and atoler */
-                          solout,         /* function providing the numerical solution during integration */
-                          iout,         /* switch for calling solout */
-                          NULL,           /* messages stream */
-                          DBL_EPSILON,    /* rounding unit */
-                          0,              /* safety factor */
-                          0,              /* parameters for step size selection */
-                          0,
-                          0,              /* for stabilized step size control */
-                          ind->HMAX,              /* maximal step size */
-                          op->H0,            /* initial step size */
-                          op->mxstep, /* maximal number of allowed steps */
-                          1,            /* switch for the choice of the coefficients */
-                          -1,                     /* test for stiffness */
-                          0,                      /* number of components for which dense outpout is required */
-                          NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                          0,                      /* declared length of icon */
-                          NULL,                   /* userdata */
-                          ind->id                 /* rxode2 subject id for message aggregator */
-                          );
+            idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
+                                        ind->extraDoseNewXout, yp, &istate, itol, eff);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5375,33 +5463,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                          c_dydt,       /* function computing the value of f(x,y) */
-                          ind->extraDoseNewXout,           /* initial x-value */
-                          yp,           /* initial values for y */
-                          xout, /* final x-value (xend-x may be positive or negative) */
-                          op->rtol2,      /* relative error tolerance (per-compartment vector) */
-                          op->atol2,      /* absolute error tolerance (per-compartment vector) */
-                          itol,         /* switch for rtoler and atoler */
-                          solout,         /* function providing the numerical solution during integration */
-                          iout,         /* switch for calling solout */
-                          NULL,           /* messages stream */
-                          DBL_EPSILON,    /* rounding unit */
-                          0,              /* safety factor */
-                          0,              /* parameters for step size selection */
-                          0,
-                          0,              /* for stabilized step size control */
-                          ind->HMAX,              /* maximal step size */
-                          op->H0,            /* initial step size */
-                          op->mxstep, /* maximal number of allowed steps */
-                          1,            /* switch for the choice of the coefficients */
-                          -1,                     /* test for stiffness */
-                          0,                      /* number of components for which dense outpout is required */
-                          NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                          0,                      /* declared length of icon */
-                          NULL,                   /* userdata */
-                          ind->id                 /* rxode2 subject id for message aggregator */
-                          );
+            idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
+                                        ind->extraDoseNewXout, xout, yp, &istate, itol, eff);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5411,33 +5474,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (!isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                        c_dydt,       /* function computing the value of f(x,y) */
-                        xp,           /* initial x-value */
-                        yp,           /* initial values for y */
-                        xout,         /* final x-value (xend-x may be positive or negative) */
-                        op->rtol2,      /* relative error tolerance (per-compartment vector) */
-                        op->atol2,      /* absolute error tolerance (per-compartment vector) */
-                        itol,         /* switch for rtoler and atoler */
-                        solout,         /* function providing the numerical solution during integration */
-                        iout,         /* switch for calling solout */
-                        NULL,           /* messages stream */
-                        DBL_EPSILON,    /* rounding unit */
-                        0,              /* safety factor */
-                        0,              /* parameters for step size selection */
-                        0,
-                        0,              /* for stabilized step size control */
-                        ind->HMAX,              /* maximal step size */
-                        op->H0,            /* initial step size */
-                        op->mxstep, /* maximal number of allowed steps */
-                        1,            /* switch for the choice of the coefficients */
-                        -1,                     /* test for stiffness */
-                        0,                      /* number of components for which dense outpout is required */
-                        NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                        0,                      /* declared length of icon */
-                        NULL,                   /* userdata */
-                        ind->id                 /* rxode2 subject id for message aggregator */
-                        );
+          idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                      &istate, itol, eff);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5642,23 +5680,12 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
                   neqOde, NULL, 0, dc, ind->id);
   }
   double _dt = xout - xp;
-  bool jacOk = (calc_jac != NULL && neqOde > 0 && _dt != 0.0);
-  double rho = 0.0, ratio = 0.0;
+  double ratio = 0.0;
   bool useStiff = (ind->autoMethod == 1);
-  // Pre-interval Gershgorin check while on the non-stiff primary.
-  if (!useStiff && jacOk) {
-    int tid = rx_get_thread((int)__autoJacBuf.size());
-    if (tid >= 0 && tid < (int)__autoJacBuf.size() &&
-        (int)__autoJacBuf[tid].size() >= neqOde * neqOde) {
-      double *jbuf = __autoJacBuf[tid].data();
-      int nt[2] = { neqOde, solveid };
-      calc_jac(nt, xp, yp, jbuf, (unsigned int)neqOde);
-      rho = gershgorinSpectralRadius(jbuf, neqOde);
-      if (rho > 0.0) {
-        ratio = rho * fabs(_dt) / autoSwitchStabilitySize(op->stiff);
-        if (ratio > op->autoSwitchNonstifftol) useStiff = true;
-      }
-    }
+  // Pre-interval stiffness check while on the non-stiff primary.
+  if (!useStiff) {
+    ratio = rxAutoStiffRatio(op, ind, neqOde, xp, yp, _dt, solveid);
+    if (ratio > op->autoSwitchNonstifftol) useStiff = true;
   }
   int idid;
   bool usedStiff = useStiff;
@@ -5695,42 +5722,11 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
     }
     if (_ypDyn) free(_ypDyn);
   }
-  // Post-interval Gershgorin check + autoMethod hysteresis.
-  if (jacOk && idid > 0 && !ind->err) {
-    int tid = rx_get_thread((int)__autoJacBuf.size());
-    if (tid >= 0 && tid < (int)__autoJacBuf.size() &&
-        (int)__autoJacBuf[tid].size() >= neqOde * neqOde) {
-      double *jbuf = __autoJacBuf[tid].data();
-      int nt[2] = { neqOde, solveid };
-      calc_jac(nt, xout, yp, jbuf, (unsigned int)neqOde);
-      rho = gershgorinSpectralRadius(jbuf, neqOde);
-      ratio = (rho > 0.0) ? rho * fabs(_dt) / autoSwitchStabilitySize(op->stiff) : 0.0;
-    }
+  // Post-interval stiffness check + AutoSwitch hysteresis.
+  if (idid > 0 && !ind->err) {
+    ratio = rxAutoStiffRatio(op, ind, neqOde, xout, yp, _dt, solveid);
   }
-  if (usedStiff) {
-    ind->autoLastSwitchIntervals++;
-    bool nonstiff = (jacOk && rho > 0.0 && ratio < op->autoSwitchStifftol);
-    bool guardOk = (op->autoSwitchSwitchMax == 0 ||
-                    ind->autoLastSwitchIntervals >= op->autoSwitchSwitchMax);
-    if (nonstiff && guardOk) {
-      ind->autoMethod = 0;
-      ind->autoCount = 0;
-      ind->autoLastSwitchIntervals = 0;
-    }
-  } else {
-    bool postStiff = (jacOk && rho > 0.0 && ratio > op->autoSwitchNonstifftol);
-    if (postStiff) {
-      ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
-      if (ind->autoCount >= op->autoSwitchMaxStiff) {
-        ind->autoMethod = 1;
-        ind->autoCount = 0;
-        ind->autoLastSwitchIntervals = 0;
-      }
-    } else {
-      if (ind->autoCount > 0) ind->autoCount = 0;
-      ind->autoLastSwitchIntervals++;
-    }
-  }
+  rxAutoSwitchUpdate(op, ind, usedStiff, ratio);
   return idid;
 }
 
