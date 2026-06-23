@@ -1,5 +1,13 @@
 # rxode2 5.1.3
 
+- Add `rxOmegaVarCovDeriv()`, a non-Cholesky (variance-covariance) `Omega`
+  parameterization path: it returns `Omega^{-1}`, `log|Omega|`, and their first
+  and second derivatives with respect to each free variance-covariance element
+  (closed form, `d(Omega^{-1})/d(omega_ab) = -Omega^{-1} E_ab Omega^{-1}`).  The
+  default estimation parameterization is a Cholesky decomposition, so reporting
+  random-effect standard errors on the natural variance scale (or building an
+  analytic covariance over the `Omega` elements) needs this separate path.
+
 - Add `rxExpandSens3_()`, which generates the analytic third-order forward
   sensitivity equations (`d^3 state / d s1 d s2 d s3`) by total-differentiating
   the second-order sensitivity right-hand side.  `.rxSens()` gained a `vars3`
