@@ -13,10 +13,34 @@
   recorded together).  Stiff delay models can also be solved with
   `method = "ros4"` directly.  The step size is automatically capped to
   the smallest delay so short delays stay accurate.  Non-dense solvers
-  are rejected with an informative error.  The DDE dense-output and
-  history machinery is adapted from the 'dde' package (Rich FitzJohn,
-  Wes Hinsley, Imperial College of Science, Technology and Medicine),
-  whose authors are added as contributors.
+  are rejected with an informative error.  Dense history is recorded
+  only for the states that `delay()` actually looks back on, so a delay
+  on one state in a large ODE system stays inexpensive.  `delay()` may
+  only be used on a `d/dt()` (ODE) right-hand side, where the dense
+  history is available.  The DDE dense-output and history machinery is
+  adapted from the 'dde' package (Rich FitzJohn, Wes Hinsley, Imperial
+  College of Science, Technology and Medicine), whose authors are added
+  as contributors.
+
+- Forward sensitivities are now generated for delay differential
+  equation models, so `delay()` models can be estimated with
+  gradient-based methods such as nlmixr2's FOCEi.  Each sensitivity
+  equation gains the delayed term `delay(S, T)` (the sensitivity of the
+  delayed state), which reuses the same dense history.  Delay durations
+  that themselves depend on an estimated parameter are also supported,
+  using the new `rxDelayD(state, T)` -- the analytic time-derivative of
+  a delayed state, obtained from the derivative of the dense
+  interpolant.
+
+- Added AutoSwitch composite ODE solving methods, written as
+  `"primary+secondary"` (for example `method = "dop853+ros4"`).  These
+  probe each interval/segment with a non-stiff primary (`dop853`) and
+  reactively fall back to a stiff secondary only when stiffness is
+  detected, so a problem that is non-stiff in one region and stiff in
+  another is solved efficiently in a single pass.  The stiff secondary
+  may be `ros4` or another Rosenbrock / implicit Runge-Kutta method, for
+  which an analytical Jacobian is generated automatically, and the
+  composite works in both the standard and dense-output paths.
 
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
