@@ -71,7 +71,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     dense_stepper.calc_state(t_old + hh / 3.0,     _dq1);
     dense_stepper.calc_state(t_old + 2.0*hh / 3.0, _dq2);
     dense_stepper.calc_state(t_cur,                _dq3);
-    rxDelayHistPushSamples(ind, neqOde, t_old, hh,
+    rxDelayHistPushSamples(ind, op, t_old, hh,
                            &_dq0[0], &_dq1[0], &_dq2[0], &_dq3[0]);
   };
 
@@ -429,7 +429,7 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
         dense_stepper.calc_state(t_old + hh / 3.0,     q1);
         dense_stepper.calc_state(t_old + 2.0*hh / 3.0, q2);
         dense_stepper.calc_state(t_cur,                q3);
-        rxDelayHistPushSamples(ind, neqOde, t_old, hh, &q0[0], &q1[0], &q2[0], &q3[0]);
+        rxDelayHistPushSamples(ind, op, t_old, hh, &q0[0], &q1[0], &q2[0], &q3[0]);
       }
       while (obs <= obs_last) {
         int raw = ind->ix[obs];

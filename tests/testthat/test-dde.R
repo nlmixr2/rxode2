@@ -147,4 +147,33 @@ rxTest({
     expect_false(any(is.na(.s$N)))
     expect_true(all(.s$N > 0))
   })
+
+  test_that("dense history is recorded only for the states delay() looks back on", {
+    ## delay() references the SECOND state; the first state is not delayed.  The
+    ## solver records dense history only for delayed states (propDelay bit in
+    ## stateProp), so this exercises the compaction + the state-index -> history
+    ## column map in _rxDelay.  The delayed state's trajectory must match the
+    ## same equation solved on its own.
+    .two <- rxode2({
+      d/dt(a) <- -a
+      d/dt(b) <- -0.5 * b + 0.3 * delay(b, 1)
+      a(0) <- 5
+      b(0) <- 1
+    })
+    .one <- rxode2({
+      d/dt(b) <- -0.5 * b + 0.3 * delay(b, 1)
+      b(0) <- 1
+    })
+    ## stateProp carries the delay bit only on the delayed state (b, index 1).
+    .sp <- rxModelVars(.two)$stateProp
+    expect_equal(bitwAnd(.sp[1], 262144L), 0L)        # a: not delayed
+    expect_equal(bitwAnd(.sp[2], 262144L), 262144L)   # b: delayed
+    .ev <- et(seq(0, 10, by = 0.5))
+    .s2 <- rxSolve(.two, .ev, atol = 1e-10, rtol = 1e-10)
+    .s1 <- rxSolve(.one, .ev, atol = 1e-10, rtol = 1e-10)
+    ## the compacted column maps back to the right state: b matches the
+    ## standalone solve, and the undelayed state a still decays as exp(-t).
+    expect_true(max(abs(.s2$b - .s1$b)) < 1e-6)
+    expect_true(max(abs(.s2$a - 5 * exp(-.s2$time))) < 1e-5)
+  })
 })

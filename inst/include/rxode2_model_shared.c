@@ -388,6 +388,9 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
   int n = _ind->delayHistNeq;
   int stride = _ind->delayHistStride;
   double *hist = _ind->delayHist;
+  // History stores only the states delay() looks back on; map this state's ODE
+  // index to its compact history column.
+  int col = _solveData->op->delayCol[i];
   // Records are sorted by increasing step start time (xold) and cover
   // contiguous intervals [xold, xold+h].  Find the largest xold <= td; that
   // record's dense polynomial interpolates td (extrapolating slightly when td
@@ -413,14 +416,14 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
     double L1 = 13.5 * s * (s - 2.0/3.0) * (s - 1.0);
     double L2 = -13.5 * s * (s - 1.0/3.0) * (s - 1.0);
     double L3 = 4.5 * s * (s - 1.0/3.0) * (s - 2.0/3.0);
-    return L0 * rec[0 * n + i] + L1 * rec[1 * n + i] +
-           L2 * rec[2 * n + i] + L3 * rec[3 * n + i];
+    return L0 * rec[0 * n + col] + L1 * rec[1 * n + col] +
+           L2 * rec[2 * n + col] + L3 * rec[3 * n + col];
   }
   // dop853 8th-order dense interpolant (same polynomial as contd8())
   double s1 = 1.0 - s;
-  return rec[0 * n + i] + s * (rec[1 * n + i] + s1 * (rec[2 * n + i] +
-         s * (rec[3 * n + i] + s1 * (rec[4 * n + i] + s * (rec[5 * n + i] +
-         s1 * (rec[6 * n + i] + s * rec[7 * n + i]))))));
+  return rec[0 * n + col] + s * (rec[1 * n + col] + s1 * (rec[2 * n + col] +
+         s * (rec[3 * n + col] + s1 * (rec[4 * n + col] + s * (rec[5 * n + col] +
+         s1 * (rec[6 * n + col] + s * rec[7 * n + col]))))));
 }
 
 void _assignFuns0(void) {

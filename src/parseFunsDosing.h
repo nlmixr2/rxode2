@@ -152,6 +152,9 @@ static inline int handleFunctionDelay(transFunctions *tf) {
       new_or_ith(v2);
     }
     tb.hasDelay = 1;
+    // Mark this state so the solver records dense history only for the states
+    // delay() actually looks back on (compartment-level history compaction).
+    if ((tb.dprop[tb.id] & propDelay) == 0) tb.dprop[tb.id] += propDelay;
     // history is stored per-subject in _ind, so delay() is thread-safe
     sAppend(&sb,  "_rxDelay(_ind, __DDT%d__, t", tb.id);
     sAppend(&sbDt, "_rxDelay(_ind, __DDT%d__, t", tb.id);

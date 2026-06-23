@@ -1866,6 +1866,8 @@ extern "C" void gFree(){
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
   _rxGetErrs=NULL;
+  if (_globals.gdelayState != NULL) { R_Free(_globals.gdelayState); _globals.gdelayState = NULL; }
+  if (_globals.gdelayCol != NULL) { R_Free(_globals.gdelayCol); _globals.gdelayCol = NULL; }
   _globals.alloc = false;
 }
 
@@ -5723,6 +5725,46 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
     op->hasDelay = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasDelay];
+    // Build the delay-history column map: record dense history only for the ODE
+    // states that delay() actually looks back on (propDelay bit in stateProp).
+    // delayState[col] = ODE state index for history column `col`; delayCol[state]
+    // is the inverse (-1 for states with no delay), used by _rxDelay to read its
+    // compacted column.  Both are indexed in increasing ODE-state order, the same
+    // order stateProp / the runtime dense coefficients use.
+    op->nDelayState = 0;
+    op->delayState = NULL;
+    op->delayCol = NULL;
+    if (op->hasDelay) {
+      IntegerVector _stateProp = rxSolveDat->mv[RxMv_stateProp];
+      int _nState = _stateProp.size();
+      int _nAlloc = _nState > 0 ? _nState : 1;
+      if (_globals.gdelayCol != NULL) R_Free(_globals.gdelayCol);
+      if (_globals.gdelayState != NULL) R_Free(_globals.gdelayState);
+      _globals.gdelayCol = R_Calloc(_nAlloc, int);
+      _globals.gdelayState = R_Calloc(_nAlloc, int);
+      int _col = 0;
+      for (int _s = 0; _s < _nState; _s++) {
+        if (_stateProp[_s] & rxDelayStateProp) {
+          _globals.gdelayCol[_s] = _col;
+          _globals.gdelayState[_col] = _s;
+          _col++;
+        } else {
+          _globals.gdelayCol[_s] = -1;
+        }
+      }
+      // Defensive fallback: if hasDelay is set but no state carried the bit
+      // (should not happen), record every state -- the pre-compaction behavior.
+      if (_col == 0) {
+        for (int _s = 0; _s < _nState; _s++) {
+          _globals.gdelayCol[_s] = _s;
+          _globals.gdelayState[_s] = _s;
+        }
+        _col = _nState;
+      }
+      op->nDelayState = _col;
+      op->delayState = _globals.gdelayState;
+      op->delayCol = _globals.gdelayCol;
+    }
     op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
     op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
     if (op->stiff2 > 0) {

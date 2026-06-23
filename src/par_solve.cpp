@@ -5367,41 +5367,48 @@ static double *rxDelayHistSlot(rx_solving_options_ind *ind, int n) {
   return ind->delayHist + (size_t) ind->delayHistN * stride;
 }
 
-// Record one dop853 dense step (8th-order Dormand-Prince interpolant).
-static void rxDelayHistPush(rx_solving_options_ind *ind, int n,
+// Record one dop853 dense step (8th-order Dormand-Prince interpolant).  Only the
+// columns for the states delay() looks back on (op->delayState) are stored, so a
+// model that delays one state in a large ODE system keeps a compact history.
+static void rxDelayHistPush(rx_solving_options_ind *ind, rx_solving_options *op,
                             double xold, double h, dop853_ctx_t *ctx) {
-  double *rec = rxDelayHistSlot(ind, n);
+  int nd = op->nDelayState;
+  double *rec = rxDelayHistSlot(ind, nd);
   if (rec == NULL) return;
-  memcpy(rec + 0 * n, ctx->rcont1, n * sizeof(double));
-  memcpy(rec + 1 * n, ctx->rcont2, n * sizeof(double));
-  memcpy(rec + 2 * n, ctx->rcont3, n * sizeof(double));
-  memcpy(rec + 3 * n, ctx->rcont4, n * sizeof(double));
-  memcpy(rec + 4 * n, ctx->rcont5, n * sizeof(double));
-  memcpy(rec + 5 * n, ctx->rcont6, n * sizeof(double));
-  memcpy(rec + 6 * n, ctx->rcont7, n * sizeof(double));
-  memcpy(rec + 7 * n, ctx->rcont8, n * sizeof(double));
-  rec[8 * n]     = xold;
-  rec[8 * n + 1] = h;
-  rec[8 * n + 2] = 0.0;  // dop853 record
+  const int *ds = op->delayState;
+  const double *rc[8] = {ctx->rcont1, ctx->rcont2, ctx->rcont3, ctx->rcont4,
+                         ctx->rcont5, ctx->rcont6, ctx->rcont7, ctx->rcont8};
+  for (int k = 0; k < 8; k++) {
+    double *col = rec + (size_t) k * nd;
+    const double *src = rc[k];
+    for (int c = 0; c < nd; c++) col[c] = src[ds[c]];
+  }
+  rec[8 * nd]     = xold;
+  rec[8 * nd + 1] = h;
+  rec[8 * nd + 2] = 0.0;  // dop853 record
   ind->delayHistN++;
 }
 
 // Record one ros4 (Rosenbrock) dense step.  ros4's dense output is a cubic in
 // the normalized step variable, so four samples at s = 0, 1/3, 2/3, 1 (via the
 // stepper's public calc_state) reconstruct it exactly.
-static void rxDelayHistPushSamples(rx_solving_options_ind *ind, int n,
+static void rxDelayHistPushSamples(rx_solving_options_ind *ind, rx_solving_options *op,
                                    double xold, double h,
                                    const double *s0, const double *s1,
                                    const double *s2, const double *s3) {
-  double *rec = rxDelayHistSlot(ind, n);
+  int nd = op->nDelayState;
+  double *rec = rxDelayHistSlot(ind, nd);
   if (rec == NULL) return;
-  memcpy(rec + 0 * n, s0, n * sizeof(double));
-  memcpy(rec + 1 * n, s1, n * sizeof(double));
-  memcpy(rec + 2 * n, s2, n * sizeof(double));
-  memcpy(rec + 3 * n, s3, n * sizeof(double));
-  rec[8 * n]     = xold;
-  rec[8 * n + 1] = h;
-  rec[8 * n + 2] = 1.0;  // ros4 cubic-sample record
+  const int *ds = op->delayState;
+  const double *src[4] = {s0, s1, s2, s3};
+  for (int k = 0; k < 4; k++) {
+    double *col = rec + (size_t) k * nd;
+    const double *s = src[k];
+    for (int c = 0; c < nd; c++) col[c] = s[ds[c]];
+  }
+  rec[8 * nd]     = xold;
+  rec[8 * nd + 1] = h;
+  rec[8 * nd + 2] = 1.0;  // ros4 cubic-sample record
   ind->delayHistN++;
 }
 
@@ -5439,7 +5446,7 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   // coefficients so delay() lookups can interpolate it later.  The very first
   // solout call (xold == x) carries no dense coefficients yet, so skip it.
   if (ind->delayHistOn && x != xold) {
-    rxDelayHistPush(ind, n, ctx->xold, ctx->hout, ctx);
+    rxDelayHistPush(ind, op, ctx->xold, ctx->hout, ctx);
   }
 
   while (dc->obs_next <= dc->segment_end) {

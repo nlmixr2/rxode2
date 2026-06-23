@@ -26,6 +26,10 @@ typedef struct vLines {
 #define rxode2naTimeInputWarn   2
 #define rxode2naTimeInputError  3
 
+/* stateProp bit marking an ODE state referenced by delay(state, T).  Must match
+   propDelay in src/tran.h. */
+#define rxDelayStateProp 262144
+
 struct rx_solving_options_ind_s;
 typedef struct rx_solving_options_ind_s rx_solving_options_ind;
 
@@ -125,6 +129,9 @@ typedef struct {
   int ssSolved;
   int useDense;
   int hasDelay; /* model uses delay() -- record dense history for DDE lookups */
+  int nDelayState; /* number of ODE states delay() looks back on (history columns) */
+  int *delayState; /* [nDelayState] their ODE state indices (history column -> state) */
+  int *delayCol;   /* [neq] ODE state index -> history column, -1 if not delayed */
   int indOwnAlloc;
   int cvodeLinSolver;
   int    stiff2;                /* secondary method code (stiff); 0 = no autoswitch */
