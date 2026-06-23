@@ -578,6 +578,7 @@ table:\tabular{lll}{
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
    transit() \tab The transit compartment psuedo function \tab  \cr
+   delay(state, T) \tab Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver \tab  \cr
    is.na() \tab Determine if a value is NA \tab  \cr
    is.nan() \tab Determine if a value is NaN \tab  \cr
    is.infinite() \tab Check to see if the value is infinite \tab  \cr

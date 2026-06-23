@@ -12,7 +12,7 @@
 #' (state argument + delay-duration expression text), with a surrogate symbol
 #' name used when generating sensitivities.  The surrogate lets symengine treat a
 #' delayed value as an independent variable so the delayed Jacobian
-#' d f / d[delay(state, T)] can be differentiated normally.
+#' d f / d(delay(state, T)) can be differentiated normally.
 #'
 #' @param model anything `rxNorm()` accepts (rxode2 model, ui, model vars).
 #' @return `NULL` when the model has no delay() terms, otherwise a data.frame
@@ -81,7 +81,7 @@
 #' `eta_tau`.
 #'
 #' @param exprText expression text (e.g. a delay duration).
-#' @param defs named vector from [.rxModelDefs()].
+#' @param defs named vector from `.rxModelDefs()`.
 #' @return character vector of root symbol names.
 #' @noRd
 .rxResolveRootVars <- function(exprText, defs) {
@@ -104,7 +104,7 @@
 
 #' Root symbols an expression depends on, resolving through a symengine env
 #'
-#' Env-based analogue of [.rxResolveRootVars()] used inside [.rxSens()], where
+#' Env-based analogue of `.rxResolveRootVars()` used inside `.rxSens()`, where
 #' only the loaded symengine environment (not the model text) is available.
 #' Bindings are read with `get0(envir=)` (a bare `get(x, env)` is intercepted by
 #' symengine's masked functions here).
@@ -141,7 +141,7 @@
 
 #' Validate that delay durations do not depend on a state (env)
 #'
-#' Used inside [.rxSens()] (which only has the loaded symengine environment).
+#' Used inside `.rxSens()` (which only has the loaded symengine environment).
 #' Parameter/eta-dependent delay durations ARE supported (the variational term
 #' gains a delayed-derivative correction).  A delay that depends on a *state*,
 #' however, would require the state's own sensitivity inside the duration and is
@@ -189,9 +189,9 @@
 #' delayed sensitivity is `delay()` applied to the sensitivity state, which reuses
 #' the existing DDE dense-history machinery once the augmented model is parsed.
 #'
-#' @param model symengine environment from [.rxLoadPrune()] (holds the original
+#' @param model symengine environment from `.rxLoadPrune()` (holds the original
 #'   ODE RHS as `rx__d_dt_<state>__`).
-#' @param sensVec the `..sens` character vector produced by [.rxSens()].
+#' @param sensVec the `..sens` character vector produced by `.rxSens()`.
 #' @param params character vector of sensitivity parameters.
 #' @return `sensVec` with the delayed terms spliced into each matching equation.
 #' @author Matthew L. Fidler
@@ -300,7 +300,7 @@
 #'
 #' @param model anything `rxNorm()` accepts.
 #' @param params character vector of parameters sensitivities are taken w.r.t.
-#' @param terms optional pre-computed [.rxDelayTerms()] result.
+#' @param terms optional pre-computed `.rxDelayTerms()` result.
 #' @return invisibly `TRUE` when valid; otherwise stops.
 #' @noRd
 .rxDelayValidateTau <- function(model, params, terms = NULL) {
