@@ -43,6 +43,32 @@ rxTest({
     expect_true(max(abs(.x$a - .ref$a)) < 1e-5)
   })
 
+  test_that("the dense dop853+ros4 composite solves steady state (SS-path regression)", {
+    ## Regression for the SS-path AutoSwitch gotcha.  solveWith1Pt -- the
+    ## single-interval solver that steady-state dosing advances repeatedly --
+    ## once kept an interval-length Gershgorin stiffness pre-check after the
+    ## main-solve paths had dropped it.  On the long tau-sized SS intervals
+    ## that check over-estimated the spectral radius and spuriously toggled
+    ## ind->autoMethod; the toggled state leaked into the dense main solve and
+    ## forced ros4 segments that returned stale (unchanged) state, so every
+    ## observation after the first SS dose was corrupted.  Making solveWith1Pt
+    ## reactive (like the main-solve paths) fixes it.  This pins the behavior
+    ## for the dense composite, which is otherwise only covered indirectly --
+    ## and was mislabeled -- in the large nmtest suite.
+    .ssEv <- et() |>
+      et(amt = 10, ii = 1, ss = 1, cmt = "a") |>
+      et(seq(0, 1, by = 0.1))
+    .refss <- rxSolve(.stiff, .ssEv, method = "lsoda", atol = 1e-10, rtol = 1e-10)
+    .xss <- rxSolve(.stiff, .ssEv, method = "dop853+ros4", dense = TRUE,
+                    atol = 1e-8, rtol = 1e-8)
+    expect_false(any(is.na(.xss$a)))
+    ## not stale: the steady-state trajectory genuinely varies across the
+    ## interval (the bug pinned every post-dose observation to one value).
+    expect_true(stats::sd(.xss$a) > 1e-6)
+    ## and it matches the reference steady-state solution.
+    expect_true(max(abs(.xss$a - .refss$a)) < 1e-4)
+  })
+
   test_that("the non-dense dop853+ros4 composite switches to ros4 mid-solve", {
     ## A stiff Robertson problem with widely spaced output times that overwhelms
     ## the non-stiff dop853 primary.  The composite must switch to ros4 per
