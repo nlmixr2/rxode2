@@ -2012,6 +2012,11 @@ static inline void solveWith1Pt(int *neq,
       double *_ypDyn = NULL;
       double *_ypSave = (eff <= 64) ? _ypStack
                                     : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+      if (_ypSave == NULL) {
+        ind->err = 1;
+        if (ind->rc[0] == 0) ind->rc[0] = -2019;
+        return;
+      }
       memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
       double _xpOrig = xp;
       if (ind->autoMethod == 0) {
@@ -5146,6 +5151,11 @@ static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
     double *_ypDyn = NULL;
     double *ypSave = (eff <= 64) ? _ypStack
                                  : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+    if (ypSave == NULL) {
+      ind->err = 1;
+      if (ind->rc[0] == 0) ind->rc[0] = -2019;
+      return -4;
+    }
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
     idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
@@ -5513,6 +5523,11 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
     double *_ypDyn = NULL;
     double *ypSave = (eff <= 64) ? _ypStack
                                  : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+    if (ypSave == NULL) {
+      ind->err = 1;
+      if (ind->rc[0] == 0) ind->rc[0] = -2019;
+      return -4;
+    }
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
     idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,

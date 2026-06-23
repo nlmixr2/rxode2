@@ -391,6 +391,9 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
   // History stores only the states delay() looks back on; map this state's ODE
   // index to its compact history column.
   int col = _solveData->op->delayCol[i];
+  if (col < 0) {
+    return _solveData->op->inits[i];   // constant initial history defensive fallback
+  }
   // Records are sorted by increasing step start time (xold) and cover
   // contiguous intervals [xold, xold+h].  Find the largest xold <= td; that
   // record's dense polynomial interpolates td (extrapolating slightly when td
@@ -441,6 +444,9 @@ double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
   int stride = _ind->delayHistStride;
   double *hist = _ind->delayHist;
   int col = _solveData->op->delayCol[i];
+  if (col < 0) {
+    return 0.0;   // constant initial history -> zero time-derivative defensive fallback
+  }
   int lo = 0, hi = _ind->delayHistN - 1;
   while (lo < hi) {
     int mid = (lo + hi + 1) / 2;
