@@ -130,6 +130,7 @@ reference:
   desc: Transcendental, link, and other special functions used in models.
   contents:
   - boxCox
+  - delay
   - erf
   - gammap
   - gammapDer
