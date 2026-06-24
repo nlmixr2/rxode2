@@ -30,20 +30,27 @@
   that themselves depend on an estimated parameter are also supported
   (at first order), using the new `rxDelayD(state, T)` -- the analytic
   time-derivative of a delayed state, obtained from the derivative of the
-  dense interpolant.  Second-order sensitivities are generated for
-  constant delays (`rxDelayD2()` provides the analytic second
-  time-derivative used by the parameter-dependent groundwork).
+  dense interpolant.  Second- and third-order sensitivities are
+  generated for constant delays; `rxDelayD2()` and `rxDelayD3()` provide
+  the analytic second and third time-derivatives of the dense
+  interpolant (the latter is the groundwork for breaking-point jump
+  tracking and for higher-order Hessian terms).
 
   - TODO: support parameter-dependent delays `delay(state, T(p))` for
     **second- and higher-order** sensitivities (needed for an exact
-    FOCEi Hessian).  When the duration `T` depends on an estimated
-    parameter the DDE breaking points `t = n*T(p)` move with the
-    parameter, which introduces jump discontinuities in the second- (and
-    higher-) order sensitivities at those points; the current smooth-ODE
-    formulation is correct only between breaking points, so these cases
-    are rejected with an informative error for now.  Capturing the jumps
-    needs breaking-point tracking.  (The first-order sensitivity is
-    continuous across breaking points and is fully supported.)
+    analytic FOCEi Hessian).  When the duration `T` depends on an
+    estimated parameter the DDE breaking points `t = n*T(p)` move with
+    the parameter, which introduces jump discontinuities in the second-
+    (and higher-) order sensitivities at those points; the current
+    smooth-ODE formulation is correct only between breaking points, so
+    these cases are rejected with an informative error for now.
+    Capturing the jumps needs breaking-point tracking (release a
+    computed delta into the affected sensitivity compartment at each
+    moving breaking point `t = n*T(p)`).  In the meantime these models
+    are still fully usable for estimation: the **first-order sensitivity
+    (the gradient) is exact and continuous** across breaking points, so
+    fit them with a numeric or Gauss-Newton Hessian -- the latter is the
+    default in nlmixr2 FOCEi -- which needs only the exact gradient.
 
 - Added AutoSwitch composite ODE solving methods, written as
   `"primary+secondary"` (for example `method = "dop853+ros4"`).  These

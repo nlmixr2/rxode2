@@ -353,10 +353,14 @@
           if (length(.bad) > 0L) {
             stop("parameter-dependent delay 'delay(", deparse1(x[[2L]]), ", ",
                  deparse1(x[[3L]]),
-                 ")' is not yet supported for second-order sensitivities: the delay ",
-                 "duration depends on ", paste(.bad, collapse = ", "),
+                 ")' is not yet supported for analytic second-/higher-order ",
+                 "sensitivities: the delay duration depends on ",
+                 paste(.bad, collapse = ", "),
                  ", which moves the DDE breaking points and introduces jump ",
-                 "discontinuities in the second-order sensitivities.",
+                 "discontinuities in the higher-order sensitivities.  The ",
+                 "first-order sensitivities (the gradient) are exact, so fit ",
+                 "these models with a numeric or Gauss-Newton Hessian (the ",
+                 "default in nlmixr2 FOCEi).",
                  call. = FALSE)
           }
         }

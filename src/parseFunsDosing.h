@@ -124,9 +124,10 @@ static inline int handleFunctionDelay(transFunctions *tf) {
   // delay()'s argument handling and history recording.
   int isDeriv = !strcmp("rxDelayD", tf->v);
   int isDeriv2 = !strcmp("rxDelayD2", tf->v);
-  if ((tf->isDelay = (isDeriv || isDeriv2 || !strcmp("delay", tf->v)))) {
-    const char *cFun = isDeriv2 ? "_rxDelayD2" : (isDeriv ? "_rxDelayD" : "_rxDelay");
-    const char *normFun = isDeriv2 ? "rxDelayD2" : (isDeriv ? "rxDelayD" : "delay");
+  int isDeriv3 = !strcmp("rxDelayD3", tf->v);
+  if ((tf->isDelay = (isDeriv || isDeriv2 || isDeriv3 || !strcmp("delay", tf->v)))) {
+    const char *cFun = isDeriv3 ? "_rxDelayD3" : (isDeriv2 ? "_rxDelayD2" : (isDeriv ? "_rxDelayD" : "_rxDelay"));
+    const char *normFun = isDeriv3 ? "rxDelayD3" : (isDeriv2 ? "rxDelayD2" : (isDeriv ? "rxDelayD" : "delay"));
     // delay()/rxDelayD() interpolate the dense solver history, which is only
     // recorded during integration; they are only meaningful inside a d/dt() RHS.
     if (!tb.curDdt) {

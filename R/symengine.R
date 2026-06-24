@@ -1812,7 +1812,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`delay`)) ||
                identical(x[[1]], quote(`rxDelayD`)) ||
-               identical(x[[1]], quote(`rxDelayD2`))) {
+               identical(x[[1]], quote(`rxDelayD2`)) ||
+               identical(x[[1]], quote(`rxDelayD3`))) {
     return(.rxToSEDelay(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
@@ -2555,6 +2556,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
       return(paste0("rxDelayD(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`rxDelayD2`))) {
       return(paste0("rxDelayD2(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
+    } else if (identical(x[[1]], quote(`rxDelayD3`))) {
+      return(paste0("rxDelayD3(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`polygamma`))) {
       if (length(x == 3)) {
         .a <- .rxFromSE(x[[2]])
@@ -2776,7 +2779,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         ## when the sensitivity machinery differentiates a delayed term more than
         ## once -- symengine keeps Derivative(delay(...), v1, v2) unevaluated.
         if (length(x) >= 3 && is.call(x[[2]]) &&
-              any(as.character(x[[2]][[1L]]) == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2"))) {
+              any(as.character(x[[2]][[1L]]) == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
           return("0")
         }
         if (length(x) == 3) {
@@ -2826,7 +2829,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2"))) {
+          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -2977,7 +2980,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
-    "delay", "rxDelayD", "rxDelayD2", "rxTBSi"
+    "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }

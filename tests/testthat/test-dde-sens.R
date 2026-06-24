@@ -184,6 +184,22 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     expect_lt(max(abs(.s$w - .expect)), 1e-7)
   })
 
+  test_that("rxDelayD2/rxDelayD3 are the exact higher time-derivatives", {
+    ## y = 10 exp(-t): yddot = y, ydddot = -y, so for tau = 1.5 and t > 1.5
+    ##   d/dt(b2) = rxDelayD2(y,1.5) = y(t-1.5)  -> b2 = 10 - 10 exp(-(t-1.5))
+    ##   d/dt(b3) = rxDelayD3(y,1.5) = -y(t-1.5) -> b3 = 10 exp(-(t-1.5)) - 10
+    .m <- rxode2({
+      d/dt(y) <- -y
+      d/dt(b2) <- rxDelayD2(y, 1.5)
+      d/dt(b3) <- rxDelayD3(y, 1.5)
+      y(0) <- 10; b2(0) <- 0; b3(0) <- 0
+    })
+    .tt <- seq(0, 5, by = 0.5)
+    .s <- rxSolve(.m, et(.tt), atol = 1e-12, rtol = 1e-12)
+    expect_lt(max(abs(.s$b2 - ifelse(.tt > 1.5, 10 - 10 * exp(-(.tt - 1.5)), 0))), 1e-6)
+    expect_lt(max(abs(.s$b3 - ifelse(.tt > 1.5, 10 * exp(-(.tt - 1.5)) - 10, 0))), 1e-6)
+  })
+
   test_that("state-dependent delays are rejected for sensitivities", {
     .m <- rxode2({
       d/dt(cen) <- -k * cen + delay(cen, tau)

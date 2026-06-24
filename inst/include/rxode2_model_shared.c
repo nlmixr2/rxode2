@@ -534,6 +534,52 @@ double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
   return ydd / (h * h);
 }
 
+// rxDelayD3(state, T): third time-derivative d^3/dt'^3[state(t')] at t' = t - T.
+// Used by the third-order forward sensitivities of parameter-dependent delays
+// (breaking-point jump terms).  Constant initial history -> 0.
+double _rxDelayD3(rx_solving_options_ind *_ind, int i, double t, double T) {
+  double td = t - T;
+  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
+    return 0.0;
+  }
+  int n = _ind->delayHistNeq;
+  int stride = _ind->delayHistStride;
+  double *hist = _ind->delayHist;
+  int col = _solveData->op->delayCol[i];
+  if (col < 0) return 0.0;
+  int lo = 0, hi = _ind->delayHistN - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
+  }
+  double *rec = hist + (size_t) lo * stride;
+  double xold = rec[stride - 3];
+  double h    = rec[stride - 2];
+  double s  = (td - xold) / h;
+  if (rec[stride - 1] == 1.0) {
+    // third derivative of the ros4 cubic Lagrange interpolant is constant
+    // (6 * leading coefficient); any higher derivative is 0.
+    return (-27.0 * rec[0 * n + col] + 81.0 * rec[1 * n + col] +
+            -81.0 * rec[2 * n + col] + 27.0 * rec[3 * n + col]) / (h * h * h);
+  }
+  // third derivative of the dop853 8th-order interpolant: d^3y/dt'^3 =
+  // (1/h^3) d^3y/ds^3, carrying value + first/second/third s-derivatives
+  // (d^3/ds^3 of c+s*A = 3A''+s*A'''; of c+s1*A = -3A''+s1*A''').
+  double s1 = 1.0 - s;
+  double c0 = rec[0*n+col], c1 = rec[1*n+col], c2 = rec[2*n+col], c3 = rec[3*n+col];
+  double c4 = rec[4*n+col], c5 = rec[5*n+col], c6 = rec[6*n+col], c7 = rec[7*n+col];
+  double a6 = c6 + s * c7,   a6d = c7,             a6dd = 0.0,                  a6ddd = 0.0;
+  double a5 = c5 + s1 * a6,  a5d = -a6 + s1 * a6d, a5dd = -2.0*a6d + s1*a6dd,   a5ddd = -3.0*a6dd + s1*a6ddd;
+  double a4 = c4 + s * a5,   a4d = a5 + s * a5d,   a4dd = 2.0*a5d + s*a5dd,     a4ddd = 3.0*a5dd + s*a5ddd;
+  double a3 = c3 + s1 * a4,  a3d = -a4 + s1 * a4d, a3dd = -2.0*a4d + s1*a4dd,   a3ddd = -3.0*a4dd + s1*a4ddd;
+  double a2 = c2 + s * a3,   a2d = a3 + s * a3d,   a2dd = 2.0*a3d + s*a3dd,     a2ddd = 3.0*a3dd + s*a3ddd;
+  double a1 = c1 + s1 * a2,  a1d = -a2 + s1 * a2d, a1dd = -2.0*a2d + s1*a2dd,   a1ddd = -3.0*a2dd + s1*a2ddd;
+  (void) a1; (void) a1d;
+  double yddd = 3.0 * a1dd + s * a1ddd;   // d^3/ds^3 of (c0 + s*a1)
+  return yddd / (h * h * h);
+}
+
 void _assignFuns0(void) {
   _evalUdf = (_udf_type) R_GetCCallable("rxode2", "_rxode2_evalUdf");
   _getRxSolve_ = (_getRxSolve_t) R_GetCCallable("rxode2","getRxSolve_");
