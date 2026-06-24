@@ -98,7 +98,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxSens <- function(model, vars, vars2) {
+.rxSens <- function(model, vars, vars2, vars3) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
@@ -107,11 +107,17 @@ rxExpandGrid <- function(x, y, type = 0L) {
       ## progress bar opens (so the error message is not masked).
       .rxDelayValidateTauSE(model)
     } else {
-      ## second-order: parameter-dependent delays are not yet supported (moving
-      ## breaking points -> jump discontinuities); reject before the progress bar.
-      .rxDelayValidate2ndOrderSE(model, union(vars, vars2))
+      ## second- and higher-order: parameter-dependent delays are not yet
+      ## supported (moving breaking points -> jump discontinuities); reject
+      ## before the progress bar so the message is not masked.
+      .rxDelayValidateHigherOrderSE(model, union(union(vars, vars2),
+                                                 if (missing(vars3)) NULL else vars3))
+      ## third-order only covers linear delays; reject nonlinear ones early too.
+      if (!missing(vars3)) .rxDelayValidate3rdLinearSE(model)
     }
-    if (!missing(vars2)) {
+    if (!missing(vars3)) {
+      .grd <- .rxExpandSens3(model, vars, vars2, vars3)
+    } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
@@ -141,7 +147,12 @@ rxExpandGrid <- function(x, y, type = 0L) {
       rxTick()
       return(.ret)
     })
-    if (missing(vars2)) {
+    if (!missing(vars3)) {
+      ## Delay differential equations: add the third-order delayed (variational)
+      ## terms (constant-delay) to each third-order sensitivity ODE.
+      .ret <- .rxDelaySensAugment3(model, .ret, union(union(vars, vars2), vars3))
+      assign("..sens3", .ret, envir = model)
+    } else if (missing(vars2)) {
       ## Delay differential equations: add the delayed (variational) terms
       ## d f_i/d[delay(y_j,T)] * delay(S_j,T) to each first-order sensitivity
       ## ODE.  No-op when the model has no delay() terms.  Placed here so both

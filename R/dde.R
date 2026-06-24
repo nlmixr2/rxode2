@@ -6,6 +6,42 @@
 ## catalog the delayed terms in a model and resolve whether a delay duration
 ## depends on the parameters sensitivities are taken with respect to.
 
+#' Interim third-order sensitivity grid (will be superseded by nlmixr2/rxode2#1092)
+#'
+#' Mirrors `rxExpandSens2_()` one order deeper: the third-order sensitivity ODE
+#' `d/dt(rx__sens_<i>_BY_<a>_BY_<b>_BY_<c>__)` differentiates the second-order RHS
+#' symbol w.r.t. `a` and adds the chain-rule terms over the states.  Returns the
+#' same data.frame shape `.rxSens()` already consumes (ddt/ddtS/ddS2/line/...).
+#' Implemented in R so the constant-delay third-order DDE augmentation can be
+#' built and tested before the general C++ third-order expansion lands.
+#'
+#' @noRd
+.rxExpandSens3 <- function(model, s1, s2, s3) {
+  .states <- rxStateOde(model)
+  .sr <- function(v) gsub("]", "_", gsub("[", "_", v, fixed = TRUE), fixed = TRUE)
+  .rows <- list()
+  for (.cS in .states) for (.a in s1) for (.b in s2) for (.c in s3) {
+    .sp <- paste0("rx__sens_", .cS, "_BY_", .a, "_BY_", .b, "_BY_", .c, "__")
+    .ddtS <- paste0("rx__d_dt_", .sp, "__")
+    .v1 <- paste0("rx__d_dt_rx__sens_", .cS, "_BY_", .b, "_BY_", .c, "____")
+    .line <- paste0('assign("', .ddtS, '", with(model,D(', .v1, ',"', .sr(.a), '")')
+    for (.sj in .states) {
+      .line <- paste0(.line, "+D(", .v1, ',"', .sr(.sj), '")*rx__sens_', .sj, "_BY_", .a, "__",
+                      "+rx__sens_", .sj, "_BY_", .a, "_BY_", .b, "_BY_", .c, "__*rx__df_",
+                      .cS, "_dy_", .sj, "__")
+    }
+    .line <- paste0(.line, "),envir=model)")
+    .ini <- paste0("rx_", .cS, "_ini_0__")
+    .rows[[length(.rows) + 1L]] <- data.frame(
+      ddt = paste0("d/dt(", .sp, ")"), ddtS = .ddtS, ddS2 = .sp, line = .line,
+      s0r = paste0(.sp, "(0)"), s0 = .ini,
+      s0D = paste0('assign("rx_', .sp, '_ini_0__",with(model,D(D(D(', .ini, ',"',
+                   .sr(.a), '"),"', .sr(.b), '"),"', .sr(.c), '")),envir=model)'),
+      stringsAsFactors = FALSE)
+  }
+  do.call(rbind, .rows)
+}
+
 #' Catalog the delay(state, T) terms in a model
 #'
 #' Walks the normalized-model AST and returns one row per distinct delayed term
@@ -305,7 +341,7 @@
 #' @param params character vector of sensitivity parameters.
 #' @return invisibly `TRUE`; stops with an informative error otherwise.
 #' @noRd
-.rxDelayValidate2ndOrderSE <- function(model, params) {
+.rxDelayValidateHigherOrderSE <- function(model, params) {
   for (.si in rxStateOde(model)) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) next
@@ -352,7 +388,7 @@
 #' time-derivative corrections weighted by `dT/dp`); for a constant delay every
 #' correction vanishes and `SG` reduces to `delay(S, T)`, the validated case.
 #' Parameter-dependent delays are rejected upstream (see
-#' [.rxDelayValidate2ndOrderSE()]) because the moving breaking points put jump
+#' [.rxDelayValidateHigherOrderSE()]) because the moving breaking points put jump
 #' discontinuities in the second-order sensitivities; the `SG` machinery here is
 #' the (between-breaking-point) groundwork for adding that.
 #'
@@ -531,6 +567,221 @@
       ## H_gp: H_gp[b]*SG_k^a + H_gp[a]*SG_k^b
       if (!is.null(z$hgp[[.b]])) .parts <- c(.parts, paste0("+(", z$hgp[[.b]], ")*", .SGa))
       if (!is.null(z$hgp[[.a]])) .parts <- c(.parts, paste0("+(", z$hgp[[.a]], ")*", .SGb))
+    }
+    .add <- paste(.parts, collapse = "")
+    .nl <- regexpr("\n", .entry, fixed = TRUE)
+    if (.nl > 0L) {
+      paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
+    } else {
+      paste0(.entry, .add)
+    }
+  }, character(1L), USE.NAMES = FALSE)
+}
+
+#' Reject nonlinear delays for third-order sensitivities (early, env)
+#'
+#' The third-order delay augmentation [.rxDelaySensAugment3()] only covers delays
+#' that appear linearly (`d^2 f/dg dy == 0` and `d^2 f/dg dg' == 0`).  This runs
+#' the same check before the sensitivity progress bar opens so a nonlinear delay
+#' errors with a clear (unmasked) message.
+#'
+#' @param model symengine environment from the model loader.
+#' @return invisibly `TRUE`; stops otherwise.
+#' @noRd
+.rxDelayValidate3rdLinearSE <- function(model) {
+  .states <- rxStateOde(model)
+  for (.si in .states) {
+    .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
+    if (is.null(.f)) next
+    .e <- parse(text = rxFromSE(.f))[[1L]]
+    .terms <- list()
+    .walk <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .key <- deparse1(x)
+          if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
+            .terms[[length(.terms) + 1L]] <<- list(
+              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
+              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
+          }
+        }
+        for (.i in seq_along(x)) .walk(x[[.i]])
+      }
+    }
+    .walk(.e)
+    if (length(.terms) == 0L) next
+    .subst <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .key <- deparse1(x)
+          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
+        }
+        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
+      }
+      x
+    }
+    .fsubTxt <- deparse1(.subst(.e))
+    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
+    .fsub <- eval(parse(text = .fsubTxt), envir = model)
+    for (.t in .terms) {
+      .g <- symengine::S(.t$gName)
+      .jdE <- symengine::D(.fsub, .g)
+      for (.zName in c(.states, vapply(.terms, function(z) z$gName, character(1L)))) {
+        .zsym <- symengine::S(.zName)
+        .d <- symengine::D(.jdE, .zsym)
+        if (!identical(rxFromSE(.d), "0")) {
+          stop("nonlinear delay 'delay(", .t$stateJ, ", ", .t$tau,
+               ")' (the delayed value multiplies a state or another delayed ",
+               "value) is not yet supported for third-order sensitivities",
+               call. = FALSE)
+        }
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
+#' Augment third-order forward-sensitivity equations with the delayed terms
+#'
+#' Constant-delay third-order analogue of [.rxDelaySensAugment2()].  For a delay
+#' that appears *linearly* (the common case: `... + c(p)*delay(y_j, T)`), the
+#' missing third-order terms for `d/dt(S_i^{abc})` are
+#'
+#' ```
+#' sum_k  JD_ik * delay(S_j^{abc}, T)                                   (pure)
+#'  + sum_k H_gp[k,c]*delay(S_j^{ab},T) + H_gp[k,b]*delay(S_j^{ac},T) + H_gp[k,a]*delay(S_j^{bc},T)
+#'  + sum_k H_gpp[k,bc]*delay(S_j^a,T) + H_gpp[k,ac]*delay(S_j^b,T) + H_gpp[k,ab]*delay(S_j^c,T)
+#' ```
+#'
+#' with `JD = df/dg`, `H_gp = d^2 f/dg dp`, `H_gpp = d^3 f/dg dp dq`.  A *nonlinear*
+#' delay (one with `d^2 f/dg dy != 0` or `d^2 f/dg dg' != 0`) would need the
+#' additional third-order tensor terms and is rejected here.  Parameter-dependent
+#' delays are rejected upstream ([.rxDelayValidateHigherOrderSE()]).
+#'
+#' @param model symengine environment from the model loader.
+#' @param sensVec the third-order `..sens` vector (`.rxExpandSens3()` output).
+#' @param params character vector of sensitivity parameters.
+#' @return `sensVec` with the delayed terms spliced into each matching equation.
+#' @author Matthew L. Fidler
+#' @noRd
+.rxDelaySensAugment3 <- function(model, sensVec, params) {
+  if (length(sensVec) == 0L) return(sensVec)
+  .states <- rxStateOde(model)
+  .delayJac <- lapply(.states, function(.si) {
+    .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
+    if (is.null(.f)) return(NULL)
+    .e <- parse(text = rxFromSE(.f))[[1L]]
+    .terms <- list()
+    .walk <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .key <- deparse1(x)
+          if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
+            .terms[[length(.terms) + 1L]] <<- list(
+              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
+              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
+          }
+        }
+        for (.i in seq_along(x)) .walk(x[[.i]])
+      }
+    }
+    .walk(.e)
+    if (length(.terms) == 0L) return(NULL)
+    .subst <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .key <- deparse1(x)
+          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
+        }
+        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
+      }
+      x
+    }
+    .fsubTxt <- deparse1(.subst(.e))
+    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
+    .fsub <- eval(parse(text = .fsubTxt), envir = model)
+    .restore <- function(txt) {
+      for (.t in .terms) {
+        txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"),
+                    txt, fixed = TRUE)
+      }
+      txt
+    }
+    lapply(.terms, function(.t) {
+      .g <- symengine::S(.t$gName)
+      .jdE <- symengine::D(.fsub, .g)
+      ## reject nonlinear delays (d^2 f/dg dy or d^2 f/dg dg' nonzero): they need
+      ## extra third-order tensor terms not implemented here.  (Assign each
+      ## symengine result to a variable before rxFromSE, which captures its arg.)
+      for (.mState in .states) {
+        .msym <- symengine::S(.mState)
+        .dm <- symengine::D(.jdE, .msym)
+        if (!identical(rxFromSE(.dm), "0")) {
+          stop("nonlinear delay 'delay(", .t$stateJ, ", ", .t$tau,
+               ")' (the delayed value multiplies a state) is not yet supported ",
+               "for third-order sensitivities", call. = FALSE)
+        }
+      }
+      for (.tp in .terms) {
+        .gsym <- symengine::S(.tp$gName)
+        .dg <- symengine::D(.jdE, .gsym)
+        if (!identical(rxFromSE(.dg), "0")) {
+          stop("product of delayed values is not yet supported for third-order ",
+               "sensitivities", call. = FALSE)
+        }
+      }
+      .hgp <- list()
+      .dE <- list()
+      for (.pp in params) {
+        .d <- symengine::D(.jdE, symengine::S(.pp))
+        .txt <- rxFromSE(.d)
+        if (!identical(.txt, "0")) { .hgp[[.pp]] <- .restore(.txt); .dE[[.pp]] <- .d }
+      }
+      .hgpp <- list()
+      for (.p1 in names(.dE)) {
+        for (.p2 in params) {
+          .d2 <- symengine::D(.dE[[.p1]], symengine::S(.p2))
+          .txt <- rxFromSE(.d2)
+          if (!identical(.txt, "0")) .hgpp[[paste0(.p1, "|", .p2)]] <- .restore(.txt)
+        }
+      }
+      list(stateJ = .t$stateJ, tau = .t$tau, jd = .restore(rxFromSE(.jdE)),
+           hgp = .hgp, hgpp = .hgpp)
+    })
+  })
+  names(.delayJac) <- .states
+  if (all(vapply(.delayJac, is.null, logical(1L)))) return(sensVec)
+  vapply(sensVec, function(.entry) {
+    .m <- regmatches(.entry, regexec(
+      "^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
+    if (length(.m) != 5L) return(.entry)
+    .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]; .c <- .m[5L]
+    .dj <- .delayJac[[.si]]
+    if (is.null(.dj)) return(.entry)
+    .dS <- function(st, tau, ord) paste0("delay(rx__sens_", st, "_BY_", ord, "__,", tau, ")")
+    .gpp <- function(z, p, q) {
+      .v <- z$hgpp[[paste0(p, "|", q)]]
+      if (is.null(.v)) z$hgpp[[paste0(q, "|", p)]] else .v
+    }
+    .parts <- character(0)
+    for (z in .dj) {
+      .parts <- c(.parts, paste0("+(", z$jd, ")*",
+                                 .dS(z$stateJ, z$tau, paste0(.a, "_BY_", .b, "_BY_", .c))))
+      ## H_gp paired with a second-order delayed sensitivity
+      for (.pr in list(c(.c, .a, .b), c(.b, .a, .c), c(.a, .b, .c))) {
+        .h <- z$hgp[[.pr[1L]]]
+        if (!is.null(.h)) {
+          .parts <- c(.parts, paste0("+(", .h, ")*",
+                                     .dS(z$stateJ, z$tau, paste0(.pr[2L], "_BY_", .pr[3L]))))
+        }
+      }
+      ## H_gpp paired with a first-order delayed sensitivity
+      for (.pr in list(c(.b, .c, .a), c(.a, .c, .b), c(.a, .b, .c))) {
+        .h <- .gpp(z, .pr[1L], .pr[2L])
+        if (!is.null(.h)) {
+          .parts <- c(.parts, paste0("+(", .h, ")*", .dS(z$stateJ, z$tau, .pr[3L])))
+        }
+      }
     }
     .add <- paste(.parts, collapse = "")
     .nl <- regexpr("\n", .entry, fixed = TRUE)

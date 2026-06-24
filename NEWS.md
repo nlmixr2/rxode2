@@ -27,10 +27,23 @@
   gradient-based methods such as nlmixr2's FOCEi.  Each sensitivity
   equation gains the delayed term `delay(S, T)` (the sensitivity of the
   delayed state), which reuses the same dense history.  Delay durations
-  that themselves depend on an estimated parameter are also supported,
-  using the new `rxDelayD(state, T)` -- the analytic time-derivative of
-  a delayed state, obtained from the derivative of the dense
-  interpolant.
+  that themselves depend on an estimated parameter are also supported
+  (at first order), using the new `rxDelayD(state, T)` -- the analytic
+  time-derivative of a delayed state, obtained from the derivative of the
+  dense interpolant.  Second-order sensitivities are generated for
+  constant delays (`rxDelayD2()` provides the analytic second
+  time-derivative used by the parameter-dependent groundwork).
+
+  - TODO: support parameter-dependent delays `delay(state, T(p))` for
+    **second- and higher-order** sensitivities (needed for an exact
+    FOCEi Hessian).  When the duration `T` depends on an estimated
+    parameter the DDE breaking points `t = n*T(p)` move with the
+    parameter, which introduces jump discontinuities in the second- (and
+    higher-) order sensitivities at those points; the current smooth-ODE
+    formulation is correct only between breaking points, so these cases
+    are rejected with an informative error for now.  Capturing the jumps
+    needs breaking-point tracking.  (The first-order sensitivity is
+    continuous across breaking points and is fully supported.)
 
 - Added AutoSwitch composite ODE solving methods, written as
   `"primary+secondary"` (for example `method = "dop853+ros4"`).  These

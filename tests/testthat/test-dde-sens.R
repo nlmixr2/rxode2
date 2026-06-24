@@ -242,4 +242,47 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     expect_error(rxode2:::.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
                  "breaking points")
   })
+
+  ## Third-order (constant-delay) sensitivities.  The general third-order
+  ## expansion is interim (R, to be superseded by the C++ one in
+  ## nlmixr2/rxode2#1092); the delay augmentation is the part being tested.
+  .build3rd <- function(rhs, pars) {
+    .m <- rxode2(paste0(rhs, "\ncen(0) <- 10"))
+    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(rxode2:::.rxJacobian(.mod, c("cen", pars)))
+    invisible(rxode2:::.rxSens(.mod, pars))
+    invisible(rxode2:::.rxSens(.mod, pars, pars))
+    invisible(rxode2:::.rxSens(.mod, pars, pars, pars))
+    .st <- rxode2:::rxStateOde(.mod)
+    rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
+                   .mod$..sens, .mod$..sens2, .mod$..sens3), collapse = "\n"))
+  }
+
+  test_that("third-order delay() sensitivities match finite differences", {
+    .m3 <- .build3rd("d/dt(cen) <- -k*cen + kin*delay(cen, 1)", c("k", "kin"))
+    expect_match(rxNorm(.m3), "delay(rx__sens_cen_BY_k_BY_kin_BY_kin__,1)", fixed = TRUE)
+    .ev <- et(seq(0, 6, by = 0.5))
+    .sv <- function(k, kin) {
+      rxSolve(.m3, .ev, params = c(k = k, kin = kin), method = "dop853",
+              atol = 1e-10, rtol = 1e-10)
+    }
+    .h <- 1e-4
+    .s <- .sv(0.2, 0.5)
+    ## S^{k,kin,kin} = d(S^{k,kin})/dkin : central diff of the analytic 2nd order
+    .fd <- (.sv(0.2, 0.5 + .h)[["rx__sens_cen_BY_k_BY_kin__"]] -
+            .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_k_BY_kin__"]]) / (2 * .h)
+    .an <- .s[["rx__sens_cen_BY_k_BY_kin_BY_kin__"]]
+    expect_gt(diff(range(.an)), 1)
+    expect_lt(max(abs(.an - .fd)), 0.05)
+  })
+
+  test_that("nonlinear delays are rejected for third-order sensitivities", {
+    ## the delayed value multiplies a state -> extra third-order tensor terms
+    .m <- rxode2("d/dt(cen) <- -k*cen*delay(cen, 1)\ncen(0)<-10")
+    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(rxode2:::.rxJacobian(.mod, c("cen", "k")))
+    invisible(rxode2:::.rxSens(.mod, "k"))
+    invisible(rxode2:::.rxSens(.mod, "k", "k"))
+    expect_error(rxode2:::.rxSens(.mod, "k", "k", "k"), "nonlinear")
+  })
 })
