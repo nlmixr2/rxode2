@@ -322,3 +322,73 @@
   }
   invisible(TRUE)
 }
+
+#' Delayed state for delay differential equations
+#'
+#' `delay(state, T)` evaluates an ODE state at the past time `t - T`, turning
+#' an ordinary differential equation model into a delay differential equation
+#' (DDE). The semantics match the `delay()` function of Monolix.
+#'
+#' @param state An ODE state (compartment) defined in the model whose
+#'   past value is required.
+#' @param T The delay duration.  May be a constant, a parameter, a
+#'   covariate, or any model expression.  The value returned is the state
+#'   at time `t - T`.
+#'
+#' @return Inside an rxode2 model, the value of `state` at the past time
+#'   `t - T`.  Before the start of integration the constant
+#'   initial-condition history is used.
+#'
+#' @details
+#' Delayed states are interpolated from the solver's dense output using
+#' the same 8th-order Dormand-Prince interpolant as the integrator, so a
+#' delayed value is obtained to the full accuracy of the solution.
+#'
+#' Because this requires dense output, delay models are solved on a dense
+#' path.  When a model uses `delay()`, the default solving method
+#' becomes the dense AutoSwitch composite `"dop853+ros4"` and dense
+#' output is enabled automatically; `method = "dop853"` also works.
+#' The composite switches between dop853 and ros4 per segment in dense
+#' mode, so a delay model that is non-stiff in one region and stiff in
+#' another is solved efficiently in a single pass.  Stiff delay models can
+#' also be solved with `method = "ros4"` directly, whose dense
+#' Rosenbrock output is likewise recorded and interpolated for
+#' `delay()`.  The integrator step size is automatically capped to the
+#' smallest delay so that short delays remain accurate.  Methods that
+#' cannot record dense history raise an error.
+#'
+#' The dense-output and delay-history machinery is adapted from the
+#' `dde` package by Rich FitzJohn and Wes Hinsley (Imperial College
+#' of Science, Technology and Medicine), following the approach of
+#' Hairer, Norsett and Wanner.
+#'
+#' @seealso [rxSolve()]
+#'
+#' @examples
+#' \donttest{
+#' # Classic linear delay differential equation y'(t) = -y(t - 1)
+#' dde <- rxode2({
+#'   y(0) <- 1
+#'   d/dt(y) <- -delay(y, 1)
+#' })
+#'
+#' s <- rxSolve(dde, et(seq(0, 5, by = 0.1)))
+#'
+#' # Delayed (Hutchinson) logistic growth
+#' hutch <- rxode2({
+#'   r <- 0.5
+#'   K <- 10
+#'   tau <- 1
+#'   N(0) <- 2
+#'   d/dt(N) <- r * N * (1 - delay(N, tau) / K)
+#' })
+#'
+#' s2 <- rxSolve(hutch, et(seq(0, 40, by = 0.5)))
+#' }
+#'
+#' @author Matthew L. Fidler
+#' @export
+delay <- function(state, T) {
+  stop("'delay()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
