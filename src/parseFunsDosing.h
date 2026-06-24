@@ -123,9 +123,10 @@ static inline int handleFunctionDelay(transFunctions *tf) {
   // the forward-sensitivity machinery for parameter-dependent delays; it shares
   // delay()'s argument handling and history recording.
   int isDeriv = !strcmp("rxDelayD", tf->v);
-  if ((tf->isDelay = (isDeriv || !strcmp("delay", tf->v)))) {
-    const char *cFun = isDeriv ? "_rxDelayD" : "_rxDelay";
-    const char *normFun = isDeriv ? "rxDelayD" : "delay";
+  int isDeriv2 = !strcmp("rxDelayD2", tf->v);
+  if ((tf->isDelay = (isDeriv || isDeriv2 || !strcmp("delay", tf->v)))) {
+    const char *cFun = isDeriv2 ? "_rxDelayD2" : (isDeriv ? "_rxDelayD" : "_rxDelay");
+    const char *normFun = isDeriv2 ? "rxDelayD2" : (isDeriv ? "rxDelayD" : "delay");
     // delay()/rxDelayD() interpolate the dense solver history, which is only
     // recorded during integration; they are only meaningful inside a d/dt() RHS.
     if (!tb.curDdt) {

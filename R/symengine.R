@@ -1811,7 +1811,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                identical(x[[1]], quote(`lead`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`delay`)) ||
-               identical(x[[1]], quote(`rxDelayD`))) {
+               identical(x[[1]], quote(`rxDelayD`)) ||
+               identical(x[[1]], quote(`rxDelayD2`))) {
     return(.rxToSEDelay(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
@@ -2552,6 +2553,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
       return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`rxDelayD`))) {
       return(paste0("rxDelayD(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
+    } else if (identical(x[[1]], quote(`rxDelayD2`))) {
+      return(paste0("rxDelayD2(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`polygamma`))) {
       if (length(x == 3)) {
         .a <- .rxFromSE(x[[2]])
@@ -2767,6 +2770,15 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           ))
         }
       } else if (identical(x[[1]], quote(`Derivative`))) {
+        ## delay-family functions (delay/rxDelayD/lag/lead) have zero derivatives
+        ## of every order, so Derivative(<delay-family>, ...) collapses to 0.
+        ## This also covers the higher-order (length(x) > 3) derivatives produced
+        ## when the sensitivity machinery differentiates a delayed term more than
+        ## once -- symengine keeps Derivative(delay(...), v1, v2) unevaluated.
+        if (length(x) >= 3 && is.call(x[[2]]) &&
+              any(as.character(x[[2]][[1L]]) == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2"))) {
+          return("0")
+        }
         if (length(x) == 3) {
           .fun <- as.character(x[[2]])
           .var <- .rxFromSE(x[[3]])
@@ -2814,7 +2826,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD"))) {
+          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2"))) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -2965,7 +2977,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
-    "delay", "rxDelayD", "rxTBSi"
+    "delay", "rxDelayD", "rxDelayD2", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }

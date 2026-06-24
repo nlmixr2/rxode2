@@ -192,4 +192,54 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     })
     expect_error(rxode2(.m, calcSens = "k"), "state-dependent")
   })
+
+  ## Second-order (constant-delay) sensitivities -- Phase A.  There is no
+  ## production assembly path for 2nd-order sensitivities yet (that arrives with
+  ## the 3rd-order work), so build the augmented model directly from the pieces.
+  .build2nd <- function(rhs, pars) {
+    .m <- rxode2(paste0(rhs, "\ncen(0) <- 10"))
+    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(rxode2:::.rxJacobian(.mod, c("cen", pars)))
+    invisible(rxode2:::.rxSens(.mod, pars))
+    invisible(rxode2:::.rxSens(.mod, pars, pars))
+    .st <- rxode2:::rxStateOde(.mod)
+    rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
+                   .mod$..sens, .mod$..sens2), collapse = "\n"))
+  }
+
+  test_that("second-order delay() sensitivities match finite differences", {
+    .m2 <- .build2nd("d/dt(cen) <- -k*cen + kin*delay(cen, 1)", c("k", "kin"))
+    expect_match(rxNorm(.m2), "delay(rx__sens_cen_BY_k_BY_kin__,1)", fixed = TRUE)
+    .ev <- et(seq(0, 6, by = 0.5))
+    ## the default composite can stall on the larger 2nd-order DDE system; the
+    ## pure dense dop853 path is exact to the method order.
+    .sv <- function(k, kin) {
+      rxSolve(.m2, .ev, params = c(k = k, kin = kin), method = "dop853",
+              atol = 1e-10, rtol = 1e-10)
+    }
+    .h <- 1e-4
+    .s <- .sv(0.2, 0.5)
+    ## S^{k,kin} = d(S^k)/dkin : central diff of the analytic first-order S^k
+    .fd <- (.sv(0.2, 0.5 + .h)[["rx__sens_cen_BY_k__"]] -
+            .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_k__"]]) / (2 * .h)
+    .an <- .s[["rx__sens_cen_BY_k_BY_kin__"]]
+    expect_gt(diff(range(.an)), 1)
+    expect_lt(max(abs(.an - .fd)), 0.05)
+    ## pure second S^{kin,kin}
+    .fd2 <- (.sv(0.2, 0.5 + .h)[["rx__sens_cen_BY_kin__"]] -
+             .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_kin__"]]) / (2 * .h)
+    expect_lt(max(abs(.s[["rx__sens_cen_BY_kin_BY_kin__"]] - .fd2)), 0.05)
+  })
+
+  test_that("parameter-dependent delays are rejected for second-order sensitivities", {
+    ## tau depends on ltau, so the DDE breaking points move with the parameter
+    ## and the second-order sensitivities pick up jump discontinuities at them
+    ## (not yet handled).  This must error cleanly (not a masked "Aborted").
+    .m <- rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0)<-10\ntau<-exp(ltau)")
+    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(rxode2:::.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
+    invisible(rxode2:::.rxSens(.mod, c("k", "ltau")))
+    expect_error(rxode2:::.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
+                 "breaking points")
+  })
 })

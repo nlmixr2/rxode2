@@ -106,6 +106,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
       ## delay differential equations: reject state-dependent delays before the
       ## progress bar opens (so the error message is not masked).
       .rxDelayValidateTauSE(model)
+    } else {
+      ## second-order: parameter-dependent delays are not yet supported (moving
+      ## breaking points -> jump discontinuities); reject before the progress bar.
+      .rxDelayValidate2ndOrderSE(model, union(vars, vars2))
     }
     if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
@@ -145,6 +149,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
       .ret <- .rxDelaySensAugment(model, .ret, vars)
       assign("..sens", .ret, envir = model)
     } else {
+      ## Delay differential equations: add the second-order delayed (variational)
+      ## terms (constant-delay) to each second-order sensitivity ODE.  No-op
+      ## without delay() terms.
+      .ret <- .rxDelaySensAugment2(model, .ret, union(vars, vars2))
       assign("..sens2", .ret, envir = model)
     }
     rxProgressStop()

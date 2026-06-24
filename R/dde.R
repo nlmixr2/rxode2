@@ -292,6 +292,256 @@
   }, character(1L), USE.NAMES = FALSE)
 }
 
+#' Validate that delay durations are constant for second-order sensitivities
+#'
+#' Parameter-dependent delays `delay(state, T(p))` make the DDE breaking points
+#' `t = n*T(p)` move with the parameter, which puts *jump* discontinuities in the
+#' second- (and higher-) order sensitivities at those points.  Capturing the
+#' jumps needs breaking-point tracking that is not implemented yet, so a
+#' parameter-dependent delay is rejected for second-order sensitivities (the
+#' first-order sensitivity is continuous across breaking points and is supported).
+#'
+#' @param model symengine environment from the model loader.
+#' @param params character vector of sensitivity parameters.
+#' @return invisibly `TRUE`; stops with an informative error otherwise.
+#' @noRd
+.rxDelayValidate2ndOrderSE <- function(model, params) {
+  for (.si in rxStateOde(model)) {
+    .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
+    if (is.null(.f)) next
+    .e <- parse(text = rxFromSE(.f))
+    .walk <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .bad <- intersect(.rxResolveRootVarsSE(deparse1(x[[3L]]), model), params)
+          if (length(.bad) > 0L) {
+            stop("parameter-dependent delay 'delay(", deparse1(x[[2L]]), ", ",
+                 deparse1(x[[3L]]),
+                 ")' is not yet supported for second-order sensitivities: the delay ",
+                 "duration depends on ", paste(.bad, collapse = ", "),
+                 ", which moves the DDE breaking points and introduces jump ",
+                 "discontinuities in the second-order sensitivities.",
+                 call. = FALSE)
+          }
+        }
+        for (.i in seq_along(x)) .walk(x[[.i]])
+      }
+    }
+    for (.i in seq_along(.e)) .walk(.e[[.i]])
+  }
+  invisible(TRUE)
+}
+
+#' Augment second-order forward-sensitivity equations with the delayed terms
+#'
+#' Constant-delay (Phase A) second-order analogue of [.rxDelaySensAugment()].
+#' Treating each `delay(y_j, T)` as a surrogate `g`, the standard second-order
+#' machinery misses every term where `delay()` is differentiated w.r.t. a
+#' parameter; those missing terms for the equation `d/dt(S_i^{ab})` are
+#'
+#' ```
+#' sum_k  JD_ik * delay(S_j^{ab}, T)                                    (pure)
+#'  + sum_{k,m} H_gy[k,m] * ( delay(S_j^a,T)*S_m^b + S_m^a*delay(S_j^b,T) )
+#'  + sum_{k,k'} H_gg[k,k'] * delay(S_j^a,T)*delay(S_{j'}^b,T)
+#'  + sum_k ( H_gp[k,b]*delay(S_j^a,T) + H_gp[k,a]*delay(S_j^b,T) )
+#' ```
+#'
+#' with `JD = df/dg`, `H_gy = d^2 f/dg dy`, `H_gg = d^2 f/dg dg'`,
+#' `H_gp = d^2 f/dg dp`.  The delayed sensitivities `delay(S, T)` are generalized
+#' here to the surrogate sensitivities `SG` (which gain `rxDelayD`/`rxDelayD2`
+#' time-derivative corrections weighted by `dT/dp`); for a constant delay every
+#' correction vanishes and `SG` reduces to `delay(S, T)`, the validated case.
+#' Parameter-dependent delays are rejected upstream (see
+#' [.rxDelayValidate2ndOrderSE()]) because the moving breaking points put jump
+#' discontinuities in the second-order sensitivities; the `SG` machinery here is
+#' the (between-breaking-point) groundwork for adding that.
+#'
+#' @param model symengine environment from the model loader.
+#' @param sensVec the second-order `..sens` vector (`rxExpandSens2_` output).
+#' @param params character vector of sensitivity parameters.
+#' @return `sensVec` with the delayed terms spliced into each matching equation.
+#' @author Matthew L. Fidler
+#' @noRd
+.rxDelaySensAugment2 <- function(model, sensVec, params) {
+  if (length(sensVec) == 0L) return(sensVec)
+  .states <- rxStateOde(model)
+  .delayJac <- lapply(.states, function(.si) {
+    .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
+    if (is.null(.f)) return(NULL)
+    ## Find the delay() terms by walking the rxFromSE text (symengine intercepts
+    ## VecBasic `[[`, so avoid function_symbols()/get_args() here).
+    .e <- parse(text = rxFromSE(.f))[[1L]]
+    .terms <- list()
+    .walk <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .key <- deparse1(x)
+          if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
+            .terms[[length(.terms) + 1L]] <<- list(
+              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
+              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
+          }
+        }
+        for (.i in seq_along(x)) .walk(x[[.i]])
+      }
+    }
+    .walk(.e)
+    if (length(.terms) == 0L) return(NULL)
+    ## Replace every delay() with its surrogate symbol in the RHS AST, then
+    ## rebuild the surrogate expression in the symengine env (the .rxJacobian
+    ## pattern) so it can be differentiated w.r.t. the delayed value (g), the
+    ## states (y) and the parameters (p) -- with no delay() left in symengine.
+    .subst <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .key <- deparse1(x)
+          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
+        }
+        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
+      }
+      x
+    }
+    .fsubTxt <- deparse1(.subst(.e))
+    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
+    .fsub <- eval(parse(text = .fsubTxt), envir = model)
+    .restore <- function(txt) {
+      for (.t in .terms) {
+        txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"),
+                    txt, fixed = TRUE)
+      }
+      txt
+    }
+    .nz <- function(e) {
+      .txt <- rxFromSE(e)
+      if (identical(.txt, "0")) NULL else .restore(.txt)
+    }
+    .out <- lapply(.terms, function(.t) {
+      .g <- symengine::S(.t$gName)
+      .jdE <- symengine::D(.fsub, .g)                       # JD = df/dg
+      .hgy <- list()
+      for (.mState in .states) {                            # H_gy = d^2 f/dg dy
+        .ym <- symengine::S(.mState)
+        .v <- .nz(symengine::D(.jdE, .ym))
+        if (!is.null(.v)) .hgy[[.mState]] <- .v
+      }
+      .hgg <- lapply(.terms, function(.tp) {                # H_gg = d^2 f/dg dg'
+        .gp <- symengine::S(.tp$gName)
+        .nz(symengine::D(.jdE, .gp))
+      })
+      .hgp <- list()
+      for (.pp in params) {                                 # H_gp = d^2 f/dg dp
+        .v <- .nz(symengine::D(.jdE, symengine::S(.pp)))
+        if (!is.null(.v)) .hgp[[.pp]] <- .v
+      }
+      ## Parameter-dependent delay: first and second symbolic derivatives of the
+      ## (resolved) duration tau w.r.t. each sensitivity parameter.  These weight
+      ## the delayed time-derivatives (rxDelayD/rxDelayD2) in the surrogate
+      ## sensitivity below.  All "0" for a constant delay.
+      .dtau <- stats::setNames(rep("0", length(params)), params)
+      .d2tau <- list()
+      .tauRes <- tryCatch(eval(parse(text = .t$tau), envir = model),
+                          error = function(e) NULL)
+      if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
+        .dE <- list()
+        for (.pp in params) {
+          .psym <- symengine::S(.pp)
+          .dpp <- tryCatch(symengine::D(.tauRes, .psym), error = function(e) NULL)
+          if (!is.null(.dpp)) {
+            .dtau[.pp] <- rxFromSE(.dpp)
+            .dE[[.pp]] <- .dpp
+          }
+        }
+        for (.p1 in params) {
+          if (is.null(.dE[[.p1]]) || identical(.dtau[[.p1]], "0")) next
+          for (.p2 in params) {
+            .d2 <- tryCatch(symengine::D(.dE[[.p1]], symengine::S(.p2)),
+                            error = function(e) NULL)
+            if (!is.null(.d2)) {
+              .txt <- rxFromSE(.d2)
+              if (!identical(.txt, "0")) .d2tau[[paste0(.p1, "|", .p2)]] <- .txt
+            }
+          }
+        }
+      }
+      list(stateJ = .t$stateJ, tau = .t$tau, jd = .restore(rxFromSE(.jdE)),
+           hgy = .hgy, hgg = .hgg, hgp = .hgp, dtau = .dtau, d2tau = .d2tau)
+    })
+    .out
+  })
+  names(.delayJac) <- .states
+  if (all(vapply(.delayJac, is.null, logical(1L)))) return(sensVec)
+  vapply(sensVec, function(.entry) {
+    .m <- regmatches(.entry,
+                     regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
+    if (length(.m) != 4L) return(.entry)
+    .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]
+    .dj <- .delayJac[[.si]]
+    if (is.null(.dj)) return(.entry)
+    .Sx <- function(st, ord) paste0("rx__sens_", st, "_BY_", ord, "__")
+    .nzt <- function(x) !is.null(x) && !identical(x, "0")
+    ## first-order surrogate sensitivity SG_k^p = delay(S_j^p, tau)
+    ##   - rxDelayD(y_j, tau) * dtau/dp     (the second term only when tau(p))
+    .sg1 <- function(z, p) {
+      .s <- paste0("delay(", .Sx(z$stateJ, p), ",", z$tau, ")")
+      .dt <- z$dtau[[p]]
+      if (.nzt(.dt)) {
+        .s <- paste0("(", .s, "-rxDelayD(", z$stateJ, ",", z$tau, ")*(", .dt, "))")
+      }
+      .s
+    }
+    ## second-order surrogate sensitivity SG_k^{ab} (the variational delayed
+    ## second derivative; reduces to delay(S_j^{ab}, tau) for constant tau).
+    .sg2 <- function(z) {
+      .s <- paste0("delay(", .Sx(z$stateJ, paste0(.a, "_BY_", .b)), ",", z$tau, ")")
+      .ta <- z$dtau[[.a]]; .tb <- z$dtau[[.b]]
+      .d2 <- z$d2tau[[paste0(.a, "|", .b)]]
+      if (is.null(.d2)) .d2 <- z$d2tau[[paste0(.b, "|", .a)]]
+      .corr <- character(0)
+      if (.nzt(.tb)) .corr <- c(.corr, paste0("-rxDelayD(", .Sx(z$stateJ, .a), ",",
+                                              z$tau, ")*(", .tb, ")"))
+      if (.nzt(.ta)) .corr <- c(.corr, paste0("-rxDelayD(", .Sx(z$stateJ, .b), ",",
+                                              z$tau, ")*(", .ta, ")"))
+      if (.nzt(.ta) && .nzt(.tb)) {
+        .corr <- c(.corr, paste0("+rxDelayD2(", z$stateJ, ",", z$tau, ")*(", .ta,
+                                 ")*(", .tb, ")"))
+      }
+      if (.nzt(.d2)) .corr <- c(.corr, paste0("-rxDelayD(", z$stateJ, ",", z$tau,
+                                              ")*(", .d2, ")"))
+      if (length(.corr) > 0L) .s <- paste0("(", .s, paste(.corr, collapse = ""), ")")
+      .s
+    }
+    .parts <- character(0)
+    for (.ki in seq_along(.dj)) {
+      z <- .dj[[.ki]]
+      .SGa <- .sg1(z, .a); .SGb <- .sg1(z, .b)
+      ## pure second-order term: JD * SG_k^{ab}
+      .parts <- c(.parts, paste0("+(", z$jd, ")*", .sg2(z)))
+      ## H_gy: SG_k^a*S_m^b + S_m^a*SG_k^b
+      for (.mState in names(z$hgy)) {
+        .parts <- c(.parts,
+                    paste0("+(", z$hgy[[.mState]], ")*(", .SGa, "*", .Sx(.mState, .b),
+                           "+", .Sx(.mState, .a), "*", .SGb, ")"))
+      }
+      ## H_gg: SG_k^a * SG_{k'}^b
+      for (.kp in seq_along(z$hgg)) {
+        .h <- z$hgg[[.kp]]
+        if (is.null(.h)) next
+        .parts <- c(.parts, paste0("+(", .h, ")*", .SGa, "*", .sg1(.dj[[.kp]], .b)))
+      }
+      ## H_gp: H_gp[b]*SG_k^a + H_gp[a]*SG_k^b
+      if (!is.null(z$hgp[[.b]])) .parts <- c(.parts, paste0("+(", z$hgp[[.b]], ")*", .SGa))
+      if (!is.null(z$hgp[[.a]])) .parts <- c(.parts, paste0("+(", z$hgp[[.a]], ")*", .SGb))
+    }
+    .add <- paste(.parts, collapse = "")
+    .nl <- regexpr("\n", .entry, fixed = TRUE)
+    if (.nl > 0L) {
+      paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
+    } else {
+      paste0(.entry, .add)
+    }
+  }, character(1L), USE.NAMES = FALSE)
+}
+
 #' Validate that delay durations do not depend on the sensitivity parameters
 #'
 #' v1 forward sensitivities require `d tau / d p == 0` for every sensitivity
