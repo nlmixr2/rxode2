@@ -312,6 +312,17 @@ static inline SEXP sortStateVectors(SEXP ordS) {
   for (int i = 0; i < tb.de.n; i++) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
+    // delay(state, T) interpolates the dense history of a differential
+    // state, so its first argument must be a real ODE state (idu==1, i.e.
+    // it has a d/dt() equation).  A non-state (parameter/covariate) passed
+    // to delay() is registered here as an extra compartment with the
+    // propDelay bit but no derivative; reject it instead of silently
+    // swallowing it as an algebraic observable.
+    if ((prop & propDelay) != 0 && tb.idu[i] == 0) {
+      char *bufd = tb.ss.line[tb.di[i]];
+      sAppend(&sbt, "the first argument to 'delay()' must be an ODE state with a 'd/dt()' defined, but 'delay(%s, ...)' has no 'd/dt(%s)'\n", bufd, bufd);
+      continue;
+    }
     if (cur == 0) {
       // This has a property without an ODE or cmt() statement; should error here.
       if (sortStateVectorsErrHandle(prop, i)) continue;

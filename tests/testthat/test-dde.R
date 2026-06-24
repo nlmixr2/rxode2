@@ -46,6 +46,29 @@ rxTest({
     )
   })
 
+  test_that("delay()'s first argument must be an ODE state, not a parameter", {
+    ## delay() interpolates the dense history of a differential state, so its
+    ## first argument must have a d/dt() defined.  Passing a parameter
+    ## (kel here) used to be silently swallowed as an algebraic compartment;
+    ## it must error instead.
+    expect_error(rxode2({
+      d/dt(central) <- -kel * central + delay(kel, 5)
+      conc <- central / v
+    }), "syntax error")
+    expect_output(
+      try(rxode2({
+        d/dt(central) <- -kel * central + delay(kel, 5)
+        conc <- central / v
+      }), silent = TRUE),
+      "must be an ODE state"
+    )
+    ## the same expression with a genuine state is fine
+    expect_s3_class(rxode2({
+      d/dt(central) <- -kel * central + kel * delay(central, 5)
+      conc <- central / v
+    }), "rxode2")
+  })
+
   test_that("delay differential equation matches the analytic solution", {
     .tt <- seq(0, 2, by = 0.1)
     .s <- rxSolve(.dde, et(.tt), atol = 1e-10, rtol = 1e-10)
