@@ -374,7 +374,7 @@
 
 #' Augment second-order forward-sensitivity equations with the delayed terms
 #'
-#' Constant-delay (Phase A) second-order analogue of [.rxDelaySensAugment()].
+#' Constant-delay (Phase A) second-order analogue of `.rxDelaySensAugment()`.
 #' Treating each `delay(y_j, T)` as a surrogate `g`, the standard second-order
 #' machinery misses every term where `delay()` is differentiated w.r.t. a
 #' parameter; those missing terms for the equation `d/dt(S_i^{ab})` are
@@ -392,7 +392,7 @@
 #' time-derivative corrections weighted by `dT/dp`); for a constant delay every
 #' correction vanishes and `SG` reduces to `delay(S, T)`, the validated case.
 #' Parameter-dependent delays are rejected upstream (see
-#' [.rxDelayValidateHigherOrderSE()]) because the moving breaking points put jump
+#' `.rxDelayValidateHigherOrderSE()`) because the moving breaking points put jump
 #' discontinuities in the second-order sensitivities; the `SG` machinery here is
 #' the (between-breaking-point) groundwork for adding that.
 #'
@@ -584,7 +584,7 @@
 
 #' Reject nonlinear delays for third-order sensitivities (early, env)
 #'
-#' The third-order delay augmentation [.rxDelaySensAugment3()] only covers delays
+#' The third-order delay augmentation `.rxDelaySensAugment3()` only covers delays
 #' that appear linearly (`d^2 f/dg dy == 0` and `d^2 f/dg dg' == 0`).  This runs
 #' the same check before the sensitivity progress bar opens so a nonlinear delay
 #' errors with a clear (unmasked) message.
@@ -647,7 +647,7 @@
 
 #' Augment third-order forward-sensitivity equations with the delayed terms
 #'
-#' Constant-delay third-order analogue of [.rxDelaySensAugment2()].  For a delay
+#' Constant-delay third-order analogue of `.rxDelaySensAugment2()`.  For a delay
 #' that appears *linearly* (the common case: `... + c(p)*delay(y_j, T)`), the
 #' missing third-order terms for `d/dt(S_i^{abc})` are
 #'
@@ -660,7 +660,7 @@
 #' with `JD = df/dg`, `H_gp = d^2 f/dg dp`, `H_gpp = d^3 f/dg dp dq`.  A *nonlinear*
 #' delay (one with `d^2 f/dg dy != 0` or `d^2 f/dg dg' != 0`) would need the
 #' additional third-order tensor terms and is rejected here.  Parameter-dependent
-#' delays are rejected upstream ([.rxDelayValidateHigherOrderSE()]).
+#' delays are rejected upstream (`.rxDelayValidateHigherOrderSE()`).
 #'
 #' @param model symengine environment from the model loader.
 #' @param sensVec the third-order `..sens` vector (`.rxExpandSens3()` output).

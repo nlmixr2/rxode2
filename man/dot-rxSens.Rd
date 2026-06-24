@@ -4,7 +4,7 @@
 \alias{.rxSens}
 \title{Sensitivity for model}
 \usage{
-.rxSens(model, vars, vars2)
+.rxSens(model, vars, vars2, vars3)
 }
 \arguments{
 \item{model}{symengine model environment}
