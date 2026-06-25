@@ -49,6 +49,9 @@ static inline int handleLhsDf(nodeInfo ni, char *name, int i, D_ParseNode *xpn, 
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     // New statement
     aType(TJAC);
+    // A Jacobian entry df(state)/dy(var) is an integration-time expression, so
+    // delay()/rxDelayD() are valid here too (e.g. d f/d(param) = delay(state,T)).
+    tb.curDdt = 1;
     sb.o = 0; sbDt.o = 0;
     sbt.o = 0;
     sAppend(&sbDt,"__PDStateVar_%s_SeP_",v);

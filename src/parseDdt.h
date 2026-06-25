@@ -121,6 +121,7 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
 static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   if (nodeHas(derivative) && i==2) {
     tb.hasDdt = 1;
+    tb.curDdt = 1; // entering a d/dt() RHS (delay()/rxDelayD() are only valid here)
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     if (!new_or_ith(v)) {
       if (tb.ix >= 0 &&
