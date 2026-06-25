@@ -100,6 +100,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -510,15 +511,23 @@ string:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, <span class="va">params</span>, method <span class="op">=</span> <span class="st">"t54+ros43"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, <span class="va">params</span>, method <span class="op">=</span> <span class="st">"vern76+ros43"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, <span class="va">params</span>, method <span class="op">=</span> <span class="st">"dop853+sdirk43"</span><span class="op">)</span></span></code></pre></div>
-<p>Within each ODE interval, <code>rxode2</code> runs the primary
-(non-stiff) solver first. If that interval appears stiff – either
-because the solver failed, because DOP853’s internal stiffness test
-fired, or because the Gershgorin spectral radius of the Jacobian exceeds
-the method’s stability region – the interval is retried with the stiff
-secondary solver. Once consecutive stiff detections cross a threshold,
-the solver switches permanently to the stiff method for that subject. It
-switches back if enough consecutive non-stiff intervals are
-observed.</p>
+<p>Within each ODE interval (the segment between events/observations),
+<code>rxode2</code> runs the primary (non-stiff) solver first. If that
+probe reports stiffness – because the non-stiff solver failed (its
+adaptive step size collapsed) or because DOP853’s built-in
+dominant-eigenvalue stiffness estimator fired – the interval is
+re-solved from its start with the stiff secondary. This is a
+<em>reactive</em> scheme: rather than computing a separate stiffness
+estimate at the composite level, it delegates detection to the primary’s
+own per-step estimator and to solve success/failure. Once consecutive
+stiff detections cross a threshold the solver stops probing and uses the
+stiff method directly for that subject; it returns to the primary after
+enough consecutive non-stiff intervals.</p>
+<p>(Earlier versions of <code>rxode2</code> used a proactive estimate –
+the Gershgorin spectral radius of the Jacobian scaled by the interval
+length – but on the long inter-dose intervals typical of pharmacometric
+models that over-estimated stiffness and switched too eagerly, so it was
+replaced by the reactive scheme above.)</p>
 <div class="section level4">
 <h4 id="why-use-autoswitch-instead-of-liblsoda">Why use AutoSwitch instead of <code>liblsoda</code>?<a class="anchor" aria-label="anchor" href="#why-use-autoswitch-instead-of-liblsoda"></a>
 </h4>
@@ -763,6 +772,121 @@ makes the solver more willing to stay with the non-stiff primary even in
 borderline intervals.</li>
 </ul>
 </div>
+<div class="section level4">
+<h4 id="how-rxode2-autoswitch-compares-to-julias-autoswitch">How rxode2 AutoSwitch compares to Julia’s
+<code>AutoSwitch</code><a class="anchor" aria-label="anchor" href="#how-rxode2-autoswitch-compares-to-julias-autoswitch"></a>
+</h4>
+<p><code>rxode2</code>’s composite methods and Julia’s
+<code>AutoTsit5</code>/<code>AutoVern7</code>/… wrappers (the
+<code>AutoSwitch</code> algorithm in <code>OrdinaryDiffEq.jl</code>)
+share the <em>same underlying stiffness signal</em> but apply it
+differently.</p>
+<p><strong>The shared signal.</strong> Julia’s <code>is_stiff</code>
+test computes a stiffness ratio
+<code>stiffness = |eigen_est * dt / alg_stability_size(alg)|</code> and
+declares the step stiff when this exceeds a tolerance
+(<code>nonstifftol</code> = <code>stifftol</code> = <code>0.9</code> by
+default). Here <code>eigen_est</code> is the stepper’s cheap estimate of
+the dominant Jacobian eigenvalue (for explicit Runge-Kutta methods,
+Hairer’s estimate from the last stages), <code>dt</code> is the
+<strong>actual step size</strong>, and <code>stability_size</code> is
+the method’s stability-region radius. DOP853’s built-in stiffness test
+computes exactly this quantity (Hairer &amp; Wanner’s
+<code>nstiff</code> heuristic), so when <code>rxode2</code> probes an
+interval with <code>dop853</code>, the primary is using Julia’s
+<code>eigen_est * dt / stability_size</code> criterion internally.</p>
+<p><strong>The differences.</strong></p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th></th>
+<th>Julia <code>AutoSwitch</code>
+</th>
+<th>rxode2 composite</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Granularity</td>
+<td>per accepted <strong>step</strong>
+</td>
+<td>per ODE <strong>interval</strong> (event-to-event segment)</td>
+</tr>
+<tr class="even">
+<td>Decision style</td>
+<td>
+<strong>proactive</strong> – <code>is_stiff</code> chooses the
+algorithm for the <em>next</em> step</td>
+<td>
+<strong>reactive</strong> – run the primary, re-solve the interval
+with the stiff method only if it reports stiffness or fails</td>
+</tr>
+<tr class="odd">
+<td>Stiffness source</td>
+<td>the integrator’s <code>eigen_est</code> (every stepper supplies
+one)</td>
+<td>the primary’s own per-step estimator (e.g. DOP853’s
+<code>nstiff</code>) <strong>or</strong> an outright solve failure
+(step-size collapse)</td>
+</tr>
+<tr class="even">
+<td>Hysteresis</td>
+<td>
+<code>maxstiffstep</code> / <code>maxnonstiffstep</code> /
+<code>dtfac</code> / <code>stiffalgfirst</code>
+</td>
+<td>
+<code>autoSwitchMaxStiff</code> / <code>autoSwitchMaxNonstiff</code>
+/ <code>autoSwitchDtfac</code> / <code>autoSwitchStiffFirst</code> (same
+defaults: <code>10</code> / <code>3</code> / <code>2</code> /
+<code>FALSE</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The practical upshot: because <code>rxode2</code> solves a whole
+inter-dose interval as one unit, it does not re-pick the algorithm at
+every internal step the way Julia does. Instead it lets the non-stiff
+primary run (and detect stiffness with the same Hairer estimate, or
+simply fail on a stiff region), then re-solves that interval with the
+stiff secondary and uses a short hysteresis so a persistently stiff
+subject stops paying for the non-stiff probe. A non-stiff primary that
+has no internal eigenvalue estimate still triggers a switch through its
+step-size collapse, which is why the reactive scheme works for every
+primary, not only <code>dop853</code>.</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="delay-differential-equations-ddes">Delay differential equations (DDEs)<a class="anchor" aria-label="anchor" href="#delay-differential-equations-ddes"></a>
+</h3>
+<p><code>rxode2</code> solves delay differential equations through the
+same dense-output machinery the composite methods use. Writing
+<code>delay(state, T)</code> inside a <code>d/dt()</code> equation
+evaluates an ODE compartment at the past time <code>t - T</code>
+(Monolix <code><a href="../reference/delay.html">delay()</a></code> semantics):</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dde</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">1</span><span class="op">)</span>        <span class="co"># y'(t) = -y(t - 1)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">dde</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, by <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The delayed value is interpolated from the solver’s recorded dense
+history, so it is obtained to the full order of the method. Because this
+requires dense output, a model that uses <code><a href="../reference/delay.html">delay()</a></code> is
+automatically solved on a dense path and the default method becomes the
+AutoSwitch composite <code>"dop853+ros4"</code> (which records the
+dop853 and ros4 dense histories together and switches between them per
+segment). <code>"dop853"</code> and <code>"ros4"</code> may also be
+requested explicitly; non-dense methods raise an error. The step size is
+capped to the smallest delay so short delays stay accurate, and forward
+sensitivities are generated for <code><a href="../reference/delay.html">delay()</a></code> models so they can
+be fit with <code>nlmixr2</code>’s FOCEi.</p>
+<p>For the full treatment – worked examples, how the dense history is
+recorded and interpolated, mixed delay + ODE models, and estimation –
+see the dedicated article <a href="rxode2-delay-differential-equations.html">Delay differential
+equations in rxode2</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="fixed-step-stiff-suitable-or-implicit-methods">Fixed-step, stiff-suitable, or implicit methods<a class="anchor" aria-label="anchor" href="#fixed-step-stiff-suitable-or-implicit-methods"></a>
@@ -877,7 +1001,7 @@ state has to be reconstructed at requested sample times.</p>
 </h2>
 <p>All numerical solvers respond to <code>atol</code> and
 <code>rtol</code>:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">theta</span>, <span class="va">ev</span>,</span>
 <span>               method <span class="op">=</span> <span class="st">"liblsoda"</span>,</span>
 <span>               atol   <span class="op">=</span> <span class="fl">1e-10</span>,</span>
@@ -1300,7 +1424,16 @@ simulations via OpenMP.</li>
 <strong>Sensitivity / gradients</strong>: Julia’s
 <code>sensealg</code> supports adjoint and forward sensitivity for large
 systems; rxode2 computes forward sensitivities (for nlmixr2 FOCEi) via
-symbolic differentiation.</li>
+symbolic differentiation, including for <code><a href="../reference/delay.html">delay()</a></code>
+models.</li>
+<li>
+<strong>Automatic stiffness switching</strong>: Julia’s
+<code>AutoSwitch</code> re-picks the algorithm proactively at every step
+from its <code>eigen_est</code>; rxode2’s <code>"primary+stiff"</code>
+composites switch reactively per interval using the same Hairer
+stiffness estimate (or a solve failure). See <em>How rxode2 AutoSwitch
+compares to Julia’s <code>AutoSwitch</code></em> under the AutoSwitch
+composite methods section above.</li>
 <li>
 <strong>Interoperability</strong>: The <code>JuliaCall</code> or
 <code>JuliaConnectoR</code> packages allow calling Julia’s ODE solvers
@@ -1492,7 +1625,7 @@ compartment <code>i</code> <strong>to</strong> compartment
 making translation direct and avoiding all symbolic manipulation. This
 is the most numerically stable approach for linear compartmental
 models:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">threeComp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="va">k_depot_central</span>  <span class="op">=</span> <span class="va">ka</span></span>
@@ -1516,7 +1649,7 @@ Exponentials and Inductive Linearization</a> for a full description of
 <p>The <code>nonmem2rx</code> package (part of the nlmixr2 ecosystem)
 can import NONMEM control streams into rxode2/nlmixr2 models
 automatically.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># nonmem2rx::nonmem2rx("run001.ctl")</span></span></code></pre></div>
 </div>
 </div>

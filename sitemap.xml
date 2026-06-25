@@ -12,6 +12,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-cmt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-delay-differential-equations.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-dense-output.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-desolve-comparison.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-et-refactor.html</loc></url>
@@ -83,6 +84,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dReLU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dSELU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dSwish.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/delay.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dfWishart.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dlReLU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-assertRenameErrorModelLine.html</loc></url>

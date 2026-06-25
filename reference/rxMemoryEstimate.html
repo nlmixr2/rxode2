@@ -75,6 +75,7 @@ be supplied via a compiled rxode2 model object or overridden individually."><met
     <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
@@ -276,14 +277,14 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-in"><span><span class="co"># Basic estimate from event table and model</span></span></span>
 <span class="r-in"><span><span class="fu">rxMemoryEstimate</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">ev</span><span class="op">)</span>, model <span class="op">=</span> <span class="va">mod</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rxSolve() memory estimate</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Total: 23.74 KB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Total: 23.79 KB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_times (event time/dv/amt/ii/limit)    6.80 KB (28.6%)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   outputData (estimated returned data)       5.47 KB (23.1%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   outputData (estimated returned data)       5.47 KB (23.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsolve (double buffer total)               4.38 KB (18.4%)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     |_ n0: ODE state output matrix           2.72 KB (11.5%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     |_ n0: ODE state output matrix           2.72 KB (11.4%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gevid (event IDs)                          2.04 KB ( 8.6%)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   inds_global (per-subject structs)          896 B ( 3.8%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   inds_global (per-subject structs)          952 B ( 4.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gon (int buffer)                           712 B ( 3.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   ordId (subject ordering)                   680 B ( 2.9%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gpars (parameters)                         24 B ( 0.1%)</span>
@@ -293,7 +294,7 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsigma (sigma matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_timesS (extra sim times)              0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 896 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.18 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.22 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># With rxControl: population simulation with omega and 4 cores</span></span></span>
 <span class="r-in"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="rxSolve.html">rxControl</a></span><span class="op">(</span></span></span>
@@ -302,14 +303,14 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxMemoryEstimate</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">ev</span><span class="op">)</span>, model <span class="op">=</span> <span class="va">mod</span>, control <span class="op">=</span> <span class="va">ctrl</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rxSolve() memory estimate</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Total: 28.50 KB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Total: 28.56 KB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   gsolve (double buffer total)               9.01 KB (31.6%)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   gall_times (event time/dv/amt/ii/limit)    6.80 KB (23.9%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gsolve (double buffer total)               9.01 KB (31.5%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gall_times (event time/dv/amt/ii/limit)    6.80 KB (23.8%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   outputData (estimated returned data)       5.47 KB (19.2%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     |_ n0: ODE state output matrix           2.72 KB ( 9.5%)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   gevid (event IDs)                          2.04 KB ( 7.2%)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   inds_global (per-subject structs)          896 B ( 3.1%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   gevid (event IDs)                          2.04 KB ( 7.1%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   inds_global (per-subject structs)          952 B ( 3.3%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gon (int buffer)                           736 B ( 2.6%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   ordId (subject ordering)                   680 B ( 2.4%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gomega (omega matrix)                      64 B ( 0.2%)</span>
@@ -319,7 +320,7 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsigma (sigma matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_timesS (extra sim times)              0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 896 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.18 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (15.22 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
