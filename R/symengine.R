@@ -1530,7 +1530,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     if (i %% 2 == 0)  {
       # Noting that argument 1 is the function name,
       # The even arguments are the mixture values
-      paste0("rxEq(mixest, ", i/2, ")*(", deparse1(x[[i]]), ")")
+      paste0("rxEq(mixest, ", i/2, ")*(", .rxToSE(x[[i]], envir = envir, progress = progress), ")")
     } else {
       ""
     }
