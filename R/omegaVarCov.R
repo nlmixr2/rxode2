@@ -29,39 +29,8 @@
 #' @export
 rxOmegaVarCovDeriv <- function(omega, order = 2L) {
   omega <- as.matrix(omega)
-  if (nrow(omega) != ncol(omega) || max(abs(omega - t(omega))) > 1e-8) {
-    stop("'omega' must be a symmetric matrix", call. = FALSE)
-  }
-  n <- nrow(omega)
-  Oi <- solve(omega)
-  idx <- which(lower.tri(omega, diag = TRUE), arr.ind = TRUE)
-  idx <- idx[order(idx[, "col"], idx[, "row"]), , drop = FALSE]
-  np <- nrow(idx)
-  Eb <- lapply(seq_len(np), function(k) {
-    E <- matrix(0, n, n); a <- idx[k, 1]; b <- idx[k, 2]; E[a, b] <- 1; E[b, a] <- 1; E
-  })
-  OiE <- lapply(Eb, function(E) Oi %*% E)              # Omega^{-1} E_k
-  ret <- list(
-    omegaInv = Oi,
-    logDet = as.numeric(determinant(omega, logarithm = TRUE)$modulus),
-    elements = idx,
-    dOmegaInv = lapply(OiE, function(M) -(M %*% Oi)),
-    dLogDet = vapply(OiE, function(M) sum(diag(M)), numeric(1))
-  )
-  if (order >= 2L) {
-    d2OmegaInv <- vector("list", np)
-    d2LogDet <- matrix(0, np, np)
-    for (j in seq_len(np)) {
-      d2OmegaInv[[j]] <- vector("list", np)
-      for (k in seq_len(np)) {
-        # d2 Omega^{-1} = Oi (E_j Oi E_k + E_k Oi E_j) Oi
-        d2OmegaInv[[j]][[k]] <- Oi %*% (Eb[[j]] %*% OiE[[k]] + Eb[[k]] %*% OiE[[j]]) %*% Oi
-        # d2 log|Omega| = -tr(Oi E_j Oi E_k)
-        d2LogDet[j, k] <- -sum(diag(OiE[[j]] %*% OiE[[k]]))
-      }
-    }
-    ret$d2OmegaInv <- d2OmegaInv
-    ret$d2LogDet <- d2LogDet
-  }
-  ret
+  storage.mode(omega) <- "double"
+  # Heavy lifting (the E-basis matrix calculus) is done in C++/RcppArmadillo so
+  # this can be called from the analytic-covariance C path; see src/omegaVarCov.cpp.
+  rxOmegaVarCovDeriv_(omega, as.integer(order))
 }

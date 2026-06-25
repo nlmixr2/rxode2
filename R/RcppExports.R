@@ -353,6 +353,33 @@ linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, n
     .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH)
 }
 
+#' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)
+#'
+#' C++/RcppArmadillo implementation of the non-Cholesky Omega derivatives used
+#' to build a FOCEI/FOCE observed-information covariance over the natural
+#' variance-covariance scale.  Returns \eqn{\Omega^{-1}}, \eqn{\log|\Omega|},
+#' and their first (and optionally second) derivatives with respect to each free
+#' lower-triangular variance-covariance element \eqn{\omega_{ab}}, using
+#'
+#' \deqn{\partial \Omega^{-1}/\partial \omega_{ab} = -\Omega^{-1} E_{ab} \Omega^{-1}}
+#' \deqn{\partial \log|\Omega|/\partial \omega_{ab} = \mathrm{tr}(\Omega^{-1} E_{ab})}
+#'
+#' where \eqn{E_{ab}} is the symmetric single-entry basis matrix.
+#'
+#' @param omega symmetric positive-definite random-effects covariance matrix.
+#' @param order integer; `1` for first derivatives only, `2` (default) to also
+#'   return the second derivatives needed for the covariance Hessian.
+#' @return a list with `omegaInv`, `logDet`, the free-element index matrix
+#'   `elements` (each row `c(a, b)`, `a >= b`), first derivatives
+#'   `dOmegaInv` / `dLogDet`, and (when `order = 2`) second derivatives
+#'   `d2OmegaInv` / `d2LogDet`.
+#' @author Hidde van de Beek
+#' @keywords internal
+#' @export
+rxOmegaVarCovDeriv_ <- function(omega, order = 2L) {
+    .Call(`_rxode2_rxOmegaVarCovDeriv_`, omega, order)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }
@@ -1159,3 +1186,4 @@ meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
 methods::setLoadAction(function(ns) {
     .Call(`_rxode2_RcppExport_registerCCallable`)
 })
+
