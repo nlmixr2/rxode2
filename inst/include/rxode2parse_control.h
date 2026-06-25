@@ -175,6 +175,7 @@
 #define RxMvFlag_ndiff 12
 #define RxMvFlag_mix 13
 #define RxMvFlag_evid_ 14
+#define RxMvFlag_hasDelay 15
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

@@ -1,5 +1,67 @@
 # rxode2 5.1.3
 
+- Add support for delay differential equations (DDEs) via the new
+  `delay(state, T)` model function, which evaluates an ODE `state` at
+  the past time `t - T` (the same semantics as Monolix's `delay()`).
+  Delayed states are interpolated from the solver's dense output
+  (using the 8th-order Dormand-Prince interpolant), so they are
+  obtained to the full accuracy of the integration.  Models that use
+  `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`,
+  which now switches between dop853 and ros4 per segment in dense mode,
+  so a delay model that is non-stiff early and stiff later is solved
+  efficiently in a single pass (the dop853 and ros4 dense histories are
+  recorded together).  Stiff delay models can also be solved with
+  `method = "ros4"` directly.  The step size is automatically capped to
+  the smallest delay so short delays stay accurate.  Non-dense solvers
+  are rejected with an informative error.  Dense history is recorded
+  only for the states that `delay()` actually looks back on, so a delay
+  on one state in a large ODE system stays inexpensive.  `delay()` may
+  only be used on a `d/dt()` (ODE) right-hand side, where the dense
+  history is available.  The DDE dense-output and history machinery is
+  adapted from the 'dde' package (Rich FitzJohn, Wes Hinsley, Imperial
+  College of Science, Technology and Medicine), whose authors are added
+  as contributors.
+
+- Forward sensitivities are now generated for delay differential
+  equation models, so `delay()` models can be estimated with
+  gradient-based methods such as nlmixr2's FOCEi.  Each sensitivity
+  equation gains the delayed term `delay(S, T)` (the sensitivity of the
+  delayed state), which reuses the same dense history.  Delay durations
+  that themselves depend on an estimated parameter are also supported
+  (at first order), using the new `rxDelayD(state, T)` -- the analytic
+  time-derivative of a delayed state, obtained from the derivative of the
+  dense interpolant.  Second- and third-order sensitivities are
+  generated for constant delays; `rxDelayD2()` and `rxDelayD3()` provide
+  the analytic second and third time-derivatives of the dense
+  interpolant (the latter is the groundwork for breaking-point jump
+  tracking and for higher-order Hessian terms).
+
+  - TODO: support parameter-dependent delays `delay(state, T(p))` for
+    **second- and higher-order** sensitivities (needed for an exact
+    analytic FOCEi Hessian).  When the duration `T` depends on an
+    estimated parameter the DDE breaking points `t = n*T(p)` move with
+    the parameter, which introduces jump discontinuities in the second-
+    (and higher-) order sensitivities at those points; the current
+    smooth-ODE formulation is correct only between breaking points, so
+    these cases are rejected with an informative error for now.
+    Capturing the jumps needs breaking-point tracking (release a
+    computed delta into the affected sensitivity compartment at each
+    moving breaking point `t = n*T(p)`).  In the meantime these models
+    are still fully usable for estimation: the **first-order sensitivity
+    (the gradient) is exact and continuous** across breaking points, so
+    fit them with a numeric or Gauss-Newton Hessian -- the latter is the
+    default in nlmixr2 FOCEi -- which needs only the exact gradient.
+
+- Added AutoSwitch composite ODE solving methods, written as
+  `"primary+secondary"` (for example `method = "dop853+ros4"`).  These
+  probe each interval/segment with a non-stiff primary (`dop853`) and
+  reactively fall back to a stiff secondary only when stiffness is
+  detected, so a problem that is non-stiff in one region and stiff in
+  another is solved efficiently in a single pass.  The stiff secondary
+  may be `ros4` or another Rosenbrock / implicit Runge-Kutta method, for
+  which an analytical Jacobian is generated automatically, and the
+  composite works in both the standard and dense-output paths.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK

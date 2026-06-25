@@ -686,6 +686,8 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
           calcSens <- .rxParams(model, TRUE)
         }
       }
+      ## .rxSens augments the sensitivity ODEs with the delayed (variational)
+      ## terms for delay() models (no-op otherwise).
       .rxSens(.s, calcSens)
       .tmp1 <- .s$..jacobian
       if (!calcJac) .tmp1 <- ""
