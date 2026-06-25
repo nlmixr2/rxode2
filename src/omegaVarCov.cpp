@@ -5,7 +5,6 @@
 #define USE_FC_LEN_T
 #define ARMA_WARN_LEVEL 1
 #define STRICT_R_HEADERS
-// [[Rcpp::interfaces(r,cpp)]]
 #include <RcppArmadillo.h>
 
 using namespace arma;

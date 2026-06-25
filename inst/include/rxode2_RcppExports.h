@@ -4,8 +4,6 @@
 #ifndef RCPP_rxode2_RCPPEXPORTS_H_GEN_
 #define RCPP_rxode2_RCPPEXPORTS_H_GEN_
 
-#include <RcppArmadillo.h>
-#include <RcppEigen.h>
 #include <Rcpp.h>
 
 namespace rxode2 {
@@ -163,27 +161,6 @@ namespace rxode2 {
         {
             RNGScope RCPP_rngScope_gen;
             rcpp_result_gen = p_rxExpandNesting(Shield<SEXP>(Rcpp::wrap(obj)), Shield<SEXP>(Rcpp::wrap(nestingInfo)), Shield<SEXP>(Rcpp::wrap(compile)));
-        }
-        if (rcpp_result_gen.inherits("interrupted-error"))
-            throw Rcpp::internal::InterruptedException();
-        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
-            throw Rcpp::LongjumpException(rcpp_result_gen);
-        if (rcpp_result_gen.inherits("try-error"))
-            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
-        return Rcpp::as<List >(rcpp_result_gen);
-    }
-
-    inline List rxOmegaVarCovDeriv_(arma::mat omega, int order = 2) {
-        typedef SEXP(*Ptr_rxOmegaVarCovDeriv_)(SEXP,SEXP);
-        static Ptr_rxOmegaVarCovDeriv_ p_rxOmegaVarCovDeriv_ = NULL;
-        if (p_rxOmegaVarCovDeriv_ == NULL) {
-            validateSignature("List(*rxOmegaVarCovDeriv_)(arma::mat,int)");
-            p_rxOmegaVarCovDeriv_ = (Ptr_rxOmegaVarCovDeriv_)R_GetCCallable("rxode2", "_rxode2_rxOmegaVarCovDeriv_");
-        }
-        RObject rcpp_result_gen;
-        {
-            RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_rxOmegaVarCovDeriv_(Shield<SEXP>(Rcpp::wrap(omega)), Shield<SEXP>(Rcpp::wrap(order)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

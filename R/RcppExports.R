@@ -1181,9 +1181,3 @@ binomProbs_ <- function(x, probs, naRm, nIn, cont) {
 meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
-
-# Register entry points for exported C++ functions
-methods::setLoadAction(function(ns) {
-    .Call(`_rxode2_RcppExport_registerCCallable`)
-})
-
