@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <cstring>
 
 #define _(String) (String)
 
@@ -109,7 +110,18 @@ extern "C" void rxSolveWarnFlush(int maxIds) {
       for (std::set<int>::const_iterator iit = e.ids.begin();
            iit != e.ids.end() && k < nShow; ++iit, ++k) {
         if (k > 0) RSprintf(", ");
-        RSprintf("%s", rxGetId(*iit));
+        /* rxGetId resolves the internal solve index to the user's subject id
+           via the global factor table.  When that table isn't populated
+           (e.g. nlmixr2est estimation that didn't call rxSetIdLvlFactors, or
+           an older nlmixr2est), it returns the literal "Unknown"; fall back
+           to the 1-based internal index so the message stays honest and
+           non-misleading rather than printing a bare "Unknown". */
+        const char *idStr = rxGetId(*iit);
+        if (strcmp(idStr, "Unknown") == 0) {
+          RSprintf(_("internal #%d"), *iit + 1);
+        } else {
+          RSprintf("%s", idStr);
+        }
       }
       if (nIds > nShow) {
         RSprintf(_(", ... (%d more)"), nIds - nShow);

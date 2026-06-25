@@ -238,6 +238,56 @@ extern "C" void nullGlobals() {
   lineNull(&(rx_global.factorNames));
 }
 
+// Populate the global solve state's ID factor levels directly from a
+// character vector of subject ids.  rxSolve_ev1Update() normally fills
+// rx_global.factors from an `rxEtTran` event table's idLvl attribute, but
+// nlmixr2est's FOCEi/SAEM estimation strips that class (it passes a plain
+// data.frame / numeric matrix to rxSolve_), so during a fit the factor
+// table is empty and getId() falls through to "Unknown".  nlmixr2est calls
+// this helper (via a version-skew-safe R_GetCCallable lookup) right after
+// estimation setup so warnings aggregated by solveWarn.cpp can be attributed
+// to the real subject id.  We only populate the ID group (group 0) because
+// getId() reads factorNs[0]/factors.n.  lineIni() self-frees any prior
+// buffers, so repeated calls (cov steps / theta resets) do not leak; setting
+// hasFactors=1 lets rxSolveFree() reclaim the buffers afterwards.
+extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
+  rx_solve *rx = &rx_global;
+  lineIni(&(rx->factors));
+  lineIni(&(rx->factorNames));
+  int len = Rf_length(idLvl);
+  addLine(&(rx->factorNames), "%s", "ID");
+  for (int i = 0; i < len; i++) {
+    addLine(&(rx->factors), "%s", CHAR(STRING_ELT(idLvl, i)));
+  }
+  rx->hasFactors = 0;
+  rx->factorNs[rx->hasFactors++] = len; // factorNs[0] = len, hasFactors = 1
+}
+
+// Test-only entry point (registered in init.c, called via .Call) that
+// exercises the solve-warning subject-id labelling deterministically without
+// needing a stiff fit: set the id factor levels from `idLvl`, push one
+// aggregated warning per supplied internal `ids` entry, then flush.  Used by
+// tests/testthat/test-solve-warn-id.R.  A character `idLvl` yields real
+// labels; an empty character(0) (or a non-character SEXP) leaves the factor
+// table empty so the "internal #N" fallback in solveWarn.cpp is exercised.
+extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP) {
+  rxSolveWarnReset();
+  if (TYPEOF(idLvl) == STRSXP) {
+    rxSetIdLvlFactors(idLvl);
+  } else {
+    nullGlobals();
+  }
+  SEXP ids = PROTECT(Rf_coerceVector(idsSEXP, INTSXP));
+  int n = Rf_length(ids);
+  int *pids = INTEGER(ids);
+  for (int i = 0; i < n; i++) {
+    rxSolveWarnPush(pids[i], "rxTest -- solve warning");
+  }
+  rxSolveWarnFlush(64);
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
 static inline const char *getId(int id) {
   rx_solve *rx = &rx_global;
   int curLen=  rx->factorNs[0];
@@ -257,6 +307,23 @@ static inline const char *getId(int id) {
 
 extern "C" const char *rxGetId(int id) {
   return getId(id);
+}
+
+// Test-only entry point (registered in init.c): return rxGetId() labels for a
+// vector of internal solve ids, reading whatever currently populates the
+// global factor table.  Lets a host package assert that estimation setup
+// populated the subject-id factors (e.g. via rxSetIdLvlFactors) rather than
+// leaving them empty.  Used by nlmixr2est's wiring test.
+extern "C" SEXP _rxTestGetIdLabels(SEXP idsSEXP) {
+  SEXP ids = PROTECT(Rf_coerceVector(idsSEXP, INTSXP));
+  int n = Rf_length(ids);
+  int *pids = INTEGER(ids);
+  SEXP ans = PROTECT(Rf_allocVector(STRSXP, n));
+  for (int i = 0; i < n; i++) {
+    SET_STRING_ELT(ans, i, Rf_mkChar(rxGetId(pids[i])));
+  }
+  UNPROTECT(2);
+  return ans;
 }
 
 extern "C" void printErr(int err, int id){

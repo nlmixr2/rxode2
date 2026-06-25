@@ -1,5 +1,14 @@
 # rxode2 5.1.3
 
+- New internal `rxSetIdLvlFactors()` C callable lets a host package
+  (e.g. nlmixr2est during `focei`/`saem` estimation) populate the
+  global subject-id factor table directly, so aggregated solver
+  warnings can be attributed to the real subject id even when the data
+  passed to `rxSolve_()` is not a classed `rxEtTran` table.  When the
+  id still cannot be resolved, the aggregated-warning flush now prints
+  the 1-based internal solve index (e.g. `internal #1`) instead of a
+  bare `Unknown`.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
