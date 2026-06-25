@@ -1,5 +1,16 @@
 # rxode2 5.1.3
 
+- Fixed a compartment-indexing bug in the generated C where, in a
+  `linCmt()` model that both has an error model and reads a materialized
+  linCmt compartment in an equation (e.g. `Cp <- peripheral1 / vp`), the
+  observation compartment injected for the endpoint shifted the linCmt
+  compartments' solved-state indices, so the in-equation reference read an
+  unwritten slot (`0`) instead of the solved amount.  The `__DDT` state
+  defines are now keyed by each compartment's declaration index (a no-op
+  when the orders already agree), so `central`, `peripheral1`,
+  `peripheral2` and `depot` amounts resolve correctly in model equations
+  alongside an error model.
+
 - Add support for delay differential equations (DDEs) via the new
   `delay(state, T)` model function, which evaluates an ODE `state` at
   the past time `t - T` (the same semantics as Monolix's `delay()`).
@@ -70,6 +81,35 @@
   only in the `ini()` block.  If a converted model cannot be compiled
   the original ODE model is used instead, so the conversion never
   breaks an otherwise-valid solve.
+
+- The automatic `linCmt()` conversion now handles models whose central
+  sub-system is coupled to an additional `d/dt()` state referenced
+  elsewhere (for example a peripheral observable such as `Cp <- periph /
+  vp`).  Previously such a state was dropped and demoted to a required
+  input parameter, so the default solve aborted with "parameter(s) are
+  required for solving: &lt;state&gt;".  When the coupled state is an
+  *output-only* peripheral, `odeToLin()` now keeps the model analytic by
+  renaming the ODE compartments to their canonical linCmt names
+  (`peripheral1`, `peripheral2`, `depot`) -- whose solved amounts
+  `linCmt()` exposes -- and anchoring the central endpoint to the
+  `central` compartment so no observation compartment is injected.
+  Systems that `linCmt()` cannot represent are left as explicit ODEs
+  instead: a compartment with independent loss such as a metabolite (mass
+  is not conserved across the exchange), or a peripheral that carries its
+  own estimated `~` endpoint (which collides with linCmt()'s internal
+  compartment).
+
+- Fixed the automatic `linCmt()` conversion incorrectly firing on a
+  genuinely nonlinear model when the nonlinearity is written through a
+  state-derived observable instead of the state itself -- e.g.
+  Michaelis-Menten elimination `Cc <- central / vc` then
+  `... - vmax * Cc * vc / (km + Cc)`.  The linearity scan only inspected
+  *direct* state references, so the MM term looked like a constant and
+  the model was linearized, silently dropping the nonlinear term and
+  demoting the inter-compartmental rate constants (`k12`, `k21`) to
+  required input parameters.  The default solve then aborted with
+  `The following parameter(s) are required for solving: k21, k12`.
+  Such models now keep their explicit ODE states.
 
 - Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
   now work inside `linCmt()` models and mixed `linCmt()` + ODE models,

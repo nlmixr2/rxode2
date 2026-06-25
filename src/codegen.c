@@ -742,15 +742,68 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
-    for (int i = 0; i < nOrd; i++) {
-      sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
-              CHAR(STRING_ELT(stateOrdNames, i)));
-      if (!strcmp("depot", CHAR(STRING_ELT(stateOrdNames, i)))) {
-        sAppend(&sbOut, "#define _DEPOT_ %d // %s\n", i,
+    // Re-key the __DDT defines by each state's actual tb.de index, so that
+    // __DDT<tb.de index>__ expands to that state's __zzStateVar__ slot (== the
+    // stateOrd loop index i).  Every __DDT *use* in this file indexes by the
+    // tb.de loop position (codegen reads/writes __zzStateVar__[__DDT<i>__] with
+    // i the tb.de index, and the Jacobian/matrix code finds idx via
+    // tb.de.line[k]); keying the *define* by stateOrdInt[i]-1 only agrees with
+    // that when tb.de order matches stateOrd order.  An endpoint that injects an
+    // observation cmt() (registered ahead of the linCmt compartments, which
+    // calcLinCmt appends last) breaks that alignment and made in-equation reads
+    // of e.g. peripheral1 resolve to an unwritten slot (== 0).  Mapping by NAME
+    // fixes all uses and is a no-op when the orders already agree.
+    //
+    // Match each stateOrd name to its tb.de index; the injected observation
+    // compartment (stateOrd name may be "NA") is never read in equations, so it
+    // gets any leftover (unclaimed) tb.de index -- guaranteeing no duplicate
+    // __DDT keys.
+    {
+      int nde = tb.de.n;
+      // tb.de index claimed by a matched state (-1 == free)
+      int *deClaimed = (int*)R_alloc(nde > 0 ? nde : 1, sizeof(int));
+      for (int k = 0; k < nde; k++) deClaimed[k] = 0;
+      // tb.de index assigned to each stateOrd slot (-1 == not yet assigned)
+      int *slotDe = (int*)R_alloc(nOrd > 0 ? nOrd : 1, sizeof(int));
+      for (int i = 0; i < nOrd; i++) slotDe[i] = -1;
+      // First pass: name-match stateOrd entries to tb.de indices
+      for (int i = 0; i < nOrd; i++) {
+        const char *nm = CHAR(STRING_ELT(stateOrdNames, i));
+        for (int k = 0; k < nde; k++) {
+          if (!deClaimed[k] && !strcmp(tb.de.line[k], nm)) {
+            slotDe[i] = k;
+            deClaimed[k] = 1;
+            break;
+          }
+        }
+      }
+      // Second pass: give unmatched stateOrd entries the leftover tb.de indices
+      for (int i = 0; i < nOrd; i++) {
+        if (slotDe[i] == -1) {
+          for (int k = 0; k < nde; k++) {
+            if (!deClaimed[k]) {
+              slotDe[i] = k;
+              deClaimed[k] = 1;
+              break;
+            }
+          }
+        }
+      }
+      for (int i = 0; i < nOrd; i++) {
+        // __DDT<tb.de index>__ -> __zzStateVar__ slot i.  In every model
+        // tb.de.n == nOrd (each solved state is a declared compartment), so a
+        // tb.de index is always found; fall back to the legacy key only if the
+        // table is somehow shorter, to avoid emitting __DDT-1__.
+        int ddtKey = (slotDe[i] >= 0) ? slotDe[i] : (stateOrdInt[i]-1);
+        sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", ddtKey, i,
                 CHAR(STRING_ELT(stateOrdNames, i)));
-      } else if (!strcmp("central", CHAR(STRING_ELT(stateOrdNames, i)))) {
-        sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
-                CHAR(STRING_ELT(stateOrdNames, i)));
+        if (!strcmp("depot", CHAR(STRING_ELT(stateOrdNames, i)))) {
+          sAppend(&sbOut, "#define _DEPOT_ %d // %s\n", i,
+                  CHAR(STRING_ELT(stateOrdNames, i)));
+        } else if (!strcmp("central", CHAR(STRING_ELT(stateOrdNames, i)))) {
+          sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
+                  CHAR(STRING_ELT(stateOrdNames, i)));
+        }
       }
     }
     writeSb(&sbOut, fpIO);
