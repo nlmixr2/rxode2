@@ -11,6 +11,68 @@
   `peripheral2` and `depot` amounts resolve correctly in model equations
   alongside an error model.
 
+- Add support for delay differential equations (DDEs) via the new
+  `delay(state, T)` model function, which evaluates an ODE `state` at
+  the past time `t - T` (the same semantics as Monolix's `delay()`).
+  Delayed states are interpolated from the solver's dense output
+  (using the 8th-order Dormand-Prince interpolant), so they are
+  obtained to the full accuracy of the integration.  Models that use
+  `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`,
+  which now switches between dop853 and ros4 per segment in dense mode,
+  so a delay model that is non-stiff early and stiff later is solved
+  efficiently in a single pass (the dop853 and ros4 dense histories are
+  recorded together).  Stiff delay models can also be solved with
+  `method = "ros4"` directly.  The step size is automatically capped to
+  the smallest delay so short delays stay accurate.  Non-dense solvers
+  are rejected with an informative error.  Dense history is recorded
+  only for the states that `delay()` actually looks back on, so a delay
+  on one state in a large ODE system stays inexpensive.  `delay()` may
+  only be used on a `d/dt()` (ODE) right-hand side, where the dense
+  history is available.  The DDE dense-output and history machinery is
+  adapted from the 'dde' package (Rich FitzJohn, Wes Hinsley, Imperial
+  College of Science, Technology and Medicine), whose authors are added
+  as contributors.
+
+- Forward sensitivities are now generated for delay differential
+  equation models, so `delay()` models can be estimated with
+  gradient-based methods such as nlmixr2's FOCEi.  Each sensitivity
+  equation gains the delayed term `delay(S, T)` (the sensitivity of the
+  delayed state), which reuses the same dense history.  Delay durations
+  that themselves depend on an estimated parameter are also supported
+  (at first order), using the new `rxDelayD(state, T)` -- the analytic
+  time-derivative of a delayed state, obtained from the derivative of the
+  dense interpolant.  Second- and third-order sensitivities are
+  generated for constant delays; `rxDelayD2()` and `rxDelayD3()` provide
+  the analytic second and third time-derivatives of the dense
+  interpolant (the latter is the groundwork for breaking-point jump
+  tracking and for higher-order Hessian terms).
+
+  - TODO: support parameter-dependent delays `delay(state, T(p))` for
+    **second- and higher-order** sensitivities (needed for an exact
+    analytic FOCEi Hessian).  When the duration `T` depends on an
+    estimated parameter the DDE breaking points `t = n*T(p)` move with
+    the parameter, which introduces jump discontinuities in the second-
+    (and higher-) order sensitivities at those points; the current
+    smooth-ODE formulation is correct only between breaking points, so
+    these cases are rejected with an informative error for now.
+    Capturing the jumps needs breaking-point tracking (release a
+    computed delta into the affected sensitivity compartment at each
+    moving breaking point `t = n*T(p)`).  In the meantime these models
+    are still fully usable for estimation: the **first-order sensitivity
+    (the gradient) is exact and continuous** across breaking points, so
+    fit them with a numeric or Gauss-Newton Hessian -- the latter is the
+    default in nlmixr2 FOCEi -- which needs only the exact gradient.
+
+- Added AutoSwitch composite ODE solving methods, written as
+  `"primary+secondary"` (for example `method = "dop853+ros4"`).  These
+  probe each interval/segment with a non-stiff primary (`dop853`) and
+  reactively fall back to a stiff secondary only when stiffness is
+  detected, so a problem that is non-stiff in one region and stiff in
+  another is solved efficiently in a single pass.  The stiff secondary
+  may be `ros4` or another Rosenbrock / implicit Runge-Kutta method, for
+  which an analytical Jacobian is generated automatically, and the
+  composite works in both the standard and dense-output paths.
+
 - Add automatic conversion of ode models to linear models when
   detected.  This conversion is applied transparently at solve time
   (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
@@ -60,6 +122,14 @@
   dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
   correct compartment reference.
 
+- Fixed `tad(<state>)` / `tlast(<state>)` (and the rest of the per-state
+  dose-timing family) returning `NA` or the wrong value in `linCmt()`
+  models that also declare an extra `cmt()` compartment for an algebraic
+  observable (e.g. an nlmixr2 ui model with `Cc ~ prop(propSd)`).  The
+  injected observable compartment used to sort before the linear
+  compartments (which are added last) and shifted the slot indices the
+  generated code used for the per-state lookups (nlmixr2est#685).
+
 - Added a forward automatic derivative linear compartment model, which
   beats the reverse mode automatic derivatives for linear compartment
   models
@@ -72,6 +142,45 @@
   sensitivity analysis as well.
 
 - Bug fix for `mix()` models as well as `iCov` models.
+
+- Fixed an out-of-bounds heap read in `rxSolve()` parameter setup
+  (`rxSolve_normalizeParms`, `src/rxData.cpp`).  When subjects share a
+  single event table, the table is stored once but the per-replicate
+  copy for an `nsim > 1` solve that needs sorting (e.g. a model with
+  modeled `rate()` / `dur()`) read `rx->nall` (the full per-sim total)
+  doubles from the single-subject-sized source, over-reading the event
+  arrays.  The base table is now tiled across each replicate's block
+  (AddressSanitizer-confirmed; results are unchanged).
+
+- Fixed an out-of-bounds heap read in `syncIdx()`
+  (`inst/include/rxode2parseHandleEvid.h`) that occurred on the main
+  ODE solve path.  `handle_evid()` advances `ind->ixds` past the last
+  dose and `syncIdx()` dereferenced `ind->idose[ind->ixds]` before
+  bounds-checking `ixds` against `ind->ndoses`, reading one element
+  past the `idose` array.  The stray value is normally discarded by
+  the subsequent re-sync (so solve results are unchanged), but the
+  out-of-bounds read corrupted the heap on some toolchains and
+  surfaced as an intermittent segfault at an unrelated allocation
+  (observed on the R 4.5.3 CI runner).  Confirmed and fixed with
+  AddressSanitizer; reproduced by a modeled-duration + lag-time model
+  dosed into multiple compartments (see
+  `tests/testthat/test-syncidx-dose-index-oob.R`).
+
+- Fixed three further out-of-bounds memory accesses found alongside it
+  (memory-safety hardening; none changes results):
+
+    - `cvPost()` / `rcvC1`: the single-variance (1x1 `omega`) branch
+      indexed the result matrix (`ret(1,1)`) before sizing it.
+
+    - `linCmt.h` (`linCmtStan2ssInf8`): the oral two-compartment
+      steady-state-infusion branch where both infusion rates are
+      non-positive wrote `ret(3,0)` on a three-row vector (valid rows
+      0-2), a one-row out-of-bounds heap write.
+
+    - `etTran()`: `combineDvid` read element `[1]` of a length-1 logical.
+
+    - `rxDerived()` (`derived1`): a recycled length-1 parameter pointer
+      was incremented past its one-element buffer.
 
 # rxode2 5.1.2
 

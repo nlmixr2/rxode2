@@ -182,9 +182,8 @@ namespace stan {
       }
 
       void setForwardOpts(double suspect, int forwardMax) {
-        double suspect_ = suspect;
-        int forwardMax_ = forwardMax;
-
+        suspect_ = suspect;
+        forwardMax_ = forwardMax;
       }
 
       // This will get the initial parameter value
@@ -1095,7 +1094,7 @@ namespace stan {
           } else {
             ret(0, 0) = NA_REAL;
             ret(1, 0) = NA_REAL;
-            ret(3, 0) = NA_REAL;
+            ret(2, 0) = NA_REAL;
             return;
           }
         } else {

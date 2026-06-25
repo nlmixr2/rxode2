@@ -132,6 +132,11 @@ rxTest({
                          modifyData = c("none", "dur", "rate"),
                          addlKeepsCov = TRUE, addlDropSs=TRUE,
                          ss2cancelAllPending=FALSE) {
+    # Preserve the caller's method name for the test titles.  `meth` is
+    # rewritten below (e.g. the dense composite "ddop853+dros4" becomes
+    # "dop853+ros4" with a separate `dense` flag), which would otherwise
+    # mislabel dense-composite failures as the non-dense method.
+    .methLabel <- meth
     if (meth == "Bs" || meth == "As") {
       ssSolved <- FALSE
     } else {
@@ -319,7 +324,7 @@ rxTest({
         sub <- 96
       }
       if (noLag) {
-        test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData, "; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
+        test_that(paste0("nmtest id:", id, " no alag; method: ", .methLabel, "; modifyData:", modifyData, "; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
         {
           if (lin == "A") {
             s1 <- rxSolve(lf, d, method=meth,
@@ -339,7 +344,7 @@ rxTest({
                        tolerance = 0.1)
         })
       }
-      test_that(paste0("nmtest id:", id, " alag; method: ", meth, "; modifyData:", modifyData,"; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
+      test_that(paste0("nmtest id:", id, " alag; method: ", .methLabel, "; modifyData:", modifyData,"; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
       {
         if (lin == "A") {
           s1 <- rxSolve(lfl, d, method=meth,

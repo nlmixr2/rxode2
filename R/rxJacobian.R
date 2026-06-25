@@ -98,11 +98,26 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxSens <- function(model, vars, vars2) {
+.rxSens <- function(model, vars, vars2, vars3) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
-    if (!missing(vars2)) {
+    if (missing(vars2)) {
+      ## delay differential equations: reject state-dependent delays before the
+      ## progress bar opens (so the error message is not masked).
+      .rxDelayValidateTauSE(model)
+    } else {
+      ## second- and higher-order: parameter-dependent delays are not yet
+      ## supported (moving breaking points -> jump discontinuities); reject
+      ## before the progress bar so the message is not masked.
+      .rxDelayValidateHigherOrderSE(model, union(union(vars, vars2),
+                                                 if (missing(vars3)) NULL else vars3))
+      ## third-order only covers linear delays; reject nonlinear ones early too.
+      if (!missing(vars3)) .rxDelayValidate3rdLinearSE(model)
+    }
+    if (!missing(vars3)) {
+      .grd <- .rxExpandSens3(model, vars, vars2, vars3)
+    } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
@@ -132,9 +147,23 @@ rxExpandGrid <- function(x, y, type = 0L) {
       rxTick()
       return(.ret)
     })
-    if (missing(vars2)) {
+    if (!missing(vars3)) {
+      ## Delay differential equations: add the third-order delayed (variational)
+      ## terms (constant-delay) to each third-order sensitivity ODE.
+      .ret <- .rxDelaySensAugment3(model, .ret, union(union(vars, vars2), vars3))
+      assign("..sens3", .ret, envir = model)
+    } else if (missing(vars2)) {
+      ## Delay differential equations: add the delayed (variational) terms
+      ## d f_i/d[delay(y_j,T)] * delay(S_j,T) to each first-order sensitivity
+      ## ODE.  No-op when the model has no delay() terms.  Placed here so both
+      ## rxGetModel(calcSens=) and nlmixr2est's foceiEtaS path are covered.
+      .ret <- .rxDelaySensAugment(model, .ret, vars)
       assign("..sens", .ret, envir = model)
     } else {
+      ## Delay differential equations: add the second-order delayed (variational)
+      ## terms (constant-delay) to each second-order sensitivity ODE.  No-op
+      ## without delay() terms.
+      .ret <- .rxDelaySensAugment2(model, .ret, union(vars, vars2))
       assign("..sens2", .ret, envir = model)
     }
     rxProgressStop()

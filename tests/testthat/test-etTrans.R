@@ -2229,4 +2229,17 @@ test_that("warning on translation (#780)", {
 
   expect_warning(etTrans(dat, m), NA)
 
+  test_that("etTrans(combineDvid=TRUE) does not read past a length-1 vector", {
+    ## Before the fix combineDvid was read at index [1] of the (length-1) logical,
+    ## warning "subscript out of bounds (index 1 >= vector size 1)" and using an
+    ## out-of-bounds value as the dvid-combine flag.
+    mod <- rxode2({
+      d/dt(center) <- -kel * center
+      cp <- center / v
+    })
+    d <- data.frame(ID = 1L, TIME = c(0, 1, 2), DV = c(0, 5, 3),
+                    AMT = c(100, 0, 0), EVID = c(1, 0, 0))
+    expect_warning(etTrans(d, mod, combineDvid = TRUE), NA)
+  })
+
 })
