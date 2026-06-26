@@ -309,6 +309,10 @@ rxTest({
  expect_error(rxS("tka=THETA[1];\ntcl1=THETA[2];\ntcl2=THETA[3];\ntv=THETA[4];\np1=THETA[5];\nadd.sd=THETA[6];\neta.ka=ETA[1];\neta.cl=ETA[2];\neta.v=ETA[3];\nka=exp(tka+eta.ka);\ncl=mix(exp(tcl1+eta.cl),p1,exp(tcl2+eta.cl));\nv=exp(tv+eta.v);\nme=mixest;\nmn=mixnum;\nmu=mixunif;\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka);\nrx_pred_~rx_pred_f_;\nrx_r_~(add.sd)^2;\n"),
                  NA)
 
-
+    expect_error(
+      rxS("tka=THETA[1];\ntcl1=THETA[2];\ntcl2=THETA[3];\ntv=THETA[4];\np1=THETA[5];\nadd.sd=THETA[6];\neta.cl=ETA[1];\nka=exp(tka);\ncl=mix(expit(tcl1+eta.cl,0.1,200),p1,expit(tcl2+eta.cl,0.1,200));\nv=exp(tv);\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka);\nrx_pred_~rx_pred_f_;\nrx_r_~(add.sd)^2;\n"),
+      NA
+    )
   })
 })
+
