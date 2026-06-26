@@ -238,6 +238,70 @@ rxTest({
     expect_equal(sj[["rx__sens_central_BY_eta_ka__"]], fdK, tolerance = 1e-4)
   })
 
+  test_that("replacement event jump (dp_j -> 0) matches finite differences", {
+    # Replace central with a constant (50) at t=5 via an evid=5 event.  The
+    # replaced state's value no longer depends on eta_ka, so d(central)/d(eta_ka)
+    # must jump to 0 at the event and rebuild afterwards.  The analytic jump must
+    # match a central difference of the solution; the fd-mode sensitivity ODE
+    # (which never zeroes the sens compartment) must NOT.
+    .mod <- "
+      ka <- exp(tka + eta_ka)
+      cl <- exp(tcl); v <- exp(tv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, eta_ka = 0)
+    e <- et(amt = 100, cmt = "depot") |>
+      et(time = 5, amt = 50, cmt = "central", evid = 5) |>
+      et(seq(0.5, 12, 1))
+    .central <- function(p, mode) {
+      m <- rxode2(.mod, calcSens = "eta_ka", eventSens = mode)
+      rxSolve(m, e, p)
+    }
+    sj <- .central(pars, "jump")
+    h <- 1e-4
+    pp <- pars; pp["eta_ka"] <- h
+    pm <- pars; pm["eta_ka"] <- -h
+    fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+    # observations at/after the replace must match FD (analytic jump correct)
+    .post <- sj$time >= 5
+    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post],
+                 tolerance = 1e-4)
+    # fd-mode sens ODE alone never zeroes the replaced state's sens -> differs
+    sfd <- .central(pars, "fd")[["rx__sens_central_BY_eta_ka__"]]
+    expect_gt(max(abs(sfd[.post] - fd[.post])), 1)
+  })
+
+  test_that("multiplicative event jump (dp_j *= alpha) matches finite differences", {
+    # Multiply central by alpha=0.5 at t=5 via an evid=6 event.  d(central)/deta
+    # must be scaled by the same 0.5 at the event.  Analytic jump matches FD; the
+    # fd-mode sens ODE (no scaling of the sens compartment) does not.
+    .mod <- "
+      ka <- exp(tka + eta_ka)
+      cl <- exp(tcl); v <- exp(tv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, eta_ka = 0)
+    e <- et(amt = 100, cmt = "depot") |>
+      et(time = 5, amt = 0.5, cmt = "central", evid = 6) |>
+      et(seq(0.5, 12, 1))
+    .central <- function(p, mode) {
+      m <- rxode2(.mod, calcSens = "eta_ka", eventSens = mode)
+      rxSolve(m, e, p)
+    }
+    sj <- .central(pars, "jump")
+    h <- 1e-4
+    pp <- pars; pp["eta_ka"] <- h
+    pm <- pars; pm["eta_ka"] <- -h
+    fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+    .post <- sj$time >= 5
+    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post],
+                 tolerance = 1e-4)
+    sfd <- .central(pars, "fd")[["rx__sens_central_BY_eta_ka__"]]
+    expect_gt(max(abs(sfd[.post] - fd[.post])), 0.1)
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")

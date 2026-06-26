@@ -654,11 +654,36 @@ static inline int handle_evid(int evid, int neq,
       break;
     case EVIDF_REPLACE: // replace
       ind->on[cmt] = 1;
+      // Event ("jump") sensitivities -- replacement (plan Section 0, Table 1).
+      // The replaced state is set to a value that (for a constant replacement)
+      // does not depend on the parameters, so its sensitivity wrt every
+      // parameter is reset to 0.  Done BEFORE the physical replace so the
+      // pre-event state is still available (dtau/dvalue rows are a later
+      // increment).  Sens compartment for (state k, param p) = nState + p*nState + k.
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState) {
+        int _ns = _rxEsNState;
+        for (int _p = 0; _p < _rxEsNParam; _p++) {
+          yp[_ns + _p * _ns + cmt] = 0.0;
+        }
+      }
       yp[cmt] = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       break;
     case EVIDF_MULT: //multiply
       ind->on[cmt] = 1;
-      yp[cmt] *= getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
+      {
+        double _esAlpha = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+        // Event ("jump") sensitivities -- multiplicative (plan Section 0,
+        // Table 3).  The state is scaled by alpha, so each of its parameter
+        // sensitivities is scaled by the same alpha.  Done BEFORE the physical
+        // multiply (the dtau/dalpha rows are a later increment).
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState) {
+          int _ns = _rxEsNState;
+          for (int _p = 0; _p < _rxEsNParam; _p++) {
+            yp[_ns + _p * _ns + cmt] *= _esAlpha;
+          }
+        }
+        yp[cmt] *= _esAlpha;     //dosing before obs
+      }
       break;
     case EVIDF_NORMAL:
       ind->on[cmt] = 1;
