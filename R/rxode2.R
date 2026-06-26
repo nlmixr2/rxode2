@@ -272,6 +272,7 @@ rxode2 <- # nolint
            collapseModel = FALSE, package = NULL, ...,
            linCmtSens = c("linCmtA", "linCmtB"),
            indLin = FALSE,
+           eventSens = NULL,
            verbose = FALSE,
            fullPrint=getOption("rxode2.fullPrint", FALSE),
            envir=parent.frame()) {
@@ -357,6 +358,19 @@ rxode2 <- # nolint
       }
     }
     .env <- new.env(parent = baseenv())
+    ## Event ("jump") sensitivities: when enabled, the runtime jump injection
+    ## needs the full state Jacobian, which is otherwise generated only on
+    ## demand -- force it on.  See ~/src/rxode2-event-sensitivities-plan.md.
+    .eventSensMode <- .rxEventSensMode(eventSens)
+    if (!identical(.eventSensMode, "fd") && !is.null(calcSens)) {
+      calcJac <- TRUE
+    }
+    ## Fold the mode into the parsed md5/cache key for the duration of this build
+    ## (reset after) so "fd" and "jump" of the same model do not collide in the
+    ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
+    assignInMyNamespace(".rxEventSensCacheKey",
+                        if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
+    on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
     .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin)
     assignInMyNamespace(".linCmtSens", linCmtSens)
     if (.Call(`_rxode2_isLinCmt`) == 1L) {
@@ -399,6 +413,10 @@ rxode2 <- # nolint
     .env$debug <- debug
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
+    .env$eventSens <- .eventSensMode
+    ## Phase-A event-sensitivity metadata (index map + dosing-parameter total
+    ## derivatives); NULL for mode "fd" or models without sensitivities.
+    .env$eventSensInfo <- .rxEventSensInfo(.env$.mv, .eventSensMode)
     .env$collapseModel <- collapseModel
 
     .env$wd <- wd
@@ -417,6 +435,9 @@ rxode2 <- # nolint
         })
         .rx$.rxWithWd(wd, {
           rxode2::.extraC(extraC)
+          ## Event ("jump") sensitivities: push the dLag/dF body lines to codegen
+          ## (no-op/empty for mode "fd" or models without sensitivities).
+          .rx$.rxSetEventSensCode(eventSensInfo)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
@@ -1162,6 +1183,12 @@ rxTrans.default <- function(model,
 
 .rxMECode <- ""
 
+## Event ("jump") sensitivities: current mode folded into the parsed md5 (cache
+## key) so that the same model text built in different modes compiles to distinct
+## DLLs.  Empty for the default "fd" path -> md5 unchanged (existing caches stay
+## valid).  Set by rxode2() before parsing; see .rxEventSensMode().
+.rxEventSensCacheKey <- ""
+
 #' @rdname rxTrans
 #' @export
 rxTrans.character <- memoise::memoise(function(model,
@@ -1194,12 +1221,21 @@ rxTrans.character <- memoise::memoise(function(model,
     }
     stop("cannot create rxode2 model", call. = FALSE)
   }
+  ## Fold the event-sensitivity mode into the cache key so a given model text
+  ## built as "fd" vs "jump" compiles to distinct DLLs.  NULL (the "fd" default)
+  ## leaves the md5 input unchanged via c(), preserving existing fd caches.
+  .esCacheKey <- if (nzchar(.rxEventSensCacheKey)) {
+    paste0("eventSens=", .rxEventSensCacheKey)
+  } else {
+    NULL
+  }
   md5 <- c(file_md5 = md5, parsed_md5 = rxMd5(c(
     .ret$model,
     .ret$ini,
     .ret$state,
     .ret$params,
-    .ret$lhs
+    .ret$lhs,
+    .esCacheKey
   ))$digest)
   .ret$timeId <- .rxTimeId(md5["parsed_md5"])
   .ret$md5 <- md5

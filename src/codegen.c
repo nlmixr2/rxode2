@@ -1,6 +1,8 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "codegen.h"
+#include <stdlib.h>
+#include <string.h>
 
 /**
  * Generates a random string of 4 alphanumeric characters.
@@ -39,6 +41,38 @@ SEXP _rxode2parse_packages;
 #undef df
 
 SEXP getRxode2ParseDfBuiltin(void);
+
+// Event ("jump") sensitivities: per-model C assignment lines for the dLag/dF
+// functions, generated in R (.rxEventSensCLines) and pushed in just before
+// codegen via _rxode2_setEventSensCode().  NULL/empty -> the dLag/dF functions
+// emit only the preamble and leave the buffer untouched.  Cleared after each
+// codegen so they never leak to the next model.
+char *_es_dLagCode = NULL;
+char *_es_dFCode = NULL;
+
+static void _es_freeCode(void) {
+  if (_es_dLagCode != NULL) { free(_es_dLagCode); _es_dLagCode = NULL; }
+  if (_es_dFCode != NULL) { free(_es_dFCode); _es_dFCode = NULL; }
+}
+
+// Persistent copy of an R string (malloc, not R_alloc: must survive past the
+// setter .Call to be read by the later codegen .Call).  Portable replacement
+// for strdup (which is POSIX-only).
+static char *_es_dup(SEXP s) {
+  if (TYPEOF(s) != STRSXP || Rf_length(s) != 1) return NULL;
+  const char *src = CHAR(STRING_ELT(s, 0));
+  size_t n = strlen(src) + 1;
+  char *dst = (char *) malloc(n);
+  if (dst != NULL) memcpy(dst, src, n);
+  return dst;
+}
+
+SEXP _rxode2_setEventSensCode(SEXP dLag, SEXP dF) {
+  _es_freeCode();
+  _es_dLagCode = _es_dup(dLag);
+  _es_dFCode = _es_dup(dF);
+  return R_NilValue;
+}
 
 int _rxode2parse_protected = 0;
 void _rxode2parse_assignTranslationBuiltin(void) {
@@ -324,6 +358,22 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
               tb.matn, prefix);
     } else if (show_ode == ode_indLinVec) {
       sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
+    } else if (show_ode == ode_dLag || show_ode == ode_dF) {
+      // Event ("jump") sensitivities: total derivative of the modeled alag / F
+      // fraction wrt each first-order sensitivity parameter, written into the
+      // per-subject buffer `_dLagSave`/`_dFSave`.  Shares the Lag/F preamble
+      // (state/param population from __zzStateVar__); the per-(cmt,param) body
+      // assignment lines come from the R-generated `_es_dLagCode`/`_es_dFCode`
+      // global (empty -> the function just leaves the buffer untouched).  No
+      // closing brace: the trailing `else` of the body switch emits it.
+      sAppend(&sbOut,
+              "// Event-sensitivity %s\nvoid %s%s(int _cSub, double __t, double *__zzStateVar__, double *%s){\n"
+              "  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n"
+              "  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n  (void)%s;\n",
+              (show_ode == ode_dLag) ? "d(alag)/dp" : "d(F)/dp",
+              prefix, (show_ode == ode_dLag) ? "dLag" : "dF",
+              (show_ode == ode_dLag) ? "_dLagSave" : "_dFSave",
+              (show_ode == ode_dLag) ? "_dLagSave" : "_dFSave");
     } else {
       sAppend(&sbOut,  "// prj-specific derived vars\n"
               "#if defined(__GNUC__) || defined(__clang__)\n"
@@ -335,11 +385,13 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
          show_ode != ode_dur && show_ode != ode_rate && show_ode != ode_lag &&
          show_ode != ode_lhs && show_ode != ode_mtime && show_ode != ode_mexp &&
-         show_ode != ode_indLinVec) ||
+         show_ode != ode_indLinVec && show_ode != ode_dLag && show_ode != ode_dF) ||
         (show_ode == ode_dur && foundDur) ||
         (show_ode == ode_rate && foundRate) ||
         (show_ode == ode_lag && foundLag) ||
         (show_ode == ode_fbio && foundF) ||
+        (show_ode == ode_dLag) ||
+        (show_ode == ode_dF) ||
         (show_ode == ode_ini && foundF0) ||
         (show_ode == ode_lhs && tb.li) ||
         (show_ode == ode_mtime && nmtime) ||
@@ -369,8 +421,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (show_ode == ode_ini){
         sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
       } else if (show_ode == ode_lag || show_ode == ode_rate || show_ode == ode_dur ||
-                 show_ode == ode_mtime){
-        // functional lag, rate, duration, mtime
+                 show_ode == ode_mtime || show_ode == ode_dLag || show_ode == ode_dF){
+        // functional lag, rate, duration, mtime, event-sensitivity dLag/dF
         sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
       } else if (show_ode == ode_indLinVec || show_ode == ode_mexp){
         sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
@@ -396,6 +448,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (foundRate && show_ode == ode_rate) ||
         (foundLag && show_ode == ode_lag) ||
         (foundF && show_ode == ode_fbio) ||
+        (show_ode == ode_dLag) ||
+        (show_ode == ode_dF) ||
         (foundF0 && show_ode == ode_ini) ||
         (show_ode == ode_lhs && tb.li) ||
         (show_ode == ode_mtime && nmtime) ||
@@ -403,8 +457,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode != ode_mtime && show_ode != ode_lhs &&
          show_ode != ode_jac && show_ode != ode_ini &&
          show_ode != ode_fbio && show_ode != ode_lag  &&
-         show_ode != ode_rate && show_ode != ode_dur)){
+         show_ode != ode_rate && show_ode != ode_dur &&
+         show_ode != ode_dLag && show_ode != ode_dF)){
       for (i = 0; i < sbPm.n; i++){
+        // Event-sensitivity dLag/dF emit no model statements here (preamble
+        // only); their body comes from the end switch below.
+        if (show_ode == ode_dLag || show_ode == ode_dF) break;
         switch(sbPm.lType[i]){
         case TLIN:
           if (show_ode != ode_mexp && show_ode != ode_indLinVec &&
@@ -521,6 +579,18 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         break;
       case ode_fbio:
         sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);
+        break;
+      case ode_dLag:
+        // Event-sensitivity d(alag)/dp assignment lines (may be empty)
+        if (_es_dLagCode != NULL && _es_dLagCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dLagCode);
+        }
+        break;
+      case ode_dF:
+        // Event-sensitivity d(F)/dp assignment lines (may be empty)
+        if (_es_dFCode != NULL && _es_dFCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dFCode);
+        }
         break;
       }
     }
@@ -840,10 +910,13 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(9); // mtime
   gCode(10); //mat
   gCode(11); //matF
+  gCode(ode_dLag); // event-sensitivity d(alag)/dp
+  gCode(ode_dF);   // event-sensitivity d(F)/dp
   gCode(4); // Registration
   writeFooter(); // undef
   fclose(fpIO);
   parseFree(0);
   reset();
+  _es_freeCode(); // event-sensitivity code is single-use per model
   return R_NilValue;
 }

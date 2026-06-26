@@ -40,6 +40,12 @@ typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
 typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
+// Event ("jump") sensitivities: total derivatives of the modeled alag / F
+// fractions wrt each first-order sensitivity parameter, written into a flat
+// per-subject buffer indexed (cmt0 * nSensParam + paramIdx).  Fill-all-states in
+// one call (like Lag/F fill all _alag/_f), evaluated at the supplied state y.
+typedef void (*t_dLag)(int _cSub, double t, double *y, double *_dLagSave);
+typedef void (*t_dF)(int _cSub, double t, double *y, double *_dFSave);
 
 typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 

@@ -571,6 +571,12 @@ t_calc_jac calc_jac = NULL;
 
 t_calc_lhs calc_lhs = NULL;
 
+// Event ("jump") sensitivities: model-generated total-derivative functions for
+// the modeled alag / F fractions (resolved by name from the model lib, like
+// calc_jac/Lag/F -- model-internal ABI, never crosses a package boundary).
+t_dLag dLag = NULL;
+t_dF dF = NULL;
+
 t_update_inis update_inis = NULL;
 
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;
@@ -748,6 +754,18 @@ void rxUpdateFuns(SEXP trans){
   calc_lhs =(t_calc_lhs) R_GetCCallable(lib, s_calc_lhs);
   dydt =(t_dydt) R_GetCCallable(lib, s_dydt);
   calc_jac =(t_calc_jac) R_GetCCallable(lib, s_calc_jac);
+  // Event ("jump") sensitivity helpers: names are <prefix>dLag / <prefix>dF.
+  // Derived from the prefix (trans[2]) rather than carried in the trans vector,
+  // so the shared model-vars structure is unchanged.  Every model exports these
+  // (trivial body when unused), so the lookup never misses.
+  {
+    const char *s_prefix = CHAR(STRING_ELT(trans, 2));
+    char s_dLag[300], s_dF[300];
+    snprintf(s_dLag, 300, "%sdLag", s_prefix);
+    snprintf(s_dF, 300, "%sdF", s_prefix);
+    dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
+    dF = (t_dF) R_GetCCallable(lib, s_dF);
+  }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);
   dydt_lsoda_dum =(t_dydt_lsoda_dum) R_GetCCallable(lib, s_dydt_lsoda_dum);
   jdum_lsoda =(t_jdum_lsoda) R_GetCCallable(lib, s_dydt_jdum_lsoda);
