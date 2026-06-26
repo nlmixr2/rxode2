@@ -43,10 +43,10 @@ SEXP _rxode2parse_packages;
 SEXP getRxode2ParseDfBuiltin(void);
 
 // Event ("jump") sensitivities: per-model C assignment lines for the dLag/dF
-// functions, generated in R (.rxEventSensCLines) and pushed in just before
-// codegen via _rxode2_setEventSensCode().  NULL/empty -> the dLag/dF functions
-// emit only the preamble and leave the buffer untouched.  Cleared after each
-// codegen so they never leak to the next model.
+// functions, generated in R (.rxEventSensCLines) and passed as arguments to
+// _rxode2_codegen() (set at the top of that function).  NULL/empty -> the
+// dLag/dF functions emit only the preamble and leave the buffer untouched.
+// Cleared after each codegen so they never leak to the next model.
 char *_es_dLagCode = NULL;
 char *_es_dFCode = NULL;
 
@@ -56,8 +56,7 @@ static void _es_freeCode(void) {
 }
 
 // Persistent copy of an R string (malloc, not R_alloc: must survive past the
-// setter .Call to be read by the later codegen .Call).  Portable replacement
-// for strdup (which is POSIX-only).
+// codegen .Call setup).  Portable replacement for strdup (which is POSIX-only).
 static char *_es_dup(SEXP s) {
   if (TYPEOF(s) != STRSXP || Rf_length(s) != 1) return NULL;
   const char *src = CHAR(STRING_ELT(s, 0));
@@ -65,13 +64,6 @@ static char *_es_dup(SEXP s) {
   char *dst = (char *) malloc(n);
   if (dst != NULL) memcpy(dst, src, n);
   return dst;
-}
-
-SEXP _rxode2_setEventSensCode(SEXP dLag, SEXP dF) {
-  _es_freeCode();
-  _es_dLagCode = _es_dup(dLag);
-  _es_dFCode = _es_dup(dF);
-  return R_NilValue;
 }
 
 int _rxode2parse_protected = 0;
