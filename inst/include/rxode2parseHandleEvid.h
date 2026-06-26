@@ -665,6 +665,25 @@ static inline int handle_evid(int evid, int neq,
       if (ind->wh0 != EVID0_PHANTOM) {
         // REprintf("handle_evid: EVIDF_NORMAL: %d; cmt: %d; dose: %f; xout: %f\n",
         //          evid, cmt, getDoseIndex(ind, ind->idx), xout);
+        // Event ("jump") sensitivities -- additive bolus.  Inject the jump into
+        // the sensitivity compartments BEFORE the physical state is dosed (so the
+        // pre-event state is used).  Phase A increment 1: the ddelta row only
+        // (d(delta)/dp = amt*dF, delta = F*amt) -- this is the full jump when the
+        // lag does not depend on the parameter (dtau row added with calc_jac
+        // later).  Sens compartment for (state k, param p) = nState + p*nState + k.
+        if (_rxEsActive && _rxEsNParam > 0 && dF != NULL &&
+            cmt < _rxEsNState) {
+          double _rawAmt = getDoseIndex(ind, ind->idx);
+          int _np = _rxEsNParam, _ns = _rxEsNState;
+          double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_dFB != NULL) {
+            dF(id, xout, yp, _dFB);
+            for (int _p = 0; _p < _np; _p++) {
+              yp[_ns + _p * _ns + cmt] += _rawAmt * _dFB[cmt * _np + _p];
+            }
+            free(_dFB);
+          }
+        }
         yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       }
 		}

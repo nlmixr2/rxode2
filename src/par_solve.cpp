@@ -577,6 +577,23 @@ t_calc_lhs calc_lhs = NULL;
 t_dLag dLag = NULL;
 t_dF dF = NULL;
 
+// Event ("jump") sensitivity runtime dims for the current model (one model
+// solves at a time, so module globals are sufficient -- same pattern as me_code
+// / _es_*Code).  Set from R before a solve via _rxode2_setEventSensDims().
+// _rxEsActive: 1 when jump injection is on; _rxEsNState/_rxEsNParam: the physical
+// state count and first-order sensitivity-parameter count (sens compartment for
+// state k / param p is nState + p*nState + k).
+int _rxEsActive = 0;
+int _rxEsNState = 0;
+int _rxEsNParam = 0;
+
+extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam) {
+  _rxEsActive = INTEGER(active)[0];
+  _rxEsNState = INTEGER(nState)[0];
+  _rxEsNParam = INTEGER(nParam)[0];
+  return R_NilValue;
+}
+
 t_update_inis update_inis = NULL;
 
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;

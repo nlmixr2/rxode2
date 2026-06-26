@@ -46,6 +46,7 @@ SEXP _rxode2_codeLoaded(void);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns);
 SEXP _rxode2_setEventSensCode(SEXP dLag, SEXP dF);
+SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam);
 SEXP _rxode2_parseModel(SEXP type);
 SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
@@ -711,6 +712,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_trans", (DL_FUNC) &_rxode2_trans, 8},
     {"_rxode2_codegen", (DL_FUNC) &_rxode2_codegen, 7},
     {"_rxode2_setEventSensCode", (DL_FUNC) &_rxode2_setEventSensCode, 2},
+    {"_rxode2_setEventSensDims", (DL_FUNC) &_rxode2_setEventSensDims, 3},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
     {"_rxode2_isLinCmt", (DL_FUNC) &_rxode2_isLinCmt, 0},

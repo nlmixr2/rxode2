@@ -505,11 +505,21 @@ static inline double dabs2(double x) {
   extern "C" rx_solving_options op_global;
   extern "C" rx_solving_options_ind *inds_global;
   extern "C" rx_solving_options_ind *inds_thread;
+  // Event ("jump") sensitivities: model dF function + runtime dims (defined in
+  // par_solve.cpp); used by handle_evid to inject dosing-parameter jumps.
+  extern "C" t_dF dF;
+  extern "C" int _rxEsActive;
+  extern "C" int _rxEsNState;
+  extern "C" int _rxEsNParam;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
   extern rx_solving_options_ind *inds_global;
   extern rx_solving_options_ind *inds_thread;
+  extern t_dF dF;
+  extern int _rxEsActive;
+  extern int _rxEsNState;
+  extern int _rxEsNParam;
 #endif
 
 

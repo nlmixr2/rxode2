@@ -157,19 +157,29 @@
 #' @return `rxFromSE` expression text for `d(g)/dp` (the string `"0"` when zero).
 #' @noRd
 .rxEventSensDExpr <- function(model, sym, param, states) {
+  ## Free symbols of the dosing expression: a variable that does not appear in
+  ## `sym` contributes a zero derivative, so guarding on it both avoids calling
+  ## symengine::D() on constants (which errors) and skips trivial terms.
+  .symTxt <- if (is.numeric(sym)) as.character(sym) else rxFromSE(sym)
+  .vars <- tryCatch(all.vars(parse(text = .symTxt)[[1]]), error = function(e) character(0))
   ## partial wrt p.  Assign each symengine result to a variable *before* handing
   ## it to rxFromSE: rxFromSE captures its argument by NSE, so a nested
   ## symengine::D() call would be mis-captured (see R/dde.R).
-  .tot <- symengine::D(sym, symengine::S(param))
+  .tot <- NULL
+  if (param %in% .vars) {
+    .tot <- symengine::D(sym, symengine::S(param))
+  }
   for (.l in states) {
+    if (!(.l %in% .vars)) next
     .dl <- symengine::D(sym, symengine::S(.l))
     .dlTxt <- rxFromSE(.dl)
     if (.dlTxt != "0" && .dlTxt != "0.0") {
       .S <- symengine::S(paste0("rx__sens_", .l, "_BY_", param, "__"))
       .term <- .dl * .S
-      .tot <- .tot + .term
+      .tot <- if (is.null(.tot)) .term else .tot + .term
     }
   }
+  if (is.null(.tot)) return("0")
   rxFromSE(.tot)
 }
 
@@ -273,6 +283,28 @@
   .dLag <- if (is.null(.cl) || length(.cl$lag) == 0L) "" else paste(.cl$lag, collapse = "\n")
   .dF <- if (is.null(.cl) || length(.cl$f) == 0L) "" else paste(.cl$f, collapse = "\n")
   invisible(.Call(`_rxode2_setEventSensCode`, .dLag, .dF))
+}
+
+#' Push the event-sensitivity runtime dims to the solver before a solve
+#'
+#' Reads the model's `eventSensInfo` (attached by `rxode2()` when
+#' `eventSens != "fd"`) and sets the C-side runtime gate: `active` (1 when jump
+#' injection should run), `nState` (physical states), `nParam` (first-order
+#' sensitivity parameters).  A no-op (`active = 0`) for `fd` models, models
+#' without sensitivities, or objects that carry no `eventSensInfo`.
+#'
+#' @param object A solve target (rxode2 model env, UI, etc.).
+#' @return invisibly `NULL`.
+#' @noRd
+.rxSetEventSensDims <- function(object) {
+  .info <- tryCatch(object$eventSensInfo, error = function(e) NULL)
+  if (is.null(.info) || identical(.info$mode, "fd")) {
+    return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L)))
+  }
+  .nState <- .info$map$nState
+  .nParam <- length(.info$map$sensParams)
+  invisible(.Call(`_rxode2_setEventSensDims`, 1L,
+                  as.integer(.nState), as.integer(.nParam)))
 }
 
 #' Assemble the event-sensitivity (Phase A) information for a built model

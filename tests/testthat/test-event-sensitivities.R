@@ -168,6 +168,39 @@ rxTest({
     expect_equal(s$central, sfd$central)
   })
 
+  test_that("additive-bolus F jump (ddelta row) matches finite differences", {
+    # Constant alag (no eta) + F = expit(tf + eta_f): the only event-sensitivity
+    # contribution at the dose is the ddelta row, d(delta)/d(eta_f) = amt*dF.
+    # The analytic jump-mode sensitivity must match a central difference of the
+    # central state wrt eta_f; the fd-mode sens ODE alone (no jump) must NOT.
+    .mod <- "
+      ka <- exp(tka + eta_ka)
+      cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- 1
+      f(depot)    <- expit(tf + eta_f)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0, tcl = 1, tv = 2, tf = 0.3, eta_ka = 0, eta_f = 0)
+    e <- et(amt = 100, cmt = "depot")
+    e <- et(e, seq(0, 12, 2))
+    .central <- function(p, mode) {
+      m <- rxode2(.mod, calcSens = c("eta_ka", "eta_f"), eventSens = mode)
+      rxSolve(m, e, p)
+    }
+    sj <- .central(pars, "jump")
+    analytic <- sj[["rx__sens_central_BY_eta_f__"]]
+    h <- 1e-4
+    pp <- pars; pp["eta_f"] <- pars["eta_f"] + h
+    pm <- pars; pm["eta_f"] <- pars["eta_f"] - h
+    fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+    # analytic jump matches FD to FD precision
+    expect_equal(analytic, fd, tolerance = 1e-4)
+    # fd-mode sens ODE alone is missing the dF contribution -> clearly different
+    sfd <- .central(pars, "fd")[["rx__sens_central_BY_eta_f__"]]
+    expect_gt(max(abs(sfd - fd)), 1)
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
