@@ -254,8 +254,8 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;      expr       min        lq      mean    median        uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 13.124260 13.616667 14.397598 13.817816 14.279883 19.75193   100</span></span>
-<span><span class="co">#&gt;     withC  6.892746  7.187469  7.810263  7.312295  7.669626 14.38251   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  withoutC 13.264705 13.430861 14.059541 13.494214 13.999572 19.41775   100</span></span>
+<span><span class="co">#&gt;     withC  6.846954  6.965204  7.466456  7.031027  7.362386 12.95797   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -836,7 +836,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x55dadbdd79a0&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x556e6fb1e9b0&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -846,7 +846,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x55dadb660d78&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x556e6f3a9ea8&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>

@@ -262,6 +262,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxExpandGrid_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxExpandIfElse.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxExpandSens2_.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxExpandSens3_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxExpandSens_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxFixPop.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxFixRes.html</loc></url>
@@ -303,6 +304,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxNorm.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxNumLoaded.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxOldQsDes.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxOmegaVarCovDeriv.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxOptExpr.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxParams.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxParseErr.html</loc></url>
