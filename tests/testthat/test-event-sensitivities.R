@@ -334,6 +334,34 @@ rxTest({
     expect_gt(max(abs(sfd[.post] - fd[.post])), 0.1)
   })
 
+  test_that("constant-rate infusion needs no jump (sens ODE alone is correct)", {
+    # An infusion rate that does not depend on any parameter (and a fixed start
+    # time) enters dydt as a parameter-independent forcing, so the symbolic
+    # sensitivity ODE already captures it -- no jump contribution is required.
+    # Both modes must agree with each other and with a finite difference; this
+    # also guards that future infusion jumps stay zero in the constant-rate case.
+    .mod <- "
+      ka <- exp(tka + eta_ka)
+      cl <- exp(tcl); v <- exp(tv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, eta_ka = 0)
+    e <- et(amt = 100, rate = 20, cmt = "depot") |> et(seq(0.5, 12, 1))
+    .central <- function(p, mode) {
+      m <- rxode2(.mod, calcSens = "eta_ka", eventSens = mode)
+      rxSolve(m, e, p)
+    }
+    sj <- .central(pars, "jump")[["rx__sens_central_BY_eta_ka__"]]
+    sf <- .central(pars, "fd")[["rx__sens_central_BY_eta_ka__"]]
+    h <- 1e-4
+    pp <- pars; pp["eta_ka"] <- h
+    pm <- pars; pm["eta_ka"] <- -h
+    fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+    expect_equal(sj, sf)                    # jump adds nothing for constant rate
+    expect_equal(sj, fd, tolerance = 1e-3)  # and both match the finite difference
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
