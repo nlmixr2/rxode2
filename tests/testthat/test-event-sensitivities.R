@@ -159,13 +159,15 @@ rxTest({
              eta_ka = 0, eta_lag = 0)
     s <- rxSolve(m, e, ini)
     expect_true(nrow(s) > 0L)
-    # jump-mode solve matches fd-mode for the states (dLag/dF are not yet called
-    # by handle_evid, so the trajectory is identical -- a useful invariant until
-    # the A2 runtime injection lands).
+    # jump-mode solve matches fd-mode for the physical states: the jump injection
+    # only touches the sensitivity compartments, never the physical state.  The
+    # match is to solver tolerance (not bit-identical) because jump forces
+    # calcJac=TRUE -> the analytic Jacobian gives LSODA a slightly different step
+    # path than fd's numerical Jacobian (~1e-7 on the trajectory).
     mfd <- rxode2(.modStateF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
     sfd <- rxSolve(mfd, e, ini)
-    expect_equal(s$central, sfd$central)
+    expect_equal(s$central, sfd$central, tolerance = 1e-5)
   })
 
   test_that("additive-bolus F jump (ddelta row) matches finite differences", {
@@ -199,6 +201,41 @@ rxTest({
     # fd-mode sens ODE alone is missing the dF contribution -> clearly different
     sfd <- .central(pars, "fd")[["rx__sens_central_BY_eta_f__"]]
     expect_gt(max(abs(sfd - fd)), 1)
+  })
+
+  test_that("additive-bolus lag jump (dtau row) matches finite differences", {
+    # alag = exp(tlag + eta_lag) depends on eta_lag, F constant: the jump is the
+    # dtau row, -J[k][c]*delta*d(alag)/d(eta_lag), with J taken from a central
+    # difference of dydt.  Observe AWAY from the (lagged) dose time, since at the
+    # exact event time the sensitivity is discontinuous and a central FD straddles
+    # the jump (the analytic value is the correct right-limit).
+    .mod <- "
+      ka <- exp(tka + eta_ka)
+      cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- exp(tlag + eta_lag)
+      f(depot)    <- expit(tf)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.5, tlag = 0,
+              eta_ka = 0, eta_lag = 0)
+    e <- et(amt = 100, cmt = "depot")
+    e <- et(e, seq(0.5, 12, 1)) # off the dose time (alag = 1)
+    .central <- function(p, mode) {
+      m <- rxode2(.mod, calcSens = c("eta_ka", "eta_lag"), eventSens = mode)
+      rxSolve(m, e, p)
+    }
+    sj <- .central(pars, "jump")
+    h <- 1e-4
+    pp <- pars; pp["eta_lag"] <- h
+    pm <- pars; pm["eta_lag"] <- -h
+    fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+    expect_equal(sj[["rx__sens_central_BY_eta_lag__"]], fd, tolerance = 1e-4)
+    # eta_ka has no lag/F dependence -> no jump; must still match FD
+    ppk <- pars; ppk["eta_ka"] <- h
+    pmk <- pars; pmk["eta_ka"] <- -h
+    fdK <- (.central(ppk, "fd")$central - .central(pmk, "fd")$central) / (2 * h)
+    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]], fdK, tolerance = 1e-4)
   })
 
   test_that("eventSens mode is folded into the model cache key", {

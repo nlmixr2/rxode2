@@ -505,9 +505,12 @@ static inline double dabs2(double x) {
   extern "C" rx_solving_options op_global;
   extern "C" rx_solving_options_ind *inds_global;
   extern "C" rx_solving_options_ind *inds_thread;
-  // Event ("jump") sensitivities: model dF function + runtime dims (defined in
-  // par_solve.cpp); used by handle_evid to inject dosing-parameter jumps.
+  // Event ("jump") sensitivities: model dF/dLag/dydt functions + runtime dims
+  // (defined in par_solve.cpp); used by handle_evid to inject dosing-parameter
+  // jumps.  dydt provides the Jacobian column by central difference.
   extern "C" t_dF dF;
+  extern "C" t_dLag dLagEs;
+  extern "C" t_dydt dydtEs;
   extern "C" int _rxEsActive;
   extern "C" int _rxEsNState;
   extern "C" int _rxEsNParam;
@@ -517,6 +520,8 @@ static inline double dabs2(double x) {
   extern rx_solving_options_ind *inds_global;
   extern rx_solving_options_ind *inds_thread;
   extern t_dF dF;
+  extern t_dLag dLagEs;
+  extern t_dydt dydtEs;
   extern int _rxEsActive;
   extern int _rxEsNState;
   extern int _rxEsNParam;

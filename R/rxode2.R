@@ -435,19 +435,21 @@ rxode2 <- # nolint
         })
         .rx$.rxWithWd(wd, {
           rxode2::.extraC(extraC)
-          ## Event ("jump") sensitivities: push the dLag/dF body lines to codegen
-          ## (no-op/empty for mode "fd" or models without sensitivities).
-          .rx$.rxSetEventSensCode(eventSensInfo)
+          ## Event ("jump") sensitivities: dLag/dF body lines passed straight to
+          ## codegen (empty for mode "fd" or models without sensitivities).
+          .esCode <- .rx$.rxEventSensCodeStrings(eventSensInfo)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
-                                    package = .(.env$package)
+                                    package = .(.env$package),
+                                    eventSensCode = .esCode
                                     )
           } else {
             .rxDll <- .rx$rxCompile(.mv,
                                     dir = mdir,
                                     debug = debug, modName = modName,
-                                    package = .(.env$package)
+                                    package = .(.env$package),
+                                    eventSensCode = .esCode
                                     )
           }
           .rxDll$linCmtM <- .(ifelse(exists(".linCmtM", .env),
@@ -1196,7 +1198,15 @@ rxTrans.character <- memoise::memoise(function(model,
                                                md5 = "", # Md5 of model
                                                modName = NULL, # Model name for DLL
                                                modVars = FALSE, # Return modVars
+                                               eventSensKey = .rxEventSensCacheKey, # nolint
                                                ...) {
+  ## `eventSensKey` MUST be a formal (defaulting to the session global) rather
+  ## than read from `.rxEventSensCacheKey` inside the body: memoise keys on the
+  ## arguments (including default-valued ones), so a body-read global would make
+  ## "fd" and "jump" builds of the same model text share one memoise entry -- the
+  ## first builder's mode-folded parsed_md5 would then be reused for the other
+  ## mode and compiled with the wrong (empty/stale) dLag/dF.  As a formal it is
+  ## part of the key, so each mode gets its own entry and its own parsed_md5.
   ## rxTrans returns a list of compiled properties
   if (file.exists(model)) {
     .isStr <- 0L
@@ -1221,22 +1231,29 @@ rxTrans.character <- memoise::memoise(function(model,
     }
     stop("cannot create rxode2 model", call. = FALSE)
   }
-  ## Fold the event-sensitivity mode into the cache key so a given model text
-  ## built as "fd" vs "jump" compiles to distinct DLLs.  NULL (the "fd" default)
-  ## leaves the md5 input unchanged via c(), preserving existing fd caches.
-  .esCacheKey <- if (nzchar(.rxEventSensCacheKey)) {
-    paste0("eventSens=", .rxEventSensCacheKey)
-  } else {
-    NULL
-  }
-  md5 <- c(file_md5 = md5, parsed_md5 = rxMd5(c(
+  .parsedMd5 <- rxMd5(c(
     .ret$model,
     .ret$ini,
     .ret$state,
     .ret$params,
-    .ret$lhs,
-    .esCacheKey
-  ))$digest)
+    .ret$lhs
+  ))$digest
+  ## Fold the event-sensitivity mode into the parsed md5 so that the same
+  ## normalized model built as "fd" vs "jump" compiles to distinct DLLs.  This is
+  ## required for correctness independent of the codegen channel: the compiled
+  ## DLL is keyed by parsed_md5, and a cache hit SKIPS codegen entirely -- so the
+  ## mode-dependent dLag/dF bodies (which are NOT part of the normalized model
+  ## text and so do not affect the base md5) must be reflected here, or a prior fd
+  ## build (empty dLag/dF) is silently reused for a jump solve.  The fold must be
+  ## a real re-digest: `rxMd5()` hashes only the `normModel`/`indLin` slots of its
+  ## argument and ignores any extra vector elements, so appending the key to its
+  ## input is a no-op.  "" (the "fd" default) leaves the md5 unchanged, preserving
+  ## existing fd caches.
+  if (nzchar(eventSensKey)) {
+    .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)),
+                                 serialize = TRUE, algo = "md5")
+  }
+  md5 <- c(file_md5 = md5, parsed_md5 = .parsedMd5)
   .ret$timeId <- .rxTimeId(md5["parsed_md5"])
   .ret$md5 <- md5
   if (.isStr == 1L) {
@@ -1432,6 +1449,7 @@ rxCompile.rxModelVars <- function(model, # Model
                                   force = FALSE, # Force compile
                                   modName = NULL, # Model Name
                                   package = NULL,
+                                  eventSensCode = c("", ""), # dLag/dF body lines
                                   ...) {
   assignInMyNamespace(".pkg", package)
   ## rxCompile returns the DLL name that was created.
@@ -1567,7 +1585,8 @@ rxCompile.rxModelVars <- function(model, # Model
           .Call(
             `_rxode2_codegen`, .cFile, prefix, .libname,
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
-            .rxModelVarsLast, .rxSupportedFuns()
+            .rxModelVarsLast, .rxSupportedFuns(),
+            eventSensCode[1], eventSensCode[2]
           )
         } else {
           .libname <- gsub(.Platform$dynlib.ext, "", basename(.cDllFile))
@@ -1575,7 +1594,8 @@ rxCompile.rxModelVars <- function(model, # Model
           .Call(
             `_rxode2_codegen`, .cFile, prefix, .libname,
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
-            .rxModelVarsLast, .rxSupportedFuns()
+            .rxModelVarsLast, .rxSupportedFuns(),
+            eventSensCode[1], eventSensCode[2]
           )
         }
         .defs <- ""

@@ -665,26 +665,61 @@ static inline int handle_evid(int evid, int neq,
       if (ind->wh0 != EVID0_PHANTOM) {
         // REprintf("handle_evid: EVIDF_NORMAL: %d; cmt: %d; dose: %f; xout: %f\n",
         //          evid, cmt, getDoseIndex(ind, ind->idx), xout);
+        double _esRawAmt = getDoseIndex(ind, ind->idx);
+        double _esDelta = getAmt(ind, id, cmt, _esRawAmt, xout, yp); // F*amt
         // Event ("jump") sensitivities -- additive bolus.  Inject the jump into
         // the sensitivity compartments BEFORE the physical state is dosed (so the
-        // pre-event state is used).  Phase A increment 1: the ddelta row only
-        // (d(delta)/dp = amt*dF, delta = F*amt) -- this is the full jump when the
-        // lag does not depend on the parameter (dtau row added with calc_jac
-        // later).  Sens compartment for (state k, param p) = nState + p*nState + k.
-        if (_rxEsActive && _rxEsNParam > 0 && dF != NULL &&
-            cmt < _rxEsNState) {
-          double _rawAmt = getDoseIndex(ind, ind->idx);
+        // pre-event state is used).  Two contributions (plan Section 0):
+        //   ddelta row: d(sens_xc_BY_p) += amt * dF[c][p]   (bioavailability)
+        //   dtau   row: d(sens_xk_BY_p) += -J[k][c]*delta*dLag[c][p]  (lag time)
+        // Sens compartment for (state k, param p) = nState + p*nState + k.  The
+        // physical Jacobian column J[.][c] is taken by a central difference of
+        // dydt (calc_jac is empty by default; this is a local df/dx, not the
+        // event-parameter FD this method replaces).
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState) {
           int _np = _rxEsNParam, _ns = _rxEsNState;
-          double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-          if (_dFB != NULL) {
-            dF(id, xout, yp, _dFB);
-            for (int _p = 0; _p < _np; _p++) {
-              yp[_ns + _p * _ns + cmt] += _rawAmt * _dFB[cmt * _np + _p];
+          // ddelta row (bioavailability)
+          if (dF != NULL) {
+            double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            if (_dFB != NULL) {
+              dF(id, xout, yp, _dFB);
+              for (int _p = 0; _p < _np; _p++) {
+                yp[_ns + _p * _ns + cmt] += _esRawAmt * _dFB[cmt * _np + _p];
+              }
+              free(_dFB);
             }
-            free(_dFB);
+          }
+          // dtau row (lag time), only if the lag is modeled
+          if (dLagEs != NULL && dydtEs != NULL) {
+            double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
+            double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
+            if (_esDLagB != NULL && _esF0 != NULL && _esF1 != NULL) {
+              dLagEs(id, xout, yp, _esDLagB);
+              double _esXc = yp[cmt];
+              double _esAx = _esXc < 0 ? -_esXc : _esXc;
+              double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
+              int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+              yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
+              yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
+              yp[cmt] = _esXc; // restore pre-event state
+              double _esInv = 1.0 / (2.0 * _esEps);
+              for (int _p = 0; _p < _np; _p++) {
+                double _esDLagP = _esDLagB[cmt * _np + _p];
+                if (_esDLagP != 0.0) {
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    double _esJkc = (_esF1[_esK] - _esF0[_esK]) * _esInv;
+                    yp[_ns + _p * _ns + _esK] += -_esJkc * _esDelta * _esDLagP;
+                  }
+                }
+              }
+            }
+            if (_esDLagB != NULL) free(_esDLagB);
+            if (_esF0 != NULL) free(_esF0);
+            if (_esF1 != NULL) free(_esF1);
           }
         }
-        yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
+        yp[cmt] += _esDelta;     //dosing before obs
       }
 		}
 		ind->ixds++;

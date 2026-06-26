@@ -716,7 +716,14 @@ extern SEXP _goodFuns;
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast,
-                          SEXP goodFuns) {
+                          SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode) {
+  // Event ("jump") sensitivities: the dLag/dF body lines are passed as arguments
+  // (not a module global) so the setter and the codegen always run in the same
+  // package instance -- the global channel was unreliable under pkgload's
+  // load_all (setter and codegen could bind different rxode2 C instances).
+  _es_freeCode();
+  _es_dLagCode = _es_dup(esDLagCode);
+  _es_dFCode = _es_dup(esDFCode);
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();

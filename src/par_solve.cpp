@@ -586,6 +586,12 @@ t_dF dF = NULL;
 int _rxEsActive = 0;
 int _rxEsNState = 0;
 int _rxEsNParam = 0;
+// Aliases exposed to handle_evid (extern in rxode2.h).  Distinct names from the
+// local `dydt`/`dLag` globals so the widely-used `dydt` identifier is not shadowed
+// in the many TUs that include handle_evid.  Point at the model functions in
+// rxUpdateFuns().
+t_dLag dLagEs = NULL;
+t_dydt dydtEs = NULL;
 
 extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam) {
   _rxEsActive = INTEGER(active)[0];
@@ -782,6 +788,8 @@ void rxUpdateFuns(SEXP trans){
     snprintf(s_dF, 300, "%sdF", s_prefix);
     dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
     dF = (t_dF) R_GetCCallable(lib, s_dF);
+    dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
+    dydtEs = dydt;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);
   dydt_lsoda_dum =(t_dydt_lsoda_dum) R_GetCCallable(lib, s_dydt_lsoda_dum);

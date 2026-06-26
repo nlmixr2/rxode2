@@ -267,22 +267,22 @@
   )
 }
 
-#' Push the dLag / dF C assignment lines into codegen (or clear them)
+#' dLag / dF C body lines for codegen as a length-2 character vector
 #'
-#' Computes the per-(cmt, param) C body lines from `info` and hands them to the
-#' C global the `dLag`/`dF` codegen reads (`_rxode2_setEventSensCode`).  Pass
-#' `NULL`/`"fd"` info to clear (empty strings -> trivial bodies).  Must be called
-#' immediately before the model's codegen .Call; the C side clears the global
-#' again once codegen consumes it.
+#' Returns `c(dLag, dF)` body lines (empty strings when none).  Passed as
+#' arguments to the codegen `.Call` so the lines reach codegen in the same
+#' package instance (robust under `pkgload::load_all`, where a module-global
+#' channel could bind the setter and codegen to different rxode2 C instances).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
-#' @return invisibly `NULL`.
+#' @return character(2): the dLag and dF body lines.
 #' @noRd
-.rxSetEventSensCode <- function(info) {
+.rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
-  .dLag <- if (is.null(.cl) || length(.cl$lag) == 0L) "" else paste(.cl$lag, collapse = "\n")
-  .dF <- if (is.null(.cl) || length(.cl$f) == 0L) "" else paste(.cl$f, collapse = "\n")
-  invisible(.Call(`_rxode2_setEventSensCode`, .dLag, .dF))
+  c(
+    if (is.null(.cl) || length(.cl$lag) == 0L) "" else paste(.cl$lag, collapse = "\n"),
+    if (is.null(.cl) || length(.cl$f) == 0L) "" else paste(.cl$f, collapse = "\n")
+  )
 }
 
 #' Push the event-sensitivity runtime dims to the solver before a solve
