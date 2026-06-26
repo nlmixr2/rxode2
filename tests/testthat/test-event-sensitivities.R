@@ -238,6 +238,38 @@ rxTest({
     expect_equal(sj[["rx__sens_central_BY_eta_ka__"]], fdK, tolerance = 1e-4)
   })
 
+  test_that("additive-bolus jumps accumulate across a multi-dose regimen", {
+    # alag(depot)=exp(tlag+eta_lag), F=expit(tf+eta_f): every dose contributes
+    # both a dtau and a ddelta jump.  The rows use method "add", so the jumps
+    # must accumulate across the regimen.  A multi-dose schedule must still match
+    # a central difference of the solution wrt each eta.
+    .mod <- "
+      ka <- exp(tka + eta_ka)
+      cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- exp(tlag + eta_lag)
+      f(depot)    <- expit(tf + eta_f)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.3, tlag = 0,
+              eta_ka = 0, eta_lag = 0, eta_f = 0)
+    e <- et(amt = 100, cmt = "depot", ii = 6, addl = 3) |>
+      et(seq(0.5, 30, 1.5))
+    .central <- function(p, mode) {
+      m <- rxode2(.mod, calcSens = c("eta_lag", "eta_f"), eventSens = mode)
+      rxSolve(m, e, p)
+    }
+    sj <- .central(pars, "jump")
+    h <- 1e-4
+    for (.eta in c("eta_lag", "eta_f")) {
+      pp <- pars; pp[.eta] <- h
+      pm <- pars; pm[.eta] <- -h
+      fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+      expect_equal(sj[[paste0("rx__sens_central_BY_", .eta, "__")]], fd,
+                   tolerance = 1e-3)
+    }
+  })
+
   test_that("replacement event jump (dp_j -> 0) matches finite differences", {
     # Replace central with a constant (50) at t=5 via an evid=5 event.  The
     # replaced state's value no longer depends on eta_ka, so d(central)/d(eta_ka)
