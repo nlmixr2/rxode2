@@ -395,6 +395,43 @@ RcppExport SEXP _rxode2_rxExpandSens2_(SEXP stateSEXP, SEXP s1SEXP, SEXP s2SEXP)
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxExpandSens3_
+List rxExpandSens3_(CharacterVector state, CharacterVector s1, CharacterVector s2, CharacterVector s3);
+static SEXP _rxode2_rxExpandSens3__try(SEXP stateSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP s3SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< CharacterVector >::type state(stateSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type s1(s1SEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type s2(s2SEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type s3(s3SEXP);
+    rcpp_result_gen = Rcpp::wrap(rxExpandSens3_(state, s1, s2, s3));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxExpandSens3_(SEXP stateSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP s3SEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxExpandSens3__try(stateSEXP, s1SEXP, s2SEXP, s3SEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxExpandFEta_
 List rxExpandFEta_(CharacterVector state, int neta, int pred, bool isTheta);
 static SEXP _rxode2_rxExpandFEta__try(SEXP stateSEXP, SEXP netaSEXP, SEXP predSEXP, SEXP isThetaSEXP) {
@@ -553,6 +590,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type sensType(sensTypeSEXP);
     Rcpp::traits::input_parameter< double >::type sensH(sensHSEXP);
     rcpp_result_gen = Rcpp::wrap(linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxOmegaVarCovDeriv_
+List rxOmegaVarCovDeriv_(arma::mat omega, int order);
+RcppExport SEXP _rxode2_rxOmegaVarCovDeriv_(SEXP omegaSEXP, SEXP orderSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type omega(omegaSEXP);
+    Rcpp::traits::input_parameter< int >::type order(orderSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxOmegaVarCovDeriv_(omega, order));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -2930,6 +2979,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("List(*rxExpandGrid_)(RObject&,RObject&,RObject&)");
         signatures.insert("List(*rxExpandSens_)(CharacterVector,CharacterVector)");
         signatures.insert("List(*rxExpandSens2_)(CharacterVector,CharacterVector,CharacterVector)");
+        signatures.insert("List(*rxExpandSens3_)(CharacterVector,CharacterVector,CharacterVector,CharacterVector)");
         signatures.insert("List(*rxExpandFEta_)(CharacterVector,int,int,bool)");
         signatures.insert("std::string(*rxRepR0_)(int)");
         signatures.insert("List(*rxExpandNesting)(const RObject&,List&,bool)");
@@ -2995,6 +3045,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandGrid_", (DL_FUNC)_rxode2_rxExpandGrid__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandSens_", (DL_FUNC)_rxode2_rxExpandSens__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandSens2_", (DL_FUNC)_rxode2_rxExpandSens2__try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxExpandSens3_", (DL_FUNC)_rxode2_rxExpandSens3__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandFEta_", (DL_FUNC)_rxode2_rxExpandFEta__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxRepR0_", (DL_FUNC)_rxode2_rxRepR0__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandNesting", (DL_FUNC)_rxode2_rxExpandNesting_try);

@@ -17,6 +17,7 @@ Authors@R: c(
    person("Gilbert", "Stewart", role="ctb"),
    person("Goro", "Fuji",  role="ctb", email="gfuji@cpan.org"),
    person("Hadley", "Wickham", role="ctb"),
+   person("Hidde", "van de Beek", role="ctb", email="hiddevdbeek@icloud.com"),
    person("Igor", "Kushnir", email="igorkuo@gmail.com", role="ctb"),
    person("Imperial College of Science, Technology and Medicine", role="cph"),
    person("Jack", "Dongarra", role="ctb"),

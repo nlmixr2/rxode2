@@ -116,7 +116,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
       if (!missing(vars3)) .rxDelayValidate3rdLinearSE(model)
     }
     if (!missing(vars3)) {
-      .grd <- .rxExpandSens3(model, vars, vars2, vars3)
+      .grd <- rxode2::rxExpandSens3_(.state, vars, vars2, vars3)
     } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
     } else {
