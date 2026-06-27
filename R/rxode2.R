@@ -269,6 +269,7 @@ rxode2 <- # nolint
   function(model, modName = basename(wd),
            wd = getwd(),
            filename = NULL, extraC = NULL, debug = FALSE, calcJac = NULL, calcSens = NULL,
+           calcSens2 = NULL,
            collapseModel = FALSE, package = NULL, ...,
            linCmtSens = c("linCmtA", "linCmtB"),
            indLin = FALSE,
@@ -371,7 +372,7 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxEventSensCacheKey",
                         if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
-    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin)
+    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2)
     assignInMyNamespace(".linCmtSens", linCmtSens)
     if (.Call(`_rxode2_isLinCmt`) == 1L) {
       .env$.linCmtM <- rxNorm(.env$.mv)
@@ -650,7 +651,8 @@ rxode <- rxode2
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE) {
+rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE,
+                       calcSens2 = NULL) {
   if (is(substitute(model), "call")) {
     model <- model
   }
@@ -712,6 +714,15 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       ## .rxSens augments the sensitivity ODEs with the delayed (variational)
       ## terms for delay() models (no-op otherwise).
       .rxSens(.s, calcSens)
+      ## Second-order sensitivities (for a Hessian / population THETA path): the
+      ## 2nd-order ODEs reference the 1st-order sens compartments, so they are
+      ## generated *after* the 1st-order ones and both are emitted into the model.
+      ## `..sens2` stays NULL (dropped from the paste) when calcSens2 is absent.
+      .sens2 <- NULL
+      if (!is.null(calcSens2)) {
+        .rxSens(.s, calcSens, calcSens2)
+        .sens2 <- .s$..sens2
+      }
       .tmp1 <- .s$..jacobian
       if (!calcJac) .tmp1 <- ""
       .tmp2 <- .s$..lhs
@@ -722,6 +733,7 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .s$..ddt,
         .tmp1,
         .s$..sens,
+        .sens2,
         .tmp2,
         .s$..stateInfo["statef"],
         .s$..stateInfo["dvid"],

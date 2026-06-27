@@ -551,6 +551,31 @@ rxTest({
     }
   })
 
+  test_that("calcSens2 generates correct second-order sensitivity ODEs", {
+    # rxode2(..., calcSens2=) emits the 2nd-order sensitivity compartments
+    # rx__sens_<state>_BY_<p>_BY_<q>__ (the Hessian path).  For a parameter that
+    # does not touch dosing there is no jump, so the 2nd-order sensitivity comes
+    # purely from the continuous variational ODEs.  S^{pq} = d(S^p)/dq, so it must
+    # match a (precise) first central difference of the first-order sensitivity.
+    .mod <- "
+      ka <- exp(tka + eta_ka); cl <- exp(tcl); v <- exp(tv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, eta_ka = 0)
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.5, 12, 0.5))
+    m1 <- rxode2(.mod, calcSens = "eta_ka")
+    m2 <- rxode2(.mod, calcSens = "eta_ka", calcSens2 = "eta_ka")
+    expect_true("rx__sens_central_BY_eta_ka_BY_eta_ka__" %in% rxModelVars(m2)$state)
+    s2 <- rxSolve(m2, e, pars)[["rx__sens_central_BY_eta_ka_BY_eta_ka__"]]
+    h <- 1e-5
+    .s1 <- function(p) rxSolve(m1, e, p)[["rx__sens_central_BY_eta_ka__"]]
+    pp <- pars; pp["eta_ka"] <- h
+    pm <- pars; pm["eta_ka"] <- -h
+    fd <- (.s1(pp) - .s1(pm)) / (2 * h)
+    expect_equal(s2, fd, tolerance = 1e-2)
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
