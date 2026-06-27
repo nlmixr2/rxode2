@@ -581,6 +581,26 @@ static inline int handle_evid(int evid, int neq,
           break;
         }
         InfusionRate[cmt] -= tmp;
+        // Event ("jump") sensitivities -- modeled rate continuous forcing.
+        // The infusion rate is a solver-applied forcing (not a symbolic term in
+        // f), so the symbolic sensitivity ODE misses d(rate)/dp.  Mirror the same
+        // InfusionRate operation on each sensitivity compartment using d(rate)/dp
+        // so the sens ODE picks up the forcing over [tau1, tau2].
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+            ind->whI == EVIDF_MODEL_RATE_ON && dRateEs != NULL) {
+          int _ns = _rxEsNState, _np = _rxEsNParam;
+          double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_esB != NULL) {
+            dRateEs(id, xout, yp, _esB);
+            // Physical `InfusionRate[cmt] -= tmp` starts the infusion (the stored
+            // rate `tmp` is negative); the forcing the state gains is +rate, so
+            // the sensitivity compartment gains +d(rate)/dp.
+            for (int _p = 0; _p < _np; _p++) {
+              InfusionRate[_ns + _p * _ns + cmt] += _esB[cmt * _np + _p];
+            }
+            free(_esB);
+          }
+        }
         if (ind->wh0 == EVID0_SS2 &&
             getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
             getDoseIndex(ind, ind->idx)) {
@@ -600,6 +620,22 @@ static inline int handle_evid(int evid, int neq,
       tmp = getDoseIndex(ind, ind->idx);
       if (tmp == 0.0) break;
       InfusionRate[cmt] += tmp;
+      // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
+      // Mirror of the MODEL_RATE_ON injection: remove d(rate)/dp from the
+      // sensitivity compartments' forcing at the end of the infusion.
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+          ind->whI == EVIDF_MODEL_RATE_OFF && dRateEs != NULL) {
+        int _ns = _rxEsNState, _np = _rxEsNParam;
+        double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+        if (_esB != NULL) {
+          dRateEs(id, xout, yp, _esB);
+          // Mirror of the ON injection: remove +d(rate)/dp at infusion end.
+          for (int _p = 0; _p < _np; _p++) {
+            InfusionRate[_ns + _p * _ns + cmt] -= _esB[cmt * _np + _p];
+          }
+          free(_esB);
+        }
+      }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 &&
           getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=

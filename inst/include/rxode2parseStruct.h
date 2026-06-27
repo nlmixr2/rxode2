@@ -46,6 +46,8 @@ typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
 // one call (like Lag/F fill all _alag/_f), evaluated at the supplied state y.
 typedef void (*t_dLag)(int _cSub, double t, double *y, double *_dLagSave);
 typedef void (*t_dF)(int _cSub, double t, double *y, double *_dFSave);
+typedef void (*t_dRate)(int _cSub, double t, double *y, double *_dRateSave);
+typedef void (*t_dDur)(int _cSub, double t, double *y, double *_dDurSave);
 
 typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 

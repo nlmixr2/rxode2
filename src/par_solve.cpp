@@ -591,6 +591,8 @@ int _rxEsNParam = 0;
 // in the many TUs that include handle_evid.  Point at the model functions in
 // rxUpdateFuns().
 t_dLag dLagEs = NULL;
+t_dRate dRateEs = NULL;
+t_dDur dDurEs = NULL;
 t_dydt dydtEs = NULL;
 
 extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam) {
@@ -783,12 +785,16 @@ void rxUpdateFuns(SEXP trans){
   // (trivial body when unused), so the lookup never misses.
   {
     const char *s_prefix = CHAR(STRING_ELT(trans, 2));
-    char s_dLag[300], s_dF[300];
+    char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300];
     snprintf(s_dLag, 300, "%sdLag", s_prefix);
     snprintf(s_dF, 300, "%sdF", s_prefix);
+    snprintf(s_dRate, 300, "%sdRate", s_prefix);
+    snprintf(s_dDur, 300, "%sdDur", s_prefix);
     dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
     dF = (t_dF) R_GetCCallable(lib, s_dF);
     dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
+    dRateEs = (t_dRate) R_GetCCallable(lib, s_dRate);
+    dDurEs = (t_dDur) R_GetCCallable(lib, s_dDur);
     dydtEs = dydt;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);

@@ -510,6 +510,8 @@ static inline double dabs2(double x) {
   // jumps.  dydt provides the Jacobian column by central difference.
   extern "C" t_dF dF;
   extern "C" t_dLag dLagEs;
+  extern "C" t_dRate dRateEs;
+  extern "C" t_dDur dDurEs;
   extern "C" t_dydt dydtEs;
   extern "C" int _rxEsActive;
   extern "C" int _rxEsNState;
@@ -521,6 +523,8 @@ static inline double dabs2(double x) {
   extern rx_solving_options_ind *inds_thread;
   extern t_dF dF;
   extern t_dLag dLagEs;
+  extern t_dRate dRateEs;
+  extern t_dDur dDurEs;
   extern t_dydt dydtEs;
   extern int _rxEsActive;
   extern int _rxEsNState;
