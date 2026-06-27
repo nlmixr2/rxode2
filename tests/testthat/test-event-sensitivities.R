@@ -454,6 +454,36 @@ rxTest({
     expect_gt(max(abs(sf - fd)), 1)   # fd-mode misses forcing + boundary
   })
 
+  test_that("modeled-dur infusion with estimated F and duration matches FD", {
+    # dur(central)=exp(tr+eta_r) AND f(central)=expit(tf+eta_f): rate=F*amt/dur
+    # depends on BOTH parameters.  The continuous forcing carries both
+    # d(rate)/dp pieces ((amt/dur)*dF and -(rate/dur)*dDur) and the moving
+    # boundary applies only to the duration (tau2 = tau1 + dur, independent of F).
+    # Both eta sensitivities must match a central difference.
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      dur(central) <- exp(tr + eta_r)
+      f(central)   <- expit(tf + eta_f)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tr = 0.7, tf = 0.3,
+              eta_r = 0, eta_f = 0)
+    e <- et(amt = 100, cmt = "central", rate = -2) |> et(seq(0.25, 14, 0.25))
+    .central <- function(p, mode) {
+      rxSolve(rxode2(.mod, calcSens = c("eta_r", "eta_f"), eventSens = mode), e, p)
+    }
+    sj <- .central(pars, "jump")
+    h <- 1e-4
+    for (.eta in c("eta_r", "eta_f")) {
+      pp <- pars; pp[.eta] <- h
+      pm <- pars; pm[.eta] <- -h
+      fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+      expect_equal(sj[[paste0("rx__sens_central_BY_", .eta, "__")]], fd,
+                   tolerance = 1e-2, info = paste0("param: ", .eta))
+    }
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")

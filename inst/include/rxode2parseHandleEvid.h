@@ -601,22 +601,29 @@ static inline int handle_evid(int evid, int neq,
             free(_esB);
           }
         }
-        // Modeled duration continuous forcing: rate = F*amt/dur, so with constant
-        // F, d(rate)/dp = -(rate/dur)*d(dur)/dp = (tmp/dur)*d(dur)/dp (tmp = -rate
-        // is the stored value just added).
+        // Modeled duration continuous forcing.  rate = F*amt/dur, so
+        //   d(rate)/dp = (amt/dur)*dF/dp - (rate/dur)*d(dur)/dp
+        //             = (amt*dF + tmp*dDur)/dur     (tmp = -rate = stored value).
+        // The dF term covers a parameter-dependent bioavailability on the
+        // modeled-duration infusion; dDur covers a parameter-dependent duration.
         if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
             ind->whI == EVIDF_MODEL_DUR_ON && dDurEs != NULL && durEsFn != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
-          double _esDur = durEsFn(id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+          double _esAmt = getDoseIndex(ind, ind->idx);
+          double _esDur = durEsFn(id, cmt, _esAmt, xout, yp);
           if (_esDur != 0.0) {
             double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            if (_esB != NULL) {
+            double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            if (_esB != NULL && _esFB != NULL) {
               dDurEs(id, xout, yp, _esB);
+              if (dF != NULL) dF(id, xout, yp, _esFB);
               for (int _p = 0; _p < _np; _p++) {
-                InfusionRate[_ns + _p * _ns + cmt] += (tmp / _esDur) * _esB[cmt * _np + _p];
+                InfusionRate[_ns + _p * _ns + cmt] +=
+                  (_esAmt * _esFB[cmt * _np + _p] + tmp * _esB[cmt * _np + _p]) / _esDur;
               }
-              free(_esB);
             }
+            if (_esB != NULL) free(_esB);
+            if (_esFB != NULL) free(_esFB);
           }
         }
         if (ind->wh0 == EVID0_SS2 &&
@@ -664,18 +671,27 @@ static inline int handle_evid(int evid, int neq,
       if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
           ind->whI == EVIDF_MODEL_DUR_OFF && dDurEs != NULL && durEsFn != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
-        double _esDur = durEsFn(id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+        // At the OFF event getDoseIndex returns the rate, so recover the dose
+        // amount from curDoseS[cmt] (set when the modeled item was turned on).
+        double _esAmt = ind->curDoseS[cmt];
+        double _esDur = durEsFn(id, cmt, _esAmt, xout, yp);
         if (_esDur != 0.0) {
           double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-          if (_esB != NULL) {
+          double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_esB != NULL && _esFB != NULL) {
             dDurEs(id, xout, yp, _esB);
+            if (dF != NULL) dF(id, xout, yp, _esFB);
             for (int _p = 0; _p < _np; _p++) {
               double _esDDur = _esB[cmt * _np + _p];
-              InfusionRate[_ns + _p * _ns + cmt] -= (tmp / _esDur) * _esDDur; // forcing off
-              yp[_ns + _p * _ns + cmt] += (-tmp) * _esDDur;                   // moving boundary
+              InfusionRate[_ns + _p * _ns + cmt] -=
+                (_esAmt * _esFB[cmt * _np + _p] + tmp * _esDDur) / _esDur; // forcing off
+              // moving boundary: tau2 = tau1 + dur(p) moves only with the
+              // duration's parameters (not F), so d(tau2)/dp = d(dur)/dp = dDur.
+              yp[_ns + _p * _ns + cmt] += (-tmp) * _esDDur;
             }
-            free(_esB);
           }
+          if (_esB != NULL) free(_esB);
+          if (_esFB != NULL) free(_esFB);
         }
       }
       ind->cacheME=0;
