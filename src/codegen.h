@@ -52,6 +52,14 @@
 #define ode_dLag 22
 // show_ode == 23 event-sensitivity d(F)/dp  (jump sensitivities)
 #define ode_dF 23
+// show_ode == 24 event-sensitivity d(rate)/dp  (jump sensitivities)
+#define ode_dRate 24
+// show_ode == 25 event-sensitivity d(dur)/dp  (jump sensitivities)
+#define ode_dDur 25
+// True for any of the four event-sensitivity dosing-derivative functions
+// (dLag/dF/dRate/dDur); they share the same codegen preamble and emit only
+// their R-generated body lines.  Kept contiguous so this is a range test.
+#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_dDur)
 
 // Scenarios
 #define print_double 0
@@ -331,7 +339,8 @@ void writeSb(sbuf *sbb, FILE *fp);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast, SEXP goodFuns,
-                          SEXP esDLagCode, SEXP esDFCode);
+                          SEXP esDLagCode, SEXP esDFCode,
+                          SEXP esDRateCode, SEXP esDDurCode);
 
 extern int fullPrint;
 #endif // __CODEGEN_H__

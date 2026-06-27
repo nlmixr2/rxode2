@@ -226,7 +226,8 @@
     }
     do.call(rbind, .rows)
   }
-  list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"))
+  list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"),
+       rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -263,26 +264,26 @@
     nSensParam = .np,
     paramIdx = .pIdx,
     lag = .lines(info$derivs$lag, "_dLagSave"),
-    f = .lines(info$derivs$f, "_dFSave")
+    f = .lines(info$derivs$f, "_dFSave"),
+    rate = .lines(info$derivs$rate, "_dRateSave"),
+    dur = .lines(info$derivs$dur, "_dDurSave")
   )
 }
 
-#' dLag / dF C body lines for codegen as a length-2 character vector
+#' dLag / dF / dRate / dDur C body lines for codegen as a length-4 vector
 #'
-#' Returns `c(dLag, dF)` body lines (empty strings when none).  Passed as
-#' arguments to the codegen `.Call` so the lines reach codegen in the same
-#' package instance (robust under `pkgload::load_all`, where a module-global
+#' Returns `c(dLag, dF, dRate, dDur)` body lines (empty strings when none).
+#' Passed as arguments to the codegen `.Call` so the lines reach codegen in the
+#' same package instance (robust under `pkgload::load_all`, where a module-global
 #' channel could bind the setter and codegen to different rxode2 C instances).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
-#' @return character(2): the dLag and dF body lines.
+#' @return character(4): the dLag, dF, dRate and dDur body lines.
 #' @noRd
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
-  c(
-    if (is.null(.cl) || length(.cl$lag) == 0L) "" else paste(.cl$lag, collapse = "\n"),
-    if (is.null(.cl) || length(.cl$f) == 0L) "" else paste(.cl$f, collapse = "\n")
-  )
+  .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
+  c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur))
 }
 
 #' Push the event-sensitivity runtime dims to the solver before a solve
