@@ -867,6 +867,25 @@ static inline int handle_evid(int evid, int neq,
               free(_dFB);
             }
           }
+          // Second-order ddelta row (Hessian path): the second-order
+          // sensitivity S^{pq} of the dosed compartment jumps by amt*d2F[p][q].
+          // 2nd-order compartment for (cmt, p=i2, q=i3) follows the
+          // rxExpandSens2_ layout: nState*(1+np) + cmt + nState*(i2 + i3*np),
+          // after the states and the first-order sens block.
+          if (d2FEs != NULL && _rxEsNParam2 > 0) {
+            int _np2 = _rxEsNParam2;
+            double *_d2FB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+            if (_d2FB != NULL) {
+              d2FEs(id, xout, yp, _d2FB);
+              for (int _i2 = 0; _i2 < _np; _i2++) {
+                for (int _i3 = 0; _i3 < _np2; _i3++) {
+                  int _c2 = _ns * (1 + _np) + cmt + _ns * (_i2 + _i3 * _np);
+                  yp[_c2] += _esRawAmt * _d2FB[cmt * (_np * _np2) + _i2 * _np2 + _i3];
+                }
+              }
+              free(_d2FB);
+            }
+          }
           // dtau row (lag time), only if the lag is modeled
           if (dLagEs != NULL && dydtEs != NULL) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));

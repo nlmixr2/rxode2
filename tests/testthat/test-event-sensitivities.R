@@ -610,6 +610,34 @@ rxTest({
     expect_equal(s2, fd, tolerance = 1e-2)
   })
 
+  test_that("second-order additive-bolus F jump matches finite differences", {
+    # F = expit(tf + eta_f) feeds the dose only (ka/cl/v independent of eta_f),
+    # so the second-order sensitivity S^{ff} of the dosed compartment is *entirely*
+    # the explicit jump amt*d2F/d eta_f^2 -- without it S^{ff} is exactly 0.  The
+    # jump-mode 2nd-order sensitivity must match d(S^f)/d eta_f (a precise first
+    # central difference of the jump-correct first-order sensitivity).
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- 1
+      f(depot)    <- expit(tf + eta_f)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.3, eta_f = 0)
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.5, 12, 0.5))
+    m1 <- rxode2(.mod, calcSens = "eta_f", eventSens = "jump")
+    m2 <- rxode2(.mod, calcSens = "eta_f", calcSens2 = "eta_f", eventSens = "jump")
+    s2 <- rxSolve(m2, e, pars)[["rx__sens_central_BY_eta_f_BY_eta_f__"]]
+    h <- 1e-5
+    .s1 <- function(p) rxSolve(m1, e, p)[["rx__sens_central_BY_eta_f__"]]
+    pp <- pars; pp["eta_f"] <- h
+    pm <- pars; pm["eta_f"] <- -h
+    fd <- (.s1(pp) - .s1(pm)) / (2 * h)
+    expect_equal(s2, fd, tolerance = 1e-2)
+    # without the 2nd-order jump the contribution would be entirely missing
+    expect_gt(max(abs(fd)), 1)
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")

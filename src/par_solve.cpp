@@ -586,6 +586,7 @@ t_dF dF = NULL;
 int _rxEsActive = 0;
 int _rxEsNState = 0;
 int _rxEsNParam = 0;
+int _rxEsNParam2 = 0;
 // Aliases exposed to handle_evid (extern in rxode2.h).  Distinct names from the
 // local `dydt`/`dLag` globals so the widely-used `dydt` identifier is not shadowed
 // in the many TUs that include handle_evid.  Point at the model functions in
@@ -593,13 +594,15 @@ int _rxEsNParam = 0;
 t_dLag dLagEs = NULL;
 t_dRate dRateEs = NULL;
 t_dDur dDurEs = NULL;
+t_dF d2FEs = NULL;
 t_DUR durEsFn = NULL;
 t_dydt dydtEs = NULL;
 
-extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam) {
+extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2) {
   _rxEsActive = INTEGER(active)[0];
   _rxEsNState = INTEGER(nState)[0];
   _rxEsNParam = INTEGER(nParam)[0];
+  _rxEsNParam2 = INTEGER(nParam2)[0];
   return R_NilValue;
 }
 
@@ -786,16 +789,18 @@ void rxUpdateFuns(SEXP trans){
   // (trivial body when unused), so the lookup never misses.
   {
     const char *s_prefix = CHAR(STRING_ELT(trans, 2));
-    char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300];
+    char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300], s_d2F[300];
     snprintf(s_dLag, 300, "%sdLag", s_prefix);
     snprintf(s_dF, 300, "%sdF", s_prefix);
     snprintf(s_dRate, 300, "%sdRate", s_prefix);
     snprintf(s_dDur, 300, "%sdDur", s_prefix);
+    snprintf(s_d2F, 300, "%sd2F", s_prefix);
     dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
     dF = (t_dF) R_GetCCallable(lib, s_dF);
     dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
     dRateEs = (t_dRate) R_GetCCallable(lib, s_dRate);
     dDurEs = (t_dDur) R_GetCCallable(lib, s_dDur);
+    d2FEs = (t_dF) R_GetCCallable(lib, s_d2F);
     dydtEs = dydt;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);

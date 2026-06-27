@@ -56,10 +56,13 @@
 #define ode_dRate 24
 // show_ode == 25 event-sensitivity d(dur)/dp  (jump sensitivities)
 #define ode_dDur 25
-// True for any of the four event-sensitivity dosing-derivative functions
-// (dLag/dF/dRate/dDur); they share the same codegen preamble and emit only
-// their R-generated body lines.  Kept contiguous so this is a range test.
-#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_dDur)
+// show_ode == 26 event-sensitivity d2(F)/dp/dq  (second-order jump sensitivities)
+#define ode_d2F 26
+// True for any of the event-sensitivity dosing-derivative functions
+// (dLag/dF/dRate/dDur/d2F); they share the same codegen preamble (which also
+// populates the second-order sensitivity locals) and emit only their
+// R-generated body lines.  Kept contiguous so this is a range test.
+#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_d2F)
 
 // Scenarios
 #define print_double 0
@@ -307,6 +310,7 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdF\", (DL_FUNC) %sdF);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdRate\", (DL_FUNC) %sdRate);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdDur\", (DL_FUNC) %sdDur);\n", libname, prefix, prefix);
+  sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sd2F\", (DL_FUNC) %sd2F);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sRate\", (DL_FUNC) %sRate);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sDur\", (DL_FUNC) %sDur);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%smtime\", (DL_FUNC) %smtime);\n", libname, prefix, prefix);
@@ -342,7 +346,7 @@ void writeSb(sbuf *sbb, FILE *fp);
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast, SEXP goodFuns,
                           SEXP esDLagCode, SEXP esDFCode,
-                          SEXP esDRateCode, SEXP esDDurCode);
+                          SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode);
 
 extern int fullPrint;
 #endif // __CODEGEN_H__

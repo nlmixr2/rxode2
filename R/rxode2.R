@@ -1461,7 +1461,7 @@ rxCompile.rxModelVars <- function(model, # Model
                                   force = FALSE, # Force compile
                                   modName = NULL, # Model Name
                                   package = NULL,
-                                  eventSensCode = c("", "", "", ""), # dLag/dF/dRate/dDur body lines
+                                  eventSensCode = c("", "", "", "", ""), # dLag/dF/dRate/dDur/d2F body lines
                                   ...) {
   assignInMyNamespace(".pkg", package)
   ## rxCompile returns the DLL name that was created.
@@ -1598,7 +1598,8 @@ rxCompile.rxModelVars <- function(model, # Model
             `_rxode2_codegen`, .cFile, prefix, .libname,
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
             .rxModelVarsLast, .rxSupportedFuns(),
-            eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4]
+            eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
+            eventSensCode[5]
           )
         } else {
           .libname <- gsub(.Platform$dynlib.ext, "", basename(.cDllFile))
@@ -1607,7 +1608,8 @@ rxCompile.rxModelVars <- function(model, # Model
             `_rxode2_codegen`, .cFile, prefix, .libname,
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
             .rxModelVarsLast, .rxSupportedFuns(),
-            eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4]
+            eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
+            eventSensCode[5]
           )
         }
         .defs <- ""

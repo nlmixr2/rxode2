@@ -51,12 +51,14 @@ char *_es_dLagCode = NULL;
 char *_es_dFCode = NULL;
 char *_es_dRateCode = NULL;
 char *_es_dDurCode = NULL;
+char *_es_d2FCode = NULL;
 
 static void _es_freeCode(void) {
   if (_es_dLagCode != NULL) { free(_es_dLagCode); _es_dLagCode = NULL; }
   if (_es_dFCode != NULL) { free(_es_dFCode); _es_dFCode = NULL; }
   if (_es_dRateCode != NULL) { free(_es_dRateCode); _es_dRateCode = NULL; }
   if (_es_dDurCode != NULL) { free(_es_dDurCode); _es_dDurCode = NULL; }
+  if (_es_d2FCode != NULL) { free(_es_d2FCode); _es_d2FCode = NULL; }
 }
 
 // Persistent copy of an R string (malloc, not R_alloc: must survive past the
@@ -365,15 +367,18 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       const char *_esDesc =
         (show_ode == ode_dLag) ? "d(alag)/dp" :
         (show_ode == ode_dF)   ? "d(F)/dp" :
-        (show_ode == ode_dRate)? "d(rate)/dp" : "d(dur)/dp";
+        (show_ode == ode_dRate)? "d(rate)/dp" :
+        (show_ode == ode_dDur) ? "d(dur)/dp" : "d2(F)/dp/dq";
       const char *_esFun =
         (show_ode == ode_dLag) ? "dLag" :
         (show_ode == ode_dF)   ? "dF" :
-        (show_ode == ode_dRate)? "dRate" : "dDur";
+        (show_ode == ode_dRate)? "dRate" :
+        (show_ode == ode_dDur) ? "dDur" : "d2F";
       const char *_esBuf =
         (show_ode == ode_dLag) ? "_dLagSave" :
         (show_ode == ode_dF)   ? "_dFSave" :
-        (show_ode == ode_dRate)? "_dRateSave" : "_dDurSave";
+        (show_ode == ode_dRate)? "_dRateSave" :
+        (show_ode == ode_dDur) ? "_dDurSave" : "_d2FSave";
       sAppend(&sbOut,
               "// Event-sensitivity %s\nvoid %s%s(int _cSub, double __t, double *__zzStateVar__, double *%s){\n"
               "  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n"
@@ -607,6 +612,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           sAppend(&sbOut, "\n%s\n", _es_dDurCode);
         }
         break;
+      case ode_d2F:
+        // Second-order event-sensitivity d2(F)/dp/dq assignment lines (may be empty)
+        if (_es_d2FCode != NULL && _es_d2FCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_d2FCode);
+        }
+        break;
       }
     }
     if (show_ode == ode_dydt){
@@ -732,7 +743,7 @@ extern SEXP _goodFuns;
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast,
                           SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode,
-                          SEXP esDRateCode, SEXP esDDurCode) {
+                          SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode) {
   // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
   // arguments (not a module global) so the setter and the codegen always run in
   // the same package instance -- the global channel was unreliable under
@@ -743,6 +754,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   _es_dFCode = _es_dup(esDFCode);
   _es_dRateCode = _es_dup(esDRateCode);
   _es_dDurCode = _es_dup(esDDurCode);
+  _es_d2FCode = _es_dup(esD2FCode);
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
@@ -940,6 +952,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(ode_dF);   // event-sensitivity d(F)/dp
   gCode(ode_dRate);// event-sensitivity d(rate)/dp
   gCode(ode_dDur); // event-sensitivity d(dur)/dp
+  gCode(ode_d2F);  // second-order event-sensitivity d2(F)/dp/dq
   gCode(4); // Registration
   writeFooter(); // undef
   fclose(fpIO);

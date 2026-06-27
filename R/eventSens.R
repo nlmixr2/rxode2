@@ -356,8 +356,44 @@
     }
     do.call(rbind, .rows)
   }
+  ## Second-order total-derivative tables (the Hessian jump path).  Built only
+  ## when the model carries 2nd-order sensitivity compartments (map2).  Indexed
+  ## by (cmt, p, q): p over the first-order params, q over the calcSens2 params.
+  .build2 <- function(cmts, kind) {
+    if (is.null(map$map2)) {
+      return(data.frame(cmt = integer(0), cmtName = character(0),
+                        p = character(0), q = character(0), expr = character(0),
+                        stringsAsFactors = FALSE))
+    }
+    .p2 <- unique(map$map2$p)
+    .q2 <- unique(map$map2$q)
+    .rows <- list()
+    for (.c in cmts) {
+      .nm <- .cmtName(.c)
+      .symName <- paste0("rx_", kind, "_", .nm, "_")
+      if (!exists(.symName, envir = .model)) next
+      .sym <- get(.symName, envir = .model)
+      for (.p in .p2) {
+        for (.q in .q2) {
+          .e <- .rxEventSensD2Expr(.sym, .p, .q, .states)
+          if (.e != "0" && .e != "0.0") {
+            .rows[[length(.rows) + 1L]] <-
+              data.frame(cmt = .c, cmtName = .nm, p = .p, q = .q, expr = .e,
+                         stringsAsFactors = FALSE)
+          }
+        }
+      }
+    }
+    if (length(.rows) == 0L) {
+      return(data.frame(cmt = integer(0), cmtName = character(0),
+                        p = character(0), q = character(0), expr = character(0),
+                        stringsAsFactors = FALSE))
+    }
+    do.call(rbind, .rows)
+  }
   list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"),
-       rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"))
+       rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"),
+       f2 = .build2(map$fCmt, "f"))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -390,13 +426,27 @@
     .idx <- .cmt0 * .np + .pIdx[tab$param]
     sprintf("  %s[%d] = %s;", buf, .idx, tab$expr)
   }
+  ## Second-order (Hessian) buffer: indexed (cmt0*(np*np2) + pIdx*np2 + qIdx),
+  ## p over the first-order params, q over the calcSens2 params.
+  .q2 <- if (is.null(info$map$map2)) character(0) else unique(info$map$map2$q)
+  .np2 <- length(.q2)
+  .qIdx <- stats::setNames(seq_along(.q2) - 1L, .q2)
+  .lines2 <- function(tab, buf) {
+    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    .cmt0 <- tab$cmt - 1L
+    .idx <- .cmt0 * (.np * .np2) + .pIdx[tab$p] * .np2 + .qIdx[tab$q]
+    sprintf("  %s[%d] = %s;", buf, .idx, tab$expr)
+  }
   list(
     nSensParam = .np,
     paramIdx = .pIdx,
+    nSensParam2 = .np2,
+    paramIdx2 = .qIdx,
     lag = .lines(info$derivs$lag, "_dLagSave"),
     f = .lines(info$derivs$f, "_dFSave"),
     rate = .lines(info$derivs$rate, "_dRateSave"),
-    dur = .lines(info$derivs$dur, "_dDurSave")
+    dur = .lines(info$derivs$dur, "_dDurSave"),
+    f2 = .lines2(info$derivs$f2, "_d2FSave")
   )
 }
 
@@ -413,7 +463,7 @@
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
   .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
-  c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur))
+  c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2))
 }
 
 #' Push the event-sensitivity runtime dims to the solver before a solve
@@ -430,12 +480,14 @@
 .rxSetEventSensDims <- function(object) {
   .info <- tryCatch(object$eventSensInfo, error = function(e) NULL)
   if (is.null(.info) || identical(.info$mode, "fd")) {
-    return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L)))
+    return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L)))
   }
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
+  ## number of second-order (calcSens2) parameters; 0 when no Hessian path
+  .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   invisible(.Call(`_rxode2_setEventSensDims`, 1L,
-                  as.integer(.nState), as.integer(.nParam)))
+                  as.integer(.nState), as.integer(.nParam), as.integer(.nParam2)))
 }
 
 #' Assemble the event-sensitivity (Phase A) information for a built model
