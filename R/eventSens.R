@@ -490,6 +490,47 @@
                   as.integer(.nState), as.integer(.nParam), as.integer(.nParam2)))
 }
 
+#' Point the rxode2 event-sensitivity globals at a jump-sensitivity model
+#'
+#' For downstream packages (e.g. nlmixr2est's FOCEi) that solve a sensitivity
+#' model through a direct C++ `ind_solve()` loop -- bypassing
+#' `rxSolve()`/`.rxSetEventSensDims()` -- this sets rxode2's event ("jump")
+#' sensitivity function pointers (dLag/dF/dRate/dDur/d2F/dydt/DUR) and the
+#' runtime dims to `model` and turns the jumps on.  The `handle_evid` jump
+#' blocks are bounds-guarded by the per-solve compartment count, so any smaller
+#' model solved afterwards (no sensitivity compartments, e.g. the FOCEi pred
+#' model) skips the injection safely without resetting these globals.  Pair with
+#' [rxEventSensDeactivate()] after the run.
+#'
+#' @param model A built jump-sensitivity model (carrying `eventSensInfo`).
+#' @return invisibly `TRUE` when the jumps were activated, `FALSE` otherwise
+#'   (fd model / no sensitivities).
+#' @export
+#' @keywords internal
+rxEventSensLoadModel <- function(model) {
+  .info <- tryCatch(model$eventSensInfo, error = function(e) NULL)
+  if (is.null(.info) || identical(.info$mode, "fd")) return(invisible(FALSE))
+  .trans <- rxModelVars(model)$trans
+  .nState <- .info$map$nState
+  .nParam <- length(.info$map$sensParams)
+  .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
+  .Call(`_rxode2_eventSensLoad`, .trans, 1L, as.integer(.nState),
+        as.integer(.nParam), as.integer(.nParam2))
+  invisible(TRUE)
+}
+
+#' Turn off the rxode2 event-sensitivity jump injection
+#'
+#' Resets the runtime gate set by [rxEventSensLoadModel()] (active = 0) after a
+#' direct C++ solve loop completes, so later unrelated solves are unaffected.
+#'
+#' @return invisibly `NULL`.
+#' @export
+#' @keywords internal
+rxEventSensDeactivate <- function() {
+  invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L))
+}
+
 #' Assemble the event-sensitivity (Phase A) information for a built model
 #'
 #' Combines the resolved mode, the index map, and the symbolic dosing-parameter

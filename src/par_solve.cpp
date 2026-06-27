@@ -606,6 +606,50 @@ extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, 
   return R_NilValue;
 }
 
+// C-callable (R_RegisterCCallable) for downstream packages (e.g. nlmixr2est's
+// FOCEi) that solve a sensitivity model directly through ind_solve() without
+// going through R's rxSolve()/.rxSetEventSensDims().  Points rxode2's event
+// ("jump") sensitivity globals -- the dosing-derivative function pointers and
+// the runtime dims -- at the supplied model (its `trans` vector) and activates
+// the jumps.  The handle_evid jump blocks are additionally guarded by a
+// compartment-count bound (<= neq), so leaving this active while solving a
+// smaller model (no sensitivity compartments, e.g. the FOCEi pred model) is
+// safe: those solves skip the injection automatically.
+extern "C" void rxode2EventSensLoad(SEXP trans, int active, int nState, int nParam, int nParam2) {
+  const char *lib = CHAR(STRING_ELT(trans, 0));
+  const char *prefix = CHAR(STRING_ELT(trans, 2));
+  const char *s_dydt = CHAR(STRING_ELT(trans, 3));
+  const char *s_DUR = CHAR(STRING_ELT(trans, 17));
+  char nm[300];
+  dydtEs = (t_dydt) R_GetCCallable(lib, s_dydt);
+  durEsFn = (t_DUR) R_GetCCallable(lib, s_DUR);
+  snprintf(nm, 300, "%sdLag", prefix);  dLagEs  = (t_dLag)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdF", prefix);    dF      = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdRate", prefix); dRateEs = (t_dRate) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdDur", prefix);  dDurEs  = (t_dDur)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2F", prefix);   d2FEs   = (t_dF)    R_GetCCallable(lib, nm);
+  _rxEsActive = active;
+  _rxEsNState = nState;
+  _rxEsNParam = nParam;
+  _rxEsNParam2 = nParam2;
+}
+
+// Toggle only the active flag (cheap; for bracketing or for turning the jumps
+// off after a run).  Pointers/dims are preserved.
+extern "C" void rxode2EventSensSetActive(int active) {
+  _rxEsActive = active;
+}
+
+// R .Call wrapper around rxode2EventSensLoad, so a downstream package's R code
+// (e.g. nlmixr2est's FOCEi) can point the event-sensitivity globals at a
+// sensitivity model just before handing off to a direct C++ solve loop.
+extern "C" SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState,
+                                      SEXP nParam, SEXP nParam2) {
+  rxode2EventSensLoad(trans, INTEGER(active)[0], INTEGER(nState)[0],
+                      INTEGER(nParam)[0], INTEGER(nParam2)[0]);
+  return R_NilValue;
+}
+
 t_update_inis update_inis = NULL;
 
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;

@@ -585,7 +585,7 @@ static inline int handle_evid(int evid, int neq,
         // start time tau1 = t0 + alag shifts by d(alag)/dp; the forcing change
         // here is -tmp, so the sensitivity jumps by [S] = -(-tmp)*d(alag)/dp =
         // tmp*d(alag)/dp.  (Applies to both MODEL_RATE_ON and MODEL_DUR_ON.)
-        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dLagEs != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
           if (_eA != NULL) {
@@ -601,7 +601,7 @@ static inline int handle_evid(int evid, int neq,
         // f), so the symbolic sensitivity ODE misses d(rate)/dp.  Mirror the same
         // InfusionRate operation on each sensitivity compartment using d(rate)/dp
         // so the sens ODE picks up the forcing over [tau1, tau2].
-        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
             ind->whI == EVIDF_MODEL_RATE_ON && dRateEs != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -621,7 +621,7 @@ static inline int handle_evid(int evid, int neq,
         //             = (amt*dF + tmp*dDur)/dur     (tmp = -rate = stored value).
         // The dF term covers a parameter-dependent bioavailability on the
         // modeled-duration infusion; dDur covers a parameter-dependent duration.
-        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
             ind->whI == EVIDF_MODEL_DUR_ON && dDurEs != NULL && durEsFn != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double _esAmt = getDoseIndex(ind, ind->idx);
@@ -663,7 +663,7 @@ static inline int handle_evid(int evid, int neq,
       // Modeled rate/duration infusion moving boundary from a modeled lag at the
       // stop time tau2 (which shifts with alag too): forcing change +tmp, so
       // [S] = -tmp*d(alag)/dp.  (Applies to MODEL_RATE_OFF and MODEL_DUR_OFF.)
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dLagEs != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
         if (_eA != NULL) {
@@ -677,7 +677,7 @@ static inline int handle_evid(int evid, int neq,
       // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
       // Mirror of the MODEL_RATE_ON injection: remove d(rate)/dp from the
       // sensitivity compartments' forcing at the end of the infusion.
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
           ind->whI == EVIDF_MODEL_RATE_OFF && dRateEs != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -697,7 +697,7 @@ static inline int handle_evid(int evid, int neq,
       // [S](tau2) = -[xdot]*d(tau2)/dp = rate*d(dur)/dp.  (rate = -tmp.)  The
       // continuous d(rate)/dp forcing alone is NOT enough for modeled duration --
       // unlike modeled rate, whose boundary is captured by the solver's OFF event.
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
           ind->whI == EVIDF_MODEL_DUR_OFF && dDurEs != NULL && durEsFn != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
         // At the OFF event getDoseIndex returns the rate, so recover the dose
@@ -750,7 +750,7 @@ static inline int handle_evid(int evid, int neq,
       // +tmp (this InfusionRate change) at the boundary, so the sensitivity jumps
       // by [S] = -tmp*d(alag)/dp.  Covers both the start (tmp > 0) and stop
       // (tmp < 0) records of a fixed-rate/duration infusion.
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dLagEs != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
         if (_eA != NULL) {
@@ -785,7 +785,7 @@ static inline int handle_evid(int evid, int neq,
       InfusionRate[cmt] += tmp;
       // Infusion moving boundary from a modeled lag (see EVIDF_INF_DUR above):
       // [S] = -tmp*d(alag)/dp at each start/stop record.
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dLagEs != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
         if (_eA != NULL) {
@@ -813,7 +813,7 @@ static inline int handle_evid(int evid, int neq,
       // parameter is reset to 0.  Done BEFORE the physical replace so the
       // pre-event state is still available (dtau/dvalue rows are a later
       // increment).  Sens compartment for (state k, param p) = nState + p*nState + k.
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState) {
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
         int _ns = _rxEsNState;
         for (int _p = 0; _p < _rxEsNParam; _p++) {
           yp[_ns + _p * _ns + cmt] = 0.0;
@@ -829,7 +829,7 @@ static inline int handle_evid(int evid, int neq,
         // Table 3).  The state is scaled by alpha, so each of its parameter
         // sensitivities is scaled by the same alpha.  Done BEFORE the physical
         // multiply (the dtau/dalpha rows are a later increment).
-        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState) {
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
           int _ns = _rxEsNState;
           for (int _p = 0; _p < _rxEsNParam; _p++) {
             yp[_ns + _p * _ns + cmt] *= _esAlpha;
@@ -854,7 +854,7 @@ static inline int handle_evid(int evid, int neq,
         // physical Jacobian column J[.][c] is taken by a central difference of
         // dydt (calc_jac is empty by default; this is a local df/dx, not the
         // event-parameter FD this method replaces).
-        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState) {
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
           int _np = _rxEsNParam, _ns = _rxEsNState;
           // ddelta row (bioavailability)
           if (dF != NULL) {
@@ -872,7 +872,8 @@ static inline int handle_evid(int evid, int neq,
           // 2nd-order compartment for (cmt, p=i2, q=i3) follows the
           // rxExpandSens2_ layout: nState*(1+np) + cmt + nState*(i2 + i3*np),
           // after the states and the first-order sens block.
-          if (d2FEs != NULL && _rxEsNParam2 > 0) {
+          if (d2FEs != NULL && _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
             int _np2 = _rxEsNParam2;
             double *_d2FB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
             if (_d2FB != NULL) {
