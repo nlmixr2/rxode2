@@ -362,6 +362,44 @@ rxTest({
     expect_equal(sj, fd, tolerance = 1e-3)  # and both match the finite difference
   })
 
+  test_that("in-model evid_() dosing plugins match finite differences (jump)", {
+    # bolus(), replace(), multiply(), reset() and constant-rate infuse()/
+    # infuseDur() pushed from inside the model must all yield jump-mode
+    # sensitivities that match a central difference of the solution.  (Modeled
+    # rate/dur -- where the infusion magnitude depends on a parameter -- is the
+    # separate continuous-forcing case covered elsewhere.)
+    .skel <- function(dose) paste0("
+      ka <- exp(tka + eta_ka); cl <- exp(tcl); v <- exp(tv); rt <- 5
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+      if (t >= rt && t < rt + 0.4) { ", dose, " }")
+    .doses <- c(
+      bolus      = "bolus(50, central, 0, 0, 0)",
+      infuse     = "infuse(100, 50, central, 0, 0, 0)",
+      infuseDur  = "infuseDur(100, 2, central, 0, 0, 0)",
+      replace    = "if (central > 0) replace(40, central)",
+      multiply   = "if (central > 0) multiply(0.5, central)",
+      reset      = "reset()"
+    )
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, eta_ka = 0)
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.5, 14, 0.5))
+    h <- 1e-4
+    for (.nm in names(.doses)) {
+      .mod <- .skel(.doses[[.nm]])
+      .central <- function(p, mode) {
+        rxSolve(rxode2(.mod, calcSens = "eta_ka", eventSens = mode), e, p)
+      }
+      sj <- .central(pars, "jump")
+      pp <- pars; pp["eta_ka"] <- h
+      pm <- pars; pm["eta_ka"] <- -h
+      fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+      .post <- sj$time >= 5
+      expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post],
+                   tolerance = 1e-3,
+                   info = paste0("plugin: ", .nm))
+    }
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
