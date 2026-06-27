@@ -551,6 +551,40 @@ rxTest({
     }
   })
 
+  test_that(".rxEventSensMap exposes a second-order (Hessian) compartment map", {
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      f(depot) <- expit(tf + eta_f)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    m <- rxode2(.mod, calcSens = "eta_f", calcSens2 = "eta_f")
+    im <- .rxEventSensMap(m)
+    expect_false(is.null(im$map2))
+    # one (state, p, q) row per physical state for the single (eta_f, eta_f) pair
+    expect_setequal(im$map2$state, c("depot", "central"))
+    expect_true(all(im$map2$p == "eta_f" & im$map2$q == "eta_f"))
+    # the depot 2nd-order compartment exists and comes after the 1st-order ones
+    .row <- im$map2[im$map2$state == "depot", ]
+    expect_true(.row$sensCmt > nrow(im$map))
+  })
+
+  test_that(".rxEventSensD2Expr is the correct second total derivative", {
+    # d2(F)/d(eta_f)^2 for F = expit(tf + eta_f) must equal expit''(tf+eta_f)
+    # = p(1-p)(1-2p).  State-independent F -> only the direct second partial.
+    m <- rxode2("ka<-exp(tka)\nf(depot)<-expit(tf+eta_f)\nd/dt(depot)<- -ka*depot\nd/dt(central)<-ka*depot-central",
+                calcSens = "eta_f", calcSens2 = "eta_f")
+    mdl <- .rxLoadPrune(m)
+    e2 <- .rxEventSensD2Expr(get("rx_f_depot_", envir = mdl), "eta_f", "eta_f",
+                             .rxEventSensMap(m)$states)
+    expect_true(nzchar(e2) && e2 != "0")
+    val <- eval(parse(text = e2),
+                list(eta_f = 0, tf = 0.3, Rx_pow_di = function(a, b) a^b,
+                     expit = function(x) 1 / (1 + exp(-x))))
+    p <- 1 / (1 + exp(-0.3))
+    expect_equal(val, p * (1 - p) * (1 - 2 * p), tolerance = 1e-8)
+  })
+
   test_that("calcSens2 generates correct second-order sensitivity ODEs", {
     # rxode2(..., calcSens2=) emits the 2nd-order sensitivity compartments
     # rx__sens_<state>_BY_<p>_BY_<q>__ (the Hessian path).  For a parameter that

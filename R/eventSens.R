@@ -65,6 +65,45 @@
              stringsAsFactors = FALSE)
 }
 
+#' Split a second-order sensitivity state name into (state, p, q)
+#'
+#' Second-order sensitivity compartments are named
+#' `rx__sens_<state>_BY_<p>_BY_<q>__`.  Anchored on the known physical state
+#' names (longest match) and the two `_BY_` separators; parameter names never
+#' contain `_BY_`, so the remainder splits cleanly into `(p, q)`.
+#'
+#' @param sens Character vector of sensitivity compartment names.
+#' @param states Character vector of physical (non-sensitivity) state names.
+#' @return data.frame(sens, state, p, q); first-order names (one `_BY_`) and
+#'   non-matches yield `NA` and are dropped by the caller.
+#' @noRd
+.rxEventSensSplit2 <- function(sens, states) {
+  .pre <- "rx__sens_"
+  .core <- sub("__$", "", sub(paste0("^", .pre), "", sens))
+  .states <- states[order(nchar(states), decreasing = TRUE)]
+  .state <- rep(NA_character_, length(.core))
+  .p <- rep(NA_character_, length(.core))
+  .q <- rep(NA_character_, length(.core))
+  for (.i in seq_along(.core)) {
+    for (.s in .states) {
+      .head <- paste0(.s, "_BY_")
+      if (startsWith(.core[.i], .head)) {
+        .rest <- substring(.core[.i], nchar(.head) + 1L)
+        .parts <- strsplit(.rest, "_BY_", fixed = TRUE)[[1]]
+        ## second-order only: exactly two parts (p, q)
+        if (length(.parts) == 2L) {
+          .state[.i] <- .s
+          .p[.i] <- .parts[1]
+          .q[.i] <- .parts[2]
+        }
+        break
+      }
+    }
+  }
+  data.frame(sens = sens, state = .state, p = .p, q = .q,
+             stringsAsFactors = FALSE)
+}
+
 #' Build the event-sensitivity index map for a model
 #'
 #' Relates each dosing/event compartment to the first-order sensitivity
@@ -99,6 +138,17 @@
   .map <- .split[, c("state", "param", "stateCmt", "sensCmt"), drop = FALSE]
   .map <- .map[order(.map$param, .map$stateCmt), , drop = FALSE]
   rownames(.map) <- NULL
+  ## Second-order sensitivity compartments (Hessian path), if present.
+  .split2 <- .rxEventSensSplit2(.sens, .states)
+  .split2 <- .split2[!is.na(.split2$state), , drop = FALSE]
+  .map2 <- NULL
+  if (nrow(.split2) > 0L) {
+    .split2$sensCmt <- unname(.ord[.split2$sens])
+    .split2$stateCmt <- unname(.ord[.split2$state])
+    .map2 <- .split2[, c("state", "p", "q", "stateCmt", "sensCmt"), drop = FALSE]
+    .map2 <- .map2[order(.map2$p, .map2$q, .map2$stateCmt), , drop = FALSE]
+    rownames(.map2) <- NULL
+  }
   ## event compartments: those carrying a modeled alag/F/rate/dur.  `mv$alag`
   ## already lists the lag compartments; the analogous f/rate/dur compartments
   ## are decoded from `stateProp` bit flags (see .rxEventSensProp).
@@ -109,6 +159,7 @@
     stateCmt = stats::setNames(unname(.ord[.states]), .states),
     sensParams = .sensParams,
     map = .map,
+    map2 = .map2,
     lagCmt = .prop$lagCmt,
     fCmt = .prop$fCmt,
     rateCmt = .prop$rateCmt,
@@ -178,6 +229,85 @@
       .term <- .dl * .S
       .tot <- if (is.null(.tot)) .term else .tot + .term
     }
+  }
+  if (is.null(.tot)) return("0")
+  rxFromSE(.tot)
+}
+
+#' First-order total derivative of a dosing expression as a symengine object
+#'
+#' Same quantity as [.rxEventSensDExpr()] but returns the symengine expression
+#' (or `NULL` when zero) instead of `rxFromSE` text, so it can be differentiated
+#' again for the second-order total derivative.
+#'
+#' @return symengine expression for `d(g)/dp`, or `NULL` if identically zero.
+#' @noRd
+.rxEventSensDSym <- function(sym, param, states) {
+  .symTxt <- if (is.numeric(sym)) as.character(sym) else rxFromSE(sym)
+  .vars <- tryCatch(all.vars(parse(text = .symTxt)[[1]]), error = function(e) character(0))
+  .tot <- NULL
+  if (param %in% .vars) {
+    .tot <- symengine::D(sym, symengine::S(param))
+  }
+  for (.l in states) {
+    if (!(.l %in% .vars)) next
+    .dl <- symengine::D(sym, symengine::S(.l))
+    .dlTxt <- rxFromSE(.dl)
+    if (.dlTxt != "0" && .dlTxt != "0.0") {
+      .S <- symengine::S(paste0("rx__sens_", .l, "_BY_", param, "__"))
+      .term <- .dl * .S
+      .tot <- if (is.null(.tot)) .term else .tot + .term
+    }
+  }
+  .tot
+}
+
+#' Second-order total derivative of a dosing-parameter expression
+#'
+#' Computes `d^2(g)/dp/dq` as a *total* derivative.  Starting from the
+#' first-order total derivative `dg_p = d(g)/dp` (which references the physical
+#' states `x_l` and the first-order sensitivities `S^p_l =
+#' rx__sens_<x_l>_BY_<p>__`), the total `d/dq` adds three groups of terms:
+#'   partial g/partial p/partial q                          (direct)
+#' + sum_l (partial dg_p / partial x_l)   * S^q_l            (state coupling)
+#' + sum_l (partial dg_p / partial S^p_l) * S^{pq}_l         (sens coupling)
+#' where `S^q_l = rx__sens_<x_l>_BY_<q>__` and `S^{pq}_l =
+#' rx__sens_<x_l>_BY_<p>_BY_<q>__`.  For a state-independent dosing expression
+#' (e.g. `F = expit(tf + eta_f)`) only the direct second partial survives.
+#'
+#' @param sym symengine expression for the dosing parameter `g`.
+#' @param p,q Parameter names to differentiate wrt.
+#' @param states Physical state names `x_l`.
+#' @return `rxFromSE` text for `d^2(g)/dp/dq` (the string `"0"` when zero).
+#' @noRd
+.rxEventSensD2Expr <- function(sym, p, q, states) {
+  .dgp <- .rxEventSensDSym(sym, p, states)
+  if (is.null(.dgp)) return("0")
+  .vars <- tryCatch(all.vars(parse(text = rxFromSE(.dgp))[[1]]),
+                    error = function(e) character(0))
+  .tot <- NULL
+  ## direct partial wrt q
+  if (q %in% .vars) {
+    .tot <- symengine::D(.dgp, symengine::S(q))
+  }
+  ## state-coupling: d/dx_l * S^q_l
+  for (.l in states) {
+    if (!(.l %in% .vars)) next
+    .dxl <- symengine::D(.dgp, symengine::S(.l))
+    if (rxFromSE(.dxl) %in% c("0", "0.0")) next
+    .Sq <- symengine::S(paste0("rx__sens_", .l, "_BY_", q, "__"))
+    .term <- .dxl * .Sq
+    .tot <- if (is.null(.tot)) .term else .tot + .term
+  }
+  ## first-order-sensitivity coupling: d/d(S^p_l) * S^{pq}_l
+  for (.l in states) {
+    .Spl <- paste0("rx__sens_", .l, "_BY_", p, "__")
+    if (!(.Spl %in% .vars)) next
+    .dSpl <- symengine::D(.dgp, symengine::S(.Spl))
+    if (rxFromSE(.dSpl) %in% c("0", "0.0")) next
+    .Spq <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "__"))
+    .term <- .dSpl * .Spq
+    .tot <- if (is.null(.tot)) .term else .tot + .term
   }
   if (is.null(.tot)) return("0")
   rxFromSE(.tot)
