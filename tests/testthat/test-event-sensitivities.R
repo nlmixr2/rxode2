@@ -484,6 +484,42 @@ rxTest({
     }
   })
 
+  test_that("infusion with a modeled lag matches FD (all infusion types)", {
+    # alag(central) = exp(tl + eta_l): the whole infusion window [tau1, tau2]
+    # shifts by d(alag)/dp (tau1 = t0 + alag, tau2 = tau1 + dur), giving moving
+    # start/stop boundary jumps [S] = -/+ rate*d(alag)/dp.  Validated for fixed-
+    # rate, modeled-rate and modeled-duration infusions.  An irregular grid keeps
+    # observations off the (discontinuous) boundary times so the FD is well-posed.
+    .obs <- seq(0.1, 14, 0.37)
+    .lagLine <- "alag(central) <- exp(tl + eta_l)"
+    .ode <- "d/dt(depot) <- -ka * depot\n      d/dt(central) <- ka * depot - cl / v * central"
+    .cases <- list(
+      fixed = list(extra = "", dose = et(amt = 100, rate = 30, cmt = "central"),
+                   p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), eta_l = 0)),
+      mrate = list(extra = "rate(central) <- exp(tr)",
+                   dose = et(amt = 100, rate = -1, cmt = "central"),
+                   p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), tr = log(30), eta_l = 0)),
+      mdur  = list(extra = "dur(central) <- exp(td)",
+                   dose = et(amt = 100, rate = -2, cmt = "central"),
+                   p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), td = log(3), eta_l = 0))
+    )
+    h <- 1e-4
+    for (.nm in names(.cases)) {
+      .cs <- .cases[[.nm]]
+      .mod <- paste("ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)",
+                    .lagLine, .cs$extra, .ode, sep = "\n      ")
+      e <- .cs$dose |> et(.obs)
+      .central <- function(p, mode) {
+        rxSolve(rxode2(.mod, calcSens = "eta_l", eventSens = mode), e, p)
+      }
+      sj <- .central(.cs$p, "jump")[["rx__sens_central_BY_eta_l__"]]
+      pp <- .cs$p; pp["eta_l"] <- .cs$p["eta_l"] + h
+      pm <- .cs$p; pm["eta_l"] <- .cs$p["eta_l"] - h
+      fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+      expect_equal(sj, fd, tolerance = 1e-2, info = paste0("infusion: ", .nm))
+    }
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")

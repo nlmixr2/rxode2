@@ -581,6 +581,21 @@ static inline int handle_evid(int evid, int neq,
           break;
         }
         InfusionRate[cmt] -= tmp;
+        // Modeled rate/duration infusion moving boundary from a modeled lag.  The
+        // start time tau1 = t0 + alag shifts by d(alag)/dp; the forcing change
+        // here is -tmp, so the sensitivity jumps by [S] = -(-tmp)*d(alag)/dp =
+        // tmp*d(alag)/dp.  (Applies to both MODEL_RATE_ON and MODEL_DUR_ON.)
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+          int _ns = _rxEsNState, _np = _rxEsNParam;
+          double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_eA != NULL) {
+            dLagEs(id, xout, yp, _eA);
+            for (int _p = 0; _p < _np; _p++) {
+              yp[_ns + _p * _ns + cmt] += tmp * _eA[cmt * _np + _p];
+            }
+            free(_eA);
+          }
+        }
         // Event ("jump") sensitivities -- modeled rate continuous forcing.
         // The infusion rate is a solver-applied forcing (not a symbolic term in
         // f), so the symbolic sensitivity ODE misses d(rate)/dp.  Mirror the same
@@ -645,6 +660,20 @@ static inline int handle_evid(int evid, int neq,
       tmp = getDoseIndex(ind, ind->idx);
       if (tmp == 0.0) break;
       InfusionRate[cmt] += tmp;
+      // Modeled rate/duration infusion moving boundary from a modeled lag at the
+      // stop time tau2 (which shifts with alag too): forcing change +tmp, so
+      // [S] = -tmp*d(alag)/dp.  (Applies to MODEL_RATE_OFF and MODEL_DUR_OFF.)
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+        int _ns = _rxEsNState, _np = _rxEsNParam;
+        double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
+        if (_eA != NULL) {
+          dLagEs(id, xout, yp, _eA);
+          for (int _p = 0; _p < _np; _p++) {
+            yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
+          }
+          free(_eA);
+        }
+      }
       // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
       // Mirror of the MODEL_RATE_ON injection: remove d(rate)/dp from the
       // sensitivity compartments' forcing at the end of the infusion.
@@ -715,6 +744,23 @@ static inline int handle_evid(int evid, int neq,
       }
       tmp = getAmt(ind, id, cmt, tmp, xout, yp);
       InfusionRate[cmt] += tmp;
+      // Event ("jump") sensitivities -- infusion moving boundary from a modeled
+      // lag.  alag(cmt) shifts the whole infusion window [tau1, tau2] by
+      // d(alag)/dp (tau1 = t0 + alag, tau2 = tau1 + dur).  The forcing jumps by
+      // +tmp (this InfusionRate change) at the boundary, so the sensitivity jumps
+      // by [S] = -tmp*d(alag)/dp.  Covers both the start (tmp > 0) and stop
+      // (tmp < 0) records of a fixed-rate/duration infusion.
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+        int _ns = _rxEsNState, _np = _rxEsNParam;
+        double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
+        if (_eA != NULL) {
+          dLagEs(id, xout, yp, _eA);
+          for (int _p = 0; _p < _np; _p++) {
+            yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
+          }
+          free(_eA);
+        }
+      }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
         if (!(ind->err & rxErrModeledFss2n3)){
@@ -737,6 +783,19 @@ static inline int handle_evid(int evid, int neq,
       //            cmt, xout, tmp, ind->ixds);
       // }
       InfusionRate[cmt] += tmp;
+      // Infusion moving boundary from a modeled lag (see EVIDF_INF_DUR above):
+      // [S] = -tmp*d(alag)/dp at each start/stop record.
+      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && dLagEs != NULL) {
+        int _ns = _rxEsNState, _np = _rxEsNParam;
+        double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
+        if (_eA != NULL) {
+          dLagEs(id, xout, yp, _eA);
+          for (int _p = 0; _p < _np; _p++) {
+            yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
+          }
+          free(_eA);
+        }
+      }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&
           getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
