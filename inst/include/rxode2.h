@@ -512,6 +512,7 @@ static inline double dabs2(double x) {
   extern "C" t_dLag dLagEs;
   extern "C" t_dRate dRateEs;
   extern "C" t_dDur dDurEs;
+  extern "C" t_DUR durEsFn;
   extern "C" t_dydt dydtEs;
   extern "C" int _rxEsActive;
   extern "C" int _rxEsNState;
@@ -525,6 +526,7 @@ static inline double dabs2(double x) {
   extern t_dLag dLagEs;
   extern t_dRate dRateEs;
   extern t_dDur dDurEs;
+  extern t_DUR durEsFn;
   extern t_dydt dydtEs;
   extern int _rxEsActive;
   extern int _rxEsNState;

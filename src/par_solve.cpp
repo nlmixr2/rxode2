@@ -593,6 +593,7 @@ int _rxEsNParam = 0;
 t_dLag dLagEs = NULL;
 t_dRate dRateEs = NULL;
 t_dDur dDurEs = NULL;
+t_DUR durEsFn = NULL;
 t_dydt dydtEs = NULL;
 
 extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam) {
@@ -807,6 +808,7 @@ void rxUpdateFuns(SEXP trans){
   t_LAG LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
   t_RATE RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
   t_DUR DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
+  durEsFn = DUR;   // expose duration to handle_evid (modeled-dur jump sensitivities)
   t_ME ME  = (t_ME) R_GetCCallable(lib, s_ME);
   t_IndF IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
   t_calc_mtime calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);

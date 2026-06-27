@@ -427,6 +427,33 @@ rxTest({
     expect_gt(max(abs(sf - fd)), 1)   # fd-mode misses the forcing sensitivity
   })
 
+  test_that("modeled-duration infusion (forcing + moving boundary) matches FD", {
+    # dur(central) = exp(tr + eta_r) with a rate=-2 dose: rate = amt/dur depends
+    # on eta_r AND the infusion end tau2 = tau1 + dur(eta_r) moves with eta_r.
+    # The jump needs BOTH the continuous d(rate)/dp forcing and the moving-
+    # boundary state jump rate*d(dur)/dp at the infusion end.  Validated vs FD;
+    # the fd-mode sens ODE (neither contribution) is badly wrong.
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      dur(central) <- exp(tr + eta_r)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tr = 0.7, eta_r = 0)
+    e <- et(amt = 100, cmt = "central", rate = -2) |> et(seq(0.25, 14, 0.25))
+    .central <- function(p, mode) {
+      rxSolve(rxode2(.mod, calcSens = "eta_r", eventSens = mode), e, p)
+    }
+    sj <- .central(pars, "jump")[["rx__sens_central_BY_eta_r__"]]
+    sf <- .central(pars, "fd")[["rx__sens_central_BY_eta_r__"]]
+    h <- 1e-4
+    pp <- pars; pp["eta_r"] <- h
+    pm <- pars; pm["eta_r"] <- -h
+    fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
+    expect_equal(sj, fd, tolerance = 1e-2)
+    expect_gt(max(abs(sf - fd)), 1)   # fd-mode misses forcing + boundary
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
