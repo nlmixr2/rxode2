@@ -520,6 +520,37 @@ rxTest({
     }
   })
 
+  test_that("jump sensitivities are correct per subject (population solve)", {
+    # FOCEi solves many subjects at once (in parallel).  Each subject has its
+    # own etas, so its own lagged dose time and bioavailability; the jump
+    # injection must use per-subject state/dose.  Three subjects with distinct
+    # etas must each match a per-subject central difference.
+    .mod <- "
+      ka <- exp(tka + eta_ka); cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- exp(tlag + eta_lag)
+      f(depot)    <- expit(tf + eta_f)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    th <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.3, tlag = log(1.1))
+    ev <- data.frame(eta_ka = c(0, 0.3, -0.2),
+                     eta_lag = c(0, 0.1, -0.15),
+                     eta_f = c(0, -0.2, 0.25))
+    e <- et(amt = 100, cmt = "depot", id = 1:3) |> et(seq(0.13, 12, 0.41), id = 1:3)
+    mj <- rxode2(.mod, calcSens = c("eta_lag", "eta_f"), eventSens = "jump")
+    mfd <- rxode2(.mod, calcSens = c("eta_lag", "eta_f"), eventSens = "fd")
+    sj <- rxSolve(mj, e, th, iCov = ev)
+    h <- 1e-4
+    for (.sp in c("eta_lag", "eta_f")) {
+      evp <- ev; evp[[.sp]] <- evp[[.sp]] + h
+      evm <- ev; evm[[.sp]] <- evm[[.sp]] - h
+      fd <- (rxSolve(mfd, e, th, iCov = evp)$central -
+             rxSolve(mfd, e, th, iCov = evm)$central) / (2 * h)
+      expect_equal(sj[[paste0("rx__sens_central_BY_", .sp, "__")]], fd,
+                   tolerance = 1e-2, info = paste0("param: ", .sp))
+    }
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
