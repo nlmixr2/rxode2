@@ -201,6 +201,26 @@
 #' symbol).  For state-independent dosing the coupling term drops out and the
 #' result is the plain partial.
 #'
+#' Free symbols of a dosing expression in symengine (SE-mangled) names
+#'
+#' The sensitivity parameters (`map$sensParams`) are the SE-mangled names taken
+#' from the `rx__sens_<state>_BY_<param>__` compartment names, e.g. `ETA_3_`,
+#' `THETA_4_`.  `all.vars(parse(rxFromSE(sym)))` is the wrong comparison set: it
+#' returns the *R-syntax* names, so an indexed parameter `ETA[3]` collapses to
+#' `"ETA"` and never matches `ETA_3_` -- silently dropping the derivative (the
+#' FOCEi inner model uses exactly this `ETA[n]`/`THETA[n]` notation).  Use
+#' symengine's own `free_symbols`, which returns the mangled names directly.
+#'
+#' @param sym symengine expression (or numeric constant).
+#' @return character vector of free-symbol names (empty for constants).
+#' @noRd
+.rxEventSensFreeSyms <- function(sym) {
+  if (is.numeric(sym)) return(character(0))
+  tryCatch(
+    vapply(symengine::free_symbols(sym), as.character, character(1)),
+    error = function(e) character(0))
+}
+
 #' @param model symengine model environment (e.g. from `.rxLoadPrune()`).
 #' @param sym symengine expression for the dosing parameter `g`.
 #' @param param Parameter name `p` to differentiate wrt.
@@ -211,8 +231,7 @@
   ## Free symbols of the dosing expression: a variable that does not appear in
   ## `sym` contributes a zero derivative, so guarding on it both avoids calling
   ## symengine::D() on constants (which errors) and skips trivial terms.
-  .symTxt <- if (is.numeric(sym)) as.character(sym) else rxFromSE(sym)
-  .vars <- tryCatch(all.vars(parse(text = .symTxt)[[1]]), error = function(e) character(0))
+  .vars <- .rxEventSensFreeSyms(sym)
   ## partial wrt p.  Assign each symengine result to a variable *before* handing
   ## it to rxFromSE: rxFromSE captures its argument by NSE, so a nested
   ## symengine::D() call would be mis-captured (see R/dde.R).
@@ -243,8 +262,7 @@
 #' @return symengine expression for `d(g)/dp`, or `NULL` if identically zero.
 #' @noRd
 .rxEventSensDSym <- function(sym, param, states) {
-  .symTxt <- if (is.numeric(sym)) as.character(sym) else rxFromSE(sym)
-  .vars <- tryCatch(all.vars(parse(text = .symTxt)[[1]]), error = function(e) character(0))
+  .vars <- .rxEventSensFreeSyms(sym)
   .tot <- NULL
   if (param %in% .vars) {
     .tot <- symengine::D(sym, symengine::S(param))
@@ -283,8 +301,9 @@
 .rxEventSensD2Expr <- function(sym, p, q, states) {
   .dgp <- .rxEventSensDSym(sym, p, states)
   if (is.null(.dgp)) return("0")
-  .vars <- tryCatch(all.vars(parse(text = rxFromSE(.dgp))[[1]]),
-                    error = function(e) character(0))
+  ## SE-mangled free symbols (see .rxEventSensFreeSyms): indexed params such as
+  ## `ETA[3]` collapse to `"ETA"` under all.vars and would never match `q`.
+  .vars <- .rxEventSensFreeSyms(.dgp)
   .tot <- NULL
   ## direct partial wrt q
   if (q %in% .vars) {
@@ -406,15 +425,30 @@
 #' `cmt0` is the 0-based compartment (matching how `Lag` indexes `_alag[_cmt]`)
 #' and `paramIdx` is the 0-based position in `map$sensParams`.
 #'
-#' Because the derivative expressions (from `.rxEventSensDerivs()`) already
-#' reference states/sens-states/params by the exact local names the function
-#' declares, the right-hand sides are emitted verbatim (the C codegen applies its
-#' usual `doDot()` pass for any dotted names).
+#' The dLag/dF/dRate/dDur body lines are inserted into the generated C
+#' *verbatim* (codegen does not re-run its `doDot()`/indexed-parameter pass over
+#' them).  States, sensitivity states, and plain parameter names are declared in
+#' the preamble under their own names, so they pass through unchanged; the one
+#' rewrite needed is for nlmixr2's indexed `THETA[n]`/`ETA[n]` parameters, which
+#' the preamble declares as the locals `_THETA_n_`/`_ETA_n_` (populated from
+#' `_PP[]`).  `.rxEventSensCExpr()` applies exactly that mapping.
 #'
 #' @param info An `.rxEventSensInfo()` result (mode + map + derivs).
 #' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
 #'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
 #' @noRd
+#'
+#' Rewrite indexed `THETA[n]`/`ETA[n]` references in a dosing-derivative
+#' expression to the codegen local names `_THETA_n_`/`_ETA_n_`.  `THETA` is
+#' rewritten before `ETA` (otherwise the `ETA[` regex would match the `ETA[`
+#' inside `THETA[`); after the `THETA[n]` -> `_THETA_n_` step no bracket remains
+#' for the `ETA` pass to catch.  Plain parameter names are left untouched.
+#' @noRd
+.rxEventSensCExpr <- function(expr) {
+  expr <- gsub("THETA\\[([0-9]+)\\]", "_THETA_\\1_", expr)
+  gsub("ETA\\[([0-9]+)\\]", "_ETA_\\1_", expr)
+}
+
 .rxEventSensCLines <- function(info) {
   if (is.null(info)) return(NULL)
   .params <- info$map$sensParams
@@ -424,7 +458,7 @@
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L                      # 0-based, matches _alag[_cmt]
     .idx <- .cmt0 * .np + .pIdx[tab$param]
-    sprintf("  %s[%d] = %s;", buf, .idx, tab$expr)
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
   }
   ## Second-order (Hessian) buffer: indexed (cmt0*(np*np2) + pIdx*np2 + qIdx),
   ## p over the first-order params, q over the calcSens2 params.
@@ -435,7 +469,7 @@
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * (.np * .np2) + .pIdx[tab$p] * .np2 + .qIdx[tab$q]
-    sprintf("  %s[%d] = %s;", buf, .idx, tab$expr)
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
   }
   list(
     nSensParam = .np,

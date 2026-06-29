@@ -638,6 +638,41 @@ rxTest({
     expect_gt(max(abs(fd)), 1)
   })
 
+  test_that("additive-bolus F jump fires for indexed THETA[n]/ETA[n] params", {
+    # The nlmixr2 FOCEi inner model writes sensitivities wrt the indexed
+    # parameters ETA[n]/THETA[n] (compartments rx__sens_<state>_BY_ETA_n___).
+    # rxFromSE renders these as `ETA[3]`, whose all.vars() collapses to "ETA" and
+    # never matched the SE-mangled sensParam "ETA_3_" -- the dosing-parameter
+    # derivatives were silently dropped and no jump was injected.  Guard both the
+    # symbolic detection (free_symbols) and the codegen rewrite (ETA[n]->_ETA_n_).
+    code <- paste(
+      "param(THETA[1],THETA[2],THETA[3],THETA[4],ETA[1],ETA[3]);",
+      "cmt(depot);",
+      "cmt(central);",
+      "f(depot)=1/(1+exp(-(ETA[3]+THETA[4])));",
+      "d/dt(depot)=-exp(ETA[1]+THETA[1])*depot;",
+      "d/dt(central)=exp(ETA[1]+THETA[1])*depot-exp(THETA[2]-THETA[3])*central;",
+      "d/dt(rx__sens_depot_BY_ETA_3___)=-exp(ETA[1]+THETA[1])*rx__sens_depot_BY_ETA_3___;",
+      "d/dt(rx__sens_central_BY_ETA_3___)=exp(ETA[1]+THETA[1])*rx__sens_depot_BY_ETA_3___-exp(THETA[2]-THETA[3])*rx__sens_central_BY_ETA_3___;",
+      sep = "\n")
+    mj <- rxode2(code, eventSens = "jump")
+    # the F derivative wrt ETA[3] must be detected (non-empty derivs table)
+    .df <- mj$eventSensInfo$derivs$f
+    expect_true(nrow(.df) >= 1L)
+    expect_true("ETA_3_" %in% .df$param)
+
+    p <- c("THETA[1]" = 0.45, "THETA[2]" = 1, "THETA[3]" = 3.45,
+           "THETA[4]" = 0.9, "ETA[1]" = 0, "ETA[3]" = 0.2)
+    # sample immediately after the dose to capture the jump peak before decay
+    e <- et(amt = 100, cmt = "depot") |> et(c(1e-4, seq(0.13, 24, length.out = 30)))
+    s <- rxSolve(mj, p, e, atol = 1e-10, rtol = 1e-10)
+    # the additive-bolus F jump makes the depot sensitivity wrt ETA[3] non-zero;
+    # analytic value at t=0+ is amt*F*(1-F) with F = expit(0.2 + 0.9).
+    .F <- 1 / (1 + exp(-(0.2 + 0.9)))
+    expect_equal(max(s[["rx__sens_depot_BY_ETA_3___"]]), 100 * .F * (1 - .F),
+                 tolerance = 1e-2)
+  })
+
   test_that("eventSens mode is folded into the model cache key", {
     mfd <- rxode2(.modConstF, calcSens = c("eta_ka", "eta_lag"),
                   eventSens = "fd")
