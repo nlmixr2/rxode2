@@ -709,6 +709,13 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       stop("cannot figure out how to handle the model argument", call. = FALSE)
     }
   }
+  .oldEventSensKey <- .rxEventSensCacheKey
+  if (!nzchar(.oldEventSensKey)) {
+    .eventSensMode <- .rxEventSensMode(NULL)
+    assignInMyNamespace(".rxEventSensCacheKey",
+                        if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
+  }
+  on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
     .calcSens <- TRUE
@@ -1926,6 +1933,13 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
 .rxModelVarsCCache <- NULL
 .rxModelVarsLast <- NULL
 .rxModelVarsCharacter <- function(obj) {
+  .oldEventSensKey <- .rxEventSensCacheKey
+  if (!nzchar(.oldEventSensKey)) {
+    .eventSensMode <- .rxEventSensMode(NULL)
+    assignInMyNamespace(".rxEventSensCacheKey",
+                        if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
+  }
+  on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
   if (length(obj) == 1) {
     .parseModel <- tempfile("parseModel4")
     .prefix <- paste0(basename(.parseModel), "_", .Platform$r_arch, "_")
