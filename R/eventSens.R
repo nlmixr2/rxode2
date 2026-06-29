@@ -18,7 +18,7 @@
 #' @return The resolved mode string.
 #' @noRd
 .rxEventSensMode <- function(mode = NULL) {
-  if (is.null(mode)) mode <- getOption("rxode2.eventSens", "fd")
+  if (is.null(mode)) mode <- getOption("rxode2.eventSens", "jump")
   mode <- as.character(mode)[1L]
   if (!mode %in% c("jump", "fd", "both")) {
     stop("'eventSens' must be one of \"jump\", \"fd\", or \"both\"", call. = FALSE)
