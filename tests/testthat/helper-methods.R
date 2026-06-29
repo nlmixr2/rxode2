@@ -1,3 +1,7 @@
+.rxode2 <- function(...) {
+  suppressMessages(rxode2::rxode2(...))
+}
+
 # Helper functions for the test cases of the methods.
 # general ode methods used
 # euler excluded: 1st-order accuracy requires hmin << 0.01 to pass covariate tests
@@ -12,6 +16,9 @@
 .methods0 <- c("dop853+ros4", "dop853+ros43", "dop853+ros6",
                "dop853+gauss6", "dop853+iiic6",
                "dop853+radauiia5", "dop853+geng5", "dop853+sdirk43")
+
+.methods0 <- c("lsode", "bdf", "liblsoda", "dop853", "t54+sdirk43", "cvode")
+.methods1 <- c("ddop853", "ddop5", "dbs", "dros4", "ddop853+dros4", "dcvode")
 # All dense composite methods (ros4 is the only dense-output stiff secondary).
 .methods1 <- c("ddop853+dros4")
-.methods2 <- NULL
+.methods2 <- c("A", "B", "Ao", "Bo", "As", "Bs", "Ad", "Bd", "Al", "Bl")

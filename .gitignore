@@ -51,3 +51,4 @@ docs
 inst/tools/workaround.Rout
 src/StanHeaders.def
 /.vexp/
+/..Rcheck/

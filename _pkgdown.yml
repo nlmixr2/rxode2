@@ -237,6 +237,7 @@ reference:
   - rxState
   - rxStateOde
   - rxSymInvChol
+  - rxOmegaVarCovDeriv
   - swapMatListWithCube
   - rxMemSummary
   - rxMemoryEstimate

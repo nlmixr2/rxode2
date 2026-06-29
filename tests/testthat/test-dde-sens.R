@@ -1,10 +1,10 @@
 rxTest({
+
   # Forward-sensitivity support for delay() models (DDE).  Phase A: cataloging
   # delayed terms and validating that delay durations do not depend on the
   # sensitivity parameters.
-
   test_that(".rxDelayTerms catalogs distinct delayed terms", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(cen) <- ka * depot - cl / v * cen + kin * delay(cen, tau)
       ka <- exp(tka); cl <- exp(tcl); v <- exp(tv); kin <- 0.1; tau <- 1.5
@@ -18,7 +18,7 @@ rxTest({
   })
 
   test_that(".rxDelayTerms returns NULL when there is no delay()", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(x) <- -k * x
       k <- 0.1
     })
@@ -26,7 +26,7 @@ rxTest({
   })
 
   test_that(".rxDelayTerms distinguishes multiple delays / durations", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(a) <- -a + delay(a, 1) + delay(a, 2)
       d/dt(b) <- -b + delay(b, 1)
     })
@@ -37,7 +37,7 @@ rxTest({
   })
 
   test_that(".rxResolveRootVars resolves through model assignments", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(cen) <- -cl / v * cen + delay(cen, tau)
       cl <- exp(tcl); v <- exp(tv); tau <- exp(ltau)
     })
@@ -47,13 +47,13 @@ rxTest({
   })
 
   test_that(".rxDelayValidateTau passes for constant / covariate delays", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(cen) <- -cl / v * cen + delay(cen, tau)
       cl <- exp(tcl); v <- exp(tv); tau <- 1.5
     })
     expect_true(.rxDelayValidateTau(.m, c("tcl", "tv")))
     ## covariate-dependent delay is allowed (covariate is not a sens parameter)
-    .mc <- rxode2({
+    .mc <- .rxode2({
       d/dt(cen) <- -cl / v * cen + delay(cen, tau)
       cl <- exp(tcl); v <- exp(tv); tau <- WT / 70
     })
@@ -61,12 +61,12 @@ rxTest({
   })
 
   test_that("delay() sensitivity ODEs include the delayed variational term", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(cen) <- -k * cen + kin * delay(cen, tau)
       cen(0) <- 10
       k <- 0.2; kin <- 0.5; tau <- 1
     })
-    .ms <- rxode2(.m, calcSens = c("k", "kin"))
+    .ms <- .rxode2(.m, calcSens = c("k", "kin"))
     .n <- rxNorm(.ms)
     ## dS_k/dt has the delayed sensitivity of cen w.r.t. k
     expect_match(.n, "delay(rx__sens_cen_BY_k__,tau)", fixed = TRUE)
@@ -77,11 +77,11 @@ rxTest({
 
   test_that("delay() forward sensitivities match central finite differences", {
     .mk <- function(k, kin) {
-      rxode2(paste0("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\n",
+      .rxode2(paste0("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\n",
                     "cen(0) <- 10\nk <- ", k, "; kin <- ", kin, "; tau <- 1"))
     }
     .ev <- et(seq(0, 8, by = 0.5))
-    .s <- rxSolve(rxode2(.mk(0.2, 0.5), calcSens = c("k", "kin")), .ev,
+    .s <- rxSolve(.rxode2(.mk(0.2, 0.5), calcSens = c("k", "kin")), .ev,
                   atol = 1e-12, rtol = 1e-12)
     .h <- 1e-4
     .fdk <- (rxSolve(.mk(0.2 + .h, 0.5), .ev, atol = 1e-12, rtol = 1e-12)$cen -
@@ -98,12 +98,12 @@ rxTest({
     ## depot is not delayed; cen is.  The depot sens must have no delay term and
     ## the cen sens must include delay(S_cen, tau).
     .mk <- function(ka, ke) {
-      rxode2(paste0("d/dt(depot) <- -ka*depot\n",
+      .rxode2(paste0("d/dt(depot) <- -ka*depot\n",
                     "d/dt(cen) <- ka*depot - ke*cen + 0.3*delay(cen, 1)\n",
                     "depot(0) <- 100\nka <- ", ka, "; ke <- ", ke))
     }
     .ev <- et(seq(0, 10, by = 0.5))
-    .ms <- rxode2(.mk(1.0, 0.3), calcSens = c("ka", "ke"))
+    .ms <- .rxode2(.mk(1.0, 0.3), calcSens = c("ka", "ke"))
     .n <- rxNorm(.ms)
     expect_match(.n, "delay(rx__sens_cen_BY_ka__,1)", fixed = TRUE)
     expect_false(grepl("delay(rx__sens_depot", .n, fixed = TRUE))
@@ -118,11 +118,11 @@ rxTest({
     ## cen(0) = base, so S_base(0) = 1 and the delayed pre-history of the sens
     ## state (for t < tau) must return that initial sensitivity.
     .mk <- function(base) {
-      rxode2(paste0("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\n",
+      .rxode2(paste0("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\n",
                     "cen(0) <- base\nk <- 0.2; kin <- 0.5; tau <- 1; base <- ", base))
     }
     .ev <- et(seq(0, 6, by = 0.5))
-    .ms <- rxode2(.mk(10), calcSens = "base")
+    .ms <- .rxode2(.mk(10), calcSens = "base")
     expect_match(rxNorm(.ms), "rx__sens_cen_BY_base__(0)=1", fixed = TRUE)
     .s <- rxSolve(.ms, .ev, atol = 1e-12, rtol = 1e-12)
     expect_equal(.s[["rx__sens_cen_BY_base__"]][1], 1, tolerance = 1e-8)
@@ -133,13 +133,13 @@ rxTest({
   })
 
   test_that(".rxDelayValidateTau errors for parameter-dependent delays", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(cen) <- -cl / v * cen + delay(cen, tau)
       cl <- exp(tcl); v <- exp(tv); tau <- exp(ltau)
     })
     expect_error(.rxDelayValidateTau(.m, c("tcl", "tv", "ltau")), "not yet supported")
     ## direct dependence (tau is itself the parameter)
-    .m2 <- rxode2({
+    .m2 <- .rxode2({
       d/dt(cen) <- -k * cen + delay(cen, tau)
       k <- 0.1
     })
@@ -149,10 +149,10 @@ rxTest({
   test_that("parameter-dependent delay sensitivities match finite differences", {
     ## tau depends on the sensitivity parameter ltau (tau = exp(ltau)).  The
     ## sensitivity gains the delayed-derivative correction -ydot(t-tau)*dtau/dp.
-    .m <- rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)
+    .m <- .rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)
 cen(0) <- 10
 k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
-    .ms <- rxode2(.m, calcSens = "ltau")
+    .ms <- .rxode2(.m, calcSens = "ltau")
     ## the correction term uses the analytic delayed time-derivative rxDelayD()
     expect_match(rxNorm(.ms), "rxDelayD(cen,exp(ltau))", fixed = TRUE)
     .ev <- et(seq(0, 8, by = 0.25))
@@ -172,7 +172,7 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## derivative ydot(t-1), so w(t) = y(t-1) - y(prehistory) = 10 exp(-(t-1)) - 10
     ## for t > 1 and 0 for t <= 1.  Validates the analytic dense-interpolant
     ## derivative against a closed form (machine precision).
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(y) <- -y
       d/dt(w) <- rxDelayD(y, 1)
       y(0) <- 10
@@ -188,7 +188,7 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## y = 10 exp(-t): yddot = y, ydddot = -y, so for tau = 1.5 and t > 1.5
     ##   d/dt(b2) = rxDelayD2(y,1.5) = y(t-1.5)  -> b2 = 10 - 10 exp(-(t-1.5))
     ##   d/dt(b3) = rxDelayD3(y,1.5) = -y(t-1.5) -> b3 = 10 exp(-(t-1.5)) - 10
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(y) <- -y
       d/dt(b2) <- rxDelayD2(y, 1.5)
       d/dt(b3) <- rxDelayD3(y, 1.5)
@@ -201,25 +201,25 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
   })
 
   test_that("state-dependent delays are rejected for sensitivities", {
-    .m <- rxode2({
+    .m <- .rxode2({
       d/dt(cen) <- -k * cen + delay(cen, tau)
       tau <- 1 + 0.01 * cen
       k <- 0.2
     })
-    expect_error(rxode2(.m, calcSens = "k"), "state-dependent")
+    expect_error(.rxode2(.m, calcSens = "k"), "state-dependent")
   })
 
   ## Second-order (constant-delay) sensitivities -- Phase A.  There is no
   ## production assembly path for 2nd-order sensitivities yet (that arrives with
   ## the 3rd-order work), so build the augmented model directly from the pieces.
   .build2nd <- function(rhs, pars) {
-    .m <- rxode2(paste0(rhs, "\ncen(0) <- 10"))
+    .m <- .rxode2(paste0(rhs, "\ncen(0) <- 10"))
     .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(rxode2:::.rxJacobian(.mod, c("cen", pars)))
     invisible(rxode2:::.rxSens(.mod, pars))
     invisible(rxode2:::.rxSens(.mod, pars, pars))
     .st <- rxode2:::rxStateOde(.mod)
-    rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
+    .rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
                    .mod$..sens, .mod$..sens2), collapse = "\n"))
   }
 
@@ -251,7 +251,7 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## tau depends on ltau, so the DDE breaking points move with the parameter
     ## and the second-order sensitivities pick up jump discontinuities at them
     ## (not yet handled).  This must error cleanly (not a masked "Aborted").
-    .m <- rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0)<-10\ntau<-exp(ltau)")
+    .m <- .rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0)<-10\ntau<-exp(ltau)")
     .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(rxode2:::.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
     invisible(rxode2:::.rxSens(.mod, c("k", "ltau")))
@@ -263,14 +263,14 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
   ## expansion is interim (R, to be superseded by the C++ one in
   ## nlmixr2/rxode2#1092); the delay augmentation is the part being tested.
   .build3rd <- function(rhs, pars) {
-    .m <- rxode2(paste0(rhs, "\ncen(0) <- 10"))
+    .m <- .rxode2(paste0(rhs, "\ncen(0) <- 10"))
     .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(rxode2:::.rxJacobian(.mod, c("cen", pars)))
     invisible(rxode2:::.rxSens(.mod, pars))
     invisible(rxode2:::.rxSens(.mod, pars, pars))
     invisible(rxode2:::.rxSens(.mod, pars, pars, pars))
     .st <- rxode2:::rxStateOde(.mod)
-    rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
+    .rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
                    .mod$..sens, .mod$..sens2, .mod$..sens3), collapse = "\n"))
   }
 
@@ -294,7 +294,7 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
 
   test_that("nonlinear delays are rejected for third-order sensitivities", {
     ## the delayed value multiplies a state -> extra third-order tensor terms
-    .m <- rxode2("d/dt(cen) <- -k*cen*delay(cen, 1)\ncen(0)<-10")
+    .m <- .rxode2("d/dt(cen) <- -k*cen*delay(cen, 1)\ncen(0)<-10")
     .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(rxode2:::.rxJacobian(.mod, c("cen", "k")))
     invisible(rxode2:::.rxSens(.mod, "k"))

@@ -6,42 +6,6 @@
 ## catalog the delayed terms in a model and resolve whether a delay duration
 ## depends on the parameters sensitivities are taken with respect to.
 
-#' Interim third-order sensitivity grid (will be superseded by nlmixr2/rxode2#1092)
-#'
-#' Mirrors `rxExpandSens2_()` one order deeper: the third-order sensitivity ODE
-#' `d/dt(rx__sens_<i>_BY_<a>_BY_<b>_BY_<c>__)` differentiates the second-order RHS
-#' symbol w.r.t. `a` and adds the chain-rule terms over the states.  Returns the
-#' same data.frame shape `.rxSens()` already consumes (ddt/ddtS/ddS2/line/...).
-#' Implemented in R so the constant-delay third-order DDE augmentation can be
-#' built and tested before the general C++ third-order expansion lands.
-#'
-#' @noRd
-.rxExpandSens3 <- function(model, s1, s2, s3) {
-  .states <- rxStateOde(model)
-  .sr <- function(v) gsub("]", "_", gsub("[", "_", v, fixed = TRUE), fixed = TRUE)
-  .rows <- list()
-  for (.cS in .states) for (.a in s1) for (.b in s2) for (.c in s3) {
-    .sp <- paste0("rx__sens_", .cS, "_BY_", .a, "_BY_", .b, "_BY_", .c, "__")
-    .ddtS <- paste0("rx__d_dt_", .sp, "__")
-    .v1 <- paste0("rx__d_dt_rx__sens_", .cS, "_BY_", .b, "_BY_", .c, "____")
-    .line <- paste0('assign("', .ddtS, '", with(model,D(', .v1, ',"', .sr(.a), '")')
-    for (.sj in .states) {
-      .line <- paste0(.line, "+D(", .v1, ',"', .sr(.sj), '")*rx__sens_', .sj, "_BY_", .a, "__",
-                      "+rx__sens_", .sj, "_BY_", .a, "_BY_", .b, "_BY_", .c, "__*rx__df_",
-                      .cS, "_dy_", .sj, "__")
-    }
-    .line <- paste0(.line, "),envir=model)")
-    .ini <- paste0("rx_", .cS, "_ini_0__")
-    .rows[[length(.rows) + 1L]] <- data.frame(
-      ddt = paste0("d/dt(", .sp, ")"), ddtS = .ddtS, ddS2 = .sp, line = .line,
-      s0r = paste0(.sp, "(0)"), s0 = .ini,
-      s0D = paste0('assign("rx_', .sp, '_ini_0__",with(model,D(D(D(', .ini, ',"',
-                   .sr(.a), '"),"', .sr(.b), '"),"', .sr(.c), '")),envir=model)'),
-      stringsAsFactors = FALSE)
-  }
-  do.call(rbind, .rows)
-}
-
 #' Catalog the delay(state, T) terms in a model
 #'
 #' Walks the normalized-model AST and returns one row per distinct delayed term
@@ -663,7 +627,7 @@
 #' delays are rejected upstream (`.rxDelayValidateHigherOrderSE()`).
 #'
 #' @param model symengine environment from the model loader.
-#' @param sensVec the third-order `..sens` vector (`.rxExpandSens3()` output).
+#' @param sensVec the third-order `..sens` vector (`rxExpandSens3_()` output).
 #' @param params character vector of sensitivity parameters.
 #' @return `sensVec` with the delayed terms spliced into each matching equation.
 #' @author Matthew L. Fidler
