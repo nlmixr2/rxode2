@@ -59,7 +59,30 @@ NA_LOGICAL <- NA # nolint
 #'     compiled with verbose debugging information turned on.
 #'
 #' @param calcSens boolean indicating if rxode2 will calculate the
-#'     sensitivities according to the specified ODEs.
+#'     sensitivities according to the specified ODEs.  May also be a
+#'     character vector of the states/parameters whose first-order
+#'     sensitivities (`rx__sens_<state>_BY_<param>__`) should be
+#'     generated.
+#'
+#' @param calcSens2 character vector (or `NULL`) requesting
+#'     second-order sensitivities in addition to the first-order ones
+#'     from `calcSens`.  When supplied, rxode2 also generates the
+#'     `rx__sens_<state>_BY_<p>_BY_<q>__` compartments (the Hessian
+#'     path), where `p` ranges over `calcSens` and `q` over
+#'     `calcSens2`.  Used, for example, for population (`THETA`)
+#'     second-order event sensitivities.  `NULL` (the default) skips the
+#'     second-order generation.
+#'
+#' @param eventSens controls how dosing/event-parameter (alag, F, rate,
+#'     dur, amt) sensitivities are computed when sensitivities are
+#'     generated: `"jump"` injects the analytic event ("jump")
+#'     sensitivities into the sensitivity states at each dosing event,
+#'     `"fd"` keeps the legacy finite-difference behavior (the
+#'     backward-compatible opt-out), and `"both"` computes both for
+#'     cross-checking.  `NULL` (the default) uses
+#'     `getOption("rxode2.eventSens", "fd")`.  When not `"fd"` and
+#'     `calcSens` is supplied, `calcJac` is forced to `TRUE` so the
+#'     Jacobian is available for the jump injection.
 #'
 #' @param calcJac boolean indicating if rxode2 will calculate the
 #'     Jacobain according to the specified ODEs.
@@ -1155,6 +1178,17 @@ rxMd5 <- function(model, # Model File
 #'     embed the md5 into DLL, and then provide for functions like
 #'     [rxModelVars()].
 #'
+#' @param eventSensKey event ("jump") sensitivity mode key folded into
+#'     the parsed md5 cache key so the same model text translated in
+#'     different modes (e.g. `"fd"` vs `"jump"`) compiles to distinct
+#'     DLLs instead of colliding on a cached translation.  Defaults to
+#'     the session global `.rxEventSensCacheKey` (set by [rxode2()]
+#'     before parsing); an empty string leaves the md5 unchanged so the
+#'     legacy `"fd"` path keeps existing caches valid.  It is a formal
+#'     argument (rather than read from the global in the body) because
+#'     `rxTrans.character` is memoised and `memoise` keys on
+#'     default-valued formals, so the cache distinguishes the modes.
+#'
 #' @param ... Ignored parameters.
 #'
 #'
@@ -1313,6 +1347,15 @@ rxDllLoaded <- rxIsLoaded
 #' @param force is a boolean stating if the (re)compile should be
 #'     forced if rxode2 detects that the models are the same as already
 #'     generated.
+#'
+#' @param eventSensCode character vector of length 5 giving the C body
+#'     lines for the event ("jump") sensitivity helper functions
+#'     `dLag`/`dF`/`dRate`/`dDur`/`d2F` (in that order).  These are the
+#'     per-model dosing-parameter total-derivative assignments produced
+#'     by the event-sensitivity code generator and are emitted verbatim
+#'     into the corresponding generated functions.  The default of five
+#'     empty strings produces trivial (no-op) helpers, which is what
+#'     non-sensitivity models and `eventSens = "fd"` models use.
 #'
 #' @param ... Other arguments sent to the [rxTrans()]
 #'     function.

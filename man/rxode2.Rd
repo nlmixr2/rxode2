@@ -116,7 +116,19 @@ compiled with verbose debugging information turned on.}
 Jacobain according to the specified ODEs.}
 
 \item{calcSens}{boolean indicating if rxode2 will calculate the
-sensitivities according to the specified ODEs.}
+sensitivities according to the specified ODEs.  May also be a
+character vector of the states/parameters whose first-order
+sensitivities (\verb{rx__sens_<state>_BY_<param>__}) should be
+generated.}
+
+\item{calcSens2}{character vector (or \code{NULL}) requesting
+second-order sensitivities in addition to the first-order ones
+from \code{calcSens}.  When supplied, rxode2 also generates the
+\verb{rx__sens_<state>_BY_<p>_BY_<q>__} compartments (the Hessian
+path), where \code{p} ranges over \code{calcSens} and \code{q} over
+\code{calcSens2}.  Used, for example, for population (\code{THETA})
+second-order event sensitivities.  \code{NULL} (the default) skips the
+second-order generation.}
 
 \item{collapseModel}{boolean indicating if rxode2 will remove all
 LHS variables when calculating sensitivities.}
@@ -129,6 +141,17 @@ LHS variables when calculating sensitivities.}
 
 \item{indLin}{Calculate inductive linearization matrices and
 compile with inductive linearization support.}
+
+\item{eventSens}{controls how dosing/event-parameter (alag, F, rate,
+dur, amt) sensitivities are computed when sensitivities are
+generated: \code{"jump"} injects the analytic event ("jump")
+sensitivities into the sensitivity states at each dosing event,
+\code{"fd"} keeps the legacy finite-difference behavior (the
+backward-compatible opt-out), and \code{"both"} computes both for
+cross-checking.  \code{NULL} (the default) uses
+\code{getOption("rxode2.eventSens", "fd")}.  When not \code{"fd"} and
+\code{calcSens} is supplied, \code{calcJac} is forced to \code{TRUE} so the
+Jacobian is available for the jump injection.}
 
 \item{verbose}{When \code{TRUE} be verbose with the linear
 compartmental model}
