@@ -25,6 +25,7 @@ rxCompile(
   force = FALSE,
   modName = NULL,
   package = NULL,
+  eventSensCode = c("", "", "", "", ""),
   ...
 )
 
@@ -35,6 +36,7 @@ rxCompile(
   force = FALSE,
   modName = NULL,
   package = NULL,
+  eventSensCode = c("", "", "", "", ""),
   ...
 )
 

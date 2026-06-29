@@ -30,6 +30,7 @@ rxTrans(
   md5 = "",
   modName = NULL,
   modVars = FALSE,
+  eventSensKey = .rxEventSensCacheKey,
   ...
 )
 }

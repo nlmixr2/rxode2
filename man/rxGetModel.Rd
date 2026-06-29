@@ -9,7 +9,8 @@ rxGetModel(
   calcSens = NULL,
   calcJac = NULL,
   collapseModel = NULL,
-  indLin = FALSE
+  indLin = FALSE,
+  calcSens2 = NULL
 )
 }
 \arguments{

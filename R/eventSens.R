@@ -255,7 +255,7 @@
 
 #' First-order total derivative of a dosing expression as a symengine object
 #'
-#' Same quantity as [.rxEventSensDExpr()] but returns the symengine expression
+#' Same quantity as `.rxEventSensDExpr()` but returns the symengine expression
 #' (or `NULL` when zero) instead of `rxFromSE` text, so it can be differentiated
 #' again for the second-order total derivative.
 #'
@@ -534,7 +534,7 @@
 #' blocks are bounds-guarded by the per-solve compartment count, so any smaller
 #' model solved afterwards (no sensitivity compartments, e.g. the FOCEi pred
 #' model) skips the injection safely without resetting these globals.  Pair with
-#' [rxEventSensDeactivate()] after the run.
+#' `rxEventSensDeactivate()` after the run.
 #'
 #' @param model A built jump-sensitivity model (carrying `eventSensInfo`).
 #' @return invisibly `TRUE` when the jumps were activated, `FALSE` otherwise
