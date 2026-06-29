@@ -224,7 +224,7 @@ d/dt(blood)     = a*intestine - b*blood
     prepEvents <- .etPrepareSolveEvents(prep$events, ctl)
     ctl$iCov <- prep$iCov
 
-    got <- as.data.frame(rxode2:::rxSolveSEXP(mod, ctl, NULL, list(),
+    got <- as.data.frame(rxSolveSEXP(mod, ctl, NULL, list(),
                                               c(KA = 1, CL = 7, V = 40),
                                               prepEvents, NULL, FALSE))
     want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V = 40), iCov = iCov,

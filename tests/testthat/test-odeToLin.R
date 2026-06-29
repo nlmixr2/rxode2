@@ -22,7 +22,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt,  1L)
     expect_equal(.info$oral0, 0L)
   })
@@ -38,7 +38,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt,  1L)
     expect_equal(.info$oral0, 1L)
   })
@@ -54,7 +54,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt,  2L)
     expect_equal(.info$oral0, 0L)
   })
@@ -71,7 +71,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt,  2L)
     expect_equal(.info$oral0, 1L)
   })
@@ -89,7 +89,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt,  3L)
     expect_equal(.info$oral0, 0L)
   })
@@ -109,7 +109,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt,  3L)
     expect_equal(.info$oral0, 1L)
   })
@@ -128,7 +128,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
+    expect_null(.odeToLinDetect(.m))
   })
 
   test_that("odeToLin returns NULL for wrong topology (two depots)", {
@@ -143,7 +143,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
+    expect_null(.odeToLinDetect(.m))
   })
 
   test_that("odeToLin returns NULL when output line is nonlinear in central", {
@@ -156,7 +156,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
+    expect_null(.odeToLinDetect(.m))
   })
 
   ## A genuinely nonlinear model whose nonlinearity is hidden behind a
@@ -187,7 +187,7 @@ rxTest({
   }
 
   test_that("odeToLin returns NULL for MM elimination written via the central observable", {
-    expect_null(rxode2:::.odeToLinDetect(.mmObs()))
+    expect_null(.odeToLinDetect(.mmObs()))
   })
 
   test_that("default rxSolve keeps the explicit ODE states for an MM-via-observable model", {
@@ -403,7 +403,7 @@ rxTest({
         cp <- central / v
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_setequal(.info$params, c("ka", "cl", "v"))
 
     .conv <- suppressMessages(odeToLin(.m))
@@ -428,7 +428,7 @@ rxTest({
         cp <- central / v
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_setequal(.info$params, c("cl", "v", "q", "vp"))
 
     .conv <- suppressMessages(odeToLin(.m))
@@ -582,7 +582,7 @@ rxTest({
         Cc_mhd ~ prop(propSdM)
       })
     }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
+    expect_null(.odeToLinDetect(.m))
   })
 
   test_that("odeToLin converts a coupled output-peripheral model and stays numerically correct", {
@@ -605,7 +605,7 @@ rxTest({
         Cc ~ prop(propSd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_true(isTRUE(.info$coupled))
     .conv    <- suppressMessages(odeToLin(.m))
     .convTxt <- paste(vapply(.conv$lstExpr, deparse1, character(1)), collapse = "\n")
@@ -637,7 +637,7 @@ rxTest({
         Cc ~ prop(propSd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_true(isTRUE(.info$coupled))
     .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 2))
     .rDef <- suppressMessages(rxSolve(.m, .ev))
@@ -666,7 +666,7 @@ rxTest({
         Cc ~ prop(propSd)
       })
     }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
+    expect_null(.odeToLinDetect(.m))
   })
 
   test_that("default rxSolve handles a multi-endpoint coupled (fetus) model", {
@@ -687,7 +687,7 @@ rxTest({
         Cfetus ~ prop(propSdF)
       })
     }))
-    expect_null(rxode2:::.odeToLinDetect(.m))
+    expect_null(.odeToLinDetect(.m))
     .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2), cmt = "Cc")
     .rDef <- suppressMessages(rxSolve(.m, .ev))
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
@@ -708,7 +708,7 @@ rxTest({
         cp ~ add(add.sd)
       })
     }))
-    .info <- rxode2:::.odeToLinDetect(.m)
+    .info <- .odeToLinDetect(.m)
     expect_equal(.info$ncmt, 1L)
   })
 

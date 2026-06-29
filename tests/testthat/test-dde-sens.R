@@ -214,11 +214,11 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
   ## the 3rd-order work), so build the augmented model directly from the pieces.
   .build2nd <- function(rhs, pars) {
     .m <- .rxode2(paste0(rhs, "\ncen(0) <- 10"))
-    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
-    invisible(rxode2:::.rxJacobian(.mod, c("cen", pars)))
-    invisible(rxode2:::.rxSens(.mod, pars))
-    invisible(rxode2:::.rxSens(.mod, pars, pars))
-    .st <- rxode2:::rxStateOde(.mod)
+    .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(.rxJacobian(.mod, c("cen", pars)))
+    invisible(.rxSens(.mod, pars))
+    invisible(.rxSens(.mod, pars, pars))
+    .st <- rxStateOde(.mod)
     .rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
                    .mod$..sens, .mod$..sens2), collapse = "\n"))
   }
@@ -252,10 +252,10 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## and the second-order sensitivities pick up jump discontinuities at them
     ## (not yet handled).  This must error cleanly (not a masked "Aborted").
     .m <- .rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0)<-10\ntau<-exp(ltau)")
-    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
-    invisible(rxode2:::.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
-    invisible(rxode2:::.rxSens(.mod, c("k", "ltau")))
-    expect_error(rxode2:::.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
+    .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
+    invisible(.rxSens(.mod, c("k", "ltau")))
+    expect_error(.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
                  "breaking points")
   })
 
@@ -264,12 +264,12 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
   ## nlmixr2/rxode2#1092); the delay augmentation is the part being tested.
   .build3rd <- function(rhs, pars) {
     .m <- .rxode2(paste0(rhs, "\ncen(0) <- 10"))
-    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
-    invisible(rxode2:::.rxJacobian(.mod, c("cen", pars)))
-    invisible(rxode2:::.rxSens(.mod, pars))
-    invisible(rxode2:::.rxSens(.mod, pars, pars))
-    invisible(rxode2:::.rxSens(.mod, pars, pars, pars))
-    .st <- rxode2:::rxStateOde(.mod)
+    .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(.rxJacobian(.mod, c("cen", pars)))
+    invisible(.rxSens(.mod, pars))
+    invisible(.rxSens(.mod, pars, pars))
+    invisible(.rxSens(.mod, pars, pars, pars))
+    .st <- rxStateOde(.mod)
     .rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian,
                    .mod$..sens, .mod$..sens2, .mod$..sens3), collapse = "\n"))
   }
@@ -295,10 +295,10 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
   test_that("nonlinear delays are rejected for third-order sensitivities", {
     ## the delayed value multiplies a state -> extra third-order tensor terms
     .m <- .rxode2("d/dt(cen) <- -k*cen*delay(cen, 1)\ncen(0)<-10")
-    .mod <- rxode2:::.rxLoadPrune(rxModelVars(.m), FALSE)
-    invisible(rxode2:::.rxJacobian(.mod, c("cen", "k")))
-    invisible(rxode2:::.rxSens(.mod, "k"))
-    invisible(rxode2:::.rxSens(.mod, "k", "k"))
-    expect_error(rxode2:::.rxSens(.mod, "k", "k", "k"), "nonlinear")
+    .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
+    invisible(.rxJacobian(.mod, c("cen", "k")))
+    invisible(.rxSens(.mod, "k"))
+    invisible(.rxSens(.mod, "k", "k"))
+    expect_error(.rxSens(.mod, "k", "k", "k"), "nonlinear")
   })
 })

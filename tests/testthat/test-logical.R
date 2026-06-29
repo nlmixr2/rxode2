@@ -41,7 +41,7 @@ rxTest({
         "if (cov == \"alpha\" || \"beta\" != cov || id == \"skip\" || \"skip2\" != ID){x=0}",
         sep = ";"
       ))
-      parsed <- rxode2:::.rxGetParseModel()
+      parsed <- .rxGetParseModel()
 
       expect_true(grepl('_cmp2d(cov, "cov", 1, 1)', parsed, fixed = TRUE))
       expect_true(grepl('_cmp1d("beta", 0, cov, 2)', parsed, fixed = TRUE))

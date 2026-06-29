@@ -68,9 +68,9 @@ rxTest({
     ev$add.sampling(c(0, 1, 2, 12, 13, 24))
     ev <- et(ev, id = 1:5000)
 
-    uiData <- rxode2:::.rxSolveUiEventData(ev)
+    uiData <- .rxSolveUiEventData(ev)
     full <- as.data.frame(ev)
-    grp <- rxode2:::.etGetGroups(rxode2:::.rxEtEnv(ev))
+    grp <- .etGetGroups(.rxEtEnv(ev))
 
     expect_true(is.data.frame(uiData))
     expect_equal(nrow(uiData), nrow(grp[[1]]$data))
