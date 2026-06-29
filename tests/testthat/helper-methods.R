@@ -1,3 +1,7 @@
+.rxode2 <- function(...) {
+  suppressMessages(rxode2::rxode2(...))
+}
+
 # Helper functions for the test cases of the methods.
 # general ode methods used
 # euler excluded: 1st-order accuracy requires hmin << 0.01 to pass covariate tests
