@@ -1,5 +1,9 @@
 # rxode2 5.1.3
 
+- Added jump sensitivities for events (based on
+  https://github.com/dkaschek/EventSensitivities).  More is needed for
+  `ffocei` and analytic Hessians.
+
 - Fixed a compartment-indexing bug in the generated C where, in a
   `linCmt()` model that both has an error model and reads a materialized
   linCmt compartment in an equation (e.g. `Cp <- peripheral1 / vp`), the
@@ -18,7 +22,7 @@
   (using the 8th-order Dormand-Prince interpolant), so they are
   obtained to the full accuracy of the integration.  Models that use
   `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`,
-  which now switches between dop853 and ros4 per segment in dense mode,
+  which switches between dop853 and ros4 per segment in dense mode,
   so a delay model that is non-stiff early and stiff later is solved
   efficiently in a single pass (the dop853 and ros4 dense histories are
   recorded together).  Stiff delay models can also be solved with
