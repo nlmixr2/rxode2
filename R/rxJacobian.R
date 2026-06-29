@@ -90,7 +90,6 @@ rxExpandGrid <- function(x, y, type = 0L) {
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
-#'
 #' @param model symengine model environment
 #' @param vars Variables for single sensitivity
 #' @param vars2 if present, 2 parameter sensitivity
@@ -257,28 +256,28 @@ rxExpandGrid <- function(x, y, type = 0L) {
 .rxLoadPrune <- function(mod, doConst = TRUE, promoteLinSens = TRUE, fullModel = FALSE,
                          addProp = c("combined2", "combined1")) {
   addProp <- match.arg(addProp)
-  if (fullModel) {
-    .malert("pruning branches ({.code if}/{.code else}) of full model...")
-  } else {
-    .malert("pruning branches ({.code if}/{.code else})...")
-  }
+  ## if (fullModel) {
+  ##   .malert("pruning branches ({.code if}/{.code else}) of full model...")
+  ## } else {
+  ##   .malert("pruning branches ({.code if}/{.code else})...")
+  ## }
   .pruned <- rxPrune(mod)
   .captures <- attr(.pruned, "capturedEvid")
   .newmod <- rxGetModel(.pruned)
-  .msuccess("done")
+  ## .msuccess("done")
   ## message("Loading into symengine environment...", appendLF=FALSE)
-  if (fullModel) {
-    .malert("loading full model into {.pkg symengine} environment...")
-  } else {
-    .malert("loading into {.pkg symengine} environment...")
-  }
+  ## if (fullModel) {
+  ##   .malert("loading full model into {.pkg symengine} environment...")
+  ## } else {
+  ##   .malert("loading into {.pkg symengine} environment...")
+  ## }
   .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens)
   if (length(.captures) > 0L) {
     .newmod$..capturedEvid <- .captures
     .newmod$..restoreLines <- .restoreAdaptiveDosing(.captures)
   }
   .rxFixR(.newmod, addProp)
-  .msuccess("done")
+  ## .msuccess("done")
   return(.newmod)
 }
 
