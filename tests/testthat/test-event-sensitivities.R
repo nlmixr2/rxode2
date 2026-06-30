@@ -93,14 +93,14 @@ rxTest({
       expect_equal(.rxEventSensMode(NULL), "jump")
     })
     withr::with_options(list(rxode2.eventSens = NULL), {
-      expect_equal(.rxEventSensMode(NULL), "fd") # shipped default during dev
+      expect_equal(.rxEventSensMode(NULL), "jump")
     })
   })
 
-  test_that("eventSens='fd' (default) is a no-op on rxode2()", {
+  test_that("eventSens='jump' (default) is a no-op on rxode2()", {
     m <- rxode2("d/dt(depot) <- -ka*depot\nka <- 1",
                 calcSens = "ka")
-    expect_equal(m$eventSens, "fd")
+    expect_equal(m$eventSens, "jump")
     expect_null(m$eventSensInfo)
   })
 

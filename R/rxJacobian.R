@@ -72,7 +72,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
     )
   }
   assign("..vars", .pars, envir = model)
-  .malert("calculate jacobian")
+  ## .malert("calculate jacobian")
   rxProgress(dim(.jac)[1])
   on.exit({
     rxProgressAbort()
