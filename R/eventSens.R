@@ -20,8 +20,8 @@
 .rxEventSensMode <- function(mode = NULL) {
   if (is.null(mode)) mode <- getOption("rxode2.eventSens", "jump")
   mode <- as.character(mode)[1L]
-  if (!mode %in% c("jump", "fd", "both")) {
-    stop("'eventSens' must be one of \"jump\", \"fd\", or \"both\"", call. = FALSE)
+  if (!mode %in% c("jump", "fd", "both", "fdAll")) {
+    stop("'eventSens' must be one of \"jump\", \"fd\", \"both\", or \"fdAll\"", call. = FALSE)
   }
   mode
 }
@@ -182,7 +182,7 @@
   .lin <- .rxLinNcmt(.mv)
   if (.lin["numLin"] <= 0L) return(map)
   .odeStates <- setdiff(.mv$normal.state, .rxLinCmt(.mv))
-  if (length(.odeStates) == 0L) return(NULL)
+  if (length(.odeStates) == 0L) return(map)
   .stateCmt <- unname(map$stateCmt[.odeStates])
   ## The jump runtime assumes ODE states are the leading contiguous block
   ## [1..nState]. If not, keep behavior safe by disabling jump for this model.
@@ -210,6 +210,22 @@
     rateCmt = map$rateCmt[map$rateCmt %in% .stateCmt],
     durCmt = map$durCmt[map$durCmt %in% .stateCmt]
   )
+}
+
+#' Resolve effective event-sensitivity mode for linCmt-containing models
+#'
+#' `fdAll` is the explicit full finite-difference fallback. For models that
+#' include linCmt, `fd` resolves to jump/symbolic event handling.
+#'
+#' @param requested Requested mode from `.rxEventSensMode()`.
+#' @param mv Parsed model vars.
+#' @return Effective mode string (`jump`, `fd`, or `both`).
+#' @noRd
+.rxEventSensEffectiveMode <- function(requested, mv) {
+  if (identical(requested, "fdAll")) return("fd")
+  .lin <- .rxLinNcmt(mv)["numLin"] > 0L
+  if (.lin && identical(requested, "fd")) return("jump")
+  requested
 }
 
 #' Decode which compartments carry modeled alag/F/rate/dur

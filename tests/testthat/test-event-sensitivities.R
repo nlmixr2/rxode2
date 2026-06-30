@@ -88,6 +88,7 @@ rxTest({
     expect_equal(.rxEventSensMode("jump"), "jump")
     expect_equal(.rxEventSensMode("both"), "both")
     expect_equal(.rxEventSensMode("fd"), "fd")
+    expect_equal(.rxEventSensMode("fdAll"), "fdAll")
     expect_error(.rxEventSensMode("bogus"), "eventSens")
     withr::with_options(list(rxode2.eventSens = "jump"), {
       expect_equal(.rxEventSensMode(NULL), "jump")
@@ -129,13 +130,44 @@ rxTest({
       mtime(t1) <- mt1
       mtime(t2) <- mt2
     }, eventSens = "jump", linCmtSens = "linCmtA", linCmtSensType = "A")
-    expect_equal(m$eventSens, "fd")
+    expect_equal(m$eventSens, "jump")
     expect_null(m$eventSensInfo)
     e <- eventTable() |>
       add.dosing(dose = 3, nbr.doses = 2, dosing.interval = 8) |>
       add.sampling(0:16)
     s <- rxSolve(m, e, params = c(V = 20, CL = 25, mt1 = 0.5, mt2 = 1.75))
     expect_true(all(c(0.5, 1.75) %in% s$time))
+  })
+
+  test_that("eventSens='fd' resolves to hybrid jump for mixed ODE+linCmt", {
+    m <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(eff) <- exp(tlag + eta_lag)
+      d/dt(eff) <- kin - kout * eff
+    }, calcSens = "eta_lag", eventSens = "fd",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(m$eventSens, "jump")
+    expect_false(is.null(m$eventSensInfo))
+    expect_equal(m$eventSensInfo$map$states, "eff")
+  })
+
+  test_that("eventSens='fdAll' keeps full finite-difference fallback", {
+    m <- rxode2({
+      C2 <- linCmt(CL, V)
+      d/dt(eff) <- kin - kout * eff
+    }, eventSens = "fdAll", linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(m$eventSens, "fd")
+    expect_null(m$eventSensInfo)
+  })
+
+  test_that("eventSens='fd' resolves to symbolic jump for pure linCmt", {
+    m <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(central) <- exp(tlag + eta_lag)
+    }, calcSens = "eta_lag", eventSens = "fd",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(m$eventSens, "jump")
+    expect_false(is.null(m$eventSensInfo))
   })
 
   test_that("mixed ODE+linCmt jump keeps only ODE-scoped jump sensitivities", {

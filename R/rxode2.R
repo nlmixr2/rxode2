@@ -386,13 +386,13 @@ rxode2 <- # nolint
     ## needs the full state Jacobian, which is otherwise generated only on
     ## demand -- force it on.  See ~/src/rxode2-event-sensitivities-plan.md.
     .eventSensMode <- .rxEventSensMode(eventSens)
-    .eventSensActive <- !missing(eventSens) && !identical(.eventSensMode, "fd")
-    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens)
+    .eventSensActiveReq <- !missing(eventSens) && !identical(.eventSensMode, "fd")
+    .eventSensNeedsJac <- .eventSensActiveReq && !is.null(calcSens)
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
     ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
     assignInMyNamespace(".rxEventSensCacheKey",
-                        if (.eventSensActive) .eventSensMode else "")
+                        if (.eventSensActiveReq) .eventSensMode else "")
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
     .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2)
     assignInMyNamespace(".linCmtSens", linCmtSens)
@@ -446,15 +446,30 @@ rxode2 <- # nolint
     .env$debug <- debug
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
+    .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
+    .eventSensActive <- !missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")
     .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    .eventSensPureLin <- .eventSensActive &&
-      .rxLinNcmt(.env$.mv)["numLin"] > 0L &&
-      length(.eventSensOdeStates) == 0L
-    .eventSensEffectiveMode <- if (.eventSensPureLin) "fd" else .eventSensMode
+    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
+      length(.eventSensOdeStates) > 0L
+    if (.eventSensNeedsJac && !isTRUE(calcJac)) {
+      calcJac <- TRUE
+      .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
+                             calcJac = calcJac, collapseModel = collapseModel,
+                             indLin = indLin, calcSens2 = calcSens2)
+      .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
+    }
+    .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
+    if (!identical(.eventSensCacheKey, .rxEventSensCacheKey)) {
+      assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
+      .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
+                             calcJac = calcJac, collapseModel = collapseModel,
+                             indLin = indLin, calcSens2 = calcSens2)
+      .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
+    }
     .env$eventSens <- .eventSensEffectiveMode
     ## Phase-A event-sensitivity metadata (index map + dosing-parameter total
     ## derivatives); NULL for mode "fd" or models without sensitivities.
-    .env$eventSensInfo <- if (.eventSensActive && !.eventSensPureLin) .rxEventSensInfo(.env$.mv, .eventSensMode) else NULL
+    .env$eventSensInfo <- if (.eventSensActive) .rxEventSensInfo(.env$.mv, .eventSensEffectiveMode) else NULL
     .env$collapseModel <- collapseModel
 
     .env$wd <- wd
