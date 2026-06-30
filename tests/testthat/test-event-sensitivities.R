@@ -129,13 +129,27 @@ rxTest({
       mtime(t1) <- mt1
       mtime(t2) <- mt2
     }, eventSens = "jump", linCmtSens = "linCmtA", linCmtSensType = "A")
-    expect_equal(m$eventSens, "jump")
+    expect_equal(m$eventSens, "fd")
     expect_null(m$eventSensInfo)
     e <- eventTable() |>
       add.dosing(dose = 3, nbr.doses = 2, dosing.interval = 8) |>
       add.sampling(0:16)
     s <- rxSolve(m, e, params = c(V = 20, CL = 25, mt1 = 0.5, mt2 = 1.75))
     expect_true(all(c(0.5, 1.75) %in% s$time))
+  })
+
+  test_that("mixed ODE+linCmt jump keeps only ODE-scoped jump sensitivities", {
+    m <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(eff) <- exp(tlag + eta_lag)
+      d/dt(eff) <- kin - kout * eff
+    }, calcSens = "eta_lag", eventSens = "jump",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    .info <- m$eventSensInfo
+    expect_equal(.info$map$states, "eff")
+    expect_equal(.info$map$sensParams, "eta_lag")
+    expect_equal(unique(.info$map$map$state), "eff")
+    expect_equal(.info$map$lagCmt, 1L)
   })
 
   test_that("eventSens='jump' works with ODE+mtime() models", {

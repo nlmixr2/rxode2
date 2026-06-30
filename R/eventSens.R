@@ -167,6 +167,51 @@
   )
 }
 
+#' Restrict jump sensitivities to ODE states for mixed ODE+linCmt models
+#'
+#' For pure linCmt models (no ODE states), event sensitivities are handled by the
+#' finite-difference linCmt path, so jump metadata is disabled (`NULL`).  For
+#' mixed models, keep only ODE-scoped states/parameters in the jump map.
+#'
+#' @param obj Model object accepted by `rxModelVars()`.
+#' @param map `.rxEventSensMap(obj)` result.
+#' @return Filtered map list, or `NULL` when jump should be disabled.
+#' @noRd
+.rxEventSensFilterMap <- function(obj, map) {
+  .mv <- rxModelVars(obj)
+  .lin <- .rxLinNcmt(.mv)
+  if (.lin["numLin"] <= 0L) return(map)
+  .odeStates <- setdiff(.mv$normal.state, .rxLinCmt(.mv))
+  if (length(.odeStates) == 0L) return(NULL)
+  .stateCmt <- unname(map$stateCmt[.odeStates])
+  ## The jump runtime assumes ODE states are the leading contiguous block
+  ## [1..nState]. If not, keep behavior safe by disabling jump for this model.
+  if (!identical(.stateCmt, seq_along(.stateCmt))) return(NULL)
+  .map1 <- map$map[map$map$state %in% .odeStates, , drop = FALSE]
+  if (nrow(.map1) == 0L) return(NULL)
+  .sensParams <- unique(.map1$param)
+  .map2 <- map$map2
+  if (!is.null(.map2) && nrow(.map2) > 0L) {
+    .map2 <- .map2[
+      .map2$state %in% .odeStates & .map2$p %in% .sensParams,
+      , drop = FALSE
+    ]
+    if (nrow(.map2) == 0L) .map2 <- NULL
+  }
+  list(
+    states = .odeStates,
+    nState = length(.odeStates),
+    stateCmt = stats::setNames(seq_along(.odeStates), .odeStates),
+    sensParams = .sensParams,
+    map = .map1,
+    map2 = .map2,
+    lagCmt = map$lagCmt[map$lagCmt %in% .stateCmt],
+    fCmt = map$fCmt[map$fCmt %in% .stateCmt],
+    rateCmt = map$rateCmt[map$rateCmt %in% .stateCmt],
+    durCmt = map$durCmt[map$durCmt %in% .stateCmt]
+  )
+}
+
 #' Decode which compartments carry modeled alag/F/rate/dur
 #'
 #' `mv$stateProp` is a named integer of per-compartment property bit flags.
@@ -580,6 +625,8 @@ rxEventSensDeactivate <- function() {
 .rxEventSensInfo <- function(obj, mode) {
   if (identical(mode, "fd")) return(NULL)
   .map <- .rxEventSensMap(obj)
+  if (is.null(.map)) return(NULL)
+  .map <- .rxEventSensFilterMap(obj, .map)
   if (is.null(.map)) return(NULL)
   list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map))
 }

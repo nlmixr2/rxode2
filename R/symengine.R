@@ -1153,6 +1153,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .lst[[.var]] <- .expr
       assign("..jac0..", .lst, envir = envir)
     } else if (!identical(x[[1]], quote(`~`))) {
+      if (is.call(x[[3]]) && identical(as.character(x[[3]][[1]]), "linCmt")) {
+        assign(.var, symengine::S(.var), envir = envir)
+        .name <- rxFromSE(.var)
+        .rx <- paste0(.name, "=", paste(deparse(x[[3]]), collapse = ""))
+        if (regexpr("^(nlmixr|rx)_", .var) == -1) {
+          assign("..lhs", c(envir$..lhs, .rx), envir = envir)
+        }
+        return(invisible(NULL))
+      }
       .expr <- try(eval(parse(text = .expr)), silent = TRUE)
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if ((.isNum && envir$..doConst) ||
@@ -1969,6 +1978,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     } else {
       .fun <- paste(.ret0[[1]])
       .ret0 <- .ret0[-1]
+      if (.fun == "linCmt") {
+        return(paste0("linCmt(", paste(unlist(.ret0), collapse = ", "), ")"))
+      }
       if (length(.ret0) == 1L) {
         if (any(.fun == c("alag", "lag"))) {
           return(paste0("rx_lag_", .ret0[[1]], "_"))

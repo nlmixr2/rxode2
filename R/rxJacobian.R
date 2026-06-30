@@ -202,8 +202,11 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .mv0 <- rxModelVars(obj)
   .curDvid <- .mv0$dvid
   .state0 <- .mv0$state
+  if (.rxLinNcmt(.mv0)["numLin"] > 0L) {
+    .state0 <- rxStateOde(.mv0)
+  }
   if (length(.state0) > 0) {
-    .state0 <- paste(paste0("cmt(", .mv0$state, ");\n"), collapse = "")
+    .state0 <- paste(paste0("cmt(", .state0, ");\n"), collapse = "")
   } else {
     .state0 <- ""
   }

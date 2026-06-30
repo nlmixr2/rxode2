@@ -417,7 +417,9 @@ rxode2 <- # nolint
           )[match.arg(linCmtSens)],
           NULL
         ), verbose
-      ))
+      ),
+      calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel,
+      indLin = indLin, calcSens2 = calcSens2)
     }
     model <- rxNorm(.env$.mv)
     class(model) <- "rxModelText"
@@ -444,10 +446,15 @@ rxode2 <- # nolint
     .env$debug <- debug
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
-    .env$eventSens <- .eventSensMode
+    .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
+    .eventSensPureLin <- .eventSensActive &&
+      .rxLinNcmt(.env$.mv)["numLin"] > 0L &&
+      length(.eventSensOdeStates) == 0L
+    .eventSensEffectiveMode <- if (.eventSensPureLin) "fd" else .eventSensMode
+    .env$eventSens <- .eventSensEffectiveMode
     ## Phase-A event-sensitivity metadata (index map + dosing-parameter total
     ## derivatives); NULL for mode "fd" or models without sensitivities.
-    .env$eventSensInfo <- if (.eventSensActive) .rxEventSensInfo(.env$.mv, .eventSensMode) else NULL
+    .env$eventSensInfo <- if (.eventSensActive && !.eventSensPureLin) .rxEventSensInfo(.env$.mv, .eventSensMode) else NULL
     .env$collapseModel <- collapseModel
 
     .env$wd <- wd
