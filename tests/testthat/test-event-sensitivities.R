@@ -170,6 +170,28 @@ rxTest({
     expect_false(is.null(m$eventSensInfo))
   })
 
+  test_that("pure linCmt hybrid event path matches the ODE equivalent", {
+    mLin <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(central) <- exp(tlag + eta_lag)
+    }, calcSens = "eta_lag", eventSens = "fd",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    mOde <- rxode2({
+      d/dt(central) <- -CL / V * central
+      alag(central) <- exp(tlag + eta_lag)
+    }, calcSens = "eta_lag", eventSens = "jump")
+
+    e <- eventTable() |>
+      add.dosing(dose = 100, cmt = "central") |>
+      add.sampling(seq(0, 12, 0.5))
+    p <- c(V = 20, CL = 25, tlag = 0, eta_lag = 0)
+
+    sLin <- rxSolve(mLin, e, params = p)
+    sOde <- rxSolve(mOde, e, params = p)
+
+    expect_equal(sLin$central, sOde$central, tolerance = 1e-5)
+  })
+
   test_that("mixed ODE+linCmt jump keeps only ODE-scoped jump sensitivities", {
     m <- rxode2({
       C2 <- linCmt(CL, V)
@@ -182,6 +204,31 @@ rxTest({
     expect_equal(.info$map$sensParams, "eta_lag")
     expect_equal(unique(.info$map$map$state), "eff")
     expect_equal(.info$map$lagCmt, 1L)
+  })
+
+  test_that("mixed ODE+linCmt hybrid event path matches the ODE equivalent", {
+    mLin <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(central) <- exp(tlag + eta_lag)
+      d/dt(eff) <- kin - kout * eff
+    }, calcSens = "eta_lag", eventSens = "fd",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    mOde <- rxode2({
+      d/dt(central) <- -CL / V * central
+      alag(central) <- exp(tlag + eta_lag)
+      d/dt(eff) <- kin - kout * eff
+    }, calcSens = "eta_lag", eventSens = "jump")
+
+    e <- eventTable() |>
+      add.dosing(dose = 100, cmt = "central") |>
+      add.sampling(seq(0, 12, 0.5))
+    p <- c(V = 20, CL = 25, kin = 1, kout = 0.2, tlag = 0, eta_lag = 0)
+
+    sLin <- rxSolve(mLin, e, params = p)
+    sOde <- rxSolve(mOde, e, params = p)
+
+    expect_equal(sLin$central, sOde$central, tolerance = 1e-5)
+    expect_equal(sLin$eff, sOde$eff, tolerance = 1e-5)
   })
 
   test_that("eventSens='jump' works with ODE+mtime() models", {
