@@ -129,121 +129,116 @@ rxSensMatExp <- function(model, calcSens, doConst = FALSE, env = NULL) {
   } else {
     .env <- env
   }
+  # Materialize d/dt(<state>) from matExp k_from_to constants (and any indLin()
+  # forcing); a no-op for d/dt() input, which already carries rx__d_dt_<state>__.
+  .rxInjectMatExpOdes(.env)
   # rxState returns all compartments; for sensitivity we only use non-output states
-  .allStates <- rxState(.env)
-  .states <- setdiff(.allStates, "output")
+  .states <- setdiff(rxState(.env), "output")
 
   if (length(.states) == 0L) {
     stop("No state variables (compartments) found in the model.", call. = FALSE)
   }
 
-  # 2. Read the rate matrix directly from k_from_to variables in the symengine env.
-  #    A[to, from] = k_from_to (off-diagonal rate of transfer from -> to)
-  #    Diagonal A[i,i] = -(k_i_output + sum of k_i_j for j != i)
-  .transfers <- list()   # list of list(from, to, name, expr)
-  .outputs   <- list()   # list of list(from, name, expr)
-
-  for (.p in ls(envir = .env, all.names = TRUE)) {
-    .m <- regexec("^k[_.]([^_.]+)[_.]([^_.]+)$", .p)[[1L]]
-    if (length(.m) == 1L) next
-    .from <- substring(.p, .m[2L], .m[2L] + attr(.m, "match.length")[2L] - 1L)
-    .to   <- substring(.p, .m[3L], .m[3L] + attr(.m, "match.length")[3L] - 1L)
-    if (!(.from %in% .states)) next
-    .expr <- base::get(.p, envir = .env, inherits = FALSE)
-    if (.to == "output") {
-      .outputs[[.from]] <- list(name = .p, expr = .expr)
-    } else if (.to %in% .states) {
-      .transfers[[paste0(.from, "->", .to)]] <- list(from = .from, to = .to, name = .p, expr = .expr)
+  # 2. Build the system Jacobian A[i, j] = d(d/dt X_i)/d X_j directly from the
+  #    materialized derivatives.  For linear models A is constant; for nonlinear
+  #    models (e.g. Michaelis-Menten) the entries are state-dependent expressions.
+  .zero <- symengine::S("0")
+  .isZero <- function(.e) {
+    .z <- rxFromSE(.e)
+    .z == "0" || .z == "0.0" || .z == "-0"
+  }
+  .rhs <- lapply(.states, function(.s) {
+    .v <- paste0("rx__d_dt_", .s, "__")
+    if (exists(.v, envir = .env, inherits = FALSE)) {
+      base::get(.v, envir = .env, inherits = FALSE)
+    } else {
+      .zero
     }
+  })
+  names(.rhs) <- .states
+  .stateSym <- lapply(.states, function(.s) symengine::S(.s))
+  names(.stateSym) <- .states
+  .A <- lapply(.states, function(.i) {
+    .row <- lapply(.states, function(.j) symengine::D(.rhs[[.i]], .stateSym[[.j]]))
+    names(.row) <- .states
+    .row
+  })
+  names(.A) <- .states
+  # elimination from compartment j: -(A[j,j] + sum_{i != j} A[i,j])
+  .elimOf <- function(.j) {
+    .e <- -.A[[.j]][[.j]]
+    for (.i in .states) {
+      if (.i != .j) .e <- .e - .A[[.i]][[.j]]
+    }
+    .e
   }
 
   # 3. Build model code
   .code <- c("matExp()")
-
-  # compartment declarations for original states
   for (.s in .states) {
     .code <- c(.code, paste0("cmt(", .s, ")"))
   }
-  # compartment declarations for sensitivity states
   for (.p in calcSens) {
     for (.s in .states) {
       .code <- c(.code, paste0("cmt(rx__sens_", .s, "_BY_", .p, "__)"))
     }
   }
 
-  # original rate assignments (these define the k_ variables for the matExp solver)
-  for (.key in names(.transfers)) {
-    .t <- .transfers[[.key]]
-    .rateExpr <- .t$expr  # force evaluation before rxFromSE (avoid NSE $ issue)
-    .code <- c(.code, paste0(.t$name, " = ", rxFromSE(.rateExpr)))
-  }
-  for (.s in names(.outputs)) {
-    .o <- .outputs[[.s]]
-    .outExpr <- .o$expr  # force evaluation
-    .code <- c(.code, paste0(.o$name, " = ", rxFromSE(.outExpr)))
+  # 4. Original block: decompose A into k_from_to / k_from_output micro-constants.
+  #    NB: rxFromSE() resolves its argument by name (substitute()), so the
+  #    symengine entry must be bound to a plain local first.
+  for (.j in .states) {
+    for (.i in .states) {
+      if (.i == .j) next
+      .aij <- .A[[.i]][[.j]]
+      if (!.isZero(.aij)) {
+        .code <- c(.code, paste0("k_", .j, "_", .i, " = ", rxFromSE(.aij)))
+      }
+    }
+    .elim <- .elimOf(.j)
+    if (!.isZero(.elim)) {
+      .code <- c(.code, paste0("k_", .j, "_output = ", rxFromSE(.elim)))
+    }
   }
 
-  # forcing functions for original states (e.g. f(), alag(), non-linear forcings)
-  .fvars <- ls(.env)[grepl("^\\.\\.(lhs|forcing)", ls(.env))]
-  # (these are carried in by the existing non-ODE lines below)
-
-  # 4. Sensitivity blocks for each parameter
+  # 5. Sensitivity blocks for each parameter.
   for (.p in calcSens) {
     .pSym <- symengine::S(.p)
-
-    # Diagonal block: sensitivity states share same transfers and outputs as originals
-    for (.key in names(.transfers)) {
-      .t <- .transfers[[.key]]
-      .c1 <- .t$from; .c2 <- .t$to
-      .code <- c(.code, paste0(
-        "k_rx__sens_", .c1, "_BY_", .p, "___rx__sens_", .c2, "_BY_", .p, "__ = ",
-        .t$name
-      ))
+    .S <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
+    # 5a. Diagonal block: sensitivity states obey the same dynamics as the
+    #     originals (reuse the original micro-constants).
+    for (.j in .states) {
+      for (.i in .states) {
+        if (.i == .j) next
+        if (!.isZero(.A[[.i]][[.j]])) {
+          .code <- c(.code, paste0("k_", .S(.j), "_", .S(.i), " = k_", .j, "_", .i))
+        }
+      }
+      if (!.isZero(.elimOf(.j))) {
+        .code <- c(.code, paste0("k_", .S(.j), "_output = k_", .j, "_output"))
+      }
     }
-    for (.s in names(.outputs)) {
-      .code <- c(.code, paste0(
-        "k_rx__sens_", .s, "_BY_", .p, "___output = ",
-        .outputs[[.s]]$name
-      ))
-    }
-
-    # Cross-terms: (dA/dθ) * X  ─ non-depleting forcing into sens states
-    .forcings <- stats::setNames(as.list(rep("0", length(.states))), .states)
-
-    for (.key in names(.transfers)) {
-      .t <- .transfers[[.key]]
-      .tExpr <- .t$expr  # force evaluation
-      .deriv <- symengine::D(.tExpr, .pSym)
-      .dStr <- rxFromSE(.deriv)
-      if (.dStr == "0") next
-      .fFrom <- .forcings[[.t$from]]
-      .fTo   <- .forcings[[.t$to]]
-      .forcings[[.t$from]] <- paste0(.fFrom, "-(", .dStr, ")*", .t$from)
-      .forcings[[.t$to]]   <- paste0(.fTo,   "+(", .dStr, ")*", .t$from)
-    }
-    for (.s in names(.outputs)) {
-      .outExpr <- .outputs[[.s]]$expr  # force evaluation
-      .deriv <- symengine::D(.outExpr, .pSym)
-      .dStr <- rxFromSE(.deriv)
-      if (.dStr == "0") next
-      .fFrom <- .forcings[[.s]]
-      .forcings[[.s]] <- paste0(.fFrom, "-(", .dStr, ")*", .s)
-    }
-
-    for (.s in .states) {
-      .f <- .forcings[[.s]]
-      if (!is.null(.f) && .f != "0") {
-        .code <- c(.code, paste0("indLin(rx__sens_", .s, "_BY_", .p, "__) <- ", .f))
+    # 5b. Cross terms: (dA/dp) * X enter the sensitivity states as non-depleting
+    #     transfers X_j -> S^p_i with rate dA[i,j]/dp (matrix entry set directly,
+    #     X_j is not depleted).
+    for (.j in .states) {
+      for (.i in .states) {
+        .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
+        if (!.isZero(.dAdp)) {
+          .code <- c(.code, paste0("k_", .j, "_", .S(.i), "_nd = ", rxFromSE(.dAdp)))
+        }
       }
     }
   }
 
-  # 5. Preserve non-ODE, non-cmt lines from the original normalized model
+  # 6. Preserve non-ODE output / lhs lines from the original normalized model
+  #    (e.g. cp = central/v); drop structural lines we re-emit above.
   .normModel <- .mv$model["normModel"]
   .lines <- trimws(unlist(strsplit(.normModel, "[\n;]")))
   for (.l in .lines) {
     if (nzchar(.l) && !grepl("^d/dt\\(", .l) && !grepl("^cmt\\(", .l) &&
-        !grepl("^matExp\\(", .l)) {
+        !grepl("^matExp\\(", .l) && !grepl("^indLin\\(", .l) &&
+        !grepl("^k[_.][^=]*<?=", .l)) {
       .code <- c(.code, .l)
     }
   }
