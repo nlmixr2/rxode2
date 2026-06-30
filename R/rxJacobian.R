@@ -42,7 +42,41 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
+.rxInjectMatExpOdes <- function(model) {
+  .mv <- get("..mv", envir = model, inherits = FALSE)
+  if (!is.list(.mv$indLin) || length(.mv$indLin) != 4L) {
+    return(invisible(FALSE))
+  }
+  .states <- rxStateOde(model)
+  if (length(.states) == 0L) {
+    return(invisible(FALSE))
+  }
+  if (exists(paste0("rx__d_dt_", .states[1L], "__"), envir = model, inherits = FALSE)) {
+    return(invisible(FALSE))
+  }
+  .ddt <- setNames(replicate(length(.states), symengine::S("0"), simplify = FALSE), .states)
+  .sym <- function(name) get(name, envir = model, inherits = FALSE)
+  .stateSet <- stats::setNames(seq_along(.states), .states)
+  for (.p in ls(envir = model, all.names = TRUE)) {
+    .m <- regexec("^k[_.]([^_.]+)[_.]([^_.]+)$", .p)[[1L]]
+    if (length(.m) == 1L) next
+    .from <- substring(.p, .m[2L], .m[2L] + attr(.m, "match.length")[2L] - 1L)
+    .to <- substring(.p, .m[3L], .m[3L] + attr(.m, "match.length")[3L] - 1L)
+    if (!(.from %in% .stateSet)) next
+    .rate <- .sym(.p)
+    .ddt[[.from]] <- .ddt[[.from]] - .rate * .sym(.from)
+    if (.to %in% .stateSet) {
+      .ddt[[.to]] <- .ddt[[.to]] + .rate * .sym(.from)
+    }
+  }
+  for (.s in .states) {
+    assign(paste0("rx__d_dt_", .s, "__"), .ddt[[.s]], envir = model)
+  }
+  invisible(TRUE)
+}
+
 .rxJacobian <- function(model, vars = TRUE) {
+  .rxInjectMatExpOdes(model)
   if (rxIs(vars, "logical")) {
     if (vars) {
       .pars <- .rxParams(model, TRUE)

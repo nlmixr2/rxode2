@@ -66,8 +66,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       for (.t in .offTerms) {
         .sumExpr <- .sumExpr + .t
       }
-      .elimExpr <- symengine::expand(-.sumExpr)
-      .elimStr <- rxFromSE(.elimExpr)
+      .elimStr <- as.character(symengine::S(paste0("-(", rxFromSE(.sumExpr), ")")))
       if (.elimStr != "0") {
         .knameOut <- paste0("k_", .cmt1, "_output")
         if (.elimStr == .knameOut || .elimStr == paste0("k.", .cmt1, ".output")) {
@@ -188,8 +187,7 @@ rxSensMatExp <- function(model, calcSens, doConst = FALSE) {
       for (.t in .offTerms) {
         .sumExpr <- .sumExpr + .t
       }
-      .elimExpr <- symengine::expand(-.sumExpr)
-      .elimStr <- rxFromSE(.elimExpr)
+      .elimStr <- as.character(symengine::S(paste0("-(", rxFromSE(.sumExpr), ")")))
       if (.elimStr != "0") {
         .knameOut <- paste0("k_", .cmt1, "_output")
         if (.elimStr == .knameOut || .elimStr == paste0("k.", .cmt1, ".output")) {

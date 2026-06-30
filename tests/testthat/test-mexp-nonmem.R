@@ -246,6 +246,33 @@ rxTest({
     expect_true(is.numeric(res_mexp_mm$rx__sens_central_BY_Km__))
   })
 
+  test_that("matExp symengine env can build jacobians and sensitivities", {
+    mod <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        matExp()
+        k_depot_central = exp(tka + eta.ka)
+        k_central_output = exp(tcl + eta.cl) / exp(tv + eta.v)
+        cp = central / exp(tv + eta.v)
+        cp ~ add(add.sd)
+      })
+    }
+
+    s <- rxS(rxode2(mod), doConst = TRUE, promoteLinSens = TRUE)
+    expect_no_error(.rxJacobian(s, c("ETA_1_", "ETA_2_", "ETA_3_")))
+    expect_no_error(.rxSens(s, c("ETA_1_", "ETA_2_", "ETA_3_")))
+    expect_true(exists("..jacobian", envir = s, inherits = FALSE))
+    expect_true(exists("..sens", envir = s, inherits = FALSE))
+  })
+
   test_that("matrix-exp sensitivities obey reset and multiply event jumps", {
     ode_code <- "
       d/dt(depot) = -ka * depot
