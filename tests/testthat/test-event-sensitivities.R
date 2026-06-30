@@ -123,6 +123,21 @@ rxTest({
     expect_null(m$eventSensInfo)
   })
 
+  test_that("eventSens='jump' works with linCmt()+mtime() models", {
+    m <- rxode2({
+      C2 <- linCmt(CL, V)
+      mtime(t1) <- mt1
+      mtime(t2) <- mt2
+    }, eventSens = "jump", linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(m$eventSens, "jump")
+    expect_null(m$eventSensInfo)
+    e <- eventTable() |>
+      add.dosing(dose = 3, nbr.doses = 2, dosing.interval = 8) |>
+      add.sampling(0:16)
+    s <- rxSolve(m, e, params = c(V = 20, CL = 25, mt1 = 0.5, mt2 = 1.75))
+    expect_true(all(c(0.5, 1.75) %in% s$time))
+  })
+
   test_that(".rxEventSensCLines emits correctly-indexed C assignment lines", {
     m <- rxode2(.modStateF, calcSens = c("eta_ka", "eta_lag"),
                 eventSens = "jump")

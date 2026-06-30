@@ -387,9 +387,7 @@ rxode2 <- # nolint
     ## demand -- force it on.  See ~/src/rxode2-event-sensitivities-plan.md.
     .eventSensMode <- .rxEventSensMode(eventSens)
     .eventSensActive <- !missing(eventSens) && !identical(.eventSensMode, "fd")
-    if (.eventSensActive && !is.null(calcSens)) {
-      calcJac <- TRUE
-    }
+    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens)
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
     ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
@@ -398,7 +396,15 @@ rxode2 <- # nolint
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
     .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2)
     assignInMyNamespace(".linCmtSens", linCmtSens)
-    if (.Call(`_rxode2_isLinCmt`) == 1L) {
+    .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
+    if (.eventSensNeedsJac && !.isLinCmt && !isTRUE(calcJac)) {
+      calcJac <- TRUE
+      .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac,
+                             collapseModel = collapseModel, indLin = indLin,
+                             calcSens2 = calcSens2)
+      .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
+    }
+    if (.isLinCmt) {
       .env$.linCmtM <- rxNorm(.env$.mv)
       .vars <- c(.env$.mv$params, .env$.mv$lhs, .env$.mv$slhs)
       .env$.mv <- rxGetModel(.Call(
