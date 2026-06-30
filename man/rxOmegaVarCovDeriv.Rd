@@ -27,9 +27,9 @@ covariance matrix over the \code{Omega} elements -- a \emph{non-Cholesky} path i
 that differentiates with respect to the variance-covariance entries directly.
 }
 \details{
-This returns \code{Omega^{-1}}, \code{log|Omega|}, and their first (and optionally
+This returns \code{Omega^{-1}}, \verb{log|Omega|}, and their first (and optionally
 second) derivatives with respect to each free lower-triangular
-variance-covariance element \code{omega_{ab}}, using the closed forms
+variance-covariance element \verb{omega_\{ab\}}, using the closed forms
 
 \deqn{\partial \Omega^{-1}/\partial \omega_{ab} = -\Omega^{-1} E_{ab} \Omega^{-1}}
 \deqn{\partial \log|\Omega|/\partial \omega_{ab} = \mathrm{tr}(\Omega^{-1} E_{ab})}

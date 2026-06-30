@@ -75,6 +75,14 @@ rxExpandGrid <- function(x, y, type = 0L) {
   invisible(TRUE)
 }
 
+#'  Internal function for calculating the Jacobian
+#'
+#' @param model symengine environment
+#' @param vars Variables
+#' @return Jacobian information
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
 .rxJacobian <- function(model, vars = TRUE) {
   .rxInjectMatExpOdes(model)
   if (rxIs(vars, "logical")) {
