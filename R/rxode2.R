@@ -386,14 +386,15 @@ rxode2 <- # nolint
     ## needs the full state Jacobian, which is otherwise generated only on
     ## demand -- force it on.  See ~/src/rxode2-event-sensitivities-plan.md.
     .eventSensMode <- .rxEventSensMode(eventSens)
-    if (!identical(.eventSensMode, "fd") && !is.null(calcSens)) {
+    .eventSensActive <- !missing(eventSens) && !identical(.eventSensMode, "fd")
+    if (.eventSensActive && !is.null(calcSens)) {
       calcJac <- TRUE
     }
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
     ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
     assignInMyNamespace(".rxEventSensCacheKey",
-                        if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
+                        if (.eventSensActive) .eventSensMode else "")
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
     .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2)
     assignInMyNamespace(".linCmtSens", linCmtSens)
@@ -440,7 +441,7 @@ rxode2 <- # nolint
     .env$eventSens <- .eventSensMode
     ## Phase-A event-sensitivity metadata (index map + dosing-parameter total
     ## derivatives); NULL for mode "fd" or models without sensitivities.
-    .env$eventSensInfo <- .rxEventSensInfo(.env$.mv, .eventSensMode)
+    .env$eventSensInfo <- if (.eventSensActive) .rxEventSensInfo(.env$.mv, .eventSensMode) else NULL
     .env$collapseModel <- collapseModel
 
     .env$wd <- wd
@@ -710,11 +711,6 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
     }
   }
   .oldEventSensKey <- .rxEventSensCacheKey
-  if (!nzchar(.oldEventSensKey)) {
-    .eventSensMode <- .rxEventSensMode(NULL)
-    assignInMyNamespace(".rxEventSensCacheKey",
-                        if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
-  }
   on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
@@ -1934,11 +1930,6 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
 .rxModelVarsLast <- NULL
 .rxModelVarsCharacter <- function(obj) {
   .oldEventSensKey <- .rxEventSensCacheKey
-  if (!nzchar(.oldEventSensKey)) {
-    .eventSensMode <- .rxEventSensMode(NULL)
-    assignInMyNamespace(".rxEventSensCacheKey",
-                        if (identical(.eventSensMode, "fd")) "" else .eventSensMode)
-  }
   on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
   if (length(obj) == 1) {
     .parseModel <- tempfile("parseModel4")
