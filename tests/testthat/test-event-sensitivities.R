@@ -138,6 +138,27 @@ rxTest({
     expect_true(all(c(0.5, 1.75) %in% s$time))
   })
 
+  test_that("eventSens='jump' works with ODE+mtime() models", {
+    .mod <- "
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      ka <- exp(tka)
+      kel <- exp(tkel)
+      mtime(t1) <- mt1
+      mtime(t2) <- mt2
+    "
+    mj <- rxode2(.mod, calcSens = "tka", eventSens = "jump")
+    mfd <- rxode2(.mod, calcSens = "tka", eventSens = "fd")
+    e <- eventTable() |>
+      add.dosing(dose = 100, cmt = "depot") |>
+      add.sampling(0:12)
+    .p <- c(tka = 0, tkel = log(0.2), mt1 = 0.5, mt2 = 1.75)
+    sj <- rxSolve(mj, e, params = .p)
+    sfd <- rxSolve(mfd, e, params = .p)
+    expect_true(isTRUE(mj$calcJac))
+    expect_equal(sj$central, sfd$central, tolerance = 1e-5)
+  })
+
   test_that(".rxEventSensCLines emits correctly-indexed C assignment lines", {
     m <- rxode2(.modStateF, calcSens = c("eta_ka", "eta_lag"),
                 eventSens = "jump")

@@ -1099,11 +1099,13 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .isNum <- FALSE
   if (isEnv) {
     if (length(x[[2]]) == 2) {
+      if (as.character(x[[2]][[1]]) == "mtime") {
+        .mtimeVar <- .rxToSE(x[[2]][[2]], envir = envir)
+        envir$..mtimeVars <- unique(c(.mtimeVar, envir$..mtimeVars))
+        return(invisible(NULL))
+      }
       if (any(as.character(x[[2]][[1]]) == c("alag", "lag", "F", "f", "rate", "dur"))) {
         envir$..eventVars <- unique(c(.var, envir$..eventVars))
-      }
-      if (as.character(x[[2]][[1]]) == "mtime") {
-        envir$..mtimeVars <- unique(c(.var, envir$..mtimeVars))
       }
     }
   }
@@ -1979,7 +1981,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .ret <- paste0("(", paste(unlist(.ret0), collapse = ","), ")")
       if (.ret == "(0)") {
         return(paste0("rx_", .fun, "_ini_0__"))
-      } else if (any(.fun == c("cmt", "dvid", "matExp", "indLin"))) {
+      } else if (any(.fun == c("cmt", "dvid", "mtime", "matExp", "indLin"))) {
         return("")
       } else if (.fun == "max") {
         .ret <- .rxToSEMax(unlist(.ret0), min=FALSE)
@@ -2084,7 +2086,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
-        if (.fun %in% c("param", "dvid", "cmt", "mtime", "locf", "nocb",
+        if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
                         "midpoint", "linear", "splitBolus", "matExp", "indLin")) return(NULL)
         if (.fun %in% c("printf", "Rprintf", "print")) {
           return(paste(deparse(x), collapse=""))
