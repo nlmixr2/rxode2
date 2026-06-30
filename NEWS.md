@@ -1,8 +1,9 @@
 # rxode2 5.1.3
 
 - Added jump sensitivities for events (based on
-  https://github.com/dkaschek/EventSensitivities).  More is needed for
-  `ffocei` and analytic Hessians.
+  https://github.com/dkaschek/EventSensitivities).  Hybrid jump
+  sensitivities are used for matrix exponential and `linCmt()`
+  models.
 
 - Add `rxOmegaVarCovDeriv()`, a non-Cholesky (variance-covariance) `Omega`
   parameterization path: it returns `Omega^{-1}`, `log|Omega|`, and their first

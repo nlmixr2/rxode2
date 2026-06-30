@@ -16,6 +16,13 @@ static inline int new_de(const char *s, int fromWhere) {
         } else if (fromWhere == fromCMT) {
           tb.didx[tb.id] = -tb.didxn;
           tb.didxn++;
+          /* Only count sensitivity states in matExp models: in regular ODE models
+           * with calcSens=, cmt() is followed by d/dt() for the same state, which
+           * already increments tb.sensi via the fromDDT path.  Counting here too
+           * would double-count and corrupt the normState / sens allocation sizes. */
+          if (tb.isMexp && strncmp(s, "rx__sens_", 9) == 0) {
+            tb.sensi++;
+          }
         }
       } else if (fromWhere == fromDDT && tb.didx[tb.id] < 0) {
         tb.didx[tb.id] = -tb.didx[tb.id];  // flag that the cmt() also has d/dt()
@@ -114,6 +121,10 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
     // if added from cmt() count it as the next compartment
     tb.didx[tb.de.n] = -tb.didxn;
     tb.didxn++;
+    /* Only count in matExp models; see comment in new_de. */
+    if (tb.isMexp && strncmp(v, "rx__sens_", 9) == 0) {
+      tb.sensi++;
+    }
   }
   addLine(&(tb.de),"%s",v);
 }

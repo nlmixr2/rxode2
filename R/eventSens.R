@@ -135,6 +135,14 @@
   .split$sensCmt <- unname(.ord[.split$sens])
   .split$stateCmt <- unname(.ord[.split$state])
   .sensParams <- unique(.split$param)
+  ## Restrict to states that actually have sensitivity compartments: the
+  ## runtime jump formula yp[nState + p*nState + cmt] requires a contiguous
+  ## block of exactly nState states starting at index 0.  Any extra normal
+  ## states (e.g. the "output" terminal in a matExp model) that have no
+  ## sensitivity counterpart must be excluded from the count.
+  .statesWithSens <- unique(.split$state)
+  ## Preserve compartment ordering from .map$stateCmt (ascending).
+  .statesWithSens <- .statesWithSens[order(unname(.ord[.statesWithSens]))]
   .map <- .split[, c("state", "param", "stateCmt", "sensCmt"), drop = FALSE]
   .map <- .map[order(.map$param, .map$stateCmt), , drop = FALSE]
   rownames(.map) <- NULL
@@ -154,9 +162,9 @@
   ## are decoded from `stateProp` bit flags (see .rxEventSensProp).
   .prop <- .rxEventSensProp(.mv)
   list(
-    states = .states,
-    nState = length(.states),
-    stateCmt = stats::setNames(unname(.ord[.states]), .states),
+    states = .statesWithSens,
+    nState = length(.statesWithSens),
+    stateCmt = stats::setNames(unname(.ord[.statesWithSens]), .statesWithSens),
     sensParams = .sensParams,
     map = .map,
     map2 = .map2,

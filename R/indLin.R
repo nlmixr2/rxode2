@@ -148,7 +148,7 @@ rxSensMatExp <- function(model, calcSens, doConst = FALSE) {
   }
   for (.p in calcSens) {
     for (.s in .states) {
-      .code <- c(.code, paste0("cmt(rx_s_", .s, "_", .p, ")"))
+      .code <- c(.code, paste0("cmt(rx__sens_", .s, "_BY_", .p, "__)"))
     }
   }
   
@@ -218,11 +218,11 @@ rxSensMatExp <- function(model, calcSens, doConst = FALSE) {
       .c1 <- .parts[1]
       .c2 <- .parts[2]
       .val <- .origTransfers[[.transKey]]
-      .code <- c(.code, paste0("k_rx_s_", .c1, "_", .p, "_rx_s_", .c2, "_", .p, " = ", .val))
+      .code <- c(.code, paste0("k_rx__sens_", .c1, "_BY_", .p, "___rx__sens_", .c2, "_BY_", .p, "__ = ", .val))
     }
     for (.c1 in names(.origOutputs)) {
       .val <- .origOutputs[[.c1]]
-      .code <- c(.code, paste0("k_rx_s_", .c1, "_", .p, "_output = ", .val))
+      .code <- c(.code, paste0("k_rx__sens_", .c1, "_BY_", .p, "___output = ", .val))
     }
     
     # Cross-terms: diff(A) * y using non-depleting transfers
@@ -234,7 +234,7 @@ rxSensMatExp <- function(model, calcSens, doConst = FALSE) {
         .deriv <- symengine::D(.exprVal, symengine::S(.p))
         .derivStr <- rxFromSE(.deriv)
         if (.derivStr != "0") {
-          .knameNd <- paste0("k_", .cmt1, "_rx_s_", .cmt2, "_", .p, "_nd")
+          .knameNd <- paste0("k_", .cmt1, "_rx__sens_", .cmt2, "_BY_", .p, "___nd")
           .code <- c(.code, paste0(.knameNd, " = ", .derivStr))
         }
       }
@@ -247,7 +247,7 @@ rxSensMatExp <- function(model, calcSens, doConst = FALSE) {
       .derivF <- symengine::D(.exprF, symengine::S(.p))
       .derivFStr <- rxFromSE(.derivF)
       if (.derivFStr != "0") {
-        .code <- c(.code, paste0("indLin(rx_s_", .cmt2, "_", .p, ") <- ", .derivFStr))
+        .code <- c(.code, paste0("indLin(rx__sens_", .cmt2, "_BY_", .p, "__) <- ", .derivFStr))
       }
     }
   }

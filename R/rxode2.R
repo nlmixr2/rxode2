@@ -447,7 +447,13 @@ rxode2 <- # nolint
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
     .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
-    .eventSensActive <- !missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")
+    .indLinSens <- length(.env$.mv$indLin) > 0L &&
+      length(.env$.mv$sens) > 0L
+    if (.indLinSens) {
+      .eventSensEffectiveMode <- "jump"
+    }
+    .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
+      .indLinSens
     .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
     .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
       length(.eventSensOdeStates) > 0L
