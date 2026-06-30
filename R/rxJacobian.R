@@ -46,6 +46,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   if (rxIs(vars, "logical")) {
     if (vars) {
       .pars <- .rxParams(model, TRUE)
+      .pars <- setdiff(.pars, rxLhs(model))
       if (any(.pars == "ETA[1]")) {
         .pars <- .pars[regexpr(rex::rex(start, "ETA[", any_numbers, "]"), .pars) != -1]
       }
