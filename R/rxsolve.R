@@ -2457,7 +2457,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
               .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
               if (length(.parts) == 3) {
                 if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                  .fc <- c(.fc, .line)
+                  if (!(.line %in% .origCode) && !(.line %in% .fc)) {
+                    .fc <- c(.fc, .line)
+                  }
                 }
               }
             }
