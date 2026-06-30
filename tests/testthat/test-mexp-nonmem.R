@@ -310,4 +310,28 @@ rxTest({
     expect_equal(res_mult$rx__sens_central_BY_cl__, res_ode_mult$rx__sens_central_BY_cl__,
                  tolerance = 1e-5)
   })
+
+  test_that("rxS() incorporates indLin() forcing (Michaelis-Menten) without error", {
+    .mm <- paste("matExp()",
+                 "cmt(depot)",
+                 "cmt(central)",
+                 "k_depot_central = exp(THETA[1])",
+                 "indLin(central) <- -exp(THETA[2])*central/(exp(THETA[3])+central)",
+                 "cp = central/exp(THETA[4])",
+                 "rx_pred_~cp",
+                 "rx_r_~1",
+                 sep = "\n")
+    # Regression: rxS() previously threw "attempt to use zero-length variable
+    # name" on the indLin() left-hand side.
+    .s <- rxode2::rxS(.mm, TRUE, promoteLinSens = FALSE)
+    expect_true(is.environment(.s))
+    # The materialized d/dt(central) Jacobian must include the Michaelis-Menten
+    # term (forcing incorporated, not dropped) and a non-zero parameter
+    # sensitivity for Vmax (THETA[2]).
+    .jac <- rxode2::.rxJacobian(.s, c("depot", "central", "THETA_2_"))
+    expect_true(any(grepl("df\\(central\\)/dy\\(central\\)", .jac) &
+                      grepl("exp\\(THETA\\[3\\]\\)", .jac)))
+    expect_true(any(grepl("df\\(central\\)/dy\\(THETA_2_\\)", .jac) &
+                      grepl("central", .jac)))
+  })
 })

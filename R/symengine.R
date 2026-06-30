@@ -1104,6 +1104,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         envir$..mtimeVars <- unique(c(.mtimeVar, envir$..mtimeVars))
         return(invisible(NULL))
       }
+      if (as.character(x[[2]][[1]]) == "indLin") {
+        ## indLin(state) <- forcing : store the forcing as a per-state symengine
+        ## variable (rx__indLinForce_<state>__) so .rxInjectMatExpOdes() can add
+        ## it to the matrix-derived d/dt().  The LHS itself has no symengine
+        ## variable (.rxToSE returns "" for indLin), so it must be handled here
+        ## before the generic assignment below.  A named variable (not a list)
+        ## is used so symengine's masked `[[<-` cannot coerce the container.
+        .indLinState <- as.character(x[[2]][[2]])
+        .force <- eval(parse(text = paste0(
+          "with(envir,", .rxToSE(x[[3]], envir = envir), ")")))
+        assign(paste0("rx__indLinForce_", .indLinState, "__"), .force,
+               envir = envir)
+        return(invisible(NULL))
+      }
       if (any(as.character(x[[2]][[1]]) == c("alag", "lag", "F", "f", "rate", "dur"))) {
         envir$..eventVars <- unique(c(.var, envir$..eventVars))
       }

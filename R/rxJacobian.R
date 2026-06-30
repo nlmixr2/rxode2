@@ -55,17 +55,25 @@ rxExpandGrid <- function(x, y, type = 0L) {
   }
   .ddt <- setNames(replicate(length(.states), symengine::S("0"), simplify = FALSE), .states)
   .sym <- function(name) get(name, envir = model, inherits = FALSE)
-  .stateSet <- stats::setNames(seq_along(.states), .states)
   for (.p in ls(envir = model, all.names = TRUE)) {
     .m <- regexec("^k[_.]([^_.]+)[_.]([^_.]+)$", .p)[[1L]]
     if (length(.m) == 1L) next
     .from <- substring(.p, .m[2L], .m[2L] + attr(.m, "match.length")[2L] - 1L)
     .to <- substring(.p, .m[3L], .m[3L] + attr(.m, "match.length")[3L] - 1L)
-    if (!(.from %in% .stateSet)) next
+    if (!(.from %in% .states)) next  # check names, not integer values
     .rate <- .sym(.p)
     .ddt[[.from]] <- .ddt[[.from]] - .rate * .sym(.from)
-    if (.to %in% .stateSet) {
+    if (.to %in% .states) {
       .ddt[[.to]] <- .ddt[[.to]] + .rate * .sym(.from)
+    }
+  }
+  ## Add any indLin() forcing functions (e.g. Michaelis-Menten elimination)
+  ## captured during the symengine load.  Each is stored as a per-state symengine
+  ## variable rx__indLinForce_<state>__; they add to the matrix-derived d/dt().
+  for (.s in .states) {
+    .forceName <- paste0("rx__indLinForce_", .s, "__")
+    if (exists(.forceName, envir = model, inherits = FALSE)) {
+      .ddt[[.s]] <- .ddt[[.s]] + get(.forceName, envir = model, inherits = FALSE)
     }
   }
   for (.s in .states) {
