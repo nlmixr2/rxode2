@@ -505,7 +505,6 @@
 #' @param info An `.rxEventSensInfo()` result (mode + map + derivs).
 #' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
 #'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
-#' @noRd
 #'
 #' Rewrite indexed `THETA[n]`/`ETA[n]` references in a dosing-derivative
 #' expression to the codegen local names `_THETA_n_`/`_ETA_n_`.  `THETA` is

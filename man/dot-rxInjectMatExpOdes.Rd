@@ -8,8 +8,6 @@
 }
 \arguments{
 \item{model}{symengine environment}
-
-\item{vars}{Variables}
 }
 \value{
 Jacobian information
