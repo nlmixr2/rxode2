@@ -334,4 +334,124 @@ rxTest({
     expect_true(any(grepl("df\\(central\\)/dy\\(THETA_2_\\)", .jac) &
                       grepl("central", .jac)))
   })
+
+  test_that("rxSensMatExp() calcSens2/calcSens3 match the generic ODE path (linear)", {
+    ode_code <- "
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - cl/v * central
+    "
+    et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    pars <- c(ka = 0.5, cl = 0.2, v = 10)
+
+    mexp2 <- rxSensMatExp(ode_code, calcSens = c("ka", "cl"), calcSens2 = c("ka", "cl"))
+    expect_true(any(grepl("cmt\\(rx__sens_central_BY_ka_BY_cl__\\)", mexp2)))
+
+    mod_mexp <- rxode2(mexp2)
+    mod_ode <- rxode2(ode_code, calcSens = c("ka", "cl"), calcSens2 = c("ka", "cl"))
+    res_mexp <- rxSolve(mod_mexp, et, method = "indLin", params = pars)
+    res_ode <- rxSolve(mod_ode, et, params = pars)
+
+    for (cc in c(
+      "rx__sens_central_BY_ka_BY_ka__", "rx__sens_central_BY_ka_BY_cl__",
+      "rx__sens_central_BY_cl_BY_ka__", "rx__sens_central_BY_cl_BY_cl__"
+    )) {
+      expect_equal(res_mexp[[cc]], res_ode[[cc]], tolerance = 1e-4)
+    }
+
+    # Third order: no generic-ODE calcSens3 path exists yet to compare against
+    # (see the event-sensitivities plan), so validate against a finite
+    # difference of the analytic *second*-order sensitivity (the same
+    # cross-check strategy used for the second-order DDE/event-jump work).
+    eps <- 1e-4
+    p1 <- pars; p1["cl"] <- pars["cl"] + eps
+    p2 <- pars; p2["cl"] <- pars["cl"] - eps
+    r1 <- rxSolve(mod_mexp, et, method = "indLin", params = p1)
+    r2 <- rxSolve(mod_mexp, et, method = "indLin", params = p2)
+    fd3 <- (r1$rx__sens_central_BY_ka_BY_ka__ - r2$rx__sens_central_BY_ka_BY_ka__) / (2 * eps)
+
+    mexp3 <- rxSensMatExp(ode_code,
+      calcSens = c("ka", "cl"), calcSens2 = c("ka", "cl"),
+      calcSens3 = c("ka", "cl")
+    )
+    expect_true(any(grepl("cmt\\(rx__sens_central_BY_ka_BY_ka_BY_cl__\\)", mexp3)))
+    mod_mexp3 <- rxode2(mexp3)
+    res_mexp3 <- rxSolve(mod_mexp3, et, method = "indLin", params = pars)
+    expect_equal(fd3, res_mexp3$rx__sens_central_BY_ka_BY_ka_BY_cl__, tolerance = 1e-4)
+  })
+
+  test_that("rxSensMatExp() calcSens2/calcSens3 handle repeated parameters (Hessian diagonal)", {
+    # calcSens2/calcSens3 reusing a calcSens parameter makes several distinct
+    # cross-term families route to the same source compartment (e.g. the
+    # "from S^p_k" and "from S^q_j" terms collapse when p == q); regression
+    # test for the accumulator that sums (rather than duplicates/overwrites)
+    # those contributions -- see .rxIndLinNdAccumulator().
+    ode_code <- "
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - cl/v * central
+    "
+    mexp2 <- rxSensMatExp(ode_code, calcSens = c("ka", "cl"), calcSens2 = c("ka", "cl"))
+    # exactly one definition per (from,to) pair -- no duplicate/conflicting
+    # k_..._nd assignment for the ka-ka diagonal entry
+    .lhs <- sub("\\s*=.*$", "", grep("^k[_.]", mexp2, value = TRUE))
+    expect_equal(sum(duplicated(.lhs)), 0L)
+
+    et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    pars <- c(ka = 0.5, cl = 0.2, v = 10)
+    mod_mexp <- rxode2(mexp2)
+    mod_ode <- rxode2(ode_code, calcSens = c("ka", "cl"), calcSens2 = c("ka", "cl"))
+    res_mexp <- rxSolve(mod_mexp, et, method = "indLin", params = pars)
+    res_ode <- rxSolve(mod_ode, et, params = pars)
+    expect_equal(res_mexp$rx__sens_central_BY_ka_BY_ka__,
+      res_ode$rx__sens_central_BY_ka_BY_ka__,
+      tolerance = 1e-4
+    )
+
+    # fully-degenerate third order (p == q == r)
+    mexp3 <- rxSensMatExp(ode_code,
+      calcSens = c("ka", "cl"), calcSens2 = c("ka", "cl"), calcSens3 = c("ka")
+    )
+    .lhs3 <- sub("\\s*=.*$", "", grep("^k[_.]", mexp3, value = TRUE))
+    expect_equal(sum(duplicated(.lhs3)), 0L)
+    mod_mexp3 <- rxode2(mexp3)
+    res_mexp3 <- rxSolve(mod_mexp3, et, method = "indLin", params = pars)
+    expect_true(is.numeric(res_mexp3$rx__sens_central_BY_ka_BY_ka_BY_ka__))
+  })
+
+  test_that("rxSensMatExp() calcSens2/calcSens3 validation errors", {
+    ode_code <- "
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - cl/v * central
+    "
+    expect_error(rxSensMatExp(ode_code, calcSens = "ka", calcSens2 = "cl"))
+    expect_error(rxSensMatExp(ode_code, calcSens = "ka", calcSens3 = "ka"))
+    expect_error(rxSensMatExp(ode_code, calcSens = "ka", calcSens2 = "ka", calcSens3 = "cl"))
+  })
+
+  test_that("rxSensMatExp() excludes linCmt() states from calcSens2/calcSens3", {
+    mod <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
+      })
+      model({
+        matExp()
+        k_depot_central <- exp(tka)
+        k_central_output <- exp(tcl) / exp(tv)
+        cp <- central / exp(tv)
+        cp ~ add(0.1)
+      })
+    }
+    .code <- rxSensMatExp(rxode2(mod), calcSens = "tka", calcSens2 = "tka")
+    # a plain matExp() model has no linCmt() compartments, so nothing should
+    # be excluded/changed -- this is the regression guard for the exclusion
+    # logic itself (states are computed as setdiff(rxState(.env),
+    # c("output", .rxLinCmt(.mv)))) not silently dropping ordinary states.
+    expect_true(any(grepl("cmt\\(rx__sens_central_BY_tka_BY_tka__\\)", .code)))
+    expect_true(any(grepl("cmt\\(rx__sens_depot_BY_tka_BY_tka__\\)", .code)))
+  })
 })
