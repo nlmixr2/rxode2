@@ -15,6 +15,46 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// rxAdjointSweepC
+NumericVector rxAdjointSweepC(NumericVector tg, NumericMatrix J, NumericMatrix dP, NumericMatrix cover, IntegerVector obsK, int ns, int np);
+static SEXP _rxode2_rxAdjointSweepC_try(SEXP tgSEXP, SEXP JSEXP, SEXP dPSEXP, SEXP coverSEXP, SEXP obsKSEXP, SEXP nsSEXP, SEXP npSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type tg(tgSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type J(JSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type dP(dPSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type cover(coverSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type obsK(obsKSEXP);
+    Rcpp::traits::input_parameter< int >::type ns(nsSEXP);
+    Rcpp::traits::input_parameter< int >::type np(npSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxAdjointSweepC(tg, J, dP, cover, obsK, ns, np));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxAdjointSweepC(SEXP tgSEXP, SEXP JSEXP, SEXP dPSEXP, SEXP coverSEXP, SEXP obsKSEXP, SEXP nsSEXP, SEXP npSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxAdjointSweepC_try(tgSEXP, JSEXP, dPSEXP, coverSEXP, obsKSEXP, nsSEXP, npSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rinvchisq
 NumericVector rinvchisq(const int n, const double& nu, const double& scale);
 RcppExport SEXP _rxode2_rinvchisq(SEXP nSEXP, SEXP nuSEXP, SEXP scaleSEXP) {
@@ -2976,6 +3016,7 @@ RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SE
 static int _rxode2_RcppExport_validate(const char* sig) { 
     static std::set<std::string> signatures;
     if (signatures.empty()) {
+        signatures.insert("NumericVector(*rxAdjointSweepC)(NumericVector,NumericMatrix,NumericMatrix,NumericMatrix,IntegerVector,int,int)");
         signatures.insert("List(*rxExpandGrid_)(RObject&,RObject&,RObject&)");
         signatures.insert("List(*rxExpandSens_)(CharacterVector,CharacterVector)");
         signatures.insert("List(*rxExpandSens2_)(CharacterVector,CharacterVector,CharacterVector)");
@@ -3042,6 +3083,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
 
 // registerCCallable (register entry points for exported C++ functions)
 RcppExport SEXP _rxode2_RcppExport_registerCCallable() { 
+    R_RegisterCCallable("rxode2", "_rxode2_rxAdjointSweepC", (DL_FUNC)_rxode2_rxAdjointSweepC_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandGrid_", (DL_FUNC)_rxode2_rxExpandGrid__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandSens_", (DL_FUNC)_rxode2_rxExpandSens__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandSens2_", (DL_FUNC)_rxode2_rxExpandSens2__try);

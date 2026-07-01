@@ -209,6 +209,7 @@ SEXP _rxode2_rxLock(SEXP);
 SEXP _rxode2_rxUnlock(SEXP);
 SEXP _rxode2_rxAllowUnload(SEXP);
 
+SEXP _rxode2_rxAdjointSweepC(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxExpandGrid_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxExpandSens_(SEXP, SEXP);
 SEXP _rxode2_rxExpandSens2_(SEXP, SEXP, SEXP);
@@ -764,6 +765,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 12},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
+    {"_rxode2_rxAdjointSweepC", (DL_FUNC) &_rxode2_rxAdjointSweepC, 7},
     {"_rxode2_rxExpandGrid_", (DL_FUNC) &_rxode2_rxExpandGrid_, 3},
     {"_rxode2_rxExpandSens_", (DL_FUNC) &_rxode2_rxExpandSens_, 2},
     {"_rxode2_rxExpandSens2_",(DL_FUNC) &_rxode2_rxExpandSens2_, 3},

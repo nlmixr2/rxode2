@@ -361,6 +361,42 @@ rxTest({
     expect_equal(unname(gAdj), unname(gFD), tolerance = 1e-3)
   })
 
+  # ---- C++ eval (build once, evaluate many): matches R eval + FD -------------
+  # The pure-numeric backward sweep runs in C++ (rxAdjointSweepC) for the
+  # continuous case, matching the R eval to solver precision and the FOCEi -2LL
+  # finite difference, with no symbolic work at evaluation time.
+  test_that("C++ adjoint eval matches the R eval and finite differences", {
+    cPred <- "center/v"
+    cCS   <- c("ka", "cl", "v", "add", "prop")
+    cObsT <- c(0.5, 1, 2, 4, 6, 8, 12, 18, 24)
+    cEv   <- rxode2::et(amt = 100, cmt = "depot")
+    B <- rxode2::.rxAdjointGradBuild(mText, cCS, cPred, cEv,
+                                     errModel = list(add = "add", prop = "prop"))
+    tmod <- rxode2::rxode2(paste0(mText, "\ncp=", cPred))
+    cFev <- cEv |> rxode2::et(cObsT)
+    for (cP in list(c(ka = 1.2, cl = 3.5, v = 25, add = 0.3, prop = 0.1),
+                    c(ka = 0.8, cl = 5.0, v = 18, add = 0.5, prop = 0.05))) {
+      truth <- as.data.frame(rxode2::rxSolve(tmod, params = cP, cFev,
+                                             returnType = "data.frame", addDosing = FALSE))
+      cObs <- truth$cp[truth$time %in% cObsT] * 1.15 + 0.1
+      m2ll <- function(p) {
+        d <- as.data.frame(rxode2::rxSolve(tmod, params = p, cFev,
+                                           returnType = "data.frame", addDosing = FALSE))
+        f <- d$cp[d$time %in% cObsT]; v <- p[["add"]]^2 + (p[["prop"]] * f)^2
+        sum((f - cObs)^2 / v + log(v))
+      }
+      gFD <- vapply(cCS, function(p) {
+        h <- abs(cP[[p]]) * 1e-6; pp <- cP; pm <- cP
+        pp[p] <- pp[p] + h; pm[p] <- pm[p] - h
+        (m2ll(pp) - m2ll(pm)) / (2 * h)
+      }, numeric(1))
+      gR <- rxode2::.rxAdjointGradEval(B, cP, cObsT, cObs, denseBy = 0.01)
+      gC <- rxode2::.rxAdjointGradEvalC(B, cP, cObsT, cObs, denseBy = 0.01)
+      expect_equal(unname(gC), unname(gR), tolerance = 1e-5)  # RK4 vs adaptive
+      expect_equal(unname(gC), unname(gFD), tolerance = 2e-3)
+    }
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

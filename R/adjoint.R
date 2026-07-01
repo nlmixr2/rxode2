@@ -281,10 +281,18 @@
     vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1)),
     .fLhs, .fRHSlhs), collapse = "\n"))
 
+  ## forward model that ALSO emits the Jacobian J (df_i/dy_j) and forcing
+  ## (df_i/dtheta_p) entries as outputs, so a single solve feeds the C++ sweep.
+  .cfmod <- rxode2::rxode2(paste(c(.mText, .jacLines,
+    paste0("rx__pred__=", .predC),
+    vapply(.st, function(i) paste0("rx__dhdy_", i, "__=", .dhdy[[i]]), character(1)),
+    vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1))),
+    collapse = "\n"))
+
   list(st = .st, calcSens = calcSens, errModel = errModel, fmod = .fmod,
-       revMod = .revMod, infCmts = .infCmts, infusSym = .infusSym, doses = .doses,
-       evR = .evR, dFexpr = .dFexpr, dLagStr = .dLagStr, lagStr = .lagStr,
-       needF = .needF, events = events)
+       revMod = .revMod, cfmod = .cfmod, infCmts = .infCmts, infusSym = .infusSym,
+       doses = .doses, evR = .evR, dFexpr = .dFexpr, dLagStr = .dLagStr,
+       lagStr = .lagStr, needF = .needF, events = events)
 }
 
 ## numeric evaluation of an rxFromSE expression string at parameter values (no
@@ -458,4 +466,71 @@
   .gErr <- vapply(calcSens, function(p)
     if (p %in% names(.errGrad)) .errGrad[[p]] else 0, numeric(1))
   stats::setNames(.gTraj + .gExpl + .gDose[calcSens] + .gErr, calcSens)
+}
+
+#' Evaluate a prebuilt adjoint objective gradient in C++ (continuous case)
+#'
+#' Fast path for models WITHOUT dosing-parameter duals (no modeled F / alag /
+#' rate / dur, no replace/multiply events).  A single forward solve emits the
+#' Jacobian and forcing along a fine grid; the backward costate + quadrature
+#' sweep and gradient accumulation run in C++ ([rxAdjointSweepC()]) with no
+#' per-segment solver calls and no symbolic work -- the shape and speed the
+#' FOCEi outer loop needs.  Falls back to nothing (errors) if the build carries
+#' dosing duals; use [.rxAdjointGradEval()] for those.
+#'
+#' @inheritParams .rxAdjointGradEval
+#' @return named numeric vector `dG/dtheta` over the build's `calcSens`.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1,
+                                denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  if (length(build$infusSym) > 0L || length(build$dFexpr) > 0L ||
+      length(build$lagStr) > 0L || nrow(build$evR) > 0L) {
+    stop("`.rxAdjointGradEvalC` handles only the continuous case; use `.rxAdjointGradEval`",
+      call. = FALSE)
+  }
+  .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
+  .ns <- length(.st); .np <- length(calcSens)
+  .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes)))
+  .denseT <- .denseT[.denseT >= 0]
+  .fev <- build$events |> rxode2::et(.denseT)
+  .fwd <- as.data.frame(rxode2::rxSolve(build$cfmod, params = params, .fev,
+                                        returnType = "data.frame", atol = atol,
+                                        rtol = rtol, addDosing = FALSE))
+  .fwd <- .fwd[match(.denseT, .fwd$time), ]
+  .nt <- length(.denseT)
+  ## J(k, i*ns+j) = df_i/dy_j ; dP(k, i*np+p) = df_i/dtheta_p
+  .J <- matrix(0.0, .nt, .ns * .ns)
+  for (i in seq_len(.ns)) for (j in seq_len(.ns))
+    .J[, (i - 1) * .ns + j] <- .fwd[[paste0("rx__df_", .st[i], "_dy_", .st[j], "__")]]
+  .dP <- matrix(0.0, .nt, .ns * .np)
+  for (i in seq_len(.ns)) for (p in seq_len(.np))
+    .dP[, (i - 1) * .np + p] <- .fwd[[paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__")]]
+  ## per-observation objective sensitivity dG/df_i and error-param gradients
+  .oidx <- match(obsTimes, .denseT)
+  .fobs <- .fwd[["rx__pred__"]][.oidx]
+  .resid <- .fobs - obs
+  .errGrad <- stats::setNames(numeric(0), character(0))
+  if (is.null(errModel)) {
+    .dLdf <- rep_len(weight, length(obsTimes)) * .resid
+  } else {
+    .addV  <- if (!is.null(errModel$add))  params[[errModel$add]]  else 0
+    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .var <- .addV^2 + (.propV * .fobs)^2
+    .dLdvar <- 1 / .var - .resid^2 / .var^2
+    .dLdf <- 2 * .resid / .var + .dLdvar * (2 * .propV^2 * .fobs)
+    if (!is.null(errModel$add))  .errGrad[errModel$add]  <- sum(.dLdvar * 2 * .addV)
+    if (!is.null(errModel$prop)) .errGrad[errModel$prop] <- sum(.dLdvar * 2 * .propV * .fobs^2)
+  }
+  ## observation covectors: cover(o, i) = dG/df_o * df_o/dy_i
+  .cover <- matrix(0.0, length(obsTimes), .ns)
+  for (i in seq_len(.ns))
+    .cover[, i] <- .dLdf * .fwd[[paste0("rx__dhdy_", .st[i], "__")]][.oidx]
+  .gTraj <- rxAdjointSweepC(.denseT, .J, .dP, .cover, as.integer(.oidx - 1L), .ns, .np)
+  .gExpl <- vapply(calcSens, function(p)
+    sum(.dLdf * .fwd[[paste0("rx__dhdp_", p, "__")]][.oidx]), numeric(1))
+  .gErr <- vapply(calcSens, function(p)
+    if (p %in% names(.errGrad)) .errGrad[[p]] else 0, numeric(1))
+  stats::setNames(.gTraj + .gExpl + .gErr, calcSens)
 }
