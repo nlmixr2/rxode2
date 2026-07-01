@@ -494,6 +494,75 @@ rxTest({
     expect_gt(max(abs(sfd[.post] - fd[.post])), 0.1)
   })
 
+  test_that("raw event-table replace with a modeled lag gets a dtau row (Phase B, B2)", {
+    # Regression (Phase B "B2" gap, plan Section 4): a raw et(..., evid=5)
+    # replace record on a compartment with a MODELED alag was found to
+    # completely omit the dx1/dtau row (paper Table 1) -- the modeled lag
+    # correctly shifts the event's OWN time (confirmed: alag applies to
+    # evid=5/6 records exactly like normal doses), but the sensitivity was
+    # silently exactly zero even though the true value is clearly nonzero
+    # (confirmed via a hand-derived closed form and FD, ~20.2 here). The
+    # in-model replace()/multiply() plugins were previously found NOT to need
+    # this row (captured-dosing re-emits correctly) -- this gap is specific
+    # to raw event-table evid=5/6 records.
+    .mod <- "
+      cl <- exp(tcl); v <- exp(tv)
+      alag(central) <- exp(tlag + eta_lag)
+      d/dt(central) <- -cl / v * central
+    "
+    pars <- c(tcl = 1, tv = 2, tlag = log(1.1), eta_lag = 0)
+    e <- et(time = 5, amt = 50, cmt = "central", evid = 5) |> et(seq(0, 10, 0.05))
+    mj <- rxode2(.mod, calcSens = "eta_lag", eventSens = "jump")
+    mfd <- rxode2(.mod, calcSens = "eta_lag", eventSens = "fd")
+    sj <- rxSolve(mj, e, pars)
+    h <- 1e-4
+    pp <- pars; pp["eta_lag"] <- pars["eta_lag"] + h
+    pm <- pars; pm["eta_lag"] <- pars["eta_lag"] - h
+    # tight atol/rtol on the FD reference solves: the default LSODA tolerance
+    # is loose enough, relative to h, that its own step-to-step numerical
+    # noise dominates a naive central difference here (~1% spurious offset
+    # observed with default tolerances; confirmed to vanish under atol/rtol
+    # 1e-12 -- same class of pitfall as too-small an h, not a real signal).
+    fd <- (rxSolve(mfd, e, pp, atol = 1e-12, rtol = 1e-12)$central -
+             rxSolve(mfd, e, pm, atol = 1e-12, rtol = 1e-12)$central) / (2 * h)
+    # skip the sample landing exactly on the lagged event time (t=6.1): a
+    # central FD straddling a true discontinuity is a known artifact, not a
+    # correctness signal (documented in the plan's infusion-jump validation
+    # note; the same subtlety applies here).
+    .post <- sj$time >= 6.15 & sj$time < 10
+    expect_equal(sj[["rx__sens_central_BY_eta_lag__"]][.post], fd[.post], tolerance = 1e-3)
+    expect_gt(max(abs(sj[["rx__sens_central_BY_eta_lag__"]])), 15)
+  })
+
+  test_that("raw event-table multiply with a modeled lag gets a dtau row (Phase B, B2)", {
+    # Same gap as above, for evid=6 (multiply): checked on a compartment OTHER
+    # than the multiplied one (depot's multiply shifts central's future
+    # absorption input), since a single-compartment homogeneous-linear decay
+    # makes the paper's dx1/dtau row (J_cc*x1 - f_c) identically (and
+    # correctly) zero -- not a useful regression target for THIS row.
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- exp(tlag + eta_lag)
+      depot(0) <- 100
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.3, tcl = 1, tv = 2, tlag = log(1.1), eta_lag = 0)
+    e <- et(time = 5, amt = 0.6, cmt = "depot", evid = 6) |> et(seq(0, 15, 0.1))
+    mj <- rxode2(.mod, calcSens = "eta_lag", eventSens = "jump")
+    mfd <- rxode2(.mod, calcSens = "eta_lag", eventSens = "fd")
+    sj <- rxSolve(mj, e, pars)
+    h <- 1e-3
+    pp <- pars; pp["eta_lag"] <- pars["eta_lag"] + h
+    pm <- pars; pm["eta_lag"] <- pars["eta_lag"] - h
+    sp <- rxSolve(mfd, e, pp, atol = 1e-11, rtol = 1e-11)
+    sm <- rxSolve(mfd, e, pm, atol = 1e-11, rtol = 1e-11)
+    fd <- (sp$central - sm$central) / (2 * h)
+    .post <- sj$time >= 6.15 & sj$time < 15
+    expect_equal(sj[["rx__sens_central_BY_eta_lag__"]][.post], fd[.post], tolerance = 1e-3)
+    expect_gt(max(abs(sj[["rx__sens_central_BY_eta_lag__"]])), 0.01)
+  })
+
   test_that("constant-rate infusion needs no jump (sens ODE alone is correct)", {
     # An infusion rate that does not depend on any parameter (and a fixed start
     # time) enters dydt as a parameter-independent forcing, so the symbolic

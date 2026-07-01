@@ -485,6 +485,64 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
 
+// Event ("jump") sensitivities: physical Jacobian column J[.,cmt] and
+// f_cmt = dydt(pre-event state)[cmt], needed by the dtau (event-time) jump
+// rows in the paper's replace/additive/multiplicative tables.  Source
+// depends on model type (see _rxEsUseCalcJac, set from mv$indLin):
+//   - matExp()/indLin() models: dydt() is a no-op stub (matrix-exponential
+//     primal solve, not RHS evaluation), so both come from calc_jac -- the
+//     column directly, and f_cmt from the identity dX/dt = A*X (exact for
+//     the reconstructed matExp system) via row `cmt` of the Jacobian dotted
+//     with the current state.
+//   - ordinary ODE models: calc_jac is normally an empty stub (only
+//     populated by explicit user-written df/dy lines) but dydt is fully
+//     functional, so the column comes from a central difference of dydt and
+//     f_cmt from the average of the two perturbed evaluations already
+//     computed for it (accurate to O(eps^2), avoids a third dydt call).
+// `_esJcol` (size >= ns) and `*_esFc` are left untouched if neither source
+// is available (caller must pre-zero/guard on the relevant function pointer).
+static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
+                              int neq, double *_esJcol, double *_esFc) {
+  int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+  if (_rxEsUseCalcJac) {
+    double *_esPD = (double*) calloc((size_t)ns * ns, sizeof(double));
+    if (_esPD != NULL) {
+      calc_jac(_esNj, xout, yp, _esPD, (unsigned int) ns);
+      double _f = 0.0;
+      for (int _k = 0; _k < ns; _k++) {
+        _esJcol[_k] = _esPD[_k * ns + cmt];
+        _f += _esPD[cmt * ns + _k] * yp[_k];
+      }
+      *_esFc = _f;
+      free(_esPD);
+    }
+  } else if (dydtEs != NULL) {
+    double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
+    double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
+    if (_esF0 != NULL && _esF1 != NULL) {
+      double _esXc = yp[cmt];
+      double _esAx = _esXc < 0 ? -_esXc : _esXc;
+      double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
+      yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
+      yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
+      yp[cmt] = _esXc; // restore pre-event state
+      double _esInv = 1.0 / (2.0 * _esEps);
+      for (int _k = 0; _k < ns; _k++) {
+        _esJcol[_k] = (_esF1[_k] - _esF0[_k]) * _esInv;
+      }
+      *_esFc = 0.5 * (_esF0[cmt] + _esF1[cmt]);
+    }
+    if (_esF0 != NULL) free(_esF0);
+    if (_esF1 != NULL) free(_esF1);
+  }
+}
+
+// Is a physical Jacobian column source available for this model (see
+// _esJacColF())?  Mirrors the guard the additive-bolus dtau row already used.
+static inline int _esHaveJacCol(void) {
+  return _rxEsUseCalcJac ? (calc_jac != NULL) : (dydtEs != NULL);
+}
+
 static inline int handle_evid(int evid, int neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -811,12 +869,44 @@ static inline int handle_evid(int evid, int neq,
       // The replaced state is set to a value that (for a constant replacement)
       // does not depend on the parameters, so its sensitivity wrt every
       // parameter is reset to 0.  Done BEFORE the physical replace so the
-      // pre-event state is still available (dtau/dvalue rows are a later
-      // increment).  Sens compartment for (state k, param p) = nState + p*nState + k.
+      // pre-event state is still available.  Sens compartment for (state k,
+      // param p) = nState + p*nState + k.
       if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
         int _ns = _rxEsNState;
-        for (int _p = 0; _p < _rxEsNParam; _p++) {
+        int _np = _rxEsNParam;
+        for (int _p = 0; _p < _np; _p++) {
           yp[_ns + _p * _ns + cmt] = 0.0;
+        }
+        // dtau row (event time), only if the lag is modeled on this
+        // compartment (raw event-table replace/multiply records, not the
+        // in-model replace()/multiply() plugins, which route param-dependent
+        // values through a different, already-correct captured-dosing path
+        // -- see the plan's Phase B "B2" note): dxk/dtau = J[k,c]*(x1-xi),
+        // with an extra -f_c term for k==c (paper Table 1).  x1 = pre-event
+        // state (BEFORE the physical replace just below), xi = replacement
+        // value.
+        if (dLagEs != NULL && _esHaveJacCol()) {
+          double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
+          if (_esDLagB != NULL && _esJcol != NULL) {
+            dLagEs(id, xout, yp, _esDLagB);
+            double _esFc = 0.0;
+            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+            double _esX1 = yp[cmt];
+            double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+            for (int _p = 0; _p < _np; _p++) {
+              double _esDLagP = _esDLagB[cmt * _np + _p];
+              if (_esDLagP != 0.0) {
+                for (int _esK = 0; _esK < _ns; _esK++) {
+                  double _esTerm = _esJcol[_esK] * (_esX1 - _esXi);
+                  if (_esK == cmt) _esTerm -= _esFc;
+                  yp[_ns + _p * _ns + _esK] += _esTerm * _esDLagP;
+                }
+              }
+            }
+          }
+          if (_esDLagB != NULL) free(_esDLagB);
+          if (_esJcol != NULL) free(_esJcol);
         }
       }
       yp[cmt] = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
@@ -828,11 +918,37 @@ static inline int handle_evid(int evid, int neq,
         // Event ("jump") sensitivities -- multiplicative (plan Section 0,
         // Table 3).  The state is scaled by alpha, so each of its parameter
         // sensitivities is scaled by the same alpha.  Done BEFORE the physical
-        // multiply (the dtau/dalpha rows are a later increment).
+        // multiply so the pre-event state/sens are still available.
         if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
           int _ns = _rxEsNState;
-          for (int _p = 0; _p < _rxEsNParam; _p++) {
+          int _np = _rxEsNParam;
+          double _esX1 = yp[cmt]; // pre-event state, before the *= alpha below
+          for (int _p = 0; _p < _np; _p++) {
             yp[_ns + _p * _ns + cmt] *= _esAlpha;
+          }
+          // dtau row (event time), only if the lag is modeled (same B2 scope
+          // note as EVIDF_REPLACE above): dxk/dtau = (1-alpha)*J[k,c]*x1,
+          // with an extra -(1-alpha)*f_c term for k==c (paper Table 3).
+          if (dLagEs != NULL && _esHaveJacCol()) {
+            double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
+            if (_esDLagB != NULL && _esJcol != NULL) {
+              dLagEs(id, xout, yp, _esDLagB);
+              double _esFc = 0.0;
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+              double _esOneMAlpha = 1.0 - _esAlpha;
+              for (int _p = 0; _p < _np; _p++) {
+                double _esDLagP = _esDLagB[cmt * _np + _p];
+                if (_esDLagP != 0.0) {
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    double _esTerm = _esOneMAlpha * (_esJcol[_esK] * _esX1 - (_esK == cmt ? _esFc : 0.0));
+                    yp[_ns + _p * _ns + _esK] += _esTerm * _esDLagP;
+                  }
+                }
+              }
+            }
+            if (_esDLagB != NULL) free(_esDLagB);
+            if (_esJcol != NULL) free(_esJcol);
           }
         }
         yp[cmt] *= _esAlpha;     //dosing before obs
@@ -897,39 +1013,13 @@ static inline int handle_evid(int evid, int neq,
           // to match how those lines are emitted). Ordinary ODE models keep
           // the central-difference-of-dydt approach (calc_jac is normally an
           // empty stub for them -- only populated by user-written df/dy).
-          if (dLagEs != NULL && (_rxEsUseCalcJac ? calc_jac != NULL : dydtEs != NULL)) {
+          if (dLagEs != NULL && _esHaveJacCol()) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
             double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
             if (_esDLagB != NULL && _esJcol != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
-              if (_rxEsUseCalcJac) {
-                double *_esPD = (double*) calloc((size_t)_ns * _ns, sizeof(double));
-                if (_esPD != NULL) {
-                  calc_jac(_esNj, xout, yp, _esPD, (unsigned int) _ns);
-                  for (int _esK = 0; _esK < _ns; _esK++) {
-                    _esJcol[_esK] = _esPD[_esK * _ns + cmt];
-                  }
-                  free(_esPD);
-                }
-              } else {
-                double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
-                double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
-                if (_esF0 != NULL && _esF1 != NULL) {
-                  double _esXc = yp[cmt];
-                  double _esAx = _esXc < 0 ? -_esXc : _esXc;
-                  double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
-                  yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
-                  yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
-                  yp[cmt] = _esXc; // restore pre-event state
-                  double _esInv = 1.0 / (2.0 * _esEps);
-                  for (int _esK = 0; _esK < _ns; _esK++) {
-                    _esJcol[_esK] = (_esF1[_esK] - _esF0[_esK]) * _esInv;
-                  }
-                }
-                if (_esF0 != NULL) free(_esF0);
-                if (_esF1 != NULL) free(_esF1);
-              }
+              double _esFc; // unused here (additive-bolus dtau row has no f_c term)
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
