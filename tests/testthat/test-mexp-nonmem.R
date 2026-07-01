@@ -371,6 +371,53 @@ rxTest({
     )
   })
 
+  test_that("2nd-order (Hessian) jumps fire correctly for matExp compartments", {
+    # Confirms the currently-implemented 2nd-order jump pieces (additive-bolus
+    # F, replace, multiply -- see the event-sensitivities plan Phase F; the
+    # dtau/infusion 2nd-order rows are not implemented for ANY model type
+    # yet, so they are not exercised here) work identically for matExp's
+    # standard-layout 2nd-order compartments as for the equivalent ODE model,
+    # during an actual eventSens="jump" solve with parameter-dependent
+    # dosing (not just plain ODE-sensitivity math with constant doses, which
+    # is all the calcSens2/calcSens3 addition itself validated).
+    ode_code_f <- "
+      alag(depot) <- exp(tlag)
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars_f <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5), tf = qlogis(0.7))
+    et_f <- et(amt = 100, cmt = "depot") |> et(seq(0, 10, by = 0.5))
+    mexp_f <- rxode2(rxSensMatExp(ode_code_f, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf")))
+    ode_f <- rxode2(ode_code_f, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf"), eventSens = "jump")
+    res_mexp_f <- rxSolve(mexp_f, et_f, params = pars_f, method = "indLin")
+    res_ode_f <- rxSolve(ode_f, et_f, params = pars_f)
+    expect_equal(res_mexp_f$rx__sens_central_BY_tf_BY_tf__,
+      res_ode_f$rx__sens_central_BY_tf_BY_tf__,
+      tolerance = 1e-4
+    )
+
+    ode_code_rm <- "
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars_rm <- c(ka = 0.5, cl = 0.2, v = 10)
+    mexp_rm <- rxode2(rxSensMatExp(ode_code_rm, calcSens = "ka", calcSens2 = "ka"))
+    ode_rm <- rxode2(ode_code_rm, calcSens = "ka", calcSens2 = "ka", eventSens = "jump")
+    for (.evid in c(5, 6)) {
+      .amt <- if (.evid == 5) 50 else 0.5
+      e <- et(amt = 100, cmt = "depot") |>
+        et(time = 5, amt = .amt, cmt = "central", evid = .evid) |>
+        et(seq(0.5, 12, 1))
+      res_mexp <- rxSolve(mexp_rm, e, params = pars_rm, method = "indLin")
+      res_ode <- rxSolve(ode_rm, e, params = pars_rm)
+      expect_equal(res_mexp$rx__sens_central_BY_ka_BY_ka__,
+        res_ode$rx__sens_central_BY_ka_BY_ka__,
+        tolerance = 1e-4, info = paste0("evid: ", .evid)
+      )
+    }
+  })
+
   test_that("rxS() incorporates indLin() forcing (Michaelis-Menten) without error", {
     .mm <- paste("matExp()",
                  "cmt(depot)",
