@@ -630,6 +630,33 @@ rxTest({
     expect_equal(sj, fd, tolerance = 1e-3)  # and both match the finite difference
   })
 
+  test_that("modeled-rate infusion with NO eventSens/calcSens requested does not crash", {
+    # Regression for a real C stack overflow: `_esInfusionDydtPre()`
+    # (inst/include/rxode2parseHandleEvid.h) used to call `dydtEs()` (an
+    # alias for the model's OWN compiled dydt()) UNCONDITIONALLY at every
+    # MODEL_RATE_ON/MODEL_DUR_ON event, before any `_rxEsActive` check.
+    # Since `handle_evid()` is itself invoked FROM WITHIN `dydt()` for
+    # modeled-rate/duration events, this created unbounded re-entrant
+    # recursion into `dydt()` on EVERY solve of a model with modeled
+    # rate()/dur() -- entirely independent of whether eventSens/calcSens
+    # was ever requested (found via `git bisect`, culprit commit
+    # ce61e9a99, then reproduced standalone on a completely unrelated,
+    # pre-existing test file with no calcSens= anywhere). This model
+    # deliberately requests NEITHER calcSens NOR eventSens, so
+    # `_rxEsActive` is 0 for the whole solve -- the crash fired
+    # regardless.
+    .mod <- "
+      ka <- 0.5; cl <- 0.2; v <- 10
+      rate(central) <- 20
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    m <- rxode2(.mod)
+    e <- et(amt = 100, cmt = "central", rate = -1) |> et(seq(0.5, 12, 1))
+    expect_no_error(rxSolve(m, e))
+    expect_no_error(rxSolve(m, e, method = "lsode"))
+  })
+
   test_that("in-model evid_() dosing plugins match finite differences (jump)", {
     # bolus(), replace(), multiply(), reset() and constant-rate infuse()/
     # infuseDur() pushed from inside the model must all yield jump-mode

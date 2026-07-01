@@ -712,6 +712,27 @@ static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
 // stub), the pre-jump 1st-order sensitivity BLOCK itself (same "constant
 // Jacobian" trick as the additive-bolus dtau row's own matExp fix).
 static inline double *_esInfusionDydtPre(int id, double xout, double *yp, int neq) {
+  // SAFETY GUARD (found by git-bisecting a real C stack overflow crash,
+  // 2026-07-01): every call site invokes this UNCONDITIONALLY, before any
+  // `_rxEsActive` check, so it ran even for models with eventSens entirely
+  // inactive. For an ODE model this meant calling `dydtEs()` (an alias for
+  // the model's own compiled `dydt()`) -- but `handle_evid()` is itself
+  // invoked FROM WITHIN `dydt()` for modeled-rate/duration events, so this
+  // created unbounded re-entrant recursion into `dydt()` whenever a
+  // MODEL_RATE_ON/MODEL_DUR_ON event fired on ANY model with modeled
+  // rate()/dur(), active eventSens or not -- confirmed via `git bisect` to
+  // this function's introducing commit, reproduced as a genuine "C stack
+  // overflow" on a plain (non-eventSens) model using the classic `lsode`
+  // solver (recursion depth is solver/step-count dependent, explaining why
+  // it only manifested for specific method+dataset combinations). The
+  // `_rxEsUseCalcJac` branch had a parallel latent bug: it `memcpy`s
+  // `_ns*_np` doubles out of `yp` using POSSIBLY-STALE `_rxEsNState`/
+  // `_rxEsNParam` dims left over from an earlier, unrelated active solve,
+  // which could read past `yp`'s actual (`neq`-sized) allocation for the
+  // CURRENT model. Gating on `_rxEsActive` here fixes both: no eventSens
+  // means no jump-sensitivity information is needed, so there is nothing
+  // for this function's caller to consume regardless.
+  if (!_rxEsActive) return NULL;
   if (_rxEsUseCalcJac) {
     int _ns = _rxEsNState, _np = _rxEsNParam;
     if (_np <= 0 || _ns <= 0) return NULL;
