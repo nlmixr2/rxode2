@@ -16,6 +16,7 @@ rxode2(
   calcJac = NULL,
   calcSens = NULL,
   calcSens2 = NULL,
+  calcSens3 = NULL,
   collapseModel = FALSE,
   package = NULL,
   ...,
@@ -37,6 +38,7 @@ RxODE(
   calcJac = NULL,
   calcSens = NULL,
   calcSens2 = NULL,
+  calcSens3 = NULL,
   collapseModel = FALSE,
   package = NULL,
   ...,
@@ -58,6 +60,7 @@ rxode(
   calcJac = NULL,
   calcSens = NULL,
   calcSens2 = NULL,
+  calcSens3 = NULL,
   collapseModel = FALSE,
   package = NULL,
   ...,
@@ -129,6 +132,19 @@ path), where \code{p} ranges over \code{calcSens} and \code{q} over
 \code{calcSens2}.  Used, for example, for population (\code{THETA})
 second-order event sensitivities.  \code{NULL} (the default) skips the
 second-order generation.}
+
+\item{calcSens3}{character vector (or \code{NULL}) requesting third-order
+sensitivities in addition to the first- and second-order ones.
+Requires \code{calcSens2} to also be supplied (every \code{calcSens3}
+parameter needs its own already-built second-order sensitivity
+compartment, from the pairing of \code{calcSens2} with \code{calcSens3}, to
+reference -- so \code{calcSens3} should be a subset of \code{calcSens2},
+which itself should be a subset of \code{calcSens}, mirroring how
+\code{calcSens2} is used everywhere else in rxode2 today).  When
+supplied, generates the \verb{rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__}
+compartments, where \code{p} ranges over \code{calcSens}, \code{q} over
+\code{calcSens2}, and \code{r} over \code{calcSens3}, via \code{rxExpandSens3_()}.
+\code{NULL} (the default) skips the third-order generation.}
 
 \item{collapseModel}{boolean indicating if rxode2 will remove all
 LHS variables when calculating sensitivities.}

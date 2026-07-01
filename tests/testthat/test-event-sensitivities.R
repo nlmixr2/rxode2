@@ -910,6 +910,39 @@ rxTest({
     expect_equal(s2, fd, tolerance = 1e-2)
   })
 
+  test_that("calcSens3 generates correct third-order sensitivity ODEs (Phase H0)", {
+    # rxode2(..., calcSens2=, calcSens3=) emits the 3rd-order sensitivity
+    # compartments rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__ via
+    # rxExpandSens3_() (PR #1092), exposed at the rxode2() build level for
+    # the first time here (previously only reachable through the DDE-
+    # specific delay() sensitivity path). No jump-sensitivity content is
+    # involved -- this is pure continuous-ODE 3rd-order sensitivity, so it
+    # is validated standalone against a nested finite difference of the
+    # analytic 2nd-order sensitivity (the plan's H0 acceptance criterion),
+    # with calcSens2 == calcSens3 == calcSens (the common "full Hessian/
+    # third-order" case, matching how calcSens2 is used everywhere else).
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2)
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.5, 12, 1))
+    m2 <- rxode2(.mod, calcSens = "tka", calcSens2 = "tka")
+    m3 <- rxode2(.mod, calcSens = "tka", calcSens2 = "tka", calcSens3 = "tka")
+    expect_true("rx__sens_central_BY_tka_BY_tka_BY_tka__" %in% rxModelVars(m3)$state)
+    s3 <- rxSolve(m3, e, pars)[["rx__sens_central_BY_tka_BY_tka_BY_tka__"]]
+    h <- 1e-4
+    .s2 <- function(p) rxSolve(m2, e, p)[["rx__sens_central_BY_tka_BY_tka__"]]
+    pp <- pars; pp["tka"] <- pars["tka"] + h
+    pm <- pars; pm["tka"] <- pars["tka"] - h
+    fd <- (.s2(pp) - .s2(pm)) / (2 * h)
+    expect_equal(s3, fd, tolerance = 1e-3)
+
+    # calcSens3 requires calcSens2
+    expect_error(rxode2(.mod, calcSens = "tka", calcSens3 = "tka"))
+  })
+
   test_that("second-order additive-bolus F jump matches finite differences", {
     # F = expit(tf + eta_f) feeds the dose only (ka/cl/v independent of eta_f),
     # so the second-order sensitivity S^{ff} of the dosed compartment is *entirely*

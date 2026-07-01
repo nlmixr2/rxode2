@@ -73,6 +73,19 @@ NA_LOGICAL <- NA # nolint
 #'     second-order event sensitivities.  `NULL` (the default) skips the
 #'     second-order generation.
 #'
+#' @param calcSens3 character vector (or `NULL`) requesting third-order
+#'     sensitivities in addition to the first- and second-order ones.
+#'     Requires `calcSens2` to also be supplied (every `calcSens3`
+#'     parameter needs its own already-built second-order sensitivity
+#'     compartment, from the pairing of `calcSens2` with `calcSens3`, to
+#'     reference -- so `calcSens3` should be a subset of `calcSens2`,
+#'     which itself should be a subset of `calcSens`, mirroring how
+#'     `calcSens2` is used everywhere else in rxode2 today).  When
+#'     supplied, generates the `rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__`
+#'     compartments, where `p` ranges over `calcSens`, `q` over
+#'     `calcSens2`, and `r` over `calcSens3`, via `rxExpandSens3_()`.
+#'     `NULL` (the default) skips the third-order generation.
+#'
 #' @param eventSens controls how dosing/event-parameter (alag, F, rate,
 #'     dur, amt) sensitivities are computed when sensitivities are
 #'     generated: `"jump"` injects the analytic event ("jump")
@@ -293,6 +306,7 @@ rxode2 <- # nolint
            wd = getwd(),
            filename = NULL, extraC = NULL, debug = FALSE, calcJac = NULL, calcSens = NULL,
            calcSens2 = NULL,
+           calcSens3 = NULL,
            collapseModel = FALSE, package = NULL, ...,
            linCmtSens = c("linCmtA", "linCmtB"),
            indLin = FALSE,
@@ -394,14 +408,14 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxEventSensCacheKey",
                         if (.eventSensActiveReq) .eventSensMode else "")
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
-    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2)
+    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
     assignInMyNamespace(".linCmtSens", linCmtSens)
     .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     if (.eventSensNeedsJac && !.isLinCmt && !isTRUE(calcJac)) {
       calcJac <- TRUE
       .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac,
                              collapseModel = collapseModel, indLin = indLin,
-                             calcSens2 = calcSens2)
+                             calcSens2 = calcSens2, calcSens3 = calcSens3)
       .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     }
     if (.isLinCmt) {
@@ -419,7 +433,7 @@ rxode2 <- # nolint
         ), verbose
       ),
       calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel,
-      indLin = indLin, calcSens2 = calcSens2)
+      indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
     }
     model <- rxNorm(.env$.mv)
     class(model) <- "rxModelText"
@@ -461,7 +475,7 @@ rxode2 <- # nolint
       calcJac <- TRUE
       .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
                              calcJac = calcJac, collapseModel = collapseModel,
-                             indLin = indLin, calcSens2 = calcSens2)
+                             indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
       .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
     }
     .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
@@ -469,7 +483,7 @@ rxode2 <- # nolint
       assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
       .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
                              calcJac = calcJac, collapseModel = collapseModel,
-                             indLin = indLin, calcSens2 = calcSens2)
+                             indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
       .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
     }
     .env$eventSens <- .eventSensEffectiveMode
@@ -710,7 +724,7 @@ rxode <- rxode2
 #' @export
 #' @keywords internal
 rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE,
-                       calcSens2 = NULL) {
+                       calcSens2 = NULL, calcSens3 = NULL) {
   if (is(substitute(model), "call")) {
     model <- model
   }
@@ -783,6 +797,19 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .rxSens(.s, calcSens, calcSens2)
         .sens2 <- .s$..sens2
       }
+      ## Third-order sensitivities (Phase H0): the 3rd-order ODEs reference
+      ## the 2nd-order sens compartments (the pair calcSens2/calcSens3), so
+      ## they are only generated when calcSens2 is *also* present; requires
+      ## rxExpandSens3_ (PR #1092), which .rxSens() already dispatches to
+      ## when given all three variable sets.
+      .sens3 <- NULL
+      if (!is.null(calcSens3)) {
+        if (is.null(calcSens2)) {
+          stop("'calcSens3' requires 'calcSens2' to be supplied", call. = FALSE)
+        }
+        .rxSens(.s, calcSens, calcSens2, calcSens3)
+        .sens3 <- .s$..sens3
+      }
       .tmp1 <- .s$..jacobian
       if (!calcJac) .tmp1 <- ""
       .tmp2 <- .s$..lhs
@@ -794,6 +821,7 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .tmp1,
         .s$..sens,
         .sens2,
+        .sens3,
         .tmp2,
         .s$..stateInfo["statef"],
         .s$..stateInfo["dvid"],
