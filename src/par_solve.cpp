@@ -571,6 +571,133 @@ t_calc_jac calc_jac = NULL;
 
 t_calc_lhs calc_lhs = NULL;
 
+// Event ("jump") sensitivities: model-generated total-derivative functions for
+// the modeled alag / F fractions (resolved by name from the model lib, like
+// calc_jac/Lag/F -- model-internal ABI, never crosses a package boundary).
+t_dLag dLag = NULL;
+t_dF dF = NULL;
+
+// Event ("jump") sensitivity runtime dims for the current model (one model
+// solves at a time, so module globals are sufficient -- same pattern as me_code
+// / _es_*Code).  Set from R before a solve via _rxode2_setEventSensDims().
+// _rxEsActive: 1 when jump injection is on; _rxEsNState/_rxEsNParam: the physical
+// state count and first-order sensitivity-parameter count (sens compartment for
+// state k / param p is nState + p*nState + k).
+int _rxEsActive = 0;
+int _rxEsNState = 0;
+int _rxEsNParam = 0;
+int _rxEsNParam2 = 0;
+// Third-order (Phase H1) calcSens3 parameter count.  Set via its own setter
+// (`_rxode2_setEventSensNParam3`) rather than widening `_rxEsNParam`
+// dims -- same rationale as `_rxEsUseCalcJac`'s dedicated setter (added
+// after the original dims setter shipped; a new arg would break the
+// existing 4-arg call sites).
+int _rxEsNParam3 = 0;
+// When 1, handle_evid's dtau/lag jump row sources its Jacobian column from
+// `calc_jac` instead of a central difference of `dydt` -- needed for
+// matExp()/indLin() models, whose compiled `dydt()` is a no-op stub (the
+// primal system is solved by matrix-exponential propagation, not RHS
+// evaluation), which otherwise makes that row silently always zero. Set
+// alongside the dims from R (`.rxSetEventSensDims()`/`rxEventSensLoadModel()`)
+// based on the model's `mv$indLin`.
+int _rxEsUseCalcJac = 0;
+// Aliases exposed to handle_evid (extern in rxode2.h).  Distinct names from the
+// local `dydt`/`dLag` globals so the widely-used `dydt` identifier is not shadowed
+// in the many TUs that include handle_evid.  Point at the model functions in
+// rxUpdateFuns().
+t_dLag dLagEs = NULL;
+t_dRate dRateEs = NULL;
+t_dDur dDurEs = NULL;
+t_dF d2FEs = NULL;
+t_dLag d2LagEs = NULL;
+t_dRate d2RateEs = NULL;
+t_dDur d2DurEs = NULL;
+t_dF d3FEs = NULL;
+// Phase H1's dtau/lag row: d(F)/dq (q in calcSens2's index space) and the
+// total derivative of the physical Jacobian column d(J[k][c])/dq.
+t_dF dFQEs = NULL;
+t_dLag dLagJacEs = NULL;
+// Safety guard for the dtau/lag row's 2nd-order piece: nonzero at (cmt,q)
+// means q ALSO drives this alag, the case not yet handled (see
+// `.rxEventSensDerivs()`'s "lagQ" table).
+t_dLag dLagQEs = NULL;
+// Modeled-DUR continuous-forcing 2nd-order piece: d(dur)/dq (q in calcSens2's
+// index space), avoiding a calcSens2-position -> calcSens-position
+// cross-index map (see `.rxEventSensDerivs()`'s "durQ" table).
+t_dDur dDurQEs = NULL;
+t_DUR durEsFn = NULL;
+t_dydt dydtEs = NULL;
+
+extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2) {
+  _rxEsActive = INTEGER(active)[0];
+  _rxEsNState = INTEGER(nState)[0];
+  _rxEsNParam = INTEGER(nParam)[0];
+  _rxEsNParam2 = INTEGER(nParam2)[0];
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac) {
+  _rxEsUseCalcJac = INTEGER(useCalcJac)[0];
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_setEventSensNParam3(SEXP nParam3) {
+  _rxEsNParam3 = INTEGER(nParam3)[0];
+  return R_NilValue;
+}
+
+// C-callable (R_RegisterCCallable) for downstream packages (e.g. nlmixr2est's
+// FOCEi) that solve a sensitivity model directly through ind_solve() without
+// going through R's rxSolve()/.rxSetEventSensDims().  Points rxode2's event
+// ("jump") sensitivity globals -- the dosing-derivative function pointers and
+// the runtime dims -- at the supplied model (its `trans` vector) and activates
+// the jumps.  The handle_evid jump blocks are additionally guarded by a
+// compartment-count bound (<= neq), so leaving this active while solving a
+// smaller model (no sensitivity compartments, e.g. the FOCEi pred model) is
+// safe: those solves skip the injection automatically.
+extern "C" void rxode2EventSensLoad(SEXP trans, int active, int nState, int nParam, int nParam2) {
+  const char *lib = CHAR(STRING_ELT(trans, 0));
+  const char *prefix = CHAR(STRING_ELT(trans, 2));
+  const char *s_dydt = CHAR(STRING_ELT(trans, 3));
+  const char *s_DUR = CHAR(STRING_ELT(trans, 17));
+  char nm[300];
+  dydtEs = (t_dydt) R_GetCCallable(lib, s_dydt);
+  durEsFn = (t_DUR) R_GetCCallable(lib, s_DUR);
+  snprintf(nm, 300, "%sdLag", prefix);  dLagEs  = (t_dLag)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdF", prefix);    dF      = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdRate", prefix); dRateEs = (t_dRate) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdDur", prefix);  dDurEs  = (t_dDur)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2F", prefix);   d2FEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2Lag", prefix); d2LagEs = (t_dLag)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2Rate", prefix);d2RateEs= (t_dRate) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2Dur", prefix); d2DurEs = (t_dDur)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd3F", prefix);   d3FEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdFQ", prefix);   dFQEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdLagJac", prefix); dLagJacEs = (t_dLag) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdLagQ", prefix); dLagQEs = (t_dLag) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdDurQ", prefix); dDurQEs = (t_dDur) R_GetCCallable(lib, nm);
+  _rxEsActive = active;
+  _rxEsNState = nState;
+  _rxEsNParam = nParam;
+  _rxEsNParam2 = nParam2;
+}
+
+// Toggle only the active flag (cheap; for bracketing or for turning the jumps
+// off after a run).  Pointers/dims are preserved.
+extern "C" void rxode2EventSensSetActive(int active) {
+  _rxEsActive = active;
+}
+
+// R .Call wrapper around rxode2EventSensLoad, so a downstream package's R code
+// (e.g. nlmixr2est's FOCEi) can point the event-sensitivity globals at a
+// sensitivity model just before handing off to a direct C++ solve loop.
+extern "C" SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState,
+                                      SEXP nParam, SEXP nParam2) {
+  rxode2EventSensLoad(trans, INTEGER(active)[0], INTEGER(nState)[0],
+                      INTEGER(nParam)[0], INTEGER(nParam2)[0]);
+  return R_NilValue;
+}
+
 t_update_inis update_inis = NULL;
 
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;
@@ -748,6 +875,44 @@ void rxUpdateFuns(SEXP trans){
   calc_lhs =(t_calc_lhs) R_GetCCallable(lib, s_calc_lhs);
   dydt =(t_dydt) R_GetCCallable(lib, s_dydt);
   calc_jac =(t_calc_jac) R_GetCCallable(lib, s_calc_jac);
+  // Event ("jump") sensitivity helpers: names are <prefix>dLag / <prefix>dF.
+  // Derived from the prefix (trans[2]) rather than carried in the trans vector,
+  // so the shared model-vars structure is unchanged.  Every model exports these
+  // (trivial body when unused), so the lookup never misses.
+  {
+    const char *s_prefix = CHAR(STRING_ELT(trans, 2));
+    char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300], s_d2F[300];
+    char s_d2Lag[300], s_d2Rate[300], s_d2Dur[300], s_d3F[300];
+    char s_dFQ[300], s_dLagJac[300], s_dLagQ[300], s_dDurQ[300];
+    snprintf(s_dLag, 300, "%sdLag", s_prefix);
+    snprintf(s_dF, 300, "%sdF", s_prefix);
+    snprintf(s_dRate, 300, "%sdRate", s_prefix);
+    snprintf(s_dDur, 300, "%sdDur", s_prefix);
+    snprintf(s_d2F, 300, "%sd2F", s_prefix);
+    snprintf(s_d2Lag, 300, "%sd2Lag", s_prefix);
+    snprintf(s_d2Rate, 300, "%sd2Rate", s_prefix);
+    snprintf(s_d2Dur, 300, "%sd2Dur", s_prefix);
+    snprintf(s_d3F, 300, "%sd3F", s_prefix);
+    snprintf(s_dFQ, 300, "%sdFQ", s_prefix);
+    snprintf(s_dLagJac, 300, "%sdLagJac", s_prefix);
+    snprintf(s_dLagQ, 300, "%sdLagQ", s_prefix);
+    snprintf(s_dDurQ, 300, "%sdDurQ", s_prefix);
+    dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
+    dF = (t_dF) R_GetCCallable(lib, s_dF);
+    dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
+    dRateEs = (t_dRate) R_GetCCallable(lib, s_dRate);
+    dDurEs = (t_dDur) R_GetCCallable(lib, s_dDur);
+    d2FEs = (t_dF) R_GetCCallable(lib, s_d2F);
+    d2LagEs = (t_dLag) R_GetCCallable(lib, s_d2Lag);
+    d2RateEs = (t_dRate) R_GetCCallable(lib, s_d2Rate);
+    d2DurEs = (t_dDur) R_GetCCallable(lib, s_d2Dur);
+    d3FEs = (t_dF) R_GetCCallable(lib, s_d3F);
+    dFQEs = (t_dF) R_GetCCallable(lib, s_dFQ);
+    dLagJacEs = (t_dLag) R_GetCCallable(lib, s_dLagJac);
+    dLagQEs = (t_dLag) R_GetCCallable(lib, s_dLagQ);
+    dDurQEs = (t_dDur) R_GetCCallable(lib, s_dDurQ);
+    dydtEs = dydt;
+  }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);
   dydt_lsoda_dum =(t_dydt_lsoda_dum) R_GetCCallable(lib, s_dydt_lsoda_dum);
   jdum_lsoda =(t_jdum_lsoda) R_GetCCallable(lib, s_dydt_jdum_lsoda);
@@ -758,6 +923,7 @@ void rxUpdateFuns(SEXP trans){
   t_LAG LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
   t_RATE RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
   t_DUR DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
+  durEsFn = DUR;   // expose duration to handle_evid (modeled-dur jump sensitivities)
   t_ME ME  = (t_ME) R_GetCCallable(lib, s_ME);
   t_IndF IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
   t_calc_mtime calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);

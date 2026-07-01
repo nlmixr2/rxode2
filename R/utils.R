@@ -1670,5 +1670,10 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' rxState(mod)
 #'
 rxStateOde <- function(obj) {
-  setdiff(rxState(obj), .rxLinCmt(obj))
+  .state <- rxState(obj)
+  .mv <- rxModelVars(obj)
+  if (length(.mv$indLin) > 0L) {
+    .state <- setdiff(.state, "output")
+  }
+  setdiff(.state, .rxLinCmt(obj))
 }

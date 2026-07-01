@@ -1099,11 +1099,27 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .isNum <- FALSE
   if (isEnv) {
     if (length(x[[2]]) == 2) {
+      if (as.character(x[[2]][[1]]) == "mtime") {
+        .mtimeVar <- .rxToSE(x[[2]][[2]], envir = envir)
+        envir$..mtimeVars <- unique(c(.mtimeVar, envir$..mtimeVars))
+        return(invisible(NULL))
+      }
+      if (as.character(x[[2]][[1]]) == "indLin") {
+        ## indLin(state) <- forcing : store the forcing as a per-state symengine
+        ## variable (rx__indLinForce_<state>__) so .rxInjectMatExpOdes() can add
+        ## it to the matrix-derived d/dt().  The LHS itself has no symengine
+        ## variable (.rxToSE returns "" for indLin), so it must be handled here
+        ## before the generic assignment below.  A named variable (not a list)
+        ## is used so symengine's masked `[[<-` cannot coerce the container.
+        .indLinState <- as.character(x[[2]][[2]])
+        .force <- eval(parse(text = paste0(
+          "with(envir,", .rxToSE(x[[3]], envir = envir), ")")))
+        assign(paste0("rx__indLinForce_", .indLinState, "__"), .force,
+               envir = envir)
+        return(invisible(NULL))
+      }
       if (any(as.character(x[[2]][[1]]) == c("alag", "lag", "F", "f", "rate", "dur"))) {
         envir$..eventVars <- unique(c(.var, envir$..eventVars))
-      }
-      if (as.character(x[[2]][[1]]) == "mtime") {
-        envir$..mtimeVars <- unique(c(.var, envir$..mtimeVars))
       }
     }
   }
@@ -1151,6 +1167,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .lst[[.var]] <- .expr
       assign("..jac0..", .lst, envir = envir)
     } else if (!identical(x[[1]], quote(`~`))) {
+      if (is.call(x[[3]]) && identical(as.character(x[[3]][[1]]), "linCmt")) {
+        assign(.var, symengine::S(.var), envir = envir)
+        .name <- rxFromSE(.var)
+        .rx <- paste0(.name, "=", paste(deparse(x[[3]]), collapse = ""))
+        if (regexpr("^(nlmixr|rx)_", .var) == -1) {
+          assign("..lhs", c(envir$..lhs, .rx), envir = envir)
+        }
+        return(invisible(NULL))
+      }
       .expr <- try(eval(parse(text = .expr)), silent = TRUE)
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if ((.isNum && envir$..doConst) ||
@@ -1967,6 +1992,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     } else {
       .fun <- paste(.ret0[[1]])
       .ret0 <- .ret0[-1]
+      if (.fun == "linCmt") {
+        return(paste0("linCmt(", paste(unlist(.ret0), collapse = ", "), ")"))
+      }
       if (length(.ret0) == 1L) {
         if (any(.fun == c("alag", "lag"))) {
           return(paste0("rx_lag_", .ret0[[1]], "_"))
@@ -1979,7 +2007,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .ret <- paste0("(", paste(unlist(.ret0), collapse = ","), ")")
       if (.ret == "(0)") {
         return(paste0("rx_", .fun, "_ini_0__"))
-      } else if (any(.fun == c("cmt", "dvid", "matExp", "indLin"))) {
+      } else if (any(.fun == c("cmt", "dvid", "mtime", "matExp", "indLin"))) {
         return("")
       } else if (.fun == "max") {
         .ret <- .rxToSEMax(unlist(.ret0), min=FALSE)

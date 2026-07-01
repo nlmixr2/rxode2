@@ -9,6 +9,7 @@ Authors@R: c(
    person("Awad H.", "Al-Mohy",role="ctb"),
    person("Bill", "Denney", email="wdenney@humanpredictions.com", role="ctb", comment=c(ORCID="0000-0002-5759-428X")),
    person("Cleve", "Moler", role="ctb"),
+   person("Daniel", "Kaschek", email="daniel.kaschek@gmail.com", role="ctb"),
    person("David", "Cooley", role="ctb"),
    person("Drew", "Schmidt", role="ctb"),
    person("Ernst", "Hairer", role="ctb"),

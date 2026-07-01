@@ -112,6 +112,16 @@
 #'   `"ros4"`), `hmax` defaults to `NULL` to allow the solvers to
 #'   determine the step size when `dense=TRUE`
 #'
+#'   For `method="indLin"`, `hmax` caps how long an interval is treated
+#'   as having a CONSTANT Jacobian/matrix-exponential term before
+#'   re-linearizing (previously silently ignored for this method). For a
+#'   true (state-independent) `matExp()` model this makes no numerical
+#'   difference; for an `indLin()`-forcing model with a state-dependent
+#'   term (e.g. Michaelis-Menten elimination), the default `hmax` (tied to
+#'   the spacing of your own sampling/dosing times) may be too coarse for
+#'   the desired accuracy -- set an explicit, smaller `hmax` to force more
+#'   frequent relinearization.
+#'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
 #'
@@ -2457,7 +2467,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
               .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
               if (length(.parts) == 3) {
                 if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                  .fc <- c(.fc, .line)
+                  if (!(.line %in% .origCode) && !(.line %in% .fc)) {
+                    .fc <- c(.fc, .line)
+                  }
                 }
               }
             }
@@ -2925,6 +2937,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   .callSolve <- function() {
+    ## Event ("jump") sensitivities: push the model's runtime dims to the solver
+    ## (active flag + nState/nParam) so handle_evid can inject the dosing-parameter
+    ## jumps.  No-op (active=0) for fd / models without jump info.
+    .rxSetEventSensDims(object)
     if (.isSer) {
       .bundle <- if (is.null(.preloadedSerializedBundle)) {
         .rxReadStateBundle(params)

@@ -505,11 +505,65 @@ static inline double dabs2(double x) {
   extern "C" rx_solving_options op_global;
   extern "C" rx_solving_options_ind *inds_global;
   extern "C" rx_solving_options_ind *inds_thread;
+  // Event ("jump") sensitivities: model dF/dLag/dydt functions + runtime dims
+  // (defined in par_solve.cpp); used by handle_evid to inject dosing-parameter
+  // jumps.  dydt provides the Jacobian column by central difference.
+  extern "C" t_dF dF;
+  extern "C" t_dLag dLagEs;
+  extern "C" t_dRate dRateEs;
+  extern "C" t_dDur dDurEs;
+  extern "C" t_dF d2FEs;
+  extern "C" t_dLag d2LagEs;
+  extern "C" t_dRate d2RateEs;
+  extern "C" t_dDur d2DurEs;
+  extern "C" t_dF d3FEs;
+  extern "C" t_dF dFQEs;
+  extern "C" t_dLag dLagJacEs;
+  extern "C" t_dLag dLagQEs;
+  extern "C" t_dDur dDurQEs;
+  extern "C" t_DUR durEsFn;
+  extern "C" t_dydt dydtEs;
+  // matExp()/indLin() models have no functional dydt() (the primal system is
+  // solved by matrix-exponential propagation, not RHS evaluation), so the
+  // dtau/lag jump row's usual central-difference-of-dydt Jacobian column is
+  // always zero for them. `_rxEsUseCalcJac` (set alongside the dims, from the
+  // model's `mv$indLin`) tells handle_evid to read the Jacobian column from
+  // `calc_jac` instead for such models (populated via explicit df/dy lines
+  // rxSensMatExp() emits from its already-known Jacobian).
+  extern "C" t_calc_jac calc_jac;
+  extern "C" int _rxEsUseCalcJac;
+  extern "C" int _rxEsActive;
+  extern "C" int _rxEsNState;
+  extern "C" int _rxEsNParam;
+  extern "C" int _rxEsNParam2;
+  extern "C" int _rxEsNParam3;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
   extern rx_solving_options_ind *inds_global;
   extern rx_solving_options_ind *inds_thread;
+  extern t_dF dF;
+  extern t_dLag dLagEs;
+  extern t_dRate dRateEs;
+  extern t_dDur dDurEs;
+  extern t_dF d2FEs;
+  extern t_dLag d2LagEs;
+  extern t_dRate d2RateEs;
+  extern t_dDur d2DurEs;
+  extern t_dF d3FEs;
+  extern t_dF dFQEs;
+  extern t_dLag dLagJacEs;
+  extern t_dLag dLagQEs;
+  extern t_dDur dDurQEs;
+  extern t_DUR durEsFn;
+  extern t_dydt dydtEs;
+  extern t_calc_jac calc_jac;
+  extern int _rxEsUseCalcJac;
+  extern int _rxEsActive;
+  extern int _rxEsNState;
+  extern int _rxEsNParam;
+  extern int _rxEsNParam2;
+  extern int _rxEsNParam3;
 #endif
 
 

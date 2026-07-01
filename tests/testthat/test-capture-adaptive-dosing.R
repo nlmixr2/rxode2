@@ -147,7 +147,7 @@ rxTest({
       list(id = 2L, original = "reset()", condition = "1",
            capVar = "rxCaptureId2")
     )
-    lines <- rxode2:::.restoreAdaptiveDosing(caps)
+    lines <- .restoreAdaptiveDosing(caps)
     expect_equal(lines[[1]], "if (rxCaptureId1) { bolus(50, 1, 0, 0, 0) }")
     expect_equal(lines[[2]], "if (rxCaptureId2) { reset() }")
   })

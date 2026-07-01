@@ -1,5 +1,15 @@
 # rxode2 5.1.3
 
+- Added jump sensitivities for events (based on
+  https://github.com/dkaschek/EventSensitivities).  Hybrid jump
+  sensitivities are used for matrix exponential and `linCmt()`
+  models (up to 3rd order for the ODE/Matrix Exponential cases)
+
+- Inductive linearization and matrix exponentials have been rewritten
+  to use an interface more similar to how NONMEM specifies models
+  (with an automatic ode->syntax translation still).  These also have
+  gradients calculated through symbolic differentiation.
+
 - Add `rxOmegaVarCovDeriv()`, a non-Cholesky (variance-covariance) `Omega`
   parameterization path: it returns `Omega^{-1}`, `log|Omega|`, and their first
   and second derivatives with respect to each free variance-covariance element
@@ -34,7 +44,7 @@
   (using the 8th-order Dormand-Prince interpolant), so they are
   obtained to the full accuracy of the integration.  Models that use
   `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`,
-  which now switches between dop853 and ros4 per segment in dense mode,
+  which switches between dop853 and ros4 per segment in dense mode,
   so a delay model that is non-stiff early and stiff later is solved
   efficiently in a single pass (the dop853 and ros4 dense histories are
   recorded together).  Stiff delay models can also be solved with
