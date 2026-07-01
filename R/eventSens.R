@@ -481,7 +481,8 @@
   }
   list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"),
        rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"),
-       f2 = .build2(map$fCmt, "f"))
+       f2 = .build2(map$fCmt, "f"), lag2 = .build2(map$lagCmt, "lag"),
+       rate2 = .build2(map$rateCmt, "rate"), dur2 = .build2(map$durCmt, "dur"))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -548,24 +549,30 @@
     f = .lines(info$derivs$f, "_dFSave"),
     rate = .lines(info$derivs$rate, "_dRateSave"),
     dur = .lines(info$derivs$dur, "_dDurSave"),
-    f2 = .lines2(info$derivs$f2, "_d2FSave")
+    f2 = .lines2(info$derivs$f2, "_d2FSave"),
+    lag2 = .lines2(info$derivs$lag2, "_d2LagSave"),
+    rate2 = .lines2(info$derivs$rate2, "_d2RateSave"),
+    dur2 = .lines2(info$derivs$dur2, "_d2DurSave")
   )
 }
 
-#' dLag / dF / dRate / dDur C body lines for codegen as a length-4 vector
+#' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur C body lines for codegen
 #'
-#' Returns `c(dLag, dF, dRate, dDur)` body lines (empty strings when none).
-#' Passed as arguments to the codegen `.Call` so the lines reach codegen in the
-#' same package instance (robust under `pkgload::load_all`, where a module-global
-#' channel could bind the setter and codegen to different rxode2 C instances).
+#' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur)` body lines
+#' (empty strings when none). Passed as arguments to the codegen `.Call` so
+#' the lines reach codegen in the same package instance (robust under
+#' `pkgload::load_all`, where a module-global channel could bind the setter
+#' and codegen to different rxode2 C instances).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
-#' @return character(4): the dLag, dF, dRate and dDur body lines.
+#' @return character(8): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, and
+#'   d2Dur body lines.
 #' @noRd
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
   .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
-  c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2))
+  c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2),
+    .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2))
 }
 
 #' Does this model need the `calc_jac`-based dtau/lag Jacobian column?

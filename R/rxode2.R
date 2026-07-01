@@ -1385,14 +1385,15 @@ rxDllLoaded <- rxIsLoaded
 #'     forced if rxode2 detects that the models are the same as already
 #'     generated.
 #'
-#' @param eventSensCode character vector of length 5 giving the C body
+#' @param eventSensCode character vector of length 8 giving the C body
 #'     lines for the event ("jump") sensitivity helper functions
-#'     `dLag`/`dF`/`dRate`/`dDur`/`d2F` (in that order).  These are the
-#'     per-model dosing-parameter total-derivative assignments produced
-#'     by the event-sensitivity code generator and are emitted verbatim
-#'     into the corresponding generated functions.  The default of five
-#'     empty strings produces trivial (no-op) helpers, which is what
-#'     non-sensitivity models and `eventSens = "fd"` models use.
+#'     `dLag`/`dF`/`dRate`/`dDur`/`d2F`/`d2Lag`/`d2Rate`/`d2Dur` (in that
+#'     order).  These are the per-model dosing-parameter total-derivative
+#'     assignments produced by the event-sensitivity code generator and
+#'     are emitted verbatim into the corresponding generated functions.
+#'     The default of eight empty strings produces trivial (no-op)
+#'     helpers, which is what non-sensitivity models and
+#'     `eventSens = "fd"` models use.
 #'
 #' @param ... Other arguments sent to the [rxTrans()]
 #'     function.
@@ -1541,7 +1542,7 @@ rxCompile.rxModelVars <- function(model, # Model
                                   force = FALSE, # Force compile
                                   modName = NULL, # Model Name
                                   package = NULL,
-                                  eventSensCode = c("", "", "", "", ""), # dLag/dF/dRate/dDur/d2F body lines
+                                  eventSensCode = rep("", 8L), # dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur body lines
                                   ...) {
   assignInMyNamespace(".pkg", package)
   ## rxCompile returns the DLL name that was created.
@@ -1679,7 +1680,7 @@ rxCompile.rxModelVars <- function(model, # Model
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
             .rxModelVarsLast, .rxSupportedFuns(),
             eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
-            eventSensCode[5]
+            eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8]
           )
         } else {
           .libname <- gsub(.Platform$dynlib.ext, "", basename(.cDllFile))
@@ -1689,7 +1690,7 @@ rxCompile.rxModelVars <- function(model, # Model
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
             .rxModelVarsLast, .rxSupportedFuns(),
             eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
-            eventSensCode[5]
+            eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8]
           )
         }
         .defs <- ""
