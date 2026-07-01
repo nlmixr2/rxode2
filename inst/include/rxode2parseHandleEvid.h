@@ -1099,6 +1099,25 @@ static inline int handle_evid(int evid, int neq,
               dydtEs(_esNjPre, xout, yp, _esDydtPre);
             }
           }
+          // matExp()/indLin() models: dydtEs is a no-op stub, so g=dS^p_k/dt
+          // can't be read from it directly. But indLin's whole premise is a
+          // CONSTANT (time-invariant) Jacobian over the interval -- the
+          // k_from_to rate constants are parameter-functions only, never
+          // state-dependent -- so dS^p_k/dt = sum_l J[k][l]*S^p_l is LINEAR
+          // in S^p, meaning g+ - g- = sum_l J[k][l]*(S^p_l|post - S^p_l|pre)
+          // EXACTLY (no approximation, unlike the general nonlinear-ODE
+          // case). Capture the pre-jump 1st-order sensitivity block now
+          // (before ddelta/dtau mutate it) so the difference can be formed
+          // later from the (by-then-mutated) yp; the physical ns x ns
+          // Jacobian itself is already available via calc_jac (the same
+          // source `_esJacColF` uses for the 1st-order dtau row).
+          double *_esSensPre = NULL;
+          if (_rxEsUseCalcJac) {
+            _esSensPre = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            if (_esSensPre != NULL) {
+              memcpy(_esSensPre, yp + _ns, (size_t)_ns * _np * sizeof(double));
+            }
+          }
           // ddelta row (bioavailability)
           if (dF != NULL) {
             double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -1193,8 +1212,7 @@ static inline int handle_evid(int evid, int neq,
           // dJdq[k][c] = d(J[k][c])/dq, the total derivative of the physical
           // Jacobian column (`.rxEventSensDerivs()`'s "lagJacQ" table,
           // computed symbolically from the model's own d/dt() RHS -- see the
-          // plan's Phase H1-dtau note). 2nd-order compartment layout follows
-          // rxExpandSens2_, same as the additive-bolus d2F row.
+          // plan's Phase H1-dtau note).
           //
           // PLUS a Leibniz/moving-boundary term whenever q ALSO drives this
           // same alag (dLag_q[c] != 0): the three terms above hold time FIXED
@@ -1207,29 +1225,38 @@ static inline int handle_evid(int evid, int neq,
           // itself derived from x_k's own jump condition) gives an
           // additional term `-[g+(tau) - g-(tau)] * dLag_q[c]`, where
           // g = dS^p_k/dt is the RHS of S^p_k's OWN sensitivity ODE
-          // (`sum_l J[k][l]*S^p_l`, read directly from the compiled dydt()
-          // output for the sensitivity compartment -- no separate Jacobian
-          // matrix construction needed): g- uses the PRE-jump state
-          // (`_esDydtPre`, captured before any of this event's jumps were
-          // applied), g+ uses the POST-jump state (yp's sensitivity
-          // compartments are ALREADY updated by the ddelta/dtau blocks above
-          // by this point -- only the physical dose, applied at the very end
-          // of this case, needs to be added to a scratch copy to evaluate
-          // g+). Sign verified against the ALREADY-VALIDATED 1st-order
-          // formula's own derivation (matching signs requires g- - g+, i.e.
-          // `-(g+ - g-)`), then confirmed against FD (two-lag-parameter and
-          // diagonal models, ~1e-7).
+          // (`sum_l J[k][l]*S^p_l`). Sign verified against the
+          // ALREADY-VALIDATED 1st-order formula's own derivation (matching
+          // signs requires g- - g+, i.e. `-(g+ - g-)`), then confirmed
+          // against FD (two-lag-parameter and diagonal models, ~1e-9).
           //
-          // matExp()/indLin() models EXCLUDED (`!_rxEsUseCalcJac`): the
-          // injected numeric term is IDENTICAL to the ODE path (confirmed by
-          // direct comparison) but the post-injection value is silently lost
-          // for indLin's matrix-exponential 2nd-order compartment
-          // propagation (unlike the 1st-order dtau row and the additive-bolus
-          // d2F row, both of which DO work correctly for matExp) -- root
-          // cause not yet found; treat as a documented, deliberate gap
-          // (matExp only) rather than ship a silently-zeroed value.
-          if (!_rxEsUseCalcJac &&
-              d2LagEs != NULL && dLagJacEs != NULL && _esHaveJacCol() &&
+          // ODE models read g directly from the compiled dydt() output for
+          // the sensitivity compartment (g- pre-jump via `_esDydtPre`, g+
+          // post-jump via a scratch copy with the physical dose added -- yp's
+          // sensitivity compartments are already post-jump by this point).
+          // matExp()/indLin() models: dydtEs is a no-op stub, but indLin's
+          // whole premise is a Jacobian CONSTANT over the interval, so
+          // g+ - g- = sum_l J[k][l]*(S^p_l|post - S^p_l|pre) exactly, using
+          // the SAME physical Jacobian already read via calc_jac
+          // (`_esJacColF`'s source) and the `_esSensPre` snapshot captured
+          // at the top of this case.
+          //
+          // Compartment layout DIFFERS by model type and is NOT the same
+          // rxExpandSens2_ layout the additive-bolus d2F row uses:
+          // rxSensMatExp() builds its own (p-outer, q-inner) compartment
+          // list for matExp models (confirmed directly from generated code),
+          // vs. rxExpandSens2_'s (q-outer, p-inner) for ordinary ODE models.
+          // d2F/d3F's own (p,q) writes are insensitive to this because their
+          // values are symmetric in (p,q) by construction (a literal double/
+          // triple symbolic differentiation, always commutes) -- swapping
+          // which named compartment receives which of two equal values is
+          // invisible. This row's 3-term-only piece is NOT symmetric on its
+          // own (gated by dLag_p != 0), which is what originally exposed the
+          // mismatch as a matExp-vs-ODE discrepancy; with the Leibniz term
+          // added the full (p,q) result IS symmetric again, so getting the
+          // per-model-type index right (rather than relying on symmetry to
+          // paper over it) is what makes both model types correct together.
+          if (d2LagEs != NULL && dLagJacEs != NULL && _esHaveJacCol() &&
               _rxEsNParam2 > 0 &&
               _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
             int _np2 = _rxEsNParam2;
@@ -1239,6 +1266,17 @@ static inline int handle_evid(int evid, int neq,
             double *_esDFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
             double *_esJacQB = (double*) calloc((size_t)_ns * _ns * _np2, sizeof(double));
             double *_esDLagQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            // matExp()/indLin() only: the full physical ns x ns Jacobian
+            // (row-major, J[k][l] = _esFullJac[k*ns+l]), needed for the
+            // Leibniz term's `sum_l J[k][l]*(S^p_l|post - S^p_l|pre)`.
+            double *_esFullJac = NULL;
+            if (_rxEsUseCalcJac && calc_jac != NULL) {
+              _esFullJac = (double*) calloc((size_t)_ns * _ns, sizeof(double));
+              if (_esFullJac != NULL) {
+                int _esNjF[2]; _esNjF[0] = neq; _esNjF[1] = id;
+                calc_jac(_esNjF, xout, yp, _esFullJac, (unsigned int) _ns);
+              }
+            }
             if (_esDLagB2 != NULL && _esJcol2 != NULL && _esD2LagB != NULL &&
                 _esDFQB != NULL && _esJacQB != NULL && _esDLagQB != NULL) {
               dLagEs(id, xout, yp, _esDLagB2);
@@ -1262,25 +1300,42 @@ static inline int handle_evid(int evid, int neq,
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP2 = _esDLagB2[cmt * _np + _p];
                 if (_esDLagP2 == 0.0 && !_esAnyLagQ) continue;
-                // Leibniz term prerequisite: dS^p_./dt evaluated at the
-                // POST-jump state, computed ONCE per active p (independent
-                // of q). yp's sensitivity compartments already hold the
-                // post-jump S^p values (mutated in place by the ddelta/dtau
-                // blocks above); only the physical dose still needs adding,
-                // via a scratch copy (the real yp[cmt] isn't dosed until
-                // after all sensitivity injections finish).
+                // Leibniz term prerequisite: g+ - g- = dS^p_./dt|post -
+                // dS^p_./dt|pre, computed ONCE per active p (independent of
+                // q). ODE: two real dydt() evaluations (handles state-
+                // dependent/nonlinear Jacobians correctly). matExp: the
+                // Jacobian is constant over the interval, so g+-g- reduces
+                // to J*(S^p|post - S^p|pre) exactly -- yp's sensitivity
+                // compartments already hold the post-jump S^p values
+                // (mutated in place by the ddelta/dtau blocks above);
+                // `_esSensPre` holds the pre-jump snapshot.
                 double *_esDydtPostP = NULL;
-                if (_esDydtPre != NULL && _esAnyLagQ) {
-                  double *_esYTemp = (double*) malloc((size_t)neq * sizeof(double));
-                  if (_esYTemp != NULL) {
-                    memcpy(_esYTemp, yp, (size_t)neq * sizeof(double));
-                    _esYTemp[cmt] += _esDelta;
-                    _esDydtPostP = (double*) calloc((size_t)neq, sizeof(double));
-                    if (_esDydtPostP != NULL) {
-                      int _esNjPost[2]; _esNjPost[0] = neq; _esNjPost[1] = id;
-                      dydtEs(_esNjPost, xout, _esYTemp, _esDydtPostP);
+                double *_esGdiff = NULL;
+                if (_esAnyLagQ) {
+                  if (_esDydtPre != NULL) {
+                    double *_esYTemp = (double*) malloc((size_t)neq * sizeof(double));
+                    if (_esYTemp != NULL) {
+                      memcpy(_esYTemp, yp, (size_t)neq * sizeof(double));
+                      _esYTemp[cmt] += _esDelta;
+                      _esDydtPostP = (double*) calloc((size_t)neq, sizeof(double));
+                      if (_esDydtPostP != NULL) {
+                        int _esNjPost[2]; _esNjPost[0] = neq; _esNjPost[1] = id;
+                        dydtEs(_esNjPost, xout, _esYTemp, _esDydtPostP);
+                      }
+                      free(_esYTemp);
                     }
-                    free(_esYTemp);
+                  } else if (_esFullJac != NULL && _esSensPre != NULL) {
+                    _esGdiff = (double*) calloc((size_t)_ns, sizeof(double));
+                    if (_esGdiff != NULL) {
+                      for (int _esK = 0; _esK < _ns; _esK++) {
+                        double _esAcc = 0.0;
+                        for (int _esL = 0; _esL < _ns; _esL++) {
+                          double _esDS = yp[_ns + _p * _ns + _esL] - _esSensPre[_p * _ns + _esL];
+                          _esAcc += _esFullJac[_esK * _ns + _esL] * _esDS;
+                        }
+                        _esGdiff[_esK] = _esAcc;
+                      }
+                    }
                   }
                 }
                 for (int _q = 0; _q < _np2; _q++) {
@@ -1289,21 +1344,32 @@ static inline int handle_evid(int evid, int neq,
                   double _esDLagQq = _esDLagQB[cmt * _np2 + _q];
                   for (int _esK = 0; _esK < _ns; _esK++) {
                     double _esDJdq = _esJacQB[cmt * (_ns * _np2) + _esK * _np2 + _q];
-                    int _c2 = _ns * (1 + _np) + _esK + _ns * (_p + _q * _np);
+                    // Compartment layout is model-type-specific -- see the
+                    // note above (rxSensMatExp: p-outer/q-inner; ordinary
+                    // ODE models via rxExpandSens2_: q-outer/p-inner).
+                    int _c2 = _rxEsUseCalcJac ?
+                      (_ns * (1 + _np) + _esK + _ns * (_p * _np2 + _q)) :
+                      (_ns * (1 + _np) + _esK + _ns * (_p + _q * _np));
                     double _esTerm = -_esDJdq * _esDelta * _esDLagP2
                       - _esJcol2[_esK] * (_esRawAmt * _esDFQc) * _esDLagP2
                       - _esJcol2[_esK] * _esDelta * _esD2LagPQ;
-                    if (_esDLagQq != 0.0 && _esDydtPostP != NULL) {
-                      double _esGpost = _esDydtPostP[_ns + _p * _ns + _esK];
-                      double _esGpre = _esDydtPre[_ns + _p * _ns + _esK];
-                      _esTerm += -(_esGpost - _esGpre) * _esDLagQq;
+                    if (_esDLagQq != 0.0) {
+                      if (_esDydtPostP != NULL && _esDydtPre != NULL) {
+                        double _esGpost = _esDydtPostP[_ns + _p * _ns + _esK];
+                        double _esGpre = _esDydtPre[_ns + _p * _ns + _esK];
+                        _esTerm += -(_esGpost - _esGpre) * _esDLagQq;
+                      } else if (_esGdiff != NULL) {
+                        _esTerm += -_esGdiff[_esK] * _esDLagQq;
+                      }
                     }
                     yp[_c2] += _esTerm;
                   }
                 }
                 if (_esDydtPostP != NULL) free(_esDydtPostP);
+                if (_esGdiff != NULL) free(_esGdiff);
               }
             }
+            if (_esFullJac != NULL) free(_esFullJac);
             if (_esDLagB2 != NULL) free(_esDLagB2);
             if (_esJcol2 != NULL) free(_esJcol2);
             if (_esD2LagB != NULL) free(_esD2LagB);
@@ -1312,6 +1378,7 @@ static inline int handle_evid(int evid, int neq,
             if (_esDLagQB != NULL) free(_esDLagQB);
           }
           if (_esDydtPre != NULL) free(_esDydtPre);
+          if (_esSensPre != NULL) free(_esSensPre);
         }
         yp[cmt] += _esDelta;     //dosing before obs
       }

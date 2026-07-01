@@ -445,6 +445,41 @@ rxTest({
     )
   })
 
+  test_that("second-order dtau/lag row (Leibniz term) fires correctly for matExp compartments", {
+    # Regression for a genuine compartment-ORDER mismatch found while
+    # investigating why the dtau row's 2nd-order jump appeared to vanish for
+    # matExp: rxSensMatExp() lists 2nd-order compartments p-outer/q-inner,
+    # while the ODE path's rxExpandSens2_ layout is q-outer/p-inner. d2F/d3F
+    # never exposed this because their (p,q) values are symmetric by
+    # construction (differentiating F symbolically twice always commutes),
+    # so writing into the "swapped" slot is invisible. The dtau row's
+    # 3-term-only piece is NOT symmetric on its own; only after the Leibniz
+    # term was added (making the full result symmetric again) did the
+    # per-model-type compartment index actually matter for correctness. The
+    # Leibniz term itself also needs a matExp-specific source for dS^p_k/dt
+    # (dydt() is a no-op stub for matExp) -- computed from the constant
+    # (time-invariant) physical Jacobian via calc_jac dotted with the
+    # pre/post-jump sensitivity difference, exact for a linear system.
+    ode_code <- "
+      alag(depot) <- exp(tlag)
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5), tf = qlogis(0.7))
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.55, 10, by = 0.5))
+    mexp2 <- rxode2(rxSensMatExp(ode_code, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf")))
+    ode2 <- rxode2(ode_code, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf"),
+                   eventSens = "jump")
+    res_mexp <- rxSolve(mexp2, e, pars, method = "indLin", atol = 1e-12, rtol = 1e-12)
+    res_ode <- rxSolve(ode2, e, pars, atol = 1e-12, rtol = 1e-12)
+    expect_equal(res_mexp$rx__sens_central_BY_tlag_BY_tf__,
+      res_ode$rx__sens_central_BY_tlag_BY_tf__,
+      tolerance = 1e-8
+    )
+    expect_gt(max(abs(res_ode$rx__sens_central_BY_tlag_BY_tf__)), 1)
+  })
+
   test_that("rxS() incorporates indLin() forcing (Michaelis-Menten) without error", {
     .mm <- paste("matExp()",
                  "cmt(depot)",
