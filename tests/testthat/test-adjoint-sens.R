@@ -327,6 +327,40 @@ rxTest({
     expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
   })
 
+  # ---- FOCEi -2LL objective gradient (structural + residual-error params) ----
+  # The gradient FOCEi propagates: dG/dtheta of G = sum r^2/v + log(v),
+  # v = add^2 + (prop*f)^2, over structural AND residual-error parameters, all
+  # from ONE backward sweep.
+  test_that("adjoint gradient of the FOCEi -2LL objective matches finite differences", {
+    lP    <- c(ka = 1.2, cl = 3.5, v = 25.0, add = 0.3, prop = 0.1)
+    lCS   <- c("ka", "cl", "v", "add", "prop")
+    lPred <- "center/v"
+    lObsT <- c(0.5, 1, 2, 4, 6, 8, 12, 18, 24)
+    lEv   <- rxode2::et(amt = 100, cmt = "depot")
+    tmod  <- rxode2::rxode2(paste0(mText, "\ncp=", lPred))
+    lFev  <- lEv |> rxode2::et(lObsT)
+    truth <- as.data.frame(rxode2::rxSolve(tmod, params = lP, lFev,
+                                           returnType = "data.frame", addDosing = FALSE))
+    set.seed(2)
+    lObs <- truth$cp[truth$time %in% lObsT] * (1 + stats::rnorm(length(lObsT), 0, 0.1)) +
+      stats::rnorm(length(lObsT), 0, 0.2)
+
+    m2ll <- function(p) {
+      d <- as.data.frame(rxode2::rxSolve(tmod, params = p, lFev,
+                                         returnType = "data.frame", addDosing = FALSE))
+      f <- d$cp[d$time %in% lObsT]; v <- p[["add"]]^2 + (p[["prop"]] * f)^2
+      sum((f - lObs)^2 / v + log(v))
+    }
+    gFD <- vapply(lCS, function(p) {
+      h <- abs(lP[[p]]) * 1e-6; pp <- lP; pm <- lP
+      pp[p] <- pp[p] + h; pm[p] <- pm[p] - h
+      (m2ll(pp) - m2ll(pm)) / (2 * h)
+    }, numeric(1))
+    gAdj <- rxode2::.rxAdjointGrad(mText, lP, lEv, lCS, lPred, lObsT, lObs,
+                                   errModel = list(add = "add", prop = "prop"))
+    expect_equal(unname(gAdj), unname(gFD), tolerance = 1e-3)
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

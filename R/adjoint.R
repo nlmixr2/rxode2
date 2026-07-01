@@ -112,33 +112,44 @@
   cbind(time = outTimes, as.data.frame(.out))
 }
 
-#' Adjoint gradient of a least-squares objective (single backward sweep)
+#' Adjoint gradient of an objective (single backward sweep)
 #'
-#' Computes `dG/dtheta` for every parameter with a SINGLE backward sweep, where
-#' `G = sum_i 1/2 * weight_i * (h(y(t_i), theta) - obs_i)^2`.  This is the case
-#' where adjoint sensitivity genuinely outperforms forward sensitivity: the cost
-#' is independent of the number of parameters, so it scales to the many-theta
-#' gradients that `nlm`/`nls`/`FOCEi` outer optimisation consume.
+#' Computes `dG/dtheta` for every parameter of interest with a SINGLE backward
+#' sweep.  Two objectives are supported:
 #'
-#' The costate `lambda` picks up `dg_i/dy = weight_i * r_i * dh/dy` as a jump at
-#' each observation and the quadrature `mu_p` accumulates `-lambda^T df/dtheta_p`.
-#' The total gradient adds the explicit dependence of the prediction on the
-#' parameters, `sum_i weight_i * r_i * dh/dtheta_p`, which does not flow through
-#' the trajectory (e.g. `d(center/v)/dv`).
+#' \itemize{
+#'   \item least squares (default): `G = sum_i 1/2 * weight_i * (f_i - obs_i)^2`.
+#'   \item FOCEi-style -2 log-likelihood (`errModel` given): `G = sum_i r_i^2/v_i
+#'     + log(v_i)`, `r_i = f_i - obs_i`, residual variance `v_i = add^2 +
+#'     (prop*f_i)^2` -- exactly the individual objective the FOCEi outer
+#'     optimisation minimises, so its gradient is what is propagated into the
+#'     FOCEi objective (the "f" values).}
+#'
+#' This is the case where adjoint sensitivity genuinely outperforms forward
+#' sensitivity: the cost is independent of the number of parameters.  The
+#' costate `lambda` picks up `dG/df_i * df_i/dy` as a jump at each observation and
+#' the quadrature accumulates `-lambda^T df/dtheta`.  The total gradient also adds
+#' the explicit prediction dependence `dG/df_i * df_i/dtheta` and, for the
+#' likelihood objective, the residual-error parameters' explicit gradients
+#' `sum_i dG/dv_i * dv_i/d(add|prop)` (these do not flow through the trajectory).
 #'
 #' @inheritParams .rxAdjointSolve
-#' @param pred character prediction expression `h` (function of states and
+#' @param pred character prediction expression `f` (function of states and
 #'   parameters), e.g. `"center/v"`.
 #' @param obsTimes numeric observation times.
 #' @param obs numeric observed values aligned with `obsTimes`.
-#' @param weight numeric scalar or vector of observation weights (e.g.
-#'   `1/sigma^2`).
+#' @param weight numeric scalar or vector of least-squares observation weights
+#'   (ignored when `errModel` is supplied).
+#' @param errModel `NULL` for least squares, or a list with character entries
+#'   `add` and/or `prop` naming the additive / proportional residual-error
+#'   parameters, selecting the FOCEi -2LL objective `v = add^2 + (prop*f)^2`.
 #' @return named numeric vector `dG/dtheta` over `calcSens`.
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
 .rxAdjointGrad <- function(object, params, events, calcSens, pred, obsTimes, obs,
-                           weight = 1, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+                           weight = 1, errModel = NULL,
+                           denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -280,10 +291,27 @@
   names(.Y) <- .st
   .atT <- function(col, t) .fwd[[col]][which.min(abs(.fwd$time - t))]
   .atObs <- function(col) vapply(obsTimes, function(t) .atT(col, t), numeric(1))
-  .resid <- .atObs("rx__pred__") - obs
-  .w <- rep_len(weight, length(obsTimes))
+  .fobs  <- .atObs("rx__pred__")
+  .resid <- .fobs - obs
+  ## per-observation objective sensitivity dG/df_i (.dLdf) and, for the -2LL
+  ## objective, the explicit residual-error-parameter gradients (.errGrad).
+  .errGrad <- stats::setNames(numeric(0), character(0))
+  if (is.null(errModel)) {
+    .dLdf <- rep_len(weight, length(obsTimes)) * .resid       # d(1/2 w r^2)/df
+  } else {
+    .addV  <- if (!is.null(errModel$add))  params[[errModel$add]]  else 0
+    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .var    <- .addV^2 + (.propV * .fobs)^2                   # residual variance
+    .dLdvar <- 1 / .var - .resid^2 / .var^2                   # dG/dv, G = r^2/v + log v
+    .dvardf <- 2 * .propV^2 * .fobs                           # dv/df (proportional)
+    .dLdf   <- 2 * .resid / .var + .dLdvar * .dvardf          # dG/df_i
+    if (!is.null(errModel$add))
+      .errGrad[errModel$add]  <- sum(.dLdvar * 2 * .addV)     # dv/d(add)  = 2 add
+    if (!is.null(errModel$prop))
+      .errGrad[errModel$prop] <- sum(.dLdvar * 2 * .propV * .fobs^2)  # dv/d(prop)
+  }
   .cvec <- lapply(seq_along(obsTimes), function(i)
-    vapply(.st, function(s) .w[i] * .resid[i] * .atObs(paste0("rx__dhdy_", s, "__"))[i],
+    vapply(.st, function(s) .dLdf[i] * .atObs(paste0("rx__dhdy_", s, "__"))[i],
            numeric(1)))
 
   ## pre/post-dose RHS at each actual dose time (for the lag transversality)
@@ -366,6 +394,8 @@
   }
   .gTraj <- vapply(calcSens, function(p) .state[[paste0("rx__adjMu_", p, "__")]], numeric(1))
   .gExpl <- vapply(calcSens, function(p)
-    sum(.w * .resid * .atObs(paste0("rx__dhdp_", p, "__"))), numeric(1))
-  stats::setNames(.gTraj + .gExpl + .gDose[calcSens], calcSens)
+    sum(.dLdf * .atObs(paste0("rx__dhdp_", p, "__"))), numeric(1))
+  .gErr <- vapply(calcSens, function(p)
+    if (p %in% names(.errGrad)) .errGrad[[p]] else 0, numeric(1))
+  stats::setNames(.gTraj + .gExpl + .gDose[calcSens] + .gErr, calcSens)
 }
