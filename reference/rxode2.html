@@ -127,11 +127,14 @@ into fast C code</p>
 <span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  calcJac <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  calcSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens2 <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens3 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span><span class="op">)</span>,</span>
 <span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  eventSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  fullPrint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.fullPrint"</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -146,11 +149,14 @@ into fast C code</p>
 <span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  calcJac <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  calcSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens2 <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens3 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span><span class="op">)</span>,</span>
 <span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  eventSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  fullPrint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.fullPrint"</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -165,11 +171,14 @@ into fast C code</p>
 <span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  calcJac <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  calcSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens2 <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens3 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span><span class="op">)</span>,</span>
 <span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  eventSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  fullPrint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.fullPrint"</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -236,7 +245,36 @@ Jacobain according to the specified ODEs.</p></dd>
 
 <dt id="arg-calcsens">calcSens<a class="anchor" aria-label="anchor" href="#arg-calcsens"></a></dt>
 <dd><p>boolean indicating if rxode2 will calculate the
-sensitivities according to the specified ODEs.</p></dd>
+sensitivities according to the specified ODEs.  May also be a
+character vector of the states/parameters whose first-order
+sensitivities (<code>rx__sens_&lt;state&gt;_BY_&lt;param&gt;__</code>) should be
+generated.</p></dd>
+
+
+<dt id="arg-calcsens-">calcSens2<a class="anchor" aria-label="anchor" href="#arg-calcsens-"></a></dt>
+<dd><p>character vector (or <code>NULL</code>) requesting
+second-order sensitivities in addition to the first-order ones
+from <code>calcSens</code>.  When supplied, rxode2 also generates the
+<code>rx__sens_&lt;state&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;__</code> compartments (the Hessian
+path), where <code>p</code> ranges over <code>calcSens</code> and <code>q</code> over
+<code>calcSens2</code>.  Used, for example, for population (<code>THETA</code>)
+second-order event sensitivities.  <code>NULL</code> (the default) skips the
+second-order generation.</p></dd>
+
+
+<dt id="arg-calcsens-">calcSens3<a class="anchor" aria-label="anchor" href="#arg-calcsens-"></a></dt>
+<dd><p>character vector (or <code>NULL</code>) requesting third-order
+sensitivities in addition to the first- and second-order ones.
+Requires <code>calcSens2</code> to also be supplied (every <code>calcSens3</code>
+parameter needs its own already-built second-order sensitivity
+compartment, from the pairing of <code>calcSens2</code> with <code>calcSens3</code>, to
+reference – so <code>calcSens3</code> should be a subset of <code>calcSens2</code>,
+which itself should be a subset of <code>calcSens</code>, mirroring how
+<code>calcSens2</code> is used everywhere else in rxode2 today).  When
+supplied, generates the <code>rx__sens_&lt;state&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;_BY_&lt;r&gt;__</code>
+compartments, where <code>p</code> ranges over <code>calcSens</code>, <code>q</code> over
+<code>calcSens2</code>, and <code>r</code> over <code>calcSens3</code>, via <code><a href="rxExpandSens3_.html">rxExpandSens3_()</a></code>.
+<code>NULL</code> (the default) skips the third-order generation.</p></dd>
 
 
 <dt id="arg-collapsemodel">collapseModel<a class="anchor" aria-label="anchor" href="#arg-collapsemodel"></a></dt>
@@ -259,6 +297,19 @@ LHS variables when calculating sensitivities.</p></dd>
 <dt id="arg-indlin">indLin<a class="anchor" aria-label="anchor" href="#arg-indlin"></a></dt>
 <dd><p>Calculate inductive linearization matrices and
 compile with inductive linearization support.</p></dd>
+
+
+<dt id="arg-eventsens">eventSens<a class="anchor" aria-label="anchor" href="#arg-eventsens"></a></dt>
+<dd><p>controls how dosing/event-parameter (alag, F, rate,
+dur, amt) sensitivities are computed when sensitivities are
+generated: <code>"jump"</code> injects the analytic event ("jump")
+sensitivities into the sensitivity states at each dosing event,
+<code>"fd"</code> keeps the legacy finite-difference behavior (the
+backward-compatible opt-out), and <code>"both"</code> computes both for
+cross-checking.  <code>NULL</code> (the default) uses
+<code>getOption("rxode2.eventSens", "fd")</code>.  When not <code>"fd"</code> and
+<code>calcSens</code> is supplied, <code>calcJac</code> is forced to <code>TRUE</code> so the
+Jacobian is available for the jump injection.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

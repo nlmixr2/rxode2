@@ -141,6 +141,7 @@
 <span>  md5 <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  modName <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  modVars <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  eventSensKey <span class="op">=</span> <span class="va">.rxEventSensCacheKey</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -187,6 +188,19 @@ vector of translated properties.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Ignored parameters.</p></dd>
+
+
+<dt id="arg-eventsenskey">eventSensKey<a class="anchor" aria-label="anchor" href="#arg-eventsenskey"></a></dt>
+<dd><p>event ("jump") sensitivity mode key folded into
+the parsed md5 cache key so the same model text translated in
+different modes (e.g. <code>"fd"</code> vs <code>"jump"</code>) compiles to distinct
+DLLs instead of colliding on a cached translation.  Defaults to
+the session global <code>.rxEventSensCacheKey</code> (set by <code><a href="rxode2.html">rxode2()</a></code>
+before parsing); an empty string leaves the md5 unchanged so the
+legacy <code>"fd"</code> path keeps existing caches valid.  It is a formal
+argument (rather than read from the global in the body) because
+<code>rxTrans.character</code> is memoised and <code>memoise</code> keys on
+default-valued formals, so the cache distinguishes the modes.</p></dd>
 
 </dl></div>
     <div class="section level2">

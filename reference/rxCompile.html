@@ -136,6 +136,7 @@ files.</p>
 <span>  force <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  modName <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eventSensCode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">""</span>, <span class="fl">13L</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -147,6 +148,7 @@ files.</p>
 <span>  force <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  modName <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eventSensCode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">""</span>, <span class="fl">13L</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -212,6 +214,18 @@ simple ASCII alphanumeric characters starting with a letter.</p></dd>
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Other arguments sent to the <code><a href="rxTrans.html">rxTrans()</a></code>
 function.</p></dd>
+
+
+<dt id="arg-eventsenscode">eventSensCode<a class="anchor" aria-label="anchor" href="#arg-eventsenscode"></a></dt>
+<dd><p>character vector of length 13 giving the C body
+lines for the event ("jump") sensitivity helper functions
+<code>dLag</code>/<code>dF</code>/<code>dRate</code>/<code>dDur</code>/<code>d2F</code>/<code>d2Lag</code>/<code>d2Rate</code>/<code>d2Dur</code>/<code>d3F</code>/<code>dFQ</code>/
+<code>dLagJac</code>/<code>dLagQ</code>/<code>dDurQ</code> (in that order).  These are the per-model
+dosing-parameter total-derivative assignments produced by the
+event-sensitivity code generator and are emitted verbatim into the
+corresponding generated functions.  The default of thirteen empty
+strings produces trivial (no-op) helpers, which is what
+non-sensitivity models and <code>eventSens = "fd"</code> models use.</p></dd>
 
 </dl></div>
     <div class="section level2">
