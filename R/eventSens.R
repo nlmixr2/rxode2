@@ -154,7 +154,22 @@
     .split2$sensCmt <- unname(.ord[.split2$sens])
     .split2$stateCmt <- unname(.ord[.split2$state])
     .map2 <- .split2[, c("state", "p", "q", "stateCmt", "sensCmt"), drop = FALSE]
-    .map2 <- .map2[order(.map2$p, .map2$q, .map2$stateCmt), , drop = FALSE]
+    ## Deliberately NOT re-sorted (unlike `.map` above, whose row order truly
+    ## doesn't matter downstream): `unique(.map2$p)`/`unique(.map2$q)`
+    ## (.rxEventSensCLines(), building .pIdx/.qIdx) rely on this data.frame's
+    ## natural row order -- inherited from `.mv$sens`'s true compilation
+    ## order -- to recover each parameter's ordinal position within
+    ## `calcSens`/`calcSens2` *as originally passed* (the i2/i3 loop order
+    ## `rxExpandSens2_` used to lay out the compartments). An earlier
+    ## `order(.map2$p, .map2$q, .map2$stateCmt)` sort here silently broke
+    ## that for any calcSens2 with more than one parameter (alphabetical order
+    ## coincides with the true one only by chance) -- e.g. calcSens2=c(
+    ## "trate","tlag") ended up indexed as if it were c("tlag","trate"),
+    ## writing 2nd-order jump values into the wrong compartment. Confirmed by
+    ## a nonzero-vs-FD mismatch when validating the 2nd-order infusion jump
+    ## (2026-06-30); masked in every prior test because they all used
+    ## calcSens2 == calcSens with a single parameter, where reordering is a
+    ## no-op.
     rownames(.map2) <- NULL
   }
   ## event compartments: those carrying a modeled alag/F/rate/dur.  `mv$alag`

@@ -653,6 +653,21 @@ static inline int handle_evid(int evid, int neq,
             }
             free(_eA);
           }
+          // NOTE (2026-06-30): a naive second-order extension of this row
+          // (tmp*d2(alag)/dp/dq, mirroring the additive-bolus d2F pattern)
+          // was tried and found INCORRECT by FD (isolated test: modeled
+          // alag + a fixed-rate infusion still diverged sharply from FD
+          // right after the boundary, even with no modeled rate/dur
+          // involved). Unlike the additive-bolus/replace/multiply dtau rows
+          // (which differentiate a true paper-derived formula including the
+          // f_c/Jacobian terms), this boundary term is a *moving integration
+          // limit* of a forcing that is applied continuously over
+          // [tau1,tau2] -- a second differentiation of that needs a genuine
+          // Leibniz-rule boundary-delta correction this simple "reuse the
+          // 1st-order shape with d2Lag substituted" approach does not
+          // capture. Deferred pending a proper derivation (see the
+          // event-sensitivities plan / project memory); reverted rather than
+          // left in as a silently-wrong result.
         }
         // Event ("jump") sensitivities -- modeled rate continuous forcing.
         // The infusion rate is a solver-applied forcing (not a symbolic term in
@@ -673,12 +688,40 @@ static inline int handle_evid(int evid, int neq,
             }
             free(_esB);
           }
+          // NOTE (2026-06-30): a naive second-order extension
+          // (InfusionRate[2nd-order-cmt] += d2Rate[p][q] over the window)
+          // was tried and found INCORRECT by FD after the infusion ends --
+          // matches to machine precision *during* [tau1,tau2] but diverges
+          // sharply afterward. Root cause: differentiating a forcing
+          // integrated over a parameter-dependent window [tau1,tau2(p)] a
+          // SECOND time picks up a genuine Leibniz-rule boundary-delta term
+          // (~dRate(tau2)*d(tau2)/dq) that the first-order construction
+          // never needed (the well-known, FD-validated 1st-order asymmetry
+          // "modeled RATE needs no explicit boundary term, unlike modeled
+          // DUR" does not survive a second differentiation -- tau2 depends
+          // on the parameter here too, via tau2=tau1+amt/rate(p)). Deferred
+          // pending a proper derivation; reverted rather than left in as a
+          // silently-wrong result valid only inside the infusion window.
         }
         // Modeled duration continuous forcing.  rate = F*amt/dur, so
         //   d(rate)/dp = (amt/dur)*dF/dp - (rate/dur)*d(dur)/dp
         //             = (amt*dF + tmp*dDur)/dur     (tmp = -rate = stored value).
         // The dF term covers a parameter-dependent bioavailability on the
         // modeled-duration infusion; dDur covers a parameter-dependent duration.
+        //
+        // NOTE (2026-06-30): the analogous SECOND-order piece is deliberately
+        // NOT implemented here yet.  Unlike the boundary/modeled-rate terms
+        // above (self-contained: tmp*d2Lag[p][q] / d2Rate[p][q] directly),
+        // differentiating this quotient (rate=F*amt/dur) a second time wrt q
+        // via the quotient rule needs d(dur)/dq and d(F)/dq -- i.e. the
+        // FIRST-order dDur/dF value at q's index in the *first-order*
+        // (calcSens) parameter list, which is a DIFFERENT index than q's
+        // position in the calcSens2 list this runtime code has (nParam2-
+        // indexed).  That cross-order index map (calcSens2 position ->
+        // calcSens position, for the SAME shared parameter name) is not
+        // currently threaded from R to the runtime; adding it is a small,
+        // well-scoped follow-up (see the event-sensitivities plan / project
+        // memory) rather than something to approximate silently wrong here.
         if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
             ind->whI == EVIDF_MODEL_DUR_ON && dDurEs != NULL && durEsFn != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
@@ -731,6 +774,10 @@ static inline int handle_evid(int evid, int neq,
           }
           free(_eA);
         }
+        // Second-order boundary/forcing extensions deliberately NOT added
+        // here -- see the matching NOTE at the MODEL_RATE_ON/MODEL_DUR_ON
+        // case above (a naive extension was tried and found incorrect by FD;
+        // needs a proper Leibniz-rule boundary-delta derivation).
       }
       // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
       // Mirror of the MODEL_RATE_ON injection: remove d(rate)/dp from the
@@ -780,6 +827,13 @@ static inline int handle_evid(int evid, int neq,
           if (_esB != NULL) free(_esB);
           if (_esFB != NULL) free(_esFB);
         }
+        // Second-order boundary/forcing extensions deliberately NOT added
+        // here either -- see the NOTE at MODEL_RATE_ON above.  (An earlier
+        // attempt here, using d2Dur for the moving-boundary piece alone,
+        // was also reverted: even a structurally "self-contained" boundary
+        // term of this form was not validated correct by FD once the
+        // Leibniz-rule issue was found for the sibling lag-boundary term,
+        // so it should not be trusted without its own derivation either.)
       }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 &&
@@ -877,6 +931,21 @@ static inline int handle_evid(int evid, int neq,
         for (int _p = 0; _p < _np; _p++) {
           yp[_ns + _p * _ns + cmt] = 0.0;
         }
+        // Second-order (Hessian path): a constant replacement value has an
+        // identically zero second derivative wrt any parameter pair too (same
+        // reasoning as the first-order row above) -- zero the 2nd-order
+        // compartment for the replaced state, same rxExpandSens2_ layout as
+        // the additive-bolus d2F row.
+        if (d2FEs != NULL && _rxEsNParam2 > 0 &&
+            _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+          int _np2 = _rxEsNParam2;
+          for (int _i2 = 0; _i2 < _np; _i2++) {
+            for (int _i3 = 0; _i3 < _np2; _i3++) {
+              int _c2 = _ns * (1 + _np) + cmt + _ns * (_i2 + _i3 * _np);
+              yp[_c2] = 0.0;
+            }
+          }
+        }
         // dtau row (event time), only if the lag is modeled on this
         // compartment (raw event-table replace/multiply records, not the
         // in-model replace()/multiply() plugins, which route param-dependent
@@ -925,6 +994,22 @@ static inline int handle_evid(int evid, int neq,
           double _esX1 = yp[cmt]; // pre-event state, before the *= alpha below
           for (int _p = 0; _p < _np; _p++) {
             yp[_ns + _p * _ns + cmt] *= _esAlpha;
+          }
+          // Second-order (Hessian path): alpha is treated as parameter-fixed
+          // for this row (same convention as first order -- a parameter-
+          // dependent VALUE routes through the captured-dosing path instead,
+          // plan Phase B "B3"), so the second-order compartment for the
+          // multiplied state scales by the same alpha, same rxExpandSens2_
+          // layout as the additive-bolus d2F row.
+          if (d2FEs != NULL && _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+            int _np2 = _rxEsNParam2;
+            for (int _i2 = 0; _i2 < _np; _i2++) {
+              for (int _i3 = 0; _i3 < _np2; _i3++) {
+                int _c2 = _ns * (1 + _np) + cmt + _ns * (_i2 + _i3 * _np);
+                yp[_c2] *= _esAlpha;
+              }
+            }
           }
           // dtau row (event time), only if the lag is modeled (same B2 scope
           // note as EVIDF_REPLACE above): dxk/dtau = (1-alpha)*J[k,c]*x1,

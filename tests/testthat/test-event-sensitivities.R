@@ -494,6 +494,45 @@ rxTest({
     expect_gt(max(abs(sfd[.post] - fd[.post])), 0.1)
   })
 
+  test_that("replace/multiply zero the 2nd-order (Hessian) compartment too", {
+    # Extends Phase F's additive-bolus-only 2nd-order jump (the "dx1/dp_j"
+    # row, NOT the dtau row) to replace/multiply: a constant replacement
+    # value has an identically zero 2nd derivative wrt any parameter pair
+    # (same reasoning as 1st order), and alpha (treated as parameter-fixed
+    # for this row, same convention as 1st order) scales the 2nd-order
+    # compartment the same way. Validated against a finite difference of the
+    # analytic 1st-order sensitivity (the plan's standard 2nd-order
+    # validation strategy -- a raw 2nd central difference of the solution is
+    # too imprecise to catch a jump-sized correction).
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = 0.2, tcl = 1, tv = 2)
+    m1 <- rxode2(.mod, calcSens = "tka", eventSens = "jump")
+    m2 <- rxode2(.mod, calcSens = "tka", calcSens2 = "tka", eventSens = "jump")
+    h <- 1e-4
+    pp <- pars; pp["tka"] <- pars["tka"] + h
+    pm <- pars; pm["tka"] <- pars["tka"] - h
+
+    e_replace <- et(amt = 100, cmt = "depot") |>
+      et(time = 5, amt = 50, cmt = "central", evid = 5) |>
+      et(seq(0.5, 12, 1))
+    fd_replace <- (rxSolve(m1, e_replace, pp)$rx__sens_central_BY_tka__ -
+      rxSolve(m1, e_replace, pm)$rx__sens_central_BY_tka__) / (2 * h)
+    s_replace <- rxSolve(m2, e_replace, pars)
+    expect_equal(s_replace$rx__sens_central_BY_tka_BY_tka__, fd_replace, tolerance = 1e-3)
+
+    e_mult <- et(amt = 100, cmt = "depot") |>
+      et(time = 5, amt = 0.5, cmt = "central", evid = 6) |>
+      et(seq(0.5, 12, 1))
+    fd_mult <- (rxSolve(m1, e_mult, pp)$rx__sens_central_BY_tka__ -
+      rxSolve(m1, e_mult, pm)$rx__sens_central_BY_tka__) / (2 * h)
+    s_mult <- rxSolve(m2, e_mult, pars)
+    expect_equal(s_mult$rx__sens_central_BY_tka_BY_tka__, fd_mult, tolerance = 1e-3)
+  })
+
   test_that("raw event-table replace with a modeled lag gets a dtau row (Phase B, B2)", {
     # Regression (Phase B "B2" gap, plan Section 4): a raw et(..., evid=5)
     # replace record on a compartment with a MODELED alag was found to
@@ -796,6 +835,38 @@ rxTest({
     # the depot 2nd-order compartment exists and comes after the 1st-order ones
     .row <- im$map2[im$map2$state == "depot", ]
     expect_true(.row$sensCmt > nrow(im$map))
+  })
+
+  test_that(".rxEventSensCLines indexes multi-parameter calcSens2 consistently with calcSens", {
+    # Regression: .rxEventSensMap() used to sort `map2` alphabetically by
+    # (p, q, stateCmt); .rxEventSensCLines()'s .qIdx (built from
+    # unique(map2$q)) then inherited that alphabetical order instead of
+    # calcSens2's *as-passed* order (matching the compiled compartment
+    # layout rxExpandSens2_ actually used) -- for any calcSens2 with more
+    # than one parameter where the as-passed order isn't alphabetical, the
+    # 2nd-order derivative values were written into the WRONG compartment
+    # (found while validating the 2nd-order infusion jump, 2026-06-30;
+    # masked in every earlier test, which all used a single-parameter
+    # calcSens2 where reordering is a no-op). trate/tlag deliberately spelled
+    # so alphabetical order ("tlag","trate") differs from the as-passed order
+    # ("trate","tlag").
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- exp(tlag)
+      rate(depot) <- exp(trate)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    m <- rxode2(.mod, calcSens = c("trate", "tlag"), calcSens2 = c("trate", "tlag"),
+                eventSens = "jump")
+    info <- m$eventSensInfo
+    expect_equal(names(info$map$sensParams), NULL) # sanity: sensParams unnamed char vec
+    expect_equal(info$map$sensParams, c("trate", "tlag"))
+    # .qIdx must be built in the SAME (as-passed) order as .pIdx/sensParams,
+    # not alphabetically -- this is the actual bug: previously "tlag" (unique(map2$q)'s
+    # alphabetically-first value) would come first here instead of "trate".
+    expect_equal(unique(info$map$map2$q), c("trate", "tlag"))
+    expect_equal(unique(info$map$map2$p), c("trate", "tlag"))
   })
 
   test_that(".rxEventSensD2Expr is the correct second total derivative", {
