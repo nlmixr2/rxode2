@@ -224,6 +224,101 @@ rxExpandGrid <- function(x, y, type = 0L) {
 }
 
 
+## Assumes .rxJacobian called on model with c(state, vars)
+#' Adjoint (backward) sensitivity equations for a model
+#'
+#' Symbolically generates the continuous-adjoint ODE system that mirrors the
+#' output of the forward sensitivity analysis (`.rxSens`), reusing the exact
+#' same `rx__sens_<state>_BY_<param>__` output names so the result is a
+#' drop-in alternative.  For each output state of interest `k` two blocks of
+#' equations are emitted (both to be integrated *backward* in time):
+#'
+#' \itemize{
+#'   \item costate:   `d/dt(rx__adjLambda_<k>_<i>__) = -sum_j df_j/dy_i * lambda_kj`
+#'         (the transpose-Jacobian contraction `-(J^T lambda)_i`)
+#'   \item quadrature:`d/dt(rx__sens_<k>_BY_<p>__)  = -sum_j lambda_kj * df_j/dp`
+#'         (the running gradient `-(lambda^T df/dp)_p`)
+#' }
+#'
+#' The elemental derivatives `df_j/dy_i` and `df_j/dp` are taken directly from
+#' the `rx__df_<j>_dy_<i>__` symbols that `.rxJacobian(model, c(state, vars))`
+#' already materialises, so this function performs no new symbolic
+#' differentiation -- it only assembles (transposes) what the Jacobian pass
+#' produced.  The costate symbols `rx__adjLambda_<k>_<j>__` are registered as
+#' bare symengine `Symbol`s so they survive as themselves in the assembled
+#' right-hand sides (mirroring how `.rxSens` registers `ddtS`/`ddS2`).
+#'
+#' @param model symengine model environment (as returned by `rxS`), with
+#'   `.rxJacobian(model, c(rxStateOde(model), vars))` already called.
+#' @param vars character vector of parameter names to differentiate with
+#'   respect to (the `p` in `dy/dp`).  Defaults to `model$..vars`.
+#' @param states character vector of output states of interest (the `k`).
+#'   Defaults to all ODE states, matching the full coverage of forward
+#'   sensitivities.
+#' @return character vector of `d/dt(...) = ...` lines (costate block followed
+#'   by quadrature block).  The costate (`rx__adjLambda_*`) lines are internal
+#'   scaffolding; only the quadrature (`rx__sens_*`) lines carry user-visible
+#'   output.  Also stashes the result in `model$..adjoint`.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjoint <- function(model, vars, states) {
+  .state <- rxStateOde(model)
+  if (length(.state) == 0L) {
+    assign("..adjoint", NULL, envir = model)
+    return(NULL)
+  }
+  if (missing(vars)) vars <- get("..vars", envir = model)
+  if (missing(states) || is.null(states)) states <- .state
+  states <- intersect(.state, states)
+  if (length(states) == 0L) {
+    stop("adjoint 'states' of interest must be a subset of the ODE states",
+      call. = FALSE)
+  }
+  ## Register the costate (lambda) compartments as bare symbols so they are not
+  ## inlined when the backward right-hand sides are assembled.
+  .lamName <- function(k, i) paste0("rx__adjLambda_", k, "_", i, "__")
+  for (.k in states) {
+    for (.i in .state) {
+      .nm <- .lamName(.k, .i)
+      assign(.nm, symengine::Symbol(.nm), envir = model)
+    }
+  }
+  .malert("calculate adjoint sensitivities")
+  rxProgress(length(states) * (length(.state) + length(vars)))
+  on.exit({
+    rxProgressAbort()
+  })
+  .ret <- character(0)
+  for (.k in states) {
+    ## costate block: for each state i, -sum_j (df_j/dy_i) * lambda_{k,j}
+    for (.i in .state) {
+      .terms <- vapply(.state, function(.j) {
+        paste0("rx__df_", .j, "_dy_", .i, "__*", .lamName(.k, .j))
+      }, character(1L))
+      .expr <- paste0("with(model,-(", paste(.terms, collapse = "+"), "))")
+      .l <- eval(parse(text = .expr))
+      .ret <- c(.ret, paste0("d/dt(", .lamName(.k, .i), ")=", rxFromSE(.l)))
+      rxTick()
+    }
+    ## quadrature block: for each param p, -sum_j lambda_{k,j} * (df_j/dp)
+    for (.p in vars) {
+      .terms <- vapply(.state, function(.j) {
+        paste0(.lamName(.k, .j), "*rx__df_", .j, "_dy_", .p, "__")
+      }, character(1L))
+      .expr <- paste0("with(model,-(", paste(.terms, collapse = "+"), "))")
+      .l <- eval(parse(text = .expr))
+      .ret <- c(.ret, paste0("d/dt(rx__sens_", .k, "_BY_", .p, "__)=",
+                             rxFromSE(.l)))
+      rxTick()
+    }
+  }
+  assign("..adjoint", .ret, envir = model)
+  rxProgressStop()
+  .ret
+}
+
+
 ## Check for good functions for predfn and pkpars and error functions
 .goodFns <- c(".GlobalEnv", "package:rxode2", "package:nlmixr")
 .checkGood <- function(x) {
