@@ -480,6 +480,58 @@ rxTest({
     expect_gt(max(abs(res_ode$rx__sens_central_BY_tlag_BY_tf__)), 1)
   })
 
+  test_that("second-order infusion-boundary Leibniz term fires correctly for matExp compartments", {
+    # Same compartment-order + matExp-specific-Jacobian-source fix as the
+    # dtau row's own matExp regression above, applied to the infusion
+    # moving-boundary-from-alag case: a fixed-rate infusion whose start/stop
+    # time shifts with a modeled alag.
+    ode_code <- "
+      alag(central) <- exp(tlag)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5))
+    e <- et(amt = 100, cmt = "central", rate = 20) |> et(seq(0.55, 15, by = 0.5))
+    mexp2 <- rxode2(rxSensMatExp(ode_code, calcSens = "tlag", calcSens2 = "tlag"))
+    ode2 <- rxode2(ode_code, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
+    res_mexp <- rxSolve(mexp2, e, pars, method = "indLin", atol = 1e-12, rtol = 1e-12)
+    res_ode <- rxSolve(ode2, e, pars, atol = 1e-12, rtol = 1e-12)
+    expect_equal(res_mexp$rx__sens_central_BY_tlag_BY_tlag__,
+      res_ode$rx__sens_central_BY_tlag_BY_tlag__,
+      tolerance = 1e-8
+    )
+    expect_gt(max(abs(res_ode$rx__sens_central_BY_tlag_BY_tlag__)), 1)
+  })
+
+  test_that("second-order infusion-boundary Leibniz term propagates to a coupled matExp compartment", {
+    # Same coupled-compartment regression as the dtau row above, for the
+    # infusion-boundary Leibniz term: depot infused (alag/F/dur all
+    # modeled), central observed.
+    ode_code <- "
+      alag(depot) <- tlag
+      f(depot)    <- doseAmt
+      dur(depot)  <- tinf
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars <- c(ka = 1, cl = 6, v = 60, tlag = 10, doseAmt = 200, tinf = 10)
+    e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
+    mexp2 <- rxode2(rxSensMatExp(ode_code,
+      calcSens = c("tlag", "doseAmt", "tinf"), calcSens2 = c("tlag", "doseAmt", "tinf")
+    ))
+    ode2 <- rxode2(ode_code,
+      calcSens = c("tlag", "doseAmt", "tinf"), calcSens2 = c("tlag", "doseAmt", "tinf"),
+      eventSens = "jump"
+    )
+    res_mexp <- rxSolve(mexp2, e, pars, method = "indLin", atol = 1e-11, rtol = 1e-11)
+    res_ode <- rxSolve(ode2, e, pars, atol = 1e-11, rtol = 1e-11)
+    expect_equal(res_mexp$rx__sens_central_BY_tlag_BY_tlag__,
+      res_ode$rx__sens_central_BY_tlag_BY_tlag__,
+      tolerance = 1e-8
+    )
+    expect_gt(max(abs(res_ode$rx__sens_central_BY_tlag_BY_tlag__)), 1)
+  })
+
   test_that("rxS() incorporates indLin() forcing (Michaelis-Menten) without error", {
     .mm <- paste("matExp()",
                  "cmt(depot)",

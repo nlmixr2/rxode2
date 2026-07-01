@@ -574,41 +574,82 @@ static inline int _esHaveJacCol(void) {
 // (no product-rule term for k != cmt: dtmp/Delta only ever affects cmt
 // directly, so there is nothing else to differentiate for those rows).
 //
-// `dydtPre` must be captured by the caller BEFORE dtmp was applied to
-// InfusionRate[cmt] and before the 1st-order jump was applied to yp; this
-// function reads the CURRENT (already-updated) yp/InfusionRate for g+, so no
-// scratch-copy is needed here (unlike the additive-bolus case, InfusionRate
-// is not part of yp itself).  ODE models only (`!_rxEsUseCalcJac`) for now --
-// matExp needs the same compartment-order fix the additive-bolus dtau row
-// required; not yet extended here.
+// `preState` must be captured by the caller (`_esInfusionDydtPre()`) BEFORE
+// dtmp was applied to InfusionRate[cmt] and before the 1st-order jump was
+// applied to yp; this function reads the CURRENT (already-updated)
+// yp/InfusionRate for the "post" side, so no scratch-copy is needed here
+// (unlike the additive-bolus case, InfusionRate is not part of yp itself).
+//
+// matExp()/indLin() models: dydtEs is a no-op stub, but (same trick as the
+// additive-bolus dtau row's own matExp fix) indLin's premise is a physical
+// Jacobian CONSTANT over the interval, so g+_k - g-_k = sum_l
+// J[k][l]*(S^p_l|post - S^p_l|pre) exactly -- computed from the SAME
+// calc_jac source `_esJacColF` uses, dotted against `preState` (here the
+// pre-jump 1st-order sensitivity BLOCK, not a dydt snapshot -- see
+// `_esInfusionDydtPre()`) and the current (already post-1st-order-jump) yp.
+// Compartment layout is ALSO model-type-specific here, same reason as the
+// dtau row (rxSensMatExp: p-outer/q-inner; ordinary ODE models via
+// rxExpandSens2_: q-outer/p-inner) -- this row's own 3-term-only piece is
+// asymmetric in (p,q) (gated on dtmp/dLag_p, not symmetric like d2F), so
+// the per-model-type index matters here too, not just after adding the
+// Leibniz term (unlike d2F, which never needed this because its own values
+// are symmetric in (p,q) regardless of which slot receives them).
 static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
                                                int cmt, int ns, int neq,
-                                               double dtmp, double *dydtPre) {
-  if (_rxEsUseCalcJac || dydtEs == NULL || dydtPre == NULL) return;
+                                               double dtmp, double *preState) {
+  if (preState == NULL) return;
+  if (!_rxEsUseCalcJac && dydtEs == NULL) return;
+  if (_rxEsUseCalcJac && calc_jac == NULL) return;
   if (d2LagEs == NULL || dLagQEs == NULL) return;
   int np = _rxEsNParam, np2 = _rxEsNParam2;
   if (np2 <= 0) return;
   if (ns * (1 + np) + ns * np * np2 > neq) return;
   double *_d2LagB = (double*) calloc((size_t)ns * np * np2, sizeof(double));
   double *_dLagQB = (double*) calloc((size_t)ns * np2, sizeof(double));
-  double *_dydtPost = (double*) calloc((size_t)neq, sizeof(double));
-  if (_d2LagB != NULL && _dLagQB != NULL && _dydtPost != NULL) {
+  double *_dydtPost = NULL;  // ODE source for g+
+  double *_fullJac = NULL;   // matExp source for g+ - g- (constant Jacobian)
+  if (_rxEsUseCalcJac) {
+    _fullJac = (double*) calloc((size_t)ns * ns, sizeof(double));
+    if (_fullJac != NULL) {
+      int _esNjF[2]; _esNjF[0] = neq; _esNjF[1] = id;
+      calc_jac(_esNjF, xout, yp, _fullJac, (unsigned int) ns);
+    }
+  } else {
+    _dydtPost = (double*) calloc((size_t)neq, sizeof(double));
+    if (_dydtPost != NULL) {
+      int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+      dydtEs(_esNj, xout, yp, _dydtPost);
+    }
+  }
+  int _haveG = _rxEsUseCalcJac ? (_fullJac != NULL) : (_dydtPost != NULL);
+  if (_d2LagB != NULL && _dLagQB != NULL && _haveG) {
     d2LagEs(id, xout, yp, _d2LagB);
     dLagQEs(id, xout, yp, _dLagQB);
-    int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
-    dydtEs(_esNj, xout, yp, _dydtPost);
     for (int _p = 0; _p < np; _p++) {
       for (int _q = 0; _q < np2; _q++) {
         double _d2LagPQ = _d2LagB[cmt * (np * np2) + _p * np2 + _q];
         double _dLagQq = _dLagQB[cmt * np2 + _q];
-        int _c2cmt = ns * (1 + np) + cmt + ns * (_p + _q * np);
+        int _c2cmt = _rxEsUseCalcJac ?
+          (ns * (1 + np) + cmt + ns * (_p * np2 + _q)) :
+          (ns * (1 + np) + cmt + ns * (_p + _q * np));
         yp[_c2cmt] += -dtmp * _d2LagPQ;
         if (_dLagQq != 0.0) {
           for (int _esK = 0; _esK < ns; _esK++) {
-            double _gpost = _dydtPost[ns + _p * ns + _esK];
-            double _gpre = dydtPre[ns + _p * ns + _esK];
-            int _c2 = ns * (1 + np) + _esK + ns * (_p + _q * np);
-            yp[_c2] += -(_gpost - _gpre) * _dLagQq;
+            double _gdiff;
+            if (_rxEsUseCalcJac) {
+              double _acc = 0.0;
+              for (int _esL = 0; _esL < ns; _esL++) {
+                double _dS = yp[ns + _p * ns + _esL] - preState[_p * ns + _esL];
+                _acc += _fullJac[_esK * ns + _esL] * _dS;
+              }
+              _gdiff = _acc;
+            } else {
+              _gdiff = _dydtPost[ns + _p * ns + _esK] - preState[ns + _p * ns + _esK];
+            }
+            int _c2 = _rxEsUseCalcJac ?
+              (ns * (1 + np) + _esK + ns * (_p * np2 + _q)) :
+              (ns * (1 + np) + _esK + ns * (_p + _q * np));
+            yp[_c2] += -_gdiff * _dLagQq;
           }
         }
       }
@@ -617,13 +658,25 @@ static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
   if (_d2LagB != NULL) free(_d2LagB);
   if (_dLagQB != NULL) free(_dLagQB);
   if (_dydtPost != NULL) free(_dydtPost);
+  if (_fullJac != NULL) free(_fullJac);
 }
 
-// Captures dS^p_./dt (via dydtEs) BEFORE an infusion-boundary event mutates
-// InfusionRate/yp, for `_esInfusionBoundary2ndOrder()`'s Leibniz term.  ODE
-// models only, mirroring `_esInfusionBoundary2ndOrder()`'s own scoping.
+// Captures the state needed for `_esInfusionBoundary2ndOrder()`'s Leibniz
+// term, BEFORE an infusion-boundary event mutates InfusionRate/yp: for ODE
+// models, dS^p_./dt via dydtEs(); for matExp models (dydtEs is a no-op
+// stub), the pre-jump 1st-order sensitivity BLOCK itself (same "constant
+// Jacobian" trick as the additive-bolus dtau row's own matExp fix).
 static inline double *_esInfusionDydtPre(int id, double xout, double *yp, int neq) {
-  if (_rxEsUseCalcJac || dydtEs == NULL) return NULL;
+  if (_rxEsUseCalcJac) {
+    int _ns = _rxEsNState, _np = _rxEsNParam;
+    if (_np <= 0 || _ns <= 0) return NULL;
+    double *_pre = (double*) calloc((size_t)_ns * _np, sizeof(double));
+    if (_pre != NULL) {
+      memcpy(_pre, yp + _ns, (size_t)_ns * _np * sizeof(double));
+    }
+    return _pre;
+  }
+  if (dydtEs == NULL) return NULL;
   double *_pre = (double*) calloc((size_t)neq, sizeof(double));
   if (_pre != NULL) {
     int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
