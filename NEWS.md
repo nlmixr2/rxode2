@@ -3,12 +3,12 @@
 - Added jump sensitivities for events (based on
   https://github.com/dkaschek/EventSensitivities).  Hybrid jump
   sensitivities are used for matrix exponential and `linCmt()`
-  models.
+  models (up to 3rd order for the ODE/Matrix Exponential cases)
 
 - Inductive linearization and matrix exponentials have been rewritten
   to use an interface more similar to how NONMEM specifies models
   (with an automatic ode->syntax translation still).  These also have
-  sensitivities calculated through symbolic differentiation.
+  gradients calculated through symbolic differentiation.
 
 - Add `rxOmegaVarCovDeriv()`, a non-Cholesky (variance-covariance) `Omega`
   parameterization path: it returns `Omega^{-1}`, `log|Omega|`, and their first

@@ -709,4 +709,49 @@ rxTest({
     expect_true(any(grepl("cmt\\(rx__sens_central_BY_tka_BY_tka__\\)", .code)))
     expect_true(any(grepl("cmt\\(rx__sens_depot_BY_tka_BY_tka__\\)", .code)))
   })
+
+  test_that("inspecting rxSensMatExp() output without solving does not leak indLin state to the next model", {
+    # Regression for a real crash (uncaught Rcpp::exception "unsupported
+    # indLin code: 0", also observed as a C stack overflow depending on
+    # platform/timing): `.indLinInfo` (R/rxode2.R) is a package-level
+    # global used to carry matExp/indLin metadata into codegen. It was only
+    # ever reset via `.clearME()`'s `on.exit()` on the FULL model-compile
+    # closure -- a code path that calling `rxSensMatExp()` on a model and
+    # merely inspecting the generated text (as above, never solving it)
+    # does NOT reach. That left `.indLinInfo` set from this matExp model,
+    # which then silently attached itself to the NEXT, completely
+    # unrelated model built afterward -- corrupting its `mv$indLin` field
+    # and making `rxSolve.default()` force-select `method="indLin"` on a
+    # plain ODE model, which then crashed inside `indLin()` since the
+    # model's own `doIndLin` was correctly 0. Fixed by resetting
+    # `.indLinInfo` in `rxGetModel()` whenever the CURRENT model has no
+    # indLin structure of its own.
+    mod <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
+      })
+      model({
+        matExp()
+        k_depot_central <- exp(tka)
+        k_central_output <- exp(tcl) / exp(tv)
+        cp <- central / exp(tv)
+        cp ~ add(0.1)
+      })
+    }
+    .code <- rxSensMatExp(rxode2(mod), calcSens = "tka", calcSens2 = "tka")
+
+    ode_code <- "
+      d/dt(depot) = -ka * depot
+      d/dt(central) = ka * depot - cl / v * central
+    "
+    plain <- rxode2(ode_code)
+    expect_equal(length(rxModelVars(plain)$indLin), 0L)
+    et <- eventTable() |> add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    expect_no_error(
+      rxSolve(plain, et, params = c(ka = 0.5, cl = 0.2, v = 10))
+    )
+  })
 })

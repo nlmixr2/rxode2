@@ -936,6 +936,28 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
     ## a 4-element indLin list via genModelVars.c (when tb.isMexp=1).
     ## Propagate it to .indLinInfo so codegen serializes it into the DLL.
     assignInMyNamespace(".indLinInfo", .ret$indLin)
+  } else {
+    ## This model has NO indLin structure -- `.indLinInfo` MUST be reset
+    ## here rather than left as-is, or it silently carries over the LAST
+    ## matExp/indLin model's 4-element descriptor into this (unrelated)
+    ## plain-ODE model's compiled vars via rxCompile.rxModelVars()'s
+    ## `.rxModelVarsLast[[17]] <- .indLinInfo` line. `.clearME()` resets
+    ## this too, but only fires via `on.exit()` on the FULL compile
+    ## closure (R/rxode2.R's `.env$compile`) -- code paths that call
+    ## rxGetModel()/rxSensMatExp() WITHOUT ever fully compiling/solving a
+    ## model (e.g. inspecting rxSensMatExp()'s generated text directly, as
+    ## in several test-mexp-nonmem.R tests) never reach that on.exit, so
+    ## `.indLinInfo` leaked forward and corrupted the NEXT unrelated
+    ## model's `mv$indLin` (and hence its solve-time method dispatch:
+    ## rxSolve.default force-selects method="indLin" whenever
+    ## `length(rxModelVars(object)$indLin) > 0L`) -- confirmed by FD/CI as
+    ## a real, reproducible "C stack overflow" / uncaught Rcpp::exception
+    ## crash (`unsupported indLin code: 0`) when an unrelated population
+    ## solve ran right after such a test. Resetting unconditionally here
+    ## (whenever THIS model isn't indLin) closes the leak at its source.
+    if (length(.indLinInfo) > 0L) {
+      assignInMyNamespace(".indLinInfo", list())
+    }
   }
   return(.ret)
 }
