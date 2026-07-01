@@ -164,21 +164,35 @@
                                      error = function(e) NA_real_)
   .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
   .rateCol[is.na(.rateCol)] <- 0
-  ## modeled-rate infusions (rate(cmt)=R(theta), event rate flag == -1): the
-  ## infusion adds +R over [tau1, tau2 = tau1 + amt/R].  dG/dtheta gets a
+  ## modeled infusions add +R over [tau1, tau2 = tau1 + amt/R].  dG/dtheta gets a
   ## continuous forcing  integral_{tau1}^{tau2} lambda_c dR/dtheta dt  (folded
   ## into the mu quadrature via a covariate) plus a moving-boundary term
-  ## R*lambda_c(tau2)*d(tau2)/dtheta (tau2 = amt/R moves when R changes).
+  ## R*lambda_c(tau2)*d(tau2)/dtheta.  Two parameterisations, both reduced to
+  ## (R, dR/dtheta):
+  ##   * modeled rate (flag -1): rate(cmt)=R(theta) directly.
+  ##   * modeled duration (flag -2): dur(cmt)=D(theta), R=amt/D,
+  ##     dR/dtheta = -(amt/D^2) dD/dtheta.  (The boundary term -(amt/R^2)dR/dtheta
+  ##     then equals dD/dtheta, so the same forcing/boundary code applies.)
   .infus <- list()
-  for (.k in which(.rateCol == -1)) {
+  for (.k in which(.rateCol %in% c(-1, -2))) {
     .c <- as.character(.ev$cmt[.dr][.k])
     if (!(.c %in% .st)) next
-    .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
-    if (is.null(.rSE)) next
-    .Rv <- .evalNum(rxode2::rxFromSE(.rSE))
-    .dRp <- vapply(calcSens, function(p) {
-      .d <- symengine::D(.rSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
     .t1 <- .ev$time[.dr][.k]; .amt <- .ev$amt[.dr][.k]
+    if (.rateCol[.k] == -1) {
+      .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
+      if (is.null(.rSE)) next
+      .Rv <- .evalNum(rxode2::rxFromSE(.rSE))
+      .dRp <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.rSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
+    } else {
+      .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
+      if (is.null(.dSE)) next
+      .Dv <- .evalNum(rxode2::rxFromSE(.dSE))
+      .dDp <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.dSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
+      .Rv <- .amt / .Dv
+      .dRp <- -(.amt / .Dv^2) * .dDp
+    }
     .infus[[length(.infus) + 1L]] <- list(cmt = .c, t1 = .t1, t2 = .t1 + .amt / .Rv,
                                           R = .Rv, dRdp = .dRp, amt = .amt)
   }

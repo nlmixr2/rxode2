@@ -296,6 +296,37 @@ rxTest({
     expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
   })
 
+  # ---- modeled-duration infusion (rate = amt/D) ------------------------------
+  test_that("adjoint gradient handles modeled-duration infusion", {
+    dText <- paste0(mText, "\ndur(depot)=Dd")
+    dP    <- c(ka = 1.2, cl = 3.5, v = 25.0, Dd = 2)
+    dCS   <- c("ka", "cl", "v", "Dd")
+    dPred <- "depot"
+    dObsT <- c(0.5, 1, 1.5, 2.5, 3, 4)
+    dEv   <- rxode2::et(amt = 100, rate = -2, cmt = "depot")
+
+    tmod <- rxode2::rxode2(paste0(dText, "\ncp=", dPred))
+    dFev <- dEv |> rxode2::et(dObsT)
+    truth <- as.data.frame(rxode2::rxSolve(tmod, params = dP, dFev,
+                                           returnType = "data.frame", addDosing = FALSE))
+    dObs <- truth$cp[truth$time %in% dObsT] * 1.1 + 0.5
+
+    objG <- function(p) {
+      d <- as.data.frame(rxode2::rxSolve(tmod, params = p, dFev,
+                                         returnType = "data.frame", addDosing = FALSE))
+      sum(0.5 * (d$cp[d$time %in% dObsT] - dObs)^2)
+    }
+    gFD <- vapply(dCS, function(p) {
+      h <- dP[[p]] * 1e-5; pp <- dP; pm <- dP
+      pp[p] <- pp[p] + h; pm[p] <- pm[p] - h
+      (objG(pp) - objG(pm)) / (2 * h)
+    }, numeric(1))
+
+    gAdj <- rxode2::.rxAdjointGrad(dText, dP, dEv, dCS, dPred, dObsT, dObs, denseBy = 0.002)
+    expect_gt(abs(gAdj[["Dd"]]), 1)
+    expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.
