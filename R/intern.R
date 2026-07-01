@@ -3,10 +3,11 @@
 }
 
 .codegen <- function(c_file, prefix, libname, pMd5, timeId, lastMv, goodFun,
-                     eventSensCode = rep("", 8L)) {
+                     eventSensCode = rep("", 9L)) {
   .Call(`_rxode2_codegen`, c_file, prefix, libname, pMd5, timeId, lastMv, goodFun,
         eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
-        eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8])
+        eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8],
+        eventSensCode[9])
 }
 
 .parseModel <- function(type) {

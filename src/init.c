@@ -44,9 +44,10 @@ SEXP _rxProgressStop(SEXP);
 SEXP _rxProgressAbort(SEXP);
 SEXP _rxode2_codeLoaded(void);
 
-SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode, SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode, SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode);
+SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode, SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode, SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode, SEXP esD3FCode);
 SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2);
 SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac);
+SEXP _rxode2_setEventSensNParam3(SEXP nParam3);
 void rxode2EventSensLoad(SEXP trans, int active, int nState, int nParam, int nParam2);
 void rxode2EventSensSetActive(int active);
 SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState, SEXP nParam, SEXP nParam2);
@@ -715,9 +716,10 @@ void R_init_rxode2(DllInfo *info){
     {"_rxProgressStop", (DL_FUNC) &_rxProgressStop, 1},
     {"_rxProgressAbort", (DL_FUNC) &_rxProgressAbort, 1},
     {"_rxode2_trans", (DL_FUNC) &_rxode2_trans, 8},
-    {"_rxode2_codegen", (DL_FUNC) &_rxode2_codegen, 15},
+    {"_rxode2_codegen", (DL_FUNC) &_rxode2_codegen, 16},
     {"_rxode2_setEventSensDims", (DL_FUNC) &_rxode2_setEventSensDims, 4},
     {"_rxode2_setEventSensUseCalcJac", (DL_FUNC) &_rxode2_setEventSensUseCalcJac, 1},
+    {"_rxode2_setEventSensNParam3", (DL_FUNC) &_rxode2_setEventSensNParam3, 1},
     {"_rxode2_eventSensLoad", (DL_FUNC) &_rxode2_eventSensLoad, 5},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},

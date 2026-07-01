@@ -516,6 +516,7 @@ static inline double dabs2(double x) {
   extern "C" t_dLag d2LagEs;
   extern "C" t_dRate d2RateEs;
   extern "C" t_dDur d2DurEs;
+  extern "C" t_dF d3FEs;
   extern "C" t_DUR durEsFn;
   extern "C" t_dydt dydtEs;
   // matExp()/indLin() models have no functional dydt() (the primal system is
@@ -531,6 +532,7 @@ static inline double dabs2(double x) {
   extern "C" int _rxEsNState;
   extern "C" int _rxEsNParam;
   extern "C" int _rxEsNParam2;
+  extern "C" int _rxEsNParam3;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
@@ -544,6 +546,7 @@ static inline double dabs2(double x) {
   extern t_dLag d2LagEs;
   extern t_dRate d2RateEs;
   extern t_dDur d2DurEs;
+  extern t_dF d3FEs;
   extern t_DUR durEsFn;
   extern t_dydt dydtEs;
   extern t_calc_jac calc_jac;
@@ -552,6 +555,7 @@ static inline double dabs2(double x) {
   extern int _rxEsNState;
   extern int _rxEsNParam;
   extern int _rxEsNParam2;
+  extern int _rxEsNParam3;
 #endif
 
 

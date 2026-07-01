@@ -418,6 +418,33 @@ rxTest({
     }
   })
 
+  test_that("3rd-order additive-bolus F jump fires correctly for matExp compartments (Phase H1)", {
+    # Same confirmation as the 2nd-order test above, one order deeper: the
+    # H1 additive-bolus F-row 3rd-order jump (the only 3rd-order jump piece
+    # implemented so far) works identically for matExp's standard-layout
+    # 3rd-order compartments as for the equivalent ODE model.
+    ode_code_f <- "
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars_f <- c(ka = 0.5, cl = 0.2, v = 10, tf = qlogis(0.7))
+    et_f <- et(amt = 100, cmt = "depot") |> et(seq(0, 10, by = 0.5))
+    mexp3 <- rxode2(rxSensMatExp(ode_code_f,
+      calcSens = c("tf", "ka"), calcSens2 = c("tf", "ka"), calcSens3 = "tf"
+    ))
+    ode3 <- rxode2(ode_code_f,
+      calcSens = c("tf", "ka"), calcSens2 = c("tf", "ka"), calcSens3 = "tf",
+      eventSens = "jump"
+    )
+    res_mexp <- rxSolve(mexp3, et_f, params = pars_f, method = "indLin")
+    res_ode <- rxSolve(ode3, et_f, params = pars_f)
+    expect_equal(res_mexp$rx__sens_central_BY_tf_BY_tf_BY_tf__,
+      res_ode$rx__sens_central_BY_tf_BY_tf_BY_tf__,
+      tolerance = 1e-4
+    )
+  })
+
   test_that("rxS() incorporates indLin() forcing (Michaelis-Menten) without error", {
     .mm <- paste("matExp()",
                  "cmt(depot)",

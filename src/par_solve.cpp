@@ -587,6 +587,12 @@ int _rxEsActive = 0;
 int _rxEsNState = 0;
 int _rxEsNParam = 0;
 int _rxEsNParam2 = 0;
+// Third-order (Phase H1) calcSens3 parameter count.  Set via its own setter
+// (`_rxode2_setEventSensNParam3`) rather than widening `_rxEsNParam`
+// dims -- same rationale as `_rxEsUseCalcJac`'s dedicated setter (added
+// after the original dims setter shipped; a new arg would break the
+// existing 4-arg call sites).
+int _rxEsNParam3 = 0;
 // When 1, handle_evid's dtau/lag jump row sources its Jacobian column from
 // `calc_jac` instead of a central difference of `dydt` -- needed for
 // matExp()/indLin() models, whose compiled `dydt()` is a no-op stub (the
@@ -606,6 +612,7 @@ t_dF d2FEs = NULL;
 t_dLag d2LagEs = NULL;
 t_dRate d2RateEs = NULL;
 t_dDur d2DurEs = NULL;
+t_dF d3FEs = NULL;
 t_DUR durEsFn = NULL;
 t_dydt dydtEs = NULL;
 
@@ -619,6 +626,11 @@ extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, 
 
 extern "C" SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac) {
   _rxEsUseCalcJac = INTEGER(useCalcJac)[0];
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_setEventSensNParam3(SEXP nParam3) {
+  _rxEsNParam3 = INTEGER(nParam3)[0];
   return R_NilValue;
 }
 
@@ -647,6 +659,7 @@ extern "C" void rxode2EventSensLoad(SEXP trans, int active, int nState, int nPar
   snprintf(nm, 300, "%sd2Lag", prefix); d2LagEs = (t_dLag)  R_GetCCallable(lib, nm);
   snprintf(nm, 300, "%sd2Rate", prefix);d2RateEs= (t_dRate) R_GetCCallable(lib, nm);
   snprintf(nm, 300, "%sd2Dur", prefix); d2DurEs = (t_dDur)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd3F", prefix);   d3FEs   = (t_dF)    R_GetCCallable(lib, nm);
   _rxEsActive = active;
   _rxEsNState = nState;
   _rxEsNParam = nParam;
@@ -853,7 +866,7 @@ void rxUpdateFuns(SEXP trans){
   {
     const char *s_prefix = CHAR(STRING_ELT(trans, 2));
     char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300], s_d2F[300];
-    char s_d2Lag[300], s_d2Rate[300], s_d2Dur[300];
+    char s_d2Lag[300], s_d2Rate[300], s_d2Dur[300], s_d3F[300];
     snprintf(s_dLag, 300, "%sdLag", s_prefix);
     snprintf(s_dF, 300, "%sdF", s_prefix);
     snprintf(s_dRate, 300, "%sdRate", s_prefix);
@@ -862,6 +875,7 @@ void rxUpdateFuns(SEXP trans){
     snprintf(s_d2Lag, 300, "%sd2Lag", s_prefix);
     snprintf(s_d2Rate, 300, "%sd2Rate", s_prefix);
     snprintf(s_d2Dur, 300, "%sd2Dur", s_prefix);
+    snprintf(s_d3F, 300, "%sd3F", s_prefix);
     dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
     dF = (t_dF) R_GetCCallable(lib, s_dF);
     dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
@@ -871,6 +885,7 @@ void rxUpdateFuns(SEXP trans){
     d2LagEs = (t_dLag) R_GetCCallable(lib, s_d2Lag);
     d2RateEs = (t_dRate) R_GetCCallable(lib, s_d2Rate);
     d2DurEs = (t_dDur) R_GetCCallable(lib, s_d2Dur);
+    d3FEs = (t_dF) R_GetCCallable(lib, s_d3F);
     dydtEs = dydt;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);

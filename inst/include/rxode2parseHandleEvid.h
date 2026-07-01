@@ -945,6 +945,21 @@ static inline int handle_evid(int evid, int neq,
               yp[_c2] = 0.0;
             }
           }
+          // Third-order (Phase H1): same reasoning, one level deeper -- zero
+          // the 3rd-order compartment for the replaced state too.
+          if (d3FEs != NULL && _rxEsNParam3 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _np2 + _ns * _np * _np2 * _rxEsNParam3 <= neq) {
+            int _np3 = _rxEsNParam3;
+            for (int _i2 = 0; _i2 < _np; _i2++) {
+              for (int _i3 = 0; _i3 < _np2; _i3++) {
+                for (int _i4 = 0; _i4 < _np3; _i4++) {
+                  int _c3 = _ns * (1 + _np) + _ns * _np * _np2 + cmt +
+                    _ns * (_i2 + _np * _i3 + _np * _np2 * _i4);
+                  yp[_c3] = 0.0;
+                }
+              }
+            }
+          }
         }
         // dtau row (event time), only if the lag is modeled on this
         // compartment (raw event-table replace/multiply records, not the
@@ -1008,6 +1023,21 @@ static inline int handle_evid(int evid, int neq,
               for (int _i3 = 0; _i3 < _np2; _i3++) {
                 int _c2 = _ns * (1 + _np) + cmt + _ns * (_i2 + _i3 * _np);
                 yp[_c2] *= _esAlpha;
+              }
+            }
+            // Third-order (Phase H1): same reasoning, one level deeper -- scale
+            // the 3rd-order compartment for the multiplied state too.
+            if (d3FEs != NULL && _rxEsNParam3 > 0 &&
+                _ns * (1 + _np) + _ns * _np * _np2 + _ns * _np * _np2 * _rxEsNParam3 <= neq) {
+              int _np3 = _rxEsNParam3;
+              for (int _i2 = 0; _i2 < _np; _i2++) {
+                for (int _i3 = 0; _i3 < _np2; _i3++) {
+                  for (int _i4 = 0; _i4 < _np3; _i4++) {
+                    int _c3 = _ns * (1 + _np) + _ns * _np * _np2 + cmt +
+                      _ns * (_i2 + _np * _i3 + _np * _np2 * _i4);
+                    yp[_c3] *= _esAlpha;
+                  }
+                }
               }
             }
           }
@@ -1086,6 +1116,31 @@ static inline int handle_evid(int evid, int neq,
                 }
               }
               free(_d2FB);
+            }
+          }
+          // Third-order ddelta row (Phase H1): the third-order sensitivity
+          // S^{pqr} of the dosed compartment jumps by amt*d3F[p][q][r].
+          // Additive-bolus F row only (H1 scope).  3rd-order compartment for
+          // (cmt, p=i2, q=i3, r=i4) follows the rxExpandSens3_ layout:
+          // nState*(1+np) + nState*np*np2 + cmt + nState*(i2 + np*i3 + np*np2*i4),
+          // after the states, first-order, and second-order sens blocks.
+          if (d3FEs != NULL && _rxEsNParam3 > 0 && d2FEs != NULL && _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 + _ns * _np * _rxEsNParam2 * _rxEsNParam3 <= neq) {
+            int _np2 = _rxEsNParam2, _np3 = _rxEsNParam3;
+            double *_d3FB = (double*) calloc((size_t)_ns * _np * _np2 * _np3, sizeof(double));
+            if (_d3FB != NULL) {
+              d3FEs(id, xout, yp, _d3FB);
+              for (int _i2 = 0; _i2 < _np; _i2++) {
+                for (int _i3 = 0; _i3 < _np2; _i3++) {
+                  for (int _i4 = 0; _i4 < _np3; _i4++) {
+                    int _c3 = _ns * (1 + _np) + _ns * _np * _np2 + cmt +
+                      _ns * (_i2 + _np * _i3 + _np * _np2 * _i4);
+                    yp[_c3] += _esRawAmt * _d3FB[cmt * (_np * _np2 * _np3) +
+                                                  _i2 * (_np2 * _np3) + _i3 * _np3 + _i4];
+                  }
+                }
+              }
+              free(_d3FB);
             }
           }
           // dtau row (lag time), only if the lag is modeled.  Jacobian column

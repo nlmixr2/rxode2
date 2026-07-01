@@ -971,6 +971,66 @@ rxTest({
     expect_gt(max(abs(fd)), 1)
   })
 
+  test_that("third-order additive-bolus F jump matches nested finite differences (Phase H1)", {
+    # F = expit(tf) feeds the dose only, so the third-order sensitivity
+    # S^{fff} of the dosed compartment is entirely the explicit jump
+    # amt*d3F/dtf^3 -- validate against a central difference of the
+    # jump-correct *second*-order sensitivity (mirrors the 2nd-order F-jump
+    # test's own validation strategy one level deeper).
+    ode_code_f <- "
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars_f <- c(ka = 0.5, cl = 0.2, v = 10, tf = qlogis(0.7))
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0, 10, by = 0.5))
+    m2 <- rxode2(ode_code_f, calcSens = c("tf", "ka"), calcSens2 = c("tf", "ka"),
+                 eventSens = "jump")
+    m3 <- rxode2(ode_code_f, calcSens = c("tf", "ka"), calcSens2 = c("tf", "ka"),
+                 calcSens3 = "tf", eventSens = "jump")
+    expect_true("rx__sens_central_BY_tf_BY_tf_BY_tf__" %in% rxModelVars(m3)$state)
+    s3 <- rxSolve(m3, e, pars_f)[["rx__sens_central_BY_tf_BY_tf_BY_tf__"]]
+    eps <- 1e-4
+    p1 <- pars_f; p1["tf"] <- pars_f["tf"] + eps
+    p2 <- pars_f; p2["tf"] <- pars_f["tf"] - eps
+    .s2 <- function(p) rxSolve(m2, e, p)[["rx__sens_central_BY_tf_BY_tf__"]]
+    fd3 <- (.s2(p1) - .s2(p2)) / (2 * eps)
+    expect_equal(s3, fd3, tolerance = 1e-4)
+    # without the 3rd-order jump the contribution would be entirely missing
+    expect_gt(max(abs(fd3)), 1)
+  })
+
+  test_that("third-order additive-bolus F jump: replace/multiply scale/zero the 3rd-order compartment", {
+    # Regression mirroring the 2nd-order replace/multiply fix: a raw
+    # event-table replace() zeros every sensitivity order of the replaced
+    # state (constant replacement value); a multiply() scales every order by
+    # the same alpha.  Both validated against nested FD of the jump-correct
+    # 2nd-order sensitivity.
+    ode_code_f <- "
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars_f <- c(ka = 0.5, cl = 0.2, v = 10, tf = qlogis(0.7))
+    m2 <- rxode2(ode_code_f, calcSens = c("tf", "ka"), calcSens2 = c("tf", "ka"),
+                 eventSens = "jump")
+    m3 <- rxode2(ode_code_f, calcSens = c("tf", "ka"), calcSens2 = c("tf", "ka"),
+                 calcSens3 = "tf", eventSens = "jump")
+    for (.evid in c(5, 6)) {
+      .amt <- if (.evid == 5) 50 else 0.5
+      e <- et(amt = 100, cmt = "depot") |>
+        et(time = 5, amt = .amt, cmt = "central", evid = .evid) |>
+        et(seq(0.5, 12, 1))
+      s3 <- rxSolve(m3, e, pars_f)[["rx__sens_central_BY_tf_BY_tf_BY_tf__"]]
+      eps <- 1e-4
+      p1 <- pars_f; p1["tf"] <- pars_f["tf"] + eps
+      p2 <- pars_f; p2["tf"] <- pars_f["tf"] - eps
+      .s2 <- function(p) rxSolve(m2, e, p)[["rx__sens_central_BY_tf_BY_tf__"]]
+      fd3 <- (.s2(p1) - .s2(p2)) / (2 * eps)
+      expect_equal(s3, fd3, tolerance = 1e-4, info = paste0("evid: ", .evid))
+    }
+  })
+
   test_that("additive-bolus F jump fires for indexed THETA[n]/ETA[n] params", {
     # The nlmixr2 FOCEi inner model writes sensitivities wrt the indexed
     # parameters ETA[n]/THETA[n] (compartments rx__sens_<state>_BY_ETA_n___).

@@ -104,6 +104,46 @@
              stringsAsFactors = FALSE)
 }
 
+#' Split a third-order sensitivity state name into (state, p, q, r)
+#'
+#' Third-order sensitivity compartments are named
+#' `rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__` (Phase H, `rxExpandSens3_`).
+#' Anchored the same way as `.rxEventSensSplit2()`.
+#'
+#' @param sens Character vector of sensitivity compartment names.
+#' @param states Character vector of physical (non-sensitivity) state names.
+#' @return data.frame(sens, state, p, q, r); non-third-order names (not
+#'   exactly three `_BY_` segments) yield `NA` and are dropped by the caller.
+#' @noRd
+.rxEventSensSplit3 <- function(sens, states) {
+  .pre <- "rx__sens_"
+  .core <- sub("__$", "", sub(paste0("^", .pre), "", sens))
+  .states <- states[order(nchar(states), decreasing = TRUE)]
+  .state <- rep(NA_character_, length(.core))
+  .p <- rep(NA_character_, length(.core))
+  .q <- rep(NA_character_, length(.core))
+  .r <- rep(NA_character_, length(.core))
+  for (.i in seq_along(.core)) {
+    for (.s in .states) {
+      .head <- paste0(.s, "_BY_")
+      if (startsWith(.core[.i], .head)) {
+        .rest <- substring(.core[.i], nchar(.head) + 1L)
+        .parts <- strsplit(.rest, "_BY_", fixed = TRUE)[[1]]
+        ## third-order only: exactly three parts (p, q, r)
+        if (length(.parts) == 3L) {
+          .state[.i] <- .s
+          .p[.i] <- .parts[1]
+          .q[.i] <- .parts[2]
+          .r[.i] <- .parts[3]
+        }
+        break
+      }
+    }
+  }
+  data.frame(sens = sens, state = .state, p = .p, q = .q, r = .r,
+             stringsAsFactors = FALSE)
+}
+
 #' Build the event-sensitivity index map for a model
 #'
 #' Relates each dosing/event compartment to the first-order sensitivity
@@ -172,6 +212,22 @@
     ## no-op.
     rownames(.map2) <- NULL
   }
+  ## Third-order sensitivity compartments (Phase H), if present.  Same
+  ## deliberately-unsorted-row-order rationale as `.map2` above -- `.pIdx`/
+  ## `.qIdx`/`.rIdx` (.rxEventSensCLines()) recover each parameter's ordinal
+  ## position within calcSens/calcSens2/calcSens3 *as passed* from
+  ## `unique(map3$p)`/`unique(map3$q)`/`unique(map3$r)`'s first-occurrence
+  ## order, which only matches the compiled `rxExpandSens3_` i2/i3/i4 layout
+  ## when this data.frame's row order is the natural (compilation) order.
+  .split3 <- .rxEventSensSplit3(.sens, .states)
+  .split3 <- .split3[!is.na(.split3$state), , drop = FALSE]
+  .map3 <- NULL
+  if (nrow(.split3) > 0L) {
+    .split3$sensCmt <- unname(.ord[.split3$sens])
+    .split3$stateCmt <- unname(.ord[.split3$state])
+    .map3 <- .split3[, c("state", "p", "q", "r", "stateCmt", "sensCmt"), drop = FALSE]
+    rownames(.map3) <- NULL
+  }
   ## event compartments: those carrying a modeled alag/F/rate/dur.  `mv$alag`
   ## already lists the lag compartments; the analogous f/rate/dur compartments
   ## are decoded from `stateProp` bit flags (see .rxEventSensProp).
@@ -183,6 +239,7 @@
     sensParams = .sensParams,
     map = .map,
     map2 = .map2,
+    map3 = .map3,
     lagCmt = .prop$lagCmt,
     fCmt = .prop$fCmt,
     rateCmt = .prop$rateCmt,
@@ -221,6 +278,14 @@
     ]
     if (nrow(.map2) == 0L) .map2 <- NULL
   }
+  .map3 <- map$map3
+  if (!is.null(.map3) && nrow(.map3) > 0L) {
+    .map3 <- .map3[
+      .map3$state %in% .odeStates & .map3$p %in% .sensParams,
+      , drop = FALSE
+    ]
+    if (nrow(.map3) == 0L) .map3 <- NULL
+  }
   list(
     states = .odeStates,
     nState = length(.odeStates),
@@ -228,6 +293,7 @@
     sensParams = .sensParams,
     map = .map1,
     map2 = .map2,
+    map3 = .map3,
     lagCmt = map$lagCmt[map$lagCmt %in% .stateCmt],
     fCmt = map$fCmt[map$fCmt %in% .stateCmt],
     rateCmt = map$rateCmt[map$rateCmt %in% .stateCmt],
@@ -383,8 +449,23 @@
 #' @return `rxFromSE` text for `d^2(g)/dp/dq` (the string `"0"` when zero).
 #' @noRd
 .rxEventSensD2Expr <- function(sym, p, q, states) {
+  .tot <- .rxEventSensD2Sym(sym, p, q, states)
+  if (is.null(.tot)) return("0")
+  rxFromSE(.tot)
+}
+
+#' Second-order total derivative as a symengine object
+#'
+#' Same quantity as `.rxEventSensD2Expr()` but returns the symengine
+#' expression (or `NULL` when zero) instead of `rxFromSE` text, so it can be
+#' differentiated again for the third-order total derivative.
+#'
+#' @inheritParams .rxEventSensD2Expr
+#' @return symengine expression for `d^2(g)/dp/dq`, or `NULL` if identically zero.
+#' @noRd
+.rxEventSensD2Sym <- function(sym, p, q, states) {
   .dgp <- .rxEventSensDSym(sym, p, states)
-  if (is.null(.dgp)) return("0")
+  if (is.null(.dgp)) return(NULL)
   ## SE-mangled free symbols (see .rxEventSensFreeSyms): indexed params such as
   ## `ETA[3]` collapse to `"ETA"` under all.vars and would never match `q`.
   .vars <- .rxEventSensFreeSyms(.dgp)
@@ -410,6 +491,80 @@
     if (rxFromSE(.dSpl) %in% c("0", "0.0")) next
     .Spq <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "__"))
     .term <- .dSpl * .Spq
+    .tot <- if (is.null(.tot)) .term else .tot + .term
+  }
+  .tot
+}
+
+#' Third-order total derivative of a dosing-parameter expression
+#'
+#' Computes `d^3(g)/dp/dq/dr` as a *total* derivative, one level deeper than
+#' `.rxEventSensD2Sym()`.  Starting from the second-order total derivative
+#' `dg_pq = d^2(g)/dp/dq` (which may reference physical states `x_l`, and the
+#' sensitivity symbols `S^p_l`, `S^q_l`, `S^{pq}_l`), the total `d/dr` adds
+#' four groups of terms mirroring `.rxEventSensD2Sym()`'s own construction:
+#'   partial(dg_pq)/partial r                                (direct)
+#' + sum_l (partial dg_pq / partial x_l)      * S^r_l         (state coupling)
+#' + sum_l (partial dg_pq / partial S^p_l)    * S^{pr}_l      (p-chain)
+#' + sum_l (partial dg_pq / partial S^q_l)    * S^{qr}_l      (q-chain)
+#' + sum_l (partial dg_pq / partial S^{pq}_l) * S^{pqr}_l     (pq-chain)
+#' `S^{pr}_l`/`S^{qr}_l` are valid existing second-order compartments because
+#' `calcSens3 subset calcSens2 subset calcSens` (so `r` is also a valid
+#' calcSens2-slot parameter and `p`/`q` are also valid calcSens-slot
+#' parameters -- see the plan's naming-convention note).
+#'
+#' @param sym symengine expression for the dosing parameter `g`.
+#' @param p,q,r Parameter names to differentiate wrt (p in calcSens, q in
+#'   calcSens2, r in calcSens3).
+#' @param states Physical state names `x_l`.
+#' @return `rxFromSE` text for `d^3(g)/dp/dq/dr` (the string `"0"` when zero).
+#' @noRd
+.rxEventSensD3Expr <- function(sym, p, q, r, states) {
+  .dgpq <- .rxEventSensD2Sym(sym, p, q, states)
+  if (is.null(.dgpq)) return("0")
+  .vars <- .rxEventSensFreeSyms(.dgpq)
+  .tot <- NULL
+  ## direct partial wrt r
+  if (r %in% .vars) {
+    .tot <- symengine::D(.dgpq, symengine::S(r))
+  }
+  ## state-coupling: d/dx_l * S^r_l
+  for (.l in states) {
+    if (!(.l %in% .vars)) next
+    .dxl <- symengine::D(.dgpq, symengine::S(.l))
+    if (rxFromSE(.dxl) %in% c("0", "0.0")) next
+    .Sr <- symengine::S(paste0("rx__sens_", .l, "_BY_", r, "__"))
+    .term <- .dxl * .Sr
+    .tot <- if (is.null(.tot)) .term else .tot + .term
+  }
+  ## p-chain coupling: d/d(S^p_l) * S^{pr}_l
+  for (.l in states) {
+    .Spl <- paste0("rx__sens_", .l, "_BY_", p, "__")
+    if (!(.Spl %in% .vars)) next
+    .dSpl <- symengine::D(.dgpq, symengine::S(.Spl))
+    if (rxFromSE(.dSpl) %in% c("0", "0.0")) next
+    .Spr <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", r, "__"))
+    .term <- .dSpl * .Spr
+    .tot <- if (is.null(.tot)) .term else .tot + .term
+  }
+  ## q-chain coupling: d/d(S^q_l) * S^{qr}_l
+  for (.l in states) {
+    .Sql <- paste0("rx__sens_", .l, "_BY_", q, "__")
+    if (!(.Sql %in% .vars)) next
+    .dSql <- symengine::D(.dgpq, symengine::S(.Sql))
+    if (rxFromSE(.dSql) %in% c("0", "0.0")) next
+    .Sqr <- symengine::S(paste0("rx__sens_", .l, "_BY_", q, "_BY_", r, "__"))
+    .term <- .dSql * .Sqr
+    .tot <- if (is.null(.tot)) .term else .tot + .term
+  }
+  ## pq-chain coupling: d/d(S^{pq}_l) * S^{pqr}_l
+  for (.l in states) {
+    .Spql <- paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "__")
+    if (!(.Spql %in% .vars)) next
+    .dSpql <- symengine::D(.dgpq, symengine::S(.Spql))
+    if (rxFromSE(.dSpql) %in% c("0", "0.0")) next
+    .Spqr <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "_BY_", r, "__"))
+    .term <- .dSpql * .Spqr
     .tot <- if (is.null(.tot)) .term else .tot + .term
   }
   if (is.null(.tot)) return("0")
@@ -494,10 +649,50 @@
     }
     do.call(rbind, .rows)
   }
+  ## Third-order total-derivative table (Phase H1): additive-bolus `F` row
+  ## only, per the plan's H1 scope (mirrors Phase F's own initial scoping).
+  ## Indexed by (cmt, p, q, r): p over calcSens, q over calcSens2, r over
+  ## calcSens3 params.
+  .build3 <- function(cmts, kind) {
+    if (is.null(map$map3)) {
+      return(data.frame(cmt = integer(0), cmtName = character(0),
+                        p = character(0), q = character(0), r = character(0),
+                        expr = character(0), stringsAsFactors = FALSE))
+    }
+    .p3 <- unique(map$map3$p)
+    .q3 <- unique(map$map3$q)
+    .r3 <- unique(map$map3$r)
+    .rows <- list()
+    for (.c in cmts) {
+      .nm <- .cmtName(.c)
+      .symName <- paste0("rx_", kind, "_", .nm, "_")
+      if (!exists(.symName, envir = .model)) next
+      .sym <- get(.symName, envir = .model)
+      for (.p in .p3) {
+        for (.q in .q3) {
+          for (.r in .r3) {
+            .e <- .rxEventSensD3Expr(.sym, .p, .q, .r, .states)
+            if (.e != "0" && .e != "0.0") {
+              .rows[[length(.rows) + 1L]] <-
+                data.frame(cmt = .c, cmtName = .nm, p = .p, q = .q, r = .r,
+                           expr = .e, stringsAsFactors = FALSE)
+            }
+          }
+        }
+      }
+    }
+    if (length(.rows) == 0L) {
+      return(data.frame(cmt = integer(0), cmtName = character(0),
+                        p = character(0), q = character(0), r = character(0),
+                        expr = character(0), stringsAsFactors = FALSE))
+    }
+    do.call(rbind, .rows)
+  }
   list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"),
        rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"),
        f2 = .build2(map$fCmt, "f"), lag2 = .build2(map$lagCmt, "lag"),
-       rate2 = .build2(map$rateCmt, "rate"), dur2 = .build2(map$durCmt, "dur"))
+       rate2 = .build2(map$rateCmt, "rate"), dur2 = .build2(map$durCmt, "dur"),
+       f3 = .build3(map$fCmt, "f"))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -555,11 +750,26 @@
     .idx <- .cmt0 * (.np * .np2) + .pIdx[tab$p] * .np2 + .qIdx[tab$q]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
   }
+  ## Third-order (Phase H1) buffer: indexed
+  ## (cmt0*(np*np2*np3) + pIdx*(np2*np3) + qIdx*np3 + rIdx), r over the
+  ## calcSens3 params.  F row only (H1 scope).
+  .r3 <- if (is.null(info$map$map3)) character(0) else unique(info$map$map3$r)
+  .np3 <- length(.r3)
+  .rIdx <- stats::setNames(seq_along(.r3) - 1L, .r3)
+  .lines3 <- function(tab, buf) {
+    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    .cmt0 <- tab$cmt - 1L
+    .idx <- .cmt0 * (.np * .np2 * .np3) + .pIdx[tab$p] * (.np2 * .np3) +
+      .qIdx[tab$q] * .np3 + .rIdx[tab$r]
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+  }
   list(
     nSensParam = .np,
     paramIdx = .pIdx,
     nSensParam2 = .np2,
     paramIdx2 = .qIdx,
+    nSensParam3 = .np3,
+    paramIdx3 = .rIdx,
     lag = .lines(info$derivs$lag, "_dLagSave"),
     f = .lines(info$derivs$f, "_dFSave"),
     rate = .lines(info$derivs$rate, "_dRateSave"),
@@ -567,27 +777,28 @@
     f2 = .lines2(info$derivs$f2, "_d2FSave"),
     lag2 = .lines2(info$derivs$lag2, "_d2LagSave"),
     rate2 = .lines2(info$derivs$rate2, "_d2RateSave"),
-    dur2 = .lines2(info$derivs$dur2, "_d2DurSave")
+    dur2 = .lines2(info$derivs$dur2, "_d2DurSave"),
+    f3 = .lines3(info$derivs$f3, "_d3FSave")
   )
 }
 
 #' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur C body lines for codegen
 #'
-#' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur)` body lines
-#' (empty strings when none). Passed as arguments to the codegen `.Call` so
-#' the lines reach codegen in the same package instance (robust under
+#' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur, d3F)` body
+#' lines (empty strings when none). Passed as arguments to the codegen `.Call`
+#' so the lines reach codegen in the same package instance (robust under
 #' `pkgload::load_all`, where a module-global channel could bind the setter
 #' and codegen to different rxode2 C instances).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
-#' @return character(8): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, and
-#'   d2Dur body lines.
+#' @return character(9): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur,
+#'   and d3F body lines.
 #' @noRd
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
   .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
   c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2),
-    .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2))
+    .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2), .join(.cl$f3))
 }
 
 #' Does this model need the `calc_jac`-based dtau/lag Jacobian column?
@@ -621,13 +832,17 @@
   .info <- tryCatch(object$eventSensInfo, error = function(e) NULL)
   if (is.null(.info) || identical(.info$mode, "fd")) {
     .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
+    .Call(`_rxode2_setEventSensNParam3`, 0L)
     return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L)))
   }
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
   ## number of second-order (calcSens2) parameters; 0 when no Hessian path
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
+  ## number of third-order (calcSens3) parameters; 0 when no Phase H1 path
+  .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
   .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(object)))
+  .Call(`_rxode2_setEventSensNParam3`, as.integer(.nParam3))
   invisible(.Call(`_rxode2_setEventSensDims`, 1L,
                   as.integer(.nState), as.integer(.nParam), as.integer(.nParam2)))
 }
@@ -656,9 +871,11 @@ rxEventSensLoadModel <- function(model) {
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
+  .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
   .Call(`_rxode2_eventSensLoad`, .trans, 1L, as.integer(.nState),
         as.integer(.nParam), as.integer(.nParam2))
   .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(model)))
+  .Call(`_rxode2_setEventSensNParam3`, as.integer(.nParam3))
   invisible(TRUE)
 }
 
@@ -672,6 +889,7 @@ rxEventSensLoadModel <- function(model) {
 #' @keywords internal
 rxEventSensDeactivate <- function() {
   .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
+  .Call(`_rxode2_setEventSensNParam3`, 0L)
   invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L))
 }
 
