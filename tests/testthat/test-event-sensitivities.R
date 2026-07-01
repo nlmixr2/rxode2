@@ -1089,26 +1089,77 @@ rxTest({
     expect_gt(max(abs(fd)), 0.1)
   })
 
-  test_that("second-order dtau/lag row: q ALSO driving the same alag is guarded, not wrong (Phase H1-dtau)", {
-    # Differentiating the 1st-order dtau row by the product rule is PROVEN
-    # INCOMPLETE (by FD) whenever q ALSO shifts the same event's time: it
-    # misses a Leibniz/moving-boundary term (dS^p_k/dt * dLag_q[c], from
-    # S^p_k's pre-jump value being read at a q-shifted time) -- the same
-    # class of problem that blocked the infusion 2nd-order attempt. Rather
-    # than inject a silently wrong value, the runtime guards on a "lagQ"
-    # table (d(alag)/dq) and leaves the compartment untouched (0) whenever
-    # q also affects alag. This test locks in that the deliberately-zero
-    # value is a documented gap, not an accidental regression to "correct".
-    ode_code <- "
+  test_that("second-order dtau/lag row: Leibniz/moving-boundary term when q ALSO drives the same alag (Phase H1-dtau)", {
+    # Differentiating the 1st-order dtau row by the product rule alone is
+    # PROVEN INCOMPLETE (by FD) whenever q ALSO shifts the same event's time
+    # (e.g. the (tlag,tlag) diagonal, or two lag parameters combined
+    # additively in one alag() expression): it misses a Leibniz/moving-
+    # boundary term `-[dS^p_k/dt|post - dS^p_k/dt|pre] * dLag_q[c]`, the same
+    # class of problem that originally blocked the infusion 2nd-order
+    # attempt. `dS^p_k/dt` is read directly from the compiled dydt() output
+    # (pre-jump state vs. a scratch post-jump copy), needing no separate
+    # Jacobian-matrix construction. Validated against FD for both the
+    # diagonal and a two-lag-parameter model.
+    ode_code_diag <- "
       alag(depot) <- exp(tlag)
       d/dt(depot)   = -ka * depot
       d/dt(central) =  ka * depot - cl / v * central
     "
-    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5))
+    pars_diag <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5))
+    e_diag <- et(amt = 100, cmt = "depot") |> et(seq(0.55, 10, by = 0.5))
+    m1d <- rxode2(ode_code_diag, calcSens = "tlag", eventSens = "jump")
+    m2d <- rxode2(ode_code_diag, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
+    s2d <- rxSolve(m2d, e_diag, pars_diag, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tlag__"]]
+    eps <- 1e-5
+    p1 <- pars_diag; p1["tlag"] <- pars_diag["tlag"] + eps
+    p2 <- pars_diag; p2["tlag"] <- pars_diag["tlag"] - eps
+    .s1d <- function(p) rxSolve(m1d, e_diag, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
+    fdd <- (.s1d(p1) - .s1d(p2)) / (2 * eps)
+    expect_equal(s2d, fdd, tolerance = 1e-6)
+    expect_gt(max(abs(fdd)), 1)
+
+    ode_code_2p <- "
+      alag(depot) <- exp(tlag1 + tlag2)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl / v * central
+    "
+    pars_2p <- c(ka = 0.5, cl = 0.2, v = 10, tlag1 = log(0.5) / 2, tlag2 = log(0.5) / 2)
+    e_2p <- et(amt = 100, cmt = "depot") |> et(seq(0.55, 10, by = 0.25))
+    m1p <- rxode2(ode_code_2p, calcSens = c("tlag1", "tlag2"), eventSens = "jump")
+    m2p <- rxode2(ode_code_2p, calcSens = c("tlag1", "tlag2"), calcSens2 = c("tlag1", "tlag2"),
+                  eventSens = "jump")
+    s2p <- rxSolve(m2p, e_2p, pars_2p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag1_BY_tlag2__"]]
+    p1p <- pars_2p; p1p["tlag2"] <- pars_2p["tlag2"] + eps
+    p2p <- pars_2p; p2p["tlag2"] <- pars_2p["tlag2"] - eps
+    .s1p <- function(p) rxSolve(m1p, e_2p, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag1__"]]
+    fdp <- (.s1p(p1p) - .s1p(p2p)) / (2 * eps)
+    expect_equal(s2p, fdp, tolerance = 1e-6)
+    expect_gt(max(abs(fdp)), 1)
+  })
+
+  test_that("second-order dtau/lag row: mirror compartment symmetry (Phase H1-dtau)", {
+    # S^{p,q} and S^{q,p} must be identical (Schwarz).  Before the Leibniz
+    # term was added, S^{tlag,tf} validated correctly (tlag drives alag, so
+    # the outer p-loop ran) while S^{tf,tlag} stayed silently at 0 (tf does
+    # not drive alag, so the outer p-loop skipped it entirely and never had
+    # a chance to apply the Leibniz correction to S^tf's own post-ddelta-jump
+    # value). The p-loop now also runs whenever ANY calcSens2 parameter
+    # drives this compartment's alag, regardless of the current p's own
+    # dLag_p, fixing this.
+    ode_code <- "
+      alag(depot) <- exp(tlag)
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl / v * central
+    "
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5), tf = qlogis(0.7))
     e <- et(amt = 100, cmt = "depot") |> et(seq(0.55, 10, by = 0.5))
-    m2 <- rxode2(ode_code, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
-    s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tlag__"]]
-    expect_equal(s2, rep(0, length(s2)))
+    m2 <- rxode2(ode_code, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf"),
+                 eventSens = "jump")
+    s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)
+    expect_equal(s2$rx__sens_central_BY_tlag_BY_tf__, s2$rx__sens_central_BY_tf_BY_tlag__,
+                 tolerance = 1e-8)
+    expect_gt(max(abs(s2$rx__sens_central_BY_tlag_BY_tf__)), 1)
   })
 
   test_that("additive-bolus F jump fires for indexed THETA[n]/ETA[n] params", {

@@ -1087,6 +1087,18 @@ static inline int handle_evid(int evid, int neq,
         // event-parameter FD this method replaces).
         if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
           int _np = _rxEsNParam, _ns = _rxEsNState;
+          // Phase H1-dtau Leibniz term prerequisite: dS^p_k/dt BEFORE any of
+          // this event's jumps are applied (captured now, before the ddelta/
+          // dtau blocks below mutate yp's sensitivity compartments in place).
+          // ODE models only (dydtEs is a no-op stub for matExp/indLin).
+          double *_esDydtPre = NULL;
+          if (!_rxEsUseCalcJac && dydtEs != NULL) {
+            _esDydtPre = (double*) calloc((size_t)neq, sizeof(double));
+            if (_esDydtPre != NULL) {
+              int _esNjPre[2]; _esNjPre[0] = neq; _esNjPre[1] = id;
+              dydtEs(_esNjPre, xout, yp, _esDydtPre);
+            }
+          }
           // ddelta row (bioavailability)
           if (dF != NULL) {
             double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -1184,6 +1196,30 @@ static inline int handle_evid(int evid, int neq,
           // plan's Phase H1-dtau note). 2nd-order compartment layout follows
           // rxExpandSens2_, same as the additive-bolus d2F row.
           //
+          // PLUS a Leibniz/moving-boundary term whenever q ALSO drives this
+          // same alag (dLag_q[c] != 0): the three terms above hold time FIXED
+          // at xout (they only capture q's effect through the CURRENT state,
+          // via the S^q_l total-derivative coupling already baked into each
+          // factor) -- they do not capture q ALSO shifting the jump time
+          // itself. Re-deriving the standard jump-condition formula one
+          // order up (treating S^p_k as "the state" that jumps, mirroring
+          // how the physical-state formula -J[k][c]*delta*dLag_p[c] was
+          // itself derived from x_k's own jump condition) gives an
+          // additional term `-[g+(tau) - g-(tau)] * dLag_q[c]`, where
+          // g = dS^p_k/dt is the RHS of S^p_k's OWN sensitivity ODE
+          // (`sum_l J[k][l]*S^p_l`, read directly from the compiled dydt()
+          // output for the sensitivity compartment -- no separate Jacobian
+          // matrix construction needed): g- uses the PRE-jump state
+          // (`_esDydtPre`, captured before any of this event's jumps were
+          // applied), g+ uses the POST-jump state (yp's sensitivity
+          // compartments are ALREADY updated by the ddelta/dtau blocks above
+          // by this point -- only the physical dose, applied at the very end
+          // of this case, needs to be added to a scratch copy to evaluate
+          // g+). Sign verified against the ALREADY-VALIDATED 1st-order
+          // formula's own derivation (matching signs requires g- - g+, i.e.
+          // `-(g+ - g-)`), then confirmed against FD (two-lag-parameter and
+          // diagonal models, ~1e-7).
+          //
           // matExp()/indLin() models EXCLUDED (`!_rxEsUseCalcJac`): the
           // injected numeric term is IDENTICAL to the ODE path (confirmed by
           // direct comparison) but the post-injection value is silently lost
@@ -1212,28 +1248,60 @@ static inline int handle_evid(int evid, int neq,
               if (dFQEs != NULL) dFQEs(id, xout, yp, _esDFQB);
               dLagJacEs(id, xout, yp, _esJacQB);
               if (dLagQEs != NULL) dLagQEs(id, xout, yp, _esDLagQB);
+              // Does ANY calcSens2 param also drive this event's alag? The
+              // Leibniz term below needs dS^p_./dt regardless of whether p
+              // ITSELF has a nonzero dLag_p (S^p may have been jumped purely
+              // via the ddelta/F row, e.g. p=tf when alag depends only on a
+              // different parameter) -- so the p-loop below cannot skip on
+              // dLag_p alone once this is true (that skip previously hid the
+              // Leibniz contribution to the "mirror" compartment entirely).
+              int _esAnyLagQ = 0;
+              for (int _qq = 0; _qq < _np2; _qq++) {
+                if (_esDLagQB[cmt * _np2 + _qq] != 0.0) { _esAnyLagQ = 1; break; }
+              }
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP2 = _esDLagB2[cmt * _np + _p];
-                if (_esDLagP2 == 0.0) continue;
+                if (_esDLagP2 == 0.0 && !_esAnyLagQ) continue;
+                // Leibniz term prerequisite: dS^p_./dt evaluated at the
+                // POST-jump state, computed ONCE per active p (independent
+                // of q). yp's sensitivity compartments already hold the
+                // post-jump S^p values (mutated in place by the ddelta/dtau
+                // blocks above); only the physical dose still needs adding,
+                // via a scratch copy (the real yp[cmt] isn't dosed until
+                // after all sensitivity injections finish).
+                double *_esDydtPostP = NULL;
+                if (_esDydtPre != NULL && _esAnyLagQ) {
+                  double *_esYTemp = (double*) malloc((size_t)neq * sizeof(double));
+                  if (_esYTemp != NULL) {
+                    memcpy(_esYTemp, yp, (size_t)neq * sizeof(double));
+                    _esYTemp[cmt] += _esDelta;
+                    _esDydtPostP = (double*) calloc((size_t)neq, sizeof(double));
+                    if (_esDydtPostP != NULL) {
+                      int _esNjPost[2]; _esNjPost[0] = neq; _esNjPost[1] = id;
+                      dydtEs(_esNjPost, xout, _esYTemp, _esDydtPostP);
+                    }
+                    free(_esYTemp);
+                  }
+                }
                 for (int _q = 0; _q < _np2; _q++) {
-                  // SAFETY GUARD: if q ALSO drives this alag (dLag_q[cmt] !=
-                  // 0), the product-rule terms below are PROVEN INCOMPLETE by
-                  // FD -- they miss a genuine Leibniz/moving-boundary term
-                  // (dS^p_k/dt * dLag_q[cmt], from S^p_k's pre-jump value
-                  // itself being read at a q-shifted time; same class of
-                  // problem as the reverted infusion 2nd-order attempt).
-                  // Skip rather than inject a silently wrong value.
-                  if (_esDLagQB[cmt * _np2 + _q] != 0.0) continue;
                   double _esD2LagPQ = _esD2LagB[cmt * (_np * _np2) + _p * _np2 + _q];
                   double _esDFQc = _esDFQB[cmt * _np2 + _q];
+                  double _esDLagQq = _esDLagQB[cmt * _np2 + _q];
                   for (int _esK = 0; _esK < _ns; _esK++) {
                     double _esDJdq = _esJacQB[cmt * (_ns * _np2) + _esK * _np2 + _q];
                     int _c2 = _ns * (1 + _np) + _esK + _ns * (_p + _q * _np);
-                    yp[_c2] += -_esDJdq * _esDelta * _esDLagP2
+                    double _esTerm = -_esDJdq * _esDelta * _esDLagP2
                       - _esJcol2[_esK] * (_esRawAmt * _esDFQc) * _esDLagP2
                       - _esJcol2[_esK] * _esDelta * _esD2LagPQ;
+                    if (_esDLagQq != 0.0 && _esDydtPostP != NULL) {
+                      double _esGpost = _esDydtPostP[_ns + _p * _ns + _esK];
+                      double _esGpre = _esDydtPre[_ns + _p * _ns + _esK];
+                      _esTerm += -(_esGpost - _esGpre) * _esDLagQq;
+                    }
+                    yp[_c2] += _esTerm;
                   }
                 }
+                if (_esDydtPostP != NULL) free(_esDydtPostP);
               }
             }
             if (_esDLagB2 != NULL) free(_esDLagB2);
@@ -1243,6 +1311,7 @@ static inline int handle_evid(int evid, int neq,
             if (_esJacQB != NULL) free(_esJacQB);
             if (_esDLagQB != NULL) free(_esDLagQB);
           }
+          if (_esDydtPre != NULL) free(_esDydtPre);
         }
         yp[cmt] += _esDelta;     //dosing before obs
       }
