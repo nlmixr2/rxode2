@@ -160,6 +160,37 @@ rxTest({
     expect_null(m$eventSensInfo)
   })
 
+  test_that("eventSens='fdAll' works correctly in a population (multi-subject) solve", {
+    # Regression for a previously-untested combination (plan Section 0.4 gap):
+    # confirm fdAll's per-subject solving (each subject independently, no
+    # jump machinery/eventSensInfo at all) isn't corrupted by the population
+    # (multi-subject/parallel) solve path -- each subject's trajectory must
+    # match an INDEPENDENT single-subject solve with that subject's own
+    # modeled-lag parameter.
+    mLin <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(central) <- exp(tlag + eta_lag)
+    }, calcSens = "eta_lag", eventSens = "fdAll",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(mLin$eventSens, "fd")
+    expect_null(mLin$eventSensInfo)
+
+    th <- c(V = 20, CL = 25, tlag = 0)
+    ev <- data.frame(eta_lag = c(0, 0.3, -0.2))
+    e <- et(amt = 100, cmt = "central", id = 1:3) |> et(seq(0, 12, 0.5), id = 1:3)
+
+    sPop <- rxSolve(mLin, e, th, iCov = ev)
+    for (.id in 1:3) {
+      e1 <- eventTable() |>
+        add.dosing(dose = 100, cmt = "central") |>
+        add.sampling(seq(0, 12, 0.5))
+      s1 <- rxSolve(mLin, e1, c(th, eta_lag = ev$eta_lag[.id]))
+      expect_equal(sPop$central[sPop$id == .id], s1$central,
+        tolerance = 1e-8, info = paste0("id: ", .id)
+      )
+    }
+  })
+
   test_that("eventSens='fd' resolves to symbolic jump for pure linCmt", {
     m <- rxode2({
       C2 <- linCmt(CL, V)
@@ -814,5 +845,75 @@ rxTest({
     ))
     # the cache key is reset after each build (no leak to later non-jump builds)
     expect_identical(.rxEventSensCacheKey, "")
+  })
+
+  test_that("reproduces the paper's PK/PD IMAX infusion example (dEffect/dtlag, ddose, dtinf)", {
+    # Kaschek & Fidler, "Forward Sensitivity Equations in the Presence of
+    # Events" (~/src/EventSensitivities/paper.tex, Sec. Example): a depot-
+    # absorption model with a zero-order infusion into the depot compartment,
+    # parameterized directly by lag time (tlag), infusion duration (tinf), and
+    # dose (not etas) -- alag(depot)=tlag, dur(depot)=tinf, f(depot)=doseAmt
+    # (bioavailability standing in for the dose, routed through the
+    # duration-fixed F/amt convention: rate = F*amt/dur = doseAmt*1/tinf,
+    # matching the paper's r1 = dose/tinf exactly). Effect is a downstream LHS
+    # of central, so dEffect/dp = dEffect/dcentral * dcentral/dp (closed-form
+    # chain rule below) using the jump-computed rx__sens_central_BY_p__.
+    .mod <- "
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      v  <- exp(lv)
+      imax <- exp(limax)
+      ic50 <- exp(lic50)
+      e0 <- exp(le0)
+      alag(depot) <- tlag
+      dur(depot)  <- tinf
+      f(depot)    <- doseAmt
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+      effect <- e0 * (1 - (central / v) * imax / (ic50 + (central / v)))
+    "
+    pars <- c(
+      lka = log(1), lcl = log(6), lv = log(60), limax = log(1), lic50 = log(1),
+      le0 = log(15), tlag = 10, doseAmt = 200, tinf = 10
+    )
+    mj <- rxode2(.mod, calcSens = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0, 60, by = 0.5))
+    sj <- rxSolve(mj, e, pars)
+
+    dEffect_dCentral <- with(sj, -e0 * imax * ic50 / (v * (ic50 + central / v)^2))
+    d_tlag <- dEffect_dCentral * sj$rx__sens_central_BY_tlag__
+    d_tinf <- dEffect_dCentral * sj$rx__sens_central_BY_tinf__
+    d_dose <- dEffect_dCentral * sj$rx__sens_central_BY_doseAmt__
+
+    # (1) matches a true finite difference of the solved "effect" output
+    # (the plan's primary correctness gate, Section 5) for all three params.
+    .h <- 1e-4
+    .fd <- function(pname) {
+      .pp <- pars; .pp[pname] <- pars[pname] + .h
+      .pm <- pars; .pm[pname] <- pars[pname] - .h
+      (rxSolve(mj, e, .pp)$effect - rxSolve(mj, e, .pm)$effect) / (2 * .h)
+    }
+    expect_equal(d_tlag, .fd("tlag"), tolerance = 1e-3)
+    expect_equal(d_tinf, .fd("tinf"), tolerance = 1e-3)
+    expect_equal(d_dose, .fd("doseAmt"), tolerance = 1e-3)
+
+    # (2) qualitative claims from the paper (Sec. Example):
+    # "higher doses lead to stronger inhibition" -- Effect decreases (relative
+    # to E0) as dose increases, i.e. dEffect/ddose <= 0 everywhere.
+    expect_true(all(d_dose <= 1e-8))
+    # "a longer infusion time will decrease the inhibition during the
+    # infusion and increase it afterwards. The same holds for [tlag]" --
+    # Effect increases (dEffect/dp > 0) during [tlag, tlag+tinf] and
+    # decreases (dEffect/dp < 0) after tlag+tinf, for both tlag and tinf.
+    .during <- sj$time > pars["tlag"] + 0.5 & sj$time < pars["tlag"] + pars["tinf"] - 0.5
+    .after <- sj$time > pars["tlag"] + pars["tinf"] + 0.5 & sj$time < 40
+    expect_true(all(d_tinf[.during] > 0))
+    expect_true(all(d_tinf[.after] < 0))
+    expect_true(all(d_tlag[.during] > 0))
+    expect_true(all(d_tlag[.after] < 0))
+    # "the impact of the lag time is five times higher than the impact of the
+    # infusion time" -- loose bound around the paper's approximate reading.
+    .ratio <- max(abs(d_tlag)) / max(abs(d_tinf))
+    expect_true(.ratio > 3 && .ratio < 10)
   })
 })
