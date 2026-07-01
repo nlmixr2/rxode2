@@ -150,6 +150,27 @@
 .rxAdjointGrad <- function(object, params, events, calcSens, pred, obsTimes, obs,
                            weight = 1, errModel = NULL,
                            denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  .b <- .rxAdjointGradBuild(object, calcSens, pred, events, errModel)
+  .rxAdjointGradEval(.b, params, obsTimes, obs, weight = weight,
+                     denseBy = denseBy, atol = atol, rtol = rtol)
+}
+
+#' Build the symbolic part of an adjoint objective gradient (compile once)
+#'
+#' Performs ALL symbolic work (symengine differentiation, `rxFromSE`, model
+#' compilation) up front and returns a reusable object.  Pair with
+#' [.rxAdjointGradEval()] to evaluate the gradient at many parameter values
+#' without re-running any symbolic code -- required for use inside an optimiser
+#' (e.g. the FOCEi outer loop), and also avoids a `load_all`-only symengine
+#' dispatch fragility that surfaces when `rxFromSE` is interleaved with repeated
+#' `rxSolve` calls.
+#'
+#' @inheritParams .rxAdjointGrad
+#' @return an opaque list consumed by [.rxAdjointGradEval()].
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -171,20 +192,11 @@
   ## ---- event detection (needed before the backward model is built) ---------
   .ev <- as.data.frame(events)
   .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
-  .evalNum <- function(txt) tryCatch(eval(parse(text = txt), envir = as.list(params)),
-                                     error = function(e) NA_real_)
   .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
   .rateCol[is.na(.rateCol)] <- 0
-  ## modeled infusions add +R over [tau1, tau2 = tau1 + amt/R].  dG/dtheta gets a
-  ## continuous forcing  integral_{tau1}^{tau2} lambda_c dR/dtheta dt  (folded
-  ## into the mu quadrature via a covariate) plus a moving-boundary term
-  ## R*lambda_c(tau2)*d(tau2)/dtheta.  Two parameterisations, both reduced to
-  ## (R, dR/dtheta):
-  ##   * modeled rate (flag -1): rate(cmt)=R(theta) directly.
-  ##   * modeled duration (flag -2): dur(cmt)=D(theta), R=amt/D,
-  ##     dR/dtheta = -(amt/D^2) dD/dtheta.  (The boundary term -(amt/R^2)dR/dtheta
-  ##     then equals dD/dtheta, so the same forcing/boundary code applies.)
-  .infus <- list()
+  ## modeled infusions: capture SYMBOLIC dR/dtheta strings (rate flag -1) or
+  ## dD/dtheta strings (flag -2); numeric evaluation is deferred to the eval step.
+  .infusSym <- list()
   for (.k in which(.rateCol %in% c(-1, -2))) {
     .c <- as.character(.ev$cmt[.dr][.k])
     if (!(.c %in% .st)) next
@@ -192,22 +204,22 @@
     if (.rateCol[.k] == -1) {
       .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.rSE)) next
-      .Rv <- .evalNum(rxode2::rxFromSE(.rSE))
-      .dRp <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.rSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
+      .valStr <- rxode2::rxFromSE(.rSE)
+      .dStr <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.rSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .kind <- "rate"
     } else {
       .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.dSE)) next
-      .Dv <- .evalNum(rxode2::rxFromSE(.dSE))
-      .dDp <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.dSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
-      .Rv <- .amt / .Dv
-      .dRp <- -(.amt / .Dv^2) * .dDp
+      .valStr <- rxode2::rxFromSE(.dSE)
+      .dStr <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.dSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .kind <- "dur"
     }
-    .infus[[length(.infus) + 1L]] <- list(cmt = .c, t1 = .t1, t2 = .t1 + .amt / .Rv,
-                                          R = .Rv, dRdp = .dRp, amt = .amt)
+    .infusSym[[length(.infusSym) + 1L]] <- list(cmt = .c, t1 = .t1, amt = .amt,
+                                                kind = .kind, valStr = .valStr, dStr = .dStr)
   }
-  .infCmts <- unique(vapply(.infus, function(z) z$cmt, character(1)))
+  .infCmts <- unique(vapply(.infusSym, function(z) z$cmt, character(1)))
 
   ## reversed-time backward model (lambda + mu blocks); df/dy inlined as plain
   ## lhs assignments referencing the forward states (supplied as covariates).
@@ -232,45 +244,98 @@
   }, character(1))
   .revMod <- rxode2::rxode2(paste(c(.jacLines, .lamLines, .muLines), collapse = "\n"))
 
-  ## bolus dose-jump duals.  A bolus into cmt c at the ACTUAL (lagged) time tau
-  ## contributes two terms to dG/dtheta:
-  ##   * bioavailability F:  lambda_c(tau+) * amt * dF_c/dtheta
-  ##   * modeled lag (time-triggered event, tau = tau_nom + alag_c(theta)):
-  ##       [lambda(tau)^T (f(y-) - f(y+))] * d(alag_c)/dtheta   (transversality)
-  ## Structural params (dF/dtheta == 0, d(alag)/dtheta == 0) get no contribution,
-  ## so a model without modeled F/lag is unaffected.
+  ## bolus dose-jump duals (F + modeled lag): capture SYMBOLIC dF/dtheta and
+  ## d(alag)/dtheta strings; numeric evaluation deferred to eval.
   .doses <- data.frame(time = .ev$time[.dr], cmt = as.character(.ev$cmt[.dr]),
                        amt = .ev$amt[.dr], rate = .rateCol, stringsAsFactors = FALSE)
-  .dFexpr <- list()          # per dose-cmt: dF/dtheta expression per calcSens
-  .dLag   <- list()          # per dose-cmt: numeric d(alag)/dtheta over calcSens
-  .lagVal <- stats::setNames(numeric(0), character(0))  # per dose-cmt lag value
+  .dFexpr <- list(); .dLagStr <- list(); .lagStr <- list()
   for (.c in unique(.doses$cmt[.doses$cmt %in% .st])) {
     .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .dFexpr[[.c]] <- vapply(calcSens, function(p) {
       .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
     .lSE <- get0(paste0("rx_lag_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.lSE)) {
-      .lagVal[.c] <- .evalNum(rxode2::rxFromSE(.lSE))
-      .dLag[[.c]] <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.lSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
+      .lagStr[[.c]] <- rxode2::rxFromSE(.lSE)
+      .dLagStr[[.c]] <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.lSE, p); rxode2::rxFromSE(.d) }, character(1))
     }
   }
-  ## actual (possibly lagged) dose time per dose record
-  .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
-    .lv <- .lagVal[.doses$cmt[i]]; if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
   ## replace(evid5)/multiply(evid6): costate jumps  lambda_c(tau-) =
   ## (dg/dy)^T lambda_c(tau+).  replace -> lambda_c := 0; multiply -> *= alpha.
-  ## Essential for correct STRUCTURAL-param gradients even with a constant value.
   .evR <- .ev[!is.na(.ev$evid) & .ev$evid %in% c(5L, 6L), , drop = FALSE]
   .evR$cmt <- as.character(.evR$cmt)
   .fLhs <- unlist(lapply(names(.dFexpr), function(.c)
     vapply(calcSens, function(p)
       paste0("rx__dFdp_", .c, "_", p, "__=", .dFexpr[[.c]][[p]]), character(1))))
   ## RHS f_i as outputs, for the pre/post-dose f(y-)/f(y+) transversality term
-  .needF <- length(.dLag) > 0L
+  .needF <- length(.dLagStr) > 0L
   .fRHSlhs <- if (.needF) vapply(.st, function(i) {
     .d <- get0(paste0("rx__d_dt_", i, "__"), envir = .model, inherits = FALSE)
     paste0("rx__fRHS_", i, "__=", rxode2::rxFromSE(.d)) }, character(1)) else character(0)
+
+  ## compile the forward checkpoint model once (predictions, dh/dy, dh/dtheta,
+  ## dF/dtheta and RHS f_i outputs).
+  .fmod <- rxode2::rxode2(paste(c(.mText,
+    paste0("rx__pred__=", .predC),
+    vapply(.st, function(i) paste0("rx__dhdy_", i, "__=", .dhdy[[i]]), character(1)),
+    vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1)),
+    .fLhs, .fRHSlhs), collapse = "\n"))
+
+  list(st = .st, calcSens = calcSens, errModel = errModel, fmod = .fmod,
+       revMod = .revMod, infCmts = .infCmts, infusSym = .infusSym, doses = .doses,
+       evR = .evR, dFexpr = .dFexpr, dLagStr = .dLagStr, lagStr = .lagStr,
+       needF = .needF, events = events)
+}
+
+## numeric evaluation of an rxFromSE expression string at parameter values (no
+## symengine); helper functions cover the common rxode2 codegen forms.
+.rxAdjEvalNum <- function(txt, params) {
+  .env <- list2env(as.list(params), parent = baseenv())
+  assign("Rx_pow_di", function(x, i) x^i, envir = .env)
+  assign("Rx_pow", function(x, y) x^y, envir = .env)
+  assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), envir = .env)
+  assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), envir = .env)
+  tryCatch(eval(parse(text = txt), envir = .env), error = function(e) NA_real_)
+}
+
+#' Evaluate a prebuilt adjoint objective gradient at given parameters
+#'
+#' @param build object returned by [.rxAdjointGradBuild()].
+#' @inheritParams .rxAdjointGrad
+#' @return named numeric vector `dG/dtheta` over the build's `calcSens`.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointGradEval <- function(build, params, obsTimes, obs, weight = 1,
+                               denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
+  .fmod <- build$fmod; .revMod <- build$revMod; .infCmts <- build$infCmts
+  .evR <- build$evR; .dFexpr <- build$dFexpr
+  .lam <- function(i) paste0("rx__adjLam_", i, "__")
+
+  ## numeric infusion quantities from the cached symbolic strings
+  .infus <- lapply(build$infusSym, function(z) {
+    if (z$kind == "rate") {
+      .Rv <- .rxAdjEvalNum(z$valStr, params)
+      .dRp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
+    } else {
+      .Dv <- .rxAdjEvalNum(z$valStr, params)
+      .dDp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
+      .Rv <- z$amt / .Dv; .dRp <- -(z$amt / .Dv^2) * .dDp
+    }
+    list(cmt = z$cmt, t1 = z$t1, t2 = z$t1 + z$amt / .Rv, R = .Rv,
+         dRdp = stats::setNames(.dRp, calcSens), amt = z$amt)
+  })
+  ## numeric lag values / d(alag)/dtheta from cached strings
+  .lagVal <- stats::setNames(numeric(0), character(0)); .dLag <- list()
+  for (.c in names(build$lagStr)) {
+    .lagVal[.c] <- .rxAdjEvalNum(build$lagStr[[.c]], params)
+    .dLag[[.c]] <- stats::setNames(
+      vapply(build$dLagStr[[.c]], function(s) .rxAdjEvalNum(s, params), numeric(1)), calcSens)
+  }
+  .doses <- build$doses
+  .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
+    .lv <- .lagVal[.doses$cmt[i]]; if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
 
   ## forward checkpoint + predictions/residuals at observations
   .infT <- unlist(lapply(.infus, function(z) c(z$t1, z$t2)))
@@ -278,12 +343,7 @@
                            .doses$tau, .doses$tau - denseBy,
                            .evR$time, .evR$time - denseBy, .infT)))
   .denseT <- .denseT[.denseT >= 0]
-  .fmod <- rxode2::rxode2(paste(c(.mText,
-    paste0("rx__pred__=", .predC),
-    vapply(.st, function(i) paste0("rx__dhdy_", i, "__=", .dhdy[[i]]), character(1)),
-    vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1)),
-    .fLhs, .fRHSlhs), collapse = "\n"))
-  .fev <- events |> rxode2::et(.denseT)
+  .fev <- build$events |> rxode2::et(.denseT)
   .fwd <- as.data.frame(rxode2::rxSolve(.fmod, params = params, .fev,
                                         returnType = "data.frame", atol = atol,
                                         rtol = rtol, addDosing = FALSE))
