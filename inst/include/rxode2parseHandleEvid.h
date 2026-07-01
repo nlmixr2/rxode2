@@ -543,6 +543,95 @@ static inline int _esHaveJacCol(void) {
   return _rxEsUseCalcJac ? (calc_jac != NULL) : (dydtEs != NULL);
 }
 
+// Second-order infusion-boundary jump (Phase F/H1's remaining infusion gap):
+// a fixed-rate/duration infusion whose START or STOP time is shifted by a
+// modeled alag jumps InfusionRate[cmt] by a FIXED (p,q-independent) amount
+// `dtmp` at the lag-shifted boundary time. The validated 1st-order formula
+// (see EVIDF_INF_DUR/EVIDF_INF_RATE/EVIDF_MODEL_RATE_ON etc.) is
+// `[S^p]_cmt(tau) = -dtmp*dLag_p[cmt]` -- ONLY the DOSED compartment jumps
+// in VALUE (unlike the additive-bolus dtau row, a forcing-jump does not
+// couple to other states through the physical Jacobian at the instant of
+// the jump: S^p_k for k != cmt stays continuous, picking up only a KINK --
+// a jump in its own time-derivative, not its value -- since
+// dS^p_k/dt = sum_l J[k][l]*S^p_l depends on the now-discontinuous S^p_cmt).
+//
+// Applying the same "jump condition one level up" derivation used for the
+// additive-bolus dtau row (treating S^p_cmt itself as the jumping quantity)
+// gives, for the FIXED-forcing-jump case, restricted to k=cmt:
+//   [S^{p,q}]_cmt(tau) = -dtmp*d2Lag[p][q][cmt]                (product rule)
+//                        - dLag_q[cmt] * (g+_cmt(tau) - g-_cmt(tau))  (Leibniz)
+// where g_k = dS^p_k/dt (the RHS of S^p_k's own sensitivity ODE).
+//
+// CRITICAL EXTRA PIECE (found by FD on a depot-infused/central-observed
+// model, i.e. cmt coupled to OTHER states -- every earlier isolated test
+// happened to observe the SAME compartment being infused, which hid this):
+// even though S^p_k (k != cmt) has NO value jump at 1st order, its SECOND
+// derivative wrt q at FIXED time DOES pick up a Leibniz-style value jump,
+// by the same "kink whose location moves with q" mechanism applied to
+// dS^p_k/dt's OWN jump (proportional to the cmt jump, via the k-th row of
+// the Jacobian) instead of to S^p_cmt directly:
+//   [S^{p,q}]_k(tau) += -dLag_q[cmt] * (g+_k(tau) - g-_k(tau))   for ALL k
+// (no product-rule term for k != cmt: dtmp/Delta only ever affects cmt
+// directly, so there is nothing else to differentiate for those rows).
+//
+// `dydtPre` must be captured by the caller BEFORE dtmp was applied to
+// InfusionRate[cmt] and before the 1st-order jump was applied to yp; this
+// function reads the CURRENT (already-updated) yp/InfusionRate for g+, so no
+// scratch-copy is needed here (unlike the additive-bolus case, InfusionRate
+// is not part of yp itself).  ODE models only (`!_rxEsUseCalcJac`) for now --
+// matExp needs the same compartment-order fix the additive-bolus dtau row
+// required; not yet extended here.
+static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
+                                               int cmt, int ns, int neq,
+                                               double dtmp, double *dydtPre) {
+  if (_rxEsUseCalcJac || dydtEs == NULL || dydtPre == NULL) return;
+  if (d2LagEs == NULL || dLagQEs == NULL) return;
+  int np = _rxEsNParam, np2 = _rxEsNParam2;
+  if (np2 <= 0) return;
+  if (ns * (1 + np) + ns * np * np2 > neq) return;
+  double *_d2LagB = (double*) calloc((size_t)ns * np * np2, sizeof(double));
+  double *_dLagQB = (double*) calloc((size_t)ns * np2, sizeof(double));
+  double *_dydtPost = (double*) calloc((size_t)neq, sizeof(double));
+  if (_d2LagB != NULL && _dLagQB != NULL && _dydtPost != NULL) {
+    d2LagEs(id, xout, yp, _d2LagB);
+    dLagQEs(id, xout, yp, _dLagQB);
+    int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+    dydtEs(_esNj, xout, yp, _dydtPost);
+    for (int _p = 0; _p < np; _p++) {
+      for (int _q = 0; _q < np2; _q++) {
+        double _d2LagPQ = _d2LagB[cmt * (np * np2) + _p * np2 + _q];
+        double _dLagQq = _dLagQB[cmt * np2 + _q];
+        int _c2cmt = ns * (1 + np) + cmt + ns * (_p + _q * np);
+        yp[_c2cmt] += -dtmp * _d2LagPQ;
+        if (_dLagQq != 0.0) {
+          for (int _esK = 0; _esK < ns; _esK++) {
+            double _gpost = _dydtPost[ns + _p * ns + _esK];
+            double _gpre = dydtPre[ns + _p * ns + _esK];
+            int _c2 = ns * (1 + np) + _esK + ns * (_p + _q * np);
+            yp[_c2] += -(_gpost - _gpre) * _dLagQq;
+          }
+        }
+      }
+    }
+  }
+  if (_d2LagB != NULL) free(_d2LagB);
+  if (_dLagQB != NULL) free(_dLagQB);
+  if (_dydtPost != NULL) free(_dydtPost);
+}
+
+// Captures dS^p_./dt (via dydtEs) BEFORE an infusion-boundary event mutates
+// InfusionRate/yp, for `_esInfusionBoundary2ndOrder()`'s Leibniz term.  ODE
+// models only, mirroring `_esInfusionBoundary2ndOrder()`'s own scoping.
+static inline double *_esInfusionDydtPre(int id, double xout, double *yp, int neq) {
+  if (_rxEsUseCalcJac || dydtEs == NULL) return NULL;
+  double *_pre = (double*) calloc((size_t)neq, sizeof(double));
+  if (_pre != NULL) {
+    int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+    dydtEs(_esNj, xout, yp, _pre);
+  }
+  return _pre;
+}
+
 static inline int handle_evid(int evid, int neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -638,6 +727,7 @@ static inline int handle_evid(int evid, int neq,
           yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
           break;
         }
+        double *_esDydtPreB1 = _esInfusionDydtPre(id, xout, yp, neq);
         InfusionRate[cmt] -= tmp;
         // Modeled rate/duration infusion moving boundary from a modeled lag.  The
         // start time tau1 = t0 + alag shifts by d(alag)/dp; the forcing change
@@ -653,22 +743,16 @@ static inline int handle_evid(int evid, int neq,
             }
             free(_eA);
           }
-          // NOTE (2026-06-30): a naive second-order extension of this row
-          // (tmp*d2(alag)/dp/dq, mirroring the additive-bolus d2F pattern)
-          // was tried and found INCORRECT by FD (isolated test: modeled
-          // alag + a fixed-rate infusion still diverged sharply from FD
-          // right after the boundary, even with no modeled rate/dur
-          // involved). Unlike the additive-bolus/replace/multiply dtau rows
-          // (which differentiate a true paper-derived formula including the
-          // f_c/Jacobian terms), this boundary term is a *moving integration
-          // limit* of a forcing that is applied continuously over
-          // [tau1,tau2] -- a second differentiation of that needs a genuine
-          // Leibniz-rule boundary-delta correction this simple "reuse the
-          // 1st-order shape with d2Lag substituted" approach does not
-          // capture. Deferred pending a proper derivation (see the
-          // event-sensitivities plan / project memory); reverted rather than
-          // left in as a silently-wrong result.
+          // Second-order moving-boundary term (product rule + Leibniz): the
+          // actual InfusionRate[cmt] CHANGE here is -tmp (see the assignment
+          // just above), matching this case's own 1st-order sign convention.
+          // (An earlier naive attempt reusing just the product-rule piece,
+          // without the Leibniz term, was found incorrect by FD -- see the
+          // additive-bolus dtau row's own note and
+          // _esInfusionBoundary2ndOrder()'s derivation comment.)
+          _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, -tmp, _esDydtPreB1);
         }
+        if (_esDydtPreB1 != NULL) free(_esDydtPreB1);
         // Event ("jump") sensitivities -- modeled rate continuous forcing.
         // The infusion rate is a solver-applied forcing (not a symbolic term in
         // f), so the symbolic sensitivity ODE misses d(rate)/dp.  Mirror the same
@@ -760,6 +844,8 @@ static inline int handle_evid(int evid, int neq,
       // ind->curDose and ind->curDoseS[cmt] are handled when the modeled item is turned on.
       tmp = getDoseIndex(ind, ind->idx);
       if (tmp == 0.0) break;
+      {
+      double *_esDydtPreB2 = _esInfusionDydtPre(id, xout, yp, neq);
       InfusionRate[cmt] += tmp;
       // Modeled rate/duration infusion moving boundary from a modeled lag at the
       // stop time tau2 (which shifts with alag too): forcing change +tmp, so
@@ -774,10 +860,14 @@ static inline int handle_evid(int evid, int neq,
           }
           free(_eA);
         }
-        // Second-order boundary/forcing extensions deliberately NOT added
-        // here -- see the matching NOTE at the MODEL_RATE_ON/MODEL_DUR_ON
-        // case above (a naive extension was tried and found incorrect by FD;
-        // needs a proper Leibniz-rule boundary-delta derivation).
+        // Second-order alag-boundary term (product rule + Leibniz); see
+        // _esInfusionBoundary2ndOrder()'s derivation comment. The DUR-OFF
+        // case's OWN separate d(dur)/dp-driven boundary term below (tau2 =
+        // tau1+dur(p)) still has no 2nd-order counterpart -- that needs an
+        // analogous dDurQ/d2Dur-based derivation, not yet built.
+        _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB2);
+      }
+      if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
       }
       // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
       // Mirror of the MODEL_RATE_ON injection: remove d(rate)/dp from the
@@ -855,23 +945,30 @@ static inline int handle_evid(int evid, int neq,
         ind->curDoseS[cmt] = ind->curDose;
       }
       tmp = getAmt(ind, id, cmt, tmp, xout, yp);
-      InfusionRate[cmt] += tmp;
-      // Event ("jump") sensitivities -- infusion moving boundary from a modeled
-      // lag.  alag(cmt) shifts the whole infusion window [tau1, tau2] by
-      // d(alag)/dp (tau1 = t0 + alag, tau2 = tau1 + dur).  The forcing jumps by
-      // +tmp (this InfusionRate change) at the boundary, so the sensitivity jumps
-      // by [S] = -tmp*d(alag)/dp.  Covers both the start (tmp > 0) and stop
-      // (tmp < 0) records of a fixed-rate/duration infusion.
-      if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dLagEs != NULL) {
-        int _ns = _rxEsNState, _np = _rxEsNParam;
-        double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
-        if (_eA != NULL) {
-          dLagEs(id, xout, yp, _eA);
-          for (int _p = 0; _p < _np; _p++) {
-            yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
+      {
+        double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
+        InfusionRate[cmt] += tmp;
+        // Event ("jump") sensitivities -- infusion moving boundary from a modeled
+        // lag.  alag(cmt) shifts the whole infusion window [tau1, tau2] by
+        // d(alag)/dp (tau1 = t0 + alag, tau2 = tau1 + dur).  The forcing jumps by
+        // +tmp (this InfusionRate change) at the boundary, so the sensitivity jumps
+        // by [S] = -tmp*d(alag)/dp.  Covers both the start (tmp > 0) and stop
+        // (tmp < 0) records of a fixed-rate/duration infusion.
+        if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dLagEs != NULL) {
+          int _ns = _rxEsNState, _np = _rxEsNParam;
+          double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_eA != NULL) {
+            dLagEs(id, xout, yp, _eA);
+            for (int _p = 0; _p < _np; _p++) {
+              yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
+            }
+            free(_eA);
           }
-          free(_eA);
+          // Second-order moving-boundary term (product rule + Leibniz), see
+          // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
+          _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
         }
+        if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
@@ -894,6 +991,8 @@ static inline int handle_evid(int evid, int neq,
       //   REprintf("infusion dose[cmt:%d] at %f is %f ind->ixds: %d\n",
       //            cmt, xout, tmp, ind->ixds);
       // }
+      {
+      double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
       InfusionRate[cmt] += tmp;
       // Infusion moving boundary from a modeled lag (see EVIDF_INF_DUR above):
       // [S] = -tmp*d(alag)/dp at each start/stop record.
@@ -907,6 +1006,11 @@ static inline int handle_evid(int evid, int neq,
           }
           free(_eA);
         }
+        // Second-order moving-boundary term (product rule + Leibniz), see
+        // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
+        _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
+      }
+      if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&

@@ -1162,6 +1162,74 @@ rxTest({
     expect_gt(max(abs(s2$rx__sens_central_BY_tlag_BY_tf__)), 1)
   })
 
+  test_that("second-order infusion-boundary jump (fixed-rate/duration infusion + modeled alag)", {
+    # Re-derives the same "jump condition one level up" trick used for the
+    # additive-bolus dtau row, applied to a forcing DISCONTINUITY (not a
+    # state jump): a fixed-rate/duration infusion whose start/stop time is
+    # shifted by a modeled alag jumps InfusionRate[cmt] by a fixed amount at
+    # the lag-shifted boundary. The naive product-rule-only term
+    # (tmp*d2Lag[p][q]) matched FD DURING the infusion window and diverged
+    # right after it ended (documented in the plan as "found wrong, reverted"
+    # in an earlier session) -- fixed here by adding the missing Leibniz
+    # term, validated through BOTH the start and stop boundaries.
+    ode_code <- "
+      alag(central) <- exp(tlag)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5))
+    e <- et(amt = 100, cmt = "central", rate = 20) |> et(seq(0.55, 15, by = 0.5))
+    m1 <- rxode2(ode_code, calcSens = "tlag", eventSens = "jump")
+    m2 <- rxode2(ode_code, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
+    s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tlag__"]]
+    eps <- 1e-5
+    p1 <- pars; p1["tlag"] <- pars["tlag"] + eps
+    p2 <- pars; p2["tlag"] <- pars["tlag"] - eps
+    .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
+    fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
+    expect_equal(s2, fd, tolerance = 1e-6)
+    # crosses the stop boundary at tlag+amt/rate=5.5; matched only DURING the
+    # window before the Leibniz term was added, so require post-window rows
+    # to be present and nonzero (not just the pre-window ones).
+    expect_gt(sum(e$time[e$evid == 0] > 6), 5)
+    expect_gt(max(abs(fd)), 1)
+  })
+
+  test_that("second-order infusion-boundary jump propagates to a COUPLED (non-infused) compartment", {
+    # The dosed/lag-shifted compartment's OWN sensitivity jump [S^p]_cmt is
+    # the only *value* discontinuity at 1st order (other states only pick up
+    # a kink -- their derivative, not their value, jumps, since it's a
+    # forcing discontinuity, not a state jump like the additive-bolus case).
+    # But at 2nd order, differentiating that kink's own (parameter-dependent)
+    # strength wrt a SECOND parameter that ALSO shifts the boundary time
+    # reintroduces a genuine Leibniz value-jump for the coupled compartment
+    # too -- missed in an earlier version of this fix that only updated the
+    # k=cmt (dosed) compartment, because every prior validation happened to
+    # observe the SAME compartment being infused (an accidental blind spot).
+    # This model infuses "depot" (coupled to "central" via ka) and checks
+    # central's OWN 2nd-order sensitivity, exercising exactly that path.
+    ode_code <- "
+      alag(depot) <- tlag
+      f(depot)    <- doseAmt
+      dur(depot)  <- tinf
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars <- c(ka = 1, cl = 6, v = 60, tlag = 10, doseAmt = 200, tinf = 10)
+    e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
+    m1 <- rxode2(ode_code, calcSens = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    m2 <- rxode2(ode_code, calcSens = c("tlag", "doseAmt", "tinf"),
+                 calcSens2 = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    s2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag_BY_tlag__"]]
+    eps <- 1e-4
+    p1 <- pars; p1["tlag"] <- pars["tlag"] + eps
+    p2 <- pars; p2["tlag"] <- pars["tlag"] - eps
+    .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag__"]]
+    fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
+    expect_equal(s2, fd, tolerance = 1e-6)
+    expect_gt(max(abs(fd)), 1)
+  })
+
   test_that("additive-bolus F jump fires for indexed THETA[n]/ETA[n] params", {
     # The nlmixr2 FOCEi inner model writes sensitivities wrt the indexed
     # parameters ETA[n]/THETA[n] (compartments rx__sens_<state>_BY_ETA_n___).
@@ -1279,5 +1347,38 @@ rxTest({
     # infusion time" -- loose bound around the paper's approximate reading.
     .ratio <- max(abs(d_tlag)) / max(abs(d_tinf))
     expect_true(.ratio > 3 && .ratio < 10)
+  })
+
+  test_that("reproduces the paper's PK/PD IMAX infusion example at 2nd order (S^{tlag,tlag})", {
+    # Same model as the 1st-order reproduction above, extended to calcSens2:
+    # exercises the infusion-boundary Leibniz term together with the
+    # additive-bolus dtau row's own Leibniz term in the paper's actual
+    # headline scenario (depot infused, central observed, alag+F+dur all
+    # modeled and all parameter-dependent). Offset time grid avoids landing
+    # an observation exactly on the tlag/tlag+tinf boundaries (a known FD
+    # artifact source, not a model error).
+    .mod <- "
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      v  <- exp(lv)
+      alag(depot) <- tlag
+      dur(depot)  <- tinf
+      f(depot)    <- doseAmt
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(lka = log(1), lcl = log(6), lv = log(60), tlag = 10, doseAmt = 200, tinf = 10)
+    m1 <- rxode2(.mod, calcSens = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    m2 <- rxode2(.mod, calcSens = c("tlag", "doseAmt", "tinf"),
+                 calcSens2 = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
+    s2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag_BY_tlag__"]]
+    eps <- 1e-4
+    p1 <- pars; p1["tlag"] <- pars["tlag"] + eps
+    p2 <- pars; p2["tlag"] <- pars["tlag"] - eps
+    .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag__"]]
+    fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
+    expect_equal(s2, fd, tolerance = 1e-6)
+    expect_gt(max(abs(fd)), 1)
   })
 })
