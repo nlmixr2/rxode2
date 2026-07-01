@@ -688,11 +688,106 @@
     }
     do.call(rbind, .rows)
   }
+  ## d(F)/dq table (Phase H1's dtau/lag row, "H1-dtau" scope): the SAME total
+  ## derivative as the first-order `f` table above, but evaluated at the
+  ## calcSens2 parameters instead of calcSens -- needed for the 2nd-order
+  ## dtau row's `d(delta)/dq = amt * dF_q[cmt]` term (Section 0's product-rule
+  ## expansion of `d/dq[-J[k][c]*delta*dLag_p[c]]`).  Indexed by (cmt, q) with
+  ## q already in calcSens2's index space (so the C buffer can be looked up
+  ## with the SAME `qIdx` used for `d2Lag`/`d2F`, with no calcSens/calcSens2
+  ## index-space mismatch to resolve at runtime).
+  .buildQ <- function(cmts, kind, qParams) {
+    .rows <- list()
+    for (.c in cmts) {
+      .nm <- .cmtName(.c)
+      .symName <- paste0("rx_", kind, "_", .nm, "_")
+      if (!exists(.symName, envir = .model)) next
+      .sym <- get(.symName, envir = .model)
+      for (.q in qParams) {
+        .e <- .rxEventSensDExpr(.model, .sym, .q, .states)
+        if (.e != "0" && .e != "0.0") {
+          .rows[[length(.rows) + 1L]] <-
+            data.frame(cmt = .c, cmtName = .nm, param = .q, expr = .e,
+                       stringsAsFactors = FALSE)
+        }
+      }
+    }
+    if (length(.rows) == 0L) {
+      return(data.frame(cmt = integer(0), cmtName = character(0),
+                        param = character(0), expr = character(0),
+                        stringsAsFactors = FALSE))
+    }
+    do.call(rbind, .rows)
+  }
+  ## d(J[k][c])/dq table (Phase H1's dtau/lag row): the total derivative of
+  ## the PHYSICAL Jacobian column (not a dosing-parameter expression) wrt a
+  ## calcSens2 parameter -- the piece the plan previously flagged as
+  ## "genuinely hard, not obtainable via nested FD".  Reachable directly:
+  ## the model's own RHS `rx__d_dt_<k>__` is available symbolically in the
+  ## loaded symengine env for EVERY model type (not just matExp -- confirmed
+  ## directly, `d/dt()` lines are parsed into exactly this symbol), so
+  ## `J[k][c] = d(rx__d_dt_<k>__)/dx_c` (a plain partial) can be computed once
+  ## and then differentiated totally wrt q with the SAME `.rxEventSensDSym()`
+  ## total-derivative operator used throughout this file (it only needs a
+  ## symengine expression, not a specific "kind" of model quantity). Indexed
+  ## by (cmt, k, q): cmt is the lag-carrying (event) compartment `c`, `k` is
+  ## the 0-based physical-state row, `q` is a calcSens2 parameter.
+  .buildJacQ <- function(cmts) {
+    if (is.null(map$map2)) {
+      return(data.frame(cmt = integer(0), k = integer(0), q = character(0),
+                        expr = character(0), stringsAsFactors = FALSE))
+    }
+    .q2 <- unique(map$map2$q)
+    .rows <- list()
+    for (.c in cmts) {
+      .cName <- .cmtName(.c)
+      for (.kIdx in seq_along(.states)) {
+        .kName <- .states[.kIdx]
+        .fSymName <- paste0("rx__d_dt_", .kName, "__")
+        if (!exists(.fSymName, envir = .model)) next
+        .fSym <- get(.fSymName, envir = .model)
+        .Jkc <- tryCatch(symengine::D(.fSym, symengine::S(.cName)),
+                         error = function(e) NULL)
+        if (is.null(.Jkc)) next
+        .JkcTxt <- rxFromSE(.Jkc)
+        if (.JkcTxt == "0" || .JkcTxt == "0.0") next
+        for (.q in .q2) {
+          .dJ <- .rxEventSensDSym(.Jkc, .q, .states)
+          if (is.null(.dJ)) next
+          .e <- rxFromSE(.dJ)
+          if (.e != "0" && .e != "0.0") {
+            .rows[[length(.rows) + 1L]] <-
+              data.frame(cmt = .c, k = .kIdx - 1L, q = .q, expr = .e,
+                         stringsAsFactors = FALSE)
+          }
+        }
+      }
+    }
+    if (length(.rows) == 0L) {
+      return(data.frame(cmt = integer(0), k = integer(0), q = character(0),
+                        expr = character(0), stringsAsFactors = FALSE))
+    }
+    do.call(rbind, .rows)
+  }
+  .q2All <- if (is.null(map$map2)) character(0) else unique(map$map2$q)
   list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"),
        rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"),
        f2 = .build2(map$fCmt, "f"), lag2 = .build2(map$lagCmt, "lag"),
        rate2 = .build2(map$rateCmt, "rate"), dur2 = .build2(map$durCmt, "dur"),
-       f3 = .build3(map$fCmt, "f"))
+       f3 = .build3(map$fCmt, "f"),
+       fq = .buildQ(map$fCmt, "f", .q2All),
+       lagJacQ = .buildJacQ(map$lagCmt),
+       ## d(alag)/dq (Phase H1's dtau/lag row SAFETY GUARD): whenever q ALSO
+       ## drives the SAME event's alag (dLag_q[c] != 0), the "differentiate
+       ## the existing 1st-order dtau row by the product rule" approach is
+       ## PROVEN INCOMPLETE by FD -- it misses a genuine Leibniz/moving-
+       ## -boundary term (`dS^p_k/dt * dLag_q[c]`, from S^p_k's pre-jump value
+       ## itself being read at a q-shifted time), the SAME class of problem
+       ## that blocked the infusion 2nd-order attempt (see the plan's Phase F
+       ## note). This table lets the runtime injection SKIP (leave 0) any
+       ## (cmt, q) pair where that term would be needed, rather than silently
+       ## injecting a wrong nonzero value.
+       lagQ = .buildQ(map$lagCmt, "lag", .q2All))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -763,6 +858,26 @@
       .qIdx[tab$q] * .np3 + .rIdx[tab$r]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
   }
+  ## d(F)/dq buffer (H1-dtau scope): indexed (cmt0*np2 + qIdx), q already in
+  ## calcSens2's own index space (no cross-index remapping needed at runtime).
+  .linesQ <- function(tab, buf) {
+    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    .cmt0 <- tab$cmt - 1L
+    .idx <- .cmt0 * .np2 + .qIdx[tab$param]
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+  }
+  ## d(J[k][c])/dq buffer (H1-dtau scope): indexed
+  ## (cmt0*(nState*np2) + k*np2 + qIdx) -- cmt0 is the lag-carrying (event)
+  ## compartment, k is the 0-based physical-state row, q in calcSens2's
+  ## index space.  Buffer sized nState*nState*np2 (always allocated for every
+  ## possible cmt slot, same convention as the other dLag/d2Lag buffers).
+  .ns <- info$map$nState
+  .linesJacQ <- function(tab, buf) {
+    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    .cmt0 <- tab$cmt - 1L
+    .idx <- .cmt0 * (.ns * .np2) + tab$k * .np2 + .qIdx[tab$q]
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+  }
   list(
     nSensParam = .np,
     paramIdx = .pIdx,
@@ -778,27 +893,31 @@
     lag2 = .lines2(info$derivs$lag2, "_d2LagSave"),
     rate2 = .lines2(info$derivs$rate2, "_d2RateSave"),
     dur2 = .lines2(info$derivs$dur2, "_d2DurSave"),
-    f3 = .lines3(info$derivs$f3, "_d3FSave")
+    f3 = .lines3(info$derivs$f3, "_d3FSave"),
+    fq = .linesQ(info$derivs$fq, "_dFQSave"),
+    lagJacQ = .linesJacQ(info$derivs$lagJacQ, "_dLagJacSave"),
+    lagQ = .linesQ(info$derivs$lagQ, "_dLagQSave")
   )
 }
 
-#' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur C body lines for codegen
+#' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ C body lines for codegen
 #'
-#' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur, d3F)` body
-#' lines (empty strings when none). Passed as arguments to the codegen `.Call`
-#' so the lines reach codegen in the same package instance (robust under
-#' `pkgload::load_all`, where a module-global channel could bind the setter
-#' and codegen to different rxode2 C instances).
+#' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur, d3F, dFQ,
+#' dLagJac, dLagQ)` body lines (empty strings when none). Passed as arguments
+#' to the codegen `.Call` so the lines reach codegen in the same package
+#' instance (robust under `pkgload::load_all`, where a module-global channel
+#' could bind the setter and codegen to different rxode2 C instances).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
-#' @return character(9): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur,
-#'   and d3F body lines.
+#' @return character(12): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate,
+#'   d2Dur, d3F, dFQ, dLagJac, and dLagQ body lines.
 #' @noRd
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
   .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
   c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2),
-    .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2), .join(.cl$f3))
+    .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2), .join(.cl$f3),
+    .join(.cl$fq), .join(.cl$lagJacQ), .join(.cl$lagQ))
 }
 
 #' Does this model need the `calc_jac`-based dtau/lag Jacobian column?

@@ -1172,6 +1172,77 @@ static inline int handle_evid(int evid, int neq,
             if (_esDLagB != NULL) free(_esDLagB);
             if (_esJcol != NULL) free(_esJcol);
           }
+          // Second-order dtau row (Phase H1's dtau/lag row): d/dq of the
+          // 1st-order dtau jump above, by the product rule applied to
+          // -J[k][c]*delta*dLag_p[c]:
+          //   -dJdq[k][c]*delta*dLag_p[c]              (Jacobian coupling)
+          //   -J[k][c]*(amt*dFQ[c][q])*dLag_p[c]        (delta = F*amt coupling)
+          //   -J[k][c]*delta*d2Lag[p][q][c]             (dLag itself coupling)
+          // dJdq[k][c] = d(J[k][c])/dq, the total derivative of the physical
+          // Jacobian column (`.rxEventSensDerivs()`'s "lagJacQ" table,
+          // computed symbolically from the model's own d/dt() RHS -- see the
+          // plan's Phase H1-dtau note). 2nd-order compartment layout follows
+          // rxExpandSens2_, same as the additive-bolus d2F row.
+          //
+          // matExp()/indLin() models EXCLUDED (`!_rxEsUseCalcJac`): the
+          // injected numeric term is IDENTICAL to the ODE path (confirmed by
+          // direct comparison) but the post-injection value is silently lost
+          // for indLin's matrix-exponential 2nd-order compartment
+          // propagation (unlike the 1st-order dtau row and the additive-bolus
+          // d2F row, both of which DO work correctly for matExp) -- root
+          // cause not yet found; treat as a documented, deliberate gap
+          // (matExp only) rather than ship a silently-zeroed value.
+          if (!_rxEsUseCalcJac &&
+              d2LagEs != NULL && dLagJacEs != NULL && _esHaveJacCol() &&
+              _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+            int _np2 = _rxEsNParam2;
+            double *_esDLagB2 = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            double *_esJcol2 = (double*) calloc((size_t)_ns, sizeof(double));
+            double *_esD2LagB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+            double *_esDFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            double *_esJacQB = (double*) calloc((size_t)_ns * _ns * _np2, sizeof(double));
+            double *_esDLagQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            if (_esDLagB2 != NULL && _esJcol2 != NULL && _esD2LagB != NULL &&
+                _esDFQB != NULL && _esJacQB != NULL && _esDLagQB != NULL) {
+              dLagEs(id, xout, yp, _esDLagB2);
+              double _esFc2;
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, &_esFc2);
+              d2LagEs(id, xout, yp, _esD2LagB);
+              if (dFQEs != NULL) dFQEs(id, xout, yp, _esDFQB);
+              dLagJacEs(id, xout, yp, _esJacQB);
+              if (dLagQEs != NULL) dLagQEs(id, xout, yp, _esDLagQB);
+              for (int _p = 0; _p < _np; _p++) {
+                double _esDLagP2 = _esDLagB2[cmt * _np + _p];
+                if (_esDLagP2 == 0.0) continue;
+                for (int _q = 0; _q < _np2; _q++) {
+                  // SAFETY GUARD: if q ALSO drives this alag (dLag_q[cmt] !=
+                  // 0), the product-rule terms below are PROVEN INCOMPLETE by
+                  // FD -- they miss a genuine Leibniz/moving-boundary term
+                  // (dS^p_k/dt * dLag_q[cmt], from S^p_k's pre-jump value
+                  // itself being read at a q-shifted time; same class of
+                  // problem as the reverted infusion 2nd-order attempt).
+                  // Skip rather than inject a silently wrong value.
+                  if (_esDLagQB[cmt * _np2 + _q] != 0.0) continue;
+                  double _esD2LagPQ = _esD2LagB[cmt * (_np * _np2) + _p * _np2 + _q];
+                  double _esDFQc = _esDFQB[cmt * _np2 + _q];
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    double _esDJdq = _esJacQB[cmt * (_ns * _np2) + _esK * _np2 + _q];
+                    int _c2 = _ns * (1 + _np) + _esK + _ns * (_p + _q * _np);
+                    yp[_c2] += -_esDJdq * _esDelta * _esDLagP2
+                      - _esJcol2[_esK] * (_esRawAmt * _esDFQc) * _esDLagP2
+                      - _esJcol2[_esK] * _esDelta * _esD2LagPQ;
+                  }
+                }
+              }
+            }
+            if (_esDLagB2 != NULL) free(_esDLagB2);
+            if (_esJcol2 != NULL) free(_esJcol2);
+            if (_esD2LagB != NULL) free(_esD2LagB);
+            if (_esDFQB != NULL) free(_esDFQB);
+            if (_esJacQB != NULL) free(_esJacQB);
+            if (_esDLagQB != NULL) free(_esDLagQB);
+          }
         }
         yp[cmt] += _esDelta;     //dosing before obs
       }

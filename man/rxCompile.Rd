@@ -25,7 +25,7 @@ rxCompile(
   force = FALSE,
   modName = NULL,
   package = NULL,
-  eventSensCode = rep("", 9L),
+  eventSensCode = rep("", 12L),
   ...
 )
 
@@ -36,7 +36,7 @@ rxCompile(
   force = FALSE,
   modName = NULL,
   package = NULL,
-  eventSensCode = rep("", 9L),
+  eventSensCode = rep("", 12L),
   ...
 )
 
@@ -91,15 +91,15 @@ simple ASCII alphanumeric characters starting with a letter.}
 \item{...}{Other arguments sent to the \code{\link[=rxTrans]{rxTrans()}}
 function.}
 
-\item{eventSensCode}{character vector of length 9 giving the C body
+\item{eventSensCode}{character vector of length 12 giving the C body
 lines for the event ("jump") sensitivity helper functions
-\code{dLag}/\code{dF}/\code{dRate}/\code{dDur}/\code{d2F}/\code{d2Lag}/\code{d2Rate}/\code{d2Dur}/\code{d3F} (in
-that order).  These are the per-model dosing-parameter total-derivative
-assignments produced by the event-sensitivity code generator and
-are emitted verbatim into the corresponding generated functions.
-The default of nine empty strings produces trivial (no-op)
-helpers, which is what non-sensitivity models and
-\code{eventSens = "fd"} models use.}
+\code{dLag}/\code{dF}/\code{dRate}/\code{dDur}/\code{d2F}/\code{d2Lag}/\code{d2Rate}/\code{d2Dur}/\code{d3F}/\code{dFQ}/
+\code{dLagJac}/\code{dLagQ} (in that order).  These are the per-model
+dosing-parameter total-derivative assignments produced by the
+event-sensitivity code generator and are emitted verbatim into the
+corresponding generated functions.  The default of twelve empty
+strings produces trivial (no-op) helpers, which is what
+non-sensitivity models and \code{eventSens = "fd"} models use.}
 }
 \value{
 An rxDll object that has the following components

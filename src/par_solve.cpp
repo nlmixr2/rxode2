@@ -613,6 +613,14 @@ t_dLag d2LagEs = NULL;
 t_dRate d2RateEs = NULL;
 t_dDur d2DurEs = NULL;
 t_dF d3FEs = NULL;
+// Phase H1's dtau/lag row: d(F)/dq (q in calcSens2's index space) and the
+// total derivative of the physical Jacobian column d(J[k][c])/dq.
+t_dF dFQEs = NULL;
+t_dLag dLagJacEs = NULL;
+// Safety guard for the dtau/lag row's 2nd-order piece: nonzero at (cmt,q)
+// means q ALSO drives this alag, the case not yet handled (see
+// `.rxEventSensDerivs()`'s "lagQ" table).
+t_dLag dLagQEs = NULL;
 t_DUR durEsFn = NULL;
 t_dydt dydtEs = NULL;
 
@@ -660,6 +668,9 @@ extern "C" void rxode2EventSensLoad(SEXP trans, int active, int nState, int nPar
   snprintf(nm, 300, "%sd2Rate", prefix);d2RateEs= (t_dRate) R_GetCCallable(lib, nm);
   snprintf(nm, 300, "%sd2Dur", prefix); d2DurEs = (t_dDur)  R_GetCCallable(lib, nm);
   snprintf(nm, 300, "%sd3F", prefix);   d3FEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdFQ", prefix);   dFQEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdLagJac", prefix); dLagJacEs = (t_dLag) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdLagQ", prefix); dLagQEs = (t_dLag) R_GetCCallable(lib, nm);
   _rxEsActive = active;
   _rxEsNState = nState;
   _rxEsNParam = nParam;
@@ -867,6 +878,7 @@ void rxUpdateFuns(SEXP trans){
     const char *s_prefix = CHAR(STRING_ELT(trans, 2));
     char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300], s_d2F[300];
     char s_d2Lag[300], s_d2Rate[300], s_d2Dur[300], s_d3F[300];
+    char s_dFQ[300], s_dLagJac[300], s_dLagQ[300];
     snprintf(s_dLag, 300, "%sdLag", s_prefix);
     snprintf(s_dF, 300, "%sdF", s_prefix);
     snprintf(s_dRate, 300, "%sdRate", s_prefix);
@@ -876,6 +888,9 @@ void rxUpdateFuns(SEXP trans){
     snprintf(s_d2Rate, 300, "%sd2Rate", s_prefix);
     snprintf(s_d2Dur, 300, "%sd2Dur", s_prefix);
     snprintf(s_d3F, 300, "%sd3F", s_prefix);
+    snprintf(s_dFQ, 300, "%sdFQ", s_prefix);
+    snprintf(s_dLagJac, 300, "%sdLagJac", s_prefix);
+    snprintf(s_dLagQ, 300, "%sdLagQ", s_prefix);
     dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
     dF = (t_dF) R_GetCCallable(lib, s_dF);
     dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
@@ -886,6 +901,9 @@ void rxUpdateFuns(SEXP trans){
     d2RateEs = (t_dRate) R_GetCCallable(lib, s_d2Rate);
     d2DurEs = (t_dDur) R_GetCCallable(lib, s_d2Dur);
     d3FEs = (t_dF) R_GetCCallable(lib, s_d3F);
+    dFQEs = (t_dF) R_GetCCallable(lib, s_dFQ);
+    dLagJacEs = (t_dLag) R_GetCCallable(lib, s_dLagJac);
+    dLagQEs = (t_dLag) R_GetCCallable(lib, s_dLagQ);
     dydtEs = dydt;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);

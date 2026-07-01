@@ -66,12 +66,25 @@
 // show_ode == 30 event-sensitivity d3(F)/dp/dq/dr (third-order jump
 // sensitivities, additive-bolus F row only -- Phase H1 scope)
 #define ode_d3F 30
+// show_ode == 31 event-sensitivity d(F)/dq, q in calcSens2's index space
+// (Phase H1's dtau/lag row: feeds d(delta)/dq = amt*dFQ[c][q])
+#define ode_dFQ 31
+// show_ode == 32 event-sensitivity d(J[k][c])/dq -- total derivative of the
+// PHYSICAL Jacobian column wrt a calcSens2 parameter (Phase H1's dtau/lag
+// row).  Buffer is (nState x nState x np2), NOT the usual (nState x nParam)
+// dosing-parameter shape -- see `.rxEventSensCLines()$lagJacQ`.
+#define ode_dLagJac 32
+// show_ode == 33 event-sensitivity d(alag)/dq, q in calcSens2's index space
+// (Phase H1's dtau/lag row SAFETY GUARD: nonzero here means q ALSO drives
+// the same event's alag, the case the 2nd-order dtau row does not yet
+// handle correctly -- see `.rxEventSensCLines()$lagQ`).
+#define ode_dLagQ 33
 // True for any of the event-sensitivity dosing-derivative functions
-// (dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F); they share the same codegen
-// preamble (which also populates the second- and third-order sensitivity
-// locals) and emit only their R-generated body lines.  Kept contiguous so
-// this is a range test.
-#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_d3F)
+// (dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ); they
+// share the same codegen preamble (which also populates the second- and
+// third-order sensitivity locals) and emit only their R-generated body
+// lines.  Kept contiguous so this is a range test.
+#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_dLagQ)
 
 // Scenarios
 #define print_double 0
@@ -324,6 +337,9 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sd2Rate\", (DL_FUNC) %sd2Rate);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sd2Dur\", (DL_FUNC) %sd2Dur);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sd3F\", (DL_FUNC) %sd3F);\n", libname, prefix, prefix);
+  sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdFQ\", (DL_FUNC) %sdFQ);\n", libname, prefix, prefix);
+  sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdLagJac\", (DL_FUNC) %sdLagJac);\n", libname, prefix, prefix);
+  sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdLagQ\", (DL_FUNC) %sdLagQ);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sRate\", (DL_FUNC) %sRate);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sDur\", (DL_FUNC) %sDur);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%smtime\", (DL_FUNC) %smtime);\n", libname, prefix, prefix);
@@ -361,7 +377,8 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esDLagCode, SEXP esDFCode,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
-                          SEXP esD3FCode);
+                          SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
+                          SEXP esDLagQCode);
 
 extern int fullPrint;
 #endif // __CODEGEN_H__

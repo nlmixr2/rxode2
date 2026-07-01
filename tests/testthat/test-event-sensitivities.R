@@ -1031,6 +1031,86 @@ rxTest({
     }
   })
 
+  test_that("second-order dtau/lag row: q unrelated to the modeled alag (Phase H1-dtau)", {
+    # tlag drives alag; tf drives F only (independent of tlag).  Differentiating
+    # the 1st-order dtau jump (-J[k][c]*delta*dLag_p[c]) by the product rule
+    # wrt q=tf needs three terms: d(J)/dq (here 0, linear system), d(delta)/dq
+    # = amt*dFQ[c][q] (nonzero, F depends on tf), and d2Lag[p][q] (here 0,
+    # alag doesn't depend on tf).  Only the middle term survives, and it is
+    # exactly what makes S^{tlag,tf} nonzero (without it, entirely missing).
+    ode_code <- "
+      alag(depot) <- exp(tlag)
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl / v * central
+    "
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5), tf = qlogis(0.7))
+    # avoid the observation landing exactly on the (parameter-dependent) lag
+    # time (t=0.5): a known artifact source, see the plan's validation notes.
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.55, 10, by = 0.5))
+    m1 <- rxode2(ode_code, calcSens = c("tlag", "tf"), eventSens = "jump")
+    m2 <- rxode2(ode_code, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf"),
+                 eventSens = "jump")
+    s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tf__"]]
+    eps <- 1e-5
+    p1 <- pars; p1["tf"] <- pars["tf"] + eps
+    p2 <- pars; p2["tf"] <- pars["tf"] - eps
+    .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
+    fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
+    expect_equal(s2, fd, tolerance = 1e-6)
+    expect_gt(max(abs(fd)), 1)
+  })
+
+  test_that("second-order dtau/lag row: d(J[k][c])/dq Jacobian-coupling term (nonlinear model)", {
+    # Michaelis-Menten elimination makes the physical Jacobian state- and
+    # parameter-dependent, exercising the d(J)/dq term (zero for the linear
+    # models above) in isolation: J[central][central] = -Vm*Km/(Km+central)^2
+    # depends explicitly on Vm, so d(J)/dtvm != 0.
+    ode_code <- "
+      alag(central) <- exp(tlag)
+      vm <- exp(tvm)
+      km <- exp(tkm)
+      d/dt(central) = -vm*central/(km+central)
+    "
+    pars <- c(tvm = log(2), tkm = log(5), tlag = log(0.5))
+    e <- et(amt = 10, cmt = "central") |> et(seq(0.55, 8, by = 0.5))
+    m1 <- rxode2(ode_code, calcSens = c("tlag", "tvm"), eventSens = "jump")
+    m2 <- rxode2(ode_code, calcSens = c("tlag", "tvm"), calcSens2 = c("tlag", "tvm"),
+                 eventSens = "jump")
+    info <- m2$eventSensInfo
+    expect_true(nrow(info$derivs$lagJacQ) > 0L)
+    s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tvm__"]]
+    eps <- 1e-5
+    p1 <- pars; p1["tvm"] <- pars["tvm"] + eps
+    p2 <- pars; p2["tvm"] <- pars["tvm"] - eps
+    .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
+    fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
+    expect_equal(s2, fd, tolerance = 1e-6)
+    expect_gt(max(abs(fd)), 0.1)
+  })
+
+  test_that("second-order dtau/lag row: q ALSO driving the same alag is guarded, not wrong (Phase H1-dtau)", {
+    # Differentiating the 1st-order dtau row by the product rule is PROVEN
+    # INCOMPLETE (by FD) whenever q ALSO shifts the same event's time: it
+    # misses a Leibniz/moving-boundary term (dS^p_k/dt * dLag_q[c], from
+    # S^p_k's pre-jump value being read at a q-shifted time) -- the same
+    # class of problem that blocked the infusion 2nd-order attempt. Rather
+    # than inject a silently wrong value, the runtime guards on a "lagQ"
+    # table (d(alag)/dq) and leaves the compartment untouched (0) whenever
+    # q also affects alag. This test locks in that the deliberately-zero
+    # value is a documented gap, not an accidental regression to "correct".
+    ode_code <- "
+      alag(depot) <- exp(tlag)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl / v * central
+    "
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5))
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0.55, 10, by = 0.5))
+    m2 <- rxode2(ode_code, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
+    s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tlag__"]]
+    expect_equal(s2, rep(0, length(s2)))
+  })
+
   test_that("additive-bolus F jump fires for indexed THETA[n]/ETA[n] params", {
     # The nlmixr2 FOCEi inner model writes sensitivities wrt the indexed
     # parameters ETA[n]/THETA[n] (compartments rx__sens_<state>_BY_ETA_n___).
