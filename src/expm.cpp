@@ -370,6 +370,10 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   double _dt = (tf - tp) / (double) _nSub;
   double _subTp = tp;
   int _ret = 1;
+  arma::vec u;
+  if (doIndLin == 2) {
+    u.zeros(neq);
+  }
   for (int _sub = 0; _sub < _nSub; _sub++) {
     // Avoid floating-point drift on the final substep by snapping to `tf`.
     double _subTf = (_sub == _nSub - 1) ? tf : _subTp + _dt;
@@ -380,7 +384,6 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
       break;
     }
     case 2: {
-      arma::vec u(neq);
       IndF(cSub, tcov, _subTf, u.memptr());
       _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, u.memptr(), on_, ME, op, ind);
       break;
