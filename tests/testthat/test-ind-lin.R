@@ -335,4 +335,49 @@ d/dt(blood)     = a*intestine - b*blood
     indLin = TRUE
     ))
   })
+
+  test_that("hmax caps method='indLin' relinearization interval (task #8)", {
+    # `indLin()`/`meOnly()` (src/expm.cpp) evaluate the ME/Jacobian ONCE per
+    # call and treat it as constant over the WHOLE requested interval --
+    # exact for a true (state-independent) matExp() model, but only a
+    # first-order approximation for a state-dependent (indLin-forcing, e.g.
+    # Michaelis-Menten) one. `hmax` previously had NO effect on this at
+    # all: the relinearization interval was always exactly the gap between
+    # requested output times, so a coarse sampling grid silently gave a
+    # coarse (and potentially very wrong) answer for nonlinear models, with
+    # no way for a user to ask for more accuracy. This checks (1) `hmax`
+    # now measurably improves accuracy for a nonlinear (Michaelis-Menten
+    # elimination) model, and (2) it makes no numerical difference for a
+    # genuinely linear matExp model (same Jacobian regardless of how finely
+    # the interval is subdivided).
+    ode_code <- "
+      vmax <- 10; km <- 5; v <- 20
+      d/dt(central) = -vmax*central/(km+central)
+    "
+    pars <- c(vmax = 10, km = 5, v = 20)
+    et_f <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    mod_ode <- rxode2(ode_code)
+    res_ode <- rxSolve(mod_ode, et_f, pars, atol = 1e-10, rtol = 1e-10)
+
+    mod_mexp <- suppressMessages(rxode2(rxToIndLin(ode_code)))
+    diff_coarse <- max(abs(
+      rxSolve(mod_mexp, et_f, pars, method = "indLin", hmax = 0.5)$central - res_ode$central
+    ))
+    diff_fine <- max(abs(
+      rxSolve(mod_mexp, et_f, pars, method = "indLin", hmax = 0.01)$central - res_ode$central
+    ))
+    expect_true(diff_fine < diff_coarse / 10)
+
+    ode_code_lin <- "
+      ka <- 0.5; cl <- 0.2; v <- 10
+      d/dt(depot) = -ka*depot
+      d/dt(central) = ka*depot - cl/v*central
+    "
+    pars_lin <- c(ka = 0.5, cl = 0.2, v = 10)
+    et_lin <- et(amt = 100, cmt = "depot") |> et(seq(0, 20, by = 0.5))
+    mod_mexp_lin <- suppressMessages(rxode2(rxToIndLin(ode_code_lin)))
+    r_coarse <- rxSolve(mod_mexp_lin, et_lin, pars_lin, method = "indLin", hmax = 0.5)$central
+    r_fine <- rxSolve(mod_mexp_lin, et_lin, pars_lin, method = "indLin", hmax = 0.01)$central
+    expect_equal(r_coarse, r_fine, tolerance = 1e-6)
+  })
 })
