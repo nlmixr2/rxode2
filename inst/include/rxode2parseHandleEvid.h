@@ -1587,7 +1587,26 @@ static inline int handle_evid(int evid, int neq,
           // sensitivity S^{pq} of the dosed compartment jumps by amt*d2F[p][q].
           // 2nd-order compartment for (cmt, p=i2, q=i3) follows the
           // rxExpandSens2_ layout: nState*(1+np) + cmt + nState*(i2 + i3*np),
-          // after the states and the first-order sens block.
+          // after the states and the first-order sens block -- for ordinary
+          // ODE models. matExp models use their OWN (p-outer, q-inner) layout
+          // instead (rxSensMatExp() declares `cmt()`s nested `for p in
+          // calcSens { for q in calcSens2 { for state ... } }`, see the
+          // dtau-row comment earlier in this file). This unconditionally used
+          // the ODE formula for BOTH model types until 2026-07-01: harmless
+          // when calcSens2==calcSens (d2F[i2][i3] is symmetric, so the two
+          // layouts are just a transpose of each other and every written
+          // value still lands on a slot expecting that same value by
+          // coincidence) but a REAL bug once calcSens2 is a PROPER SUBSET
+          // with FEWER elements than calcSens (i2 ranges further than np2-1,
+          // so `i2 + i3*np` is not even a valid transposed-pair index
+          // anymore) -- confirmed by FD: S^{tf,tf} and S^{ka,tlag} came out
+          // completely uncorrelated with the ODE reference (calcSens=
+          // c(tlag,tf,ka), calcSens2=c(tlag,tf)) while pairs that happened to
+          // still coincide (S^{tlag,tlag}, S^{ka,tf}) matched fine, and even
+          // some genuinely-scrambled pairs (S^{tlag,tf}/S^{tf,tlag}) looked
+          // right ONLY because d2F's own value is symmetric under exchanging
+          // i2<->i3 too -- a doubly-coincidental false negative that a
+          // calcSens2==calcSens test alone would never catch.
           if (d2FEs != NULL && _rxEsNParam2 > 0 &&
               _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
             int _np2 = _rxEsNParam2;
@@ -1596,7 +1615,9 @@ static inline int handle_evid(int evid, int neq,
               d2FEs(id, xout, yp, _d2FB);
               for (int _i2 = 0; _i2 < _np; _i2++) {
                 for (int _i3 = 0; _i3 < _np2; _i3++) {
-                  int _c2 = _ns * (1 + _np) + cmt + _ns * (_i2 + _i3 * _np);
+                  int _c2 = _rxEsUseCalcJac ?
+                    (_ns * (1 + _np) + cmt + _ns * (_i2 * _np2 + _i3)) :
+                    (_ns * (1 + _np) + cmt + _ns * (_i2 + _i3 * _np));
                   yp[_c2] += _esRawAmt * _d2FB[cmt * (_np * _np2) + _i2 * _np2 + _i3];
                 }
               }
@@ -1608,7 +1629,11 @@ static inline int handle_evid(int evid, int neq,
           // Additive-bolus F row only (H1 scope).  3rd-order compartment for
           // (cmt, p=i2, q=i3, r=i4) follows the rxExpandSens3_ layout:
           // nState*(1+np) + nState*np*np2 + cmt + nState*(i2 + np*i3 + np*np2*i4),
-          // after the states, first-order, and second-order sens blocks.
+          // after the states, first-order, and second-order sens blocks --
+          // ODE models. matExp's own layout is p-outer/q-middle/r-inner
+          // (i2*(np2*np3) + i3*np3 + i4), same subset-vs-equal caveat as the
+          // 2nd-order fix above (rxSensMatExp() declares 3rd-order `cmt()`s
+          // nested `for p { for q { for r { for state ... } } }`).
           if (d3FEs != NULL && _rxEsNParam3 > 0 && d2FEs != NULL && _rxEsNParam2 > 0 &&
               _ns * (1 + _np) + _ns * _np * _rxEsNParam2 + _ns * _np * _rxEsNParam2 * _rxEsNParam3 <= neq) {
             int _np2 = _rxEsNParam2, _np3 = _rxEsNParam3;
@@ -1618,8 +1643,11 @@ static inline int handle_evid(int evid, int neq,
               for (int _i2 = 0; _i2 < _np; _i2++) {
                 for (int _i3 = 0; _i3 < _np2; _i3++) {
                   for (int _i4 = 0; _i4 < _np3; _i4++) {
-                    int _c3 = _ns * (1 + _np) + _ns * _np * _np2 + cmt +
-                      _ns * (_i2 + _np * _i3 + _np * _np2 * _i4);
+                    int _c3 = _rxEsUseCalcJac ?
+                      (_ns * (1 + _np) + _ns * _np * _np2 + cmt +
+                       _ns * (_i2 * (_np2 * _np3) + _i3 * _np3 + _i4)) :
+                      (_ns * (1 + _np) + _ns * _np * _np2 + cmt +
+                       _ns * (_i2 + _np * _i3 + _np * _np2 * _i4));
                     yp[_c3] += _esRawAmt * _d3FB[cmt * (_np * _np2 * _np3) +
                                                   _i2 * (_np2 * _np3) + _i3 * _np3 + _i4];
                   }

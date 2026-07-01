@@ -418,6 +418,40 @@ rxTest({
     }
   })
 
+  test_that("2nd-order additive-bolus F jump uses matExp's OWN compartment layout for a proper-subset calcSens2", {
+    # The 2nd-order ddelta (F) jump write used the ODE (rxExpandSens2_)
+    # compartment-index formula UNCONDITIONALLY until 2026-07-01: harmless
+    # when calcSens2==calcSens (d2F is symmetric in (p,q), so the ODE and
+    # matExp layouts are just a transpose of each other and every value
+    # lands on a slot expecting that same value by coincidence -- see the
+    # "2nd-order (Hessian) jumps" test above, which only ever used
+    # calcSens2==calcSens and so could never catch this), but a REAL bug
+    # once calcSens2 is a PROPER SUBSET with fewer elements than calcSens
+    # (some calcSens-only index no longer has a valid "transposed" slot in
+    # the smaller calcSens2 range). Isolated to a pure-F (no alag) model to
+    # avoid conflating with the separately-scoped alag/dtau-row gap for
+    # parameters outside calcSens2 (see the plan/memory notes on that).
+    ode_code_f <- "
+      f(depot) <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars_f <- c(ka = 0.5, cl = 0.2, v = 10, tf = qlogis(0.7))
+    et_f <- et(amt = 100, cmt = "depot") |> et(seq(0, 10, by = 0.5))
+    calcSens <- c("tf", "ka", "cl")
+    calcSens2 <- c("tf")
+    mexp_f <- rxode2(rxSensMatExp(ode_code_f, calcSens = calcSens, calcSens2 = calcSens2))
+    ode_f <- rxode2(ode_code_f, calcSens = calcSens, calcSens2 = calcSens2, eventSens = "jump")
+    res_mexp_f <- rxSolve(mexp_f, et_f, params = pars_f, method = "indLin")
+    res_ode_f <- rxSolve(ode_f, et_f, params = pars_f)
+    for (cc in c(
+      "rx__sens_central_BY_tf_BY_tf__", "rx__sens_central_BY_ka_BY_tf__",
+      "rx__sens_central_BY_cl_BY_tf__"
+    )) {
+      expect_equal(res_mexp_f[[cc]], res_ode_f[[cc]], tolerance = 1e-4)
+    }
+  })
+
   test_that("3rd-order additive-bolus F jump fires correctly for matExp compartments (Phase H1)", {
     # Same confirmation as the 2nd-order test above, one order deeper: the
     # H1 additive-bolus F-row 3rd-order jump (the only 3rd-order jump piece
