@@ -520,6 +520,7 @@ static inline double dabs2(double x) {
   extern "C" t_dF dFQEs;
   extern "C" t_dLag dLagJacEs;
   extern "C" t_dLag dLagQEs;
+  extern "C" t_dDur dDurQEs;
   extern "C" t_DUR durEsFn;
   extern "C" t_dydt dydtEs;
   // matExp()/indLin() models have no functional dydt() (the primal system is
@@ -553,6 +554,7 @@ static inline double dabs2(double x) {
   extern t_dF dFQEs;
   extern t_dLag dLagJacEs;
   extern t_dLag dLagQEs;
+  extern t_dDur dDurQEs;
   extern t_DUR durEsFn;
   extern t_dydt dydtEs;
   extern t_calc_jac calc_jac;

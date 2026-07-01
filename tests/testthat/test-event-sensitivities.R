@@ -1381,4 +1381,75 @@ rxTest({
     expect_equal(s2, fd, tolerance = 1e-6)
     expect_gt(max(abs(fd)), 1)
   })
+
+  test_that("second-order modeled-DUR boundary: combined alag+dur cross term S^{tlag,tinf}", {
+    # alag(depot)+dur(depot), NO F: isolates the MODEL_DUR_ON/OFF boundary's
+    # combined derivation (tau2 = tau1(alag) + dur(tinf) shifts with BOTH
+    # mechanisms at once) from the additive-bolus dtau row's own Leibniz
+    # term. An earlier implementation handled alag and dur as two SEPARATE
+    # per-mechanism terms and got this cross term wrong (not just missing) --
+    # confirmed by FD, ~8% relative error -- because dtau2/dp and dtau2/dq
+    # must be SUMMED (dLag_p+dDur_p, dLagQ_q+dDurQ_q) before use, not treated
+    # independently. Checks BOTH the infused (depot) and downstream
+    # (central) compartments through and after the boundary.
+    .mod <- "
+      alag(depot) <- tlag
+      dur(depot)  <- tinf
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    pars <- c(ka = 1, cl = 6, v = 60, tlag = 10, tinf = 10)
+    m1 <- rxode2(.mod, calcSens = c("tlag", "tinf"), eventSens = "jump")
+    m2 <- rxode2(.mod, calcSens = c("tlag", "tinf"), calcSens2 = c("tlag", "tinf"),
+                 eventSens = "jump")
+    e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
+    r2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)
+    eps <- 1e-4
+    p1 <- pars; p1["tinf"] <- pars["tinf"] + eps
+    p2 <- pars; p2["tinf"] <- pars["tinf"] - eps
+    r1a <- rxSolve(m1, e, p1, atol = 1e-11, rtol = 1e-11)
+    r1b <- rxSolve(m1, e, p2, atol = 1e-11, rtol = 1e-11)
+    fd_central <- (r1a$rx__sens_central_BY_tlag__ - r1b$rx__sens_central_BY_tlag__) / (2 * eps)
+    fd_depot <- (r1a$rx__sens_depot_BY_tlag__ - r1b$rx__sens_depot_BY_tlag__) / (2 * eps)
+    expect_equal(r2$rx__sens_central_BY_tlag_BY_tinf__, fd_central, tolerance = 1e-6)
+    expect_equal(r2$rx__sens_depot_BY_tlag_BY_tinf__, fd_depot, tolerance = 1e-6)
+    expect_gt(max(abs(fd_central)), 0.05)
+  })
+
+  test_that("second-order modeled-DUR boundary: alag x F cross term S^{tlag,doseAmt}", {
+    # Full alag+dur+F IMAX model: exercises the SAME combined boundary
+    # derivation as the alag+dur-only test above, but with q (doseAmt)
+    # driving F instead of dur. A first fix (validated against the
+    # alag+dur-only isolate) still had this pair wrong by a full sign flip:
+    # the dRateQq helper (d(rate)/dq used in both the MODEL_DUR_ON tau1-
+    # boundary term and the MODEL_DUR_OFF tau2-boundary term) had its dur
+    # component's sign backwards relative to the already-validated 1st-order
+    # d(rate)/dp = (amt*dF + tmp*dDur)/dur formula -- it happened to cancel
+    # out for a pure-dur q (like tinf above) but flipped the answer for a
+    # pure-F q (doseAmt), so both cross terms are needed to catch this class
+    # of bug.
+    .mod <- "
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      v  <- exp(lv)
+      alag(depot) <- tlag
+      dur(depot)  <- tinf
+      f(depot)    <- doseAmt
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(lka = log(1), lcl = log(6), lv = log(60), tlag = 10, doseAmt = 200, tinf = 10)
+    m1 <- rxode2(.mod, calcSens = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    m2 <- rxode2(.mod, calcSens = c("tlag", "doseAmt", "tinf"),
+                 calcSens2 = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
+    e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
+    s2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag_BY_doseAmt__"]]
+    eps <- 1e-4
+    p1 <- pars; p1["doseAmt"] <- pars["doseAmt"] + eps
+    p2 <- pars; p2["doseAmt"] <- pars["doseAmt"] - eps
+    .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag__"]]
+    fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
+    expect_equal(s2, fd, tolerance = 1e-6)
+    expect_gt(max(abs(fd)), 0.05)
+  })
 })

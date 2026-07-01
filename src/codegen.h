@@ -79,12 +79,18 @@
 // the same event's alag, the case the 2nd-order dtau row does not yet
 // handle correctly -- see `.rxEventSensCLines()$lagQ`).
 #define ode_dLagQ 33
+// show_ode == 34 event-sensitivity d(dur)/dq, q in calcSens2's index space
+// (modeled-DUR continuous-forcing 2nd-order piece: the quotient-rule 2nd
+// derivative of rate=F*amt/dur needs d(dur)/dq at q's OWN index space,
+// avoiding a calcSens2-position -> calcSens-position cross-index map --
+// see `.rxEventSensCLines()$durQ`).
+#define ode_dDurQ 34
 // True for any of the event-sensitivity dosing-derivative functions
-// (dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ); they
-// share the same codegen preamble (which also populates the second- and
-// third-order sensitivity locals) and emit only their R-generated body
-// lines.  Kept contiguous so this is a range test.
-#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_dLagQ)
+// (dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ);
+// they share the same codegen preamble (which also populates the second-
+// and third-order sensitivity locals) and emit only their R-generated
+// body lines.  Kept contiguous so this is a range test.
+#define ode_is_es_dcode(x) ((x) >= ode_dLag && (x) <= ode_dDurQ)
 
 // Scenarios
 #define print_double 0
@@ -340,6 +346,7 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdFQ\", (DL_FUNC) %sdFQ);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdLagJac\", (DL_FUNC) %sdLagJac);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdLagQ\", (DL_FUNC) %sdLagQ);\n", libname, prefix, prefix);
+  sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sdDurQ\", (DL_FUNC) %sdDurQ);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sRate\", (DL_FUNC) %sRate);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%sDur\", (DL_FUNC) %sDur);\n", libname, prefix, prefix);
   sAppend(&sbOut, "  R_RegisterCCallable(\"%s\",\"%smtime\", (DL_FUNC) %smtime);\n", libname, prefix, prefix);
@@ -378,7 +385,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
                           SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
-                          SEXP esDLagQCode);
+                          SEXP esDLagQCode, SEXP esDDurQCode);
 
 extern int fullPrint;
 #endif // __CODEGEN_H__

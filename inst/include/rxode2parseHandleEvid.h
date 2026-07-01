@@ -594,6 +594,27 @@ static inline int _esHaveJacCol(void) {
 // the per-model-type index matters here too, not just after adding the
 // Leibniz term (unlike d2F, which never needed this because its own values
 // are symmetric in (p,q) regardless of which slot receives them).
+//
+// SAFETY GUARD (found by FD, 2026-07-01): this derivation implicitly treats
+// `dtmp` (the InfusionRate CHANGE at this event) as p,q-INDEPENDENT, valid
+// for a fixed-rate/duration infusion (EVIDF_INF_RATE/DUR) but FALSE at the
+// MODEL_RATE_ON/OFF and MODEL_DUR_ON/OFF events, where `tmp` IS the modeled
+// rate value itself (tmp = +-F*amt/dur) and so genuinely depends on q
+// whenever F or dur is modeled with q-dependence. The missing piece is an
+// additional `-[d(tmp)/dq]*dLag_p[cmt]` cross term (confirmed wrong by FD
+// when omitted). ALSO, when p ITSELF drives F/dur, the g+/g- (dS^p_k/dt)
+// computation here runs BEFORE this same event's continuous-forcing code
+// (dRate/dDur additions to InfusionRate) has executed for THIS event, so
+// g+ is missing that just-turned-on forcing contribution -- an ordering
+// issue, not just a missing term (confirmed wrong by FD: an alag+modeled
+// -duration-only model, no F, still gave S^{tlag,tinf} off by ~8% even
+// after guarding q alone). Rather than derive the full multi-parameter
+// cross terms and fix the evaluation order, this SKIPS (leaves 0) any
+// (p,q) pair where EITHER p or q drives F or dur at this cmt (checked via
+// dF/dDurEs for p, dFQEs/dDurQEs for q) -- i.e. exactly the combination
+// where the "dtmp constant" / "forcing already applied" assumptions break
+// down -- shipping a documented incompleteness rather than a silently
+// wrong value.
 static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
                                                int cmt, int ns, int neq,
                                                double dtmp, double *preState) {
@@ -608,6 +629,16 @@ static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
   double *_dLagQB = (double*) calloc((size_t)ns * np2, sizeof(double));
   double *_dydtPost = NULL;  // ODE source for g+
   double *_fullJac = NULL;   // matExp source for g+ - g- (constant Jacobian)
+  // Safety-guard tables: does p (calcSens-indexed) or q (calcSens2-indexed)
+  // drive F/dur at this cmt?
+  double *_fPGuard = (double*) calloc((size_t)ns * np, sizeof(double));
+  double *_durPGuard = (double*) calloc((size_t)ns * np, sizeof(double));
+  double *_fqGuard = (double*) calloc((size_t)ns * np2, sizeof(double));
+  double *_durQGuard = (double*) calloc((size_t)ns * np2, sizeof(double));
+  if (dF != NULL && _fPGuard != NULL) dF(id, xout, yp, _fPGuard);
+  if (dDurEs != NULL && _durPGuard != NULL) dDurEs(id, xout, yp, _durPGuard);
+  if (dFQEs != NULL && _fqGuard != NULL) dFQEs(id, xout, yp, _fqGuard);
+  if (dDurQEs != NULL && _durQGuard != NULL) dDurQEs(id, xout, yp, _durQGuard);
   if (_rxEsUseCalcJac) {
     _fullJac = (double*) calloc((size_t)ns * ns, sizeof(double));
     if (_fullJac != NULL) {
@@ -626,7 +657,17 @@ static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
     d2LagEs(id, xout, yp, _d2LagB);
     dLagQEs(id, xout, yp, _dLagQB);
     for (int _p = 0; _p < np; _p++) {
+      // Safety guard: skip if tmp might depend on p (see comment above).
+      if ((_fPGuard != NULL && _fPGuard[cmt * np + _p] != 0.0) ||
+          (_durPGuard != NULL && _durPGuard[cmt * np + _p] != 0.0)) {
+        continue;
+      }
       for (int _q = 0; _q < np2; _q++) {
+        // Safety guard: skip if tmp might depend on q (see comment above).
+        if ((_fqGuard != NULL && _fqGuard[cmt * np2 + _q] != 0.0) ||
+            (_durQGuard != NULL && _durQGuard[cmt * np2 + _q] != 0.0)) {
+          continue;
+        }
         double _d2LagPQ = _d2LagB[cmt * (np * np2) + _p * np2 + _q];
         double _dLagQq = _dLagQB[cmt * np2 + _q];
         int _c2cmt = _rxEsUseCalcJac ?
@@ -659,6 +700,10 @@ static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
   if (_dLagQB != NULL) free(_dLagQB);
   if (_dydtPost != NULL) free(_dydtPost);
   if (_fullJac != NULL) free(_fullJac);
+  if (_fqGuard != NULL) free(_fqGuard);
+  if (_durQGuard != NULL) free(_durQGuard);
+  if (_fPGuard != NULL) free(_fPGuard);
+  if (_durPGuard != NULL) free(_durPGuard);
 }
 
 // Captures the state needed for `_esInfusionBoundary2ndOrder()`'s Leibniz
@@ -846,19 +891,22 @@ static inline int handle_evid(int evid, int neq,
         // The dF term covers a parameter-dependent bioavailability on the
         // modeled-duration infusion; dDur covers a parameter-dependent duration.
         //
-        // NOTE (2026-06-30): the analogous SECOND-order piece is deliberately
-        // NOT implemented here yet.  Unlike the boundary/modeled-rate terms
-        // above (self-contained: tmp*d2Lag[p][q] / d2Rate[p][q] directly),
-        // differentiating this quotient (rate=F*amt/dur) a second time wrt q
-        // via the quotient rule needs d(dur)/dq and d(F)/dq -- i.e. the
-        // FIRST-order dDur/dF value at q's index in the *first-order*
-        // (calcSens) parameter list, which is a DIFFERENT index than q's
-        // position in the calcSens2 list this runtime code has (nParam2-
-        // indexed).  That cross-order index map (calcSens2 position ->
-        // calcSens position, for the SAME shared parameter name) is not
-        // currently threaded from R to the runtime; adding it is a small,
-        // well-scoped follow-up (see the event-sensitivities plan / project
-        // memory) rather than something to approximate silently wrong here.
+        // Second-order piece (2026-07-01): differentiating the quotient
+        // rate=F*amt/dur a second time wrt q via the quotient rule needs
+        // d(dur)/dq and d(F)/dq -- i.e. the FIRST-order dDur/dF value at q's
+        // position in calcSens2, a DIFFERENT index space than the (cmt,p)
+        // buffers above (calcSens-indexed). Rather than build a
+        // calcSens2-position -> calcSens-position cross-index map, this
+        // reuses the SAME "evaluate directly at calcSens2 params" trick as
+        // the dtau row's "fq"/"lagQ" tables: `dFQEs`/`dDurQEs` give dF/dDur
+        // AT q's own index space directly, so no remapping is needed. Full
+        // derivation (rate=F*amt/dur, tmp=-rate):
+        //   d2(rate)/dp/dq = amt*d2F[p][q]/dur
+        //                    - amt*(dF_p*dDurQ_q + dFQ_q*dDur_p)/dur^2
+        //                    + tmp*d2Dur[p][q]/dur
+        //                    - 2*tmp*dDur_p*dDurQ_q/dur^2
+        // Compartment layout is model-type-specific, same reason/formula as
+        // the additive-bolus d2F row and the infusion moving-boundary term.
         if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
             ind->whI == EVIDF_MODEL_DUR_ON && dDurEs != NULL && durEsFn != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
@@ -873,6 +921,100 @@ static inline int handle_evid(int evid, int neq,
               for (int _p = 0; _p < _np; _p++) {
                 InfusionRate[_ns + _p * _ns + cmt] +=
                   (_esAmt * _esFB[cmt * _np + _p] + tmp * _esB[cmt * _np + _p]) / _esDur;
+              }
+              // Second-order continuous-forcing piece.
+              if (d2FEs != NULL && d2DurEs != NULL && dFQEs != NULL && dDurQEs != NULL &&
+                  _rxEsNParam2 > 0 &&
+                  _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+                int _np2 = _rxEsNParam2;
+                double *_esD2FB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+                double *_esD2DurB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+                double *_esFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+                double *_esDurQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+                if (_esD2FB != NULL && _esD2DurB != NULL && _esFQB != NULL && _esDurQB != NULL) {
+                  d2FEs(id, xout, yp, _esD2FB);
+                  d2DurEs(id, xout, yp, _esD2DurB);
+                  dFQEs(id, xout, yp, _esFQB);
+                  dDurQEs(id, xout, yp, _esDurQB);
+                  double _esDur2 = _esDur * _esDur;
+                  for (int _p = 0; _p < _np; _p++) {
+                    double _esDFp = _esFB[cmt * _np + _p];
+                    double _esDDurp = _esB[cmt * _np + _p];
+                    for (int _q = 0; _q < _np2; _q++) {
+                      double _esD2Fpq = _esD2FB[cmt * (_np * _np2) + _p * _np2 + _q];
+                      double _esD2Durpq = _esD2DurB[cmt * (_np * _np2) + _p * _np2 + _q];
+                      double _esFQq = _esFQB[cmt * _np2 + _q];
+                      double _esDurQq = _esDurQB[cmt * _np2 + _q];
+                      double _esTerm = _esAmt * _esD2Fpq / _esDur
+                        - _esAmt * (_esDFp * _esDurQq + _esFQq * _esDDurp) / _esDur2
+                        + tmp * _esD2Durpq / _esDur
+                        - 2.0 * tmp * _esDDurp * _esDurQq / _esDur2;
+                      int _c2 = _rxEsUseCalcJac ?
+                        (_ns * (1 + _np) + cmt + _ns * (_p * _np2 + _q)) :
+                        (_ns * (1 + _np) + cmt + _ns * (_p + _q * _np));
+                      InfusionRate[_c2] += _esTerm;
+                    }
+                  }
+                }
+                if (_esD2FB != NULL) free(_esD2FB);
+                if (_esD2DurB != NULL) free(_esD2DurB);
+                if (_esFQB != NULL) free(_esFQB);
+                if (_esDurQB != NULL) free(_esDurQB);
+              }
+              // Second-order tau1-boundary cross term: tau1 = t0+alag(p)
+              // shifts with alag-driving p, and the ON-event forcing jump
+              // [xdot]_ON=-tmp=+rate depends on q whenever q drives F/dur
+              // (dRateQq, same sign convention as the validated 1st-order
+              // d(rate)/dp=(amt*dF+tmp*dDur)/dur formula). This is a
+              // DIFFERENT term from the continuous-forcing piece above: it
+              // comes from differentiating the general moving-boundary jump
+              // condition "[S](tau1)=-[xdot]*d(tau1)/dp" a SECOND time wrt
+              // q, picking up an extra -dRateQq*dLag_p product-rule term
+              // (tau1 itself has NO dur dependence, so unlike the DUR-OFF
+              // boundary tau2=tau1+dur(p) there is no Leibniz-side fix
+              // needed here when q drives dur/F alone -- dtau1/dq=dLagQ_q
+              // is unaffected by dur/F -- only this product-rule cross
+              // term, previously entirely missing). Confirmed by FD: an
+              // alag+modeled-dur-only model (no F) showed
+              // S^{tlag,tinf}_depot analytically 0 throughout the WHOLE
+              // infusion window while FD showed a decaying nonzero value
+              // seeded right at tau1 (_esInfusionBoundary2ndOrder()'s own
+              // guard skips this (p,q) pair entirely since q drives dur,
+              // which is necessary for the DUR-OFF boundary but overly
+              // conservative here since tau1 has no dur term to worry
+              // about -- rather than loosen that shared guard, this adds
+              // the missing piece directly); a full alag+dur+F model's
+              // S^{tlag,doseAmt} (F-driven q, no dur) caught a further sign
+              // bug in dRateQq's dur term that had accidentally cancelled
+              // for the dur-only case above. Validated to ~1e-10 on both.
+              if (dLagEs != NULL && dFQEs != NULL && dDurQEs != NULL &&
+                  _rxEsNParam2 > 0 &&
+                  _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+                int _np2 = _rxEsNParam2;
+                double *_esLagB3 = (double*) calloc((size_t)_ns * _np, sizeof(double));
+                double *_esFQB3 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+                double *_esDurQB3 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+                if (_esLagB3 != NULL && _esFQB3 != NULL && _esDurQB3 != NULL) {
+                  dLagEs(id, xout, yp, _esLagB3);
+                  dFQEs(id, xout, yp, _esFQB3);
+                  dDurQEs(id, xout, yp, _esDurQB3);
+                  for (int _p = 0; _p < _np; _p++) {
+                    double _esDLagP = _esLagB3[cmt * _np + _p];
+                    if (_esDLagP == 0.0) continue;
+                    for (int _q = 0; _q < _np2; _q++) {
+                      double _esFQq3 = _esFQB3[cmt * _np2 + _q];
+                      double _esDurQq3 = _esDurQB3[cmt * _np2 + _q];
+                      double _esDRateQq3 = (_esAmt * _esFQq3 + tmp * _esDurQq3) / _esDur;
+                      int _c2cmt3 = _rxEsUseCalcJac ?
+                        (_ns * (1 + _np) + cmt + _ns * (_p * _np2 + _q)) :
+                        (_ns * (1 + _np) + cmt + _ns * (_p + _q * _np));
+                      yp[_c2cmt3] += -_esDRateQq3 * _esDLagP;
+                    }
+                  }
+                }
+                if (_esLagB3 != NULL) free(_esLagB3);
+                if (_esFQB3 != NULL) free(_esFQB3);
+                if (_esDurQB3 != NULL) free(_esDurQB3);
               }
             }
             if (_esB != NULL) free(_esB);
@@ -914,13 +1056,22 @@ static inline int handle_evid(int evid, int neq,
           free(_eA);
         }
         // Second-order alag-boundary term (product rule + Leibniz); see
-        // _esInfusionBoundary2ndOrder()'s derivation comment. The DUR-OFF
-        // case's OWN separate d(dur)/dp-driven boundary term below (tau2 =
-        // tau1+dur(p)) still has no 2nd-order counterpart -- that needs an
-        // analogous dDurQ/d2Dur-based derivation, not yet built.
-        _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB2);
-      }
-      if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
+        // _esInfusionBoundary2ndOrder()'s derivation comment. For
+        // MODEL_DUR_OFF on ODE models, tau2 = tau1(alag) + dur(F,dur-params)
+        // can shift with BOTH alag- and dur-driving parameters
+        // simultaneously, so the combined block below (using dtau2/dp =
+        // dLag_p+dDur_p etc.) supersedes this call entirely for that case --
+        // calling both would double-count the pure-alag-alag corner. The
+        // combined block is ODE-only (needs dydtEs), so still fall back to
+        // this generic (alag-only) helper for matExp/indLin MODEL_DUR_OFF
+        // events -- better a documented alag-only-corner result than none at
+        // all (matches prior behavior for those models; skipping here
+        // regressed test-mexp-nonmem.R's S^{tlag,tlag} check). Also still
+        // fire it for MODEL_RATE_OFF, whose own dur-analog
+        // (tau2=tau1+amt/rate(p)) moving-boundary term is still deferred.
+        if (ind->whI != EVIDF_MODEL_DUR_OFF || _rxEsUseCalcJac) {
+          _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB2);
+        }
       }
       // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
       // Mirror of the MODEL_RATE_ON injection: remove d(rate)/dp from the
@@ -966,17 +1117,163 @@ static inline int handle_evid(int evid, int neq,
               // duration's parameters (not F), so d(tau2)/dp = d(dur)/dp = dDur.
               yp[_ns + _p * _ns + cmt] += (-tmp) * _esDDur;
             }
+            // Second-order continuous-forcing REMOVAL: exact mirror of the
+            // MODEL_DUR_ON case's own addition (same quotient-rule formula,
+            // subtracted instead of added -- see that case's derivation
+            // comment).
+            if (d2FEs != NULL && d2DurEs != NULL && dFQEs != NULL && dDurQEs != NULL &&
+                _rxEsNParam2 > 0 &&
+                _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+              int _np2 = _rxEsNParam2;
+              double *_esD2FB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+              double *_esD2DurB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+              double *_esFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+              double *_esDurQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+              if (_esD2FB != NULL && _esD2DurB != NULL && _esFQB != NULL && _esDurQB != NULL) {
+                d2FEs(id, xout, yp, _esD2FB);
+                d2DurEs(id, xout, yp, _esD2DurB);
+                dFQEs(id, xout, yp, _esFQB);
+                dDurQEs(id, xout, yp, _esDurQB);
+                double _esDur2 = _esDur * _esDur;
+                for (int _p = 0; _p < _np; _p++) {
+                  double _esDFp = _esFB[cmt * _np + _p];
+                  double _esDDurp = _esB[cmt * _np + _p];
+                  for (int _q = 0; _q < _np2; _q++) {
+                    double _esD2Fpq = _esD2FB[cmt * (_np * _np2) + _p * _np2 + _q];
+                    double _esD2Durpq = _esD2DurB[cmt * (_np * _np2) + _p * _np2 + _q];
+                    double _esFQq = _esFQB[cmt * _np2 + _q];
+                    double _esDurQq = _esDurQB[cmt * _np2 + _q];
+                    double _esTerm = _esAmt * _esD2Fpq / _esDur
+                      - _esAmt * (_esDFp * _esDurQq + _esFQq * _esDDurp) / _esDur2
+                      + tmp * _esD2Durpq / _esDur
+                      - 2.0 * tmp * _esDDurp * _esDurQq / _esDur2;
+                    int _c2 = _rxEsUseCalcJac ?
+                      (_ns * (1 + _np) + cmt + _ns * (_p * _np2 + _q)) :
+                      (_ns * (1 + _np) + cmt + _ns * (_p + _q * _np));
+                    InfusionRate[_c2] -= _esTerm;
+                  }
+                }
+              }
+              if (_esD2FB != NULL) free(_esD2FB);
+              if (_esD2DurB != NULL) free(_esD2DurB);
+              if (_esFQB != NULL) free(_esFQB);
+              if (_esDurQB != NULL) free(_esDurQB);
+            }
           }
           if (_esB != NULL) free(_esB);
           if (_esFB != NULL) free(_esFB);
+          // Second-order DUR-boundary moving-boundary term, COMBINED across
+          // both mechanisms that can shift tau2 = tau1(alag) + dur(F,dur):
+          // alag shifting tau1, and dur/F shifting dur directly. These are
+          // NOT separable into independent per-mechanism Leibniz terms --
+          // both parts of dtau2/dp = dLag_p + dDur_p (and dtau2/dq =
+          // dLagQ_q + dDurQ_q, d2tau2/dpdq = d2Lag[p][q] + d2Dur[p][q]) must
+          // be SUMMED before use in the "jump condition one level up"
+          // derivation (an earlier attempt handling alag and dur separately
+          // -- one via _esInfusionBoundary2ndOrder(), one via a dur-only
+          // Leibniz term guarded to skip alag-driving p -- either
+          // cross-contaminated g+/g- or silently dropped the genuine
+          // dLag_p-driven contribution to the product-rule term; confirmed
+          // wrong/incomplete by FD on an alag+modeled-dur-only model with no
+          // F, S^{tlag,tinf}; a SECOND bug of the same kind was later found
+          // via a full F+dur+alag model's S^{tlag,doseAmt}, tracked to
+          // dRateQq's dur-term sign below not matching the already-
+          // validated 1st-order d(rate)/dp=(amt*dF+tmp*dDur)/dur formula --
+          // it happened to cancel out for pure-dur q but flipped the answer
+          // for pure-F q). tmp (=-rate, i.e. rate=-tmp) is parameter-
+          // dependent (rate=F*amt/dur), contributing an extra d(rate)/dq
+          // term (dRateQq, matching the SAME sign convention as the
+          // validated 1st-order formula) on top of the Leibniz term:
+          //   dtau2dp = dLag_p[cmt] + dDur_p[cmt]
+          //   dtau2dq = dLagQ_q[cmt] + dDurQ_q[cmt]
+          //   dRateQq = (amt*dFQ_q + tmp*dDurQ_q)/dur     (dur/F only; rate
+          //             has no direct alag dependence)
+          //   [S^{p,q}]_cmt += dRateQq*dtau2dp - tmp*(d2Lag[p][q]+d2Dur[p][q])
+          //   [S^{p,q}]_k   += -dtau2dq * (g+_k - g-_k)      for ALL k
+          // Validated by FD to ~1e-10 on an alag+modeled-dur-only isolate
+          // (both compartments, through and after the boundary) AND on the
+          // full alag+dur+F IMAX model's S^{doseAmt,tinf}, S^{tinf,tinf},
+          // S^{doseAmt,doseAmt}, S^{tlag,tinf}, S^{tlag,doseAmt} pairs.
+          // (same "kink whose location moves with q" extension to coupled
+          // compartments as _esInfusionBoundary2ndOrder()'s own k!=cmt
+          // piece). g_k = dS^p_k/dt via dydtEs, sampled AFTER all of this
+          // event's forcing/first-order-jump updates (so S^p's own jump,
+          // e.g. from a p that drives alag, is correctly reflected in g+ --
+          // that inclusion is NOT contamination, it's exactly what the
+          // envelope-theorem derivation calls for). This block supersedes
+          // _esInfusionBoundary2ndOrder() entirely for MODEL_DUR_OFF (see
+          // the guard added at that call site) -- reduces to the pure-alag
+          // formula when dDur_p=dDurQ_q=d2Dur[p][q]=0, so there is no
+          // double-count. ODE models only for now.
+          if (!_rxEsUseCalcJac && dydtEs != NULL && _esDydtPreB2 != NULL &&
+              d2DurEs != NULL && dDurQEs != NULL && dFQEs != NULL &&
+              _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+            int _np2 = _rxEsNParam2;
+            double *_esD2DurB2 = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
+            double *_esDurQB2 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            double *_esFQB2 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            double *_esDydtPostB2 = (double*) calloc((size_t)neq, sizeof(double));
+            double *_esDurB2 = (double*) calloc((size_t)_ns * _np, sizeof(double));
+            // alag contribution to dtau2/dp, dtau2/dq, d2tau2/dpdq -- NULL
+            // (treated as all-zero) when the model has no alag() tables.
+            double *_esLagB2 = (d2LagEs != NULL && dLagQEs != NULL && dLagEs != NULL) ?
+              (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+            double *_esLagQB2 = (_esLagB2 != NULL) ?
+              (double*) calloc((size_t)_ns * _np2, sizeof(double)) : NULL;
+            double *_esD2LagB2 = (_esLagB2 != NULL) ?
+              (double*) calloc((size_t)_ns * _np * _np2, sizeof(double)) : NULL;
+            if (_esLagB2 != NULL && _esLagQB2 != NULL && _esD2LagB2 != NULL) {
+              dLagEs(id, xout, yp, _esLagB2);
+              dLagQEs(id, xout, yp, _esLagQB2);
+              d2LagEs(id, xout, yp, _esD2LagB2);
+            }
+            if (_esD2DurB2 != NULL && _esDurQB2 != NULL && _esFQB2 != NULL &&
+                _esDydtPostB2 != NULL && _esDurB2 != NULL) {
+              d2DurEs(id, xout, yp, _esD2DurB2);
+              dDurQEs(id, xout, yp, _esDurQB2);
+              dFQEs(id, xout, yp, _esFQB2);
+              dDurEs(id, xout, yp, _esDurB2);
+              int _esNjD[2]; _esNjD[0] = neq; _esNjD[1] = id;
+              dydtEs(_esNjD, xout, yp, _esDydtPostB2);
+              for (int _p = 0; _p < _np; _p++) {
+                double _esDDurP = _esDurB2[cmt * _np + _p];
+                double _esDLagP = (_esLagB2 != NULL) ? _esLagB2[cmt * _np + _p] : 0.0;
+                double _esDTau2dp = _esDLagP + _esDDurP;
+                for (int _q = 0; _q < _np2; _q++) {
+                  double _esD2DurPQ = _esD2DurB2[cmt * (_np * _np2) + _p * _np2 + _q];
+                  double _esD2LagPQ = (_esD2LagB2 != NULL) ?
+                    _esD2LagB2[cmt * (_np * _np2) + _p * _np2 + _q] : 0.0;
+                  double _esDurQq = _esDurQB2[cmt * _np2 + _q];
+                  double _esLagQq = (_esLagQB2 != NULL) ? _esLagQB2[cmt * _np2 + _q] : 0.0;
+                  double _esDTau2dq = _esLagQq + _esDurQq;
+                  double _esFQq = _esFQB2[cmt * _np2 + _q];
+                  double _esDRateQq = (_esAmt * _esFQq + tmp * _esDurQq) / _esDur;
+                  int _c2cmt = _ns * (1 + _np) + cmt + _ns * (_p + _q * _np);
+                  yp[_c2cmt] += _esDRateQq * _esDTau2dp - tmp * (_esD2LagPQ + _esD2DurPQ);
+                  if (_esDTau2dq != 0.0) {
+                    for (int _esK = 0; _esK < _ns; _esK++) {
+                      double _esGdiff = _esDydtPostB2[_ns + _p * _ns + _esK] -
+                        _esDydtPreB2[_ns + _p * _ns + _esK];
+                      int _c2 = _ns * (1 + _np) + _esK + _ns * (_p + _q * _np);
+                      yp[_c2] += -_esGdiff * _esDTau2dq;
+                    }
+                  }
+                }
+              }
+            }
+            if (_esLagB2 != NULL) free(_esLagB2);
+            if (_esLagQB2 != NULL) free(_esLagQB2);
+            if (_esD2LagB2 != NULL) free(_esD2LagB2);
+            if (_esD2DurB2 != NULL) free(_esD2DurB2);
+            if (_esDurQB2 != NULL) free(_esDurQB2);
+            if (_esFQB2 != NULL) free(_esFQB2);
+            if (_esDydtPostB2 != NULL) free(_esDydtPostB2);
+            if (_esDurB2 != NULL) free(_esDurB2);
+          }
         }
-        // Second-order boundary/forcing extensions deliberately NOT added
-        // here either -- see the NOTE at MODEL_RATE_ON above.  (An earlier
-        // attempt here, using d2Dur for the moving-boundary piece alone,
-        // was also reverted: even a structurally "self-contained" boundary
-        // term of this form was not validated correct by FD once the
-        // Leibniz-rule issue was found for the sibling lag-boundary term,
-        // so it should not be trusted without its own derivation either.)
+      }
+      if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
       }
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 &&

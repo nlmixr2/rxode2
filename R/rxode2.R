@@ -1413,13 +1413,13 @@ rxDllLoaded <- rxIsLoaded
 #'     forced if rxode2 detects that the models are the same as already
 #'     generated.
 #'
-#' @param eventSensCode character vector of length 12 giving the C body
+#' @param eventSensCode character vector of length 13 giving the C body
 #'     lines for the event ("jump") sensitivity helper functions
 #'     `dLag`/`dF`/`dRate`/`dDur`/`d2F`/`d2Lag`/`d2Rate`/`d2Dur`/`d3F`/`dFQ`/
-#'     `dLagJac`/`dLagQ` (in that order).  These are the per-model
+#'     `dLagJac`/`dLagQ`/`dDurQ` (in that order).  These are the per-model
 #'     dosing-parameter total-derivative assignments produced by the
 #'     event-sensitivity code generator and are emitted verbatim into the
-#'     corresponding generated functions.  The default of twelve empty
+#'     corresponding generated functions.  The default of thirteen empty
 #'     strings produces trivial (no-op) helpers, which is what
 #'     non-sensitivity models and `eventSens = "fd"` models use.
 #'
@@ -1570,7 +1570,7 @@ rxCompile.rxModelVars <- function(model, # Model
                                   force = FALSE, # Force compile
                                   modName = NULL, # Model Name
                                   package = NULL,
-                                  eventSensCode = rep("", 12L), # dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ body lines
+                                  eventSensCode = rep("", 13L), # dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ body lines
                                   ...) {
   assignInMyNamespace(".pkg", package)
   ## rxCompile returns the DLL name that was created.
@@ -1709,7 +1709,8 @@ rxCompile.rxModelVars <- function(model, # Model
             .rxModelVarsLast, .rxSupportedFuns(),
             eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
             eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8],
-            eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12]
+            eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12],
+            eventSensCode[13]
           )
         } else {
           .libname <- gsub(.Platform$dynlib.ext, "", basename(.cDllFile))
@@ -1720,7 +1721,8 @@ rxCompile.rxModelVars <- function(model, # Model
             .rxModelVarsLast, .rxSupportedFuns(),
             eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
             eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8],
-            eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12]
+            eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12],
+            eventSensCode[13]
           )
         }
         .defs <- ""

@@ -621,6 +621,10 @@ t_dLag dLagJacEs = NULL;
 // means q ALSO drives this alag, the case not yet handled (see
 // `.rxEventSensDerivs()`'s "lagQ" table).
 t_dLag dLagQEs = NULL;
+// Modeled-DUR continuous-forcing 2nd-order piece: d(dur)/dq (q in calcSens2's
+// index space), avoiding a calcSens2-position -> calcSens-position
+// cross-index map (see `.rxEventSensDerivs()`'s "durQ" table).
+t_dDur dDurQEs = NULL;
 t_DUR durEsFn = NULL;
 t_dydt dydtEs = NULL;
 
@@ -671,6 +675,7 @@ extern "C" void rxode2EventSensLoad(SEXP trans, int active, int nState, int nPar
   snprintf(nm, 300, "%sdFQ", prefix);   dFQEs   = (t_dF)    R_GetCCallable(lib, nm);
   snprintf(nm, 300, "%sdLagJac", prefix); dLagJacEs = (t_dLag) R_GetCCallable(lib, nm);
   snprintf(nm, 300, "%sdLagQ", prefix); dLagQEs = (t_dLag) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdDurQ", prefix); dDurQEs = (t_dDur) R_GetCCallable(lib, nm);
   _rxEsActive = active;
   _rxEsNState = nState;
   _rxEsNParam = nParam;
@@ -878,7 +883,7 @@ void rxUpdateFuns(SEXP trans){
     const char *s_prefix = CHAR(STRING_ELT(trans, 2));
     char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300], s_d2F[300];
     char s_d2Lag[300], s_d2Rate[300], s_d2Dur[300], s_d3F[300];
-    char s_dFQ[300], s_dLagJac[300], s_dLagQ[300];
+    char s_dFQ[300], s_dLagJac[300], s_dLagQ[300], s_dDurQ[300];
     snprintf(s_dLag, 300, "%sdLag", s_prefix);
     snprintf(s_dF, 300, "%sdF", s_prefix);
     snprintf(s_dRate, 300, "%sdRate", s_prefix);
@@ -891,6 +896,7 @@ void rxUpdateFuns(SEXP trans){
     snprintf(s_dFQ, 300, "%sdFQ", s_prefix);
     snprintf(s_dLagJac, 300, "%sdLagJac", s_prefix);
     snprintf(s_dLagQ, 300, "%sdLagQ", s_prefix);
+    snprintf(s_dDurQ, 300, "%sdDurQ", s_prefix);
     dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
     dF = (t_dF) R_GetCCallable(lib, s_dF);
     dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
@@ -904,6 +910,7 @@ void rxUpdateFuns(SEXP trans){
     dFQEs = (t_dF) R_GetCCallable(lib, s_dFQ);
     dLagJacEs = (t_dLag) R_GetCCallable(lib, s_dLagJac);
     dLagQEs = (t_dLag) R_GetCCallable(lib, s_dLagQ);
+    dDurQEs = (t_dDur) R_GetCCallable(lib, s_dDurQ);
     dydtEs = dydt;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);

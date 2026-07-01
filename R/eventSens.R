@@ -787,7 +787,13 @@
        ## note). This table lets the runtime injection SKIP (leave 0) any
        ## (cmt, q) pair where that term would be needed, rather than silently
        ## injecting a wrong nonzero value.
-       lagQ = .buildQ(map$lagCmt, "lag", .q2All))
+       lagQ = .buildQ(map$lagCmt, "lag", .q2All),
+       ## d(dur)/dq (modeled-DUR continuous-forcing 2nd-order piece): the
+       ## quotient-rule 2nd derivative of rate=F*amt/dur needs d(dur)/dq at
+       ## q's position in calcSens2's OWN index space -- reusing the same
+       ## "evaluate directly at calcSens2 params" trick as "fq"/"lagQ" avoids
+       ## needing a calcSens2-position -> calcSens-position cross-index map.
+       durQ = .buildQ(map$durCmt, "dur", .q2All))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -896,28 +902,29 @@
     f3 = .lines3(info$derivs$f3, "_d3FSave"),
     fq = .linesQ(info$derivs$fq, "_dFQSave"),
     lagJacQ = .linesJacQ(info$derivs$lagJacQ, "_dLagJacSave"),
-    lagQ = .linesQ(info$derivs$lagQ, "_dLagQSave")
+    lagQ = .linesQ(info$derivs$lagQ, "_dLagQSave"),
+    durQ = .linesQ(info$derivs$durQ, "_dDurQSave")
   )
 }
 
-#' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ C body lines for codegen
+#' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ C body lines for codegen
 #'
 #' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur, d3F, dFQ,
-#' dLagJac, dLagQ)` body lines (empty strings when none). Passed as arguments
-#' to the codegen `.Call` so the lines reach codegen in the same package
-#' instance (robust under `pkgload::load_all`, where a module-global channel
-#' could bind the setter and codegen to different rxode2 C instances).
+#' dLagJac, dLagQ, dDurQ)` body lines (empty strings when none). Passed as
+#' arguments to the codegen `.Call` so the lines reach codegen in the same
+#' package instance (robust under `pkgload::load_all`, where a module-global
+#' channel could bind the setter and codegen to different rxode2 C instances).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
-#' @return character(12): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate,
-#'   d2Dur, d3F, dFQ, dLagJac, and dLagQ body lines.
+#' @return character(13): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate,
+#'   d2Dur, d3F, dFQ, dLagJac, dLagQ, and dDurQ body lines.
 #' @noRd
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
   .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
   c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2),
     .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2), .join(.cl$f3),
-    .join(.cl$fq), .join(.cl$lagJacQ), .join(.cl$lagQ))
+    .join(.cl$fq), .join(.cl$lagJacQ), .join(.cl$lagQ), .join(.cl$durQ))
 }
 
 #' Does this model need the `calc_jac`-based dtau/lag Jacobian column?

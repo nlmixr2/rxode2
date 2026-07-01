@@ -59,6 +59,7 @@ char *_es_d3FCode = NULL;
 char *_es_dFQCode = NULL;
 char *_es_dLagJacCode = NULL;
 char *_es_dLagQCode = NULL;
+char *_es_dDurQCode = NULL;
 
 static void _es_freeCode(void) {
   if (_es_dLagCode != NULL) { free(_es_dLagCode); _es_dLagCode = NULL; }
@@ -73,6 +74,7 @@ static void _es_freeCode(void) {
   if (_es_dFQCode != NULL) { free(_es_dFQCode); _es_dFQCode = NULL; }
   if (_es_dLagJacCode != NULL) { free(_es_dLagJacCode); _es_dLagJacCode = NULL; }
   if (_es_dLagQCode != NULL) { free(_es_dLagQCode); _es_dLagQCode = NULL; }
+  if (_es_dDurQCode != NULL) { free(_es_dDurQCode); _es_dDurQCode = NULL; }
 }
 
 // Persistent copy of an R string (malloc, not R_alloc: must survive past the
@@ -389,7 +391,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode == ode_d2Dur)?"d2(dur)/dp/dq" :
         (show_ode == ode_d3F)  ? "d3(F)/dp/dq/dr" :
         (show_ode == ode_dFQ)  ? "d(F)/dq" :
-        (show_ode == ode_dLagJac) ? "d(J[k][c])/dq" : "d(alag)/dq";
+        (show_ode == ode_dLagJac) ? "d(J[k][c])/dq" :
+        (show_ode == ode_dLagQ) ? "d(alag)/dq" : "d(dur)/dq";
       const char *_esFun =
         (show_ode == ode_dLag) ? "dLag" :
         (show_ode == ode_dF)   ? "dF" :
@@ -401,7 +404,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode == ode_d2Dur)?"d2Dur" :
         (show_ode == ode_d3F)  ? "d3F" :
         (show_ode == ode_dFQ)  ? "dFQ" :
-        (show_ode == ode_dLagJac) ? "dLagJac" : "dLagQ";
+        (show_ode == ode_dLagJac) ? "dLagJac" :
+        (show_ode == ode_dLagQ) ? "dLagQ" : "dDurQ";
       const char *_esBuf =
         (show_ode == ode_dLag) ? "_dLagSave" :
         (show_ode == ode_dF)   ? "_dFSave" :
@@ -413,7 +417,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode == ode_d2Dur)?"_d2DurSave" :
         (show_ode == ode_d3F)  ? "_d3FSave" :
         (show_ode == ode_dFQ)  ? "_dFQSave" :
-        (show_ode == ode_dLagJac) ? "_dLagJacSave" : "_dLagQSave";
+        (show_ode == ode_dLagJac) ? "_dLagJacSave" :
+        (show_ode == ode_dLagQ) ? "_dLagQSave" : "_dDurQSave";
       sAppend(&sbOut,
               "// Event-sensitivity %s\nvoid %s%s(int _cSub, double __t, double *__zzStateVar__, double *%s){\n"
               "  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n"
@@ -695,6 +700,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           sAppend(&sbOut, "\n%s\n", _es_dLagQCode);
         }
         break;
+      case ode_dDurQ:
+        // Event-sensitivity d(dur)/dq assignment lines (may be empty)
+        if (_es_dDurQCode != NULL && _es_dDurQCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dDurQCode);
+        }
+        break;
       }
     }
     if (show_ode == ode_dydt){
@@ -823,7 +834,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
                           SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
-                          SEXP esDLagQCode) {
+                          SEXP esDLagQCode, SEXP esDDurQCode) {
   // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
   // arguments (not a module global) so the setter and the codegen always run in
   // the same package instance -- the global channel was unreliable under
@@ -842,6 +853,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   _es_dFQCode = _es_dup(esDFQCode);
   _es_dLagJacCode = _es_dup(esDLagJacCode);
   _es_dLagQCode = _es_dup(esDLagQCode);
+  _es_dDurQCode = _es_dup(esDDurQCode);
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
@@ -1047,6 +1059,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(ode_dFQ);    // event-sensitivity d(F)/dq (Phase H1 dtau/lag row)
   gCode(ode_dLagJac);// event-sensitivity d(J[k][c])/dq (Phase H1 dtau/lag row)
   gCode(ode_dLagQ);  // event-sensitivity d(alag)/dq (Phase H1 dtau/lag row guard)
+  gCode(ode_dDurQ);  // event-sensitivity d(dur)/dq (modeled-DUR continuous-forcing 2nd order)
   gCode(4); // Registration
   writeFooter(); // undef
   fclose(fpIO);
