@@ -311,6 +311,66 @@ rxTest({
                  tolerance = 1e-5)
   })
 
+  test_that("matExp additive-bolus F and lag jumps match the generic ODE path", {
+    # Regression: rxSensMatExp()'s additive-bolus dtau (lag-time) jump row was
+    # a silent no-op for matExp models -- matExp()/indLin() models have no
+    # functional dydt() (matrix-exponential primal solve, not RHS evaluation),
+    # so handle_evid's usual central-difference-of-dydt Jacobian column was
+    # always exactly zero for them. Fixed by having rxSensMatExp() emit
+    # explicit df(x)/dy(y) lines from its already-known Jacobian (legal in a
+    # matExp() model even though d/dt() lines are not) and having handle_evid
+    # read the column from calc_jac instead for these models
+    # (`_rxEsUseCalcJac`, set from `.rxEventSensUseCalcJac()`/`mv$indLin`).
+    ode_code <- "
+      alag(depot) <- exp(tlag)
+      f(depot)    <- expit(tf)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    mexp <- rxSensMatExp(ode_code, calcSens = c("tlag", "tf"))
+    expect_true(any(grepl("df\\(depot\\)/dy\\(depot\\)", mexp)))
+    expect_true(any(grepl("df\\(central\\)/dy\\(depot\\)", mexp)))
+    expect_true(any(grepl("df\\(central\\)/dy\\(central\\)", mexp)))
+
+    mod_mexp <- rxode2(mexp)
+    mod_ode <- rxode2(ode_code, calcSens = c("tlag", "tf"), eventSens = "jump")
+
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5), tf = qlogis(0.7))
+    et1 <- et(amt = 100, cmt = "depot") |> et(seq(0, 10, by = 0.5))
+
+    res_mexp <- rxSolve(mod_mexp, et1, params = pars, method = "indLin")
+    res_ode <- rxSolve(mod_ode, et1, params = pars)
+
+    for (cc in c(
+      "central", "rx__sens_central_BY_tlag__", "rx__sens_central_BY_tf__"
+    )) {
+      expect_equal(res_mexp[[cc]], res_ode[[cc]], tolerance = 1e-4)
+    }
+  })
+
+  test_that("matExp infusion jumps (modeled rate) match the generic ODE path", {
+    ode_code <- "
+      rate(depot) <- exp(trate)
+      d/dt(depot)   = -ka * depot
+      d/dt(central) =  ka * depot - cl/v * central
+    "
+    mexp <- rxSensMatExp(ode_code, calcSens = c("trate"))
+    mod_mexp <- rxode2(mexp)
+    mod_ode <- rxode2(ode_code, calcSens = c("trate"), eventSens = "jump")
+
+    pars <- c(ka = 0.5, cl = 0.2, v = 10, trate = log(20))
+    et1 <- et(amt = 100, cmt = "depot", rate = -1) |> et(seq(0, 10, by = 0.5))
+
+    res_mexp <- rxSolve(mod_mexp, et1, params = pars, method = "indLin")
+    res_ode <- rxSolve(mod_ode, et1, params = pars)
+
+    expect_equal(res_mexp$central, res_ode$central, tolerance = 1e-4)
+    expect_equal(res_mexp$rx__sens_central_BY_trate__,
+      res_ode$rx__sens_central_BY_trate__,
+      tolerance = 1e-4
+    )
+  })
+
   test_that("rxS() incorporates indLin() forcing (Michaelis-Menten) without error", {
     .mm <- paste("matExp()",
                  "cmt(depot)",

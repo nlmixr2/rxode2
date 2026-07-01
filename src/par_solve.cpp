@@ -587,6 +587,14 @@ int _rxEsActive = 0;
 int _rxEsNState = 0;
 int _rxEsNParam = 0;
 int _rxEsNParam2 = 0;
+// When 1, handle_evid's dtau/lag jump row sources its Jacobian column from
+// `calc_jac` instead of a central difference of `dydt` -- needed for
+// matExp()/indLin() models, whose compiled `dydt()` is a no-op stub (the
+// primal system is solved by matrix-exponential propagation, not RHS
+// evaluation), which otherwise makes that row silently always zero. Set
+// alongside the dims from R (`.rxSetEventSensDims()`/`rxEventSensLoadModel()`)
+// based on the model's `mv$indLin`.
+int _rxEsUseCalcJac = 0;
 // Aliases exposed to handle_evid (extern in rxode2.h).  Distinct names from the
 // local `dydt`/`dLag` globals so the widely-used `dydt` identifier is not shadowed
 // in the many TUs that include handle_evid.  Point at the model functions in
@@ -603,6 +611,11 @@ extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, 
   _rxEsNState = INTEGER(nState)[0];
   _rxEsNParam = INTEGER(nParam)[0];
   _rxEsNParam2 = INTEGER(nParam2)[0];
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac) {
+  _rxEsUseCalcJac = INTEGER(useCalcJac)[0];
   return R_NilValue;
 }
 

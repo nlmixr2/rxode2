@@ -515,6 +515,15 @@ static inline double dabs2(double x) {
   extern "C" t_dF d2FEs;
   extern "C" t_DUR durEsFn;
   extern "C" t_dydt dydtEs;
+  // matExp()/indLin() models have no functional dydt() (the primal system is
+  // solved by matrix-exponential propagation, not RHS evaluation), so the
+  // dtau/lag jump row's usual central-difference-of-dydt Jacobian column is
+  // always zero for them. `_rxEsUseCalcJac` (set alongside the dims, from the
+  // model's `mv$indLin`) tells handle_evid to read the Jacobian column from
+  // `calc_jac` instead for such models (populated via explicit df/dy lines
+  // rxSensMatExp() emits from its already-known Jacobian).
+  extern "C" t_calc_jac calc_jac;
+  extern "C" int _rxEsUseCalcJac;
   extern "C" int _rxEsActive;
   extern "C" int _rxEsNState;
   extern "C" int _rxEsNParam;
@@ -531,6 +540,8 @@ static inline double dabs2(double x) {
   extern t_dF d2FEs;
   extern t_DUR durEsFn;
   extern t_dydt dydtEs;
+  extern t_calc_jac calc_jac;
+  extern int _rxEsUseCalcJac;
   extern int _rxEsActive;
   extern int _rxEsNState;
   extern int _rxEsNParam;

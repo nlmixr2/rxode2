@@ -378,6 +378,29 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     }
   }
 
+  # 4b. Explicit Jacobian (df/dy) lines from the already-computed `.A` matrix.
+  #
+  # matExp()/indLin() models solve the primal system by matrix-exponential
+  # propagation, not by evaluating a symbolic RHS -- so the compiled `dydt()`
+  # never writes its output array for these models (it is a no-op stub). The
+  # event-sensitivity ("jump") dtau/lag row (`handle_evid`) normally sources
+  # its Jacobian column from a central difference of `dydt`, which is
+  # therefore silently always zero for matExp models. `df(<i>)/dy(<j>) <-
+  # <A[i][j]>` lines are legal in a matExp() model (only `d/dt()` lines are
+  # forbidden) and populate `calc_jac` with the real, already-known Jacobian
+  # -- `handle_evid` uses `calc_jac` instead of `dydt` for matExp models
+  # specifically (see `_rxEsUseCalcJac` / `.rxSetEventSensDims()`). Emitted
+  # unconditionally (not just when `calcSens2`/`calcSens3` are given) since
+  # any `eventSens="jump"` solve of this model -- even 1st order -- needs it.
+  for (.i in .states) {
+    for (.j in .states) {
+      .aij <- .A[[.i]][[.j]]
+      if (!.isZero(.aij)) {
+        .code <- c(.code, paste0("df(", .i, ")/dy(", .j, ") = ", rxFromSE(.aij)))
+      }
+    }
+  }
+
   # 5. Sensitivity blocks for each parameter.
   for (.p in calcSens) {
     .pSym <- symengine::S(.p)

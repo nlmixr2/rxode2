@@ -887,34 +887,60 @@ static inline int handle_evid(int evid, int neq,
               free(_d2FB);
             }
           }
-          // dtau row (lag time), only if the lag is modeled
-          if (dLagEs != NULL && dydtEs != NULL) {
+          // dtau row (lag time), only if the lag is modeled.  Jacobian column
+          // J[.,cmt] source depends on _rxEsUseCalcJac: matExp()/indLin()
+          // models have no functional dydt() (the primal system is solved by
+          // matrix-exponential propagation, not RHS evaluation, so a central
+          // difference of dydt is always zero for them) -- for those, read
+          // the column from calc_jac instead (populated by rxSensMatExp()'s
+          // explicit df/dy lines, sized/strided to the physical state count
+          // to match how those lines are emitted). Ordinary ODE models keep
+          // the central-difference-of-dydt approach (calc_jac is normally an
+          // empty stub for them -- only populated by user-written df/dy).
+          if (dLagEs != NULL && (_rxEsUseCalcJac ? calc_jac != NULL : dydtEs != NULL)) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
-            double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
-            if (_esDLagB != NULL && _esF0 != NULL && _esF1 != NULL) {
+            double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
+            if (_esDLagB != NULL && _esJcol != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              double _esXc = yp[cmt];
-              double _esAx = _esXc < 0 ? -_esXc : _esXc;
-              double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
               int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
-              yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
-              yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
-              yp[cmt] = _esXc; // restore pre-event state
-              double _esInv = 1.0 / (2.0 * _esEps);
+              if (_rxEsUseCalcJac) {
+                double *_esPD = (double*) calloc((size_t)_ns * _ns, sizeof(double));
+                if (_esPD != NULL) {
+                  calc_jac(_esNj, xout, yp, _esPD, (unsigned int) _ns);
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    _esJcol[_esK] = _esPD[_esK * _ns + cmt];
+                  }
+                  free(_esPD);
+                }
+              } else {
+                double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
+                double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
+                if (_esF0 != NULL && _esF1 != NULL) {
+                  double _esXc = yp[cmt];
+                  double _esAx = _esXc < 0 ? -_esXc : _esXc;
+                  double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
+                  yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
+                  yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
+                  yp[cmt] = _esXc; // restore pre-event state
+                  double _esInv = 1.0 / (2.0 * _esEps);
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    _esJcol[_esK] = (_esF1[_esK] - _esF0[_esK]) * _esInv;
+                  }
+                }
+                if (_esF0 != NULL) free(_esF0);
+                if (_esF1 != NULL) free(_esF1);
+              }
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
                   for (int _esK = 0; _esK < _ns; _esK++) {
-                    double _esJkc = (_esF1[_esK] - _esF0[_esK]) * _esInv;
-                    yp[_ns + _p * _ns + _esK] += -_esJkc * _esDelta * _esDLagP;
+                    yp[_ns + _p * _ns + _esK] += -_esJcol[_esK] * _esDelta * _esDLagP;
                   }
                 }
               }
             }
             if (_esDLagB != NULL) free(_esDLagB);
-            if (_esF0 != NULL) free(_esF0);
-            if (_esF1 != NULL) free(_esF1);
+            if (_esJcol != NULL) free(_esJcol);
           }
         }
         yp[cmt] += _esDelta;     //dosing before obs

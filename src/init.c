@@ -46,6 +46,7 @@ SEXP _rxode2_codeLoaded(void);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode, SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode);
 SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2);
+SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac);
 void rxode2EventSensLoad(SEXP trans, int active, int nState, int nParam, int nParam2);
 void rxode2EventSensSetActive(int active);
 SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState, SEXP nParam, SEXP nParam2);
@@ -716,6 +717,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_trans", (DL_FUNC) &_rxode2_trans, 8},
     {"_rxode2_codegen", (DL_FUNC) &_rxode2_codegen, 12},
     {"_rxode2_setEventSensDims", (DL_FUNC) &_rxode2_setEventSensDims, 4},
+    {"_rxode2_setEventSensUseCalcJac", (DL_FUNC) &_rxode2_setEventSensUseCalcJac, 1},
     {"_rxode2_eventSensLoad", (DL_FUNC) &_rxode2_eventSensLoad, 5},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},

@@ -568,6 +568,22 @@
   c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2))
 }
 
+#' Does this model need the `calc_jac`-based dtau/lag Jacobian column?
+#'
+#' matExp()/indLin() models have no functional `dydt()` (the primal system is
+#' solved by matrix-exponential propagation, not RHS evaluation), so
+#' `handle_evid`'s usual central-difference-of-`dydt` Jacobian column is
+#' always zero for them.  `rxSensMatExp()` emits explicit `df(x)/dy(y)` lines
+#' from its already-known Jacobian so `calc_jac` is real for these models;
+#' this detects when the runtime should read that instead.
+#'
+#' @param object Anything `rxModelVars()` accepts.
+#' @return `TRUE`/`FALSE`.
+#' @noRd
+.rxEventSensUseCalcJac <- function(object) {
+  length(rxModelVars(object)$indLin) > 0L
+}
+
 #' Push the event-sensitivity runtime dims to the solver before a solve
 #'
 #' Reads the model's `eventSensInfo` (attached by `rxode2()` when
@@ -582,12 +598,14 @@
 .rxSetEventSensDims <- function(object) {
   .info <- tryCatch(object$eventSensInfo, error = function(e) NULL)
   if (is.null(.info) || identical(.info$mode, "fd")) {
+    .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
     return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L)))
   }
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
   ## number of second-order (calcSens2) parameters; 0 when no Hessian path
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
+  .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(object)))
   invisible(.Call(`_rxode2_setEventSensDims`, 1L,
                   as.integer(.nState), as.integer(.nParam), as.integer(.nParam2)))
 }
@@ -618,6 +636,7 @@ rxEventSensLoadModel <- function(model) {
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   .Call(`_rxode2_eventSensLoad`, .trans, 1L, as.integer(.nState),
         as.integer(.nParam), as.integer(.nParam2))
+  .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(model)))
   invisible(TRUE)
 }
 
@@ -630,6 +649,7 @@ rxEventSensLoadModel <- function(model) {
 #' @export
 #' @keywords internal
 rxEventSensDeactivate <- function() {
+  .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
   invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L))
 }
 
