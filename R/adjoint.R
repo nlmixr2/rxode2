@@ -204,6 +204,11 @@
   ## actual (possibly lagged) dose time per dose record
   .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
     .lv <- .lagVal[.doses$cmt[i]]; if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
+  ## replace(evid5)/multiply(evid6): costate jumps  lambda_c(tau-) =
+  ## (dg/dy)^T lambda_c(tau+).  replace -> lambda_c := 0; multiply -> *= alpha.
+  ## Essential for correct STRUCTURAL-param gradients even with a constant value.
+  .evR <- .ev[!is.na(.ev$evid) & .ev$evid %in% c(5L, 6L), , drop = FALSE]
+  .evR$cmt <- as.character(.evR$cmt)
   .fLhs <- unlist(lapply(names(.dFexpr), function(.c)
     vapply(calcSens, function(p)
       paste0("rx__dFdp_", .c, "_", p, "__=", .dFexpr[[.c]][[p]]), character(1))))
@@ -215,7 +220,8 @@
 
   ## forward checkpoint + predictions/residuals at observations
   .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes,
-                           .doses$tau, .doses$tau - denseBy)))
+                           .doses$tau, .doses$tau - denseBy,
+                           .evR$time, .evR$time - denseBy)))
   .denseT <- .denseT[.denseT >= 0]
   .fmod <- rxode2::rxode2(paste(c(.mText,
     paste0("rx__pred__=", .predC),
@@ -246,7 +252,7 @@
   ## actual dose times), descending in t.  At each breakpoint: capture the dose
   ## duals (F + lag transversality, using lambda(tau+), before the observation
   ## jump), then apply the lambda jump for observations, then integrate down.
-  .breaks <- sort(unique(c(obsTimes, .doses$tau, 0)), decreasing = TRUE)
+  .breaks <- sort(unique(c(obsTimes, .doses$tau, .evR$time, 0)), decreasing = TRUE)
   .breaks <- .breaks[.breaks <= max(obsTimes) + 1e-12]
   .state <- numeric(0)
   for (i in .st) .state[.lam(i)] <- 0
@@ -270,6 +276,13 @@
         .cross <- sum(.lamVec * (.fPre(.tau) - .fPost(.tau)))
         for (p in calcSens) .gDose[p] <- .gDose[p] + .cross * .dLag[[.c]][[p]]
       }
+    }
+    ## replace/multiply costate jumps (lambda(tau+) -> lambda(tau-))
+    for (.er in which(abs(.evR$time - .tau) < 1e-9)) {
+      .cc <- .evR$cmt[.er]
+      if (!(.cc %in% .st)) next
+      if (.evR$evid[.er] == 5L) .state[.lam(.cc)] <- 0
+      else if (.evR$evid[.er] == 6L) .state[.lam(.cc)] <- .evR$amt[.er] * .state[.lam(.cc)]
     }
     for (.o in which(abs(obsTimes - .tau) < 1e-9)) {
       .ci <- .cvec[[.o]]

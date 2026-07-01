@@ -227,6 +227,41 @@ rxTest({
     expect_equal(unname(gAdj), unname(gFD), tolerance = 1e-2)
   })
 
+  # ---- replace(evid5) / multiply(evid6) costate jumps ------------------------
+  # The costate jump is essential for correct structural-param gradients even
+  # with a constant replace value (resetting/scaling lambda_c at the event).
+  test_that("adjoint gradient handles replace/multiply costate jumps", {
+    eP    <- c(ka = 1.2, cl = 3.5, v = 25.0)
+    eCS   <- c("ka", "cl", "v")
+    ePred <- "center/v"
+    eObsT <- c(1, 2, 4, 6, 8, 12)
+    tmod  <- rxode2::rxode2(paste0(mText, "\ncp=", ePred))
+
+    chk <- function(eEv) {
+      eFev <- eEv |> rxode2::et(eObsT)
+      truth <- as.data.frame(rxode2::rxSolve(tmod, params = eP, eFev,
+                                             returnType = "data.frame", addDosing = FALSE))
+      eObs <- truth$cp[truth$time %in% eObsT] * 1.1 + 0.05
+      objG <- function(p) {
+        d <- as.data.frame(rxode2::rxSolve(tmod, params = p, eFev,
+                                           returnType = "data.frame", addDosing = FALSE))
+        sum(0.5 * (d$cp[d$time %in% eObsT] - eObs)^2)
+      }
+      gFD <- vapply(eCS, function(p) {
+        h <- eP[[p]] * 1e-6; pp <- eP; pm <- eP
+        pp[p] <- pp[p] + h; pm[p] <- pm[p] - h
+        (objG(pp) - objG(pm)) / (2 * h)
+      }, numeric(1))
+      gAdj <- rxode2::.rxAdjointGrad(mText, eP, eEv, eCS, ePred, eObsT, eObs,
+                                     denseBy = 0.005)
+      expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
+    }
+    chk(rxode2::et(amt = 100, cmt = "depot") |>
+          rxode2::et(time = 3, amt = 40, cmt = "center", evid = 5))   # replace
+    chk(rxode2::et(amt = 100, cmt = "depot") |>
+          rxode2::et(time = 3, amt = 0.5, cmt = "center", evid = 6))  # multiply
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.
