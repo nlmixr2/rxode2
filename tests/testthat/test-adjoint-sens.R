@@ -262,6 +262,40 @@ rxTest({
           rxode2::et(time = 3, amt = 0.5, cmt = "center", evid = 6))  # multiply
   })
 
+  # ---- modeled-rate infusion continuous-forcing + moving-boundary dual -------
+  # rate(depot)=Rin adds +R over [0, amt/R]; dG/dRin combines a continuous
+  # forcing integral of lambda_depot and a moving-boundary term (amt/R moves).
+  test_that("adjoint gradient handles modeled-rate infusion (forcing + boundary)", {
+    iText <- paste0(mText, "\nrate(depot)=Rin")
+    iP    <- c(ka = 1.2, cl = 3.5, v = 25.0, Rin = 50)
+    iCS   <- c("ka", "cl", "v", "Rin")
+    iPred <- "depot"                              # observe during infusion (strong signal)
+    iObsT <- c(0.5, 1, 1.5, 2.5, 3, 4)
+    iEv   <- rxode2::et(amt = 100, rate = -1, cmt = "depot")
+
+    tmod <- rxode2::rxode2(paste0(iText, "\ncp=", iPred))
+    iFev <- iEv |> rxode2::et(iObsT)
+    truth <- as.data.frame(rxode2::rxSolve(tmod, params = iP, iFev,
+                                           returnType = "data.frame", addDosing = FALSE))
+    iObs <- truth$cp[truth$time %in% iObsT] * 1.1 + 0.5
+
+    objG <- function(p) {
+      d <- as.data.frame(rxode2::rxSolve(tmod, params = p, iFev,
+                                         returnType = "data.frame", addDosing = FALSE))
+      sum(0.5 * (d$cp[d$time %in% iObsT] - iObs)^2)
+    }
+    gFD <- vapply(iCS, function(p) {
+      h <- iP[[p]] * 1e-5; pp <- iP; pm <- iP
+      pp[p] <- pp[p] + h; pm[p] <- pm[p] - h
+      (objG(pp) - objG(pm)) / (2 * h)
+    }, numeric(1))
+
+    gAdj <- rxode2::.rxAdjointGrad(iText, iP, iEv, iCS, iPred, iObsT, iObs, denseBy = 0.002)
+    # Rin gradient (~ -3.2) is dominated by the infusion forcing+boundary dual
+    expect_gt(abs(gAdj[["Rin"]]), 1)
+    expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

@@ -157,8 +157,37 @@
   .dhdp <- lapply(calcSens, function(p) { .d <- symengine::D(.ph, p); rxode2::rxFromSE(.d) })
   names(.dhdp) <- calcSens
 
+  ## ---- event detection (needed before the backward model is built) ---------
+  .ev <- as.data.frame(events)
+  .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
+  .evalNum <- function(txt) tryCatch(eval(parse(text = txt), envir = as.list(params)),
+                                     error = function(e) NA_real_)
+  .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
+  .rateCol[is.na(.rateCol)] <- 0
+  ## modeled-rate infusions (rate(cmt)=R(theta), event rate flag == -1): the
+  ## infusion adds +R over [tau1, tau2 = tau1 + amt/R].  dG/dtheta gets a
+  ## continuous forcing  integral_{tau1}^{tau2} lambda_c dR/dtheta dt  (folded
+  ## into the mu quadrature via a covariate) plus a moving-boundary term
+  ## R*lambda_c(tau2)*d(tau2)/dtheta (tau2 = amt/R moves when R changes).
+  .infus <- list()
+  for (.k in which(.rateCol == -1)) {
+    .c <- as.character(.ev$cmt[.dr][.k])
+    if (!(.c %in% .st)) next
+    .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
+    if (is.null(.rSE)) next
+    .Rv <- .evalNum(rxode2::rxFromSE(.rSE))
+    .dRp <- vapply(calcSens, function(p) {
+      .d <- symengine::D(.rSE, p); .evalNum(rxode2::rxFromSE(.d)) }, numeric(1))
+    .t1 <- .ev$time[.dr][.k]; .amt <- .ev$amt[.dr][.k]
+    .infus[[length(.infus) + 1L]] <- list(cmt = .c, t1 = .t1, t2 = .t1 + .amt / .Rv,
+                                          R = .Rv, dRdp = .dRp, amt = .amt)
+  }
+  .infCmts <- unique(vapply(.infus, function(z) z$cmt, character(1)))
+
   ## reversed-time backward model (lambda + mu blocks); df/dy inlined as plain
   ## lhs assignments referencing the forward states (supplied as covariates).
+  ## The mu quadrature is augmented with the infusion forcing +lambda_c*dR/dtheta
+  ## over the infusion window (rxInfF_<cmt>_<p>__ covariate, 0 outside).
   .lam <- function(i) paste0("rx__adjLam_", i, "__")
   .jacLines <- unlist(lapply(.st, function(j) lapply(c(.st, calcSens), function(x) {
     .d <- get0(paste0("rx__df_", j, "_dy_", x, "__"), envir = .model, inherits = FALSE)
@@ -168,25 +197,25 @@
     paste0("d/dt(", .lam(i), ")=",
            paste(vapply(.st, function(j) paste0("rx__df_", j, "_dy_", i, "__*", .lam(j)),
                         character(1)), collapse = "+")), character(1))
-  .muLines <- vapply(calcSens, function(p)
-    paste0("d/dt(rx__adjMu_", p, "__)=",
-           paste(vapply(.st, function(j) paste0(.lam(j), "*rx__df_", j, "_dy_", p, "__"),
-                        character(1)), collapse = "+")), character(1))
+  .muLines <- vapply(calcSens, function(p) {
+    .base <- paste(vapply(.st, function(j) paste0(.lam(j), "*rx__df_", j, "_dy_", p, "__"),
+                          character(1)), collapse = "+")
+    .inf <- if (length(.infCmts))
+      paste0("+", paste(vapply(.infCmts, function(cc)
+        paste0(.lam(cc), "*rxInfF_", cc, "_", p, "__"), character(1)), collapse = "+")) else ""
+    paste0("d/dt(rx__adjMu_", p, "__)=", .base, .inf)
+  }, character(1))
   .revMod <- rxode2::rxode2(paste(c(.jacLines, .lamLines, .muLines), collapse = "\n"))
 
-  ## dosing events + dose-jump duals.  A bolus into cmt c at the ACTUAL (lagged)
-  ## time tau contributes two terms to dG/dtheta:
+  ## bolus dose-jump duals.  A bolus into cmt c at the ACTUAL (lagged) time tau
+  ## contributes two terms to dG/dtheta:
   ##   * bioavailability F:  lambda_c(tau+) * amt * dF_c/dtheta
   ##   * modeled lag (time-triggered event, tau = tau_nom + alag_c(theta)):
   ##       [lambda(tau)^T (f(y-) - f(y+))] * d(alag_c)/dtheta   (transversality)
   ## Structural params (dF/dtheta == 0, d(alag)/dtheta == 0) get no contribution,
   ## so a model without modeled F/lag is unaffected.
-  .ev <- as.data.frame(events)
-  .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
-  .evalNum <- function(txt) tryCatch(eval(parse(text = txt), envir = as.list(params)),
-                                     error = function(e) NA_real_)
   .doses <- data.frame(time = .ev$time[.dr], cmt = as.character(.ev$cmt[.dr]),
-                       amt = .ev$amt[.dr], stringsAsFactors = FALSE)
+                       amt = .ev$amt[.dr], rate = .rateCol, stringsAsFactors = FALSE)
   .dFexpr <- list()          # per dose-cmt: dF/dtheta expression per calcSens
   .dLag   <- list()          # per dose-cmt: numeric d(alag)/dtheta over calcSens
   .lagVal <- stats::setNames(numeric(0), character(0))  # per dose-cmt lag value
@@ -219,9 +248,10 @@
     paste0("rx__fRHS_", i, "__=", rxode2::rxFromSE(.d)) }, character(1)) else character(0)
 
   ## forward checkpoint + predictions/residuals at observations
+  .infT <- unlist(lapply(.infus, function(z) c(z$t1, z$t2)))
   .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes,
                            .doses$tau, .doses$tau - denseBy,
-                           .evR$time, .evR$time - denseBy)))
+                           .evR$time, .evR$time - denseBy, .infT)))
   .denseT <- .denseT[.denseT >= 0]
   .fmod <- rxode2::rxode2(paste(c(.mText,
     paste0("rx__pred__=", .predC),
@@ -252,7 +282,7 @@
   ## actual dose times), descending in t.  At each breakpoint: capture the dose
   ## duals (F + lag transversality, using lambda(tau+), before the observation
   ## jump), then apply the lambda jump for observations, then integrate down.
-  .breaks <- sort(unique(c(obsTimes, .doses$tau, .evR$time, 0)), decreasing = TRUE)
+  .breaks <- sort(unique(c(obsTimes, .doses$tau, .evR$time, .infT, 0)), decreasing = TRUE)
   .breaks <- .breaks[.breaks <= max(obsTimes) + 1e-12]
   .state <- numeric(0)
   for (i in .st) .state[.lam(i)] <- 0
@@ -260,7 +290,8 @@
   .gDose <- stats::setNames(numeric(length(calcSens)), calcSens)
   for (.bi in seq_along(.breaks)) {
     .tau <- .breaks[.bi]
-    .dHere <- which(abs(.doses$tau - .tau) < 1e-9)
+    ## bolus dose duals (skip infusions: rate != 0 handled separately)
+    .dHere <- which(abs(.doses$tau - .tau) < 1e-9 & .doses$rate == 0)
     for (.j in .dHere) {
       .c <- .doses$cmt[.j]
       ## bioavailability (F) dual
@@ -276,6 +307,13 @@
         .cross <- sum(.lamVec * (.fPre(.tau) - .fPost(.tau)))
         for (p in calcSens) .gDose[p] <- .gDose[p] + .cross * .dLag[[.c]][[p]]
       }
+    }
+    ## modeled-rate infusion moving-boundary term at tau2 = tau1 + amt/R:
+    ## R*lambda_c(tau2)*d(tau2)/dtheta,  d(tau2)/dtheta = -(amt/R^2) dR/dtheta.
+    for (.z in .infus) if (abs(.z$t2 - .tau) < 1e-9) {
+      .lamc <- .state[.lam(.z$cmt)]
+      .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
+      for (p in calcSens) .gDose[p] <- .gDose[p] + .z$R * .lamc * .dTau2[[p]]
     }
     ## replace/multiply costate jumps (lambda(tau+) -> lambda(tau-))
     for (.er in which(abs(.evR$time - .tau) < 1e-9)) {
@@ -293,6 +331,18 @@
       .idx <- which(.denseT >= .tLo - 1e-12 & .denseT <= .tau + 1e-12)
       .dat <- data.frame(time = .tau - rev(.denseT[.idx]), evid = 0L)
       for (.sn in .st) .dat[[.sn]] <- rev(.Y[[.sn]][.idx])
+      ## infusion forcing covariate: dR/dtheta_p on [t1,t2], 0 outside
+      if (length(.infCmts)) {
+        .fwdt <- rev(.denseT[.idx])
+        for (p in calcSens) for (.cc in .infCmts) {
+          .val <- numeric(length(.fwdt))
+          for (.z in .infus) if (.z$cmt == .cc) {
+            .inw <- .fwdt >= .z$t1 - 1e-9 & .fwdt <= .z$t2 + 1e-9
+            .val[.inw] <- .val[.inw] + .z$dRdp[[p]]
+          }
+          .dat[[paste0("rxInfF_", .cc, "_", p, "__")]] <- .val
+        }
+      }
       .sol <- as.data.frame(rxode2::rxSolve(.revMod, params = params, .dat,
                                             inits = .state, returnType = "data.frame",
                                             atol = atol, rtol = rtol,
