@@ -96,7 +96,9 @@ typedef void *(*t_assignFuns)(void);
 // redeclared the name as a function pointer).
 #ifndef __RXODE2PTR_H__
 void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover,
-                        int *obsK, int ns, int np, int nt, int nobs, double *out);
+                        int *obsK, int ns, int np, int nt, int nobs, double *out,
+                        int nCj, int *cjK, int *cjCmt, double *cjAlpha,
+                        int nDual, int *dualK, double *dualW, double *dualC);
 rx_solve *getRxSolve_(void);
 #endif
 rx_solve *getRxSolve2_(void);

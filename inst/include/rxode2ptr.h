@@ -12,7 +12,7 @@ extern "C" {
 
   // Adjoint objective-gradient backward sweep (src/adjoint.cpp); installed into
   // the downstream package's function-pointer table by iniRxodePtrs().
-  typedef void (*rxode2AdjointSweep_t)(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out);
+  typedef void (*rxode2AdjointSweep_t)(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
   extern rxode2AdjointSweep_t rxode2AdjointSweep;
 
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);

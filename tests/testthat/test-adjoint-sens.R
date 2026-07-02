@@ -255,6 +255,10 @@ rxTest({
       gAdj <- rxode2::.rxAdjointGrad(mText, eP, eEv, eCS, ePred, eObsT, eObs,
                                      denseBy = 0.005)
       expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
+      # replace/multiply costate jumps also run through the C++ sweep
+      B <- rxode2::.rxAdjointGradBuild(mText, eCS, ePred, eEv)
+      gC <- rxode2::.rxAdjointGradEvalC(B, eP, eObsT, eObs, denseBy = 0.005)
+      expect_equal(unname(gC), unname(gAdj), tolerance = 1e-4)
     }
     chk(rxode2::et(amt = 100, cmt = "depot") |>
           rxode2::et(time = 3, amt = 40, cmt = "center", evid = 5))   # replace

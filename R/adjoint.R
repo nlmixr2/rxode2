@@ -485,17 +485,18 @@
 #' @keywords internal
 .rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1,
                                 denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
-  ## Dosing-parameter duals (F / alag / rate / dur / replace / multiply) are not
-  ## yet in the C++ sweep; fall back to the (correct) R eval so this is a safe
-  ## drop-in that is fast for the continuous case and correct for every model.
+  ## The continuous case AND replace/multiply costate jumps run in the C++ sweep;
+  ## F / alag / rate / dur duals are not yet in C++, so fall back to the (correct)
+  ## R eval for those.  Either way this is a safe drop-in.
   if (length(build$infusSym) > 0L || length(build$dFexpr) > 0L ||
-      length(build$lagStr) > 0L || nrow(build$evR) > 0L) {
+      length(build$lagStr) > 0L) {
     return(.rxAdjointGradEval(build, params, obsTimes, obs, weight = weight,
                               denseBy = denseBy, atol = atol, rtol = rtol))
   }
   .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
   .ns <- length(.st); .np <- length(calcSens)
-  .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes)))
+  .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes,
+                           build$evR$time)))
   .denseT <- .denseT[.denseT >= 0]
   .fev <- build$events |> rxode2::et(.denseT)
   .fwd <- as.data.frame(rxode2::rxSolve(build$cfmod, params = params, .fev,
@@ -530,8 +531,17 @@
   .cover <- matrix(0.0, length(obsTimes), .ns)
   for (i in seq_len(.ns))
     .cover[, i] <- .dLdf * .fwd[[paste0("rx__dhdy_", .st[i], "__")]][.oidx]
+  ## replace(evid5)/multiply(evid6) costate jumps: lambda_c *= alpha (0 / mult)
+  .evR <- build$evR
+  .cj <- if (nrow(.evR) > 0L) {
+    .cmt0 <- match(.evR$cmt, .st) - 1L
+    list(as.integer(match(.evR$time, .denseT) - 1L), as.integer(.cmt0),
+         ifelse(.evR$evid == 5L, 0.0, .evR$amt))
+  } else list(integer(0), integer(0), numeric(0))
+  .dual <- list(integer(0), numeric(0), numeric(0))  # no dose duals in C++ yet
   .gTraj <- .Call(`_rxode2_rxAdjointSweep`, .denseT, .J, .dP, .cover,
-                  as.integer(.oidx - 1L), as.integer(.ns), as.integer(.np))
+                  as.integer(.oidx - 1L), as.integer(.ns), as.integer(.np),
+                  .cj, .dual)
   .gExpl <- vapply(calcSens, function(p)
     sum(.dLdf * .fwd[[paste0("rx__dhdp_", p, "__")]][.oidx]), numeric(1))
   .gErr <- vapply(calcSens, function(p)
