@@ -262,18 +262,18 @@ rxTest({
     expect_lt(fdmax, 1e-5)
   })
 
-  test_that("stiff ros43s (GRK4A Rosenbrock) adjoint is exact (linear + nonlinear)", {
-    # A second Rosenbrock method on the ros_backward_fill framework.  GRK4A's
-    # libode ROW-form coefficients are transformed to the Hairer-Wanner form
-    # (a=alp*Ginv, c=-Ginv, m=Ginv^T b); the primal matching liblsoda validates
-    # that transformation.  Reuses the dJ/dp (+ dJ/dy=f'') stiff-adjoint terms.
+  test_that("stiff ros43s (GRK4A) + ros6s (ROW6A) adjoints are exact (linear + nonlinear)", {
+    # More Rosenbrock methods on ros_backward_fill.  Each libode ROW-form set is
+    # transformed to the Hairer-Wanner form this framework uses (GRK4A via a Ginv
+    # transform; ROW6A via a plain 1/gamma scaling).  Primal-vs-liblsoda validates
+    # the transform; reuses the dJ/dp (+ dJ/dy=f'') stiff-adjoint terms.
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
-    chk <- function(mt, ccs, pp0, hmin) {
+    chk <- function(method, mt, ccs, pp0, hmin) {
       ex <- rxode2::.rxAdjointExpand(mt, ccs, stiff = TRUE)
       madj <- rxode2::rxode2(ex$text)
-      sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = pp0, method = "ros43s", hmin = hmin, cores = 1))
+      sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = pp0, method = method, hmin = hmin, cores = 1))
       solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
-        madj, ev, params = pp, method = "ros43s", hmin = hmin, cores = 1))[, c("depot", "center")])
+        madj, ev, params = pp, method = method, hmin = hmin, cores = 1))[, c("depot", "center")])
       fdmax <- 0
       for (pn in ccs) {
         hh <- pp0[[pn]] * 1e-6; pp <- pp0; pm <- pp0; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
@@ -283,9 +283,12 @@ rxTest({
       }
       expect_lt(fdmax, 1e-5)
     }
-    chk(mText, cs, p, 0.01)
-    chk("d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - vmax*center/(km+center)",
-        c("ka", "vmax", "km"), c(ka = 1.0, vmax = 8, km = 15), 0.005)
+    nl <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - vmax*center/(km+center)"
+    nlcs <- c("ka", "vmax", "km"); nlp <- c(ka = 1.0, vmax = 8, km = 15)
+    for (m in c("ros43s", "ros6s")) {
+      chk(m, mText, cs, p, 0.01)
+      chk(m, nl, nlcs, nlp, 0.005)
+    }
   })
 
   test_that("DDE delay() adjoint converges to FD for explicit rk4s methods", {

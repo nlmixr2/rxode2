@@ -343,6 +343,28 @@ static void rksTableauGrk4a(rksTableau &T) {
   T.b[0]=1.84568324040826; T.b[1]=0.136979689436354; T.b[2]=0.712909778329511; T.b[3]=0.632911392405063;
 }
 
+// ROW6A, 6-stage, order 6 Rosenbrock -- rxode2's "ros6" (src/ode/ode_row_6a.h /
+// ode_impl.cpp OdeROW6A).  Its ROW form is the DIRECT one (k_i = W^{-1}(h f + sum
+// c_ij k_j), no subtraction trick), so the Hairer-Wanner coefficients are just
+// a_ij/gamma, c_ij/gamma, m_i/gamma (see the u=gamma*k scaling).
+static void rksTableauRos6(rksTableau &T) {
+  const int s = 6; T.s = s; T.rosenbrock = 1;
+  double g = 0.33414236706805043; T.gamma = g; double ig = 1.0/g;
+  double *A = T.A, *G = T.gam;
+  A[1*s+0]=0.66828473413610087*ig;
+  A[2*s+0]=0.5852480389573658*ig;   A[2*s+1]=-0.048594008221492802*ig;
+  A[3*s+0]=-0.61719233202999775*ig; A[3*s+1]=-0.83995264476522158*ig;  A[3*s+2]=0.62641917900148600*ig;
+  A[4*s+0]=3.5406887484552165*ig;   A[4*s+1]=0.65991497772646308*ig;   A[4*s+2]=-0.63661180895697222*ig; A[4*s+3]=-1.1945984675295562*ig;
+  A[5*s+0]=0.80783664328582613*ig;  A[5*s+1]=0.10194631616818569*ig;   A[5*s+2]=-0.078396778850607012*ig; A[5*s+3]=-0.044341977375427388*ig; A[5*s+4]=0.013074732797453325*ig;
+  G[1*s+0]=-5.8308828523185086*ig;
+  G[2*s+0]=-4.0175939515896193*ig;  G[2*s+1]=0.43970131925236112*ig;
+  G[3*s+0]=7.7228006257490299*ig;   G[3*s+1]=4.3368108251435758*ig;    G[3*s+2]=-2.8219574578033366*ig;
+  G[4*s+0]=-1.0516225114542007*ig;  G[4*s+1]=-0.58853585181331353*ig;  G[4*s+2]=2.0433794587212771*ig;   G[4*s+3]=5.0098631723809151*ig;
+  G[5*s+0]=-6.7357785372199458*ig;  G[5*s+1]=-0.53593889506199845*ig;  G[5*s+2]=0.38622517020810987*ig;  G[5*s+3]=0.21066472713931598*ig;  G[5*s+4]=-0.053546655670373728*ig;
+  T.b[0]=11.358660043232931*ig; T.b[1]=-6.9896898855829058*ig; T.b[2]=-4.5967580421042947*ig;
+  T.b[3]=-3.7220984696531517*ig; T.b[4]=0.96012685868421520*ig; T.b[5]=12.953396234292936*ig;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -354,6 +376,7 @@ static rksTableau rksGetTableau(int method) {
   case 238: rksTableauSdirk43(T); break;// sdirk43s -- SDIRK 5-stage order 3 (stiff)
   case 235: rksTableauLobattoIIIC6(T); break;// iiic6s -- Lobatto IIIC 4-stage 6th (stiff)
   case 231: rksTableauGrk4a(T); break;   // ros43s -- GRK4A Rosenbrock 4-stage 4th (stiff)
+  case 232: rksTableauRos6(T); break;    // ros6s  -- ROW6A Rosenbrock 6-stage 6th (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)
