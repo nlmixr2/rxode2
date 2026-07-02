@@ -4,6 +4,8 @@
 #include "odeinter.h"
 #include <vector>
 #include <cstring>
+#include <R_ext/RS.h>      // F77_CALL, FCONE
+#include <R_ext/Lapack.h>  // dgetrf / dgetrs (robust LU for the Rosenbrock W)
 
 // ===========================================================================
 // rk4s and the fixed-step explicit-RK discrete-adjoint family.
@@ -54,35 +56,21 @@ struct rksTableau { int s; int adaptive; int errOrder;
                     // y_new = y + sum_i m_i k_i.  J = df/dy (frozen at step start).
                     int rosenbrock; double gamma; double gam[256]; };
 
-// -- tiny dense LU (partial pivoting) for the Rosenbrock stage matrix W (n x n,
-//    n = nBase, small).  Factor in place; solve W x = b and W^T x = b. ----------
+// -- LU for the Rosenbrock stage matrix W (n x n, n = nBase, small) via LAPACK
+//    dgetrf/dgetrs (robust, the same routines armadillo wraps).  W is stored
+//    ROW-major, so LAPACK's column-major view is W^T: hence solving W x = b uses
+//    trans 'T' and solving W^T x = b uses trans 'N'.  Factor once, reuse across
+//    the many backward solves.  piv holds LAPACK's pivots. --------------------
 static inline bool luFactor(double *W, int n, int *piv) {
-  for (int k = 0; k < n; ++k) {
-    int p = k; double mx = fabs(W[k*n+k]);
-    for (int i = k+1; i < n; ++i) { double v = fabs(W[i*n+k]); if (v > mx) { mx = v; p = i; } }
-    piv[k] = p;
-    if (mx == 0.0) return false;
-    if (p != k) for (int j = 0; j < n; ++j) { double t = W[k*n+j]; W[k*n+j] = W[p*n+j]; W[p*n+j] = t; }
-    double dinv = 1.0 / W[k*n+k];
-    for (int i = k+1; i < n; ++i) {
-      double f = W[i*n+k] * dinv; W[i*n+k] = f;
-      for (int j = k+1; j < n; ++j) W[i*n+j] -= f * W[k*n+j];
-    }
-  }
-  return true;
+  int info = 0; F77_CALL(dgetrf)(&n, &n, W, &n, piv, &info); return info == 0;
 }
-// solve W x = b using the LU (W holds L\U, piv the pivots).  b overwritten -> x.
-static inline void luSolve(const double *W, int n, const int *piv, double *b) {
-  for (int k = 0; k < n; ++k) { int p = piv[k]; if (p != k) { double t = b[k]; b[k] = b[p]; b[p] = t; } }
-  for (int i = 0; i < n; ++i) { double s = b[i]; for (int j = 0; j < i; ++j) s -= W[i*n+j]*b[j]; b[i] = s; }
-  for (int i = n-1; i >= 0; --i) { double s = b[i]; for (int j = i+1; j < n; ++j) s -= W[i*n+j]*b[j]; b[i] = s / W[i*n+i]; }
+static inline void luSolve(const double *W, int n, const int *piv, double *b) {  // W x = b
+  int info = 0, one = 1; char tr = 'T';
+  F77_CALL(dgetrs)(&tr, &n, &one, (double*)W, &n, (int*)piv, b, &n, &info FCONE);
 }
-// solve W^T x = b using the same LU.  W^T = (P^{-1} L U)^T = U^T L^T P^{-T}.
-static inline void luSolveT(const double *W, int n, const int *piv, double *b) {
-  // U^T y = b (forward), then L^T z = y (backward), then apply P (reverse pivots).
-  for (int i = 0; i < n; ++i) { double s = b[i]; for (int j = 0; j < i; ++j) s -= W[j*n+i]*b[j]; b[i] = s / W[i*n+i]; }
-  for (int i = n-1; i >= 0; --i) { double s = b[i]; for (int j = i+1; j < n; ++j) s -= W[j*n+i]*b[j]; b[i] = s; }
-  for (int k = n-1; k >= 0; --k) { int p = piv[k]; if (p != k) { double t = b[k]; b[k] = b[p]; b[p] = t; } }
+static inline void luSolveT(const double *W, int n, const int *piv, double *b) { // W^T x = b
+  int info = 0, one = 1; char tr = 'N';
+  F77_CALL(dgetrs)(&tr, &n, &one, (double*)W, &n, (int*)piv, b, &n, &info FCONE);
 }
 
 static void rksTableauRk4(rksTableau &T) {
