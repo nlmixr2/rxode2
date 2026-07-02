@@ -192,6 +192,26 @@ rxTest({
     expect_lt(fdmax, 1e-5)
   })
 
+  test_that("stiff ros4s adjoint is exact for a NONLINEAR (Michaelis-Menten) model (f'' term)", {
+    nlText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - vmax*center/(km+center)"
+    ncs <- c("ka", "vmax", "km"); np9 <- c(ka = 1.0, vmax = 8, km = 15)
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    ex <- rxode2::.rxAdjointExpand(nlText, ncs, stiff = TRUE)
+    expect_gt(ex$jyOff, ex$jpOff)
+    madj <- rxode2::rxode2(ex$text)
+    sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = np9, method = "ros4s", hmin = 0.005, cores = 1))
+    solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+      madj, ev, params = pp, method = "ros4s", hmin = 0.005, cores = 1))[, c("depot", "center")])
+    fdmax <- 0
+    for (pn in ncs) {
+      hh <- np9[[pn]] * 1e-6; pp <- np9; pm <- np9; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+      for (k in seq_along(ex$st))
+        fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+    }
+    expect_lt(fdmax, 1e-5)
+  })
+
   test_that("adaptive methods: primal matches liblsoda and frozen-step adjoint matches FD", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)

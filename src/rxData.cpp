@@ -5352,6 +5352,7 @@ static inline void iniRx(rx_solve* rx) {
   op->adjFpOff = 0;
   op->adjDfOff = -1;
   op->adjJpOff = -1;
+  op->adjJyOff = -1;
   op->adjSensOff = 0;
   op->hasDelay = 0;
   op->ncov = 0;
@@ -5828,13 +5829,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
         if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
       }
-      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1;
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
         const char *_s = CHAR(_adjLhs[_i]);
         if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
         if (_fpOff < 0 && strcmp(_s, "rx__adjFP_0_0__") == 0) _fpOff = _i;
         if (_dfOff < 0 && strcmp(_s, "rx__adjdF_0_0__") == 0) _dfOff = _i;
         if (_jpOff < 0 && strcmp(_s, "rx__adjJp_0_0_0__") == 0) _jpOff = _i;
+        if (_jyOff < 0 && strcmp(_s, "rx__adjJy_0_0_0__") == 0) _jyOff = _i;
       }
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
         (Rf_error)("method='rk4s' requires the adjoint expansion in the "
@@ -5849,6 +5851,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->adjFpOff = _fpOff;
       op->adjDfOff = _dfOff;
       op->adjJpOff = _jpOff;
+      op->adjJyOff = _jyOff;
       op->adjSensOff = _nBase;
     }
 

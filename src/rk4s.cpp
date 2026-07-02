@@ -529,6 +529,8 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
   // dJ/dtheta at each step's start (u_0 = y_start), for the W-depends-on-theta term.
   int jpOff = op->adjJpOff, njp = nfx*np; std::vector<double> Jp;
   if (jpOff >= 0) Jp.resize(nStep*njp);
+  int jyOff = op->adjJyOff, njy = nfx*nBase; std::vector<double> Jy;   // dJ/dy = f'' (nonlinear)
+  if (jyOff >= 0) Jy.resize(nStep*njy);
   for (size_t n = 0; n < nStep; ++n) {
     double h = rec.h[n], invhg = 1.0/(h*T.gamma); const double *Jn = &rec.J[n*nfx];
     double *Wn = &Wf[n*nfx]; int *pn = &pivf[n*nBase];
@@ -538,6 +540,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       rk4s_eval_jac(cSub, rec.t0[n], &rec.a[(n*s+i)*nBase], nBase, np, fxOff, fpOff,
                     Ascratch.data(), eff, ind, &FX[(n*s+i)*nfx], &FP[(n*s+i)*nfp]);
       if (i == 0 && jpOff >= 0) for (int q = 0; q < njp; ++q) Jp[n*njp+q] = ind->lhs[jpOff+q];
+      if (i == 0 && jyOff >= 0) for (int q = 0; q < njy; ++q) Jy[n*njy+q] = ind->lhs[jyOff+q];
     }
   }
   std::vector<double> dFdp; bool haveDose = (dfOff >= 0) && !doses.empty();
@@ -560,6 +563,13 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
         for (int p = 0; p < np; ++p) { double v = 0;
           for (int a = 0; a < nBase; ++a) { double sb = 0; for (int b = 0; b < nBase; ++b) sb += Jpn[(a*nBase+b)*np+p]*ki[b]; v += rhsbar[a]*sb; }
           muR[p] += v; }
+      }
+      // W depends on y_start through J: ybar += (dJ/dy k_i)^T rhsbar_i (nonlinear f).
+      if (jyOff >= 0) {
+        const double *Jyn = &Jy[n*njy]; const double *ki = &rec.k[(n*s+i)*nBase];
+        for (int c = 0; c < nBase; ++c) { double v = 0;
+          for (int a = 0; a < nBase; ++a) { double sb = 0; for (int b = 0; b < nBase; ++b) sb += Jyn[(a*nBase+b)*nBase+c]*ki[b]; v += rhsbar[a]*sb; }
+          ybar[c] += v; }
       }
       for (int j = 0; j < i; ++j) { double g = T.gam[i*s+j]; if (g != 0.0) { double *kbj = &kbar[j*nBase]; for (int m = 0; m < nBase; ++m) kbj[m] += (g/h)*rhsbar[m]; } }
       for (int m = 0; m < nBase; ++m) ybar[m] += ubar[m];

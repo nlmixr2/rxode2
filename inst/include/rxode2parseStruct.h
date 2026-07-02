@@ -158,6 +158,7 @@ typedef struct {
   int    adjFpOff;              /* lhs index where F_p block starts (i*np+p) */
   int    adjDfOff;              /* lhs index where dF/dtheta block starts (k*np+p); -1 if none */
   int    adjJpOff;              /* lhs index where dJ/dtheta block starts ((i*ns+j)*np+p); -1 if none (Rosenbrock) */
+  int    adjJyOff;              /* lhs index where dJ/dy=f'' block starts ((i*ns+j)*ns+c); -1 if none (Rosenbrock nonlinear) */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
 } rx_solving_options;
 

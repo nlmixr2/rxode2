@@ -273,7 +273,10 @@
   # The Rosenbrock stage matrix W = I/(h*gamma) - J depends on theta through J,
   # so the exact discrete adjoint needs this 2nd derivative.  (Emitting it only
   # when stiff keeps the explicit methods' calc_lhs cheap.)
-  .jpLines <- character(0)
+  # ..._Jp_ = dJ/dtheta (for the W-depends-on-theta term).  ..._Jy_ = dJ/dy =
+  # d2f/dy2 (Hessian), for the W-depends-on-y_start term needed on NONLINEAR
+  # models (dJ/dy = 0 for state-linear f).
+  .jpLines <- character(0); .jyLines <- character(0)
   if (isTRUE(stiff)) {
     for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
       .dfx <- get0(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"), envir = .model, inherits = FALSE)
@@ -281,12 +284,17 @@
         .expr <- if (is.null(.dfx)) "0" else { .d <- symengine::D(.dfx, calcSens[p]); rxode2::rxFromSE(.d) }
         .jpLines <- c(.jpLines, sprintf("rx__adjJp_%d_%d_%d__=%s", i - 1L, j - 1L, p - 1L, .expr))
       }
+      for (m in seq_len(.ns)) {
+        .expr <- if (is.null(.dfx)) "0" else { .d <- symengine::D(.dfx, .st[m]); rxode2::rxFromSE(.d) }
+        .jyLines <- c(.jyLines, sprintf("rx__adjJy_%d_%d_%d__=%s", i - 1L, j - 1L, m - 1L, .expr))
+      }
     }
   }
-  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines, .jpLines), collapse = "\n"),
+  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines, .jpLines, .jyLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens, stiff = isTRUE(stiff),
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
        jpOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np else -1L,
+       jyOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np + .ns * .ns * .np else -1L,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }
 
