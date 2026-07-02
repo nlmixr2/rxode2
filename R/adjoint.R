@@ -469,15 +469,17 @@
   stats::setNames(.gTraj + .gExpl + .gDose[calcSens] + .gErr, calcSens)
 }
 
-#' Evaluate a prebuilt adjoint objective gradient in C++ (continuous case)
+#' Evaluate a prebuilt adjoint objective gradient in C++
 #'
-#' Fast path for models WITHOUT dosing-parameter duals (no modeled F / alag /
-#' rate / dur, no replace/multiply events).  A single forward solve emits the
-#' Jacobian and forcing along a fine grid; the backward costate + quadrature
-#' sweep and gradient accumulation run in C++ (`rxode2AdjointSweep`) with no
-#' per-segment solver calls and no symbolic work -- the shape and speed the
-#' FOCEi outer loop needs.  Falls back to nothing (errors) if the build carries
-#' dosing duals; use [.rxAdjointGradEval()] for those.
+#' Fast path for every model this package supports: continuous ODE, modeled
+#' bioavailability (F), modeled lag (alag), replace/multiply events, and
+#' modeled-rate/duration infusions.  A single forward solve emits the Jacobian,
+#' forcing, and dose-dual quantities along a fine grid; the backward costate +
+#' quadrature sweep, discrete event jumps, and gradient accumulation all run in
+#' C++ (`rxode2AdjointSweep`) with no per-segment solver calls and no symbolic
+#' work at evaluation time -- the shape and speed the FOCEi outer loop needs.
+#' Numerically equivalent to [.rxAdjointGradEval()] (the pure-R reference),
+#' typically several times faster.
 #'
 #' @inheritParams .rxAdjointGradEval
 #' @return named numeric vector `dG/dtheta` over the build's `calcSens`.
@@ -486,13 +488,8 @@
 #' @keywords internal
 .rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1,
                                 denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
-  ## The continuous case, replace/multiply costate jumps, and bolus F / modeled
-  ## lag duals run in the C++ sweep; infusion (rate/dur) duals are not yet in
-  ## C++, so fall back to the (correct) R eval for those.  Safe drop-in either way.
-  if (length(build$infusSym) > 0L) {
-    return(.rxAdjointGradEval(build, params, obsTimes, obs, weight = weight,
-                              denseBy = denseBy, atol = atol, rtol = rtol))
-  }
+  ## All duals (F, modeled lag, replace/multiply, modeled rate/dur infusion) now
+  ## run through the C++ sweep -- this is always a fast, correct evaluation.
   .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
   .ns <- length(.st); .np <- length(calcSens)
   ## actual (possibly lagged) bolus dose times
@@ -501,8 +498,23 @@
     .c <- .doses$cmt[i]
     .lv <- if (.c %in% names(build$lagStr)) .rxAdjEvalNum(build$lagStr[[.c]], params) else 0
     if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
+  ## numeric infusion quantities (rate R, dR/dtheta, [t1,t2] window) from cached
+  ## symbolic strings -- modeled dur reduces to the same (R, dR/dtheta) form.
+  .infus <- lapply(build$infusSym, function(z) {
+    if (z$kind == "rate") {
+      .Rv <- .rxAdjEvalNum(z$valStr, params)
+      .dRp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
+    } else {
+      .Dv <- .rxAdjEvalNum(z$valStr, params)
+      .dDp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
+      .Rv <- z$amt / .Dv; .dRp <- -(z$amt / .Dv^2) * .dDp
+    }
+    list(cmt = z$cmt, t1 = z$t1, t2 = z$t1 + z$amt / .Rv, R = .Rv,
+         dRdp = stats::setNames(.dRp, calcSens), amt = z$amt)
+  })
+  .infT <- unlist(lapply(.infus, function(z) c(z$t1, z$t2)))
   .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes,
-                           build$evR$time, .doses$tau, .doses$tau - denseBy)))
+                           build$evR$time, .doses$tau, .doses$tau - denseBy, .infT)))
   .denseT <- .denseT[.denseT >= 0]
   .fev <- build$events |> rxode2::et(.denseT)
   .fwd <- as.data.frame(rxode2::rxSolve(build$cfmod, params = params, .fev,
@@ -517,6 +529,16 @@
   .dP <- matrix(0.0, .nt, .ns * .np)
   for (i in seq_len(.ns)) for (p in seq_len(.np))
     .dP[, (i - 1) * .np + p] <- .fwd[[paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__")]]
+  ## modeled-rate/dur infusion continuous forcing: add dR/dtheta_p to the
+  ## forcing row of the infused state over [t1,t2] (the ODE's dy_c/dt gains +R
+  ## there, so its dtheta-forcing gains +dR/dtheta over the same window).
+  for (.z in .infus) {
+    .ci <- match(.z$cmt, .st)
+    if (is.na(.ci)) next
+    .inWin <- .denseT >= .z$t1 - 1e-9 & .denseT <= .z$t2 + 1e-9
+    for (p in seq_len(.np))
+      .dP[.inWin, (.ci - 1) * .np + p] <- .dP[.inWin, (.ci - 1) * .np + p] + .z$dRdp[[p]]
+  }
   ## per-observation objective sensitivity dG/df_i and error-param gradients
   .oidx <- match(obsTimes, .denseT)
   .fobs <- .fwd[["rx__pred__"]][.oidx]
@@ -565,6 +587,16 @@
       .cc <- vapply(build$dLagStr[[.c]], function(s) .rxAdjEvalNum(s, params), numeric(1))
       .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .fm - .fp, c = .cc)
     }
+  }
+  ## modeled-rate/dur infusion moving-boundary dual at tau2 = t1 + amt/R:
+  ## out[p] += R * lambda_c(tau2) * d(tau2)/dtheta,  d(tau2)/dtheta = -(amt/R^2) dR/dtheta.
+  for (.z in .infus) {
+    .ci <- match(.z$cmt, .st)
+    if (is.na(.ci)) next
+    .k <- which.min(abs(.denseT - .z$t2))
+    .w <- numeric(.ns); .w[.ci] <- .z$R
+    .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
+    .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }
   .dual <- if (length(.duals)) {
     list(as.integer(vapply(.duals, function(d) d$k, integer(1))),

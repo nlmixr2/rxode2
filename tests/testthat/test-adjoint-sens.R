@@ -308,6 +308,10 @@ rxTest({
     # Rin gradient (~ -3.2) is dominated by the infusion forcing+boundary dual
     expect_gt(abs(gAdj[["Rin"]]), 1)
     expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
+    # infusion forcing + moving-boundary duals also run through the C++ sweep
+    Bi <- rxode2::.rxAdjointGradBuild(iText, iCS, iPred, iEv)
+    gCi <- rxode2::.rxAdjointGradEvalC(Bi, iP, iObsT, iObs, denseBy = 0.002)
+    expect_equal(unname(gCi), unname(gAdj), tolerance = 1e-4)
   })
 
   # ---- modeled-duration infusion (rate = amt/D) ------------------------------
@@ -339,6 +343,10 @@ rxTest({
     gAdj <- rxode2::.rxAdjointGrad(dText, dP, dEv, dCS, dPred, dObsT, dObs, denseBy = 0.002)
     expect_gt(abs(gAdj[["Dd"]]), 1)
     expect_equal(unname(gAdj), unname(gFD), tolerance = 5e-3)
+    # modeled-dur duals also run through the C++ sweep
+    Bd <- rxode2::.rxAdjointGradBuild(dText, dCS, dPred, dEv)
+    gCd <- rxode2::.rxAdjointGradEvalC(Bd, dP, dObsT, dObs, denseBy = 0.002)
+    expect_equal(unname(gCd), unname(gAdj), tolerance = 1e-4)
   })
 
   # ---- FOCEi -2LL objective gradient (structural + residual-error params) ----
