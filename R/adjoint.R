@@ -485,10 +485,13 @@
 #' @keywords internal
 .rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1,
                                 denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  ## Dosing-parameter duals (F / alag / rate / dur / replace / multiply) are not
+  ## yet in the C++ sweep; fall back to the (correct) R eval so this is a safe
+  ## drop-in that is fast for the continuous case and correct for every model.
   if (length(build$infusSym) > 0L || length(build$dFexpr) > 0L ||
       length(build$lagStr) > 0L || nrow(build$evR) > 0L) {
-    stop("`.rxAdjointGradEvalC` handles only the continuous case; use `.rxAdjointGradEval`",
-      call. = FALSE)
+    return(.rxAdjointGradEval(build, params, obsTimes, obs, weight = weight,
+                              denseBy = denseBy, atol = atol, rtol = rtol))
   }
   .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
   .ns <- length(.st); .np <- length(calcSens)
