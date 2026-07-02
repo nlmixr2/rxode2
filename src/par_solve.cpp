@@ -6717,6 +6717,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 235: // iiic6s    -- discrete-adjoint Lobatto IIIC 6th (stiff)
       case 231: // ros43s    -- discrete-adjoint GRK4A Rosenbrock 4th (stiff)
       case 232: // ros6s     -- discrete-adjoint ROW6A Rosenbrock 6th (stiff)
+      case 237: // geng5s    -- discrete-adjoint Geng5 fully-implicit 5th (stiff)
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6952,6 +6953,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 235: // iiic6s
       case 231: // ros43s
       case 232: // ros6s
+      case 237: // geng5s
         par_rk4s(rx);
         break;
       case 7:

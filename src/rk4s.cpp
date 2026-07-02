@@ -326,6 +326,19 @@ static void rksTableauLobattoIIIC6(rksTableau &T) {
   T.c[0]=0.0; T.c[1]=0.5-r/10.0; T.c[2]=0.5+r/10.0; T.c[3]=1.0;
 }
 
+// Geng5, 3-stage, order 5 fully-implicit RK (coefficients from
+// src/ode/ode_geng_5.h / OdeGeng5).  Same b/c as Radau IIA5 but a different A
+// (not stiffly accurate); runs on the coupled-Newton framework unchanged.
+static void rksTableauGeng5(rksTableau &T) {
+  const int s = 3; T.s = s; T.implicitRK = 1;
+  double r = sqrt(6.0);
+  T.c[0]=(4.0-r)/10.0; T.c[1]=(4.0+r)/10.0; T.c[2]=1.0;
+  T.A[0*s+0]=(16.0-r)/72.0;          T.A[0*s+1]=(328.0-167.0*r)/1800.0; T.A[0*s+2]=(-2.0+3.0*r)/450.0;
+  T.A[1*s+0]=(328.0+167.0*r)/1800.0; T.A[1*s+1]=(16.0+r)/72.0;          T.A[1*s+2]=(-2.0-3.0*r)/450.0;
+  T.A[2*s+0]=(85.0-10.0*r)/180.0;    T.A[2*s+1]=(85.0+10.0*r)/180.0;    T.A[2*s+2]=1.0/18.0;
+  T.b[0]=(16.0-r)/36.0; T.b[1]=(16.0+r)/36.0; T.b[2]=1.0/9.0;
+}
+
 // GRK4A (Kaps-Rentrop), 4-stage, order 4, L-stable Rosenbrock -- rxode2's "ros43".
 // The libode ROW-form coefficients (alp, gam_ij, b, gamma=0.395 from
 // src/ode/ode_grk4a.h) are transformed to the Hairer-Wanner form this framework
@@ -377,6 +390,7 @@ static rksTableau rksGetTableau(int method) {
   case 235: rksTableauLobattoIIIC6(T); break;// iiic6s -- Lobatto IIIC 4-stage 6th (stiff)
   case 231: rksTableauGrk4a(T); break;   // ros43s -- GRK4A Rosenbrock 4-stage 4th (stiff)
   case 232: rksTableauRos6(T); break;    // ros6s  -- ROW6A Rosenbrock 6-stage 6th (stiff)
+  case 237: rksTableauGeng5(T); break;   // geng5s -- Geng5 fully-implicit 3-stage 5th (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)

@@ -222,6 +222,7 @@ rxTest({
     chk("gauss6s", 0.05)
     chk("sdirk43s", 0.01)   # SDIRK (lower-triangular A) on the same coupled framework
     chk("iiic6s", 0.05)     # Lobatto IIIC 4-stage 6th order
+    chk("geng5s", 0.05)     # Geng5 3-stage 5th order (same b/c as Radau5, different A)
   })
 
   test_that("stiff ros4s (Rosenbrock) adjoint is exact for a linear model (dJ/dp term)", {
