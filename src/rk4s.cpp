@@ -38,35 +38,49 @@
 struct rk4s_dose { size_t step; int cmt; double amt; };
 
 // Butcher tableau for an explicit RK method (the discrete-adjoint transpose is
-// table-driven, so adding a fixed-step explicit method = adding a tableau).
-// A is s x s row-major, lower-triangular (A[i*s+j], j<i).  Sized for s<=16 to
-// leave room for the adaptive explicit family (dop853s etc.) later.
-struct rksTableau { int s; double c[16]; double b[16]; double A[256]; };
+// table-driven, so adding a fixed-step OR adaptive explicit method = adding a
+// tableau).  A is s x s row-major, lower-triangular (A[i*s+j], j<i).  For
+// adaptive methods bhat is the embedded (error-estimate) weight row and errOrder
+// is the lower order of the embedded pair; bhat/errOrder are used ONLY by the
+// forward step controller -- the backward transpose uses b (and A/c) alone.
+// Sized for s<=16 (dop853 has 12 stages).
+struct rksTableau { int s; int adaptive; int errOrder;
+                    double c[16]; double b[16]; double bhat[16]; double A[256]; };
+
+static void rksTableauRk4(rksTableau &T) {
+  T.s = 4;
+  T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 0.5; T.c[3] = 1.0;
+  T.b[0] = 1.0/6; T.b[1] = 1.0/3; T.b[2] = 1.0/3; T.b[3] = 1.0/6;
+  T.A[1*4+0] = 0.5; T.A[2*4+1] = 0.5; T.A[3*4+2] = 1.0;
+}
+
+// Dormand-Prince RK5(4), 7 stages (the ode45 / rxode2 "dop5" tableau).
+static void rksTableauDop5(rksTableau &T) {
+  const int s = 7; T.s = s; T.adaptive = 1; T.errOrder = 4;
+  T.c[0]=0; T.c[1]=1.0/5; T.c[2]=3.0/10; T.c[3]=4.0/5; T.c[4]=8.0/9; T.c[5]=1.0; T.c[6]=1.0;
+  T.A[1*s+0]=1.0/5;
+  T.A[2*s+0]=3.0/40;      T.A[2*s+1]=9.0/40;
+  T.A[3*s+0]=44.0/45;     T.A[3*s+1]=-56.0/15;    T.A[3*s+2]=32.0/9;
+  T.A[4*s+0]=19372.0/6561;T.A[4*s+1]=-25360.0/2187;T.A[4*s+2]=64448.0/6561; T.A[4*s+3]=-212.0/729;
+  T.A[5*s+0]=9017.0/3168; T.A[5*s+1]=-355.0/33;   T.A[5*s+2]=46732.0/5247; T.A[5*s+3]=49.0/176;    T.A[5*s+4]=-5103.0/18656;
+  T.A[6*s+0]=35.0/384;    T.A[6*s+1]=0;           T.A[6*s+2]=500.0/1113;   T.A[6*s+3]=125.0/192;   T.A[6*s+4]=-2187.0/6784;  T.A[6*s+5]=11.0/84;
+  T.b[0]=35.0/384; T.b[1]=0; T.b[2]=500.0/1113; T.b[3]=125.0/192; T.b[4]=-2187.0/6784; T.b[5]=11.0/84; T.b[6]=0;
+  T.bhat[0]=5179.0/57600; T.bhat[1]=0; T.bhat[2]=7571.0/16695; T.bhat[3]=393.0/640;
+  T.bhat[4]=-92097.0/339200; T.bhat[5]=187.0/2100; T.bhat[6]=1.0/40;
+}
 
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
-  case 206:                           // rk4s -- classical RK4
-    T.s = 4;
-    T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 0.5; T.c[3] = 1.0;
-    T.b[0] = 1.0/6; T.b[1] = 1.0/3; T.b[2] = 1.0/3; T.b[3] = 1.0/6;
-    T.A[1*4+0] = 0.5; T.A[2*4+1] = 0.5; T.A[3*4+2] = 1.0;
-    break;
-  case 239:                           // eulers -- forward Euler
-    T.s = 1; T.c[0] = 0; T.b[0] = 1.0;
-    break;
-  case 240:                           // midpoints -- explicit midpoint (RK2)
-    T.s = 2; T.c[0] = 0; T.c[1] = 0.5; T.b[0] = 0; T.b[1] = 1.0; T.A[1*2+0] = 0.5;
-    break;
-  case 241:                           // heuns -- Heun / explicit trapezoid (RK2)
-    T.s = 2; T.c[0] = 0; T.c[1] = 1.0; T.b[0] = 0.5; T.b[1] = 0.5; T.A[1*2+0] = 1.0;
-    break;
-  default:                            // default to RK4
-    T.s = 4;
-    T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 0.5; T.c[3] = 1.0;
-    T.b[0] = 1.0/6; T.b[1] = 1.0/3; T.b[2] = 1.0/3; T.b[3] = 1.0/6;
-    T.A[1*4+0] = 0.5; T.A[2*4+1] = 0.5; T.A[3*4+2] = 1.0;
-    break;
+  case 206: rksTableauRk4(T); break;   // rk4s -- classical RK4
+  case 239:                            // eulers -- forward Euler
+    T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
+  case 240:                            // midpoints -- explicit midpoint (RK2)
+    T.s = 2; T.c[0] = 0; T.c[1] = 0.5; T.b[0] = 0; T.b[1] = 1.0; T.A[1*2+0] = 0.5; break;
+  case 241:                            // heuns -- Heun / explicit trapezoid (RK2)
+    T.s = 2; T.c[0] = 0; T.c[1] = 1.0; T.b[0] = 0.5; T.b[1] = 0.5; T.A[1*2+0] = 1.0; break;
+  case 210: rksTableauDop5(T); break;  // dop5s -- adaptive Dormand-Prince 5(4)
+  default:  rksTableauRk4(T); break;
   }
   return T;
 }
@@ -149,6 +163,87 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
     check(chk, t);
     if (ind->err != 0) break;
   }
+}
+
+// One trial step of an adaptive embedded pair: compute all stages a_i (into
+// `stages`) and k_i (into `kbuf`), the high-order (b) and low-order (bhat)
+// solutions, and return the scaled error norm.  Does NOT advance y.
+static inline double rks_try_step(t_dydt dydt, int *neq, const rksTableau &T, int nAll,
+                                  double t, double dt, const double *y, double *stages,
+                                  double *kbuf, double *yhigh, double *ylow,
+                                  double atol, double rtol) {
+  int s = T.s;
+  for (int i = 0; i < s; ++i) {
+    double *ai = stages + i * nAll;
+    for (int m = 0; m < nAll; ++m) ai[m] = y[m];
+    for (int j = 0; j < i; ++j) {
+      double aij = T.A[i * s + j];
+      if (aij != 0.0) { const double *kj = kbuf + j * nAll; for (int m = 0; m < nAll; ++m) ai[m] += dt * aij * kj[m]; }
+    }
+    dydt(neq, t + T.c[i] * dt, ai, kbuf + i * nAll);
+  }
+  for (int m = 0; m < nAll; ++m) { yhigh[m] = y[m]; ylow[m] = y[m]; }
+  for (int i = 0; i < s; ++i) {
+    double bi = T.b[i], bh = T.bhat[i]; const double *ki = kbuf + i * nAll;
+    for (int m = 0; m < nAll; ++m) { yhigh[m] += dt * bi * ki[m]; ylow[m] += dt * bh * ki[m]; }
+  }
+  double err = 0.0;
+  for (int m = 0; m < nAll; ++m) {
+    double sc = atol + rtol * fmax(fabs(y[m]), fabs(yhigh[m]));
+    double e = (yhigh[m] - ylow[m]) / sc; err += e * e;
+  }
+  return sqrt(err / (nAll > 0 ? nAll : 1));
+}
+
+// Adaptive embedded-RK driver: standard error-controlled step selection.  The
+// realized (accepted) step sequence is RECORDED (h + stages) and FROZEN -- the
+// discrete adjoint transposes that fixed sequence (step-size control is not
+// differentiated), reusing the same table-driven backward transpose.
+static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving_options *op,
+                                         t_dydt dydt, int *neq, const rksTableau &T,
+                                         int nAll, int nRec, double *yp,
+                                         double xp, double xout, rk4s_rec *rec,
+                                         std::vector<double> &scratch) {
+  int s = T.s;
+  double atol = op->ATOL > 0 ? op->ATOL : 1e-8, rtol = op->RTOL > 0 ? op->RTOL : 1e-6;
+  double t = xp; int sign = (xout > xp) ? 1 : -1;
+  double span = fabs(xout - xp); if (span == 0.0) return;
+  double dt = op->H0 > 0 ? op->H0 : span / 100.0; if (dt <= 0.0) dt = span / 100.0;
+  dt = sign * dt;
+  if ((int)scratch.size() < (2 * s + 2) * nAll) scratch.resize((2 * s + 2) * nAll);
+  double *stages = scratch.data(), *kbuf = stages + s * nAll,
+         *yhigh = kbuf + s * nAll, *ylow = yhigh + nAll;
+  error_checker check(ind, ind->rc, op->mxstep);
+  zero_copy_state chk(yp, nAll);
+  const double SAFE = 0.9, FACMIN = 0.2, FACMAX = 5.0;
+  int expo = T.errOrder + 1, nrej = 0;
+  while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
+    if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) dt = xout - t;
+    double err;
+    try { err = rks_try_step(dydt, neq, T, nAll, t, dt, yp, stages, kbuf, yhigh, ylow, atol, rtol); }
+    catch (const std::exception &e) { if (ind->rc[0] == 0) ind->rc[0] = -2019; ind->err = 1; break; }
+    double fac = (err > 0.0) ? SAFE * pow(err, -1.0 / expo) : FACMAX;
+    if (fac < FACMIN) fac = FACMIN; if (fac > FACMAX) fac = FACMAX;
+    if (err <= 1.0 || fabs(dt) <= 1e-13 * span) {
+      for (int i = 0; i < s; ++i) rec->a.insert(rec->a.end(), stages + i * nAll, stages + i * nAll + nRec);
+      rec->t0.push_back(t); rec->h.push_back(dt);
+      for (int m = 0; m < nAll; ++m) yp[m] = yhigh[m];
+      t += dt; check(chk, t); if (ind->err != 0) break;
+      dt *= fac; nrej = 0;
+    } else {
+      dt *= fac;
+      if (++nrej > 50) { ind->err = 1; if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
+    }
+  }
+}
+
+// Dispatch a solve interval to the fixed-step or adaptive driver by the tableau.
+static inline void rks_step_interval(rx_solving_options_ind *ind, rx_solving_options *op,
+                                     t_dydt dydt, int *neq, const rksTableau &T,
+                                     int nAll, int nRec, double *yp, double xp, double xout,
+                                     rk4s_rec *rec, std::vector<double> &scratch) {
+  if (T.adaptive) rks_do_steps_adaptive(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
+  else            rk4s_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
 }
 
 // Evaluate F_X (nBase x nBase) and F_p (nBase x np) at base-state vector `a` and
@@ -326,7 +421,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (nAll > 0) {
-                  rk4s_do_steps(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, ind->extraDoseNewXout, &rec, scratch);
+                  rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, ind->extraDoseNewXout, &rec, scratch);
               }
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "rk4s failed";
@@ -348,7 +443,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (!isSameTime(xout, ind->extraDoseNewXout)) {
                 preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
                 if (nAll > 0) {
-                    rk4s_do_steps(ind, op, c_dydt, neq, T, nAll, nRec, yp, ind->extraDoseNewXout, xout, &rec, scratch);
+                    rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, ind->extraDoseNewXout, xout, &rec, scratch);
                 }
                 copyLinCmt(neq, ind, op, yp);
                 const char* err_msg = "rk4s failed";
@@ -362,7 +457,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (nAll > 0) {
-              rk4s_do_steps(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, xout, &rec, scratch);
+              rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, xout, &rec, scratch);
           }
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "rk4s failed";

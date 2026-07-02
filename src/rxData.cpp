@@ -5813,9 +5813,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->stiff = method;
 
-    if (method == 206 || method == 239 || method == 240 || method == 241) {
+    if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210) {
       // discrete-adjoint explicit-RK methods: rk4s (206), eulers (239),
-      // midpoints (240), heuns (241).  Derive the layout by scanning model names.
+      // midpoints (240), heuns (241), dop5s (210, adaptive).  Derive the layout
+      // by scanning model names.
       // States are [base ODE states..., rx__sens_* output slots...]; lhs carry
       // the F_X (rx__adjFX_i_j__) then F_p (rx__adjFP_i_p__) blocks emitted by
       // .rxAdjointExpand.  HARD GUARD: absent the F_X/F_p lhs, error (no silent
