@@ -317,6 +317,38 @@ struct rk4s_rec {
   size_t nStep() const { return h.size(); }
 };
 
+// DDE history: record one accepted step [t0, t0+dt] as a cubic-Hermite dense
+// segment (from the step endpoints y0,y1 and their derivatives) so later delay()
+// lookups can interpolate it.  Reuses the ros4 type-1 (4-sample cubic) reader in
+// par_solve.cpp; the 2 extra dydt() evaluations are only paid for delay models.
+static inline void rk4s_hist_push(rx_solving_options_ind *ind, rx_solving_options *op,
+                                  t_dydt dydt, int *neq, int nAll, double t0, double dt,
+                                  const double *y0, const double *y1) {
+  if (!ind->delayHistOn) return;
+  static thread_local std::vector<double> hbuf;
+  if ((int)hbuf.size() < 6 * nAll) hbuf.resize(6 * nAll);
+  double *f0 = hbuf.data(), *f1 = f0 + nAll;
+  double *S[4] = { f1 + nAll, f1 + 2*nAll, f1 + 3*nAll, f1 + 4*nAll };
+  dydt(neq, t0,      const_cast<double*>(y0), f0);
+  dydt(neq, t0 + dt, const_cast<double*>(y1), f1);
+  const double ss[4] = {0.0, 1.0/3.0, 2.0/3.0, 1.0};
+  for (int q = 0; q < 4; ++q) {
+    double s = ss[q], a2 = s*s, a3 = a2*s;
+    double h00 = 2*a3 - 3*a2 + 1, h10 = a3 - 2*a2 + s, h01 = -2*a3 + 3*a2, h11 = a3 - a2;
+    for (int m = 0; m < nAll; ++m)
+      S[q][m] = h00*y0[m] + h10*dt*f0[m] + h01*y1[m] + h11*dt*f1[m];
+  }
+  rxDelayHistPushSamples(ind, op, t0, dt, S[0], S[1], S[2], S[3]);
+}
+
+// Cap |dt| so no step overshoots the smallest delay (keeps delay() lookups inside
+// already-recorded history).  No-op for non-delay models.
+static inline double rk4s_hist_cap(rx_solving_options_ind *ind, double dt, int sign) {
+  if (ind->delayHistOn && R_FINITE(ind->delayMinT) && fabs(dt) > ind->delayMinT)
+    return sign * ind->delayMinT;
+  return dt;
+}
+
 // One explicit-RK step over [t, t+dt] for the tableau `T`.  dydt READS/WRITES
 // the FULL state (all `nAll` = neqOde entries), so the stage/derivative buffers
 // MUST be nAll wide; we only RECORD the first `nRec` (base) states of each stage.
@@ -361,9 +393,11 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
   }
   int sign = (xout > xp) ? 1 : -1;
   dt = sign * dt;
+  dt = rk4s_hist_cap(ind, dt, sign);   // DDE: keep steps within delayMinT
 
   // dydt writes nAll derivatives into each k buffer -> (s k-buffers + atmp).
   if ((int)scratch.size() < (T.s + 1) * nAll) scratch.resize((T.s + 1) * nAll);
+  std::vector<double> y0h; if (ind->delayHistOn) y0h.resize(nAll);
 
   error_checker check(ind, ind->rc, op->mxstep);
   zero_copy_state chk(yp, nAll);
@@ -373,6 +407,7 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
     if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) {
       current_dt = xout - t;
     }
+    if (ind->delayHistOn) for (int m = 0; m < nAll; ++m) y0h[m] = yp[m];
     try {
       rk4s_step_record(dydt, neq, T, nAll, nRec, t, current_dt, yp, scratch.data(), rec);
     } catch (const std::exception &e) {
@@ -380,6 +415,7 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
       ind->err = 1;
       break;
     }
+    rk4s_hist_push(ind, op, dydt, neq, nAll, t, current_dt, y0h.data(), yp);
     t += current_dt;
     check(chk, t);
     if (ind->err != 0) break;
@@ -438,8 +474,10 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
   zero_copy_state chk(yp, nAll);
   const double SAFE = 0.9, FACMIN = 0.2, FACMAX = 5.0;
   int expo = T.errOrder + 1, nrej = 0;
+  dt = rk4s_hist_cap(ind, dt, sign);   // DDE: keep steps within delayMinT
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
     if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) dt = xout - t;
+    dt = rk4s_hist_cap(ind, dt, sign);
     double err;
     try { err = rks_try_step(dydt, neq, T, nAll, t, dt, yp, stages, kbuf, yhigh, ylow, atol, rtol); }
     catch (const std::exception &e) { if (ind->rc[0] == 0) ind->rc[0] = -2019; ind->err = 1; break; }
@@ -448,9 +486,10 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
     if (err <= 1.0 || fabs(dt) <= 1e-13 * span) {
       for (int i = 0; i < s; ++i) rec->a.insert(rec->a.end(), stages + i * nAll, stages + i * nAll + nRec);
       rec->t0.push_back(t); rec->h.push_back(dt);
+      rk4s_hist_push(ind, op, dydt, neq, nAll, t, dt, yp, yhigh);
       for (int m = 0; m < nAll; ++m) yp[m] = yhigh[m];
       t += dt; check(chk, t); if (ind->err != 0) break;
-      dt *= fac; nrej = 0;
+      dt *= fac; dt = rk4s_hist_cap(ind, dt, sign); nrej = 0;
     } else {
       dt *= fac;
       if (++nrej > 50) { ind->err = 1; if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
@@ -500,13 +539,17 @@ static inline void ros_do_steps(rx_solving_options_ind *ind, rx_solving_options 
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.01; if (dt <= 0.0) dt = 0.01;
   if (fabs(xout - xp) / dt >= op->mxstep) dt = fabs(xout - xp) / (double)(op->mxstep - 10);
   int sign = (xout > xp) ? 1 : -1; dt = sign * dt;
+  dt = rk4s_hist_cap(ind, dt, sign);   // DDE: keep steps within delayMinT
   if ((int)scratch.size() < s*nBase + 2*nAll + nBase) scratch.resize(s*nBase + 2*nAll + nBase);
   std::vector<double> W(nBase*nBase); std::vector<int> piv(nBase);
+  std::vector<double> y0h; if (ind->delayHistOn) y0h.resize(nAll);
   error_checker check(ind, ind->rc, op->mxstep); zero_copy_state chk(yp, nAll);
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
     double cdt = dt; if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) cdt = xout - t;
+    if (ind->delayHistOn) for (int m = 0; m < nAll; ++m) y0h[m] = yp[m];
     ros_step_record(dydt, neq, T, cSub, fxOff, nAll, nBase, nRec, t, cdt, yp, ind, scratch.data(), piv.data(), W.data(), rec);
     if (ind->err != 0) break;
+    rk4s_hist_push(ind, op, dydt, neq, nAll, t, cdt, y0h.data(), yp);
     t += cdt; check(chk, t); if (ind->err != 0) break;
   }
 }
@@ -562,12 +605,16 @@ static inline void radau_do_steps(rx_solving_options_ind *ind, rx_solving_option
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.01; if (dt <= 0.0) dt = 0.01;
   if (fabs(xout - xp) / dt >= op->mxstep) dt = fabs(xout - xp) / (double)(op->mxstep - 10);
   int sign = (xout > xp) ? 1 : -1; dt = sign * dt;
+  dt = rk4s_hist_cap(ind, dt, sign);   // DDE: keep steps within delayMinT
   error_checker check(ind, ind->rc, op->mxstep); zero_copy_state chk(yp, nAll);
+  std::vector<double> y0h; if (ind->delayHistOn) y0h.resize(nAll);
   (void)scratch;
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
     double cdt = dt; if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) cdt = xout - t;
+    if (ind->delayHistOn) for (int m = 0; m < nAll; ++m) y0h[m] = yp[m];
     radau_step_record(dydt, neq, T, cSub, fxOff, nAll, nBase, nRec, t, cdt, yp, ind, rec);
     if (ind->err != 0) break;
+    rk4s_hist_push(ind, op, dydt, neq, nAll, t, cdt, y0h.data(), yp);
     t += cdt; check(chk, t); if (ind->err != 0) break;
   }
 }
@@ -951,6 +998,19 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  // DDE history: record dense steps for this subject when the model uses delay().
+  // A single warm-up RHS evaluation lets _rxDelay learn the minimum delay so the
+  // step size can be capped (keeping delay() lookups inside recorded history).
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayWarmed = 0;
+  if (ind->delayHistOn) {
+    std::vector<double> _wu(neqOde);
+    c_dydt(neq, xp, getSolve(0), _wu.data());
+    ind->delayWarmed = 1;
+  }
   // dydt reads/writes the FULL neqOde state, so we step all of it (the adjoint
   // rx__sens_* compartments have d/dt=0 -> they stay 0); we RECORD only the
   // nBase base-state stages the backward sweep needs.

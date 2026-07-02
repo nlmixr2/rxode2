@@ -2409,7 +2409,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     # dop853 leg of "dop853+ros4") and on the dense ros4 path (for stiff delay
     # models).  Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
-    if (.ctl$method == 2L) {
+    if (.ctl$method >= 200L) {
+      # discrete-adjoint rk4s methods (rk4s/dop853s/ros4s/... and the
+      # dop853s+ros4s composite) record their own cubic-Hermite dense history
+      # per accepted step, so they support delay() without the dop853/ros4
+      # dense path.  Nothing to switch.
+    } else if (.ctl$method == 2L) {
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
       .ctl$method <- 0L
       .ctl$stiff2 <- 13L
