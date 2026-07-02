@@ -227,7 +227,7 @@
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxAdjointExpand <- function(object, calcSens) {
+.rxAdjointExpand <- function(object, calcSens, stiff = FALSE) {
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model); .ns <- length(.st); .np <- length(calcSens)
   if (.ns == 0L) stop("discrete adjoint requires a model with ODE states", call. = FALSE)
@@ -269,9 +269,24 @@
       .dfLines <- c(.dfLines, sprintf("rx__adjdF_%d_%d__=%s", k - 1L, p - 1L, .expr))
     }
   }
-  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines), collapse = "\n"),
-       st = .st, ns = .ns, np = .np, calcSens = calcSens,
+  # STIFF (Rosenbrock) only: dJ/dtheta = d(F_X)/dtheta as lhs (rx__adjJp_i_j_p__).
+  # The Rosenbrock stage matrix W = I/(h*gamma) - J depends on theta through J,
+  # so the exact discrete adjoint needs this 2nd derivative.  (Emitting it only
+  # when stiff keeps the explicit methods' calc_lhs cheap.)
+  .jpLines <- character(0)
+  if (isTRUE(stiff)) {
+    for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
+      .dfx <- get0(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"), envir = .model, inherits = FALSE)
+      for (p in seq_len(.np)) {
+        .expr <- if (is.null(.dfx)) "0" else { .d <- symengine::D(.dfx, calcSens[p]); rxode2::rxFromSE(.d) }
+        .jpLines <- c(.jpLines, sprintf("rx__adjJp_%d_%d_%d__=%s", i - 1L, j - 1L, p - 1L, .expr))
+      }
+    }
+  }
+  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines, .jpLines), collapse = "\n"),
+       st = .st, ns = .ns, np = .np, calcSens = calcSens, stiff = isTRUE(stiff),
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
+       jpOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np else -1L,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }
 
