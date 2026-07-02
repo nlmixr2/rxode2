@@ -1,36 +1,34 @@
-// CVODES native adjoint-sensitivity analysis (ASA) driver.  *** SMOOTH-FORWARD
-// ONLY -- NOT WIRED (see the interior-discontinuity limit below) ***
+// CVODES adjoint-sensitivity driver (approach B: self-managed dense primal +
+// plain-CVODES backward).  Fills rx__sens_<state>_BY_<param>__ output columns.
 //
 // #included into par_solve.cpp (guarded by IN_PAR_SOLVE, like dop5.cpp/rk4s.cpp)
 // so it sees calc_lhs / iniSubject / getSolve / handle_evid / the dydt globals.
 // Compiles to an empty .o when built standalone.
 //
-// Uses SUNDIALS' VALIDATED continuous adjoint (CVodeF checkpointed forward +
-// CVodeB backward + CVodeQuadB quadrature).  The forward primal is integrated
-// exactly like every other rxode2 solver's main loop (cloned from dop5.cpp:
-// preSolve/handleEvid1/handleEvid3/handleSS/handleExtraDose/updateSolve), with the
-// numeric stepping between event times done by CVodeF so CVODES stores the
-// checkpointed interpolant its backward pass needs.
+// Why approach B (not native CVODES ASA): CVODES's own ASA (CVodeF/CVodeB)
+// checkpointing assumes ONE continuous forward integration, which rxode2's dose /
+// reset / infusion-off events (external CVodeReInit) corrupt (heap corruption in
+// CVodeF's checkpoint storage -- see git history).  Instead we use SUNDIALS' BDF
+// integrator for BOTH sweeps but manage the adjoint ourselves:
 //
-// STATUS: VALIDATED to machine-FD precision (2.4e-6, == dop853s) for models whose
-// forward is SMOOTH after t0 -- single dose at t0, PD models, no interior events.
+//   FORWARD  : plain CVODES (CV_BDF), driven exactly like every other rxode2
+//              solver's main loop (cloned from dop5.cpp: preSolve / handleEvid1 /
+//              handleEvid3 / handleSS / handleExtraDose / updateSolve), stepping in
+//              CV_ONE_STEP mode so we RECORD a dense per-segment primal history
+//              (t, y, f=dydt at each accepted step).  A new "segment" begins at
+//              every dose/reset (state jump), so interpolation never blurs a jump.
+//   BACKWARD : for each (observation t_i, base state k) integrate the augmented
+//              linear system  d(lambda)/dt = -F_X(y(t))^T lambda,
+//              d(mu)/dt = -F_p(y(t))^T lambda  from t_i down to t_0 with a plain
+//              CVODES integrator, evaluating F_X/F_p (rx__adjFX_*/rx__adjFP_* lhs
+//              from calc_lhs) on the interpolated primal y(t).  mu(t_0) =
+//              dy_k(t_i)/dp lands in the rx__sens_<k>_BY_<p>__ slots.
 //
-// CONFIRMED LIMITATION (why this is not wired): CVODES native ASA checkpointing
-// assumes ONE continuous CVodeF integration.  An interior state/RHS discontinuity
-// (multi-dose, addl, an infusion rate-off, a reset) requires an external
-// CVodeReInit that DESYNCS CVodeF's checkpoint bookkeeping -- and the resulting
-// heap corruption occurs DURING the forward CVodeF checkpoint storage, so no
-// post-forward guard can prevent it.  Full multi-dose support needs a per-segment
-// restructure (one CVodeF+CVodeAdjInit per smooth interval, backward walking the
-// segments and carrying lambda/mu across dose jumps) OR a self-managed dense
-// primal + plain-CVODES backward.  Until then multi-dose adjoint is served by the
-// discrete-adjoint RK methods (dop853s/rk4s/...), which handle every event type.
-//
-// The .rxAdjointExpand model exposes rx__adjFX_i_j__ (F_X = df/dy) and
-// rx__adjFP_i_p__ (F_p = df/dp) as lhs.  Per (observation t_i, base state k) a
-// backward problem is integrated from t_i to t_0 with lam(t_i)=e_k,
-// dlam/dt = -F_X^T lam, quadrature dmu/dt = -F_p^T lam; CVodeGetQuadB then gives
-// mu = dy_k(t_i)/dp, stored into the rx__sens_<k>_BY_<p>__ output slots.
+// For plain bolus / constant-rate infusion / reset the adjoint jump at a dose is
+// the identity (lambda, mu unchanged), so straight backward integration through
+// dose times is correct; only F_X/F_p change (handled by the segment-aware primal
+// interpolation).  Modeled-F/alag dose-parameter jumps are a later addition (the
+// discrete-adjoint RK methods already carry them).
 #ifdef IN_PAR_SOLVE
 
 #include <cvodes/cvodes.h>
@@ -39,19 +37,60 @@
 #include <sunmatrix/sunmatrix_dense.h>
 #include <sunlinsol/sunlinsol_dense.h>
 
-struct cvAdjUser {
-  rx_solving_options_ind *ind;
-  rx_solving_options *op;
-  int cSub, *neq;
-  t_dydt dydt;
-  int nBase, np, eff, fxOff, fpOff;
-  std::vector<double> A, DADT;   // eff-wide scratch for dydt / calc_lhs
+// ---- dense per-segment primal history (cubic-Hermite interpolation) ----
+struct cvHist {
+  int nBase = 0;
+  std::vector<double> t;            // all recorded times, non-decreasing
+  std::vector<double> y;            // row-major: entry*nBase + k
+  std::vector<double> f;            // dydt at each entry, row-major
+  std::vector<int> segStart;        // index in t[] where each smooth segment starts
+  void newSeg() { segStart.push_back((int)t.size()); }
+  void push(double tt, const double *yy, const double *ff) {
+    t.push_back(tt);
+    for (int k = 0; k < nBase; ++k) { y.push_back(yy[k]); f.push_back(ff[k]); }
+  }
+  // Interpolate the primal at tq into out[nBase].  Segment-aware: at a dose time
+  // the later (post-jump) segment wins, matching rxode2's "state is post-dose".
+  void interp(double tq, double *out) const {
+    int ns = (int)segStart.size();
+    if (ns == 0) { for (int k = 0; k < nBase; ++k) out[k] = 0.0; return; }
+    int s = 0;
+    for (int si = 0; si < ns; ++si) {
+      if (t[segStart[si]] <= tq + 1e-12) s = si; else break;
+    }
+    int lo = segStart[s];
+    int hi = (s + 1 < ns) ? segStart[s + 1] : (int)t.size();   // [lo, hi)
+    if (hi - lo <= 1 || tq <= t[lo]) { for (int k = 0; k < nBase; ++k) out[k] = y[lo * nBase + k]; return; }
+    if (tq >= t[hi - 1]) { for (int k = 0; k < nBase; ++k) out[k] = y[(hi - 1) * nBase + k]; return; }
+    int a = lo, b = hi - 1;
+    while (b - a > 1) { int m = (a + b) / 2; if (t[m] <= tq) a = m; else b = m; }
+    double t0 = t[a], t1 = t[a + 1], h = t1 - t0;
+    if (h <= 0) { for (int k = 0; k < nBase; ++k) out[k] = y[a * nBase + k]; return; }
+    double th = (tq - t0) / h;
+    double h00 = (2 * th * th * th) - (3 * th * th) + 1;
+    double h10 = (th * th * th) - (2 * th * th) + th;
+    double h01 = (-2 * th * th * th) + (3 * th * th);
+    double h11 = (th * th * th) - (th * th);
+    for (int k = 0; k < nBase; ++k)
+      out[k] = h00 * y[a * nBase + k] + h10 * h * f[a * nBase + k] +
+               h01 * y[(a + 1) * nBase + k] + h11 * h * f[(a + 1) * nBase + k];
+  }
 };
 
-// Forward RHS of the base ODE.  rxode2's dydt reads/writes the full eff-wide
-// state (base + rx__sens_* compartments, whose d/dt=0); we advance only nBase.
-static int cvAdj_fwd(sunrealtype t, N_Vector y, N_Vector yd, void *ud) {
-  cvAdjUser *u = (cvAdjUser *)ud;
+struct cvFwdUser {   // forward RHS user data
+  int *neq; t_dydt dydt; int nBase, eff;
+  std::vector<double> A, DADT;
+};
+struct cvBwdUser {   // backward RHS user data
+  const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff;
+  std::vector<double> A, yq;
+  double *lhs;
+};
+
+// Forward RHS: advance the nBase base states (the rx__sens_* compartments have
+// d/dt=0); dydt reads/writes the full eff-wide state.
+static int cvB_fwd(sunrealtype t, N_Vector y, N_Vector yd, void *ud) {
+  cvFwdUser *u = (cvFwdUser *)ud;
   double *A = u->A.data(), *D = u->DADT.data();
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
   for (int i = 0; i < u->nBase; ++i) A[i] = NV_Ith_S(y, i);
@@ -60,59 +99,59 @@ static int cvAdj_fwd(sunrealtype t, N_Vector y, N_Vector yd, void *ud) {
   return 0;
 }
 
-// Backward costate RHS: yBdot = -F_X(y(t))^T yB, with F_X from calc_lhs.
-static int cvAdj_bwd(sunrealtype t, N_Vector y, N_Vector yB, N_Vector yBdot, void *ud) {
-  cvAdjUser *u = (cvAdjUser *)ud;
-  int n = u->nBase;
-  double *A = u->A.data();
+// Backward augmented RHS: B = [lambda(nBase), mu(np)];
+//   d(lambda)/dt = -F_X^T lambda,   d(mu)/dt = -F_p^T lambda.
+static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
+  cvBwdUser *u = (cvBwdUser *)ud;
+  int n = u->nBase, np = u->np;
+  double *A = u->A.data(), *yq = u->yq.data();
+  u->hist->interp((double)t, yq);
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
-  for (int i = 0; i < n; ++i) A[i] = NV_Ith_S(y, i);
-  calc_lhs(u->cSub, t, A, u->ind->lhs);
-  const double *fx = &u->ind->lhs[u->fxOff];
+  for (int i = 0; i < n; ++i) A[i] = yq[i];
+  calc_lhs(u->cSub, t, A, u->lhs);
+  const double *fx = &u->lhs[u->fxOff];
+  const double *fp = &u->lhs[u->fpOff];
   for (int j = 0; j < n; ++j) {
     double s = 0.0;
-    for (int i = 0; i < n; ++i) s += fx[i * n + j] * NV_Ith_S(yB, i); // (F_X^T lam)_j
-    NV_Ith_S(yBdot, j) = -s;
+    for (int i = 0; i < n; ++i) s += fx[i * n + j] * NV_Ith_S(B, i);
+    NV_Ith_S(Bd, j) = -s;
   }
-  return 0;
-}
-
-// Backward quadrature RHS: qBdot = -F_p(y(t))^T yB  (so integrating from t_i back
-// to t_0 accumulates +int lam^T f_p = dy_k(t_i)/dp).
-static int cvAdj_quad(sunrealtype t, N_Vector y, N_Vector yB, N_Vector qBdot, void *ud) {
-  cvAdjUser *u = (cvAdjUser *)ud;
-  int n = u->nBase, np = u->np;
-  double *A = u->A.data();
-  for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
-  for (int i = 0; i < n; ++i) A[i] = NV_Ith_S(y, i);
-  calc_lhs(u->cSub, t, A, u->ind->lhs);
-  const double *fp = &u->ind->lhs[u->fpOff];
   for (int p = 0; p < np; ++p) {
     double s = 0.0;
-    for (int i = 0; i < n; ++i) s += fp[i * np + p] * NV_Ith_S(yB, i); // (F_p^T lam)_p
-    NV_Ith_S(qBdot, p) = -s;
+    for (int i = 0; i < n; ++i) s += fp[i * np + p] * NV_Ith_S(B, i);
+    NV_Ith_S(Bd, n + p) = -s;
   }
   return 0;
 }
 
-// Step the forward primal from xp to xout using CVodeF (checkpointed).  yp holds
-// the authoritative state (base + sens); we sync the base states in/out of the
-// CVODES N_Vector.  CVODES's internal time must already be at xp (guaranteed by
-// the CVodeReInit we do after every dose/reset).
-static void cvF_step(void *mem, cvAdjUser *u, N_Vector y, double *yp,
-                     double xout, int *rc) {
-  for (int k = 0; k < u->nBase; ++k) NV_Ith_S(y, k) = yp[k];
-  // Stop exactly at xout so no internal step crosses this segment boundary --
-  // required for ASA: a checkpoint interval must never span a dose/reset, or the
-  // backward re-integration (CVAdataStore) diverges / overflows dt_mem.
-  CVodeSetStopTime(mem, (sunrealtype)xout);
-  sunrealtype tret; int ncheck;
-  int flag = CVodeF(mem, (sunrealtype)xout, y, &tret, CV_NORMAL, &ncheck);
-  if (flag < 0) { if (*rc == 0) *rc = -2019; return; }
-  for (int k = 0; k < u->nBase; ++k) yp[k] = NV_Ith_S(y, k);
+// Record the current (t, base states) plus f=dydt into the history segment.
+static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
+  double *A = u->A.data(), *D = u->DADT.data();
+  for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
+  for (int i = 0; i < u->nBase; ++i) A[i] = yp[i];
+  u->dydt(u->neq, t, A, D);
+  hist->push(t, yp, D);
 }
 
-// Solve one subject with CVODES ASA, filling the rx__sens_* output slots.
+// Step the forward primal from the integrator's current time to xout using
+// CV_ONE_STEP, recording each accepted step into the current history segment.
+static void cvB_step(void *mem, cvFwdUser *u, N_Vector y, double *yp,
+                     double xout, int *rc, cvHist *hist) {
+  for (int k = 0; k < u->nBase; ++k) NV_Ith_S(y, k) = yp[k];
+  CVodeSetStopTime(mem, (sunrealtype)xout);
+  sunrealtype tcur = 0.0;
+  int guard = 0, maxit = 10000000;
+  while (true) {
+    int flag = CVode(mem, (sunrealtype)xout, y, &tcur, CV_ONE_STEP);
+    if (flag < 0) { if (*rc == 0) *rc = -2019; return; }
+    for (int k = 0; k < u->nBase; ++k) yp[k] = NV_Ith_S(y, k);
+    cvB_record(hist, u, (double)tcur, yp);
+    if (flag == CV_TSTOP_RETURN || tcur >= xout) break;
+    if (++guard > maxit) { if (*rc == 0) *rc = -2019; return; }
+  }
+}
+
+// Solve one subject: forward primal + record history, then backward per (obs, k).
 static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                                  rx_solving_options_ind *ind, int *neq, int istate0,
                                  t_dydt c_dydt, t_update_inis u_inis, SUNContext sunctx) {
@@ -123,52 +162,31 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   int cSub = neq[1];
   int nBase = op->adjNbase, np = op->adjNp, sensOff = op->adjSensOff;
   int neqOde = op->neq - op->numLin - op->numLinSens;
+  int eff = rxEffNeq(ind, op);
   double atol = op->ATOL > 0 ? op->ATOL : 1e-8, rtol = op->RTOL > 0 ? op->RTOL : 1e-6;
 
-  cvAdjUser u;
-  u.ind = ind; u.op = op; u.cSub = cSub; u.neq = neq; u.dydt = c_dydt;
-  u.nBase = nBase; u.np = np; u.eff = rxEffNeq(ind, op);
-  u.fxOff = op->adjFxOff; u.fpOff = op->adjFpOff;
-  u.A.assign(u.eff, 0.0); u.DADT.assign(u.eff, 0.0);
+  cvFwdUser fu;
+  fu.neq = neq; fu.dydt = c_dydt; fu.nBase = nBase; fu.eff = eff;
+  fu.A.assign(eff, 0.0); fu.DADT.assign(eff, 0.0);
+
+  cvHist hist; hist.nBase = nBase;
 
   double xp = getAllTimes(ind, 0);
-  double xp0 = xp;   // initial time t0 (doses at t0 keep the forward smooth)
+  double t0 = xp;
   double xout;
 
-  // Pre-scan for interior discontinuities (any dose/reset scheduled after t0).
-  // CVODES native ASA checkpointing assumes ONE continuous CVodeF integration;
-  // an interior state jump forces an external CVodeReInit that corrupts the
-  // checkpoint list, so the backward re-integration (CVAdataStore) diverges.
-  // We still integrate the forward primal (base states stay valid) but skip the
-  // unsafe backward sweep and emit NA sens.  Multi-dose adjoint is served by the
-  // discrete-adjoint RK methods (dop853s/rk4s/...).
-  int interiorDiscont = 0;
-  for (int _i = 0; _i < ind->n_all_times; ++_i) {
-    int _raw = ind->ix[_i];
-    if (isObs(getEvid(ind, _raw))) continue;
-    if (getAllTimes(ind, _raw) > xp0 + 1e-12) { interiorDiscont = 1; break; }
-  }
-  // Also scan the authoritative dose list (idose), which carries addl-expanded
-  // and on-the-fly doses that may not appear as separate all_times records.
-  for (int _d = 0; !interiorDiscont && _d < ind->ndoses; ++_d) {
-    if (getAllTimes(ind, ind->idose[_d]) > xp0 + 1e-12) interiorDiscont = 1;
-  }
-
-  // ---- set up the CVODES forward integrator with ASA checkpointing ----
-  // (The deprecated N_VSpace calls CVODES makes are zeroed out by the CRAN
-  // workaround, inst/tools/workaround.R, so the NULLed ops->nvspace is never hit.)
+  // ---- forward integrator (plain BDF, no ASA) ----
   N_Vector y = N_VNew_Serial(nBase, sunctx);
   { double *y0 = getSolve(0); for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = y0[k]; }
   void *mem = CVodeCreate(CV_BDF, sunctx);
   int ok = (mem != NULL);
-  if (ok && CVodeInit(mem, cvAdj_fwd, (sunrealtype)xp, y) < 0) ok = 0;
+  if (ok && CVodeInit(mem, cvB_fwd, (sunrealtype)xp, y) < 0) ok = 0;
   if (ok && CVodeSStolerances(mem, rtol, atol) < 0) ok = 0;
-  if (ok && CVodeSetUserData(mem, (void *)&u) < 0) ok = 0;
+  if (ok && CVodeSetUserData(mem, (void *)&fu) < 0) ok = 0;
   SUNMatrix Amat = ok ? SUNDenseMatrix(nBase, nBase, sunctx) : NULL;
   SUNLinearSolver LS = ok ? SUNLinSol_Dense(y, Amat, sunctx) : NULL;
   if (ok && (!Amat || !LS || CVodeSetLinearSolver(mem, LS, Amat) < 0)) ok = 0;
   if (ok) CVodeSetMaxNumSteps(mem, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
-  if (ok && CVodeAdjInit(mem, 200, CV_HERMITE) < 0) ok = 0;
   if (!ok) {
     if (LS) SUNLinSolFree(LS);
     if (Amat) SUNMatDestroy(Amat);
@@ -177,12 +195,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     return 0;
   }
 
-  // A CVodeReInit is needed whenever the forward integrator's current time or
-  // state was changed outside CVODES (a dose/reset).  Track observation slots
-  // for the backward pass.
   std::vector<double> obsT; std::vector<int> obsIx;
   double *yp;
-  int nReinit = 0;   // count CVodeReInit calls: >1 => an interior discontinuity
+  hist.newSeg();   // segment 0 begins at t0
 
   // ================= forward primal loop (cloned from dop5.cpp) =================
   for (i = 0; i < ind->n_all_times; i++) {
@@ -221,7 +236,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            if (neqOde > 0) cvF_step(mem, &u, y, yp, ind->extraDoseNewXout, ind->rc);
+            if (neqOde > 0) cvB_step(mem, &fu, y, yp, ind->extraDoseNewXout, ind->rc, &hist);
             copyLinCmt(neq, ind, op, yp);
             const char *err_msg = "cvodesadj failed";
             postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 10, true, ind, op, rx);
@@ -239,16 +254,15 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             ind->ixds = ixds;
             ind->idx = idx;
             ind->idxExtra++;
-            didEvent = 1;
-            if (!isSameTime(ind->extraDoseNewXout, xp0)) interiorDiscont = 1; // extra dose after t0
+            // state/rate jumped -> resume the forward from here and start a new
+            // history segment.
+            for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = yp[k];
+            CVodeReInit(mem, (sunrealtype)ind->extraDoseNewXout, y);
+            hist.newSeg(); cvB_record(&hist, &fu, ind->extraDoseNewXout, yp);
+            didEvent = 0;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              // must resume CVODES from the post-dose state at extraDoseNewXout
-              for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = yp[k];
-nReinit++;
-              CVodeReInit(mem, (sunrealtype)ind->extraDoseNewXout, y);
-              didEvent = 0;
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              if (neqOde > 0) cvF_step(mem, &u, y, yp, xout, ind->rc);
+              if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind->rc, &hist);
               copyLinCmt(neq, ind, op, yp);
               const char *err_msg = "cvodesadj failed";
               postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 10, false, ind, op, rx);
@@ -260,7 +274,7 @@ nReinit++;
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          if (neqOde > 0) cvF_step(mem, &u, y, yp, xout, ind->rc);
+          if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind->rc, &hist);
           copyLinCmt(neq, ind, op, yp);
           const char *err_msg = "cvodesadj failed";
           postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 10, true, ind, op, rx);
@@ -285,12 +299,11 @@ nReinit++;
         xp = xout;
         didEvent = 1;
       }
-      // Resume CVODES from the (possibly jumped) state at xout after any event.
+      // Resume the forward from the (possibly jumped) state and open a new segment.
       if (didEvent) {
-        if (!isSameTime(xout, xp0)) interiorDiscont = 1;   // dose/reset after t0
         for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = yp[k];
-nReinit++;
         CVodeReInit(mem, (sunrealtype)xout, y);
+        hist.newSeg(); cvB_record(&hist, &fu, xout, yp);
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -306,80 +319,58 @@ nReinit++;
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); }
-      else if (xout > xp0 + 1e-12) interiorDiscont = 1;  // any non-obs event after t0
       if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
   }
-  // On-the-fly (addl / SS) doses are counted in idxExtra; any of them is an
-  // interior discontinuity that corrupts the ASA checkpoints.  The reinit count
-  // is the definitive signal: one reinit is expected for a t0 dose; more than one
-  // means the forward crossed an interior state jump.
-  if (ind->idxExtra > 0 || nReinit > 1) interiorDiscont = 1;
 
-  // ================= backward ASA sweep -> rx__sens_* output slots =================
-  int which = -1;
-  bool bInit = false;
-  // With an interior discontinuity the ASA backward is unsafe (see above): fill
-  // the sensitivity slots with NA and skip it -- the primal base states are still
-  // valid.  The NA sens columns signal the user to use dop853s/rk4s instead.
-  if (interiorDiscont) {
-    for (size_t oi = 0; oi < obsT.size(); ++oi) {
-      double *out = getSolve(obsIx[oi]);
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = NA_REAL;
-    }
-    if (LS) SUNLinSolFree(LS);
-    if (Amat) SUNMatDestroy(Amat);
-    if (mem) CVodeFree(&mem);
-    N_VDestroy(y);
-    return 1;   // not a solve failure; base states are valid
-  }
+  if (LS) SUNLinSolFree(LS);
+  if (Amat) SUNMatDestroy(Amat);
+  if (mem) CVodeFree(&mem);
+  N_VDestroy(y);
 
-  N_Vector yB = (ok && !localBadSolve) ? N_VNew_Serial(nBase, sunctx) : NULL;
-  N_Vector qB = (yB) ? N_VNew_Serial(np > 0 ? np : 1, sunctx) : NULL;
-  SUNMatrix AB = NULL; SUNLinearSolver LSB = NULL;
-  double t0 = getAllTimes(ind, 0);
-  for (int oi = (int)obsT.size() - 1; ok && !localBadSolve && oi >= 0; --oi) {
+  // ================= backward sweep -> rx__sens_* output slots =================
+  if (localBadSolve) return 0;
+  int nAug = nBase + np;
+  cvBwdUser bu;
+  bu.hist = &hist; bu.cSub = cSub; bu.nBase = nBase; bu.np = np; bu.eff = eff;
+  bu.fxOff = op->adjFxOff; bu.fpOff = op->adjFpOff; bu.lhs = ind->lhs;
+  bu.A.assign(eff, 0.0); bu.yq.assign(nBase, 0.0);
+
+  N_Vector B = N_VNew_Serial(nAug, sunctx);
+  void *bmem = CVodeCreate(CV_BDF, sunctx);
+  int bok = (bmem != NULL);
+  if (bok && CVodeInit(bmem, cvB_bwd, (sunrealtype)t0, B) < 0) bok = 0;  // re-init per solve below
+  if (bok && CVodeSStolerances(bmem, rtol, atol) < 0) bok = 0;
+  if (bok && CVodeSetUserData(bmem, (void *)&bu) < 0) bok = 0;
+  SUNMatrix BM = bok ? SUNDenseMatrix(nAug, nAug, sunctx) : NULL;
+  SUNLinearSolver BLS = bok ? SUNLinSol_Dense(B, BM, sunctx) : NULL;
+  if (bok && (!BM || !BLS || CVodeSetLinearSolver(bmem, BLS, BM) < 0)) bok = 0;
+  if (bok) CVodeSetMaxNumSteps(bmem, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
+
+  for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
     double *out = getSolve(solveIdx);
     if (ti <= t0 || isSameTime(ti, t0)) {
       for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
       continue;
     }
-    for (int k = 0; ok && k < nBase; ++k) {
-      for (int j = 0; j < nBase; ++j) NV_Ith_S(yB, j) = (j == k) ? 1.0 : 0.0;
-      for (int p = 0; p < np; ++p) NV_Ith_S(qB, p) = 0.0;
-      if (!bInit) {
-        if (CVodeCreateB(mem, CV_BDF, &which) < 0 ||
-            CVodeInitB(mem, which, cvAdj_bwd, (sunrealtype)ti, yB) < 0 ||
-            CVodeSStolerancesB(mem, which, rtol, atol) < 0 ||
-            CVodeSetUserDataB(mem, which, (void *)&u) < 0) { ok = 0; break; }
-        AB = SUNDenseMatrix(nBase, nBase, sunctx);
-        LSB = SUNLinSol_Dense(yB, AB, sunctx);
-        if (!AB || !LSB || CVodeSetLinearSolverB(mem, which, LSB, AB) < 0 ||
-            CVodeQuadInitB(mem, which, cvAdj_quad, qB) < 0) { ok = 0; break; }
-        CVodeSetMaxNumStepsB(mem, which, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
-        bInit = true;
-      } else {
-        if (CVodeReInitB(mem, which, (sunrealtype)ti, yB) < 0 ||
-            CVodeQuadReInitB(mem, which, qB) < 0) { ok = 0; break; }
-      }
-      if (CVodeB(mem, (sunrealtype)t0, CV_NORMAL) < 0) { ok = 0; break; }
+    for (int k = 0; bok && k < nBase; ++k) {
+      for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
+      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
+      if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
+      CVodeSetStopTime(bmem, (sunrealtype)t0);
       sunrealtype tret;
-      if (CVodeGetQuadB(mem, which, &tret, qB) < 0) { ok = 0; break; }
-      for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(qB, p);
+      if (CVode(bmem, (sunrealtype)t0, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
     }
   }
 
-  if (yB) N_VDestroy(yB);
-  if (qB) N_VDestroy(qB);
-  if (LSB) SUNLinSolFree(LSB);
-  if (AB) SUNMatDestroy(AB);
-  if (LS) SUNLinSolFree(LS);
-  if (Amat) SUNMatDestroy(Amat);
-  if (mem) CVodeFree(&mem);
-  N_VDestroy(y);
-  return ok && !localBadSolve;
+  if (B) N_VDestroy(B);
+  if (BLS) SUNLinSolFree(BLS);
+  if (BM) SUNMatDestroy(BM);
+  if (bmem) CVodeFree(&bmem);
+  return bok;
 }
 
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
