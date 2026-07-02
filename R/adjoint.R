@@ -473,7 +473,7 @@
 #' Fast path for models WITHOUT dosing-parameter duals (no modeled F / alag /
 #' rate / dur, no replace/multiply events).  A single forward solve emits the
 #' Jacobian and forcing along a fine grid; the backward costate + quadrature
-#' sweep and gradient accumulation run in C++ ([rxAdjointSweepC()]) with no
+#' sweep and gradient accumulation run in C++ (`rxode2AdjointSweep`) with no
 #' per-segment solver calls and no symbolic work -- the shape and speed the
 #' FOCEi outer loop needs.  Falls back to nothing (errors) if the build carries
 #' dosing duals; use [.rxAdjointGradEval()] for those.

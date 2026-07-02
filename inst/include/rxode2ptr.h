@@ -10,6 +10,11 @@ extern "C" {
   typedef SEXP (*_rxode2_rxRmvnSEXP_t)(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP);
   extern _rxode2_rxRmvnSEXP_t _rxode2_rxRmvnSEXP_;
 
+  // Adjoint objective-gradient backward sweep (src/adjoint.cpp); installed into
+  // the downstream package's function-pointer table by iniRxodePtrs().
+  typedef void (*rxode2AdjointSweep_t)(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out);
+  extern rxode2AdjointSweep_t rxode2AdjointSweep;
+
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
@@ -290,6 +295,7 @@ extern "C" {
       rxReal = (rxReal_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 63));
       getRxNsim = (getRxNsim_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 64));
       setRxThreadId = (setRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 65));
+      rxode2AdjointSweep = (rxode2AdjointSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 66));
     }
     return R_NilValue;
   }
@@ -361,6 +367,7 @@ extern "C" {
   rxReal_t rxReal = NULL;                               \
   getRxNsim_t getRxNsim = NULL;                         \
   setRxThreadId_t setRxThreadId = NULL;                 \
+  rxode2AdjointSweep_t rxode2AdjointSweep = NULL;        \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

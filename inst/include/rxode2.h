@@ -89,20 +89,14 @@ typedef rx_solve *(*t_get_solve)(void);
 
 typedef void *(*t_assignFuns)(void);
 
-// Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Exposed with C
-// linkage and registered via R_RegisterCCallable so a downstream package can
-// obtain it with:
-//   rxode2AdjointSweep_t f = (rxode2AdjointSweep_t)
-//     R_GetCCallable("rxode2", "rxode2AdjointSweep");
-// This is the CRAN-preferred cross-package interface (no ABI coupling).  See the
-// function comment in src/adjoint.cpp for the column-major data layout.
-typedef void (*rxode2AdjointSweep_t)(double *tg, double *J, double *dP,
-                                     double *cover, int *obsK, int ns, int np,
-                                     int nt, int nobs, double *out);
+// Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
+// exported to downstream packages through the rxode2 function-pointer table
+// (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
+// is used only when building rxode2 itself (guarded off once rxode2ptr.h has
+// redeclared the name as a function pointer).
+#ifndef __RXODE2PTR_H__
 void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover,
                         int *obsK, int ns, int np, int nt, int nobs, double *out);
-
-#ifndef __RXODE2PTR_H__
 rx_solve *getRxSolve_(void);
 #endif
 rx_solve *getRxSolve2_(void);

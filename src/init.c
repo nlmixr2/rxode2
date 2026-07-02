@@ -481,8 +481,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxReal = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxReal, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxNsim = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNsim, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setRxThreadId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setRxThreadId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2AdjointSweepPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2AdjointSweep, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 66
+#define nVec 67
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -550,6 +551,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 63, rxode2rxReal);
   SET_VECTOR_ELT(ret, 64, rxode2getRxNsim);
   SET_VECTOR_ELT(ret, 65, rxode2setRxThreadId);
+  SET_VECTOR_ELT(ret, 66, rxode2AdjointSweepPtr);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -619,6 +621,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 63, Rf_mkChar("rxode2rxReal"));
   SET_STRING_ELT(retN, 64, Rf_mkChar("rxode2getRxNsim"));
   SET_STRING_ELT(retN, 65, Rf_mkChar("rxode2setRxThreadId"));
+  SET_STRING_ELT(retN, 66, Rf_mkChar("rxode2AdjointSweep"));
 
 #undef nVec
 
@@ -853,7 +856,6 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
-  R_RegisterCCallable("rxode2", "rxode2AdjointSweep", (DL_FUNC) &rxode2AdjointSweep);
   R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
   R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
   R_RegisterCCallable("rxode2", "rxode2EventSensLoad", (DL_FUNC) &rxode2EventSensLoad);
