@@ -3,6 +3,7 @@
 #undef max
 #include "odeinter.h"
 #include <vector>
+#include <cstring>
 
 // ===========================================================================
 // rk4s -- adjoint (discrete-adjoint) RK4.
@@ -32,44 +33,85 @@
 // the state in handle_evid; the adjoint needs mu += amt*dF/dtheta*lambda[cmt]).
 struct rk4s_dose { size_t step; int cmt; double amt; };
 
+// Butcher tableau for an explicit RK method (the discrete-adjoint transpose is
+// table-driven, so adding a fixed-step explicit method = adding a tableau).
+// A is s x s row-major, lower-triangular (A[i*s+j], j<i).  Sized for s<=16 to
+// leave room for the adaptive explicit family (dop853s etc.) later.
+struct rksTableau { int s; double c[16]; double b[16]; double A[256]; };
+
+static rksTableau rksGetTableau(int method) {
+  rksTableau T; std::memset(&T, 0, sizeof(T));
+  switch (method) {
+  case 206: case 207:                 // rk4 / rk4sg -- classical RK4
+    T.s = 4;
+    T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 0.5; T.c[3] = 1.0;
+    T.b[0] = 1.0/6; T.b[1] = 1.0/3; T.b[2] = 1.0/3; T.b[3] = 1.0/6;
+    T.A[1*4+0] = 0.5; T.A[2*4+1] = 0.5; T.A[3*4+2] = 1.0;
+    break;
+  case 239:                           // eulers -- forward Euler
+    T.s = 1; T.c[0] = 0; T.b[0] = 1.0;
+    break;
+  case 240:                           // midpoints -- explicit midpoint (RK2)
+    T.s = 2; T.c[0] = 0; T.c[1] = 0.5; T.b[0] = 0; T.b[1] = 1.0; T.A[1*2+0] = 0.5;
+    break;
+  case 241:                           // heuns -- Heun / explicit trapezoid (RK2)
+    T.s = 2; T.c[0] = 0; T.c[1] = 1.0; T.b[0] = 0.5; T.b[1] = 0.5; T.A[1*2+0] = 1.0;
+    break;
+  default:                            // default to RK4
+    T.s = 4;
+    T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 0.5; T.c[3] = 1.0;
+    T.b[0] = 1.0/6; T.b[1] = 1.0/3; T.b[2] = 1.0/3; T.b[3] = 1.0/6;
+    T.A[1*4+0] = 0.5; T.A[2*4+1] = 0.5; T.A[3*4+2] = 1.0;
+    break;
+  }
+  return T;
+}
+
 struct rk4s_rec {
-  int nq = 0;                          // base states stepped/recorded
-  std::vector<double> h;               // realized dt per step
-  std::vector<double> t0;              // step start time per step
-  std::vector<double> a1, a2, a3, a4;  // stage states, flattened (nStep * nq)
-  void clear() { h.clear(); t0.clear(); a1.clear(); a2.clear(); a3.clear(); a4.clear(); }
+  int s = 0;                 // stages per step
+  int nq = 0;                // base states recorded per stage
+  std::vector<double> h;     // realized dt per step
+  std::vector<double> t0;    // step start time per step
+  std::vector<double> a;     // stage states, flattened (nStep * s * nq); stage i
+                             // of step n at &a[(n*s + i)*nq]
+  void clear() { h.clear(); t0.clear(); a.clear(); }
   size_t nStep() const { return h.size(); }
 };
 
-// One classical RK4 step over [t, t+dt].  dydt READS and WRITES the FULL state
-// (all `nAll` = neqOde entries), so the state/derivative buffers MUST be nAll
-// wide; we only RECORD the first `nRec` (base) states of each stage.  In adjoint
-// mode the rx__sens_* compartments have d/dt=0, so stepping them is a no-op that
-// keeps them at 0 -- exactly what the backward sweep expects.
-static inline void rk4s_step_record(t_dydt dydt, int *neq, int nAll, int nRec,
-                                     double t, double dt, double *y,
-                                     double *k1, double *k2, double *k3, double *k4,
-                                     double *tmp, rk4s_rec *rec) {
-  if (rec) { rec->t0.push_back(t); rec->a1.insert(rec->a1.end(), y, y + nRec); }
-  dydt(neq, t, y, k1);
-  for (int i = 0; i < nAll; ++i) tmp[i] = y[i] + 0.5 * dt * k1[i];
-  if (rec) rec->a2.insert(rec->a2.end(), tmp, tmp + nRec);
-  dydt(neq, t + 0.5 * dt, tmp, k2);
-  for (int i = 0; i < nAll; ++i) tmp[i] = y[i] + 0.5 * dt * k2[i];
-  if (rec) rec->a3.insert(rec->a3.end(), tmp, tmp + nRec);
-  dydt(neq, t + 0.5 * dt, tmp, k3);
-  for (int i = 0; i < nAll; ++i) tmp[i] = y[i] + dt * k3[i];
-  if (rec) rec->a4.insert(rec->a4.end(), tmp, tmp + nRec);
-  dydt(neq, t + dt, tmp, k4);
-  for (int i = 0; i < nAll; ++i)
-    y[i] += (dt / 6.0) * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
-  if (rec) rec->h.push_back(dt);
+// One explicit-RK step over [t, t+dt] for the tableau `T`.  dydt READS/WRITES
+// the FULL state (all `nAll` = neqOde entries), so the stage/derivative buffers
+// MUST be nAll wide; we only RECORD the first `nRec` (base) states of each stage.
+// In adjoint mode the rx__sens_* compartments have d/dt=0, so advancing them is
+// a no-op that keeps them at 0 -- exactly what the backward sweep expects.
+// scratch layout: k[0..s-1] (each nAll) then atmp (nAll) -> (s+1)*nAll.
+static inline void rk4s_step_record(t_dydt dydt, int *neq, const rksTableau &T,
+                                    int nAll, int nRec, double t, double dt, double *y,
+                                    double *scratch, rk4s_rec *rec) {
+  int s = T.s;
+  double *atmp = scratch + s * nAll;
+  for (int i = 0; i < s; ++i) {
+    // a_i = y + dt * sum_{j<i} A[i][j] * k_j
+    for (int m = 0; m < nAll; ++m) atmp[m] = y[m];
+    for (int j = 0; j < i; ++j) {
+      double aij = T.A[i * s + j];
+      if (aij != 0.0) { const double *kj = scratch + j * nAll; for (int m = 0; m < nAll; ++m) atmp[m] += dt * aij * kj[m]; }
+    }
+    if (rec) rec->a.insert(rec->a.end(), atmp, atmp + nRec);
+    dydt(neq, t + T.c[i] * dt, atmp, scratch + i * nAll);
+  }
+  // y_next = y + dt * sum_i b_i k_i
+  for (int i = 0; i < s; ++i) {
+    double bi = T.b[i];
+    if (bi != 0.0) { const double *ki = scratch + i * nAll; for (int m = 0; m < nAll; ++m) y[m] += dt * bi * ki[m]; }
+  }
+  if (rec) { rec->t0.push_back(t); rec->h.push_back(dt); }
 }
 
 // Stage-recording analogue of rk4_do_steps (src/rk4.cpp): same step-size logic;
 // advances all `nAll` states, records the first `nRec` (base) states per stage.
 static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options *op,
-                                 t_dydt dydt, int *neq, int nAll, int nRec, double *yp,
+                                 t_dydt dydt, int *neq, const rksTableau &T,
+                                 int nAll, int nRec, double *yp,
                                  double xp, double xout, rk4s_rec *rec,
                                  std::vector<double> &scratch) {
   double t = xp;
@@ -81,9 +123,8 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
   int sign = (xout > xp) ? 1 : -1;
   dt = sign * dt;
 
-  // dydt writes nAll derivatives into each k buffer -> each must be nAll wide.
-  if ((int)scratch.size() < 5 * nAll) scratch.resize(5 * nAll);
-  double *k1 = scratch.data(), *k2 = k1 + nAll, *k3 = k2 + nAll, *k4 = k3 + nAll, *tmp = k4 + nAll;
+  // dydt writes nAll derivatives into each k buffer -> (s k-buffers + atmp).
+  if ((int)scratch.size() < (T.s + 1) * nAll) scratch.resize((T.s + 1) * nAll);
 
   error_checker check(ind, ind->rc, op->mxstep);
   zero_copy_state chk(yp, nAll);
@@ -94,7 +135,7 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
       current_dt = xout - t;
     }
     try {
-      rk4s_step_record(dydt, neq, nAll, nRec, t, current_dt, yp, k1, k2, k3, k4, tmp, rec);
+      rk4s_step_record(dydt, neq, T, nAll, nRec, t, current_dt, yp, scratch.data(), rec);
     } catch (const std::exception &e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
       ind->err = 1;
@@ -124,7 +165,7 @@ static inline void rk4s_eval_jac(int cSub, double t, const double *a, int nBase,
 // stage Jacobians ONCE (calc_lhs), then runs an independent reset sweep per
 // (observation, base-state) pair.
 static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
-                               int cSub, rk4s_rec &rec, int nBase, int np,
+                               int cSub, rk4s_rec &rec, const rksTableau &T, int nBase, int np,
                                int fxOff, int fpOff, int dfOff, int sensOff,
                                const std::vector<size_t> &boundary,
                                const std::vector<rk4s_dose> &doses) {
@@ -132,19 +173,20 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   if (nStep == 0) return;
   int eff = rxEffNeq(ind, op);
   int nfx = nBase * nBase, nfp = nBase * np;
+  int sN = T.s;
 
-  // Precompute stage Jacobians for all steps: FXs[s][n*nfx + ...], FPs[s][...].
-  std::vector<double> FXs[4], FPs[4];
-  for (int s = 0; s < 4; ++s) { FXs[s].resize(nStep * nfx); FPs[s].resize(nStep * nfp); }
+  // Precompute each step's per-stage Jacobians: FXs[i] holds stage i for all
+  // steps (n*nfx + ...), FPs[i] likewise.  Stage i of step n is at
+  // &rec.a[(n*sN + i)*nBase], time t0 + c_i*h.
+  std::vector<std::vector<double> > FXs(sN), FPs(sN);
+  for (int i = 0; i < sN; ++i) { FXs[i].resize(nStep * nfx); FPs[i].resize(nStep * nfp); }
   std::vector<double> Ascratch(eff, 0.0);
   for (size_t n = 0; n < nStep; ++n) {
     double h = rec.h[n], t0 = rec.t0[n];
-    const double *aS[4] = { &rec.a1[n * nBase], &rec.a2[n * nBase],
-                            &rec.a3[n * nBase], &rec.a4[n * nBase] };
-    double tS[4] = { t0, t0 + 0.5 * h, t0 + 0.5 * h, t0 + h };
-    for (int s = 0; s < 4; ++s)
-      rk4s_eval_jac(cSub, tS[s], aS[s], nBase, np, fxOff, fpOff, Ascratch.data(), eff,
-                    ind, &FXs[s][n * nfx], &FPs[s][n * nfp]);
+    for (int i = 0; i < sN; ++i)
+      rk4s_eval_jac(cSub, t0 + T.c[i] * h, &rec.a[(n * sN + i) * nBase], nBase, np,
+                    fxOff, fpOff, Ascratch.data(), eff, ind,
+                    &FXs[i][n * nfx], &FPs[i][n * nfp]);
   }
 
   // dF/dtheta block (param-only) read once; used for the additive-bolus
@@ -157,37 +199,31 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (int i = 0; i < nBase * np; ++i) dFdp[i] = ind->lhs[dfOff + i];
   }
 
-  std::vector<double> lam(nBase), Xbar(nBase), k1b(nBase), k2b(nBase), k3b(nBase), k4b(nBase);
-  std::vector<double> ab(nBase), mu(np);
+  std::vector<double> lam(nBase), Ybar(nBase), abar(nBase), kbar(sN * nBase), mu(np);
 
-  // The shared single-step reverse-mode RK4 transpose (DRY): advances the
-  // costate `lam` and accumulates the quadrature `mu` across 0-based step n,
-  // including the additive-bolus dose-parameter jump.  Used identically by the
-  // full-trajectory reset sweeps and the O(1) scalar single sweep.
+  // The shared table-driven explicit-RK reverse-mode transpose (DRY): reverse of
+  // one forward step under tableau T.  Given the incoming costate lamR
+  // (= adjoint of y_{n+1}), produces the outgoing costate (= adjoint of y_n) and
+  // accumulates the quadrature muR; plus the additive-bolus dose-parameter jump.
+  // Init kbar_i = h b_i lam; then for i = s-1..0: abar = FX_i^T kbar_i,
+  // muR += FP_i^T kbar_i, Ybar += abar, kbar_j += h A[i][j] abar (j<i).
   auto stepTranspose = [&](size_t n, std::vector<double> &lamR, std::vector<double> &muR) {
     double h = rec.h[n];
-    const double *fx1 = &FXs[0][n * nfx], *fx2 = &FXs[1][n * nfx],
-                 *fx3 = &FXs[2][n * nfx], *fx4 = &FXs[3][n * nfx];
-    const double *fp1 = &FPs[0][n * nfp], *fp2 = &FPs[1][n * nfp],
-                 *fp3 = &FPs[2][n * nfp], *fp4 = &FPs[3][n * nfp];
-    for (int j = 0; j < nBase; ++j) Xbar[j] = lamR[j];
-    for (int j = 0; j < nBase; ++j) {
-      k1b[j] = h / 6.0 * Xbar[j]; k2b[j] = h / 3.0 * Xbar[j];
-      k3b[j] = h / 3.0 * Xbar[j]; k4b[j] = h / 6.0 * Xbar[j];
+    for (int j = 0; j < nBase; ++j) Ybar[j] = lamR[j];
+    for (int i = 0; i < sN; ++i)
+      for (int j = 0; j < nBase; ++j) kbar[i * nBase + j] = h * T.b[i] * lamR[j];
+    for (int i = sN - 1; i >= 0; --i) {
+      const double *fx = &FXs[i][n * nfx], *fp = &FPs[i][n * nfp];
+      const double *kb = &kbar[i * nBase];
+      for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx[ii * nBase + j] * kb[ii]; abar[j] = s; }
+      for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp[ii * np + p] * kb[ii]; muR[p] += s; }
+      for (int j = 0; j < nBase; ++j) Ybar[j] += abar[j];
+      for (int jstage = 0; jstage < i; ++jstage) {
+        double aij = T.A[i * sN + jstage];
+        if (aij != 0.0) { double *kbj = &kbar[jstage * nBase]; for (int j = 0; j < nBase; ++j) kbj[j] += h * aij * abar[j]; }
+      }
     }
-    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx4[ii * nBase + j] * k4b[ii]; ab[j] = s; }
-    for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k3b[j] += h * ab[j]; }
-    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp4[ii * np + p] * k4b[ii]; muR[p] += s; }
-    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx3[ii * nBase + j] * k3b[ii]; ab[j] = s; }
-    for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k2b[j] += 0.5 * h * ab[j]; }
-    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp3[ii * np + p] * k3b[ii]; muR[p] += s; }
-    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx2[ii * nBase + j] * k2b[ii]; ab[j] = s; }
-    for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k1b[j] += 0.5 * h * ab[j]; }
-    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp2[ii * np + p] * k2b[ii]; muR[p] += s; }
-    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx1[ii * nBase + j] * k1b[ii]; ab[j] = s; }
-    for (int j = 0; j < nBase; ++j) Xbar[j] += ab[j];
-    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp1[ii * np + p] * k1b[ii]; muR[p] += s; }
-    for (int j = 0; j < nBase; ++j) lamR[j] = Xbar[j];   // additive bolus: dD/dX = I
+    for (int j = 0; j < nBase; ++j) lamR[j] = Ybar[j];   // additive bolus: dD/dX = I
     if (haveDose) {
       for (size_t di = 0; di < doses.size(); ++di) {
         if (doses[di].step == n) {
@@ -277,7 +313,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int nRec = adj ? op->adjNbase : neqOde;     // base states recorded per stage
   double *yp;
 
+  rksTableau T = rksGetTableau(op->stiff);    // explicit-RK tableau for this method
   rk4s_rec rec;
+  rec.s = T.s;
   rec.nq = nRec;
   std::vector<double> scratch;
   std::vector<size_t> boundary(ind->n_all_times, 0);  // cumulative steps at each stored time
@@ -319,7 +357,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (nAll > 0) {
-                  rk4s_do_steps(ind, op, c_dydt, neq, nAll, nRec, yp, xp, ind->extraDoseNewXout, &rec, scratch);
+                  rk4s_do_steps(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, ind->extraDoseNewXout, &rec, scratch);
               }
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "rk4s failed";
@@ -341,7 +379,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (!isSameTime(xout, ind->extraDoseNewXout)) {
                 preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
                 if (nAll > 0) {
-                    rk4s_do_steps(ind, op, c_dydt, neq, nAll, nRec, yp, ind->extraDoseNewXout, xout, &rec, scratch);
+                    rk4s_do_steps(ind, op, c_dydt, neq, T, nAll, nRec, yp, ind->extraDoseNewXout, xout, &rec, scratch);
                 }
                 copyLinCmt(neq, ind, op, yp);
                 const char* err_msg = "rk4s failed";
@@ -355,7 +393,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (nAll > 0) {
-              rk4s_do_steps(ind, op, c_dydt, neq, nAll, nRec, yp, xp, xout, &rec, scratch);
+              rk4s_do_steps(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, xout, &rec, scratch);
           }
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "rk4s failed";
@@ -415,7 +453,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   // ---- backward reverse-mode sweep -> fill rx__sens_* output slots ----
   if (adj && !localBadSolve && ind->err == 0) {
-    rk4s_backward_fill(rx, op, ind, neq[1], rec, op->adjNbase, op->adjNp,
+    rk4s_backward_fill(rx, op, ind, neq[1], rec, T, op->adjNbase, op->adjNp,
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
                        boundary, doseRec);
   }

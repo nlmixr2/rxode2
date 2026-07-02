@@ -194,6 +194,25 @@ rxTest({
                      rxode2::.rxAdjointModel(mText, cs)$model)
   })
 
+  test_that("table-driven fixed-step methods (eulers/midpoints/heuns) match FD of their own map", {
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    for (meth in c("eulers", "midpoints", "heuns")) {
+      sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = meth, cores = 1))
+      solveB <- function(pp) as.matrix(as.data.frame(
+        rxode2::rxSolve(madj, ev, params = pp, method = meth, cores = 1))[, c("depot", "center")])
+      fdmax <- 0
+      for (pn in cs) {
+        hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+        for (k in seq_along(ex$st))
+          fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+      }
+      expect_lt(fdmax, 1e-4)
+    }
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0

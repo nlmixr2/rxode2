@@ -6697,8 +6697,11 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 6:
         ind_rk4(rx, cid, c_dydt, u_inis);
         break;
-      case 206: // rk4s -- discrete-adjoint RK4 (full trajectory)
+      case 206: // rk4s  -- discrete-adjoint RK4 (full trajectory)
       case 207: // rk4sg -- discrete-adjoint RK4 (O(1) scalar objective)
+      case 239: // eulers    -- discrete-adjoint forward Euler
+      case 240: // midpoints -- discrete-adjoint explicit midpoint
+      case 241: // heuns     -- discrete-adjoint Heun
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6914,8 +6917,11 @@ extern "C" void par_solve(rx_solve *rx) {
         // rk4
         par_rk4(rx);
         break;
-      case 206: // rk4s -- discrete-adjoint RK4 (full trajectory)
+      case 206: // rk4s  -- discrete-adjoint RK4 (full trajectory)
       case 207: // rk4sg -- discrete-adjoint RK4 (O(1) scalar objective)
+      case 239: // eulers
+      case 240: // midpoints
+      case 241: // heuns
         par_rk4s(rx);
         break;
       case 7:
