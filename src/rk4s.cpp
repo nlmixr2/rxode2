@@ -342,10 +342,12 @@ static inline void rk4s_hist_push(rx_solving_options_ind *ind, rx_solving_option
 }
 
 // Cap |dt| so no step overshoots the smallest delay (keeps delay() lookups inside
-// already-recorded history).  No-op for non-delay models.
+// already-recorded history) or the user's HMAX.  No-op when neither applies.
 static inline double rk4s_hist_cap(rx_solving_options_ind *ind, double dt, int sign) {
   if (ind->delayHistOn && R_FINITE(ind->delayMinT) && fabs(dt) > ind->delayMinT)
-    return sign * ind->delayMinT;
+    dt = sign * ind->delayMinT;
+  if (R_FINITE(ind->HMAX) && ind->HMAX > 0.0 && fabs(dt) > ind->HMAX)
+    dt = sign * ind->HMAX;
   return dt;
 }
 
@@ -927,7 +929,30 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (int i = 0; i < nBase * np; ++i) dFdp[i] = ind->lhs[dfOff + i];
   }
 
+  // DDE anticipating term: precompute the delayed Jacobian F_Xd and delay
+  // durations tau at each step start (calc_lhs reads delay() from the still-live
+  // forward history).  The costate then gets lam_j(t) += h * F_Xd_ij(t+tau) *
+  // lam_i(t+tau) -- the adjoint dual of the delayed-state coupling.  tau >= h
+  // (step cap), so t+tau always lands on an already-swept later step boundary.
+  int fxdOff = op->adjFxdOff, tauOff = op->adjTauOff;
+  bool haveDelay = (fxdOff >= 0 && tauOff >= 0);
+  std::vector<double> FXd, TAU;
+  if (haveDelay) {
+    FXd.resize(nStep * nfx); TAU.resize(nStep * nfx);
+    for (size_t n = 0; n < nStep; ++n) {
+      for (int q = 0; q < eff; ++q) Ascratch[q] = 0.0;
+      for (int q = 0; q < nBase; ++q) Ascratch[q] = rec.a[(n * sN) * nBase + q];
+      calc_lhs(cSub, rec.t0[n], Ascratch.data(), ind->lhs);
+      for (int q = 0; q < nfx; ++q) { FXd[n * nfx + q] = ind->lhs[fxdOff + q]; TAU[n * nfx + q] = ind->lhs[tauOff + q]; }
+    }
+  }
+  // boundary time of index m in [0, nStep]: contiguous step starts (last = end).
+  auto btime = [&](size_t m) -> double {
+    return (m < nStep) ? rec.t0[m] : (rec.t0[nStep - 1] + rec.h[nStep - 1]);
+  };
+
   std::vector<double> lam(nBase), Ybar(nBase), abar(nBase), kbar(sN * nBase), mu(np);
+  std::vector<double> lamStore;   // (fromStep+1) x nBase costate trajectory (DDE only)
 
   // The shared table-driven explicit-RK reverse-mode transpose (DRY): reverse of
   // one forward step under tableau T.  Given the incoming costate lamR
@@ -968,10 +993,42 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     size_t fromStep = boundary[i];
     double *out = getSolve(i);
+    double tObs = (fromStep > 0) ? btime(fromStep) : 0.0;
     for (int k = 0; k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
-      for (size_t nn = fromStep; nn >= 1; --nn) stepTranspose(nn - 1, lam, mu);
+      if (haveDelay) {
+        lamStore.assign((fromStep + 1) * nBase, 0.0);
+        for (int j = 0; j < nBase; ++j) lamStore[fromStep * nBase + j] = lam[j];
+      }
+      for (size_t nn = fromStep; nn >= 1; --nn) {
+        size_t n = nn - 1;
+        stepTranspose(n, lam, mu);
+        if (haveDelay) {
+          double h = rec.h[n], t0n = rec.t0[n];
+          for (int istate = 0; istate < nBase; ++istate)
+            for (int jstate = 0; jstate < nBase; ++jstate) {
+              double tau = TAU[n * nfx + istate * nBase + jstate];
+              if (tau <= 0.0) continue;
+              // Continuous-adjoint anticipating term, discretized at the scheme
+              // rate (converges to FD as h->0; not a machine-exact discrete
+              // transpose -- that would require transposing the Hermite delay
+              // interpolation per stage, a future refinement).
+              double tq = t0n + tau;
+              if (tq > tObs + 1e-12) continue;      // lam_i beyond the obs time is 0
+              // largest boundary m <= tq (rec.t0 ascending); interpolate lam_i(tq).
+              size_t lo = n + 1, hi = fromStep, m = n + 1;
+              while (lo <= hi) { size_t mid = (lo + hi) / 2; if (btime(mid) <= tq) { m = mid; lo = mid + 1; } else { if (mid == 0) break; hi = mid - 1; } }
+              double bm = btime(m), bm1 = btime(m + 1 <= fromStep ? m + 1 : fromStep);
+              double lami;
+              if (m >= fromStep || bm1 <= bm) { lami = lamStore[fromStep * nBase + istate]; }
+              else { double w = (tq - bm) / (bm1 - bm); lami = (1.0 - w) * lamStore[m * nBase + istate] + w * lamStore[(m + 1) * nBase + istate]; }
+              double fxd = FXd[m * nfx + istate * nBase + jstate];
+              lam[jstate] += h * fxd * lami;
+            }
+          for (int j = 0; j < nBase; ++j) lamStore[n * nBase + j] = lam[j];
+        }
+      }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }

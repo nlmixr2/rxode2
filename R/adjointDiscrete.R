@@ -250,6 +250,57 @@
   for (i in seq_len(.ns)) for (p in seq_len(.np))
     .fpLines <- c(.fpLines, sprintf("rx__adjFP_%d_%d__=%s", i - 1L, p - 1L,
                                     .fromSE(paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__"))))
+  # DDE: delayed Jacobian F_Xd[i][j] = d f_i / d(delay(y_j, tau)) and the delay
+  # duration tau, emitted as full nBase x nBase lhs blocks (0 where f_i has no
+  # delay(y_j, .) term).  The backward sweep uses these for the ANTICIPATING
+  # costate term lam_j(t) += h * F_Xd[i][j](t+tau) * lam_i(t+tau).  Reuses the
+  # subs+D delayed-Jacobian machinery from .rxDelaySensAugment (R/dde.R).  Only
+  # emitted for delay models, so non-DDE calc_lhs stays cheap.
+  .fxdLines <- character(0); .tauLines <- character(0); .hasDelayAdj <- FALSE
+  .fxdMat <- matrix("0", .ns, .ns); .tauMat <- matrix("0", .ns, .ns)
+  # Collect every delay() subexpression in an R expression (symengine's VecBasic
+  # `[[`/function_symbols is masked after .rxJacobian, so walk the text instead).
+  .findDelays <- function(e, acc = list()) {
+    if (is.call(e)) {
+      if (identical(e[[1L]], as.name("delay")) && length(e) == 3L) {
+        acc[[length(acc) + 1L]] <- e
+      }
+      for (.a in as.list(e)[-1L]) acc <- .findDelays(.a, acc)
+    }
+    acc
+  }
+  for (i in seq_len(.ns)) {
+    .fi <- get0(paste0("rx__d_dt_", .st[i], "__"), envir = .model, inherits = FALSE)
+    if (is.null(.fi)) next
+    .fiTxt <- rxode2::rxFromSE(.fi)
+    .dcalls <- .findDelays(parse(text = .fiTxt)[[1L]])
+    if (length(.dcalls) == 0L) next
+    .seen <- character(0)
+    for (.dc in .dcalls) {
+      .dcTxt <- deparse1(.dc)
+      if (.dcTxt %in% .seen) next   # gsub(fixed) already captured all copies
+      .seen <- c(.seen, .dcTxt)
+      .stateJ <- deparse1(.dc[[2L]]); .tau <- deparse1(.dc[[3L]])
+      .j <- match(.stateJ, .st); if (is.na(.j)) next
+      # d f_i / d(delay(y_j, tau)): replace this delay() with a plain symbol, then
+      # differentiate symbolically w.r.t. that symbol (a value derivative).
+      .gName <- "rx__gdlyATMP__"
+      .modTxt <- gsub(.dcTxt, .gName, .fiTxt, fixed = TRUE)
+      .dj <- symengine::D(symengine::S(.modTxt), symengine::S(.gName))
+      .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"),
+                     rxode2::rxFromSE(.dj), fixed = TRUE)
+      .fxdMat[i, .j] <- if (identical(.fxdMat[i, .j], "0")) .djTxt else
+        paste0(.fxdMat[i, .j], "+(", .djTxt, ")")
+      .tauMat[i, .j] <- .tau
+      .hasDelayAdj <- TRUE
+    }
+  }
+  if (.hasDelayAdj) {
+    for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
+      .fxdLines <- c(.fxdLines, sprintf("rx__adjFXd_%d_%d__=%s", i - 1L, j - 1L, .fxdMat[i, j]))
+      .tauLines <- c(.tauLines, sprintf("rx__adjTau_%d_%d__=%s", i - 1L, j - 1L, .tauMat[i, j]))
+    }
+  }
   # rx__sens_<state>_BY_<param>__ OUTPUT-STORAGE compartments (d/dt = 0): the
   # backward sweep writes dy_k(t_i)/dtheta_p into these stored solve slots per
   # observation.  Emitted AFTER the base ODEs so state order is [base, sens];
@@ -290,11 +341,18 @@
       }
     }
   }
-  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines, .jpLines, .jyLines), collapse = "\n"),
+  # lhs layout (contiguous from 0): fx, fp, df, [jp, jy if stiff], [fxd, tau if DDE]
+  .afterStiff <- if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np + .ns * .ns * .np + .ns * .ns * .ns
+                 else .ns * .ns + 2L * .ns * .np
+  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines,
+                      .jpLines, .jyLines, .fxdLines, .tauLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens, stiff = isTRUE(stiff),
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
        jpOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np else -1L,
        jyOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np + .ns * .ns * .np else -1L,
+       fxdOff = if (.hasDelayAdj) .afterStiff else -1L,
+       tauOff = if (.hasDelayAdj) .afterStiff + .ns * .ns else -1L,
+       hasDelay = .hasDelayAdj,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }
 

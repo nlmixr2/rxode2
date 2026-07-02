@@ -2410,10 +2410,20 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     # models).  Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
     if (.ctl$method >= 200L) {
-      # discrete-adjoint rk4s methods (rk4s/dop853s/ros4s/... and the
-      # dop853s+ros4s composite) record their own cubic-Hermite dense history
-      # per accepted step, so they support delay() without the dop853/ros4
-      # dense path.  Nothing to switch.
+      # discrete-adjoint rk4s methods record their own cubic-Hermite dense
+      # history per accepted step, so they support delay() without the
+      # dop853/ros4 dense path.  The backward ANTICIPATING term (delayed
+      # Jacobian) is currently implemented only in the explicit backward fill --
+      # the stiff (ros4s=213, radauiia5s=236) and composite (stiff2>0) adjoint
+      # delay paths are not yet supported, so reject them rather than return
+      # silently-wrong sensitivities.
+      if (.ctl$method == 213L || .ctl$method == 236L || .stiff2 > 0L) {
+        stop("delay differential equations with the discrete adjoint are currently ",
+             "supported only with the explicit rk4s-family methods (e.g. 'rk4s', ",
+             "'dop87s', 'dop853s'); the stiff ('ros4s', 'radauiia5s') and composite ",
+             "('dop853s+ros4s') adjoint delay paths are not yet implemented",
+             call. = FALSE)
+      }
     } else if (.ctl$method == 2L) {
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
       .ctl$method <- 0L

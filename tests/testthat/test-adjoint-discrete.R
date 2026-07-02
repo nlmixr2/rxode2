@@ -234,6 +234,37 @@ rxTest({
     expect_lt(fdmax, 1e-5)
   })
 
+  test_that("DDE delay() adjoint converges to FD for explicit rk4s methods", {
+    # The anticipating costate term (delayed Jacobian F_Xd) makes the backward
+    # sweep account for the delayed-state coupling.  It is a continuous-adjoint
+    # discretization -> converges to FD at the scheme rate (O(h)), not machine
+    # exact, so we assert monotone convergence as the step shrinks.
+    mTextD <- "d/dt(central) = -k * delay(central, tau)"
+    exD <- rxode2::.rxAdjointExpand(mTextD, c("k"))
+    expect_true(exD$hasDelay); expect_gt(exD$fxdOff, 0); expect_gt(exD$tauOff, exD$fxdOff)
+    madjD <- rxode2::rxode2(exD$text)
+    pD <- c(k = 0.3, tau = 2); evD <- et(amt = 10, cmt = "central") %>% et(seq(0, 20, by = 2))
+    errAt <- function(h) {
+      sc <- as.data.frame(rxode2::rxSolve(madjD, evD, params = pD, method = "rk4s", hmin = h, cores = 1))
+      sb <- function(pp) as.data.frame(rxode2::rxSolve(madjD, evD, params = pp, method = "rk4s", hmin = h, cores = 1))$central
+      hh <- pD[["k"]] * 1e-6; pp <- pD; pm <- pD; pp["k"] <- pp["k"] + hh; pm["k"] <- pm["k"] - hh
+      max(abs(sc[["rx__sens_central_BY_k__"]] - (sb(pp) - sb(pm)) / (2 * hh)))
+    }
+    e1 <- errAt(0.05); e2 <- errAt(0.02); e3 <- errAt(0.005)
+    expect_lt(e2, e1); expect_lt(e3, e2)   # converges as h shrinks
+    expect_lt(e3, 0.05)                    # and is small at the finest step
+  })
+
+  test_that("DDE delay() adjoint rejects stiff/composite methods (not yet supported)", {
+    exD <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k"))
+    madjD <- rxode2::rxode2(exD$text)
+    evD <- et(amt = 10, cmt = "central") %>% et(c(4, 12))
+    expect_error(rxode2::rxSolve(madjD, evD, params = c(k = 0.3, tau = 2), method = "ros4s", cores = 1),
+                 "not yet implemented")
+    expect_error(rxode2::rxSolve(madjD, evD, params = c(k = 0.3, tau = 2), method = "dop853s+ros4s", cores = 1),
+                 "not yet implemented")
+  })
+
   test_that("composite AutoSwitch dop853s+ros4s adjoint is exact across stiffness regimes", {
     # The composite freezes the per-interval switch decision and transposes each
     # step with the method (explicit dop853s OR Rosenbrock ros4s) that ran it.
