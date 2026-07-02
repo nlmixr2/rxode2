@@ -255,14 +255,22 @@ rxTest({
     expect_lt(e3, 0.05)                    # and is small at the finest step
   })
 
-  test_that("DDE delay() adjoint rejects stiff/composite methods (not yet supported)", {
-    exD <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k"))
+  test_that("DDE delay() adjoint converges for stiff (ros4s) and composite methods", {
+    # The anticipating term is a per-step costate injection shared by every
+    # backward fill (explicit, Rosenbrock, Radau, composite), so all of them
+    # converge to FD as the step shrinks.
+    exD <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k"), stiff = TRUE)
     madjD <- rxode2::rxode2(exD$text)
-    evD <- et(amt = 10, cmt = "central") %>% et(c(4, 12))
-    expect_error(rxode2::rxSolve(madjD, evD, params = c(k = 0.3, tau = 2), method = "ros4s", cores = 1),
-                 "not yet implemented")
-    expect_error(rxode2::rxSolve(madjD, evD, params = c(k = 0.3, tau = 2), method = "dop853s+ros4s", cores = 1),
-                 "not yet implemented")
+    pD <- c(k = 0.3, tau = 2); evD <- et(amt = 10, cmt = "central") %>% et(seq(0, 20, by = 2))
+    errAt <- function(method, ctl) {
+      sc <- as.data.frame(do.call(rxode2::rxSolve, c(list(madjD, evD, params = pD, method = method, cores = 1), ctl)))
+      sb <- function(pp) as.data.frame(do.call(rxode2::rxSolve, c(list(madjD, evD, params = pp, method = method, cores = 1), ctl)))$central
+      hh <- pD[["k"]] * 1e-6; pp <- pD; pm <- pD; pp["k"] <- pp["k"] + hh; pm["k"] <- pm["k"] - hh
+      max(abs(sc[["rx__sens_central_BY_k__"]] - (sb(pp) - sb(pm)) / (2 * hh)))
+    }
+    expect_lt(errAt("ros4s", list(hmin = 0.01)), errAt("ros4s", list(hmin = 0.05)))
+    expect_lt(errAt("ros4s", list(hmin = 0.01)), 0.15)
+    expect_lt(errAt("dop853s+ros4s", list(hmax = 0.02, atol = 1e-9, rtol = 1e-9)), 0.15)
   })
 
   test_that("composite AutoSwitch dop853s+ros4s adjoint is exact across stiffness regimes", {
