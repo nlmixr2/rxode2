@@ -57,27 +57,41 @@
         .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
     }
   }
-  .ev1 <- function(s, x, params) {
-    .e <- list2env(c(as.list(stats::setNames(x, .st)), as.list(params)), parent = baseenv())
-    assign("Rx_pow_di", function(a, b) a^b, .e); assign("Rx_pow", function(a, b) a^b, .e)
-    assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), .e)
-    assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), .e)
-    eval(parse(text = s), .e)
-  }
-  list(st = .st, ns = .ns, np = .np, calcSens = calcSens, fStr = .fStr, dFdpStr = .dFdpStr,
-       evP = function(s, params) .ev1(s, numeric(.ns), params),
-       Fe  = function(x, p) vapply(.Fexpr, .ev1, numeric(1), x = x, params = p),
-       FXe = function(x, p) matrix(vapply(as.vector(.FXexpr), .ev1, numeric(1), x = x, params = p), .ns, .ns),
-       FPe = function(x, p) matrix(vapply(as.vector(.FPexpr), .ev1, numeric(1), x = x, params = p), .ns, .np))
+  ## Pre-parse every expression ONCE (parsing, not arithmetic, dominates the
+  ## per-stage cost) and evaluate the parsed forms against a single reusable
+  ## environment whose state/param bindings are updated in place per call.
+  .parse1 <- function(s) parse(text = s)[[1]]
+  .FexprP  <- lapply(.Fexpr, .parse1)
+  .FXexprP <- lapply(as.vector(.FXexpr), .parse1)
+  .FPexprP <- lapply(as.vector(.FPexpr), .parse1)
+  .fStrP   <- lapply(.fStr, .parse1)
+  .dFdpStrP <- lapply(.dFdpStr, function(v) lapply(v, .parse1))
+  .env <- new.env(parent = baseenv())
+  assign("Rx_pow_di", function(a, b) a^b, .env); assign("Rx_pow", function(a, b) a^b, .env)
+  assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), .env)
+  assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), .env)
+  .setState <- function(x) for (i in seq_len(.ns)) assign(.st[i], x[i], envir = .env)
+  .setParams <- function(params) { .nm <- names(params); for (i in seq_along(params)) assign(.nm[i], params[[i]], envir = .env) }
+  .evList <- function(pl) vapply(pl, eval, numeric(1), envir = .env)
+  list(st = .st, ns = .ns, np = .np, calcSens = calcSens,
+       fStr = .fStr, dFdpStr = .dFdpStr,
+       ## evaluate F(theta) for a dose cmt at parameters only (no state)
+       evP = function(cmtStr, params) { .setState(numeric(.ns)); .setParams(params); eval(cmtStr, .env) },
+       Fe  = function(x, p) { .setState(x); .setParams(p); .evList(.FexprP) },
+       FXe = function(x, p) { .setState(x); .setParams(p); matrix(.evList(.FXexprP), .ns, .ns) },
+       FPe = function(x, p) { .setState(x); .setParams(p); matrix(.evList(.FPexprP), .ns, .np) },
+       ## pre-parsed bioavailability forms for the dose jump
+       fStrP = .fStrP, dFdpStrP = .dFdpStrP,
+       evScalar = function(pexpr, params) { .setState(numeric(.ns)); .setParams(params); eval(pexpr, .env) })
 }
 
 ## Resolve an additive-bolus dose jump (cmt index, F*amt magnitude, d(F*amt)/dtheta).
 ## dose = list(step = <0-based grid step>, cmt = <state name>, amt = <numeric>).
 .rxDiscreteDoseJump <- function(build, dose, params) {
   .ci <- match(dose$cmt, build$st)
-  if (dose$cmt %in% names(build$fStr)) {
-    .Fval <- build$evP(build$fStr[[dose$cmt]], params)
-    .dFdp <- vapply(build$dFdpStr[[dose$cmt]], build$evP, numeric(1), params = params)
+  if (dose$cmt %in% names(build$fStrP)) {
+    .Fval <- build$evScalar(build$fStrP[[dose$cmt]], params)
+    .dFdp <- vapply(build$dFdpStrP[[dose$cmt]], build$evScalar, numeric(1), params = params)
   } else { .Fval <- 1; .dFdp <- numeric(build$np) }
   list(ci = .ci, Fval = .Fval, dFdp = .dFdp, amt = dose$amt)
 }
