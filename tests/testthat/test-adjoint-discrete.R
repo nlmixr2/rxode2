@@ -174,19 +174,23 @@ rxTest({
                      rxode2::.rxAdjointModel(mText, cs)$model)
   })
 
-  test_that("adaptive dop5s/dop853s: primal matches liblsoda and frozen-step adjoint matches FD", {
+  test_that("adaptive methods: primal matches liblsoda and frozen-step adjoint matches FD", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     mbase <- rxode2::rxode2(mText)
     ref <- as.data.frame(rxode2::rxSolve(mbase, ev, params = p, method = "liblsoda",
                                          atol = 1e-11, rtol = 1e-11))
-    for (meth in c("dop5s", "dop853s")) {
+    # per-method (tolerance, primal-tol) -- lower-order pairs need looser primal
+    cfg <- list(dop5s = c(1e-11, 1e-5), dop853s = c(1e-11, 1e-5),
+                ck54s = c(1e-11, 1e-5), bs32s = c(1e-8, 1e-4))
+    for (meth in names(cfg)) {
+      tl <- cfg[[meth]][1]; ptol <- cfg[[meth]][2]
       sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = meth,
-                                          atol = 1e-11, rtol = 1e-11, cores = 1))
-      expect_lt(max(abs(as.matrix(sd[, c("depot", "center")]) - as.matrix(ref[, c("depot", "center")]))), 1e-5)
+                                          atol = tl, rtol = tl, cores = 1))
+      expect_lt(max(abs(as.matrix(sd[, c("depot", "center")]) - as.matrix(ref[, c("depot", "center")]))), ptol)
       solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
-        madj, ev, params = pp, method = meth, atol = 1e-11, rtol = 1e-11, cores = 1))[, c("depot", "center")])
+        madj, ev, params = pp, method = meth, atol = tl, rtol = tl, cores = 1))[, c("depot", "center")])
       fdmax <- 0
       for (pn in cs) {
         hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh

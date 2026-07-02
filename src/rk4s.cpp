@@ -95,6 +95,32 @@ static void rksTableauDop853(rksTableau &T) {
   for (int i = 0; i < s; ++i) { T.b[i] = b[i]; T.bhat[i] = b[i] - er[i]; }
 }
 
+// Cash-Karp RK5(4), 6 stages (rxode2 "ck54").  b = 5th-order weights, bhat =
+// 4th-order embedded; errOrder = 4.
+static void rksTableauCk54(rksTableau &T) {
+  const int s = 6; T.s = s; T.adaptive = 1; T.errOrder = 4;
+  T.c[0]=0; T.c[1]=1.0/5; T.c[2]=3.0/10; T.c[3]=3.0/5; T.c[4]=1.0; T.c[5]=7.0/8;
+  T.A[1*s+0]=1.0/5;
+  T.A[2*s+0]=3.0/40;         T.A[2*s+1]=9.0/40;
+  T.A[3*s+0]=3.0/10;         T.A[3*s+1]=-9.0/10;      T.A[3*s+2]=6.0/5;
+  T.A[4*s+0]=-11.0/54;       T.A[4*s+1]=5.0/2;        T.A[4*s+2]=-70.0/27;       T.A[4*s+3]=35.0/27;
+  T.A[5*s+0]=1631.0/55296;   T.A[5*s+1]=175.0/512;    T.A[5*s+2]=575.0/13824;    T.A[5*s+3]=44275.0/110592; T.A[5*s+4]=253.0/4096;
+  T.b[0]=37.0/378; T.b[1]=0; T.b[2]=250.0/621; T.b[3]=125.0/594; T.b[4]=0; T.b[5]=512.0/1771;
+  T.bhat[0]=2825.0/27648; T.bhat[1]=0; T.bhat[2]=18575.0/48384; T.bhat[3]=13525.0/55296; T.bhat[4]=277.0/14336; T.bhat[5]=1.0/4;
+}
+
+// Bogacki-Shampine RK3(2), 4 stages (FSAL; the ode23 tableau, rxode2 "bs32").
+// b = 3rd-order weights, bhat = 2nd-order embedded; errOrder = 2.
+static void rksTableauBs32(rksTableau &T) {
+  const int s = 4; T.s = s; T.adaptive = 1; T.errOrder = 2;
+  T.c[0]=0; T.c[1]=1.0/2; T.c[2]=3.0/4; T.c[3]=1.0;
+  T.A[1*s+0]=1.0/2;
+  T.A[2*s+0]=0.0;    T.A[2*s+1]=3.0/4;
+  T.A[3*s+0]=2.0/9;  T.A[3*s+1]=1.0/3;  T.A[3*s+2]=4.0/9;
+  T.b[0]=2.0/9; T.b[1]=1.0/3; T.b[2]=4.0/9; T.b[3]=0;
+  T.bhat[0]=7.0/24; T.bhat[1]=1.0/4; T.bhat[2]=1.0/3; T.bhat[3]=1.0/8;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -107,6 +133,8 @@ static rksTableau rksGetTableau(int method) {
     T.s = 2; T.c[0] = 0; T.c[1] = 1.0; T.b[0] = 0.5; T.b[1] = 0.5; T.A[1*2+0] = 1.0; break;
   case 210: rksTableauDop5(T); break;  // dop5s -- adaptive Dormand-Prince 5(4)
   case 200: rksTableauDop853(T); break;// dop853s -- adaptive Dormand-Prince 8(5,3)
+  case 207: rksTableauCk54(T); break;  // ck54s -- adaptive Cash-Karp 5(4)
+  case 265: rksTableauBs32(T); break;  // bs32s -- adaptive Bogacki-Shampine 3(2)
   default:  rksTableauRk4(T); break;
   }
   return T;
