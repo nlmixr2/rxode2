@@ -281,13 +281,14 @@
     vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1)),
     .fLhs, .fRHSlhs), collapse = "\n"))
 
-  ## forward model that ALSO emits the Jacobian J (df_i/dy_j) and forcing
-  ## (df_i/dtheta_p) entries as outputs, so a single solve feeds the C++ sweep.
+  ## forward model that ALSO emits the Jacobian J (df_i/dy_j), forcing
+  ## (df_i/dtheta_p), the dF/dtheta entries and the RHS f_i as outputs, so a
+  ## single solve feeds the C++ sweep (incl. the dose-dual terms).
   .cfmod <- rxode2::rxode2(paste(c(.mText, .jacLines,
     paste0("rx__pred__=", .predC),
     vapply(.st, function(i) paste0("rx__dhdy_", i, "__=", .dhdy[[i]]), character(1)),
-    vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1))),
-    collapse = "\n"))
+    vapply(calcSens, function(p) paste0("rx__dhdp_", p, "__=", .dhdp[[p]]), character(1)),
+    .fLhs, .fRHSlhs), collapse = "\n"))
 
   list(st = .st, calcSens = calcSens, errModel = errModel, fmod = .fmod,
        revMod = .revMod, cfmod = .cfmod, infCmts = .infCmts, infusSym = .infusSym,
@@ -485,18 +486,23 @@
 #' @keywords internal
 .rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1,
                                 denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
-  ## The continuous case AND replace/multiply costate jumps run in the C++ sweep;
-  ## F / alag / rate / dur duals are not yet in C++, so fall back to the (correct)
-  ## R eval for those.  Either way this is a safe drop-in.
-  if (length(build$infusSym) > 0L || length(build$dFexpr) > 0L ||
-      length(build$lagStr) > 0L) {
+  ## The continuous case, replace/multiply costate jumps, and bolus F / modeled
+  ## lag duals run in the C++ sweep; infusion (rate/dur) duals are not yet in
+  ## C++, so fall back to the (correct) R eval for those.  Safe drop-in either way.
+  if (length(build$infusSym) > 0L) {
     return(.rxAdjointGradEval(build, params, obsTimes, obs, weight = weight,
                               denseBy = denseBy, atol = atol, rtol = rtol))
   }
   .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
   .ns <- length(.st); .np <- length(calcSens)
+  ## actual (possibly lagged) bolus dose times
+  .doses <- build$doses
+  .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
+    .c <- .doses$cmt[i]
+    .lv <- if (.c %in% names(build$lagStr)) .rxAdjEvalNum(build$lagStr[[.c]], params) else 0
+    if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
   .denseT <- sort(unique(c(seq(0, max(obsTimes), by = denseBy), obsTimes,
-                           build$evR$time)))
+                           build$evR$time, .doses$tau, .doses$tau - denseBy)))
   .denseT <- .denseT[.denseT >= 0]
   .fev <- build$events |> rxode2::et(.denseT)
   .fwd <- as.data.frame(rxode2::rxSolve(build$cfmod, params = params, .fev,
@@ -538,7 +544,33 @@
     list(as.integer(match(.evR$time, .denseT) - 1L), as.integer(.cmt0),
          ifelse(.evR$evid == 5L, 0.0, .evR$amt))
   } else list(integer(0), integer(0), numeric(0))
-  .dual <- list(integer(0), numeric(0), numeric(0))  # no dose duals in C++ yet
+  ## bolus dose duals: out[p] += (lambda . w) * c.  F: w = amt*e_c, c = dF/dp;
+  ## modeled lag: w = f(y-) - f(y+), c = d(alag)/dp.
+  .duals <- list()
+  for (.j in which(.doses$rate == 0)) {
+    .c <- .doses$cmt[.j]; .ci <- match(.c, .st); .tau <- .doses$tau[.j]
+    if (is.na(.ci)) next
+    .k <- which.min(abs(.denseT - .tau))
+    if (.c %in% names(build$dFexpr)) {
+      .w <- numeric(.ns); .w[.ci] <- .doses$amt[.j]
+      .cc <- vapply(calcSens, function(p) .fwd[[paste0("rx__dFdp_", .c, "_", p, "__")]][.k],
+                    numeric(1))
+      .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .cc)
+    }
+    if (.c %in% names(build$dLagStr)) {
+      .kpost <- which(.denseT >= .tau - 1e-9)[1]
+      .kpre  <- max(which(.denseT < .tau - 1e-9))
+      .fp <- vapply(.st, function(i) .fwd[[paste0("rx__fRHS_", i, "__")]][.kpost], numeric(1))
+      .fm <- vapply(.st, function(i) .fwd[[paste0("rx__fRHS_", i, "__")]][.kpre],  numeric(1))
+      .cc <- vapply(build$dLagStr[[.c]], function(s) .rxAdjEvalNum(s, params), numeric(1))
+      .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .fm - .fp, c = .cc)
+    }
+  }
+  .dual <- if (length(.duals)) {
+    list(as.integer(vapply(.duals, function(d) d$k, integer(1))),
+         do.call(rbind, lapply(.duals, function(d) d$w)),
+         do.call(rbind, lapply(.duals, function(d) d$c)))
+  } else list(integer(0), numeric(0), numeric(0))
   .gTraj <- .Call(`_rxode2_rxAdjointSweep`, .denseT, .J, .dP, .cover,
                   as.integer(.oidx - 1L), as.integer(.ns), as.integer(.np),
                   .cj, .dual)

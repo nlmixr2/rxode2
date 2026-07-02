@@ -190,6 +190,11 @@ rxTest({
     # Fbio gradient is entirely from the dose term and clearly nonzero
     expect_gt(abs(gAdj[["Fbio"]]), 1)
     expect_equal(unname(gAdj), unname(gFD), tolerance = 1e-3)
+    # F dose dual also runs through the C++ sweep
+    Bf <- rxode2::.rxAdjointGradBuild(fText, fCS, fPred, fEv)
+    gCf <- rxode2::.rxAdjointGradEvalC(Bf, fP, fObsT, fObs)
+    gRf <- rxode2::.rxAdjointGradEval(Bf, fP, fObsT, fObs)
+    expect_equal(unname(gCf), unname(gRf), tolerance = 1e-4)
   })
 
   # ---- modeled lag (alag) transversality dual --------------------------------
@@ -225,6 +230,11 @@ rxTest({
     expect_equal(gAdj[["tlag"]], gFD[["tlag"]], tolerance = 1e-3)
     # structural params limited by covariate interpolation of the sharp peak
     expect_equal(unname(gAdj), unname(gFD), tolerance = 1e-2)
+    # lag transversality dual also runs through the C++ sweep
+    Bl <- rxode2::.rxAdjointGradBuild(lText, lCS, lPred, lEv)
+    gCl <- rxode2::.rxAdjointGradEvalC(Bl, lP, lObsT, lObs, denseBy = 0.005)
+    gRl <- rxode2::.rxAdjointGradEval(Bl, lP, lObsT, lObs, denseBy = 0.005)
+    expect_equal(unname(gCl), unname(gRl), tolerance = 1e-4)
   })
 
   # ---- replace(evid5) / multiply(evid6) costate jumps ------------------------

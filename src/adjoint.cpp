@@ -113,7 +113,9 @@ extern "C" void rxode2AdjointSweep(double *tg, double *J, double *dP,
     for (int p = 0; p < np; ++p)
       mu[p]  += (h / 6.0) * (m1[p] + 2 * m2[p] + 2 * m3[p] + m4[p]);
   }
-  for (int p = 0; p < np; ++p) out[p] = mu[p];
+  // out already holds the accumulated dose-dual contributions; add the
+  // trajectory quadrature (caller zeroes out before the call).
+  for (int p = 0; p < np; ++p) out[p] += mu[p];
 }
 
 // .Call wrapper (registered in init.c) so R can invoke the same C core.
