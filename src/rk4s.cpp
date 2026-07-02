@@ -326,6 +326,23 @@ static void rksTableauLobattoIIIC6(rksTableau &T) {
   T.c[0]=0.0; T.c[1]=0.5-r/10.0; T.c[2]=0.5+r/10.0; T.c[3]=1.0;
 }
 
+// GRK4A (Kaps-Rentrop), 4-stage, order 4, L-stable Rosenbrock -- rxode2's "ros43".
+// The libode ROW-form coefficients (alp, gam_ij, b, gamma=0.395 from
+// src/ode/ode_grk4a.h) are transformed to the Hairer-Wanner form this framework
+// uses (a = alp*Ginv, c = -Ginv off-diagonal, m = Ginv^T b, with Ginv = inverse
+// of the lower-triangular gamma_ij matrix).
+static void rksTableauGrk4a(rksTableau &T) {
+  const int s = 4; T.s = s; T.rosenbrock = 1; T.gamma = 0.395;
+  double *A = T.A, *G = T.gam;
+  A[1*s+0]=1.10886075949367;
+  A[2*s+0]=2.37708526198196; A[2*s+1]=0.185011498889874;
+  A[3*s+0]=2.37708526198196; A[3*s+1]=0.185011498889874; A[3*s+2]=0.0;
+  G[1*s+0]=-4.92018840239705;
+  G[2*s+0]=1.05558868604935; G[2*s+1]=3.35181726766864;
+  G[3*s+0]=3.84686900704732; G[3*s+1]=3.42710924127013; G[3*s+2]=-2.16240884875501;
+  T.b[0]=1.84568324040826; T.b[1]=0.136979689436354; T.b[2]=0.712909778329511; T.b[3]=0.632911392405063;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -336,6 +353,7 @@ static rksTableau rksGetTableau(int method) {
   case 234: rksTableauGauss6(T); break;// gauss6s -- Gauss-Legendre 3-stage 6th (stiff)
   case 238: rksTableauSdirk43(T); break;// sdirk43s -- SDIRK 5-stage order 3 (stiff)
   case 235: rksTableauLobattoIIIC6(T); break;// iiic6s -- Lobatto IIIC 4-stage 6th (stiff)
+  case 231: rksTableauGrk4a(T); break;   // ros43s -- GRK4A Rosenbrock 4-stage 4th (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)

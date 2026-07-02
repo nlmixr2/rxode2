@@ -262,6 +262,32 @@ rxTest({
     expect_lt(fdmax, 1e-5)
   })
 
+  test_that("stiff ros43s (GRK4A Rosenbrock) adjoint is exact (linear + nonlinear)", {
+    # A second Rosenbrock method on the ros_backward_fill framework.  GRK4A's
+    # libode ROW-form coefficients are transformed to the Hairer-Wanner form
+    # (a=alp*Ginv, c=-Ginv, m=Ginv^T b); the primal matching liblsoda validates
+    # that transformation.  Reuses the dJ/dp (+ dJ/dy=f'') stiff-adjoint terms.
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    chk <- function(mt, ccs, pp0, hmin) {
+      ex <- rxode2::.rxAdjointExpand(mt, ccs, stiff = TRUE)
+      madj <- rxode2::rxode2(ex$text)
+      sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = pp0, method = "ros43s", hmin = hmin, cores = 1))
+      solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+        madj, ev, params = pp, method = "ros43s", hmin = hmin, cores = 1))[, c("depot", "center")])
+      fdmax <- 0
+      for (pn in ccs) {
+        hh <- pp0[[pn]] * 1e-6; pp <- pp0; pm <- pp0; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+        for (kk in seq_along(ex$st))
+          fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[kk], pn)]] - fd[, kk])))
+      }
+      expect_lt(fdmax, 1e-5)
+    }
+    chk(mText, cs, p, 0.01)
+    chk("d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - vmax*center/(km+center)",
+        c("ka", "vmax", "km"), c(ka = 1.0, vmax = 8, km = 15), 0.005)
+  })
+
   test_that("DDE delay() adjoint converges to FD for explicit rk4s methods", {
     # The anticipating costate term (delayed Jacobian F_Xd) makes the backward
     # sweep account for the delayed-state coupling.  It is a continuous-adjoint
