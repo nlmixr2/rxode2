@@ -311,6 +311,21 @@ static void rksTableauSdirk43(rksTableau &T) {
   T.c[0]=g; T.c[1]=3.0/4; T.c[2]=11.0/20; T.c[3]=1.0/2; T.c[4]=1.0;
 }
 
+// Lobatto IIIC, 4-stage, order 6, L-stable (coefficients from
+// src/ode/ode_lobatto_iiic_6.h).  Fully-implicit RK (full A) with c[0]=0 but a
+// nonzero first row -> solved by the same coupled Newton as Radau; stiffly
+// accurate (b = last A row).
+static void rksTableauLobattoIIIC6(rksTableau &T) {
+  const int s = 4; T.s = s; T.implicitRK = 1;
+  double r = sqrt(5.0);
+  T.A[0*s+0]=1.0/12; T.A[0*s+1]=-r/12.0;         T.A[0*s+2]=r/12.0;          T.A[0*s+3]=-1.0/12;
+  T.A[1*s+0]=1.0/12; T.A[1*s+1]=1.0/4;           T.A[1*s+2]=(10.0-7.0*r)/60.0; T.A[1*s+3]=r/60.0;
+  T.A[2*s+0]=1.0/12; T.A[2*s+1]=(10.0+7.0*r)/60.0; T.A[2*s+2]=1.0/4;         T.A[2*s+3]=-r/60.0;
+  T.A[3*s+0]=1.0/12; T.A[3*s+1]=5.0/12;          T.A[3*s+2]=5.0/12;          T.A[3*s+3]=1.0/12;
+  T.b[0]=1.0/12; T.b[1]=5.0/12; T.b[2]=5.0/12; T.b[3]=1.0/12;   // = A row 4
+  T.c[0]=0.0; T.c[1]=0.5-r/10.0; T.c[2]=0.5+r/10.0; T.c[3]=1.0;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -320,6 +335,7 @@ static rksTableau rksGetTableau(int method) {
   case 233: rksTableauBackwardEuler(T); break; // backwardEulers -- implicit Euler (stiff)
   case 234: rksTableauGauss6(T); break;// gauss6s -- Gauss-Legendre 3-stage 6th (stiff)
   case 238: rksTableauSdirk43(T); break;// sdirk43s -- SDIRK 5-stage order 3 (stiff)
+  case 235: rksTableauLobattoIIIC6(T); break;// iiic6s -- Lobatto IIIC 4-stage 6th (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)

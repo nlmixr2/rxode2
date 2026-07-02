@@ -6714,6 +6714,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 233: // backwardEulers -- discrete-adjoint implicit Euler (stiff)
       case 234: // gauss6s   -- discrete-adjoint Gauss-Legendre 6th (stiff)
       case 238: // sdirk43s  -- discrete-adjoint SDIRK 5-stage order 3 (stiff)
+      case 235: // iiic6s    -- discrete-adjoint Lobatto IIIC 6th (stiff)
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6946,6 +6947,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 233: // backwardEulers
       case 234: // gauss6s
       case 238: // sdirk43s
+      case 235: // iiic6s
         par_rk4s(rx);
         break;
       case 7:
