@@ -472,6 +472,31 @@ rxTest({
             c(ka = 1.2, cl = 3.5, v = 25, tlag = 0.8))
   })
 
+  # ---- rxSolveAdjoint(): drop-in rxSolve() wrapper with adjoint sens columns --
+  # Same column names/structure as forward-sensitivity rxSolve(calcSens=), just
+  # computed via the backward (adjoint) path -- output-structure parity.
+  test_that("rxSolveAdjoint matches forward-sensitivity rxSolve output", {
+    aP <- c(ka = 1.2, cl = 3.5, v = 25); aCS <- c("ka", "cl", "v")
+    aEv <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(c(1, 2, 4, 6, 8, 12))
+    res <- rxode2::rxSolveAdjoint(mText, aP, aEv, aCS)
+
+    model <- rxode2::rxS(rxode2::rxGetModel(mText), TRUE, promoteLinSens = FALSE)
+    st <- rxode2::rxStateOde(model)
+    invisible(rxode2::.rxJacobian(model, c(st, aCS)))
+    s1 <- rxode2::.rxSens(model, aCS)
+    fmod <- rxode2::rxode2(paste(c(mText, s1), collapse = "\n"))
+    fref <- as.data.frame(rxode2::rxSolve(fmod, params = aP, aEv,
+                                          returnType = "data.frame"))
+
+    sensCols <- grep("^rx__sens_", names(fref), value = TRUE)
+    expect_true(all(sensCols %in% names(res)))          # same column names
+    expect_equal(res$depot, fref$depot, tolerance = 1e-4)     # same primal solve
+    expect_equal(res$center, fref$center, tolerance = 1e-4)
+    for (cc in sensCols) {
+      expect_equal(res[[cc]], fref[[cc]], tolerance = 1e-3)   # same sens values
+    }
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

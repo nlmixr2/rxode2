@@ -22,6 +22,60 @@
 ## using each solver's own exact dense output, eliminating the interpolation
 ## error entirely.
 
+#' Solve a model with adjoint (backward) sensitivities, drop-in for forward sens
+#'
+#' Solves `object` exactly as [rxSolve()] would, then adds
+#' `rx__sens_<state>_BY_<param>__` columns computed via ADJOINT (backward)
+#' sensitivity analysis instead of the usual forward-sensitivity augmented ODE
+#' system -- same column names, same output structure, drop-in for code that
+#' already consumes `rxSolve(object, ..., calcSens=)` output.
+#'
+#' Implemented as a thin orchestration layer around the *existing, unmodified*
+#' [rxSolve()] (for the primal solve) plus [.rxAdjointSolveBuild()]/
+#' [.rxAdjointSolveEvalC()] (for the sensitivity columns) -- it does not modify
+#' `rxSolve()`/`rxode2()` internals, so ordinary solves are completely
+#' unaffected regardless of whether this function exists.
+#'
+#' \strong{Performance note}: unlike the adjoint *objective-gradient* path
+#' ([.rxAdjointGrad()], whose cost is independent of both the number of
+#' parameters and the number of output times), reconstructing the FULL
+#' per-timepoint trajectory this way costs one backward sweep per output time
+#' per state of interest -- it is faster than forward sensitivity only when
+#' `length(outTimes) * length(adjStates) < length(calcSens)`.  For typical PK
+#' data with many observation times this is often NOT the case; use this
+#' function for output-structure parity / cross-validation against forward
+#' sensitivities, and prefer [.rxAdjointGrad()] when only a scalar objective
+#' gradient (e.g. for optimization) is needed.
+#'
+#' @param object model definition accepted by [rxode2::rxode2()].
+#' @param params named numeric vector of parameter values.
+#' @param events event table / data used to define dosing and sampling times;
+#'   sampling (`evid==0`) times become the sensitivity output times.
+#' @param calcSens character vector of parameter names to differentiate with
+#'   respect to.
+#' @param adjStates character vector of output states of interest; defaults to
+#'   all ODE states (full forward-sensitivity parity).
+#' @param denseBy,atol,rtol passed to the adjoint checkpoint solve; see
+#'   [.rxAdjointSolveEvalC()].
+#' @param ... additional arguments passed to the primal [rxSolve()] call.
+#' @return the standard `rxSolve()` output (as `returnType="data.frame"`) with
+#'   `rx__sens_<state>_BY_<param>__` columns appended.
+#' @author Matthew L. Fidler
+#' @export
+rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
+                           denseBy = 0.01, atol = 1e-08, rtol = 1e-06, ...) {
+  .primal <- as.data.frame(rxode2::rxSolve(object, params = params, events,
+                                           returnType = "data.frame", ...))
+  .obsTimes <- sort(unique(.primal$time))
+  .build <- .rxAdjointSolveBuild(object, calcSens, events, adjStates = adjStates)
+  .sens <- .rxAdjointSolveEvalC(.build, params, .obsTimes, denseBy = denseBy,
+                                atol = atol, rtol = rtol)
+  .sensCols <- setdiff(names(.sens), "time")
+  .idx <- match(.primal$time, .sens$time)
+  for (.cn in .sensCols) .primal[[.cn]] <- .sens[[.cn]][.idx]
+  .primal
+}
+
 ## Turn a backward-in-time "d/dt(L) = RHS" line into the reversed-time
 ## (s = t_end - t) forward form by negating the right-hand side.
 .rxAdjointNegLine <- function(line) {
