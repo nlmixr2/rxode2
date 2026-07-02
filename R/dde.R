@@ -253,8 +253,31 @@
   })
   names(.delayJac) <- .states
   if (all(lengths(.delayJac) == 0L)) {
+    assign("..sensDelayAlagF", NULL, envir = model)
     return(sensVec)
   }
+  ## Dose-induced breaking-point jump (parameter-dependent delay only): reproduce
+  ## the jump [S_i]=-(djac)*[y_j]*dtau/dp with a modeled bolus on the sensitivity
+  ## compartment -- modeled lag `tau` (lands at t_dose+tau) and modeled
+  ## bioavailability -(djac)*dtau/dp (delivered amount = the jump).  These alag()/
+  ## f() lines are spliced into the model by rxGetModel(); rxSolve() adds the
+  ## mirroring sensitivity-compartment doses.  Harmless (no-op) unless those doses
+  ## are present, so safe to always emit for a param-dependent delay.
+  .alagf <- character(0); .seenCmt <- character(0)
+  for (.si in .states) {
+    .dj <- .delayJac[[.si]]
+    if (is.null(.dj) || length(.dj) == 0L) next
+    for (.p in params) for (z in .dj) {
+      .dtau <- z$dtauByP[[.p]]
+      if (is.null(.dtau) || identical(.dtau, "0")) next
+      .sensCmt <- paste0("rx__sens_", .si, "_BY_", .p, "__")
+      if (.sensCmt %in% .seenCmt) next   # one delay term per state/param (per-cmt alag/f)
+      .seenCmt <- c(.seenCmt, .sensCmt)
+      .alagf <- c(.alagf, sprintf("alag(%s)=%s", .sensCmt, z$tau),
+                          sprintf("f(%s)=-(%s)*(%s)", .sensCmt, z$djac, .dtau))
+    }
+  }
+  assign("..sensDelayAlagF", if (length(.alagf)) .alagf else NULL, envir = model)
   vapply(sensVec, function(.entry) {
     .m <- regmatches(.entry, regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
     if (length(.m) != 3L) {
@@ -331,6 +354,9 @@
   }
   .alagf <- character(0); .jumpMap <- list(); .seenCmt <- character(0)
   for (i in seq_len(.ns)) {
+    # skip sensitivity compartments when applied to an already-augmented model
+    # (their d/dt carries delay(rx__sens_*, tau) which must not spawn its own jump)
+    if (grepl("^rx__sens_", .st[i])) next
     .fi <- get0(paste0("rx__d_dt_", .st[i], "__"), envir = .m, inherits = FALSE)
     if (is.null(.fi)) next
     .fiTxt <- rxode2::rxFromSE(.fi); .full <- parse(text = .fiTxt)[[1L]]

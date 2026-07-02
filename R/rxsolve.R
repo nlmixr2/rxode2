@@ -2405,6 +2405,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # output; a non-dense method requested explicitly is an error.
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
+    # Forward-sensitivity param-dependent delay: reproduce the dose-induced
+    # breaking-point jump by mirroring each delayed-state dose onto its
+    # sensitivity compartment (the alag()/f() model lines are already emitted by
+    # .rxDelaySensAugment; here we add the doses that activate them).  Gated on the
+    # model actually carrying rx__sens_* compartments, and a no-op unless a delay
+    # duration depends on a sensitivity parameter (.rxDelaySensJump returns NULL).
+    if (!is.null(events)) {
+      # cheap gate: the jump alag() lines exist only for a param-dependent delay
+      # forward-sens model, so skip the (symengine) rebuild for every other solve.
+      .sensCmts <- grep("^rx__sens_", rxModelVars(object)$state, value = TRUE)
+      if (length(.sensCmts) > 0L &&
+            any(grepl("alag(rx__sens_", rxNorm(object), fixed = TRUE))) {
+        .cs <- unique(sub("^rx__sens_.+?_BY_(.+)__$", "\\1", .sensCmts))
+        .jm <- tryCatch(.rxDelaySensJump(object, .cs, events), error = function(e) NULL)
+        if (!is.null(.jm) && !is.null(.jm$events)) events <- .jm$events
+      }
+    }
     # delay() history is recorded on the dense dop853 path (default, and the
     # dop853 leg of "dop853+ros4") and on the dense ros4 path (for stiff delay
     # models).  Other solvers cannot record dense history and are rejected.

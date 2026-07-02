@@ -822,6 +822,9 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .s$..sens,
         .sens2,
         .sens3,
+        ## DDE param-dependent-delay dose-jump: alag()/f() on the sens compartments
+        ## (no-op unless rxSolve adds the mirroring sens-compartment doses).
+        .s$..sensDelayAlagF,
         .tmp2,
         .s$..stateInfo["statef"],
         .s$..stateInfo["dvid"],
