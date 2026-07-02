@@ -235,6 +235,14 @@
   .fromSE <- function(nm) { .d <- get0(nm, envir = .model, inherits = FALSE); rxode2::rxFromSE(.d) }
   .odeLines <- vapply(.st, function(i)
     sprintf("d/dt(%s)=%s", i, .fromSE(paste0("rx__d_dt_", i, "__"))), character(1))
+  # Preserve modeled bioavailability f(cmt) so the forward solve applies the SAME
+  # dose scaling as the real model (dropping it would compute sensitivities of a
+  # different, F=1 system and make the dose-parameter jump inconsistent).
+  .fLines <- character(0)
+  for (k in seq_len(.ns)) {
+    .fSE <- get0(paste0("rx_f_", .st[k], "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.fSE)) .fLines <- c(.fLines, sprintf("f(%s)=%s", .st[k], rxode2::rxFromSE(.fSE)))
+  }
   .fxLines <- character(0); .fpLines <- character(0)
   for (i in seq_len(.ns)) for (j in seq_len(.ns))
     .fxLines <- c(.fxLines, sprintf("rx__adjFX_%d_%d__=%s", i - 1L, j - 1L,
@@ -250,8 +258,19 @@
   .sensLines <- character(0)
   for (k in seq_len(.ns)) for (p in seq_len(.np))
     .sensLines <- c(.sensLines, sprintf("d/dt(rx__sens_%s_BY_%s__)=0", .st[k], calcSens[p]))
-  list(text = paste(c(.odeLines, .sensLines, .fxLines, .fpLines), collapse = "\n"),
+  # dF/dtheta of per-compartment bioavailability F, as lhs (rx__adjdF_k_p__).
+  # Forward applies X[c] += F*amt already; the adjoint adds the parameter
+  # contribution mu += amt*dF/dtheta*lambda[c].  No modeled f() => factor 1 => 0.
+  .dfLines <- character(0)
+  for (k in seq_len(.ns)) {
+    .fSE <- get0(paste0("rx_f_", .st[k], "_"), envir = .model, inherits = FALSE)
+    for (p in seq_len(.np)) {
+      .expr <- if (is.null(.fSE)) "0" else { .d <- symengine::D(.fSE, calcSens[p]); rxode2::rxFromSE(.d) }
+      .dfLines <- c(.dfLines, sprintf("rx__adjdF_%d_%d__=%s", k - 1L, p - 1L, .expr))
+    }
+  }
+  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens,
-       fxOff = 0L, fpOff = .ns * .ns, nlhsAdj = .ns * .ns + .ns * .np,
-       sensOff = .ns)
+       fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
+       nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }

@@ -101,6 +101,31 @@ rxTest({
     expect_lt(fdmax, 1e-4)
   })
 
+  test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
+    fText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
+    fcs <- c("ka", "cl", "v", "Fbio"); fp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)
+    tms <- c(1, 2, 4, 8, 12, 24)
+    ev <- et(amt = 100, cmt = "depot") %>% et(tms)
+    ex <- rxode2::.rxAdjointExpand(fText, fcs)
+    madj <- rxode2::rxode2(ex$text)
+    sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = fp, method = "rk4s", cores = 1))
+    mbase <- rxode2::rxode2(fText)
+    solveBase <- function(pp) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, ev, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+    # bioavailability preserved -> base states match the rk4 primal
+    expect_lt(max(abs(as.matrix(sd[, c("depot", "center")]) - solveBase(fp))), 1e-8)
+    fdmax <- 0
+    for (pn in fcs) {
+      hh <- fp[[pn]] * 1e-6; pp <- fp; pm <- fp; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+      for (k in seq_along(ex$st))
+        fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+    }
+    expect_lt(fdmax, 1e-4)
+    # the bioavailability gradient is genuinely nonzero
+    expect_gt(max(abs(sd[["rx__sens_center_BY_Fbio__"]])), 1)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0

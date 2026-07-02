@@ -156,6 +156,7 @@ typedef struct {
   int    adjNp;                 /* number of adjoint parameters (calcSens count) */
   int    adjFxOff;              /* lhs index where F_X block starts (row-major i*ns+j) */
   int    adjFpOff;              /* lhs index where F_p block starts (i*np+p) */
+  int    adjDfOff;              /* lhs index where dF/dtheta block starts (k*np+p); -1 if none */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
 } rx_solving_options;
 
