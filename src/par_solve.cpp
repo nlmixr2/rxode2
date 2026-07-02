@@ -6703,6 +6703,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 241: // heuns     -- discrete-adjoint Heun
       case 243: // rk3s      -- discrete-adjoint Kutta RK3
       case 210: // dop5s     -- discrete-adjoint adaptive Dormand-Prince 5(4)
+      case 225: // rk43s     -- discrete-adjoint adaptive Runge-Kutta 4(3)
       case 200: // dop853s   -- discrete-adjoint adaptive Dormand-Prince 8(5,3)
       case 207: // ck54s     -- discrete-adjoint adaptive Cash-Karp 5(4)
       case 265: // bs32s     -- discrete-adjoint adaptive Bogacki-Shampine 3(2)
@@ -6940,6 +6941,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 241: // heuns
       case 243: // rk3s
       case 210: // dop5s
+      case 225: // rk43s
       case 200: // dop853s
       case 207: // ck54s
       case 265: // bs32s

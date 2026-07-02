@@ -141,6 +141,19 @@ static void rksTableauCk54(rksTableau &T) {
 }
 
 // Bogacki-Shampine RK3(2), 4 stages (FSAL; the ode23 tableau, rxode2 "bs32").
+// Runge-Kutta 4(3), 5-stage FSAL (coefficients from src/ode/ode_rk_43.h).
+// b = 4th-order weights (propagated), bhat = 3rd-order embedded; errOrder = 3.
+static void rksTableauRk43(rksTableau &T) {
+  const int s = 5; T.s = s; T.adaptive = 1; T.errOrder = 3;
+  T.c[0]=0; T.c[1]=1.0/3; T.c[2]=2.0/3; T.c[3]=1.0; T.c[4]=1.0;
+  T.A[1*s+0]=1.0/3;
+  T.A[2*s+0]=-1.0/3; T.A[2*s+1]=1.0;
+  T.A[3*s+0]=1.0;    T.A[3*s+1]=-1.0;  T.A[3*s+2]=1.0;
+  T.A[4*s+0]=1.0/8;  T.A[4*s+1]=3.0/8; T.A[4*s+2]=3.0/8; T.A[4*s+3]=1.0/8;
+  T.b[0]=1.0/8; T.b[1]=3.0/8; T.b[2]=3.0/8; T.b[3]=1.0/8; T.b[4]=0.0;          // 4th order
+  T.bhat[0]=1.0/12; T.bhat[1]=1.0/2; T.bhat[2]=1.0/4; T.bhat[3]=0.0; T.bhat[4]=1.0/6; // 3rd
+}
+
 // b = 3rd-order weights, bhat = 2nd-order embedded; errOrder = 2.
 static void rksTableauBs32(rksTableau &T) {
   const int s = 4; T.s = s; T.adaptive = 1; T.errOrder = 2;
@@ -402,6 +415,7 @@ static rksTableau rksGetTableau(int method) {
     T.b[0] = 1.0/6; T.b[1] = 2.0/3; T.b[2] = 1.0/6;
     T.A[1*3+0] = 0.5; T.A[2*3+0] = -1.0; T.A[2*3+1] = 2.0; break;
   case 210: rksTableauDop5(T); break;  // dop5s -- adaptive Dormand-Prince 5(4)
+  case 225: rksTableauRk43(T); break;  // rk43s -- adaptive Runge-Kutta 4(3)
   case 200: rksTableauDop853(T); break;// dop853s -- adaptive Dormand-Prince 8(5,3)
   case 207: rksTableauCk54(T); break;  // ck54s -- adaptive Cash-Karp 5(4)
   case 265: rksTableauBs32(T); break;  // bs32s -- adaptive Bogacki-Shampine 3(2)
