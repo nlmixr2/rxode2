@@ -306,32 +306,22 @@
 #'
 #' Convenience wrapper that applies the adjoint expansion (cached), solves with
 #' the `rk4s` method, and returns clean output (the internal `rx__adjFX_*`/
-#' `rx__adjFP_*`/`rx__adjdF_*` lhs are dropped).  With `scalar = TRUE` it reduces
-#' the full-trajectory columns to a scalar objective gradient `dG/dtheta` (the
-#' scalar gradient is a REDUCTION on top of the `rx__sens_*` columns, not a
-#' separate solver): here the illustrative objective `G = 0.5 sum_i sum_k
-#' y_k(t_i)^2` (covector `c_i = y_base(t_i)`); nlmixr2est supplies the real
-#' -2LL / WLS covector reduction.
+#' `rx__adjFP_*`/`rx__adjdF_*` lhs are dropped).  `rk4s` is the gradient method:
+#' it returns the full-trajectory `rx__sens_<state>_BY_<param>__` sensitivity
+#' columns.  If no gradient is needed, use the plain `rk4` method instead.  A
+#' scalar objective gradient is a downstream REDUCTION of these columns (e.g. the
+#' nlmixr2est -2LL), not a mode of the solver.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @param events an rxode2 event table / data set.
 #' @param params optional named parameter vector or data frame (per subject).
-#' @param scalar if `TRUE`, return the scalar objective gradient `dG/dtheta` (a
-#'   named vector) reduced from the `rx__sens_*` columns; otherwise return the
-#'   solved data frame with the `rx__sens_<state>_BY_<param>__` columns.
 #' @param ... passed to [rxode2::rxSolve()].
-#' @return a data frame (full trajectory) or a named gradient vector (scalar).
+#' @return the solved data frame with `rx__sens_<state>_BY_<param>__` columns.
 #' @author Matthew L. Fidler
 #' @export
-rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, scalar = FALSE, ...) {
+rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, ...) {
   .b <- .rxAdjointModel(object, calcSens)
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = "rk4s", ...))
-  if (isTRUE(scalar)) {
-    .st <- .b$info$st
-    return(stats::setNames(vapply(calcSens, function(pn)
-      sum(vapply(.st, function(s) sum(.df[[s]] * .df[[sprintf("rx__sens_%s_BY_%s__", s, pn)]]), numeric(1))),
-      numeric(1)), calcSens))
-  }
   .drop <- grep("^rx__adj(FX|FP|dF)_", names(.df), value = TRUE)
   .df[, setdiff(names(.df), .drop), drop = FALSE]
 }

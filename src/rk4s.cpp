@@ -26,8 +26,9 @@
 // the forward pass).  Backward: for each observation time and each base state k
 // run an independent reset sweep with terminal covector e_k; the resulting
 // mu (length np) = dy_k(t_obs)/dtheta is written into that obs row's
-// rx__sens_* solve slots.  (A scalar objective gradient is a REDUCTION of these
-// columns -- see rxSolveAdjointRk4(scalar=TRUE) -- not a separate solver.)
+// rx__sens_* solve slots.  rk4s is the GRADIENT method (full-trajectory
+// sensitivities); if no gradient is needed use plain rk4.  A scalar objective
+// gradient is a downstream REDUCTION of these columns, not a mode of the solver.
 // ===========================================================================
 
 // An additive bolus recorded during the forward pass: which 0-based RK4 step

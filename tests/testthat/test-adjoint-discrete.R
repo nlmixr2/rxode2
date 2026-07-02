@@ -155,7 +155,7 @@ rxTest({
   })
 
 
-  test_that("rxSolveAdjointRk4 wrapper: clean full-trajectory output + cached scalar gradient", {
+  test_that("rxSolveAdjointRk4 wrapper: clean full-trajectory gradient + cache", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     df <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs)
     # internal adjoint lhs are dropped; rx__sens_* are present
@@ -169,12 +169,6 @@ rxTest({
       cn <- sprintf("rx__sens_%s_BY_%s__", st, pn)
       expect_equal(df[[cn]], direct[[cn]], tolerance = 1e-10)
     }
-    # scalar gradient equals the direct rk4sg reduction target
-    g <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs, scalar = TRUE)
-    expect_named(g, cs)
-    ref <- vapply(cs, function(pn) sum(vapply(c("depot", "center"), function(st)
-      sum(direct[[st]] * direct[[sprintf("rx__sens_%s_BY_%s__", st, pn)]]), numeric(1))), numeric(1))
-    expect_equal(unname(g), unname(ref), tolerance = 1e-6)
     # cache returns the identical compiled object
     expect_identical(rxode2::.rxAdjointModel(mText, cs)$model,
                      rxode2::.rxAdjointModel(mText, cs)$model)
