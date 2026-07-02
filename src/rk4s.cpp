@@ -230,21 +230,39 @@ static void rksTableauF78(rksTableau &T) {
   T.bhat[0]=41.0/840; T.bhat[5]=34.0/105; T.bhat[6]=9.0/35; T.bhat[7]=9.0/35; T.bhat[8]=9.0/280; T.bhat[9]=9.0/280; T.bhat[10]=41.0/840;
 }
 
-// ROS2 -- 2-stage, order-2, L-stable Rosenbrock (Verwer et al.).  Autonomous
-// Hairer form (see rksTableau).  gamma = 1 + 1/sqrt(2).
-static void rksTableauRos2(rksTableau &T) {
-  const int s = 2; T.s = s; T.rosenbrock = 1;
-  double g = 1.0 + 1.0/sqrt(2.0); T.gamma = g;
-  T.A[1*s+0] = 1.0/g;          // alpha_21
-  T.gam[1*s+0] = -2.0/g;       // gamma_21
-  T.b[0] = 3.0/(2.0*g); T.b[1] = 1.0/(2.0*g);   // m1, m2
+// ROS4 -- Shampine's L-stable 4th-order Rosenbrock, the boost runge_kutta
+// rosenbrock4 / rxode2 "ros4" coefficients.  6 stages in the autonomous Hairer
+// form (see rksTableau): the last stage is boost's error stage, included in the
+// solution by local extrapolation (m6 = 1, and stage-6 argument u6 = u5 + g5).
+// The non-autonomous d_i*df/dt terms are omitted (exact for autonomous RHS).
+static void rksTableauRos4(rksTableau &T) {
+  const int s = 6; T.s = s; T.rosenbrock = 1; T.gamma = 0.25;
+  double *A = T.A, *G = T.gam;
+  double a21=1.544, a31=0.9466785280815826, a32=0.2557011698983284,
+         a41=3.314825187068521, a42=2.896124015972201, a43=0.9986419139977817,
+         a51=1.221224509226641, a52=6.019134481288629, a53=12.53708332932087, a54=-0.6878860361058950;
+  double c21=-5.6688, c31=-2.430093356833875, c32=-0.2063599157091915,
+         c41=-0.1073529058151375, c42=-9.594562251023355, c43=-20.47028614809616,
+         c51=7.496443313967647, c52=-10.24680431464352, c53=-33.99990352819905, c54=11.70890893206160,
+         c61=8.083246795921522, c62=-7.981132988064893, c63=-31.52159432874371, c64=16.31930543123136, c65=-6.058818238834054;
+  A[1*s+0]=a21;
+  A[2*s+0]=a31; A[2*s+1]=a32;
+  A[3*s+0]=a41; A[3*s+1]=a42; A[3*s+2]=a43;
+  A[4*s+0]=a51; A[4*s+1]=a52; A[4*s+2]=a53; A[4*s+3]=a54;
+  A[5*s+0]=a51; A[5*s+1]=a52; A[5*s+2]=a53; A[5*s+3]=a54; A[5*s+4]=1.0;   // u6 = u5 + g5
+  G[1*s+0]=c21;
+  G[2*s+0]=c31; G[2*s+1]=c32;
+  G[3*s+0]=c41; G[3*s+1]=c42; G[3*s+2]=c43;
+  G[4*s+0]=c51; G[4*s+1]=c52; G[4*s+2]=c53; G[4*s+3]=c54;
+  G[5*s+0]=c61; G[5*s+1]=c62; G[5*s+2]=c63; G[5*s+3]=c64; G[5*s+4]=c65;
+  T.b[0]=a51; T.b[1]=a52; T.b[2]=a53; T.b[3]=a54; T.b[4]=1.0; T.b[5]=1.0;   // x_new = x + sum m_i g_i
 }
 
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
   case 206: rksTableauRk4(T); break;   // rk4s -- classical RK4
-  case 213: rksTableauRos2(T); break;  // ros4s -- Rosenbrock (stiff)
+  case 213: rksTableauRos4(T); break;  // ros4s -- Shampine ROS4 (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)
