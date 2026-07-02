@@ -18,32 +18,28 @@ rxTest({
     expect_equal(unname(rxModelVars(.dde)$flags[["hasDelay"]]), 1L)
   })
 
-  test_that("delay()/rxDelayD() are only valid on a d/dt() line", {
-    ## delay() interpolates the dense solver history, which is only recorded
-    ## during integration -- it is meaningful only inside a d/dt() right-hand
-    ## side, not in an output (lhs) assignment.
-    ## the model is otherwise valid, so the only error is the d/dt restriction
-    ## (the detailed "can only be used on a 'd/dt()' line" message prints to the
-    ## parser error stream; the condition is the generic syntax error)
-    expect_error(rxode2({
+  test_that("delay()/rxDelayD() are valid off a d/dt() line (keyed to the delayed state)", {
+    ## delay()'s history slot is keyed to the DELAYED STATE (its first argument),
+    ## whose per-state __DDT__ define is emitted model-wide -- so delay() is valid
+    ## anywhere the state is, not only on a d/dt() right-hand side.  This lets the
+    ## discrete-adjoint machinery use delay() in plain lhs (rx__adjFP_*) assignments.
+    expect_s3_class(suppressMessages(rxode2({
       d/dt(y) <- -y
       y(0) <- 10
       z <- delay(y, 1)
-    }), "syntax error")
-    expect_error(rxode2({
+    })), "rxode2")
+    expect_s3_class(suppressMessages(rxode2({
       d/dt(y) <- -y
       y(0) <- 10
       z <- rxDelayD(y, 1)
-    }), "syntax error")
-    ## the diagnostic names the offending function and the d/dt() requirement
-    expect_output(
-      try(rxode2({
-        d/dt(y) <- -y
-        y(0) <- 10
-        z <- delay(y, 1)
-      }), silent = TRUE),
-      "delay"
-    )
+    })), "rxode2")
+    ## the delayed model still reports hasDelay so the dense-history path engages
+    .m <- rxode2({
+      d/dt(y) <- -y
+      y(0) <- 10
+      z <- delay(y, 1)
+    })
+    expect_equal(unname(rxModelVars(.m)$flags[["hasDelay"]]), 1L)
   })
 
   test_that("delay()'s first argument must be an ODE state, not a parameter", {

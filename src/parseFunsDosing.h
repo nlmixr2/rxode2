@@ -128,14 +128,13 @@ static inline int handleFunctionDelay(transFunctions *tf) {
   if ((tf->isDelay = (isDeriv || isDeriv2 || isDeriv3 || !strcmp("delay", tf->v)))) {
     const char *cFun = isDeriv3 ? "_rxDelayD3" : (isDeriv2 ? "_rxDelayD2" : (isDeriv ? "_rxDelayD" : "_rxDelay"));
     const char *normFun = isDeriv3 ? "rxDelayD3" : (isDeriv2 ? "rxDelayD2" : (isDeriv ? "rxDelayD" : "delay"));
-    // delay()/rxDelayD() interpolate the dense solver history, which is only
-    // recorded during integration; they are only meaningful inside a d/dt() RHS.
-    if (!tb.curDdt) {
-      updateSyntaxCol();
-      sPrint(&_gbuf, "'%s' can only be used on a 'd/dt()' line", normFun);
-      trans_syntax_error_report_fn(_gbuf.s);
-      return 1;
-    }
+    // delay()/rxDelayD() interpolate the dense solver history.  The history slot
+    // (__DDT%d__ below) is keyed to the DELAYED STATE (the first argument), not
+    // to whichever line delay() appears on -- and those defines are emitted
+    // model-wide -- so the only real requirement is that the first argument is an
+    // ODE state (enforced below).  This deliberately allows delay() off d/dt()
+    // lines (e.g. in the discrete-adjoint rx__adjFP_*/rx__adjFX_* lhs assignments,
+    // which are plain assignments, not d/dt() lines).
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2) {
       updateSyntaxCol();
