@@ -99,6 +99,11 @@ void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover,
                         int *obsK, int ns, int np, int nt, int nobs, double *out,
                         int nCj, int *cjK, int *cjCmt, double *cjAlpha,
                         int nDual, int *dualK, double *dualW, double *dualC);
+void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np,
+                            int nt, int *outK, int nOut, int *stateIdx,
+                            int nStates, double *result, int nCj, int *cjK,
+                            int *cjCmt, double *cjAlpha, int nDual, int *dualK,
+                            double *dualW, double *dualC);
 rx_solve *getRxSolve_(void);
 #endif
 rx_solve *getRxSolve2_(void);

@@ -15,6 +15,12 @@ extern "C" {
   typedef void (*rxode2AdjointSweep_t)(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
   extern rxode2AdjointSweep_t rxode2AdjointSweep;
 
+  // Full-trajectory adjoint sweep: dy_k(t_i)/dp for every state of interest,
+  // output time, and parameter (adjoint counterpart of forward sensitivity's
+  // rx__sens_<state>_BY_<param>__ columns); see src/adjoint.cpp for the layout.
+  typedef void (*rxode2AdjointTrajSweep_t)(double *tg, double *J, double *dP, int ns, int np, int nt, int *outK, int nOut, int *stateIdx, int nStates, double *result, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
+  extern rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep;
+
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
@@ -296,6 +302,7 @@ extern "C" {
       getRxNsim = (getRxNsim_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 64));
       setRxThreadId = (setRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 65));
       rxode2AdjointSweep = (rxode2AdjointSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 66));
+      rxode2AdjointTrajSweep = (rxode2AdjointTrajSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 67));
     }
     return R_NilValue;
   }
@@ -368,6 +375,7 @@ extern "C" {
   getRxNsim_t getRxNsim = NULL;                         \
   setRxThreadId_t setRxThreadId = NULL;                 \
   rxode2AdjointSweep_t rxode2AdjointSweep = NULL;        \
+  rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep = NULL; \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

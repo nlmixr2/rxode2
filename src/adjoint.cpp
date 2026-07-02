@@ -7,6 +7,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <vector>
+#include <algorithm>
 
 // Backward adjoint sweep for the functional-gradient objective.
 //
@@ -116,6 +117,133 @@ extern "C" void rxode2AdjointSweep(double *tg, double *J, double *dP,
   // out already holds the accumulated dose-dual contributions; add the
   // trajectory quadrature (caller zeroes out before the call).
   for (int p = 0; p < np; ++p) out[p] += mu[p];
+}
+
+// Full-trajectory adjoint sweep: dy_k(t_i)/dp for EVERY state of interest k,
+// EVERY requested output time t_i, and EVERY parameter p -- the adjoint
+// counterpart of forward sensitivity's rx__sens_<state>_BY_<param>__ columns.
+//
+// IMPORTANT: dy_k(t_i)/dp requires the costate reset to e_k AT t_i and
+// integrated ALL THE WAY BACK to t0 -- it is NOT a snapshot of a shared
+// running accumulator taken mid-sweep (that would conflate contributions
+// belonging to a LATER output time's own reset point with an EARLIER one's,
+// since the linear costate dynamics do not compose that way for distinct
+// reset vectors).  So this performs one INDEPENDENT backward sweep per
+// output time (looping o = 0..nOut-1), each running from grid index outK[o]
+// down to 0, with one costate/quadrature block per state of interest reset
+// at the start of that sweep.  Cost is O(nOut * nStates) sweeps of the grid
+// -- the same asymptotic cost as [.rxAdjointSolve()]'s R loop of independent
+// solves, just without the per-call R/solver overhead.  (This is why the
+// adjoint method's real speed win over forward sensitivity is the SCALAR
+// objective gradient in `rxode2AdjointSweep` above, not full-trajectory
+// reconstruction -- see the plan's "honest scoping note".)
+//
+// result[o + s*nOut + p*nOut*nStates] = dy_{stateIdx[s]}(t_{outK[o]}) / dp_p
+// (column-major, nOut x nStates x np).  Dose duals / costate jumps apply
+// identically to every block (the jump/forcing math does not depend on which
+// output state a block is tracking).
+extern "C" void rxode2AdjointTrajSweep(double *tg, double *J, double *dP,
+                                       int ns, int np, int nt,
+                                       int *outK, int nOut,
+                                       int *stateIdx, int nStates,
+                                       double *result,
+                                       int nCj, int *cjK, int *cjCmt, double *cjAlpha,
+                                       int nDual, int *dualK, double *dualW, double *dualC) {
+  auto JTv = [&](int k, const std::vector<double> &v, std::vector<double> &o) {
+    for (int j = 0; j < ns; ++j) {
+      double s = 0.0;
+      for (int i = 0; i < ns; ++i) s += J[k + (i * ns + j) * nt] * v[i];
+      o[j] = -s;
+    }
+  };
+  auto dPTv = [&](int k, const std::vector<double> &v, std::vector<double> &o) {
+    for (int p = 0; p < np; ++p) {
+      double s = 0.0;
+      for (int i = 0; i < ns; ++i) s += dP[k + (i * np + p) * nt] * v[i];
+      o[p] = -s;
+    }
+  };
+  auto JTvMid = [&](int ka, int kb, const std::vector<double> &v, std::vector<double> &o) {
+    for (int j = 0; j < ns; ++j) {
+      double s = 0.0;
+      for (int i = 0; i < ns; ++i)
+        s += 0.5 * (J[ka + (i * ns + j) * nt] + J[kb + (i * ns + j) * nt]) * v[i];
+      o[j] = -s;
+    }
+  };
+  auto dPTvMid = [&](int ka, int kb, const std::vector<double> &v, std::vector<double> &o) {
+    for (int p = 0; p < np; ++p) {
+      double s = 0.0;
+      for (int i = 0; i < ns; ++i)
+        s += 0.5 * (dP[ka + (i * np + p) * nt] + dP[kb + (i * np + p) * nt]) * v[i];
+      o[p] = -s;
+    }
+  };
+
+  std::vector<double> l1(ns), l2(ns), l3(ns), l4(ns), tmp(ns);
+  std::vector<double> m1(np), m2(np), m3(np), m4(np);
+  std::vector<std::vector<double>> lam(nStates, std::vector<double>(ns, 0.0));
+  std::vector<std::vector<double>> mu(nStates, std::vector<double>(np, 0.0));
+
+  for (int o = 0; o < nOut; ++o) {
+    int k0 = outK[o];
+    for (int s = 0; s < nStates; ++s) {
+      std::fill(lam[s].begin(), lam[s].end(), 0.0);
+      lam[s][stateIdx[s]] = 1.0;
+      std::fill(mu[s].begin(), mu[s].end(), 0.0);
+    }
+    for (int k = k0; k >= 0; --k) {
+      // dose duals -- apply to every block independently (each has its own lambda)
+      for (int e = 0; e < nDual; ++e) if (dualK[e] == k) {
+        for (int s = 0; s < nStates; ++s) {
+          double dot = 0.0;
+          for (int i = 0; i < ns; ++i) dot += lam[s][i] * dualW[e + i * nDual];
+          for (int p = 0; p < np; ++p) mu[s][p] += dot * dualC[e + p * nDual];
+        }
+      }
+      // costate jumps -- apply to every block
+      for (int e = 0; e < nCj; ++e) if (cjK[e] == k) {
+        for (int s = 0; s < nStates; ++s) lam[s][cjCmt[e]] *= cjAlpha[e];
+      }
+      if (k == 0) break;
+      double h = tg[k - 1] - tg[k];
+      for (int s = 0; s < nStates; ++s) {
+        JTv(k, lam[s], l1);        dPTv(k, lam[s], m1);
+        for (int i = 0; i < ns; ++i) tmp[i] = lam[s][i] + 0.5 * h * l1[i];
+        JTvMid(k, k - 1, tmp, l2); dPTvMid(k, k - 1, tmp, m2);
+        for (int i = 0; i < ns; ++i) tmp[i] = lam[s][i] + 0.5 * h * l2[i];
+        JTvMid(k, k - 1, tmp, l3); dPTvMid(k, k - 1, tmp, m3);
+        for (int i = 0; i < ns; ++i) tmp[i] = lam[s][i] + h * l3[i];
+        JTv(k - 1, tmp, l4);      dPTv(k - 1, tmp, m4);
+        for (int i = 0; i < ns; ++i)
+          lam[s][i] += (h / 6.0) * (l1[i] + 2 * l2[i] + 2 * l3[i] + l4[i]);
+        for (int p = 0; p < np; ++p)
+          mu[s][p]  += (h / 6.0) * (m1[p] + 2 * m2[p] + 2 * m3[p] + m4[p]);
+      }
+    }
+    for (int s = 0; s < nStates; ++s)
+      for (int p = 0; p < np; ++p)
+        result[o + s * nOut + p * nOut * (long)nStates] = mu[s][p];
+  }
+}
+
+// .Call wrapper for rxode2AdjointTrajSweep (registered in init.c).
+extern "C" SEXP _rxode2_rxAdjointTrajSweep(SEXP tgS, SEXP JS, SEXP dPS, SEXP nsS,
+                                           SEXP npS, SEXP outKS, SEXP stateIdxS,
+                                           SEXP cjS, SEXP dualS) {
+  int ns = INTEGER(nsS)[0], np = INTEGER(npS)[0];
+  int nt = LENGTH(tgS), nOut = LENGTH(outKS), nStates = LENGTH(stateIdxS);
+  int nCj = LENGTH(VECTOR_ELT(cjS, 0));
+  int nDual = LENGTH(VECTOR_ELT(dualS, 0));
+  SEXP resS = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t)nOut * nStates * np));
+  rxode2AdjointTrajSweep(REAL(tgS), REAL(JS), REAL(dPS), ns, np, nt,
+                         INTEGER(outKS), nOut, INTEGER(stateIdxS), nStates, REAL(resS),
+                         nCj, INTEGER(VECTOR_ELT(cjS, 0)), INTEGER(VECTOR_ELT(cjS, 1)),
+                         REAL(VECTOR_ELT(cjS, 2)),
+                         nDual, INTEGER(VECTOR_ELT(dualS, 0)), REAL(VECTOR_ELT(dualS, 1)),
+                         REAL(VECTOR_ELT(dualS, 2)));
+  UNPROTECT(1);
+  return resS;
 }
 
 // .Call wrapper (registered in init.c) so R can invoke the same C core.

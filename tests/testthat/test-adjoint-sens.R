@@ -419,6 +419,59 @@ rxTest({
     }
   })
 
+  # ---- C++ full-trajectory sweep (rxode2AdjointTrajSweep / .rxAdjointSolveEvalC) --
+  # dy_k(t_i)/dp for EVERY state of interest, output time, and param -- the
+  # in-engine counterpart of forward sensitivity's full output structure.
+  # IMPORTANT: this requires ONE independent backward sweep PER output time
+  # (see the code comment in src/adjoint.cpp) -- it is NOT the O(1) win that
+  # .rxAdjointGrad's scalar objective sweep is; it exists for output-structure
+  # parity / validation, matching the plan's honest scoping note.
+  # For a structurally-zero sensitivity (e.g. a state with no dependence on a
+  # given param), the analytic answer is exactly 0 but a finite difference has
+  # roundoff noise; the floor absorbs that noise before computing a relative
+  # error so a genuinely tiny/zero true value does not blow up the ratio.
+  relOrAbsErr <- function(cc, fd, absFloor = 0.02) {
+    pmax(abs(cc - fd) - absFloor, 0) / (abs(fd) + absFloor)
+  }
+
+  test_that("C++ full-trajectory adjoint sweep matches the R reference (continuous)", {
+    tCS <- c("ka", "cl", "v"); tP <- c(ka = 1.2, cl = 3.5, v = 25)
+    tObsT <- c(1, 2, 4, 6, 8, 12, 18, 24)
+    tEv <- rxode2::et(amt = 100, cmt = "depot")
+    B <- rxode2::.rxAdjointSolveBuild(mText, tCS, tEv)
+    resC <- rxode2::.rxAdjointSolveEvalC(B, tP, tObsT, denseBy = 0.01)
+    resR <- rxode2::.rxAdjointSolve(mText, tP, tEv, tCS, tObsT, denseBy = 0.01)
+    tCols <- setdiff(names(resC), "time")
+    for (cc in tCols) {
+      expect_lt(max(relOrAbsErr(resC[[cc]], resR[[cc]])), 1e-3)
+    }
+  })
+
+  test_that("C++ full-trajectory adjoint sweep handles F and modeled-lag duals (vs FD)", {
+    tOb <- c(1, 2, 4)
+    tEv <- rxode2::et(amt = 100, cmt = "depot")
+    chkTraj <- function(txt, cs, pp) {
+      B <- rxode2::.rxAdjointSolveBuild(txt, cs, tEv)
+      resC <- rxode2::.rxAdjointSolveEvalC(B, pp, tOb, denseBy = 0.005)
+      tmod <- rxode2::rxode2(txt); tFev <- tEv |> rxode2::et(tOb)
+      solveAt <- function(p) as.data.frame(rxode2::rxSolve(tmod, params = p, tFev,
+                                                            returnType = "data.frame",
+                                                            addDosing = FALSE))
+      for (.stt in c("depot", "center")) for (.pp in cs) {
+        h <- abs(pp[[.pp]]) * 1e-6; pp1 <- pp; pp2 <- pp
+        pp1[.pp] <- pp1[.pp] + h; pp2[.pp] <- pp2[.pp] - h
+        d1 <- solveAt(pp1); d2 <- solveAt(pp2)
+        fd <- (d1[[.stt]] - d2[[.stt]]) / (2 * h)
+        cc <- resC[[paste0("rx__sens_", .stt, "_BY_", .pp, "__")]]
+        expect_lt(max(relOrAbsErr(cc, fd)), 2e-2)
+      }
+    }
+    chkTraj(paste0(mText, "\nf(depot)=Fbio"), c("ka", "cl", "v", "Fbio"),
+            c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7))
+    chkTraj(paste0(mText, "\nalag(depot)=tlag"), c("ka", "cl", "v", "tlag"),
+            c(ka = 1.2, cl = 3.5, v = 25, tlag = 0.8))
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

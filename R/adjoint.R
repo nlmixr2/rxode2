@@ -112,6 +112,223 @@
   cbind(time = outTimes, as.data.frame(.out))
 }
 
+#' Build the symbolic part of a full-trajectory adjoint solve (compile once)
+#'
+#' Performs all symbolic work (Jacobian, dose-dual expressions, model
+#' compilation) once and returns a reusable object for [.rxAdjointSolveEvalC()],
+#' the C++-backed full-trajectory counterpart of [.rxAdjointSolve()].  Reuses
+#' the SAME event-dual detection as [.rxAdjointGradBuild()] (F, modeled lag,
+#' replace/multiply, modeled rate/dur infusion) since the dual math is
+#' independent of which output state a costate block is tracking.
+#'
+#' @inheritParams .rxAdjointSolve
+#' @return an opaque list consumed by [.rxAdjointSolveEvalC()].
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
+  .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .st <- rxode2::rxStateOde(.model)
+  if (length(.st) == 0L) {
+    stop("adjoint solve requires a model with ODE states", call. = FALSE)
+  }
+  if (is.null(adjStates)) adjStates <- .st
+  adjStates <- intersect(.st, adjStates)
+  invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
+
+  ## event detection (identical to .rxAdjointGradBuild)
+  .ev <- as.data.frame(events)
+  .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
+  .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
+  .rateCol[is.na(.rateCol)] <- 0
+  .infusSym <- list()
+  for (.k in which(.rateCol %in% c(-1, -2))) {
+    .c <- as.character(.ev$cmt[.dr][.k])
+    if (!(.c %in% .st)) next
+    .t1 <- .ev$time[.dr][.k]; .amt <- .ev$amt[.dr][.k]
+    if (.rateCol[.k] == -1) {
+      .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
+      if (is.null(.rSE)) next
+      .valStr <- rxode2::rxFromSE(.rSE)
+      .dStr <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.rSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .kind <- "rate"
+    } else {
+      .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
+      if (is.null(.dSE)) next
+      .valStr <- rxode2::rxFromSE(.dSE)
+      .dStr <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.dSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .kind <- "dur"
+    }
+    .infusSym[[length(.infusSym) + 1L]] <- list(cmt = .c, t1 = .t1, amt = .amt,
+                                                kind = .kind, valStr = .valStr, dStr = .dStr)
+  }
+  .doses <- data.frame(time = .ev$time[.dr], cmt = as.character(.ev$cmt[.dr]),
+                       amt = .ev$amt[.dr], rate = .rateCol, stringsAsFactors = FALSE)
+  .dFexpr <- list(); .dLagStr <- list(); .lagStr <- list()
+  for (.c in unique(.doses$cmt[.doses$cmt %in% .st])) {
+    .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.fSE)) .dFexpr[[.c]] <- vapply(calcSens, function(p) {
+      .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
+    .lSE <- get0(paste0("rx_lag_", .c, "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.lSE)) {
+      .lagStr[[.c]] <- rxode2::rxFromSE(.lSE)
+      .dLagStr[[.c]] <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.lSE, p); rxode2::rxFromSE(.d) }, character(1))
+    }
+  }
+  .evR <- .ev[!is.na(.ev$evid) & .ev$evid %in% c(5L, 6L), , drop = FALSE]
+  .evR$cmt <- as.character(.evR$cmt)
+  .fLhs <- unlist(lapply(names(.dFexpr), function(.c)
+    vapply(calcSens, function(p)
+      paste0("rx__dFdp_", .c, "_", p, "__=", .dFexpr[[.c]][[p]]), character(1))))
+  .needF <- length(.dLagStr) > 0L
+  .fRHSlhs <- if (.needF) vapply(.st, function(i) {
+    .d <- get0(paste0("rx__d_dt_", i, "__"), envir = .model, inherits = FALSE)
+    paste0("rx__fRHS_", i, "__=", rxode2::rxFromSE(.d)) }, character(1)) else character(0)
+
+  ## forward model emitting the full Jacobian J(t) and forcing dP(t) = df/dtheta,
+  ## plus dose-dual quantities -- one solve feeds the C++ trajectory sweep.
+  .jacLines <- unlist(lapply(.st, function(j) lapply(c(.st, calcSens), function(x) {
+    .d <- get0(paste0("rx__df_", j, "_dy_", x, "__"), envir = .model, inherits = FALSE)
+    paste0("rx__df_", j, "_dy_", x, "__=", rxode2::rxFromSE(.d))
+  })))
+  .cfmod <- rxode2::rxode2(paste(c(.mText, .jacLines, .fLhs, .fRHSlhs), collapse = "\n"))
+
+  list(st = .st, calcSens = calcSens, adjStates = adjStates, cfmod = .cfmod,
+       infusSym = .infusSym, doses = .doses, evR = .evR, dFexpr = .dFexpr,
+       dLagStr = .dLagStr, lagStr = .lagStr, events = events)
+}
+
+#' Evaluate a prebuilt full-trajectory adjoint solve in C++
+#'
+#' The full-trajectory counterpart of [.rxAdjointGradEvalC()]: reconstructs
+#' `dy_k(t_i)/dp` for every output state `k` (`build$adjStates`), every
+#' requested time `t_i`, and every parameter `p`, via ONE backward sweep with
+#' one costate/quadrature block per state of interest (the reset trick --
+#' see `rxode2AdjointTrajSweep` in `src/adjoint.cpp`).  Covers every dosing
+#' dual (F, modeled lag, replace/multiply, modeled rate/dur infusion).
+#' Numerically equivalent to [.rxAdjointSolve()] (the pure-R reference), and
+#' costs one sweep regardless of the number of output times.
+#'
+#' @param build object returned by [.rxAdjointSolveBuild()].
+#' @param params named numeric vector of parameter values.
+#' @param outTimes numeric vector of output times.
+#' @param denseBy,atol,rtol as in [.rxAdjointSolve()].
+#' @return data.frame with a `time` column and one
+#'   `rx__sens_<state>_BY_<param>__` column per (state, param) pair.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointSolveEvalC <- function(build, params, outTimes, denseBy = 0.01,
+                                 atol = 1e-10, rtol = 1e-10) {
+  .st <- build$st; calcSens <- build$calcSens; adjStates <- build$adjStates
+  .ns <- length(.st); .np <- length(calcSens); .nk <- length(adjStates)
+  .doses <- build$doses
+  .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
+    .c <- .doses$cmt[i]
+    .lv <- if (.c %in% names(build$lagStr)) .rxAdjEvalNum(build$lagStr[[.c]], params) else 0
+    if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
+  .infus <- lapply(build$infusSym, function(z) {
+    if (z$kind == "rate") {
+      .Rv <- .rxAdjEvalNum(z$valStr, params)
+      .dRp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
+    } else {
+      .Dv <- .rxAdjEvalNum(z$valStr, params)
+      .dDp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
+      .Rv <- z$amt / .Dv; .dRp <- -(z$amt / .Dv^2) * .dDp
+    }
+    list(cmt = z$cmt, t1 = z$t1, t2 = z$t1 + z$amt / .Rv, R = .Rv,
+         dRdp = stats::setNames(.dRp, calcSens), amt = z$amt)
+  })
+  .infT <- unlist(lapply(.infus, function(z) c(z$t1, z$t2)))
+  .denseT <- sort(unique(c(seq(0, max(outTimes), by = denseBy), outTimes,
+                           build$evR$time, .doses$tau, .doses$tau - denseBy, .infT)))
+  .denseT <- .denseT[.denseT >= 0]
+  .fev <- build$events |> rxode2::et(.denseT)
+  .fwd <- as.data.frame(rxode2::rxSolve(build$cfmod, params = params, .fev,
+                                        returnType = "data.frame", atol = atol,
+                                        rtol = rtol, addDosing = FALSE))
+  .fwd <- .fwd[match(.denseT, .fwd$time), ]
+  .nt <- length(.denseT)
+  .J <- matrix(0.0, .nt, .ns * .ns)
+  for (i in seq_len(.ns)) for (j in seq_len(.ns))
+    .J[, (i - 1) * .ns + j] <- .fwd[[paste0("rx__df_", .st[i], "_dy_", .st[j], "__")]]
+  .dP <- matrix(0.0, .nt, .ns * .np)
+  for (i in seq_len(.ns)) for (p in seq_len(.np))
+    .dP[, (i - 1) * .np + p] <- .fwd[[paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__")]]
+  for (.z in .infus) {
+    .ci <- match(.z$cmt, .st)
+    if (is.na(.ci)) next
+    .inWin <- .denseT >= .z$t1 - 1e-9 & .denseT <= .z$t2 + 1e-9
+    for (p in seq_len(.np))
+      .dP[.inWin, (.ci - 1) * .np + p] <- .dP[.inWin, (.ci - 1) * .np + p] + .z$dRdp[[p]]
+  }
+
+  ## replace/multiply costate jumps
+  .evR <- build$evR
+  .cj <- if (nrow(.evR) > 0L) {
+    .cmt0 <- match(.evR$cmt, .st) - 1L
+    list(as.integer(match(.evR$time, .denseT) - 1L), as.integer(.cmt0),
+         ifelse(.evR$evid == 5L, 0.0, .evR$amt))
+  } else list(integer(0), integer(0), numeric(0))
+  ## bolus dose duals: F and modeled lag
+  .duals <- list()
+  for (.j in which(.doses$rate == 0)) {
+    .c <- .doses$cmt[.j]; .ci <- match(.c, .st); .tau <- .doses$tau[.j]
+    if (is.na(.ci)) next
+    .k <- which.min(abs(.denseT - .tau))
+    if (.c %in% names(build$dFexpr)) {
+      .w <- numeric(.ns); .w[.ci] <- .doses$amt[.j]
+      .cc <- vapply(calcSens, function(p) .fwd[[paste0("rx__dFdp_", .c, "_", p, "__")]][.k],
+                    numeric(1))
+      .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .cc)
+    }
+    if (.c %in% names(build$dLagStr)) {
+      .kpost <- which(.denseT >= .tau - 1e-9)[1]
+      .kpre  <- max(which(.denseT < .tau - 1e-9))
+      .fp <- vapply(.st, function(i) .fwd[[paste0("rx__fRHS_", i, "__")]][.kpost], numeric(1))
+      .fm <- vapply(.st, function(i) .fwd[[paste0("rx__fRHS_", i, "__")]][.kpre],  numeric(1))
+      .cc <- vapply(build$dLagStr[[.c]], function(s) .rxAdjEvalNum(s, params), numeric(1))
+      .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .fm - .fp, c = .cc)
+    }
+  }
+  ## infusion moving-boundary dual
+  for (.z in .infus) {
+    .ci <- match(.z$cmt, .st)
+    if (is.na(.ci)) next
+    .k <- which.min(abs(.denseT - .z$t2))
+    .w <- numeric(.ns); .w[.ci] <- .z$R
+    .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
+    .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
+  }
+  .dual <- if (length(.duals)) {
+    list(as.integer(vapply(.duals, function(d) d$k, integer(1))),
+         do.call(rbind, lapply(.duals, function(d) d$w)),
+         do.call(rbind, lapply(.duals, function(d) d$c)))
+  } else list(integer(0), numeric(0), numeric(0))
+
+  .oidx <- match(outTimes, .denseT)
+  .stateIdx <- match(adjStates, .st) - 1L
+  .res <- .Call(`_rxode2_rxAdjointTrajSweep`, .denseT, .J, .dP,
+               as.integer(.ns), as.integer(.np), as.integer(.oidx - 1L),
+               as.integer(.stateIdx), .cj, .dual)
+  ## res is flat nOut*nStates*np (column-major: o + s*nOut + p*nOut*nStates)
+  .nOut <- length(outTimes)
+  .out <- matrix(0.0, .nOut, .nk * .np)
+  .cols <- character(.nk * .np)
+  .col <- 1L
+  for (.p in seq_len(.np)) for (.s in seq_len(.nk)) {
+    .out[, .col] <- .res[(seq_len(.nOut) - 1L) + (.s - 1L) * .nOut + (.p - 1L) * .nOut * .nk + 1L]
+    .cols[.col] <- paste0("rx__sens_", adjStates[.s], "_BY_", calcSens[.p], "__")
+    .col <- .col + 1L
+  }
+  colnames(.out) <- .cols
+  cbind(time = outTimes, as.data.frame(.out))
+}
+
 #' Adjoint gradient of an objective (single backward sweep)
 #'
 #' Computes `dG/dtheta` for every parameter of interest with a SINGLE backward
