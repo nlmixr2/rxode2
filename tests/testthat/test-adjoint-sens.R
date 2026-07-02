@@ -497,6 +497,46 @@ rxTest({
     }
   })
 
+  # ---- population objective gradient (.rxAdjointGradPop) ---------------------
+  # dOFV/dtheta = sum over subjects of each subject's adjoint -2LL gradient --
+  # the exact quantity a gradient-based population estimator minimises, with one
+  # backward sweep per subject regardless of the number of population parameters.
+  test_that("adjoint population gradient matches a finite difference of the population -2LL", {
+    pTh <- c(ka = 1.2, cl = 3.5, v = 25, add = 0.4, prop = 0.08)
+    pCS <- c("ka", "cl", "v", "add", "prop")
+    pErr <- list(add = "add", prop = "prop")
+    pEv <- rxode2::et(amt = 100, cmt = "depot") |>
+      rxode2::et(c(0.5, 1, 2, 4, 6, 8, 12, 18, 24))
+    tmod <- rxode2::rxode2(paste0(mText, "\ncp=center/v"))
+    set.seed(5); nsub <- 5
+    truth <- as.data.frame(rxode2::rxSolve(tmod, params = pTh, pEv,
+                                           returnType = "data.frame", addDosing = FALSE))
+    data <- do.call(rbind, lapply(seq_len(nsub), function(i) {
+      vv <- pTh[["add"]]^2 + (pTh[["prop"]] * truth$cp)^2
+      data.frame(id = i, time = truth$time,
+                 dv = truth$cp + stats::rnorm(length(truth$cp), 0, sqrt(vv)))
+    }))
+    m2ll <- function(th) {
+      tot <- 0
+      for (i in seq_len(nsub)) {
+        di <- data[data$id == i, ]
+        d <- as.data.frame(rxode2::rxSolve(tmod, params = th, pEv,
+                                           returnType = "data.frame", addDosing = FALSE))
+        f <- d$cp; vv <- th[["add"]]^2 + (th[["prop"]] * f)^2
+        tot <- tot + sum((f - di$dv)^2 / vv + log(vv))
+      }
+      tot
+    }
+    gFD <- vapply(pCS, function(pn) {
+      h <- abs(pTh[[pn]]) * 1e-6; p1 <- pTh; p2 <- pTh
+      p1[pn] <- p1[pn] + h; p2[pn] <- p2[pn] - h
+      (m2ll(p1) - m2ll(p2)) / (2 * h)
+    }, numeric(1))
+    gPop <- rxode2::.rxAdjointGradPop(mText, pTh, pEv, pCS, "center/v", data,
+                                      pErr, denseBy = 0.005)
+    expect_equal(unname(gPop), unname(gFD), tolerance = 5e-3)
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

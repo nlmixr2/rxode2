@@ -426,6 +426,45 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
                      denseBy = denseBy, atol = atol, rtol = rtol)
 }
 
+#' Adjoint gradient of a POPULATION objective (sum over subjects)
+#'
+#' Computes `dOFV/dtheta = sum_subjects dG_i/dtheta` for a population objective
+#' -- the exact quantity a gradient-based population estimator (FOCEi/nlm outer
+#' optimisation) minimises -- with ONE backward sweep per subject, cost
+#' independent of the number of population parameters.  This is where the
+#' adjoint method genuinely wins over forward sensitivity for estimation:
+#' forward sens integrates `nStates * nTheta` extra ODEs per subject, whereas
+#' this integrates the adjoint once per subject regardless of `nTheta`.
+#'
+#' The symbolic model is built ONCE (via [.rxAdjointGradBuild()]) and re-used
+#' for every subject; only the per-subject observation times/values change.
+#' Assumes a shared dosing regimen across subjects (the `events` argument);
+#' per-subject dosing would require per-subject builds and is not handled here.
+#'
+#' @inheritParams .rxAdjointGrad
+#' @param data data.frame of observations with columns `id`, `time`, and `dv`
+#'   (observed value); one block of rows per subject.
+#' @param useC use the C++ sweep ([.rxAdjointGradEvalC()]); otherwise the R
+#'   reference ([.rxAdjointGradEval()]).
+#' @return named numeric vector `dOFV/dtheta` over `calcSens`.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointGradPop <- function(object, params, events, calcSens, pred, data,
+                              errModel = NULL, denseBy = 0.01, useC = TRUE,
+                              atol = 1e-10, rtol = 1e-10) {
+  .build <- .rxAdjointGradBuild(object, calcSens, pred, events, errModel)
+  .evalFn <- if (useC) .rxAdjointGradEvalC else .rxAdjointGradEval
+  .ids <- unique(data$id)
+  .g <- stats::setNames(numeric(length(calcSens)), calcSens)
+  for (.id in .ids) {
+    .d <- data[data$id == .id, , drop = FALSE]
+    .g <- .g + .evalFn(.build, params, .d$time, .d$dv, denseBy = denseBy,
+                       atol = atol, rtol = rtol)
+  }
+  .g
+}
+
 #' Build the symbolic part of an adjoint objective gradient (compile once)
 #'
 #' Performs ALL symbolic work (symengine differentiation, `rxFromSE`, model
