@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cvode_impl.h"
+#include "cvodes_impl.h"
 #include "sundials/sundials_math.h"
 
 /* Private constants */

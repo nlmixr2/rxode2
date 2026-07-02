@@ -24,6 +24,7 @@
 
 #include <sundials/priv/sundials_errors_impl.h>
 #include <sundials/sundials_math.h>
+#include <sundials/sundials_nvector_senswrapper.h>
 #include <sunnonlinsol/sunnonlinsol_newton.h>
 
 #include "sundials_logger_impl.h"
@@ -99,6 +100,32 @@ SUNNonlinearSolver SUNNonlinSol_Newton(N_Vector y, SUNContext sunctx)
   return (NLS);
 }
 
+/*==============================================================================
+  Constructor wrapper to create a new Newton solver for sensitivity solvers
+  ============================================================================*/
+
+SUNNonlinearSolver SUNNonlinSol_NewtonSens(int count, N_Vector y,
+                                           SUNContext sunctx)
+{
+  SUNFunctionBegin(sunctx);
+  SUNNonlinearSolver NLS;
+  N_Vector w;
+
+  /* create sensitivity vector wrapper */
+  w = N_VNew_SensWrapper(count, y);
+  SUNCheckLastErrNull();
+
+  /* create nonlinear solver using sensitivity vector wrapper */
+  NLS = SUNNonlinSol_Newton(w, sunctx);
+  SUNCheckLastErrNull();
+
+  /* free sensitivity vector wrapper */
+  N_VDestroy(w);
+  SUNCheckLastErrNull();
+
+  /* return NLS object */
+  return (NLS);
+}
 
 /*==============================================================================
   GetType, Initialize, Setup, Solve, and Free operations
