@@ -1,26 +1,26 @@
-// CVODES native adjoint-sensitivity analysis (ASA) driver.
+// CVODES native adjoint-sensitivity analysis (ASA) driver.  *** WIP / NOT WIRED ***
 //
-// #included into par_solve.cpp (like rk4s.cpp), so it sees calc_lhs / getSolve /
-// the rx_solve structs.  Reuses the .rxAdjointExpand model: the rx__adjFX_i_j__
-// (F_X = df/dy) and rx__adjFP_i_p__ (F_p = df/dp) lhs feed the backward RHS
-// (dlam/dt = -F_X^T lam) and the quadrature (dmu/dt = -F_p^T lam).  The forward
-// integrates the nBase base ODE with CVodeF (checkpointed); for each observation
-// t_i and base state k a backward problem is integrated from t_i to t_0 with the
-// terminal covector lam(t_i)=e_k, and CVodeGetQuadB gives mu = dy_k(t_i)/dp,
-// which is stored into the rx__sens_<k>_BY_<p>__ output slots.  This is the
-// CONTINUOUS adjoint (tolerance-controlled), using SUNDIALS' validated ASA.
+// Step-1 DONE: this compiles + links inside par_solve.cpp (CVODES headers coexist;
+// senswrapper resolved via PKG_CPPFLAGS -I).  RUNTIME TODO before enabling a live
+// method: (1) apply dose/reset EVENTS in the forward -- currently only samples, so
+// an undosed model integrates to 0; mirror rk4s ind_rk4s_0's handle_evid loop.
+// (2) a segfault in the ASA path (CVodeAdjInit/CVodeF/backward) needs debugging.
+// (3) FD-validate the quadrature sign; dose-parameter jumps.  The user-facing
+// dispatch (par_solve.cpp case 221) + R registration + rxData check are reverted
+// until these land, so no crashing method is exposed.
 //
-// First-cut scope: single dosing at/*before* the first solved point plus
-// sampling (the common PK case); the analytic dose-parameter jumps handled by the
-// rk4s F-jump are a follow-up here.
+// #included into par_solve.cpp (guarded by IN_PAR_SOLVE, like rk4s.cpp) so it
+// sees calc_lhs / iniSubject / getSolve / the dydt & update_inis globals.
+// Compiles to an empty .o when built standalone.  Reuses the .rxAdjointExpand
+// model: rx__adjFX_i_j__ (F_X = df/dy) and rx__adjFP_i_p__ (F_p = df/dp) lhs feed
+// the backward costate RHS (dlam/dt = -F_X^T lam) and quadrature
+// (dmu/dt = -F_p^T lam).  Forward = CVodeF (checkpointed) on the nBase base ODE;
+// per (observation t_i, base state k) a backward problem is integrated from t_i
+// to t_0 with lam(t_i)=e_k, and CVodeGetQuadB gives mu = dy_k(t_i)/dp, stored
+// into the rx__sens_<k>_BY_<p>__ output slots.  Continuous adjoint (tolerance-
+// controlled), using SUNDIALS' validated ASA.
+#ifdef IN_PAR_SOLVE
 
-// INTEGRATION NOTE: this file is designed to be #included into par_solve.cpp
-// (like rk4s.cpp / cvode.cpp) so it sees iniSubject (a static-inline in
-// par_solve.h that depends on par_solve.cpp-local symbols), calc_lhs, getSolve,
-// getAllTimes and the dydt/update_inis globals.  It CANNOT be a standalone TU.
-// The CVODES headers below then enter the par_solve.cpp TU -- validate that
-// combination (senswrapper is already resolved via PKG_CPPFLAGS -I) before
-// enabling.  Kept out of src/ (in build/) until that wiring + FD validation land.
 #include <cvodes/cvodes.h>
 #include <cvodes/cvodes_ls.h>
 #include <nvector/nvector_serial.h>
@@ -32,7 +32,6 @@ struct cvAdjUser {
   rx_solving_options *op;
   int cSub, *neq;
   t_dydt dydt;
-  t_calc_lhs calclhs;
   int nBase, np, eff, fxOff, fpOff;
   std::vector<double> A, DADT;   // eff-wide scratch for dydt / calc_lhs
 };
@@ -56,7 +55,7 @@ static int cvAdj_bwd(sunrealtype t, N_Vector y, N_Vector yB, N_Vector yBdot, voi
   double *A = u->A.data();
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
   for (int i = 0; i < n; ++i) A[i] = NV_Ith_S(y, i);
-  u->calclhs(u->cSub, t, A, u->ind->lhs);
+  calc_lhs(u->cSub, t, A, u->ind->lhs);
   const double *fx = &u->ind->lhs[u->fxOff];
   for (int j = 0; j < n; ++j) {
     double s = 0.0;
@@ -74,7 +73,7 @@ static int cvAdj_quad(sunrealtype t, N_Vector y, N_Vector yB, N_Vector qBdot, vo
   double *A = u->A.data();
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
   for (int i = 0; i < n; ++i) A[i] = NV_Ith_S(y, i);
-  u->calclhs(u->cSub, t, A, u->ind->lhs);
+  calc_lhs(u->cSub, t, A, u->ind->lhs);
   const double *fp = &u->ind->lhs[u->fpOff];
   for (int p = 0; p < np; ++p) {
     double s = 0.0;
@@ -85,22 +84,22 @@ static int cvAdj_quad(sunrealtype t, N_Vector y, N_Vector yB, N_Vector qBdot, vo
 }
 
 // Solve one subject with CVODES ASA, filling the rx__sens_* output slots.
-// Returns 1 on success, 0 on failure (caller falls back / flags error).
 static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                                  rx_solving_options_ind *ind, int cSub,
-                                 int *neq, t_dydt c_dydt, t_calc_lhs c_calclhs) {
+                                 int *neq, t_dydt c_dydt) {
   int nBase = op->adjNbase, np = op->adjNp, eff = rxEffNeq(ind, op);
   int sensOff = op->adjSensOff;
   double atol = op->ATOL > 0 ? op->ATOL : 1e-8, rtol = op->RTOL > 0 ? op->RTOL : 1e-6;
 
   cvAdjUser u;
-  u.ind = ind; u.op = op; u.cSub = cSub; u.neq = neq; u.dydt = c_dydt; u.calclhs = c_calclhs;
+  u.ind = ind; u.op = op; u.cSub = cSub; u.neq = neq; u.dydt = c_dydt;
   u.nBase = nBase; u.np = np; u.eff = eff; u.fxOff = op->adjFxOff; u.fpOff = op->adjFpOff;
   u.A.assign(eff, 0.0); u.DADT.assign(eff, 0.0);
 
   SUNContext sunctx = NULL;
-  if (SUNContext_Create(0, &sunctx) != 0) return 0;
+  if (SUNContext_Create(SUN_COMM_NULL, &sunctx) != 0) return 0;
   double t0 = getAllTimes(ind, 0);
+  _growSolveIfNeeded(ind, op, 0, 1);
   double *y0 = getSolve(0);
   N_Vector y = N_VNew_Serial(nBase, sunctx);
   for (int i = 0; i < nBase; ++i) NV_Ith_S(y, i) = y0[i];
@@ -113,17 +112,16 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   SUNLinearSolver LS = ok ? SUNLinSol_Dense(y, Amat, sunctx) : NULL;
   if (ok && (!Amat || !LS || CVodeSetLinearSolver(mem, LS, Amat) < 0)) ok = 0;
   if (ok) CVodeSetMaxNumSteps(mem, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
-  // adjoint checkpointing (cubic-Hermite interpolation of the forward trajectory)
-  if (ok && CVodeAdjInit(mem, 200, CV_HERMITE) < 0) ok = 0;
+  if (ok && CVodeAdjInit(mem, 200, CV_HERMITE) < 0) ok = 0;   // checkpointing
 
-  // Forward pass with checkpointing: advance to each observation, storing the
-  // base states (the primal output).  Assumes a monotone sampling timeline.
+  // Forward with checkpointing: advance to each observation, storing base states.
   int nx = ind->n_all_times;
   std::vector<double> obsT; std::vector<int> obsIx;
   for (int i = 0; ok && i < nx; ++i) {
     int ix = ind->ix[i];
     if (!isObs(getEvid(ind, ix))) continue;
     double tout = getAllTimes(ind, ix);
+    _growSolveIfNeeded(ind, op, i, 1);   // allocate this obs's solve buffer slot
     double *out = getSolve(i);
     if (tout > t0) {
       int ncheck; sunrealtype tret;
@@ -133,8 +131,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     obsT.push_back(tout); obsIx.push_back(i);
   }
 
-  // Backward: one problem per (observation t_i, base state k).  lam(t_i)=e_k,
-  // qB(t_i)=0; integrate to t_0; CVodeGetQuadB -> mu = dy_k(t_i)/dp.
+  // Backward: one problem per (observation t_i, base state k).
   int which = -1;
   N_Vector yB = ok ? N_VNew_Serial(nBase, sunctx) : NULL;
   N_Vector qB = ok ? N_VNew_Serial(np > 0 ? np : 1, sunctx) : NULL;
@@ -142,8 +139,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   bool bInit = false;
   for (int oi = (int)obsT.size() - 1; ok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
-    if (ti <= t0) { double *out = getSolve(solveIdx); for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0; continue; }
     double *out = getSolve(solveIdx);
+    if (ti <= t0) { for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0; continue; }
     for (int k = 0; ok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(yB, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(qB, p) = 0.0;
@@ -181,19 +178,33 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   return ok;
 }
 
-// Entry point (separately compiled): the model's dydt + calc_lhs are passed in
-// (calc_lhs is not exposed in a header, only inside par_solve.cpp).  The
-// par_solve.cpp trampolines ind_cvodesadj/par_cvodesadj call this with the
-// current model's function pointers.
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
-                                int *neq, t_dydt c_dydt, t_calc_lhs c_calclhs,
-                                t_update_inis u_inis) {
+                                int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   neq[1] = rx->ordId[solveid] - 1;
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   neq[0] = rxEffNeq(ind, op);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
-  if (!cvodesAdjSolveSubject(rx, op, ind, neq[1], neq, c_dydt, c_calclhs)) {
+  if (!cvodesAdjSolveSubject(rx, op, ind, neq[1], neq, c_dydt)) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     ind->err = 1;
   }
 }
+
+extern "C" void ind_cvodesadj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis) {
+  rx_solving_options *op = rx->op;
+  int neq[2]; neq[0] = op->neq; neq[1] = 0;
+  ind_cvodesadj_0(rx, op, solveid, neq, c_dydt, u_inis);
+}
+
+extern "C" void par_cvodesadj(rx_solve *rx) {
+  // CVODES manages its own per-subject SUNContext; run serially for now.
+  rx_solving_options *op = rx->op;
+  int nsolve = (int)(rx->nsim * rx->nsub);
+  for (int solveid = 0; solveid < nsolve; ++solveid) {
+    int neq[2]; neq[0] = op->neq; neq[1] = 0;
+    ind_cvodesadj_0(rx, op, solveid, neq, dydt, update_inis);
+    if (op->badSolve) break;
+  }
+}
+
+#endif // IN_PAR_SOLVE

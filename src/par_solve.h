@@ -51,6 +51,8 @@ void par_rk4(rx_solve *rx);
 extern "C" void ind_rk4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_rk4s(rx_solve *rx);
 extern "C" void ind_rk4s(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_cvodesadj(rx_solve *rx);
+extern "C" void ind_cvodesadj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_ck54(rx_solve *rx);
 extern "C" void ind_ck54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_ab(rx_solve *rx);

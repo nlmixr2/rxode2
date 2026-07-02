@@ -7162,6 +7162,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "rkf78.cpp"
 #include "rk4.cpp"
 #include "rk4s.cpp"
+#include "cvodes_adjoint.cpp"   // CVODES ASA adjoint-sensitivity driver
 #include "ck54.cpp"
 #include "ab.cpp"
 #include "abm.cpp"
