@@ -5346,6 +5346,7 @@ static inline void iniRx(rx_solve* rx) {
   op->stiff = 0;
   op->useDense = 0;
   op->adjoint = 0;
+  op->adjScalar = 0;
   op->adjNbase = 0;
   op->adjNp = 0;
   op->adjFxOff = 0;
@@ -5826,12 +5827,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
         if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
       }
-      int _fxOff = -1, _fpOff = -1, _dfOff = -1;
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _scalar = 0;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
         const char *_s = CHAR(_adjLhs[_i]);
         if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
         if (_fpOff < 0 && strcmp(_s, "rx__adjFP_0_0__") == 0) _fpOff = _i;
         if (_dfOff < 0 && strcmp(_s, "rx__adjdF_0_0__") == 0) _dfOff = _i;
+        if (strcmp(_s, "rx__adjScalar__") == 0) _scalar = 1;
       }
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
         (Rf_error)("method='rk4s' requires the adjoint expansion in the "
@@ -5840,6 +5842,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
       int _nSens = (int)_adjSt.size() - _nBase;
       op->adjoint = 1;
+      op->adjScalar = _scalar;
       op->adjNbase = _nBase;
       op->adjNp = _nSens / _nBase;
       op->adjFxOff = _fxOff;

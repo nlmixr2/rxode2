@@ -227,7 +227,7 @@
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxAdjointExpand <- function(object, calcSens) {
+.rxAdjointExpand <- function(object, calcSens, scalar = FALSE) {
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model); .ns <- length(.st); .np <- length(calcSens)
   if (.ns == 0L) stop("discrete adjoint requires a model with ODE states", call. = FALSE)
@@ -269,8 +269,12 @@
       .dfLines <- c(.dfLines, sprintf("rx__adjdF_%d_%d__=%s", k - 1L, p - 1L, .expr))
     }
   }
-  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines), collapse = "\n"),
-       st = .st, ns = .ns, np = .np, calcSens = calcSens,
+  # marker lhs selecting the O(1) scalar-objective single sweep (an OPTION of the
+  # rk4s method, detected by rxData; the same rx__sens_* output slots then carry
+  # dG/dtheta instead of the full trajectory).
+  .scalarLine <- if (isTRUE(scalar)) "rx__adjScalar__=1" else character(0)
+  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines, .scalarLine), collapse = "\n"),
+       st = .st, ns = .ns, np = .np, calcSens = calcSens, scalar = isTRUE(scalar),
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }
@@ -291,12 +295,12 @@
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxAdjointModel <- function(object, calcSens) {
+.rxAdjointModel <- function(object, calcSens, scalar = FALSE) {
   .txt <- if (is.character(object) && length(object) == 1L) object else rxode2::rxNorm(rxode2::rxModelVars(object))
-  .key <- paste0(.txt, "\n##adj##", paste(calcSens, collapse = ","))
+  .key <- paste0(.txt, "\n##adj", if (isTRUE(scalar)) "S" else "", "##", paste(calcSens, collapse = ","))
   .hit <- get0(.key, envir = .rxAdjointModelCache, inherits = FALSE)
   if (!is.null(.hit)) return(.hit)
-  .ex <- .rxAdjointExpand(object, calcSens)
+  .ex <- .rxAdjointExpand(object, calcSens, scalar = scalar)
   .ret <- list(model = rxode2::rxode2(.ex$text), info = .ex)
   assign(.key, .ret, envir = .rxAdjointModelCache)
   .ret
@@ -305,33 +309,35 @@
 #' Solve a model with the in-engine discrete adjoint (rk4s)
 #'
 #' Convenience wrapper that applies the adjoint expansion (cached), solves with
-#' the `rk4s` method, and returns clean output (the internal `rx__adjFX_*`/
-#' `rx__adjFP_*`/`rx__adjdF_*` lhs are dropped).  With `scalar = TRUE` it reduces
-#' the full-trajectory columns to a scalar objective gradient `dG/dtheta` (the
-#' scalar gradient is a REDUCTION on top of the `rx__sens_*` columns, not a
-#' separate solver): here the illustrative objective `G = 0.5 sum_i sum_k
-#' y_k(t_i)^2` (covector `c_i = y_base(t_i)`); nlmixr2est supplies the real
-#' -2LL / WLS covector reduction.
+#' the `rk4s` method, and returns clean output (the internal `rx__adj*` lhs are
+#' dropped).  With `scalar = TRUE` it selects the O(1) scalar-objective single
+#' sweep -- an OPTION of the `rk4s` method (a marker in the expanded model), NOT
+#' a separate solver -- so the gradient `dG/dtheta` is computed in ONE backward
+#' sweep, independent of #params AND #obs.  Objective here: the illustrative
+#' `G = 0.5 sum_i sum_k y_k(t_i)^2` (covector `c_i = y_base(t_i)`); nlmixr2est
+#' supplies the real -2LL / WLS covector -- the same sweep.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @param events an rxode2 event table / data set.
 #' @param params optional named parameter vector or data frame (per subject).
 #' @param scalar if `TRUE`, return the scalar objective gradient `dG/dtheta` (a
-#'   named vector) reduced from the `rx__sens_*` columns; otherwise return the
-#'   solved data frame with the `rx__sens_<state>_BY_<param>__` columns.
+#'   named vector) via the O(1) single sweep; otherwise return the solved data
+#'   frame with the `rx__sens_<state>_BY_<param>__` full-trajectory columns.
 #' @param ... passed to [rxode2::rxSolve()].
 #' @return a data frame (full trajectory) or a named gradient vector (scalar).
 #' @author Matthew L. Fidler
 #' @export
 rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, scalar = FALSE, ...) {
-  .b <- .rxAdjointModel(object, calcSens)
+  .b <- .rxAdjointModel(object, calcSens, scalar = scalar)
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = "rk4s", ...))
   if (isTRUE(scalar)) {
-    .st <- .b$info$st
-    return(stats::setNames(vapply(calcSens, function(pn)
-      sum(vapply(.st, function(s) sum(.df[[s]] * .df[[sprintf("rx__sens_%s_BY_%s__", s, pn)]]), numeric(1))),
-      numeric(1)), calcSens))
+    # in scalar mode the rx__sens_<state0>_BY_<param>__ slots carry dG/dtheta
+    # (constant across obs rows) from the single in-engine sweep.
+    .st0 <- .b$info$st[1]
+    return(stats::setNames(
+      vapply(calcSens, function(pn) .df[[sprintf("rx__sens_%s_BY_%s__", .st0, pn)]][1], numeric(1)),
+      calcSens))
   }
-  .drop <- grep("^rx__adj(FX|FP|dF)_", names(.df), value = TRUE)
+  .drop <- grep("^rx__adj(FX|FP|dF|Scalar)", names(.df), value = TRUE)
   .df[, setdiff(names(.df), .drop), drop = FALSE]
 }

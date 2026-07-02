@@ -180,6 +180,21 @@ rxTest({
                      rxode2::.rxAdjointModel(mText, cs)$model)
   })
 
+  test_that("O(1) scalar-objective sweep is an rk4s option (marker) matching the reduction", {
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 4, 8, 12, 24))
+    # scalar model carries the marker and still solves with method rk4s
+    b <- rxode2:::.rxAdjointModel(mText, cs, scalar = TRUE)
+    expect_true("rx__adjScalar__" %in% rxode2::rxModelVars(b$model)$lhs)
+    # full-trajectory reduction reference for G = 0.5 sum_i sum_k y_k(t_i)^2
+    full <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs)
+    ref <- vapply(cs, function(pn) sum(vapply(c("depot", "center"),
+      function(s) sum(full[[s]] * full[[sprintf("rx__sens_%s_BY_%s__", s, pn)]]), numeric(1))), numeric(1))
+    # in-engine single sweep equals the reduction to machine precision
+    g <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs, scalar = TRUE)
+    expect_named(g, cs)
+    expect_lt(max(abs(unname(g) - unname(ref))), 1e-8)
+  })
+
   test_that("table-driven fixed-step methods (eulers/midpoints/heuns) match FD of their own map", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)
