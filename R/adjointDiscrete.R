@@ -243,13 +243,13 @@
     .fSE <- get0(paste0("rx_f_", .st[k], "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .fLines <- c(.fLines, sprintf("f(%s)=%s", .st[k], rxode2::rxFromSE(.fSE)))
   }
-  .fxLines <- character(0); .fpLines <- character(0)
+  .fxLines <- character(0)
   for (i in seq_len(.ns)) for (j in seq_len(.ns))
     .fxLines <- c(.fxLines, sprintf("rx__adjFX_%d_%d__=%s", i - 1L, j - 1L,
                                     .fromSE(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"))))
-  for (i in seq_len(.ns)) for (p in seq_len(.np))
-    .fpLines <- c(.fpLines, sprintf("rx__adjFP_%d_%d__=%s", i - 1L, p - 1L,
-                                    .fromSE(paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__"))))
+  # F_p is built AFTER the delay scan below, so a param-dependent delay tau(p)
+  # can add its breaking-point correction to the quadrature source F_p.
+  .dtauList <- vector("list", .ns)   # per state i: list(stateJ, tau, djac, dtauByP)
   # DDE: delayed Jacobian F_Xd[i][j] = d f_i / d(delay(y_j, tau)) and the delay
   # duration tau, emitted as full nBase x nBase lhs blocks (0 where f_i has no
   # delay(y_j, .) term).  The backward sweep uses these for the ANTICIPATING
@@ -269,23 +269,32 @@
     }
     acc
   }
+  # Replace every structurally-identical `target` node with `repl` in an
+  # expression tree (spacing-robust substitution -- deparse of the reparsed tree
+  # never matches the original rxFromSE spacing, so text gsub is unreliable).
+  .substDelay <- function(e, target, repl) {
+    if (identical(e, target)) return(repl)
+    if (is.call(e)) for (.i in seq_along(e)) e[[.i]] <- .substDelay(e[[.i]], target, repl)
+    e
+  }
   for (i in seq_len(.ns)) {
     .fi <- get0(paste0("rx__d_dt_", .st[i], "__"), envir = .model, inherits = FALSE)
     if (is.null(.fi)) next
     .fiTxt <- rxode2::rxFromSE(.fi)
-    .dcalls <- .findDelays(parse(text = .fiTxt)[[1L]])
+    .fullExpr <- parse(text = .fiTxt)[[1L]]
+    .dcalls <- .findDelays(.fullExpr)
     if (length(.dcalls) == 0L) next
     .seen <- character(0)
     for (.dc in .dcalls) {
       .dcTxt <- deparse1(.dc)
-      if (.dcTxt %in% .seen) next   # gsub(fixed) already captured all copies
+      if (.dcTxt %in% .seen) next   # identical() subst already captured all copies
       .seen <- c(.seen, .dcTxt)
       .stateJ <- deparse1(.dc[[2L]]); .tau <- deparse1(.dc[[3L]])
       .j <- match(.stateJ, .st); if (is.na(.j)) next
-      # d f_i / d(delay(y_j, tau)): replace this delay() with a plain symbol, then
-      # differentiate symbolically w.r.t. that symbol (a value derivative).
+      # d f_i / d(delay(y_j, tau)): replace this delay() with a plain symbol in the
+      # parsed tree, then differentiate symbolically w.r.t. it (a value derivative).
       .gName <- "rx__gdlyATMP__"
-      .modTxt <- gsub(.dcTxt, .gName, .fiTxt, fixed = TRUE)
+      .modTxt <- deparse1(.substDelay(.fullExpr, .dc, as.name(.gName)))
       .dj <- symengine::D(symengine::S(.modTxt), symengine::S(.gName))
       .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"),
                      rxode2::rxFromSE(.dj), fixed = TRUE)
@@ -293,7 +302,36 @@
         paste0(.fxdMat[i, .j], "+(", .djTxt, ")")
       .tauMat[i, .j] <- .tau
       .hasDelayAdj <- TRUE
+      # Param-dependent delay tau(p): d tau / d p for each calcSens param (resolve
+      # the tau text in the symengine env so intermediate defs differentiate too).
+      # These feed the breaking-point correction to F_p below.
+      .dtauByP <- stats::setNames(rep("0", .np), calcSens)
+      .tauRes <- tryCatch(eval(parse(text = .tau), envir = .model), error = function(e) NULL)
+      if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
+        for (.pp in calcSens) {
+          .dD <- tryCatch(symengine::D(.tauRes, symengine::S(.pp)), error = function(e) NULL)
+          if (!is.null(.dD)) .dtauByP[.pp] <- rxode2::rxFromSE(.dD)
+        }
+      }
+      if (any(.dtauByP != "0"))
+        .dtauList[[i]] <- c(.dtauList[[i]], list(list(stateJ = .stateJ, tau = .tau,
+                                                      djac = .djTxt, dtauByP = .dtauByP)))
     }
+  }
+  # F_p (quadrature source): explicit df_i/dp PLUS, for a param-dependent delay
+  # tau(p), the breaking-point term  -(d f_i/d delay(y_j,tau)) * ydot_j(t-tau) *
+  # d tau/dp  (ydot_j(t-tau) = rxDelayD(y_j,tau)).  Exact dual of the forward-sens
+  # term added by .rxDelaySensAugment (R/dde.R); handled purely symbolically so
+  # the C++ quadrature mu += F_p^T lam needs no change.
+  .fpLines <- character(0)
+  for (i in seq_len(.ns)) for (p in seq_len(.np)) {
+    .fpExpr <- .fromSE(paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__"))
+    for (.z in .dtauList[[i]]) {
+      .dt <- .z$dtauByP[[calcSens[p]]]
+      if (!is.null(.dt) && !identical(.dt, "0"))
+        .fpExpr <- paste0(.fpExpr, "-(", .z$djac, ")*rxDelayD(", .z$stateJ, ",", .z$tau, ")*(", .dt, ")")
+    }
+    .fpLines <- c(.fpLines, sprintf("rx__adjFP_%d_%d__=%s", i - 1L, p - 1L, .fpExpr))
   }
   if (.hasDelayAdj) {
     for (i in seq_len(.ns)) for (j in seq_len(.ns)) {

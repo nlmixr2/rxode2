@@ -255,6 +255,24 @@ rxTest({
     expect_lt(e3, 0.05)                    # and is small at the finest step
   })
 
+  test_that("param-dependent delay tau(p): adjoint matches forward sensitivity", {
+    # A parameter in the delay duration adds a breaking-point correction to the
+    # quadrature source F_p:  -(df_i/d delay(y_j,tau)) * rxDelayD(y_j,tau) * dtau/dp.
+    # This is the exact dual of forward-sens' .rxDelaySensAugment term, so the
+    # adjoint's d/dtau must equal the forward-sensitivity trajectory.  (Both share
+    # the same dose-induced breaking-point JUMP limitation -- out of scope here.)
+    p <- c(k = 0.3, tau = 2); ev <- et(amt = 10, cmt = "central") %>% et(seq(0, 20, by = 2))
+    # forward-sens model exactly as .rxDelaySensAugment generates for d/dtau
+    fwd <- rxode2::rxode2(paste0("d/dt(central) = -k*delay(central, tau)\n",
+                                 "d/dt(S) = -k*delay(S, tau) + k*rxDelayD(central, tau)"))
+    sf <- as.data.frame(rxode2::rxSolve(fwd, ev, params = p, method = "dop853",
+                                        atol = 1e-10, rtol = 1e-10, cores = 1))$S
+    exD <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k", "tau"))
+    madjD <- rxode2::rxode2(exD$text)
+    sa <- as.data.frame(rxode2::rxSolve(madjD, ev, params = p, method = "rk4s", hmin = 0.002, cores = 1))
+    expect_lt(max(abs(sa[["rx__sens_central_BY_tau__"]] - sf)), 5e-3)   # discretization-limited
+  })
+
   test_that("DDE delay() adjoint converges for stiff (ros4s) and composite methods", {
     # The anticipating term is a per-step costate injection shared by every
     # backward fill (explicit, Rosenbrock, Radau, composite), so all of them
