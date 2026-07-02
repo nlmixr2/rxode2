@@ -537,6 +537,47 @@ rxTest({
     expect_equal(unname(gPop), unname(gFD), tolerance = 5e-3)
   })
 
+  test_that("adjoint population gradient handles per-subject covariates", {
+    cText <- paste0("cl = exp(tcl + bwt*lwt)\n", "v  = exp(tv + bage*lage)\n", mText)
+    cTh <- c(tcl = 1.2, tv = 3.2, ka = 1.1, bwt = 0.3, bage = -0.1, add = 0.4, prop = 0.08)
+    cCS <- c("tcl", "tv", "ka", "bwt", "bage", "add", "prop")
+    cErr <- list(add = "add", prop = "prop")
+    cEv <- rxode2::et(amt = 100, cmt = "depot") |>
+      rxode2::et(c(0.5, 1, 2, 4, 6, 8, 12, 18, 24))
+    tmod <- rxode2::rxode2(paste0(cText, "\ncp=center/v"))
+    set.seed(3); nsub <- 6
+    covs <- data.frame(id = seq_len(nsub), lwt = stats::rnorm(nsub), lage = stats::rnorm(nsub))
+    data <- do.call(rbind, lapply(seq_len(nsub), function(i) {
+      p <- c(cTh, lwt = covs$lwt[i], lage = covs$lage[i])
+      d <- as.data.frame(rxode2::rxSolve(tmod, params = p, cEv,
+                                         returnType = "data.frame", addDosing = FALSE))
+      vv <- p[["add"]]^2 + (p[["prop"]] * d$cp)^2
+      data.frame(id = i, time = d$time,
+                 dv = d$cp + stats::rnorm(length(d$cp), 0, sqrt(vv)),
+                 lwt = covs$lwt[i], lage = covs$lage[i])
+    }))
+    m2ll <- function(th) {
+      tot <- 0
+      for (i in seq_len(nsub)) {
+        di <- data[data$id == i, ]
+        p <- c(th, lwt = di$lwt[1], lage = di$lage[1])
+        d <- as.data.frame(rxode2::rxSolve(tmod, params = p, cEv,
+                                           returnType = "data.frame", addDosing = FALSE))
+        f <- d$cp; vv <- th[["add"]]^2 + (th[["prop"]] * f)^2
+        tot <- tot + sum((f - di$dv)^2 / vv + log(vv))
+      }
+      tot
+    }
+    gFD <- vapply(cCS, function(pn) {
+      h <- abs(cTh[[pn]]) * 1e-6; p1 <- cTh; p2 <- cTh
+      p1[pn] <- p1[pn] + h; p2[pn] <- p2[pn] - h
+      (m2ll(p1) - m2ll(p2)) / (2 * h)
+    }, numeric(1))
+    gPop <- rxode2::.rxAdjointGradPop(cText, cTh, cEv, cCS, "center/v", data,
+                                      cErr, denseBy = 0.005)
+    expect_equal(unname(gPop), unname(gFD), tolerance = 1e-2)
+  })
+
   # ---- capstone: adjoint gradient drives a gradient-based fit (nlm-style) -----
   # Proves the functional-gradient adjoint is usable as the ONLY gradient source
   # for a BFGS optimisation that recovers the data-generating parameters.

@@ -443,7 +443,10 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
 #'
 #' @inheritParams .rxAdjointGrad
 #' @param data data.frame of observations with columns `id`, `time`, and `dv`
-#'   (observed value); one block of rows per subject.
+#'   (observed value); one block of rows per subject.  Any additional columns
+#'   are treated as per-subject covariates and merged into `params` for that
+#'   subject's solve (their first value per subject is used), so covariate
+#'   models like `cl = exp(tcl + bwt*lwt)` with subject-level `lwt` work.
 #' @param useC use the C++ sweep ([.rxAdjointGradEvalC()]); otherwise the R
 #'   reference ([.rxAdjointGradEval()]).
 #' @return named numeric vector `dOFV/dtheta` over `calcSens`.
@@ -455,11 +458,14 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
                               atol = 1e-10, rtol = 1e-10) {
   .build <- .rxAdjointGradBuild(object, calcSens, pred, events, errModel)
   .evalFn <- if (useC) .rxAdjointGradEvalC else .rxAdjointGradEval
+  .covCols <- setdiff(names(data), c("id", "time", "dv"))
   .ids <- unique(data$id)
   .g <- stats::setNames(numeric(length(calcSens)), calcSens)
   for (.id in .ids) {
     .d <- data[data$id == .id, , drop = FALSE]
-    .g <- .g + .evalFn(.build, params, .d$time, .d$dv, denseBy = denseBy,
+    .p <- params
+    for (.cc in .covCols) .p[[.cc]] <- .d[[.cc]][1]   # per-subject covariates
+    .g <- .g + .evalFn(.build, .p, .d$time, .d$dv, denseBy = denseBy,
                        atol = atol, rtol = rtol)
   }
   .g
