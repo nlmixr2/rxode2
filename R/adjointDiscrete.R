@@ -200,3 +200,49 @@
   if (!is.null(lam0Cov)) .g <- .g + as.vector(.lam %*% lam0Cov)  # IC transversality
   stats::setNames(.g, build$calcSens)
 }
+
+## adjoint-expansion model builder (the HARD-GUARD "expansion in the expanded
+## ODE" for the in-engine discrete-adjoint `rk4s` method) ----------------------
+
+#' Build the adjoint-expansion model text for an in-engine discrete-adjoint solve
+#'
+#' The in-engine discrete-adjoint solver (`method="rk4s"`) needs the exact
+#' state Jacobian `F_X = dF/dy` and parameter forcing `F_p = dF/dtheta` at every
+#' recorded RK4 stage.  Rather than a new codegen path, this exposes them as
+#' ordinary rxode2 **lhs** assignments spliced onto the base ODE: `calc_lhs()`
+#' sets the internal state variables from whatever state vector it is handed, so
+#' the C++ backward sweep can evaluate `F_X`/`F_p` at an arbitrary stage state
+#' just by calling `calc_lhs` there and reading the lhs buffer by index.
+#'
+#' The lhs are emitted in a FIXED order the C++ sweep relies on: first all
+#' `F_X` entries row-major (`rx__adjFX_i_j__`, i,j 0-based over states), then all
+#' `F_p` entries (`rx__adjFP_i_p__`, i over states, p over `calcSens`).  So in
+#' the compiled lhs buffer `F_X[i][j]` is at index `i*ns + j` and `F_p[i][p]` at
+#' `ns*ns + i*np + p`.  This is the concrete "adjoint expansion in the expanded
+#' ODE" the HARD GUARD requires: absent these lhs, an `rk4s` solve must error.
+#'
+#' @inheritParams .rxDiscreteAdjointBuild
+#' @return list with `text` (expanded model text), `st`, `ns`, `np`,
+#'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointExpand <- function(object, calcSens) {
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .st <- rxode2::rxStateOde(.model); .ns <- length(.st); .np <- length(calcSens)
+  if (.ns == 0L) stop("discrete adjoint requires a model with ODE states", call. = FALSE)
+  invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
+  .fromSE <- function(nm) { .d <- get0(nm, envir = .model, inherits = FALSE); rxode2::rxFromSE(.d) }
+  .odeLines <- vapply(.st, function(i)
+    sprintf("d/dt(%s)=%s", i, .fromSE(paste0("rx__d_dt_", i, "__"))), character(1))
+  .fxLines <- character(0); .fpLines <- character(0)
+  for (i in seq_len(.ns)) for (j in seq_len(.ns))
+    .fxLines <- c(.fxLines, sprintf("rx__adjFX_%d_%d__=%s", i - 1L, j - 1L,
+                                    .fromSE(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"))))
+  for (i in seq_len(.ns)) for (p in seq_len(.np))
+    .fpLines <- c(.fpLines, sprintf("rx__adjFP_%d_%d__=%s", i - 1L, p - 1L,
+                                    .fromSE(paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__"))))
+  list(text = paste(c(.odeLines, .fxLines, .fpLines), collapse = "\n"),
+       st = .st, ns = .ns, np = .np, calcSens = calcSens,
+       fxOff = 0L, fpOff = .ns * .ns, nlhsAdj = .ns * .ns + .ns * .np)
+}

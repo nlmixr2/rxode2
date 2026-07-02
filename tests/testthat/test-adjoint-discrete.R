@@ -53,6 +53,29 @@ rxTest({
     expect_gt(abs(gC[["Fbio"]]), 1)
   })
 
+  test_that(".rxAdjointExpand exposes F_X/F_p as lhs matching the reference to machine precision", {
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    expect_equal(ex$ns, 2L); expect_equal(ex$np, 3L)
+    expect_equal(ex$fxOff, 0L); expect_equal(ex$fpOff, 4L); expect_equal(ex$nlhsAdj, 10L)
+    m <- rxode2::rxode2(ex$text)
+    mv <- rxode2::rxModelVars(m)
+    # first nlhsAdj lhs are the adjoint expansion, in the documented order
+    expect_equal(mv$lhs[seq_len(ex$nlhsAdj)],
+                 c("rx__adjFX_0_0__","rx__adjFX_0_1__","rx__adjFX_1_0__","rx__adjFX_1_1__",
+                   "rx__adjFP_0_0__","rx__adjFP_0_1__","rx__adjFP_0_2__",
+                   "rx__adjFP_1_0__","rx__adjFP_1_1__","rx__adjFP_1_2__"))
+    xtest <- c(depot = 8.3, center = 41.2)
+    s <- rxode2::rxSolve(m, et(0), params = p, inits = xtest, method = "liblsoda")
+    sd <- as.data.frame(s)
+    fx <- matrix(0, ex$ns, ex$ns); fp <- matrix(0, ex$ns, ex$np)
+    for (i in seq_len(ex$ns)) for (j in seq_len(ex$ns))
+      fx[i, j] <- sd[[sprintf("rx__adjFX_%d_%d__", i - 1L, j - 1L)]]
+    for (i in seq_len(ex$ns)) for (pp in seq_len(ex$np))
+      fp[i, pp] <- sd[[sprintf("rx__adjFP_%d_%d__", i - 1L, pp - 1L)]]
+    expect_lt(max(abs(fx - B$FXe(xtest, p))), 1e-12)
+    expect_lt(max(abs(fp - B$FPe(xtest, p))), 1e-12)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0
