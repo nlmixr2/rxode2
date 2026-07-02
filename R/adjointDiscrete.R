@@ -274,3 +274,61 @@
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }
+
+## Cached build + solve convenience for the in-engine discrete adjoint ----------
+
+.rxAdjointModelCache <- new.env(parent = emptyenv())
+
+#' Build (and cache) the compiled adjoint-expansion model for rk4s/rk4sg
+#'
+#' Runs [.rxAdjointExpand()] and compiles the result, caching by the normalized
+#' model text + `calcSens` so an optimizer that resolves the gradient many times
+#' compiles once.
+#'
+#' @inheritParams .rxDiscreteAdjointBuild
+#' @return list with `model` (compiled rxode2) and `info` (the
+#'   [.rxAdjointExpand()] layout).
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxAdjointModel <- function(object, calcSens) {
+  .txt <- if (is.character(object) && length(object) == 1L) object else rxode2::rxNorm(rxode2::rxModelVars(object))
+  .key <- paste0(.txt, "\n##adj##", paste(calcSens, collapse = ","))
+  .hit <- get0(.key, envir = .rxAdjointModelCache, inherits = FALSE)
+  if (!is.null(.hit)) return(.hit)
+  .ex <- .rxAdjointExpand(object, calcSens)
+  .ret <- list(model = rxode2::rxode2(.ex$text), info = .ex)
+  assign(.key, .ret, envir = .rxAdjointModelCache)
+  .ret
+}
+
+#' Solve a model with the in-engine discrete adjoint (rk4s / rk4sg)
+#'
+#' Convenience wrapper that applies the adjoint expansion (cached), selects the
+#' `rk4s` (full-trajectory `dy(t)/dtheta` columns) or `rk4sg` (O(1) scalar
+#' objective gradient) method, and returns clean output (the internal
+#' `rx__adjFX_*`/`rx__adjFP_*`/`rx__adjdF_*` lhs are dropped).
+#'
+#' @inheritParams .rxDiscreteAdjointBuild
+#' @param events an rxode2 event table / data set.
+#' @param params optional named parameter vector or data frame (per subject).
+#' @param scalar if `TRUE`, use `rk4sg` and return the scalar objective gradient
+#'   `dG/dtheta` (a named vector); otherwise use `rk4s` and return the solved
+#'   data frame with `rx__sens_<state>_BY_<param>__` columns.
+#' @param ... passed to [rxode2::rxSolve()].
+#' @return a data frame (full trajectory) or a named gradient vector (scalar).
+#' @author Matthew L. Fidler
+#' @export
+rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, scalar = FALSE, ...) {
+  .b <- .rxAdjointModel(object, calcSens)
+  .method <- if (isTRUE(scalar)) "rk4sg" else "rk4s"
+  .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = .method, ...))
+  if (isTRUE(scalar)) {
+    .st0 <- .b$info$st[1]
+    return(stats::setNames(
+      vapply(calcSens, function(pn) .df[[sprintf("rx__sens_%s_BY_%s__", .st0, pn)]][1], numeric(1)),
+      calcSens))
+  }
+  .drop <- grep("^rx__adj(FX|FP|dF)_", names(.df), value = TRUE)
+  .df[, setdiff(names(.df), .drop), drop = FALSE]
+}

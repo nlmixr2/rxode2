@@ -169,6 +169,31 @@ rxTest({
     expect_lt(max(abs(grad - ref)), 1e-8)
   })
 
+  test_that("rxSolveAdjointRk4 wrapper: clean full-trajectory output + cached scalar gradient", {
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    df <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs)
+    # internal adjoint lhs are dropped; rx__sens_* are present
+    expect_false(any(grepl("^rx__adj(FX|FP|dF)_", names(df))))
+    expect_true(all(vapply(cs, function(pn) all(vapply(c("depot", "center"), function(st)
+      sprintf("rx__sens_%s_BY_%s__", st, pn) %in% names(df), logical(1))), logical(1))))
+    # wrapper full-trajectory columns equal a direct rk4s solve
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    direct <- as.data.frame(rxode2::rxSolve(rxode2::rxode2(ex$text), ev, params = p, method = "rk4s", cores = 1))
+    for (pn in cs) for (st in c("depot", "center")) {
+      cn <- sprintf("rx__sens_%s_BY_%s__", st, pn)
+      expect_equal(df[[cn]], direct[[cn]], tolerance = 1e-10)
+    }
+    # scalar gradient equals the direct rk4sg reduction target
+    g <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs, scalar = TRUE)
+    expect_named(g, cs)
+    ref <- vapply(cs, function(pn) sum(vapply(c("depot", "center"), function(st)
+      sum(direct[[st]] * direct[[sprintf("rx__sens_%s_BY_%s__", st, pn)]]), numeric(1))), numeric(1))
+    expect_equal(unname(g), unname(ref), tolerance = 1e-6)
+    # cache returns the identical compiled object
+    expect_identical(rxode2::.rxAdjointModel(mText, cs)$model,
+                     rxode2::.rxAdjointModel(mText, cs)$model)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0
