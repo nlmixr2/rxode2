@@ -6705,6 +6705,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 200: // dop853s   -- discrete-adjoint adaptive Dormand-Prince 8(5,3)
       case 207: // ck54s     -- discrete-adjoint adaptive Cash-Karp 5(4)
       case 265: // bs32s     -- discrete-adjoint adaptive Bogacki-Shampine 3(2)
+      case 227: // vern65s   -- discrete-adjoint adaptive Verner 6(5)
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6928,6 +6929,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 200: // dop853s
       case 207: // ck54s
       case 265: // bs32s
+      case 227: // vern65s
         par_rk4s(rx);
         break;
       case 7:
