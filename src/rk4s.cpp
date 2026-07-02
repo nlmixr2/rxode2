@@ -275,12 +275,33 @@ static void rksTableauRadau5(rksTableau &T) {
   T.b[0]=(16.0-q)/36.0; T.b[1]=(16.0+q)/36.0; T.b[2]=1.0/9.0;   // = A row 3 (stiffly accurate)
 }
 
+// Backward (implicit) Euler: 1-stage fully-implicit RK, order 1, L-stable.
+static void rksTableauBackwardEuler(rksTableau &T) {
+  T.s = 1; T.implicitRK = 1;
+  T.c[0] = 1.0; T.A[0] = 1.0; T.b[0] = 1.0;
+}
+
+// Gauss-Legendre, 3-stage, order 6 (A-stable, symplectic).  Fully-implicit RK
+// with the full (non-lower-triangular) A -- solved by the same coupled Newton
+// as Radau; NOT stiffly accurate (b != last A row), which the framework allows.
+static void rksTableauGauss6(rksTableau &T) {
+  const int s = 3; T.s = s; T.implicitRK = 1;
+  double q = sqrt(15.0);
+  T.c[0]=0.5-q/10.0; T.c[1]=0.5; T.c[2]=0.5+q/10.0;
+  T.A[0*s+0]=5.0/36.0;        T.A[0*s+1]=2.0/9.0-q/15.0; T.A[0*s+2]=5.0/36.0-q/30.0;
+  T.A[1*s+0]=5.0/36.0+q/24.0; T.A[1*s+1]=2.0/9.0;        T.A[1*s+2]=5.0/36.0-q/24.0;
+  T.A[2*s+0]=5.0/36.0+q/30.0; T.A[2*s+1]=2.0/9.0+q/15.0; T.A[2*s+2]=5.0/36.0;
+  T.b[0]=5.0/18.0; T.b[1]=4.0/9.0; T.b[2]=5.0/18.0;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
   case 206: rksTableauRk4(T); break;   // rk4s -- classical RK4
   case 213: rksTableauRos4(T); break;  // ros4s -- Shampine ROS4 (stiff)
   case 236: rksTableauRadau5(T); break;// radauiia5s -- Radau IIA 3-stage 5th (stiff)
+  case 233: rksTableauBackwardEuler(T); break; // backwardEulers -- implicit Euler (stiff)
+  case 234: rksTableauGauss6(T); break;// gauss6s -- Gauss-Legendre 3-stage 6th (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)

@@ -196,6 +196,32 @@ rxTest({
         c("ka", "vmax", "km"), c(ka = 1.0, vmax = 8, km = 15), 0.05)
   })
 
+  test_that("fully-implicit backwardEulers + gauss6s adjoints are exact vs FD", {
+    # More fully-implicit RK methods on the Radau framework (first derivatives
+    # only, no f'').  backwardEulers = implicit Euler (order 1, L-stable);
+    # gauss6s = 3-stage Gauss-Legendre (order 6, symplectic, NOT stiffly accurate
+    # -- the coupled-Newton framework allows b != last A row).  Both give an
+    # EXACT discrete adjoint even where the primal is coarse (backwardEuler).
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    chk <- function(method, hmin) {
+      ex <- rxode2::.rxAdjointExpand(mText, cs)
+      madj <- rxode2::rxode2(ex$text)
+      sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = method, hmin = hmin, cores = 1))
+      solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+        madj, ev, params = pp, method = method, hmin = hmin, cores = 1))[, c("depot", "center")])
+      fdmax <- 0
+      for (pn in cs) {
+        hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+        for (kk in seq_along(ex$st))
+          fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[kk], pn)]] - fd[, kk])))
+      }
+      expect_lt(fdmax, 1e-5)
+    }
+    chk("backwardEulers", 0.005)
+    chk("gauss6s", 0.05)
+  })
+
   test_that("stiff ros4s (Rosenbrock) adjoint is exact for a linear model (dJ/dp term)", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs, stiff = TRUE)

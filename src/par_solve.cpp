@@ -6711,6 +6711,8 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 205: // f78s      -- discrete-adjoint adaptive Fehlberg 7(8)
       case 213: // ros4s     -- discrete-adjoint Rosenbrock (stiff)
       case 236: // radauiia5s -- discrete-adjoint Radau IIA 5th (stiff)
+      case 233: // backwardEulers -- discrete-adjoint implicit Euler (stiff)
+      case 234: // gauss6s   -- discrete-adjoint Gauss-Legendre 6th (stiff)
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6940,6 +6942,8 @@ extern "C" void par_solve(rx_solve *rx) {
       case 205: // f78s
       case 213: // ros4s
       case 236: // radauiia5s
+      case 233: // backwardEulers
+      case 234: // gauss6s
         par_rk4s(rx);
         break;
       case 7:
