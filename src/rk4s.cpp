@@ -294,6 +294,23 @@ static void rksTableauGauss6(rksTableau &T) {
   T.b[0]=5.0/18.0; T.b[1]=4.0/9.0; T.b[2]=5.0/18.0;
 }
 
+// SDIRK43, 5-stage, order 3, L-stable (Hairer & Wanner, Solving ODEs II).  A is
+// lower-triangular with constant diagonal gamma=1/4 (singly diagonally implicit)
+// and stiffly accurate (b = last A row).  Runs on the fully-implicit Radau
+// coupled-Newton framework -- the lower-triangular A just makes the coupled
+// Newton matrix block-lower-triangular (same converged stages, adjoint exact).
+static void rksTableauSdirk43(rksTableau &T) {
+  const int s = 5; T.s = s; T.implicitRK = 1;
+  double g = 0.25;
+  T.A[0*s+0]=g;
+  T.A[1*s+0]=1.0/2;      T.A[1*s+1]=g;
+  T.A[2*s+0]=17.0/50;    T.A[2*s+1]=-1.0/25;     T.A[2*s+2]=g;
+  T.A[3*s+0]=371.0/1360; T.A[3*s+1]=-137.0/2720; T.A[3*s+2]=15.0/544;  T.A[3*s+3]=g;
+  T.A[4*s+0]=25.0/24;    T.A[4*s+1]=-49.0/48;    T.A[4*s+2]=125.0/16;  T.A[4*s+3]=-85.0/12; T.A[4*s+4]=g;
+  T.b[0]=25.0/24; T.b[1]=-49.0/48; T.b[2]=125.0/16; T.b[3]=-85.0/12; T.b[4]=g;  // = A row 5
+  T.c[0]=g; T.c[1]=3.0/4; T.c[2]=11.0/20; T.c[3]=1.0/2; T.c[4]=1.0;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -302,6 +319,7 @@ static rksTableau rksGetTableau(int method) {
   case 236: rksTableauRadau5(T); break;// radauiia5s -- Radau IIA 3-stage 5th (stiff)
   case 233: rksTableauBackwardEuler(T); break; // backwardEulers -- implicit Euler (stiff)
   case 234: rksTableauGauss6(T); break;// gauss6s -- Gauss-Legendre 3-stage 6th (stiff)
+  case 238: rksTableauSdirk43(T); break;// sdirk43s -- SDIRK 5-stage order 3 (stiff)
   case 239:                            // eulers -- forward Euler
     T.s = 1; T.c[0] = 0; T.b[0] = 1.0; break;
   case 240:                            // midpoints -- explicit midpoint (RK2)

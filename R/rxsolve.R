@@ -1004,7 +1004,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s", "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s"),
+                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s", "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s"),
 
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
@@ -4013,7 +4013,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s", "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s")) {
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s", "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s")) {
   .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
                   "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
                   "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
@@ -4035,7 +4035,7 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
                   "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
                   "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
                   "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-                  "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L)
+                  "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L)
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
@@ -4111,7 +4111,7 @@ rxIsImplicit <- function(method) {
     "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
     "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
     "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L
+    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
@@ -4156,7 +4156,7 @@ rxIsImplicit <- function(method) {
 #' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
 rxIsStiff <- function(method) {
-  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L)
+  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
     "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
@@ -4187,7 +4187,7 @@ rxIsStiff <- function(method) {
     "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
     "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
     "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L
+    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
@@ -4230,7 +4230,7 @@ rxIsStiff <- function(method) {
 #' @export
 rxIsNonStiff <- function(method) {
   .switcherCodes <- c(1L, 2L, 3L)
-  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L)
+  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
     "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
@@ -4261,7 +4261,7 @@ rxIsNonStiff <- function(method) {
     "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
     "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
     "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L
+    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
@@ -4341,7 +4341,7 @@ rxIsDense <- function(method) {
     "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
     "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
     "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L
+    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
