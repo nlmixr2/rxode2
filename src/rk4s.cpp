@@ -397,6 +397,10 @@ static rksTableau rksGetTableau(int method) {
     T.s = 2; T.c[0] = 0; T.c[1] = 0.5; T.b[0] = 0; T.b[1] = 1.0; T.A[1*2+0] = 0.5; break;
   case 241:                            // heuns -- Heun / explicit trapezoid (RK2)
     T.s = 2; T.c[0] = 0; T.c[1] = 1.0; T.b[0] = 0.5; T.b[1] = 0.5; T.A[1*2+0] = 1.0; break;
+  case 243:                            // rk3s -- Kutta's 3rd-order method (RK3)
+    T.s = 3; T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 1.0;
+    T.b[0] = 1.0/6; T.b[1] = 2.0/3; T.b[2] = 1.0/6;
+    T.A[1*3+0] = 0.5; T.A[2*3+0] = -1.0; T.A[2*3+1] = 2.0; break;
   case 210: rksTableauDop5(T); break;  // dop5s -- adaptive Dormand-Prince 5(4)
   case 200: rksTableauDop853(T); break;// dop853s -- adaptive Dormand-Prince 8(5,3)
   case 207: rksTableauCk54(T); break;  // ck54s -- adaptive Cash-Karp 5(4)

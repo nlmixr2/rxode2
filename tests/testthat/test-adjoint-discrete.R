@@ -417,11 +417,11 @@ rxTest({
     }
   })
 
-  test_that("table-driven fixed-step methods (eulers/midpoints/heuns) match FD of their own map", {
+  test_that("table-driven fixed-step methods (eulers/midpoints/heuns/rk3s) match FD of their own map", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
-    for (meth in c("eulers", "midpoints", "heuns")) {
+    for (meth in c("eulers", "midpoints", "heuns", "rk3s")) {
       sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = meth, cores = 1))
       solveB <- function(pp) as.matrix(as.data.frame(
         rxode2::rxSolve(madj, ev, params = pp, method = meth, cores = 1))[, c("depot", "center")])
