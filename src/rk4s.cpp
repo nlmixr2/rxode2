@@ -181,6 +181,29 @@ static void rksTableauDop87(rksTableau &T) {
   T.bhat[0]=13451932.0/455176632; T.bhat[5]=-808719846.0/976000145; T.bhat[6]=1757004468.0/5645159321; T.bhat[7]=656045339.0/265891186; T.bhat[8]=-3867574721.0/1518517206; T.bhat[9]=465885868.0/322736535; T.bhat[10]=53011238.0/667516719; T.bhat[11]=2.0/45;
 }
 
+// Fehlberg RK7(8), 13 stages (rxode2 "f78" / boost runge_kutta_fehlberg78,
+// Fehlberg 1968).  b = 8th-order weights (propagated, local extrapolation),
+// bhat = 7th-order; errOrder = 7.  Nodes c = A row sums.  (b, bhat both sum to 1.)
+static void rksTableauF78(rksTableau &T) {
+  const int s = 13; T.s = s; T.adaptive = 1; T.errOrder = 7;
+  double *A = T.A;
+  A[1*s+0]=2.0/27;
+  A[2*s+0]=1.0/36; A[2*s+1]=1.0/12;
+  A[3*s+0]=1.0/24; A[3*s+2]=1.0/8;
+  A[4*s+0]=5.0/12; A[4*s+2]=-25.0/16; A[4*s+3]=25.0/16;
+  A[5*s+0]=1.0/20; A[5*s+3]=1.0/4; A[5*s+4]=1.0/5;
+  A[6*s+0]=-25.0/108; A[6*s+3]=125.0/108; A[6*s+4]=-65.0/27; A[6*s+5]=125.0/54;
+  A[7*s+0]=31.0/300; A[7*s+4]=61.0/225; A[7*s+5]=-2.0/9; A[7*s+6]=13.0/900;
+  A[8*s+0]=2.0; A[8*s+3]=-53.0/6; A[8*s+4]=704.0/45; A[8*s+5]=-107.0/9; A[8*s+6]=67.0/90; A[8*s+7]=3.0;
+  A[9*s+0]=-91.0/108; A[9*s+3]=23.0/108; A[9*s+4]=-976.0/135; A[9*s+5]=311.0/54; A[9*s+6]=-19.0/60; A[9*s+7]=17.0/6; A[9*s+8]=-1.0/12;
+  A[10*s+0]=2383.0/4100; A[10*s+3]=-341.0/164; A[10*s+4]=4496.0/1025; A[10*s+5]=-301.0/82; A[10*s+6]=2133.0/4100; A[10*s+7]=45.0/82; A[10*s+8]=45.0/164; A[10*s+9]=18.0/41;
+  A[11*s+0]=3.0/205; A[11*s+5]=-6.0/41; A[11*s+6]=-3.0/205; A[11*s+7]=-3.0/41; A[11*s+8]=3.0/41; A[11*s+9]=6.0/41;
+  A[12*s+0]=-1777.0/4100; A[12*s+3]=-341.0/164; A[12*s+4]=4496.0/1025; A[12*s+5]=-289.0/82; A[12*s+6]=2193.0/4100; A[12*s+7]=51.0/82; A[12*s+8]=33.0/164; A[12*s+9]=12.0/41; A[12*s+11]=1.0;
+  for (int i = 0; i < s; ++i) { double cs = 0; for (int j = 0; j < i; ++j) cs += A[i*s+j]; T.c[i] = cs; }
+  T.b[5]=34.0/105; T.b[6]=9.0/35; T.b[7]=9.0/35; T.b[8]=9.0/280; T.b[9]=9.0/280; T.b[11]=41.0/840; T.b[12]=41.0/840;
+  T.bhat[0]=41.0/840; T.bhat[5]=34.0/105; T.bhat[6]=9.0/35; T.bhat[7]=9.0/35; T.bhat[8]=9.0/280; T.bhat[9]=9.0/280; T.bhat[10]=41.0/840;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -198,6 +221,7 @@ static rksTableau rksGetTableau(int method) {
   case 227: rksTableauVern65(T); break;// vern65s -- adaptive Verner 6(5)
   case 228: rksTableauVern76(T); break;// vern76s -- adaptive Verner 7(6)
   case 229: rksTableauDop87(T); break; // dop87s -- adaptive Prince-Dormand 8(7)
+  case 205: rksTableauF78(T); break;   // f78s -- adaptive Fehlberg 7(8)
   default:  rksTableauRk4(T); break;
   }
   return T;
