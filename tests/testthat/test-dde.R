@@ -223,4 +223,27 @@ rxTest({
     expect_true(max(abs(.s2$b - .s1$b)) < 1e-6)
     expect_true(max(abs(.s2$a - 5 * exp(-.s2$time))) < 1e-5)
   })
+
+  test_that("param-dependent delay: forward-sens dose-induced jump matches FD", {
+    # .rxDelaySensJump reproduces the dose-induced breaking-point jump in the
+    # 1st-order tau-sensitivity as a modeled-lag/F bolus on the sens compartment
+    # (no runtime break events).  Assemble base + smooth sens + the alag/f lines,
+    # solve with the auto-augmented events, and compare d/dtau to finite diffs.
+    base <- "d/dt(central) = -k * delay(central, tau)"
+    p <- c(k = 0.3, tau = 2)
+    ev <- et(amt = 10, cmt = "central") %>% et(seq(0.7, 15, by = 1.7))
+    jm <- rxode2:::.rxDelaySensJump(base, c("k", "tau"), ev)
+    expect_true(any(grepl("alag(rx__sens_central_BY_tau__)=tau", jm$alagf, fixed = TRUE)))
+    expect_true(any(grepl("f(rx__sens_central_BY_tau__)=-(-k)*(1)", jm$alagf, fixed = TRUE)))
+    smooth <- "d/dt(rx__sens_central_BY_tau__) = -k*delay(rx__sens_central_BY_tau__, tau) + k*rxDelayD(central, tau)"
+    fwd <- rxode2::rxode2(paste(c(base, smooth, jm$alagf), collapse = "\n"))
+    sj <- as.data.frame(rxode2::rxSolve(fwd, jm$events, params = p, method = "dop853",
+                                        atol = 1e-10, rtol = 1e-10, cores = 1))
+    ex <- rxode2::.rxAdjointExpand(base, c("k", "tau")); madj <- rxode2::rxode2(ex$text)
+    sb <- function(pp) as.data.frame(rxode2::rxSolve(madj, ev, params = pp, method = "dop853",
+                                                     atol = 1e-10, rtol = 1e-10, cores = 1))$central
+    hh <- 1e-3; pp <- p; pm <- p; pp["tau"] <- pp["tau"] + hh; pm["tau"] <- pm["tau"] - hh
+    fd <- (sb(pp) - sb(pm)) / (2 * hh)
+    expect_lt(max(abs(sj[["rx__sens_central_BY_tau__"]] - fd)), 5e-3)
+  })
 })

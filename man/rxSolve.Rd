@@ -46,7 +46,10 @@ rxSolve(
     "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
     "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
     "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
-    "o129", "f1412", "lsode", "bdf"),
+    "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
+    "dop853s", "ck54s", "bs32s", "vern65s", 
+     "vern76s", "dop87s", "f78s", "ros4s",
+    "radauiia5s"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -749,7 +752,17 @@ maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
 \code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
-determine the step size when \code{dense=TRUE}}
+determine the step size when \code{dense=TRUE}
+
+For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
+as having a CONSTANT Jacobian/matrix-exponential term before
+re-linearizing (previously silently ignored for this method). For a
+true (state-independent) \code{matExp()} model this makes no numerical
+difference; for an \code{indLin()}-forcing model with a state-dependent
+term (e.g. Michaelis-Menten elimination), the default \code{hmax} (tied to
+the spacing of your own sampling/dosing times) may be too coarse for
+the desired accuracy -- set an explicit, smaller \code{hmax} to force more
+frequent relinearization.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}

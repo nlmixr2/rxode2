@@ -17,7 +17,10 @@ odeMethodToInt(
     "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
     "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
     "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
-    "o129", "f1412", "lsode", "bdf")
+    "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
+    "dop853s", "ck54s", "bs32s", "vern65s", 
+     "vern76s", "dop87s", "f78s", "ros4s",
+    "radauiia5s")
 )
 }
 \arguments{

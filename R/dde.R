@@ -292,6 +292,94 @@
   }, character(1L), USE.NAMES = FALSE)
 }
 
+#' Dose-induced breaking-point jump for forward delay sensitivities
+#'
+#' A dose is a state discontinuity; propagated through `delay(y_j, T(p))` it makes
+#' the delayed value jump at `t = t_dose + T(p)`, so the 1st-order sensitivity
+#' `S_i^p` jumps there by `[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp` -- a
+#' Dirac the smooth `rxDelayD` term in [.rxDelaySensAugment()] misses.  Rather than
+#' insert runtime break events, this reproduces the jump with an ordinary modeled
+#' bolus on the sensitivity compartment: a dose of `[y_j]` with modeled lag `T`
+#' (so it lands at `t_dose + T`) and modeled bioavailability `-(d f_i/d delay)*dT/dp`
+#' (so the delivered amount is exactly `[S_i]`).
+#'
+#' @param model base ODE model (anything `rxNorm()` accepts).
+#' @param calcSens character vector of sensitivity parameters.
+#' @param events an rxode2 event table (to mirror the state-j doses onto the
+#'   sensitivity compartments).
+#' @return list with `alagf` (character vector of `alag()`/`f()` model lines to
+#'   append to the forward-sensitivity model) and `events` (the event table
+#'   augmented with the sensitivity-compartment jump doses), or `NULL` when the
+#'   model has no parameter-dependent delay.
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxDelaySensJump <- function(model, calcSens, events) {
+  .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
+  .st <- rxode2::rxStateOde(.m); .ns <- length(.st)
+  .findDelays <- function(e, acc = list()) {
+    if (is.call(e)) {
+      if (identical(e[[1L]], as.name("delay")) && length(e) == 3L) acc[[length(acc) + 1L]] <- e
+      for (.a in as.list(e)[-1L]) acc <- .findDelays(.a, acc)
+    }
+    acc
+  }
+  .substDelay <- function(e, target, repl) {
+    if (identical(e, target)) return(repl)
+    if (is.call(e)) for (.i in seq_along(e)) e[[.i]] <- .substDelay(e[[.i]], target, repl)
+    e
+  }
+  .alagf <- character(0); .jumpMap <- list(); .seenCmt <- character(0)
+  for (i in seq_len(.ns)) {
+    .fi <- get0(paste0("rx__d_dt_", .st[i], "__"), envir = .m, inherits = FALSE)
+    if (is.null(.fi)) next
+    .fiTxt <- rxode2::rxFromSE(.fi); .full <- parse(text = .fiTxt)[[1L]]
+    .seen <- character(0)
+    for (.dc in .findDelays(.full)) {
+      .dcTxt <- deparse1(.dc); if (.dcTxt %in% .seen) next; .seen <- c(.seen, .dcTxt)
+      .stateJ <- deparse1(.dc[[2L]]); .tau <- deparse1(.dc[[3L]])
+      if (is.na(match(.stateJ, .st))) next
+      .g <- "rx__gdlyJTMP__"
+      .dj <- symengine::D(symengine::S(deparse1(.substDelay(.full, .dc, as.name(.g)))), symengine::S(.g))
+      .djTxt <- gsub(.g, paste0("delay(", .stateJ, ",", .tau, ")"), rxode2::rxFromSE(.dj), fixed = TRUE)
+      .tauRes <- tryCatch(eval(parse(text = .tau), envir = .m), error = function(e) NULL)
+      for (.p in calcSens) {
+        .dt <- "0"
+        if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
+          .dD <- tryCatch(symengine::D(.tauRes, symengine::S(.p)), error = function(e) NULL)
+          if (!is.null(.dD)) .dt <- rxode2::rxFromSE(.dD)
+        }
+        if (identical(.dt, "0")) next
+        .sensCmt <- paste0("rx__sens_", .st[i], "_BY_", .p, "__")
+        if (.sensCmt %in% .seenCmt)
+          stop("forward-sens dose-jump supports one delay term per state/param; '",
+               .sensCmt, "' has more than one", call. = FALSE)
+        .seenCmt <- c(.seenCmt, .sensCmt)
+        # jump [S_i] = -(F_Xd_ij) * [y_j] * dtau/dp  ==  bolus [y_j] with lag tau,
+        # bioavailability -(F_Xd_ij)*dtau/dp, on the sensitivity compartment.
+        .alagf <- c(.alagf,
+                    sprintf("alag(%s)=%s", .sensCmt, .tau),
+                    sprintf("f(%s)=-(%s)*(%s)", .sensCmt, .djTxt, .dt))
+        .jumpMap[[length(.jumpMap) + 1L]] <- list(sensCmt = .sensCmt, stateJ = .stateJ)
+      }
+    }
+  }
+  if (length(.jumpMap) == 0L) return(NULL)
+  # mirror each state-j dose onto its sensitivity compartment(s)
+  .ev <- as.data.frame(events)
+  .isDose <- if (!is.null(.ev$evid)) .ev$evid != 0 else rep(FALSE, nrow(.ev))
+  .cmtName <- function(c) if (is.numeric(c)) .st[c] else as.character(c)
+  .add <- .ev[0, , drop = FALSE]
+  for (.jm in .jumpMap) {
+    for (.r in which(.isDose)) {
+      if (!identical(.cmtName(.ev$cmt[.r]), .jm$stateJ)) next
+      .row <- .ev[.r, , drop = FALSE]; .row$cmt <- .jm$sensCmt
+      .add <- rbind(.add, .row)
+    }
+  }
+  list(alagf = .alagf, events = if (nrow(.add)) rbind(.ev, .add) else .ev)
+}
+
 #' Validate that delay durations are constant for second-order sensitivities
 #'
 #' Parameter-dependent delays `delay(state, T(p))` make the DDE breaking points
