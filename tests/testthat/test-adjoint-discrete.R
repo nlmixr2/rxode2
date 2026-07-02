@@ -183,7 +183,8 @@ rxTest({
                                          atol = 1e-11, rtol = 1e-11))
     # per-method (tolerance, primal-tol) -- lower-order pairs need looser primal
     cfg <- list(dop5s = c(1e-11, 1e-5), dop853s = c(1e-11, 1e-5),
-                ck54s = c(1e-11, 1e-5), bs32s = c(1e-8, 1e-4))
+                ck54s = c(1e-11, 1e-5), bs32s = c(1e-8, 1e-4),
+                vern65s = c(1e-11, 1e-5), vern76s = c(1e-11, 1e-5))
     for (meth in names(cfg)) {
       tl <- cfg[[meth]][1]; ptol <- cfg[[meth]][2]
       sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = meth,

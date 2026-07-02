@@ -5813,7 +5813,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->stiff = method;
 
-    if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227) {
+    if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227 || method == 228) {
       // discrete-adjoint explicit-RK methods: rk4s (206), eulers (239),
       // midpoints (240), heuns (241), dop5s (210, adaptive).  Derive the layout
       // by scanning model names.
