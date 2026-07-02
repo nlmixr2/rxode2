@@ -5346,7 +5346,6 @@ static inline void iniRx(rx_solve* rx) {
   op->stiff = 0;
   op->useDense = 0;
   op->adjoint = 0;
-  op->adjScalar = 0;
   op->adjNbase = 0;
   op->adjNp = 0;
   op->adjFxOff = 0;
@@ -5814,10 +5813,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->stiff = method;
 
-    if (method == 206 || method == 207 || method == 239 || method == 240 || method == 241) {
-      // discrete-adjoint explicit-RK methods: rk4s (206), rk4sg (207, scalar),
-      // eulers (239), midpoints (240), heuns (241).  Derive the layout by
-      // scanning model names.
+    if (method == 206 || method == 239 || method == 240 || method == 241) {
+      // discrete-adjoint explicit-RK methods: rk4s (206), eulers (239),
+      // midpoints (240), heuns (241).  Derive the layout by scanning model names.
       // States are [base ODE states..., rx__sens_* output slots...]; lhs carry
       // the F_X (rx__adjFX_i_j__) then F_p (rx__adjFP_i_p__) blocks emitted by
       // .rxAdjointExpand.  HARD GUARD: absent the F_X/F_p lhs, error (no silent
@@ -5836,13 +5834,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_dfOff < 0 && strcmp(_s, "rx__adjdF_0_0__") == 0) _dfOff = _i;
       }
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
-        (Rf_error)("method='rk4s'/'rk4sg' requires the adjoint expansion in the "
+        (Rf_error)("method='rk4s' requires the adjoint expansion in the "
                    "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
                    "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
       }
       int _nSens = (int)_adjSt.size() - _nBase;
       op->adjoint = 1;
-      op->adjScalar = (method == 207);
       op->adjNbase = _nBase;
       op->adjNp = _nSens / _nBase;
       op->adjFxOff = _fxOff;

@@ -6,25 +6,28 @@
 #include <cstring>
 
 // ===========================================================================
-// rk4s -- adjoint (discrete-adjoint) RK4.
+// rk4s and the fixed-step explicit-RK discrete-adjoint family.
 //
-// SEPARATE ode method from rk4 (rk4 stays byte-identical).  Forward pass is a
-// classical fixed-step RK4 that RECORDS each step's realized dt + 4 internal
-// stage states, so the backward reverse-mode sweep is the EXACT transpose of
-// the actual numerical map (machine-precision-consistent gradient, mirroring
-// R/adjointDiscrete.R's .rxDiscreteAdjointGrad).
+// SEPARATE ode methods (rk4 etc. stay byte-identical).  Each is a fixed-step
+// explicit Runge-Kutta method selected by a Butcher tableau (rksGetTableau):
+// rk4s (206), eulers (239), midpoints (240), heuns (241).  The forward pass
+// RECORDS each step's realized dt + its stage states, so the backward
+// reverse-mode sweep is the EXACT (table-driven) transpose of the actual
+// numerical map -- a machine-precision-consistent gradient, mirroring
+// R/adjointDiscrete.R's .rxDiscreteAdjointGrad.
 //
 // The model is built by R's .rxAdjointExpand: base ODE states, then
 // rx__sens_<state>_BY_<param>__ OUTPUT-storage compartments (d/dt=0), plus the
 // state Jacobian F_X (rx__adjFX_i_j__) and parameter forcing F_p
 // (rx__adjFP_i_p__) exposed as lhs.  op carries the layout (op->adjNbase, adjNp,
-// adjFxOff, adjFpOff, adjSensOff), set by rxData.cpp when method==206.
+// adjFxOff, adjFpOff, adjSensOff), set by rxData.cpp for these method codes.
 //
 // Forward: step ONLY the nBase base states (the rx__sens_* slots stay 0 during
 // the forward pass).  Backward: for each observation time and each base state k
 // run an independent reset sweep with terminal covector e_k; the resulting
 // mu (length np) = dy_k(t_obs)/dtheta is written into that obs row's
-// rx__sens_* solve slots.
+// rx__sens_* solve slots.  (A scalar objective gradient is a REDUCTION of these
+// columns -- see rxSolveAdjointRk4(scalar=TRUE) -- not a separate solver.)
 // ===========================================================================
 
 // An additive bolus recorded during the forward pass: which 0-based RK4 step
@@ -42,7 +45,7 @@ struct rksTableau { int s; double c[16]; double b[16]; double A[256]; };
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
-  case 206: case 207:                 // rk4 / rk4sg -- classical RK4
+  case 206:                           // rk4s -- classical RK4
     T.s = 4;
     T.c[0] = 0; T.c[1] = 0.5; T.c[2] = 0.5; T.c[3] = 1.0;
     T.b[0] = 1.0/6; T.b[1] = 1.0/3; T.b[2] = 1.0/3; T.b[3] = 1.0/6;
@@ -233,41 +236,6 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       }
     }
   };
-
-  if (op->adjScalar) {
-    // O(1) SCALAR-OBJECTIVE mode: ONE backward sweep for a scalar objective
-    // G = sum_i g_i(y(t_i)), injecting the covector c_i = dG/dy(t_i) at each
-    // observation (no reset).  mu accumulates dG/dtheta directly -- cost is one
-    // sweep, independent of #params AND #obs.  (Objective here: the sum of
-    // squared base states, c_i = y_base(t_i); the errModel -2LL covector is a
-    // drop-in replacement -- same sweep.)
-    std::vector<size_t> obsStep;
-    std::vector<std::vector<double> > obsCov;
-    std::vector<double *> outRows;
-    size_t maxB = 0;
-    for (int i = 0; i < ind->n_all_times; ++i) {
-      if (!isObs(getEvid(ind, ind->ix[i]))) continue;
-      double *o = getSolve(i);
-      std::vector<double> c(nBase);
-      for (int j = 0; j < nBase; ++j) c[j] = o[j];
-      obsStep.push_back(boundary[i]); obsCov.push_back(c); outRows.push_back(o);
-      if (boundary[i] > maxB) maxB = boundary[i];
-    }
-    for (int j = 0; j < nBase; ++j) lam[j] = 0.0;
-    for (int p = 0; p < np; ++p) mu[p] = 0.0;
-    for (size_t nn = maxB; nn >= 1; --nn) {
-      for (size_t oi = 0; oi < obsStep.size(); ++oi)
-        if (obsStep[oi] == nn) for (int j = 0; j < nBase; ++j) lam[j] += obsCov[oi][j];
-      stepTranspose(nn - 1, lam, mu);
-    }
-    // write dG/dtheta into each obs row's rx__sens_<state0>_BY_<param>__ slots
-    // (constant across rows); other sens slots zeroed.
-    for (size_t r = 0; r < outRows.size(); ++r) {
-      for (int s = 0; s < nBase * np; ++s) outRows[r][sensOff + s] = 0.0;
-      for (int p = 0; p < np; ++p) outRows[r][sensOff + p] = mu[p];
-    }
-    return;
-  }
 
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.

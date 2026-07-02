@@ -152,7 +152,6 @@ typedef struct {
   int    autoSwitchSwitchMax;   /* min intervals after a switch before switch-back allowed (default 5) */
   /* --- discrete-adjoint (rk4s and other `<base>s` methods) layout --- */
   int    adjoint;               /* 0 = off; 1 = in-engine discrete-adjoint mode */
-  int    adjScalar;             /* 1 = O(1) scalar-objective single-sweep (rk4sg) */
   int    adjNbase;              /* number of base ODE states (stepped forward) */
   int    adjNp;                 /* number of adjoint parameters (calcSens count) */
   int    adjFxOff;              /* lhs index where F_X block starts (row-major i*ns+j) */
