@@ -150,6 +150,13 @@ typedef struct {
   double autoSwitchStifftol;    /* non-stiffness ratio threshold in stiff mode (default 0.9) */
   double autoSwitchDtfac;       /* dt multiplier on switch-to-stiff; divides on switch-back (default 2.0) */
   int    autoSwitchSwitchMax;   /* min intervals after a switch before switch-back allowed (default 5) */
+  /* --- discrete-adjoint (rk4s and other `<base>s` methods) layout --- */
+  int    adjoint;               /* 0 = off; 1 = in-engine discrete-adjoint mode */
+  int    adjNbase;              /* number of base ODE states (stepped forward) */
+  int    adjNp;                 /* number of adjoint parameters (calcSens count) */
+  int    adjFxOff;              /* lhs index where F_X block starts (row-major i*ns+j) */
+  int    adjFpOff;              /* lhs index where F_p block starts (i*np+p) */
+  int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
 } rx_solving_options;
 
 

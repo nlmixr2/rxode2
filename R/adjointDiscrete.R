@@ -242,7 +242,16 @@
   for (i in seq_len(.ns)) for (p in seq_len(.np))
     .fpLines <- c(.fpLines, sprintf("rx__adjFP_%d_%d__=%s", i - 1L, p - 1L,
                                     .fromSE(paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__"))))
-  list(text = paste(c(.odeLines, .fxLines, .fpLines), collapse = "\n"),
+  # rx__sens_<state>_BY_<param>__ OUTPUT-STORAGE compartments (d/dt = 0): the
+  # backward sweep writes dy_k(t_i)/dtheta_p into these stored solve slots per
+  # observation.  Emitted AFTER the base ODEs so state order is [base, sens];
+  # the C++ layout detection relies on that (adjSensOff = nBase).  Slot (k,p) is
+  # compartment nBase + k*np + p (k over states, p over calcSens).
+  .sensLines <- character(0)
+  for (k in seq_len(.ns)) for (p in seq_len(.np))
+    .sensLines <- c(.sensLines, sprintf("d/dt(rx__sens_%s_BY_%s__)=0", .st[k], calcSens[p]))
+  list(text = paste(c(.odeLines, .sensLines, .fxLines, .fpLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens,
-       fxOff = 0L, fpOff = .ns * .ns, nlhsAdj = .ns * .ns + .ns * .np)
+       fxOff = 0L, fpOff = .ns * .ns, nlhsAdj = .ns * .ns + .ns * .np,
+       sensOff = .ns)
 }

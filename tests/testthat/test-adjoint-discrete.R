@@ -76,6 +76,31 @@ rxTest({
     expect_lt(max(abs(fp - B$FPe(xtest, p))), 1e-12)
   })
 
+  test_that("in-engine rk4s solver fills rx__sens_* columns matching FD of the RK4 solve", {
+    tms <- c(1, 2, 4, 8, 12, 24)
+    ev <- et(amt = 100, cmt = "depot") %>% et(tms)
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "rk4s", cores = 1))
+    # base states must match the identical-stepping rk4 primal
+    mbase <- rxode2::rxode2(mText)
+    solveBase <- function(pp) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, ev, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+    b0 <- solveBase(p)
+    expect_lt(max(abs(as.matrix(sd[, c("depot", "center")]) - b0)), 1e-8)
+    # adjoint sens columns vs central FD of the same RK4 map
+    fdmax <- 0
+    for (pn in cs) {
+      hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+      for (k in seq_along(ex$st)) {
+        adj <- sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]]
+        fdmax <- max(fdmax, max(abs(adj - fd[, k])))
+      }
+    }
+    expect_lt(fdmax, 1e-4)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0
