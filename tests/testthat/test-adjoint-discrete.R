@@ -154,6 +154,21 @@ rxTest({
     expect_lt(maxerr, 1e-4)
   })
 
+  test_that("rk4sg O(1) scalar-objective sweep matches the full-trajectory reduction", {
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 4, 8, 12, 24))
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    # full-trajectory columns -> reference dG/dtheta for G = 0.5 sum_i sum_k y_k(t_i)^2
+    sf <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "rk4s", cores = 1))
+    ref <- vapply(cs, function(pn) sum(vapply(ex$st, function(st)
+      sum(sf[[st]] * sf[[sprintf("rx__sens_%s_BY_%s__", st, pn)]]), numeric(1))), numeric(1))
+    # scalar single sweep -> dG/dtheta written to rx__sens_<state0>_BY_<param>__
+    sg <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "rk4sg", cores = 1))
+    grad <- vapply(cs, function(pn) sg[[sprintf("rx__sens_%s_BY_%s__", ex$st[1], pn)]][1], numeric(1))
+    expect_equal(unname(grad), unname(ref), tolerance = 1e-7)
+    expect_lt(max(abs(grad - ref)), 1e-8)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0

@@ -160,7 +160,81 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   std::vector<double> lam(nBase), Xbar(nBase), k1b(nBase), k2b(nBase), k3b(nBase), k4b(nBase);
   std::vector<double> ab(nBase), mu(np);
 
-  // For each observation time index, each base state k, sweep boundary[i]->0.
+  // The shared single-step reverse-mode RK4 transpose (DRY): advances the
+  // costate `lam` and accumulates the quadrature `mu` across 0-based step n,
+  // including the additive-bolus dose-parameter jump.  Used identically by the
+  // full-trajectory reset sweeps and the O(1) scalar single sweep.
+  auto stepTranspose = [&](size_t n, std::vector<double> &lamR, std::vector<double> &muR) {
+    double h = rec.h[n];
+    const double *fx1 = &FXs[0][n * nfx], *fx2 = &FXs[1][n * nfx],
+                 *fx3 = &FXs[2][n * nfx], *fx4 = &FXs[3][n * nfx];
+    const double *fp1 = &FPs[0][n * nfp], *fp2 = &FPs[1][n * nfp],
+                 *fp3 = &FPs[2][n * nfp], *fp4 = &FPs[3][n * nfp];
+    for (int j = 0; j < nBase; ++j) Xbar[j] = lamR[j];
+    for (int j = 0; j < nBase; ++j) {
+      k1b[j] = h / 6.0 * Xbar[j]; k2b[j] = h / 3.0 * Xbar[j];
+      k3b[j] = h / 3.0 * Xbar[j]; k4b[j] = h / 6.0 * Xbar[j];
+    }
+    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx4[ii * nBase + j] * k4b[ii]; ab[j] = s; }
+    for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k3b[j] += h * ab[j]; }
+    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp4[ii * np + p] * k4b[ii]; muR[p] += s; }
+    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx3[ii * nBase + j] * k3b[ii]; ab[j] = s; }
+    for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k2b[j] += 0.5 * h * ab[j]; }
+    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp3[ii * np + p] * k3b[ii]; muR[p] += s; }
+    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx2[ii * nBase + j] * k2b[ii]; ab[j] = s; }
+    for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k1b[j] += 0.5 * h * ab[j]; }
+    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp2[ii * np + p] * k2b[ii]; muR[p] += s; }
+    for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx1[ii * nBase + j] * k1b[ii]; ab[j] = s; }
+    for (int j = 0; j < nBase; ++j) Xbar[j] += ab[j];
+    for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp1[ii * np + p] * k1b[ii]; muR[p] += s; }
+    for (int j = 0; j < nBase; ++j) lamR[j] = Xbar[j];   // additive bolus: dD/dX = I
+    if (haveDose) {
+      for (size_t di = 0; di < doses.size(); ++di) {
+        if (doses[di].step == n) {
+          int c = doses[di].cmt; double a = doses[di].amt;
+          for (int p = 0; p < np; ++p) muR[p] += a * dFdp[c * np + p] * lamR[c];
+        }
+      }
+    }
+  };
+
+  if (op->adjScalar) {
+    // O(1) SCALAR-OBJECTIVE mode: ONE backward sweep for a scalar objective
+    // G = sum_i g_i(y(t_i)), injecting the covector c_i = dG/dy(t_i) at each
+    // observation (no reset).  mu accumulates dG/dtheta directly -- cost is one
+    // sweep, independent of #params AND #obs.  (Objective here: the sum of
+    // squared base states, c_i = y_base(t_i); the errModel -2LL covector is a
+    // drop-in replacement -- same sweep.)
+    std::vector<size_t> obsStep;
+    std::vector<std::vector<double> > obsCov;
+    std::vector<double *> outRows;
+    size_t maxB = 0;
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      if (!isObs(getEvid(ind, ind->ix[i]))) continue;
+      double *o = getSolve(i);
+      std::vector<double> c(nBase);
+      for (int j = 0; j < nBase; ++j) c[j] = o[j];
+      obsStep.push_back(boundary[i]); obsCov.push_back(c); outRows.push_back(o);
+      if (boundary[i] > maxB) maxB = boundary[i];
+    }
+    for (int j = 0; j < nBase; ++j) lam[j] = 0.0;
+    for (int p = 0; p < np; ++p) mu[p] = 0.0;
+    for (size_t nn = maxB; nn >= 1; --nn) {
+      for (size_t oi = 0; oi < obsStep.size(); ++oi)
+        if (obsStep[oi] == nn) for (int j = 0; j < nBase; ++j) lam[j] += obsCov[oi][j];
+      stepTranspose(nn - 1, lam, mu);
+    }
+    // write dG/dtheta into each obs row's rx__sens_<state0>_BY_<param>__ slots
+    // (constant across rows); other sens slots zeroed.
+    for (size_t r = 0; r < outRows.size(); ++r) {
+      for (int s = 0; s < nBase * np; ++s) outRows[r][sensOff + s] = 0.0;
+      for (int p = 0; p < np; ++p) outRows[r][sensOff + p] = mu[p];
+    }
+    return;
+  }
+
+  // Full-trajectory: for each observation and each base state k, an independent
+  // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     size_t fromStep = boundary[i];
@@ -168,47 +242,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (int k = 0; k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
-      for (size_t nn = fromStep; nn >= 1; --nn) {
-        size_t n = nn - 1;              // 0-based step
-        double h = rec.h[n];
-        const double *fx1 = &FXs[0][n * nfx], *fx2 = &FXs[1][n * nfx],
-                     *fx3 = &FXs[2][n * nfx], *fx4 = &FXs[3][n * nfx];
-        const double *fp1 = &FPs[0][n * nfp], *fp2 = &FPs[1][n * nfp],
-                     *fp3 = &FPs[2][n * nfp], *fp4 = &FPs[3][n * nfp];
-        for (int j = 0; j < nBase; ++j) Xbar[j] = lam[j];
-        for (int j = 0; j < nBase; ++j) {
-          k1b[j] = h / 6.0 * Xbar[j]; k2b[j] = h / 3.0 * Xbar[j];
-          k3b[j] = h / 3.0 * Xbar[j]; k4b[j] = h / 6.0 * Xbar[j];
-        }
-        // stage 4:  ab = FX4^T k4b ; Xbar += ab ; k3b += h*ab ; mu += FP4^T k4b
-        for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx4[ii * nBase + j] * k4b[ii]; ab[j] = s; }
-        for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k3b[j] += h * ab[j]; }
-        for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp4[ii * np + p] * k4b[ii]; mu[p] += s; }
-        // stage 3:  ab = FX3^T k3b ; Xbar += ab ; k2b += h/2*ab ; mu += FP3^T k3b
-        for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx3[ii * nBase + j] * k3b[ii]; ab[j] = s; }
-        for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k2b[j] += 0.5 * h * ab[j]; }
-        for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp3[ii * np + p] * k3b[ii]; mu[p] += s; }
-        // stage 2:  ab = FX2^T k2b ; Xbar += ab ; k1b += h/2*ab ; mu += FP2^T k2b
-        for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx2[ii * nBase + j] * k2b[ii]; ab[j] = s; }
-        for (int j = 0; j < nBase; ++j) { Xbar[j] += ab[j]; k1b[j] += 0.5 * h * ab[j]; }
-        for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp2[ii * np + p] * k2b[ii]; mu[p] += s; }
-        // stage 1:  ab = FX1^T k1b ; Xbar += ab ; mu += FP1^T k1b
-        for (int j = 0; j < nBase; ++j) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fx1[ii * nBase + j] * k1b[ii]; ab[j] = s; }
-        for (int j = 0; j < nBase; ++j) Xbar[j] += ab[j];
-        for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp1[ii * np + p] * k1b[ii]; mu[p] += s; }
-        for (int j = 0; j < nBase; ++j) lam[j] = Xbar[j];   // additive bolus: dD/dX = I
-        // additive-bolus dose-parameter jump transpose: doses whose F-scaled
-        // state jump precedes 0-based step n contribute mu += amt*dF/dtheta*lam[c]
-        // (lam = Ybar = adjoint of the post-dose state at this step's a1).
-        if (haveDose) {
-          for (size_t di = 0; di < doses.size(); ++di) {
-            if (doses[di].step == n) {
-              int c = doses[di].cmt; double a = doses[di].amt;
-              for (int p = 0; p < np; ++p) mu[p] += a * dFdp[c * np + p] * lam[c];
-            }
-          }
-        }
-      }
+      for (size_t nn = fromStep; nn >= 1; --nn) stepTranspose(nn - 1, lam, mu);
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }

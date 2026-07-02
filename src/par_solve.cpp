@@ -6697,7 +6697,8 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 6:
         ind_rk4(rx, cid, c_dydt, u_inis);
         break;
-      case 206: // rk4s -- discrete-adjoint RK4
+      case 206: // rk4s -- discrete-adjoint RK4 (full trajectory)
+      case 207: // rk4sg -- discrete-adjoint RK4 (O(1) scalar objective)
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6913,8 +6914,8 @@ extern "C" void par_solve(rx_solve *rx) {
         // rk4
         par_rk4(rx);
         break;
-      case 206:
-        // rk4s -- discrete-adjoint RK4
+      case 206: // rk4s -- discrete-adjoint RK4 (full trajectory)
+      case 207: // rk4sg -- discrete-adjoint RK4 (O(1) scalar objective)
         par_rk4s(rx);
         break;
       case 7:
