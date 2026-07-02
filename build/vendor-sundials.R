@@ -218,6 +218,10 @@ if (length(.missing)) {
           paste(.missing, collapse = "\n  "), call. = FALSE)
 }
 message("Copied ", length(.copied), " files to src/.")
+## NOTE: the CRAN deprecation workaround (inst/tools/workaround.R "Fix 1c") NULLs
+## ops->nvspace and zeroes the N_VSpace(y0,...) call in CVodeInit; the CVODES ASA
+## quadrature (CVodeQuadInit) also calls N_VSpace, so cvodes_adjoint.cpp restores
+## ops->nvspace = N_VSpace_Serial on the N_Vectors it creates (clones inherit it).
 
 ## ---------------------------------------------------------------------------
 ## Strip sensitivity-only functions from the nonlinear solver files.

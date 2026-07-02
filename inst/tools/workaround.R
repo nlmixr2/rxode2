@@ -269,6 +269,10 @@ if (file.exists(.msf)) {
 if (file.exists(.cvf3)) {
   .cv3 <- .strip_deprecated_pragma(readLines(.cvf3))
   .cv3 <- gsub("N_VSpace(y0, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .cv3, fixed = TRUE)
+  ## CVODES quadrature init (CVodeQuadInit) -- used by the ASA quadrature in
+  ## cvodes_adjoint.cpp; the vendored serial N_Vector NULLs ops->nvspace so this
+  ## deprecated call would NULL-deref.  Zero it like the CVodeInit call above.
+  .cv3 <- gsub("N_VSpace(yQ0, &lrw1Q, &liw1Q);", "lrw1Q = 0; liw1Q = 0;", .cv3, fixed = TRUE)
   .cvf3_out <- file(.cvf3, "wb")
   writeLines(.cv3, .cvf3_out, sep = "\n")
   close(.cvf3_out)
