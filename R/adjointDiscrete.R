@@ -256,8 +256,9 @@
   # costate term lam_j(t) += h * F_Xd[i][j](t+tau) * lam_i(t+tau).  Reuses the
   # subs+D delayed-Jacobian machinery from .rxDelaySensAugment (R/dde.R).  Only
   # emitted for delay models, so non-DDE calc_lhs stays cheap.
-  .fxdLines <- character(0); .tauLines <- character(0); .hasDelayAdj <- FALSE
+  .fxdLines <- character(0); .tauLines <- character(0); .dtauLines <- character(0); .hasDelayAdj <- FALSE
   .fxdMat <- matrix("0", .ns, .ns); .tauMat <- matrix("0", .ns, .ns)
+  .dtauMat <- vector("list", .ns)   # [[i]][[j]] = named dtau/dp over calcSens (dose-jump)
   # Collect every delay() subexpression in an R expression (symengine's VecBasic
   # `[[`/function_symbols is masked after .rxJacobian, so walk the text instead).
   .findDelays <- function(e, acc = list()) {
@@ -313,9 +314,12 @@
           if (!is.null(.dD)) .dtauByP[.pp] <- rxode2::rxFromSE(.dD)
         }
       }
-      if (any(.dtauByP != "0"))
+      if (any(.dtauByP != "0")) {
         .dtauList[[i]] <- c(.dtauList[[i]], list(list(stateJ = .stateJ, tau = .tau,
                                                       djac = .djTxt, dtauByP = .dtauByP)))
+        if (is.null(.dtauMat[[i]])) .dtauMat[[i]] <- vector("list", .ns)
+        .dtauMat[[i]][[.j]] <- .dtauByP   # for the dose-jump block below
+      }
     }
   }
   # F_p (quadrature source): explicit df_i/dp PLUS, for a param-dependent delay
@@ -337,6 +341,15 @@
     for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
       .fxdLines <- c(.fxdLines, sprintf("rx__adjFXd_%d_%d__=%s", i - 1L, j - 1L, .fxdMat[i, j]))
       .tauLines <- c(.tauLines, sprintf("rx__adjTau_%d_%d__=%s", i - 1L, j - 1L, .tauMat[i, j]))
+    }
+    # d tau_ij / d p block (i,j,p) for the dose-induced breaking-point jump: a dose
+    # into state j jumps delay(y_j,tau) at t=t_dose+tau, contributing a jump to the
+    # tau-sensitivity that the smooth rxDelayD term misses.  The C++ backward sweep
+    # adds  mu[p] += -lam_i(t_dose+tau) * F_Xd_ij * [y_j] * dtau_ij/dp  per dose.
+    for (i in seq_len(.ns)) for (j in seq_len(.ns)) for (p in seq_len(.np)) {
+      .v <- if (!is.null(.dtauMat[[i]]) && !is.null(.dtauMat[[i]][[j]])) .dtauMat[[i]][[j]][[calcSens[p]]] else "0"
+      if (is.null(.v)) .v <- "0"
+      .dtauLines <- c(.dtauLines, sprintf("rx__adjDtau_%d_%d_%d__=%s", i - 1L, j - 1L, p - 1L, .v))
     }
   }
   # rx__sens_<state>_BY_<param>__ OUTPUT-STORAGE compartments (d/dt = 0): the
@@ -379,17 +392,19 @@
       }
     }
   }
-  # lhs layout (contiguous from 0): fx, fp, df, [jp, jy if stiff], [fxd, tau if DDE]
+  # lhs layout (contiguous from 0): fx, fp, df, [jp, jy if stiff],
+  # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block)
   .afterStiff <- if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np + .ns * .ns * .np + .ns * .ns * .ns
                  else .ns * .ns + 2L * .ns * .np
   list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines,
-                      .jpLines, .jyLines, .fxdLines, .tauLines), collapse = "\n"),
+                      .jpLines, .jyLines, .fxdLines, .tauLines, .dtauLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens, stiff = isTRUE(stiff),
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
        jpOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np else -1L,
        jyOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np + .ns * .ns * .np else -1L,
        fxdOff = if (.hasDelayAdj) .afterStiff else -1L,
        tauOff = if (.hasDelayAdj) .afterStiff + .ns * .ns else -1L,
+       dtauOff = if (.hasDelayAdj) .afterStiff + 2L * .ns * .ns else -1L,
        hasDelay = .hasDelayAdj,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }

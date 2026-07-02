@@ -5355,6 +5355,7 @@ static inline void iniRx(rx_solve* rx) {
   op->adjJyOff = -1;
   op->adjFxdOff = -1;
   op->adjTauOff = -1;
+  op->adjDtauOff = -1;
   op->adjSensOff = 0;
   op->hasDelay = 0;
   op->ncov = 0;
@@ -5831,7 +5832,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
         if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
       }
-      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1;
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
         const char *_s = CHAR(_adjLhs[_i]);
         if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
@@ -5839,8 +5840,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_dfOff < 0 && strcmp(_s, "rx__adjdF_0_0__") == 0) _dfOff = _i;
         if (_jpOff < 0 && strcmp(_s, "rx__adjJp_0_0_0__") == 0) _jpOff = _i;
         if (_jyOff < 0 && strcmp(_s, "rx__adjJy_0_0_0__") == 0) _jyOff = _i;
-        if (_fxdOff < 0 && strcmp(_s, "rx__adjFXd_0_0__") == 0) _fxdOff = _i;   // DDE delayed Jacobian
-        if (_tauOff < 0 && strcmp(_s, "rx__adjTau_0_0__") == 0) _tauOff = _i;   // DDE delay durations
+        if (_fxdOff < 0 && strcmp(_s, "rx__adjFXd_0_0__") == 0) _fxdOff = _i;    // DDE delayed Jacobian
+        if (_tauOff < 0 && strcmp(_s, "rx__adjTau_0_0__") == 0) _tauOff = _i;    // DDE delay durations
+        if (_dtauOff < 0 && strcmp(_s, "rx__adjDtau_0_0_0__") == 0) _dtauOff = _i; // DDE dtau/dp (dose-jump)
       }
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
         (Rf_error)("method='rk4s' requires the adjoint expansion in the "
@@ -5858,6 +5860,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->adjJyOff = _jyOff;
       op->adjFxdOff = _fxdOff;
       op->adjTauOff = _tauOff;
+      op->adjDtauOff = _dtauOff;
       op->adjSensOff = _nBase;
     }
 

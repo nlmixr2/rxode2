@@ -161,6 +161,7 @@ typedef struct {
   int    adjJyOff;              /* lhs index where dJ/dy=f'' block starts ((i*ns+j)*ns+c); -1 if none (Rosenbrock nonlinear) */
   int    adjFxdOff;             /* lhs index where DDE delayed-Jacobian F_Xd block starts (i*ns+j); -1 if no delay() */
   int    adjTauOff;             /* lhs index where DDE delay-duration tau block starts (i*ns+j); -1 if no delay() */
+  int    adjDtauOff;            /* lhs index where DDE dtau/dp block starts ((i*ns+j)*np+p); -1 if no delay() (dose-jump) */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
 } rx_solving_options;
 

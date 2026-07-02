@@ -695,31 +695,43 @@ static inline void rk4s_eval_jac(int cSub, double t, const double *a, int nBase,
 // already-swept later boundary, so lam there is available (binary search + linear
 // interpolation).  Inactive (no-op) unless the model has delay() (adjFxdOff>=0).
 struct rk4s_dde {
-  bool active = false;
-  int nBase = 0, nfx = 0;
+  bool active = false, hasDtau = false;
+  int nBase = 0, nfx = 0, np = 0;
   const rk4s_rec *rec = nullptr;
-  std::vector<double> FXd, TAU, lamStore;
+  std::vector<double> FXd, TAU, DTAU, lamStore;   // DTAU: per step (i*nBase+j)*np+p
   double tObs = 0.0; size_t fromStep = 0;
   double btime(size_t m) const {
     size_t nStep = rec->nStep();
     return (m < nStep) ? rec->t0[m] : (rec->t0[nStep-1] + rec->h[nStep-1]);
   }
+  // Interpolate lam_istate at time tq >= boundary (n+1) from the stored costate;
+  // returns via *mOut the bracketing step (for reading step-local F_Xd/dtau).
+  double interpLamI(double tq, int istate, size_t after, size_t *mOut) const {
+    size_t lo = after, hi = fromStep, m = after;
+    while (lo <= hi) { size_t mid = (lo+hi)/2; if (btime(mid) <= tq) { m = mid; lo = mid+1; } else { if (mid == 0) break; hi = mid-1; } }
+    *mOut = (m < fromStep) ? m : (fromStep > 0 ? fromStep - 1 : 0);
+    double bm = btime(m), bm1 = btime(m+1 <= fromStep ? m+1 : fromStep);
+    if (m >= fromStep || bm1 <= bm) return lamStore[fromStep*nBase+istate];
+    double w = (tq-bm)/(bm1-bm);
+    return (1.0-w)*lamStore[m*nBase+istate] + w*lamStore[(m+1)*nBase+istate];
+  }
   // stageStart(n) -> pointer to the nBase base states recorded at step n's start.
   template<class F>
   void init(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
-            const rk4s_rec &r, int nb, int eff, std::vector<double> &Ascratch, F stageStart) {
-    int fxdOff = op->adjFxdOff, tauOff = op->adjTauOff;
+            const rk4s_rec &r, int nb, int np_, int eff, std::vector<double> &Ascratch, F stageStart) {
+    int fxdOff = op->adjFxdOff, tauOff = op->adjTauOff, dtauOff = op->adjDtauOff;
     active = (fxdOff >= 0 && tauOff >= 0);
     if (!active) return;
-    rec = &r; nBase = nb; nfx = nb*nb;
-    size_t nStep = r.nStep();
-    FXd.resize(nStep*nfx); TAU.resize(nStep*nfx);
+    rec = &r; nBase = nb; nfx = nb*nb; np = np_; hasDtau = (dtauOff >= 0);
+    size_t nStep = r.nStep(); int ndt = nfx*np;
+    FXd.resize(nStep*nfx); TAU.resize(nStep*nfx); if (hasDtau) DTAU.resize(nStep*ndt);
     for (size_t n = 0; n < nStep; ++n) {
       const double *a0 = stageStart(n);
       for (int q = 0; q < eff; ++q) Ascratch[q] = 0.0;
       for (int q = 0; q < nb; ++q) Ascratch[q] = a0[q];
       calc_lhs(cSub, r.t0[n], Ascratch.data(), ind->lhs);
       for (int q = 0; q < nfx; ++q) { FXd[n*nfx+q] = ind->lhs[fxdOff+q]; TAU[n*nfx+q] = ind->lhs[tauOff+q]; }
+      if (hasDtau) for (int q = 0; q < ndt; ++q) DTAU[n*ndt+q] = ind->lhs[dtauOff+q];
     }
   }
   void beginSweep(size_t from, const std::vector<double> &lam) {
@@ -737,15 +749,34 @@ struct rk4s_dde {
         if (tau <= 0.0) continue;
         double tq = t0n + tau;
         if (tq > tObs + 1e-12) continue;         // lam_i beyond the obs time is 0
-        size_t lo = n+1, hi = fromStep, m = n+1;
-        while (lo <= hi) { size_t mid = (lo+hi)/2; if (btime(mid) <= tq) { m = mid; lo = mid+1; } else { if (mid == 0) break; hi = mid-1; } }
-        double bm = btime(m), bm1 = btime(m+1 <= fromStep ? m+1 : fromStep);
-        double lami;
-        if (m >= fromStep || bm1 <= bm) lami = lamStore[fromStep*nBase+istate];
-        else { double w = (tq-bm)/(bm1-bm); lami = (1.0-w)*lamStore[m*nBase+istate] + w*lamStore[(m+1)*nBase+istate]; }
+        size_t m; double lami = interpLamI(tq, istate, n+1, &m);
         lam[jstate] += h * FXd[m*nfx + istate*nBase + jstate] * lami;
       }
     for (int j = 0; j < nBase; ++j) lamStore[n*nBase+j] = lam[j];
+  }
+  // Dose-induced breaking-point jump (call after the sweep, lamStore complete for
+  // this obs,k).  A dose into state j jumps delay(y_j,tau) at t_dose+tau; the
+  // 1st-order tau-sensitivity jump  [S_i] = -F_Xd_ij*[y_j]*dtau/dp  contributes
+  // mu[p] += lam_i(t_dose+tau) * [S_i]  (the anticipating term already propagates
+  // this to 2tau, 3tau, ...).
+  void applyDoseJumps(std::vector<double> &mu, const std::vector<rk4s_dose> &doses) {
+    if (!active || !hasDtau || doses.empty()) return;
+    int ndt = nfx*np;
+    for (size_t di = 0; di < doses.size(); ++di) {
+      int jstate = doses[di].cmt; double a = doses[di].amt;
+      double tDose = btime(doses[di].step);
+      size_t sd = (doses[di].step < rec->nStep()) ? doses[di].step : (rec->nStep()-1);
+      for (int istate = 0; istate < nBase; ++istate) {
+        double tau = TAU[sd*nfx + istate*nBase + jstate];
+        if (tau <= 0.0) continue;                       // no delay(y_j) in f_istate
+        double xi = tDose + tau;
+        if (xi > tObs + 1e-12 || xi <= tDose) continue; // beyond obs, or nothing to propagate
+        size_t m; double lami = interpLamI(xi, istate, doses[di].step + 1, &m);
+        double fxd = FXd[m*nfx + istate*nBase + jstate];
+        const double *dt = &DTAU[m*ndt + (istate*nBase+jstate)*np];
+        for (int p = 0; p < np; ++p) mu[p] += -lami * fxd * a * dt[p];
+      }
+    }
   }
 };
 
@@ -813,7 +844,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
     if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == n) { int c = doses[di].cmt; double a = doses[di].amt; for (int p = 0; p < np; ++p) muR[p] += a*dFdp[c*np+p]*lamR[c]; }
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
-  dde.init(op, ind, cSub, rec, nBase, eff, Ascratch, [&](size_t n){ return &rec.a[(n*s)*nBase]; });
+  dde.init(op, ind, cSub, rec, nBase, np, eff, Ascratch, [&](size_t n){ return &rec.a[(n*s)*nBase]; });
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     size_t fromStep = boundary[i]; double *out = getSolve(i);
@@ -822,6 +853,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
+      dde.applyDoseJumps(mu, doses);
       for (int p = 0; p < np; ++p) out[sensOff + k*np + p] = mu[p];
     }
   }
@@ -871,7 +903,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
     if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == nn) { int c = doses[di].cmt; double a = doses[di].amt; for (int p = 0; p < np; ++p) muR[p] += a*dFdp[c*np+p]*lamR[c]; }
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
-  dde.init(op, ind, cSub, rec, n, eff, Ascratch, [&](size_t nn){ return &rec.a[(nn*s)*n]; });
+  dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[(nn*s)*n]; });
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     size_t fromStep = boundary[i]; double *out = getSolve(i);
@@ -880,6 +912,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
+      dde.applyDoseJumps(mu, doses);
       for (int p = 0; p < np; ++p) out[sensOff + k*np + p] = mu[p];
     }
   }
@@ -949,7 +982,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
     if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == nn) { int c=doses[di].cmt; double a=doses[di].amt; for (int p=0;p<np;++p) muR[p]+=a*dFdp[c*np+p]*lamR[c]; }
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
-  dde.init(op, ind, cSub, rec, n, eff, Ascratch, [&](size_t nn){ return &rec.a[rec.aOff[nn]]; });
+  dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[rec.aOff[nn]]; });
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     size_t fromStep = boundary[i]; double *out = getSolve(i);
@@ -958,6 +991,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
+      dde.applyDoseJumps(mu, doses);
       for (int p = 0; p < np; ++p) out[sensOff + k*np + p] = mu[p];
     }
   }
@@ -1004,7 +1038,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   // DDE anticipating term (delayed Jacobian) -- shared helper, no-op unless the
   // model has delay().  Step start state for method T is stage 0 (c_0 = 0).
   rk4s_dde dde;
-  dde.init(op, ind, cSub, rec, nBase, eff, Ascratch, [&](size_t n){ return &rec.a[(n * sN) * nBase]; });
+  dde.init(op, ind, cSub, rec, nBase, np, eff, Ascratch, [&](size_t n){ return &rec.a[(n * sN) * nBase]; });
 
   std::vector<double> lam(nBase), Ybar(nBase), abar(nBase), kbar(sN * nBase), mu(np);
 
@@ -1052,6 +1086,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
+      dde.applyDoseJumps(mu, doses);
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }

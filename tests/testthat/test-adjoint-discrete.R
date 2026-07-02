@@ -255,22 +255,27 @@ rxTest({
     expect_lt(e3, 0.05)                    # and is small at the finest step
   })
 
-  test_that("param-dependent delay tau(p): adjoint matches forward sensitivity", {
-    # A parameter in the delay duration adds a breaking-point correction to the
-    # quadrature source F_p:  -(df_i/d delay(y_j,tau)) * rxDelayD(y_j,tau) * dtau/dp.
-    # This is the exact dual of forward-sens' .rxDelaySensAugment term, so the
-    # adjoint's d/dtau must equal the forward-sensitivity trajectory.  (Both share
-    # the same dose-induced breaking-point JUMP limitation -- out of scope here.)
-    p <- c(k = 0.3, tau = 2); ev <- et(amt = 10, cmt = "central") %>% et(seq(0, 20, by = 2))
-    # forward-sens model exactly as .rxDelaySensAugment generates for d/dtau
-    fwd <- rxode2::rxode2(paste0("d/dt(central) = -k*delay(central, tau)\n",
-                                 "d/dt(S) = -k*delay(S, tau) + k*rxDelayD(central, tau)"))
-    sf <- as.data.frame(rxode2::rxSolve(fwd, ev, params = p, method = "dop853",
-                                        atol = 1e-10, rtol = 1e-10, cores = 1))$S
+  test_that("param-dependent delay tau(p): adjoint d/dtau matches FD incl. dose-induced jump", {
+    # F_p gets the smooth breaking-point correction -(F_Xd_ij)*rxDelayD(y_j,tau)*
+    # dtau/dp, AND the backward sweep adds the dose-induced breaking-point JUMP
+    # mu += -lam_i(t_dose+tau)*F_Xd_ij*[y_j]*dtau/dp.  Together the adjoint d/dtau
+    # matches finite differences (which forward-sens' smooth-only term does not).
     exD <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k", "tau"))
+    expect_gt(exD$dtauOff, exD$tauOff)
     madjD <- rxode2::rxode2(exD$text)
-    sa <- as.data.frame(rxode2::rxSolve(madjD, ev, params = p, method = "rk4s", hmin = 0.002, cores = 1))
-    expect_lt(max(abs(sa[["rx__sens_central_BY_tau__"]] - sf)), 5e-3)   # discretization-limited
+    p <- c(k = 0.3, tau = 2)
+    # observations OFF the breaking points (2,4,6,...) so central FD does not
+    # straddle a jump (at a breaking point the adjoint gives the one-sided limit).
+    ev <- et(amt = 10, cmt = "central") %>% et(seq(0.7, 15, by = 1.7))
+    errAt <- function(h) {
+      sc <- as.data.frame(rxode2::rxSolve(madjD, ev, params = p, method = "rk4s", hmin = h, cores = 1))
+      sb <- function(pp) as.data.frame(rxode2::rxSolve(madjD, ev, params = pp, method = "rk4s", hmin = h, cores = 1))$central
+      hh <- p[["tau"]] * 5e-4; pp <- p; pm <- p; pp["tau"] <- pp["tau"] + hh; pm["tau"] <- pm["tau"] - hh
+      max(abs(sc[["rx__sens_central_BY_tau__"]] - (sb(pp) - sb(pm)) / (2 * hh)))
+    }
+    e1 <- errAt(0.01); e2 <- errAt(0.002)
+    expect_lt(e2, e1)      # converges as the step shrinks (jump location resolves)
+    expect_lt(e2, 0.05)    # and is small at the fine step
   })
 
   test_that("DDE delay() adjoint converges for stiff (ros4s) and composite methods", {
