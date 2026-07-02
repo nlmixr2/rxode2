@@ -20,7 +20,8 @@ odeMethodToInt(
     "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
     "dop853s", "ck54s", "bs32s", "vern65s", 
      "vern76s", "dop87s", "f78s", "ros4s",
-    "radauiia5s")
+    "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
+    "geng5s", "rk3s", "rk43s")
 )
 }
 \arguments{

@@ -2413,13 +2413,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     # duration depends on a sensitivity parameter (.rxDelaySensJump returns NULL).
     if (!is.null(events)) {
       # cheap gate: the jump alag() lines exist only for a param-dependent delay
-      # forward-sens model, so skip the (symengine) rebuild for every other solve.
+      # forward-sens model, so skip the (symengine) analysis for every other solve.
       .sensCmts <- grep("^rx__sens_", rxModelVars(object)$state, value = TRUE)
-      if (length(.sensCmts) > 0L &&
-            any(grepl("alag(rx__sens_", rxNorm(object), fixed = TRUE))) {
-        .cs <- unique(sub("^rx__sens_.+?_BY_(.+)__$", "\\1", .sensCmts))
-        .jm <- tryCatch(.rxDelaySensJump(object, .cs, events), error = function(e) NULL)
-        if (!is.null(.jm) && !is.null(.jm$events)) events <- .jm$events
+      if (length(.sensCmts) > 0L) {
+        .norm <- rxNorm(object)
+        if (any(grepl("alag(rx__sens_", .norm, fixed = TRUE))) {
+          .cs <- unique(sub("^rx__sens_.+?_BY_(.+)__$", "\\1", .sensCmts))
+          # the (symengine) jump map depends only on the model -> cached by the
+          # normalized text; only the cheap event rbind runs per solve.
+          .map <- tryCatch(.rxDelaySensJumpMapCached(object, .cs, .norm), error = function(e) NULL)
+          if (!is.null(.map))
+            events <- tryCatch(.rxDelaySensJumpEvents(.map$jumpMap, .map$st, events), error = function(e) events)
+        }
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the

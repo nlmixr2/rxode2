@@ -326,18 +326,27 @@
 #' (so it lands at `t_dose + T`) and modeled bioavailability `-(d f_i/d delay)*dT/dp`
 #' (so the delivered amount is exactly `[S_i]`).
 #'
+#' `.rxDelaySensJumpMap()` does the model-only (symengine) analysis: it returns
+#' the `alag()`/`f()` model lines and the jump map (which sensitivity compartment
+#' mirrors which dosed base state).  This part depends only on the model, so it is
+#' cached (see `.rxDelaySensJumpMapCached()`).  `.rxDelaySensJumpEvents()` is the
+#' cheap per-solve step that rbinds the mirroring doses onto the event table.
+#' `.rxDelaySensJump()` is the convenience wrapper doing both.
+#'
 #' @param model base ODE model (anything `rxNorm()` accepts).
 #' @param calcSens character vector of sensitivity parameters.
 #' @param events an rxode2 event table (to mirror the state-j doses onto the
 #'   sensitivity compartments).
-#' @return list with `alagf` (character vector of `alag()`/`f()` model lines to
-#'   append to the forward-sensitivity model) and `events` (the event table
-#'   augmented with the sensitivity-compartment jump doses), or `NULL` when the
-#'   model has no parameter-dependent delay.
+#' @param jumpMap the jump map from `.rxDelaySensJumpMap()` (`$jumpMap`).
+#' @param st ODE state names (`$st` from `.rxDelaySensJumpMap()`), for numeric-cmt
+#'   resolution.
+#' @return `.rxDelaySensJumpMap()`: list with `alagf`, `jumpMap`, and `st`, or
+#'   `NULL` when the model has no parameter-dependent delay.  `.rxDelaySensJump()`:
+#'   list with `alagf` and `events`, or `NULL`.
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxDelaySensJump <- function(model, calcSens, events) {
+.rxDelaySensJumpMap <- function(model, calcSens) {
   .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.m); .ns <- length(.st)
   .findDelays <- function(e, acc = list()) {
@@ -391,19 +400,59 @@
     }
   }
   if (length(.jumpMap) == 0L) return(NULL)
-  # mirror each state-j dose onto its sensitivity compartment(s)
+  list(alagf = .alagf, jumpMap = .jumpMap, st = .st)
+}
+
+#' @rdname dot-rxDelaySensJumpMap
+#' @export
+#' @keywords internal
+.rxDelaySensJumpEvents <- function(jumpMap, st, events) {
+  if (is.null(jumpMap) || length(jumpMap) == 0L) return(events)
+  # mirror each state-j dose onto its sensitivity compartment(s) -- cheap; no
+  # symengine, so this is the only part that runs per solve.
   .ev <- as.data.frame(events)
   .isDose <- if (!is.null(.ev$evid)) .ev$evid != 0 else rep(FALSE, nrow(.ev))
-  .cmtName <- function(c) if (is.numeric(c)) .st[c] else as.character(c)
+  .cmtName <- function(c) if (is.numeric(c)) st[c] else as.character(c)
   .add <- .ev[0, , drop = FALSE]
-  for (.jm in .jumpMap) {
+  for (.jm in jumpMap) {
     for (.r in which(.isDose)) {
       if (!identical(.cmtName(.ev$cmt[.r]), .jm$stateJ)) next
       .row <- .ev[.r, , drop = FALSE]; .row$cmt <- .jm$sensCmt
       .add <- rbind(.add, .row)
     }
   }
-  list(alagf = .alagf, events = if (nrow(.add)) rbind(.ev, .add) else .ev)
+  if (nrow(.add)) rbind(.ev, .add) else .ev
+}
+
+#' @rdname dot-rxDelaySensJumpMap
+#' @export
+#' @keywords internal
+.rxDelaySensJump <- function(model, calcSens, events) {
+  .map <- .rxDelaySensJumpMap(model, calcSens)
+  if (is.null(.map)) return(NULL)
+  list(alagf = .map$alagf, events = .rxDelaySensJumpEvents(.map$jumpMap, .map$st, events))
+}
+
+# jumpMap cache: the map depends only on the model, so an optimizer that solves
+# the same param-dependent-delay forward-sens model many times (FOCEi/nlm inner
+# loops) computes the symengine analysis once.  Keyed by the normalized model text
+# (already computed by the rxSolve gate) + calcSens; the wrapper list distinguishes
+# a cached NULL (no param-dependent delay) from a cache miss.
+.rxDelaySensJumpCache <- new.env(parent = emptyenv())
+
+#' @rdname dot-rxDelaySensJumpMap
+#' @param keyTxt normalized model text used as the cache key (pass `rxNorm(model)`
+#'   if already computed, else it is derived).
+#' @export
+#' @keywords internal
+.rxDelaySensJumpMapCached <- function(model, calcSens, keyTxt = NULL) {
+  if (is.null(keyTxt)) keyTxt <- rxode2::rxNorm(model)
+  .key <- paste0(keyTxt, "\n##cs##", paste(calcSens, collapse = ","))
+  .hit <- get0(.key, envir = .rxDelaySensJumpCache, inherits = FALSE)
+  if (!is.null(.hit)) return(.hit$map)
+  .map <- .rxDelaySensJumpMap(model, calcSens)
+  assign(.key, list(map = .map), envir = .rxDelaySensJumpCache)
+  .map
 }
 
 #' Validate that delay durations are constant for second-order sensitivities
