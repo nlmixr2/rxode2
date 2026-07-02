@@ -6697,6 +6697,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 6:
         ind_rk4(rx, cid, c_dydt, u_inis);
         break;
+      case 206: // rk4s -- discrete-adjoint RK4
+        ind_rk4s(rx, cid, c_dydt, u_inis);
+        break;
       case 7:
         ind_ck54(rx, cid, c_dydt, u_inis);
         break;
@@ -6910,6 +6913,10 @@ extern "C" void par_solve(rx_solve *rx) {
         // rk4
         par_rk4(rx);
         break;
+      case 206:
+        // rk4s -- discrete-adjoint RK4
+        par_rk4s(rx);
+        break;
       case 7:
         // ck54
         par_ck54(rx);
@@ -7111,6 +7118,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #define IN_PAR_SOLVE
 #include "rkf78.cpp"
 #include "rk4.cpp"
+#include "rk4s.cpp"
 #include "ck54.cpp"
 #include "ab.cpp"
 #include "abm.cpp"
