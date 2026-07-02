@@ -234,6 +234,39 @@ rxTest({
     expect_lt(fdmax, 1e-5)
   })
 
+  test_that("composite AutoSwitch dop853s+ros4s adjoint is exact across stiffness regimes", {
+    # The composite freezes the per-interval switch decision and transposes each
+    # step with the method (explicit dop853s OR Rosenbrock ros4s) that ran it.
+    mTextC <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - ke*center"
+    csC <- c("ka", "ke"); pC <- c(ka = 80, ke = 0.3)
+    exC <- rxode2::.rxAdjointExpand(mTextC, csC, stiff = TRUE)
+    madjC <- rxode2::rxode2(exC$text)
+    chk <- function(times) {
+      ev <- et(amt = 100, cmt = "depot") %>% et(times)
+      sc <- as.data.frame(rxode2::rxSolve(madjC, ev, params = pC, method = "dop853s+ros4s", hmin = 0.002, cores = 1))
+      sl <- as.data.frame(rxode2::rxSolve(madjC, ev, params = pC, method = "liblsoda", cores = 1))
+      expect_lt(max(abs(sc$center - sl$center), abs(sc$depot - sl$depot)), 1e-3)  # primal
+      solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+        madjC, ev, params = pp, method = "dop853s+ros4s", hmin = 0.002, cores = 1))[, c("depot", "center")])
+      fdmax <- 0
+      for (pn in csC) {
+        hh <- pC[[pn]] * 1e-6; pp <- pC; pm <- pC; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+        for (k in seq_along(exC$st))
+          fdmax <- max(fdmax, max(abs(sc[[sprintf("rx__sens_%s_BY_%s__", exC$st[k], pn)]] - fd[, k])))
+      }
+      expect_lt(fdmax, 1e-4)
+    }
+    chk(seq(3, 24, length.out = 6))     # all intervals stiff  -> all ros4s steps
+    chk(c(0.02, 0.04, 0.06))            # all intervals nonstiff -> all dop853s steps
+    chk(seq(0.05, 24, length.out = 8))  # mixed: early stiff (ros4s), late nonstiff (dop853s)
+  })
+
+  test_that("composite AutoSwitch requires 's' on both methods to be a sensitivity method", {
+    # dop853+ros4 (no 's') is a plain forward composite, not an adjoint method.
+    expect_false(grepl("dop853s", "dop853+ros4"))
+  })
+
   test_that("adaptive methods: primal matches liblsoda and frozen-step adjoint matches FD", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)

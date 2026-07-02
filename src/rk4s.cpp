@@ -301,15 +301,19 @@ static rksTableau rksGetTableau(int method) {
 }
 
 struct rk4s_rec {
-  int s = 0;                 // stages per step
+  int s = 0;                 // stages per step (homogeneous methods); composite uses per-step
   int nq = 0;                // base states recorded per stage
   std::vector<double> h;     // realized dt per step
   std::vector<double> t0;    // step start time per step
-  std::vector<double> a;     // stage states, flattened (nStep * s * nq); stage i
-                             // of step n at &a[(n*s + i)*nq]
-  std::vector<double> J;     // Rosenbrock only: frozen df/dy per step (nStep*nq*nq)
-  std::vector<double> k;     // Rosenbrock only: forward stage vectors k_i (nStep*s*nq)
-  void clear() { h.clear(); t0.clear(); a.clear(); J.clear(); k.clear(); }
+  std::vector<double> a;     // stage states, flattened; stage i of step n at
+                             // &a[(n*s + i)*nq] (homogeneous) or &a[aOff[n] + i*nq] (composite)
+  std::vector<double> J;     // Rosenbrock only: frozen df/dy per step (nq*nq)
+  std::vector<double> k;     // Rosenbrock only: forward stage vectors k_i (s*nq)
+  // -- composite (AutoSwitch) only: per-step method + offsets (variable s per step) --
+  int composite = 0;
+  std::vector<int> method;   // per-step method code (rksGetTableau input)
+  std::vector<size_t> aOff, JOff, kOff;  // per-step offsets into a/J/k (SIZE_MAX if none)
+  void clear() { h.clear(); t0.clear(); a.clear(); J.clear(); k.clear(); method.clear(); aOff.clear(); JOff.clear(); kOff.clear(); }
   size_t nStep() const { return h.size(); }
 };
 
@@ -568,14 +572,46 @@ static inline void radau_do_steps(rx_solving_options_ind *ind, rx_solving_option
   }
 }
 
+static inline void rks_run_method(const rksTableau &T, rx_solving_options_ind *ind,
+                                  rx_solving_options *op, t_dydt dydt, int *neq,
+                                  int nAll, int nRec, double *yp, double xp, double xout,
+                                  rk4s_rec *rec, std::vector<double> &scratch) {
+  if (T.implicitRK)      radau_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
+  else if (T.rosenbrock) ros_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
+  else if (T.adaptive)   rks_do_steps_adaptive(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
+  else                   rk4s_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
+}
+
+// AutoSwitch stiffness heuristic for the interval [xp,xout]: Gershgorin spectral
+// radius of J=F_X(y) times the interval length.  (For the adjoint the exact
+// threshold only affects which method runs -- the transpose is exact for either.)
+static inline bool compositeStiff(rx_solving_options_ind *ind, rx_solving_options *op,
+                                  int cSub, double *y, double xp, double xout) {
+  int n = op->adjNbase, fxOff = op->adjFxOff;
+  calc_lhs(cSub, xp, y, ind->lhs);
+  double specrad = 0;
+  for (int i = 0; i < n; ++i) { double rs = 0; for (int j = 0; j < n; ++j) rs += fabs(ind->lhs[fxOff+i*n+j]); if (rs > specrad) specrad = rs; }
+  return specrad * fabs(xout - xp) > 50.0;
+}
+
 static inline void rks_step_interval(rx_solving_options_ind *ind, rx_solving_options *op,
                                      t_dydt dydt, int *neq, const rksTableau &T,
                                      int nAll, int nRec, double *yp, double xp, double xout,
                                      rk4s_rec *rec, std::vector<double> &scratch) {
-  if (T.implicitRK)   radau_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
-  else if (T.rosenbrock) ros_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
-  else if (T.adaptive) rks_do_steps_adaptive(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
-  else                rk4s_do_steps(ind, op, dydt, neq, T, nAll, nRec, yp, xp, xout, rec, scratch);
+  if (!rec->composite) { rks_run_method(T, ind, op, dydt, neq, nAll, nRec, yp, xp, xout, rec, scratch); return; }
+  // AutoSwitch composite: pick non-stiff (op->stiff) or stiff (op->stiff2) for
+  // this interval, run it, and tag every step it produced with its method+offsets.
+  int mcode = compositeStiff(ind, op, neq[1], yp, xp, xout) ? op->stiff2 : op->stiff;
+  rksTableau Tm = rksGetTableau(mcode);
+  size_t nStart = rec->nStep(), aS = rec->a.size(), JS = rec->J.size(), kS = rec->k.size();
+  rks_run_method(Tm, ind, op, dydt, neq, nAll, nRec, yp, xp, xout, rec, scratch);
+  int sm = Tm.s, nb = op->adjNbase;
+  for (size_t nn = nStart; nn < rec->nStep(); ++nn) {
+    rec->method.push_back(mcode);
+    rec->aOff.push_back(aS + (nn - nStart) * (size_t)(sm * nRec));
+    if (Tm.rosenbrock) { rec->JOff.push_back(JS + (nn - nStart) * (size_t)(nb*nb)); rec->kOff.push_back(kS + (nn - nStart) * (size_t)(sm*nb)); }
+    else { rec->JOff.push_back((size_t)-1); rec->kOff.push_back((size_t)-1); }
+  }
 }
 
 // Evaluate F_X (nBase x nBase) and F_p (nBase x np) at base-state vector `a` and
@@ -731,6 +767,81 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
   }
 }
 
+// AutoSwitch composite backward: each step was tagged (rec.method) with the
+// method that ran it; precompute each step's transpose data by its method and
+// dispatch per step in the reset sweep (explicit table-driven OR Rosenbrock).
+struct rksStepPre { int method, s, rosen; double h; size_t aOff;
+                    std::vector<double> FX, FP, Wlu, Jp, Jy, kf; std::vector<int> piv; };
+static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                                    int cSub, rk4s_rec &rec, int nBase, int np,
+                                    int fxOff, int fpOff, int dfOff, int sensOff,
+                                    const std::vector<size_t> &boundary,
+                                    const std::vector<rk4s_dose> &doses) {
+  size_t nStep = rec.nStep(); if (nStep == 0) return;
+  int eff = rxEffNeq(ind, op), n = nBase, nfx = n*n, nfp = n*np;
+  int jpOff = op->adjJpOff, jyOff = op->adjJyOff, njp = nfx*np, njy = nfx*n;
+  std::vector<double> Ascratch(eff, 0.0);
+  std::vector<rksStepPre> pre(nStep);
+  for (size_t nn = 0; nn < nStep; ++nn) {
+    rksStepPre &P = pre[nn]; P.method = rec.method[nn]; rksTableau Tm = rksGetTableau(P.method);
+    int s = Tm.s; P.s = s; P.rosen = Tm.rosenbrock; P.h = rec.h[nn]; P.aOff = rec.aOff[nn];
+    P.FX.resize(s*nfx); P.FP.resize(s*nfp);
+    for (int i = 0; i < s; ++i) {
+      rk4s_eval_jac(cSub, rec.t0[nn], &rec.a[P.aOff + (size_t)i*n], n, np, fxOff, fpOff, Ascratch.data(), eff, ind, &P.FX[i*nfx], &P.FP[i*nfp]);
+      if (i == 0 && Tm.rosenbrock && jpOff >= 0) { P.Jp.assign(&ind->lhs[jpOff], &ind->lhs[jpOff]+njp); if (jyOff>=0) P.Jy.assign(&ind->lhs[jyOff], &ind->lhs[jyOff]+njy); }
+    }
+    if (Tm.rosenbrock) {
+      double invhg = 1.0/(P.h*Tm.gamma); const double *Jn = &rec.J[rec.JOff[nn]];
+      P.Wlu.resize(nfx); P.piv.resize(n);
+      for (int a = 0; a < n; ++a) for (int b = 0; b < n; ++b) P.Wlu[a*n+b] = (a==b?invhg:0.0) - Jn[a*n+b];
+      luFactor(P.Wlu.data(), n, P.piv.data());
+      P.kf.assign(&rec.k[rec.kOff[nn]], &rec.k[rec.kOff[nn]] + (size_t)s*n);
+    }
+  }
+  std::vector<double> dFdp; bool haveDose = (dfOff >= 0) && !doses.empty();
+  if (haveDose) { dFdp.resize(n*np); calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); for (int i = 0; i < n*np; ++i) dFdp[i] = ind->lhs[dfOff+i]; }
+
+  std::vector<double> lam(n), ybar(n), ubar(n), rhsbar(n), kbar(16*n), mu(np);
+  auto stepT = [&](size_t nn, std::vector<double> &lamR, std::vector<double> &muR) {
+    rksStepPre &P = pre[nn]; rksTableau Tm = rksGetTableau(P.method); int s = P.s; double h = P.h;
+    for (int c = 0; c < n; ++c) ybar[c] = lamR[c];
+    // explicit: kbar_i = h*b_i*lam;  Rosenbrock: kbar_i = m_i*lam (h absorbed in k_i via W solve).
+    for (int i = 0; i < s; ++i) { double bi = P.rosen ? Tm.b[i] : h*Tm.b[i]; for (int m = 0; m < n; ++m) kbar[i*n+m] = bi*lamR[m]; }
+    for (int i = s-1; i >= 0; --i) {
+      const double *fx = &P.FX[i*nfx], *fp = &P.FP[i*nfp];
+      if (P.rosen) {                                  // Rosenbrock single-step transpose
+        for (int m = 0; m < n; ++m) rhsbar[m] = kbar[i*n+m];
+        luSolveT(P.Wlu.data(), n, P.piv.data(), rhsbar.data());
+        for (int j = 0; j < n; ++j) { double v=0; for (int a=0;a<n;++a) v += fx[a*n+j]*rhsbar[a]; ubar[j]=v; }
+        for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<n;++a) v += fp[a*np+p]*rhsbar[a]; muR[p]+=v; }
+        if (jpOff >= 0) { const double *ki=&P.kf[i*n]; for (int p=0;p<np;++p){ double v=0; for (int a=0;a<n;++a){ double sb=0; for (int b=0;b<n;++b) sb+=P.Jp[(a*n+b)*np+p]*ki[b]; v+=rhsbar[a]*sb;} muR[p]+=v; } }
+        if (jyOff >= 0) { const double *ki=&P.kf[i*n]; for (int c=0;c<n;++c){ double v=0; for (int a=0;a<n;++a){ double sb=0; for (int b=0;b<n;++b) sb+=P.Jy[(a*n+b)*n+c]*ki[b]; v+=rhsbar[a]*sb;} ybar[c]+=v; } }
+        for (int j = 0; j < i; ++j) { double g=Tm.gam[i*s+j]; if (g!=0.0){ double *kbj=&kbar[j*n]; for (int m=0;m<n;++m) kbj[m]+=(g/h)*rhsbar[m]; } }
+        for (int m = 0; m < n; ++m) ybar[m] += ubar[m];
+        for (int j = 0; j < i; ++j) { double aa=Tm.A[i*s+j]; if (aa!=0.0){ double *kbj=&kbar[j*n]; for (int m=0;m<n;++m) kbj[m]+=aa*ubar[m]; } }
+      } else {                                        // explicit table-driven transpose
+        const double *kb = &kbar[i*n];
+        for (int j = 0; j < n; ++j) { double v=0; for (int a=0;a<n;++a) v += fx[a*n+j]*kb[a]; ubar[j]=v; }
+        for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<n;++a) v += fp[a*np+p]*kb[a]; muR[p]+=v; }
+        for (int m = 0; m < n; ++m) ybar[m] += ubar[m];
+        for (int j = 0; j < i; ++j) { double aa=Tm.A[i*s+j]; if (aa!=0.0){ double *kbj=&kbar[j*n]; for (int m=0;m<n;++m) kbj[m]+=h*aa*ubar[m]; } }
+      }
+    }
+    for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
+    if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == nn) { int c=doses[di].cmt; double a=doses[di].amt; for (int p=0;p<np;++p) muR[p]+=a*dFdp[c*np+p]*lamR[c]; }
+  };
+  for (int i = 0; i < ind->n_all_times; ++i) {
+    if (!isObs(getEvid(ind, ind->ix[i]))) continue;
+    size_t fromStep = boundary[i]; double *out = getSolve(i);
+    for (int k = 0; k < n; ++k) {
+      for (int j = 0; j < n; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
+      for (int p = 0; p < np; ++p) mu[p] = 0.0;
+      for (size_t nn = fromStep; nn >= 1; --nn) stepT(nn - 1, lam, mu);
+      for (int p = 0; p < np; ++p) out[sensOff + k*np + p] = mu[p];
+    }
+  }
+}
+
 static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
                                int cSub, rk4s_rec &rec, const rksTableau &T, int nBase, int np,
                                int fxOff, int fpOff, int dfOff, int sensOff,
@@ -738,6 +849,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const std::vector<rk4s_dose> &doses) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
+  if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses); return; }
   if (T.implicitRK) { radau_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses); return; }
   if (T.rosenbrock) { ros_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses); return; }
   int eff = rxEffNeq(ind, op);
@@ -847,10 +959,11 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int nRec = adj ? op->adjNbase : neqOde;     // base states recorded per stage
   double *yp;
 
-  rksTableau T = rksGetTableau(op->stiff);    // explicit-RK tableau for this method
+  rksTableau T = rksGetTableau(op->stiff);    // tableau for this method (primary if composite)
   rk4s_rec rec;
   rec.s = T.s;
   rec.nq = nRec;
+  rec.composite = (op->stiff2 > 0) ? 1 : 0;   // AutoSwitch composite (dop853s+ros4s)
   std::vector<double> scratch;
   std::vector<size_t> boundary(ind->n_all_times, 0);  // cumulative steps at each stored time
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose

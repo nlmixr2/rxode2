@@ -4134,7 +4134,7 @@ rxIsImplicit <- function(method) {
 #' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
 rxIsStiff <- function(method) {
-  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L)
+  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
     "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
@@ -4208,7 +4208,7 @@ rxIsStiff <- function(method) {
 #' @export
 rxIsNonStiff <- function(method) {
   .switcherCodes <- c(1L, 2L, 3L)
-  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L)
+  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
     "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
