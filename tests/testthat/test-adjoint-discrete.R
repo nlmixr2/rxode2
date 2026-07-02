@@ -174,6 +174,28 @@ rxTest({
                      rxode2::.rxAdjointModel(mText, cs)$model)
   })
 
+  test_that("stiff radauiia5s (fully-implicit Radau IIA) adjoint is exact (linear + nonlinear)", {
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    chk <- function(mt, ccs, pp0, hmin) {
+      ex <- rxode2::.rxAdjointExpand(mt, ccs)  # standard model: implicit RK needs only F_X/F_p
+      madj <- rxode2::rxode2(ex$text)
+      sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = pp0, method = "radauiia5s", hmin = hmin, cores = 1))
+      solveB <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+        madj, ev, params = pp, method = "radauiia5s", hmin = hmin, cores = 1))[, c("depot", "center")])
+      fdmax <- 0
+      for (pn in ccs) {
+        hh <- pp0[[pn]] * 1e-6; pp <- pp0; pm <- pp0; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+        for (kk in seq_along(ex$st))
+          fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[kk], pn)]] - fd[, kk])))
+      }
+      expect_lt(fdmax, 1e-5)
+    }
+    chk(mText, cs, p, 0.1)
+    chk("d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - vmax*center/(km+center)",
+        c("ka", "vmax", "km"), c(ka = 1.0, vmax = 8, km = 15), 0.05)
+  })
+
   test_that("stiff ros4s (Rosenbrock) adjoint is exact for a linear model (dJ/dp term)", {
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs, stiff = TRUE)
