@@ -33,6 +33,26 @@ rxTest({
     expect_lt(max(abs(gAdj - gFwd)), 1e-10)
   })
 
+  test_that("discrete adjoint with an additive-bolus (F) dose jump matches forward sens to machine precision", {
+    dText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
+    dcs <- c("ka", "cl", "v", "Fbio"); dp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)
+    dX0 <- c(depot = 0, center = 0)                 # dose supplies depot at t0
+    dh <- 0.02; dN <- 600L
+    doses <- list(list(step = 0L, cmt = "depot", amt = 100))
+    DB <- rxode2::.rxDiscreteAdjointBuild(dText, dcs)
+    dfwd <- rxode2::.rxDiscreteForwardSens(DB, dX0, dp, dh, dN, doses = doses)
+    for (kOut in seq_along(DB$st)) {
+      cov <- list(as.numeric(seq_along(DB$st) == kOut))
+      gAdj <- rxode2::.rxDiscreteAdjointGrad(DB, dfwd$stages, dp, dh, dN, cov, doses = doses)
+      gFwd <- dfwd$SN[kOut, ]
+      expect_lt(max(abs(gAdj - gFwd)), 1e-10)
+    }
+    # Fbio gradient is genuinely nonzero (dose amount depends on it)
+    covC <- list(as.numeric(DB$st == "center"))
+    gC <- rxode2::.rxDiscreteAdjointGrad(DB, dfwd$stages, dp, dh, dN, covC, doses = doses)
+    expect_gt(abs(gC[["Fbio"]]), 1)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0

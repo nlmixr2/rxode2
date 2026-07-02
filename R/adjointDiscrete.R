@@ -46,6 +46,17 @@
     .FXexpr[i, j] <- .fromSE(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"))
   for (i in seq_len(.ns)) for (p in seq_len(.np))
     .FPexpr[i, p] <- .fromSE(paste0("rx__df_", .st[i], "_dy_", calcSens[p], "__"))
+  ## bioavailability F(theta) per dose compartment (param-only assumed) and its
+  ## d/dtheta -- for the additive-bolus dose jump  X[c] += F*amt.
+  .fStr <- list(); .dFdpStr <- list()
+  for (.c in .st) {
+    .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.fSE)) {
+      .fStr[[.c]] <- rxode2::rxFromSE(.fSE)
+      .dFdpStr[[.c]] <- vapply(calcSens, function(p) {
+        .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
+    }
+  }
   .ev1 <- function(s, x, params) {
     .e <- list2env(c(as.list(stats::setNames(x, .st)), as.list(params)), parent = baseenv())
     assign("Rx_pow_di", function(a, b) a^b, .e); assign("Rx_pow", function(a, b) a^b, .e)
@@ -53,10 +64,22 @@
     assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), .e)
     eval(parse(text = s), .e)
   }
-  list(st = .st, ns = .ns, np = .np, calcSens = calcSens,
+  list(st = .st, ns = .ns, np = .np, calcSens = calcSens, fStr = .fStr, dFdpStr = .dFdpStr,
+       evP = function(s, params) .ev1(s, numeric(.ns), params),
        Fe  = function(x, p) vapply(.Fexpr, .ev1, numeric(1), x = x, params = p),
        FXe = function(x, p) matrix(vapply(as.vector(.FXexpr), .ev1, numeric(1), x = x, params = p), .ns, .ns),
        FPe = function(x, p) matrix(vapply(as.vector(.FPexpr), .ev1, numeric(1), x = x, params = p), .ns, .np))
+}
+
+## Resolve an additive-bolus dose jump (cmt index, F*amt magnitude, d(F*amt)/dtheta).
+## dose = list(step = <0-based grid step>, cmt = <state name>, amt = <numeric>).
+.rxDiscreteDoseJump <- function(build, dose, params) {
+  .ci <- match(dose$cmt, build$st)
+  if (dose$cmt %in% names(build$fStr)) {
+    .Fval <- build$evP(build$fStr[[dose$cmt]], params)
+    .dFdp <- vapply(build$dFdpStr[[dose$cmt]], build$evP, numeric(1), params = params)
+  } else { .Fval <- 1; .dFdp <- numeric(build$np) }
+  list(ci = .ci, Fval = .Fval, dFdp = .dFdp, amt = dose$amt)
 }
 
 ## one fixed-step explicit RK4 step; returns next state + the four stage states
@@ -81,16 +104,26 @@
 #' @param params named numeric parameter vector.
 #' @param h fixed step size.
 #' @param nStep number of RK4 steps (final time `= h * nStep`).
+#' @param doses optional list of additive-bolus dose specs, each
+#'   `list(step = <0-based grid step>, cmt = <state name>, amt = <numeric>)`;
+#'   applied (with bioavailability `f(cmt)` if defined) at the start of the step,
+#'   with the corresponding forward-sensitivity jump.
 #' @param S0 optional initial sensitivity (`ns x np`); default zero.
 #' @return list with `XN`, `SN` (`ns x np`), `Sall` (per-step `S`), `stages`.
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxDiscreteForwardSens <- function(build, X0, params, h, nStep, S0 = NULL) {
+.rxDiscreteForwardSens <- function(build, X0, params, h, nStep, doses = NULL, S0 = NULL) {
   .ns <- build$ns; .np <- build$np
   .X <- X0; .S <- if (is.null(S0)) matrix(0, .ns, .np) else S0
   .Sall <- vector("list", nStep); .stages <- vector("list", nStep)
+  .dstep <- if (length(doses)) split(doses, vapply(doses, function(d) d$step, numeric(1))) else list()
   for (n in seq_len(nStep)) {
+    for (.d in .dstep[[as.character(n - 1L)]]) {   # dose at grid step n-1 (start of step)
+      .j <- .rxDiscreteDoseJump(build, .d, params)
+      .X[.j$ci] <- .X[.j$ci] + .j$Fval * .j$amt
+      .S[.j$ci, ] <- .S[.j$ci, ] + .j$amt * .j$dFdp
+    }
     .s4 <- .rxRk4Step(build, .X, params, h); .stages[[n]] <- .s4$stages
     .a1 <- .s4$stages[[1]]; .a2 <- .s4$stages[[2]]; .a3 <- .s4$stages[[3]]; .a4 <- .s4$stages[[4]]
     .dk1 <- build$FXe(.a1, params) %*% .S + build$FPe(.a1, params)
@@ -118,6 +151,9 @@
 #' @param h fixed step size (same as the forward solve).
 #' @param obsSteps integer step indices at which observation covectors apply.
 #' @param cov list of covector vectors (length `ns`), aligned with `obsSteps`.
+#' @param doses optional list of additive-bolus dose specs (same format as
+#'   [.rxDiscreteForwardSens()]); the exact transpose of the forward dose jump
+#'   is applied, contributing `amt * dF/dtheta * lambda_c` to `dG/dtheta`.
 #' @param lam0Cov optional initial-condition sensitivity `dX0/dtheta` (`ns x np`)
 #'   to add the terminal transversality `lambda(t0)^T dX0/dtheta`; default none.
 #' @return named numeric vector `dG/dtheta` over `build$calcSens`.
@@ -125,10 +161,11 @@
 #' @export
 #' @keywords internal
 .rxDiscreteAdjointGrad <- function(build, stages, params, h, obsSteps, cov,
-                                   lam0Cov = NULL) {
+                                   doses = NULL, lam0Cov = NULL) {
   .ns <- build$ns; .np <- build$np; .nStep <- length(stages)
   .lam <- numeric(.ns); .mu <- numeric(.np)
   .obsMap <- match(seq_len(.nStep), obsSteps)
+  .dstep <- if (length(doses)) split(doses, vapply(doses, function(d) d$step, numeric(1))) else list()
   for (n in .nStep:1) {
     if (!is.na(.obsMap[n])) .lam <- .lam + cov[[.obsMap[n]]]
     .a1 <- stages[[n]][[1]]; .a2 <- stages[[n]][[2]]; .a3 <- stages[[n]][[3]]; .a4 <- stages[[n]][[4]]
@@ -138,7 +175,12 @@
     .a3b <- t(build$FXe(.a3, params)) %*% .k3b; .Xbar <- .Xbar + .a3b; .k2b <- .k2b + h / 2 * .a3b; .mu <- .mu + t(build$FPe(.a3, params)) %*% .k3b
     .a2b <- t(build$FXe(.a2, params)) %*% .k2b; .Xbar <- .Xbar + .a2b; .k1b <- .k1b + h / 2 * .a2b; .mu <- .mu + t(build$FPe(.a2, params)) %*% .k2b
     .a1b <- t(build$FXe(.a1, params)) %*% .k1b; .Xbar <- .Xbar + .a1b;                              .mu <- .mu + t(build$FPe(.a1, params)) %*% .k1b
-    .lam <- as.vector(.Xbar)
+    .Ybar <- as.vector(.Xbar)   # dG/dY_{n-1}, Y = post-dose state at step n-1
+    for (.d in .dstep[[as.character(n - 1L)]]) {   # transpose of the dose-parameter jump
+      .j <- .rxDiscreteDoseJump(build, .d, params)
+      .mu <- .mu + .j$amt * .j$dFdp * .Ybar[.j$ci]
+    }
+    .lam <- .Ybar    # additive bolus: dD/dX = I
   }
   .g <- as.vector(.mu)
   if (!is.null(lam0Cov)) .g <- .g + as.vector(.lam %*% lam0Cov)  # IC transversality
