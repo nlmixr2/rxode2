@@ -126,6 +126,34 @@ rxTest({
     expect_gt(max(abs(sd[["rx__sens_center_BY_Fbio__"]])), 1)
   })
 
+  test_that("in-engine rk4s population solve (parallel) matches per-subject FD", {
+    cs2 <- c("ka", "cl", "v")
+    tms <- c(1, 4, 12, 24)
+    pars <- data.frame(id = 1:3, ka = c(1.0, 1.2, 1.5), cl = c(3.0, 3.5, 4.0), v = c(20, 25, 30))
+    ev <- do.call(rbind, lapply(1:3, function(i) {
+      e <- et(amt = 100, cmt = "depot") %>% et(tms); e$id <- i; e
+    }))
+    ex <- rxode2::.rxAdjointExpand(mText, cs2)
+    madj <- rxode2::rxode2(ex$text)
+    s <- as.data.frame(rxode2::rxSolve(madj, ev, pars, method = "rk4s", cores = 2))
+    mbase <- rxode2::rxode2(mText)
+    maxerr <- 0
+    for (i in 1:3) {
+      pi <- c(ka = pars$ka[i], cl = pars$cl[i], v = pars$v[i])
+      evi <- et(amt = 100, cmt = "depot") %>% et(tms)
+      solveB <- function(pp) as.matrix(as.data.frame(
+        rxode2::rxSolve(mbase, evi, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+      si <- s[s$id == i, ]
+      for (pn in cs2) {
+        hh <- pi[[pn]] * 1e-6; pp <- pi; pm <- pi; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveB(pp) - solveB(pm)) / (2 * hh)
+        for (k in seq_along(ex$st))
+          maxerr <- max(maxerr, max(abs(si[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+      }
+    }
+    expect_lt(maxerr, 1e-4)
+  })
+
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
     solveN <- function(pp) {
       X <- X0
