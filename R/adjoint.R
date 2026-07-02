@@ -527,7 +527,8 @@
   .cover <- matrix(0.0, length(obsTimes), .ns)
   for (i in seq_len(.ns))
     .cover[, i] <- .dLdf * .fwd[[paste0("rx__dhdy_", .st[i], "__")]][.oidx]
-  .gTraj <- rxAdjointSweepC(.denseT, .J, .dP, .cover, as.integer(.oidx - 1L), .ns, .np)
+  .gTraj <- .Call(`_rxode2_rxAdjointSweep`, .denseT, .J, .dP, .cover,
+                  as.integer(.oidx - 1L), as.integer(.ns), as.integer(.np))
   .gExpl <- vapply(calcSens, function(p)
     sum(.dLdf * .fwd[[paste0("rx__dhdp_", p, "__")]][.oidx]), numeric(1))
   .gErr <- vapply(calcSens, function(p)
