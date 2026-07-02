@@ -6702,6 +6702,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 240: // midpoints -- discrete-adjoint explicit midpoint
       case 241: // heuns     -- discrete-adjoint Heun
       case 210: // dop5s     -- discrete-adjoint adaptive Dormand-Prince 5(4)
+      case 200: // dop853s   -- discrete-adjoint adaptive Dormand-Prince 8(5,3)
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 7:
@@ -6922,6 +6923,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 240: // midpoints
       case 241: // heuns
       case 210: // dop5s
+      case 200: // dop853s
         par_rk4s(rx);
         break;
       case 7:
