@@ -237,42 +237,6 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     }
   };
 
-  if (op->adjScalar) {
-    // O(1) SCALAR-OBJECTIVE mode (an OPTION of rk4s, selected by the rx__adjScalar__
-    // marker lhs -- NOT a separate solver): ONE backward sweep for a scalar
-    // objective G = sum_i g_i(y(t_i)), injecting the covector c_i = dG/dy(t_i) at
-    // each observation (no reset).  mu accumulates dG/dtheta directly -- cost is
-    // one sweep, independent of #params AND #obs (the genuine adjoint win for
-    // gradient-only methods).  Objective here: the sum of squared base states,
-    // c_i = y_base(t_i); the errModel -2LL covector is a drop-in -- same sweep.
-    std::vector<size_t> obsStep;
-    std::vector<std::vector<double> > obsCov;
-    std::vector<double *> outRows;
-    size_t maxB = 0;
-    for (int i = 0; i < ind->n_all_times; ++i) {
-      if (!isObs(getEvid(ind, ind->ix[i]))) continue;
-      double *o = getSolve(i);
-      std::vector<double> c(nBase);
-      for (int j = 0; j < nBase; ++j) c[j] = o[j];
-      obsStep.push_back(boundary[i]); obsCov.push_back(c); outRows.push_back(o);
-      if (boundary[i] > maxB) maxB = boundary[i];
-    }
-    for (int j = 0; j < nBase; ++j) lam[j] = 0.0;
-    for (int p = 0; p < np; ++p) mu[p] = 0.0;
-    for (size_t nn = maxB; nn >= 1; --nn) {
-      for (size_t oi = 0; oi < obsStep.size(); ++oi)
-        if (obsStep[oi] == nn) for (int j = 0; j < nBase; ++j) lam[j] += obsCov[oi][j];
-      stepTranspose(nn - 1, lam, mu);
-    }
-    // write dG/dtheta into each obs row's rx__sens_<state0>_BY_<param>__ slots
-    // (constant across rows); other sens slots zeroed.
-    for (size_t r = 0; r < outRows.size(); ++r) {
-      for (int s = 0; s < nBase * np; ++s) outRows[r][sensOff + s] = 0.0;
-      for (int p = 0; p < np; ++p) outRows[r][sensOff + p] = mu[p];
-    }
-    return;
-  }
-
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
