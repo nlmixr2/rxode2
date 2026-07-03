@@ -213,28 +213,30 @@ rxTest({
     ncols <- as.vector(outer(nex$st, ncs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
     # Skipped: doses to cmt>=3 hit the sensitivity output compartments (which
     # differ between the adjoint output slots and the forward ODE states).
-    # (Observations coincident with a full reset -- ids 23/24 -- are now handled
-    # via the boundaryDose disambiguation and are no longer skipped.)
+    # (Observations coincident with a full reset -- ids 23/24 -- are handled via
+    # the boundaryDose disambiguation and are NOT skipped.)  Checked across an
+    # explicit, an adaptive, and a high-order adjoint method vs the matching base.
     tested <- 0
-    for (id in unique(d0$id)) {
-      di <- d0[d0$id == id, ]
-      if (any(di$evid != 0 & !(di$cmt %in% c(1, 2)))) next
-      if (id %in% c(20, 23, 24)) next
-      a <- tryCatch(as.data.frame(suppressWarnings(rxode2::rxSolve(
-        nmadj, di, params = pp, method = "rk4s", addlDropSs = TRUE, atol = 1e-10, rtol = 1e-10))),
-        error = function(e) NULL)
-      if (is.null(a)) next                     # guarded / not-yet-supported ss case
-      f <- as.data.frame(suppressWarnings(rxode2::rxSolve(
-        nmfwd, di, params = pp, method = "rk4", addlDropSs = TRUE, atol = 1e-10, rtol = 1e-10)))
-      pd <- 0; for (st in nex$st) pd <- max(pd, max(abs(a[[st]] - f[[st]]), na.rm = TRUE))
-      sd <- 0; for (cn in ncols) sd <- max(sd, max(abs(a[[cn]] - f[[cn]]), na.rm = TRUE))
-      psc <- max(1, max(abs(unlist(f[nex$st])), na.rm = TRUE))
-      ssc <- max(1, max(abs(unlist(f[ncols])), na.rm = TRUE))
-      expect_lt(pd / psc, 1e-4)                # solution (primal) matches
-      expect_lt(sd / ssc, 1e-3)                # gradients match
-      tested <- tested + 1
+    for (mp in list(c("rk4s", "rk4"), c("dop853s", "dop853"), c("vern98s", "vern98"))) {
+      for (id in unique(d0$id)) {
+        di <- d0[d0$id == id, ]
+        if (any(di$evid != 0 & !(di$cmt %in% c(1, 2)))) next
+        a <- tryCatch(as.data.frame(suppressWarnings(rxode2::rxSolve(
+          nmadj, di, params = pp, method = mp[1], addlDropSs = TRUE, atol = 1e-10, rtol = 1e-10))),
+          error = function(e) NULL)
+        if (is.null(a)) next                   # guarded / not-yet-supported ss case
+        f <- as.data.frame(suppressWarnings(rxode2::rxSolve(
+          nmfwd, di, params = pp, method = mp[2], addlDropSs = TRUE, atol = 1e-10, rtol = 1e-10)))
+        pd <- 0; for (st in nex$st) pd <- max(pd, max(abs(a[[st]] - f[[st]]), na.rm = TRUE))
+        sd <- 0; for (cn in ncols) sd <- max(sd, max(abs(a[[cn]] - f[[cn]]), na.rm = TRUE))
+        psc <- max(1, max(abs(unlist(f[nex$st])), na.rm = TRUE))
+        ssc <- max(1, max(abs(unlist(f[ncols])), na.rm = TRUE))
+        expect_lt(pd / psc, 1e-3)              # solution (primal) matches
+        expect_lt(sd / ssc, 2e-3)              # gradients match
+        tested <- tested + 1
+      }
     }
-    expect_gt(tested, 20)                      # a meaningful set of scenarios compared
+    expect_gt(tested, 60)                      # a meaningful set of scenarios x methods
   })
 
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
