@@ -2409,7 +2409,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # variant fall back to the general-purpose adaptive adjoint (dop853s).
   if (.ctl$method < 200L && (is.null(.ctl$stiff2) || .ctl$stiff2 == 0L) &&
         any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
-    .adjCodes <- c(200L, 205L, 206L, 207L, 210L, 213L, 221L, 225L, 227L, 228L,
+    .adjCodes <- c(200L, 202L, 205L, 206L, 207L, 210L, 213L, 221L, 225L, 227L, 228L,
                    229L, 231L, 232L, 233L, 234L, 235L, 236L, 237L, 238L, 239L,
                    240L, 241L, 243L, 265L)
     .up <- .ctl$method + 200L
@@ -2418,10 +2418,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
   # liblsodaadj (202) is the exact discrete adjoint of liblsoda's Nordsieck
-  # multistep map.  P1 handles fixed-order-1 / fixed-step (the validated core
-  # transpose); variable order/step, method switch and interior event jumps are
-  # follow-up phases.  It is opt-in by name only (the adjoint auto-switch above
-  # never routes here -- it falls back to dop853s), so default solves are safe.
+  # multistep map (variable order/step, Adams<->BDF switch, and interior events --
+  # multi-dose / reset / replace / multiply / modeled F / alag / const + modeled
+  # rate()/dur() infusions -- all validated).  It is the direct adjoint variant of
+  # the default liblsoda method, so an adjoint model solved with liblsoda auto-
+  # switches to it above (rather than the generic dop853s).
   # Delay differential equations (models using delay()) require a dense ODE
   # solver so delay() can interpolate past states.  When delays are present,
   # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense

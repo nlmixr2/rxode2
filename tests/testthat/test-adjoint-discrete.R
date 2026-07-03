@@ -918,4 +918,26 @@ rxTest({
       if (!is.null(cc$gp)) expect_gt(max(abs(sL[[sprintf("rx__sens_center_BY_%s__", cc$gp)]])), 1e-3)
     }
   })
+
+  test_that("in-engine liblsodaadj (P6) auto-switch from liblsoda + parallel across subjects", {
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    ev <- et(amt = 100, cmt = "depot", ii = 6, addl = 2) %>% et(c(1, 4, 7, 10, 16))
+    # (1) an adjoint model solved with the DEFAULT liblsoda method auto-switches to
+    # liblsodaadj (its direct adjoint variant) rather than the generic dop853s.
+    sAuto <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "liblsoda",    cores = 1, atol = 1e-9, rtol = 1e-9))
+    sExpl <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "liblsodaadj", cores = 1, atol = 1e-9, rtol = 1e-9))
+    for (cn in grep("rx__sens", names(sAuto), value = TRUE))
+      expect_equal(sAuto[[cn]], sExpl[[cn]])
+    # genuinely non-zero (not the silent all-zero base-liblsoda path)
+    expect_gt(max(abs(sAuto[["rx__sens_center_BY_cl__"]])), 1e-3)
+
+    # (2) parallel across subjects is bit-identical to serial.
+    pd <- data.frame(id = 1:4, ka = c(1.0, 1.2, 1.4, 1.6), cl = c(3, 3.5, 4, 4.5), v = c(20, 25, 30, 22))
+    evp <- et(amt = 100, cmt = "depot", ii = 6, addl = 2) %>% et(c(1, 4, 7, 10, 16)) %>% et(id = 1:4)
+    s1 <- as.data.frame(rxode2::rxSolve(madj, evp, pd, method = "liblsodaadj", cores = 1, atol = 1e-9, rtol = 1e-9))
+    s4 <- as.data.frame(rxode2::rxSolve(madj, evp, pd, method = "liblsodaadj", cores = 4, atol = 1e-9, rtol = 1e-9))
+    for (cn in grep("rx__sens", names(s1), value = TRUE))
+      expect_equal(s1[[cn]], s4[[cn]])
+  })
 })

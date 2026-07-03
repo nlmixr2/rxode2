@@ -64,8 +64,14 @@
 // boundary transversality mu += -amt/R*durMult*dR/dp[c]*lam_c(t_off).  durMult = 1 for
 // rate(), amt for dur().  Constant-rate infusions have no dR/dp and are transparent.
 // Validated vs dop853s (~1e-8); the self-check replay is skipped for infusion models
-// (its dydt does not carry the runtime infusion rate).  Remaining: P6 parallelism /
-// auto-switch.
+// (its dydt does not carry the runtime infusion rate).
+//
+// P6 -- par_liblsodaadj runs the subjects in parallel (OpenMP, like par_liblsoda; the
+// recording buffers are thread_local and each subject uses its own ind->lhs / solve
+// storage + per-thread ctx pool, so distinct subjects never alias -- bit-identical to
+// serial), and code 202 is in the rxsolve.R auto-switch .adjCodes so an adjoint model
+// solved with the DEFAULT liblsoda method upgrades to this exact discrete adjoint
+// (rather than the generic dop853s).  liblsodaadj is now feature-complete.
 #ifdef IN_PAR_SOLVE
 
 // --- recording hooks: need liblsoda's common block (ctx->common->...) ----------
@@ -560,9 +566,20 @@ extern "C" void ind_liblsodaadj(rx_solve *rx, int solveid, t_dydt c_dydt, t_upda
 }
 
 extern "C" void par_liblsodaadj(rx_solve *rx) {
-  // Serial per-subject recording (thread-local buffers) for P1; parallel is P6.
-  rx_solving_options *op = rx->op;
-  int nsolve = (int)(rx->nsim * rx->nsub);
+  // Parallel across subjects (P6).  The recording buffers (lsAdjSteps/lsAdjSegs) are
+  // thread_local, and each subject uses its own ind->lhs / getSolve() storage + its
+  // own per-thread liblsoda ctx pool, so distinct-subject solves do not alias.  The
+  // forward is the exact base liblsoda (ind_liblsoda0), already thread safe.
+  rx_solving_options *op = &op_global;
+#ifdef _OPENMP
+  int cores = op->cores;
+#else
+  int cores = 1;
+#endif
+  uint32_t nsub = rx->nsub, nsim = rx->nsim;
+  int nsolve = (int)(nsim * nsub);
+  int displayProgress = (op->nDisplayProgress <= nsolve);
+  clock_t t0 = clock();
   struct lsoda_opt_t opt = {0};
   opt.ixpr = 0;
   opt.rtol = op->rtol2; opt.atol = op->atol2;
@@ -570,10 +587,39 @@ extern "C" void par_liblsodaadj(rx_solve *rx) {
   opt.mxstep = op->mxstep; opt.mxhnil = op->mxhnil;
   opt.mxordn = op->MXORDN; opt.mxords = op->MXORDS;
   opt.h0 = op->H0; opt.hmax = op->hmax2; opt.hmin = op->HMIN; opt.hmxi = op->hmxi;
-  for (int solveid = 0; solveid < nsolve; ++solveid) {
-    ind_liblsodaadj_0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
-    if (op->badSolve) break;
+  int curTick = 0, cur = 0, abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(op->cores) schedule(dynamic,1)
+#endif
+  for (int solveid = 0; solveid < nsolve; solveid++) {
+    int localAbort;
+#pragma omp atomic read
+    localAbort = abort;
+    if (localAbort == 0) {
+      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
+      ind_liblsodaadj_0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
+      if (displayProgress) {
+#pragma omp critical
+        cur++;
+#ifdef _OPENMP
+        if (omp_get_thread_num() == 0)
+#endif
+        {
+          curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
+          int localAbort2;
+#pragma omp atomic read
+          localAbort2 = abort;
+          if (localAbort2 == 0 && checkInterrupt()) { int nA = 1;
+#pragma omp atomic write
+            abort = nA; }
+        }
+      }
+    }
   }
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
+  if (abort == 1) { op->abort = 1; par_progress(cur, nsolve, curTick, cores, t0, 1); }
+  else if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
 }
 
 #endif // IN_PAR_SOLVE
