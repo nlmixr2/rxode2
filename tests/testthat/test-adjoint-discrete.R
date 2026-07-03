@@ -266,6 +266,35 @@ rxTest({
     }
   })
 
+  test_that("modeled-dur infusion dual: d/d(dur) sensitivity matches FD (all methods)", {
+    # A modeled-dur infusion has effective rate amt/dur, so dR/dtheta = amt *
+    # d(1/dur)/dtheta -- same two-term dual as rate() with a durMult=amt runtime factor.
+    # Dur=2.5 => off-time t_on+2.5 is OFF the obs grid (avoids the FD kink).
+    mText2 <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\ndur(depot)=Dur"
+    cs2 <- c("ka", "cl", "v", "Dur"); p2 <- c(ka = 1.2, cl = 3.5, v = 25, Dur = 2.5)
+    ex <- rxode2::.rxAdjointExpand(mText2, cs2)
+    madj <- rxode2::rxode2(ex$text); mbase <- rxode2::rxode2(mText2)
+    ev <- et(amt = 100, cmt = "depot", rate = -2) %>% et(c(1, 2, 4, 8, 12))
+    solveBase <- function(pp, meth) as.matrix(as.data.frame(rxode2::rxSolve(
+      mbase, ev, params = pp, method = if (meth == "cvodesadj") "liblsoda" else "rk4",
+      atol = 1e-11, rtol = 1e-11, cores = 1))[, c("depot", "center")])
+    for (meth in c("rk4s", "dop853s", "radauiia5s", "ros4s", "cvodesadj")) {
+      exM <- if (meth %in% c("radauiia5s", "ros4s")) rxode2::.rxAdjointExpand(mText2, cs2, stiff = TRUE) else ex
+      madjM <- if (identical(exM, ex)) madj else rxode2::rxode2(exM$text)
+      s <- as.data.frame(rxode2::rxSolve(madjM, ev, params = p2, method = meth,
+                                         atol = 1e-11, rtol = 1e-11, cores = 1))
+      fdmax <- 0
+      for (pn in cs2) {
+        hh <- p2[[pn]] * 1e-6; pp <- p2; pm <- p2; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveBase(pp, meth) - solveBase(pm, meth)) / (2 * hh)
+        for (k in seq_along(exM$st))
+          fdmax <- max(fdmax, max(abs(s[[sprintf("rx__sens_%s_BY_%s__", exM$st[k], pn)]] - fd[, k])))
+      }
+      expect_lt(fdmax, if (meth == "cvodesadj") 1e-3 else 1e-4)
+      expect_gt(max(abs(s[["rx__sens_center_BY_Dur__"]])), 0.5)
+    }
+  })
+
   test_that("in-engine rk4s population solve (parallel) matches per-subject FD", {
     cs2 <- c("ka", "cl", "v")
     tms <- c(1, 4, 12, 24)

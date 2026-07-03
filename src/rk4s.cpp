@@ -46,7 +46,7 @@ struct rk4s_dose { size_t step; int cmt; double amt; int type; };
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
 // rate R into compartment cmt (amt total).  Drives the two-term infusion dual --
 // the in-window forcing quadrature and the off-boundary (offStep) transversality.
-struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt; };
+struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult; };  // durMult: 1 (rate) or amt (dur)
 
 // Apply the transpose event jumps at backward step n.  On entry lamR = lambda_n+
 // (post-RK-transpose, pre-jump); on exit lamR = lambda_n (= (dPhi/dy)^T lambda_n+).
@@ -965,18 +965,22 @@ struct rk4s_dde {
 static const double *rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_options_ind *ind,
     int cSub, rk4s_rec &rec, const std::vector<rk4s_infus> &infus, int nBase, int np,
     size_t nStep, std::vector<double> &Ascratch, std::vector<double> &dRateV,
-    std::vector<int> &forcingCmt, std::vector<int> &offCmt, std::vector<double> &offFac) {
+    std::vector<int> &forcingCmt, std::vector<double> &forcingMult,
+    std::vector<int> &offCmt, std::vector<double> &offFac) {
   if (op->adjDrateOff < 0 || infus.empty()) return NULL;
   calc_lhs(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(), ind->lhs);
   dRateV.resize(nBase * np);
   for (int i = 0; i < nBase * np; ++i) dRateV[i] = ind->lhs[op->adjDrateOff + i];
-  forcingCmt.assign(nStep, -1); offCmt.assign(nStep, -1); offFac.assign(nStep, 0.0);
+  forcingCmt.assign(nStep, -1); forcingMult.assign(nStep, 0.0);
+  offCmt.assign(nStep, -1); offFac.assign(nStep, 0.0);
+  // durMult folds in the rate/dur runtime factor (1 for rate, amt for dur), since
+  // dR/dtheta = durMult * (the emitted rx__adjDrate block).
   for (size_t w = 0; w < infus.size(); ++w) {
     const rk4s_infus &F = infus[w];
     size_t off = (F.offStep == (size_t)-1) ? nStep : F.offStep;
-    for (size_t _n = F.onStep; _n < off && _n < nStep; ++_n) forcingCmt[_n] = F.cmt;
+    for (size_t _n = F.onStep; _n < off && _n < nStep; ++_n) { forcingCmt[_n] = F.cmt; forcingMult[_n] = F.durMult; }
     if (F.offStep != (size_t)-1 && F.offStep < nStep && F.R != 0.0) {
-      offCmt[F.offStep] = F.cmt; offFac[F.offStep] = -(F.amt / F.R);
+      offCmt[F.offStep] = F.cmt; offFac[F.offStep] = -(F.amt / F.R) * F.durMult;
     }
   }
   return dRateV.data();
@@ -1017,8 +1021,8 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
   if (op->adjDlagOff >= 0 && !doses.empty()) { if (!haveDose) calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); dlagV.resize(nBase*np); for (int i = 0; i < nBase*np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff+i]; dlagP = dlagV.data(); }
 
   std::vector<double> lam(nBase), ybar(nBase), ubar(nBase), rhsbar(nBase), kbar(s*nBase), mu(np);
-  std::vector<double> dRateV; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;   // modeled-rate dual
-  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, nBase, np, rec.nStep(), Ascratch, dRateV, forcingCmt, offCmt, offFac);
+  std::vector<double> dRateV, forcingMult; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;   // modeled-rate dual
+  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, nBase, np, rec.nStep(), Ascratch, dRateV, forcingCmt, forcingMult, offCmt, offFac);
   auto stepT = [&](size_t n, std::vector<double> &lamR, std::vector<double> &muR) {
     double h = rec.h[n]; const double *Wn = &Wf[n*nfx]; const int *pn = &pivf[n*nBase];
     for (int m = 0; m < nBase; ++m) ybar[m] = lamR[m];
@@ -1029,7 +1033,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       const double *fx = &FX[(n*s+i)*nfx], *fp = &FP[(n*s+i)*nfp];
       for (int j = 0; j < nBase; ++j) { double v = 0; for (int ii = 0; ii < nBase; ++ii) v += fx[ii*nBase+j]*rhsbar[ii]; ubar[j] = v; }
       for (int p = 0; p < np; ++p) { double v = 0; for (int ii = 0; ii < nBase; ++ii) v += fp[ii*np+p]*rhsbar[ii]; muR[p] += v; }
-      if (dRatep && forcingCmt[n] >= 0) { int rc = forcingCmt[n]; for (int p = 0; p < np; ++p) muR[p] += dRatep[rc*np+p]*rhsbar[rc]; }  // infusion forcing
+      if (dRatep && forcingCmt[n] >= 0) { int rc = forcingCmt[n]; for (int p = 0; p < np; ++p) muR[p] += forcingMult[n]*dRatep[rc*np+p]*rhsbar[rc]; }  // infusion forcing
       // W depends on theta through J(y_start): mu += (dJ/dtheta k_i)^T rhsbar_i.
       if (jpOff >= 0) {
         const double *Jpn = &Jp[n*njp]; const double *ki = &rec.k[(n*s+i)*nBase];
@@ -1102,8 +1106,8 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
   if (op->adjDlagOff >= 0 && !doses.empty()) { if (!haveDose) calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); dlagV.resize(n*np); for (int i = 0; i < n*np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff+i]; dlagP = dlagV.data(); }
 
   std::vector<double> lam(n), ybar(n), z(sn), mu(np);
-  std::vector<double> dRateV; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;   // modeled-rate dual
-  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, n, np, rec.nStep(), Ascratch, dRateV, forcingCmt, offCmt, offFac);
+  std::vector<double> dRateV, forcingMult; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;   // modeled-rate dual
+  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, n, np, rec.nStep(), Ascratch, dRateV, forcingCmt, forcingMult, offCmt, offFac);
   auto stepT = [&](size_t nn, std::vector<double> &lamR, std::vector<double> &muR) {
     double h = rec.h[nn]; const double *Mn = &Mf[nn*sn*sn]; const int *pn = &pivf[nn*sn];
     for (int i = 0; i < s; ++i) { double hb = h*T.b[i]; for (int m = 0; m < n; ++m) z[i*n+m] = hb*lamR[m]; }
@@ -1113,7 +1117,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
       for (int c = 0; c < n; ++c) { double v = 0; for (int a = 0; a < n; ++a) v += Ji[a*n+c]*zi[a]; ybar[c] += v; } }
     for (int i = 0; i < s; ++i) { const double *Fpi = &FP[(nn*s+i)*nfp]; const double *zi = &z[i*n];
       for (int p = 0; p < np; ++p) { double v = 0; for (int a = 0; a < n; ++a) v += Fpi[a*np+p]*zi[a]; muR[p] += v; }
-      if (dRatep && forcingCmt[nn] >= 0) { int rc = forcingCmt[nn]; for (int p = 0; p < np; ++p) muR[p] += dRatep[rc*np+p]*zi[rc]; } }  // infusion forcing
+      if (dRatep && forcingCmt[nn] >= 0) { int rc = forcingCmt[nn]; for (int p = 0; p < np; ++p) muR[p] += forcingMult[nn]*dRatep[rc*np+p]*zi[rc]; } }  // infusion forcing
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
     if (dRatep && offCmt[nn] >= 0) { int oc = offCmt[nn]; for (int p = 0; p < np; ++p) muR[p] += offFac[nn]*dRatep[oc*np+p]*lamR[oc]; }  // infusion off-boundary
     if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, &FX[nn*s*nfx], dlagP);
@@ -1172,8 +1176,8 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
   if (op->adjDlagOff >= 0 && !doses.empty()) { if (!haveDose) calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); dlagV.resize(n*np); for (int i = 0; i < n*np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff+i]; dlagP = dlagV.data(); }
 
   std::vector<double> lam(n), ybar(n), ubar(n), rhsbar(n), kbar(16*n), mu(np);
-  std::vector<double> dRateV; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;   // modeled-rate dual
-  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, n, np, rec.nStep(), Ascratch, dRateV, forcingCmt, offCmt, offFac);
+  std::vector<double> dRateV, forcingMult; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;   // modeled-rate dual
+  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, n, np, rec.nStep(), Ascratch, dRateV, forcingCmt, forcingMult, offCmt, offFac);
   auto stepT = [&](size_t nn, std::vector<double> &lamR, std::vector<double> &muR) {
     rksStepPre &P = pre[nn]; rksTableau Tm = rksGetTableau(P.method); int s = P.s; double h = P.h;
     for (int c = 0; c < n; ++c) ybar[c] = lamR[c];
@@ -1195,7 +1199,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
         const double *kb = &kbar[i*n];
         for (int j = 0; j < n; ++j) { double v=0; for (int a=0;a<n;++a) v += fx[a*n+j]*kb[a]; ubar[j]=v; }
         for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<n;++a) v += fp[a*np+p]*kb[a]; muR[p]+=v; }
-        if (dRatep && forcingCmt[nn] >= 0) { int rc = forcingCmt[nn]; for (int p = 0; p < np; ++p) muR[p] += dRatep[rc*np+p]*kb[rc]; }  // infusion forcing
+        if (dRatep && forcingCmt[nn] >= 0) { int rc = forcingCmt[nn]; for (int p = 0; p < np; ++p) muR[p] += forcingMult[nn]*dRatep[rc*np+p]*kb[rc]; }  // infusion forcing
         for (int m = 0; m < n; ++m) ybar[m] += ubar[m];
         for (int j = 0; j < i; ++j) { double aa=Tm.A[i*s+j]; if (aa!=0.0){ double *kbj=&kbar[j*n]; for (int m=0;m<n;++m) kbj[m]+=h*aa*ubar[m]; } }
       }
@@ -1269,23 +1273,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   // Modeled-rate infusion dual: dR/dtheta block + per-step maps.  forcingCmt[n]>=0
   // marks steps inside an infusion window (in-window forcing quadrature); offCmt[n]
   // marks the off-boundary step (moving-boundary transversality, factor -amt/R).
-  std::vector<double> dRateV; const double *dRatep = NULL;
-  std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;
-  if (op->adjDrateOff >= 0 && !infus.empty()) {
-    calc_lhs(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(), ind->lhs);
-    dRateV.resize(nBase * np);
-    for (int i = 0; i < nBase * np; ++i) dRateV[i] = ind->lhs[op->adjDrateOff + i];
-    dRatep = dRateV.data();
-    forcingCmt.assign(nStep, -1); offCmt.assign(nStep, -1); offFac.assign(nStep, 0.0);
-    for (size_t w = 0; w < infus.size(); ++w) {
-      const rk4s_infus &F = infus[w];
-      size_t off = (F.offStep == (size_t)-1) ? nStep : F.offStep;
-      for (size_t _n = F.onStep; _n < off && _n < nStep; ++_n) forcingCmt[_n] = F.cmt;
-      if (F.offStep != (size_t)-1 && F.offStep < nStep && F.R != 0.0) {
-        offCmt[F.offStep] = F.cmt; offFac[F.offStep] = -(F.amt / F.R);
-      }
-    }
-  }
+  std::vector<double> dRateV, forcingMult; std::vector<int> forcingCmt, offCmt; std::vector<double> offFac;
+  const double *dRatep = rk4sBuildInfusMaps(op, ind, cSub, rec, infus, nBase, np, nStep, Ascratch, dRateV, forcingCmt, forcingMult, offCmt, offFac);
 
   // DDE anticipating term (delayed Jacobian) -- shared helper, no-op unless the
   // model has delay().  Step start state for method T is stage 0 (c_0 = 0).
@@ -1312,7 +1301,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       for (int p = 0; p < np; ++p) { double s = 0; for (int ii = 0; ii < nBase; ++ii) s += fp[ii * np + p] * kb[ii]; muR[p] += s; }
       // infusion forcing: in-window steps add F_p[ci] += dR/dtheta to the quadrature.
       if (dRatep && forcingCmt[n] >= 0) {
-        int rc = forcingCmt[n]; for (int p = 0; p < np; ++p) muR[p] += dRatep[rc * np + p] * kb[rc];
+        int rc = forcingCmt[n]; for (int p = 0; p < np; ++p) muR[p] += forcingMult[n] * dRatep[rc * np + p] * kb[rc];
       }
       for (int j = 0; j < nBase; ++j) Ybar[j] += abar[j];
       for (int jstage = 0; jstage < i; ++jstage) {
@@ -1510,13 +1499,16 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               _d.amt = getAmt(ind, ind->id, _cmtD, getDoseIndex(ind, ind->idx), xout, yp);
               _d.type = 6;
               doseRec.push_back(_d);
-            } else if (_whI == EVIDF_MODEL_RATE_ON && op->adjDrateOff >= 0) {
-              // modeled-rate infusion start: R is read AFTER handleEvid1 (below).
+            } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
+              // modeled rate()/dur() infusion start: R read AFTER handleEvid1.  durMult
+              // folds in the runtime factor (1 for rate, amt for dur).
+              double _amt = getDose(ind, ind->ix[i]);
               rk4s_infus _f; _f.onStep = rec.nStep(); _f.offStep = (size_t)-1;
-              _f.cmt = _cmtD; _f.R = 0.0; _f.amt = getDose(ind, ind->ix[i]);
+              _f.cmt = _cmtD; _f.R = 0.0; _f.amt = _amt;
+              _f.durMult = (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0;
               infusRec.push_back(_f);
               _infusOnCmt = _cmtD;
-            } else if (_whI == EVIDF_MODEL_RATE_OFF && op->adjDrateOff >= 0) {
+            } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
               for (size_t _w = infusRec.size(); _w-- > 0;)      // close the open window
                 if (infusRec[_w].cmt == _cmtD && infusRec[_w].offStep == (size_t)-1) {
                   infusRec[_w].offStep = rec.nStep(); break;
@@ -1524,10 +1516,10 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             }
           }
         } else if (!isObs(_evCur) && op->adjDrateOff >= 0) {
-          // the modeled-rate OFF event is not isDose(): close the window here.
+          // the modeled rate()/dur() OFF event is not isDose(): close the window.
           int _wh, _cmtD, _wh100, _whI, _wh0;
           getWh(_evCur, &_wh, &_cmtD, &_wh100, &_whI, &_wh0);
-          if (_whI == EVIDF_MODEL_RATE_OFF && _cmtD >= 0 && _cmtD < op->adjNbase) {
+          if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmtD >= 0 && _cmtD < op->adjNbase) {
             for (size_t _w = infusRec.size(); _w-- > 0;)
               if (infusRec[_w].cmt == _cmtD && infusRec[_w].offStep == (size_t)-1) {
                 infusRec[_w].offStep = rec.nStep(); break;

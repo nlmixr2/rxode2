@@ -395,20 +395,30 @@
       }
     }
   }
-  # d(rate)/dtheta of a per-compartment modeled rate(), as lhs (rx__adjDrate_k_p__),
-  # for the infusion dual: a modeled-rate infusion of amt into cmt c runs over
-  # [t_on, t_on+amt/R(theta)] adding R to the RHS, so the adjoint gains (a) a forcing
-  # quadrature  mu += dR/dtheta * int_window lambda_c dt  and (b) an off-boundary
-  # transversality  mu += -lambda_c(t_off) * (amt/R) * dR/dtheta.  Emitted only when
-  # some cmt has a modeled rate().  (Modeled dur() is a later addition.)
+  # dR/dtheta of a per-compartment modeled infusion, as lhs (rx__adjDrate_k_p__),
+  # for the infusion dual: an infusion of amt into cmt c runs over [t_on, t_on+amt/R]
+  # adding R to the RHS, so the adjoint gains (a) a forcing quadrature  mu += dR/dtheta
+  # * int_window lambda_c dt  and (b) an off-boundary transversality  mu += -lambda_c
+  # (t_off) * (amt/R) * dR/dtheta.  A rate() cmt emits d(rate)/dtheta (runtime factor
+  # durMult=1); a dur() cmt has effective rate amt/dur, so dR/dtheta = amt *
+  # d(1/dur)/dtheta -- the block holds d(1/dur)/dtheta and the runtime multiplies by
+  # amt (durMult).  Emitted when any cmt has a rate() or dur().  NB: rxFromSE captures
+  # its ARGUMENT EXPRESSION (NSE), so the derivative MUST be assigned to .d first --
+  # passing the compound `-D(.dSE,p)/(.dSE*.dSE)` deparses `symengine::D`/`::` and fails.
   .drateLines <- character(0); .hasRateAdj <- FALSE
   for (k in seq_len(.ns))
-    if (!is.null(get0(paste0("rx_rate_", .st[k], "_"), envir = .model, inherits = FALSE))) .hasRateAdj <- TRUE
+    if (!is.null(get0(paste0("rx_rate_", .st[k], "_"), envir = .model, inherits = FALSE)) ||
+        !is.null(get0(paste0("rx_dur_", .st[k], "_"), envir = .model, inherits = FALSE))) .hasRateAdj <- TRUE
   if (.hasRateAdj) {
     for (k in seq_len(.ns)) {
       .rSE <- get0(paste0("rx_rate_", .st[k], "_"), envir = .model, inherits = FALSE)
+      .dSE <- get0(paste0("rx_dur_", .st[k], "_"), envir = .model, inherits = FALSE)
       for (p in seq_len(.np)) {
-        .expr <- if (is.null(.rSE)) "0" else { .d <- symengine::D(.rSE, calcSens[p]); rxode2::rxFromSE(.d) }
+        .expr <- if (!is.null(.rSE)) {              # rate(): d(rate)/dtheta
+          .d <- symengine::D(.rSE, calcSens[p]); rxode2::rxFromSE(.d)
+        } else if (!is.null(.dSE)) {                # dur(): d(1/dur)/dtheta = -dur'/dur^2
+          .d <- -symengine::D(.dSE, calcSens[p]) / (.dSE * .dSE); rxode2::rxFromSE(.d)
+        } else "0"
         .drateLines <- c(.drateLines, sprintf("rx__adjDrate_%d_%d__=%s", k - 1L, p - 1L, .expr))
       }
     }

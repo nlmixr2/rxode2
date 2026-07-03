@@ -83,7 +83,7 @@ struct cvFwdUser {   // forward RHS user data
   std::vector<double> A, DADT;
 };
 // A modeled-rate infusion window (time-based) for the cvodesadj rate dual.
-struct cvInfus { double tOn, tOff; int cmt; double R, amt; };
+struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult; };  // durMult: 1 (rate) or amt (dur)
 
 struct cvBwdUser {   // backward RHS user data
   const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff;
@@ -133,8 +133,8 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
     for (size_t w = 0; w < u->infus->size(); ++w) {
       const cvInfus &F = (*u->infus)[w];
       if ((double)t >= F.tOn - 1e-12 && (double)t <= F.tOff + 1e-12) {
-        double lc = NV_Ith_S(B, F.cmt);
-        for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -drate[F.cmt * np + p] * lc;
+        double lc = NV_Ith_S(B, F.cmt);   // dR/dtheta = durMult * drate
+        for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
       }
     }
   }
@@ -326,10 +326,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               // (lagged) dose time so the backward can add the transversality
               // mu += -amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
               evJumps.push_back({xout, _cmt, 0, getDose(ind, ind->ix[i])});
-            } else if (_whI == EVIDF_MODEL_RATE_ON && op->adjDrateOff >= 0) {
-              infusRec.push_back({xout, R_PosInf, _cmt, 0.0, getDose(ind, ind->ix[i])});
+            } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
+              double _amt = getDose(ind, ind->ix[i]);
+              infusRec.push_back({xout, R_PosInf, _cmt, 0.0, _amt,
+                                  (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0});
               _infusOnCmt = _cmt;   // R captured after handleEvid1
-            } else if (_whI == EVIDF_MODEL_RATE_OFF && op->adjDrateOff >= 0) {
+            } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
               for (size_t w = infusRec.size(); w-- > 0;)
                 if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) { infusRec[w].tOff = xout; break; }
             }
@@ -337,7 +339,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         } else if (!isObs(_ev) && op->adjDrateOff >= 0) {
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-          if (_whI == EVIDF_MODEL_RATE_OFF && _cmt >= 0 && _cmt < nBase)
+          if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmt >= 0 && _cmt < nBase)
             for (size_t w = infusRec.size(); w-- > 0;)
               if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) { infusRec[w].tOff = xout; break; }
         } }
@@ -405,7 +407,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // Off-boundary transversality events (type 7): stop at each infusion off-time.
   for (size_t w = 0; w < infusRec.size(); ++w)
     if (infusRec[w].tOff < R_PosInf && infusRec[w].R != 0.0)
-      evJumps.push_back({infusRec[w].tOff, infusRec[w].cmt, 7, -(infusRec[w].amt / infusRec[w].R)});
+      evJumps.push_back({infusRec[w].tOff, infusRec[w].cmt, 7,
+                         -(infusRec[w].amt / infusRec[w].R) * infusRec[w].durMult});
 
   N_Vector B = N_VNew_Serial(nAug, sunctx);
   void *bmem = CVodeCreate(CV_BDF, sunctx);
