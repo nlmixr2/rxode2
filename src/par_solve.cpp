@@ -3779,6 +3779,13 @@ extern "C" void par_indLin(rx_solve *rx){
 
 // ================================================================================
 // liblsoda
+// Discrete-adjoint (method="liblsodaadj") recording hooks, defined in the
+// #included lsoda_adjoint.cpp; ind_liblsoda0 installs them on the ctx common
+// block when recording is active for this thread.
+extern "C" int  lsAdjIsActive(void);
+extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
+extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
+
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -3881,6 +3888,17 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
      in lsoda_common_t so lsoda_reset's memset doesn't clobber it on
      pooled-context reuse. */
   ctx->common->id = ind->id;
+  // Discrete-adjoint recording (method="liblsodaadj"): install the per-step /
+  // init hooks when the adjoint driver has flagged this thread active; set
+  // unconditionally so a pooled ctx never carries a stale hook onto a following
+  // non-adjoint subject.
+  if (lsAdjIsActive()) {
+    ctx->common->adjInit = lsAdjInitStep;
+    ctx->common->adjPush = lsAdjPushStep;
+  } else {
+    ctx->common->adjInit = NULL;
+    ctx->common->adjPush = NULL;
+  }
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;

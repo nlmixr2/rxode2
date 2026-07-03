@@ -2417,15 +2417,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
-  # liblsodaadj (202) is the exact discrete adjoint of liblsoda's multistep map;
-  # only its P0 dispatch skeleton exists so far (the stoda recording fork + reverse
-  # replay are not implemented).  Fail loudly on an explicit request rather than
-  # returning a bad (NA) solve; the auto-switch above never routes here (it falls
-  # back to dop853s), so this only triggers for method="liblsodaadj" by name.
-  if (isTRUE(.ctl$method == 202L)) {
-    stop("method='liblsodaadj' (exact discrete adjoint of liblsoda) is not yet implemented; use 'dop853s', 'rk4s', or 'cvodesadj' for adjoint sensitivities",
-         call. = FALSE)
-  }
+  # liblsodaadj (202) is the exact discrete adjoint of liblsoda's Nordsieck
+  # multistep map.  P1 handles fixed-order-1 / fixed-step (the validated core
+  # transpose); variable order/step, method switch and interior event jumps are
+  # follow-up phases.  It is opt-in by name only (the adjoint auto-switch above
+  # never routes here -- it falls back to dop853s), so default solves are safe.
   # Delay differential equations (models using delay()) require a dense ODE
   # solver so delay() can interpolate past states.  When delays are present,
   # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense

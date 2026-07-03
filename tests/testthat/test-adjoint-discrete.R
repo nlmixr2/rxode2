@@ -734,4 +734,54 @@ rxTest({
     expect_true(rxode2::rxIsStiff("cvodesadj"))
     expect_false(rxode2::rxIsNonStiff("cvodesadj"))
   })
+
+  test_that("in-engine liblsodaadj (P1) == discrete forward sensitivity of liblsoda's own step map", {
+    # liblsodaadj is the EXACT reverse-mode transpose of liblsoda's Nordsieck
+    # multistep step map.  P1 covers fixed order-1 / fixed step (forced here with
+    # maxord*=1 + hmin=hmax); variable order/step/method-switch/events are later
+    # phases.  Because liblsoda's schedule is param-ADAPTIVE, a finite difference of
+    # a re-solved liblsoda moves the step schedule and only agrees for parameters
+    # that do not perturb it -- so the correctness test is the DEFINING property:
+    # the discrete adjoint equals the discrete forward sensitivity of the SAME
+    # recorded schedule to machine precision (a C-side self-check).
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    mbase <- rxode2::rxode2(mText)
+    tms <- c(1, 2, 4, 8, 12, 24)
+    ev <- et(amt = 100, cmt = "depot") %>% et(tms)
+    H <- 0.005
+    fx <- list(maxordn = 1L, maxords = 1L, hmin = H, hmax = H, hini = H,
+               cores = 1, atol = 1e-4, rtol = 1e-4)
+
+    # (1) primal identical to plain liblsoda on the same fixed step
+    sd <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, ev, params = p, method = "liblsodaadj"), fx)))
+    sb <- as.data.frame(do.call(rxode2::rxSolve, c(list(mbase, ev, params = p, method = "liblsoda"), fx)))
+    expect_lt(max(abs(as.matrix(sd[, ex$st]) - as.matrix(sb[, ex$st]))), 1e-8)
+
+    # (2) DEFINING property: adjoint == discrete forward sensitivity of the same
+    # schedule to machine precision (all params, incl. schedule-perturbing ka).
+    op0 <- Sys.getenv("RX_LSADJ_SELFCHECK", unset = NA)
+    Sys.setenv(RX_LSADJ_SELFCHECK = "1")
+    on.exit(if (is.na(op0)) Sys.unsetenv("RX_LSADJ_SELFCHECK") else Sys.setenv(RX_LSADJ_SELFCHECK = op0), add = TRUE)
+    msg <- capture.output(
+      invisible(do.call(rxode2::rxSolve, c(list(madj, ev, params = p, method = "liblsodaadj"), fx))),
+      type = "message")
+    line <- grep("adjoint - discrete_forward_sens", msg, value = TRUE)
+    expect_length(line, 1L)
+    expect_lt(as.numeric(sub(".*= ", "", line)), 1e-8)
+
+    # (3) practical FD cross-check on schedule-INDEPENDENT params (cl, v: center = 0
+    # at t0, so they do not perturb liblsoda's adaptive start step).  ka moves the
+    # schedule, so an adaptive-FD of ka is intentionally not asserted (see (2)).
+    solveBase <- function(pp) as.matrix(as.data.frame(
+      do.call(rxode2::rxSolve, c(list(mbase, ev, params = pp, method = "liblsoda"), fx)))[, ex$st])
+    for (pn in c("cl", "v")) {
+      hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+      for (k in seq_along(ex$st)) {
+        adj <- sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]]
+        expect_lt(max(abs(adj - fd[, k])), 1e-4)
+      }
+    }
+  })
 })
