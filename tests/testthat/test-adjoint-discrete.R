@@ -1026,4 +1026,37 @@ rxTest({
       }
     }
   })
+
+  test_that("in-engine abs interior event jumps (reset/replace/multiply) + parallel", {
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    ctl <- list(hmin = 0.02, maxordn = 4L, cores = 1); obs <- c(1, 2, 6, 8, 12)
+    solveAbs <- function(pp, ev) as.matrix(as.data.frame(
+      do.call(rxode2::rxSolve, c(list(madj, ev, params = pp, method = "abs"), ctl)))[, ex$st])
+    evs <- list(
+      reset    = et(et(et(et(amt = 100, cmt = "depot"), 4, evid = 3), amt = 100, cmt = "depot", time = 4), obs),
+      replace  = et(et(et(amt = 100, cmt = "depot"), amt = 40, cmt = "center", evid = 5, time = 4), obs),
+      multiply = et(et(et(amt = 100, cmt = "depot"), amt = 0.5, cmt = "center", evid = 6, time = 4), obs))
+    for (nm in names(evs)) {
+      ev <- evs[[nm]]
+      s <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, ev, params = p, method = "abs"), ctl)))
+      mx <- 0
+      for (pn in cs) { hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveAbs(pp, ev) - solveAbs(pm, ev)) / (2 * hh)
+        for (k in seq_along(ex$st)) mx <- max(mx, max(abs(s[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k]))) }
+      expect_lt(mx, 1e-5)
+    }
+    # bare reset (no redose): post-reset sensitivities identically 0
+    evBare <- et(et(et(amt = 100, cmt = "depot"), 4, evid = 3), obs)
+    sB <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, evBare, params = p, method = "abs"), ctl)))
+    post <- sB$time > 4
+    for (st in ex$st) for (pn in cs)
+      expect_lt(max(abs(sB[[sprintf("rx__sens_%s_BY_%s__", st, pn)]][post])), 1e-10)
+    # parallel across subjects bit-identical to serial
+    pd <- data.frame(id = 1:4, ka = c(1, 1.2, 1.4, 1.6), cl = c(3, 3.5, 4, 4.5), v = c(20, 25, 30, 22))
+    evp <- et(amt = 100, cmt = "depot", ii = 6, addl = 2) %>% et(c(1, 4, 7, 10, 16)) %>% et(id = 1:4)
+    s1 <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, evp, pd, method = "abs"), list(hmin = 0.02, maxordn = 4L, cores = 1))))
+    s4 <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, evp, pd, method = "abs"), list(hmin = 0.02, maxordn = 4L, cores = 4))))
+    for (cn in grep("rx__sens", names(s1), value = TRUE)) expect_equal(s1[[cn]], s4[[cn]])
+  })
 })

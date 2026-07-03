@@ -40,6 +40,31 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   abAdjActive = false;
   if (op->badSolve || ind->err != 0 || abAdjCalls.empty()) return;
 
+  // ---- reconstruct the interior state-jump event at each call's start (call c>=1
+  // opens after an event at t0_c) from the event table: 0/none additive bolus
+  // (dPhi/dy=I) | 3 reset (->0) | 5 replace[c] (->0) | 6 multiply[c] (*=factor).
+  size_t nCalls = abAdjCalls.size();
+  std::vector<int> callEvType(nCalls, 0), callEvCmt(nCalls, -1);
+  std::vector<double> callEvFac(nCalls, 1.0);
+  for (size_t c = 1; c < nCalls; ++c) {
+    double t0c = abAdjCalls[c].t0;
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      int ev = getEvid(ind, ind->ix[i]);
+      if (isObs(ev)) continue;
+      if (fabs(ind->timeThread[ind->ix[i]] - t0c) > 1e-9) continue;
+      if (ev == 3) { callEvType[c] = 3; break; }
+      if (isDose(ev)) {
+        int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+        if (_cmt >= 0 && _cmt < nBase) {
+          if (_whI == EVIDF_REPLACE) { callEvType[c] = 5; callEvCmt[c] = _cmt; break; }
+          else if (_whI == EVIDF_MULT) { callEvType[c] = 6; callEvCmt[c] = _cmt; callEvFac[c] = getDose(ind, ind->ix[i]); break; }
+          // whI==0 additive bolus -> identity (dose amt constant here); modeled
+          // F/alag/rate/dur duals are a follow-up.
+        }
+      }
+    }
+  }
+
   double *lhs = ind->lhs;
   std::vector<double> A(eff, 0.0), Aw(eff, 0.0);
   std::vector<double> mu(np, 0.0);
@@ -125,7 +150,13 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
               }
             }
           }
-          for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // -> previous call (bolus identity)
+          for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
+          // event jump dPhi/dy^T at t0_c -> costate of the pre-event state (call c-1 end).
+          if (c >= 1) {
+            if (callEvType[c] == 3) { for (int b = 0; b < nBase; ++b) endCostate[b] = 0.0; }
+            else if (callEvType[c] == 5 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] = 0.0; }
+            else if (callEvType[c] == 6 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] *= callEvFac[c]; }
+          }
         }
       }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
@@ -140,14 +171,52 @@ extern "C" void ind_ab_adj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_in
 }
 
 extern "C" void par_ab_adj(rx_solve *rx) {
-  // serial (thread_local recording buffers); parallel is a follow-up.
-  rx_solving_options *op = rx->op;
+  // Parallel across subjects: the recording buffers (abAdjSteps/abAdjCalls) are
+  // thread_local and each subject uses its own ind->lhs / getSolve storage, so
+  // distinct subjects never alias (bit-identical to serial).
+  rx_solving_options *op = &op_global;
+#ifdef _OPENMP
+  int cores = op->cores;
+#else
+  int cores = 1;
+#endif
   int nsolve = (int)(rx->nsim * rx->nsub);
-  for (int solveid = 0; solveid < nsolve; ++solveid) {
-    int neq[2]; neq[0] = op->neq; neq[1] = 0;
-    ind_ab_adj_0(rx, op, solveid, neq, dydt, update_inis);
-    if (op->badSolve) break;
+  int displayProgress = (op->nDisplayProgress <= nsolve);
+  clock_t t0 = clock();
+  int curTick = 0, cur = 0, abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(op->cores) schedule(dynamic,1)
+#endif
+  for (int solveid = 0; solveid < nsolve; solveid++) {
+    int localAbort;
+#pragma omp atomic read
+    localAbort = abort;
+    if (localAbort == 0) {
+      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
+      int neq[2]; neq[0] = op->neq; neq[1] = 0;
+      ind_ab_adj_0(rx, op, solveid, neq, dydt, update_inis);
+      if (displayProgress) {
+#pragma omp critical
+        cur++;
+#ifdef _OPENMP
+        if (omp_get_thread_num() == 0)
+#endif
+        {
+          curTick = par_progress(cur, nsolve, curTick, cores, t0, 0);
+          int la2;
+#pragma omp atomic read
+          la2 = abort;
+          if (la2 == 0 && checkInterrupt()) { int nA = 1;
+#pragma omp atomic write
+            abort = nA; }
+        }
+      }
+    }
   }
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
+  if (abort == 1) { op->abort = 1; par_progress(cur, nsolve, curTick, cores, t0, 1); }
+  else if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, cores, t0, 0);
 }
 
 #endif // IN_PAR_SOLVE
