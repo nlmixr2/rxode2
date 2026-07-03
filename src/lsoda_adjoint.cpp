@@ -134,7 +134,10 @@ extern "C" int lsAdjIsActive(void) { return lsAdjActive ? 1 : 0; }
 
 // Called at every state==1 init (yh[1]=y0, yh[2]=h0*f(y0)) -- once at t0 and once
 // after each interior event that reset the integrator -- opening a new segment.
+extern "C" void lsAdjSetActive(int a) { lsAdjActive = (a != 0); }
+
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
+  if (!lsAdjActive) return;   // paused (e.g. during a steady-state pre-solve)
   if (!lsAdjSegs.empty()) lsAdjSegs.back().stepEnd = lsAdjSteps.size();  // close prev
   lsAdjSeg s;
   s.t0 = _rxC(tn);
@@ -154,6 +157,7 @@ extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
 // _rxC(nqu) / _rxC(hu) and the USED el from the elco table (indexed by used order,
 // which survives resetcoeff), and read the transition off (nqu,hu) -> (nq,h).
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx) {
+  if (!lsAdjActive) return;   // paused (e.g. during a steady-state pre-solve)
   lsAdjStep s;
   s.tn = _rxC(tn);
   s.h  = _rxC(hu);
@@ -390,6 +394,22 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     }
   };
 
+  // Continuous / full-interval infusion steady state (kind 2, set by handleSS):
+  // recording is paused across the ss pre-solve, so seg-0 y0 IS the constant
+  // steady state Y_ss where f(Y_ss,p) + R.e = 0, hence dY_ss/dp = -J^{-1} df/dp.
+  // After sweepToStart, wSeed is the costate at the window start, so the missing
+  // IC contribution to each observation is -(J^{-T} wSeed)^T df/dp.
+  bool ssContLL = (_adjSSinfKind == 2) && nBase > 0 && !lsAdjSegs.empty();
+  std::vector<double> ssFXc, ssFP; std::vector<int> ssPiv;
+  if (ssContLL) {
+    const double *fx0, *fp0;
+    lsAdjEval(cSub, lsAdjSegs[0].t0, lsAdjSegs[0].y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
+    ssFXc.assign(fx0, fx0 + (size_t)nBase * nBase);
+    ssFP.assign(fp0, fp0 + (size_t)nBase * np);
+    ssPiv.resize(nBase);
+    if (!luFactor(ssFXc.data(), nBase, ssPiv.data())) ssContLL = false;   // singular J
+  }
+
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     double ti = ind->timeThread[ind->ix[i]];
@@ -400,6 +420,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       std::fill(mu.begin(), mu.end(), 0.0);
       for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
       sweepToStart(segObs, ti);
+      if (ssContLL) {                       // continuous-infusion linear-solve IC term
+        std::vector<double> w(wSeed.begin(), wSeed.begin() + nBase);   // w = J^{-T} lam
+        luSolveT(ssFXc.data(), nBase, ssPiv.data(), w.data());
+        for (int p = 0; p < np; ++p) { double s = 0; for (int j = 0; j < nBase; ++j) s += w[j] * ssFP[j * np + p]; mu[p] -= s; }
+      }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }

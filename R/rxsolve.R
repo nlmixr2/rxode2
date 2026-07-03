@@ -2450,7 +2450,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       if (.rk4sFw) {
         .supported <- .evDf$ss == 1 &
           (.r == 0 | .cont | (.r > 0 & .iiv > 0 & .durv < .iiv))
-      } else {                                    # liblsodaadj / abs / cvodesadj / stiff
+      } else if (.ctl$method == 202L) {          # liblsodaadj: continuous infusion only
+        .supported <- .cont
+      } else {                                    # abs / cvodesadj / stiff: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
       .badSs <- any(.evDf$ss != 0 & !.supported, na.rm = TRUE)

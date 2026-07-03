@@ -3825,6 +3825,7 @@ extern "C" void par_indLin(rx_solve *rx){
 // #included lsoda_adjoint.cpp; ind_liblsoda0 installs them on the ctx common
 // block when recording is active for this thread.
 extern "C" int  lsAdjIsActive(void);
+extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
 
@@ -4028,8 +4029,15 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(ctx->state), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        // Pause discrete-adjoint recording across the steady-state pre-solve so
+        // the recorded window starts cleanly at Y_ss (its repeated per-period
+        // doses must not pollute the segment-event reconstruction); the IC
+        // sensitivity dY_ss/dp is added analytically in the backward sweep.
+        int _lsWasActive = lsAdjIsActive();
+        if (_lsWasActive) lsAdjSetActive(0);
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
+        if (_lsWasActive) lsAdjSetActive(1);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
