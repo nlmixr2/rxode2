@@ -966,4 +966,30 @@ rxTest({
       for (cn in grep("rx__sens", names(s), value = TRUE)) expect_equal(sAuto[[cn]], s[[cn]])
     }
   })
+
+  test_that("in-engine libode explicit-RK family (discrete-adjoint tableau batch)", {
+    # 28 libode explicit-RK methods get a discrete adjoint by dropping their Butcher
+    # tableaus into the rk4s framework.  For each: the base states must track the base
+    # method's own adaptive solve, and the sensitivities converge to the continuous
+    # derivative (== dop853s) at tight tolerance.  Auto-switch (base -> variant) too.
+    bases <- c("f45","t54","pp54","pp54b","bs54","ss54","dp65","c65","tp64","v65r",
+               "dverk65","tf65","tp75","tmy7s","v76r","ss76","v78","dverk78","dp85",
+               "tp86","v87e","v87r","ev87","k87","v89","t98a","v98r","s98")
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text); mbase <- rxode2::rxode2(mText)
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 4, 8, 12, 24))
+    sD <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "dop853s", cores = 1, atol = 1e-11, rtol = 1e-11))
+    baseSolve <- function(m) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, ev, params = p, method = m, cores = 1, atol = 1e-11, rtol = 1e-11))[, ex$st])
+    for (base in bases) {
+      meth <- paste0(base, "s")
+      s <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = meth, cores = 1, atol = 1e-11, rtol = 1e-11))
+      expect_lt(max(abs(as.matrix(s[, ex$st]) - baseSolve(base))), 1e-6)  # base-state match
+      mx <- 0
+      for (st in ex$st) for (pn in cs) { cn <- sprintf("rx__sens_%s_BY_%s__", st, pn); mx <- max(mx, max(abs(s[[cn]] - sD[[cn]]))) }
+      expect_lt(mx, 1e-6)                                                  # sens vs dop853s
+      sAuto <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = base, cores = 1, atol = 1e-11, rtol = 1e-11))
+      expect_equal(sAuto[["rx__sens_center_BY_cl__"]], s[["rx__sens_center_BY_cl__"]])  # auto-switch
+    }
+  })
 })

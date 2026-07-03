@@ -6740,6 +6740,34 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 231: // ros43s    -- discrete-adjoint GRK4A Rosenbrock 4th (stiff)
       case 232: // ros6s     -- discrete-adjoint ROW6A Rosenbrock 6th (stiff)
       case 237: // geng5s    -- discrete-adjoint Geng5 fully-implicit 5th (stiff)
+      case 267: // f45s
+      case 268: // t54s
+      case 270: // pp54s
+      case 271: // pp54bs
+      case 272: // bs54s
+      case 273: // ss54s
+      case 274: // dp65s
+      case 275: // c65s
+      case 276: // tp64s
+      case 277: // v65rs
+      case 279: // dverk65s
+      case 280: // tf65s
+      case 281: // tp75s
+      case 283: // tmy7ss
+      case 284: // v76rs
+      case 285: // ss76s
+      case 286: // v78s
+      case 287: // dverk78s
+      case 288: // dp85s
+      case 289: // tp86s
+      case 290: // v87es
+      case 291: // v87rs
+      case 292: // ev87s
+      case 293: // k87s
+      case 295: // v89s
+      case 296: // t98as
+      case 297: // v98rs
+      case 298: // s98s
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 221: // cvodesadj -- CVODES adjoint sensitivities (self-managed primal)
@@ -6986,6 +7014,34 @@ extern "C" void par_solve(rx_solve *rx) {
       case 231: // ros43s
       case 232: // ros6s
       case 237: // geng5s
+      case 267: // f45s
+      case 268: // t54s
+      case 270: // pp54s
+      case 271: // pp54bs
+      case 272: // bs54s
+      case 273: // ss54s
+      case 274: // dp65s
+      case 275: // c65s
+      case 276: // tp64s
+      case 277: // v65rs
+      case 279: // dverk65s
+      case 280: // tf65s
+      case 281: // tp75s
+      case 283: // tmy7ss
+      case 284: // v76rs
+      case 285: // ss76s
+      case 286: // v78s
+      case 287: // dverk78s
+      case 288: // dp85s
+      case 289: // tp86s
+      case 290: // v87es
+      case 291: // v87rs
+      case 292: // ev87s
+      case 293: // k87s
+      case 295: // v89s
+      case 296: // t98as
+      case 297: // v98rs
+      case 298: // s98s
         par_rk4s(rx);
         break;
       case 221: // cvodesadj
