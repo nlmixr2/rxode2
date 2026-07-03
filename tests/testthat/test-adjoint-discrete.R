@@ -147,6 +147,11 @@ rxTest({
     chkFwd(evInf,  "rk4s",    "rk4",    1e-4)
     chkFwd(evInf,  "vern98s", "vern98", 1e-4)
     chkFwd(evInfa, "rk4s",    "rk4",    1e-4)   # ss infusion + regular addl doses
+    # continuous infusion to a constant steady state (SSINF): dY_ss/dp is the
+    # -J^{-1} df/dp linear solve rather than a monodromy.
+    evCont <- et(amt = 0, rate = 10, cmt = "depot", ss = 1) %>% et(c(1, 2, 4, 8, 12))
+    chkFwd(evCont, "rk4s",    "rk4",    1e-5)
+    chkFwd(evCont, "vern98s", "vern98", 1e-5)
   })
 
   test_that("steady-state (ss): FD cross-check of the expanded rk4s adjoint sensitivities", {

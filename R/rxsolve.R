@@ -2431,12 +2431,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
       # The explicit rk4s-framework methods propagate the steady-state
-      # initial-condition sensitivity (dY_ss/dp, one-period monodromy) for
-      # ss==1 BOLUS doses and ss==1 fixed-rate PERIODIC infusions (dur < ii).
+      # initial-condition sensitivity (dY_ss/dp) for ss==1: BOLUS doses and
+      # fixed-rate PERIODIC infusions (dur < ii) via a one-period monodromy, and
+      # continuous infusions (rate, amt 0) via a -J^{-1} df/dp linear solve.
       # Not yet covered: ss==2 (superposition), modeled-rate/dur infusions,
-      # continuous (ii==0) or large-duration (dur >= ii) infusions, and the
-      # non-rk4s-framework / stiff adjoint drivers (liblsodaadj, abs, cvodesadj,
-      # Rosenbrock/implicit).
+      # large-duration (dur >= ii) infusions, and the non-rk4s-framework / stiff
+      # adjoint drivers (liblsodaadj, abs, cvodesadj, Rosenbrock/implicit).
       .ssUnsup <- c(202L, 208L, 221L, 213L, 231L, 232L, 233L, 234L, 235L,
                     236L, 237L, 238L)
       .r   <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
@@ -2444,7 +2444,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .amv <- if (is.null(.evDf$amt))  rep(0, nrow(.evDf)) else .evDf$amt
       .durv <- ifelse(.r > 0, .amv / .r, Inf)
       .supported <- .evDf$ss == 1 &
-        (.r == 0 | (.r > 0 & .iiv > 0 & .durv < .iiv))
+        (.r == 0 |                                 # bolus
+         (.r > 0 & .amv == 0) |                     # continuous (SSINF)
+         (.r > 0 & .iiv > 0 & .durv < .iiv))        # fixed-rate periodic infusion
       .badSs <- any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.ctl$method %in% .ssUnsup || .badSs) {
         stop("adjoint sensitivities do not yet support this steady-state (ss) ",

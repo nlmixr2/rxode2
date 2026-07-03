@@ -3212,6 +3212,12 @@ void handleSS(int *neq,
         // Add at the end
         for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
       }
+      // Adjoint handoff: continuous / full-interval infusion reaches a CONSTANT
+      // steady state (f(Y_ss)+R.e = 0), so dY_ss/dp = -J^{-1} df/dp (a linear
+      // solve, no monodromy).  kind 2 tells the rk4s driver to take that path.
+      if (op->adjoint && !doSS2) {
+        _adjSSinfKind = 2; _adjSSinfCmt = ind->cmt;
+      }
       ind->doSS=0;
       updateExtraDoseGlobals(ind);
       return;

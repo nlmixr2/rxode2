@@ -7837,7 +7837,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const std::vector<size_t> &boundary,
                                const std::vector<rk4s_dose> &doses,
                                const std::vector<rk4s_infus> &infus,
-                               const rk4s_rec *ssRec = NULL) {
+                               const rk4s_rec *ssRec = NULL,
+                               const double *ssContY = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus); return; }
@@ -7963,6 +7964,19 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     }
   };
 
+  // Continuous / full-interval infusion IC sensitivity.  At the constant steady
+  // state Y_ss, f(Y_ss,p) + R.e = 0, so J.(dY_ss/dp) + df/dp = 0 (fixed rate,
+  // dR/dp = 0) => S_ss = -J^{-1} df/dp.  We need lam^T S_ss = -(J^{-T} lam)^T
+  // df/dp per observation, so LU-factor J once (FXc) and keep df/dp (ssFP).
+  bool ssContOn = (ssContY != NULL);
+  std::vector<double> FXc(ssContOn ? nBase * nBase : 0), ssFP(ssContOn ? nBase * np : 0);
+  std::vector<int> ssPiv(ssContOn ? nBase : 0);
+  if (ssContOn) {
+    rk4s_eval_jac(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], ssContY, nBase, np,
+                  fxOff, fpOff, Ascratch.data(), eff, ind, FXc.data(), ssFP.data());
+    if (!luFactor(FXc.data(), nBase, ssPiv.data())) ssContOn = false;  // singular J
+  }
+
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
@@ -7975,7 +7989,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
       dde.applyDoseJumps(mu, doses);
-      if (ssN > 0) {                       // add the steady-state IC sensitivity
+      if (ssN > 0) {                       // monodromy IC term (bolus / periodic infusion)
         std::vector<double> nu = lam, muAdd(np, 0.0);
         for (int git = 0; git < op->maxSS + 5; ++git) {
           ssPeriodTranspose(nu, muAdd);
@@ -7983,6 +7997,10 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
           if (nn2 < 1e-14) break;
         }
         for (int p = 0; p < np; ++p) mu[p] += muAdd[p];
+      } else if (ssContOn) {               // continuous-infusion linear-solve IC term
+        std::vector<double> w(lam.begin(), lam.begin() + nBase);   // w = J^{-T} lam
+        luSolveT(FXc.data(), nBase, ssPiv.data(), w.data());
+        for (int p = 0; p < np; ++p) { double s = 0; for (int j = 0; j < nBase; ++j) s += w[j] * ssFP[j * np + p]; mu[p] -= s; }
       }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
@@ -8052,6 +8070,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // steady-state fixed-rate infusion (dur<ii): period is ON for ssInfDur (rate
   // ssInfRate into ssInfCmt) then OFF for ssInfDur2; handed over from handleSS.
   bool ssInf = false; int ssInfCmt = -1; double ssInfDur = 0.0, ssInfDur2 = 0.0, ssInfRate = 0.0;
+  // continuous / full-interval infusion: constant steady state, dY_ss/dp via a
+  // -J^{-1} df/dp linear solve (no monodromy).  ssContY holds Y_ss.
+  bool ssCont = false; std::vector<double> ssContY;
 
   for(i = 0; i < ind->n_all_times; i++) {
     ind->idx=i;
@@ -8223,6 +8244,11 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate;
           ssTrough.assign(yp, yp + eff);
           _adjSSinfKind = 0;
+        } else if (_adjSSinfKind == 2 && !ssActive && !ssCont) {
+          // continuous / full-interval infusion: yp is the constant steady state
+          // Y_ss; the IC sensitivity is the linear solve done in backward_fill.
+          ssCont = true; ssContY.assign(yp, yp + eff);
+          _adjSSinfKind = 0;
         }
       }
       // Capture the modeled infusion rate R now that handleEvid1 has set it.
@@ -8289,7 +8315,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   if (adj && !localBadSolve && ind->err == 0) {
     rk4s_backward_fill(rx, op, ind, neq[1], rec, T, op->adjNbase, op->adjNp,
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
-                       boundary, doseRec, infusRec, ssActive ? &ssRec : NULL);
+                       boundary, doseRec, infusRec, ssActive ? &ssRec : NULL,
+                       ssCont ? ssContY.data() : NULL);
   }
 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
