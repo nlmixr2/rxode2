@@ -1669,6 +1669,15 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                                        int *i, void *ctx,
                                        int eff) {
   int itol = 0;
+  // Single-interval / steady-state sub-solves advance the FORWARD primal only.
+  // The discrete-adjoint method variants use method code = base + 200 (e.g.
+  // rk4s=206 -> rk4=6, liblsodaadj=202 -> liblsoda=2, dop853s=200 -> dop853=0);
+  // here they reuse their base method's single-point stepper (the backward
+  // sweep is driven separately by the adjoint driver).  Without this the
+  // steady-state pre-solve had no matching case and left yp un-advanced,
+  // giving divergent ss results.  All base codes are < 200, so the test
+  // cleanly identifies adjoint codes.
+  if (method >= 200) method -= 200;
   switch (method) {
     case 3:
       if (!isSameTime(xout, *xp)) {

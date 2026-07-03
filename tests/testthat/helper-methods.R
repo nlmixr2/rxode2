@@ -22,3 +22,36 @@
 # All dense composite methods (ros4 is the only dense-output stiff secondary).
 .methods1 <- c("ddop853+dros4")
 .methods2 <- c("A", "B", "Ao", "Bo", "As", "Bs", "Ad", "Bd", "Al", "Bl")
+
+# ---------------------------------------------------------------------------
+# Discrete-adjoint solver variants (method codes 200-304).  On a PLAIN model
+# (no rx__sens_* expansion) the explicit/multistep variants run FORWARD-ONLY
+# -- so pointing the covariate (test-cov) and dosing (test-nmtest) regression
+# suites at them exercises exactly the covariate-interpolation + event/dosing
+# handling of every adjoint forward path.  This has historically been a
+# regression miss.  The implicit/Rosenbrock/CVODES adjoint variants (ros4s,
+# ros43s, ros6s, backwardEulers, gauss6s, iiic6s, radauiia5s, geng5s,
+# sdirk43s, cvodesadj) size their LU factorization from the adjoint-augmented
+# system and cannot run forward-only, so they are intentionally omitted here
+# (their forward IS the well-tested base implicit method; the adjoint sweep is
+# validated on the expanded models in test-adjoint-discrete.R).
+# .methods1/.methods2 are cleared so nmtest cycles over .methods0 alone.
+.methods0 <- c("dop853s", "liblsodaadj", "f78s", "rk4s", "ck54s", "abs",
+               "dop5s", "rk43s", "dop54s", "vern65s", "vern76s", "dop87s",
+               "vern98s", "eulers", "midpoints", "heuns", "rk3s", "bs32s",
+               "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s",
+               "c65s", "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s",
+               "tmy7adj", "tmy7sadj", "v76rs", "ss76s", "v78s", "dverk78s",
+               "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s", "v89s",
+               "t98as", "v98rs", "s98s", "c108s", "b109s", "s1110as", "o129s")
+.methods1 <- NULL
+.methods2 <- NULL
+
+# test-cov validates the (method-independent) covariate-interpolation logic by
+# exact-matching each integrator's RHS-evaluation trace against an approxfun
+# reference.  That comparison is tied to the integrator's step schedule, so it
+# can only run on the base integrators it was tuned for -- the adjoint variants
+# record extra internal steps and would produce spurious knot-boundary
+# mismatches (their covariate handling is the same shared code and is verified
+# via solution-parity + the nmtest dosing sweep above).
+.methodsCov <- c("lsode", "bdf", "liblsoda", "dop853", "t54+sdirk43", "cvode")

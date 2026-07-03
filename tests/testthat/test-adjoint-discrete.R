@@ -101,6 +101,28 @@ rxTest({
     expect_lt(fdmax, 1e-4)
   })
 
+  test_that("steady-state dosing: forward-only adjoint primal matches base; expanded adjoint sens is guarded", {
+    # The ss pre-solve reuses the base method's single-point stepper for the
+    # adjoint method codes (rk4s -> rk4), so the forward primal solves
+    # steady-state dosing exactly (previously it left yp un-advanced -> huge
+    # divergence).
+    evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    mbase <- rxode2::rxode2(mText)
+    base <- as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, evSS, params = p, method = "rk4", cores = 1))[, c("depot", "center")])
+    mplain <- rxode2::rxode2(mText)
+    fo <- as.matrix(as.data.frame(
+      rxode2::rxSolve(mplain, evSS, params = p, method = "rk4s", cores = 1))[, c("depot", "center")])
+    expect_lt(max(abs(fo - base)), 1e-10)
+    # The backward sweep does not yet propagate the steady-state initial
+    # condition's parameter dependence (dY_ss/dp), so an EXPANDED adjoint model
+    # with ss dosing is guarded rather than returning wrong rx__sens_* columns.
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    expect_error(rxode2::rxSolve(madj, evSS, params = p, method = "rk4s", cores = 1),
+                 "steady-state")
+  })
+
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
     fText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
     fcs <- c("ka", "cl", "v", "Fbio"); fp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)

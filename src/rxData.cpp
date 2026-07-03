@@ -5848,26 +5848,45 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_dlagOff < 0 && strcmp(_s, "rx__adjDlag_0_0__") == 0) _dlagOff = _i; // modeled-alag transversality
         if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
       }
-      if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
-        (Rf_error)("method='rk4s' requires the adjoint expansion in the "
-                   "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
-                   "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
-      }
       int _nSens = (int)_adjSt.size() - _nBase;
-      op->adjoint = 1;
-      op->adjNbase = _nBase;
-      op->adjNp = _nSens / _nBase;
-      op->adjFxOff = _fxOff;
-      op->adjFpOff = _fpOff;
-      op->adjDfOff = _dfOff;
-      op->adjJpOff = _jpOff;
-      op->adjJyOff = _jyOff;
-      op->adjFxdOff = _fxdOff;
-      op->adjTauOff = _tauOff;
-      op->adjDtauOff = _dtauOff;
-      op->adjDlagOff = _dlagOff;
-      op->adjDrateOff = _drateOff;
-      op->adjSensOff = _nBase;
+      if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
+        // A malformed expansion (has rx__sens_* output slots but is missing
+        // the F_X/F_p Jacobian lhs) is a hard error: solving would silently
+        // fill the sens columns with zeros.  A genuinely PLAIN model (no
+        // rx__sens_* slots at all) carries no sensitivity request, so an
+        // adjoint method may run FORWARD-ONLY on it (op->adjoint stays 0) --
+        // this lets the explicit/multistep adjoint variants be exercised as
+        // ordinary forward solvers (e.g. the cov/nmtest covariate + dosing
+        // regression suite).  The implicit/Rosenbrock/CVODES adjoint variants
+        // size their LU factorization from the adjoint-augmented system, so
+        // they cannot run forward-only (bare DGETRF dimension error / crash)
+        // -- keep the hard guard for those method codes.
+        int _stiffAdj = (method == 213 || method == 221 || method == 231 ||
+                         method == 232 || method == 233 || method == 234 ||
+                         method == 235 || method == 236 || method == 237 ||
+                         method == 238);
+        if (_nSens > 0 || _nBase <= 0 || _stiffAdj) {
+          (Rf_error)("method='rk4s' requires the adjoint expansion in the "
+                     "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
+                     "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
+        }
+        // plain explicit/multistep model: forward-only, leave op->adjoint == 0
+      } else {
+        op->adjoint = 1;
+        op->adjNbase = _nBase;
+        op->adjNp = _nSens / _nBase;
+        op->adjFxOff = _fxOff;
+        op->adjFpOff = _fpOff;
+        op->adjDfOff = _dfOff;
+        op->adjJpOff = _jpOff;
+        op->adjJyOff = _jyOff;
+        op->adjFxdOff = _fxdOff;
+        op->adjTauOff = _tauOff;
+        op->adjDtauOff = _dtauOff;
+        op->adjDlagOff = _dlagOff;
+        op->adjDrateOff = _drateOff;
+        op->adjSensOff = _nBase;
+      }
     }
 
     rxSolveDat->throttle = false;

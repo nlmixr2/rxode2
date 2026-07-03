@@ -2417,6 +2417,24 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
+  # The discrete-adjoint forward primal now solves steady-state (ss) dosing
+  # correctly (the ss pre-solve reuses the base method's stepper), but the
+  # backward sweep does not yet propagate the steady-state initial condition's
+  # parameter dependence (dY_ss/dp) -- so an EXPANDED adjoint model (one that
+  # actually carries the rx__adjFX_* transpose-Jacobian and rx__sens_* outputs)
+  # solved with ss dosing would return a correct primal but WRONG rx__sens_*
+  # columns.  Guard it rather than return silently-wrong sensitivities.  Plain
+  # (forward-only) adjoint solves -- no rx__adjFX_* -- are unaffected: their ss
+  # primal is exact and they carry no sensitivity columns.
+  if (.ctl$method >= 200L &&
+        any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
+    .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
+    if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
+      stop("adjoint sensitivities do not yet support steady-state (ss) dosing; ",
+           "use sensMethod=\"forward\" for models with steady-state doses",
+           call. = FALSE)
+    }
+  }
   # liblsodaadj (202) is the exact discrete adjoint of liblsoda's Nordsieck
   # multistep map (variable order/step, Adams<->BDF switch, and interior events --
   # multi-dose / reset / replace / multiply / modeled F / alag / const + modeled

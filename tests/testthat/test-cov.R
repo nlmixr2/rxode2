@@ -144,7 +144,7 @@ rxTest({
   for (.homogenous in c(TRUE, FALSE)) {
     withr::with_options(list(rxode2.homogenous = .homogenous), {
 
-      for (meth in .methods0) {
+      for (meth in .methodsCov) {
 
         # context(sprintf("Simple test for time-varying covariates (%s)", meth))
 
