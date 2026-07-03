@@ -754,25 +754,32 @@ rxTest({
 
     op0 <- Sys.getenv("RX_LSADJ_SELFCHECK", unset = NA)
     on.exit(if (is.na(op0)) Sys.unsetenv("RX_LSADJ_SELFCHECK") else Sys.setenv(RX_LSADJ_SELFCHECK = op0), add = TRUE)
-    selfcheck <- function(ctl, tolPrimal) {
+    selfcheck <- function(params, ctl, tolPrimal, minSwitch = 0L) {
       Sys.setenv(RX_LSADJ_SELFCHECK = "1")
       on.exit(Sys.unsetenv("RX_LSADJ_SELFCHECK"), add = TRUE)  # scope to this solve only
       msg <- capture.output(
-        invisible(do.call(rxode2::rxSolve, c(list(madj, ev, params = p, method = "liblsodaadj", cores = 1), ctl))),
+        invisible(do.call(rxode2::rxSolve, c(list(madj, ev, params = params, method = "liblsodaadj", cores = 1), ctl))),
         type = "message")
       line <- grep("adjoint - discrete_forward_sens", msg, value = TRUE)
       expect_length(line, 1L)
       vAdj <- as.numeric(sub(".*forward_sens\\| = ([0-9.eE+-]+).*", "\\1", line))
       vPri <- as.numeric(sub(".*primal_replay_err = ([0-9.eE+-]+).*", "\\1", line))
-      expect_lt(vAdj, 1e-8)          # exact transpose (machine precision)
-      expect_lt(vPri, tolPrimal)     # step-map model matches liblsoda to ~tol
+      nSw  <- as.integer(sub(".*methodSwitches=([0-9]+).*", "\\1", line))
+      expect_lt(vAdj, 1e-8)              # exact transpose (machine precision)
+      expect_lt(vPri, tolPrimal)         # step-map model matches liblsoda to ~tol
+      expect_gte(nSw, minSwitch)         # the intended regime is actually exercised
     }
     # P1: fixed order-1 / fixed step
     H <- 0.005
-    selfcheck(list(maxordn = 1L, maxords = 1L, hmin = H, hmax = H, hini = H, atol = 1e-4, rtol = 1e-4), 1e-6)
-    # P2+P3: variable order (up to 5) + adaptive step, tight tol
-    selfcheck(list(maxordn = 5L, maxords = 5L, atol = 1e-9, rtol = 1e-9), 1e-6)
-    selfcheck(list(maxordn = 5L, maxords = 5L, atol = 1e-11, rtol = 1e-11), 1e-8)
+    selfcheck(p, list(maxordn = 1L, maxords = 1L, hmin = H, hmax = H, hini = H, atol = 1e-4, rtol = 1e-4), 1e-6)
+    # P2+P3: variable order + adaptive step, tight tol
+    selfcheck(p, list(maxordn = 5L, maxords = 5L, atol = 1e-9, rtol = 1e-9), 1e-6)
+    selfcheck(p, list(maxordn = 5L, maxords = 5L, atol = 1e-11, rtol = 1e-11), 1e-8)
+    # P4: a stiff problem forces an Adams->BDF method switch (liblsoda always starts
+    # in Adams); the used el come from the elco table per method, so the switch needs
+    # no special transpose handling -- assert a switch actually happened.
+    selfcheck(c(ka = 200, cl = 1, v = 10), list(maxordn = 5L, maxords = 5L, atol = 1e-9, rtol = 1e-9),
+              1e-6, minSwitch = 1L)
 
     # primal identical to plain liblsoda on the same fixed step (P1 config)
     sd <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, ev, params = p, method = "liblsodaadj",

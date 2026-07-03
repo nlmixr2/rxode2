@@ -26,20 +26,22 @@
 // step boundary) the costate is seeded by intdy^T on the bracketing step; a final
 // t0 term folds the p-dependence of the initial Nordsieck row yh0[2]=h0*f(t0,y0).
 //
-// STATUS: P1-P3 -- variable ORDER (general Pascal^T + Nordsieck row add/drop on an
-// order change) and variable STEP (scaleh^T at the step boundary AND a "bridge"
-// scaleh^T for the rejection rescaling that happens between accepted steps).  The
-// transition after each accepted step is read off the recorded (nqu,hu)->(nq,h):
-// dOrder in {-1,0,+1} + the scaleh factor rh; the used el come from the elco table
-// (indexed by the used order), NOT _rxC(el) which is already reset for the next step.
-// VALIDATED (RX_LSADJ_SELFCHECK) two ways: (a) the discrete adjoint equals the
-// discrete FORWARD sensitivity of the identical recorded schedule to MACHINE
-// precision (~1e-14) -- proving the transpose is exact; (b) an independent PRIMAL
-// replay of the same step-map reproduces liblsoda's recorded y to the corrector's
-// convergence level (O(tol)) -- proving the step-map model matches liblsoda.  A
-// finite difference of a re-solved liblsoda is NOT the reference: it perturbs the
-// adaptive order/step schedule, agreeing only for params that do not move it.
-// Method switch (P4), interior event jumps (P5) and parallelism (P6) are follow-ups.
+// STATUS: P1-P4 -- variable ORDER (general Pascal^T + Nordsieck row add/drop on an
+// order change), variable STEP (scaleh^T at the step boundary AND a "bridge"
+// scaleh^T for the rejection rescaling between accepted steps), and Adams<->BDF
+// METHOD SWITCH (no special handling: the used el come from the elco table indexed
+// by the used order -- so a method's coefficients are captured automatically -- and
+// the switch's rescale is just another scaleh, i.e. the bridge).  The transition
+// after each accepted step is read off the recorded (nqu,hu)->(nq,h): dOrder in
+// {-1,0,+1} + the scaleh factor rh.  VALIDATED (RX_LSADJ_SELFCHECK) two ways: (a)
+// the discrete adjoint equals the discrete FORWARD sensitivity of the identical
+// recorded schedule to MACHINE precision (~1e-14) -- the transpose is exact; (b) an
+// independent PRIMAL replay of the same step-map reproduces liblsoda's recorded y to
+// the corrector's convergence level (O(tol)) -- the step-map model matches liblsoda.
+// (Covers observed order up to 8 + Adams->BDF switches on stiff problems.)  A finite
+// difference of a re-solved liblsoda is NOT the reference: it perturbs the adaptive
+// order/step/method schedule, agreeing only for params that do not move it.
+// Interior event jumps (P5) and parallelism (P6) are the remaining follow-ups.
 #ifdef IN_PAR_SOLVE
 
 // --- recording hooks: need liblsoda's common block (ctx->common->...) ----------
@@ -65,6 +67,10 @@ struct lsAdjStep {
   double rInc;                // order-increase new-row factor el[nq+1]/(nq+1)
   int nqNext;                 // order after transition (= order liblsoda's intdy uses)
   double hNext;               // h after transition (= h liblsoda's intdy uses)
+  int meth;                   // method USED this step (1 Adams / 2 BDF); Adams<->BDF
+                              // switches change el only (recorded from elco), so the
+                              // transpose needs no special handling -- kept for the
+                              // self-check to confirm switches are actually exercised.
 };
 // Thread-local recording state (serial per subject in P1; par is P6).
 static thread_local bool                 lsAdjActive = false;
@@ -103,6 +109,7 @@ extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx) {
   s.dOrder = s.nqNext - s.nq;
   s.rh     = s.hNext / s.h;
   s.rInc   = (s.dOrder == 1) ? s.el[s.nq + 1] / (double)(s.nq + 1) : 0.0;
+  s.meth   = _rxC(mused);     // method used in this (just-accepted) step
   lsAdjSteps.push_back(std::move(s));
 }
 
@@ -380,7 +387,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         }
       }
     }
-    REprintf("[lsadj] max|adjoint - discrete_forward_sens| = %.3e | primal_replay_err = %.3e\n", worstSens, worstPrimal);
+    int nSwitch = 0, maxNq = 1;
+    for (size_t n = 0; n < nStep; ++n) { if (n > 0 && lsAdjSteps[n].meth != lsAdjSteps[n-1].meth) ++nSwitch; maxNq = std::max(maxNq, lsAdjSteps[n].nq); }
+    REprintf("[lsadj] max|adjoint - discrete_forward_sens| = %.3e | primal_replay_err = %.3e | nStep=%zu maxOrder=%d methodSwitches=%d\n",
+             worstSens, worstPrimal, nStep, maxNq, nSwitch);
   }
 }
 
