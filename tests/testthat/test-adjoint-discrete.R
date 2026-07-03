@@ -974,7 +974,8 @@ rxTest({
     # derivative (== dop853s) at tight tolerance.  Auto-switch (base -> variant) too.
     bases <- c("f45","t54","pp54","pp54b","bs54","ss54","dp65","c65","tp64","v65r",
                "dverk65","tf65","tp75","tmy7s","v76r","ss76","v78","dverk78","dp85",
-               "tp86","v87e","v87r","ev87","k87","v89","t98a","v98r","s98")
+               "tp86","v87e","v87r","ev87","k87","v89","t98a","v98r","s98",
+               "c108","b109","s1110a","o129")   # >16-stage (need enlarged rksTableau)
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text); mbase <- rxode2::rxode2(mText)
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 4, 8, 12, 24))
