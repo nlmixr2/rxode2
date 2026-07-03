@@ -198,24 +198,26 @@ rxTest({
   test_that("nmtest dosing scenarios: adjoint solution AND gradients match forward sensitivities (ka + elimination)", {
     skip_if_not_installed("nlmixr2data")
     d0 <- nlmixr2data::nmtest
-    # nmtest 2-cmt model with ka + elimination (cl) as free sensitivity params.
+    # nmtest 2-cmt model with ka + elimination (cl) as free sensitivity params,
+    # INCLUDING the if(){} modeled-rate/dur conditional dosing (the adjoint
+    # expansion prunes these branches, like the forward-sensitivity expansion).
     mt <- paste("d/dt(depot)=-ka*depot",
                 "d/dt(central)=ka*depot-(cl/v)*central",
                 "f(central)=bioav",
+                "if (mode==1){", "rate(central)=rat2", "}",
+                "if (mode==2){", "dur(central)=dur2", "}",
                 "cp=central/(v/1000)", sep = "\n")
     ncs <- c("ka", "cl"); pp <- c(ka = 1.5, cl = 1.1, v = 20)
     nex <- rxode2::.rxAdjointExpand(mt, ncs); nmadj <- rxode2::rxode2(nex$text)
     nmfwd <- rxode2::rxode2(mt, calcSens = ncs)                # analytic forward sensitivities
     ncols <- as.vector(outer(nex$st, ncs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
-    # Skipped (documented gaps): modeled-duration ids (mode==2) need
-    # .rxAdjointExpand to handle if(){} conditional dosing; doses to cmt>=3 hit
-    # the sensitivity output compartments (which differ between the adjoint and
-    # forward models); ids 20/23/24 have an observation coincident with a full
-    # reset (evid 3/4) -- a known adjoint gradient edge case.
+    # Skipped (documented gaps): doses to cmt>=3 hit the sensitivity output
+    # compartments (which differ between the adjoint and forward models); ids
+    # 20/23/24 have an observation coincident with a full reset (evid 3/4) -- a
+    # known adjoint gradient edge case.
     tested <- 0
     for (id in unique(d0$id)) {
       di <- d0[d0$id == id, ]
-      if (any(di$mode == 2)) next
       if (any(di$evid != 0 & !(di$cmt %in% c(1, 2)))) next
       if (id %in% c(20, 23, 24)) next
       a <- tryCatch(as.data.frame(suppressWarnings(rxode2::rxSolve(

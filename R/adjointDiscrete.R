@@ -228,7 +228,13 @@
 #' @export
 #' @keywords internal
 .rxAdjointExpand <- function(object, calcSens, stiff = FALSE) {
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  # Prune the if/else branches first (rxode2's branch-removing mechanism, the
+  # same one the forward-sensitivity expansion uses): rxS cannot differentiate a
+  # model that still contains `if (){}` conditional-dosing lines.  Pruning keeps
+  # the dosing modifiers (f/alag/rate/dur) as unconditional assignments, which is
+  # correct because each only activates when the data flags that dose (bioav,
+  # rate, modeled rate/dur), so the branch condition is redundant.
+  .model <- .rxLoadPrune(object, doConst = TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model); .ns <- length(.st); .np <- length(calcSens)
   if (.ns == 0L) stop("discrete adjoint requires a model with ODE states", call. = FALSE)
   invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
