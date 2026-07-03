@@ -7599,7 +7599,8 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
                               int fxOff, int fpOff, int dfOff, int sensOff,
                               const std::vector<size_t> &boundary,
                               const std::vector<rk4s_dose> &doses,
-                              const std::vector<rk4s_infus> &infus) {
+                              const std::vector<rk4s_infus> &infus,
+                              const std::vector<size_t> &boundaryDose) {
   size_t nStep = rec.nStep(); if (nStep == 0) return;
   int eff = rxEffNeq(ind, op); int s = T.s; int nfx = nBase*nBase, nfp = nBase*np;
   // precompute per step: factored W (+piv); per stage: F_X(u_i), F_p(u_i).
@@ -7672,6 +7673,9 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
     for (int k = 0; k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
+      // coincident state-jump at the obs's own step (see rk4s_backward_fill)
+      if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
+                                              &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, boundaryDose[i]);
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
       dde.applyDoseJumps(mu, doses);
@@ -7690,7 +7694,8 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
                                 int fxOff, int fpOff, int dfOff, int sensOff,
                                 const std::vector<size_t> &boundary,
                                 const std::vector<rk4s_dose> &doses,
-                                const std::vector<rk4s_infus> &infus) {
+                                const std::vector<rk4s_infus> &infus,
+                                const std::vector<size_t> &boundaryDose) {
   size_t nStep = rec.nStep(); if (nStep == 0) return;
   int eff = rxEffNeq(ind, op); int s = T.s, n = nBase, sn = s*n; int nfx = n*n, nfp = n*np;
   std::vector<double> Mf(nStep*sn*sn); std::vector<int> pivf(nStep*sn);
@@ -7738,6 +7743,9 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
     for (int k = 0; k < n; ++k) {
       for (int j = 0; j < n; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
+      // coincident state-jump at the obs's own step (see rk4s_backward_fill)
+      if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
+                                              &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, boundaryDose[i]);
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
       dde.applyDoseJumps(mu, doses);
@@ -7844,8 +7852,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus); return; }
-  if (T.implicitRK) { radau_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus); return; }
-  if (T.rosenbrock) { ros_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus); return; }
+  if (T.implicitRK) { radau_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
+  if (T.rosenbrock) { ros_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
   int eff = rxEffNeq(ind, op);
   int nfx = nBase * nBase, nfp = nBase * np;
   int sN = T.s;
