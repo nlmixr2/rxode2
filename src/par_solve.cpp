@@ -2383,6 +2383,12 @@ static thread_local int    _adjSSinfCmt = -1;
 // (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
 // uses ((numDoseInf+1)*R, offTime) then (numDoseInf*R, addTime).
 static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0, _adjSSinfRate2 = 0.0;
+// ss==2 (superposition): Y_after = Y_before + Y_ss_new(p).  handleSS publishes
+// the new-regimen steady state Y_ss_new (yp just BEFORE the += solveSave) so the
+// rk4s driver can record that regimen's monodromy and apply lambda^T dY_ss_new/dp
+// at the interior ss2 event.  1 = a bolus ss2 was just added (infusion ss2 TBD).
+static thread_local int    _adjSS2 = 0;
+static thread_local std::vector<double> _adjSS2peak;
 
 extern "C" void solveSSinf(int *neq,
                            int *BadDose,
@@ -2797,7 +2803,7 @@ void handleSS(int *neq,
               t_update_inis u_inis,
               void *ctx) {
   rx_solve *rx = &rx_global;
-  _adjSSinfKind = 0;   // reset the adjoint ss-infusion handoff for this ss dose
+  _adjSSinfKind = 0; _adjSS2 = 0;   // reset the adjoint ss handoffs for this ss dose
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3578,6 +3584,9 @@ void handleSS(int *neq,
       }
     }
     if (doSS2){
+      // Publish the new-regimen steady state Y_ss_new (yp before adding back the
+      // saved pre-ss2 state) for the adjoint superposition term.
+      if (op->adjoint) { _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]); }
       // Add at the end
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
     }

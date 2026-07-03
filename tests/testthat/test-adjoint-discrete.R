@@ -183,12 +183,37 @@ rxTest({
     expect_lt(fdmax, 1e-4)
   })
 
+  test_that("steady-state ss=2 (superposition, bolus): adjoint sensitivities match forward", {
+    ex <- rxode2::.rxAdjointExpand(mText, cs); madj <- rxode2::rxode2(ex$text)
+    mfwd <- rxode2::rxode2(mText, calcSens = cs)
+    scol <- as.vector(outer(ex$st, cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
+    chk2 <- function(ev, adjMeth, fwdMeth, tol) {
+      a <- as.data.frame(suppressWarnings(rxode2::rxSolve(madj, ev, params = p, method = adjMeth)))
+      f <- as.data.frame(suppressWarnings(rxode2::rxSolve(mfwd, ev, params = p, method = fwdMeth)))
+      mx <- 0; for (cn in scol) mx <- max(mx, max(abs(a[[cn]] - f[[cn]]), na.rm = TRUE))
+      expect_lt(mx / max(1, max(abs(unlist(f[scol])), na.rm = TRUE)), tol)
+    }
+    # normal loading dose at t0, then a maintenance ss=2 superposition at t=12
+    evA <- et(amt = 100, cmt = "depot") %>% et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 12) %>%
+      et(c(1, 4, 8, 12, 16, 20, 24))
+    chk2(evA, "rk4s",    "rk4",    1e-5)
+    chk2(evA, "vern98s", "vern98", 1e-5)
+    # two ss=2 superposition events (t=12 and t=36)
+    evB <- et(amt = 100, cmt = "depot") %>% et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 12) %>%
+      et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 36) %>% et(c(4, 12, 24, 36, 48))
+    chk2(evB, "rk4s", "rk4", 1e-5)
+  })
+
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
-    # ss=2 (superposition) -- bolus and infusion -- not yet covered
-    expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
+    # ss=2 INFUSION superposition not yet covered (bolus ss=2 IS covered below)
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = 10, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
+                                 params = p, method = "rk4s", cores = 1), "steady-state")
+    # multiple ss=1 events (interior ss=1 reset) not yet covered
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 1, ii = 24) %>%
+                                   et(amt = 100, cmt = "depot", ss = 1, ii = 24, time = 24) %>% et(c(1, 12, 30)),
                                  params = p, method = "rk4s", cores = 1), "steady-state")
     # modeled-rate infusion ss (dR/dp != 0) not yet covered
     expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = -1, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4)),

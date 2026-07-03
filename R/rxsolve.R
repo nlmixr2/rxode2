@@ -2447,19 +2447,26 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .cont <- .evDf$ss == 1 & .r > 0 & .amv == 0                  # continuous SSINF
       .rk4sFw <- !(.ctl$method %in% c(202L, 208L, 221L, 213L, 231L, 232L,
                                       233L, 234L, 235L, 236L, 237L, 238L))
+      .noComposite <- is.null(.ctl$stiff2) || .ctl$stiff2 == 0L
       if (.rk4sFw) {
         # ss==1 bolus, continuous infusion, and any fixed-rate infusion with a
         # dosing interval -- periodic (dur<ii), full-interval (dur==ii) and
         # large-duration (dur>ii, overlapping) all reach a periodic/constant
         # steady state handled by the two-phase monodromy / linear-solve IC term.
-        .supported <- .evDf$ss == 1 &
-          (.r == 0 | .cont | (.r > 0 & .iiv > 0))
+        # ss==2 (superposition) is handled for BOLUS doses via the interior
+        # monodromy, on the non-composite explicit path only.
+        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
+          (.evDf$ss == 2 & .r == 0 & .noComposite)
       } else if (.ctl$method == 202L) {          # liblsodaadj: continuous infusion only
         .supported <- .cont
       } else {                                    # abs / cvodesadj / stiff: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
-      .badSs <- any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+      # Multiple ss==1 events (an interior ss=1 reset re-establishing steady
+      # state, not just the window-start ss=1) are not yet covered -- the window
+      # start captures a single ss=1 regimen.
+      .multiSs1 <- length(unique(.evDf$time[.evDf$ss == 1 & .evDf$evid != 0])) > 1L
+      .badSs <- .multiSs1 || any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop("adjoint sensitivities do not yet support this steady-state (ss) ",
              "case; use sensMethod=\"forward\" for models with steady-state doses",

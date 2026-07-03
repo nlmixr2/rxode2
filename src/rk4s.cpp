@@ -7852,7 +7852,10 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const std::vector<rk4s_infus> &infus,
                                const std::vector<size_t> &boundaryDose,
                                const rk4s_rec *ssRec = NULL,
-                               const double *ssContY = NULL) {
+                               const double *ssContY = NULL,
+                               const rk4s_rec *ss2Rec = NULL,
+                               const std::vector<size_t> *ss2Steps = NULL,
+                               const std::vector<size_t> *boundarySs2 = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
@@ -7991,6 +7994,52 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     if (!luFactor(FXc.data(), nBase, ssPiv.data())) ssContOn = false;  // singular J
   }
 
+  // ss=2 superposition: at an interior ss2 event Y_after = Y_before + Y_ss_new(p)
+  // (dPhi/dY = I), so the sweep passes the costate through unchanged and adds
+  // lambda^T dY_ss_new/dp.  Precompute the new-regimen period Jacobians, form the
+  // steady-state sensitivity matrix S2 = dY_ss_new/dp = (I-M)^{-1}B row-by-row
+  // (row k = e_k^T (I-M)^{-1}B, the geometric series seeded with e_k), and mark
+  // the event steps for the sweep below.
+  size_t ss2N = (ss2Rec ? ss2Rec->nStep() : 0);
+  std::vector<double> S2; std::vector<char> isSs2;
+  if (ss2N > 0 && ss2Steps && !ss2Steps->empty()) {
+    std::vector<std::vector<double> > ss2FXs(sN), ss2FPs(sN);
+    for (int i = 0; i < sN; ++i) { ss2FXs[i].resize(ss2N * nfx); ss2FPs[i].resize(ss2N * nfp); }
+    for (size_t n = 0; n < ss2N; ++n) {
+      double h = ss2Rec->h[n], t0s = ss2Rec->t0[n];
+      for (int i = 0; i < sN; ++i)
+        rk4s_eval_jac(cSub, t0s + T.c[i] * h, &ss2Rec->a[(n * sN + i) * nBase], nBase, np,
+                      fxOff, fpOff, Ascratch.data(), eff, ind, &ss2FXs[i][n * nfx], &ss2FPs[i][n * nfp]);
+    }
+    auto ss2PeriodTranspose = [&](std::vector<double> &nu, std::vector<double> &muAcc) {
+      for (size_t nn = ss2N; nn >= 1; --nn) {
+        size_t n = nn - 1; double h = ss2Rec->h[n];
+        for (int j = 0; j < nBase; ++j) Ybar[j] = nu[j];
+        for (int i = 0; i < sN; ++i) for (int j = 0; j < nBase; ++j) kbar[i * nBase + j] = h * T.b[i] * nu[j];
+        for (int i = sN - 1; i >= 0; --i) {
+          const double *fx = &ss2FXs[i][n * nfx], *fp = &ss2FPs[i][n * nfp]; const double *kb = &kbar[i * nBase];
+          for (int j = 0; j < nBase; ++j) { double s = 0; for (int q = 0; q < nBase; ++q) s += fx[q * nBase + j] * kb[q]; abar[j] = s; }
+          for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += fp[q * np + p] * kb[q]; muAcc[p] += s; }
+          for (int j = 0; j < nBase; ++j) Ybar[j] += abar[j];
+          for (int js = 0; js < i; ++js) { double aij = T.A[i * sN + js]; if (aij != 0.0) { double *kbj = &kbar[js * nBase]; for (int j = 0; j < nBase; ++j) kbj[j] += h * aij * abar[j]; } }
+        }
+        for (int j = 0; j < nBase; ++j) nu[j] = Ybar[j];
+      }
+    };
+    S2.assign((size_t)nBase * np, 0.0);
+    for (int k = 0; k < nBase; ++k) {
+      std::vector<double> nu(nBase, 0.0); nu[k] = 1.0; std::vector<double> muAdd(np, 0.0);
+      for (int git = 0; git < op->maxSS + 5; ++git) {
+        ss2PeriodTranspose(nu, muAdd);
+        double nn2 = 0; for (int j = 0; j < nBase; ++j) nn2 += fabs(nu[j]);
+        if (nn2 < 1e-14) break;
+      }
+      for (int p = 0; p < np; ++p) S2[(size_t)k * np + p] = muAdd[p];
+    }
+    isSs2.assign(nStep + 1, 0);
+    for (size_t s : *ss2Steps) if (s <= nStep) isSs2[s] = 1;
+  }
+
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
@@ -8012,8 +8061,24 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
         rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
                             &FXs[0][(fromStep < nStep ? fromStep : nStep - 1) * nfx], dlagP,
                             boundaryDose[i]);
+      // An observation coincident with an ss=2 event reads the post-superposition
+      // state, but its boundary step is not swept below -- add lambda^T S2 here,
+      // gated on boundarySs2[i] (ss2 events recorded before this observation), so
+      // a pre-ss2 observation at the same time is unaffected.
+      if (!S2.empty() && boundarySs2)
+        for (size_t z = 0; z < (*boundarySs2)[i] && z < ss2Steps->size(); ++z)
+          if ((*ss2Steps)[z] == fromStep) {
+            for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += lam[q] * S2[(size_t)q * np + p]; mu[p] += s; }
+            break;
+          }
       dde.beginSweep(fromStep, lam);
-      for (size_t nn = fromStep; nn >= 1; --nn) { stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
+      for (size_t nn = fromStep; nn >= 1; --nn) {
+        stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam);
+        // interior ss=2 superposition: costate at this event (post-ss2 side) adds
+        // lambda^T S2; it then passes through the additive jump unchanged.
+        if (!S2.empty() && isSs2[nn - 1])
+          for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += lam[q] * S2[(size_t)q * np + p]; mu[p] += s; }
+      }
       dde.applyDoseJumps(mu, doses);
       if (ssN > 0) {                       // monodromy IC term (bolus / periodic infusion)
         std::vector<double> nu = lam, muAdd(np, 0.0);
@@ -8083,6 +8148,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<double> scratch;
   std::vector<size_t> boundary(ind->n_all_times, 0);  // cumulative steps at each stored time
   std::vector<size_t> boundaryDose(ind->n_all_times, 0); // # doses recorded when each time was stored
+  std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1;                               // set when the current event opens an infusion
@@ -8100,6 +8166,14 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // continuous / full-interval infusion: constant steady state, dY_ss/dp via a
   // -J^{-1} df/dp linear solve (no monodromy).  ssContY holds Y_ss.
   bool ssCont = false; std::vector<double> ssContY;
+  // ss==2 (superposition, bolus): Y_after = Y_before + Y_ss_new.  ss2Rec records
+  // the new regimen's steady-state period (flow over ss2Ii from the peak Y_ss_new
+  // captured by handleSS); ss2Steps marks each interior ss2 event step where the
+  // backward sweep adds lambda^T dY_ss_new/dp (the superposition IC term).
+  bool ss2Active = false; double ss2Ii = 0.0; int ss2Cmt = -1; double ss2Amt = 0.0;
+  std::vector<double> ss2Peak;
+  std::vector<size_t> ss2Steps; rk4s_rec ss2Rec;
+  int _ss2PendIi = 0; double _ss2Ii = 0.0; int _ss2Cmt = -1; double _ss2Amt = 0.0;
 
   for(i = 0; i < ind->n_all_times; i++) {
     ind->idx=i;
@@ -8199,7 +8273,10 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           getWh(_evCur, &_wh, &_cmtD, &_wh100, &_whI, &_wh0);
           if (_cmtD >= 0 && _cmtD < op->adjNbase) {
             if (_whI == 0) {                                // additive bolus (F-jump)
-              if (op->adjDfOff >= 0) {
+              // A superposition (ss==2) dose is NOT applied to the window state
+              // (its effect is the added Y_ss_new), so do not record it as a
+              // window F-jump.
+              if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
                 _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
                 doseRec.push_back(_d);
@@ -8210,6 +8287,11 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (_wh0 == EVID0_SS) {
                 _ssPendCmt = _cmtD; _ssPendAmt = getDose(ind, ind->ix[i]);
                 _ssPendIi = getIiNumber(ind, ind->ixds);
+              } else if (_wh0 == EVID0_SS2 || _wh0 == EVID0_SS20) {
+                // ss=2 superposition bolus: capture the new regimen's cmt/amt/ii;
+                // Y_ss_new (the period-boundary trough) is read after handleSS.
+                _ss2Ii = getIiNumber(ind, ind->ixds); _ss2PendIi = 1;
+                _ss2Cmt = _cmtD; _ss2Amt = getDose(ind, ind->ix[i]);
               }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
@@ -8277,6 +8359,16 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ssCont = true; ssContY.assign(yp, yp + eff);
           _adjSSinfKind = 0;
         }
+        // ss=2 superposition (INDEPENDENT of the window-start ss above -- a model
+        // can have ss=1 at t0 and ss=2 interior).  Y_ss_new was published by
+        // handleSS in _adjSS2peak; record its monodromy once and mark this event
+        // step (multiple ss2 events of the same regimen share one ss2Rec/S2).
+        if (_adjSS2 && _ss2PendIi) {
+          if (!ss2Active) { ss2Active = true; ss2Ii = _ss2Ii; ss2Cmt = _ss2Cmt; ss2Amt = _ss2Amt;
+            ss2Peak.assign(_adjSS2peak.begin(), _adjSS2peak.end()); }
+          ss2Steps.push_back(rec.nStep());
+          _adjSS2 = 0; _ss2PendIi = 0;
+        }
       }
       // Capture the modeled infusion rate R now that handleEvid1 has set it.
       if (_infusOnCmt >= 0 && !infusRec.empty()) {
@@ -8298,7 +8390,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
-    if (adj && i >= 0 && i < ind->n_all_times) { boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); }
+    if (adj && i >= 0 && i < ind->n_all_times) { boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); boundarySs2[i] = ss2Steps.size(); }
     ind->solvedIdx = i;
   }
 
@@ -8342,12 +8434,30 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ssActive = false;
   }
 
+  // Record the ss=2 regimen's steady-state period: flow over ss2Ii from the peak
+  // Y_ss_new (bolus, so record just the flow, like a window-start bolus ss).
+  if (adj && ss2Active && !localBadSolve && ind->err == 0 &&
+      !rec.composite && !T.implicitRK && !T.rosenbrock && ss2Ii > 0.0 &&
+      (int)ss2Peak.size() >= op->adjNbase) {
+    // ss2Peak (yp before += solveSave) is the period-boundary TROUGH of the new
+    // regimen (the fixed point of Phi = flow_ii . dose), so apply the dose to
+    // reach the peak = dose(trough) and record the flow FROM there -- that is the
+    // trajectory the monodromy M=dPhi/dY, B=dPhi/dp are evaluated along.
+    std::vector<double> ytmp2 = ss2Peak, ss2Scratch;
+    if (ss2Cmt >= 0 && ss2Cmt < eff) ytmp2[ss2Cmt] += ss2Amt;
+    rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
+                      ytmp2.data(), 0.0, ss2Ii, &ss2Rec, ss2Scratch);
+  } else {
+    ss2Active = false;
+  }
+
   // ---- backward reverse-mode sweep -> fill rx__sens_* output slots ----
   if (adj && !localBadSolve && ind->err == 0) {
     rk4s_backward_fill(rx, op, ind, neq[1], rec, T, op->adjNbase, op->adjNp,
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
                        boundary, doseRec, infusRec, boundaryDose, ssActive ? &ssRec : NULL,
-                       ssCont ? ssContY.data() : NULL);
+                       ssCont ? ssContY.data() : NULL,
+                       ss2Active ? &ss2Rec : NULL, &ss2Steps, &boundarySs2);
   }
 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
