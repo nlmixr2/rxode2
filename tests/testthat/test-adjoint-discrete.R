@@ -171,6 +171,40 @@ rxTest({
     }
   })
 
+  test_that("adjoint expand preserves modeled alag/rate/dur (correct primal + ODE-param sens)", {
+    # .rxAdjointExpand must keep modeled dosing modifiers so the adjoint forward
+    # integrates the SAME primal as the real model; the ODE parameters (ka/cl/v)
+    # then have correct sensitivities.  (The dosing PARAMETER's own sensitivity --
+    # d/d tlag etc. -- needs the transversality jump term, a separate addition.)
+    mods <- list(
+      alag = list(txt = "alag(depot)=tlag", par = c(tlag = 0.7)),
+      rate = list(txt = "rate(depot)=Rin",  par = c(Rin = 50)),
+      dur  = list(txt = "dur(depot)=Dur",   par = c(Dur = 2))
+    )
+    for (nm in names(mods)) {
+      mText2 <- paste0("d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\n", mods[[nm]]$txt)
+      cs2 <- c("ka", "cl", "v", names(mods[[nm]]$par))
+      p2 <- c(ka = 1.2, cl = 3.5, v = 25, mods[[nm]]$par)
+      ex <- rxode2::.rxAdjointExpand(mText2, cs2)
+      madj <- rxode2::rxode2(ex$text); mbase <- rxode2::rxode2(mText2)
+      ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 4, 8, 12))
+      solveBase <- function(pp) as.matrix(as.data.frame(
+        rxode2::rxSolve(mbase, ev, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+      s <- as.data.frame(rxode2::rxSolve(madj, ev, params = p2, method = "rk4s", cores = 1))
+      # primal matches the real model
+      expect_lt(max(abs(as.matrix(s[, c("depot", "center")]) - solveBase(p2))), 1e-6)
+      # ODE-parameter (ka/cl/v) sensitivities match a central FD
+      fdmax <- 0
+      for (pn in c("ka", "cl", "v")) {
+        hh <- p2[[pn]] * 1e-6; pp <- p2; pm <- p2; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+        for (k in seq_along(ex$st))
+          fdmax <- max(fdmax, max(abs(s[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+      }
+      expect_lt(fdmax, 1e-4)
+    }
+  })
+
   test_that("in-engine rk4s population solve (parallel) matches per-subject FD", {
     cs2 <- c("ka", "cl", "v")
     tms <- c(1, 4, 12, 24)
