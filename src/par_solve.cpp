@@ -6772,6 +6772,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 301: // b109s
       case 302: // s1110as
       case 304: // o129s
+      case 282: // tmy7adj
         ind_rk4s(rx, cid, c_dydt, u_inis);
         break;
       case 221: // cvodesadj -- CVODES adjoint sensitivities (self-managed primal)
@@ -7050,6 +7051,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 301: // b109s
       case 302: // s1110as
       case 304: // o129s
+      case 282: // tmy7adj
         par_rk4s(rx);
         break;
       case 221: // cvodesadj
