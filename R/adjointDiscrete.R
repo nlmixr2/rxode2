@@ -378,6 +378,23 @@
       .dfLines <- c(.dfLines, sprintf("rx__adjdF_%d_%d__=%s", k - 1L, p - 1L, .expr))
     }
   }
+  # dlag/dtheta of a per-compartment modeled lag time, as lhs (rx__adjDlag_k_p__),
+  # for the transversality dose-time jump.  A bolus into cmt c lands at t_d+lag(theta),
+  # so shifting lag shifts the whole post-dose trajectory: the adjoint gains
+  # mu += -amt * dlag_c/dtheta * (lambda^T F_X[:,c])  at the dose step (F_X[:,c] =
+  # the RHS jump the bolus induces).  Emitted only when some cmt has a modeled alag().
+  .dlagLines <- character(0); .hasLagAdj <- FALSE
+  for (k in seq_len(.ns))
+    if (!is.null(get0(paste0("rx_lag_", .st[k], "_"), envir = .model, inherits = FALSE))) .hasLagAdj <- TRUE
+  if (.hasLagAdj) {
+    for (k in seq_len(.ns)) {
+      .lSE <- get0(paste0("rx_lag_", .st[k], "_"), envir = .model, inherits = FALSE)
+      for (p in seq_len(.np)) {
+        .expr <- if (is.null(.lSE)) "0" else { .d <- symengine::D(.lSE, calcSens[p]); rxode2::rxFromSE(.d) }
+        .dlagLines <- c(.dlagLines, sprintf("rx__adjDlag_%d_%d__=%s", k - 1L, p - 1L, .expr))
+      }
+    }
+  }
   # STIFF (Rosenbrock) only: dJ/dtheta = d(F_X)/dtheta as lhs (rx__adjJp_i_j_p__).
   # The Rosenbrock stage matrix W = I/(h*gamma) - J depends on theta through J,
   # so the exact discrete adjoint needs this 2nd derivative.  (Emitting it only
@@ -403,8 +420,11 @@
   # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block)
   .afterStiff <- if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np + .ns * .ns * .np + .ns * .ns * .ns
                  else .ns * .ns + 2L * .ns * .np
+  # dlag block is appended LAST (after the DDE blocks) so it never shifts any
+  # existing offset; its start = end of everything else.
+  .afterDelay <- .afterStiff + (if (.hasDelayAdj) 2L * .ns * .ns + .ns * .ns * .np else 0L)
   list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines,
-                      .jpLines, .jyLines, .fxdLines, .tauLines, .dtauLines), collapse = "\n"),
+                      .jpLines, .jyLines, .fxdLines, .tauLines, .dtauLines, .dlagLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens, stiff = isTRUE(stiff),
        fxOff = 0L, fpOff = .ns * .ns, dfOff = .ns * .ns + .ns * .np,
        jpOff = if (isTRUE(stiff)) .ns * .ns + 2L * .ns * .np else -1L,
@@ -412,6 +432,7 @@
        fxdOff = if (.hasDelayAdj) .afterStiff else -1L,
        tauOff = if (.hasDelayAdj) .afterStiff + .ns * .ns else -1L,
        dtauOff = if (.hasDelayAdj) .afterStiff + 2L * .ns * .ns else -1L,
+       dlagOff = if (.hasLagAdj) .afterDelay else -1L,
        hasDelay = .hasDelayAdj,
        nlhsAdj = .ns * .ns + .ns * .np, sensOff = .ns)
 }

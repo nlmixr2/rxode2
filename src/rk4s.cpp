@@ -51,15 +51,25 @@ struct rk4s_dose { size_t step; int cmt; double amt; int type; };
 //   multiply (state c *= a): diag c is a        -> lambda[c] *= a.
 // A constant replace/multiply value contributes nothing to mu; a modeled value
 // would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+// fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
+// or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
+// a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
+// transversality  mu += -amt * dlag[c][p] * (lambda^T F_X[:,c]).
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
-    const std::vector<double> &dFdp, bool haveDf, int nBase, int np) {
+    const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
+    const double *fx0, const double *dlag) {
   for (size_t di = 0; di < doses.size(); ++di) {
     if (doses[di].step != n) continue;
     const rk4s_dose &d = doses[di];
     switch (d.type) {
     case 0:
       if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFdp[d.cmt * np + p] * lamR[d.cmt];
+      if (dlag && fx0) {
+        double sc = 0.0;                          // lambda^T F_X[:,c]
+        for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
+        for (int p = 0; p < np; ++p) muR[p] += -d.amt * dlag[d.cmt * np + p] * sc;
+      }
       break;
     case 3:
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
@@ -1005,7 +1015,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       for (int j = 0; j < i; ++j) { double a = T.A[i*s+j]; if (a != 0.0) { double *kbj = &kbar[j*nBase]; for (int m = 0; m < nBase; ++m) kbj[m] += a*ubar[m]; } }
     }
     for (int m = 0; m < nBase; ++m) lamR[m] = ybar[m];
-    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np);
+    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np, NULL, NULL);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, nBase, np, eff, Ascratch, [&](size_t n){ return &rec.a[(n*s)*nBase]; });
@@ -1064,7 +1074,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
     for (int i = 0; i < s; ++i) { const double *Fpi = &FP[(nn*s+i)*nfp]; const double *zi = &z[i*n];
       for (int p = 0; p < np; ++p) { double v = 0; for (int a = 0; a < n; ++a) v += Fpi[a*np+p]*zi[a]; muR[p] += v; } }
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
-    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np);
+    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, NULL, NULL);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[(nn*s)*n]; });
@@ -1143,7 +1153,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
       }
     }
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
-    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np);
+    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, NULL, NULL);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[rec.aOff[nn]]; });
@@ -1198,6 +1208,14 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     calc_lhs(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(), ind->lhs);
     for (int i = 0; i < nBase * np; ++i) dFdp[i] = ind->lhs[dfOff + i];
   }
+  // dlag/dtheta block (modeled-alag transversality dose-time jump).
+  std::vector<double> dlagV; const double *dlagP = NULL;
+  if (op->adjDlagOff >= 0 && !doses.empty()) {
+    if (!haveDose) calc_lhs(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(), ind->lhs);
+    dlagV.resize(nBase * np);
+    for (int i = 0; i < nBase * np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff + i];
+    dlagP = dlagV.data();
+  }
 
   // DDE anticipating term (delayed Jacobian) -- shared helper, no-op unless the
   // model has delay().  Step start state for method T is stage 0 (c_0 = 0).
@@ -1229,7 +1247,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       }
     }
     for (int j = 0; j < nBase; ++j) lamR[j] = Ybar[j];   // additive bolus: dD/dX = I
-    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np);
+    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np,
+                                            &FXs[0][n * nfx], dlagP);
   };
 
   // Full-trajectory: for each observation and each base state k, an independent
