@@ -14,15 +14,24 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * SUNDIALS Copyright End
  * -----------------------------------------------------------------------------
- * This the implementation file for the CVODES nonlinear solver interface.
+ * This the implementation file for the CVODE nonlinear solver interface.
  * ---------------------------------------------------------------------------*/
 
-#include "cvodes_impl.h"
+#include "cvode_impl.h"
 #include "sundials/sundials_math.h"
-#include "sundials/sundials_nvector_senswrapper.h"
 
 /* constant macros */
-#define ONE SUN_RCONST(1.0)
+#define ONE SUN_RCONST(1.0) /* real 1.0 */
+
+/* nonlinear solver constants
+     NLS_MAXCOR  maximum no. of corrector iterations for the nonlinear solver
+     CRDOWN      constant used in the estimation of the convergence rate (crate)
+                 of the iterates for the nonlinear equation
+     RDIV        declare divergence if ratio del/delp > RDIV
+ */
+#define NLS_MAXCOR 3
+#define CRDOWN     SUN_RCONST(0.3)
+#define RDIV       SUN_RCONST(2.0)
 
 /* private functions */
 static int cvNlsResidual(N_Vector ycor, N_Vector res, void* cvode_mem);
@@ -269,12 +278,10 @@ static int cvNlsLSetup(sunbooleantype jbad, sunbooleantype* jcur, void* cvode_me
   /* update Jacobian status */
   *jcur = cv_mem->cv_jcur;
 
-  cv_mem->cv_forceSetup = SUNFALSE;
-  cv_mem->cv_gamrat     = ONE;
-  cv_mem->cv_gammap     = cv_mem->cv_gamma;
-  cv_mem->cv_crate      = ONE;
-  cv_mem->cv_crateS     = ONE;
-  cv_mem->cv_nstlp      = cv_mem->cv_nst;
+  cv_mem->cv_gamrat = ONE;
+  cv_mem->cv_gammap = cv_mem->cv_gamma;
+  cv_mem->cv_crate  = ONE;
+  cv_mem->cv_nstlp  = cv_mem->cv_nst;
 
   if (retval < 0) { return (CV_LSETUP_FAIL); }
   if (retval > 0) { return (SUN_NLS_CONV_RECVR); }
@@ -375,9 +382,18 @@ static int cvNlsResidual(N_Vector ycor, N_Vector res, void* cvode_mem)
   if (retval < 0) { return (CV_RHSFUNC_FAIL); }
   if (retval > 0) { return (RHSFUNC_RECVR); }
 
-  /* compute the resiudal */
-  N_VLinearSum(cv_mem->cv_rl1, cv_mem->cv_zn[1], ONE, ycor, res);
-  N_VLinearSum(-cv_mem->cv_gamma, cv_mem->cv_ftemp, ONE, res, res);
+#ifdef SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS
+  if (cv_mem->cv_usefused)
+  {
+    cvNlsResid_fused(cv_mem->cv_rl1, -cv_mem->cv_gamma, cv_mem->cv_zn[1], ycor,
+                     cv_mem->cv_ftemp, res);
+  }
+  else
+#endif
+  {
+    N_VLinearSum(cv_mem->cv_rl1, cv_mem->cv_zn[1], ONE, ycor, res);
+    N_VLinearSum(-cv_mem->cv_gamma, cv_mem->cv_ftemp, ONE, res, res);
+  }
 
   return (CV_SUCCESS);
 }

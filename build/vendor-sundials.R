@@ -24,44 +24,13 @@ on.exit(setwd(.old), add = TRUE)
 message("Vendoring SUNDIALS from sundialr ", .sdr_ver, " ...")
 
 ## File mapping: path inside the SUNDIALS source tree -> dst in src/
-##
-## CVODES (the sensitivity-enabled CVODE) replaces plain CVODE: it exports the
-## SAME public API (CVodeInit/CVode/CVodeFree/...), so rxode2's existing cvode
-## usage (public API only -- it does not touch CVodeMem internals) links against
-## it unchanged, while CVodeF/CVodeB/CVodeQuadInitB/CVodeB (from cvodea.c) add the
-## native adjoint sensitivity analysis (ASA).  We therefore compile cvodes*.c IN
-## PLACE OF cvode*.c (same dst filenames, so Makevars/OBJECTS need no change --
-## plain CVODE and CVODES cannot coexist in one .so because of the shared
-## symbols), plus the extra cvodes-only translation units (forward-sensitivity
-## NLS + the cvodea adjoint module) as new files.
 .map <- c(
-  ## -- CVODES core (drop-in for CVODE; same dst names) --
-  "cvodes/cvodes.c"                                  = "sundials_cvode.c",
-  "cvodes/cvodes_diag.c"                             = "sundials_cvode_diag.c",
-  "cvodes/cvodes_io.c"                               = "sundials_cvode_io.c",
-  "cvodes/cvodes_ls.c"                               = "sundials_cvode_ls.c",
-  "cvodes/cvodes_nls.c"                              = "sundials_cvode_nls.c",
-  "cvodes/cvodes_proj.c"                             = "sundials_cvode_proj.c",
-  ## -- CVODES-only translation units (forward-sensitivity NLS + adjoint ASA) --
-  "cvodes/cvodes_nls_sim.c"                          = "sundials_cvodes_nls_sim.c",
-  "cvodes/cvodes_nls_stg.c"                          = "sundials_cvodes_nls_stg.c",
-  "cvodes/cvodes_nls_stg1.c"                         = "sundials_cvodes_nls_stg1.c",
-  "cvodes/cvodea.c"                                  = "sundials_cvodea.c",
-  "cvodes/cvodea_io.c"                               = "sundials_cvodea_io.c",
-  ## -- CVODES private headers (included by the cvodes*.c above by name) --
-  "cvodes/cvodes_impl.h"                             = "cvodes_impl.h",
-  "cvodes/cvodes_diag_impl.h"                        = "cvodes_diag_impl.h",
-  "cvodes/cvodes_ls_impl.h"                          = "cvodes_ls_impl.h",
-  "cvodes/cvodes_proj_impl.h"                        = "cvodes_proj_impl.h",
-  ## The sensitivity N_Vector wrapper header is NOT shipped in sundialr's include
-  ## (it is CVODES-only); vendor the matching 7.6.0 copy into a dedicated include
-  ## dir (inst/vendored_sun_inc, added to PKG_CPPFLAGS -- searched BEFORE the LinkingTo
-  ## StanHeaders, which carries a stale pre-7.0 copy with realtype/booleantype).
-  "sundials/sundials_nvector_senswrapper.h"          = "../inst/vendored_sun_inc/sundials/sundials_nvector_senswrapper.h",
-  ## ...and its implementation (defines N_VNew_SensWrapper etc.), compiled in src/.
-  "sundials/sundials_nvector_senswrapper.c"          = "sundials_nvector_senswrapper.c",
-  ## CVODE private headers kept for any translation unit that still includes the
-  ## cvode/*.h public API (harmless -- headers carry no symbols).
+  "cvode/cvode.c"                                    = "sundials_cvode.c",
+  "cvode/cvode_diag.c"                               = "sundials_cvode_diag.c",
+  "cvode/cvode_io.c"                                 = "sundials_cvode_io.c",
+  "cvode/cvode_ls.c"                                 = "sundials_cvode_ls.c",
+  "cvode/cvode_nls.c"                                = "sundials_cvode_nls.c",
+  "cvode/cvode_proj.c"                               = "sundials_cvode_proj.c",
   "cvode/cvode_impl.h"                               = "cvode_impl.h",
   "cvode/cvode_diag_impl.h"                          = "cvode_diag_impl.h",
   "cvode/cvode_ls_impl.h"                            = "cvode_ls_impl.h",
@@ -200,9 +169,6 @@ suppressWarnings(dir.create("src/stl", recursive = TRUE, showWarnings = FALSE))
 .missing <- character(0)
 for (.rel in names(.map)) {
   .src <- file.path(.sun, "src", .rel)
-  ## public headers (e.g. sundials/sundials_nvector_senswrapper.h) live under
-  ## include/, not src/ -- fall back to include/ for those.
-  if (!file.exists(.src)) .src <- file.path(.sun, "include", .rel)
   .dst <- file.path("src", .map[[.rel]])
   if (!file.exists(.src)) {
     .missing <- c(.missing, .rel)
@@ -218,10 +184,6 @@ if (length(.missing)) {
           paste(.missing, collapse = "\n  "), call. = FALSE)
 }
 message("Copied ", length(.copied), " files to src/.")
-## NOTE: the CRAN deprecation workaround (inst/tools/workaround.R "Fix 1c") NULLs
-## ops->nvspace and zeroes the N_VSpace(y0,...) call in CVodeInit; the CVODES ASA
-## quadrature (CVodeQuadInit) also calls N_VSpace, so cvodes_adjoint.cpp restores
-## ops->nvspace = N_VSpace_Serial on the N_Vectors it creates (clones inherit it).
 
 ## ---------------------------------------------------------------------------
 ## Strip sensitivity-only functions from the nonlinear solver files.
@@ -246,11 +208,8 @@ message("Copied ", length(.copied), " files to src/.")
   writeLines(.lines, .out, sep = "\n")
   close(.out)
 }
-## CVODES needs the sensitivity nonlinear solvers (SUNNonlinSol_NewtonSens /
-## FixedPointSens) and the senswrapper include, so we DO NOT strip them anymore.
-## The senswrapper header is vendored above (src/vendored_sun_inc/sundials/).
-## (Kept .strip_sens defined for reference; intentionally not called.)
-invisible(.strip_sens)
+.strip_sens("src/sundials_sunnonlinsol_newton.c",    "SUNNonlinSol_NewtonSens")
+.strip_sens("src/sundials_sunnonlinsol_fixedpoint.c","SUNNonlinSol_FixedPointSens")
 
 ## ---------------------------------------------------------------------------
 ## Replace sprintf(name, "...") with snprintf(name, N, "...") so CRAN's

@@ -23,7 +23,6 @@
 #include <string.h>
 
 #include <sundials/priv/sundials_errors_impl.h>
-#include <sundials/sundials_nvector_senswrapper.h>
 #include <sunnonlinsol/sunnonlinsol_fixedpoint.h>
 
 #include "sundials_logger_impl.h"
@@ -103,32 +102,6 @@ SUNNonlinearSolver SUNNonlinSol_FixedPoint(N_Vector y, int m, SUNContext sunctx)
   return (NLS);
 }
 
-/*==============================================================================
-  Constructor wrapper to create a new fixed point solver for sensitivity solvers
-  ============================================================================*/
-
-SUNNonlinearSolver SUNNonlinSol_FixedPointSens(int count, N_Vector y, int m,
-                                               SUNContext sunctx)
-{
-  SUNFunctionBegin(sunctx);
-  SUNNonlinearSolver NLS = NULL;
-  N_Vector w             = NULL;
-
-  /* create sensitivity vector wrapper */
-  w = N_VNew_SensWrapper(count, y);
-  SUNCheckLastErrNull();
-
-  /* create nonlinear solver using sensitivity vector wrapper */
-  NLS = SUNNonlinSol_FixedPoint(w, m, sunctx);
-  SUNCheckLastErrNull();
-
-  /* free sensitivity vector wrapper */
-  N_VDestroy(w);
-  SUNCheckLastErrNull();
-
-  /* return NLS object */
-  return (NLS);
-}
 
 /*==============================================================================
   GetType, Initialize, Setup, Solve, and Free operations

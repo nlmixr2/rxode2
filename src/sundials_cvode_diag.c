@@ -1,6 +1,7 @@
 /*
  * -----------------------------------------------------------------
- * Programmer(s): Radu Serban @ LLNL
+ * Programmer(s): Scott D. Cohen, Alan C. Hindmarsh and
+ *                Radu Serban, Cody J. Balos @ LLNL
  * -----------------------------------------------------------------
  * SUNDIALS Copyright Start
  * Copyright (c) 2025-2026, Lawrence Livermore National Security,
@@ -22,8 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cvodes_diag_impl.h"
-#include "cvodes_impl.h"
+#include "cvode_diag_impl.h"
+#include "cvode_impl.h"
 
 /* Other Constants */
 
@@ -42,14 +43,6 @@ static int CVDiagSolve(CVodeMem cv_mem, N_Vector b, N_Vector weight,
                        N_Vector ycur, N_Vector fcur);
 
 static int CVDiagFree(CVodeMem cv_mem);
-
-/*
- * ================================================================
- *
- *                   PART I - forward problems
- *
- * ================================================================
- */
 
 /*
  * -----------------------------------------------------------------
@@ -267,7 +260,6 @@ char* CVDiagGetReturnFlagName(long int flag)
   case CVDIAG_INV_FAIL: snprintf(name, 30, "CVDIAG_INV_FAIL"); break;
   case CVDIAG_RHSFUNC_UNRECVR: snprintf(name, 30, "CVDIAG_RHSFUNC_UNRECVR"); break;
   case CVDIAG_RHSFUNC_RECVR: snprintf(name, 30, "CVDIAG_RHSFUNC_RECVR"); break;
-  case CVDIAG_NO_ADJ: snprintf(name, 30, "CVDIAG_NO_ADJ"); break;
   default: snprintf(name, 30, "NONE");
   }
 
@@ -324,8 +316,17 @@ static int CVDiagSetup(CVodeMem cv_mem, SUNDIALS_MAYBE_UNUSED int convfail,
 
   /* Form y with perturbation = FRACT*(func. iter. correction) */
   r = FRACT * cv_mem->cv_rl1;
-  N_VLinearSum(cv_mem->cv_h, fpred, -ONE, cv_mem->cv_zn[1], ftemp);
-  N_VLinearSum(r, ftemp, ONE, ypred, y);
+#ifdef SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS
+  if (cv_mem->cv_usefused)
+  {
+    cvDiagSetup_formY(cv_mem->cv_h, r, fpred, cv_mem->cv_zn[1], ypred, ftemp, y);
+  }
+  else
+#endif
+  {
+    N_VLinearSum(cv_mem->cv_h, fpred, -ONE, cv_mem->cv_zn[1], ftemp);
+    N_VLinearSum(r, ftemp, ONE, ypred, y);
+  }
 
   /* Evaluate f at perturbed y */
   retval = cv_mem->cv_f(cv_mem->cv_tn, y, cvdiag_mem->di_M, cv_mem->cv_user_data);
@@ -344,18 +345,30 @@ static int CVDiagSetup(CVodeMem cv_mem, SUNDIALS_MAYBE_UNUSED int convfail,
   }
 
   /* Construct M = I - gamma*J with J = diag(deltaf_i/deltay_i) */
-  N_VLinearSum(ONE, cvdiag_mem->di_M, -ONE, fpred, cvdiag_mem->di_M);
-  N_VLinearSum(FRACT, ftemp, -(cv_mem->cv_h), cvdiag_mem->di_M, cvdiag_mem->di_M);
-  N_VProd(ftemp, cv_mem->cv_ewt, y);
-  /* Protect against deltay_i being at roundoff level */
-  N_VCompare(cv_mem->cv_uround, y, cvdiag_mem->di_bit);
-  N_VAddConst(cvdiag_mem->di_bit, -ONE, cvdiag_mem->di_bitcomp);
-  N_VProd(ftemp, cvdiag_mem->di_bit, y);
-  N_VLinearSum(FRACT, y, -ONE, cvdiag_mem->di_bitcomp, y);
-  N_VDiv(cvdiag_mem->di_M, y, cvdiag_mem->di_M);
-  N_VProd(cvdiag_mem->di_M, cvdiag_mem->di_bit, cvdiag_mem->di_M);
-  N_VLinearSum(ONE, cvdiag_mem->di_M, -ONE, cvdiag_mem->di_bitcomp,
-               cvdiag_mem->di_M);
+#ifdef SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS
+  if (cv_mem->cv_usefused)
+  {
+    cvDiagSetup_buildM(FRACT, cv_mem->cv_uround, cv_mem->cv_h, ftemp, fpred,
+                       cv_mem->cv_ewt, cvdiag_mem->di_bit,
+                       cvdiag_mem->di_bitcomp, y, cvdiag_mem->di_M);
+  }
+  else
+#endif
+  {
+    N_VLinearSum(ONE, cvdiag_mem->di_M, -ONE, fpred, cvdiag_mem->di_M);
+    N_VLinearSum(FRACT, ftemp, -(cv_mem->cv_h), cvdiag_mem->di_M,
+                 cvdiag_mem->di_M);
+    N_VProd(ftemp, cv_mem->cv_ewt, y);
+    /* Protect against deltay_i being at roundoff level */
+    N_VCompare(cv_mem->cv_uround, y, cvdiag_mem->di_bit);
+    N_VAddConst(cvdiag_mem->di_bit, -ONE, cvdiag_mem->di_bitcomp);
+    N_VProd(ftemp, cvdiag_mem->di_bit, y);
+    N_VLinearSum(FRACT, y, -ONE, cvdiag_mem->di_bitcomp, y);
+    N_VDiv(cvdiag_mem->di_M, y, cvdiag_mem->di_M);
+    N_VProd(cvdiag_mem->di_M, cvdiag_mem->di_bit, cvdiag_mem->di_M);
+    N_VLinearSum(ONE, cvdiag_mem->di_M, -ONE, cvdiag_mem->di_bitcomp,
+                 cvdiag_mem->di_M);
+  }
 
   /* Invert M with test for zero components */
   invOK = N_VInvTest(cvdiag_mem->di_M, cvdiag_mem->di_M);
@@ -397,10 +410,16 @@ static int CVDiagSolve(CVodeMem cv_mem, N_Vector b,
   if (cvdiag_mem->di_gammasv != cv_mem->cv_gamma)
   {
     r = cv_mem->cv_gamma / cvdiag_mem->di_gammasv;
-    N_VInv(cvdiag_mem->di_M, cvdiag_mem->di_M);
-    N_VAddConst(cvdiag_mem->di_M, -ONE, cvdiag_mem->di_M);
-    N_VScale(r, cvdiag_mem->di_M, cvdiag_mem->di_M);
-    N_VAddConst(cvdiag_mem->di_M, ONE, cvdiag_mem->di_M);
+#ifdef SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS
+    if (cv_mem->cv_usefused) { cvDiagSolve_updateM(r, cvdiag_mem->di_M); }
+    else
+#endif
+    {
+      N_VInv(cvdiag_mem->di_M, cvdiag_mem->di_M);
+      N_VAddConst(cvdiag_mem->di_M, -ONE, cvdiag_mem->di_M);
+      N_VScale(r, cvdiag_mem->di_M, cvdiag_mem->di_M);
+      N_VAddConst(cvdiag_mem->di_M, ONE, cvdiag_mem->di_M);
+    }
     invOK = N_VInvTest(cvdiag_mem->di_M, cvdiag_mem->di_M);
     if (!invOK)
     {
@@ -438,68 +457,4 @@ static int CVDiagFree(CVodeMem cv_mem)
   cv_mem->cv_lmem = NULL;
 
   return (0);
-}
-
-/*
- * ================================================================
- *
- *                   PART II - backward problems
- *
- * ================================================================
- */
-
-/*
- * CVDiagB
- *
- * Wrappers for the backward phase around the corresponding
- * CVODES functions
- */
-
-int CVDiagB(void* cvode_mem, int which)
-{
-  CVodeMem cv_mem;
-  CVadjMem ca_mem;
-  CVodeBMem cvB_mem;
-  void* cvodeB_mem;
-  int flag;
-
-  /* Check if cvode_mem exists */
-  if (cvode_mem == NULL)
-  {
-    cvProcessError(NULL, CVDIAG_MEM_NULL, __LINE__, __func__, __FILE__,
-                   MSGDG_CVMEM_NULL);
-    return (CVDIAG_MEM_NULL);
-  }
-  cv_mem = (CVodeMem)cvode_mem;
-
-  /* Was ASA initialized? */
-  if (cv_mem->cv_adjMallocDone == SUNFALSE)
-  {
-    cvProcessError(cv_mem, CVDIAG_NO_ADJ, __LINE__, __func__, __FILE__,
-                   MSGDG_NO_ADJ);
-    return (CVDIAG_NO_ADJ);
-  }
-  ca_mem = cv_mem->cv_adj_mem;
-
-  /* Check which */
-  if (which >= ca_mem->ca_nbckpbs)
-  {
-    cvProcessError(cv_mem, CVDIAG_ILL_INPUT, __LINE__, __func__, __FILE__,
-                   MSGDG_BAD_WHICH);
-    return (CVDIAG_ILL_INPUT);
-  }
-
-  /* Find the CVodeBMem entry in the linked list corresponding to which */
-  cvB_mem = ca_mem->cvB_mem;
-  while (cvB_mem != NULL)
-  {
-    if (which == cvB_mem->cv_index) { break; }
-    cvB_mem = cvB_mem->cv_next;
-  }
-
-  cvodeB_mem = (void*)(cvB_mem->cv_mem);
-
-  flag = CVDiag(cvodeB_mem);
-
-  return (flag);
 }
