@@ -196,6 +196,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   }
 
   std::vector<double> obsT; std::vector<int> obsIx;
+  std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
 
@@ -287,6 +288,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
+        // A reset wipes the state to (parameter-independent) inits, so its jump
+        // map Phi(y)=inits has dPhi/dy = 0: going backward the costate zeroes at
+        // this time.  Record it (BEFORE handleEvid3, which mutates xout); the
+        // backward sweep stops there for later observations.
+        resetT.push_back(xout);
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         didEvent = 1;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
@@ -351,7 +357,13 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
     double *out = getSolve(solveIdx);
-    if (ti <= t0 || isSameTime(ti, t0)) {
+    // A reset at tau<ti zeroes the costate (dy_k(ti)/dp depends only on the
+    // post-reset window), so the sweep only needs to reach the most recent reset
+    // before ti; below tReset the costate is 0 and mu is frozen.
+    double tStop = t0;
+    for (size_t r = 0; r < resetT.size(); ++r)
+      if (resetT[r] < ti - 1e-12 && resetT[r] > tStop) tStop = resetT[r];
+    if (ti <= tStop || isSameTime(ti, tStop)) {
       for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
       continue;
     }
@@ -359,9 +371,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
-      CVodeSetStopTime(bmem, (sunrealtype)t0);
+      CVodeSetStopTime(bmem, (sunrealtype)tStop);
       sunrealtype tret;
-      if (CVode(bmem, (sunrealtype)t0, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
     }
   }

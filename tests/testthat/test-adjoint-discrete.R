@@ -484,6 +484,38 @@ rxTest({
     }
   })
 
+  test_that("cvodesadj reset (evid 3) costate jump: post-reset sens matches FD", {
+    cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
+    ex <- rxode2::.rxAdjointExpand(mText, cs2)
+    madj <- rxode2::rxode2(ex$text)
+    mbase <- rxode2::rxode2(mText)
+    # bare reset at t=4: the state is wiped to 0 (no redose), so every post-reset
+    # sensitivity must be identically 0 (the costate zeroes at the reset).
+    ev0 <- et(amt = 100, cmt = "depot") %>% et(4, evid = 3) %>% et(c(1, 2, 6, 8, 12))
+    s0 <- as.data.frame(rxode2::rxSolve(madj, ev0, params = p2, method = "cvodesadj",
+                                        atol = 1e-11, rtol = 1e-11, cores = 1))
+    post <- s0$time > 4
+    for (pn in cs2) for (st in ex$st)
+      expect_lt(max(abs(s0[[sprintf("rx__sens_%s_BY_%s__", st, pn)]][post])), 1e-8)
+    # reset + redose at t=4: after the reset the system is a fresh dose, so the
+    # sensitivity must match a central FD of the base solve (dop853s does NOT get
+    # this -- the reset costate jump is what cvodesadj adds).
+    ev <- et(amt = 100, cmt = "depot") %>% et(4, evid = 3) %>%
+      et(amt = 100, cmt = "depot", time = 4) %>% et(c(1, 2, 6, 8, 12))
+    solveBase <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+      mbase, ev, params = pp, method = "liblsoda", atol = 1e-11, rtol = 1e-11, cores = 1))[, c("depot", "center")])
+    sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p2, method = "cvodesadj",
+                                        atol = 1e-11, rtol = 1e-11, cores = 1))
+    fdmax <- 0
+    for (pn in cs2) {
+      hh <- p2[[pn]] * 1e-6; pp <- p2; pm <- p2; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+      for (k in seq_along(ex$st))
+        fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+    }
+    expect_lt(fdmax, 1e-4)
+  })
+
   test_that("cvodesadj population solve matches the dop853s discrete adjoint", {
     cs2 <- c("ka", "cl", "v")
     ex <- rxode2::.rxAdjointExpand(mText, cs2)
