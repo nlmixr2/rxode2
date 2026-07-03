@@ -6728,6 +6728,8 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 227: // vern65s   -- discrete-adjoint adaptive Verner 6(5)
       case 228: // vern76s   -- discrete-adjoint adaptive Verner 7(6)
       case 229: // dop87s    -- discrete-adjoint adaptive Prince-Dormand 8(7)
+      case 226: // dop54s/dp54s -- discrete-adjoint adaptive Dormand-Prince 5(4)
+      case 230: // vern98s   -- discrete-adjoint adaptive Verner 9(8)
       case 205: // f78s      -- discrete-adjoint adaptive Fehlberg 7(8)
       case 213: // ros4s     -- discrete-adjoint Rosenbrock (stiff)
       case 236: // radauiia5s -- discrete-adjoint Radau IIA 5th (stiff)
@@ -6972,6 +6974,8 @@ extern "C" void par_solve(rx_solve *rx) {
       case 227: // vern65s
       case 228: // vern76s
       case 229: // dop87s
+      case 226: // dop54s/dp54s
+      case 230: // vern98s
       case 205: // f78s
       case 213: // ros4s
       case 236: // radauiia5s

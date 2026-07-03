@@ -940,4 +940,30 @@ rxTest({
     for (cn in grep("rx__sens", names(s1), value = TRUE))
       expect_equal(s1[[cn]], s4[[cn]])
   })
+
+  test_that("in-engine dop54s / dp54s / vern98s (explicit-RK tableau additions)", {
+    # dop54/dp54 (OdeDoPri54) share the Dormand-Prince 5(4) tableau (= dop5s); vern98
+    # is Verner's 9(8).  Both drop into the rk4s Butcher-tableau framework: the base
+    # states must match the base method's own solve, and the sensitivities converge to
+    # the continuous derivative (== dop853s) at tight tolerance.
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text); mbase <- rxode2::rxode2(mText)
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 4, 8, 12, 24))
+    sD <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "dop853s", cores = 1, atol = 1e-11, rtol = 1e-11))
+    solveBase <- function(pp, m) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, ev, params = pp, method = m, cores = 1, atol = 1e-11, rtol = 1e-11))[, ex$st])
+    for (info in list(c("dop54s", "dop54"), c("dp54s", "dop54"), c("vern98s", "vern98"))) {
+      meth <- info[1]; base <- info[2]
+      s <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = meth, cores = 1, atol = 1e-11, rtol = 1e-11))
+      # base states track the base method's own adaptive solve
+      expect_lt(max(abs(as.matrix(s[, ex$st]) - solveBase(p, base))), 1e-6)
+      # sensitivities agree with dop853s (all -> continuous derivative at tight tol)
+      mx <- 0
+      for (st in ex$st) for (pn in cs) { cn <- sprintf("rx__sens_%s_BY_%s__", st, pn); mx <- max(mx, max(abs(s[[cn]] - sD[[cn]]))) }
+      expect_lt(mx, 1e-6)
+      # the base method on an adjoint model auto-switches to this variant (bit-identical)
+      sAuto <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = base, cores = 1, atol = 1e-11, rtol = 1e-11))
+      for (cn in grep("rx__sens", names(s), value = TRUE)) expect_equal(sAuto[[cn]], s[[cn]])
+    }
+  })
 })
