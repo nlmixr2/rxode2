@@ -6725,6 +6725,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 221: // cvodesadj -- CVODES adjoint sensitivities (self-managed primal)
         ind_cvodesadj(rx, cid, c_dydt, u_inis);
         break;
+      case 202: // liblsodaadj -- exact discrete adjoint of liblsoda's multistep map
+        ind_liblsodaadj(rx, cid, c_dydt, u_inis);
+        break;
       case 7:
         ind_ck54(rx, cid, c_dydt, u_inis);
         break;
@@ -6966,6 +6969,9 @@ extern "C" void par_solve(rx_solve *rx) {
       case 221: // cvodesadj
         par_cvodesadj(rx);
         break;
+      case 202: // liblsodaadj
+        par_liblsodaadj(rx);
+        break;
       case 7:
         // ck54
         par_ck54(rx);
@@ -7169,6 +7175,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "rk4.cpp"
 #include "rk4s.cpp"
 #include "cvodes_adjoint.cpp"   // CVODES ASA adjoint-sensitivity driver
+#include "lsoda_adjoint.cpp"    // exact discrete-adjoint of liblsoda's multistep map
 #include "ck54.cpp"
 #include "ab.cpp"
 #include "abm.cpp"
