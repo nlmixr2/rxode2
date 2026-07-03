@@ -7764,7 +7764,8 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
                                     int fxOff, int fpOff, int dfOff, int sensOff,
                                     const std::vector<size_t> &boundary,
                                     const std::vector<rk4s_dose> &doses,
-                                    const std::vector<rk4s_infus> &infus) {
+                                    const std::vector<rk4s_infus> &infus,
+                                    const std::vector<size_t> &boundaryDose) {
   size_t nStep = rec.nStep(); if (nStep == 0) return;
   int eff = rxEffNeq(ind, op), n = nBase, nfx = n*n, nfp = n*np;
   int jpOff = op->adjJpOff, jyOff = op->adjJyOff, njp = nfx*np, njy = nfx*n;
@@ -7832,6 +7833,9 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
     for (int k = 0; k < n; ++k) {
       for (int j = 0; j < n; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
+      // coincident state-jump at the obs's own step (see rk4s_backward_fill)
+      if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
+                                              pre[fromStep < nStep ? fromStep : nStep - 1].FX.data(), dlagP, boundaryDose[i]);
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
       dde.applyDoseJumps(mu, doses);
@@ -7851,7 +7855,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const double *ssContY = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
-  if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus); return; }
+  if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
   if (T.implicitRK) { radau_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
   if (T.rosenbrock) { ros_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
   int eff = rxEffNeq(ind, op);
