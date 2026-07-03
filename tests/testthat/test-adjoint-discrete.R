@@ -996,4 +996,34 @@ rxTest({
       expect_equal(sAuto[["rx__sens_center_BY_cl__"]], s[["rx__sens_center_BY_cl__"]])  # auto-switch
     }
   })
+
+  test_that("in-engine abs (Adams-Bashforth) discrete adjoint == FD of the AB solve", {
+    # abs is the exact reverse-mode transpose of ab.cpp's classical fixed-order/
+    # fixed-step Adams-Bashforth (an f-history multistep, not liblsoda's Nordsieck).
+    # Because the AB schedule (dt, order) is param-INDEPENDENT, the discrete adjoint
+    # equals a central finite difference of the SAME AB solve to FD precision -- the
+    # correct criterion (compare against the abs solve's own base states, which are
+    # what the adjoint transposes).
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    ctl <- list(hmin = 0.02, cores = 1)
+    for (ord in c(1L, 2L, 4L)) {
+      cc <- c(ctl, list(maxordn = ord))
+      for (ev in list(et(amt = 100, cmt = "depot") %>% et(c(1, 4, 8, 12)),
+                      et(amt = 100, cmt = "depot", ii = 6, addl = 2) %>% et(c(1, 4, 7, 10, 16)))) {
+        s <- as.data.frame(do.call(rxode2::rxSolve, c(list(madj, ev, params = p, method = "abs"), cc)))
+        solveAbs <- function(pp) as.matrix(as.data.frame(
+          do.call(rxode2::rxSolve, c(list(madj, ev, params = pp, method = "abs"), cc)))[, ex$st])
+        mx <- 0
+        for (pn in cs) {
+          hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+          fd <- (solveAbs(pp) - solveAbs(pm)) / (2 * hh)
+          for (k in seq_along(ex$st))
+            mx <- max(mx, max(abs(s[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+        }
+        expect_lt(mx, 1e-5)
+        expect_gt(max(abs(s[["rx__sens_center_BY_cl__"]])), 1e-3)  # genuinely non-zero
+      }
+    }
+  })
 })

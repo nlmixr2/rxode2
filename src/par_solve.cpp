@@ -6781,6 +6781,9 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 202: // liblsodaadj -- exact discrete adjoint of liblsoda's multistep map
         ind_liblsodaadj(rx, cid, c_dydt, u_inis);
         break;
+      case 208: // abs -- discrete-adjoint Adams-Bashforth
+        ind_ab_adj(rx, cid, c_dydt, u_inis);
+        break;
       case 7:
         ind_ck54(rx, cid, c_dydt, u_inis);
         break;
@@ -7060,6 +7063,9 @@ extern "C" void par_solve(rx_solve *rx) {
       case 202: // liblsodaadj
         par_liblsodaadj(rx);
         break;
+      case 208: // abs
+        par_ab_adj(rx);
+        break;
       case 7:
         // ck54
         par_ck54(rx);
@@ -7266,6 +7272,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "lsoda_adjoint.cpp"    // exact discrete-adjoint of liblsoda's multistep map
 #include "ck54.cpp"
 #include "ab.cpp"
+#include "ab_adjoint.cpp"      // discrete-adjoint of Adams-Bashforth (abs, 208)
 #include "abm.cpp"
 #include "dop5.cpp"
 #include "bs.cpp"
