@@ -2378,7 +2378,11 @@ extern "C" void handleSSbolus(int *neq,
 //   kind: 0 none, 1 fixed-rate periodic infusion (dur<ii), 2 unhandled ss
 static thread_local int    _adjSSinfKind = 0;
 static thread_local int    _adjSSinfCmt = -1;
-static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0;
+// Two-phase steady-state infusion period: rate _adjSSinfRate for _adjSSinfDur,
+// then rate _adjSSinfRate2 for _adjSSinfDur2.  Fixed-rate periodic (dur<ii) uses
+// (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
+// uses ((numDoseInf+1)*R, offTime) then (numDoseInf*R, addTime).
+static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0, _adjSSinfRate2 = 0.0;
 
 extern "C" void solveSSinf(int *neq,
                            int *BadDose,
@@ -3298,6 +3302,21 @@ void handleSS(int *neq,
                            &offTime,
                            &addTime,
                            &canBreak);
+        // Adjoint handoff: large-duration fixed-rate infusion (dur>=ii) reaches
+        // a periodic steady state with numDoseInf overlapping infusions -- the
+        // period effective rate is (numDoseInf+1)*R for offTime then numDoseInf*R
+        // for addTime.  Fixed rate -> dR/dp==0, so the two-phase monodromy IC
+        // term (kind 1) applies.
+        if (op->adjoint && addTime > 0 && numDoseInf >= 1) {
+          int _w, _c, _w100, _wI, _w0;
+          getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
+          if (_wI == EVIDF_INF_RATE) {
+            double _R = getDose(ind, ind->idose[infBixds]);
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur  = offTime; _adjSSinfRate  = (numDoseInf + 1) * _R;
+            _adjSSinfDur2 = addTime; _adjSSinfRate2 = numDoseInf * _R;
+          }
+        }
         skipDosingEvent = true;
         // REprintf("Assign ind->ixds to %d (idx: %d) #1\n", indf->ixds, ind->idx);
         for (int cur = 0; cur < overIi; ++cur) {
@@ -3422,6 +3441,7 @@ void handleSS(int *neq,
             _adjSSinfKind = 1; _adjSSinfCmt = _c;
             _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
             _adjSSinfRate = getDose(ind, ind->idose[infBixds]);
+            _adjSSinfRate2 = 0.0;                 // OFF phase (dur<ii)
           }
         }
         *istate=1;

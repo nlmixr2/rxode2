@@ -2448,8 +2448,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .rk4sFw <- !(.ctl$method %in% c(202L, 208L, 221L, 213L, 231L, 232L,
                                       233L, 234L, 235L, 236L, 237L, 238L))
       if (.rk4sFw) {
+        # ss==1 bolus, continuous infusion, and any fixed-rate infusion with a
+        # dosing interval -- periodic (dur<ii), full-interval (dur==ii) and
+        # large-duration (dur>ii, overlapping) all reach a periodic/constant
+        # steady state handled by the two-phase monodromy / linear-solve IC term.
         .supported <- .evDf$ss == 1 &
-          (.r == 0 | .cont | (.r > 0 & .iiv > 0 & .durv < .iiv))
+          (.r == 0 | .cont | (.r > 0 & .iiv > 0))
       } else if (.ctl$method == 202L) {          # liblsodaadj: continuous infusion only
         .supported <- .cont
       } else {                                    # abs / cvodesadj / stiff: none

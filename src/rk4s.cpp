@@ -8096,7 +8096,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int _ssPendCmt = -1; double _ssPendAmt = 0.0, _ssPendIi = 0.0;
   // steady-state fixed-rate infusion (dur<ii): period is ON for ssInfDur (rate
   // ssInfRate into ssInfCmt) then OFF for ssInfDur2; handed over from handleSS.
-  bool ssInf = false; int ssInfCmt = -1; double ssInfDur = 0.0, ssInfDur2 = 0.0, ssInfRate = 0.0;
+  bool ssInf = false; int ssInfCmt = -1; double ssInfDur = 0.0, ssInfDur2 = 0.0, ssInfRate = 0.0, ssInfRate2 = 0.0;
   // continuous / full-interval infusion: constant steady state, dY_ss/dp via a
   // -J^{-1} df/dp linear solve (no monodromy).  ssContY holds Y_ss.
   bool ssCont = false; std::vector<double> ssContY;
@@ -8268,7 +8268,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           // fixed-rate periodic infusion steady state: yp is the pre-infusion
           // trough (period boundary); record the ON/OFF period after the loop.
           ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
-          ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate;
+          ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
           ssTrough.assign(yp, yp + eff);
           _adjSSinfKind = 0;
         } else if (_adjSSinfKind == 2 && !ssActive && !ssCont) {
@@ -8310,19 +8310,23 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       !rec.composite && !T.implicitRK && !T.rosenbrock) {
     std::vector<double> ytmp = ssTrough, ssScratch;
     if (ssInf) {
-      // fixed-rate periodic infusion: record one steady-state period FROM the
-      // pre-infusion trough yp* -- infusion ON (rate into ssInfCmt) over dur,
-      // then OFF over dur2.  The rate is constant (dR/dp == 0) so M=dPhi/dY and
+      // Two-phase steady-state infusion period from yp*: constant rate ssInfRate
+      // over ssInfDur, then ssInfRate2 over ssInfDur2.  Fixed-rate periodic
+      // (dur<ii): (R, dur) then (0, ii-dur).  Large-duration (dur>=ii,
+      // overlapping infusions): ((numDoseInf+1)*R, offTime) then (numDoseInf*R,
+      // addTime).  The rate is constant per phase (dR/dp == 0), so M=dPhi/dY and
       // B=dPhi/dp come entirely from the recorded flow (same monodromy as the
       // bolus; the infusion only shifts WHERE the model Jacobian is sampled).
-      double _savedR = ind->InfusionRate[ssInfCmt];
-      ind->InfusionRate[ssInfCmt] = ssInfRate;
-      rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
-                        ytmp.data(), 0.0, ssInfDur, &ssRec, ssScratch);
-      ind->InfusionRate[ssInfCmt] = 0.0;
-      if (ssInfDur2 > 0.0)
-        rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
-                          ytmp.data(), ssInfDur, ssInfDur + ssInfDur2, &ssRec, ssScratch);
+      double _savedR = ind->InfusionRate[ssInfCmt], _t = 0.0;
+      if (ssInfDur > 0.0) {
+        ind->InfusionRate[ssInfCmt] = ssInfRate;
+        rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur, &ssRec, ssScratch);
+        _t += ssInfDur;
+      }
+      if (ssInfDur2 > 0.0) {
+        ind->InfusionRate[ssInfCmt] = ssInfRate2;
+        rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur2, &ssRec, ssScratch);
+      }
       ind->InfusionRate[ssInfCmt] = _savedR;
     } else if (ssIi > 0.0) {
       // bolus: yp after handleSS is the POST-dose peak yp* = dose(flow_tau(yp*));
