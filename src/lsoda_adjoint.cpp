@@ -41,7 +41,18 @@
 // (Covers observed order up to 8 + Adams->BDF switches on stiff problems.)  A finite
 // difference of a re-solved liblsoda is NOT the reference: it perturbs the adaptive
 // order/step/method schedule, agreeing only for params that do not move it.
-// Interior event jumps (P5) and parallelism (P6) are the remaining follow-ups.
+//
+// P5 -- INTERIOR EVENT JUMPS.  istateReset resets the integrator after every dose /
+// reset, so the trajectory is a chain of Nordsieck SEGMENTS joined by a state jump.
+// Each segment records its own (t0,y0,h0) init; the backward sweep chains across a
+// boundary by: (i) the segment re-init dual -- the costate of y0 is lam0[1] +
+// h0*J(y0)^T*lam0[2] (yh0[2]=h0*f(y0) couples the rows through f); then (ii) the
+// event jump dual dPhi/dy^T -- additive bolus = I, reset -> 0, replace[c] -> zero
+// component c, multiply[c] -> scale component c by the factor (event reconstructed
+// from the table).  Validated to machine precision by the self-check AND, since the
+// boundary formula is shared by both self-check replays, independently vs dop853s
+// (multi-dose / reset / replace / multiply all match to ~1e-8).  Remaining: modeled
+// F/alag dose-jump quadrature + rate()/dur() infusion duals, and P6 parallelism.
 #ifdef IN_PAR_SOLVE
 
 // --- recording hooks: need liblsoda's common block (ctx->common->...) ----------
@@ -71,22 +82,43 @@ struct lsAdjStep {
                               // switches change el only (recorded from elco), so the
                               // transpose needs no special handling -- kept for the
                               // self-check to confirm switches are actually exercised.
+  int seg;                    // segment index (a fresh liblsoda init starts a segment)
 };
-// Thread-local recording state (serial per subject in P1; par is P6).
+// A segment is a maximal run of accepted steps between liblsoda re-initialisations.
+// istateReset (default) resets ctx->state=1 after every interior dose/reset, so the
+// Nordsieck history restarts at order 1 with a fresh (t0,y0,h0) at each event -- the
+// trajectory is a chain of segments joined by state jumps.
+struct lsAdjSeg {
+  double t0, h0;              // segment start time and its initial step h0
+  std::vector<double> y0;     // base state at segment start (post-event, yh[1])
+  size_t stepBegin, stepEnd;  // [begin,end) range into lsAdjSteps
+  // interior event that OPENED this segment (reconstructed from the event table):
+  //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 5 replace
+  //   (y[cmt]:=val, dPhi/dy row cmt=0) | 6 multiply (y[cmt]*=fac) | -1 none (seg 0).
+  int evType, evCmt;
+  double evFactor;           // multiply factor (type 6)
+};
+// Thread-local recording state (serial per subject; par is P6).
 static thread_local bool                 lsAdjActive = false;
 static thread_local int                  lsAdjNbase  = 0;
 static thread_local std::vector<lsAdjStep> lsAdjSteps;
-static thread_local double               lsAdjT0 = 0.0, lsAdjH0 = 0.0;
-static thread_local std::vector<double>  lsAdjY0;    // initial base state y0
+static thread_local std::vector<lsAdjSeg>  lsAdjSegs;
 
 extern "C" int lsAdjIsActive(void) { return lsAdjActive ? 1 : 0; }
 
-// Called once at state==1 init (yh[1]=y0, yh[2]=h0*f(y0)); capture (t0,y0,h0).
+// Called at every state==1 init (yh[1]=y0, yh[2]=h0*f(y0)) -- once at t0 and once
+// after each interior event that reset the integrator -- opening a new segment.
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
-  lsAdjT0 = _rxC(tn);
-  lsAdjH0 = _rxC(h);
-  lsAdjY0.resize(lsAdjNbase);
-  for (int i = 1; i <= lsAdjNbase; ++i) lsAdjY0[i - 1] = _rxC(yh)[1][i];
+  if (!lsAdjSegs.empty()) lsAdjSegs.back().stepEnd = lsAdjSteps.size();  // close prev
+  lsAdjSeg s;
+  s.t0 = _rxC(tn);
+  s.h0 = _rxC(h);
+  s.y0.resize(lsAdjNbase);
+  for (int i = 1; i <= lsAdjNbase; ++i) s.y0[i - 1] = _rxC(yh)[1][i];
+  s.stepBegin = lsAdjSteps.size();
+  s.stepEnd = lsAdjSteps.size();
+  s.evType = -1; s.evCmt = -1; s.evFactor = 1.0;   // filled in from the event table
+  lsAdjSegs.push_back(std::move(s));
 }
 
 // Called after every accepted step.  At this point stoda has already run UPDATE +
@@ -110,6 +142,7 @@ extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx) {
   s.rh     = s.hNext / s.h;
   s.rInc   = (s.dOrder == 1) ? s.el[s.nq + 1] / (double)(s.nq + 1) : 0.0;
   s.meth   = _rxC(mused);     // method used in this (just-accepted) step
+  s.seg    = lsAdjSegs.empty() ? 0 : (int)(lsAdjSegs.size() - 1);
   lsAdjSteps.push_back(std::move(s));
 }
 
@@ -139,17 +172,40 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
 
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
-  lsAdjY0.clear();
+  lsAdjSegs.clear();
   lsAdjNbase = nBase;
   lsAdjActive = true;                 // ind_liblsoda0 installs the ctx hooks
   ind_liblsoda0(rx, op, opt, solveid, c_dydt_ll, u_inis);
   lsAdjActive = false;
 
-  if (op->badSolve || ind->err != 0 || lsAdjSteps.empty()) return;
+  if (op->badSolve || ind->err != 0 || lsAdjSteps.empty() || lsAdjSegs.empty()) return;
+  lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
 
-  // ---- backward sweep: for each obs t_i and base state k, an independent -------
-  //      reset sweep seeded by intdy^T on the bracketing step.
+  // Reconstruct the interior event that opened each segment (seg>=1) from the event
+  // table by matching its start time.  Additive boluses (dPhi/dy=I) are the default
+  // (evType stays -1 if not classified, treated as identity), so a not-found addl
+  // bolus is still correct; reset/replace/multiply get their exact dual.
+  for (size_t sg = 1; sg < lsAdjSegs.size(); ++sg) {
+    double t0 = lsAdjSegs[sg].t0;
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      int ev = getEvid(ind, ind->ix[i]);
+      if (isObs(ev)) continue;
+      if (fabs(ind->timeThread[ind->ix[i]] - t0) > 1e-8) continue;
+      if (ev == 3) { lsAdjSegs[sg].evType = 3; break; }
+      if (isDose(ev)) {
+        int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+        if (_cmt >= 0 && _cmt < nBase) {
+          if (_whI == 0)                  { lsAdjSegs[sg].evType = 0; lsAdjSegs[sg].evCmt = _cmt; break; }
+          else if (_whI == EVIDF_REPLACE) { lsAdjSegs[sg].evType = 5; lsAdjSegs[sg].evCmt = _cmt; break; }
+          else if (_whI == EVIDF_MULT)    { lsAdjSegs[sg].evType = 6; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evFactor = getDose(ind, ind->ix[i]); break; }
+          // (modeled rate/dur infusion on/off open a segment too but are not a state
+          //  jump; left as identity here -- infusion duals are a P5 follow-up.)
+        }
+      }
+    }
+  }
+
   std::vector<double> A(eff, 0.0);
   std::vector<double> lamFlat, adjPred, adjAcor, w, Pmat;
   std::vector<int> piv;
@@ -165,112 +221,99 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   std::vector<double> mu(np, 0.0);
   double *lhs = ind->lhs;
 
+  // Transpose one recorded step n in place on lamFlat (TRANSITION^T -> STEP^T ->
+  // BRIDGE^T), accumulating the parameter quadrature into mu.  hPrevEnd for the
+  // rejection bridge is segment-aware: a segment's first step bridges from its
+  // own init h0, not the previous segment's last step.
+  auto stepTransposeN = [&](size_t n) {
+    const lsAdjStep &st = lsAdjSteps[n];
+    int nq = st.nq; double h = st.h, el1 = st.el[1];
+    const double *fx, *fp;
+    lsAdjEval(cSub, st.tn, st.y.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx, &fp);
+    // TRANSITION^T: scaleh^T then order^T
+    std::fill(acorExtra.begin(), acorExtra.end(), 0.0);
+    { int nqF = st.nqNext; double rp = 1.0;
+      for (int j = 1; j <= nqF + 1; ++j) { double *lamj = &lamFlat[(size_t)j * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] *= rp; rp *= st.rh; }
+      if (st.dOrder == 1) { double *top = &lamFlat[(size_t)(nq + 2) * nBase]; for (int c = 0; c < nBase; ++c) { acorExtra[c] += st.rInc * top[c]; top[c] = 0.0; } }
+      else if (st.dOrder == -1) { double *drop = &lamFlat[(size_t)(nq + 1) * nBase]; for (int c = 0; c < nBase; ++c) drop[c] = 0.0; }
+    }
+    // STEP^T: UPDATE^T -> CORRECT^T -> PREDICT^T
+    for (int c = 0; c < nBase; ++c) adjAcor[c] = acorExtra[c];
+    for (int j = 1; j <= nq + 1; ++j) { const double *lamj = &lamFlat[(size_t)j * nBase]; double *pj = &adjPred[(size_t)j * nBase]; double ej = st.el[j]; for (int c = 0; c < nBase; ++c) { pj[c] = lamj[c]; adjAcor[c] += ej * lamj[c]; } }
+    for (int a = 0; a < nBase; ++a) for (int b = 0; b < nBase; ++b) Pmat[(size_t)a * nBase + b] = (a == b ? 1.0 : 0.0) - h * el1 * fx[a * nBase + b];
+    for (int c = 0; c < nBase; ++c) w[c] = adjAcor[c];
+    if (nBase > 0) { luFactor(Pmat.data(), nBase, piv.data()); luSolveT(Pmat.data(), nBase, piv.data(), w.data()); }
+    double *p1 = &adjPred[(size_t)1 * nBase]; double *p2 = &adjPred[(size_t)2 * nBase];
+    for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx[a * nBase + b] * w[a]; p1[b] += h * s; }
+    for (int c = 0; c < nBase; ++c) p2[c] += -w[c];
+    for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += fp[a * np + p] * w[a]; mu[p] += h * s; }
+    for (int j = 1; j <= nq; ++j) for (int i1 = nq; i1 >= j; --i1) { double *dst = &adjPred[(size_t)(i1 + 1) * nBase]; const double *src = &adjPred[(size_t)i1 * nBase]; for (int c = 0; c < nBase; ++c) dst[c] += src[c]; }
+    std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
+    for (int j = 1; j <= nq + 1; ++j) { double *lamj = &lamFlat[(size_t)j * nBase]; const double *pj = &adjPred[(size_t)j * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] = pj[c]; }
+    // BRIDGE^T (segment-aware)
+    double hPrevEnd = (n == lsAdjSegs[st.seg].stepBegin) ? lsAdjSegs[st.seg].h0 : lsAdjSteps[n - 1].hNext;
+    double rhB = h / hPrevEnd;
+    if (rhB != 1.0) { double rp = 1.0; for (int j = 1; j <= nq + 1; ++j) { double *lamj = &lamFlat[(size_t)j * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] *= rp; rp *= rhB; } }
+  };
+  // bracketing step in segment seg for time t: first step with tn >= t (clamp).
+  auto bracketStep = [&](int seg, double t) -> size_t {
+    size_t b = lsAdjSegs[seg].stepBegin, e = lsAdjSegs[seg].stepEnd, S = b;
+    while (S < e && lsAdjSteps[S].tn < t - 1e-9) ++S;
+    if (S >= e) S = e - 1;
+    return S;
+  };
+  // seed costate at (step S, time t) by intdy^T with weight wSeed (state covector).
+  auto seedCostate = [&](size_t S, double t, const std::vector<double> &wSeed) {
+    int nqSeed = lsAdjSteps[S].nqNext;
+    double sS = (t - lsAdjSteps[S].tn) / lsAdjSteps[S].hNext;
+    std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
+    double sp = 1.0;
+    for (int j = 0; j <= nqSeed; ++j) { double *lamj = &lamFlat[(size_t)(j + 1) * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] += sp * wSeed[c]; sp *= sS; }
+  };
+
+  // Backward sweep of one costate seed at (segIdx, time, wSeed) to t0, into mu.
+  // Segments are joined by an event (interior dose/reset); its jump has an exact
+  // dual.  The segment re-init yh0=[y0, h0*f(y0)] couples row 1 and row 2 via f, so
+  // the costate handed to the previous segment is  lam0[1] + h0*J(y0)^T*lam0[2]
+  // (then the event jump's dPhi/dy^T; for a plain bolus dPhi/dy=I so nothing more).
+  std::vector<double> wSeed(nBase);
+  auto sweepToStart = [&](int segIdx, double time) {
+    for (int seg = segIdx; ; --seg) {
+      const lsAdjSeg &Sg = lsAdjSegs[seg];
+      size_t Sb = bracketStep(seg, time);
+      seedCostate(Sb, time, wSeed);
+      for (long n = (long)Sb; n >= (long)Sg.stepBegin; --n) stepTransposeN((size_t)n);
+      // lamFlat is now the costate of the segment's initial Nordsieck [y0, h0*f(y0)].
+      const double *fx0, *fp0;
+      lsAdjEval(cSub, Sg.t0, Sg.y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
+      const double *lam1 = &lamFlat[(size_t)1 * nBase];
+      const double *lam2 = &lamFlat[(size_t)2 * nBase];
+      // init quadrature: mu += h0 * lam2^T Fp(t0,y0)
+      for (int p = 0; p < np; ++p) { double s = 0; for (int c = 0; c < nBase; ++c) s += fp0[c * np + p] * lam2[c]; mu[p] += Sg.h0 * s; }
+      if (seg == 0) break;
+      // costate of y0 (pre-Nordsieck-init): lam_y0 = lam1 + h0*J0^T lam2.
+      for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx0[a * nBase + b] * lam2[a]; wSeed[b] = lam1[b] + Sg.h0 * s; }
+      // event jump Phi^T maps lam_y0 -> costate of y(tau-) handed to the previous
+      // segment (constant amt/val/factor -> no dPhi/dp quadrature term):
+      //   bolus (dPhi/dy=I): unchanged | reset: all 0 | replace[c]: comp c -> 0 |
+      //   multiply[c]: comp c *= factor.
+      if (Sg.evType == 3) { for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0; }
+      else if (Sg.evType == 5 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] = 0.0; }
+      else if (Sg.evType == 6 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] *= Sg.evFactor; }
+      time = Sg.t0;
+    }
+  };
+
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     double ti = ind->timeThread[ind->ix[i]];
-    // bracketing step S = first recorded step with tn_S >= ti (clamp to last).
-    size_t S = 0;
-    while (S < nStep && lsAdjSteps[S].tn < ti - 1e-9) ++S;
-    if (S >= nStep) S = nStep - 1;
+    int segObs = 0;
+    for (int sgi = (int)lsAdjSegs.size() - 1; sgi >= 0; --sgi) { if (lsAdjSegs[sgi].t0 <= ti + 1e-9) { segObs = sgi; break; } }
     double *out = getSolve(i);
-
     for (int k = 0; k < nBase; ++k) {
-      // Seed Lambda at the POST-transition Nordsieck of step S -- that is what
-      // liblsoda's intdy interpolates the obs with (order nqNext_S, step hNext_S):
-      //   y_k(ti) = sum_{j=0..nqNext} s^j yh_final[j+1][k],  s = (ti-tn_S)/hNext_S.
-      int nqSeed = lsAdjSteps[S].nqNext;
-      double sS = (ti - lsAdjSteps[S].tn) / lsAdjSteps[S].hNext;
-      std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
-      double sp = 1.0;
-      for (int j = 0; j <= nqSeed; ++j) { lamFlat[(size_t)(j + 1) * nBase + k] += sp; sp *= sS; }
       std::fill(mu.begin(), mu.end(), 0.0);
-
-      // transpose from step S down to step 0
-      for (long n = (long)S; n >= 0; --n) {
-        const lsAdjStep &st = lsAdjSteps[n];
-        int nq = st.nq;
-        double h = st.h, el1 = st.el[1];
-        const double *fx, *fp;
-        lsAdjEval(cSub, st.tn, st.y.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx, &fp);
-
-        // ---- TRANSITION^T: Lambda(yh_final_n) -> Lambda(yh_postupdate_n) --------
-        // Forward order was: [update: rows 1..nq+1] -> [order change] -> [scaleh].
-        // Reverse: scaleh^T (diag rh^(j-1)) over the post-transition rows, then
-        // order^T (drop/absorb the extra row into acorExtra).
-        std::fill(acorExtra.begin(), acorExtra.end(), 0.0);
-        {
-          int nqF = st.nqNext;                       // post-transition order
-          double rp = 1.0;
-          for (int j = 1; j <= nqF + 1; ++j) {       // scaleh^T
-            double *lamj = &lamFlat[(size_t)j * nBase];
-            for (int c = 0; c < nBase; ++c) lamj[c] *= rp;
-            rp *= st.rh;
-          }
-          if (st.dOrder == 1) {
-            // top row (nq+2) was acor*rInc (then scaled): absorb into acorExtra, drop it.
-            double *top = &lamFlat[(size_t)(nq + 2) * nBase];
-            for (int c = 0; c < nBase; ++c) { acorExtra[c] += st.rInc * top[c]; top[c] = 0.0; }
-          } else if (st.dOrder == -1) {
-            // dropped row (nq+1) had no downstream effect -> its costate is 0.
-            double *drop = &lamFlat[(size_t)(nq + 1) * nBase];
-            for (int c = 0; c < nBase; ++c) drop[c] = 0.0;
-          }
-        }
-
-        // ---- STEP^T: UPDATE^T -> CORRECT^T -> PREDICT^T (order nq) --------------
-        // UPDATE^T: adjPred[j] = lam[j]; adjAcor = sum_j el[j]*lam[j] + acorExtra
-        for (int c = 0; c < nBase; ++c) adjAcor[c] = acorExtra[c];
-        for (int j = 1; j <= nq + 1; ++j) {
-          const double *lamj = &lamFlat[(size_t)j * nBase];
-          double *pj = &adjPred[(size_t)j * nBase];
-          double ej = st.el[j];
-          for (int c = 0; c < nBase; ++c) { pj[c] = lamj[c]; adjAcor[c] += ej * lamj[c]; }
-        }
-        // CORRECT^T: Pmat = I - h*el1*J (row-major); w = Pmat^{-T} adjAcor
-        for (int a = 0; a < nBase; ++a)
-          for (int b = 0; b < nBase; ++b)
-            Pmat[(size_t)a * nBase + b] = (a == b ? 1.0 : 0.0) - h * el1 * fx[a * nBase + b];
-        for (int c = 0; c < nBase; ++c) w[c] = adjAcor[c];
-        if (nBase > 0) { luFactor(Pmat.data(), nBase, piv.data()); luSolveT(Pmat.data(), nBase, piv.data(), w.data()); }
-        // adjPred[1] += h*J^T w ; adjPred[2] += -w ; mu += h*F_p^T w
-        double *p1 = &adjPred[(size_t)1 * nBase];
-        double *p2 = &adjPred[(size_t)2 * nBase];
-        for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx[a * nBase + b] * w[a]; p1[b] += h * s; }
-        for (int c = 0; c < nBase; ++c) p2[c] += -w[c];
-        for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += fp[a * np + p] * w[a]; mu[p] += h * s; }
-        // PREDICT^T (reverse Pascal): adjPred -> adj of yh at start of this step
-        for (int j = 1; j <= nq; ++j)
-          for (int i1 = nq; i1 >= j; --i1) {
-            double *dst = &adjPred[(size_t)(i1 + 1) * nBase];
-            const double *src = &adjPred[(size_t)i1 * nBase];
-            for (int c = 0; c < nBase; ++c) dst[c] += src[c];
-          }
-        // Lambda_prev = adjPred (rows 1..nq+1)
-        std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
-        for (int j = 1; j <= nq + 1; ++j) {
-          double *lamj = &lamFlat[(size_t)j * nBase];
-          const double *pj = &adjPred[(size_t)j * nBase];
-          for (int c = 0; c < nBase; ++c) lamj[c] = pj[c];
-        }
-        // BRIDGE^T: transpose of the pre-predict rescale (rejection scaleh) that
-        // brought yh from the previous accepted step's end-h to this step's used h.
-        double hPrevEnd = (n == 0) ? lsAdjH0 : lsAdjSteps[n - 1].hNext;
-        double rhB = h / hPrevEnd;
-        if (rhB != 1.0) { double rp = 1.0; for (int j = 1; j <= nq + 1; ++j) {
-          double *lamj = &lamFlat[(size_t)j * nBase];
-          for (int c = 0; c < nBase; ++c) lamj[c] *= rp;
-          rp *= rhB; } }
-      }
-
-      // t0 term: yh0[2] = h0*f(t0,y0) depends on p -> mu += h0*Lambda0[2]^T F_p(t0,y0).
-      // (yh0[1]=y0 is p-independent for P1.)
-      if (!lsAdjY0.empty()) {
-        const double *fx0, *fp0;
-        lsAdjEval(cSub, lsAdjT0, lsAdjY0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
-        const double *lam2 = &lamFlat[(size_t)2 * nBase];
-        for (int p = 0; p < np; ++p) { double s = 0; for (int c = 0; c < nBase; ++c) s += fp0[c * np + p] * lam2[c]; mu[p] += lsAdjH0 * s; }
-      }
-
+      for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
+      sweepToStart(segObs, ti);
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }
@@ -288,109 +331,126 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // order/step schedule and only agrees for params that do not perturb it.
   if (getenv("RX_LSADJ_SELFCHECK")) {
     int R = maxRows;
-    // PRIMAL replay yhP (R+2 rows x nBase) and sensitivity replay YHS (x np), both
-    // stepped through the SAME recorded predict/correct/update + transition map.
     std::vector<double> yhP((size_t)(R + 2) * nBase, 0.0);
     std::vector<double> YHS((size_t)(R + 2) * nBase * np, 0.0);
     std::vector<double> rhs((size_t)nBase * np), dac((size_t)nBase * np), P2(Pmat);
     std::vector<double> yPred(nBase), acor(nBase), fEval(eff, 0.0), Aw(eff, 0.0);
+    std::vector<double> Sin((size_t)nBase * np, 0.0);   // incoming state sensitivity
     auto SX = [&](int row, int c){ return (size_t)row * nBase + c; };
     auto IDX = [&](int row, int c, int p){ return ((size_t)row * nBase + c) * np + p; };
     int neqP[2]; neqP[0] = eff; neqP[1] = cSub;
-    // init Nordsieck at t0: yhP[1]=y0, yhP[2]=h0*f(y0); YHS row2 = h0*Fp(y0).
-    if (!lsAdjY0.empty()) {
-      for (int c = 0; c < nBase; ++c) yhP[SX(1, c)] = lsAdjY0[c];
-      for (int c = 0; c < eff; ++c) Aw[c] = 0.0;
-      for (int c = 0; c < nBase; ++c) Aw[c] = lsAdjY0[c];
-      dydt(neqP, lsAdjT0, Aw.data(), fEval.data());
-      for (int c = 0; c < nBase; ++c) yhP[SX(2, c)] = lsAdjH0 * fEval[c];
-      const double *fx0, *fp0;
-      lsAdjEval(cSub, lsAdjT0, lsAdjY0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
-      for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(2, c, p)] = lsAdjH0 * fp0[c * np + p];
-    }
     double worstSens = 0.0, worstPrimal = 0.0;
+    // obs -> bracketing flat step index (as in the backward)
     std::vector<int> obsIdx; std::vector<size_t> obsBrk;
     for (int i = 0; i < ind->n_all_times; ++i) if (isObs(getEvid(ind, ind->ix[i]))) {
-      double ti = ind->timeThread[ind->ix[i]]; size_t S = 0; while (S < nStep && lsAdjSteps[S].tn < ti - 1e-9) ++S; if (S >= nStep) S = nStep - 1;
+      double ti = ind->timeThread[ind->ix[i]];
+      int sg = 0; for (int s = (int)lsAdjSegs.size()-1; s >= 0; --s) { if (lsAdjSegs[s].t0 <= ti + 1e-9) { sg = s; break; } }
+      size_t S = lsAdjSegs[sg].stepBegin, e = lsAdjSegs[sg].stepEnd;
+      while (S < e && lsAdjSteps[S].tn < ti - 1e-9) ++S; if (S >= e) S = e - 1;
       obsIdx.push_back(i); obsBrk.push_back(S);
     }
-    for (size_t n = 0; n < nStep; ++n) {
-      const lsAdjStep &st = lsAdjSteps[n]; int nq = st.nq; double h = st.h, el1 = st.el[1];
-      const double *fx, *fp; lsAdjEval(cSub, st.tn, st.y.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx, &fp);
-      // BRIDGE scaleh: if the step actually USED an h != the previous accepted step's
-      // end-h, stoda rejected the first attempt and rescaled h before this accepted
-      // try (no hook fires on a rejection).  Rescale yh from hEnd_{n-1} to hu_n.
-      { double hPrevEnd = (n == 0) ? lsAdjH0 : lsAdjSteps[n - 1].hNext;
-        double rhB = h / hPrevEnd;
-        if (rhB != 1.0) { double rp = 1.0; for (int j = 1; j <= nq + 1; ++j) {
-          for (int c = 0; c < nBase; ++c) yhP[SX(j, c)] *= rp;
-          for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(j, c, p)] *= rp;
-          rp *= rhB; } } }
-      // PREDICT (Pascal) on primal + sensitivity
-      for (int j = nq; j >= 1; --j) for (int i1 = j; i1 <= nq; ++i1) {
-        for (int c = 0; c < nBase; ++c) yhP[SX(i1, c)] += yhP[SX(i1 + 1, c)];
-        for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(i1, c, p)] += YHS[IDX(i1 + 1, c, p)];
+    // forward replay, segment by segment (re-init the Nordsieck at each; carry the
+    // state sensitivity Sin across the interior-event boundary -- plain bolus so the
+    // state passes through the jump unchanged, dPhi/dy=I).
+    for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
+      const lsAdjSeg &Sg = lsAdjSegs[sg];
+      std::fill(yhP.begin(), yhP.end(), 0.0);
+      std::fill(YHS.begin(), YHS.end(), 0.0);
+      const double *fx0, *fp0;
+      lsAdjEval(cSub, Sg.t0, Sg.y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
+      for (int c = 0; c < nBase; ++c) yhP[SX(1, c)] = Sg.y0[c];
+      for (int c = 0; c < eff; ++c) Aw[c] = 0.0;
+      for (int c = 0; c < nBase; ++c) Aw[c] = Sg.y0[c];
+      dydt(neqP, Sg.t0, Aw.data(), fEval.data());
+      for (int c = 0; c < nBase; ++c) yhP[SX(2, c)] = Sg.h0 * fEval[c];
+      // yh0 sens: row1 = dPhi/dy * Sin (event jump), row2 = h0*(J*row1 + Fp)
+      for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] = Sin[(size_t)c * np + p];
+      if (Sg.evType == 3) { for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] = 0.0; }
+      else if (Sg.evType == 5 && Sg.evCmt >= 0) { for (int p = 0; p < np; ++p) YHS[IDX(1, Sg.evCmt, p)] = 0.0; }
+      else if (Sg.evType == 6 && Sg.evCmt >= 0) { for (int p = 0; p < np; ++p) YHS[IDX(1, Sg.evCmt, p)] *= Sg.evFactor; }
+      for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) {
+        double jr = 0; for (int b = 0; b < nBase; ++b) jr += fx0[c * nBase + b] * Sin[(size_t)b * np + p];
+        YHS[IDX(2, c, p)] = Sg.h0 * (jr + fp0[c * np + p]);
       }
-      // factor P = I - h el1 J at (tn, recorded y)
-      for (int a = 0; a < nBase; ++a) for (int b = 0; b < nBase; ++b) P2[(size_t)a*nBase+b] = (a==b?1.0:0.0) - h*el1*fx[a*nBase+b];
-      luFactor(P2.data(), nBase, piv.data());
-      // CORRECT primal: chord iteration acor = P^{-1}(h f(y) - (yh_pred[2]+acor))
-      // (one solve is exact for a linear model; iterate a few for mild nonlinearity).
-      for (int c = 0; c < nBase; ++c) acor[c] = 0.0;
-      for (int it = 0; it < 6; ++it) {
-        for (int c = 0; c < nBase; ++c) yPred[c] = yhP[SX(1, c)] + el1 * acor[c];
-        for (int c = 0; c < eff; ++c) Aw[c] = 0.0;
-        for (int c = 0; c < nBase; ++c) Aw[c] = yPred[c];
-        dydt(neqP, st.tn, Aw.data(), fEval.data());
-        std::vector<double> del(nBase);
-        for (int c = 0; c < nBase; ++c) del[c] = h * fEval[c] - (yhP[SX(2, c)] + acor[c]);
-        luSolve(P2.data(), nBase, piv.data(), del.data());
-        double nd = 0; for (int c = 0; c < nBase; ++c) { acor[c] += del[c]; nd = std::max(nd, fabs(del[c])); }
-        if (nd < 1e-14) break;
+      for (size_t n = Sg.stepBegin; n < Sg.stepEnd; ++n) {
+        const lsAdjStep &st = lsAdjSteps[n]; int nq = st.nq; double h = st.h, el1 = st.el[1];
+        const double *fx, *fp; lsAdjEval(cSub, st.tn, st.y.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx, &fp);
+        // BRIDGE scaleh (segment-aware hPrevEnd)
+        { double hPrevEnd = (n == Sg.stepBegin) ? Sg.h0 : lsAdjSteps[n - 1].hNext;
+          double rhB = h / hPrevEnd;
+          if (rhB != 1.0) { double rp = 1.0; for (int j = 1; j <= nq + 1; ++j) {
+            for (int c = 0; c < nBase; ++c) yhP[SX(j, c)] *= rp;
+            for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(j, c, p)] *= rp;
+            rp *= rhB; } } }
+        // PREDICT
+        for (int j = nq; j >= 1; --j) for (int i1 = j; i1 <= nq; ++i1) {
+          for (int c = 0; c < nBase; ++c) yhP[SX(i1, c)] += yhP[SX(i1 + 1, c)];
+          for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(i1, c, p)] += YHS[IDX(i1 + 1, c, p)];
+        }
+        for (int a = 0; a < nBase; ++a) for (int b = 0; b < nBase; ++b) P2[(size_t)a*nBase+b] = (a==b?1.0:0.0) - h*el1*fx[a*nBase+b];
+        luFactor(P2.data(), nBase, piv.data());
+        // CORRECT primal
+        for (int c = 0; c < nBase; ++c) acor[c] = 0.0;
+        for (int it = 0; it < 6; ++it) {
+          for (int c = 0; c < nBase; ++c) yPred[c] = yhP[SX(1, c)] + el1 * acor[c];
+          for (int c = 0; c < eff; ++c) Aw[c] = 0.0;
+          for (int c = 0; c < nBase; ++c) Aw[c] = yPred[c];
+          dydt(neqP, st.tn, Aw.data(), fEval.data());
+          std::vector<double> del(nBase);
+          for (int c = 0; c < nBase; ++c) del[c] = h * fEval[c] - (yhP[SX(2, c)] + acor[c]);
+          luSolve(P2.data(), nBase, piv.data(), del.data());
+          double nd = 0; for (int c = 0; c < nBase; ++c) { acor[c] += del[c]; nd = std::max(nd, fabs(del[c])); }
+          if (nd < 1e-14) break;
+        }
+        // CORRECT sensitivity
+        for (int p = 0; p < np; ++p) for (int a = 0; a < nBase; ++a) {
+          double jr = 0; for (int b = 0; b < nBase; ++b) jr += fx[a*nBase+b]*YHS[IDX(1,b,p)];
+          rhs[(size_t)a*np+p] = h*jr - YHS[IDX(2,a,p)] + h*fp[a*np+p];
+        }
+        for (int p = 0; p < np; ++p) { std::vector<double> col(nBase); for (int a=0;a<nBase;++a) col[a]=rhs[(size_t)a*np+p]; luSolve(P2.data(), nBase, piv.data(), col.data()); for (int a=0;a<nBase;++a) dac[(size_t)a*np+p]=col[a]; }
+        // UPDATE
+        for (int j = 1; j <= nq + 1; ++j) {
+          for (int c = 0; c < nBase; ++c) yhP[SX(j, c)] += st.el[j] * acor[c];
+          for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(j, c, p)] += st.el[j] * dac[(size_t)c*np+p];
+        }
+        for (int c = 0; c < nBase; ++c) worstPrimal = std::max(worstPrimal, fabs(yhP[SX(1, c)] - st.y[c]));
+        // TRANSITION (order change + scaleh)
+        if (st.dOrder == 1) {
+          for (int c = 0; c < nBase; ++c) yhP[SX(nq + 2, c)] = acor[c] * st.rInc;
+          for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(nq + 2, c, p)] = dac[(size_t)c*np+p] * st.rInc;
+        } else if (st.dOrder == -1) {
+          for (int c = 0; c < nBase; ++c) yhP[SX(nq + 1, c)] = 0.0;
+          for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(nq + 1, c, p)] = 0.0;
+        }
+        { double rp = 1.0; for (int j = 1; j <= st.nqNext + 1; ++j) {
+            for (int c = 0; c < nBase; ++c) yhP[SX(j, c)] *= rp;
+            for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(j, c, p)] *= rp;
+            rp *= st.rh;
+          } }
+        // obs bracketed by this step: extract at post-transition Nordsieck
+        for (size_t oi = 0; oi < obsIdx.size(); ++oi) if (obsBrk[oi] == n) {
+          int i = obsIdx[oi]; double ti = ind->timeThread[ind->ix[i]]; double sS = (ti - st.tn)/st.hNext;
+          double *outc = getSolve(i);
+          for (int k = 0; k < nBase; ++k) for (int p = 0; p < np; ++p) {
+            double Sval = 0, sp = 1.0; for (int j = 0; j <= st.nqNext; ++j) { Sval += sp * YHS[IDX(j+1,k,p)]; sp *= sS; }
+            worstSens = std::max(worstSens, fabs(Sval - outc[sensOff + k*np + p]));
+          }
+        }
       }
-      // CORRECT sensitivity: (I-h el1 J) dac = h J yhs_pred[1] - yhs_pred[2] + h Fp
-      for (int p = 0; p < np; ++p) for (int a = 0; a < nBase; ++a) {
-        double jr = 0; for (int b = 0; b < nBase; ++b) jr += fx[a*nBase+b]*YHS[IDX(1,b,p)];
-        rhs[(size_t)a*np+p] = h*jr - YHS[IDX(2,a,p)] + h*fp[a*np+p];
-      }
-      for (int p = 0; p < np; ++p) { std::vector<double> col(nBase); for (int a=0;a<nBase;++a) col[a]=rhs[(size_t)a*np+p]; luSolve(P2.data(), nBase, piv.data(), col.data()); for (int a=0;a<nBase;++a) dac[(size_t)a*np+p]=col[a]; }
-      // UPDATE primal + sensitivity: yh[j] += el[j]*acor
-      for (int j = 1; j <= nq + 1; ++j) {
-        for (int c = 0; c < nBase; ++c) yhP[SX(j, c)] += st.el[j] * acor[c];
-        for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(j, c, p)] += st.el[j] * dac[(size_t)c*np+p];
-      }
-      // primal replay check: replayed yh[1] must equal the recorded converged y
-      // (to ~the corrector's convergence level, i.e. O(tol) -- liblsoda stops the
-      // corrector at its own criterion while this replay solves the exact fixed
-      // point; a small residual here is expected and confirms the step-map model).
-      for (int c = 0; c < nBase; ++c) worstPrimal = std::max(worstPrimal, fabs(yhP[SX(1, c)] - st.y[c]));
-      // TRANSITION (order change + scaleh), same as the forward step map.
-      if (st.dOrder == 1) {
-        for (int c = 0; c < nBase; ++c) yhP[SX(nq + 2, c)] = acor[c] * st.rInc;
-        for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(nq + 2, c, p)] = dac[(size_t)c*np+p] * st.rInc;
-      } else if (st.dOrder == -1) {
-        for (int c = 0; c < nBase; ++c) yhP[SX(nq + 1, c)] = 0.0;
-        for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(nq + 1, c, p)] = 0.0;
-      }
-      { double rp = 1.0; for (int j = 1; j <= st.nqNext + 1; ++j) {   // scaleh
-          for (int c = 0; c < nBase; ++c) yhP[SX(j, c)] *= rp;
-          for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(j, c, p)] *= rp;
-          rp *= st.rh;
-        } }
-      // obs bracketed by step n: extract at the POST-transition Nordsieck (nqNext,hNext)
-      for (size_t oi = 0; oi < obsIdx.size(); ++oi) if (obsBrk[oi] == n) {
-        int i = obsIdx[oi]; double ti = ind->timeThread[ind->ix[i]]; double sS = (ti - st.tn)/st.hNext;
-        double *outc = getSolve(i);
-        for (int k = 0; k < nBase; ++k) for (int p = 0; p < np; ++p) {
-          double Sval = 0, sp = 1.0; for (int j = 0; j <= st.nqNext; ++j) { Sval += sp * YHS[IDX(j+1,k,p)]; sp *= sS; }
-          worstSens = std::max(worstSens, fabs(Sval - outc[sensOff + k*np + p]));
+      // carry the state sensitivity to the next segment's start time (identity bolus)
+      if (sg + 1 < lsAdjSegs.size()) {
+        const lsAdjStep &sl = lsAdjSteps[Sg.stepEnd - 1];
+        double sS = (lsAdjSegs[sg + 1].t0 - sl.tn) / sl.hNext;
+        for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) {
+          double v = 0, sp = 1.0; for (int j = 0; j <= sl.nqNext; ++j) { v += sp * YHS[IDX(j + 1, c, p)]; sp *= sS; }
+          Sin[(size_t)c * np + p] = v;
         }
       }
     }
     int nSwitch = 0, maxNq = 1;
     for (size_t n = 0; n < nStep; ++n) { if (n > 0 && lsAdjSteps[n].meth != lsAdjSteps[n-1].meth) ++nSwitch; maxNq = std::max(maxNq, lsAdjSteps[n].nq); }
-    REprintf("[lsadj] max|adjoint - discrete_forward_sens| = %.3e | primal_replay_err = %.3e | nStep=%zu maxOrder=%d methodSwitches=%d\n",
-             worstSens, worstPrimal, nStep, maxNq, nSwitch);
+    REprintf("[lsadj] max|adjoint - discrete_forward_sens| = %.3e | primal_replay_err = %.3e | nStep=%zu nSeg=%zu maxOrder=%d methodSwitches=%d\n",
+             worstSens, worstPrimal, nStep, lsAdjSegs.size(), maxNq, nSwitch);
   }
 }
 

@@ -801,4 +801,50 @@ rxTest({
       }
     }
   })
+
+  test_that("in-engine liblsodaadj (P5) interior event jumps: multi-dose / reset / replace / multiply", {
+    # Interior events reset liblsoda's integrator (istateReset), so the trajectory
+    # is a chain of Nordsieck segments joined by a state jump.  The segment re-init
+    # yh0=[y0,h0*f(y0)] couples the Nordsieck rows through f, so the costate handed to
+    # the previous segment is lam0[1] + h0*J(y0)^T*lam0[2], then the event's dPhi/dy^T
+    # (bolus = I; reset -> 0; replace[c] -> comp c 0; multiply[c] -> comp c *= factor).
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    p <- c(ka = 1.2, cl = 3.5, v = 25); obs <- c(1, 2, 6, 8, 12)
+    evs <- list(
+      multidose = et(et(amt = 100, cmt = "depot", ii = 6, addl = 3), c(2, 8, 14, 20)),
+      reset     = et(et(et(et(amt = 100, cmt = "depot"), 4, evid = 3), amt = 100, cmt = "depot", time = 4), obs),
+      replace   = et(et(et(amt = 100, cmt = "depot"), amt = 40, cmt = "center", evid = 5, time = 4), obs),
+      multiply  = et(et(et(amt = 100, cmt = "depot"), amt = 0.5, cmt = "center", evid = 6, time = 4), obs))
+
+    op0 <- Sys.getenv("RX_LSADJ_SELFCHECK", unset = NA)
+    on.exit(if (is.na(op0)) Sys.unsetenv("RX_LSADJ_SELFCHECK") else Sys.setenv(RX_LSADJ_SELFCHECK = op0), add = TRUE)
+    for (nm in names(evs)) {
+      ev <- evs[[nm]]
+      # (A) self-check: exact transpose (machine precision) + primal model match (O(tol))
+      Sys.setenv(RX_LSADJ_SELFCHECK = "1")
+      msg <- capture.output(
+        invisible(rxode2::rxSolve(madj, ev, params = p, method = "liblsodaadj", cores = 1, atol = 1e-10, rtol = 1e-10)),
+        type = "message")
+      Sys.unsetenv("RX_LSADJ_SELFCHECK")
+      line <- grep("adjoint - discrete_forward_sens", msg, value = TRUE)
+      expect_length(line, 1L)
+      expect_lt(as.numeric(sub(".*forward_sens\\| = ([0-9.eE+-]+).*", "\\1", line)), 1e-8)
+      expect_lt(as.numeric(sub(".*primal_replay_err = ([0-9.eE+-]+).*", "\\1", line)), 1e-6)
+      # (B) independent cross-check vs dop853s (both converge to the continuous
+      # derivative at tight tol) -- validates the boundary jump itself.
+      sL <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "liblsodaadj", cores = 1, atol = 1e-10, rtol = 1e-10))
+      sD <- as.data.frame(rxode2::rxSolve(madj, ev, params = p, method = "dop853s",    cores = 1, atol = 1e-10, rtol = 1e-10))
+      mx <- 0
+      for (st in ex$st) for (pn in cs) { cn <- sprintf("rx__sens_%s_BY_%s__", st, pn); mx <- max(mx, max(abs(sL[[cn]] - sD[[cn]]))) }
+      expect_lt(mx, 1e-5)
+    }
+
+    # bare reset (no redose): every post-reset sensitivity is identically 0
+    evBare <- et(et(et(amt = 100, cmt = "depot"), 4, evid = 3), obs)
+    sB <- as.data.frame(rxode2::rxSolve(madj, evBare, params = p, method = "liblsodaadj", cores = 1, atol = 1e-10, rtol = 1e-10))
+    post <- sB$time > 4
+    for (st in ex$st) for (pn in cs)
+      expect_lt(max(abs(sB[[sprintf("rx__sens_%s_BY_%s__", st, pn)]][post])), 1e-10)
+  })
 })
