@@ -8049,6 +8049,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   rk4s_rec ssRec; bool ssActive = false; int ssCmt = -1; double ssAmt = 0.0, ssIi = 0.0;
   std::vector<double> ssTrough;
   int _ssPendCmt = -1; double _ssPendAmt = 0.0, _ssPendIi = 0.0;
+  // steady-state fixed-rate infusion (dur<ii): period is ON for ssInfDur (rate
+  // ssInfRate into ssInfCmt) then OFF for ssInfDur2; handed over from handleSS.
+  bool ssInf = false; int ssInfCmt = -1; double ssInfDur = 0.0, ssInfDur2 = 0.0, ssInfRate = 0.0;
 
   for(i = 0; i < ind->n_all_times; i++) {
     ind->idx=i;
@@ -8213,6 +8216,13 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
           ssTrough.assign(yp, yp + eff);
           _ssPendCmt = -1;
+        } else if (_adjSSinfKind == 1 && !ssActive) {
+          // fixed-rate periodic infusion steady state: yp is the pre-infusion
+          // trough (period boundary); record the ON/OFF period after the loop.
+          ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
+          ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate;
+          ssTrough.assign(yp, yp + eff);
+          _adjSSinfKind = 0;
         }
       }
       // Capture the modeled infusion rate R now that handleEvid1 has set it.
@@ -8244,15 +8254,33 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // untouched; only for the table-driven explicit path (not composite/implicit/
   // Rosenbrock, which the ss IC term does not yet cover).
   if (adj && ssActive && !localBadSolve && ind->err == 0 &&
-      !rec.composite && !T.implicitRK && !T.rosenbrock && ssIi > 0.0) {
-    // yp after handleSS is the POST-dose peak yp* = dose(flow_tau(yp*)); the ss
-    // period map whose fixed point is yp* is Psi = dose . flow_tau, and for a
-    // bolus the dose Jacobian is I / dose_dp is 0, so M=d(flow_tau)/dY and
-    // B=d(flow_tau)/dp -- record just the flow over one period FROM the peak
-    // (do NOT re-apply the dose; yp already contains it).
+      !rec.composite && !T.implicitRK && !T.rosenbrock) {
     std::vector<double> ytmp = ssTrough, ssScratch;
-    rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
-                      ytmp.data(), 0.0, ssIi, &ssRec, ssScratch);
+    if (ssInf) {
+      // fixed-rate periodic infusion: record one steady-state period FROM the
+      // pre-infusion trough yp* -- infusion ON (rate into ssInfCmt) over dur,
+      // then OFF over dur2.  The rate is constant (dR/dp == 0) so M=dPhi/dY and
+      // B=dPhi/dp come entirely from the recorded flow (same monodromy as the
+      // bolus; the infusion only shifts WHERE the model Jacobian is sampled).
+      double _savedR = ind->InfusionRate[ssInfCmt];
+      ind->InfusionRate[ssInfCmt] = ssInfRate;
+      rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
+                        ytmp.data(), 0.0, ssInfDur, &ssRec, ssScratch);
+      ind->InfusionRate[ssInfCmt] = 0.0;
+      if (ssInfDur2 > 0.0)
+        rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
+                          ytmp.data(), ssInfDur, ssInfDur + ssInfDur2, &ssRec, ssScratch);
+      ind->InfusionRate[ssInfCmt] = _savedR;
+    } else if (ssIi > 0.0) {
+      // bolus: yp after handleSS is the POST-dose peak yp* = dose(flow_tau(yp*));
+      // for a bolus dose Jac is I / dose_dp is 0, so M=d(flow_tau)/dY,
+      // B=d(flow_tau)/dp -- record just the flow over one period FROM the peak
+      // (do NOT re-apply the dose; yp already contains it).
+      rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
+                        ytmp.data(), 0.0, ssIi, &ssRec, ssScratch);
+    } else {
+      ssActive = false;
+    }
   } else {
     ssActive = false;
   }

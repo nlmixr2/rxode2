@@ -140,6 +140,13 @@ rxTest({
     chkFwd(evSS,  "vern98s", "vern98", 1e-5)   # high-order embedded RK
     chkFwd(evSS,  "dop54s",  "dop54",  1e-3)   # adaptive: base discretization differs
     chkFwd(evSSa, "rk4s",    "rk4",    1e-5)   # ss bolus + regular addl doses
+    # fixed-rate periodic infusion steady state (dur = 100/10 = 10 < ii = 12):
+    # the ss period (ON dur, OFF ii-dur) monodromy supplies the IC term.
+    evInf  <- et(amt = 100, rate = 10, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    evInfa <- et(amt = 100, rate = 10, cmt = "depot", ss = 1, ii = 12, addl = 2) %>% et(seq(1, 40, by = 3))
+    chkFwd(evInf,  "rk4s",    "rk4",    1e-4)
+    chkFwd(evInf,  "vern98s", "vern98", 1e-4)
+    chkFwd(evInfa, "rk4s",    "rk4",    1e-4)   # ss infusion + regular addl doses
   })
 
   test_that("steady-state (ss): FD cross-check of the expanded rk4s adjoint sensitivities", {
@@ -161,15 +168,20 @@ rxTest({
     expect_lt(fdmax, 1e-4)
   })
 
-  test_that("steady-state (ss): infusion ss and unsupported drivers stay guarded", {
+  test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
-    # infusion ss (ss dose with a rate) is not yet covered
-    evInf <- et(amt = 100, rate = 10, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
-    expect_error(rxode2::rxSolve(madj, evInf, params = p, method = "rk4s", cores = 1),
-                 "steady-state")
-    # liblsodaadj (non-rk4s-framework driver) does not yet cover ss
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    # ss=2 (superposition) -- bolus and infusion -- not yet covered
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
+                                 params = p, method = "rk4s", cores = 1), "steady-state")
+    # modeled-rate infusion ss (dR/dp != 0) not yet covered
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = -1, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4)),
+                                 params = p, method = "rk4s", cores = 1), "steady-state")
+    # large-duration infusion (dur >= ii) not yet covered
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = 10, cmt = "depot", ss = 1, ii = 8) %>% et(c(1, 2, 4)),
+                                 params = p, method = "rk4s", cores = 1), "steady-state")
+    # liblsodaadj (non-rk4s-framework driver) does not yet cover ss
     expect_error(rxode2::rxSolve(madj, evSS, params = p, method = "liblsodaadj", cores = 1),
                  "steady-state")
   })

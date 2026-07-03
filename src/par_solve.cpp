@@ -2367,6 +2367,19 @@ extern "C" void handleSSbolus(int *neq,
   ind->ssTime = NA_REAL;
 }
 
+// Adjoint steady-state INFUSION handoff.  rk4s.cpp is #included into this
+// translation unit, so the rk4s discrete-adjoint driver reads these directly.
+// When op->adjoint, the steady-state infusion dispatch below publishes the
+// converged period's on/off durations, rate, and compartment so ind_rk4s_0 can
+// record one steady-state period (infusion ON for _adjSSinfDur, OFF for
+// _adjSSinfDur2) for the monodromy IC term.  Fixed-rate infusions with
+// dur < ii only (dR/dp == 0, single on/off window per period); other ss cases
+// leave _adjSSinfKind at its handleSS-entry value so the driver can guard them.
+//   kind: 0 none, 1 fixed-rate periodic infusion (dur<ii), 2 unhandled ss
+static thread_local int    _adjSSinfKind = 0;
+static thread_local int    _adjSSinfCmt = -1;
+static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0;
+
 extern "C" void solveSSinf(int *neq,
                            int *BadDose,
                            double *InfusionRate,
@@ -2780,6 +2793,7 @@ void handleSS(int *neq,
               t_update_inis u_inis,
               void *ctx) {
   rx_solve *rx = &rx_global;
+  _adjSSinfKind = 0;   // reset the adjoint ss-infusion handoff for this ss dose
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3391,6 +3405,19 @@ void handleSS(int *neq,
                    &dur,
                    &dur2,
                    &canBreak);
+        // Adjoint handoff: a fixed-rate (whI == EVIDF_INF_RATE) infusion with a
+        // single on/off window per period (dur < ii, this solveSSinf branch)
+        // has dR/dp == 0, so the rk4s driver can record its steady-state period
+        // for the monodromy IC term.  rate = getDose of the ON dose.
+        if (op->adjoint && dur > 0 && dur2 >= 0) {
+          int _w, _c, _w100, _wI, _w0;
+          getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
+          if (_wI == EVIDF_INF_RATE) {
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
+            _adjSSinfRate = getDose(ind, ind->idose[infBixds]);
+          }
+        }
         *istate=1;
         // REprintf("Assign ind->ixds to %d (idx: %d) #6\n", ind->ixds, ind->idx);
         for (k = neq[0]; k--;){

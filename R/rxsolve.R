@@ -2430,15 +2430,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
-      # The explicit rk4s-framework methods now propagate the steady-state
-      # initial-condition sensitivity for BOLUS ss doses via a one-period
-      # monodromy (rk4s.cpp).  Not yet covered: infusion ss (ss dose with a
-      # rate), and the non-rk4s-framework / stiff adjoint drivers (liblsodaadj,
-      # abs, cvodesadj, and the Rosenbrock/implicit variants).
+      # The explicit rk4s-framework methods propagate the steady-state
+      # initial-condition sensitivity (dY_ss/dp, one-period monodromy) for
+      # ss==1 BOLUS doses and ss==1 fixed-rate PERIODIC infusions (dur < ii).
+      # Not yet covered: ss==2 (superposition), modeled-rate/dur infusions,
+      # continuous (ii==0) or large-duration (dur >= ii) infusions, and the
+      # non-rk4s-framework / stiff adjoint drivers (liblsodaadj, abs, cvodesadj,
+      # Rosenbrock/implicit).
       .ssUnsup <- c(202L, 208L, 221L, 213L, 231L, 232L, 233L, 234L, 235L,
                     236L, 237L, 238L)
-      .infSs <- !is.null(.evDf$rate) && any(.evDf$ss != 0 & .evDf$rate != 0, na.rm = TRUE)
-      if (.ctl$method %in% .ssUnsup || .infSs) {
+      .r   <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
+      .iiv <- if (is.null(.evDf$ii))   rep(0, nrow(.evDf)) else .evDf$ii
+      .amv <- if (is.null(.evDf$amt))  rep(0, nrow(.evDf)) else .evDf$amt
+      .durv <- ifelse(.r > 0, .amv / .r, Inf)
+      .supported <- .evDf$ss == 1 &
+        (.r == 0 | (.r > 0 & .iiv > 0 & .durv < .iiv))
+      .badSs <- any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+      if (.ctl$method %in% .ssUnsup || .badSs) {
         stop("adjoint sensitivities do not yet support this steady-state (ss) ",
              "case; use sensMethod=\"forward\" for models with steady-state doses",
              call. = FALSE)
