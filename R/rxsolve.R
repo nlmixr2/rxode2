@@ -2399,6 +2399,24 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       object <- rxode2(.mexpCode)
     }
   }
+  # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model
+  # built for adjoint sensitivities carries the rx__adjFX_* transpose-Jacobian
+  # lhs; its rx__sens_* compartments have d/dt=0, so a plain (base) method just
+  # integrates them to zero and silently returns all-zero sensitivities.  The
+  # real dy/dp comes only from an in-engine discrete-adjoint method, whose code
+  # is base + 200 (rk4->rk4s, dop853->dop853s, cvode->cvodesadj, ...).  Upgrade
+  # the requested base method to its adjoint variant; methods without a direct
+  # variant fall back to the general-purpose adaptive adjoint (dop853s).
+  if (.ctl$method < 200L && (is.null(.ctl$stiff2) || .ctl$stiff2 == 0L) &&
+        any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
+    .adjCodes <- c(200L, 205L, 206L, 207L, 210L, 213L, 221L, 225L, 227L, 228L,
+                   229L, 231L, 232L, 233L, 234L, 235L, 236L, 237L, 238L, 239L,
+                   240L, 241L, 243L, 265L)
+    .up <- .ctl$method + 200L
+    if (!(.up %in% .adjCodes)) .up <- 200L      # no direct variant -> dop853s
+    .ctl$method <- .up
+    .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+  }
   # Delay differential equations (models using delay()) require a dense ODE
   # solver so delay() can interpolate past states.  When delays are present,
   # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense
@@ -4161,7 +4179,7 @@ rxIsImplicit <- function(method) {
 #' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
 rxIsStiff <- function(method) {
-  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L, 235L, 231L, 232L, 237L)
+  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L, 235L, 231L, 232L, 237L, 221L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
     "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
@@ -4235,7 +4253,7 @@ rxIsStiff <- function(method) {
 #' @export
 rxIsNonStiff <- function(method) {
   .switcherCodes <- c(1L, 2L, 3L)
-  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L, 235L, 231L, 232L, 237L)
+  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L, 235L, 231L, 232L, 237L, 221L)
   .methodIdx <- c(
     "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
     "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,

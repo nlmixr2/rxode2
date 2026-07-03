@@ -531,4 +531,38 @@ rxTest({
       expect_lt(max(abs(sA[[col]] - sB[[col]])), 1e-5)
     }
   })
+
+  # Adjoint auto-switch: solving an adjoint-expanded model with a BASE method
+  # upgrades it to the adjoint variant (base + 200): rk4->rk4s, dop853->dop853s,
+  # cvode->cvodesadj; a method without a direct variant (liblsoda) falls back to
+  # dop853s.  Without the switch the rx__sens_* compartments (d/dt=0) integrate to
+  # all-zero.
+  test_that("adjoint auto-switch: base methods produce real sensitivities (cvode->cvodesadj)", {
+    cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
+    ex <- rxode2::.rxAdjointExpand(mText, cs2)
+    madj <- rxode2::rxode2(ex$text)
+    mbase <- rxode2::rxode2(mText)
+    ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
+    solveBase <- function(pp) as.matrix(as.data.frame(rxode2::rxSolve(
+      mbase, ev, params = pp, method = "liblsoda", atol = 1e-11, rtol = 1e-11, cores = 1))[, c("depot", "center")])
+    fdref <- list()
+    for (pn in cs2) {
+      hh <- p2[[pn]] * 1e-6; pp <- p2; pm <- p2; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+      for (k in seq_along(ex$st)) fdref[[paste0(k, pn)]] <- fd[, k]
+    }
+    for (meth in c("cvode", "rk4", "dop853", "liblsoda")) {
+      s <- as.data.frame(rxode2::rxSolve(madj, ev, params = p2, method = meth,
+                                         atol = 1e-11, rtol = 1e-11, cores = 1))
+      m <- 0
+      for (pn in cs2) for (k in seq_along(ex$st))
+        m <- max(m, max(abs(s[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fdref[[paste0(k, pn)]])))
+      expect_lt(m, 1e-4)
+      # genuinely non-zero (the switch actually happened; not silent zeros)
+      expect_gt(max(abs(s[["rx__sens_center_BY_cl__"]])), 1e-3)
+    }
+    # rxIsStiff classifies cvodesadj like cvode (both CVODE/BDF)
+    expect_true(rxode2::rxIsStiff("cvodesadj"))
+    expect_false(rxode2::rxIsNonStiff("cvodesadj"))
+  })
 })
