@@ -211,10 +211,10 @@ rxTest({
     nex <- rxode2::.rxAdjointExpand(mt, ncs); nmadj <- rxode2::rxode2(nex$text)
     nmfwd <- rxode2::rxode2(mt, calcSens = ncs)                # analytic forward sensitivities
     ncols <- as.vector(outer(nex$st, ncs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
-    # Skipped (documented gaps): doses to cmt>=3 hit the sensitivity output
-    # compartments (which differ between the adjoint and forward models); ids
-    # 20/23/24 have an observation coincident with a full reset (evid 3/4) -- a
-    # known adjoint gradient edge case.
+    # Skipped: doses to cmt>=3 hit the sensitivity output compartments (which
+    # differ between the adjoint output slots and the forward ODE states).
+    # (Observations coincident with a full reset -- ids 23/24 -- are now handled
+    # via the boundaryDose disambiguation and are no longer skipped.)
     tested <- 0
     for (id in unique(d0$id)) {
       di <- d0[d0$id == id, ]

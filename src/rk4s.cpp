@@ -63,8 +63,9 @@ struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult; }; 
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
-    const double *fx0, const double *dlag) {
+    const double *fx0, const double *dlag, size_t maxIdx = (size_t)-1) {
   for (size_t di = 0; di < doses.size(); ++di) {
+    if (di >= maxIdx) break;             // only doses recorded before this point
     if (doses[di].step != n) continue;
     const rk4s_dose &d = doses[di];
     switch (d.type) {
@@ -7837,6 +7838,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const std::vector<size_t> &boundary,
                                const std::vector<rk4s_dose> &doses,
                                const std::vector<rk4s_infus> &infus,
+                               const std::vector<size_t> &boundaryDose,
                                const rk4s_rec *ssRec = NULL,
                                const double *ssContY = NULL) {
   size_t nStep = rec.nStep();
@@ -7986,6 +7988,18 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (int k = 0; k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
+      // An observation whose recorded step IS a state-jump step (reset / replace
+      // / multiply, or a modeled-F/alag bolus at the obs time) reads the
+      // POST-jump state, but the sweep below only applies jumps at steps
+      // fromStep-1..0 -- so transpose that coincident jump into the seed here.
+      // A reset adds no steps, so the pre- AND post-reset observations share the
+      // same boundary step; boundaryDose[i] (the dose count when the obs was
+      // stored) disambiguates -- only jumps recorded BEFORE this observation
+      // apply to it.
+      if (!doses.empty())
+        rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
+                            &FXs[0][(fromStep < nStep ? fromStep : nStep - 1) * nfx], dlagP,
+                            boundaryDose[i]);
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
       dde.applyDoseJumps(mu, doses);
@@ -8056,6 +8070,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   rec.composite = (op->stiff2 > 0) ? 1 : 0;   // AutoSwitch composite (dop853s+ros4s)
   std::vector<double> scratch;
   std::vector<size_t> boundary(ind->n_all_times, 0);  // cumulative steps at each stored time
+  std::vector<size_t> boundaryDose(ind->n_all_times, 0); // # doses recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1;                               // set when the current event opens an infusion
@@ -8271,7 +8286,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
-    if (adj && i >= 0 && i < ind->n_all_times) boundary[i] = rec.nStep();
+    if (adj && i >= 0 && i < ind->n_all_times) { boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); }
     ind->solvedIdx = i;
   }
 
@@ -8315,7 +8330,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   if (adj && !localBadSolve && ind->err == 0) {
     rk4s_backward_fill(rx, op, ind, neq[1], rec, T, op->adjNbase, op->adjNp,
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
-                       boundary, doseRec, infusRec, ssActive ? &ssRec : NULL,
+                       boundary, doseRec, infusRec, boundaryDose, ssActive ? &ssRec : NULL,
                        ssCont ? ssContY.data() : NULL);
   }
 
