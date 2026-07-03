@@ -303,6 +303,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
                 getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp)});
+            } else if (_whI == 0 && op->adjDlagOff >= 0) {
+              // additive bolus in a model with a modeled alag(): record the
+              // (lagged) dose time so the backward can add the transversality
+              // mu += -amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
+              evJumps.push_back({xout, _cmt, 0, getDose(ind, ind->ix[i])});
             }
           }
         } }
@@ -404,9 +409,22 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         double te = evJumps[segEv[s]].t;
         CVodeSetStopTime(bmem, (sunrealtype)te);
         if (CVode(bmem, (sunrealtype)te, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
-        int c = evJumps[segEv[s]].cmt;
-        if (evJumps[segEv[s]].type == 5) NV_Ith_S(B, c) = 0.0;          // replace
-        else NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;               // multiply
+        int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
+        if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
+        else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
+        else {                                                          // additive-alag transversality
+          // F_X and dlag at the post-dose primal y(te+); lambda unchanged (dPhi/dy=I).
+          double *yq = bu.yq.data(), *A = bu.A.data();
+          hist.interp((double)te, yq);
+          for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
+          for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
+          calc_lhs(cSub, (double)te, A, ind->lhs);
+          const double *fx = &ind->lhs[bu.fxOff];
+          const double *dlag = &ind->lhs[op->adjDlagOff];
+          double amt = evJumps[segEv[s]].factor, sc = 0.0;
+          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * fx[ii * nBase + c];
+          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -amt * dlag[c * np + p] * sc;
+        }
         if (CVodeReInit(bmem, (sunrealtype)te, B) < 0) { bok = 0; break; }
       }
       if (!bok) break;
