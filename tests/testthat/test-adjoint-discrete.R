@@ -126,6 +126,52 @@ rxTest({
     expect_gt(max(abs(sd[["rx__sens_center_BY_Fbio__"]])), 1)
   })
 
+  test_that("discrete-adjoint event jumps (reset/replace/multiply) match FD of the RK4 solve", {
+    cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
+    ex <- rxode2::.rxAdjointExpand(mText, cs2)
+    madj <- rxode2::rxode2(ex$text)
+    mbase <- rxode2::rxode2(mText)
+    solveBase <- function(pp, ev) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, ev, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+    evs <- list(
+      reset    = et(amt = 100, cmt = "depot") %>% et(4, evid = 3) %>%
+        et(amt = 100, cmt = "depot", time = 4) %>% et(c(1, 2, 6, 8, 12)),
+      replace  = et(amt = 100, cmt = "depot") %>% et(amt = 40, cmt = "center", evid = 5, time = 4) %>%
+        et(c(1, 2, 6, 8, 12)),
+      multiply = et(amt = 100, cmt = "depot") %>% et(amt = 0.5, cmt = "center", evid = 6, time = 4) %>%
+        et(c(1, 2, 6, 8, 12))
+    )
+    # reset costate jump: rk4s/dop853s (discrete) AND cvodesadj (continuous);
+    # replace/multiply jumps: discrete methods (cvodesadj adds them later).
+    methForEv <- list(reset = c("rk4s", "dop853s", "cvodesadj"),
+                      replace = c("rk4s", "dop853s"),
+                      multiply = c("rk4s", "dop853s"))
+    for (nm in names(evs)) {
+      ev <- evs[[nm]]
+      for (meth in methForEv[[nm]]) {
+        sd <- as.data.frame(rxode2::rxSolve(madj, ev, params = p2, method = meth, cores = 1))
+        fdmax <- 0
+        for (pn in cs2) {
+          hh <- p2[[pn]] * 1e-6; pp <- p2; pm <- p2; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+          fd <- (solveBase(pp, ev) - solveBase(pm, ev)) / (2 * hh)
+          for (k in seq_along(ex$st))
+            fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+        }
+        # rk4s/dop853s match the RK4 map to ~FD precision; cvodesadj (CVODE forward)
+        # differs from the rk4 reference at solver-tolerance level.
+        expect_lt(fdmax, if (meth == "cvodesadj") 1e-3 else 1e-4)
+      }
+    }
+    # bare reset (no redose): every post-reset sensitivity is identically 0
+    ev0 <- et(amt = 100, cmt = "depot") %>% et(4, evid = 3) %>% et(c(1, 2, 6, 8, 12))
+    for (meth in c("rk4s", "dop853s")) {
+      s0 <- as.data.frame(rxode2::rxSolve(madj, ev0, params = p2, method = meth, cores = 1))
+      post <- s0$time > 4
+      for (pn in cs2) for (st in ex$st)
+        expect_lt(max(abs(s0[[sprintf("rx__sens_%s_BY_%s__", st, pn)]][post])), 1e-8)
+    }
+  })
+
   test_that("in-engine rk4s population solve (parallel) matches per-subject FD", {
     cs2 <- c("ka", "cl", "v")
     tms <- c(1, 4, 12, 24)

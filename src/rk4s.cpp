@@ -37,7 +37,42 @@
 // its (F-scaled) state jump precedes (step = cumulative steps at dose time),
 // the base-state compartment, and the RAW amt (bioavailability F is applied to
 // the state in handle_evid; the adjoint needs mu += amt*dF/dtheta*lambda[cmt]).
-struct rk4s_dose { size_t step; int cmt; double amt; };
+// A recorded forward state-jump event, tagged with the cumulative step index it
+// precedes.  type: 0 = additive bolus (amt = raw dose; F-jump quadrature), 3 =
+// reset (evid 3, whole state -> inits), 5 = replace (state cmt -> value), 6 =
+// multiply (state cmt *= amt).
+struct rk4s_dose { size_t step; int cmt; double amt; int type; };
+
+// Apply the transpose event jumps at backward step n.  On entry lamR = lambda_n+
+// (post-RK-transpose, pre-jump); on exit lamR = lambda_n (= (dPhi/dy)^T lambda_n+).
+//   additive (dPhi/dy = I): lambda unchanged; mu += amt * dF/dp * lambda[c].
+//   reset    (Phi = inits) : dPhi/dy = 0        -> lambda := 0.
+//   replace  (state c := v): row c is 0         -> lambda[c] := 0.
+//   multiply (state c *= a): diag c is a        -> lambda[c] *= a.
+// A constant replace/multiply value contributes nothing to mu; a modeled value
+// would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
+    std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
+    const std::vector<double> &dFdp, bool haveDf, int nBase, int np) {
+  for (size_t di = 0; di < doses.size(); ++di) {
+    if (doses[di].step != n) continue;
+    const rk4s_dose &d = doses[di];
+    switch (d.type) {
+    case 0:
+      if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFdp[d.cmt * np + p] * lamR[d.cmt];
+      break;
+    case 3:
+      for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
+      break;
+    case 5:
+      lamR[d.cmt] = 0.0;
+      break;
+    case 6:
+      lamR[d.cmt] *= d.amt;
+      break;
+    }
+  }
+}
 
 // Butcher tableau for an explicit RK method (the discrete-adjoint transpose is
 // table-driven, so adding a fixed-step OR adaptive explicit method = adding a
@@ -891,6 +926,7 @@ struct rk4s_dde {
     if (!active || !hasDtau || doses.empty()) return;
     int ndt = nfx*np;
     for (size_t di = 0; di < doses.size(); ++di) {
+      if (doses[di].type != 0) continue;   // DDE dose-jump is additive-bolus only
       int jstate = doses[di].cmt; double a = doses[di].amt;
       double tDose = btime(doses[di].step);
       size_t sd = (doses[di].step < rec->nStep()) ? doses[di].step : (rec->nStep()-1);
@@ -969,7 +1005,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       for (int j = 0; j < i; ++j) { double a = T.A[i*s+j]; if (a != 0.0) { double *kbj = &kbar[j*nBase]; for (int m = 0; m < nBase; ++m) kbj[m] += a*ubar[m]; } }
     }
     for (int m = 0; m < nBase; ++m) lamR[m] = ybar[m];
-    if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == n) { int c = doses[di].cmt; double a = doses[di].amt; for (int p = 0; p < np; ++p) muR[p] += a*dFdp[c*np+p]*lamR[c]; }
+    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, nBase, np, eff, Ascratch, [&](size_t n){ return &rec.a[(n*s)*nBase]; });
@@ -1028,7 +1064,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
     for (int i = 0; i < s; ++i) { const double *Fpi = &FP[(nn*s+i)*nfp]; const double *zi = &z[i*n];
       for (int p = 0; p < np; ++p) { double v = 0; for (int a = 0; a < n; ++a) v += Fpi[a*np+p]*zi[a]; muR[p] += v; } }
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
-    if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == nn) { int c = doses[di].cmt; double a = doses[di].amt; for (int p = 0; p < np; ++p) muR[p] += a*dFdp[c*np+p]*lamR[c]; }
+    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[(nn*s)*n]; });
@@ -1107,7 +1143,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
       }
     }
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
-    if (haveDose) for (size_t di = 0; di < doses.size(); ++di) if (doses[di].step == nn) { int c=doses[di].cmt; double a=doses[di].amt; for (int p=0;p<np;++p) muR[p]+=a*dFdp[c*np+p]*lamR[c]; }
+    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[rec.aOff[nn]]; });
@@ -1193,14 +1229,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       }
     }
     for (int j = 0; j < nBase; ++j) lamR[j] = Ybar[j];   // additive bolus: dD/dX = I
-    if (haveDose) {
-      for (size_t di = 0; di < doses.size(); ++di) {
-        if (doses[di].step == n) {
-          int c = doses[di].cmt; double a = doses[di].amt;
-          for (int p = 0; p < np; ++p) muR[p] += a * dFdp[c * np + p] * lamR[c];
-        }
-      }
-    }
+    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np);
   };
 
   // Full-trajectory: for each observation and each base state k, an independent
@@ -1356,18 +1385,33 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
-      // Record additive boluses for the adjoint F-jump: raw amt + 0-based cmt,
-      // tagged with the cumulative step count (the F-scaled state jump precedes
-      // the next RK4 step, whose 0-based index == rec.nStep() at this point).
-      if (adj && op->adjDfOff >= 0) {
+      // Record forward state-jump events for the adjoint transpose jumps, tagged
+      // with the cumulative step count (the jump precedes the next RK step, whose
+      // 0-based index == rec.nStep() at this point).
+      if (adj) {
         int _evCur = getEvid(ind, ind->ix[i]);
-        if (isDose(_evCur)) {
+        if (_evCur == 3) {                                  // reset -> lambda := 0
+          rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = 0; _d.amt = 0.0; _d.type = 3;
+          doseRec.push_back(_d);
+        } else if (isDose(_evCur)) {
           int _wh, _cmtD, _wh100, _whI, _wh0;
           getWh(_evCur, &_wh, &_cmtD, &_wh100, &_whI, &_wh0);
-          if (_whI == 0 && _cmtD >= 0 && _cmtD < op->adjNbase) {
-            rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
-            _d.amt = getDose(ind, ind->ix[i]);
-            doseRec.push_back(_d);
+          if (_cmtD >= 0 && _cmtD < op->adjNbase) {
+            if (_whI == 0) {                                // additive bolus (F-jump)
+              if (op->adjDfOff >= 0) {
+                rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
+                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
+                doseRec.push_back(_d);
+              }
+            } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
+              rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
+              doseRec.push_back(_d);
+            } else if (_whI == EVIDF_MULT) {                // multiply -> lambda[c] *= alpha
+              rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
+              _d.amt = getAmt(ind, ind->id, _cmtD, getDoseIndex(ind, ind->idx), xout, yp);
+              _d.type = 6;
+              doseRec.push_back(_d);
+            }
           }
         }
       }
