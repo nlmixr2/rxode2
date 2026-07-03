@@ -7836,7 +7836,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                int fxOff, int fpOff, int dfOff, int sensOff,
                                const std::vector<size_t> &boundary,
                                const std::vector<rk4s_dose> &doses,
-                               const std::vector<rk4s_infus> &infus) {
+                               const std::vector<rk4s_infus> &infus,
+                               const rk4s_rec *ssRec = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus); return; }
@@ -7925,6 +7926,43 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                             &FXs[0][n * nfx], dlagP);
   };
 
+  // Steady-state IC term: the window starts from the converged trough yp*, whose
+  // dY*/dp is the fixed point S_ss = (I-M)^{-1} B (M=dPhi/dY, B=dPhi/dp of one
+  // steady-state period Phi = flow_tau . dose).  After the window sweep, lam is
+  // the costate at yp*, and the IC contribution to mu is lam^T S_ss =
+  // sum_{j>=0} lam^T M^j B.  Each term is one backward transpose of the recorded
+  // ss period (ssRec, pure flow from the peak; bolus dose Jacobian is I -> no
+  // dose jump): ssPeriodTranspose accumulates B^T nu into muAcc and replaces nu
+  // with M^T nu, so iterating it from nu=lam sums the geometric series.
+  std::vector<std::vector<double> > ssFXs, ssFPs;
+  size_t ssN = (ssRec ? ssRec->nStep() : 0);
+  if (ssN > 0) {
+    ssFXs.resize(sN); ssFPs.resize(sN);
+    for (int i = 0; i < sN; ++i) { ssFXs[i].resize(ssN * nfx); ssFPs[i].resize(ssN * nfp); }
+    for (size_t n = 0; n < ssN; ++n) {
+      double h = ssRec->h[n], t0s = ssRec->t0[n];
+      for (int i = 0; i < sN; ++i)
+        rk4s_eval_jac(cSub, t0s + T.c[i] * h, &ssRec->a[(n * sN + i) * nBase], nBase, np,
+                      fxOff, fpOff, Ascratch.data(), eff, ind, &ssFXs[i][n * nfx], &ssFPs[i][n * nfp]);
+    }
+  }
+  auto ssPeriodTranspose = [&](std::vector<double> &nu, std::vector<double> &muAcc) {
+    for (size_t nn = ssN; nn >= 1; --nn) {
+      size_t n = nn - 1; double h = ssRec->h[n];
+      for (int j = 0; j < nBase; ++j) Ybar[j] = nu[j];
+      for (int i = 0; i < sN; ++i) for (int j = 0; j < nBase; ++j) kbar[i * nBase + j] = h * T.b[i] * nu[j];
+      for (int i = sN - 1; i >= 0; --i) {
+        const double *fx = &ssFXs[i][n * nfx], *fp = &ssFPs[i][n * nfp];
+        const double *kb = &kbar[i * nBase];
+        for (int j = 0; j < nBase; ++j) { double s = 0; for (int q = 0; q < nBase; ++q) s += fx[q * nBase + j] * kb[q]; abar[j] = s; }
+        for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += fp[q * np + p] * kb[q]; muAcc[p] += s; }
+        for (int j = 0; j < nBase; ++j) Ybar[j] += abar[j];
+        for (int js = 0; js < i; ++js) { double aij = T.A[i * sN + js]; if (aij != 0.0) { double *kbj = &kbar[js * nBase]; for (int j = 0; j < nBase; ++j) kbj[j] += h * aij * abar[j]; } }
+      }
+      for (int j = 0; j < nBase; ++j) nu[j] = Ybar[j];
+    }
+  };
+
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
@@ -7937,6 +7975,15 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
       dde.applyDoseJumps(mu, doses);
+      if (ssN > 0) {                       // add the steady-state IC sensitivity
+        std::vector<double> nu = lam, muAdd(np, 0.0);
+        for (int git = 0; git < op->maxSS + 5; ++git) {
+          ssPeriodTranspose(nu, muAdd);
+          double nn2 = 0; for (int j = 0; j < nBase; ++j) nn2 += fabs(nu[j]);
+          if (nn2 < 1e-14) break;
+        }
+        for (int p = 0; p < np; ++p) mu[p] += muAdd[p];
+      }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }
@@ -7994,6 +8041,14 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1;                               // set when the current event opens an infusion
+  // Steady-state (ss=1 bolus) initial-condition sensitivity: after handleSS the
+  // window starts from the converged TROUGH yp* = flow_tau(dose(yp*)).  Its
+  // dY*/dp feeds the backward sweep's IC term via a one-period monodromy
+  // (rk4s_ss_*).  ssRec records that one steady-state period's flow (from the
+  // PEAK = dose(trough)); ssTrough is yp*, ssCmt/ssAmt/ssIi the bolus + period.
+  rk4s_rec ssRec; bool ssActive = false; int ssCmt = -1; double ssAmt = 0.0, ssIi = 0.0;
+  std::vector<double> ssTrough;
+  int _ssPendCmt = -1; double _ssPendAmt = 0.0, _ssPendIi = 0.0;
 
   for(i = 0; i < ind->n_all_times; i++) {
     ind->idx=i;
@@ -8098,6 +8153,13 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                 _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
                 doseRec.push_back(_d);
               }
+              // ss=1 reset bolus: mark for one-period monodromy capture (the
+              // trough yp* is read after handleSS below).  ii read now, before
+              // handleEvid1 advances ind->ixds past this dose.
+              if (_wh0 == EVID0_SS) {
+                _ssPendCmt = _cmtD; _ssPendAmt = getDose(ind, ind->ix[i]);
+                _ssPendIi = getIiNumber(ind, ind->ixds);
+              }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
               doseRec.push_back(_d);
@@ -8144,6 +8206,14 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
+        // ss=1 bolus just converged: yp is the trough yp*.  Record it (one ss
+        // regimen supported; a later ss dose overwrites -- the last-in-window
+        // trough is the one whose IC the sweep reaches).
+        if (_ssPendCmt >= 0) {
+          ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
+          ssTrough.assign(yp, yp + eff);
+          _ssPendCmt = -1;
+        }
       }
       // Capture the modeled infusion rate R now that handleEvid1 has set it.
       if (_infusOnCmt >= 0 && !infusRec.empty()) {
@@ -8169,11 +8239,29 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->solvedIdx = i;
   }
 
+  // Record one steady-state period's flow (from the PEAK = dose(trough)) for the
+  // backward IC-term monodromy.  Done once here on a copy so the actual solve is
+  // untouched; only for the table-driven explicit path (not composite/implicit/
+  // Rosenbrock, which the ss IC term does not yet cover).
+  if (adj && ssActive && !localBadSolve && ind->err == 0 &&
+      !rec.composite && !T.implicitRK && !T.rosenbrock && ssIi > 0.0) {
+    // yp after handleSS is the POST-dose peak yp* = dose(flow_tau(yp*)); the ss
+    // period map whose fixed point is yp* is Psi = dose . flow_tau, and for a
+    // bolus the dose Jacobian is I / dose_dp is 0, so M=d(flow_tau)/dY and
+    // B=d(flow_tau)/dp -- record just the flow over one period FROM the peak
+    // (do NOT re-apply the dose; yp already contains it).
+    std::vector<double> ytmp = ssTrough, ssScratch;
+    rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
+                      ytmp.data(), 0.0, ssIi, &ssRec, ssScratch);
+  } else {
+    ssActive = false;
+  }
+
   // ---- backward reverse-mode sweep -> fill rx__sens_* output slots ----
   if (adj && !localBadSolve && ind->err == 0) {
     rk4s_backward_fill(rx, op, ind, neq[1], rec, T, op->adjNbase, op->adjNp,
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
-                       boundary, doseRec, infusRec);
+                       boundary, doseRec, infusRec, ssActive ? &ssRec : NULL);
   }
 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;

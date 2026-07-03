@@ -2430,9 +2430,19 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
-      stop("adjoint sensitivities do not yet support steady-state (ss) dosing; ",
-           "use sensMethod=\"forward\" for models with steady-state doses",
-           call. = FALSE)
+      # The explicit rk4s-framework methods now propagate the steady-state
+      # initial-condition sensitivity for BOLUS ss doses via a one-period
+      # monodromy (rk4s.cpp).  Not yet covered: infusion ss (ss dose with a
+      # rate), and the non-rk4s-framework / stiff adjoint drivers (liblsodaadj,
+      # abs, cvodesadj, and the Rosenbrock/implicit variants).
+      .ssUnsup <- c(202L, 208L, 221L, 213L, 231L, 232L, 233L, 234L, 235L,
+                    236L, 237L, 238L)
+      .infSs <- !is.null(.evDf$rate) && any(.evDf$ss != 0 & .evDf$rate != 0, na.rm = TRUE)
+      if (.ctl$method %in% .ssUnsup || .infSs) {
+        stop("adjoint sensitivities do not yet support this steady-state (ss) ",
+             "case; use sensMethod=\"forward\" for models with steady-state doses",
+             call. = FALSE)
+      }
     }
   }
   # liblsodaadj (202) is the exact discrete adjoint of liblsoda's Nordsieck

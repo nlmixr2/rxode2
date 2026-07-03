@@ -101,7 +101,7 @@ rxTest({
     expect_lt(fdmax, 1e-4)
   })
 
-  test_that("steady-state dosing: forward-only adjoint primal matches base; expanded adjoint sens is guarded", {
+  test_that("steady-state (ss) bolus: forward-only adjoint primal matches base to machine precision", {
     # The ss pre-solve reuses the base method's single-point stepper for the
     # adjoint method codes (rk4s -> rk4), so the forward primal solves
     # steady-state dosing exactly (previously it left yp un-advanced -> huge
@@ -114,12 +114,63 @@ rxTest({
     fo <- as.matrix(as.data.frame(
       rxode2::rxSolve(mplain, evSS, params = p, method = "rk4s", cores = 1))[, c("depot", "center")])
     expect_lt(max(abs(fo - base)), 1e-10)
-    # The backward sweep does not yet propagate the steady-state initial
-    # condition's parameter dependence (dY_ss/dp), so an EXPANDED adjoint model
-    # with ss dosing is guarded rather than returning wrong rx__sens_* columns.
+  })
+
+  test_that("steady-state (ss) bolus: expanded adjoint sensitivities match forward sensitivities", {
+    # The backward sweep adds the steady-state initial-condition sensitivity
+    # dY_ss/dp via a one-period monodromy (rk4s.cpp), so the expanded adjoint
+    # rx__sens_* columns reproduce the forward-sensitivity gradients at steady
+    # state.  Compared against the analytic FORWARD-sensitivity model solved with
+    # the SAME base discretization.
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
-    expect_error(rxode2::rxSolve(madj, evSS, params = p, method = "rk4s", cores = 1),
+    mfwd <- rxode2::rxode2(mText, calcSens = cs)      # forward-sensitivity model
+    chkFwd <- function(evSS, adjMeth, fwdMeth, tol) {
+      a <- as.data.frame(suppressWarnings(rxode2::rxSolve(madj, evSS, params = p, method = adjMeth, cores = 1)))
+      f <- as.data.frame(suppressWarnings(rxode2::rxSolve(mfwd, evSS, params = p, method = fwdMeth, cores = 1)))
+      mx <- 0
+      for (pn in cs) for (st in ex$st)
+        mx <- max(mx, max(abs(a[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] -
+                              f[[sprintf("rx__sens_%s_BY_%s__", st, pn)]])))
+      expect_lt(mx, tol)
+    }
+    evSS  <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    evSSa <- et(amt = 100, cmt = "depot", ss = 1, ii = 12, addl = 2) %>% et(seq(1, 40, by = 3))
+    chkFwd(evSS,  "rk4s",    "rk4",    1e-5)   # fixed-step: matches to FD level
+    chkFwd(evSS,  "vern98s", "vern98", 1e-5)   # high-order embedded RK
+    chkFwd(evSS,  "dop54s",  "dop54",  1e-3)   # adaptive: base discretization differs
+    chkFwd(evSSa, "rk4s",    "rk4",    1e-5)   # ss bolus + regular addl doses
+  })
+
+  test_that("steady-state (ss): FD cross-check of the expanded rk4s adjoint sensitivities", {
+    evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    sd <- as.data.frame(suppressWarnings(
+      rxode2::rxSolve(madj, evSS, params = p, method = "rk4s", cores = 1)))
+    mbase <- rxode2::rxode2(mText)
+    solveBase <- function(pp) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, evSS, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+    fdmax <- 0
+    for (pn in cs) {
+      hh <- p[[pn]] * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+      for (k in seq_along(ex$st))
+        fdmax <- max(fdmax, max(abs(sd[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+    }
+    expect_lt(fdmax, 1e-4)
+  })
+
+  test_that("steady-state (ss): infusion ss and unsupported drivers stay guarded", {
+    ex <- rxode2::.rxAdjointExpand(mText, cs)
+    madj <- rxode2::rxode2(ex$text)
+    # infusion ss (ss dose with a rate) is not yet covered
+    evInf <- et(amt = 100, rate = 10, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    expect_error(rxode2::rxSolve(madj, evInf, params = p, method = "rk4s", cores = 1),
+                 "steady-state")
+    # liblsodaadj (non-rk4s-framework driver) does not yet cover ss
+    evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
+    expect_error(rxode2::rxSolve(madj, evSS, params = p, method = "liblsodaadj", cores = 1),
                  "steady-state")
   })
 
