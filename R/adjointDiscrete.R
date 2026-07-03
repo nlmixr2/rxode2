@@ -235,13 +235,20 @@
   .fromSE <- function(nm) { .d <- get0(nm, envir = .model, inherits = FALSE); rxode2::rxFromSE(.d) }
   .odeLines <- vapply(.st, function(i)
     sprintf("d/dt(%s)=%s", i, .fromSE(paste0("rx__d_dt_", i, "__"))), character(1))
-  # Preserve modeled bioavailability f(cmt) so the forward solve applies the SAME
-  # dose scaling as the real model (dropping it would compute sensitivities of a
-  # different, F=1 system and make the dose-parameter jump inconsistent).
+  # Preserve modeled dosing modifiers -- f(cmt) (bioavailability), alag(cmt) (lag
+  # time), rate(cmt) and dur(cmt) -- so the forward primal applies the SAME dosing
+  # as the real model.  Dropping them would integrate a different system (wrong
+  # primal and hence wrong sensitivities for every parameter).
   .fLines <- character(0)
   for (k in seq_len(.ns)) {
     .fSE <- get0(paste0("rx_f_", .st[k], "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .fLines <- c(.fLines, sprintf("f(%s)=%s", .st[k], rxode2::rxFromSE(.fSE)))
+    .lSE <- get0(paste0("rx_lag_", .st[k], "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.lSE)) .fLines <- c(.fLines, sprintf("alag(%s)=%s", .st[k], rxode2::rxFromSE(.lSE)))
+    .rSE <- get0(paste0("rx_rate_", .st[k], "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.rSE)) .fLines <- c(.fLines, sprintf("rate(%s)=%s", .st[k], rxode2::rxFromSE(.rSE)))
+    .dSE <- get0(paste0("rx_dur_", .st[k], "_"), envir = .model, inherits = FALSE)
+    if (!is.null(.dSE)) .fLines <- c(.fLines, sprintf("dur(%s)=%s", .st[k], rxode2::rxFromSE(.dSE)))
   }
   .fxLines <- character(0)
   for (i in seq_len(.ns)) for (j in seq_len(.ns))
