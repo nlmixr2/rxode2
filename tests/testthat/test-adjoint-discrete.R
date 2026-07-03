@@ -141,11 +141,10 @@ rxTest({
       multiply = et(amt = 100, cmt = "depot") %>% et(amt = 0.5, cmt = "center", evid = 6, time = 4) %>%
         et(c(1, 2, 6, 8, 12))
     )
-    # reset costate jump: rk4s/dop853s (discrete) AND cvodesadj (continuous);
-    # replace/multiply jumps: discrete methods (cvodesadj adds them later).
-    methForEv <- list(reset = c("rk4s", "dop853s", "cvodesadj"),
-                      replace = c("rk4s", "dop853s"),
-                      multiply = c("rk4s", "dop853s"))
+    # reset/replace/multiply costate jumps: the discrete methods (rk4s/dop853s)
+    # AND the continuous cvodesadj all carry them.
+    meths <- c("rk4s", "dop853s", "cvodesadj")
+    methForEv <- list(reset = meths, replace = meths, multiply = meths)
     for (nm in names(evs)) {
       ev <- evs[[nm]]
       for (meth in methForEv[[nm]]) {

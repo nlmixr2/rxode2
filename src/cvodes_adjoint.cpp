@@ -198,6 +198,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 
   std::vector<double> obsT; std::vector<int> obsIx;
   std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
+  // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
+  // the backward sweep stops at each and applies the transpose costate jump.
+  struct cvEvent { double t; int cmt; int type; double factor; };
+  std::vector<cvEvent> evJumps;
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
 
@@ -288,6 +292,20 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
+      // Record replace/multiply state jumps for the backward transpose jump.
+      { int _ev = getEvid(ind, ind->ix[i]);
+        if (isDose(_ev)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_cmt >= 0 && _cmt < nBase) {
+            if (_whI == EVIDF_REPLACE) {
+              evJumps.push_back({xout, _cmt, 5, 0.0});
+            } else if (_whI == EVIDF_MULT) {
+              evJumps.push_back({xout, _cmt, 6,
+                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp)});
+            }
+          }
+        } }
       if (getEvid(ind, ind->ix[i]) == 3) {
         // A reset wipes the state to (parameter-independent) inits, so its jump
         // map Phi(y)=inits has dPhi/dy = 0: going backward the costate zeroes at
@@ -368,12 +386,31 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
       continue;
     }
+    // replace/multiply events strictly inside (tStop, ti), descending in time:
+    // the backward stops at each and applies the transpose costate jump.
+    std::vector<int> segEv;
+    for (size_t e = 0; e < evJumps.size(); ++e)
+      if (evJumps[e].t < ti - 1e-12 && evJumps[e].t > tStop + 1e-12) segEv.push_back((int)e);
+    gfx::timsort(segEv.begin(), segEv.end(),
+                 [&](int a, int b) { return evJumps[a].t > evJumps[b].t; });
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
-      CVodeSetStopTime(bmem, (sunrealtype)tStop);
       sunrealtype tret;
+      // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
+      // quadrature) is a component of B, so it carries across the reinits.
+      for (size_t s = 0; s < segEv.size() && bok; ++s) {
+        double te = evJumps[segEv[s]].t;
+        CVodeSetStopTime(bmem, (sunrealtype)te);
+        if (CVode(bmem, (sunrealtype)te, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+        int c = evJumps[segEv[s]].cmt;
+        if (evJumps[segEv[s]].type == 5) NV_Ith_S(B, c) = 0.0;          // replace
+        else NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;               // multiply
+        if (CVodeReInit(bmem, (sunrealtype)te, B) < 0) { bok = 0; break; }
+      }
+      if (!bok) break;
+      CVodeSetStopTime(bmem, (sunrealtype)tStop);
       if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
     }
