@@ -887,4 +887,35 @@ rxTest({
       expect_gt(max(abs(sL[[sprintf("rx__sens_center_BY_%s__", mp)]])), 1e-3)
     }
   })
+
+  test_that("in-engine liblsodaadj (P5) infusions: constant rate + modeled rate()/dur() duals", {
+    # A constant-rate infusion has no dR/dp and is transparent to the adjoint.  A
+    # MODELED rate(c)=R or dur(c)=D adds the in-window forcing (F_p[c] += durMult*dR/dp
+    # inside the infusion) and the moving off-boundary transversality (-amt/R*durMult),
+    # with R = amt/(t_off - t_on) reconstructed from the infusion window's event times.
+    # Validated vs dop853s at tight tol (the self-check replay does not carry the
+    # runtime infusion rate, so it is skipped for infusion models).
+    obs <- c(1, 2, 4, 6, 10)
+    cases <- list(
+      const   = list(m = "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center",
+                     cs = c("ka","cl","v"), p = c(ka=1.2, cl=3.5, v=25),
+                     ev = et(et(amt=100, cmt="center", rate=50), obs), gp = NULL),
+      mrate   = list(m = "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nrate(center)=Rin",
+                     cs = c("ka","cl","v","Rin"), p = c(ka=1.2, cl=3.5, v=25, Rin=40),
+                     ev = et(et(amt=100, cmt="center", rate=-1), obs), gp = "Rin"),
+      mdur    = list(m = "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\ndur(center)=Dur",
+                     cs = c("ka","cl","v","Dur"), p = c(ka=1.2, cl=3.5, v=25, Dur=3),
+                     ev = et(et(amt=100, cmt="center", rate=-2), obs), gp = "Dur"))
+    for (nm in names(cases)) {
+      cc <- cases[[nm]]
+      ex <- rxode2::.rxAdjointExpand(cc$m, cc$cs); madj <- rxode2::rxode2(ex$text)
+      sL <- as.data.frame(rxode2::rxSolve(madj, cc$ev, params = cc$p, method = "liblsodaadj", cores = 1, atol = 1e-9, rtol = 1e-9))
+      sD <- as.data.frame(rxode2::rxSolve(madj, cc$ev, params = cc$p, method = "dop853s",    cores = 1, atol = 1e-9, rtol = 1e-9))
+      mx <- 0
+      for (st in ex$st) for (pn in cc$cs) { cn <- sprintf("rx__sens_%s_BY_%s__", st, pn); mx <- max(mx, max(abs(sL[[cn]] - sD[[cn]]))) }
+      expect_lt(mx, 1e-5)
+      # the modeled rate/dur parameter's own gradient is genuinely non-zero
+      if (!is.null(cc$gp)) expect_gt(max(abs(sL[[sprintf("rx__sens_center_BY_%s__", cc$gp)]])), 1e-3)
+    }
+  })
 })
