@@ -163,6 +163,7 @@ typedef struct {
   int    adjTauOff;             /* lhs index where DDE delay-duration tau block starts (i*ns+j); -1 if no delay() */
   int    adjDtauOff;            /* lhs index where DDE dtau/dp block starts ((i*ns+j)*np+p); -1 if no delay() (dose-jump) */
   int    adjDlagOff;           /* lhs index where dlag/dtheta block starts (k*np+p); -1 if no modeled alag() (transversality) */
+  int    adjDrateOff;          /* lhs index where drate/dtheta block starts (k*np+p); -1 if no modeled rate() (infusion dual) */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
 } rx_solving_options;
 

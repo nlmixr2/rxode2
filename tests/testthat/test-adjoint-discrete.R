@@ -236,6 +236,32 @@ rxTest({
     }
   })
 
+  test_that("modeled-rate infusion dual: d/d(rate) sensitivity matches FD (rk4s/dop853s)", {
+    # A modeled-rate infusion of amt into cmt c runs over [t_on, t_on+amt/R(theta)]
+    # adding R to the RHS; the rate parameter needs the forcing quadrature plus the
+    # off-boundary transversality.  Rin=40 => off-time 100/40=2.5 is OFF the obs grid
+    # (observing exactly at the off-boundary is a measure-zero FD kink).
+    mText2 <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nrate(depot)=Rin"
+    cs2 <- c("ka", "cl", "v", "Rin"); p2 <- c(ka = 1.2, cl = 3.5, v = 25, Rin = 40)
+    ex <- rxode2::.rxAdjointExpand(mText2, cs2)
+    madj <- rxode2::rxode2(ex$text); mbase <- rxode2::rxode2(mText2)
+    ev <- et(amt = 100, cmt = "depot", rate = -1) %>% et(c(1, 2, 4, 8, 12))
+    solveBase <- function(pp) as.matrix(as.data.frame(
+      rxode2::rxSolve(mbase, ev, params = pp, method = "rk4", cores = 1))[, c("depot", "center")])
+    for (meth in c("rk4s", "dop853s")) {
+      s <- as.data.frame(rxode2::rxSolve(madj, ev, params = p2, method = meth, cores = 1))
+      fdmax <- 0
+      for (pn in cs2) {
+        hh <- p2[[pn]] * 1e-6; pp <- p2; pm <- p2; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        fd <- (solveBase(pp) - solveBase(pm)) / (2 * hh)
+        for (k in seq_along(ex$st))
+          fdmax <- max(fdmax, max(abs(s[[sprintf("rx__sens_%s_BY_%s__", ex$st[k], pn)]] - fd[, k])))
+      }
+      expect_lt(fdmax, 1e-4)
+      expect_gt(max(abs(s[["rx__sens_center_BY_Rin__"]])), 0.5)
+    }
+  })
+
   test_that("in-engine rk4s population solve (parallel) matches per-subject FD", {
     cs2 <- c("ka", "cl", "v")
     tms <- c(1, 4, 12, 24)
