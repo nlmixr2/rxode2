@@ -847,4 +847,44 @@ rxTest({
     for (st in ex$st) for (pn in cs)
       expect_lt(max(abs(sB[[sprintf("rx__sens_%s_BY_%s__", st, pn)]][post])), 1e-10)
   })
+
+  test_that("in-engine liblsodaadj (P5) modeled bioavailability F and lag-time alag jumps", {
+    # A modeled f(depot)=Fbio adds mu += amt*dF/dp*lam[c] at the dose; a modeled
+    # alag(depot)=tlag shifts the dose time, adding the transversality
+    # mu += -amt*dlag/dp*(lam^T F_X[:,c]).  These apply at every segment start,
+    # including the t0 dose (seg 0).  Cross-checked vs dop853s (same discrete-adjoint
+    # family) at tight tol; the self-check confirms an exact transpose + model match.
+    op0 <- Sys.getenv("RX_LSADJ_SELFCHECK", unset = NA)
+    on.exit(if (is.na(op0)) Sys.unsetenv("RX_LSADJ_SELFCHECK") else Sys.setenv(RX_LSADJ_SELFCHECK = op0), add = TRUE)
+    cases <- list(
+      Fsingle = list(m = "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio",
+                     cs = c("ka","cl","v","Fbio"), p = c(ka=1.2, cl=3.5, v=25, Fbio=0.7),
+                     ev = et(et(amt=100, cmt="depot"), c(1,2,4,8,12))),
+      Fmulti  = list(m = "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio",
+                     cs = c("ka","cl","v","Fbio"), p = c(ka=1.2, cl=3.5, v=25, Fbio=0.7),
+                     ev = et(et(amt=100, cmt="depot", ii=6, addl=2), c(1,7,13))),
+      alag    = list(m = "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nalag(depot)=tlag",
+                     cs = c("ka","cl","v","tlag"), p = c(ka=1.2, cl=3.5, v=25, tlag=0.7),
+                     ev = et(et(amt=100, cmt="depot"), c(1,2,4,8,12))))
+    for (nm in names(cases)) {
+      cc <- cases[[nm]]
+      ex <- rxode2::.rxAdjointExpand(cc$m, cc$cs); madj <- rxode2::rxode2(ex$text)
+      Sys.setenv(RX_LSADJ_SELFCHECK = "1")
+      msg <- capture.output(
+        sL <- as.data.frame(rxode2::rxSolve(madj, cc$ev, params = cc$p, method = "liblsodaadj", cores = 1, atol = 1e-10, rtol = 1e-10)),
+        type = "message")
+      Sys.unsetenv("RX_LSADJ_SELFCHECK")
+      line <- grep("adjoint - discrete_forward_sens", msg, value = TRUE)
+      expect_length(line, 1L)
+      expect_lt(as.numeric(sub(".*forward_sens\\| = ([0-9.eE+-]+).*", "\\1", line)), 1e-8)
+      expect_lt(as.numeric(sub(".*primal_replay_err = ([0-9.eE+-]+).*", "\\1", line)), 1e-6)
+      sD <- as.data.frame(rxode2::rxSolve(madj, cc$ev, params = cc$p, method = "dop853s", cores = 1, atol = 1e-10, rtol = 1e-10))
+      mx <- 0
+      for (st in ex$st) for (pn in cc$cs) { cn <- sprintf("rx__sens_%s_BY_%s__", st, pn); mx <- max(mx, max(abs(sL[[cn]] - sD[[cn]]))) }
+      expect_lt(mx, 1e-5)
+      # the modeled-modifier parameter's own gradient is genuinely non-zero
+      mp <- if (nm == "alag") "tlag" else "Fbio"
+      expect_gt(max(abs(sL[[sprintf("rx__sens_center_BY_%s__", mp)]])), 1e-3)
+    }
+  })
 })

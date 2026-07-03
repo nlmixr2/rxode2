@@ -51,8 +51,12 @@
 // component c, multiply[c] -> scale component c by the factor (event reconstructed
 // from the table).  Validated to machine precision by the self-check AND, since the
 // boundary formula is shared by both self-check replays, independently vs dop853s
-// (multi-dose / reset / replace / multiply all match to ~1e-8).  Remaining: modeled
-// F/alag dose-jump quadrature + rate()/dur() infusion duals, and P6 parallelism.
+// (multi-dose / reset / replace / multiply all match to ~1e-8).  Modeled dose
+// modifiers are handled at EVERY segment start (incl. the t0 dose): bioavailability
+// f(c)=F adds mu += amt*dF/dp*lam_y0[c]; lag-time alag(c)=lag adds the transversality
+// mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).  (F+alag on the SAME cmt shares the family's
+// documented raw-amt caveat -- consistent with rk4s/dop853s/cvodesadj.)  Remaining:
+// rate()/dur() infusion duals, and P6 parallelism / auto-switch.
 #ifdef IN_PAR_SOLVE
 
 // --- recording hooks: need liblsoda's common block (ctx->common->...) ----------
@@ -97,6 +101,7 @@ struct lsAdjSeg {
   //   (y[cmt]:=val, dPhi/dy row cmt=0) | 6 multiply (y[cmt]*=fac) | -1 none (seg 0).
   int evType, evCmt;
   double evFactor;           // multiply factor (type 6)
+  double evAmt;              // raw dose amount (type 0 bolus; for modeled F/alag mu)
 };
 // Thread-local recording state (serial per subject; par is P6).
 static thread_local bool                 lsAdjActive = false;
@@ -117,7 +122,7 @@ extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
   for (int i = 1; i <= lsAdjNbase; ++i) s.y0[i - 1] = _rxC(yh)[1][i];
   s.stepBegin = lsAdjSteps.size();
   s.stepEnd = lsAdjSteps.size();
-  s.evType = -1; s.evCmt = -1; s.evFactor = 1.0;   // filled in from the event table
+  s.evType = -1; s.evCmt = -1; s.evFactor = 1.0; s.evAmt = 0.0; // from the event table
   lsAdjSegs.push_back(std::move(s));
 }
 
@@ -182,11 +187,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
 
-  // Reconstruct the interior event that opened each segment (seg>=1) from the event
-  // table by matching its start time.  Additive boluses (dPhi/dy=I) are the default
-  // (evType stays -1 if not classified, treated as identity), so a not-found addl
-  // bolus is still correct; reset/replace/multiply get their exact dual.
-  for (size_t sg = 1; sg < lsAdjSegs.size(); ++sg) {
+  // Reconstruct the event that opened each segment from the event table by matching
+  // its start time.  seg 0 is included so a modeled-F / modeled-lag dose AT t0 gets
+  // its quadrature too.  Additive boluses (dPhi/dy=I) are the default (evType stays
+  // -1 if not classified, treated as identity), so a not-found addl bolus is still
+  // correct; reset/replace/multiply get their exact dual.
+  for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
     double t0 = lsAdjSegs[sg].t0;
     for (int i = 0; i < ind->n_all_times; ++i) {
       int ev = getEvid(ind, ind->ix[i]);
@@ -196,7 +202,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (isDose(ev)) {
         int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
         if (_cmt >= 0 && _cmt < nBase) {
-          if (_whI == 0)                  { lsAdjSegs[sg].evType = 0; lsAdjSegs[sg].evCmt = _cmt; break; }
+          if (_whI == 0)                  { lsAdjSegs[sg].evType = 0; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]); break; }
           else if (_whI == EVIDF_REPLACE) { lsAdjSegs[sg].evType = 5; lsAdjSegs[sg].evCmt = _cmt; break; }
           else if (_whI == EVIDF_MULT)    { lsAdjSegs[sg].evType = 6; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evFactor = getDose(ind, ind->ix[i]); break; }
           // (modeled rate/dur infusion on/off open a segment too but are not a state
@@ -290,13 +296,22 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       const double *lam2 = &lamFlat[(size_t)2 * nBase];
       // init quadrature: mu += h0 * lam2^T Fp(t0,y0)
       for (int p = 0; p < np; ++p) { double s = 0; for (int c = 0; c < nBase; ++c) s += fp0[c * np + p] * lam2[c]; mu[p] += Sg.h0 * s; }
-      if (seg == 0) break;
       // costate of y0 (pre-Nordsieck-init): lam_y0 = lam1 + h0*J0^T lam2.
       for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx0[a * nBase + b] * lam2[a]; wSeed[b] = lam1[b] + Sg.h0 * s; }
-      // event jump Phi^T maps lam_y0 -> costate of y(tau-) handed to the previous
-      // segment (constant amt/val/factor -> no dPhi/dp quadrature term):
-      //   bolus (dPhi/dy=I): unchanged | reset: all 0 | replace[c]: comp c -> 0 |
-      //   multiply[c]: comp c *= factor.
+      // The event's dPhi/dp explicit-parameter quadrature (applies at EVERY segment
+      // start, incl. seg 0 for a modeled-F/lag dose at t0).  lhs still holds calc_lhs
+      // at (t0,y0).  F: y0[c] = y(t-)[c] + F*amt -> mu += amt*dF/dp*lam_y0[c].  alag:
+      // the dose time t_d+lag(p) shifts -> mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).
+      if (Sg.evType == 0 && Sg.evCmt >= 0) {
+        int c = Sg.evCmt; double amt = Sg.evAmt;
+        if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += amt * dF[c * np + p] * wSeed[c]; }
+        if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
+          double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
+          for (int p = 0; p < np; ++p) mu[p] += -amt * dlag[c * np + p] * sc; }
+      }
+      if (seg == 0) break;
+      // event jump dPhi/dy^T maps lam_y0 -> costate of y(tau-) handed to the previous
+      // segment: bolus (I) unchanged | reset all 0 | replace[c]->0 | multiply[c]*=factor.
       if (Sg.evType == 3) { for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0; }
       else if (Sg.evType == 5 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] = 0.0; }
       else if (Sg.evType == 6 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] *= Sg.evFactor; }
@@ -368,6 +383,14 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (Sg.evType == 3) { for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] = 0.0; }
       else if (Sg.evType == 5 && Sg.evCmt >= 0) { for (int p = 0; p < np; ++p) YHS[IDX(1, Sg.evCmt, p)] = 0.0; }
       else if (Sg.evType == 6 && Sg.evCmt >= 0) { for (int p = 0; p < np; ++p) YHS[IDX(1, Sg.evCmt, p)] *= Sg.evFactor; }
+      else if (Sg.evType == 0 && Sg.evCmt >= 0) {
+        // modeled F: y0[c] += F*amt -> dy0[c]/dp += amt*dF/dp.  modeled alag: the dose
+        // time shifts -> S+ = S- + (f(y-)-f(y+))*dlag/dp = S- - amt*F_X[:,c]*dlag/dp.
+        int c = Sg.evCmt; double amt = Sg.evAmt;
+        if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] += amt * dF[c * np + p]; }
+        if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
+          for (int i = 0; i < nBase; ++i) for (int p = 0; p < np; ++p) YHS[IDX(1, i, p)] += -amt * fx0[i * nBase + c] * dlag[c * np + p]; }
+      }
       for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) {
         double jr = 0; for (int b = 0; b < nBase; ++b) jr += fx0[c * nBase + b] * Sin[(size_t)b * np + p];
         YHS[IDX(2, c, p)] = Sg.h0 * (jr + fp0[c * np + p]);
