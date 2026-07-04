@@ -138,20 +138,51 @@ function calls that manipulate named elements of a loaded project.
 
 rxode2 automatically derives the symbolic Jacobian and forward-
 sensitivity equations, used by nlmixr2's FOCEi algorithm for exact
-gradient-based parameter estimation.
+gradient-based parameter estimation.  These extend to third-order
+sensitivities and to *jump* (event) sensitivities -- exact derivatives
+with respect to dosing parameters such as bioavailability, lag time,
+infusion rate, duration, and amount.
 
 ### 1-3 compartment analytical solutions with exact gradients
 
 `linCmt()` provides analytical solutions for one-, two-, and
 three-compartment PK models with gradients via Stan math
 auto-differentiation.  Simulx uses ODEs for all compartment models.
+rxode2 can also detect a 1-3 compartment linear PK ODE system and
+transparently solve it through this analytical path
+(`rxSolve(..., useLinCmt = TRUE)`, the default), falling back to the ODE
+solver if the converted model cannot be compiled.
 
 ### Multiple ODE solver backends
 
-rxode2 offers three solver backends selectable per run: thread-safe
-C LSODA (default), Fortran LSODA, and DOP853 (explicit 8th-order
-Runge-Kutta for non-stiff systems).  Simulx uses a single C++ LSODA-
-based solver.
+rxode2 offers several solver backends selectable per run: thread-safe
+C LSODA (default), Fortran LSODA, DOP853 (explicit 8th-order
+Runge-Kutta for non-stiff systems), a stiff Rosenbrock method (`ros4`),
+and AutoSwitch composite methods (for example `method = "dop853+ros4"`)
+that probe each segment with a non-stiff primary and reactively fall
+back to a stiff secondary only where stiffness is detected.  Simulx uses
+a single C++ LSODA-based solver.
+
+### Delay differential equations
+
+rxode2 solves delay differential equations through `delay(state, T)`,
+which evaluates an ODE state at the past time `t - T` using dense-output
+interpolation, with forward sensitivities generated automatically so the
+models stay estimable in nlmixr2.
+
+### Out-of-memory simulation and distributed parallelism
+
+For very large trial simulations, passing a `file` prefix to
+`rxSolve()` splits subjects into RAM-sized chunks (auto-sized with
+`rxMemoryEstimate()`), solves each, and writes them to Parquet (or
+`.rds`) behind a lightweight object that supports lazy `dplyr`/DuckDB
+queries, so an out-of-memory result is never fully materialized.  Chunks
+can be dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
+distributed/HPC execution, all controlled directly from R.
+
+```{r}
+rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+```
 
 ### Runs anywhere without infrastructure
 
@@ -243,11 +274,15 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 | Monolix project import | `monolix2rx` (with auto-validation) | direct (same language) |
 | Re-implementation risk | mitigated: `monolix2rx` auto-validates PRED/IPRED | none |
 | Simulation engine | rxode2 C/Fortran solver | Simulx C++ solver |
-| ODE solver options | LSODA (C), LSODA (Fortran), DOP853 | single C++ LSODA-based |
+| ODE solver options | LSODA (C/Fortran), DOP853, ros4, `"dop853+ros4"` | single C++ LSODA-based |
 | 1-3 cmt analytical solution | `linCmt()` with gradients | ODE-based only |
-| Symbolic Jacobians / sensitivities | yes | no |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
+| Delay differential equations (`delay()`) | yes | no |
+| Symbolic Jacobians / sensitivities | yes (up to 3rd order + jump sensitivities) | no |
 | Parameter estimation | via nlmixr2 | no (Monolix only) |
 | OpenMP parallelism (R-controlled) | yes | engine-internal |
+| Distributed / cluster parallelism | yes (`mirai`) | engine-internal |
+| Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | no |
 | Model piping (`\|>`) | yes | no |
 | GUI / interactive exploration | no (code only) | yes |
 | Built-in scenario management | no (use R code) | yes |

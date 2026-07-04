@@ -598,6 +598,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   std::vector<SEXP *> strLevelCache(ncol, nullptr);
   std::vector<int>    strLevelCount(ncol, 0);
   std::vector<SEXP>   colSEXP(ncol, R_NilValue);
+  std::vector<int *>  strIdx(ncol, nullptr);
   if (nkeep && hasStrCol) {
     for (int _j = 0; _j < nkeep; _j++) {
       int _jj = _jj_keep_base + _j;
@@ -612,6 +613,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         for (int _k = 0; _k < _nLev; _k++)
           _lc[_k + 1] = STRING_ELT(_lvl, _k);
         strLevelCache[_jj] = _lc;
+        strIdx[_jj] = (int *)R_alloc(covKeepNrow, sizeof(int));
       }
     }
   }
@@ -1058,7 +1060,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
               } else if (colType[jj_p] == STRSXP) {
                 int _idx = (R_IsNA(_fv) || std::isnan(_fv)) ? 0 : (int)_fv;
                 if (_idx < 0 || _idx > strLevelCount[jj_p]) _idx = 0;
-                SET_STRING_ELT(colSEXP[jj_p], ii, strLevelCache[jj_p][_idx]);
+                strIdx[jj_p][ii] = _idx;
               } else if (colType[jj_p] == LGLSXP) {
                 if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
                 else                              colI[jj_p][ii] = (int)(_fv);
@@ -1088,6 +1090,20 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       }
       ind->inLhs = 0;
     } // end for (solveid)
+
+    // Safely assign strings outside of OpenMP
+    if (nkeep && hasStrCol) {
+      for (int _j = 0; _j < nkeep; _j++) {
+        int _jj = _jj_keep_base + _j;
+        if (colType[_jj] == STRSXP && strIdx[_jj] != nullptr) {
+          int writeLimit = covKeepShrunk ? rowsPerSimUniform : rx->nr;
+          for (int _ii = 0; _ii < writeLimit; _ii++) {
+            SET_STRING_ELT(colSEXP[_jj], _ii, strLevelCache[_jj][strIdx[_jj][_ii]]);
+          }
+        }
+      }
+    }
+
   // Emit bad-dose warnings (R API not allowed inside the fill loop).
   for (int _csub = 0; _csub < nsub; _csub++) {
     rx_solving_options_ind *_ind = &(rx->subjects[_csub]); // csim==0 subjects

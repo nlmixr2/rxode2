@@ -179,6 +179,9 @@ rxSolve(
   autoSwitchSwitchMax = 5L,
   stiff2 = 0L,
   useLinCmt = getOption("rxode2.useLinCmt", TRUE),
+  file = NULL,
+  chunkSize = NULL,
+  parallel = 0L,
   envir = parent.frame()
 )
 
@@ -749,7 +752,17 @@ maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
 \code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
-determine the step size when \code{dense=TRUE}}
+determine the step size when \code{dense=TRUE}
+
+For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
+as having a CONSTANT Jacobian/matrix-exponential term before
+re-linearizing (previously silently ignored for this method). For a
+true (state-independent) \code{matExp()} model this makes no numerical
+difference; for an \code{indLin()}-forcing model with a state-dependent
+term (e.g. Michaelis-Menten elimination), the default \code{hmax} (tied to
+the spacing of your own sampling/dosing times) may be too coarse for
+the desired accuracy -- set an explicit, smaller \code{hmax} to force more
+frequent relinearization.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}
@@ -1528,6 +1541,21 @@ stored in the returned \code{\link[=rxControl]{rxControl()}} object so that down
 hooks (e.g. in nlmixr2) can read and apply it.  The default is to
 use the value of \code{rxode2.useLinCmt} option (which when specified
 is \code{TRUE} by default).}
+
+\item{file}{Character string giving a file path prefix for out-of-memory
+chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes
+each chunk's result to \verb{<file>_chunk_NNNNN.parquet} (or \code{.rds} if
+\code{arrow} is unavailable), and returns an \code{rxSolveOom} object. The manifest
+is saved to \verb{<file>_manifest.rds}. Set to \code{NULL} (default) to use the
+normal in-memory path.}
+
+\item{chunkSize}{Integer; number of subjects per chunk when \code{file} is
+set. If \code{NULL} (default), the chunk size is auto-computed from available
+free RAM using \code{rxMemoryEstimate()}.}
+
+\item{parallel}{Integer; number of \code{mirai} daemons to use for parallel
+chunk solving when \code{file} is set. \code{0L} (default) uses serial solving.
+Requires the \code{mirai} package.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
