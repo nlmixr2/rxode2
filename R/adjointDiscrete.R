@@ -536,6 +536,7 @@
 #'   `c("dop853s","ros4s")`, or a `"dop853s+ros4s"` string.
 #' @return `TRUE` if any component is a stiff adjoint method.
 #' @author Matthew L. Fidler
+#' @export
 #' @keywords internal
 .rxAdjointMethodStiff <- function(method) {
   if (is.null(method)) return(FALSE)
