@@ -1,5 +1,26 @@
 # rxode2 5.1.3
 
+- Stiff adjoint and forward-sensitivity solvers now integrate with the ANALYTIC
+  Jacobian of the augmented (sensitivity-expanded) system:
+  - `.rxAdjointExpand(stiff=TRUE)` emits the base-block `df()/dy()` Jacobian
+    (reusing the `rx__df_*` already computed for the backward sweep), so the
+    stiff adjoint methods -- `ros4s` and the whole Rosenbrock/implicit-RK family,
+    plus the `dop853s+ros4s` AutoSwitch composite -- step the wide augmented
+    system natively at steady state.  `ros4s` stays genuinely `ros4`.
+  - `rxode2(..., calcSens=, calcJac=TRUE)` computes the Jacobian of the FULL
+    forward-sensitivity system AFTER the sensitivity expansion (the base-only
+    Jacobian was incomplete for the variational compartments).  It reuses `F_X`
+    for the base x base and sens x sens blocks and only differentiates the
+    sens x base block (identically zero for linear systems), so the common case
+    adds no extra symbolic work.
+  - Both are gated so paths that never form a Jacobian pay nothing: the adjoint
+    block only on `stiff=TRUE`; the forward one on `calcJac` (default off, so
+    `lsoda`/`liblsoda` FOCEi sensitivities are unchanged).
+  - Boost's `rosenbrock4` (`ros4`) and `implicit_euler` (`iem`) now zero their
+    Jacobian matrix before each `calc_jac`, so a SPARSE analytic Jacobian (only
+    the structurally nonzero entries emitted) is stepped correctly instead of
+    picking up stale entries across steps.
+
 - Added jump sensitivities for events (based on
   https://github.com/dkaschek/EventSensitivities).  Hybrid jump
   sensitivities are used for matrix exponential and `linCmt()`

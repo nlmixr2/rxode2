@@ -257,6 +257,28 @@
     if (!is.null(.dSE)) .fLines <- c(.fLines, sprintf("dur(%s)=%s", .st[k], rxode2::rxFromSE(.dSE)))
   }
   .fxLines <- character(0)
+  # ANALYTIC JACOBIAN for the stiff adjoint solvers (Rosenbrock / implicit RK /
+  # the dop853s+ros4s AutoSwitch composite) -- STIFF ONLY, so the explicit
+  # (rk4s, dop853s, ...) and multistep (liblsodaadj) adjoint methods that never
+  # form a Jacobian do not pay for it.  The expanded system's state Jacobian is
+  # block-structured: the base states depend only on base states (that block IS
+  # F_X = rx__df_st_i_dy_st_j, computed just below for the sweep), every
+  # rx__sens_* state has d/dt == 0 and no base RHS references it, so all sens
+  # rows/cols are zero.  Emit the nonzero base block as real df()/dy() lines so
+  # codegen fills calc_jac -- without it the stiff steppers get an empty Jacobian
+  # (J == 0) and boost's rosenbrock4 (ros4s) cannot even find a step size (the
+  # others silently fall back to a costly numeric Jacobian).  Emitting the sparse
+  # nonzero entries matches rxode2's normal calcJac design (the solver zero-inits
+  # the Jacobian matrix, so the omitted sens block stays 0).  This keeps ros4s
+  # ACTUALLY ros4 -- the real stiff method with its real Jacobian.
+  .jacLines <- character(0)
+  if (isTRUE(stiff)) {
+    for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
+      .je <- .fromSE(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"))
+      if (!identical(.je, "0") && nzchar(.je))
+        .jacLines <- c(.jacLines, sprintf("df(%s)/dy(%s)=%s", .st[i], .st[j], .je))
+    }
+  }
   for (i in seq_len(.ns)) for (j in seq_len(.ns))
     .fxLines <- c(.fxLines, sprintf("rx__adjFX_%d_%d__=%s", i - 1L, j - 1L,
                                     .fromSE(paste0("rx__df_", .st[i], "_dy_", .st[j], "__"))))
@@ -458,7 +480,7 @@
   # existing offset; its start = end of everything else.
   .afterDelay <- .afterStiff + (if (.hasDelayAdj) 2L * .ns * .ns + .ns * .ns * .np else 0L)
   .dlagLen <- if (.hasLagAdj) .ns * .np else 0L
-  list(text = paste(c(.odeLines, .fLines, .sensLines, .fxLines, .fpLines, .dfLines,
+  list(text = paste(c(.odeLines, .fLines, .sensLines, .jacLines, .fxLines, .fpLines, .dfLines,
                       .jpLines, .jyLines, .fxdLines, .tauLines, .dtauLines, .dlagLines,
                       .drateLines), collapse = "\n"),
        st = .st, ns = .ns, np = .np, calcSens = calcSens, stiff = isTRUE(stiff),

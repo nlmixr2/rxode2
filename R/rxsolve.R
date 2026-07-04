@@ -2446,8 +2446,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .amv <- if (is.null(.evDf$amt))  rep(0, nrow(.evDf)) else .evDf$amt
       .durv <- ifelse(.r > 0, .amv / .r, Inf)
       .cont <- .evDf$ss == 1 & .r > 0 & .amv == 0                  # continuous SSINF
-      .rk4sFw <- !(.ctl$method %in% c(202L, 208L, 221L, 213L, 231L, 232L,
-                                      233L, 234L, 235L, 236L, 237L, 238L))
+      .stiffCodes <- c(213L, 231L, 232L, 233L, 234L, 235L, 236L, 237L, 238L)
+      .rk4sFw <- !(.ctl$method %in% c(202L, 208L, 221L, .stiffCodes))
+      .rk4sStiff <- .ctl$method %in% .stiffCodes
       .noComposite <- is.null(.ctl$stiff2) || .ctl$stiff2 == 0L
       if (.rk4sFw) {
         # ss==1 bolus, continuous infusion, and any fixed-rate infusion with a
@@ -2478,14 +2479,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # linear solve for the continuous/full-interval (kind-2) case.  ss==2 and
         # interior/multiple ss==1 resets on liblsodaadj stay guarded (below).
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0)))
-      } else {                                    # abs / cvodesadj / stiff: none
+      } else if (.rk4sStiff) {                    # pure stiff (Rosenbrock / implicit RK)
+        # The stiff backward fills (radau/ros) carry the same ss IC terms as the
+        # composite via the shared rk4sSsIc (ss period recorded with a fixed
+        # explicit tableau, dop853): bolus, any fixed-rate infusion with an
+        # interval, continuous, ss=2 superposition, interior/multiple ss=1 resets.
+        # MODELED rate()/dur() ss (moving boundary, dR/dp) is NOT in rk4sSsIc -> the
+        # r<0 term is omitted, so modeled ss stays guarded on the stiff family.
+        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
+          (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
+      } else {                                    # abs / cvodesadj: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
       # Multiple ss==1 events (an interior ss=1 reset re-establishing steady
       # state, not just the window-start ss=1) are handled on the explicit and
       # composite fills (interior monodromy + reset); elsewhere they are guarded.
       .multiSs1 <- length(unique(.evDf$time[.evDf$ss == 1 & .evDf$evid != 0])) > 1L
-      .badSs <- (.multiSs1 && !.rk4sFw) ||
+      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) ||
         any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop("adjoint sensitivities do not yet support this steady-state (ss) ",

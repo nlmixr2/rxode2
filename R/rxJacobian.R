@@ -137,6 +137,78 @@ rxExpandGrid <- function(x, y, type = 0L) {
   return(.ret)
 }
 
+#' Full-system Jacobian for a first-order forward-sensitivity model, REUSING F_X
+#'
+#' A stiff (Rosenbrock / implicit) solver integrating the forward-sensitivity
+#' system needs the Jacobian of that FULL system (base states + rx__sens_*
+#' variational compartments), not the base model's.  Recomputing it from scratch
+#' (a second `.rxJacobian` over every expanded state pair) re-derives `F_X` and
+#' `F_p`, which `.rxJacobian(model)` already produced for the variational
+#' equations.  This builds the full df()/dy() block from the pieces instead, so
+#' only the genuinely new entries cost a `symengine::D`:
+#'
+#'   RHS:  dy_i/dt = f_i(y);   dS_ip/dt = sum_k F_X[i][k] S_kp + F_p[i][p]
+#'
+#'   base x base   df(y_i)/dy(y_j)  = F_X[i][j]                       (REUSED)
+#'   base x sens                    = 0
+#'   sens x sens   df(S_ip)/dy(S_kp)= F_X[i][k]  (block-diag over p)  (REUSED)
+#'   sens x base   df(S_ip)/dy(y_j) = sum_k D(F_X[i][k],y_j) S_kp
+#'                                    + D(F_p[i][p],y_j)              (NEW; ==0 for
+#'                                                                     linear F)
+#'
+#' Only the sens x base block needs differentiation, and it vanishes for models
+#' whose Jacobian/parameter-Jacobian are state-independent (linear PK), so the
+#' common case adds no symengine work at all.  `model` must have had
+#' `.rxJacobian(model)` (vars=TRUE) called already, so `rx__df_<i>_dy_<j>__`
+#' (F_X) and `rx__df_<i>_dy_<p>__` (F_p) are present as symbols.
+#'
+#' @param model symengine model environment (post `.rxJacobian`)
+#' @param state base ODE state names
+#' @param params sensitivity parameter names (`calcSens`)
+#' @return character vector of `df(state)/dy(state)` lines for the full system
+#' @author Matthew L. Fidler
+#' @keywords internal
+.rxFwdSensJacBlock <- function(model, state, params) {
+  .ns <- length(state); .np <- length(params)
+  .fx <- function(i, j) get0(paste0("rx__df_", state[i], "_dy_", state[j], "__"),
+                             envir = model, inherits = FALSE)
+  .fp <- function(i, p) get0(paste0("rx__df_", state[i], "_dy_", params[p], "__"),
+                             envir = model, inherits = FALSE)
+  .sn <- function(i, p) paste0("rx__sens_", state[i], "_BY_", params[p], "__")
+  .lines <- character(0)
+  .emit <- function(lhsSt, rhsSt, e) {
+    if (is.null(e)) return(invisible())
+    .txt <- rxode2::rxFromSE(e)
+    if (!identical(.txt, "0") && nzchar(.txt))
+      .lines[[length(.lines) + 1L]] <<- sprintf("df(%s)/dy(%s)=%s", lhsSt, rhsSt, .txt)
+  }
+  ## base x base and sens x sens (block-diagonal per parameter): both are F_X,
+  ## already computed -- re-emit, no differentiation.
+  for (i in seq_len(.ns)) for (j in seq_len(.ns)) .emit(state[i], state[j], .fx(i, j))
+  for (p in seq_len(.np)) for (i in seq_len(.ns)) for (k in seq_len(.ns))
+    .emit(.sn(i, p), .sn(k, p), .fx(i, k))
+  ## sens x base: the only block that needs new derivatives; identically zero
+  ## whenever F_X and F_p are state-independent (linear systems).
+  for (p in seq_len(.np)) for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
+    .acc <- NULL
+    for (k in seq_len(.ns)) {
+      .fxik <- .fx(i, k); if (is.null(.fxik)) next
+      .d <- symengine::D(.fxik, state[j])
+      if (paste(.d) != "0") {
+        .term <- .d * symengine::Symbol(.sn(k, p))
+        .acc <- if (is.null(.acc)) .term else .acc + .term
+      }
+    }
+    .fpip <- .fp(i, p)
+    if (!is.null(.fpip)) {
+      .d <- symengine::D(.fpip, state[j])
+      if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+    }
+    .emit(.sn(i, p), state[j], .acc)
+  }
+  .lines
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'

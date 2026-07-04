@@ -1,4 +1,10 @@
 rxTest({
+  # Keep the ODE adjoint/sensitivity path under test: disable the automatic
+  # ODE -> linCmt() translation, which would otherwise collapse these linear PK
+  # models onto the analytic linCmt() solver and bypass the discrete-adjoint /
+  # stiff-Jacobian machinery entirely.
+  withr::local_options(rxode2.useLinCmt = FALSE)
+
   # Discrete adjoint sensitivity (fixed-step explicit RK4).
   #
   # Defining property (vs the continuous adjoint's ~1e-5): the discrete adjoint
@@ -384,7 +390,7 @@ rxTest({
                 "f(central)=bioav", "if (mode==1){", "rate(central)=rat2", "}",
                 "if (mode==2){", "dur(central)=dur2", "}", "cp=central/(v/1000)", sep = "\n")
     ncs <- c("ka", "cl"); pp <- c(ka = 1.5, cl = 1.1, v = 20)
-    nex <- rxode2::.rxAdjointExpand(mt, ncs); nmadj <- rxode2::rxode2(nex$text)
+    nex <- rxode2::.rxAdjointExpand(mt, ncs, stiff = TRUE); nmadj <- rxode2::rxode2(nex$text)
     mb <- rxode2::rxode2(mt)
     scol <- as.vector(outer(nex$st, ncs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
     # Pure stiff (Rosenbrock + fully-implicit RK) adjoint methods: ss dosing is
@@ -412,6 +418,35 @@ rxTest({
       }
     }
     expect_gt(tested, 100)                     # ~15 non-ss scenarios x 8 stiff solvers
+  })
+
+  test_that("STIFF adjoint solvers: steady-state sens match forward, using the ANALYTIC Jacobian", {
+    # The stiff (Rosenbrock / implicit RK) adjoint solvers integrate the
+    # adjoint-augmented system with an analytic Jacobian emitted by
+    # .rxAdjointExpand(stiff=TRUE) -- df()/dy() of the base block (the sens states
+    # have d/dt==0, so their rows/cols are zero).  Without it boost's rosenbrock4
+    # (ros4s) cannot step the wide system at all (empty J -> "a new step size was
+    # not found") and the others fall back to a numeric Jacobian.  This checks the
+    # analytic-Jacobian path at steady state (bolus, fixed-rate infusion,
+    # continuous, ss=2 superposition) against the forward-sensitivity reference.
+    exS <- rxode2::.rxAdjointExpand(mText, cs, stiff = TRUE)
+    madjS <- rxode2::rxode2(exS$text)
+    mfwd <- rxode2::rxode2(mText, calcSens = cs)
+    scol <- as.vector(outer(exS$st, cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
+    stiff <- c("ros4s", "ros6s", "ros43s", "radauiia5s", "gauss6s", "geng5s", "sdirk43s", "iiic6s")
+    chkS <- function(ev, tol) {
+      f <- as.data.frame(suppressWarnings(rxode2::rxSolve(mfwd, ev, params = p, method = "lsoda", cores = 1)))
+      for (meth in stiff) {
+        a <- as.data.frame(suppressWarnings(rxode2::rxSolve(madjS, ev, params = p, method = meth, cores = 1)))
+        mx <- 0; for (cn in scol) mx <- max(mx, max(abs(a[[cn]] - f[[cn]]), na.rm = TRUE))
+        expect_lt(mx / max(1, max(abs(unlist(f[scol])), na.rm = TRUE)), tol)
+      }
+    }
+    chkS(et(amt = 100, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12)), 3e-3)              # bolus ss=1
+    chkS(et(amt = 100, rate = 10, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12)), 3e-3)   # fixed-rate infusion ss=1
+    chkS(et(amt = 0, rate = 10, cmt = "center", ss = 1) %>% et(c(4, 8, 12)), 3e-3)              # continuous ss=1
+    chkS(et(amt = 100, cmt = "center") %>%
+           et(amt = 50, cmt = "center", ss = 2, ii = 12, time = 12) %>% et(c(4, 12, 24)), 3e-3) # ss=2 superposition
   })
 
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
