@@ -2378,11 +2378,32 @@ extern "C" void handleSSbolus(int *neq,
 //   kind: 0 none, 1 fixed-rate periodic infusion (dur<ii), 2 unhandled ss
 static thread_local int    _adjSSinfKind = 0;
 static thread_local int    _adjSSinfCmt = -1;
+// ss==1 BOLUS period, published for the liblsodaadj multistep driver (whose ss
+// pre-solve is recording-paused, so it re-records one ss period for the monodromy
+// IC using this interval; the rk4s framework uses its own event-derived _ssPend*).
+// 0 = no bolus ss this window.  Dose Jacobian is I, so only the period is needed.
+static thread_local double _adjSSbolusIi = 0.0;
 // Two-phase steady-state infusion period: rate _adjSSinfRate for _adjSSinfDur,
 // then rate _adjSSinfRate2 for _adjSSinfDur2.  Fixed-rate periodic (dur<ii) uses
 // (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
 // uses ((numDoseInf+1)*R, offTime) then (numDoseInf*R, addTime).
 static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0, _adjSSinfRate2 = 0.0;
+// STICKY snapshot of the ss handoff for the liblsodaadj backward fill: the
+// forward loop calls handleSS again for every addl-expanded dose (even under
+// addlDropSs), and each entry RESETS the live handoff -- so the driver snapshots
+// the regimen the moment handleSS actually establishes one (kind != 0) and reads
+// the snapshot, not the live (reset) value, in the backward sweep.
+static thread_local int    _lsSsKind = 0;      // 0 none, 1 finite-infusion monodromy, 2 continuous
+static thread_local double _lsSsBolusIi = 0.0;
+static thread_local int    _lsSsCmt = -1;
+static thread_local double _lsSsDur = 0.0, _lsSsDur2 = 0.0, _lsSsRate = 0.0, _lsSsRate2 = 0.0;
+static inline void lsAdjSnapshotSs() {
+  // called right after an ss handleSS while liblsoda recording is active
+  if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
+  else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
+    _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2; }
+  else if (_adjSSinfKind == 2) { _lsSsKind = 2; _lsSsCmt = _adjSSinfCmt; }
+}
 // ss==2 (superposition): Y_after = Y_before + Y_ss_new(p).  handleSS publishes
 // the new-regimen steady state Y_ss_new (yp just BEFORE the += solveSave) so the
 // rk4s driver can record that regimen's monodromy and apply lambda^T dY_ss_new/dp
@@ -2807,7 +2828,7 @@ void handleSS(int *neq,
               t_update_inis u_inis,
               void *ctx) {
   rx_solve *rx = &rx_global;
-  _adjSSinfKind = 0; _adjSS2 = 0;   // reset the adjoint ss handoffs for this ss dose
+  _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3262,6 +3283,10 @@ void handleSS(int *neq,
                     &curIi,
                     &canBreak,
                     adjustEvidBolusLag);
+      // Adjoint handoff (liblsodaadj): a bolus ss window has period curIi and dose
+      // Jacobian I; publish the period so the multistep driver re-records one
+      // steady-state period's flow from the post-dose peak for the monodromy IC.
+      if (op->adjoint && !doSS2) _adjSSbolusIi = curIi;
       if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
@@ -4077,7 +4102,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (_lsWasActive) lsAdjSetActive(0);
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
-        if (_lsWasActive) lsAdjSetActive(1);
+        if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(); }
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }

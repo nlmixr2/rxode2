@@ -2466,8 +2466,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # with a dosing interval, and ss=2 superposition.
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
           (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
-      } else if (.ctl$method == 202L) {          # liblsodaadj: continuous infusion only
-        .supported <- .cont
+      } else if (.ctl$method == 202L) {          # liblsodaadj: single ss==1 (all durations)
+        # bolus and any fixed-rate infusion with an interval reach a periodic/
+        # constant steady state; the multistep driver re-records ONE ss period
+        # (recording-paused pre-solve) for the monodromy IC, or a -J^{-1} df/dp
+        # linear solve for the continuous/full-interval (kind-2) case.  ss==2 and
+        # interior/multiple ss==1 resets on liblsodaadj stay guarded (below).
+        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0)))
       } else {                                    # abs / cvodesadj / stiff: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
