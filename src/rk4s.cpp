@@ -8553,8 +8553,12 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               doseRec.push_back(_d);
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               // modeled rate()/dur() infusion start: R read AFTER handleEvid1.  durMult
-              // folds in the runtime factor (1 for rate, amt for dur).
-              double _amt = getDose(ind, ind->ix[i]);
+              // folds in the runtime factor (1 for rate, amt for dur).  The amount is
+              // BIOAVAILABILITY-adjusted (getAmt = F*dose): the effective rate is
+              // R = F*amt/dur and the moving-boundary tau2 = tau1 + F*amt/rate, so
+              // durMult/offFac must use F*amt to stay consistent with the captured
+              // R_eff (else F != 1 mis-scales the dR/dp forcing + off transversality).
+              double _amt = getAmt(ind, ind->id, _cmtD, getDose(ind, ind->ix[i]), xout, yp);
               rk4s_infus _f; _f.onStep = rec.nStep(); _f.offStep = (size_t)-1;
               _f.cmt = _cmtD; _f.R = 0.0; _f.amt = _amt;
               _f.durMult = (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0;
