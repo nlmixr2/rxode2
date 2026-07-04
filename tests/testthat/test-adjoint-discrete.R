@@ -210,14 +210,20 @@ rxTest({
       et(amt = 50, cmt = "depot", ss = 2, ii = 24, time = 36) %>% et(c(4, 12, 20, 24, 30, 36, 44))
     chk2(evC, "rk4s",    "rk4",    1e-4)
     chk2(evC, "vern98s", "vern98", 1e-4)
+    # ss=2 fixed-rate PERIODIC infusion superposition (dur = 50/10 = 5 < ii = 12)
+    evD <- et(amt = 100, cmt = "central") %>%
+      et(amt = 50, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>% et(c(1, 8, 12, 16, 24, 30))
+    chk2(evD, "rk4s",    "rk4",    1e-4)
+    chk2(evD, "vern98s", "vern98", 1e-4)
   })
 
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
-    # ss=2 INFUSION superposition not yet covered (bolus ss=2 IS covered below)
-    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = 10, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
+    # ss=2 LARGE-duration infusion (dur = 100/10 = 10 >= ii = 8) not yet covered
+    # (periodic ss=2 infusion, dur<ii, IS covered below)
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = 10, cmt = "depot", ss = 2, ii = 8) %>% et(c(1, 2, 4)),
                                  params = p, method = "rk4s", cores = 1), "steady-state")
     # multiple ss=1 events (interior ss=1 reset) are covered on the explicit path
     # but not on the composite (AutoSwitch) path -- guarded there.

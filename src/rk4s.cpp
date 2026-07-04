@@ -8214,6 +8214,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // captured by handleSS); ss2Steps marks each interior ss2 event step where the
   // backward sweep adds lambda^T dY_ss_new/dp (the superposition IC term).
   bool ss2Active = false; double ss2Ii = 0.0; int ss2Cmt = -1; double ss2Amt = 0.0;
+  bool ss2Inf = false; int ss2InfCmt = -1;
+  double ss2InfDur = 0.0, ss2InfDur2 = 0.0, ss2InfRate = 0.0, ss2InfRate2 = 0.0;
   std::vector<double> ss2Peak;
   std::vector<size_t> ss2Steps; rk4s_rec ss2Rec;
   int _ss2PendIi = 0; double _ss2Ii = 0.0; int _ss2Cmt = -1; double _ss2Amt = 0.0;
@@ -8390,7 +8392,20 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         // ss=1 bolus just converged: yp is the trough yp*.  Record it (one ss
         // regimen supported; a later ss dose overwrites -- the last-in-window
         // trough is the one whose IC the sweep reaches).
-        if (_ssPendCmt >= 0) {
+        // ss=2 superposition (interior, bolus OR fixed-rate infusion).  Caught
+        // FIRST: an ss2 infusion also fires the _adjSSinfKind handoff, but it is
+        // an interior superposition, not a window-start infusion ss.  Y_ss_new
+        // was published in _adjSS2peak; one ss2Rec/S2 serves all ss2 events.
+        if (_adjSS2 && (_ss2PendIi || _adjSSinfKind == 1)) {
+          if (!ss2Active) {
+            ss2Active = true; ss2Peak.assign(_adjSS2peak.begin(), _adjSS2peak.end());
+            if (_ss2PendIi) { ss2Ii = _ss2Ii; ss2Cmt = _ss2Cmt; ss2Amt = _ss2Amt; }
+            else { ss2Inf = true; ss2InfCmt = _adjSSinfCmt; ss2InfDur = _adjSSinfDur;
+                   ss2InfDur2 = _adjSSinfDur2; ss2InfRate = _adjSSinfRate; ss2InfRate2 = _adjSSinfRate2; }
+          }
+          ss2Steps.push_back(rec.nStep());
+          _adjSS2 = 0; _ss2PendIi = 0; _adjSSinfKind = 0;
+        } else if (_ssPendCmt >= 0) {
           ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
           ssTrough.assign(yp, yp + eff);
           ss1Steps.push_back(rec.nStep());   // every ss=1 event step (0 = window start)
@@ -8401,22 +8416,17 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
           ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
           ssTrough.assign(yp, yp + eff);
+          ss1Steps.push_back(rec.nStep());   // window-start ss=1 infusion (step 0)
+          _adjSSinfKind = 0;
+        } else if (_adjSSinfKind == 1 && ssActive) {
+          // interior ss=1 infusion reset (same regimen as the window start).
+          ss1Steps.push_back(rec.nStep());
           _adjSSinfKind = 0;
         } else if (_adjSSinfKind == 2 && !ssActive && !ssCont) {
           // continuous / full-interval infusion: yp is the constant steady state
           // Y_ss; the IC sensitivity is the linear solve done in backward_fill.
           ssCont = true; ssContY.assign(yp, yp + eff);
           _adjSSinfKind = 0;
-        }
-        // ss=2 superposition (INDEPENDENT of the window-start ss above -- a model
-        // can have ss=1 at t0 and ss=2 interior).  Y_ss_new was published by
-        // handleSS in _adjSS2peak; record its monodromy once and mark this event
-        // step (multiple ss2 events of the same regimen share one ss2Rec/S2).
-        if (_adjSS2 && _ss2PendIi) {
-          if (!ss2Active) { ss2Active = true; ss2Ii = _ss2Ii; ss2Cmt = _ss2Cmt; ss2Amt = _ss2Amt;
-            ss2Peak.assign(_adjSS2peak.begin(), _adjSS2peak.end()); }
-          ss2Steps.push_back(rec.nStep());
-          _adjSS2 = 0; _ss2PendIi = 0;
         }
       }
       // Capture the modeled infusion rate R now that handleEvid1 has set it.
@@ -8483,19 +8493,28 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ssActive = false;
   }
 
-  // Record the ss=2 regimen's steady-state period: flow over ss2Ii from the peak
-  // Y_ss_new (bolus, so record just the flow, like a window-start bolus ss).
+  // Record the ss=2 regimen's steady-state period from Y_ss_new.
   if (adj && ss2Active && !localBadSolve && ind->err == 0 &&
-      !rec.composite && !T.implicitRK && !T.rosenbrock && ss2Ii > 0.0 &&
-      (int)ss2Peak.size() >= op->adjNbase) {
-    // ss2Peak (yp before += solveSave) is the period-boundary TROUGH of the new
-    // regimen (the fixed point of Phi = flow_ii . dose), so apply the dose to
-    // reach the peak = dose(trough) and record the flow FROM there -- that is the
-    // trajectory the monodromy M=dPhi/dY, B=dPhi/dp are evaluated along.
+      !rec.composite && !T.implicitRK && !T.rosenbrock &&
+      (int)ss2Peak.size() >= op->adjNbase && (ss2Inf || ss2Ii > 0.0)) {
     std::vector<double> ytmp2 = ss2Peak, ss2Scratch;
-    if (ss2Cmt >= 0 && ss2Cmt < eff) ytmp2[ss2Cmt] += ss2Amt;
-    rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase,
-                      ytmp2.data(), 0.0, ss2Ii, &ss2Rec, ss2Scratch);
+    if (ss2Inf) {
+      // Fixed-rate infusion regimen: two-phase period from Y_ss_new (the period
+      // boundary) -- ss2InfRate over ss2InfDur then ss2InfRate2 over ss2InfDur2
+      // (same as the window-start infusion ss; dR/dp == 0).
+      double _sr = ind->InfusionRate[ss2InfCmt], _t = 0.0;
+      if (ss2InfDur > 0.0) { ind->InfusionRate[ss2InfCmt] = ss2InfRate;
+        rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp2.data(), _t, _t + ss2InfDur, &ss2Rec, ss2Scratch); _t += ss2InfDur; }
+      if (ss2InfDur2 > 0.0) { ind->InfusionRate[ss2InfCmt] = ss2InfRate2;
+        rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp2.data(), _t, _t + ss2InfDur2, &ss2Rec, ss2Scratch); }
+      ind->InfusionRate[ss2InfCmt] = _sr;
+    } else {
+      // Bolus: ss2Peak is the period-boundary TROUGH, so apply the dose to reach
+      // the peak = dose(trough) and record the flow FROM there (the trajectory
+      // the monodromy M=dPhi/dY, B=dPhi/dp are evaluated along).
+      if (ss2Cmt >= 0 && ss2Cmt < eff) ytmp2[ss2Cmt] += ss2Amt;
+      rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp2.data(), 0.0, ss2Ii, &ss2Rec, ss2Scratch);
+    }
   } else {
     ss2Active = false;
   }
