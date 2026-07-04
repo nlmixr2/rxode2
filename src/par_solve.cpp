@@ -2388,6 +2388,10 @@ static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRat
 // rk4s driver can record that regimen's monodromy and apply lambda^T dY_ss_new/dp
 // at the interior ss2 event.  1 = a bolus ss2 was just added (infusion ss2 TBD).
 static thread_local int    _adjSS2 = 0;
+// _adjSS2peak holds the added regimen's steady state Y_ss_new (yp just BEFORE the
+// += solveSave).  For a bolus/finite infusion ss2 it is the monodromy period
+// boundary; for a full-interval infusion ss2 it is the constant steady state used
+// in the dY_ss_new/dp = -J^{-1} df/dp linear solve (kind 2).
 static thread_local std::vector<double> _adjSS2peak;
 
 extern "C" void solveSSinf(int *neq,
@@ -3219,6 +3223,13 @@ void handleSS(int *neq,
       // REprintf("at ss: %f (inf: %f; rate: %f)\n", yp[ind->cmt],
       //          ind->InfusionRate[ind->cmt], rate);
       if (doSS2){
+        // ss==2 superposition: yp (BEFORE the += solveSave) is the added regimen's
+        // constant steady state Y_ss_new; publish it in _adjSS2peak so the rk4s
+        // driver adds lambda^T dY_ss_new/dp (via -J^{-1} df/dp) at the ss2 event.
+        if (op->adjoint) {
+          _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]);
+          _adjSSinfKind = 2; _adjSSinfCmt = ind->cmt;
+        }
         // Add at the end
         for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
       }

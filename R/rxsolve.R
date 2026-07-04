@@ -2453,12 +2453,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # dosing interval -- periodic (dur<ii), full-interval (dur==ii) and
         # large-duration (dur>ii, overlapping) all reach a periodic/constant
         # steady state handled by the two-phase monodromy / linear-solve IC term.
-        # ss==2 (superposition) is handled via the interior monodromy on the
-        # non-composite explicit path for BOLUS doses and fixed-rate PERIODIC
-        # infusions (dur<ii); ss=2 large-duration / continuous infusion guarded.
+        # ss==2 (superposition) is handled on the non-composite explicit path for
+        # BOLUS doses and ANY fixed-rate infusion with a dosing interval: periodic
+        # (dur<ii) and large-duration (dur>ii) via a two-phase monodromy, and
+        # full-interval (dur==ii) / continuous (amt==0) via a -J^{-1} df/dp linear
+        # solve at the added regimen's constant steady state.
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
-          (.evDf$ss == 2 & .noComposite &
-             (.r == 0 | (.r > 0 & .iiv > 0 & .durv < .iiv)))
+          (.evDf$ss == 2 & .noComposite & (.r == 0 | (.r > 0 & .iiv > 0)))
       } else if (.ctl$method == 202L) {          # liblsodaadj: continuous infusion only
         .supported <- .cont
       } else {                                    # abs / cvodesadj / stiff: none

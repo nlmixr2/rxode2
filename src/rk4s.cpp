@@ -7857,7 +7857,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const std::vector<size_t> *ss2Steps = NULL,
                                const std::vector<size_t> *boundarySs2 = NULL,
                                const std::vector<size_t> *ss1Steps = NULL,
-                               const std::vector<size_t> *boundarySs1 = NULL) {
+                               const std::vector<size_t> *boundarySs1 = NULL,
+                               const double *ss2ContY = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
@@ -8004,7 +8005,25 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   // the event steps for the sweep below.
   size_t ss2N = (ss2Rec ? ss2Rec->nStep() : 0);
   std::vector<double> S2; std::vector<char> isSs2;
-  if (ss2N > 0 && ss2Steps && !ss2Steps->empty()) {
+  if (ss2ContY && ss2Steps && !ss2Steps->empty()) {
+    // CONTINUOUS ss=2 infusion: Y_ss_new is the constant steady state, so
+    // S2 = dY_ss_new/dp = -J^{-1} df/dp at ss2ContY.  Materialize row-by-row:
+    // row k = e_k^T (-J^{-1}) df/dp = -(J^{-T} e_k)^T df/dp, so LU-factor J once
+    // and luSolveT(e_k) gives (J^{-1})_{k,:}.  Downstream S2 handling is identical.
+    std::vector<double> J2(nBase * nBase), FP2(nBase * np); std::vector<int> piv2(nBase);
+    rk4s_eval_jac(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], ss2ContY, nBase, np,
+                  fxOff, fpOff, Ascratch.data(), eff, ind, J2.data(), FP2.data());
+    if (luFactor(J2.data(), nBase, piv2.data())) {
+      S2.assign((size_t)nBase * np, 0.0);
+      for (int k = 0; k < nBase; ++k) {
+        std::vector<double> z(nBase, 0.0); z[k] = 1.0;
+        luSolveT(J2.data(), nBase, piv2.data(), z.data());   // z = (J^{-1})_{k,:}
+        for (int p = 0; p < np; ++p) { double s = 0; for (int j = 0; j < nBase; ++j) s += z[j] * FP2[j * np + p]; S2[(size_t)k * np + p] = -s; }
+      }
+      isSs2.assign(nStep + 1, 0);
+      for (size_t s : *ss2Steps) if (s <= nStep) isSs2[s] = 1;
+    }
+  } else if (ss2N > 0 && ss2Steps && !ss2Steps->empty()) {
     std::vector<std::vector<double> > ss2FXs(sN), ss2FPs(sN);
     for (int i = 0; i < sN; ++i) { ss2FXs[i].resize(ss2N * nfx); ss2FPs[i].resize(ss2N * nfp); }
     for (size_t n = 0; n < ss2N; ++n) {
@@ -8216,6 +8235,10 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   bool ss2Active = false; double ss2Ii = 0.0; int ss2Cmt = -1; double ss2Amt = 0.0;
   bool ss2Inf = false; int ss2InfCmt = -1;
   double ss2InfDur = 0.0, ss2InfDur2 = 0.0, ss2InfRate = 0.0, ss2InfRate2 = 0.0;
+  // CONTINUOUS / full-interval ss==2 infusion: the added regimen reaches a
+  // constant steady state Y_ss_new (ss2ContY, published by handleSS); its
+  // superposition IC dY_ss_new/dp = -J^{-1} df/dp is a linear solve (kind 2).
+  bool ss2Cont = false; std::vector<double> ss2ContY;
   std::vector<double> ss2Peak;
   std::vector<size_t> ss2Steps; rk4s_rec ss2Rec;
   int _ss2PendIi = 0; double _ss2Ii = 0.0; int _ss2Cmt = -1; double _ss2Amt = 0.0;
@@ -8405,6 +8428,16 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           }
           ss2Steps.push_back(rec.nStep());
           _adjSS2 = 0; _ss2PendIi = 0; _adjSSinfKind = 0;
+        } else if (_adjSS2 && _adjSSinfKind == 2) {
+          // CONTINUOUS / full-interval ss=2 infusion: the added regimen reaches a
+          // constant steady state Y_ss_new; its superposition IC dY_ss_new/dp =
+          // -J^{-1} df/dp is a linear solve (materialized into S2 in backward_fill).
+          if (!ss2Active) {
+            ss2Active = true; ss2Cont = true;
+            ss2ContY.assign(_adjSS2peak.begin(), _adjSS2peak.end());
+          }
+          ss2Steps.push_back(rec.nStep());
+          _adjSS2 = 0; _adjSSinfKind = 0;
         } else if (_ssPendCmt >= 0) {
           ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
           ssTrough.assign(yp, yp + eff);
@@ -8493,8 +8526,14 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ssActive = false;
   }
 
-  // Record the ss=2 regimen's steady-state period from Y_ss_new.
-  if (adj && ss2Active && !localBadSolve && ind->err == 0 &&
+  // Record the ss=2 regimen's steady-state period from Y_ss_new (bolus / finite
+  // infusion).  A CONTINUOUS ss=2 infusion has no periodic monodromy -- its S2 is
+  // a -J^{-1} df/dp linear solve at Y_ss_new (ss2ContY), built in backward_fill --
+  // so it records nothing here but must stay ss2Active.
+  if (adj && ss2Active && ss2Cont && !localBadSolve && ind->err == 0 &&
+      !rec.composite && !T.implicitRK && !T.rosenbrock) {
+    // nothing to record; ss2ContY drives the linear-solve S2 below.
+  } else if (adj && ss2Active && !localBadSolve && ind->err == 0 &&
       !rec.composite && !T.implicitRK && !T.rosenbrock &&
       (int)ss2Peak.size() >= op->adjNbase && (ss2Inf || ss2Ii > 0.0)) {
     std::vector<double> ytmp2 = ss2Peak, ss2Scratch;
@@ -8525,7 +8564,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
                        boundary, doseRec, infusRec, boundaryDose, ssActive ? &ssRec : NULL,
                        ssCont ? ssContY.data() : NULL,
-                       ss2Active ? &ss2Rec : NULL, &ss2Steps, &boundarySs2, &ss1Steps, &boundarySs1);
+                       ss2Active ? &ss2Rec : NULL, &ss2Steps, &boundarySs2, &ss1Steps, &boundarySs1,
+                       (ss2Active && ss2Cont) ? ss2ContY.data() : NULL);
   }
 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;

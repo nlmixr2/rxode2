@@ -215,16 +215,26 @@ rxTest({
       et(amt = 50, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>% et(c(1, 8, 12, 16, 24, 30))
     chk2(evD, "rk4s",    "rk4",    1e-4)
     chk2(evD, "vern98s", "vern98", 1e-4)
+    # ss=2 LARGE-duration infusion (dur = 100/10 = 10 > ii = 8; two-phase monodromy)
+    evE <- et(amt = 80, cmt = "central") %>%
+      et(amt = 100, rate = 10, cmt = "central", ss = 2, ii = 8, time = 8) %>% et(c(1, 8, 12, 16, 24, 30))
+    chk2(evE, "rk4s",    "rk4",    1e-4)
+    chk2(evE, "vern98s", "vern98", 1e-4)
+    # ss=2 FULL-interval infusion (dur = 120/10 = 12 == ii = 12; -J^-1 df/dp IC)
+    evF <- et(amt = 80, cmt = "central") %>%
+      et(amt = 120, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>% et(c(1, 8, 12, 16, 24, 30))
+    chk2(evF, "rk4s",    "rk4",    1e-4)
+    chk2(evF, "vern98s", "vern98", 1e-4)
   })
 
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
-    # ss=2 LARGE-duration infusion (dur = 100/10 = 10 >= ii = 8) not yet covered
-    # (periodic ss=2 infusion, dur<ii, IS covered below)
-    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = 10, cmt = "depot", ss = 2, ii = 8) %>% et(c(1, 2, 4)),
-                                 params = p, method = "rk4s", cores = 1), "steady-state")
+    # ss=2 (bolus/infusion) is covered on the explicit path but not on the
+    # composite (AutoSwitch) path -- guarded there.
+    expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
+                                 params = p, method = "dop853s+ros4s", cores = 1), "steady-state")
     # multiple ss=1 events (interior ss=1 reset) are covered on the explicit path
     # but not on the composite (AutoSwitch) path -- guarded there.
     expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 1, ii = 24) %>%
