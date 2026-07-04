@@ -2463,10 +2463,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         .supported <- rep(FALSE, nrow(.evDf))
       }
       # Multiple ss==1 events (an interior ss=1 reset re-establishing steady
-      # state, not just the window-start ss=1) are not yet covered -- the window
-      # start captures a single ss=1 regimen.
+      # state, not just the window-start ss=1) are handled on the non-composite
+      # explicit path (interior monodromy + reset); elsewhere they are guarded.
       .multiSs1 <- length(unique(.evDf$time[.evDf$ss == 1 & .evDf$evid != 0])) > 1L
-      .badSs <- .multiSs1 || any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+      .badSs <- (.multiSs1 && !(.rk4sFw && .noComposite)) ||
+        any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop("adjoint sensitivities do not yet support this steady-state (ss) ",
              "case; use sensMethod=\"forward\" for models with steady-state doses",

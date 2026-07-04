@@ -202,6 +202,14 @@ rxTest({
     evB <- et(amt = 100, cmt = "depot") %>% et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 12) %>%
       et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 36) %>% et(c(4, 12, 24, 36, 48))
     chk2(evB, "rk4s", "rk4", 1e-5)
+    # interleaved loading ss=1 + maintenance ss=2 + interior ss=1 reset (the
+    # nmtest id=125 pattern): ss1 at t0, ss2 at t12, ss1 (reset) at t24, ss2 at t36
+    evC <- et(amt = 100, cmt = "depot", ss = 1, ii = 24) %>%
+      et(amt = 50, cmt = "depot", ss = 2, ii = 24, time = 12) %>%
+      et(amt = 100, cmt = "depot", ss = 1, ii = 24, time = 24) %>%
+      et(amt = 50, cmt = "depot", ss = 2, ii = 24, time = 36) %>% et(c(4, 12, 20, 24, 30, 36, 44))
+    chk2(evC, "rk4s",    "rk4",    1e-4)
+    chk2(evC, "vern98s", "vern98", 1e-4)
   })
 
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
@@ -211,10 +219,11 @@ rxTest({
     # ss=2 INFUSION superposition not yet covered (bolus ss=2 IS covered below)
     expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = 10, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
                                  params = p, method = "rk4s", cores = 1), "steady-state")
-    # multiple ss=1 events (interior ss=1 reset) not yet covered
+    # multiple ss=1 events (interior ss=1 reset) are covered on the explicit path
+    # but not on the composite (AutoSwitch) path -- guarded there.
     expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 1, ii = 24) %>%
                                    et(amt = 100, cmt = "depot", ss = 1, ii = 24, time = 24) %>% et(c(1, 12, 30)),
-                                 params = p, method = "rk4s", cores = 1), "steady-state")
+                                 params = p, method = "dop853s+ros4s", cores = 1), "steady-state")
     # modeled-rate infusion ss (dR/dp != 0) not yet covered
     expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = -1, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4)),
                                  params = p, method = "rk4s", cores = 1), "steady-state")

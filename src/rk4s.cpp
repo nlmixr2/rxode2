@@ -7855,7 +7855,9 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const double *ssContY = NULL,
                                const rk4s_rec *ss2Rec = NULL,
                                const std::vector<size_t> *ss2Steps = NULL,
-                               const std::vector<size_t> *boundarySs2 = NULL) {
+                               const std::vector<size_t> *boundarySs2 = NULL,
+                               const std::vector<size_t> *ss1Steps = NULL,
+                               const std::vector<size_t> *boundarySs1 = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
@@ -8040,6 +8042,30 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (size_t s : *ss2Steps) if (s <= nStep) isSs2[s] = 1;
   }
 
+  // Interior ss=1 reset IC: S_ss1 = dY_ss1/dp = (I-M)^{-1}B of the window-start
+  // ss=1 regimen (ssRec, same regimen), row-by-row via the geometric series.
+  // Applied (then a reset lambda:=0) at each INTERIOR ss=1 step (step > 0; step 0
+  // is the window start, handled by the geometric-series IC term below).
+  std::vector<double> Sss1; std::vector<char> isSs1;
+  if (ssN > 0 && ss1Steps) {
+    bool anyInterior = false;
+    for (size_t s : *ss1Steps) if (s > 0 && s <= nStep) { anyInterior = true; break; }
+    if (anyInterior) {
+      Sss1.assign((size_t)nBase * np, 0.0);
+      for (int k = 0; k < nBase; ++k) {
+        std::vector<double> nu(nBase, 0.0); nu[k] = 1.0; std::vector<double> muAdd(np, 0.0);
+        for (int git = 0; git < op->maxSS + 5; ++git) {
+          ssPeriodTranspose(nu, muAdd);
+          double n2 = 0; for (int j = 0; j < nBase; ++j) n2 += fabs(nu[j]);
+          if (n2 < 1e-14) break;
+        }
+        for (int p = 0; p < np; ++p) Sss1[(size_t)k * np + p] = muAdd[p];
+      }
+      isSs1.assign(nStep + 1, 0);
+      for (size_t s : *ss1Steps) if (s > 0 && s <= nStep) isSs1[s] = 1;
+    }
+  }
+
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
@@ -8071,6 +8097,16 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
             for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += lam[q] * S2[(size_t)q * np + p]; mu[p] += s; }
             break;
           }
+      // An observation coincident with an interior ss=1 reset reads Y_ss1: add
+      // lambda^T S_ss1 then reset lambda := 0 so the sweep below contributes
+      // nothing from before the event (gated by boundarySs1[i]).
+      if (!Sss1.empty() && boundarySs1)
+        for (size_t z = 0; z < (*boundarySs1)[i] && z < ss1Steps->size(); ++z)
+          if ((*ss1Steps)[z] == fromStep && fromStep > 0) {
+            for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += lam[q] * Sss1[(size_t)q * np + p]; mu[p] += s; }
+            for (int j = 0; j < nBase; ++j) lam[j] = 0.0;
+            break;
+          }
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) {
         stepTranspose(nn - 1, lam, mu); dde.applyStep(nn - 1, lam);
@@ -8078,6 +8114,12 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
         // lambda^T S2; it then passes through the additive jump unchanged.
         if (!S2.empty() && isSs2[nn - 1])
           for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += lam[q] * S2[(size_t)q * np + p]; mu[p] += s; }
+        // interior ss=1 reset: add lambda^T S_ss1, then reset lambda := 0 (the
+        // reset re-establishes Y_ss1, wiping the pre-event sensitivity).
+        if (!Sss1.empty() && isSs1[nn - 1]) {
+          for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += lam[q] * Sss1[(size_t)q * np + p]; mu[p] += s; }
+          for (int j = 0; j < nBase; ++j) lam[j] = 0.0;
+        }
       }
       dde.applyDoseJumps(mu, doses);
       if (ssN > 0) {                       // monodromy IC term (bolus / periodic infusion)
@@ -8149,6 +8191,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<size_t> boundary(ind->n_all_times, 0);  // cumulative steps at each stored time
   std::vector<size_t> boundaryDose(ind->n_all_times, 0); // # doses recorded when each time was stored
   std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
+  std::vector<size_t> boundarySs1(ind->n_all_times, 0);  // # ss1 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1;                               // set when the current event opens an infusion
@@ -8174,6 +8217,11 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<double> ss2Peak;
   std::vector<size_t> ss2Steps; rk4s_rec ss2Rec;
   int _ss2PendIi = 0; double _ss2Ii = 0.0; int _ss2Cmt = -1; double _ss2Amt = 0.0;
+  // Interior ss=1 resets: an ss=1 event past the window start re-establishes the
+  // regimen's steady state (Y_ss1, same monodromy as the window-start ss=1 in
+  // ssRec).  At each such step the backward sweep adds lambda^T dY_ss1/dp then
+  // RESETS lambda := 0 (the reset wipes the pre-event sensitivity).
+  std::vector<size_t> ss1Steps;
 
   for(i = 0; i < ind->n_all_times; i++) {
     ind->idx=i;
@@ -8345,6 +8393,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (_ssPendCmt >= 0) {
           ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
           ssTrough.assign(yp, yp + eff);
+          ss1Steps.push_back(rec.nStep());   // every ss=1 event step (0 = window start)
           _ssPendCmt = -1;
         } else if (_adjSSinfKind == 1 && !ssActive) {
           // fixed-rate periodic infusion steady state: yp is the pre-infusion
@@ -8390,7 +8439,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
-    if (adj && i >= 0 && i < ind->n_all_times) { boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); boundarySs2[i] = ss2Steps.size(); }
+    if (adj && i >= 0 && i < ind->n_all_times) { boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); boundarySs2[i] = ss2Steps.size(); boundarySs1[i] = ss1Steps.size(); }
     ind->solvedIdx = i;
   }
 
@@ -8457,7 +8506,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                        op->adjFxOff, op->adjFpOff, op->adjDfOff, op->adjSensOff,
                        boundary, doseRec, infusRec, boundaryDose, ssActive ? &ssRec : NULL,
                        ssCont ? ssContY.data() : NULL,
-                       ss2Active ? &ss2Rec : NULL, &ss2Steps, &boundarySs2);
+                       ss2Active ? &ss2Rec : NULL, &ss2Steps, &boundarySs2, &ss1Steps, &boundarySs1);
   }
 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
