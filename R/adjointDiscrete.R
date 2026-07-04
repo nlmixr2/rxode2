@@ -512,37 +512,65 @@
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxAdjointModel <- function(object, calcSens) {
+.rxAdjointModel <- function(object, calcSens, stiff = FALSE) {
   .txt <- if (is.character(object) && length(object) == 1L) object else rxode2::rxNorm(rxode2::rxModelVars(object))
-  .key <- paste0(.txt, "\n##adj##", paste(calcSens, collapse = ","))
+  .key <- paste0(.txt, "\n##adj", if (isTRUE(stiff)) "S" else "", "##", paste(calcSens, collapse = ","))
   .hit <- get0(.key, envir = .rxAdjointModelCache, inherits = FALSE)
   if (!is.null(.hit)) return(.hit)
-  .ex <- .rxAdjointExpand(object, calcSens)
+  .ex <- .rxAdjointExpand(object, calcSens, stiff = isTRUE(stiff))
   .ret <- list(model = rxode2::rxode2(.ex$text), info = .ex)
   assign(.key, .ret, envir = .rxAdjointModelCache)
   .ret
 }
 
-#' Solve a model with the in-engine discrete adjoint (rk4s)
+## Stiff (Rosenbrock / implicit-RK) adjoint methods -- the ones that integrate the
+## adjoint-augmented system with an analytic Jacobian, so the expansion must be
+## built with stiff=TRUE (df()/dy() + the dJ/dtheta,dJ/dy blocks).  The composite
+## dop853s+ros4s counts: its stiff secondary (ros4s) needs the Jacobian.
+.rxAdjointStiffMethods <- c("ros4s", "ros6s", "ros43s", "radauiia5s", "gauss6s",
+                            "geng5s", "sdirk43s", "iiic6s", "backwardEulers")
+
+#' Does an adjoint (`s`) solve method require the stiff analytic Jacobian?
+#'
+#' @param method adjoint method name(s) -- a single name, a composite vector
+#'   `c("dop853s","ros4s")`, or a `"dop853s+ros4s"` string.
+#' @return `TRUE` if any component is a stiff adjoint method.
+#' @author Matthew L. Fidler
+#' @keywords internal
+.rxAdjointMethodStiff <- function(method) {
+  if (is.null(method)) return(FALSE)
+  .m <- unlist(strsplit(as.character(method), "+", fixed = TRUE))
+  any(.m %in% .rxAdjointStiffMethods)
+}
+
+#' Solve a model with an in-engine discrete-adjoint (`s`) method
 #'
 #' Convenience wrapper that applies the adjoint expansion (cached), solves with
-#' the `rk4s` method, and returns clean output (the internal `rx__adjFX_*`/
-#' `rx__adjFP_*`/`rx__adjdF_*` lhs are dropped).  `rk4s` is the gradient method:
-#' it returns the full-trajectory `rx__sens_<state>_BY_<param>__` sensitivity
-#' columns.  If no gradient is needed, use the plain `rk4` method instead.  A
-#' scalar objective gradient is a downstream REDUCTION of these columns (e.g. the
-#' nlmixr2est -2LL), not a mode of the solver.
+#' the requested adjoint method, and returns clean output (the internal
+#' `rx__adjFX_*`/`rx__adjFP_*`/`rx__adjdF_*`/`rx__adjJp_*`/`rx__adjJy_*` lhs are
+#' dropped).  These methods return the full-trajectory
+#' `rx__sens_<state>_BY_<param>__` sensitivity columns; a scalar objective
+#' gradient is a downstream REDUCTION of these columns (e.g. the nlmixr2est
+#' -2LL), not a mode of the solver.
+#'
+#' The stiff analytic Jacobian the Rosenbrock / implicit-RK adjoint methods
+#' (`ros4s`, `radauiia5s`, ..., and the `dop853s+ros4s` composite) need is
+#' emitted into the expansion automatically, inferred from `method` -- explicit /
+#' multistep adjoint methods (`rk4s`, `dop853s`, ...) never form a Jacobian, so
+#' it is omitted for them.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @param events an rxode2 event table / data set.
 #' @param params optional named parameter vector or data frame (per subject).
+#' @param method adjoint solve method (default `"rk4s"`).  May be a composite
+#'   (`"dop853s+ros4s"`).
 #' @param ... passed to [rxode2::rxSolve()].
 #' @return the solved data frame with `rx__sens_<state>_BY_<param>__` columns.
 #' @author Matthew L. Fidler
 #' @export
-rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, ...) {
-  .b <- .rxAdjointModel(object, calcSens)
-  .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = "rk4s", ...))
-  .drop <- grep("^rx__adj(FX|FP|dF)_", names(.df), value = TRUE)
+rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, method = "rk4s", ...) {
+  .b <- .rxAdjointModel(object, calcSens, stiff = .rxAdjointMethodStiff(method))
+  .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = method, ...))
+  .drop <- grep("^rx__adj(FX|FP|dF|Jp|Jy)_", names(.df), value = TRUE)
   .df[, setdiff(names(.df), .drop), drop = FALSE]
 }

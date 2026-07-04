@@ -26,6 +26,12 @@
     explicit stand-in.  The ss primal and its sensitivity IC now share one
     discretization, making the stiff adjoint stiff end-to-end and tightening
     steady-state sensitivity accuracy (~1e-6 vs ~1e-4).
+  - `rxSolveAdjointRk4()` gained a `method=` argument and now infers whether the
+    adjoint expansion needs the stiff analytic Jacobian directly from the method
+    (`.rxAdjointMethodStiff()`), building it with `stiff=TRUE` for the Rosenbrock
+    / implicit-RK methods and the `dop853s+ros4s` composite, and without it for
+    the explicit / multistep ones -- so a stiff adjoint solve no longer requires
+    building the expansion with `stiff=TRUE` by hand.
 
 - Added jump sensitivities for events (based on
   https://github.com/dkaschek/EventSensitivities).  Hybrid jump

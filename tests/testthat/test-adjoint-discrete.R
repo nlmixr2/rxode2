@@ -453,6 +453,29 @@ rxTest({
            et(amt = 50, cmt = "center", ss = 2, ii = 12, time = 12) %>% et(c(4, 12, 24)), 1e-4) # ss=2 superposition
   })
 
+  test_that("rxSolveAdjointRk4 infers the stiff Jacobian from the method", {
+    # .rxAdjointMethodStiff maps the adjoint method to whether the expansion needs
+    # the analytic Jacobian (stiff Rosenbrock/implicit-RK + the composite).
+    expect_true(rxode2:::.rxAdjointMethodStiff("ros4s"))
+    expect_true(rxode2:::.rxAdjointMethodStiff("radauiia5s"))
+    expect_true(rxode2:::.rxAdjointMethodStiff("dop853s+ros4s"))
+    expect_false(rxode2:::.rxAdjointMethodStiff("rk4s"))
+    expect_false(rxode2:::.rxAdjointMethodStiff("dop853s"))
+    # the convenience wrapper auto-builds WITH the Jacobian for a stiff method and
+    # WITHOUT for an explicit one -- both reproduce the forward sensitivities at ss.
+    mtxt <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center"
+    mfwd <- rxode2::rxode2(mtxt, calcSens = cs)
+    evSS <- et(amt = 100, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12))
+    f <- as.data.frame(suppressWarnings(rxode2::rxSolve(mfwd, evSS, params = p, method = "lsoda")))
+    scol <- as.vector(outer(c("depot", "center"), cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
+    for (meth in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s")) {
+      a <- suppressWarnings(rxode2::rxSolveAdjointRk4(mtxt, evSS, params = p, calcSens = cs, method = meth))
+      expect_false(any(grepl("^rx__adj", names(a))))           # internal lhs dropped
+      mx <- 0; for (cn in scol) mx <- max(mx, max(abs(a[[cn]] - f[[cn]]), na.rm = TRUE))
+      expect_lt(mx / max(1, max(abs(unlist(f[scol])), na.rm = TRUE)), 3e-3)
+    }
+  })
+
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
     fText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
     fcs <- c("ka", "cl", "v", "Fbio"); fp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)

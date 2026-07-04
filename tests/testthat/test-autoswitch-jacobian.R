@@ -92,4 +92,30 @@ rxTest({
     expect_false(any(is.na(.xr$a)))
     expect_true(max(abs(.xr$a - .refr$a)) < 1e-5)
   })
+
+  test_that("dop853+ros4 composite solves a STIFF FORWARD-SENSITIVITY system with the analytic Jacobian", {
+    withr::local_options(rxode2.useLinCmt = FALSE)
+    # Robertson with free rate constants + first-order sensitivities: the
+    # augmented (states + rx__sens_*) system is stiff, so pure dop853 cannot solve
+    # it, and the ros4 secondary is only viable because the FULL forward-sensitivity
+    # Jacobian is emitted (calcJac=TRUE) -- without it boost's rosenbrock4 could not
+    # step the wide augmented system.  This exercises the composite ACTUALLY
+    # switching to the stiff secondary on a forward-sens model (not just the primal).
+    .rob <- "d/dt(a) = -k1*a + k2*b*cc\nd/dt(b) = k1*a - k2*b*cc - k3*b*b\nd/dt(cc) = k3*b*b"
+    .cs <- c("k1", "k2", "k3"); .p <- c(k1 = 0.04, k2 = 1e4, k3 = 3e7); .ini <- c(a = 1, b = 0, cc = 0)
+    .ev <- et(c(0.1, 1, 10, 100))
+    .scol <- as.vector(outer(c("a", "b", "cc"), .cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
+    .ref <- as.data.frame(suppressWarnings(rxSolve(rxode2(.rob, calcSens = .cs), .ev,
+                                                   params = .p, inits = .ini, method = "lsoda", atol = 1e-10, rtol = 1e-10)))
+    .mj <- rxode2(.rob, calcSens = .cs, calcJac = TRUE)
+    ## pure dop853 fails on the stiff augmented system ...
+    expect_error(suppressWarnings(rxSolve(.mj, .ev, params = .p, inits = .ini, method = "dop853", atol = 1e-8, rtol = 1e-8)))
+    ## ... but the composite switches to ros4 (analytic Jacobian) and matches lsoda.
+    .x <- as.data.frame(suppressWarnings(rxSolve(.mj, .ev, params = .p, inits = .ini,
+                                                 method = "dop853+ros4", atol = 1e-8, rtol = 1e-8)))
+    expect_false(any(is.na(.x$a)))
+    .sref <- max(1, max(abs(unlist(.ref[.scol])), na.rm = TRUE)); .mx <- 0
+    for (cn in .scol) .mx <- max(.mx, max(abs(.x[[cn]] - .ref[[cn]]), na.rm = TRUE))
+    expect_lt(.mx / .sref, 1e-3)
+  })
 })
