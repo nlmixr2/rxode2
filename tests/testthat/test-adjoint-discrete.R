@@ -341,10 +341,17 @@ rxTest({
     # Skipped: doses to cmt>=3 hit the sensitivity output compartments (which
     # differ between the adjoint output slots and the forward ODE states).
     # (Observations coincident with a full reset -- ids 23/24 -- are handled via
-    # the boundaryDose disambiguation and are NOT skipped.)  Checked across an
-    # explicit, an adaptive, and a high-order adjoint method vs the matching base.
+    # the boundaryDose disambiguation and are NOT skipped.)  Checked across EVERY
+    # adjoint dense / adaptive one-step solver (the whole rk4s-framework family)
+    # vs the matching base method -- they all share the explicit backward fill.
     tested <- 0
-    for (mp in list(c("rk4s", "rk4"), c("dop853s", "dop853"), c("vern98s", "vern98"))) {
+    for (mp in list(c("rk4s", "rk4"), c("dop853s", "dop853"), c("dop5s", "dop5"),
+                    c("vern65s", "vern65"), c("vern76s", "vern76"), c("vern98s", "vern98"),
+                    c("dop87s", "dop87"), c("f78s", "f78"), c("ck54s", "ck54"),
+                    c("bs32s", "bs"), c("rk43s", "rk43"), c("tf65s", "tf65"),
+                    c("v65rs", "v65r"), c("v76rs", "v76r"), c("v78s", "v78"),
+                    c("v87rs", "v87r"), c("v89s", "v89"), c("dverk78s", "dverk78"),
+                    c("tp75s", "tp75"))) {
       for (id in unique(d0$id)) {
         di <- d0[d0$id == id, ]
         if (any(di$evid != 0 & !(di$cmt %in% c(1, 2)))) next
@@ -367,7 +374,7 @@ rxTest({
         tested <- tested + 1
       }
     }
-    expect_gt(tested, 60)                      # a meaningful set of scenarios x methods
+    expect_gt(tested, 900)                     # ~54 scenarios x 19 dense solvers
   })
 
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
