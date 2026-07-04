@@ -314,11 +314,12 @@ rxTest({
     evR <- et(amt = 100, rate = -1, cmt = "central", ss = 1, ii = 24) %>% et(smp)   # modeled rate
     chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\ndur(central)=9*cl/3.5\ncp=central/(v/1000)",  evM, 1e-6)
     chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nrate(central)=11*cl/3.5\ncp=central/(v/1000)", evR, 1e-6)
-    # NOTE: F != 1 with a MOVING modeled boundary (dur/rate depending on a
-    # sensitivity param) is a PRE-EXISTING limitation of the rate/dur dRate dual
-    # (the NON-ss dual is wrong there too), so it is not exercised here; a modeled
-    # boundary with F != 1 but CONSTANT duration (dRate == 0, e.g. nmtest id=19) is
-    # correct and covered by the nmtest scenarios below.
+    # bioavailability (F != 1): CONSTANT F folds into the effective rate F*amt/dur,
+    # and a PARAMETER-DEPENDENT F (dF != 0) adds a dF term to the infusion dual
+    # (forcing for dur, off-boundary for rate).
+    chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nf(central)=0.61\ndur(central)=9*cl/3.5\ncp=central/(v/1000)",   evM, 1e-6)  # const F, dur
+    chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nf(central)=0.61*cl/3.5\ndur(central)=9\ncp=central/(v/1000)",    evM, 1e-6)  # dF!=0, dur
+    chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nf(central)=0.61*cl/3.5\nrate(central)=11\ncp=central/(v/1000)",  evR, 1e-6)  # dF!=0, rate
   })
 
   test_that("nmtest dosing scenarios: adjoint solution AND gradients match forward sensitivities (ka + elimination)", {

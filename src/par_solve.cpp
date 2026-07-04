@@ -2404,7 +2404,8 @@ static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRat
 // (no augmentation), 1 = modeled rate, 2 = modeled dur; _adjSSinfAmt is the dose
 // amount (the boundary factor is -(amt/R)*durMult, durMult = 1 rate / amt dur).
 static thread_local int    _adjSSinfModeled = 0;
-static thread_local double _adjSSinfAmt = 0.0;
+static thread_local double _adjSSinfAmt = 0.0;      // F-adjusted (F*amt)
+static thread_local double _adjSSinfAmtRaw = 0.0;   // raw (non-F) amt, for the dF dual
 // STICKY snapshot of the ss handoff for the liblsodaadj backward fill: the
 // forward loop calls handleSS again for every addl-expanded dose (even under
 // addlDropSs), and each entry RESETS the live handoff -- so the driver snapshots
@@ -2846,7 +2847,7 @@ void handleSS(int *neq,
               void *ctx) {
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
-  _adjSSinfModeled = 0; _adjSSinfAmt = 0.0;
+  _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
   _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;   // forward eventSens: disarm the modeled ss off markers
   int j;
   int doSS2=0;
@@ -3516,13 +3517,14 @@ void handleSS(int *neq,
             // modeled rate()/dur(): the effective ON rate is R = F*amt/D (the
             // bioavailability-adjusted amount, matching the non-ss dual's getAmt);
             // the moving boundary D(p) is handled by the B augmentation.
-            double _amt = getAmt(ind, ind->id, _c, getDose(ind, ind->idose[infBixds]), xout, yp);
+            double _amtRaw = getDose(ind, ind->idose[infBixds]);
+            double _amt = getAmt(ind, ind->id, _c, _amtRaw, xout, yp);
             _adjSSinfKind = 1; _adjSSinfCmt = _c;
             _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
             _adjSSinfRate = (dur > 0.0) ? _amt / dur : 0.0;
             _adjSSinfRate2 = 0.0;
             _adjSSinfModeled = (_wI == EVIDF_MODEL_DUR_ON) ? 2 : 1;
-            _adjSSinfAmt = _amt;
+            _adjSSinfAmt = _amt; _adjSSinfAmtRaw = _amtRaw;
           }
         }
         *istate=1;
