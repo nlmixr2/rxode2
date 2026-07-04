@@ -489,7 +489,8 @@ print.rxSolveOom <- function(x, ...) {
 #' @param x An \code{rxSolveOom} object.
 #' @param ... Ignored.
 #' @return An \code{arrow::Table}.
-#' @export
+#' @keywords internal
+#' @noRd
 as_arrow_table.rxSolveOom <- function(x, ...) {
   if (!requireNamespace("arrow", quietly = TRUE))
     stop("package 'arrow' is required for as_arrow_table()")
@@ -543,14 +544,12 @@ as.data.frame.rxSolveOom <- function(x, ...) {
   do.call(rbind, lapply(.m$chunks, readRDS))
 }
 
-#' @export
 as_tibble.rxSolveOom <- function(x, ...) {
   if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
     return(tibble::as_tibble(as_arrow_table.rxSolveOom(x)))
   tibble::as_tibble(as.data.frame(x))
 }
 
-#' @export
 as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
   if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
     return(data.table::as.data.table(as.data.frame(as_arrow_table.rxSolveOom(x))))
@@ -567,6 +566,7 @@ as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
 #' @param n Number of rows to return.
 #' @param ... Ignored.
 #' @return A \code{data.frame} with the first \code{n} rows.
+#' @keywords internal
 #' @export
 head.rxSolveOom <- function(x, n = 6L, ...) {
   .m <- attr(x, "manifest")

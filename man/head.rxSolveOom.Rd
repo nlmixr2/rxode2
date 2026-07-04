@@ -21,3 +21,4 @@ Reads only the first \code{n} rows from the parquet (or rds) chunks,
 preferring DuckDB (which pushes the row limit into the parquet reader) and
 falling back to arrow / rds.
 }
+\keyword{internal}
