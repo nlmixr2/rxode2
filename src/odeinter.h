@@ -139,6 +139,12 @@ struct rxode2_system_jac_second {
   template<class StateType, class MatrixType>
   void operator()(const StateType& x, MatrixType& jacobi, const double t) const {
     unsigned int nrowpd = neqOde;
+    // Same rationale as rxode2_system_ros4_second: calc_jac writes only the
+    // structurally nonzero df/dy entries (a SPARSE analytic Jacobian, as the
+    // adjoint / forward-sensitivity expansions emit).  Boost reuses this matrix
+    // object across steps without clearing it, so zero it first to keep the
+    // omitted entries from carrying stale values into the implicit solve.
+    std::fill(&jacobi.data()[0], &jacobi.data()[0] + (size_t)neqOde * (size_t)neqOde, 0.0);
     if (calc_jac != NULL) {
       calc_jac(neq, t, const_cast<double*>(&x[0]), &jacobi.data()[0], nrowpd);
     }
@@ -158,6 +164,14 @@ struct rxode2_system_ros4_second {
   template<class StateType, class MatrixType, class DfdtType>
   void operator()(const StateType& x, MatrixType& jacobi, const double t, DfdtType& dfdt) const {
     unsigned int nrowpd = neqOde;
+    // rxode2's calc_jac writes ONLY the nonzero df/dy entries (a sparse analytic
+    // Jacobian -- e.g. the adjoint / forward-sensitivity expansions emit just the
+    // structurally nonzero block and leave the rest implicitly zero).  Boost's
+    // rosenbrock4 reuses this matrix object across steps and does NOT clear it,
+    // so any entry calc_jac skips would keep a STALE value from a previous step
+    // and corrupt the W = 1/(h*gamma) I - J solve (wrong steps / divergence).
+    // Zero it first so the omitted entries are a true 0.
+    std::fill(&jacobi.data()[0], &jacobi.data()[0] + (size_t)neqOde * (size_t)neqOde, 0.0);
     if (calc_jac != NULL) {
       calc_jac(neq, t, const_cast<double*>(&x[0]), &jacobi.data()[0], nrowpd);
     }

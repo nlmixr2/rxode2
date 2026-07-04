@@ -25,6 +25,20 @@ static const double ab_coef[8][8] = {
   {16083.0/4480, -1152169.0/120960, 242653.0/13440, -296053.0/13440, 2102243.0/120960, -115747.0/13440, 32863.0/13440, -5257.0/17280}
 };
 
+// -- discrete-adjoint recording (method="abs", code 208) --------------------------
+// ab_do_steps re-initialises (RK4 startup + fresh f-history) on every call, so each
+// call is a self-contained AB integration; calls chain only through y.  We record,
+// per call, the ordered step list (y BEFORE each step, dt, and whether it was an
+// RK4-startup step or an AB step) plus the call's start/end.  ab_adjoint.cpp reads
+// these and runs the exact reverse-mode transpose.  Recompute J/F_p in the backward
+// from the recorded y via calc_lhs (RK4 stages are recomputed, not recorded).
+struct abRecStep { std::vector<double> y; double t, dt; int isRK4; };
+struct abRecCall { size_t stepBegin, stepEnd; int order; double t0, t1; std::vector<double> yEnd; };
+static thread_local bool                  abAdjActive = false;
+static thread_local int                   abAdjNbase  = 0;
+static thread_local std::vector<abRecStep> abAdjSteps;
+static thread_local std::vector<abRecCall> abAdjCalls;
+
 // Direct Adams-Bashforth implementation using manual history management.
 // Boost's adams_bashforth<N> has accuracy issues with zero_copy_state aliasing.
 static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *op, rxode2_system& sys, zero_copy_state& state, double xp, double xout) {
@@ -72,6 +86,10 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
   int steps_taken = 0;
   int max_steps = op->mxstep;
 
+  // discrete-adjoint: open a call record (this whole ab_do_steps call = one segment).
+  size_t _abCallBegin = 0;
+  if (abAdjActive) _abCallBegin = abAdjSteps.size();
+
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
     double current_dt = dt;
     if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) {
@@ -80,6 +98,13 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
     }
 
     if (ind->err != 0) { ind->rc[0] = -2019; break; }
+
+    // record this step (y BEFORE it, dt, and its type) for the backward transpose.
+    if (abAdjActive) {
+      abRecStep _s; _s.t = t; _s.dt = current_dt; _s.isRK4 = (initialized < order - 1) ? 1 : 0;
+      _s.y.assign(y.begin(), y.begin() + abAdjNbase);
+      abAdjSteps.push_back(std::move(_s));
+    }
 
     // Evaluate f at current state (block scope avoids assignment aliasing)
     { zero_copy_state xs(y.data(), neq), ds(dxdt.data(), neq); sys(xs, ds, t); }
@@ -114,6 +139,14 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
       break;
     }
     if (ind->err != 0) { ind->rc[0] = -2019; break; }
+  }
+
+  // discrete-adjoint: close the call record (start/end time, order, step range, end y).
+  if (abAdjActive && abAdjSteps.size() > _abCallBegin) {
+    abRecCall _c; _c.stepBegin = _abCallBegin; _c.stepEnd = abAdjSteps.size();
+    _c.order = order; _c.t0 = xp; _c.t1 = t;
+    _c.yEnd.assign(y.begin(), y.begin() + abAdjNbase);
+    abAdjCalls.push_back(std::move(_c));
   }
 
   // Write result back to state (yp)

@@ -1479,4 +1479,57 @@ rxTest({
     expect_equal(s2, fd, tolerance = 1e-6)
     expect_gt(max(abs(fd)), 0.05)
   })
+
+  test_that("modeled dur() STEADY STATE forward jump-sensitivities match FD (solveSSinf moving boundary)", {
+    # solveSSinf re-expresses a modeled dur() ss infusion as a fixed-rate window;
+    # its classic OFF used to skip the MODEL_DUR_OFF sens forcing-removal + moving-
+    # boundary jump, so post-boundary sensitivities were ~30% wrong.  handleSS now
+    # arms a marker so handle_evid runs that logic at the re-expressed OFF.
+    mt <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\ndur(central)=9*cl/3.5\ncp=central/(v/1000)"
+    cs <- c("ka", "cl"); p <- c(ka = 1.2, cl = 3.5, v = 25)
+    mb <- rxode2(mt); mj <- rxode2(mt, calcSens = cs, eventSens = "jump")
+    ev <- et(amt = 100, rate = -2, cmt = "central", ss = 1, ii = 24) |> et(c(4, 8, 9.5, 12, 16, 24, 30))
+    f <- as.data.frame(suppressWarnings(rxSolve(mj, ev, params = p, atol = 1e-11, rtol = 1e-11)))
+    mx <- 0
+    for (pn in cs) {
+      hh <- abs(p[[pn]]) * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      sp <- as.data.frame(suppressWarnings(rxSolve(mb, ev, params = pp, atol = 1e-11, rtol = 1e-11)))
+      sm <- as.data.frame(suppressWarnings(rxSolve(mb, ev, params = pm, atol = 1e-11, rtol = 1e-11)))
+      for (st in c("depot", "central")) {
+        fd <- (sp[[st]] - sm[[st]]) / (2 * hh)
+        mx <- max(mx, max(abs(f[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] - fd), na.rm = TRUE))
+      }
+    }
+    expect_lt(mx, 1e-5)
+  })
+
+  test_that("modeled rate() moving-boundary forward jump-sensitivities match FD (non-ss AND ss)", {
+    # The modeled rate() OFF boundary tau2 = tau1 + F*amt/rate(p) moves with the
+    # parameters; that transversality jump [S] = amt*dF - (F*amt/rate)*d(rate)/dp
+    # was previously DEFERRED (MODEL_RATE_OFF only removed the continuous forcing),
+    # so both regular AND steady-state modeled-rate sensitivities were ~30% wrong.
+    cs <- c("ka", "cl"); p <- c(ka = 1.2, cl = 3.5, v = 25)
+    chk <- function(mt, ev, drop = NA) {
+      st0 <- rxode2::.rxAdjointExpand(mt, cs)$st
+      mb <- rxode2(mt); mj <- rxode2(mt, calcSens = cs, eventSens = "jump")
+      a0 <- list(mj, ev, params = p, atol = 1e-11, rtol = 1e-11); if (!is.na(drop)) a0$addlDropSs <- drop
+      f <- as.data.frame(suppressWarnings(do.call(rxSolve, a0)))
+      mx <- 0
+      for (pn in cs) {
+        hh <- abs(p[[pn]]) * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        a1 <- list(mb, ev, params = pp, atol = 1e-11, rtol = 1e-11); a2 <- list(mb, ev, params = pm, atol = 1e-11, rtol = 1e-11)
+        if (!is.na(drop)) { a1$addlDropSs <- drop; a2$addlDropSs <- drop }
+        sp <- as.data.frame(suppressWarnings(do.call(rxSolve, a1)))
+        sm <- as.data.frame(suppressWarnings(do.call(rxSolve, a2)))
+        for (st in st0) { fd <- (sp[[st]] - sm[[st]]) / (2 * hh)
+          mx <- max(mx, max(abs(f[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] - fd), na.rm = TRUE)) }
+      }
+      expect_lt(mx, 5e-5)   # FD-truncation-safe; the deferred-boundary bug was ~1e1
+    }
+    mt  <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nrate(central)=11*cl/3.5\ncp=central/(v/1000)"
+    mtF <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nf(central)=0.61\nrate(central)=11*cl/3.5\ncp=central/(v/1000)"
+    chk(mt,  et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20)))                              # non-ss
+    chk(mtF, et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20)))                              # non-ss, F != 1
+    chk(mt,  et(amt = 100, rate = -1, cmt = "central", ss = 1, ii = 24) |> et(c(4, 8, 12, 16, 24, 30)), TRUE)      # ss
+  })
 })

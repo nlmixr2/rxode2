@@ -150,6 +150,21 @@ typedef struct {
   double autoSwitchStifftol;    /* non-stiffness ratio threshold in stiff mode (default 0.9) */
   double autoSwitchDtfac;       /* dt multiplier on switch-to-stiff; divides on switch-back (default 2.0) */
   int    autoSwitchSwitchMax;   /* min intervals after a switch before switch-back allowed (default 5) */
+  /* --- discrete-adjoint (rk4s and other `<base>s` methods) layout --- */
+  int    adjoint;               /* 0 = off; 1 = in-engine discrete-adjoint mode */
+  int    adjNbase;              /* number of base ODE states (stepped forward) */
+  int    adjNp;                 /* number of adjoint parameters (calcSens count) */
+  int    adjFxOff;              /* lhs index where F_X block starts (row-major i*ns+j) */
+  int    adjFpOff;              /* lhs index where F_p block starts (i*np+p) */
+  int    adjDfOff;              /* lhs index where dF/dtheta block starts (k*np+p); -1 if none */
+  int    adjJpOff;              /* lhs index where dJ/dtheta block starts ((i*ns+j)*np+p); -1 if none (Rosenbrock) */
+  int    adjJyOff;              /* lhs index where dJ/dy=f'' block starts ((i*ns+j)*ns+c); -1 if none (Rosenbrock nonlinear) */
+  int    adjFxdOff;             /* lhs index where DDE delayed-Jacobian F_Xd block starts (i*ns+j); -1 if no delay() */
+  int    adjTauOff;             /* lhs index where DDE delay-duration tau block starts (i*ns+j); -1 if no delay() */
+  int    adjDtauOff;            /* lhs index where DDE dtau/dp block starts ((i*ns+j)*np+p); -1 if no delay() (dose-jump) */
+  int    adjDlagOff;           /* lhs index where dlag/dtheta block starts (k*np+p); -1 if no modeled alag() (transversality) */
+  int    adjDrateOff;          /* lhs index where drate/dtheta block starts (k*np+p); -1 if no modeled rate() (infusion dual) */
+  int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
 } rx_solving_options;
 
 

@@ -679,6 +679,9 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			_rxC(h) = h0;
 			for (i = 1; i <= neq; i++)
 				_rxC(yh)[2][i] *= h0;
+			/* discrete-adjoint: record the initial Nordsieck point
+			   (t0, y0=yh[1], h0) for the t0 quadrature term. */
+			if (ctx->common->adjInit) ctx->common->adjInit(ctx);
 		}			/* if ( ctx->state == 1 )   */
 		/*
 		   Block d.
@@ -802,6 +805,9 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				   Then, in any case, check for stop conditions.
 				 */
 				jstart = 1;
+				/* discrete-adjoint: record this accepted step's linearisation
+				   point (tn, converged y=yh[1]) + metadata (hu, nqu, el). */
+				if (ctx->common->adjPush) ctx->common->adjPush(ctx);
 				if (_rxC(meth) != _rxC(mused)) {
 					_rxC(tsw) = _rxC(tn);
 					jstart = -1;

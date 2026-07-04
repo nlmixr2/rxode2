@@ -383,14 +383,20 @@ rxTest({
 
   p <- FALSE
 
-  lapply(id, function(i) {
-    meths <- c(.methods0, .methods1, .methods2)
-    modDat <- c("none", "rate", "dur")
-    for (meth in meths) {
-      for (modifyData in modDat) {
-        for (addlDropSs in c(TRUE, FALSE)) {
-          solveEqual(i, meth=meth, modifyData=modifyData, addlDropSs=addlDropSs)
-        }
+  meths <- c(.methods0, .methods1, .methods2)
+  modDat <- c("none", "rate", "dur")
+  # One method per test: pair each method with a round-robin id.  Running the
+  # full methods x ids cross-product is prohibitively slow for the ~60 adjoint
+  # solver variants, so instead every method is exercised on one dosing
+  # scenario (id) and -- because there are more methods than ids -- every id is
+  # still visited at least once (dosing-scenario coverage is preserved while
+  # method coverage becomes one-per-test).
+  lapply(seq_along(meths), function(.mi) {
+    meth <- meths[.mi]
+    i <- id[((.mi - 1L) %% length(id)) + 1L]
+    for (modifyData in modDat) {
+      for (addlDropSs in c(TRUE, FALSE)) {
+        solveEqual(i, meth=meth, modifyData=modifyData, addlDropSs=addlDropSs)
       }
     }
   })

@@ -1,5 +1,38 @@
 # rxode2 5.1.3
 
+- Stiff adjoint and forward-sensitivity solvers now integrate with the ANALYTIC
+  Jacobian of the augmented (sensitivity-expanded) system:
+  - `.rxAdjointExpand(stiff=TRUE)` emits the base-block `df()/dy()` Jacobian
+    (reusing the `rx__df_*` already computed for the backward sweep), so the
+    stiff adjoint methods -- `ros4s` and the whole Rosenbrock/implicit-RK family,
+    plus the `dop853s+ros4s` AutoSwitch composite -- step the wide augmented
+    system natively at steady state.  `ros4s` stays genuinely `ros4`.
+  - `rxode2(..., calcSens=, calcJac=TRUE)` computes the Jacobian of the FULL
+    forward-sensitivity system AFTER the sensitivity expansion (the base-only
+    Jacobian was incomplete for the variational compartments).  It reuses `F_X`
+    for the base x base and sens x sens blocks and only differentiates the
+    sens x base block (identically zero for linear systems), so the common case
+    adds no extra symbolic work.
+  - Both are gated so paths that never form a Jacobian pay nothing: the adjoint
+    block only on `stiff=TRUE`; the forward one on `calcJac` (default off, so
+    `lsoda`/`liblsoda` FOCEi sensitivities are unchanged).
+  - Boost's `rosenbrock4` (`ros4`) and `implicit_euler` (`iem`) now zero their
+    Jacobian matrix before each `calc_jac`, so a SPARSE analytic Jacobian (only
+    the structurally nonzero entries emitted) is stepped correctly instead of
+    picking up stale entries across steps.
+  - The pure-stiff adjoint solvers now record AND transpose the steady-state
+    monodromy initial-condition term with the method's OWN stiff stepper
+    (Rosenbrock / implicit-RK stage recurrence), instead of a fixed dop853
+    explicit stand-in.  The ss primal and its sensitivity IC now share one
+    discretization, making the stiff adjoint stiff end-to-end and tightening
+    steady-state sensitivity accuracy (~1e-6 vs ~1e-4).
+  - `rxSolveAdjointRk4()` gained a `method=` argument and now infers whether the
+    adjoint expansion needs the stiff analytic Jacobian directly from the method
+    (`.rxAdjointMethodStiff()`), building it with `stiff=TRUE` for the Rosenbrock
+    / implicit-RK methods and the `dop853s+ros4s` composite, and without it for
+    the explicit / multistep ones -- so a stiff adjoint solve no longer requires
+    building the expansion with `stiff=TRUE` by hand.
+
 - Added jump sensitivities for events (based on
   https://github.com/dkaschek/EventSensitivities).  Hybrid jump
   sensitivities are used for matrix exponential and `linCmt()`

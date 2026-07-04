@@ -550,6 +550,7 @@ as_tibble.rxSolveOom <- function(x, ...) {
   tibble::as_tibble(as.data.frame(x))
 }
 
+#' @export
 as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
   if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
     return(data.table::as.data.table(as.data.frame(as_arrow_table.rxSolveOom(x))))

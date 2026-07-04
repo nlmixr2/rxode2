@@ -89,7 +89,21 @@ typedef rx_solve *(*t_get_solve)(void);
 
 typedef void *(*t_assignFuns)(void);
 
+// Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
+// exported to downstream packages through the rxode2 function-pointer table
+// (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
+// is used only when building rxode2 itself (guarded off once rxode2ptr.h has
+// redeclared the name as a function pointer).
 #ifndef __RXODE2PTR_H__
+void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover,
+                        int *obsK, int ns, int np, int nt, int nobs, double *out,
+                        int nCj, int *cjK, int *cjCmt, double *cjAlpha,
+                        int nDual, int *dualK, double *dualW, double *dualC);
+void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np,
+                            int nt, int *outK, int nOut, int *stateIdx,
+                            int nStates, double *result, int nCj, int *cjK,
+                            int *cjCmt, double *cjAlpha, int nDual, int *dualK,
+                            double *dualW, double *dualC);
 rx_solve *getRxSolve_(void);
 #endif
 rx_solve *getRxSolve2_(void);
@@ -537,6 +551,8 @@ static inline double dabs2(double x) {
   extern "C" int _rxEsNParam;
   extern "C" int _rxEsNParam2;
   extern "C" int _rxEsNParam3;
+  extern "C" int _esSSDurOffCmt;
+  extern "C" int _esSSRateOffCmt;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
@@ -564,6 +580,8 @@ static inline double dabs2(double x) {
   extern int _rxEsNParam;
   extern int _rxEsNParam2;
   extern int _rxEsNParam3;
+  extern int _esSSDurOffCmt;
+  extern int _esSSRateOffCmt;
 #endif
 
 

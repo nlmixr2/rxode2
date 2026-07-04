@@ -17,7 +17,16 @@ odeMethodToInt(
     "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
     "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
     "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
-    "o129", "f1412", "lsode", "bdf")
+    "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
+    "dop853s", "ck54s", "bs32s", "vern65s", 
+     "vern76s", "dop87s", "f78s", "ros4s",
+    "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
+    "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s",
+    "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s",
+    "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs",
+    "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s",
+    "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", 
+     "s1110as", "o129s")
 )
 }
 \arguments{

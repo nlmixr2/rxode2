@@ -19,6 +19,14 @@ struct lsoda_common_t {
 	int      id; /* rxode2 subject id; set per solve in ind_liblsoda0. Placed before
 	                `memory` so lsoda_reset's memset (which starts after `memory`)
 	                leaves it untouched between subjects sharing a pooled ctx. */
+	/* Discrete-adjoint recording hooks (method="liblsodaadj").  NULL = off (the
+	   normal solve).  adjInit is called once at the state==1 initialisation (yh
+	   loaded: yh[1]=y0, yh[2]=h0*f(y0)); adjPush is called after every ACCEPTED
+	   step (kflag==0).  Placed before `memory` so lsoda_reset preserves them; set
+	   unconditionally per-subject in ind_liblsoda0 so a pooled ctx never leaks a
+	   stale hook onto a following non-adjoint subject. */
+	void (*adjInit)(struct lsoda_context_t *ctx);
+	void (*adjPush)(struct lsoda_context_t *ctx);
 	double **yh, **wm, *ewt, *savf, *acor;
 	int     *ipvt;
 	void * memory;

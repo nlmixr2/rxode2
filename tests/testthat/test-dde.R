@@ -18,32 +18,28 @@ rxTest({
     expect_equal(unname(rxModelVars(.dde)$flags[["hasDelay"]]), 1L)
   })
 
-  test_that("delay()/rxDelayD() are only valid on a d/dt() line", {
-    ## delay() interpolates the dense solver history, which is only recorded
-    ## during integration -- it is meaningful only inside a d/dt() right-hand
-    ## side, not in an output (lhs) assignment.
-    ## the model is otherwise valid, so the only error is the d/dt restriction
-    ## (the detailed "can only be used on a 'd/dt()' line" message prints to the
-    ## parser error stream; the condition is the generic syntax error)
-    expect_error(rxode2({
+  test_that("delay()/rxDelayD() are valid off a d/dt() line (keyed to the delayed state)", {
+    ## delay()'s history slot is keyed to the DELAYED STATE (its first argument),
+    ## whose per-state __DDT__ define is emitted model-wide -- so delay() is valid
+    ## anywhere the state is, not only on a d/dt() right-hand side.  This lets the
+    ## discrete-adjoint machinery use delay() in plain lhs (rx__adjFP_*) assignments.
+    expect_s3_class(suppressMessages(rxode2({
       d/dt(y) <- -y
       y(0) <- 10
       z <- delay(y, 1)
-    }), "syntax error")
-    expect_error(rxode2({
+    })), "rxode2")
+    expect_s3_class(suppressMessages(rxode2({
       d/dt(y) <- -y
       y(0) <- 10
       z <- rxDelayD(y, 1)
-    }), "syntax error")
-    ## the diagnostic names the offending function and the d/dt() requirement
-    expect_output(
-      try(rxode2({
-        d/dt(y) <- -y
-        y(0) <- 10
-        z <- delay(y, 1)
-      }), silent = TRUE),
-      "delay"
-    )
+    })), "rxode2")
+    ## the delayed model still reports hasDelay so the dense-history path engages
+    .m <- rxode2({
+      d/dt(y) <- -y
+      y(0) <- 10
+      z <- delay(y, 1)
+    })
+    expect_equal(unname(rxModelVars(.m)$flags[["hasDelay"]]), 1L)
   })
 
   test_that("delay()'s first argument must be an ODE state, not a parameter", {
@@ -226,5 +222,31 @@ rxTest({
     ## standalone solve, and the undelayed state a still decays as exp(-t).
     expect_true(max(abs(.s2$b - .s1$b)) < 1e-6)
     expect_true(max(abs(.s2$a - 5 * exp(-.s2$time))) < 1e-5)
+  })
+
+  test_that("param-dependent delay: forward-sens dose-induced jump matches FD", {
+    # .rxDelaySensJump reproduces the dose-induced breaking-point jump in the
+    # 1st-order tau-sensitivity as a modeled-lag/F bolus on the sens compartment
+    # (no runtime break events).  Assemble base + smooth sens + the alag/f lines,
+    # compare the AUTO-WIRED forward sensitivity d/dtau to finite diffs.
+    base <- "d/dt(central) = -k * delay(central, tau)"
+    p <- c(k = 0.3, tau = 2)
+    ev <- et(amt = 10, cmt = "central") %>% et(seq(0.7, 15, by = 1.7))
+    # the build auto-emits the alag()/f() jump lines on the sens compartment
+    .m <- rxode2::rxode2(base, calcSens = c("k", "tau"))
+    expect_true(any(grepl("alag(rx__sens_central_BY_tau__)=tau", strsplit(rxode2::rxNorm(.m), "\n")[[1]], fixed = TRUE)))
+    # and rxSolve auto-adds the mirroring sens-compartment dose -> jump captured
+    sj <- as.data.frame(rxode2::rxSolve(.m, ev, params = p, method = "dop853",
+                                        atol = 1e-10, rtol = 1e-10, cores = 1))
+    ex <- rxode2::.rxAdjointExpand(base, c("k", "tau")); madj <- rxode2::rxode2(ex$text)
+    sb <- function(pp) as.data.frame(rxode2::rxSolve(madj, ev, params = pp, method = "dop853",
+                                                     atol = 1e-10, rtol = 1e-10, cores = 1))$central
+    # A dose-induced delay breaking point puts a KINK in central(tau), so a
+    # central difference straddling it is O(1)-noisy and gets WORSE as h->0 (h=1e-3
+    # lands right in that regime -> ~6e-3; h=1e-2 averages over the kink -> ~7e-4).
+    # Use the well-conditioned h to validate the analytic sensitivity.
+    hh <- 1e-2; pp <- p; pm <- p; pp["tau"] <- pp["tau"] + hh; pm["tau"] <- pm["tau"] - hh
+    fd <- (sb(pp) - sb(pm)) / (2 * hh)
+    expect_lt(max(abs(sj[["rx__sens_central_BY_tau__"]] - fd)), 5e-3)
   })
 })

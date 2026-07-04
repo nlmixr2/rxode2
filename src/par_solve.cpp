@@ -587,6 +587,16 @@ int _rxEsActive = 0;
 int _rxEsNState = 0;
 int _rxEsNParam = 0;
 int _rxEsNParam2 = 0;
+// Marker (cmt of a modeled-dur ss observation-window infusion) for the forward
+// eventSens "jump" fix: solveSSinf re-expresses a modeled dur() ss infusion as a
+// fixed-rate one, whose classic INF_RATE off does NOT remove the sensitivity
+// forcing nor apply the moving-boundary jump.  handleSS sets this (only when
+// _rxEsActive) so handle_evid runs the MODEL_DUR_OFF sens logic at that off; -1
+// = inactive.  Primal-only solves never set it, so they are byte-identical.
+int _esSSDurOffCmt = -1;
+// Same marker for a modeled RATE() ss infusion (moving boundary tau2=tau1+F*amt/
+// rate(p)); handle_evid runs the MODEL_RATE_OFF sens logic at the re-expressed off.
+int _esSSRateOffCmt = -1;
 // Third-order (Phase H1) calcSens3 parameter count.  Set via its own setter
 // (`_rxode2_setEventSensNParam3`) rather than widening `_rxEsNParam`
 // dims -- same rationale as `_rxEsUseCalcJac`'s dedicated setter (added
@@ -1669,6 +1679,15 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                                        int *i, void *ctx,
                                        int eff) {
   int itol = 0;
+  // Single-interval / steady-state sub-solves advance the FORWARD primal only.
+  // The discrete-adjoint method variants use method code = base + 200 (e.g.
+  // rk4s=206 -> rk4=6, liblsodaadj=202 -> liblsoda=2, dop853s=200 -> dop853=0);
+  // here they reuse their base method's single-point stepper (the backward
+  // sweep is driven separately by the adjoint driver).  Without this the
+  // steady-state pre-solve had no matching case and left yp un-advanced,
+  // giving divergent ss results.  All base codes are < 200, so the test
+  // cleanly identifies adjoint codes.
+  if (method >= 200) method -= 200;
   switch (method) {
     case 3:
       if (!isSameTime(xout, *xp)) {
@@ -2358,6 +2377,62 @@ extern "C" void handleSSbolus(int *neq,
   ind->ssTime = NA_REAL;
 }
 
+// Adjoint steady-state INFUSION handoff.  rk4s.cpp is #included into this
+// translation unit, so the rk4s discrete-adjoint driver reads these directly.
+// When op->adjoint, the steady-state infusion dispatch below publishes the
+// converged period's on/off durations, rate, and compartment so ind_rk4s_0 can
+// record one steady-state period (infusion ON for _adjSSinfDur, OFF for
+// _adjSSinfDur2) for the monodromy IC term.  Fixed-rate infusions with
+// dur < ii only (dR/dp == 0, single on/off window per period); other ss cases
+// leave _adjSSinfKind at its handleSS-entry value so the driver can guard them.
+//   kind: 0 none, 1 fixed-rate periodic infusion (dur<ii), 2 unhandled ss
+static thread_local int    _adjSSinfKind = 0;
+static thread_local int    _adjSSinfCmt = -1;
+// ss==1 BOLUS period, published for the liblsodaadj multistep driver (whose ss
+// pre-solve is recording-paused, so it re-records one ss period for the monodromy
+// IC using this interval; the rk4s framework uses its own event-derived _ssPend*).
+// 0 = no bolus ss this window.  Dose Jacobian is I, so only the period is needed.
+static thread_local double _adjSSbolusIi = 0.0;
+// Two-phase steady-state infusion period: rate _adjSSinfRate for _adjSSinfDur,
+// then rate _adjSSinfRate2 for _adjSSinfDur2.  Fixed-rate periodic (dur<ii) uses
+// (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
+// uses ((numDoseInf+1)*R, offTime) then (numDoseInf*R, addTime).
+static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0, _adjSSinfRate2 = 0.0;
+// MODELED rate()/dur() steady-state infusion: the ON duration D depends on the
+// parameters (moving boundary), so the monodromy B gets a forcing term dR/dp over
+// the ON phase and a transversality term at the ON->OFF boundary.  0 = fixed rate
+// (no augmentation), 1 = modeled rate, 2 = modeled dur; _adjSSinfAmt is the dose
+// amount (the boundary factor is -(amt/R)*durMult, durMult = 1 rate / amt dur).
+static thread_local int    _adjSSinfModeled = 0;
+static thread_local double _adjSSinfAmt = 0.0;      // F-adjusted (F*amt)
+static thread_local double _adjSSinfAmtRaw = 0.0;   // raw (non-F) amt, for the dF dual
+// STICKY snapshot of the ss handoff for the liblsodaadj backward fill: the
+// forward loop calls handleSS again for every addl-expanded dose (even under
+// addlDropSs), and each entry RESETS the live handoff -- so the driver snapshots
+// the regimen the moment handleSS actually establishes one (kind != 0) and reads
+// the snapshot, not the live (reset) value, in the backward sweep.
+static thread_local int    _lsSsKind = 0;      // 0 none, 1 finite-infusion monodromy, 2 continuous
+static thread_local double _lsSsBolusIi = 0.0;
+static thread_local int    _lsSsCmt = -1;
+static thread_local double _lsSsDur = 0.0, _lsSsDur2 = 0.0, _lsSsRate = 0.0, _lsSsRate2 = 0.0;
+static inline void lsAdjSnapshotSs() {
+  // called right after an ss handleSS while liblsoda recording is active
+  if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
+  else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
+    _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2; }
+  else if (_adjSSinfKind == 2) { _lsSsKind = 2; _lsSsCmt = _adjSSinfCmt; }
+}
+// ss==2 (superposition): Y_after = Y_before + Y_ss_new(p).  handleSS publishes
+// the new-regimen steady state Y_ss_new (yp just BEFORE the += solveSave) so the
+// rk4s driver can record that regimen's monodromy and apply lambda^T dY_ss_new/dp
+// at the interior ss2 event.  1 = a bolus ss2 was just added (infusion ss2 TBD).
+static thread_local int    _adjSS2 = 0;
+// _adjSS2peak holds the added regimen's steady state Y_ss_new (yp just BEFORE the
+// += solveSave).  For a bolus/finite infusion ss2 it is the monodromy period
+// boundary; for a full-interval infusion ss2 it is the constant steady state used
+// in the dY_ss_new/dp = -J^{-1} df/dp linear solve (kind 2).
+static thread_local std::vector<double> _adjSS2peak;
+
 extern "C" void solveSSinf(int *neq,
                            int *BadDose,
                            double *InfusionRate,
@@ -2771,6 +2846,9 @@ void handleSS(int *neq,
               t_update_inis u_inis,
               void *ctx) {
   rx_solve *rx = &rx_global;
+  _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
+  _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
+  _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;   // forward eventSens: disarm the modeled ss off markers
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3186,8 +3264,26 @@ void handleSS(int *neq,
       // REprintf("at ss: %f (inf: %f; rate: %f)\n", yp[ind->cmt],
       //          ind->InfusionRate[ind->cmt], rate);
       if (doSS2){
+        // ss==2 superposition: yp (BEFORE the += solveSave) is the added regimen's
+        // constant steady state Y_ss_new; publish it in _adjSS2peak so the rk4s
+        // driver adds lambda^T dY_ss_new/dp (via -J^{-1} df/dp) at the ss2 event.
+        if (op->adjoint) {
+          _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]);
+          _adjSSinfKind = 2; _adjSSinfCmt = ind->cmt;
+          if (isModeled) _adjSSinfModeled = -1;   // modeled full-interval ss2: not yet supported
+        }
         // Add at the end
         for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
+      }
+      // Adjoint handoff: continuous / full-interval infusion reaches a CONSTANT
+      // steady state (f(Y_ss)+R.e = 0), so dY_ss/dp = -J^{-1} df/dp (a linear
+      // solve, no monodromy).  kind 2 tells the rk4s driver to take that path.
+      if (op->adjoint && !doSS2) {
+        _adjSSinfKind = 2; _adjSSinfCmt = ind->cmt;
+        // A MODELED rate/dur full-interval/continuous ss needs dR/dp in the linear
+        // solve (not yet done); flag it so the driver errors instead of returning
+        // silently-wrong sensitivities.
+        if (isModeled) _adjSSinfModeled = -1;
       }
       ind->doSS=0;
       updateExtraDoseGlobals(ind);
@@ -3212,6 +3308,10 @@ void handleSS(int *neq,
                     &curIi,
                     &canBreak,
                     adjustEvidBolusLag);
+      // Adjoint handoff (liblsodaadj): a bolus ss window has period curIi and dose
+      // Jacobian I; publish the period so the multistep driver re-records one
+      // steady-state period's flow from the post-dose peak for the monodromy IC.
+      if (op->adjoint && !doSS2) _adjSSbolusIi = curIi;
       if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
@@ -3269,6 +3369,25 @@ void handleSS(int *neq,
                            &offTime,
                            &addTime,
                            &canBreak);
+        // Adjoint handoff: large-duration fixed-rate infusion (dur>=ii) reaches
+        // a periodic steady state with numDoseInf overlapping infusions -- the
+        // period effective rate is (numDoseInf+1)*R for offTime then numDoseInf*R
+        // for addTime.  Fixed rate -> dR/dp==0, so the two-phase monodromy IC
+        // term (kind 1) applies.
+        if (op->adjoint && addTime > 0 && numDoseInf >= 1) {
+          int _w, _c, _w100, _wI, _w0;
+          getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
+          if (_wI == EVIDF_INF_RATE) {
+            double _R = getDose(ind, ind->idose[infBixds]);
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur  = offTime; _adjSSinfRate  = (numDoseInf + 1) * _R;
+            _adjSSinfDur2 = addTime; _adjSSinfRate2 = numDoseInf * _R;
+          } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
+            // modeled large-duration ss (overlapping infusions + moving boundary):
+            // not yet supported -- flag so the driver errors, not silently wrong.
+            _adjSSinfKind = 1; _adjSSinfCmt = _c; _adjSSinfModeled = -1;
+          }
+        }
         skipDosingEvent = true;
         // REprintf("Assign ind->ixds to %d (idx: %d) #1\n", indf->ixds, ind->idx);
         for (int cur = 0; cur < overIi; ++cur) {
@@ -3382,6 +3501,32 @@ void handleSS(int *neq,
                    &dur,
                    &dur2,
                    &canBreak);
+        // Adjoint handoff: a fixed-rate (whI == EVIDF_INF_RATE) infusion with a
+        // single on/off window per period (dur < ii, this solveSSinf branch)
+        // has dR/dp == 0, so the rk4s driver can record its steady-state period
+        // for the monodromy IC term.  rate = getDose of the ON dose.
+        if (op->adjoint && dur > 0 && dur2 >= 0) {
+          int _w, _c, _w100, _wI, _w0;
+          getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
+          if (_wI == EVIDF_INF_RATE) {
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
+            _adjSSinfRate = getDose(ind, ind->idose[infBixds]);
+            _adjSSinfRate2 = 0.0;                 // OFF phase (dur<ii)
+          } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
+            // modeled rate()/dur(): the effective ON rate is R = F*amt/D (the
+            // bioavailability-adjusted amount, matching the non-ss dual's getAmt);
+            // the moving boundary D(p) is handled by the B augmentation.
+            double _amtRaw = getDose(ind, ind->idose[infBixds]);
+            double _amt = getAmt(ind, ind->id, _c, _amtRaw, xout, yp);
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
+            _adjSSinfRate = (dur > 0.0) ? _amt / dur : 0.0;
+            _adjSSinfRate2 = 0.0;
+            _adjSSinfModeled = (_wI == EVIDF_MODEL_DUR_ON) ? 2 : 1;
+            _adjSSinfAmt = _amt; _adjSSinfAmtRaw = _amtRaw;
+          }
+        }
         *istate=1;
         // REprintf("Assign ind->ixds to %d (idx: %d) #6\n", ind->ixds, ind->idx);
         for (k = neq[0]; k--;){
@@ -3500,6 +3645,12 @@ void handleSS(int *neq,
           handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
+          // Forward eventSens fix: this modeled ON set up the sensitivity forcing,
+          // but the re-expressed fixed-rate OFF below (extraEvid) will not remove
+          // it or apply the moving-boundary jump.  Arm the marker so handle_evid
+          // runs the MODEL_DUR_OFF sens logic at that off (modeled dur only).
+          if (_rxEsActive && ind->whI == EVIDF_MODEL_DUR_ON) _esSSDurOffCmt = ind->cmt;
+          if (_rxEsActive && ind->whI == EVIDF_MODEL_RATE_ON) _esSSRateOffCmt = ind->cmt;
           pushDosingEvent(startTimeD+dur,
                           rateOff, extraEvid, ind);
         }
@@ -3516,6 +3667,9 @@ void handleSS(int *neq,
       }
     }
     if (doSS2){
+      // Publish the new-regimen steady state Y_ss_new (yp before adding back the
+      // saved pre-ss2 state) for the adjoint superposition term.
+      if (op->adjoint) { _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]); }
       // Add at the end
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
     }
@@ -3779,6 +3933,14 @@ extern "C" void par_indLin(rx_solve *rx){
 
 // ================================================================================
 // liblsoda
+// Discrete-adjoint (method="liblsodaadj") recording hooks, defined in the
+// #included lsoda_adjoint.cpp; ind_liblsoda0 installs them on the ctx common
+// block when recording is active for this thread.
+extern "C" int  lsAdjIsActive(void);
+extern "C" void lsAdjSetActive(int a);
+extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
+extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
+
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -3881,6 +4043,17 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
      in lsoda_common_t so lsoda_reset's memset doesn't clobber it on
      pooled-context reuse. */
   ctx->common->id = ind->id;
+  // Discrete-adjoint recording (method="liblsodaadj"): install the per-step /
+  // init hooks when the adjoint driver has flagged this thread active; set
+  // unconditionally so a pooled ctx never carries a stale hook onto a following
+  // non-adjoint subject.
+  if (lsAdjIsActive()) {
+    ctx->common->adjInit = lsAdjInitStep;
+    ctx->common->adjPush = lsAdjPushStep;
+  } else {
+    ctx->common->adjInit = NULL;
+    ctx->common->adjPush = NULL;
+  }
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
@@ -3968,8 +4141,15 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(ctx->state), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        // Pause discrete-adjoint recording across the steady-state pre-solve so
+        // the recorded window starts cleanly at Y_ss (its repeated per-period
+        // doses must not pollute the segment-event reconstruction); the IC
+        // sensitivity dY_ss/dp is added analytically in the backward sweep.
+        int _lsWasActive = lsAdjIsActive();
+        if (_lsWasActive) lsAdjSetActive(0);
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
+        if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(); }
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
@@ -6697,6 +6877,75 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       case 6:
         ind_rk4(rx, cid, c_dydt, u_inis);
         break;
+      case 206: // rk4s      -- discrete-adjoint RK4
+      case 239: // eulers    -- discrete-adjoint forward Euler
+      case 240: // midpoints -- discrete-adjoint explicit midpoint
+      case 241: // heuns     -- discrete-adjoint Heun
+      case 243: // rk3s      -- discrete-adjoint Kutta RK3
+      case 210: // dop5s     -- discrete-adjoint adaptive Dormand-Prince 5(4)
+      case 225: // rk43s     -- discrete-adjoint adaptive Runge-Kutta 4(3)
+      case 200: // dop853s   -- discrete-adjoint adaptive Dormand-Prince 8(5,3)
+      case 207: // ck54s     -- discrete-adjoint adaptive Cash-Karp 5(4)
+      case 265: // bs32s     -- discrete-adjoint adaptive Bogacki-Shampine 3(2)
+      case 227: // vern65s   -- discrete-adjoint adaptive Verner 6(5)
+      case 228: // vern76s   -- discrete-adjoint adaptive Verner 7(6)
+      case 229: // dop87s    -- discrete-adjoint adaptive Prince-Dormand 8(7)
+      case 226: // dop54s/dp54s -- discrete-adjoint adaptive Dormand-Prince 5(4)
+      case 230: // vern98s   -- discrete-adjoint adaptive Verner 9(8)
+      case 205: // f78s      -- discrete-adjoint adaptive Fehlberg 7(8)
+      case 213: // ros4s     -- discrete-adjoint Rosenbrock (stiff)
+      case 236: // radauiia5s -- discrete-adjoint Radau IIA 5th (stiff)
+      case 233: // backwardEulers -- discrete-adjoint implicit Euler (stiff)
+      case 234: // gauss6s   -- discrete-adjoint Gauss-Legendre 6th (stiff)
+      case 238: // sdirk43s  -- discrete-adjoint SDIRK 5-stage order 3 (stiff)
+      case 235: // iiic6s    -- discrete-adjoint Lobatto IIIC 6th (stiff)
+      case 231: // ros43s    -- discrete-adjoint GRK4A Rosenbrock 4th (stiff)
+      case 232: // ros6s     -- discrete-adjoint ROW6A Rosenbrock 6th (stiff)
+      case 237: // geng5s    -- discrete-adjoint Geng5 fully-implicit 5th (stiff)
+      case 267: // f45s
+      case 268: // t54s
+      case 270: // pp54s
+      case 271: // pp54bs
+      case 272: // bs54s
+      case 273: // ss54s
+      case 274: // dp65s
+      case 275: // c65s
+      case 276: // tp64s
+      case 277: // v65rs
+      case 279: // dverk65s
+      case 280: // tf65s
+      case 281: // tp75s
+      case 283: // tmy7ss
+      case 284: // v76rs
+      case 285: // ss76s
+      case 286: // v78s
+      case 287: // dverk78s
+      case 288: // dp85s
+      case 289: // tp86s
+      case 290: // v87es
+      case 291: // v87rs
+      case 292: // ev87s
+      case 293: // k87s
+      case 295: // v89s
+      case 296: // t98as
+      case 297: // v98rs
+      case 298: // s98s
+      case 300: // c108s
+      case 301: // b109s
+      case 302: // s1110as
+      case 304: // o129s
+      case 282: // tmy7adj
+        ind_rk4s(rx, cid, c_dydt, u_inis);
+        break;
+      case 221: // cvodesadj -- CVODES adjoint sensitivities (self-managed primal)
+        ind_cvodesadj(rx, cid, c_dydt, u_inis);
+        break;
+      case 202: // liblsodaadj -- exact discrete adjoint of liblsoda's multistep map
+        ind_liblsodaadj(rx, cid, c_dydt, u_inis);
+        break;
+      case 208: // abs -- discrete-adjoint Adams-Bashforth
+        ind_ab_adj(rx, cid, c_dydt, u_inis);
+        break;
       case 7:
         ind_ck54(rx, cid, c_dydt, u_inis);
         break;
@@ -6910,6 +7159,75 @@ extern "C" void par_solve(rx_solve *rx) {
         // rk4
         par_rk4(rx);
         break;
+      case 206: // rk4s -- discrete-adjoint RK4
+      case 239: // eulers
+      case 240: // midpoints
+      case 241: // heuns
+      case 243: // rk3s
+      case 210: // dop5s
+      case 225: // rk43s
+      case 200: // dop853s
+      case 207: // ck54s
+      case 265: // bs32s
+      case 227: // vern65s
+      case 228: // vern76s
+      case 229: // dop87s
+      case 226: // dop54s/dp54s
+      case 230: // vern98s
+      case 205: // f78s
+      case 213: // ros4s
+      case 236: // radauiia5s
+      case 233: // backwardEulers
+      case 234: // gauss6s
+      case 238: // sdirk43s
+      case 235: // iiic6s
+      case 231: // ros43s
+      case 232: // ros6s
+      case 237: // geng5s
+      case 267: // f45s
+      case 268: // t54s
+      case 270: // pp54s
+      case 271: // pp54bs
+      case 272: // bs54s
+      case 273: // ss54s
+      case 274: // dp65s
+      case 275: // c65s
+      case 276: // tp64s
+      case 277: // v65rs
+      case 279: // dverk65s
+      case 280: // tf65s
+      case 281: // tp75s
+      case 283: // tmy7ss
+      case 284: // v76rs
+      case 285: // ss76s
+      case 286: // v78s
+      case 287: // dverk78s
+      case 288: // dp85s
+      case 289: // tp86s
+      case 290: // v87es
+      case 291: // v87rs
+      case 292: // ev87s
+      case 293: // k87s
+      case 295: // v89s
+      case 296: // t98as
+      case 297: // v98rs
+      case 298: // s98s
+      case 300: // c108s
+      case 301: // b109s
+      case 302: // s1110as
+      case 304: // o129s
+      case 282: // tmy7adj
+        par_rk4s(rx);
+        break;
+      case 221: // cvodesadj
+        par_cvodesadj(rx);
+        break;
+      case 202: // liblsodaadj
+        par_liblsodaadj(rx);
+        break;
+      case 208: // abs
+        par_ab_adj(rx);
+        break;
       case 7:
         // ck54
         par_ck54(rx);
@@ -7111,8 +7429,12 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #define IN_PAR_SOLVE
 #include "rkf78.cpp"
 #include "rk4.cpp"
+#include "rk4s.cpp"
+#include "cvodes_adjoint.cpp"   // CVODES ASA adjoint-sensitivity driver
+#include "lsoda_adjoint.cpp"    // exact discrete-adjoint of liblsoda's multistep map
 #include "ck54.cpp"
 #include "ab.cpp"
+#include "ab_adjoint.cpp"      // discrete-adjoint of Adams-Bashforth (abs, 208)
 #include "abm.cpp"
 #include "dop5.cpp"
 #include "bs.cpp"

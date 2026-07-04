@@ -209,6 +209,10 @@ SEXP _rxode2_rxLock(SEXP);
 SEXP _rxode2_rxUnlock(SEXP);
 SEXP _rxode2_rxAllowUnload(SEXP);
 
+void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
+SEXP _rxode2_rxAdjointSweep(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np, int nt, int *outK, int nOut, int *stateIdx, int nStates, double *result, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
+SEXP _rxode2_rxAdjointTrajSweep(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxExpandGrid_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxExpandSens_(SEXP, SEXP);
 SEXP _rxode2_rxExpandSens2_(SEXP, SEXP, SEXP);
@@ -479,8 +483,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxReal = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxReal, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxNsim = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNsim, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setRxThreadId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setRxThreadId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2AdjointSweepPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2AdjointSweep, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2AdjointTrajSweepPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2AdjointTrajSweep, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 66
+#define nVec 68
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -548,6 +554,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 63, rxode2rxReal);
   SET_VECTOR_ELT(ret, 64, rxode2getRxNsim);
   SET_VECTOR_ELT(ret, 65, rxode2setRxThreadId);
+  SET_VECTOR_ELT(ret, 66, rxode2AdjointSweepPtr);
+  SET_VECTOR_ELT(ret, 67, rxode2AdjointTrajSweepPtr);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -617,6 +625,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 63, Rf_mkChar("rxode2rxReal"));
   SET_STRING_ELT(retN, 64, Rf_mkChar("rxode2getRxNsim"));
   SET_STRING_ELT(retN, 65, Rf_mkChar("rxode2setRxThreadId"));
+  SET_STRING_ELT(retN, 66, Rf_mkChar("rxode2AdjointSweep"));
+  SET_STRING_ELT(retN, 67, Rf_mkChar("rxode2AdjointTrajSweep"));
 
 #undef nVec
 
@@ -764,6 +774,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 12},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
+    {"_rxode2_rxAdjointSweep", (DL_FUNC) &_rxode2_rxAdjointSweep, 9},
+    {"_rxode2_rxAdjointTrajSweep", (DL_FUNC) &_rxode2_rxAdjointTrajSweep, 9},
     {"_rxode2_rxExpandGrid_", (DL_FUNC) &_rxode2_rxExpandGrid_, 3},
     {"_rxode2_rxExpandSens_", (DL_FUNC) &_rxode2_rxExpandSens_, 2},
     {"_rxode2_rxExpandSens2_",(DL_FUNC) &_rxode2_rxExpandSens2_, 3},

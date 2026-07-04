@@ -5347,6 +5347,20 @@ static inline void iniRx(rx_solve* rx) {
   op->neq = 0;
   op->stiff = 0;
   op->useDense = 0;
+  op->adjoint = 0;
+  op->adjNbase = 0;
+  op->adjNp = 0;
+  op->adjFxOff = 0;
+  op->adjFpOff = 0;
+  op->adjDfOff = -1;
+  op->adjJpOff = -1;
+  op->adjJyOff = -1;
+  op->adjFxdOff = -1;
+  op->adjTauOff = -1;
+  op->adjDtauOff = -1;
+  op->adjDlagOff = -1;
+  op->adjDrateOff = -1;
+  op->adjSensOff = 0;
   op->hasDelay = 0;
   op->ncov = 0;
   op->stiff2 = 0;
@@ -5807,6 +5821,75 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->useDense = 0;
     }
     op->stiff = method;
+
+    if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227 || method == 228 || method == 229 || method == 205 || method == 213 || method == 236 || method == 233 || method == 234 || method == 238 || method == 235 || method == 231 || method == 232 || method == 237 || method == 243 || method == 225 || method == 221 || method == 202 || method == 226 || method == 230 || method == 208 || method == 282 || method == 300 || method == 301 || method == 302 || method == 304 || method == 267 || method == 268 || method == 270 || method == 271 || method == 272 || method == 273 || method == 274 || method == 275 || method == 276 || method == 277 || method == 279 || method == 280 || method == 281 || method == 283 || method == 284 || method == 285 || method == 286 || method == 287 || method == 288 || method == 289 || method == 290 || method == 291 || method == 292 || method == 293 || method == 295 || method == 296 || method == 297 || method == 298) {
+      // discrete-adjoint explicit-RK methods: rk4s (206), eulers (239),
+      // midpoints (240), heuns (241), dop5s (210, adaptive).  Derive the layout
+      // by scanning model names.
+      // States are [base ODE states..., rx__sens_* output slots...]; lhs carry
+      // the F_X (rx__adjFX_i_j__) then F_p (rx__adjFP_i_p__) blocks emitted by
+      // .rxAdjointExpand.  HARD GUARD: absent the F_X/F_p lhs, error (no silent
+      // bare-primal solve).
+      CharacterVector _adjSt = rxSolveDat->mv[RxMv_state];
+      CharacterVector _adjLhs = rxSolveDat->mv[RxMv_lhs];
+      int _nBase = 0;
+      for (int _i = 0; _i < _adjSt.size(); ++_i) {
+        if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
+      }
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1;
+      for (int _i = 0; _i < _adjLhs.size(); ++_i) {
+        const char *_s = CHAR(_adjLhs[_i]);
+        if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
+        if (_fpOff < 0 && strcmp(_s, "rx__adjFP_0_0__") == 0) _fpOff = _i;
+        if (_dfOff < 0 && strcmp(_s, "rx__adjdF_0_0__") == 0) _dfOff = _i;
+        if (_jpOff < 0 && strcmp(_s, "rx__adjJp_0_0_0__") == 0) _jpOff = _i;
+        if (_jyOff < 0 && strcmp(_s, "rx__adjJy_0_0_0__") == 0) _jyOff = _i;
+        if (_fxdOff < 0 && strcmp(_s, "rx__adjFXd_0_0__") == 0) _fxdOff = _i;    // DDE delayed Jacobian
+        if (_tauOff < 0 && strcmp(_s, "rx__adjTau_0_0__") == 0) _tauOff = _i;    // DDE delay durations
+        if (_dtauOff < 0 && strcmp(_s, "rx__adjDtau_0_0_0__") == 0) _dtauOff = _i; // DDE dtau/dp (dose-jump)
+        if (_dlagOff < 0 && strcmp(_s, "rx__adjDlag_0_0__") == 0) _dlagOff = _i; // modeled-alag transversality
+        if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
+      }
+      int _nSens = (int)_adjSt.size() - _nBase;
+      if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
+        // A malformed expansion (has rx__sens_* output slots but is missing
+        // the F_X/F_p Jacobian lhs) is a hard error: solving would silently
+        // fill the sens columns with zeros.  A genuinely PLAIN model (no
+        // rx__sens_* slots at all) carries no sensitivity request, so an
+        // adjoint method may run FORWARD-ONLY on it (op->adjoint stays 0) --
+        // this lets the explicit/multistep adjoint variants be exercised as
+        // ordinary forward solvers (e.g. the cov/nmtest covariate + dosing
+        // regression suite).  The implicit/Rosenbrock/CVODES adjoint variants
+        // size their LU factorization from the adjoint-augmented system, so
+        // they cannot run forward-only (bare DGETRF dimension error / crash)
+        // -- keep the hard guard for those method codes.
+        int _stiffAdj = (method == 213 || method == 221 || method == 231 ||
+                         method == 232 || method == 233 || method == 234 ||
+                         method == 235 || method == 236 || method == 237 ||
+                         method == 238);
+        if (_nSens > 0 || _nBase <= 0 || _stiffAdj) {
+          (Rf_error)("method='rk4s' requires the adjoint expansion in the "
+                     "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
+                     "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
+        }
+        // plain explicit/multistep model: forward-only, leave op->adjoint == 0
+      } else {
+        op->adjoint = 1;
+        op->adjNbase = _nBase;
+        op->adjNp = _nSens / _nBase;
+        op->adjFxOff = _fxOff;
+        op->adjFpOff = _fpOff;
+        op->adjDfOff = _dfOff;
+        op->adjJpOff = _jpOff;
+        op->adjJyOff = _jyOff;
+        op->adjFxdOff = _fxdOff;
+        op->adjTauOff = _tauOff;
+        op->adjDtauOff = _dtauOff;
+        op->adjDlagOff = _dlagOff;
+        op->adjDrateOff = _drateOff;
+        op->adjSensOff = _nBase;
+      }
+    }
 
     rxSolveDat->throttle = false;
     if (!solveMethodThreadSafe(op)) { // dop853 and liblsoda should be thread safe

@@ -776,6 +776,10 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       .s <- .rxLoadPrune(.ret, FALSE)
       .s$..stateInfo <- .stateInfo
       .rxJacobian(.s)
+      ## base ODE states, captured BEFORE .rxSens splices in the rx__sens_*
+      ## variational compartments -- used to build the full-system stiff Jacobian
+      ## by reusing the F_X/F_p just computed (see .rxFwdSensJacBlock).
+      .baseState <- rxStateOde(.s)
       if (!is(calcJac, "logical")) {
         calcJac <- FALSE
       }
@@ -810,23 +814,64 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .rxSens(.s, calcSens, calcSens2, calcSens3)
         .sens3 <- .s$..sens3
       }
-      .tmp1 <- .s$..jacobian
-      if (!calcJac) .tmp1 <- ""
       .tmp2 <- .s$..lhs
       if (collapseModel) .tmp2 <- ""
-      .new <- paste(c(
+      ## Jacobian for stiff (Rosenbrock/implicit) solvers.  `.rxJacobian(.s)`
+      ## above ran over the ORIGINAL states only (it feeds the variational
+      ## equations), so `.s$..jacobian` is the base-system Jacobian -- INCOMPLETE
+      ## for the expanded state, because each rx__sens_* variational compartment
+      ## adds its own nonzero Jacobian rows/cols (the sens x sens block is F_X,
+      ## sens x base couples through dF_X/dy).  A stiff solver integrates the
+      ## FULL expanded system, so it needs that system's Jacobian.  Recompute
+      ## calcJac AFTER the sensitivity expansion: assemble the expanded model
+      ## once with no Jacobian, reload it (registers base + sens as ODE states),
+      ## and take .rxJacobian over the full state, then splice that df()/dy()
+      ## block back in.  Without it the stiff solvers get J == 0 and boost's
+      ## rosenbrock4 cannot even find a step size (others fall back to a costly
+      ## numeric Jacobian).
+      ## The df()/dy() Jacobian block must come AFTER every d/dt definition it
+      ## references -- the full-system Jacobian references the rx__sens_* sens
+      ## compartments, so it is spliced in after .sens/.sens2/.sens3 (a base-only
+      ## Jacobian could sit above them, the full one cannot).
+      .assembleSens <- function(.jacBlock) paste(c(
         .s$..stateInfo["state"],
         .s$..lhs0,
         .s$..ddt,
-        .tmp1,
         .s$..sens,
         .sens2,
         .sens3,
+        .jacBlock,
+        ## DDE param-dependent-delay dose-jump: alag()/f() on the sens compartments
+        ## (no-op unless rxSolve adds the mirroring sens-compartment doses).
+        .s$..sensDelayAlagF,
         .tmp2,
         .s$..stateInfo["statef"],
         .s$..stateInfo["dvid"],
         ""
       ), collapse = "\n")
+      .jacBlock <- ""
+      if (calcJac) {
+        ## Ordinary ODE forward sensitivities: build the full-system Jacobian by
+        ## REUSING the F_X/F_p already computed for the variational equations,
+        ## computing only the sens x base block (== 0 for linear F).  Fall back to
+        ## a fresh full-system .rxJacobian when 2nd/3rd-order sens compartments are
+        ## present (their block structure is not covered by the reuse), or if the
+        ## reuse errors for any reason.  (For ODE models the eventSens jump uses a
+        ## central difference of dydt, not calc_jac, so this fuller Jacobian only
+        ## ever feeds the stiff ODE steppers.  indLin / matExp models are a
+        ## matrix-exponential method, out of scope for stiff ODE stepping.)
+        .jacLines <- NULL
+        if (is.null(calcSens2) && is.null(calcSens3)) {
+          .jacLines <- tryCatch(.rxFwdSensJacBlock(.s, .baseState, calcSens),
+                                 error = function(e) NULL)
+        }
+        if (is.null(.jacLines)) {
+          .sj <- .rxLoadPrune(rxModelVars(.assembleSens("")), FALSE)
+          .jacLines <- .rxJacobian(.sj, FALSE)
+        }
+        .jacBlock <- paste(.jacLines, collapse = "\n")
+      }
+      .new <- .assembleSens(.jacBlock)
       .ret <- rxModelVars(.new)
     } else {
       ## calcSens=FALSE removes the sensitivity equations.

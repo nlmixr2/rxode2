@@ -141,6 +141,24 @@ devtools::document()
 - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2)
 - Can be mixed with ODEs in the same model
 
+**Sensitivity Analysis** (`R/rxJacobian.R`, `R/adjoint.R`, `src/expandGrid.cpp`, `src/adjoint.cpp`):
+- Forward sensitivities: `.rxJacobian()` builds the analytic Jacobian
+  (`symengine::D`), `.rxSens()` splices `d/dt(rx__sens_<state>_BY_<param>__)`
+  variational-equation lines into the model (solved as ordinary extra
+  compartments). This is symbolic, not autodiff.
+- Adjoint (backward) sensitivities mirror the same `rx__sens_*` output but via a
+  backward pass. `.rxAdjoint()` symbolically generates the costate
+  (`-J^T lambda`) and quadrature (`-lambda^T df/dp`) equations reusing the
+  `rx__df_*` derivatives. `.rxAdjointSolve()` = full per-timepoint `dy(t)/dp`;
+  `.rxAdjointGrad()` = single-sweep `dG/dtheta` objective gradient (incl. a FOCEi
+  `-2LL` `errModel=`), where adjoint beats forward sensitivity.
+- `.rxAdjointGrad` is split into a symbolic **build** (`.rxAdjointGradBuild`,
+  runs symengine once) and a numeric **eval** (`.rxAdjointGradEval` / the C++
+  `.rxAdjointGradEvalC` via the `rxode2AdjointSweep` sweep) so an optimizer
+  builds once and evaluates the gradient many times. Build the gradient object
+  BEFORE any `rxSolve` (a `load_all`-only symengine dispatch quirk affects the
+  one-time symbolic build, never the numeric eval).
+
 **Output Data Frame** (`src/rxode2_df.cpp`, `src/rxData.cpp`):
 - The solved result is returned as a modified data frame with special classes
 - Factor levels and units are preserved from the event table
@@ -195,6 +213,36 @@ devtools::document()
     - Create a protection object `rxProtect rx_protect;`
     - Use `rx_protect.protect()` instead of `PROTECT()`; `UNPROTECT`
       will be handled when the object goes out of scope.
+
+#### Exposing a C/C++ function to downstream packages (e.g. nlmixr2est)
+
+CRAN has asked this package to share C entry points via a **function-pointer
+table**, NOT `R_RegisterCCallable` and NOT Rcpp's
+`// [[Rcpp::export]]`/`[[Rcpp::interfaces(r,cpp)]]` (both cause ABI coupling).
+The table is the positional external-pointer list built by
+`_rxode2_rxode2Ptr()` in `src/init.c` and installed into a downstream package's
+globals by `iniRxodePtrs()`/`iniRxodePtrs0()` in `inst/include/rxode2ptr.h` when
+that package loads. To add a new function `foo` (copy any existing entry, e.g.
+`rxode2AdjointSweep` at index 66, as a template):
+
+1. **`src/<file>.cpp`**: define `extern "C" <ret> foo(<plain C types>)` (no Rcpp;
+   pass R matrices as column-major `double*` + sizes). If R itself must call it,
+   add a manual `extern "C" SEXP _rxode2_foo(SEXP...)` `.Call` wrapper and
+   register it in the `callMethods[]` table in `src/init.c`.
+2. **`src/init.c` `_rxode2_rxode2Ptr()`**: bump `#define nVec`; create
+   `R_MakeExternalPtrFn((DL_FUNC)&foo, ...)`; `SET_VECTOR_ELT(ret, N, ...)` and
+   the parallel `SET_STRING_ELT(retN, N, Rf_mkChar("foo"))` at the new index `N`.
+3. **`inst/include/rxode2ptr.h`**: add `typedef <ret> (*foo_t)(...)` +
+   `extern foo_t foo;`; the `foo = (foo_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, N));`
+   line in `iniRxodePtrs0` (index `N` must match `init.c`); and
+   `foo_t foo = NULL;` in the NULL-init macro at the bottom.
+4. **`inst/include/rxode2.h`**: a plain declaration guarded
+   `#ifndef __RXODE2PTR_H__` (so it does not collide with the downstream pointer
+   variable — same as `par_solve`/`getRxSolve_`).
+
+Appending at a new index is backward compatible (older consumers read the lower
+indices and ignore the new one). Changing any `inst/include/*.h` header requires
+a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
 
 ### Generated Files (do not edit manually)
 
