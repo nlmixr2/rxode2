@@ -377,6 +377,43 @@ rxTest({
     expect_gt(tested, 900)                     # ~54 scenarios x 19 dense solvers
   })
 
+  test_that("STIFF adjoint solvers (Rosenbrock/implicit): non-ss nmtest gradients match FD", {
+    skip_if_not_installed("nlmixr2data")
+    d0 <- nlmixr2data::nmtest
+    mt <- paste("d/dt(depot)=-ka*depot", "d/dt(central)=ka*depot-(cl/v)*central",
+                "f(central)=bioav", "if (mode==1){", "rate(central)=rat2", "}",
+                "if (mode==2){", "dur(central)=dur2", "}", "cp=central/(v/1000)", sep = "\n")
+    ncs <- c("ka", "cl"); pp <- c(ka = 1.5, cl = 1.1, v = 20)
+    nex <- rxode2::.rxAdjointExpand(mt, ncs); nmadj <- rxode2::rxode2(nex$text)
+    mb <- rxode2::rxode2(mt)
+    scol <- as.vector(outer(nex$st, ncs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
+    # Pure stiff (Rosenbrock + fully-implicit RK) adjoint methods: ss dosing is
+    # guarded on this family (the composite dop853s+ros4s covers stiff ss), so
+    # only the NON-ss ids are checked here -- against central FD (method-agnostic).
+    stiff <- c("ros4s", "ros6s", "ros43s", "geng5s", "gauss6s", "radauiia5s", "backwardEulers", "sdirk43s")
+    tested <- 0
+    for (id in unique(d0$id)) {
+      di <- d0[d0$id == id, ]
+      if (any(di$evid != 0 & !(di$cmt %in% c(1, 2)))) next
+      if (any(di$ss != 0)) next                                    # ss guarded on pure stiff
+      fd <- list()
+      for (pn in ncs) {
+        hh <- abs(pp[[pn]]) * 1e-6; up <- pp; dn <- pp; up[pn] <- up[pn] + hh; dn[pn] <- dn[pn] - hh
+        sp <- as.data.frame(suppressWarnings(rxode2::rxSolve(mb, di, params = up, method = "lsoda", addlDropSs = TRUE, atol = 1e-11, rtol = 1e-11)))
+        sm <- as.data.frame(suppressWarnings(rxode2::rxSolve(mb, di, params = dn, method = "lsoda", addlDropSs = TRUE, atol = 1e-11, rtol = 1e-11)))
+        for (st in nex$st) fd[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] <- (sp[[st]] - sm[[st]]) / (2 * hh)
+      }
+      for (meth in stiff) {
+        a <- as.data.frame(suppressWarnings(rxode2::rxSolve(nmadj, di, params = pp, method = meth, addlDropSs = TRUE, atol = 1e-9, rtol = 1e-9)))
+        mx <- 0; for (cn in scol) mx <- max(mx, max(abs(a[[cn]] - fd[[cn]]), na.rm = TRUE))
+        ssc <- max(1, max(abs(unlist(a[scol])), na.rm = TRUE))
+        expect_lt(mx / ssc, 5e-3)
+        tested <- tested + 1
+      }
+    }
+    expect_gt(tested, 100)                     # ~15 non-ss scenarios x 8 stiff solvers
+  })
+
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
     fText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
     fcs <- c("ka", "cl", "v", "Fbio"); fp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)
