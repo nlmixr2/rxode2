@@ -2431,15 +2431,16 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
       # Which ss cases carry the steady-state initial-condition sensitivity
-      # (dY_ss/dp) depends on the adjoint driver.  The rk4s framework covers
-      # ss==1 bolus and fixed-rate periodic infusion (dur<ii) via a one-period
-      # monodromy, and continuous infusion (rate, amt 0) via a -J^{-1} df/dp
-      # linear solve.  Not yet covered anywhere: ss==2 (superposition),
-      # modeled-rate/dur infusions, large-duration (dur>=ii) infusions; and the
-      # non-rk4s-framework drivers (liblsodaadj, abs, cvodesadj) and the
-      # Rosenbrock/implicit variants cover no ss (their ss pre-solve is recorded
-      # with the dose re-applied every steady-state period, which their segment
-      # reconstruction cannot yet transpose).
+      # (dY_ss/dp) depends on the adjoint driver.  The rk4s framework (explicit
+      # AND the composite/AutoSwitch fill) covers, for both ss==1 and ss==2:
+      # bolus, fixed-rate infusion at any duration (periodic dur<ii and large-
+      # duration dur>ii via a two-phase monodromy; full-interval dur==ii via a
+      # -J^{-1} df/dp linear solve), continuous infusion (rate, amt 0), and
+      # interior ss==1 resets / multiple ss==2 superposition events.
+      # Still guarded (fall back to sensMethod="forward"): modeled-rate/dur
+      # infusion ss (dR/dp != 0, a moving period boundary); the liblsodaadj
+      # multistep driver for anything but continuous infusion; and the abs /
+      # cvodesadj / pure Rosenbrock-implicit drivers (no ss IC term at all).
       .r   <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
       .iiv <- if (is.null(.evDf$ii))   rep(0, nrow(.evDf)) else .evDf$ii
       .amv <- if (is.null(.evDf$amt))  rep(0, nrow(.evDf)) else .evDf$amt
