@@ -144,7 +144,10 @@ require editing the `new_ode_model()` call.
 
 rxode2 automatically derives the symbolic Jacobian and forward-
 sensitivity equations used by nlmixr2's FOCEi algorithm for exact
-gradient-based estimation.  PKPDsim's nlmixr2 integration uses
+gradient-based estimation.  These now extend to third-order
+sensitivities and to *jump* (event) sensitivities -- exact derivatives
+with respect to dosing parameters such as bioavailability, lag time,
+infusion rate, duration, and amount.  PKPDsim's nlmixr2 integration uses
 finite-difference gradients.
 
 ### 1-3 compartment analytical solutions with exact gradients
@@ -157,10 +160,42 @@ solved as ODEs rather than analytically.
 
 ### Multiple ODE solver backends
 
-rxode2 provides three solver backends selectable per run: thread-safe
-C LSODA (default), Fortran LSODA, and DOP853 (explicit 8th-order
-Runge-Kutta for non-stiff systems).  PKPDsim uses a single
-Boost::odeint backend with a configurable step size.
+rxode2 provides several solver backends selectable per run: thread-safe
+C LSODA (default), Fortran LSODA, DOP853 (explicit 8th-order
+Runge-Kutta for non-stiff systems), a stiff Rosenbrock method (`ros4`),
+and AutoSwitch composite methods (for example `method = "dop853+ros4"`)
+that probe each segment with a non-stiff primary and reactively fall
+back to a stiff secondary only where stiffness is detected.  PKPDsim
+uses a single Boost::odeint backend with a configurable step size.
+
+### Delay differential equations
+
+rxode2 solves delay differential equations through `delay(state, T)`,
+which evaluates an ODE state at the past time `t - T` (Monolix `delay()`
+semantics) using dense-output interpolation, with forward sensitivities
+generated automatically so the models stay estimable in nlmixr2.
+PKPDsim does not solve delay differential equations.
+
+### Automatic ODE-to-`linCmt()` conversion
+
+When a model's ODE system is a 1-3 compartment linear PK system, rxode2
+detects this and transparently solves it with the fast analytical
+`linCmt()` path (`rxSolve(..., useLinCmt = TRUE)`, the default), falling
+back to the ODE solver if the converted model cannot be compiled.
+
+### Out-of-memory simulation and distributed parallelism
+
+For populations too large to hold in RAM, passing a `file` prefix to
+`rxSolve()` splits subjects into RAM-sized chunks (auto-sized with
+`rxMemoryEstimate()`), solves each, and writes them to Parquet (or
+`.rds`) behind a lightweight object that supports lazy `dplyr`/DuckDB
+queries so the full result is never materialized.  Chunks can be
+dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
+distributed/HPC execution, on top of the within-call OpenMP threading.
+
+```{r}
+rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+```
 
 ## Features available in both tools (with different approaches)
 
@@ -364,12 +399,16 @@ for further details.
 | License | GPL >= 3 | MIT |
 | CRAN | yes | yes |
 | ODE language | rxode2 mini-language (`d/dt(cmt)`) | C++ array notation (`dAdt[1]`) |
-| Solver | thread-safe C LSODA; Fortran LSODA; DOP853 | Boost::odeint C++ |
+| Solver | LSODA (C/Fortran), DOP853, ros4, `"dop853+ros4"` | Boost::odeint C++ |
 | OpenMP parallelism | yes (thread-safe solver) | no (R loop over subjects) |
+| Distributed / cluster parallelism | yes (`mirai`) | no |
+| Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | no |
 | Iterative-use speed | fast by default (separated pre/post) | use `sim_core()` explicitly |
 | NONMEM-format datasets | yes | no (`new_regimen()` API) |
+| Delay differential equations (`delay()`) | yes | no |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
 | 1-3 cmt analytical solution | `linCmt()` with exact gradients | `reparametrization` (ODE-based) |
-| Symbolic Jacobians / sensitivities | yes | no (finite differences) |
+| Symbolic Jacobians / sensitivities | yes (up to 3rd order + jump sensitivities) | no (finite differences) |
 | nlmixr2 estimation | yes (exact gradients via FOCEi) | yes (finite-difference gradients) |
 | Model piping (`\|>`) | yes | no |
 | Literature model library | yes (`nlmixr2lib`) | yes (`install_default_literature_model()`) |

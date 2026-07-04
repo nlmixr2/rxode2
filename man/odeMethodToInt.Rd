@@ -21,7 +21,12 @@ odeMethodToInt(
     "dop853s", "ck54s", "bs32s", "vern65s", 
      "vern76s", "dop87s", "f78s", "ros4s",
     "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
-    "geng5s", "rk3s", "rk43s")
+    "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s",
+    "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s",
+    "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs",
+    "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s",
+    "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", 
+     "s1110as", "o129s")
 )
 }
 \arguments{

@@ -147,6 +147,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' equations.  This builds the full df()/dy() block from the pieces instead, so
 #' only the genuinely new entries cost a `symengine::D`:
 #'
+#' ```
 #'   RHS:  dy_i/dt = f_i(y);   dS_ip/dt = sum_k F_X[i][k] S_kp + F_p[i][p]
 #'
 #'   base x base   df(y_i)/dy(y_j)  = F_X[i][j]                       (REUSED)
@@ -155,6 +156,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #'   sens x base   df(S_ip)/dy(y_j) = sum_k D(F_X[i][k],y_j) S_kp
 #'                                    + D(F_p[i][p],y_j)              (NEW; ==0 for
 #'                                                                     linear F)
+#' ```
 #'
 #' Only the sens x base block needs differentiation, and it vanishes for models
 #' whose Jacobian/parameter-Jacobian are state-independent (linear PK), so the

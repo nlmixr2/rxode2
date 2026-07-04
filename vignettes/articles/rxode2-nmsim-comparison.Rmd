@@ -136,7 +136,9 @@ NONMEM separately.
 ### Symbolic Jacobians and forward sensitivities
 
 rxode2 automatically derives the symbolic Jacobian of the ODE system
-and forward-sensitivity equations, which are used by nlmixr2's FOCEi
+and forward-sensitivity equations (up to third order, plus *jump*
+sensitivities with respect to dosing parameters such as bioavailability,
+lag time, rate, duration, and amount), which are used by nlmixr2's FOCEi
 algorithm for exact gradient-based estimation.  This capability is
 irrelevant to NMsim, which delegates all numerical work to NONMEM.
 
@@ -149,10 +151,51 @@ independently of NONMEM's own ADVAN routines.
 
 ### Multiple ODE solver backends
 
-rxode2 offers three solver backends selectable per run: a thread-safe
-C LSODA (default), a Fortran LSODA reference implementation, and
-DOP853 (explicit 8th-order Runge-Kutta for non-stiff systems).
-NMsim uses whichever ADVAN is specified in the NONMEM control stream.
+rxode2 offers several solver backends selectable per run: a thread-safe
+C LSODA (default), a Fortran LSODA reference implementation, DOP853
+(explicit 8th-order Runge-Kutta for non-stiff systems), a stiff
+Rosenbrock method (`ros4`), and AutoSwitch composite methods (for
+example `method = "dop853+ros4"`) that probe each segment with a
+non-stiff primary and reactively fall back to a stiff secondary only
+where stiffness is detected.  NMsim uses whichever ADVAN is specified in
+the NONMEM control stream.
+
+### Delay differential equations
+
+Both tools can solve delay differential equations, through different
+mechanisms.  rxode2 uses the `delay(state, T)` model function, which
+evaluates an ODE state at the past time `t - T` (Monolix `delay()`
+semantics) using dense-output interpolation.  NONMEM (and therefore
+NMsim) supports DDEs through its RADAR5 solver (`ADVAN16`, an implicit
+Runge-Kutta method suited to stiff and state-dependent delays), with
+the delay time and delayed state history declared through the reserved
+`TAUy`/`AP_x_y`/`AD_x_y` variables in the `$DES` block.  The main rxode2
+advantage is that it generates forward sensitivities for `delay()`
+automatically, so delay models remain estimable by gradient-based
+methods in nlmixr2.
+
+### Automatic ODE-to-`linCmt()` conversion
+
+When a model's ODE system is a 1-3 compartment linear PK system, rxode2
+detects this and transparently solves it with the fast analytical
+`linCmt()` path (`rxSolve(..., useLinCmt = TRUE)`, the default), falling
+back to the ODE solver if the converted model cannot be compiled.
+
+### Out-of-memory simulation and distributed parallelism
+
+For very large trial simulations, rxode2 can write results directly to
+disk: passing a `file` prefix to `rxSolve()` splits subjects into
+RAM-sized chunks, solves each, and stores them as Parquet (or `.rds`)
+files behind a lightweight object that supports lazy `dplyr`/DuckDB
+queries so an out-of-memory result is never fully materialized.  Chunks
+can be dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
+distributed and HPC/cluster execution -- so, like NMsim's PsN path,
+rxode2 can scale beyond a single machine, but does so from pure R and
+without a NONMEM license.
+
+```{r}
+rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+```
 
 ### Runs anywhere without infrastructure
 
@@ -212,8 +255,10 @@ feature; notably:
 `NMexec()` (the NMsim companion for running estimation) can submit
 NONMEM jobs to an HPC cluster using PsN.  For large bootstrap or
 uncertainty simulations NMsim can similarly distribute NONMEM runs
-across cluster nodes.  rxode2's parallelism is always within a single
-R process via OpenMP.
+across cluster nodes.  rxode2 parallelizes across OpenMP threads within
+a process and, since 5.1.1, can also distribute chunks of subjects to
+`mirai` daemons for HPC/cluster execution (see above) -- though it does
+not integrate with PsN specifically.
 
 ## Features available in both tools (with different approaches)
 
@@ -294,12 +339,15 @@ common workflow is:
 | Uncertainty from covariance step | yes -- `nonmem2rx` imports covariance matrix for draws | yes -- `NMsim_VarCov` / `NMsim_NWPRI` |
 | Bootstrap uncertainty | manual (supply draws) | built-in (simulate all bootstrap models) |
 | OpenMP within-process parallelism | yes | no |
-| Cluster submission | no | yes (via PSN) |
+| Cluster / distributed submission | yes (`mirai`) | yes (via PSN) |
+| Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | writes NONMEM tables to disk |
 | Model piping (`\|>`) | yes | no |
 | Parameter estimation | via nlmixr2 | no (NONMEM only) |
-| Symbolic Jacobians / sensitivities | yes | no |
+| Symbolic Jacobians / sensitivities | yes (up to 3rd order + jump sensitivities) | no |
+| Delay differential equations | yes (`delay()`, auto sensitivities) | yes (RADAR5 / `ADVAN16`) |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
 | 1-3 cmt analytical solutions | `linCmt()` with gradients | ADVAN1/2/3/4/11/12 via NONMEM |
-| Multiple ODE solver backends | LSODA (C), LSODA (Fortran), DOP853 | NONMEM ADVAN |
+| Multiple ODE solver backends | LSODA (C/Fortran), DOP853, ros4, `"dop853+ros4"` | NONMEM ADVAN |
 | Runs without licensed software | yes | no |
 | CRAN | yes | yes |
 

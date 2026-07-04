@@ -4,7 +4,7 @@
 \alias{.rxAdjointModel}
 \title{Build (and cache) the compiled adjoint-expansion model for rk4s}
 \usage{
-.rxAdjointModel(object, calcSens)
+.rxAdjointModel(object, calcSens, stiff = FALSE)
 }
 \arguments{
 \item{object}{model definition accepted by \code{\link[=rxode2]{rxode2()}}.}

@@ -1485,24 +1485,26 @@ extern "C" {
   // Ensure buffer has at least nsolve*neta doubles. Returns pointer to buffer.
   double* rxEtaPreGetOrAlloc(int nsolve_neta) {
     if (nsolve_neta > _globals.geta_pre_n) {
-      free(_globals.geta_pre);
-      _globals.geta_pre   = (double*)malloc((size_t)nsolve_neta * sizeof(double));
-      _globals.geta_pre_n = (_globals.geta_pre ? nsolve_neta : 0);
+      free(_globals.geta_pre_alloc);
+      _globals.geta_pre_alloc = (double*)malloc((size_t)nsolve_neta * sizeof(double));
+      _globals.geta_pre_n     = (_globals.geta_pre_alloc ? nsolve_neta : 0);
     }
+    _globals.geta_pre = _globals.geta_pre_alloc;
     return _globals.geta_pre;
   }
 
   // Return current pre-gen buffer (NULL if not allocated / not active).
   double* rxGetEtaPre(void) { return _globals.geta_pre; }
 
-  // Deactivate: set pointer to NULL without freeing (keep allocation for reuse).
+  // Deactivate: set active pointer to NULL, keep underlying allocation for reuse.
   void rxEtaPreDeactivate(void) { _globals.geta_pre = NULL; }
 
   // Free buffer and reset counters.
   void rxEtaPreFree(void) {
-    free(_globals.geta_pre);
-    _globals.geta_pre   = NULL;
-    _globals.geta_pre_n = 0;
+    free(_globals.geta_pre_alloc);
+    _globals.geta_pre_alloc = NULL;
+    _globals.geta_pre       = NULL;
+    _globals.geta_pre_n     = 0;
   }
 
   // Number of omega matrices (1 = same for all sims, >1 = per-sim omega).
@@ -6256,7 +6258,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_mem.n0 > (int64_t)INT_MAX) {
       rxSolveFree();
       stop(_("the solver buffer (%lld elements, %.1f GB) is too large for rxSolve to handle; "
-             "reduce the number of timepoints or simulations"),
+             "reduce the number of timepoints or simulations; "
+             "use rxSolve(..., file = 'prefix') to solve in chunks"),
            (long long)_mem.n0, (double)_mem.n0 * sizeof(double) / 1e9);
     }
     // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
@@ -6267,7 +6270,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (_avail != UINT64_MAX && _needed > _avail) {
         rxSolveFree();
         stop(_("the solver requires %.1f GB but only %.1f GB appears available; "
-               "reduce the number of timepoints or simulations"),
+               "reduce the number of timepoints or simulations; "
+               "use rxSolve(..., file = 'prefix') to solve in chunks"),
              (double)_needed / 1e9, (double)_avail / 1e9);
       }
     }

@@ -2,9 +2,16 @@
 % Please edit documentation in R/adjointDiscrete.R
 \name{rxSolveAdjointRk4}
 \alias{rxSolveAdjointRk4}
-\title{Solve a model with the in-engine discrete adjoint (rk4s)}
+\title{Solve a model with an in-engine discrete-adjoint (\code{s}) method}
 \usage{
-rxSolveAdjointRk4(object, events, params = NULL, calcSens, ...)
+rxSolveAdjointRk4(
+  object,
+  events,
+  params = NULL,
+  calcSens,
+  method = "rk4s",
+  ...
+)
 }
 \arguments{
 \item{object}{model definition accepted by \code{\link[=rxode2]{rxode2()}}.}
@@ -15,6 +22,9 @@ rxSolveAdjointRk4(object, events, params = NULL, calcSens, ...)
 
 \item{calcSens}{character vector of parameters to differentiate w.r.t.}
 
+\item{method}{adjoint solve method (default \code{"rk4s"}).  May be a composite
+(\code{"dop853s+ros4s"}).}
+
 \item{...}{passed to \code{\link[=rxSolve]{rxSolve()}}.}
 }
 \value{
@@ -22,12 +32,19 @@ the solved data frame with \verb{rx__sens_<state>_BY_<param>__} columns.
 }
 \description{
 Convenience wrapper that applies the adjoint expansion (cached), solves with
-the \code{rk4s} method, and returns clean output (the internal \verb{rx__adjFX_*}/
-\verb{rx__adjFP_*}/\verb{rx__adjdF_*} lhs are dropped).  \code{rk4s} is the gradient method:
-it returns the full-trajectory \verb{rx__sens_<state>_BY_<param>__} sensitivity
-columns.  If no gradient is needed, use the plain \code{rk4} method instead.  A
-scalar objective gradient is a downstream REDUCTION of these columns (e.g. the
-nlmixr2est -2LL), not a mode of the solver.
+the requested adjoint method, and returns clean output (the internal
+\verb{rx__adjFX_*}/\verb{rx__adjFP_*}/\verb{rx__adjdF_*}/\verb{rx__adjJp_*}/\verb{rx__adjJy_*} lhs are
+dropped).  These methods return the full-trajectory
+\verb{rx__sens_<state>_BY_<param>__} sensitivity columns; a scalar objective
+gradient is a downstream REDUCTION of these columns (e.g. the nlmixr2est
+-2LL), not a mode of the solver.
+}
+\details{
+The stiff analytic Jacobian the Rosenbrock / implicit-RK adjoint methods
+(\code{ros4s}, \code{radauiia5s}, ..., and the \code{dop853s+ros4s} composite) need is
+emitted into the expansion automatically, inferred from \code{method} -- explicit /
+multistep adjoint methods (\code{rk4s}, \code{dop853s}, ...) never form a Jacobian, so
+it is omitted for them.
 }
 \author{
 Matthew L. Fidler

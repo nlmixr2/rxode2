@@ -254,14 +254,53 @@ mod_lincmt <- function() {
 
 ### Multiple ODE solver backends
 
-rxode2 provides three solver backends selectable per call:
-thread-safe C LSODA (default), Fortran LSODA, and DOP853 (explicit
-8th-order Runge-Kutta for non-stiff systems).  NONMEM's solver is
-fixed to the ADVAN specified in the control stream.
+rxode2 provides several solver backends selectable per call:
+thread-safe C LSODA (default), Fortran LSODA, DOP853 (explicit
+8th-order Runge-Kutta for non-stiff systems), a stiff Rosenbrock method
+(`ros4`), and AutoSwitch composite methods (for example
+`method = "dop853+ros4"`) that probe each segment with a non-stiff
+primary and reactively fall back to a stiff secondary only where
+stiffness is detected.  NONMEM's solver is fixed to the ADVAN specified
+in the control stream.
 
 ```{r}
-rxSolve(mod, ev, method = "dop853")   # non-stiff, fast
-rxSolve(mod, ev, method = "lsoda")    # default adaptive solver
+rxSolve(mod, ev, method = "dop853")      # non-stiff, fast
+rxSolve(mod, ev, method = "lsoda")       # default adaptive solver
+rxSolve(mod, ev, method = "dop853+ros4") # non-stiff probe, stiff fallback
+```
+
+### Delay differential equations
+
+Both tools can solve delay differential equations, through different
+mechanisms.  rxode2 uses `delay(state, T)`, which evaluates an ODE
+state at the past time `t - T` (Monolix `delay()` semantics) using
+dense-output interpolation.  NONMEM supports DDEs through its RADAR5
+solver (`ADVAN16`, an implicit Runge-Kutta method suited to stiff and
+state-dependent delays), where the delay time and the delayed history
+of a state are declared with the reserved `TAUy`/`AP_x_y`/`AD_x_y`
+variables in the `$DES` block.  The main rxode2 advantage is that it
+generates forward sensitivities for `delay()` automatically, so
+delay models remain estimable by gradient-based methods in nlmixr2.
+
+### Automatic ODE-to-`linCmt()` conversion
+
+When a model's ODE system is a 1-3 compartment linear PK system, rxode2
+detects this and transparently solves it with the fast analytical
+`linCmt()` path (`rxSolve(..., useLinCmt = TRUE)`, the default), falling
+back to the ODE solver if the converted model cannot be compiled.
+
+### Out-of-memory simulation and distributed parallelism
+
+rxode2 can write a large population result to disk instead of holding it
+in RAM: passing a `file` prefix to `rxSolve()` splits subjects into
+RAM-sized chunks (auto-sized with `rxMemoryEstimate()`), solves each,
+and stores them as Parquet (or `.rds`) files behind a lightweight object
+that supports lazy `dplyr`/DuckDB queries.  Chunks can additionally be
+dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
+distributed/HPC execution, all from pure R.
+
+```{r}
+rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
 ```
 
 ### Reproducible seeds in R
@@ -336,9 +375,11 @@ does not allow embedding arbitrary Fortran.
 ### Cluster submission via PsN
 
 PsN (Perl-speaks-NONMEM) can distribute NONMEM simulation runs across
-HPC cluster nodes.  rxode2's parallelism is always within a single R
-process via OpenMP; distributed computing requires additional R
-infrastructure (e.g., `future`, `batchtools`).
+HPC cluster nodes.  rxode2 parallelizes across OpenMP threads within a
+process and, since 5.1.1, can also distribute chunks of subjects to
+`mirai` daemons for HPC/cluster execution (built into `rxSolve()`'s
+out-of-memory path via the `parallel` argument), though it does not
+integrate with PsN specifically.
 
 ### Steady-state dosing (`SS=1`, `II`)
 
@@ -392,7 +433,8 @@ passed to the `vpc` R package or Xpose for VPC plots.
 | Simulation engine | compiled C / Fortran in-process | NONMEM external process |
 | Simulation speed | sub-second to seconds | seconds to minutes per run |
 | OpenMP within-process parallelism | yes | no (sequential subjects) |
-| Cluster submission | via R (`future`, etc.) | via PsN |
+| Cluster / distributed submission | yes (built-in `mirai`) | via PsN |
+| Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | writes tables to disk |
 | Model re-implementation needed | yes (or `nonmem2rx`) | no |
 | Re-implementation validation | `nonmem2rx` auto-checks PRED/IPRED/IWRES | N/A |
 | Full ADVAN coverage | partial (most common models) | yes (ADVAN1-13) |
@@ -408,8 +450,10 @@ passed to the `vpc` R package or Xpose for VPC plots.
 | EBE-based simulation | yes (`nonmem2rx` imports EBEs) | yes |
 | Parameter uncertainty simulation | yes (`nonmem2rx` imports covariance) | yes (`$COVARIANCE`) |
 | nlmixr2 estimation | yes | no (separate estimation step) |
-| Symbolic Jacobians | yes | no |
-| Multiple ODE solver backends | LSODA (C), LSODA (Fortran), DOP853 | fixed per ADVAN |
+| Symbolic Jacobians | yes (up to 3rd order + jump sensitivities) | no |
+| Delay differential equations | yes (`delay()`, auto sensitivities) | yes (RADAR5 / `ADVAN16`) |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
+| Multiple ODE solver backends | LSODA (C/Fortran), DOP853, ros4, `"dop853+ros4"` | fixed per ADVAN |
 | Shiny / portable deployment | yes | no (requires NONMEM install) |
 
 ---

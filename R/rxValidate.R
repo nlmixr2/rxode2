@@ -19,6 +19,12 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
     if (!.Call(`_rxode2_isIntel`)) {
       rxUnloadAll()
     }
+    # Preserve the rxode2 parallel/internal RNG seed across each test block.
+    # A test that calls rxSetSeed(<n>) leaves useRxSeed=TRUE set globally;
+    # without this guard that state leaks into later test files and breaks
+    # set.seed()-based reproducibility tests (e.g. test-random, test-rxRmvn).
+    .rxSeed0 <- rxGetSeed()
+    on.exit(rxSetSeed(.rxSeed0), add = TRUE)
     return(force(type))
   }
   pt <- proc.time()

@@ -959,6 +959,21 @@
 #'   use the value of `rxode2.useLinCmt` option (which when specified
 #'   is `TRUE` by default).
 #'
+#' @param file Character string giving a file path prefix for out-of-memory
+#'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
+#'   each chunk's result to `<file>_chunk_NNNNN.parquet` (or `.rds` if
+#'   `arrow` is unavailable), and returns an `rxSolveOom` object. The manifest
+#'   is saved to `<file>_manifest.rds`. Set to `NULL` (default) to use the
+#'   normal in-memory path.
+#'
+#' @param chunkSize Integer; number of subjects per chunk when `file` is
+#'   set. If `NULL` (default), the chunk size is auto-computed from available
+#'   free RAM using `rxMemoryEstimate()`.
+#'
+#' @param parallel Integer; number of `mirai` daemons to use for parallel
+#'   chunk solving when `file` is set. `0L` (default) uses serial solving.
+#'   Requires the `mirai` package.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -1113,6 +1128,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     autoSwitchSwitchMax=5L,
                     stiff2=0L,
                     useLinCmt=getOption("rxode2.useLinCmt", TRUE),
+                    file=NULL,
+                    chunkSize=NULL,
+                    parallel=0L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1575,6 +1593,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
       }
     }
+    if (!is.null(file))
+      checkmate::assertCharacter(file, len = 1, any.missing = FALSE)
+    if (!is.null(chunkSize))
+      checkmate::assertIntegerish(chunkSize, lower = 1, len = 1)
+    checkmate::assertIntegerish(parallel, lower = 0, len = 1)
+    parallel <- as.integer(parallel)
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
@@ -1755,6 +1779,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       autoSwitchDtfac=as.double(autoSwitchDtfac),
       autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
       useLinCmt=isTRUE(useLinCmt),
+      file=file,
+      chunkSize=chunkSize,
+      parallel=parallel,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -3055,6 +3082,40 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     events
   }
+
+  if (!is.null(.ctl$file)) {
+    return(.rxSolveOom(object, params = params, events = events,
+                       inits = inits, .ctl = .ctl, .envir = envir))
+  }
+
+  if (is.null(.ctl$file) && !.serializeInput && .setupOnly == 0L) {
+    .nStud  <- if (is.null(.ctl$nStud)) 1 else as.numeric(.ctl$nStud)
+    .nSub   <- if (is.null(.ctl$nSub))  1 else as.numeric(.ctl$nSub)
+    .nrowEv <- as.numeric(NROW(.eventsForSolve))
+    # Out-of-memory chunking (file=) only makes sense for solves whose
+    # dimensions are valid (within INT_MAX). When the subject*study or output
+    # row counts overflow INT_MAX, the dedicated "too large" guards in the C
+    # solver give the correct diagnostic, so don't pre-empt them with a file=
+    # suggestion (chunking would not make an INT_MAX-overflowing solve fit).
+    .dimOverflow <- (.nSub * .nStud > .Machine$integer.max) ||
+      (.nStud * .nrowEv > .Machine$integer.max)
+    if (!.dimOverflow) {
+      .oomEst <- tryCatch(
+        rxMemoryEstimate(.eventsForSolve, model = object, control = .ctl),
+        error = function(e) NULL
+      )
+      if (!is.null(.oomEst) && !is.na(.oomEst$freeRamBytes) && .oomEst$freeRamBytes > 0) {
+        if (as.numeric(.oomEst$total) > .oomEst$freeRamBytes * 0.90) {
+          stop(sprintf(
+            "Solve requires %.1f GB but only %.1f GB appears free.\n",
+            as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
+            "Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.",
+            call. = FALSE)
+        }
+      }
+    }
+  }
+
   .replayFallbackParams <- params
   .replayFallbackEvents <- .eventsForSolve
   .replayFallbackInits <- inits

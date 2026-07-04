@@ -320,7 +320,7 @@
 #' A dose is a state discontinuity; propagated through `delay(y_j, T(p))` it makes
 #' the delayed value jump at `t = t_dose + T(p)`, so the 1st-order sensitivity
 #' `S_i^p` jumps there by `[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp` -- a
-#' Dirac the smooth `rxDelayD` term in [.rxDelaySensAugment()] misses.  Rather than
+#' Dirac the smooth `rxDelayD` term in `.rxDelaySensAugment()` misses.  Rather than
 #' insert runtime break events, this reproduces the jump with an ordinary modeled
 #' bolus on the sensitivity compartment: a dose of `[y_j]` with modeled lag `T`
 #' (so it lands at `t_dose + T`) and modeled bioavailability `-(d f_i/d delay)*dT/dp`

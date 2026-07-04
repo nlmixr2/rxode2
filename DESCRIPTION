@@ -87,7 +87,12 @@ Suggests:
     kableExtra,
     pmxTools,
     rootSolve,
-    memuse
+    memuse,
+    arrow,
+    mirai,
+    fst,
+    duckdb,
+    DBI
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),

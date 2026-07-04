@@ -263,6 +263,26 @@
 
 - Parallelized the `rxode2` data.frame creation.
 
+- Added parallel solving `mirai` for clusters and HPC support.
+
+- Added out of memory solve using `arrow`/`duckdb`.  These
+  out-of-memory (`rxSolveOom`) solves behave like a standard
+  solved object: it prints the `$params` and `$inits` (mirroring the
+  `rxSolve` console output), supports `$`, `head()`, `nrow()`,
+  `ncol()`/`dim()` and the usual `as.data.frame()`/`as_tibble()`/
+  `as.data.table()` coercions, and exposes the per-subject parameter
+  table and initial conditions that are now persisted alongside the
+  chunked data.  A DuckDB query layer over the parquet chunks is used
+  for lazy access (`head()`, single-column extraction, schema) when
+  available.  The chunks can also be queried lazily with `dplyr` (via
+  `as_arrow_dataset()` or `arrow::to_duckdb()`) so that filtering and
+  aggregation are pushed down to the on-disk chunks and a possibly
+  out-of-memory result never has to be fully materialized.  The
+  storage/query engine can be pinned with the
+  `rxode2.oom.backend` option (`"auto"`, `"duckdb"`, `"arrow"` or
+  `"rds"`); the option is also forwarded to parallel (`mirai`)
+  workers.
+
 - Use ALTREP for `id`, `sim.id`, repeated simulation event columns
   (`evid`, `cmt`, `ss`, `amt`, `rate`, `dur`, `ii`, `time`),
   covariates and kept variables when blocks are identical across
@@ -346,6 +366,8 @@
 
 - Add `serializeFile` as an option to save the rxode2 C fitting data and
   then restore as needed.
+
+- Add out of memory solve capabilities
 
 # rxode2 5.0.2
 

@@ -40,7 +40,7 @@ list with \code{alagf} and \code{events}, or \code{NULL}.
 A dose is a state discontinuity; propagated through \code{delay(y_j, T(p))} it makes
 the delayed value jump at \code{t = t_dose + T(p)}, so the 1st-order sensitivity
 \code{S_i^p} jumps there by \verb{[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp} -- a
-Dirac the smooth \code{rxDelayD} term in \code{\link[=.rxDelaySensAugment]{.rxDelaySensAugment()}} misses.  Rather than
+Dirac the smooth \code{rxDelayD} term in \code{.rxDelaySensAugment()} misses.  Rather than
 insert runtime break events, this reproduces the jump with an ordinary modeled
 bolus on the sensitivity compartment: a dose of \verb{[y_j]} with modeled lag \code{T}
 (so it lands at \code{t_dose + T}) and modeled bioavailability \verb{-(d f_i/d delay)*dT/dp}

@@ -50,7 +50,12 @@ rxSolve(
     "dop853s", "ck54s", "bs32s", "vern65s", 
      "vern76s", "dop87s", "f78s", "ros4s",
     "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
-    "geng5s", "rk3s", "rk43s"),
+    "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s",
+    "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s",
+    "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs",
+    "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s",
+    "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", 
+     "s1110as", "o129s"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -183,6 +188,9 @@ rxSolve(
   autoSwitchSwitchMax = 5L,
   stiff2 = 0L,
   useLinCmt = getOption("rxode2.useLinCmt", TRUE),
+  file = NULL,
+  chunkSize = NULL,
+  parallel = 0L,
   envir = parent.frame()
 )
 
@@ -1542,6 +1550,21 @@ stored in the returned \code{\link[=rxControl]{rxControl()}} object so that down
 hooks (e.g. in nlmixr2) can read and apply it.  The default is to
 use the value of \code{rxode2.useLinCmt} option (which when specified
 is \code{TRUE} by default).}
+
+\item{file}{Character string giving a file path prefix for out-of-memory
+chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes
+each chunk's result to \verb{<file>_chunk_NNNNN.parquet} (or \code{.rds} if
+\code{arrow} is unavailable), and returns an \code{rxSolveOom} object. The manifest
+is saved to \verb{<file>_manifest.rds}. Set to \code{NULL} (default) to use the
+normal in-memory path.}
+
+\item{chunkSize}{Integer; number of subjects per chunk when \code{file} is
+set. If \code{NULL} (default), the chunk size is auto-computed from available
+free RAM using \code{rxMemoryEstimate()}.}
+
+\item{parallel}{Integer; number of \code{mirai} daemons to use for parallel
+chunk solving when \code{file} is set. \code{0L} (default) uses serial solving.
+Requires the \code{mirai} package.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
