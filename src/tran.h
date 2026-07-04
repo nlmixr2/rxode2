@@ -126,7 +126,9 @@ lhs symbols?
   int splitBolusN;
   int isMexp;
   int hasDdt;
+  int curDdt; // currently parsing the RHS of a d/dt() statement
   int hasIndLinProp;
+  int hasDelay; // Has delay() function (delay differential equation)
 } symtab;
 
 extern symtab tb;
@@ -516,5 +518,9 @@ char *getLine (char *src, int line, int *lloc);
 // compartment name referenced as a dose target (bolus/infuse/etc.) in a linCmt model;
 // not an ODE state — prevents false conflict with addLinCmt's dprop==0 check
 #define propDoseRef 131072
+// ODE state referenced by delay(state, T): the solver records dense delay
+// history only for states carrying this bit.  Must match rxDelayStateProp in
+// inst/include/rxode2parseStruct.h.
+#define propDelay 262144
 
 #endif // __TRAN_H__

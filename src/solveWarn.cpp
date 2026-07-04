@@ -56,13 +56,19 @@ extern "C" void rxSolveWarnReset(void) {
   }
 }
 
-extern "C" void rxSolveWarnPush(int id, const char *msg) {
-  if (msg == NULL) return;
+extern "C" void rxSolveWarnPush(int id, const char *msg0, ...) {
+  if (msg0 == NULL) return;
   if (getSilentErr() != 0) return;
 #ifdef _OPENMP
 #pragma omp critical(rxSolveWarn)
 #endif
   {
+    char msg[1024];
+    va_list args;
+    va_start(args, msg0);
+    vsnprintf(msg, 1023, msg0, args);
+    va_end(args);
+
     std::string key(msg);
     std::map<std::string, WarnEntry>::iterator it = g_warn.find(key);
     if (it == g_warn.end()) {

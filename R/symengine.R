@@ -1099,11 +1099,27 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .isNum <- FALSE
   if (isEnv) {
     if (length(x[[2]]) == 2) {
+      if (as.character(x[[2]][[1]]) == "mtime") {
+        .mtimeVar <- .rxToSE(x[[2]][[2]], envir = envir)
+        envir$..mtimeVars <- unique(c(.mtimeVar, envir$..mtimeVars))
+        return(invisible(NULL))
+      }
+      if (as.character(x[[2]][[1]]) == "indLin") {
+        ## indLin(state) <- forcing : store the forcing as a per-state symengine
+        ## variable (rx__indLinForce_<state>__) so .rxInjectMatExpOdes() can add
+        ## it to the matrix-derived d/dt().  The LHS itself has no symengine
+        ## variable (.rxToSE returns "" for indLin), so it must be handled here
+        ## before the generic assignment below.  A named variable (not a list)
+        ## is used so symengine's masked `[[<-` cannot coerce the container.
+        .indLinState <- as.character(x[[2]][[2]])
+        .force <- eval(parse(text = paste0(
+          "with(envir,", .rxToSE(x[[3]], envir = envir), ")")))
+        assign(paste0("rx__indLinForce_", .indLinState, "__"), .force,
+               envir = envir)
+        return(invisible(NULL))
+      }
       if (any(as.character(x[[2]][[1]]) == c("alag", "lag", "F", "f", "rate", "dur"))) {
         envir$..eventVars <- unique(c(.var, envir$..eventVars))
-      }
-      if (as.character(x[[2]][[1]]) == "mtime") {
-        envir$..mtimeVars <- unique(c(.var, envir$..mtimeVars))
       }
     }
   }
@@ -1151,6 +1167,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .lst[[.var]] <- .expr
       assign("..jac0..", .lst, envir = envir)
     } else if (!identical(x[[1]], quote(`~`))) {
+      if (is.call(x[[3]]) && identical(as.character(x[[3]][[1]]), "linCmt")) {
+        assign(.var, symengine::S(.var), envir = envir)
+        .name <- rxFromSE(.var)
+        .rx <- paste0(.name, "=", paste(deparse(x[[3]]), collapse = ""))
+        if (regexpr("^(nlmixr|rx)_", .var) == -1) {
+          assign("..lhs", c(envir$..lhs, .rx), envir = envir)
+        }
+        return(invisible(NULL))
+      }
       .expr <- try(eval(parse(text = .expr)), silent = TRUE)
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if ((.isNum && envir$..doConst) ||
@@ -1357,6 +1382,24 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(paste0(as.character(x[[1]]), "()"))
 }
 
+.rxToSEDelay <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  # delay(state, T) is the value of `state` at the past time t - T.  It is kept
+  # as a function call so it round-trips back to delay() in any generated code,
+  # and its derivative with respect to any variable is zero (a delayed/past
+  # state does not depend on the current state); see the lag/lead handling in
+  # rxFromSE().
+  if (length(x) != 3L) {
+    stop("'delay' takes 2 arguments 'delay(state, T)'", call. = FALSE)
+  }
+  if (length(x[[2]]) != 1) {
+    stop("the first argument to 'delay' must be an ODE state 'delay(state, T)'", call. = FALSE)
+  }
+  .t <- .rxToSE(x[[3]], envir = envir)
+  ## also handles rxDelayD() (the delayed time-derivative); keep the function
+  ## name so it round-trips and differentiates to 0 like delay().
+  paste0(as.character(x[[1]]), "(", as.character(x[[2]]), ", ", .t, ")")
+}
+
 .rxToSEPsigamma <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x == 3)) {
     if (isEnv) {
@@ -1530,7 +1573,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     if (i %% 2 == 0)  {
       # Noting that argument 1 is the function name,
       # The even arguments are the mixture values
-      paste0("rxEq(mixest, ", i/2, ")*(", deparse1(x[[i]]), ")")
+      paste0("rxEq(mixest, ", i/2, ")*(", .rxToSE(x[[i]], envir = envir, progress = progress), ")")
     } else {
       ""
     }
@@ -1792,6 +1835,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`lag`)) ||
                identical(x[[1]], quote(`lead`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`delay`)) ||
+               identical(x[[1]], quote(`rxDelayD`)) ||
+               identical(x[[1]], quote(`rxDelayD2`)) ||
+               identical(x[[1]], quote(`rxDelayD3`))) {
+    return(.rxToSEDelay(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd0`))) {
@@ -1944,6 +1992,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     } else {
       .fun <- paste(.ret0[[1]])
       .ret0 <- .ret0[-1]
+      if (.fun == "linCmt") {
+        return(paste0("linCmt(", paste(unlist(.ret0), collapse = ", "), ")"))
+      }
       if (length(.ret0) == 1L) {
         if (any(.fun == c("alag", "lag"))) {
           return(paste0("rx_lag_", .ret0[[1]], "_"))
@@ -1956,7 +2007,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .ret <- paste0("(", paste(unlist(.ret0), collapse = ","), ")")
       if (.ret == "(0)") {
         return(paste0("rx_", .fun, "_ini_0__"))
-      } else if (any(.fun == c("cmt", "dvid", "matExp", "indLin"))) {
+      } else if (any(.fun == c("cmt", "dvid", "mtime", "matExp", "indLin"))) {
         return("")
       } else if (.fun == "max") {
         .ret <- .rxToSEMax(unlist(.ret0), min=FALSE)
@@ -2527,6 +2578,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
       } else {
         return(paste0(.fun, "(", .a, ")"))
       }
+    } else if (identical(x[[1]], quote(`delay`))) {
+      return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
+    } else if (identical(x[[1]], quote(`rxDelayD`))) {
+      return(paste0("rxDelayD(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
+    } else if (identical(x[[1]], quote(`rxDelayD2`))) {
+      return(paste0("rxDelayD2(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
+    } else if (identical(x[[1]], quote(`rxDelayD3`))) {
+      return(paste0("rxDelayD3(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`polygamma`))) {
       if (length(x == 3)) {
         .a <- .rxFromSE(x[[2]])
@@ -2742,6 +2801,15 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           ))
         }
       } else if (identical(x[[1]], quote(`Derivative`))) {
+        ## delay-family functions (delay/rxDelayD/lag/lead) have zero derivatives
+        ## of every order, so Derivative(<delay-family>, ...) collapses to 0.
+        ## This also covers the higher-order (length(x) > 3) derivatives produced
+        ## when the sensitivity machinery differentiates a delayed term more than
+        ## once -- symengine keeps Derivative(delay(...), v1, v2) unevaluated.
+        if (length(x) >= 3 && is.call(x[[2]]) &&
+              any(as.character(x[[2]][[1L]]) == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
+          return("0")
+        }
         if (length(x) == 3) {
           .fun <- as.character(x[[2]])
           .var <- .rxFromSE(x[[3]])
@@ -2789,7 +2857,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag"))) {
+          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -2940,7 +3008,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
-    "rxTBSi"
+    "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }

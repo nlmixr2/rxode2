@@ -1,0 +1,230 @@
+rxTest({
+  # Delay differential equations: delay(state, T) gives the value of `state`
+  # at the past time t - T (Monolix semantics).
+
+  ## Classic linear DDE  y'(t) = -delay(y, 1),  history y(t) = 1 for t <= 0.
+  ## Method of steps gives the exact piecewise solution:
+  ##   [0,1]: y = 1 - t
+  ##   [1,2]: y = t^2/2 - 2t + 3/2
+  .exact <- function(t) ifelse(t <= 1, 1 - t, t^2 / 2 - 2 * t + 3 / 2)
+
+  .dde <- rxode2({
+    y(0) <- 1
+    d/dt(y) <- -delay(y, 1)
+  })
+
+  test_that("delay() parses and round-trips in the normalized model", {
+    expect_true(grepl("delay(y,1)", rxNorm(.dde), fixed = TRUE))
+    expect_equal(unname(rxModelVars(.dde)$flags[["hasDelay"]]), 1L)
+  })
+
+  test_that("delay()/rxDelayD() are only valid on a d/dt() line", {
+    ## delay() interpolates the dense solver history, which is only recorded
+    ## during integration -- it is meaningful only inside a d/dt() right-hand
+    ## side, not in an output (lhs) assignment.
+    ## the model is otherwise valid, so the only error is the d/dt restriction
+    ## (the detailed "can only be used on a 'd/dt()' line" message prints to the
+    ## parser error stream; the condition is the generic syntax error)
+    expect_error(rxode2({
+      d/dt(y) <- -y
+      y(0) <- 10
+      z <- delay(y, 1)
+    }), "syntax error")
+    expect_error(rxode2({
+      d/dt(y) <- -y
+      y(0) <- 10
+      z <- rxDelayD(y, 1)
+    }), "syntax error")
+    ## the diagnostic names the offending function and the d/dt() requirement
+    expect_output(
+      try(rxode2({
+        d/dt(y) <- -y
+        y(0) <- 10
+        z <- delay(y, 1)
+      }), silent = TRUE),
+      "delay"
+    )
+  })
+
+  test_that("delay()'s first argument must be an ODE state, not a parameter", {
+    ## delay() interpolates the dense history of a differential state, so its
+    ## first argument must have a d/dt() defined.  Passing a parameter
+    ## (kel here) used to be silently swallowed as an algebraic compartment;
+    ## it must error instead.
+    expect_error(rxode2({
+      d/dt(central) <- -kel * central + delay(kel, 5)
+      conc <- central / v
+    }), "syntax error")
+    expect_output(
+      try(rxode2({
+        d/dt(central) <- -kel * central + delay(kel, 5)
+        conc <- central / v
+      }), silent = TRUE),
+      "must be an ODE state"
+    )
+    ## the same expression with a genuine state is fine
+    expect_s3_class(rxode2({
+      d/dt(central) <- -kel * central + kel * delay(central, 5)
+      conc <- central / v
+    }), "rxode2")
+  })
+
+  test_that("delay differential equation matches the analytic solution", {
+    .tt <- seq(0, 2, by = 0.1)
+    .s <- rxSolve(.dde, et(.tt), atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s$y - .exact(.s$time))) < 1e-6)
+  })
+
+  test_that("delay models default to the dense dop853+ros4 composite", {
+    .tt <- seq(0, 2, by = 0.5)
+    ## no method specified -> auto dense dop853+ros4
+    .s <- rxSolve(.dde, et(.tt), atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s$y - .exact(.s$time))) < 1e-6)
+    ## explicit dop853 also works (dense enabled automatically)
+    .s2 <- rxSolve(.dde, et(.tt), method = "dop853", atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s2$y - .exact(.s2$time))) < 1e-6)
+    ## explicit composite works
+    .s3 <- rxSolve(.dde, et(.tt), method = "dop853+ros4", atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s3$y - .exact(.s3$time))) < 1e-6)
+  })
+
+  test_that("small delays (below the natural step size) stay accurate", {
+    ## y'(t) = -delay(y, 0.5), history 1.  Method of steps:
+    ##   [0,0.5]:   y = 1 - t
+    ##   [0.5,1]:   y = t^2/2 - 1.5 t + 1.125
+    .exact05 <- function(t) {
+      ifelse(t <= 0.5, 1 - t, t^2 / 2 - 1.5 * t + 1.125)
+    }
+    .dde05 <- rxode2({
+      y(0) <- 1
+      d/dt(y) <- -delay(y, 0.5)
+    })
+    .tt <- seq(0, 1, by = 0.1)
+    ## an intentionally huge hmax must be overridden by the delay step cap
+    .s <- rxSolve(.dde05, et(.tt), atol = 1e-10, rtol = 1e-10, hmax = 100)
+    expect_true(max(abs(.s$y - .exact05(.tt))) < 1e-6)
+  })
+
+  test_that("delay models reject solvers that cannot record dense history", {
+    .tt <- seq(0, 2, by = 0.5)
+    for (.m in c("lsoda", "dop5", "bs", "cvode")) {
+      expect_error(rxSolve(.dde, et(.tt), method = .m), "dense")
+    }
+  })
+
+  test_that("stiff delay models solve with the dense ros4 path", {
+    .tt <- seq(0, 2, by = 0.1)
+    ## ros4 dense output is recorded and interpolated for delay(); the linear
+    ## DDE must match the analytic solution on the ros4 path too
+    .s <- rxSolve(.dde, et(.tt), method = "ros4", atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s$y - .exact(.tt))) < 1e-5)
+
+    ## a genuinely stiff DDE that overwhelms dop853 (too many steps) solves
+    ## fine with ros4
+    .stiff <- rxode2({
+      y(0) <- 1
+      d/dt(y) <- -1e5 * (y - delay(y, 0.2)) - delay(y, 0.2)
+    })
+    .ss <- rxSolve(.stiff, et(seq(0, 3, by = 0.5)), method = "ros4")
+    expect_false(any(is.na(.ss$y)))
+    expect_true(all(.ss$y > 0))
+  })
+
+  test_that("delay() works with an expression for the delay duration", {
+    .m <- rxode2({
+      tau <- 0.5
+      y(0) <- 2
+      d/dt(y) <- -delay(y, tau * 2)
+    })
+    ## delay duration is 1; on [0,1] history is constant 2 so y' = -2, y = 2 - 2t
+    .s <- rxSolve(.m, et(seq(0, 1, by = 0.25)), atol = 1e-10, rtol = 1e-10)
+    expect_equal(.s$y, 2 - 2 * .s$time, tolerance = 1e-6)
+  })
+
+  test_that("the dop853+ros4 composite switches to ros4 mid-solve for stiff DDEs", {
+    ## A very stiff delay model that pure dop853 cannot handle (too many steps).
+    .st <- rxode2({
+      y(0) <- 1
+      d/dt(y) <- -1e5 * (y - delay(y, 0.2)) - delay(y, 0.2)
+    })
+    .ev <- et(seq(0, 3, by = 0.5))
+    ## pure dop853 fails on this stiff problem ...
+    expect_error(rxSolve(.st, .ev, method = "dop853"))
+    ## ... but the composite default solves it by switching to ros4, matching
+    ## the pure ros4 solution.
+    .comp <- rxSolve(.st, .ev)
+    .ros  <- rxSolve(.st, .ev, method = "ros4")
+    expect_false(any(is.na(.comp$y)))
+    expect_equal(.comp$y, .ros$y, tolerance = 1e-4)
+
+    ## Mixed stiffness: non-stiff early (dop853), very stiff after t=1.5 (ros4).
+    ## The composite must switch mid-solve and mix dop853/ros4 dense history.
+    .mix <- rxode2({
+      kk <- 0.5 + 1e5 / (1 + exp(-(t - 1.5) * 40))
+      y(0) <- 1
+      d/dt(y) <- -kk * (y - delay(y, 0.2)) - delay(y, 0.2)
+    })
+    .evm <- et(seq(0, 3, by = 0.25))
+    expect_error(rxSolve(.mix, .evm, method = "dop853")) # dop853 alone fails
+    .cm <- rxSolve(.mix, .evm)                           # composite switches
+    .rm <- rxSolve(.mix, .evm, method = "ros4")
+    expect_false(any(is.na(.cm$y)))
+    expect_equal(.cm$y, .rm$y, tolerance = 1e-3)
+  })
+
+  test_that("multi-subject DDE solves keep per-subject history isolated", {
+    .tt <- seq(0, 2, by = 0.25)
+    .ev <- et(.tt)
+    .ev$id <- 1
+    .e3 <- do.call(rbind, lapply(1:3, function(i) {
+      d <- .ev
+      d$id <- i
+      d
+    }))
+    .s3 <- rxSolve(.dde, .e3, atol = 1e-10, rtol = 1e-10)
+    expect_true(max(abs(.s3$y - .exact(.s3$time))) < 1e-6)
+  })
+
+  test_that("a delayed-logistic DDE solves without error", {
+    ## Hutchinson's equation: N'(t) = r N (1 - N(t-tau)/K)
+    .log <- rxode2({
+      r <- 0.5
+      K <- 10
+      tau <- 1
+      N(0) <- 2
+      d/dt(N) <- r * N * (1 - delay(N, tau) / K)
+    })
+    .s <- rxSolve(.log, et(seq(0, 20, by = 0.5)))
+    expect_false(any(is.na(.s$N)))
+    expect_true(all(.s$N > 0))
+  })
+
+  test_that("dense history is recorded only for the states delay() looks back on", {
+    ## delay() references the SECOND state; the first state is not delayed.  The
+    ## solver records dense history only for delayed states (propDelay bit in
+    ## stateProp), so this exercises the compaction + the state-index -> history
+    ## column map in _rxDelay.  The delayed state's trajectory must match the
+    ## same equation solved on its own.
+    .two <- rxode2({
+      d/dt(a) <- -a
+      d/dt(b) <- -0.5 * b + 0.3 * delay(b, 1)
+      a(0) <- 5
+      b(0) <- 1
+    })
+    .one <- rxode2({
+      d/dt(b) <- -0.5 * b + 0.3 * delay(b, 1)
+      b(0) <- 1
+    })
+    ## stateProp carries the delay bit only on the delayed state (b, index 1).
+    .sp <- rxModelVars(.two)$stateProp
+    expect_equal(bitwAnd(.sp[1], 262144L), 0L)        # a: not delayed
+    expect_equal(bitwAnd(.sp[2], 262144L), 262144L)   # b: delayed
+    .ev <- et(seq(0, 10, by = 0.5))
+    .s2 <- rxSolve(.two, .ev, atol = 1e-10, rtol = 1e-10)
+    .s1 <- rxSolve(.one, .ev, atol = 1e-10, rtol = 1e-10)
+    ## the compacted column maps back to the right state: b matches the
+    ## standalone solve, and the undelayed state a still decays as exp(-t).
+    expect_true(max(abs(.s2$b - .s1$b)) < 1e-6)
+    expect_true(max(abs(.s2$a - 5 * exp(-.s2$time))) < 1e-5)
+  })
+})

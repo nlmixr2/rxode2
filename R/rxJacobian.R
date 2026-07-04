@@ -37,15 +37,65 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #'
 #'
 #' @param model symengine environment
+#' @return Jacobian information
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+.rxInjectMatExpOdes <- function(model) {
+  .mv <- get("..mv", envir = model, inherits = FALSE)
+  if (!is.list(.mv$indLin) || length(.mv$indLin) != 4L) {
+    return(invisible(FALSE))
+  }
+  .states <- rxStateOde(model)
+  if (length(.states) == 0L) {
+    return(invisible(FALSE))
+  }
+  if (exists(paste0("rx__d_dt_", .states[1L], "__"), envir = model, inherits = FALSE)) {
+    return(invisible(FALSE))
+  }
+  .ddt <- setNames(replicate(length(.states), symengine::S("0"), simplify = FALSE), .states)
+  .sym <- function(name) get(name, envir = model, inherits = FALSE)
+  for (.p in ls(envir = model, all.names = TRUE)) {
+    .m <- regexec("^k[_.]([^_.]+)[_.]([^_.]+)$", .p)[[1L]]
+    if (length(.m) == 1L) next
+    .from <- substring(.p, .m[2L], .m[2L] + attr(.m, "match.length")[2L] - 1L)
+    .to <- substring(.p, .m[3L], .m[3L] + attr(.m, "match.length")[3L] - 1L)
+    if (!(.from %in% .states)) next  # check names, not integer values
+    .rate <- .sym(.p)
+    .ddt[[.from]] <- .ddt[[.from]] - .rate * .sym(.from)
+    if (.to %in% .states) {
+      .ddt[[.to]] <- .ddt[[.to]] + .rate * .sym(.from)
+    }
+  }
+  ## Add any indLin() forcing functions (e.g. Michaelis-Menten elimination)
+  ## captured during the symengine load.  Each is stored as a per-state symengine
+  ## variable rx__indLinForce_<state>__; they add to the matrix-derived d/dt().
+  for (.s in .states) {
+    .forceName <- paste0("rx__indLinForce_", .s, "__")
+    if (exists(.forceName, envir = model, inherits = FALSE)) {
+      .ddt[[.s]] <- .ddt[[.s]] + get(.forceName, envir = model, inherits = FALSE)
+    }
+  }
+  for (.s in .states) {
+    assign(paste0("rx__d_dt_", .s, "__"), .ddt[[.s]], envir = model)
+  }
+  invisible(TRUE)
+}
+
+#'  Internal function for calculating the Jacobian
+#'
+#' @param model symengine environment
 #' @param vars Variables
 #' @return Jacobian information
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
 .rxJacobian <- function(model, vars = TRUE) {
+  .rxInjectMatExpOdes(model)
   if (rxIs(vars, "logical")) {
     if (vars) {
       .pars <- .rxParams(model, TRUE)
+      .pars <- setdiff(.pars, rxLhs(model))
       if (any(.pars == "ETA[1]")) {
         .pars <- .pars[regexpr(rex::rex(start, "ETA[", any_numbers, "]"), .pars) != -1]
       }
@@ -71,7 +121,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
     )
   }
   assign("..vars", .pars, envir = model)
-  .malert("calculate jacobian")
+  ## .malert("calculate jacobian")
   rxProgress(dim(.jac)[1])
   on.exit({
     rxProgressAbort()
@@ -90,7 +140,6 @@ rxExpandGrid <- function(x, y, type = 0L) {
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
-#'
 #' @param model symengine model environment
 #' @param vars Variables for single sensitivity
 #' @param vars2 if present, 2 parameter sensitivity
@@ -98,11 +147,26 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxSens <- function(model, vars, vars2) {
+.rxSens <- function(model, vars, vars2, vars3) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
-    if (!missing(vars2)) {
+    if (missing(vars2)) {
+      ## delay differential equations: reject state-dependent delays before the
+      ## progress bar opens (so the error message is not masked).
+      .rxDelayValidateTauSE(model)
+    } else {
+      ## second- and higher-order: parameter-dependent delays are not yet
+      ## supported (moving breaking points -> jump discontinuities); reject
+      ## before the progress bar so the message is not masked.
+      .rxDelayValidateHigherOrderSE(model, union(union(vars, vars2),
+                                                 if (missing(vars3)) NULL else vars3))
+      ## third-order only covers linear delays; reject nonlinear ones early too.
+      if (!missing(vars3)) .rxDelayValidate3rdLinearSE(model)
+    }
+    if (!missing(vars3)) {
+      .grd <- rxode2::rxExpandSens3_(.state, vars, vars2, vars3)
+    } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
@@ -132,9 +196,23 @@ rxExpandGrid <- function(x, y, type = 0L) {
       rxTick()
       return(.ret)
     })
-    if (missing(vars2)) {
+    if (!missing(vars3)) {
+      ## Delay differential equations: add the third-order delayed (variational)
+      ## terms (constant-delay) to each third-order sensitivity ODE.
+      .ret <- .rxDelaySensAugment3(model, .ret, union(union(vars, vars2), vars3))
+      assign("..sens3", .ret, envir = model)
+    } else if (missing(vars2)) {
+      ## Delay differential equations: add the delayed (variational) terms
+      ## d f_i/d[delay(y_j,T)] * delay(S_j,T) to each first-order sensitivity
+      ## ODE.  No-op when the model has no delay() terms.  Placed here so both
+      ## rxGetModel(calcSens=) and nlmixr2est's foceiEtaS path are covered.
+      .ret <- .rxDelaySensAugment(model, .ret, vars)
       assign("..sens", .ret, envir = model)
     } else {
+      ## Delay differential equations: add the second-order delayed (variational)
+      ## terms (constant-delay) to each second-order sensitivity ODE.  No-op
+      ## without delay() terms.
+      .ret <- .rxDelaySensAugment2(model, .ret, union(vars, vars2))
       assign("..sens2", .ret, envir = model)
     }
     rxProgressStop()
@@ -173,8 +251,11 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .mv0 <- rxModelVars(obj)
   .curDvid <- .mv0$dvid
   .state0 <- .mv0$state
+  if (.rxLinNcmt(.mv0)["numLin"] > 0L) {
+    .state0 <- rxStateOde(.mv0)
+  }
   if (length(.state0) > 0) {
-    .state0 <- paste(paste0("cmt(", .mv0$state, ");\n"), collapse = "")
+    .state0 <- paste(paste0("cmt(", .state0, ");\n"), collapse = "")
   } else {
     .state0 <- ""
   }
@@ -228,28 +309,28 @@ rxExpandGrid <- function(x, y, type = 0L) {
 .rxLoadPrune <- function(mod, doConst = TRUE, promoteLinSens = TRUE, fullModel = FALSE,
                          addProp = c("combined2", "combined1")) {
   addProp <- match.arg(addProp)
-  if (fullModel) {
-    .malert("pruning branches ({.code if}/{.code else}) of full model...")
-  } else {
-    .malert("pruning branches ({.code if}/{.code else})...")
-  }
+  ## if (fullModel) {
+  ##   .malert("pruning branches ({.code if}/{.code else}) of full model...")
+  ## } else {
+  ##   .malert("pruning branches ({.code if}/{.code else})...")
+  ## }
   .pruned <- rxPrune(mod)
   .captures <- attr(.pruned, "capturedEvid")
   .newmod <- rxGetModel(.pruned)
-  .msuccess("done")
+  ## .msuccess("done")
   ## message("Loading into symengine environment...", appendLF=FALSE)
-  if (fullModel) {
-    .malert("loading full model into {.pkg symengine} environment...")
-  } else {
-    .malert("loading into {.pkg symengine} environment...")
-  }
+  ## if (fullModel) {
+  ##   .malert("loading full model into {.pkg symengine} environment...")
+  ## } else {
+  ##   .malert("loading into {.pkg symengine} environment...")
+  ## }
   .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens)
   if (length(.captures) > 0L) {
     .newmod$..capturedEvid <- .captures
     .newmod$..restoreLines <- .restoreAdaptiveDosing(.captures)
   }
   .rxFixR(.newmod, addProp)
-  .msuccess("done")
+  ## .msuccess("done")
   return(.newmod)
 }
 

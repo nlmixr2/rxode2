@@ -544,7 +544,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
                   iasti++;
                   if (iasti == 15)
                     {
-		      rxSolveWarnPush(ctx->subject_id, "the problem seems to become stiff at x = %.16e");
+                      rxSolveWarnPush(ctx->subject_id, "the problem seems to become stiff at x = %.16e", xph);
 		      ctx->xout = x;
 		      ctx->hout = h;
 		      return -4;

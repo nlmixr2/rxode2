@@ -112,6 +112,16 @@
 #'   `"ros4"`), `hmax` defaults to `NULL` to allow the solvers to
 #'   determine the step size when `dense=TRUE`
 #'
+#'   For `method="indLin"`, `hmax` caps how long an interval is treated
+#'   as having a CONSTANT Jacobian/matrix-exponential term before
+#'   re-linearizing (previously silently ignored for this method). For a
+#'   true (state-independent) `matExp()` model this makes no numerical
+#'   difference; for an `indLin()`-forcing model with a state-dependent
+#'   term (e.g. Michaelis-Menten elimination), the default `hmax` (tied to
+#'   the spacing of your own sampling/dosing times) may be too coarse for
+#'   the desired accuracy -- set an explicit, smaller `hmax` to force more
+#'   frequent relinearization.
+#'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
 #'
@@ -2416,8 +2426,50 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       object <- rxode2(.mexpCode)
     }
   }
-  if (rxIsImplicit(.ctl$method) ||
-      (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2))) {
+  # Delay differential equations (models using delay()) require a dense ODE
+  # solver so delay() can interpolate past states.  When delays are present,
+  # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense
+  # output; a non-dense method requested explicitly is an error.
+  .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
+  if (.hasDelay) {
+    # delay() history is recorded on the dense dop853 path (default, and the
+    # dop853 leg of "dop853+ros4") and on the dense ros4 path (for stiff delay
+    # models).  Other solvers cannot record dense history and are rejected.
+    .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
+    if (.ctl$method == 2L) {
+      # liblsoda is the overall default; switch DDE models to dop853 + ros4
+      .ctl$method <- 0L
+      .ctl$stiff2 <- 13L
+      .ctl$dense <- TRUE
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+    } else if ((.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
+                 (.ctl$method == 13L && .stiff2 == 0L)) {
+      # dop853 (optionally + ros4 secondary), or pure ros4 for stiff delays
+      if (!isTRUE(.ctl$dense)) {
+        .ctl$dense <- TRUE
+        .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
+      }
+    } else {
+      stop("delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)",
+           call. = FALSE)
+    }
+  }
+  # Generate the analytical Jacobian whenever the solve uses an implicit method
+  # that needs one -- either as the primary method or as the stiff secondary of
+  # an AutoSwitch composite ("primary+stiff").  rxIsImplicit() flags exactly the
+  # methods the C solver consumes a Jacobian for (its `_jacAvailable` check):
+  # ros4(13), iem(14), and ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/
+  # geng5/sdirk43 (31-38).  Solvers that build their own Jacobian internally
+  # (lsoda, liblsoda, cvode, bdf) are not flagged and need no generation here.
+  .ddeNoJac <- .hasDelay && .ctl$method == 0L &&
+    (is.null(.ctl$stiff2) || isTRUE(.ctl$stiff2 == 0L))
+  if (!.ddeNoJac &&
+      (rxIsImplicit(.ctl$method) ||
+       (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2)))) {
+    # A pure dop853 delay model (method 0, no stiff secondary) does not use a
+    # Jacobian, so generation is skipped there.  The ros4 stiff path and the
+    # dop853+ros4 dense composite (which switches to ros4 mid-solve) both need
+    # the Jacobian; it is generated normally (delay() differentiates to zero).
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
@@ -2442,7 +2494,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
               .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
               if (length(.parts) == 3) {
                 if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                  .fc <- c(.fc, .line)
+                  if (!(.line %in% .origCode) && !(.line %in% .fc)) {
+                    .fc <- c(.fc, .line)
+                  }
                 }
               }
             }
@@ -2944,6 +2998,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   .callSolve <- function() {
+    ## Event ("jump") sensitivities: push the model's runtime dims to the solver
+    ## (active flag + nState/nParam) so handle_evid can inject the dosing-parameter
+    ## jumps.  No-op (active=0) for fd / models without jump info.
+    .rxSetEventSensDims(object)
     if (.isSer) {
       .bundle <- if (is.null(.preloadedSerializedBundle)) {
         .rxReadStateBundle(params)

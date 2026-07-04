@@ -45,7 +45,10 @@ rxIndLinState <- function(preferred = NULL) {
 }
 
 .rxIndLinLine <- function(line, states, state0) {
-  .tmp <- symengine::expand(line) ## Expand line
+  .tmp <- tryCatch(
+    symengine::expand(line), ## Expand line; simplifies X^1->X etc
+    error = function(e) symengine::S(as.character(line)) ## fall back for complex exprs
+  )
   .tmp <- rxFromSE(.tmp) ## Convert SE->rxode2; Changes things like X^1 -> X
 
   .ret <- eval(parse(text = paste0("rxSplitPlusQ(quote(", .tmp, "))")))

@@ -216,5 +216,8 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLineStrAssign(ni, name) ||
     finalizeLineLevelStr(ni, name)
     ;
+  // Leaving a finalized statement: clear the "delay() is allowed here" flag set
+  // for d/dt() and df()/dy() right-hand sides (see handleDdtAssign/handleLhsDf).
+  if (tmp) tb.curDdt = 0;
   (void) tmp;
 }

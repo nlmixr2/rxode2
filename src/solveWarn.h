@@ -27,7 +27,7 @@ extern "C" {
    Intended for non-stop warnings only. Anything that aborts the solve
    (Rf_error, hardfailure, etc.) must NOT route through this aggregator —
    those need to surface immediately, not be batched. */
-void rxSolveWarnPush(int id, const char *msg);
+void rxSolveWarnPush(int id, const char *msg, ...);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
 

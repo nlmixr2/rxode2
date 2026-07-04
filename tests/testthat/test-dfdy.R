@@ -1,4 +1,6 @@
 rxTest({
+  withr::local_options(list(rxode2.eventSens = "fd"))
+
   test_that("Specified jacobian is captured", {
 
     Vtpol2 <- rxode2("

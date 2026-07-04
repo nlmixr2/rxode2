@@ -26,6 +26,10 @@ typedef struct vLines {
 #define rxode2naTimeInputWarn   2
 #define rxode2naTimeInputError  3
 
+/* stateProp bit marking an ODE state referenced by delay(state, T).  Must match
+   propDelay in src/tran.h. */
+#define rxDelayStateProp 262144
+
 struct rx_solving_options_ind_s;
 typedef struct rx_solving_options_ind_s rx_solving_options_ind;
 
@@ -36,6 +40,14 @@ typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
 typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
+// Event ("jump") sensitivities: total derivatives of the modeled alag / F
+// fractions wrt each first-order sensitivity parameter, written into a flat
+// per-subject buffer indexed (cmt0 * nSensParam + paramIdx).  Fill-all-states in
+// one call (like Lag/F fill all _alag/_f), evaluated at the supplied state y.
+typedef void (*t_dLag)(int _cSub, double t, double *y, double *_dLagSave);
+typedef void (*t_dF)(int _cSub, double t, double *y, double *_dFSave);
+typedef void (*t_dRate)(int _cSub, double t, double *y, double *_dRateSave);
+typedef void (*t_dDur)(int _cSub, double t, double *y, double *_dDurSave);
 
 typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 
@@ -124,6 +136,10 @@ typedef struct {
   int linOffset;
   int ssSolved;
   int useDense;
+  int hasDelay; /* model uses delay() -- record dense history for DDE lookups */
+  int nDelayState; /* number of ODE states delay() looks back on (history columns) */
+  int *delayState; /* [nDelayState] their ODE state indices (history column -> state) */
+  int *delayCol;   /* [neq] ODE state index -> history column, -1 if not delayed */
   int indOwnAlloc;
   int cvodeLinSolver;
   int    stiff2;                /* secondary method code (stiff); 0 = no autoswitch */
@@ -315,6 +331,20 @@ struct rx_solving_options_ind_s {
   int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */
   double autoHcur;               /* current suggested step size for autoswitch (tracks dtfac scaling) */
   int    autoLastSwitchIntervals; /* intervals elapsed since last permanent method switch */
+  // Delay differential equation (DDE) dense history.  Each record stores the
+  // dop853 dense-output coefficients for one accepted step so that delay()
+  // can interpolate any past state.  Layout per record (stride doubles):
+  //   rcont1[0..neq-1], rcont2[..], ..., rcont8[..], xold, h
+  double *delayHist;       /* flat ring/grow buffer, or NULL when unused */
+  int     delayHistN;      /* number of step records currently stored */
+  int     delayHistCap;    /* capacity in records */
+  int     delayHistStride; /* doubles per record (8*neq+2 dop853, 4*neq+2 ros4) */
+  int     delayHistNeq;    /* neq used when building records */
+  int     delayHistType;   /* 0 = dop853 dense (rcont), 1 = ros4 cubic samples */
+  int     delayHistOn;     /* 1 while recording is active for this subject */
+  double  delayT0;         /* initial time; history before this is the IC */
+  double  delayMinT;       /* smallest delay duration seen; caps the step size */
+  int     delayWarmed;     /* 1 once the RHS has been evaluated to learn delays */
   rx_fn_pointers *fns;
   rx_solving_options *op;
   rx_solve *rx;

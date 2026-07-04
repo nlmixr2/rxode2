@@ -1,6 +1,8 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "codegen.h"
+#include <stdlib.h>
+#include <string.h>
 
 /**
  * Generates a random string of 4 alphanumeric characters.
@@ -39,6 +41,52 @@ SEXP _rxode2parse_packages;
 #undef df
 
 SEXP getRxode2ParseDfBuiltin(void);
+
+// Event ("jump") sensitivities: per-model C assignment lines for the dLag/dF
+// functions, generated in R (.rxEventSensCLines) and passed as arguments to
+// _rxode2_codegen() (set at the top of that function).  NULL/empty -> the
+// dLag/dF functions emit only the preamble and leave the buffer untouched.
+// Cleared after each codegen so they never leak to the next model.
+char *_es_dLagCode = NULL;
+char *_es_dFCode = NULL;
+char *_es_dRateCode = NULL;
+char *_es_dDurCode = NULL;
+char *_es_d2FCode = NULL;
+char *_es_d2LagCode = NULL;
+char *_es_d2RateCode = NULL;
+char *_es_d2DurCode = NULL;
+char *_es_d3FCode = NULL;
+char *_es_dFQCode = NULL;
+char *_es_dLagJacCode = NULL;
+char *_es_dLagQCode = NULL;
+char *_es_dDurQCode = NULL;
+
+static void _es_freeCode(void) {
+  if (_es_dLagCode != NULL) { free(_es_dLagCode); _es_dLagCode = NULL; }
+  if (_es_dFCode != NULL) { free(_es_dFCode); _es_dFCode = NULL; }
+  if (_es_dRateCode != NULL) { free(_es_dRateCode); _es_dRateCode = NULL; }
+  if (_es_dDurCode != NULL) { free(_es_dDurCode); _es_dDurCode = NULL; }
+  if (_es_d2FCode != NULL) { free(_es_d2FCode); _es_d2FCode = NULL; }
+  if (_es_d2LagCode != NULL) { free(_es_d2LagCode); _es_d2LagCode = NULL; }
+  if (_es_d2RateCode != NULL) { free(_es_d2RateCode); _es_d2RateCode = NULL; }
+  if (_es_d2DurCode != NULL) { free(_es_d2DurCode); _es_d2DurCode = NULL; }
+  if (_es_d3FCode != NULL) { free(_es_d3FCode); _es_d3FCode = NULL; }
+  if (_es_dFQCode != NULL) { free(_es_dFQCode); _es_dFQCode = NULL; }
+  if (_es_dLagJacCode != NULL) { free(_es_dLagJacCode); _es_dLagJacCode = NULL; }
+  if (_es_dLagQCode != NULL) { free(_es_dLagQCode); _es_dLagQCode = NULL; }
+  if (_es_dDurQCode != NULL) { free(_es_dDurQCode); _es_dDurQCode = NULL; }
+}
+
+// Persistent copy of an R string (malloc, not R_alloc: must survive past the
+// codegen .Call setup).  Portable replacement for strdup (which is POSIX-only).
+static char *_es_dup(SEXP s) {
+  if (TYPEOF(s) != STRSXP || Rf_length(s) != 1) return NULL;
+  const char *src = CHAR(STRING_ELT(s, 0));
+  size_t n = strlen(src) + 1;
+  char *dst = (char *) malloc(n);
+  if (dst != NULL) memcpy(dst, src, n);
+  return dst;
+}
 
 int _rxode2parse_protected = 0;
 void _rxode2parse_assignTranslationBuiltin(void) {
@@ -324,6 +372,58 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
               tb.matn, prefix);
     } else if (show_ode == ode_indLinVec) {
       sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
+    } else if (ode_is_es_dcode(show_ode)) {
+      // Event ("jump") sensitivities: total derivative of the modeled
+      // alag / F / rate / dur wrt each first-order sensitivity parameter,
+      // written into the per-subject buffer.  Shares the Lag/F preamble
+      // (state/param population from __zzStateVar__); the per-(cmt,param) body
+      // assignment lines come from the R-generated `_es_d*Code` global (empty
+      // -> the function just leaves the buffer untouched).  No closing brace:
+      // the trailing `else` of the body switch emits it.
+      const char *_esDesc =
+        (show_ode == ode_dLag) ? "d(alag)/dp" :
+        (show_ode == ode_dF)   ? "d(F)/dp" :
+        (show_ode == ode_dRate)? "d(rate)/dp" :
+        (show_ode == ode_dDur) ? "d(dur)/dp" :
+        (show_ode == ode_d2F)  ? "d2(F)/dp/dq" :
+        (show_ode == ode_d2Lag)? "d2(alag)/dp/dq" :
+        (show_ode == ode_d2Rate)?"d2(rate)/dp/dq" :
+        (show_ode == ode_d2Dur)?"d2(dur)/dp/dq" :
+        (show_ode == ode_d3F)  ? "d3(F)/dp/dq/dr" :
+        (show_ode == ode_dFQ)  ? "d(F)/dq" :
+        (show_ode == ode_dLagJac) ? "d(J[k][c])/dq" :
+        (show_ode == ode_dLagQ) ? "d(alag)/dq" : "d(dur)/dq";
+      const char *_esFun =
+        (show_ode == ode_dLag) ? "dLag" :
+        (show_ode == ode_dF)   ? "dF" :
+        (show_ode == ode_dRate)? "dRate" :
+        (show_ode == ode_dDur) ? "dDur" :
+        (show_ode == ode_d2F)  ? "d2F" :
+        (show_ode == ode_d2Lag)? "d2Lag" :
+        (show_ode == ode_d2Rate)?"d2Rate" :
+        (show_ode == ode_d2Dur)?"d2Dur" :
+        (show_ode == ode_d3F)  ? "d3F" :
+        (show_ode == ode_dFQ)  ? "dFQ" :
+        (show_ode == ode_dLagJac) ? "dLagJac" :
+        (show_ode == ode_dLagQ) ? "dLagQ" : "dDurQ";
+      const char *_esBuf =
+        (show_ode == ode_dLag) ? "_dLagSave" :
+        (show_ode == ode_dF)   ? "_dFSave" :
+        (show_ode == ode_dRate)? "_dRateSave" :
+        (show_ode == ode_dDur) ? "_dDurSave" :
+        (show_ode == ode_d2F)  ? "_d2FSave" :
+        (show_ode == ode_d2Lag)? "_d2LagSave" :
+        (show_ode == ode_d2Rate)?"_d2RateSave" :
+        (show_ode == ode_d2Dur)?"_d2DurSave" :
+        (show_ode == ode_d3F)  ? "_d3FSave" :
+        (show_ode == ode_dFQ)  ? "_dFQSave" :
+        (show_ode == ode_dLagJac) ? "_dLagJacSave" :
+        (show_ode == ode_dLagQ) ? "_dLagQSave" : "_dDurQSave";
+      sAppend(&sbOut,
+              "// Event-sensitivity %s\nvoid %s%s(int _cSub, double __t, double *__zzStateVar__, double *%s){\n"
+              "  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n"
+              "  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n  (void)%s;\n",
+              _esDesc, prefix, _esFun, _esBuf, _esBuf);
     } else {
       sAppend(&sbOut,  "// prj-specific derived vars\n"
               "#if defined(__GNUC__) || defined(__clang__)\n"
@@ -335,11 +435,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
          show_ode != ode_dur && show_ode != ode_rate && show_ode != ode_lag &&
          show_ode != ode_lhs && show_ode != ode_mtime && show_ode != ode_mexp &&
-         show_ode != ode_indLinVec) ||
+         show_ode != ode_indLinVec && !ode_is_es_dcode(show_ode)) ||
         (show_ode == ode_dur && foundDur) ||
         (show_ode == ode_rate && foundRate) ||
         (show_ode == ode_lag && foundLag) ||
         (show_ode == ode_fbio && foundF) ||
+        ode_is_es_dcode(show_ode) ||
         (show_ode == ode_ini && foundF0) ||
         (show_ode == ode_lhs && tb.li) ||
         (show_ode == ode_mtime && nmtime) ||
@@ -369,8 +470,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (show_ode == ode_ini){
         sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
       } else if (show_ode == ode_lag || show_ode == ode_rate || show_ode == ode_dur ||
-                 show_ode == ode_mtime){
-        // functional lag, rate, duration, mtime
+                 show_ode == ode_mtime || ode_is_es_dcode(show_ode)){
+        // functional lag, rate, duration, mtime, event-sensitivity dLag/dF
         sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
       } else if (show_ode == ode_indLinVec || show_ode == ode_mexp){
         sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
@@ -396,6 +497,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (foundRate && show_ode == ode_rate) ||
         (foundLag && show_ode == ode_lag) ||
         (foundF && show_ode == ode_fbio) ||
+        ode_is_es_dcode(show_ode) ||
         (foundF0 && show_ode == ode_ini) ||
         (show_ode == ode_lhs && tb.li) ||
         (show_ode == ode_mtime && nmtime) ||
@@ -403,8 +505,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode != ode_mtime && show_ode != ode_lhs &&
          show_ode != ode_jac && show_ode != ode_ini &&
          show_ode != ode_fbio && show_ode != ode_lag  &&
-         show_ode != ode_rate && show_ode != ode_dur)){
+         show_ode != ode_rate && show_ode != ode_dur &&
+         !ode_is_es_dcode(show_ode))){
       for (i = 0; i < sbPm.n; i++){
+        // Event-sensitivity dLag/dF emit no model statements here (preamble
+        // only); their body comes from the end switch below.
+        if (ode_is_es_dcode(show_ode)) break;
         switch(sbPm.lType[i]){
         case TLIN:
           if (show_ode != ode_mexp && show_ode != ode_indLinVec &&
@@ -521,6 +627,84 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         break;
       case ode_fbio:
         sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);
+        break;
+      case ode_dLag:
+        // Event-sensitivity d(alag)/dp assignment lines (may be empty)
+        if (_es_dLagCode != NULL && _es_dLagCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dLagCode);
+        }
+        break;
+      case ode_dF:
+        // Event-sensitivity d(F)/dp assignment lines (may be empty)
+        if (_es_dFCode != NULL && _es_dFCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dFCode);
+        }
+        break;
+      case ode_dRate:
+        // Event-sensitivity d(rate)/dp assignment lines (may be empty)
+        if (_es_dRateCode != NULL && _es_dRateCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dRateCode);
+        }
+        break;
+      case ode_dDur:
+        // Event-sensitivity d(dur)/dp assignment lines (may be empty)
+        if (_es_dDurCode != NULL && _es_dDurCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dDurCode);
+        }
+        break;
+      case ode_d2F:
+        // Second-order event-sensitivity d2(F)/dp/dq assignment lines (may be empty)
+        if (_es_d2FCode != NULL && _es_d2FCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_d2FCode);
+        }
+        break;
+      case ode_d2Lag:
+        // Second-order event-sensitivity d2(alag)/dp/dq assignment lines (may be empty)
+        if (_es_d2LagCode != NULL && _es_d2LagCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_d2LagCode);
+        }
+        break;
+      case ode_d2Rate:
+        // Second-order event-sensitivity d2(rate)/dp/dq assignment lines (may be empty)
+        if (_es_d2RateCode != NULL && _es_d2RateCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_d2RateCode);
+        }
+        break;
+      case ode_d2Dur:
+        // Second-order event-sensitivity d2(dur)/dp/dq assignment lines (may be empty)
+        if (_es_d2DurCode != NULL && _es_d2DurCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_d2DurCode);
+        }
+        break;
+      case ode_d3F:
+        // Third-order event-sensitivity d3(F)/dp/dq/dr assignment lines (may be empty)
+        if (_es_d3FCode != NULL && _es_d3FCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_d3FCode);
+        }
+        break;
+      case ode_dFQ:
+        // Event-sensitivity d(F)/dq assignment lines (may be empty)
+        if (_es_dFQCode != NULL && _es_dFQCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dFQCode);
+        }
+        break;
+      case ode_dLagJac:
+        // Event-sensitivity d(J[k][c])/dq assignment lines (may be empty)
+        if (_es_dLagJacCode != NULL && _es_dLagJacCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dLagJacCode);
+        }
+        break;
+      case ode_dLagQ:
+        // Event-sensitivity d(alag)/dq assignment lines (may be empty)
+        if (_es_dLagQCode != NULL && _es_dLagQCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dLagQCode);
+        }
+        break;
+      case ode_dDurQ:
+        // Event-sensitivity d(dur)/dq assignment lines (may be empty)
+        if (_es_dDurQCode != NULL && _es_dDurQCode[0] != '\0') {
+          sAppend(&sbOut, "\n%s\n", _es_dDurQCode);
+        }
         break;
       }
     }
@@ -646,7 +830,30 @@ extern SEXP _goodFuns;
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast,
-                          SEXP goodFuns) {
+                          SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode,
+                          SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
+                          SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
+                          SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
+                          SEXP esDLagQCode, SEXP esDDurQCode) {
+  // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
+  // arguments (not a module global) so the setter and the codegen always run in
+  // the same package instance -- the global channel was unreliable under
+  // pkgload's load_all (setter and codegen could bind different rxode2 C
+  // instances).
+  _es_freeCode();
+  _es_dLagCode = _es_dup(esDLagCode);
+  _es_dFCode = _es_dup(esDFCode);
+  _es_dRateCode = _es_dup(esDRateCode);
+  _es_dDurCode = _es_dup(esDDurCode);
+  _es_d2FCode = _es_dup(esD2FCode);
+  _es_d2LagCode = _es_dup(esD2LagCode);
+  _es_d2RateCode = _es_dup(esD2RateCode);
+  _es_d2DurCode = _es_dup(esD2DurCode);
+  _es_d3FCode = _es_dup(esD3FCode);
+  _es_dFQCode = _es_dup(esDFQCode);
+  _es_dLagJacCode = _es_dup(esDLagJacCode);
+  _es_dLagQCode = _es_dup(esDLagQCode);
+  _es_dDurQCode = _es_dup(esDDurQCode);
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
@@ -742,15 +949,68 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
-    for (int i = 0; i < nOrd; i++) {
-      sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
-              CHAR(STRING_ELT(stateOrdNames, i)));
-      if (!strcmp("depot", CHAR(STRING_ELT(stateOrdNames, i)))) {
-        sAppend(&sbOut, "#define _DEPOT_ %d // %s\n", i,
+    // Re-key the __DDT defines by each state's actual tb.de index, so that
+    // __DDT<tb.de index>__ expands to that state's __zzStateVar__ slot (== the
+    // stateOrd loop index i).  Every __DDT *use* in this file indexes by the
+    // tb.de loop position (codegen reads/writes __zzStateVar__[__DDT<i>__] with
+    // i the tb.de index, and the Jacobian/matrix code finds idx via
+    // tb.de.line[k]); keying the *define* by stateOrdInt[i]-1 only agrees with
+    // that when tb.de order matches stateOrd order.  An endpoint that injects an
+    // observation cmt() (registered ahead of the linCmt compartments, which
+    // calcLinCmt appends last) breaks that alignment and made in-equation reads
+    // of e.g. peripheral1 resolve to an unwritten slot (== 0).  Mapping by NAME
+    // fixes all uses and is a no-op when the orders already agree.
+    //
+    // Match each stateOrd name to its tb.de index; the injected observation
+    // compartment (stateOrd name may be "NA") is never read in equations, so it
+    // gets any leftover (unclaimed) tb.de index -- guaranteeing no duplicate
+    // __DDT keys.
+    {
+      int nde = tb.de.n;
+      // tb.de index claimed by a matched state (-1 == free)
+      int *deClaimed = (int*)R_alloc(nde > 0 ? nde : 1, sizeof(int));
+      for (int k = 0; k < nde; k++) deClaimed[k] = 0;
+      // tb.de index assigned to each stateOrd slot (-1 == not yet assigned)
+      int *slotDe = (int*)R_alloc(nOrd > 0 ? nOrd : 1, sizeof(int));
+      for (int i = 0; i < nOrd; i++) slotDe[i] = -1;
+      // First pass: name-match stateOrd entries to tb.de indices
+      for (int i = 0; i < nOrd; i++) {
+        const char *nm = CHAR(STRING_ELT(stateOrdNames, i));
+        for (int k = 0; k < nde; k++) {
+          if (!deClaimed[k] && !strcmp(tb.de.line[k], nm)) {
+            slotDe[i] = k;
+            deClaimed[k] = 1;
+            break;
+          }
+        }
+      }
+      // Second pass: give unmatched stateOrd entries the leftover tb.de indices
+      for (int i = 0; i < nOrd; i++) {
+        if (slotDe[i] == -1) {
+          for (int k = 0; k < nde; k++) {
+            if (!deClaimed[k]) {
+              slotDe[i] = k;
+              deClaimed[k] = 1;
+              break;
+            }
+          }
+        }
+      }
+      for (int i = 0; i < nOrd; i++) {
+        // __DDT<tb.de index>__ -> __zzStateVar__ slot i.  In every model
+        // tb.de.n == nOrd (each solved state is a declared compartment), so a
+        // tb.de index is always found; fall back to the legacy key only if the
+        // table is somehow shorter, to avoid emitting __DDT-1__.
+        int ddtKey = (slotDe[i] >= 0) ? slotDe[i] : (stateOrdInt[i]-1);
+        sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", ddtKey, i,
                 CHAR(STRING_ELT(stateOrdNames, i)));
-      } else if (!strcmp("central", CHAR(STRING_ELT(stateOrdNames, i)))) {
-        sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
-                CHAR(STRING_ELT(stateOrdNames, i)));
+        if (!strcmp("depot", CHAR(STRING_ELT(stateOrdNames, i)))) {
+          sAppend(&sbOut, "#define _DEPOT_ %d // %s\n", i,
+                  CHAR(STRING_ELT(stateOrdNames, i)));
+        } else if (!strcmp("central", CHAR(STRING_ELT(stateOrdNames, i)))) {
+          sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
+                  CHAR(STRING_ELT(stateOrdNames, i)));
+        }
       }
     }
     writeSb(&sbOut, fpIO);
@@ -787,10 +1047,24 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(9); // mtime
   gCode(10); //mat
   gCode(11); //matF
+  gCode(ode_dLag); // event-sensitivity d(alag)/dp
+  gCode(ode_dF);   // event-sensitivity d(F)/dp
+  gCode(ode_dRate);// event-sensitivity d(rate)/dp
+  gCode(ode_dDur); // event-sensitivity d(dur)/dp
+  gCode(ode_d2F);  // second-order event-sensitivity d2(F)/dp/dq
+  gCode(ode_d2Lag);  // second-order event-sensitivity d2(alag)/dp/dq
+  gCode(ode_d2Rate); // second-order event-sensitivity d2(rate)/dp/dq
+  gCode(ode_d2Dur);  // second-order event-sensitivity d2(dur)/dp/dq
+  gCode(ode_d3F);    // third-order event-sensitivity d3(F)/dp/dq/dr
+  gCode(ode_dFQ);    // event-sensitivity d(F)/dq (Phase H1 dtau/lag row)
+  gCode(ode_dLagJac);// event-sensitivity d(J[k][c])/dq (Phase H1 dtau/lag row)
+  gCode(ode_dLagQ);  // event-sensitivity d(alag)/dq (Phase H1 dtau/lag row guard)
+  gCode(ode_dDurQ);  // event-sensitivity d(dur)/dq (modeled-DUR continuous-forcing 2nd order)
   gCode(4); // Registration
   writeFooter(); // undef
   fclose(fpIO);
   parseFree(0);
   reset();
+  _es_freeCode(); // event-sensitivity code is single-use per model
   return R_NilValue;
 }

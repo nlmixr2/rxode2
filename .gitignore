@@ -50,3 +50,5 @@ docs
 /src/implicit_euler_rxode2.hpp
 inst/tools/workaround.Rout
 src/StanHeaders.def
+/.vexp/
+/..Rcheck/

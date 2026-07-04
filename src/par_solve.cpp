@@ -180,59 +180,6 @@ extern "C" void freeRworkPool() {
 }
 // -----------------------------------------------------------------------------
 
-// -- AutoSwitch: Gershgorin spectral radius and stability size -----------------
-
-static double autoSwitchStabilitySize(int method) {
-  switch (method) {
-    case  0: return 5.80;  /* dop853  */
-    case 10: return 3.00;  /* dop5    */
-    case 11: return 6.00;  /* bs      */
-    case  5: return 3.50;  /* f78     */
-    case  6: return 2.83;  /* rk4     */
-    case  7: return 3.00;  /* ck54    */
-    case  8: return 1.50;  /* ab      */
-    case  9: return 3.00;  /* abm     */
-    case 22: return 2.00;  /* trapz   */
-    case 23: return 2.00;  /* ssp3    */
-    default: return 3.00;  /* libode adaptive; conservative fallback */
-  }
-}
-
-/* Gershgorin spectral radius from Jacobian stored column-major (Fortran order):
-   jac[i + j*neq] = df_i/dy_j.
-   Each Gershgorin disk for row i has centre |J_ii| and radius R_i = sum_{j!=i} |J_ij|.
-   The spectral radius is bounded by max_i(|J_ii| + R_i), which is tighter than the
-   full row 1-norm (which double-counts the diagonal). */
-static double gershgorinSpectralRadius(double *jac, int neq) {
-  double rho = 0.0;
-  for (int i = 0; i < neq; i++) {
-    double centre = fabs(jac[i + i * neq]);
-    double radius = 0.0;
-    for (int j = 0; j < neq; j++) {
-      if (j != i) radius += fabs(jac[i + j * neq]);
-    }
-    double disk = centre + radius;
-    if (disk > rho) rho = disk;
-  }
-  return rho;
-}
-
-static std::vector<std::vector<double>> __autoJacBuf;
-
-extern "C" void ensureAutoJacBuf(int nCores, int neq) {
-  int need = neq * neq;
-  if ((int)__autoJacBuf.size() < nCores) {
-    __autoJacBuf.resize(nCores);
-  }
-  for (int i = 0; i < nCores; i++) {
-    if ((int)__autoJacBuf[i].size() < need) {
-      __autoJacBuf[i].assign(need, 0.0);
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
-
 extern "C" void nullGlobals() {
   lineNull(&(rx_global.factors));
   lineNull(&(rx_global.factorNames));
@@ -624,6 +571,133 @@ t_calc_jac calc_jac = NULL;
 
 t_calc_lhs calc_lhs = NULL;
 
+// Event ("jump") sensitivities: model-generated total-derivative functions for
+// the modeled alag / F fractions (resolved by name from the model lib, like
+// calc_jac/Lag/F -- model-internal ABI, never crosses a package boundary).
+t_dLag dLag = NULL;
+t_dF dF = NULL;
+
+// Event ("jump") sensitivity runtime dims for the current model (one model
+// solves at a time, so module globals are sufficient -- same pattern as me_code
+// / _es_*Code).  Set from R before a solve via _rxode2_setEventSensDims().
+// _rxEsActive: 1 when jump injection is on; _rxEsNState/_rxEsNParam: the physical
+// state count and first-order sensitivity-parameter count (sens compartment for
+// state k / param p is nState + p*nState + k).
+int _rxEsActive = 0;
+int _rxEsNState = 0;
+int _rxEsNParam = 0;
+int _rxEsNParam2 = 0;
+// Third-order (Phase H1) calcSens3 parameter count.  Set via its own setter
+// (`_rxode2_setEventSensNParam3`) rather than widening `_rxEsNParam`
+// dims -- same rationale as `_rxEsUseCalcJac`'s dedicated setter (added
+// after the original dims setter shipped; a new arg would break the
+// existing 4-arg call sites).
+int _rxEsNParam3 = 0;
+// When 1, handle_evid's dtau/lag jump row sources its Jacobian column from
+// `calc_jac` instead of a central difference of `dydt` -- needed for
+// matExp()/indLin() models, whose compiled `dydt()` is a no-op stub (the
+// primal system is solved by matrix-exponential propagation, not RHS
+// evaluation), which otherwise makes that row silently always zero. Set
+// alongside the dims from R (`.rxSetEventSensDims()`/`rxEventSensLoadModel()`)
+// based on the model's `mv$indLin`.
+int _rxEsUseCalcJac = 0;
+// Aliases exposed to handle_evid (extern in rxode2.h).  Distinct names from the
+// local `dydt`/`dLag` globals so the widely-used `dydt` identifier is not shadowed
+// in the many TUs that include handle_evid.  Point at the model functions in
+// rxUpdateFuns().
+t_dLag dLagEs = NULL;
+t_dRate dRateEs = NULL;
+t_dDur dDurEs = NULL;
+t_dF d2FEs = NULL;
+t_dLag d2LagEs = NULL;
+t_dRate d2RateEs = NULL;
+t_dDur d2DurEs = NULL;
+t_dF d3FEs = NULL;
+// Phase H1's dtau/lag row: d(F)/dq (q in calcSens2's index space) and the
+// total derivative of the physical Jacobian column d(J[k][c])/dq.
+t_dF dFQEs = NULL;
+t_dLag dLagJacEs = NULL;
+// Safety guard for the dtau/lag row's 2nd-order piece: nonzero at (cmt,q)
+// means q ALSO drives this alag, the case not yet handled (see
+// `.rxEventSensDerivs()`'s "lagQ" table).
+t_dLag dLagQEs = NULL;
+// Modeled-DUR continuous-forcing 2nd-order piece: d(dur)/dq (q in calcSens2's
+// index space), avoiding a calcSens2-position -> calcSens-position
+// cross-index map (see `.rxEventSensDerivs()`'s "durQ" table).
+t_dDur dDurQEs = NULL;
+t_DUR durEsFn = NULL;
+t_dydt dydtEs = NULL;
+
+extern "C" SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2) {
+  _rxEsActive = INTEGER(active)[0];
+  _rxEsNState = INTEGER(nState)[0];
+  _rxEsNParam = INTEGER(nParam)[0];
+  _rxEsNParam2 = INTEGER(nParam2)[0];
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac) {
+  _rxEsUseCalcJac = INTEGER(useCalcJac)[0];
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_setEventSensNParam3(SEXP nParam3) {
+  _rxEsNParam3 = INTEGER(nParam3)[0];
+  return R_NilValue;
+}
+
+// C-callable (R_RegisterCCallable) for downstream packages (e.g. nlmixr2est's
+// FOCEi) that solve a sensitivity model directly through ind_solve() without
+// going through R's rxSolve()/.rxSetEventSensDims().  Points rxode2's event
+// ("jump") sensitivity globals -- the dosing-derivative function pointers and
+// the runtime dims -- at the supplied model (its `trans` vector) and activates
+// the jumps.  The handle_evid jump blocks are additionally guarded by a
+// compartment-count bound (<= neq), so leaving this active while solving a
+// smaller model (no sensitivity compartments, e.g. the FOCEi pred model) is
+// safe: those solves skip the injection automatically.
+extern "C" void rxode2EventSensLoad(SEXP trans, int active, int nState, int nParam, int nParam2) {
+  const char *lib = CHAR(STRING_ELT(trans, 0));
+  const char *prefix = CHAR(STRING_ELT(trans, 2));
+  const char *s_dydt = CHAR(STRING_ELT(trans, 3));
+  const char *s_DUR = CHAR(STRING_ELT(trans, 17));
+  char nm[300];
+  dydtEs = (t_dydt) R_GetCCallable(lib, s_dydt);
+  durEsFn = (t_DUR) R_GetCCallable(lib, s_DUR);
+  snprintf(nm, 300, "%sdLag", prefix);  dLagEs  = (t_dLag)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdF", prefix);    dF      = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdRate", prefix); dRateEs = (t_dRate) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdDur", prefix);  dDurEs  = (t_dDur)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2F", prefix);   d2FEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2Lag", prefix); d2LagEs = (t_dLag)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2Rate", prefix);d2RateEs= (t_dRate) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd2Dur", prefix); d2DurEs = (t_dDur)  R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sd3F", prefix);   d3FEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdFQ", prefix);   dFQEs   = (t_dF)    R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdLagJac", prefix); dLagJacEs = (t_dLag) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdLagQ", prefix); dLagQEs = (t_dLag) R_GetCCallable(lib, nm);
+  snprintf(nm, 300, "%sdDurQ", prefix); dDurQEs = (t_dDur) R_GetCCallable(lib, nm);
+  _rxEsActive = active;
+  _rxEsNState = nState;
+  _rxEsNParam = nParam;
+  _rxEsNParam2 = nParam2;
+}
+
+// Toggle only the active flag (cheap; for bracketing or for turning the jumps
+// off after a run).  Pointers/dims are preserved.
+extern "C" void rxode2EventSensSetActive(int active) {
+  _rxEsActive = active;
+}
+
+// R .Call wrapper around rxode2EventSensLoad, so a downstream package's R code
+// (e.g. nlmixr2est's FOCEi) can point the event-sensitivity globals at a
+// sensitivity model just before handing off to a direct C++ solve loop.
+extern "C" SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState,
+                                      SEXP nParam, SEXP nParam2) {
+  rxode2EventSensLoad(trans, INTEGER(active)[0], INTEGER(nState)[0],
+                      INTEGER(nParam)[0], INTEGER(nParam2)[0]);
+  return R_NilValue;
+}
+
 t_update_inis update_inis = NULL;
 
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;
@@ -801,6 +875,44 @@ void rxUpdateFuns(SEXP trans){
   calc_lhs =(t_calc_lhs) R_GetCCallable(lib, s_calc_lhs);
   dydt =(t_dydt) R_GetCCallable(lib, s_dydt);
   calc_jac =(t_calc_jac) R_GetCCallable(lib, s_calc_jac);
+  // Event ("jump") sensitivity helpers: names are <prefix>dLag / <prefix>dF.
+  // Derived from the prefix (trans[2]) rather than carried in the trans vector,
+  // so the shared model-vars structure is unchanged.  Every model exports these
+  // (trivial body when unused), so the lookup never misses.
+  {
+    const char *s_prefix = CHAR(STRING_ELT(trans, 2));
+    char s_dLag[300], s_dF[300], s_dRate[300], s_dDur[300], s_d2F[300];
+    char s_d2Lag[300], s_d2Rate[300], s_d2Dur[300], s_d3F[300];
+    char s_dFQ[300], s_dLagJac[300], s_dLagQ[300], s_dDurQ[300];
+    snprintf(s_dLag, 300, "%sdLag", s_prefix);
+    snprintf(s_dF, 300, "%sdF", s_prefix);
+    snprintf(s_dRate, 300, "%sdRate", s_prefix);
+    snprintf(s_dDur, 300, "%sdDur", s_prefix);
+    snprintf(s_d2F, 300, "%sd2F", s_prefix);
+    snprintf(s_d2Lag, 300, "%sd2Lag", s_prefix);
+    snprintf(s_d2Rate, 300, "%sd2Rate", s_prefix);
+    snprintf(s_d2Dur, 300, "%sd2Dur", s_prefix);
+    snprintf(s_d3F, 300, "%sd3F", s_prefix);
+    snprintf(s_dFQ, 300, "%sdFQ", s_prefix);
+    snprintf(s_dLagJac, 300, "%sdLagJac", s_prefix);
+    snprintf(s_dLagQ, 300, "%sdLagQ", s_prefix);
+    snprintf(s_dDurQ, 300, "%sdDurQ", s_prefix);
+    dLag = (t_dLag) R_GetCCallable(lib, s_dLag);
+    dF = (t_dF) R_GetCCallable(lib, s_dF);
+    dLagEs = dLag;   // expose to handle_evid (jump sensitivities)
+    dRateEs = (t_dRate) R_GetCCallable(lib, s_dRate);
+    dDurEs = (t_dDur) R_GetCCallable(lib, s_dDur);
+    d2FEs = (t_dF) R_GetCCallable(lib, s_d2F);
+    d2LagEs = (t_dLag) R_GetCCallable(lib, s_d2Lag);
+    d2RateEs = (t_dRate) R_GetCCallable(lib, s_d2Rate);
+    d2DurEs = (t_dDur) R_GetCCallable(lib, s_d2Dur);
+    d3FEs = (t_dF) R_GetCCallable(lib, s_d3F);
+    dFQEs = (t_dF) R_GetCCallable(lib, s_dFQ);
+    dLagJacEs = (t_dLag) R_GetCCallable(lib, s_dLagJac);
+    dLagQEs = (t_dLag) R_GetCCallable(lib, s_dLagQ);
+    dDurQEs = (t_dDur) R_GetCCallable(lib, s_dDurQ);
+    dydtEs = dydt;
+  }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);
   dydt_lsoda_dum =(t_dydt_lsoda_dum) R_GetCCallable(lib, s_dydt_lsoda_dum);
   jdum_lsoda =(t_jdum_lsoda) R_GetCCallable(lib, s_dydt_jdum_lsoda);
@@ -811,6 +923,7 @@ void rxUpdateFuns(SEXP trans){
   t_LAG LAG = (t_LAG) R_GetCCallable(lib, s_LAG);
   t_RATE RATE = (t_RATE) R_GetCCallable(lib, s_RATE);
   t_DUR DUR = (t_DUR) R_GetCCallable(lib, s_DUR);
+  durEsFn = DUR;   // expose duration to handle_evid (modeled-dur jump sensitivities)
   t_ME ME  = (t_ME) R_GetCCallable(lib, s_ME);
   t_IndF IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
   t_calc_mtime calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
@@ -2014,6 +2127,11 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
   }
 }
 
+/* Reactive AutoSwitch hysteresis counter (defined later); used by the
+   single-interval composite dispatch below. */
+static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *ind,
+                              bool dop853Tried, bool dop853Failed);
+
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
                                 double *InfusionRate,
@@ -2038,176 +2156,57 @@ static inline void solveWith1Pt(int *neq,
     }
   } else {
     bool _autoSwitchActive = (op->stiff2 > 0);
-
-    /* stiffalgfirst: initialize to stiff on very first interval of a solve */
-    if (_autoSwitchActive && op->autoSwitchStiffFirst &&
-        ind->autoMethod == 0 && ind->autoCount == 0 && ind->autoHcur == 0.0) {
-      ind->autoMethod = 1;
-    }
-
-    int _effectiveMethod = (_autoSwitchActive && ind->autoMethod == 1) ? op->stiff2 : op->stiff;
-    bool _autoSwitchPrimary = _autoSwitchActive && (ind->autoMethod == 0);
-
-    /* Implicit stiff secondaries have Jacobian available; CVODE manages its own */
-    bool _jacAvailable = (_autoSwitchActive && calc_jac != NULL && op->stiff2 != 21 &&
-                          (op->stiff2 == 13 || op->stiff2 == 14 ||
-                           (op->stiff2 >= 31 && op->stiff2 <= 38)));
-
-    /* Save state before primary attempt for possible retry */
-    double _ypStack[64];
-    double *_ypDyn = NULL;
-    double *_ypSave = NULL;
-    double _xpOrig = xp;
-    double _dt = xout - _xpOrig;
-    if (_autoSwitchActive) {
-      _ypSave = (eff <= 64) ? _ypStack
-                            : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
-      memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
-    }
-
-    /* --- Pre-interval Gershgorin check (non-stiff mode only) ---
-       Computed on current yp at xpOrig — catches stiffness already present at
-       interval start, avoiding a doomed primary solve.  Replaces the post-interval
-       ratio check for autoMethod==0 so there is still only one Jacobian call per
-       interval. */
-    double _rhoEst = 0.0;
-    double _stiffRatio = 0.0;
-    bool _preStiff = false;
-    if (_autoSwitchActive && _jacAvailable && ind->autoMethod == 0 && neqOde > 0 && _dt != 0.0) {
-      int _tid = rx_get_thread((int)__autoJacBuf.size());
-      if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
-          (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
-        double *_jbuf = __autoJacBuf[_tid].data();
-        int _neqTmp[2] = { neqOde, neq[1] };
-        calc_jac(_neqTmp, _xpOrig, yp, _jbuf, (unsigned int)neqOde);
-        _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
-        if (_rhoEst > 0.0) {
-          _stiffRatio = _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff);
-          _preStiff = (_stiffRatio > op->autoSwitchNonstifftol);
-        }
-      }
-    }
-
-    if (_autoSwitchActive && _preStiff) {
-      /* Stiff at interval start: skip primary entirely, use stiff secondary */
-      ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
-      if (ind->autoHcur <= 0.0) ind->autoHcur = fabs(_dt);
-      ind->autoHcur *= op->autoSwitchDtfac;
-      _rxSolveOneInterval(op->stiff2, false,
+    if (!_autoSwitchActive) {
+      /* Single (non-composite) method: run it directly. */
+      _rxSolveOneInterval(op->stiff, false,
                           neq, yp, &xp, xout, istate, &idid,
                           op, ind, i, ctx, eff);
-      if (ind->autoCount >= op->autoSwitchMaxStiff) {
-        ind->autoMethod = 1;
-        ind->autoCount  = 0;
-        ind->autoLastSwitchIntervals = 0;
-      }
     } else {
-      /* Run primary (or stiff, when ind->autoMethod==1) interval */
-      _rxSolveOneInterval(_effectiveMethod, _autoSwitchPrimary,
-                          neq, yp, &xp, xout, istate, &idid,
-                          op, ind, i, ctx, eff);
-    }
+      /* Reactive AutoSwitch composite -- the same scheme as
+         dopSegmentAutoSwitch / denseSegmentSolve: probe with the primary
+         (dop853's built-in stiffness estimator is enabled by the
+         autoSwitchPrimary flag, nstiff=50) and only fall back to the stiff
+         secondary (op->stiff2) when the primary reports stiffness/failure.
+         Once persistently stiff (autoMethod==1) the probe is skipped.
 
-    /* AutoSwitch post-step logic */
-    if (_autoSwitchActive && !_preStiff) {
-      bool _failed      = (ind->rc[0] == -2019 || ind->err != 0);
-      bool _dop853Stiff = (_effectiveMethod == 0 && idid == -4);
-      bool _hardStiff   = _failed || _dop853Stiff;
-
+         The previous interval-length Gershgorin pre/post check lived here; it
+         over-estimated the spectral radius on the long tau-sized intervals
+         used during steady-state solving and spuriously toggled autoMethod,
+         which then corrupted the main-timeline (dense) solve.  Dropping it
+         keeps the composite consistent across the SS and main-solve paths. */
+      double _ypStack[64];
+      double *_ypDyn = NULL;
+      double *_ypSave = (eff <= 64) ? _ypStack
+                                    : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+      if (_ypSave == NULL) {
+        ind->err = 1;
+        if (ind->rc[0] == 0) ind->rc[0] = -2019;
+        return;
+      }
+      memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
+      double _xpOrig = xp;
       if (ind->autoMethod == 0) {
-        /* Non-stiff primary was used. */
-        if (_hardStiff) {
-          /* Hard failure (solver died or dop853 stiff flag): retry with stiff. */
+        _rxSolveOneInterval(op->stiff, true,
+                            neq, yp, &xp, xout, istate, &idid,
+                            op, ind, i, ctx, eff);
+        bool _failed = (idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
+        if (_failed) {
           ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
           memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
           xp = _xpOrig;
-          ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
-          if (ind->autoHcur <= 0.0) ind->autoHcur = fabs(_dt);
-          ind->autoHcur *= op->autoSwitchDtfac;
           _rxSolveOneInterval(op->stiff2, false,
                               neq, yp, &xp, xout, istate, &idid,
                               op, ind, i, ctx, eff);
-          if (ind->autoCount >= op->autoSwitchMaxStiff) {
-            ind->autoMethod = 1;
-            ind->autoCount  = 0;
-            ind->autoLastSwitchIntervals = 0;
-          }
-        } else {
-          /* Solver succeeded. Post-interval Gershgorin check catches stiffness
-             that developed mid-interval (interval-granularity fix).  By
-             accumulating evidence here rather than resetting the counter on
-             every success, we also get hysteresis: the stiff count builds
-             gradually across intervals instead of triggering an expensive
-             hard-failure retry on the next interval when stiffness is growing.
-             This is the analogue of Julia's per-step is_stiff() + do_error_check
-             suppression during the detection phase. */
-          bool _postStiff = false;
-          if (_jacAvailable && neqOde > 0) {
-            int _tid = rx_get_thread((int)__autoJacBuf.size());
-            if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
-                (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
-              double *_jbuf = __autoJacBuf[_tid].data();
-              int _neqTmp[2] = { neqOde, neq[1] };
-              calc_jac(_neqTmp, xout, yp, _jbuf, (unsigned int)neqOde);
-              _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
-              _stiffRatio = (_rhoEst > 0.0 && _dt != 0.0)
-                  ? _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff)
-                  : 0.0;
-              _postStiff = (_stiffRatio > op->autoSwitchNonstifftol);
-            }
-          }
-          if (_postStiff) {
-            ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
-            if (ind->autoCount >= op->autoSwitchMaxStiff) {
-              ind->autoMethod = 1;
-              ind->autoCount  = 0;
-              ind->autoLastSwitchIntervals = 0;
-            }
-          } else {
-            if (ind->autoCount > 0) ind->autoCount = 0;
-            ind->autoLastSwitchIntervals++;
-          }
         }
+        rxAutoSwitchCount(op, ind, true, _failed);
       } else {
-        /* Stiff secondary was used: check for switch-back.
-           Post-interval Gershgorin gives an accurate end-of-interval assessment. */
-        ind->autoLastSwitchIntervals++;
-        if (!_failed && _jacAvailable && neqOde > 0) {
-          int _tid = rx_get_thread((int)__autoJacBuf.size());
-          if (_tid >= 0 && _tid < (int)__autoJacBuf.size() &&
-              (int)__autoJacBuf[_tid].size() >= neqOde * neqOde) {
-            double *_jbuf = __autoJacBuf[_tid].data();
-            int _neqTmp[2] = { neqOde, neq[1] };
-            calc_jac(_neqTmp, xout, yp, _jbuf, (unsigned int)neqOde);
-            _rhoEst = gershgorinSpectralRadius(_jbuf, neqOde);
-            _stiffRatio = (_rhoEst > 0.0 && _dt != 0.0)
-                ? _rhoEst * fabs(_dt) / autoSwitchStabilitySize(op->stiff)
-                : 0.0;
-          }
-        }
-        if (!_failed) {
-          bool _nonstiffByRatio = (_jacAvailable && _rhoEst > 0.0 &&
-                                   _stiffRatio < op->autoSwitchStifftol);
-          /* Oscillation guard: require min intervals since last switch before switching back */
-          bool _guardOk = (op->autoSwitchSwitchMax == 0 ||
-                           ind->autoLastSwitchIntervals >= op->autoSwitchSwitchMax);
-          if (_nonstiffByRatio && _guardOk) {
-            ind->autoCount = (ind->autoCount < 0) ? ind->autoCount - 1 : -1;
-            if (op->autoSwitchMaxNonstiff > 0 &&
-                -ind->autoCount >= op->autoSwitchMaxNonstiff) {
-              ind->autoMethod = 0;
-              ind->autoCount  = 0;
-              ind->autoLastSwitchIntervals = 0;
-              if (ind->autoHcur > 0.0) ind->autoHcur /= op->autoSwitchDtfac;
-            }
-          } else if (!_nonstiffByRatio) {
-            if (ind->autoCount < 0) ind->autoCount = 0;
-          }
-        }
+        _rxSolveOneInterval(op->stiff2, false,
+                            neq, yp, &xp, xout, istate, &idid,
+                            op, ind, i, ctx, eff);
+        rxAutoSwitchCount(op, ind, false, false);
       }
+      if (_ypDyn != NULL) { free(_ypDyn); _ypDyn = NULL; }
     }
-
-    if (_ypDyn != NULL) { free(_ypDyn); _ypDyn = NULL; }
   }
 }
 
@@ -5250,12 +5249,118 @@ extern "C" void ind_linCmt(rx_solve *rx, int solveid,
   ind_linCmt0(rx, op, solveid, neq, dydt, u_inis);
 }
 
+// --- AutoSwitch helpers -------------------------------------------------------
+// AutoSwitch is reactive: each interval the non-stiff primary (dop853) is tried
+// first with its built-in stiffness estimator enabled (nstiff=50 -- the Hairer
+// II dominant-eigenvalue estimate hlamb = h*||k4-k3||/||k5-yhat|| using the
+// ACTUAL step h, the same quantity Julia's AutoSwitch calls eigen_est).  If
+// dop853 reports/encounters stiffness (idid<=0) the interval is re-solved with
+// the stiff secondary.  A Gershgorin pre-check on the full interval length is
+// deliberately NOT used: it overestimates stiffness (rho*interval vs rho*step)
+// and false-triggers switches on non-stiff problems whose Jacobian norm is
+// large but whose accuracy-limited step is small (e.g. Lorenz-type systems).
+//
+// rxAutoSwitchCount keeps a little hysteresis so a persistently stiff problem
+// stops paying the wasted dop853 probe every interval:
+//   dop853Tried + failed  -> count stiff intervals; after maxStiff, stick on
+//                            the stiff secondary (autoMethod=1)
+//   dop853Tried + ok      -> reset the stiff counter
+//   stiff secondary used  -> after maxNonstiff intervals, optimistically try
+//                            the primary again (autoMethod=0)
+static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *ind,
+                              bool dop853Tried, bool dop853Failed) {
+  if (dop853Tried) {
+    if (dop853Failed) {
+      ind->autoCount = (ind->autoCount > 0) ? ind->autoCount + 1 : 1;
+      if (ind->autoCount >= op->autoSwitchMaxStiff) {
+        ind->autoMethod = 1;
+        ind->autoCount = 0;
+        ind->autoLastSwitchIntervals = 0;
+      }
+    } else {
+      if (ind->autoCount > 0) ind->autoCount = 0;
+    }
+  } else {
+    ind->autoLastSwitchIntervals++;
+    int back = (op->autoSwitchMaxNonstiff > 0) ? op->autoSwitchMaxNonstiff : 3;
+    if (ind->autoLastSwitchIntervals >= back) {
+      ind->autoMethod = 0;
+      ind->autoLastSwitchIntervals = 0;
+    }
+  }
+}
+
+// Solve one non-dense interval [xp, xout] with the dop853+ros4 AutoSwitch
+// composite (point-to-point, no dense output): the analogue of
+// denseSegmentSolve for the standard non-dense path.  Reactive switching --
+// dop853 (with its stiffness estimator on) is tried first, and the interval is
+// re-solved with the requested stiff secondary (op->stiff2) if dop853 reports
+// stiffness; once a problem is persistently stiff the probe is skipped
+// (autoMethod==1).  The caller has already run preSolve() and set neq[0] to the
+// ODE dimension.
+static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
+                                double xp, double xout, double *yp,
+                                int *istate, int itol, int eff) {
+  (void) rx;
+  // Non-composite: plain dop853 (unchanged behavior).
+  if (op->stiff2 <= 0) {
+    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  ind->HMAX, op->H0, op->mxstep, 1, -1,
+                  0, NULL, 0, NULL, ind->id);
+  }
+  int idid;
+  if (ind->autoMethod == 0) {
+    // Probe with dop853; nstiff=50 enables its built-in stiffness estimator.
+    double _ypStack[64];
+    double *_ypDyn = NULL;
+    double *ypSave = (eff <= 64) ? _ypStack
+                                 : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+    if (ypSave == NULL) {
+      ind->err = 1;
+      if (ind->rc[0] == 0) ind->rc[0] = -2019;
+      return -4;
+    }
+    memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  ind->HMAX, op->H0, op->mxstep, 1, 50,
+                  0, NULL, 0, NULL, ind->id);
+    bool failed = (idid <= 0 || ind->err);
+    if (failed) {
+      // Stiffness: restore the interval-start state and re-solve with the
+      // requested stiff secondary (op->stiff2) via the shared per-method
+      // interval solver (its preSolve() is idempotent).
+      ind->rc[0] = 0;
+      ind->err = 0;
+      *istate = 1;
+      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+      double xpLoc = xp;
+      int _di = 0, _sd = 1;
+      _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
+                          &_sd, op, ind, &_di, NULL, eff);
+      idid = (*istate > 0 && !ind->err) ? 1 : -4;
+    }
+    if (_ypDyn) free(_ypDyn);
+    rxAutoSwitchCount(op, ind, true, failed);
+  } else {
+    // Persistently stiff: go straight to the stiff secondary.
+    double xpLoc = xp;
+    int _di = 0, _sd = 1;
+    _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
+                        &_sd, op, ind, &_di, NULL, eff);
+    idid = (*istate > 0 && !ind->err) ? 1 : -4;
+    rxAutoSwitchCount(op, ind, false, false);
+  }
+  return idid;
+}
+
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                          t_dydt c_dydt,
                          t_update_inis u_inis) {
   clock_t t0 = clock();
   int itol=1;           //1: rtol/atol are vectors (per-compartment), matching liblsoda
-  int iout=0;           //iout=0: solout() NEVER called
   int idid=0;
   int i;
   double xout;
@@ -5330,33 +5435,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                          c_dydt,       /* function computing the value of f(x,y) */
-                          xp,           /* initial x-value */
-                          yp,           /* initial values for y */
-                          ind->extraDoseNewXout, /* final x-value (xend-x may be positive or negative) */
-                          op->rtol2,      /* relative error tolerance (per-compartment vector) */
-                          op->atol2,      /* absolute error tolerance (per-compartment vector) */
-                          itol,         /* switch for rtoler and atoler */
-                          solout,         /* function providing the numerical solution during integration */
-                          iout,         /* switch for calling solout */
-                          NULL,           /* messages stream */
-                          DBL_EPSILON,    /* rounding unit */
-                          0,              /* safety factor */
-                          0,              /* parameters for step size selection */
-                          0,
-                          0,              /* for stabilized step size control */
-                          ind->HMAX,              /* maximal step size */
-                          op->H0,            /* initial step size */
-                          op->mxstep, /* maximal number of allowed steps */
-                          1,            /* switch for the choice of the coefficients */
-                          -1,                     /* test for stiffness */
-                          0,                      /* number of components for which dense outpout is required */
-                          NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                          0,                      /* declared length of icon */
-                          NULL,                   /* userdata */
-                          ind->id                 /* rxode2 subject id for message aggregator */
-                          );
+            idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
+                                        ind->extraDoseNewXout, yp, &istate, itol, eff);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5375,33 +5455,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                          c_dydt,       /* function computing the value of f(x,y) */
-                          ind->extraDoseNewXout,           /* initial x-value */
-                          yp,           /* initial values for y */
-                          xout, /* final x-value (xend-x may be positive or negative) */
-                          op->rtol2,      /* relative error tolerance (per-compartment vector) */
-                          op->atol2,      /* absolute error tolerance (per-compartment vector) */
-                          itol,         /* switch for rtoler and atoler */
-                          solout,         /* function providing the numerical solution during integration */
-                          iout,         /* switch for calling solout */
-                          NULL,           /* messages stream */
-                          DBL_EPSILON,    /* rounding unit */
-                          0,              /* safety factor */
-                          0,              /* parameters for step size selection */
-                          0,
-                          0,              /* for stabilized step size control */
-                          ind->HMAX,              /* maximal step size */
-                          op->H0,            /* initial step size */
-                          op->mxstep, /* maximal number of allowed steps */
-                          1,            /* switch for the choice of the coefficients */
-                          -1,                     /* test for stiffness */
-                          0,                      /* number of components for which dense outpout is required */
-                          NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                          0,                      /* declared length of icon */
-                          NULL,                   /* userdata */
-                          ind->id                 /* rxode2 subject id for message aggregator */
-                          );
+            idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
+                                        ind->extraDoseNewXout, xout, yp, &istate, itol, eff);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5411,33 +5466,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (!isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                        c_dydt,       /* function computing the value of f(x,y) */
-                        xp,           /* initial x-value */
-                        yp,           /* initial values for y */
-                        xout,         /* final x-value (xend-x may be positive or negative) */
-                        op->rtol2,      /* relative error tolerance (per-compartment vector) */
-                        op->atol2,      /* absolute error tolerance (per-compartment vector) */
-                        itol,         /* switch for rtoler and atoler */
-                        solout,         /* function providing the numerical solution during integration */
-                        iout,         /* switch for calling solout */
-                        NULL,           /* messages stream */
-                        DBL_EPSILON,    /* rounding unit */
-                        0,              /* safety factor */
-                        0,              /* parameters for step size selection */
-                        0,
-                        0,              /* for stabilized step size control */
-                        ind->HMAX,              /* maximal step size */
-                        op->H0,            /* initial step size */
-                        op->mxstep, /* maximal number of allowed steps */
-                        1,            /* switch for the choice of the coefficients */
-                        -1,                     /* test for stiffness */
-                        0,                      /* number of components for which dense outpout is required */
-                        NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                        0,                      /* declared length of icon */
-                        NULL,                   /* userdata */
-                        ind->id                 /* rxode2 subject id for message aggregator */
-                        );
+          idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                      &istate, itol, eff);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5479,6 +5509,96 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
+// --- Delay differential equation (DDE) dense history -------------------------
+// Records of accepted dense steps so that delay(state, T) lookups can later
+// interpolate any earlier state to the accuracy of the integrator (the
+// approach of Hairer's RETARD method and the 'dde' package).  A single subject
+// solve may mix dop853 and ros4 steps (the dense AutoSwitch composite), so a
+// uniform record layout with a per-record solver tag is used:
+//
+//   slots [0 .. 8n-1] : dop853 rcont1..8, or ros4 4 cubic samples (first 4n)
+//   slot   8n         : t_old
+//   slot   8n+1       : h
+//   slot   8n+2       : type (0 = dop853 8th-order, 1 = ros4 cubic)
+//
+// t_old/h/type live in the last three slots regardless of solver, so the
+// bracketing search and dispatch in _rxDelay are uniform.
+#define RX_DELAY_STRIDE(n) (8 * (n) + 3)
+
+static double *rxDelayHistSlot(rx_solving_options_ind *ind, int n) {
+  int stride = RX_DELAY_STRIDE(n);
+  if (ind->delayHistStride != stride || ind->delayHistNeq != n) {
+    ind->delayHistN = 0;                 // neq changed: start a fresh buffer
+    ind->delayHistStride = stride;
+    ind->delayHistNeq = n;
+  }
+  if (ind->delayHistN >= ind->delayHistCap) {
+    int newCap = ind->delayHistCap > 0 ? ind->delayHistCap * 2 : 256;
+    double *np = (double*) realloc(ind->delayHist,
+                                   (size_t) newCap * stride * sizeof(double));
+    if (np == NULL) return NULL;  // out of memory: stop growing
+    ind->delayHist = np;
+    ind->delayHistCap = newCap;
+  }
+  return ind->delayHist + (size_t) ind->delayHistN * stride;
+}
+
+// Record one dop853 dense step (8th-order Dormand-Prince interpolant).  Only the
+// columns for the states delay() looks back on (op->delayState) are stored, so a
+// model that delays one state in a large ODE system keeps a compact history.
+static void rxDelayHistPush(rx_solving_options_ind *ind, rx_solving_options *op,
+                            double xold, double h, dop853_ctx_t *ctx) {
+  int nd = op->nDelayState;
+  double *rec = rxDelayHistSlot(ind, nd);
+  if (rec == NULL) return;
+  const int *ds = op->delayState;
+  const double *rc[8] = {ctx->rcont1, ctx->rcont2, ctx->rcont3, ctx->rcont4,
+                         ctx->rcont5, ctx->rcont6, ctx->rcont7, ctx->rcont8};
+  for (int k = 0; k < 8; k++) {
+    double *col = rec + (size_t) k * nd;
+    const double *src = rc[k];
+    for (int c = 0; c < nd; c++) col[c] = src[ds[c]];
+  }
+  rec[8 * nd]     = xold;
+  rec[8 * nd + 1] = h;
+  rec[8 * nd + 2] = 0.0;  // dop853 record
+  ind->delayHistN++;
+}
+
+// Record one ros4 (Rosenbrock) dense step.  ros4's dense output is a cubic in
+// the normalized step variable, so four samples at s = 0, 1/3, 2/3, 1 (via the
+// stepper's public calc_state) reconstruct it exactly.
+static void rxDelayHistPushSamples(rx_solving_options_ind *ind, rx_solving_options *op,
+                                   double xold, double h,
+                                   const double *s0, const double *s1,
+                                   const double *s2, const double *s3) {
+  int nd = op->nDelayState;
+  double *rec = rxDelayHistSlot(ind, nd);
+  if (rec == NULL) return;
+  const int *ds = op->delayState;
+  const double *src[4] = {s0, s1, s2, s3};
+  for (int k = 0; k < 4; k++) {
+    double *col = rec + (size_t) k * nd;
+    const double *s = src[k];
+    for (int c = 0; c < nd; c++) col[c] = s[ds[c]];
+  }
+  rec[8 * nd]     = xold;
+  rec[8 * nd + 1] = h;
+  rec[8 * nd + 2] = 1.0;  // ros4 cubic-sample record
+  ind->delayHistN++;
+}
+
+// Cap the maximum step size so the integrator never steps over the smallest
+// delay; this keeps every delay() lookup inside already-recorded history
+// instead of extrapolating off the current (not yet recorded) step.
+static inline double rxDelayCapHmax(rx_solving_options_ind *ind) {
+  double h = ind->HMAX;
+  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) {
+    if (h <= 0.0 || ind->delayMinT < h) h = ind->delayMinT;
+  }
+  return h;
+}
+
 // Dense-output context passed as userdata to dopDenseSolout
 struct DopDenseCtx {
   rx_solving_options_ind *ind;
@@ -5497,6 +5617,13 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   int solveid = dc->neq[1];
   int n = nptr[0];
   double eps = 1e-8;
+
+  // For delay differential equations, record this accepted step's dense
+  // coefficients so delay() lookups can interpolate it later.  The very first
+  // solout call (xold == x) carries no dense coefficients yet, so skip it.
+  if (ind->delayHistOn && x != xold) {
+    rxDelayHistPush(ind, op, ctx->xold, ctx->hout, ctx);
+  }
 
   while (dc->obs_next <= dc->segment_end) {
     int    idx   = dc->obs_next;
@@ -5526,12 +5653,78 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   }
 }
 
+// Defined in ros4.cpp (included later in this translation unit).
+int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                       int obs_first, int obs_last, int solveid);
+
+// Solve one dense segment [xp, xout], filling the segment's observations and
+// recording delay history.  When the AutoSwitch composite is active (stiff2>0)
+// this picks dop853 or ros4 per segment using the same Gershgorin pre/post
+// stiffness checks and autoMethod hysteresis as the non-dense path, so the
+// dop853+ros4 composite switches to ros4 mid-solve in dense mode.  The caller
+// must set neq[0] = eff - numLin - numLinSens and dc->obs_next/segment_end.
+// Leaves yp = state at xout and returns the dop853/ros4 idid.
+static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
+                             rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
+                             double xp, double xout, double *yp,
+                             DopDenseCtx *dc, int itol, int eff) {
+  int neqOde  = neq[0];
+  int solveid = neq[1];
+  // Non-composite: plain dop853 dense output (unchanged behavior).
+  if (op->stiff2 <= 0) {
+    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
+                  neqOde, NULL, 0, dc, ind->id);
+  }
+  // Reactive switching, mirroring dopSegmentAutoSwitch (see its comment): probe
+  // with dop853 (nstiff=50 enables its built-in stiffness estimator) and re-solve
+  // the segment with ros4 if it reports stiffness; skip the probe once
+  // persistently stiff (autoMethod==1).  No interval-length Gershgorin pre-check.
+  int idid;
+  if (ind->autoMethod == 0) {
+    int hist0 = ind->delayHistN;
+    double _ypStack[64];
+    double *_ypDyn = NULL;
+    double *ypSave = (eff <= 64) ? _ypStack
+                                 : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+    if (ypSave == NULL) {
+      ind->err = 1;
+      if (ind->rc[0] == 0) ind->rc[0] = -2019;
+      return -4;
+    }
+    memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                  dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, 50,
+                  neqOde, NULL, 0, dc, ind->id);
+    bool failed = (idid <= 0 || ind->err);
+    if (failed) {
+      // Stiffness: discard dop853's partial delay history, restore the
+      // segment-start state, and re-solve the whole segment with ros4 (which
+      // re-fills all observations in the segment).
+      ind->delayHistN = hist0;
+      ind->rc[0] = 0;
+      ind->err = 0;
+      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+      idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                dc->obs_next, dc->segment_end, solveid);
+    }
+    if (_ypDyn) free(_ypDyn);
+    rxAutoSwitchCount(op, ind, true, failed);
+  } else {
+    idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+    rxAutoSwitchCount(op, ind, false, false);
+  }
+  return idid;
+}
+
 extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,
                                int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
   int itol=1;
-  int iout_dense=2;
-  int iout_zero=0;
   int idid=0;
   int i;
   double xout;
@@ -5563,6 +5756,15 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   rc = ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
+
+  // Delay differential equation history: start recording dense steps for this
+  // subject when the model uses delay().  The history before x[0] is the
+  // constant initial condition (handled in _rxDelay).
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = x[0];
+  ind->delayMinT   = R_PosInf;
+  ind->delayWarmed = 0;
 
   // Track the last key event index so we know where each segment starts.
   // -1 means we haven't seen any key event yet; segment scans start at 0.
@@ -5642,12 +5844,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         if (dc.obs_next <= dc.segment_end) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          idid = dop853(neq, c_dydt, xp, yp, xout,
-                        op->rtol2, op->atol2, itol,
-                        dopDenseSolout, iout_dense,
-                        NULL, DBL_EPSILON, 0, 0, 0, 0,
-                        ind->HMAX, op->H0, op->mxstep, 1, -1,
-                        neq[0], NULL, 0, &dc, ind->id);
+          idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                   &dc, itol, eff);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5671,12 +5869,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             dc.segment_end = need_seg ? i : i - 1;
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dop853(neq, c_dydt, xp, yp, ind->extraDoseNewXout,
-                          op->rtol2, op->atol2, itol,
-                          dopDenseSolout, iout_dense,
-                          NULL, DBL_EPSILON, 0, 0, 0, 0,
-                          ind->HMAX, op->H0, op->mxstep, 1, -1,
-                          neq[0], NULL, 0, &dc, ind->id);
+            idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp,
+                                     ind->extraDoseNewXout, yp, &dc, itol, eff);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5703,16 +5897,15 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
 
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          idid = dop853(neq, c_dydt, xp, yp, xout,
-                        op->rtol2, op->atol2, itol,
-                        dopDenseSolout, iout_dense,
-                        NULL, DBL_EPSILON, 0, 0, 0, 0,
-                        ind->HMAX, op->H0, op->mxstep, 1, -1,
-                        neq[0],  // nrdens = all ODE states
-                        NULL, 0, // icont = NULL (full component 0-based)
-                        &dc,     // userdata
-                        ind->id  // rxode2 subject id for message aggregator
-                        );
+          // Before the first delay step, evaluate the RHS once so delay()
+          // learns the minimum delay used to cap the step size.
+          if (ind->delayHistOn && !ind->delayWarmed) {
+            std::vector<double> _ddt((size_t)neq[0]);
+            c_dydt(neq, xp, yp, _ddt.data());
+            ind->delayWarmed = 1;
+          }
+          idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                   &dc, itol, eff);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -5752,6 +5945,16 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     last_key_i = i;
     ind->solvedIdx = i;
   }
+  // Release this subject's delay history (only needed during its own solve).
+  if (ind->delayHist != NULL) {
+    free(ind->delayHist);
+    ind->delayHist = NULL;
+    ind->delayHistCap = 0;
+    ind->delayHistStride = 0;
+    ind->delayHistNeq = 0;
+  }
+  ind->delayHistN = 0;
+  ind->delayHistOn = 0;
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 

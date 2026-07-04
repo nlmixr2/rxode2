@@ -133,6 +133,7 @@ reference:
   desc: Transcendental, link, and other special functions used in models.
   contents:
   - boxCox
+  - delay
   - erf
   - gammap
   - gammapDer
@@ -239,6 +240,7 @@ reference:
   - rxState
   - rxStateOde
   - rxSymInvChol
+  - rxOmegaVarCovDeriv
   - swapMatListWithCube
   - rxMemSummary
   - rxMemoryEstimate
@@ -411,6 +413,8 @@ navbar:
           href: articles/rxode2-transit-compartments.html
         - text: "Stiff systems and Jacobian specification"
           href: articles/rxode2-stiff.html
+        - text: "Delay differential equations"
+          href: articles/rxode2-delay-differential-equations.html
         - text: "--------------------------"
         - text: "Output and performance"
         - text: "Adaptive data frames"

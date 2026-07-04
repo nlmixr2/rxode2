@@ -240,6 +240,103 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
   return out;
 }
 
+//' Expand third order sensitivity
+//'
+//' Builds the symengine code for the third order forward sensitivity
+//' d/dt(d^3 state / d s1 d s2 d s3) by total-differentiating the stored
+//' second order sensitivity RHS (for the pair s2,s3) with respect to the
+//' newly added variable s1.  Mirrors \code{rxExpandSens2_}; assumes the
+//' first and second order sensitivities (and the Jacobian) are already
+//' loaded in the symengine \code{model} environment.
+//'
+//' @param state is the state to expand
+//' @param s1 is the newly added (outer) sensitivity variable
+//' @param s2 is the second sensitivity variable
+//' @param s3 is the third sensitivity variable
+//' @keywords internal
+//' @return data frame of symengine third order sensitivity code
+//' @export
+//[[Rcpp::export]]
+List rxExpandSens3_(CharacterVector state, CharacterVector s1,
+                    CharacterVector s2, CharacterVector s3){
+  int len1 = state.size();
+  int len2 = s1.size();
+  int len3 = s2.size();
+  int len4 = s3.size();
+  int lenF = len1*len2*len3*len4;
+  CharacterVector ddt(lenF);
+  CharacterVector ddtS(lenF);
+  CharacterVector ddtS2(lenF);
+  CharacterVector line(lenF);
+  CharacterVector state0r(lenF);
+  CharacterVector stateD(lenF);
+  CharacterVector s0(lenF);
+  int i1, i2, i3, i4;
+  for (int i = lenF; i--;){
+    i1 = i % len1;
+    i2 = (int)(std::floor(i / len1)) % len2;
+    i3 = (int)(std::floor(i / (len1*len2))) % len3;
+    i4 = std::floor(i / (len1*len2*len3));
+    std::string cS = as<std::string>(state[i1]);
+    std::string pa = as<std::string>(s1[i2]); // newly added (outer) variable
+    std::string pb = as<std::string>(s2[i3]);
+    std::string pc = as<std::string>(s3[i4]);
+    std::string sensSp = "rx__sens_" + cS + "_BY_" +
+      pa + "_BY_" + pb + "_BY_" + pc + "__";
+    ddt[i] = "d/dt("+ sensSp + ")";
+    std::string curLine = "rx__d_dt_rx__sens_" + cS +
+      "_BY_" + pa + "_BY_" + pb + "_BY_" + pc + "____";
+    ddtS[i] = curLine;
+    ddtS2[i] = sensSp;
+    // v2 = stored second order sensitivity RHS for the (pb, pc) pair
+    std::string v2 = "rx__d_dt_rx__sens_" + cS + "_BY_" +
+      pb + "_BY_" + pc + "____";
+    curLine = "assign(\"" + curLine + "\", with(model,";
+    // explicit partial wrt the newly added variable
+    curLine += "D("+v2+",\""+symengineRes(pa)+"\")";
+    for (int j = len1; j--;){
+      std::string xm = as<std::string>(state[j]);
+      // chain through the states + the highest order Jacobian coupling
+      curLine += "+D("+v2+",\""+symengineRes(xm)+"\")*rx__sens_"+xm+"_BY_"+pa+"__";
+      curLine += "+rx__df_"+cS+"_dy_"+xm+"__*rx__sens_"+xm+"_BY_"+
+        pa+"_BY_"+pb+"_BY_"+pc+"__";
+    }
+    // chain through the first order sensitivities present in v2, over the
+    // unique set {pb, pc} (when pb == pc the symbol contributes only once)
+    for (int j = len1; j--;){
+      std::string xm = as<std::string>(state[j]);
+      curLine += "+D("+v2+",\"rx__sens_"+xm+"_BY_"+pb+"__\")*rx__sens_"+xm+
+        "_BY_"+pa+"_BY_"+pb+"__";
+    }
+    if (pc != pb) {
+      for (int j = len1; j--;){
+        std::string xm = as<std::string>(state[j]);
+        curLine += "+D("+v2+",\"rx__sens_"+xm+"_BY_"+pc+"__\")*rx__sens_"+xm+
+          "_BY_"+pa+"_BY_"+pc+"__";
+      }
+    }
+    curLine += "),envir=model)";
+    line[i] = curLine;
+    state0r[i] = sensSp + "(0)";
+    s0[i] = "rx_" + cS + "_ini_0__";
+    stateD[i] = "assign(\"rx_"+sensSp+"_ini_0__\",with(model,D(D(D(rx_" +
+      cS + "_ini_0__,\"" + symengineRes(pa) + "\"),\""+symengineRes(pb)+
+      "\"),\""+symengineRes(pc)+"\")),envir=model)";
+  }
+  List out(7);
+  out[0] = ddt;
+  out[1] = ddtS;
+  out[2] = ddtS2;
+  out[3] = line;
+  out[4] = state0r;
+  out[5] = stateD;
+  out[6] = s0;
+  out.attr("names") = CharacterVector::create("ddt","ddtS","ddS2","line","s0r","s0D","s0");
+  out.attr("class") = "data.frame";
+  out.attr("row.names") = IntegerVector::create(NA_INTEGER, -lenF);
+  return out;
+}
+
 //' Expand d(f)/d(eta)
 //'
 //' @param state is the state to expand

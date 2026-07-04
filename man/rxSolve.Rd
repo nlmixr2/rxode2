@@ -752,7 +752,17 @@ maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
 \code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
-determine the step size when \code{dense=TRUE}}
+determine the step size when \code{dense=TRUE}
+
+For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
+as having a CONSTANT Jacobian/matrix-exponential term before
+re-linearizing (previously silently ignored for this method). For a
+true (state-independent) \code{matExp()} model this makes no numerical
+difference; for an \code{indLin()}-forcing model with a state-dependent
+term (e.g. Michaelis-Menten elimination), the default \code{hmax} (tied to
+the spacing of your own sampling/dosing times) may be too coarse for
+the desired accuracy -- set an explicit, smaller \code{hmax} to force more
+frequent relinearization.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}

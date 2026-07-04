@@ -266,6 +266,26 @@ rxExpandSens2_ <- function(state, s1, s2) {
     .Call(`_rxode2_rxExpandSens2_`, state, s1, s2)
 }
 
+#' Expand third order sensitivity
+#'
+#' Builds the symengine code for the third order forward sensitivity
+#' d/dt(d^3 state / d s1 d s2 d s3) by total-differentiating the stored
+#' second order sensitivity RHS (for the pair s2,s3) with respect to the
+#' newly added variable s1.  Mirrors \code{rxExpandSens2_}; assumes the
+#' first and second order sensitivities (and the Jacobian) are already
+#' loaded in the symengine \code{model} environment.
+#'
+#' @param state is the state to expand
+#' @param s1 is the newly added (outer) sensitivity variable
+#' @param s2 is the second sensitivity variable
+#' @param s3 is the third sensitivity variable
+#' @keywords internal
+#' @return data frame of symengine third order sensitivity code
+#' @export
+rxExpandSens3_ <- function(state, s1, s2, s3) {
+    .Call(`_rxode2_rxExpandSens3_`, state, s1, s2, s3)
+}
+
 #' Expand d(f)/d(eta)
 #'
 #' @param state is the state to expand
@@ -331,6 +351,33 @@ convertId_ <- function(x) {
 
 linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType = 3L, sensH = 0.001) {
     .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH)
+}
+
+#' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)
+#'
+#' C++/RcppArmadillo implementation of the non-Cholesky Omega derivatives used
+#' to build a FOCEI/FOCE observed-information covariance over the natural
+#' variance-covariance scale.  Returns \eqn{\Omega^{-1}}, \eqn{\log|\Omega|},
+#' and their first (and optionally second) derivatives with respect to each free
+#' lower-triangular variance-covariance element \eqn{\omega_{ab}}, using
+#'
+#' \deqn{\partial \Omega^{-1}/\partial \omega_{ab} = -\Omega^{-1} E_{ab} \Omega^{-1}}
+#' \deqn{\partial \log|\Omega|/\partial \omega_{ab} = \mathrm{tr}(\Omega^{-1} E_{ab})}
+#'
+#' where \eqn{E_{ab}} is the symmetric single-entry basis matrix.
+#'
+#' @param omega symmetric positive-definite random-effects covariance matrix.
+#' @param order integer; `1` for first derivatives only, `2` (default) to also
+#'   return the second derivatives needed for the covariance Hessian.
+#' @return a list with `omegaInv`, `logDet`, the free-element index matrix
+#'   `elements` (each row `c(a, b)`, `a >= b`), first derivatives
+#'   `dOmegaInv` / `dLogDet`, and (when `order = 2`) second derivatives
+#'   `d2OmegaInv` / `d2LogDet`.
+#' @author Hidde van de Beek
+#' @keywords internal
+#' @export
+rxOmegaVarCovDeriv_ <- function(omega, order = 2L) {
+    .Call(`_rxode2_rxOmegaVarCovDeriv_`, omega, order)
 }
 
 rxQs <- function(x) {

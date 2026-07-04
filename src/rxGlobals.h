@@ -63,6 +63,8 @@ struct rx_globals {
   bool zeroOmega = false;
   bool zeroSigma = false;
   int *gindLin = NULL;
+  int *gdelayState = NULL; /* delay() history column -> ODE state index */
+  int *gdelayCol = NULL;   /* ODE state index -> delay() history column (-1 if none) */
   int **pendingDoses = NULL;
   int *  nPendingDoses = NULL;
   int *  nAllocPendingDoses = NULL;
