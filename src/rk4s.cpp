@@ -7633,12 +7633,111 @@ struct rk4sSsIc {
   bool haveCont = false; std::vector<double> FXc, contFP; std::vector<int> contPiv;  // continuous ss=1
   std::vector<double> Ybar, kbar, abar;                            // period-transpose scratch
 
+  // --- STIFF (Rosenbrock / implicit-RK) period-transpose data ---------------
+  // A period recorded with the method's OWN stiff stepper transposes with the
+  // same per-stage W-solve recurrence the main window uses (ros_backward_fill /
+  // radau_backward_fill), not the explicit accumulation above.  We record, per
+  // period, exactly what those kernels precompute per step: the factored
+  // W = I/(h*gamma) - J (Rosenbrock) and F_X/F_p at each stage state, plus the
+  // dJ/dtheta (Jp) and dJ/dy (Jy) blocks for the W-depends-on-(theta,y) terms.
+  // The ss monodromy period is a clean flow (no interior doses; modeled rate/dur
+  // ss is guarded off the stiff family), so the infusion/dose/DDE terms of the
+  // main-window stepT do not arise here.
+  struct StiffPeriod {
+    size_t N = 0; bool rosen = false, implicitRK = false;
+    std::vector<double> Wf; std::vector<int> pivf;    // [N][nfx] factored W (+piv) (Rosenbrock)
+    std::vector<double> FX, FP;                       // [N][s][nfx]/[nfp]
+    std::vector<double> Jp, Jy;                        // [N][nfx*np] / [N][nfx*nBase]
+    std::vector<double> Mf; std::vector<int> Mpiv;    // [N][(s*n)^2] factored M (+piv) (implicit RK)
+    const rk4s_rec *R = NULL;
+  };
+  StiffPeriod ssStiff, ss2Stiff;
+  int jpOffM = -1, jyOffM = -1, fxOffM = 0, fpOffM = 0, effM = 0;
+  bool stiff() const { return Tss.rosenbrock || Tss.implicitRK; }
   bool active() const { return haveMono || haveCont || !S2.empty() || !Sss1.empty(); }
 
-  // transpose one recorded ss period (Jacobians FXs/FPs, N steps): muAcc += B^T nu, nu := M^T nu.
+  // Precompute the per-step stiff data for one recorded period (Rosenbrock/imex).
+  void precomputeStiff(int cSub, rx_solving_options_ind *ind, rx_solving_options *op,
+                       const rk4s_rec *R, StiffPeriod &P, std::vector<double> &Ascratch) {
+    P.R = R; P.N = (R ? R->nStep() : 0); if (P.N == 0) return;
+    P.rosen = Tss.rosenbrock; P.implicitRK = Tss.implicitRK;
+    P.FX.assign(P.N*sN*nfx, 0.0); P.FP.assign(P.N*sN*nfp, 0.0);
+    if (jpOffM >= 0) P.Jp.assign(P.N*nfx*np, 0.0);
+    if (jyOffM >= 0) P.Jy.assign(P.N*nfx*nBase, 0.0);
+    if (P.rosen) { P.Wf.assign(P.N*nfx, 0.0); P.pivf.assign(P.N*nBase, 0); }
+    if (P.implicitRK) { int sn = sN*nBase; P.Mf.assign(P.N*(size_t)sn*sn, 0.0); P.Mpiv.assign(P.N*sn, 0); }
+    for (size_t n = 0; n < P.N; ++n) {
+      double h = R->h[n];
+      for (int i = 0; i < sN; ++i) {
+        rk4s_eval_jac(cSub, R->t0[n] + (P.implicitRK ? 0.0 : 0.0), &R->a[(n*sN+i)*nBase], nBase, np,
+                      fxOffM, fpOffM, Ascratch.data(), effM, ind, &P.FX[(n*sN+i)*nfx], &P.FP[(n*sN+i)*nfp]);
+        if (i == 0 && jpOffM >= 0) for (int q = 0; q < nfx*np; ++q) P.Jp[n*nfx*np + q] = ind->lhs[jpOffM+q];
+        if (i == 0 && jyOffM >= 0) for (int q = 0; q < nfx*nBase; ++q) P.Jy[n*nfx*nBase + q] = ind->lhs[jyOffM+q];
+      }
+      if (P.rosen) {
+        double invhg = 1.0/(h*Tss.gamma); const double *Jn = &R->J[n*nfx];
+        double *Wn = &P.Wf[n*nfx]; int *pn = &P.pivf[n*nBase];
+        for (int i = 0; i < nBase; ++i) for (int j = 0; j < nBase; ++j) Wn[i*nBase+j] = (i==j?invhg:0.0) - Jn[i*nBase+j];
+        luFactor(Wn, nBase, pn);
+      } else if (P.implicitRK) {
+        int sn = sN*nBase; double *Mn = &P.Mf[n*(size_t)sn*sn]; int *mp = &P.Mpiv[n*sn];
+        for (int i = 0; i < sN; ++i) { const double *Ji = &P.FX[(n*sN+i)*nfx];
+          for (int j = 0; j < sN; ++j) { double aij = Tss.A[i*sN+j];
+            for (int a = 0; a < nBase; ++a) for (int b = 0; b < nBase; ++b)
+              Mn[(i*nBase+a)*sn + (j*nBase+b)] = ((i==j && a==b)?1.0:0.0) - h*aij*Ji[a*nBase+b]; } }
+        luFactor(Mn, sn, mp);
+      }
+    }
+  }
+
+  // Rosenbrock transpose of one recorded ss period: muAcc += B^T nu, nu := M^T nu.
+  // Mirrors ros_backward_fill's per-step stepT (core; no infusion/dose/DDE).
+  void rosPeriodT(const StiffPeriod &P, std::vector<double> &nu, std::vector<double> &muAcc) {
+    std::vector<double> ybar(nBase), ubar(nBase), rhsbar(nBase), kb(sN*nBase);
+    for (size_t nn = P.N; nn >= 1; --nn) {
+      size_t n = nn - 1; double h = P.R->h[n]; const double *Wn = &P.Wf[n*nfx]; const int *pn = &P.pivf[n*nBase];
+      for (int m = 0; m < nBase; ++m) ybar[m] = nu[m];
+      for (int i = 0; i < sN; ++i) { double bi = Tss.b[i]; for (int m = 0; m < nBase; ++m) kb[i*nBase+m] = bi*nu[m]; }
+      for (int i = sN-1; i >= 0; --i) {
+        for (int m = 0; m < nBase; ++m) rhsbar[m] = kb[i*nBase+m];
+        luSolveT(Wn, nBase, pn, rhsbar.data());
+        const double *fx = &P.FX[(n*sN+i)*nfx], *fp = &P.FP[(n*sN+i)*nfp];
+        for (int j = 0; j < nBase; ++j) { double v=0; for (int ii=0;ii<nBase;++ii) v += fx[ii*nBase+j]*rhsbar[ii]; ubar[j]=v; }
+        for (int p = 0; p < np; ++p) { double v=0; for (int ii=0;ii<nBase;++ii) v += fp[ii*np+p]*rhsbar[ii]; muAcc[p]+=v; }
+        if (jpOffM >= 0) { const double *Jpn = &P.Jp[n*nfx*np]; const double *ki = &P.R->k[(n*sN+i)*nBase];
+          for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<nBase;++a){ double sb=0; for(int b=0;b<nBase;++b) sb+=Jpn[(a*nBase+b)*np+p]*ki[b]; v+=rhsbar[a]*sb; } muAcc[p]+=v; } }
+        if (jyOffM >= 0) { const double *Jyn = &P.Jy[n*nfx*nBase]; const double *ki = &P.R->k[(n*sN+i)*nBase];
+          for (int c = 0; c < nBase; ++c) { double v=0; for (int a=0;a<nBase;++a){ double sb=0; for(int b=0;b<nBase;++b) sb+=Jyn[(a*nBase+b)*nBase+c]*ki[b]; v+=rhsbar[a]*sb; } ybar[c]+=v; } }
+        for (int j = 0; j < i; ++j) { double g = Tss.gam[i*sN+j]; if (g!=0.0){ double *kbj=&kb[j*nBase]; for(int m=0;m<nBase;++m) kbj[m]+=(g/h)*rhsbar[m]; } }
+        for (int m = 0; m < nBase; ++m) ybar[m]+=ubar[m];
+        for (int j = 0; j < i; ++j) { double a = Tss.A[i*sN+j]; if (a!=0.0){ double *kbj=&kb[j*nBase]; for(int m=0;m<nBase;++m) kbj[m]+=a*ubar[m]; } }
+      }
+      for (int m = 0; m < nBase; ++m) nu[m] = ybar[m];
+    }
+  }
+
+  // Fully-implicit RK (Radau IIA) transpose of one recorded ss period.  Mirrors
+  // radau_backward_fill: M^T z = h b (x) lam, then lam := lam + sum_i (F_X(u_i))^T z_i,
+  // mu += sum_i (F_p(u_i))^T z_i.
+  void radauPeriodT(const StiffPeriod &P, std::vector<double> &nu, std::vector<double> &muAcc) {
+    int sn = sN*nBase; std::vector<double> z(sn), rhs(sn);
+    for (size_t nn = P.N; nn >= 1; --nn) {
+      size_t n = nn - 1; double h = P.R->h[n]; const double *Mn = &P.Mf[n*(size_t)sn*sn]; const int *mp = &P.Mpiv[n*sn];
+      for (int i = 0; i < sN; ++i) { double bi = Tss.b[i]; for (int m = 0; m < nBase; ++m) rhs[i*nBase+m] = h*bi*nu[m]; }
+      for (int q = 0; q < sn; ++q) z[q] = rhs[q];
+      luSolveT(Mn, sn, mp, z.data());
+      for (int i = 0; i < sN; ++i) { const double *fx = &P.FX[(n*sN+i)*nfx], *fp = &P.FP[(n*sN+i)*nfp]; const double *zi = &z[i*nBase];
+        for (int j = 0; j < nBase; ++j) { double v=0; for (int a=0;a<nBase;++a) v += fx[a*nBase+j]*zi[a]; nu[j]+=v; }
+        for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<nBase;++a) v += fp[a*np+p]*zi[a]; muAcc[p]+=v; } }
+    }
+  }
+
+  // dispatch one period transpose to the explicit or stiff recurrence.
   void periodT(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
                std::vector<std::vector<double> > &FPs, size_t N,
-               std::vector<double> &nu, std::vector<double> &muAcc) {
+               std::vector<double> &nu, std::vector<double> &muAcc, StiffPeriod *SP = NULL) {
+    if (SP && SP->rosen)      { rosPeriodT(*SP, nu, muAcc); return; }
+    if (SP && SP->implicitRK) { radauPeriodT(*SP, nu, muAcc); return; }
     for (size_t nn = N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = R->h[n];
       for (int j = 0; j < nBase; ++j) Ybar[j] = nu[j];
@@ -7655,11 +7754,12 @@ struct rk4sSsIc {
   }
   // materialize the fixed-point sensitivity (I-M)^{-1}B row-by-row (geometric series).
   void fillFixedPoint(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
-                      std::vector<std::vector<double> > &FPs, size_t N, std::vector<double> &S) {
+                      std::vector<std::vector<double> > &FPs, size_t N, std::vector<double> &S,
+                      StiffPeriod *SP = NULL) {
     S.assign((size_t)nBase*np, 0.0);
     for (int k = 0; k < nBase; ++k) {
       std::vector<double> nu(nBase, 0.0); nu[k] = 1.0; std::vector<double> muAdd(np, 0.0);
-      for (int git = 0; git < maxGeo; ++git) { periodT(R, FXs, FPs, N, nu, muAdd);
+      for (int git = 0; git < maxGeo; ++git) { periodT(R, FXs, FPs, N, nu, muAdd, SP);
         double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
       for (int p = 0; p < np; ++p) S[(size_t)k*np+p] = muAdd[p];
     }
@@ -7676,14 +7776,23 @@ struct rk4sSsIc {
     ssRec = ssRec_; ss2Rec = ss2Rec_;
     ss2Steps = ss2Steps_; boundarySs2 = boundarySs2_; ss1Steps = ss1Steps_; boundarySs1 = boundarySs1_;
     Ybar.assign(nBase, 0.0); kbar.assign((size_t)sN*nBase, 0.0); abar.assign(nBase, 0.0);
-    // ss=1 bolus / periodic-infusion monodromy period Jacobians
+    fxOffM = fxOff; fpOffM = fpOff; effM = eff;
+    jpOffM = op->adjJpOff; jyOffM = op->adjJyOff;   // dJ/dtheta, dJ/dy for the W-depends-on-(theta,y) terms
+    // ss=1 bolus / periodic-infusion monodromy period Jacobians.  Recorded (and
+    // transposed) with the method's OWN tableau -- for a STIFF method that is a
+    // Rosenbrock/implicit-RK period (precomputeStiff), otherwise the explicit
+    // per-stage FX/FP table above.
     ssN = (ssRec ? ssRec->nStep() : 0);
     if (ssN > 0) {
-      ssFXs.resize(sN); ssFPs.resize(sN);
-      for (int i = 0; i < sN; ++i) { ssFXs[i].resize(ssN*nfx); ssFPs[i].resize(ssN*nfp); }
-      for (size_t n = 0; n < ssN; ++n) { double h = ssRec->h[n], t0s = ssRec->t0[n];
-        for (int i = 0; i < sN; ++i)
-          rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &ssRec->a[(n*sN+i)*nBase], nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, &ssFXs[i][n*nfx], &ssFPs[i][n*nfp]); }
+      if (stiff()) {
+        precomputeStiff(cSub, ind, op, ssRec, ssStiff, Ascratch);
+      } else {
+        ssFXs.resize(sN); ssFPs.resize(sN);
+        for (int i = 0; i < sN; ++i) { ssFXs[i].resize(ssN*nfx); ssFPs[i].resize(ssN*nfp); }
+        for (size_t n = 0; n < ssN; ++n) { double h = ssRec->h[n], t0s = ssRec->t0[n];
+          for (int i = 0; i < sN; ++i)
+            rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &ssRec->a[(n*sN+i)*nBase], nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, &ssFXs[i][n*nfx], &ssFPs[i][n*nfp]); }
+      }
       haveMono = true;
     }
     // continuous / full-interval ss=1: -J^{-1} df/dp at Y_ss
@@ -7704,19 +7813,24 @@ struct rk4sSsIc {
     } else {
       ss2N = (ss2Rec ? ss2Rec->nStep() : 0);
       if (ss2N > 0 && ss2Steps && !ss2Steps->empty()) {         // bolus / finite-infusion ss=2: monodromy
-        ss2FXs.resize(sN); ss2FPs.resize(sN);
-        for (int i = 0; i < sN; ++i) { ss2FXs[i].resize(ss2N*nfx); ss2FPs[i].resize(ss2N*nfp); }
-        for (size_t n = 0; n < ss2N; ++n) { double h = ss2Rec->h[n], t0s = ss2Rec->t0[n];
-          for (int i = 0; i < sN; ++i)
-            rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &ss2Rec->a[(n*sN+i)*nBase], nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, &ss2FXs[i][n*nfx], &ss2FPs[i][n*nfp]); }
-        fillFixedPoint(ss2Rec, ss2FXs, ss2FPs, ss2N, S2);
+        if (stiff()) {
+          precomputeStiff(cSub, ind, op, ss2Rec, ss2Stiff, Ascratch);
+          fillFixedPoint(ss2Rec, ss2FXs, ss2FPs, ss2N, S2, &ss2Stiff);
+        } else {
+          ss2FXs.resize(sN); ss2FPs.resize(sN);
+          for (int i = 0; i < sN; ++i) { ss2FXs[i].resize(ss2N*nfx); ss2FPs[i].resize(ss2N*nfp); }
+          for (size_t n = 0; n < ss2N; ++n) { double h = ss2Rec->h[n], t0s = ss2Rec->t0[n];
+            for (int i = 0; i < sN; ++i)
+              rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &ss2Rec->a[(n*sN+i)*nBase], nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, &ss2FXs[i][n*nfx], &ss2FPs[i][n*nfp]); }
+          fillFixedPoint(ss2Rec, ss2FXs, ss2FPs, ss2N, S2);
+        }
       }
     }
     if (!S2.empty()) { isSs2.assign(nStep+1, 0); for (size_t s : *ss2Steps) if (s <= nStep) isSs2[s] = 1; }
     // interior ss=1 reset matrix Sss1 (only if there is an interior ss=1 step)
     if (ssN > 0 && ss1Steps) {
       bool anyInt = false; for (size_t s : *ss1Steps) if (s > 0 && s <= nStep) { anyInt = true; break; }
-      if (anyInt) { fillFixedPoint(ssRec, ssFXs, ssFPs, ssN, Sss1);
+      if (anyInt) { fillFixedPoint(ssRec, ssFXs, ssFPs, ssN, Sss1, stiff() ? &ssStiff : NULL);
         isSs1.assign(nStep+1, 0); for (size_t s : *ss1Steps) if (s > 0 && s <= nStep) isSs1[s] = 1; }
     }
   }
@@ -7738,7 +7852,8 @@ struct rk4sSsIc {
   // window-start IC: monodromy geometric series (bolus/periodic) OR continuous linear solve.
   void applyWindowIC(std::vector<double> &lam, std::vector<double> &mu) {
     if (haveMono) { std::vector<double> nu(lam.begin(), lam.begin()+nBase), muAdd(np, 0.0);
-      for (int git = 0; git < maxGeo; ++git) { periodT(ssRec, ssFXs, ssFPs, ssN, nu, muAdd);
+      StiffPeriod *SP = stiff() ? &ssStiff : NULL;
+      for (int git = 0; git < maxGeo; ++git) { periodT(ssRec, ssFXs, ssFPs, ssN, nu, muAdd, SP);
         double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
       for (int p = 0; p < np; ++p) mu[p] += muAdd[p];
     } else if (haveCont) { std::vector<double> w(lam.begin(), lam.begin()+nBase);
@@ -8049,16 +8164,16 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   }
   if (T.implicitRK || T.rosenbrock) {
     // Pure STIFF (implicit RK / Rosenbrock): the ss period was recorded in
-    // ind_rk4s_0 with the fixed explicit tableau dop853 (Tss), so build the ss IC
-    // with that same tableau and hand it to the stiff fill -- exactly as the
-    // composite does (its primary tableau is dop853).  The stiff fill then gets the
-    // same monodromy / continuous / ss=2 / interior-ss=1 IC terms.
-    rksTableau Tss = rksGetTableau(200);
+    // ind_rk4s_0 with THIS method's own stiff tableau (T), so build the ss IC
+    // with the same tableau -- the monodromy is transposed with the Rosenbrock /
+    // implicit-RK stage recurrence (rk4sSsIc precomputeStiff + ros/radauPeriodT),
+    // not an explicit stand-in.  The stiff fill then gets the same monodromy /
+    // continuous / ss=2 / interior-ss=1 IC terms, end-to-end stiff.
     rk4sSsIc ssic; std::vector<double> Asc(rxEffNeq(ind, op), 0.0);
     if (ssRec || ssContY || ss2Rec || ss2ContY)
       ssic.build(cSub, ind, op, rec, fxOff, fpOff, rxEffNeq(ind, op), Asc,
                  ssRec, ssContY, ss2Rec, ss2ContY, ss2Steps, boundarySs2, ss1Steps, boundarySs1,
-                 Tss, nBase, np, nStep);
+                 T, nBase, np, nStep);
     rk4sSsIc *sp = ssic.active() ? &ssic : NULL;
     if (T.implicitRK) radau_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose, sp);
     else              ros_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose, sp);
@@ -8441,12 +8556,12 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   double *yp;
 
   rksTableau T = rksGetTableau(op->stiff);    // tableau for this method (primary if composite)
-  // Steady-state period recording tableau: the ss monodromy IC is a model property
-  // transposed with a FIXED explicit tableau, so for a pure STIFF method (implicit
-  // RK / Rosenbrock, whose T cannot drive the explicit ssPeriodTranspose) record
-  // the ss period with dop853 instead -- same approach the composite already uses
-  // (its primary T is dop853).  Explicit methods keep their own T.
-  rksTableau Tss = (T.implicitRK || T.rosenbrock) ? rksGetTableau(200) : T;
+  // Steady-state period recording tableau: record (and later transpose) the ss
+  // monodromy period with THIS method's OWN tableau.  For a pure stiff method
+  // that records a Rosenbrock/implicit-RK period (rec.J/rec.k), which rk4sSsIc
+  // transposes with the matching stage recurrence; for the composite T is the
+  // primary explicit tableau (dop853); explicit methods keep their own T.
+  rksTableau Tss = T;
   rk4s_rec rec;
   rec.s = T.s;
   rec.nq = nRec;

@@ -442,11 +442,15 @@ rxTest({
         expect_lt(mx / max(1, max(abs(unlist(f[scol])), na.rm = TRUE)), tol)
       }
     }
-    chkS(et(amt = 100, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12)), 3e-3)              # bolus ss=1
-    chkS(et(amt = 100, rate = 10, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12)), 3e-3)   # fixed-rate infusion ss=1
-    chkS(et(amt = 0, rate = 10, cmt = "center", ss = 1) %>% et(c(4, 8, 12)), 3e-3)              # continuous ss=1
+    # The ss monodromy IC is recorded AND transposed with the method's OWN stiff
+    # stepper (rk4sSsIc precomputeStiff + ros/radauPeriodT), so the ss primal and
+    # its sensitivity IC share one discretization -- tolerances are ~1e-6 here
+    # (were ~1e-4 when the IC was recorded with a dop853 stand-in).
+    chkS(et(amt = 100, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12)), 1e-4)              # bolus ss=1
+    chkS(et(amt = 100, rate = 10, cmt = "center", ss = 1, ii = 12) %>% et(c(4, 8, 12)), 1e-4)   # fixed-rate infusion ss=1
+    chkS(et(amt = 0, rate = 10, cmt = "center", ss = 1) %>% et(c(4, 8, 12)), 1e-4)              # continuous ss=1
     chkS(et(amt = 100, cmt = "center") %>%
-           et(amt = 50, cmt = "center", ss = 2, ii = 12, time = 12) %>% et(c(4, 12, 24)), 3e-3) # ss=2 superposition
+           et(amt = 50, cmt = "center", ss = 2, ii = 12, time = 12) %>% et(c(4, 12, 24)), 1e-4) # ss=2 superposition
   })
 
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {

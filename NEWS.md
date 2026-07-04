@@ -20,6 +20,12 @@
     Jacobian matrix before each `calc_jac`, so a SPARSE analytic Jacobian (only
     the structurally nonzero entries emitted) is stepped correctly instead of
     picking up stale entries across steps.
+  - The pure-stiff adjoint solvers now record AND transpose the steady-state
+    monodromy initial-condition term with the method's OWN stiff stepper
+    (Rosenbrock / implicit-RK stage recurrence), instead of a fixed dop853
+    explicit stand-in.  The ss primal and its sensitivity IC now share one
+    discretization, making the stiff adjoint stiff end-to-end and tightening
+    steady-state sensitivity accuracy (~1e-6 vs ~1e-4).
 
 - Added jump sensitivities for events (based on
   https://github.com/dkaschek/EventSensitivities).  Hybrid jump
