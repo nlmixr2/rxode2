@@ -241,7 +241,11 @@ rxTest({
     ex <- rxode2::.rxAdjointExpand(base, c("k", "tau")); madj <- rxode2::rxode2(ex$text)
     sb <- function(pp) as.data.frame(rxode2::rxSolve(madj, ev, params = pp, method = "dop853",
                                                      atol = 1e-10, rtol = 1e-10, cores = 1))$central
-    hh <- 1e-3; pp <- p; pm <- p; pp["tau"] <- pp["tau"] + hh; pm["tau"] <- pm["tau"] - hh
+    # A dose-induced delay breaking point puts a KINK in central(tau), so a
+    # central difference straddling it is O(1)-noisy and gets WORSE as h->0 (h=1e-3
+    # lands right in that regime -> ~6e-3; h=1e-2 averages over the kink -> ~7e-4).
+    # Use the well-conditioned h to validate the analytic sensitivity.
+    hh <- 1e-2; pp <- p; pm <- p; pp["tau"] <- pp["tau"] + hh; pm["tau"] <- pm["tau"] - hh
     fd <- (sb(pp) - sb(pm)) / (2 * hh)
     expect_lt(max(abs(sj[["rx__sens_central_BY_tau__"]] - fd)), 5e-3)
   })
