@@ -594,6 +594,9 @@ int _rxEsNParam2 = 0;
 // _rxEsActive) so handle_evid runs the MODEL_DUR_OFF sens logic at that off; -1
 // = inactive.  Primal-only solves never set it, so they are byte-identical.
 int _esSSDurOffCmt = -1;
+// Same marker for a modeled RATE() ss infusion (moving boundary tau2=tau1+F*amt/
+// rate(p)); handle_evid runs the MODEL_RATE_OFF sens logic at the re-expressed off.
+int _esSSRateOffCmt = -1;
 // Third-order (Phase H1) calcSens3 parameter count.  Set via its own setter
 // (`_rxode2_setEventSensNParam3`) rather than widening `_rxEsNParam`
 // dims -- same rationale as `_rxEsUseCalcJac`'s dedicated setter (added
@@ -2844,7 +2847,7 @@ void handleSS(int *neq,
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0;
-  _esSSDurOffCmt = -1;   // forward eventSens: disarm the modeled-dur ss off marker
+  _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;   // forward eventSens: disarm the modeled ss off markers
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3645,6 +3648,7 @@ void handleSS(int *neq,
           // it or apply the moving-boundary jump.  Arm the marker so handle_evid
           // runs the MODEL_DUR_OFF sens logic at that off (modeled dur only).
           if (_rxEsActive && ind->whI == EVIDF_MODEL_DUR_ON) _esSSDurOffCmt = ind->cmt;
+          if (_rxEsActive && ind->whI == EVIDF_MODEL_RATE_ON) _esSSRateOffCmt = ind->cmt;
           pushDosingEvent(startTimeD+dur,
                           rateOff, extraEvid, ind);
         }

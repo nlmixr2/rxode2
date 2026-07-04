@@ -1101,14 +1101,27 @@ static inline int handle_evid(int evid, int neq,
           ind->whI == EVIDF_MODEL_RATE_OFF && dRateEs != NULL) {
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-        if (_esB != NULL) {
+        // Moving-boundary jump for MODELED RATE (was DEFERRED): the infusion end
+        // tau2 = tau1 + F*amt/rate(p) moves with the rate (and F), so beyond the
+        // continuous d(rate)/dp forcing removal the sensitivity also jumps by
+        //   [S](tau2) = rate*d(tau2)/dp = amt*dF - (F*amt/rate)*d(rate)/dp
+        // (rate = -tmp).  amt = curDoseS[cmt] (raw dose set at the ON).
+        double _rrate = -tmp;
+        double _amt0 = ind->curDoseS[cmt];
+        double _amtEff = getAmt(ind, id, cmt, _amt0, xout, yp);   // F*amt
+        double *_esFB = (dF != NULL) ? (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+        if (_esFB != NULL) dF(id, xout, yp, _esFB);
+        if (_esB != NULL && _rrate != 0.0) {
           dRateEs(id, xout, yp, _esB);
-          // Mirror of the ON injection: remove +d(rate)/dp at infusion end.
           for (int _p = 0; _p < _np; _p++) {
-            InfusionRate[_ns + _p * _ns + cmt] -= _esB[cmt * _np + _p];
+            InfusionRate[_ns + _p * _ns + cmt] -= _esB[cmt * _np + _p];   // forcing removal
+            double _jmp = -(_amtEff / _rrate) * _esB[cmt * _np + _p];     // rate-boundary
+            if (_esFB != NULL) _jmp += _amt0 * _esFB[cmt * _np + _p];     // F-boundary
+            yp[_ns + _p * _ns + cmt] += _jmp;
           }
-          free(_esB);
         }
+        if (_esB != NULL) free(_esB);
+        if (_esFB != NULL) free(_esFB);
       }
       // Modeled duration: remove the continuous forcing AND add the moving-
       // boundary jump.  The infusion end time tau2 = tau1 + dur(p) depends on the
@@ -1411,6 +1424,31 @@ static inline int handle_evid(int evid, int neq,
           if (_esFB != NULL) free(_esFB);
         }
         _esSSDurOffCmt = -1;   // fired once for this ss observation infusion
+      }
+      // Same fix for a modeled RATE() ss infusion re-expressed as fixed-rate: run
+      // the MODEL_RATE_OFF sens logic (forcing removal + moving-boundary jump
+      // [S] = amt*dF - (F*amt/rate)*d(rate)/dp, rate = -tmp) at this OFF.
+      if (_esSSRateOffCmt == cmt && tmp < 0.0 && _rxEsActive && _rxEsNParam > 0 &&
+          cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq && dRateEs != NULL) {
+        int _ns = _rxEsNState, _np = _rxEsNParam;
+        double _rrate = -tmp;
+        double _amt0 = ind->curDoseS[cmt];
+        double _amtEff = getAmt(ind, id, cmt, _amt0, xout, yp);
+        double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+        double *_esFB = (dF != NULL) ? (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+        if (_esFB != NULL) dF(id, xout, yp, _esFB);
+        if (_esB != NULL && _rrate != 0.0) {
+          dRateEs(id, xout, yp, _esB);
+          for (int _p = 0; _p < _np; _p++) {
+            InfusionRate[_ns + _p * _ns + cmt] -= _esB[cmt * _np + _p];
+            double _jmp = -(_amtEff / _rrate) * _esB[cmt * _np + _p];
+            if (_esFB != NULL) _jmp += _amt0 * _esFB[cmt * _np + _p];
+            yp[_ns + _p * _ns + cmt] += _jmp;
+          }
+        }
+        if (_esB != NULL) free(_esB);
+        if (_esFB != NULL) free(_esFB);
+        _esSSRateOffCmt = -1;
       }
       if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
