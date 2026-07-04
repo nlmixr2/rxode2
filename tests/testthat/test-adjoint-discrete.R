@@ -227,19 +227,32 @@ rxTest({
     chk2(evF, "vern98s", "vern98", 1e-4)
   })
 
+  test_that("steady-state on the composite (AutoSwitch) path: adjoint sensitivities match forward", {
+    ex <- rxode2::.rxAdjointExpand(mText, cs); madj <- rxode2::rxode2(ex$text)
+    mfwd <- rxode2::rxode2(mText, calcSens = cs)
+    scol <- as.vector(outer(ex$st, cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
+    # the composite fill builds the ss IC (rk4sSsIc) with its primary explicit
+    # tableau; compare dop853s+ros4s (composite adjoint) against dop853 (forward).
+    chkC <- function(ev, tol) {
+      a <- as.data.frame(suppressWarnings(rxode2::rxSolve(madj, ev, params = p, method = "dop853s+ros4s")))
+      f <- as.data.frame(suppressWarnings(rxode2::rxSolve(mfwd, ev, params = p, method = "dop853")))
+      mx <- 0; for (cn in scol) mx <- max(mx, max(abs(a[[cn]] - f[[cn]]), na.rm = TRUE))
+      expect_lt(mx / max(1, max(abs(unlist(f[scol])), na.rm = TRUE)), tol)
+    }
+    smp <- c(1, 4, 8, 12, 16, 24)
+    chkC(et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(smp), 1e-4)                       # ss1 bolus
+    chkC(et(amt = 100, rate = 25, cmt = "central", ss = 1, ii = 12) %>% et(smp), 1e-4)          # ss1 periodic infusion
+    chkC(et(amt = 120, rate = 10, cmt = "central", ss = 1, ii = 12) %>% et(smp), 1e-4)          # ss1 full-interval infusion
+    chkC(et(amt = 100, cmt = "depot") %>% et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 12) %>% et(smp), 1e-4)          # ss2 bolus
+    chkC(et(amt = 100, cmt = "central") %>% et(amt = 50, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>% et(smp), 1e-4)  # ss2 infusion
+    chkC(et(amt = 100, cmt = "depot", ss = 1, ii = 24) %>%
+           et(amt = 100, cmt = "depot", ss = 1, ii = 24, time = 24) %>% et(c(1, 12, 20, 24, 30, 44)), 1e-4)  # interior ss1 reset
+  })
+
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
-    # ss=2 (bolus/infusion) is covered on the explicit path but not on the
-    # composite (AutoSwitch) path -- guarded there.
-    expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
-                                 params = p, method = "dop853s+ros4s", cores = 1), "steady-state")
-    # multiple ss=1 events (interior ss=1 reset) are covered on the explicit path
-    # but not on the composite (AutoSwitch) path -- guarded there.
-    expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 1, ii = 24) %>%
-                                   et(amt = 100, cmt = "depot", ss = 1, ii = 24, time = 24) %>% et(c(1, 12, 30)),
-                                 params = p, method = "dop853s+ros4s", cores = 1), "steady-state")
     # modeled-rate infusion ss (dR/dp != 0) not yet covered
     expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = -1, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4)),
                                  params = p, method = "rk4s", cores = 1), "steady-state")

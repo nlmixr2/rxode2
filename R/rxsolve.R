@@ -2458,18 +2458,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # (dur<ii) and large-duration (dur>ii) via a two-phase monodromy, and
         # full-interval (dur==ii) / continuous (amt==0) via a -J^{-1} df/dp linear
         # solve at the added regimen's constant steady state.
+        # All ss IC terms (monodromy / continuous linear solve / ss2 / interior
+        # ss1) are carried by the explicit backward fill AND the composite
+        # (AutoSwitch) fill (via the shared rk4sSsIc, recorded with the composite's
+        # primary explicit tableau).  Both cover bolus, any fixed-rate infusion
+        # with a dosing interval, and ss=2 superposition.
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
-          (.evDf$ss == 2 & .noComposite & (.r == 0 | (.r > 0 & .iiv > 0)))
+          (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
       } else if (.ctl$method == 202L) {          # liblsodaadj: continuous infusion only
         .supported <- .cont
       } else {                                    # abs / cvodesadj / stiff: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
       # Multiple ss==1 events (an interior ss=1 reset re-establishing steady
-      # state, not just the window-start ss=1) are handled on the non-composite
-      # explicit path (interior monodromy + reset); elsewhere they are guarded.
+      # state, not just the window-start ss=1) are handled on the explicit and
+      # composite fills (interior monodromy + reset); elsewhere they are guarded.
       .multiSs1 <- length(unique(.evDf$time[.evDf$ss == 1 & .evDf$evid != 0])) > 1L
-      .badSs <- (.multiSs1 && !(.rk4sFw && .noComposite)) ||
+      .badSs <- (.multiSs1 && !.rk4sFw) ||
         any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop("adjoint sensitivities do not yet support this steady-state (ss) ",

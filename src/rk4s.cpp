@@ -7754,6 +7754,139 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
   }
 }
 
+// Shared steady-state IC applicator for the composite (AutoSwitch) backward fill.
+// The explicit rk4s_backward_fill carries its own inline version; this mirrors it
+// so composite ss dosing gets the same monodromy / continuous / ss=2 / interior-
+// ss1 IC terms.  All ss-period Jacobians are transposed with the tableau Tss used
+// to RECORD the ss period (for a composite solve that is the primary explicit
+// tableau, e.g. dop853 -- a stiff/implicit primary never reaches this fill).
+struct rk4sSsIc {
+  int nBase = 0, np = 0, sN = 0, nfx = 0, nfp = 0, maxGeo = 0;
+  const rk4s_rec *ssRec = NULL, *ss2Rec = NULL; rksTableau Tss;
+  size_t ssN = 0, ss2N = 0;
+  std::vector<std::vector<double> > ssFXs, ssFPs, ss2FXs, ss2FPs;  // period Jacobians
+  bool haveMono = false;
+  std::vector<double> S2; std::vector<char> isSs2;                 // ss=2 superposition
+  const std::vector<size_t> *ss2Steps = NULL, *boundarySs2 = NULL;
+  std::vector<double> Sss1; std::vector<char> isSs1;               // interior ss=1 reset
+  const std::vector<size_t> *ss1Steps = NULL, *boundarySs1 = NULL;
+  bool haveCont = false; std::vector<double> FXc, contFP; std::vector<int> contPiv;  // continuous ss=1
+  std::vector<double> Ybar, kbar, abar;                            // period-transpose scratch
+
+  bool active() const { return haveMono || haveCont || !S2.empty() || !Sss1.empty(); }
+
+  // transpose one recorded ss period (Jacobians FXs/FPs, N steps): muAcc += B^T nu, nu := M^T nu.
+  void periodT(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
+               std::vector<std::vector<double> > &FPs, size_t N,
+               std::vector<double> &nu, std::vector<double> &muAcc) {
+    for (size_t nn = N; nn >= 1; --nn) {
+      size_t n = nn - 1; double h = R->h[n];
+      for (int j = 0; j < nBase; ++j) Ybar[j] = nu[j];
+      for (int i = 0; i < sN; ++i) for (int j = 0; j < nBase; ++j) kbar[i*nBase+j] = h*Tss.b[i]*nu[j];
+      for (int i = sN-1; i >= 0; --i) {
+        const double *fx = &FXs[i][n*nfx], *fp = &FPs[i][n*nfp]; const double *kb = &kbar[i*nBase];
+        for (int j = 0; j < nBase; ++j) { double s=0; for (int q=0;q<nBase;++q) s+=fx[q*nBase+j]*kb[q]; abar[j]=s; }
+        for (int p = 0; p < np; ++p) { double s=0; for (int q=0;q<nBase;++q) s+=fp[q*np+p]*kb[q]; muAcc[p]+=s; }
+        for (int j = 0; j < nBase; ++j) Ybar[j]+=abar[j];
+        for (int js = 0; js < i; ++js) { double aij=Tss.A[i*sN+js]; if (aij!=0.0){ double*kbj=&kbar[js*nBase]; for(int j=0;j<nBase;++j) kbj[j]+=h*aij*abar[j]; } }
+      }
+      for (int j = 0; j < nBase; ++j) nu[j] = Ybar[j];
+    }
+  }
+  // materialize the fixed-point sensitivity (I-M)^{-1}B row-by-row (geometric series).
+  void fillFixedPoint(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
+                      std::vector<std::vector<double> > &FPs, size_t N, std::vector<double> &S) {
+    S.assign((size_t)nBase*np, 0.0);
+    for (int k = 0; k < nBase; ++k) {
+      std::vector<double> nu(nBase, 0.0); nu[k] = 1.0; std::vector<double> muAdd(np, 0.0);
+      for (int git = 0; git < maxGeo; ++git) { periodT(R, FXs, FPs, N, nu, muAdd);
+        double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
+      for (int p = 0; p < np; ++p) S[(size_t)k*np+p] = muAdd[p];
+    }
+  }
+
+  void build(int cSub, rx_solving_options_ind *ind, rx_solving_options *op, rk4s_rec &rec,
+             int fxOff, int fpOff, int eff, std::vector<double> &Ascratch,
+             const rk4s_rec *ssRec_, const double *ssContY, const rk4s_rec *ss2Rec_, const double *ss2ContY,
+             const std::vector<size_t> *ss2Steps_, const std::vector<size_t> *boundarySs2_,
+             const std::vector<size_t> *ss1Steps_, const std::vector<size_t> *boundarySs1_,
+             const rksTableau &Tss_, int nBase_, int np_, size_t nStep) {
+    nBase = nBase_; np = np_; Tss = Tss_; sN = Tss.s; nfx = nBase*nBase; nfp = nBase*np;
+    maxGeo = op->maxSS + 5; haveMono = false; haveCont = false;
+    ssRec = ssRec_; ss2Rec = ss2Rec_;
+    ss2Steps = ss2Steps_; boundarySs2 = boundarySs2_; ss1Steps = ss1Steps_; boundarySs1 = boundarySs1_;
+    Ybar.assign(nBase, 0.0); kbar.assign((size_t)sN*nBase, 0.0); abar.assign(nBase, 0.0);
+    // ss=1 bolus / periodic-infusion monodromy period Jacobians
+    ssN = (ssRec ? ssRec->nStep() : 0);
+    if (ssN > 0) {
+      ssFXs.resize(sN); ssFPs.resize(sN);
+      for (int i = 0; i < sN; ++i) { ssFXs[i].resize(ssN*nfx); ssFPs[i].resize(ssN*nfp); }
+      for (size_t n = 0; n < ssN; ++n) { double h = ssRec->h[n], t0s = ssRec->t0[n];
+        for (int i = 0; i < sN; ++i)
+          rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &ssRec->a[(n*sN+i)*nBase], nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, &ssFXs[i][n*nfx], &ssFPs[i][n*nfp]); }
+      haveMono = true;
+    }
+    // continuous / full-interval ss=1: -J^{-1} df/dp at Y_ss
+    if (ssContY) {
+      FXc.assign(nBase*nBase, 0.0); contFP.assign(nBase*np, 0.0); contPiv.assign(nBase, 0);
+      rk4s_eval_jac(cSub, rec.t0.empty()?0.0:rec.t0[0], ssContY, nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, FXc.data(), contFP.data());
+      haveCont = luFactor(FXc.data(), nBase, contPiv.data());
+    }
+    // ss=2 superposition matrix S2
+    if (ss2ContY && ss2Steps && !ss2Steps->empty()) {          // continuous ss=2: linear solve
+      std::vector<double> J2(nBase*nBase), FP2(nBase*np); std::vector<int> piv2(nBase);
+      rk4s_eval_jac(cSub, rec.t0.empty()?0.0:rec.t0[0], ss2ContY, nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, J2.data(), FP2.data());
+      if (luFactor(J2.data(), nBase, piv2.data())) {
+        S2.assign((size_t)nBase*np, 0.0);
+        for (int k = 0; k < nBase; ++k) { std::vector<double> z(nBase,0.0); z[k]=1.0; luSolveT(J2.data(), nBase, piv2.data(), z.data());
+          for (int p = 0; p < np; ++p) { double s=0; for (int j=0;j<nBase;++j) s+=z[j]*FP2[j*np+p]; S2[(size_t)k*np+p] = -s; } }
+      }
+    } else {
+      ss2N = (ss2Rec ? ss2Rec->nStep() : 0);
+      if (ss2N > 0 && ss2Steps && !ss2Steps->empty()) {         // bolus / finite-infusion ss=2: monodromy
+        ss2FXs.resize(sN); ss2FPs.resize(sN);
+        for (int i = 0; i < sN; ++i) { ss2FXs[i].resize(ss2N*nfx); ss2FPs[i].resize(ss2N*nfp); }
+        for (size_t n = 0; n < ss2N; ++n) { double h = ss2Rec->h[n], t0s = ss2Rec->t0[n];
+          for (int i = 0; i < sN; ++i)
+            rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &ss2Rec->a[(n*sN+i)*nBase], nBase, np, fxOff, fpOff, Ascratch.data(), eff, ind, &ss2FXs[i][n*nfx], &ss2FPs[i][n*nfp]); }
+        fillFixedPoint(ss2Rec, ss2FXs, ss2FPs, ss2N, S2);
+      }
+    }
+    if (!S2.empty()) { isSs2.assign(nStep+1, 0); for (size_t s : *ss2Steps) if (s <= nStep) isSs2[s] = 1; }
+    // interior ss=1 reset matrix Sss1 (only if there is an interior ss=1 step)
+    if (ssN > 0 && ss1Steps) {
+      bool anyInt = false; for (size_t s : *ss1Steps) if (s > 0 && s <= nStep) { anyInt = true; break; }
+      if (anyInt) { fillFixedPoint(ssRec, ssFXs, ssFPs, ssN, Sss1);
+        isSs1.assign(nStep+1, 0); for (size_t s : *ss1Steps) if (s > 0 && s <= nStep) isSs1[s] = 1; }
+    }
+  }
+
+  // obs seed: coincident ss=2 / interior-ss=1 event at the observation's own step.
+  void seedBoundary(size_t fromStep, int i, std::vector<double> &lam, std::vector<double> &mu) {
+    if (!S2.empty() && boundarySs2)
+      for (size_t z = 0; z < (*boundarySs2)[i] && z < ss2Steps->size(); ++z)
+        if ((*ss2Steps)[z] == fromStep) { for (int p=0;p<np;++p){ double s=0; for(int q=0;q<nBase;++q) s+=lam[q]*S2[(size_t)q*np+p]; mu[p]+=s; } break; }
+    if (!Sss1.empty() && boundarySs1)
+      for (size_t z = 0; z < (*boundarySs1)[i] && z < ss1Steps->size(); ++z)
+        if ((*ss1Steps)[z] == fromStep && fromStep > 0) { for (int p=0;p<np;++p){ double s=0; for(int q=0;q<nBase;++q) s+=lam[q]*Sss1[(size_t)q*np+p]; mu[p]+=s; } for(int j=0;j<nBase;++j) lam[j]=0.0; break; }
+  }
+  // interior sweep step: ss=2 pass-through add, interior ss=1 add-then-reset.
+  void applyInterior(size_t step, std::vector<double> &lam, std::vector<double> &mu) {
+    if (!S2.empty() && isSs2[step]) for (int p=0;p<np;++p){ double s=0; for(int q=0;q<nBase;++q) s+=lam[q]*S2[(size_t)q*np+p]; mu[p]+=s; }
+    if (!Sss1.empty() && isSs1[step]) { for (int p=0;p<np;++p){ double s=0; for(int q=0;q<nBase;++q) s+=lam[q]*Sss1[(size_t)q*np+p]; mu[p]+=s; } for(int j=0;j<nBase;++j) lam[j]=0.0; }
+  }
+  // window-start IC: monodromy geometric series (bolus/periodic) OR continuous linear solve.
+  void applyWindowIC(std::vector<double> &lam, std::vector<double> &mu) {
+    if (haveMono) { std::vector<double> nu(lam.begin(), lam.begin()+nBase), muAdd(np, 0.0);
+      for (int git = 0; git < maxGeo; ++git) { periodT(ssRec, ssFXs, ssFPs, ssN, nu, muAdd);
+        double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
+      for (int p = 0; p < np; ++p) mu[p] += muAdd[p];
+    } else if (haveCont) { std::vector<double> w(lam.begin(), lam.begin()+nBase);
+      luSolveT(FXc.data(), nBase, contPiv.data(), w.data());
+      for (int p = 0; p < np; ++p) { double s=0; for (int j=0;j<nBase;++j) s+=w[j]*contFP[j*np+p]; mu[p]-=s; } }
+  }
+};
+
 // AutoSwitch composite backward: each step was tagged (rec.method) with the
 // method that ran it; precompute each step's transpose data by its method and
 // dispatch per step in the reset sweep (explicit table-driven OR Rosenbrock).
@@ -7765,7 +7898,8 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
                                     const std::vector<size_t> &boundary,
                                     const std::vector<rk4s_dose> &doses,
                                     const std::vector<rk4s_infus> &infus,
-                                    const std::vector<size_t> &boundaryDose) {
+                                    const std::vector<size_t> &boundaryDose,
+                                    rk4sSsIc *ssic = NULL) {
   size_t nStep = rec.nStep(); if (nStep == 0) return;
   int eff = rxEffNeq(ind, op), n = nBase, nfx = n*n, nfp = n*np;
   int jpOff = op->adjJpOff, jyOff = op->adjJyOff, njp = nfx*np, njy = nfx*n;
@@ -7836,9 +7970,12 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
                                               pre[fromStep < nStep ? fromStep : nStep - 1].FX.data(), dlagP, boundaryDose[i]);
+      if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident ss=2 / interior-ss=1 IC
       dde.beginSweep(fromStep, lam);
-      for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam); }
+      for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); dde.applyStep(nn - 1, lam);
+        if (ssic) ssic->applyInterior(nn - 1, lam, mu); }   // interior ss=2 / ss=1 events
       dde.applyDoseJumps(mu, doses);
+      if (ssic) ssic->applyWindowIC(lam, mu);               // window-start monodromy / continuous IC
       for (int p = 0; p < np; ++p) out[sensOff + k*np + p] = mu[p];
     }
   }
@@ -7861,7 +7998,19 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const double *ss2ContY = NULL) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
-  if (rec.composite) { composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
+  if (rec.composite) {
+    // Build the ss IC (recorded with the composite's primary explicit tableau T,
+    // e.g. dop853) and hand it to the composite fill so ss dosing gets the same
+    // monodromy / continuous / ss=2 / interior-ss=1 IC terms as the explicit path.
+    rk4sSsIc ssic; std::vector<double> Asc(rxEffNeq(ind, op), 0.0);
+    if (ssRec || ssContY || ss2Rec || ss2ContY)
+      ssic.build(cSub, ind, op, rec, fxOff, fpOff, rxEffNeq(ind, op), Asc,
+                 ssRec, ssContY, ss2Rec, ss2ContY, ss2Steps, boundarySs2, ss1Steps, boundarySs1,
+                 T, nBase, np, nStep);
+    composite_backward_fill(rx, op, ind, cSub, rec, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose,
+                            ssic.active() ? &ssic : NULL);
+    return;
+  }
   if (T.implicitRK) { radau_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
   if (T.rosenbrock) { ros_backward_fill(rx, op, ind, cSub, rec, T, nBase, np, fxOff, fpOff, dfOff, sensOff, boundary, doses, infus, boundaryDose); return; }
   int eff = rxEffNeq(ind, op);
@@ -8491,7 +8640,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // untouched; only for the table-driven explicit path (not composite/implicit/
   // Rosenbrock, which the ss IC term does not yet cover).
   if (adj && ssActive && !localBadSolve && ind->err == 0 &&
-      !rec.composite && !T.implicitRK && !T.rosenbrock) {
+      !T.implicitRK && !T.rosenbrock) {
     std::vector<double> ytmp = ssTrough, ssScratch;
     if (ssInf) {
       // Two-phase steady-state infusion period from yp*: constant rate ssInfRate
@@ -8531,10 +8680,10 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // a -J^{-1} df/dp linear solve at Y_ss_new (ss2ContY), built in backward_fill --
   // so it records nothing here but must stay ss2Active.
   if (adj && ss2Active && ss2Cont && !localBadSolve && ind->err == 0 &&
-      !rec.composite && !T.implicitRK && !T.rosenbrock) {
+      !T.implicitRK && !T.rosenbrock) {
     // nothing to record; ss2ContY drives the linear-solve S2 below.
   } else if (adj && ss2Active && !localBadSolve && ind->err == 0 &&
-      !rec.composite && !T.implicitRK && !T.rosenbrock &&
+      !T.implicitRK && !T.rosenbrock &&
       (int)ss2Peak.size() >= op->adjNbase && (ss2Inf || ss2Ii > 0.0)) {
     std::vector<double> ytmp2 = ss2Peak, ss2Scratch;
     if (ss2Inf) {
