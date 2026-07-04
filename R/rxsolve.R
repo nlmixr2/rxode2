@@ -2464,7 +2464,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # (AutoSwitch) fill (via the shared rk4sSsIc, recorded with the composite's
         # primary explicit tableau).  Both cover bolus, any fixed-rate infusion
         # with a dosing interval, and ss=2 superposition.
-        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
+        # A MODELED rate()/dur() infusion (rate < 0 in the data) reaches steady
+        # state with a moving period boundary; the non-composite explicit fill
+        # carries the extra dR/dp forcing + transversality B terms (composite/
+        # liblsodaadj modeled ss stay guarded).
+        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0) |
+                                        (.r < 0 & .iiv > 0 & .noComposite))) |
           (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
       } else if (.ctl$method == 202L) {          # liblsodaadj: single ss==1 (all durations)
         # bolus and any fixed-rate infusion with an interval reach a periodic/

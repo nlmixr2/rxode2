@@ -7995,7 +7995,9 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                const std::vector<size_t> *boundarySs2 = NULL,
                                const std::vector<size_t> *ss1Steps = NULL,
                                const std::vector<size_t> *boundarySs1 = NULL,
-                               const double *ss2ContY = NULL) {
+                               const double *ss2ContY = NULL,
+                               int ssMdl = 0, double ssMdlAmt = 0.0, double ssMdlR = 0.0,
+                               int ssMdlCmt = -1, size_t ssMdlOnSteps = 0) {
   size_t nStep = rec.nStep();
   if (nStep == 0) return;
   if (rec.composite) {
@@ -8116,6 +8118,25 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                       fxOff, fpOff, Ascratch.data(), eff, ind, &ssFXs[i][n * nfx], &ssFPs[i][n * nfp]);
     }
   }
+  // Modeled rate()/dur() ss infusion: the ON rate R = amt/D(p) and the ON->OFF
+  // boundary D(p) depend on the parameters, so the monodromy B gains a forcing
+  // term durMult*dR/dp over the ON phase and a transversality term -(amt/R)*
+  // durMult*dR/dp*lambda_c at the boundary (the exact ss analogue of the non-ss
+  // rk4sBuildInfusMaps forcing/off-boundary).  dRate is read once at the trough
+  // (param-only rate assumption, as in the non-ss path).
+  std::vector<double> dRateSs; double ssDurMult = 0.0, ssOffFac = 0.0; int ssRc = -1;
+  bool ssMdlOn = (ssMdl != 0 && ssN > 0 && op->adjDrateOff >= 0 && ssMdlCmt >= 0 &&
+                  ssMdlCmt < nBase && ssMdlR != 0.0 && ssMdlOnSteps <= ssN);
+  if (ssMdlOn) {
+    dRateSs.assign((size_t)nBase * np, 0.0);
+    for (int _i = 0; _i < eff; ++_i) Ascratch[_i] = 0.0;
+    for (int _i = 0; _i < nBase; ++_i) Ascratch[_i] = ssRec->a[_i];   // trough
+    calc_lhs(cSub, ssRec->t0[0], Ascratch.data(), ind->lhs);
+    for (int _i = 0; _i < nBase * np; ++_i) dRateSs[_i] = ind->lhs[op->adjDrateOff + _i];
+    ssDurMult = (ssMdl == 2) ? ssMdlAmt : 1.0;             // dur: amt, rate: 1
+    ssOffFac = -(ssMdlAmt / ssMdlR) * ssDurMult;
+    ssRc = ssMdlCmt;
+  }
   auto ssPeriodTranspose = [&](std::vector<double> &nu, std::vector<double> &muAcc) {
     for (size_t nn = ssN; nn >= 1; --nn) {
       size_t n = nn - 1; double h = ssRec->h[n];
@@ -8126,10 +8147,14 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
         const double *kb = &kbar[i * nBase];
         for (int j = 0; j < nBase; ++j) { double s = 0; for (int q = 0; q < nBase; ++q) s += fx[q * nBase + j] * kb[q]; abar[j] = s; }
         for (int p = 0; p < np; ++p) { double s = 0; for (int q = 0; q < nBase; ++q) s += fp[q * np + p] * kb[q]; muAcc[p] += s; }
+        if (ssMdlOn && n < ssMdlOnSteps)                  // ON-phase dR/dp forcing
+          for (int p = 0; p < np; ++p) muAcc[p] += ssDurMult * dRateSs[ssRc * np + p] * kb[ssRc];
         for (int j = 0; j < nBase; ++j) Ybar[j] += abar[j];
         for (int js = 0; js < i; ++js) { double aij = T.A[i * sN + js]; if (aij != 0.0) { double *kbj = &kbar[js * nBase]; for (int j = 0; j < nBase; ++j) kbj[j] += h * aij * abar[j]; } }
       }
       for (int j = 0; j < nBase; ++j) nu[j] = Ybar[j];
+      if (ssMdlOn && n == ssMdlOnSteps)                   // ON->OFF moving-boundary transversality
+        for (int p = 0; p < np; ++p) muAcc[p] += ssOffFac * dRateSs[ssRc * np + p] * nu[ssRc];
     }
   };
 
@@ -8374,6 +8399,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // steady-state fixed-rate infusion (dur<ii): period is ON for ssInfDur (rate
   // ssInfRate into ssInfCmt) then OFF for ssInfDur2; handed over from handleSS.
   bool ssInf = false; int ssInfCmt = -1; double ssInfDur = 0.0, ssInfDur2 = 0.0, ssInfRate = 0.0, ssInfRate2 = 0.0;
+  // MODELED rate()/dur() ss infusion: moving boundary -> the monodromy B needs a
+  // dRate forcing over the ON phase + a transversality term at the ON->OFF step.
+  int ssInfModeled = 0; double ssInfAmt = 0.0; size_t ssOnSteps = 0;
   // continuous / full-interval infusion: constant steady state, dY_ss/dp via a
   // -J^{-1} df/dp linear solve (no monodromy).  ssContY holds Y_ss.
   bool ssCont = false; std::vector<double> ssContY;
@@ -8564,6 +8592,13 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         // ss=1 bolus just converged: yp is the trough yp*.  Record it (one ss
         // regimen supported; a later ss dose overwrites -- the last-in-window
         // trough is the one whose IC the sweep reaches).
+        // A MODELED rate/dur ss on a path that carries the moving boundary but is
+        // not yet implemented for adjoint (large-duration / full-interval /
+        // continuous, flagged _adjSSinfModeled < 0) -- error rather than return
+        // silently-wrong sensitivities.  Only periodic modeled (dur<ii) is covered.
+        if (_adjSSinfModeled < 0) {
+          ind->err = 1; if (ind->rc[0] == 0) ind->rc[0] = -2020; localBadSolve = 1;
+        }
         // ss=2 superposition (interior, bolus OR fixed-rate infusion).  Caught
         // FIRST: an ss2 infusion also fires the _adjSSinfKind handoff, but it is
         // an interior superposition, not a window-start infusion ss.  Y_ss_new
@@ -8597,6 +8632,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           // trough (period boundary); record the ON/OFF period after the loop.
           ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
           ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
+          ssInfModeled = _adjSSinfModeled; ssInfAmt = _adjSSinfAmt;
           ssTrough.assign(yp, yp + eff);
           ss1Steps.push_back(rec.nStep());   // window-start ss=1 infusion (step 0)
           _adjSSinfKind = 0;
@@ -8656,6 +8692,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur, &ssRec, ssScratch);
         _t += ssInfDur;
       }
+      ssOnSteps = ssRec.nStep();          // ON-phase step count (for the modeled-dR boundary)
       if (ssInfDur2 > 0.0) {
         ind->InfusionRate[ssInfCmt] = ssInfRate2;
         rks_step_interval(ind, op, c_dydt, neq, T, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur2, &ssRec, ssScratch);
@@ -8714,7 +8751,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                        boundary, doseRec, infusRec, boundaryDose, ssActive ? &ssRec : NULL,
                        ssCont ? ssContY.data() : NULL,
                        ss2Active ? &ss2Rec : NULL, &ss2Steps, &boundarySs2, &ss1Steps, &boundarySs1,
-                       (ss2Active && ss2Cont) ? ss2ContY.data() : NULL);
+                       (ss2Active && ss2Cont) ? ss2ContY.data() : NULL,
+                       ssInfModeled, ssInfAmt, ssInfRate, ssInfCmt, ssOnSteps);
   }
 
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;

@@ -2388,6 +2388,13 @@ static thread_local double _adjSSbolusIi = 0.0;
 // (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
 // uses ((numDoseInf+1)*R, offTime) then (numDoseInf*R, addTime).
 static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRate = 0.0, _adjSSinfRate2 = 0.0;
+// MODELED rate()/dur() steady-state infusion: the ON duration D depends on the
+// parameters (moving boundary), so the monodromy B gets a forcing term dR/dp over
+// the ON phase and a transversality term at the ON->OFF boundary.  0 = fixed rate
+// (no augmentation), 1 = modeled rate, 2 = modeled dur; _adjSSinfAmt is the dose
+// amount (the boundary factor is -(amt/R)*durMult, durMult = 1 rate / amt dur).
+static thread_local int    _adjSSinfModeled = 0;
+static thread_local double _adjSSinfAmt = 0.0;
 // STICKY snapshot of the ss handoff for the liblsodaadj backward fill: the
 // forward loop calls handleSS again for every addl-expanded dose (even under
 // addlDropSs), and each entry RESETS the live handoff -- so the driver snapshots
@@ -2829,6 +2836,7 @@ void handleSS(int *neq,
               void *ctx) {
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
+  _adjSSinfModeled = 0; _adjSSinfAmt = 0.0;
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3250,6 +3258,7 @@ void handleSS(int *neq,
         if (op->adjoint) {
           _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]);
           _adjSSinfKind = 2; _adjSSinfCmt = ind->cmt;
+          if (isModeled) _adjSSinfModeled = -1;   // modeled full-interval ss2: not yet supported
         }
         // Add at the end
         for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
@@ -3259,6 +3268,10 @@ void handleSS(int *neq,
       // solve, no monodromy).  kind 2 tells the rk4s driver to take that path.
       if (op->adjoint && !doSS2) {
         _adjSSinfKind = 2; _adjSSinfCmt = ind->cmt;
+        // A MODELED rate/dur full-interval/continuous ss needs dR/dp in the linear
+        // solve (not yet done); flag it so the driver errors instead of returning
+        // silently-wrong sensitivities.
+        if (isModeled) _adjSSinfModeled = -1;
       }
       ind->doSS=0;
       updateExtraDoseGlobals(ind);
@@ -3357,6 +3370,10 @@ void handleSS(int *neq,
             _adjSSinfKind = 1; _adjSSinfCmt = _c;
             _adjSSinfDur  = offTime; _adjSSinfRate  = (numDoseInf + 1) * _R;
             _adjSSinfDur2 = addTime; _adjSSinfRate2 = numDoseInf * _R;
+          } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
+            // modeled large-duration ss (overlapping infusions + moving boundary):
+            // not yet supported -- flag so the driver errors, not silently wrong.
+            _adjSSinfKind = 1; _adjSSinfCmt = _c; _adjSSinfModeled = -1;
           }
         }
         skipDosingEvent = true;
@@ -3484,6 +3501,17 @@ void handleSS(int *neq,
             _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
             _adjSSinfRate = getDose(ind, ind->idose[infBixds]);
             _adjSSinfRate2 = 0.0;                 // OFF phase (dur<ii)
+          } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
+            // modeled rate()/dur(): the effective ON rate is R = F*amt/D (the
+            // bioavailability-adjusted amount, matching the non-ss dual's getAmt);
+            // the moving boundary D(p) is handled by the B augmentation.
+            double _amt = getAmt(ind, ind->id, _c, getDose(ind, ind->idose[infBixds]), xout, yp);
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
+            _adjSSinfRate = (dur > 0.0) ? _amt / dur : 0.0;
+            _adjSSinfRate2 = 0.0;
+            _adjSSinfModeled = (_wI == EVIDF_MODEL_DUR_ON) ? 2 : 1;
+            _adjSSinfAmt = _amt;
           }
         }
         *istate=1;

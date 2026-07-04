@@ -253,9 +253,14 @@ rxTest({
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
-    # modeled-rate infusion ss (dR/dp != 0) not yet covered
-    expect_error(rxode2::rxSolve(madj, et(amt = 100, rate = -1, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4)),
-                                 params = p, method = "rk4s", cores = 1), "steady-state")
+    # MODELED rate()/dur() ss is covered on the non-composite explicit path (below,
+    # vs FD) but guarded on composite and for large-duration (dur>=ii) regimens.
+    mMdl <- rxode2::rxode2(rxode2::.rxAdjointExpand(
+      "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\ndur(center)=9*cl/3.5", c("ka", "cl", "v"))$text)
+    expect_error(rxode2::rxSolve(mMdl, et(amt = 100, rate = -2, cmt = "center", ss = 1, ii = 24) %>% et(c(1, 8, 16)),
+                                 params = p, method = "dop853s+ros4s", cores = 1), "steady-state")   # composite guarded
+    expect_error(rxode2::rxSolve(mMdl, et(amt = 100, rate = -2, cmt = "center", ss = 1, ii = 8) %>% et(c(1, 4, 8)),
+                                 params = p, method = "rk4s", cores = 1))   # large-dur modeled -> errors
     # liblsodaadj covers single ss==1 (below) but NOT ss==2 or interior/multiple ss==1
     expect_error(rxode2::rxSolve(madj, et(amt = 100, cmt = "depot", ss = 2, ii = 12) %>% et(c(1, 2, 4)),
                                  params = p, method = "liblsodaadj", cores = 1), "steady-state")
@@ -282,6 +287,38 @@ rxTest({
     chkL(et(amt = 100, rate = 10, cmt = "central", ss = 1, ii = 8) %>% et(smp), 1e-4)            # large-dur infusion
     chkL(et(amt = 120, rate = 10, cmt = "central", ss = 1, ii = 12) %>% et(smp), 1e-4)           # full-interval infusion
     chkL(et(amt = 0, rate = 8, cmt = "central", ss = 1) %>% et(smp), 1e-4)                       # continuous infusion
+  })
+
+  test_that("modeled rate()/dur() steady-state: adjoint sensitivities match FINITE DIFFERENCES", {
+    # For a modeled rate/dur whose value DEPENDS on a sensitivity parameter, the ss
+    # has a MOVING period boundary.  The discrete adjoint carries the dR/dp forcing
+    # + transversality B terms; validate against central FD (rxode2's FORWARD
+    # sensitivities are WRONG for this case -- they omit the moving-boundary term,
+    # so FD, not forward-sens, is the oracle here).
+    csM <- c("ka", "cl"); pM <- c(ka = 1.2, cl = 3.5, v = 25)
+    chkFD <- function(mt, ev, tol) {
+      exM <- rxode2::.rxAdjointExpand(mt, csM); madj <- rxode2::rxode2(exM$text); mb <- rxode2::rxode2(mt)
+      a <- as.data.frame(suppressWarnings(rxode2::rxSolve(madj, ev, params = pM, method = "rk4s", cores = 1, atol = 1e-11, rtol = 1e-11)))
+      mx <- 0
+      for (pn in csM) {
+        hh <- abs(pM[[pn]]) * 1e-6; pp <- pM; pm <- pM; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+        sp <- as.data.frame(suppressWarnings(rxode2::rxSolve(mb, ev, params = pp, method = "rk4", cores = 1, atol = 1e-11, rtol = 1e-11)))
+        sm <- as.data.frame(suppressWarnings(rxode2::rxSolve(mb, ev, params = pm, method = "rk4", cores = 1, atol = 1e-11, rtol = 1e-11)))
+        for (st in exM$st) { fd <- (sp[[st]] - sm[[st]]) / (2 * hh)
+          mx <- max(mx, max(abs(a[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] - fd), na.rm = TRUE)) }
+      }
+      expect_lt(mx, tol)
+    }
+    smp <- c(1, 8, 16, 24, 30, 40)
+    evM <- et(amt = 100, rate = -2, cmt = "central", ss = 1, ii = 24) %>% et(smp)   # modeled dur
+    evR <- et(amt = 100, rate = -1, cmt = "central", ss = 1, ii = 24) %>% et(smp)   # modeled rate
+    chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\ndur(central)=9*cl/3.5\ncp=central/(v/1000)",  evM, 1e-6)
+    chkFD("d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nrate(central)=11*cl/3.5\ncp=central/(v/1000)", evR, 1e-6)
+    # NOTE: F != 1 with a MOVING modeled boundary (dur/rate depending on a
+    # sensitivity param) is a PRE-EXISTING limitation of the rate/dur dRate dual
+    # (the NON-ss dual is wrong there too), so it is not exercised here; a modeled
+    # boundary with F != 1 but CONSTANT duration (dRate == 0, e.g. nmtest id=19) is
+    # correct and covered by the nmtest scenarios below.
   })
 
   test_that("nmtest dosing scenarios: adjoint solution AND gradients match forward sensitivities (ka + elimination)", {
