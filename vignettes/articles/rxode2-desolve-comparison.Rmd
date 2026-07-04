@@ -284,6 +284,48 @@ recent dose -- `tad()`, `tad0()`, `tad(cmt)`, and `tad0(cmt)` -- usable
 directly inside model equations.  deSolve has no equivalent; the user
 must track this manually.
 
+### Out-of-memory (larger-than-RAM) simulation
+
+A population simulation can produce a result too large to hold in RAM.
+rxode2 handles this directly: passing a `file` prefix to `rxSolve()`
+splits the subjects into chunks, solves each, writes it to a Parquet
+file (falling back to `.rds` when `arrow` is unavailable), and returns a
+lightweight object that reads chunks lazily.  The chunk size is
+auto-computed from available RAM (`rxMemoryEstimate()`), and the on-disk
+chunks can be queried lazily with `dplyr`/`arrow` or DuckDB so that
+filtering and aggregation are pushed down and the full result never has
+to be materialized.  deSolve returns an in-memory matrix or data frame
+only.
+
+```{r}
+res <- rxSolve(mod, params, ev, file = tempfile("rx")) # disk-backed chunks
+res |> as_arrow_dataset() |> dplyr::filter(time > 24) |> dplyr::collect()
+```
+
+### Distributed / cluster parallelism via mirai
+
+In addition to OpenMP threading within a single call, rxode2 can
+dispatch chunks of subjects to `mirai` daemons (`rxSolve(..., parallel =
+n)`), which enables distributed and HPC/cluster execution and composes
+with the out-of-memory path above.  In deSolve, cross-process
+parallelism is left entirely to the user.
+
+### Automatic ODE-to-`linCmt()` conversion
+
+When a model's ODE system is a 1-3 compartment linear PK system, rxode2
+detects this and transparently solves it with the fast analytical
+`linCmt()` path (`rxSolve(..., useLinCmt = TRUE)`, the default), falling
+back to the ODE solver if the converted model cannot be compiled.
+deSolve always integrates the ODEs numerically.
+
+### Event / jump and higher-order sensitivities
+
+Beyond first-order forward sensitivities, rxode2 generates exact
+sensitivities up to third order and *jump* (event) sensitivities -- the
+derivative of the solution with respect to dosing parameters such as
+bioavailability, lag time, infusion rate, duration, and amount.  deSolve
+has no symbolic-sensitivity machinery.
+
 ---
 
 ## Features deSolve has that rxode2 does not
@@ -306,25 +348,40 @@ in R:
 | `rk4` | classic fixed-step RK4 |
 | `euler` | explicit Euler (teaching) |
 
-rxode2 offers three backends: thread-safe C LSODA (default), Fortran
-LSODA, and DOP853.  Most pharmacometric models are stiff and well
+rxode2 offers thread-safe C LSODA (default), Fortran LSODA, DOP853, a
+stiff Rosenbrock method (`ros4`), and AutoSwitch composite methods (for
+example `method = "dop853+ros4"`) that probe each segment with a
+non-stiff primary and fall back to a stiff secondary only where
+stiffness is detected.  Most pharmacometric models are stiff and well
 served by LSODA, but rxode2 does not currently offer sparse Jacobian
-solvers, DAE solvers, or delay-differential equation solvers.
+solvers or DAE solvers.  (rxode2 *does* now solve delay differential
+equations -- see below.)
 
 ### Delay differential equations (DDEs)
 
-deSolve's `dede()` function solves delay differential equations where
-the RHS depends on the history of the state vector.  rxode2 does not
-support DDEs.
+Both packages solve delay differential equations, with different
+mechanisms.  deSolve's `dede()` lets the right-hand side look up the
+state (`lagvalue()`) or its derivative (`lagderiv()`) at *any* past
+time, which is fully general.  rxode2 provides the `delay(state, T)`
+model function, which evaluates an ODE state at the fixed past time
+`t - T` (the same semantics as Monolix's `delay()`); values are
+interpolated from the solver's 8th-order dense output, so they carry the
+full accuracy of the integration, and rxode2 automatically generates
+forward sensitivities for `delay()` models so they can be estimated with
+gradient-based methods in nlmixr2.
 
 ```{r}
-# deSolve only
+# deSolve: arbitrary-history DDE
 dde_model <- function(t, y, parms, lag) {
   list(c(-parms["r"] * y[1] * (1 - lagvalue(t - lag, 1) / parms["K"])))
 }
-
 deSolve::dede(y0, times, func = dde_model, parms = parms,
               lag = 1.5, method = "dde23")
+
+# rxode2: delay() on an ODE right-hand side
+mod_dde <- rxode2({
+  d/dt(y) <- -r * y * (1 - delay(y, tau) / K)
+})
 ```
 
 ### Differential-algebraic equations (DAEs)
@@ -414,11 +471,14 @@ compiled C code and OpenMP parallelism.
 | Compilation step | yes (cached) | no (for R RHS) |
 | LSODA (thread-safe C) | yes | yes (Fortran) |
 | DOP853 solver | yes | yes (`rkF45` / `ode45`) |
+| AutoSwitch composite solvers (`"dop853+ros4"`) | yes | no |
 | DAE solver | no | yes (`daspk`) |
-| DDE solver | no | yes (`dede`) |
+| DDE solver | yes (`delay()`, dense output, with sensitivities) | yes (`dede`, general history) |
 | Sparse Jacobian solver | no | yes (`lsodes`) |
 | Root finding / threshold | no | yes (`lsodar`) |
 | OpenMP parallelism | yes (built-in) | no (manual) |
+| Distributed / cluster parallelism | yes (`mirai`) | no (manual) |
+| Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | no |
 | Population simulation (IIV) | yes (omega matrices) | no (manual) |
 | Residual error simulation | yes (in model) | no (manual) |
 | NONMEM-format datasets | yes | no |
@@ -426,7 +486,8 @@ compiled C code and OpenMP parallelism.
 | Multiple dosing (addl, ii) | yes | manual |
 | Infusion rate/duration | yes | manual |
 | Analytical 1-3 cmt PK | `linCmt()` | no |
-| Symbolic Jacobians | yes | no |
+| Symbolic Jacobians | yes (up to 3rd order + jump sensitivities) | no |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
 | Parameter estimation | via nlmixr2 | via `FME` or manual |
 | Model piping (`\|>`) | yes | no |
 | NONMEM model import | `nonmem2rx` | no |
