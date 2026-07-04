@@ -1381,6 +1381,37 @@ static inline int handle_evid(int evid, int neq,
         // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
         _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
       }
+      // Forward eventSens fix (modeled dur() STEADY STATE): solveSSinf re-expresses
+      // a modeled dur ss infusion as this fixed-rate INF_RATE window, so the
+      // MODEL_DUR_OFF sens handling (forcing removal + moving-boundary jump
+      // [S] = rate*d(dur)/dp, rate = -tmp) is otherwise skipped -- leaving the
+      // sensitivity forcing on and no boundary jump.  When handleSS armed the
+      // marker for this cmt (only under _rxEsActive), run that logic here at the
+      // OFF (tmp < 0) exactly as EVIDF_MODEL_DUR_OFF would.
+      if (_esSSDurOffCmt == cmt && tmp < 0.0 && _rxEsActive && _rxEsNParam > 0 &&
+          cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
+          dDurEs != NULL && durEsFn != NULL) {
+        int _ns = _rxEsNState, _np = _rxEsNParam;
+        double _esAmt = ind->curDoseS[cmt];
+        double _esDur = durEsFn(id, cmt, _esAmt, xout, yp);
+        if (_esDur != 0.0) {
+          double *_esB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_esB != NULL && _esFB != NULL) {
+            dDurEs(id, xout, yp, _esB);
+            if (dF != NULL) dF(id, xout, yp, _esFB);
+            for (int _p = 0; _p < _np; _p++) {
+              double _esDDur = _esB[cmt * _np + _p];
+              InfusionRate[_ns + _p * _ns + cmt] -=
+                (_esAmt * _esFB[cmt * _np + _p] + tmp * _esDDur) / _esDur;
+              yp[_ns + _p * _ns + cmt] += (-tmp) * _esDDur;
+            }
+          }
+          if (_esB != NULL) free(_esB);
+          if (_esFB != NULL) free(_esFB);
+        }
+        _esSSDurOffCmt = -1;   // fired once for this ss observation infusion
+      }
       if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;

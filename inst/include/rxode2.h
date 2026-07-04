@@ -551,6 +551,7 @@ static inline double dabs2(double x) {
   extern "C" int _rxEsNParam;
   extern "C" int _rxEsNParam2;
   extern "C" int _rxEsNParam3;
+  extern "C" int _esSSDurOffCmt;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
@@ -578,6 +579,7 @@ static inline double dabs2(double x) {
   extern int _rxEsNParam;
   extern int _rxEsNParam2;
   extern int _rxEsNParam3;
+  extern int _esSSDurOffCmt;
 #endif
 
 

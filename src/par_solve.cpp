@@ -587,6 +587,13 @@ int _rxEsActive = 0;
 int _rxEsNState = 0;
 int _rxEsNParam = 0;
 int _rxEsNParam2 = 0;
+// Marker (cmt of a modeled-dur ss observation-window infusion) for the forward
+// eventSens "jump" fix: solveSSinf re-expresses a modeled dur() ss infusion as a
+// fixed-rate one, whose classic INF_RATE off does NOT remove the sensitivity
+// forcing nor apply the moving-boundary jump.  handleSS sets this (only when
+// _rxEsActive) so handle_evid runs the MODEL_DUR_OFF sens logic at that off; -1
+// = inactive.  Primal-only solves never set it, so they are byte-identical.
+int _esSSDurOffCmt = -1;
 // Third-order (Phase H1) calcSens3 parameter count.  Set via its own setter
 // (`_rxode2_setEventSensNParam3`) rather than widening `_rxEsNParam`
 // dims -- same rationale as `_rxEsUseCalcJac`'s dedicated setter (added
@@ -2837,6 +2844,7 @@ void handleSS(int *neq,
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0;
+  _esSSDurOffCmt = -1;   // forward eventSens: disarm the modeled-dur ss off marker
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -3632,6 +3640,11 @@ void handleSS(int *neq,
           handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
+          // Forward eventSens fix: this modeled ON set up the sensitivity forcing,
+          // but the re-expressed fixed-rate OFF below (extraEvid) will not remove
+          // it or apply the moving-boundary jump.  Arm the marker so handle_evid
+          // runs the MODEL_DUR_OFF sens logic at that off (modeled dur only).
+          if (_rxEsActive && ind->whI == EVIDF_MODEL_DUR_ON) _esSSDurOffCmt = ind->cmt;
           pushDosingEvent(startTimeD+dur,
                           rateOff, extraEvid, ind);
         }
