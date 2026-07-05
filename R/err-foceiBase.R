@@ -377,12 +377,18 @@
 #'
 #' - `rx_r_` The transformed variance
 #'
+#' - `rx_cor_` The AR(1) correlation (only when the endpoint has `ar()`)
+#'
 #' @author Matthew Fidler
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
   type <- pred1$distribution
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
-    .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
+    # a normal endpoint with ar() emits an extra rx_cor_ line (the AR(1)
+    # correlation) so the estimation engine can form the whitened likelihood
+    .arCor <- if (rxPredLlik && type == "norm") .rxGetArCorLang(env, pred1) else NULL
+    .ret <- vector("list", ifelse(type == "norm", ifelse(is.null(.arCor), 7, 8),
+                                  ifelse(rxPredLlik, 9, 7)))
     .yj <- as.double(pred1$transform) - 1
     .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10*(as.integer(pred1$distribution)-1)))
     .ret[[2]] <- bquote(rx_lambda_~.(.rxGetLambdaFromPred1AndIni(env, pred1)))
@@ -392,6 +398,13 @@
     .ret[[6]] <- bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, .yj)))
     if (type == "norm") {
       .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
+      if (!is.null(.arCor)) {
+        .ret[[8]] <- if (errNum == 1) {
+          bquote(rx_cor_ ~ .(.arCor))
+        } else {
+          str2lang(paste0("rx_cor_", errNum - 1, " ~ ", deparse1(.arCor)))
+        }
+      }
     } else {
       if (rxPredLlik) {
         .ret[[7]] <- bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
