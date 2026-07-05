@@ -156,9 +156,17 @@ static inline void printPDStateVar(int show_ode, int scenario) {
 static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
   switch(scenario){
   case print_paramLags:
-    return (tb.lag[i] == notLHS || tb.lh[i] == isState);
+    // covariate/parameter lags use _getParCov; skip variables handled by
+    // print_lhsLags (lhs variables read their own per-subject history slot),
+    // otherwise the _getParCov definition clobbers the correct lhs-lag one
+    return (tb.lag[i] == notLHS || tb.lh[i] == isState ||
+            tb.lh[i] == isLHS || tb.lh[i] == isLHSstr);
   case print_lhsLags:
-    return (tb.lag[i] == 0 || (tb.lh[i] != isLHS && tb.lh[i] != isLHSstr));
+    // visit every lhs-storage variable so the running ordinal matches the
+    // _lhs[]/_PL[] write-back order (printLhsLag emits macros only for the
+    // ones that are actually lagged)
+    return !(tb.lh[i] == isLHS || tb.lh[i] == isLHSstr ||
+             tb.lh[i] == isLhsStateExtra || tb.lh[i] == isLHSparam);
   case print_lastLhsValue:
     return !(tb.lh[i] == isLHS || tb.lh[i] == isLHSstr ||
              tb.lh[i] == isLhsStateExtra || tb.lh[i] == isLHSparam);
@@ -225,25 +233,42 @@ static inline void printParamLags(char *buf, int *j) {
   j[0]=j[0]+1;
 }
 
-static inline void printLhsLag(char *buf, int *j) {
-  sAppendN(&sbOut, "#define lead_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "1(x) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define lead_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "(x,y) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define diff_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "1(x) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define diff_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "(x,y) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define lag_", 12);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "1(x) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define lag_", 12);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "(x, y) _solveData->subjects[_cSub].lhs[%d]\n", *j);
+static inline void printLhsLag(char *buf, int *j, int i) {
+  // *j is the lhs ordinal (matches the _lhs[_LHS_*_] write-back and the
+  // sticky-variable _PL[_LHS_*_] load).  _PL (= _ind->lhs) holds the PREVIOUS
+  // record's lhs values during calc_lhs (write-back is at the end) and is reset
+  // to NA at the start of each individual, so lag/diff by 1 read the previous
+  // record's value and yield NA on the first record.  Deeper lags on an lhs are
+  // rejected at parse time (only lag(x,1)/diff(x,1) are supported).
+  if (tb.lag[i] != 0) {
+    sAppendN(&sbOut, "#define diff_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) ((x) - _PL[_LHS_%d_])\n", *j);
+    sAppendN(&sbOut, "#define diff_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) ((x) - _PL[_LHS_%d_])\n", *j);
+    sAppendN(&sbOut, "#define lag_", 12);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define lag_", 12);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x, y) _PL[_LHS_%d_]\n", *j);
+    // lead/first/last on an lhs have no well-defined value from the backward
+    // history; define them to the previous value so the symbol resolves (these
+    // are not meaningfully supported on lhs variables)
+    sAppendN(&sbOut, "#define lead_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define lead_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define first_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define last_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+  }
   j[0] = j[0]+1;
 }
 

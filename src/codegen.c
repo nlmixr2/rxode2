@@ -139,7 +139,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
       printParamLags(buf, &j);
       break;
     case print_lhsLags: // Case 4 is for using #define lag_var(x)
-      printLhsLag(buf, &j);
+      printLhsLag(buf, &j, i);
       break;
     case print_lastLhsValue: // Case 3 is for using the last lhs value
       printLastLhsValue(buf, &j);

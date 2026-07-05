@@ -1,5 +1,11 @@
 # rxode2 5.1.3
 
+- Fix `lag()` and `diff()` of a left-hand-side (calculated) variable, which
+  previously returned a constant instead of the previous record's value. They
+  now read the prior record's value (NA on the first record of each individual,
+  reset per individual) and work through the estimation/symengine path. Only
+  `lag(x, 1)`/`diff(x, 1)` are supported for calculated variables.
+
 - Add `ar(cor)` residual term to simulate continuous-time AR(1)
   (autocorrelated) residuals for normal, t, and cauchy based error models,
   addable per endpoint alongside any transform (e.g.
