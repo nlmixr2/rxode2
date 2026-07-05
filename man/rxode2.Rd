@@ -1020,6 +1020,8 @@ In general all the that are supported are in the following table
    additive+proportional+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
    additive+power+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
    additive+power+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   autocorrelated (constant) \tab  \tab None \tab var ~ add(add.sd) + ar(cor) \tab  \tab response variable \cr
+   autocorrelated (additive+proportional) \tab  \tab None \tab var ~ add(add.sd) + prop(prop.sd) + ar(cor) \tab  \tab response variable \cr
    poission \tab  \tab none \tab cmt ~ dpois(lamba) \tab  \tab compartment specification \cr
    binomial \tab  \tab none \tab cmt ~ dbinom(n, p) \tab  \tab compartment specification \cr
    beta \tab  \tab none \tab cmt ~ dbeta(alpha, beta) \tab  \tab compartment specification \cr

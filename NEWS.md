@@ -1,5 +1,13 @@
 # rxode2 5.1.3
 
+- Add `ar(cor)` residual term to simulate continuous-time AR(1)
+  (autocorrelated) residuals for normal, t, and cauchy based error models,
+  addable per endpoint alongside any transform (e.g.
+  `cp ~ add(add.sd) + prop(prop.sd) + ar(ar1.cor)`).  `cor` is in `[0, 1)`;
+  the lag correlation decays as `cor^(time gap)` and the residual variance
+  stays stationary.  Simulation only.  Follows the autocorrelated residual
+  error model of Karlsson, Beal and Sheiner (1995).
+
 - Stiff adjoint and forward-sensitivity solvers now integrate the augmented
   (sensitivity-expanded) system with its analytic Jacobian:
   - `.rxAdjointExpand(stiff=TRUE)` emits the base-block `df()/dy()` Jacobian, so
