@@ -39,6 +39,7 @@
   "combined2"=0,
   "var"=0,
   "dv"=0,
+  "ar"=1,
   "comb1"=0,
   "comb2"=0,
   "dchisq"=1,
@@ -71,7 +72,7 @@
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF",
                   "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
                   "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2",
-                  "comb1", "comb2", "t", "cauchy", "norm", "var", "dv")
+                  "comb1", "comb2", "t", "cauchy", "norm", "var", "dv", "ar")
 
 .errIdenticalDists <- list(
   "lnorm"=c("logn", "dlogn", "dlnorm"),
@@ -140,7 +141,8 @@
   "beta" = c(0, Inf),
   "beta2"=c(0, Inf),
   "t"=c(0, Inf),
-  "t2"=c(0, Inf)
+  "t2"=c(0, Inf),
+  "ar"=c(0, 1)
 )
 
 ## the desired outcome for each expression is to capture the condition
@@ -641,7 +643,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   cauchy=c("a", "b"),
   dgamma=c("a", "b"),
   nbinom=c("a", "b"),
-  nbinomMu=c("a", "b")
+  nbinomMu=c("a", "b"),
+  ar="ar"
 )
 
 .allowEstimatedParameters <- "ordinal"
@@ -693,6 +696,13 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     if (.isLogitOrProbit) {
       if (argumentNumber == 2 || argumentNumber == 3) {
         env$trLimit[argumentNumber - 1] <- env$.numeric
+      }
+    } else if (funName == "ar") {
+      if (env$.numeric < 0 || env$.numeric >= 1) {
+        env$err <- c(env$err,
+                     "'ar()' correlation must be in [0, 1)")
+      } else {
+        env$ar <- as.character(env$.numeric)
       }
     }
   } else if (is.na(.cur)) {
@@ -796,6 +806,20 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         env$dv <- TRUE
         return(invisible())
       }
+      if (.currErr == "ar") {
+        if (env$hasAr) {
+          env$err <- c(env$err, "'ar()' can only be specified once per endpoint")
+          return(invisible())
+        }
+        if (length(expression) - 1 != 1) {
+          env$err <- c(env$err, "'ar()' requires 1 argument (the correlation)")
+          return(invisible())
+        }
+        env$hasAr <- TRUE
+        .errHandleSingleDistributionArgument(1, "ar", expression, env)
+        env$needsToBeAnErrorExpression <- TRUE
+        return(invisible())
+      }
       if (.currErr == "t") {
         if (env$distribution == "cauchy") {
           stop("you cannot combine 't' and 'cauchy' distributions")
@@ -841,6 +865,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     if (.isC) {
       env$distribution <- "ordinal"
       .errHandleSingleDistributionTerm("ordinal", expression, env)
+    } else if (identical(rxPreferredDistributionName(.currErr), "ar")) {
+      env$err <- c(env$err,
+                   "'ar()' must be combined with a transformably normal error model (e.g. add(add.sd) + ar(cor))")
     } else if (.isErrDist) {
       .currErr <- rxPreferredDistributionName(.currErr)
       env$distribution <- .currErr
@@ -943,6 +970,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$linCmt <- FALSE
   env$var <- FALSE
   env$dv <- FALSE
+  env$ar <- NA_character_
+  env$hasAr <- FALSE
   .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
   env$a <- env$b <- env$c <- env$d <- env$e <- env$f <- env$lambda <- NA_character_
@@ -955,6 +984,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$errTypeInfo <- rxErrTypeCombine("")
   env$distribution <- "norm"
   .errHandleErrorStructure(.right, env)
+  if (env$hasAr && !(env$distribution %in% c("norm", "dnorm", "t", "cauchy"))) {
+    env$err <- c(env$err,
+                 "'ar()' is only allowed with normal, t, or cauchy based error models")
+  }
   if (inherits(env$errTypeInfo, "character")) {
     env$err <- c(env$err, env$errTypeInfo)
     env$errTypeInfo <- rxErrTypeCombine("")
@@ -987,7 +1020,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                      lambda=env$lambda,
                                      linCmt=env$linCmt,
                                      variance=env$var,
-                                     dv=env$dv))
+                                     dv=env$dv,
+                                     ar=env$ar))
       env$curDvid <- env$curDvid + 1L
 
     }
@@ -1016,7 +1050,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          lambda=env$lambda,
                          linCmt=env$linCmt,
                          variance=env$var,
-                         dv=env$dv)
+                         dv=env$dv,
+                         ar=env$ar)
       env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
@@ -1048,7 +1083,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .iniDf <- env$iniDf
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
-    if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
+    if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda", "ar")]))) {
       if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
@@ -1422,7 +1457,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
                          "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
-                         "lhs", "earlyErr", "var", "dv"),
+                         "lhs", "earlyErr", "var", "dv", "ar", "hasAr"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1500,6 +1535,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .left <- .errHandleLlOrLinCmt(expr[[2]], .env)
   .env$trLimit <- c(-Inf, Inf)
   .env$a <- .env$b <- .env$c <- .env$d <- .env$e <- .env$f <- .env$lambda <- NA_character_
+  .env$ar <- NA_character_
+  .env$hasAr <- FALSE
   .env$curCondition <- .env$curVar <- deparse1(.left)
   .env$hasNonErrorTerm <- FALSE
   .env$needsToBeAnErrorExpression <- FALSE
