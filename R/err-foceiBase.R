@@ -379,6 +379,44 @@
 #'
 #' - `rx_cor_` The AR(1) correlation (only when the endpoint has `ar()`)
 #'
+#' Build the AR(1)-whitened in-model log-likelihood block for an endpoint
+#'
+#' Produces the sticky-variable continuous-time AR(1) conditional likelihood
+#' used on the in-model likelihood path (e.g. the nlm population log-likelihood
+#' model, where a normal endpoint is treated as `dnorm`).  The marginal residual
+#' `e = DVtrans - mean` and the last time are carried as sticky variables (see
+#' the rxode2 sticky-variable vignette): they are assigned only inside the
+#' conditional branches so rxode2 keeps them sticky (NA per subject).
+#'
+#' @param var endpoint variable suffix (e.g. "cp")
+#' @param cor quoted AR(1) correlation (name or number)
+#' @param dvTrans quoted transformed observed value (DV / log(DV) / rxTBS(DV,..))
+#' @param buildLlik function(meanLang, sdLang) returning the quoted per-obs
+#'   log-likelihood call for this distribution
+#' @return list of quoted model lines whose final `rx_pred_` is the conditional
+#'   log-likelihood contribution
+#' @author Matthew Fidler
+#' @noRd
+.rxArLlikBlock <- function(var, cor, dvTrans, buildLlik) {
+  .lastE <- str2lang(paste0("rx.arLastE.", var))
+  .tlast <- str2lang(paste0("rx.arTlast.", var))
+  .phi <- str2lang(paste0("rx.arPhi.", var))
+  .mean <- str2lang(paste0("rx.arMean.", var))
+  list(
+    bquote(.(.mean) ~ rx_pred_),
+    bquote(if (is.na(.(.lastE))) {
+      rx_pred_ ~ .(buildLlik(.mean, quote(rx_rll_)))
+      .(.lastE) <- .(dvTrans) - .(.mean)
+      .(.tlast) <- time
+    } else {
+      .(.phi) ~ .(cor)^(time - .(.tlast))
+      rx_pred_ ~ .(buildLlik(bquote(.(.mean) + .(.phi) * .(.lastE)),
+                             bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))
+      .(.lastE) <- .(dvTrans) - .(.mean)
+      .(.tlast) <- time
+    }))
+}
+
 #' @author Matthew Fidler
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
@@ -407,7 +445,10 @@
       }
     } else {
       if (rxPredLlik) {
-        .ret[[7]] <- bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
+        .dvTrans <- .rxGetPredictionDVTransform(env, pred1, .yj)
+        # buildLlik(meanLang, sdLang) -> the per-observation log-likelihood call
+        # for this distribution; mean/sd are substituted so an ar() endpoint can
+        # feed the AR(1)-whitened conditional mean and sd
         if (type == "t") {
           .iniDf <- env$iniDf
           .cnd <- pred1$cond
@@ -421,34 +462,31 @@
             }
             .nu <- str2lang(pred1$d)
           }
-          if (errNum == 1) {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                 .(.nu), rx_pred_, rx_rll_))
-          } else {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikXT(.(errNum - 1),
-                                                  .(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                 .(.nu), rx_pred_, rx_rll_))
+          .buildLlik <- function(.mean, .sd) {
+            if (errNum == 1) bquote(llikT(.(.dvTrans), .(.nu), .(.mean), .(.sd)))
+            else bquote(llikXT(.(errNum - 1), .(.dvTrans), .(.nu), .(.mean), .(.sd)))
           }
         } else if (type == "cauchy") {
-          if (errNum == 1) {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                      rx_pred_, rx_rll_))
-          } else {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikXCauchy(.(errNum - 1),
-                                                       .(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                       rx_pred_, rx_rll_))
+          .buildLlik <- function(.mean, .sd) {
+            if (errNum == 1) bquote(llikCauchy(.(.dvTrans), .(.mean), .(.sd)))
+            else bquote(llikXCauchy(.(errNum - 1), .(.dvTrans), .(.mean), .(.sd)))
           }
         } else if (type == "dnorm") {
-          if (errNum == 1) {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, rx_rll_))
-          } else {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikXNorm(.(errNum - 1),
-                                                     .(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, rx_rll_))
+          .buildLlik <- function(.mean, .sd) {
+            if (errNum == 1) bquote(llikNorm(.(.dvTrans), .(.mean), .(.sd)))
+            else bquote(llikXNorm(.(errNum - 1), .(.dvTrans), .(.mean), .(.sd)))
           }
         }
-        .ret[[9]] <- quote(rx_r_ ~ 0)
+        .arCor <- .rxGetArCorLang(env, pred1)
+        if (is.null(.arCor)) {
+          .llikLines <- list(bquote(rx_pred_ ~ .(.buildLlik(quote(rx_pred_), quote(rx_rll_)))))
+        } else {
+          .llikLines <- .rxArLlikBlock(pred1$var, .arCor, .dvTrans, .buildLlik)
+        }
+        .ret <- c(.ret[1:6],
+                  list(bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))),
+                  .llikLines,
+                  list(quote(rx_r_ ~ 0)))
       } else {
         .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
       }
