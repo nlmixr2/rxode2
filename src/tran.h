@@ -516,7 +516,7 @@ char *getLine (char *src, int line, int *lloc);
 #define propPodo0 32768
 #define propDose0 65536
 // compartment name referenced as a dose target (bolus/infuse/etc.) in a linCmt model;
-// not an ODE state — prevents false conflict with addLinCmt's dprop==0 check
+// not an ODE state -- prevents false conflict with addLinCmt's dprop==0 check
 #define propDoseRef 131072
 // ODE state referenced by delay(state, T): the solver records dense delay
 // history only for states carrying this bit.  Must match rxDelayStateProp in

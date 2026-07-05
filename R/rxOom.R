@@ -63,7 +63,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .rxMemSummarizeDat(.dat)
 }
 
-# ── Main OOM solve loop ───────────────────────────────────────────────────────
+# -- Main OOM solve loop -------------------------------------------------------
 
 .rxSolveOom <- function(object, params, events, inits, .ctl, .envir = parent.frame()) {
   .prefix   <- .ctl$file
@@ -150,7 +150,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       nCoresRV        = 1L,
       nStud           = 1L
     )
-    # Strip omega from forwarded args — etas are now baked into per-chunk params
+    # Strip omega from forwarded args -- etas are now baked into per-chunk params
     .fwdCtlArgs$omega           <- NULL
     .fwdCtlArgs$omegaDf         <- NULL
     .fwdCtlArgs$omegaLower      <- NULL
@@ -344,7 +344,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .rxSolveOomFromManifest(.manifest)
 }
 
-# ── rxSolveOom return object ──────────────────────────────────────────────────
+# -- rxSolveOom return object --------------------------------------------------
 
 .rxSolveOomFromManifest <- function(manifest) {
   structure(list(), class = "rxSolveOom", manifest = manifest)
@@ -354,7 +354,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   any(grepl("\\.parquet$", manifest$chunks))
 }
 
-# ── DuckDB lazy query layer over the parquet chunks ──────────────────────────
+# -- DuckDB lazy query layer over the parquet chunks --------------------------
 #
 # DuckDB is preferred for lazy access (head, single column, schema) because it
 # pushes the LIMIT / column projection into the parquet reader instead of
@@ -643,7 +643,7 @@ dim.rxSolveOom <- function(x) {
   c(sum(.m$nrows), .rxOomNcol(.m))
 }
 
-# ── User-facing convenience wrapper ──────────────────────────────────────────
+# -- User-facing convenience wrapper ------------------------------------------
 
 #' Solve an ODE model in memory-safe chunks
 #'

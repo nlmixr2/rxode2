@@ -28,8 +28,7 @@
 (ignored when \code{errModel} is supplied).}
 
 \item{denseBy}{grid spacing for the forward checkpoint trajectory; smaller
-values reduce the covariate-interpolation error (which converges at
-\code{O(denseBy^2)}).}
+values reduce the covariate-interpolation error.}
 
 \item{atol, rtol}{solver tolerances used for both the forward checkpoint and
 the backward sweeps.}
@@ -38,15 +37,12 @@ the backward sweeps.}
 named numeric vector \code{dG/dtheta} over the build's \code{calcSens}.
 }
 \description{
-Fast path for every model this package supports: continuous ODE, modeled
-bioavailability (F), modeled lag (alag), replace/multiply events, and
-modeled-rate/duration infusions.  A single forward solve emits the Jacobian,
-forcing, and dose-dual quantities along a fine grid; the backward costate +
-quadrature sweep, discrete event jumps, and gradient accumulation all run in
-C++ (\code{rxode2AdjointSweep}) with no per-segment solver calls and no symbolic
-work at evaluation time -- the shape and speed the FOCEi outer loop needs.
-Numerically equivalent to \code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}} (the pure-R reference),
-typically several times faster.
+Covers continuous ODE, modeled bioavailability (F), modeled lag (alag),
+replace/multiply events, and modeled-rate/duration infusions.  A single
+forward solve emits the Jacobian, forcing and dose-dual quantities on a fine
+grid; the backward costate + quadrature sweep, event jumps and gradient
+accumulation run in C++ (\code{rxode2AdjointSweep}).  Numerically equivalent to
+\code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}}.
 }
 \author{
 Matthew L. Fidler

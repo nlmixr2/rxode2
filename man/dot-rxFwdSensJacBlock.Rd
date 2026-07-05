@@ -2,7 +2,7 @@
 % Please edit documentation in R/rxJacobian.R
 \name{.rxFwdSensJacBlock}
 \alias{.rxFwdSensJacBlock}
-\title{Full-system Jacobian for a first-order forward-sensitivity model, REUSING F_X}
+\title{Full-system Jacobian for a first-order forward-sensitivity model, reusing F_X}
 \usage{
 .rxFwdSensJacBlock(model, state, params)
 }
@@ -17,30 +17,12 @@
 character vector of \code{df(state)/dy(state)} lines for the full system
 }
 \description{
-A stiff (Rosenbrock / implicit) solver integrating the forward-sensitivity
-system needs the Jacobian of that FULL system (base states + rx__sens_*
-variational compartments), not the base model's.  Recomputing it from scratch
-(a second \code{.rxJacobian} over every expanded state pair) re-derives \code{F_X} and
-\code{F_p}, which \code{.rxJacobian(model)} already produced for the variational
-equations.  This builds the full df()/dy() block from the pieces instead, so
-only the genuinely new entries cost a \code{symengine::D}:
-}
-\details{
-\if{html}{\out{<div class="sourceCode">}}\preformatted{  RHS:  dy_i/dt = f_i(y);   dS_ip/dt = sum_k F_X[i][k] S_kp + F_p[i][p]
-
-  base x base   df(y_i)/dy(y_j)  = F_X[i][j]                       (REUSED)
-  base x sens                    = 0
-  sens x sens   df(S_ip)/dy(S_kp)= F_X[i][k]  (block-diag over p)  (REUSED)
-  sens x base   df(S_ip)/dy(y_j) = sum_k D(F_X[i][k],y_j) S_kp
-                                   + D(F_p[i][p],y_j)              (NEW; ==0 for
-                                                                    linear F)
-}\if{html}{\out{</div>}}
-
-Only the sens x base block needs differentiation, and it vanishes for models
-whose Jacobian/parameter-Jacobian are state-independent (linear PK), so the
-common case adds no symengine work at all.  \code{model} must have had
-\code{.rxJacobian(model)} (vars=TRUE) called already, so \verb{rx__df_<i>_dy_<j>__}
-(F_X) and \verb{rx__df_<i>_dy_<p>__} (F_p) are present as symbols.
+Builds the full df()/dy() block for the sensitivity-expanded system (base
+states + \verb{rx__sens_*} variational compartments) from the \code{F_X}/\code{F_p} pieces
+\code{.rxJacobian(model)} already produced.  The base x base and sens x sens blocks
+are \code{F_X} (reused, no differentiation); only the sens x base block needs new
+\code{symengine::D} and it vanishes for state-independent (linear) systems.
+Requires \code{.rxJacobian(model)} (vars=TRUE) to have run.
 }
 \author{
 Matthew L. Fidler

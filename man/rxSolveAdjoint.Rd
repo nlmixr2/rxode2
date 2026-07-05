@@ -40,29 +40,11 @@ the standard \code{rxSolve()} output (as \code{returnType="data.frame"}) with
 \verb{rx__sens_<state>_BY_<param>__} columns appended.
 }
 \description{
-Solves \code{object} exactly as \code{\link[=rxSolve]{rxSolve()}} would, then adds
-\verb{rx__sens_<state>_BY_<param>__} columns computed via ADJOINT (backward)
-sensitivity analysis instead of the usual forward-sensitivity augmented ODE
-system -- same column names, same output structure, drop-in for code that
-already consumes \code{rxSolve(object, ..., calcSens=)} output.
-}
-\details{
-Implemented as a thin orchestration layer around the \emph{existing, unmodified}
-\code{\link[=rxSolve]{rxSolve()}} (for the primal solve) plus \code{\link[=.rxAdjointSolveBuild]{.rxAdjointSolveBuild()}}/
-\code{\link[=.rxAdjointSolveEvalC]{.rxAdjointSolveEvalC()}} (for the sensitivity columns) -- it does not modify
-\code{rxSolve()}/\code{rxode2()} internals, so ordinary solves are completely
-unaffected regardless of whether this function exists.
-
-\strong{Performance note}: unlike the adjoint \emph{objective-gradient} path
-(\code{\link[=.rxAdjointGrad]{.rxAdjointGrad()}}, whose cost is independent of both the number of
-parameters and the number of output times), reconstructing the FULL
-per-timepoint trajectory this way costs one backward sweep per output time
-per state of interest -- it is faster than forward sensitivity only when
-\code{length(outTimes) * length(adjStates) < length(calcSens)}.  For typical PK
-data with many observation times this is often NOT the case; use this
-function for output-structure parity / cross-validation against forward
-sensitivities, and prefer \code{\link[=.rxAdjointGrad]{.rxAdjointGrad()}} when only a scalar objective
-gradient (e.g. for optimization) is needed.
+Solves \code{object} as \code{\link[=rxSolve]{rxSolve()}} would, then appends
+\verb{rx__sens_<state>_BY_<param>__} columns computed via adjoint (backward)
+sensitivity analysis.  Same column names and output structure as
+\code{rxSolve(object, ..., calcSens=)}.  Prefer \code{\link[=.rxAdjointGrad]{.rxAdjointGrad()}} when only a
+scalar objective gradient is needed.
 }
 \author{
 Matthew L. Fidler

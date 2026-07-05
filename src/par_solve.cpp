@@ -7400,7 +7400,7 @@ extern "C" void par_solve(rx_solve *rx) {
   /* Standalone rxSolve users see one summary line per call instead of a
      flood. nlmixr2est does not enter through par_solve for inner iterations
      (it calls ind_solve per subject) and flushes from its own iteration
-     printout — so this flush will not interfere with that aggregation. */
+     printout -- so this flush will not interfere with that aggregation. */
   rxSolveWarnFlush(5);
   par_progress_0=0;
 }

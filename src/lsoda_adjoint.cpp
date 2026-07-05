@@ -1,77 +1,46 @@
-// Exact discrete-adjoint driver for liblsoda (method="liblsodaadj", code 202 =
-// base liblsoda 2 + 200).  Fills the same rx__sens_<state>_BY_<param>__ columns
-// as rk4s / dop853s / cvodesadj, but as the EXACT reverse-mode transpose of
-// liblsoda's OWN Nordsieck multistep step map -- not a continuous-adjoint
-// approximation.
+// Exact discrete-adjoint driver for liblsoda (method="liblsodaadj", code 202).
+// Fills the same rx__sens_<state>_BY_<param>__ columns as rk4s / dop853s /
+// cvodesadj, as the exact reverse-mode transpose of liblsoda's own Nordsieck
+// multistep step map (not a continuous-adjoint approximation).
 //
-// #included into par_solve.cpp (guarded by IN_PAR_SOLVE, like rk4s.cpp /
-// cvodes_adjoint.cpp) so it sees calc_lhs / getSolve / rxEffNeq / the dydt
-// globals AND rk4s.cpp's luFactor/luSolveT (defined earlier in the same TU).
+// #included into par_solve.cpp (guarded by IN_PAR_SOLVE) so it sees calc_lhs /
+// getSolve / rxEffNeq / the dydt globals and rk4s.cpp's luFactor/luSolveT.
 //
-// Math (full derivation in ~/src/rxode2-liblsoda-adjoint-plan.md).  Per ACCEPTED
-// step (order nq, step h, coeffs el[], Nordsieck yh with (nq+1) rows):
-//   PREDICT  Pascal triangle (linear):  for j=nq..1: for i1=j..nq: yh[i1]+=yh[i1+1]
+// Math (full derivation in ~/src/rxode2-liblsoda-adjoint-plan.md).  Per accepted
+// step (order nq, step h, coeffs el[], Nordsieck yh):
+//   PREDICT  Pascal triangle: for j=nq..1: for i1=j..nq: yh[i1]+=yh[i1+1]
 //   CORRECT  acor = h*f(y) - yh_pred[2],  y = yh_pred[1] + el[1]*acor
-//            solved implicitly via  Pmat = I - h*el[1]*J,  w-solve uses Pmat^{-T}
+//            solved via Pmat = I - h*el[1]*J (w-solve uses Pmat^{-T})
 //   UPDATE   yh_new[j] = yh_pred[j] + el[j]*acor
-// The transpose (costate Lambda is yh-shaped, (nq+1) rows x nBase):
+// The transpose (costate Lambda is yh-shaped):
 //   UPDATE^T  adj_pred[j] = Lambda[j];  adj_acor = sum_j el[j]*Lambda[j]
 //   CORRECT^T w = Pmat^{-T} adj_acor;  adj_pred[1] += h*J^T w;  adj_pred[2] += -w;
 //             mu += h*F_p^T w              (parameter quadrature; F_p = rx__adjFP)
 //   PREDICT^T reverse Pascal:  for j=1..nq: for i1=nq..j: adj[i1+1]+=adj[i1]
-// KEY: the transpose is a LINEAR map parameterised only by (J, F_p, h, el, nq);
-// the predicted/acor VALUES are never needed -- so per step we record only
-// (tn, h, nq, el[], converged y=yh[1]) and recompute J,F_p from y via calc_lhs.
-// At an observation t_i (which liblsoda reaches by intdy interpolation, NOT at a
-// step boundary) the costate is seeded by intdy^T on the bracketing step; a final
-// t0 term folds the p-dependence of the initial Nordsieck row yh0[2]=h0*f(t0,y0).
+// The transpose is a linear map in (J, F_p, h, el, nq), so per step we record only
+// (tn, h, nq, el[], converged y) and recompute J,F_p via calc_lhs.  At an
+// observation the costate is seeded by intdy^T on the bracketing step.
 //
-// STATUS: P1-P4 -- variable ORDER (general Pascal^T + Nordsieck row add/drop on an
-// order change), variable STEP (scaleh^T at the step boundary AND a "bridge"
-// scaleh^T for the rejection rescaling between accepted steps), and Adams<->BDF
-// METHOD SWITCH (no special handling: the used el come from the elco table indexed
-// by the used order -- so a method's coefficients are captured automatically -- and
-// the switch's rescale is just another scaleh, i.e. the bridge).  The transition
-// after each accepted step is read off the recorded (nqu,hu)->(nq,h): dOrder in
-// {-1,0,+1} + the scaleh factor rh.  VALIDATED (RX_LSADJ_SELFCHECK) two ways: (a)
-// the discrete adjoint equals the discrete FORWARD sensitivity of the identical
-// recorded schedule to MACHINE precision (~1e-14) -- the transpose is exact; (b) an
-// independent PRIMAL replay of the same step-map reproduces liblsoda's recorded y to
-// the corrector's convergence level (O(tol)) -- the step-map model matches liblsoda.
-// (Covers observed order up to 8 + Adams->BDF switches on stiff problems.)  A finite
-// difference of a re-solved liblsoda is NOT the reference: it perturbs the adaptive
-// order/step/method schedule, agreeing only for params that do not move it.
+// Handles variable order/step and Adams<->BDF method switches: the used el come
+// from the elco table indexed by order, so coefficients are captured
+// automatically and a switch's rescale is just another scaleh.
 //
-// P5 -- INTERIOR EVENT JUMPS.  istateReset resets the integrator after every dose /
-// reset, so the trajectory is a chain of Nordsieck SEGMENTS joined by a state jump.
-// Each segment records its own (t0,y0,h0) init; the backward sweep chains across a
-// boundary by: (i) the segment re-init dual -- the costate of y0 is lam0[1] +
-// h0*J(y0)^T*lam0[2] (yh0[2]=h0*f(y0) couples the rows through f); then (ii) the
-// event jump dual dPhi/dy^T -- additive bolus = I, reset -> 0, replace[c] -> zero
-// component c, multiply[c] -> scale component c by the factor (event reconstructed
-// from the table).  Validated to machine precision by the self-check AND, since the
-// boundary formula is shared by both self-check replays, independently vs dop853s
-// (multi-dose / reset / replace / multiply all match to ~1e-8).  Modeled dose
-// modifiers are handled at EVERY segment start (incl. the t0 dose): bioavailability
-// f(c)=F adds mu += amt*dF/dp*lam_y0[c]; lag-time alag(c)=lag adds the transversality
-// mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).  (F+alag on the SAME cmt shares the family's
-// documented raw-amt caveat -- consistent with rk4s/dop853s/cvodesadj.)
+// Interior event jumps: istateReset restarts the integrator at every dose/reset,
+// so the trajectory is a chain of Nordsieck segments joined by a state jump.  The
+// backward sweep chains across a boundary via the segment re-init dual (yh0[2]=
+// h0*f(y0) couples the rows) and the event jump dual dPhi/dy^T (bolus=I, reset->0,
+// replace[c]->zero c, multiply[c]->scale c).  Modeled dose modifiers at each
+// segment start: f(c)=F adds mu += amt*dF/dp*lam_y0[c]; alag(c) adds the
+// transversality mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).
 //
-// Modeled rate()/dur() infusion duals: a modeled infusion spans the segments in
-// [t_on, t_off); the rate R = amt/(t_off-t_on) is reconstructed from the window's
-// event times.  In-window steps get the forcing mu += h*durMult*dR/dp[c]*w[c]
-// (F_p[c] gains durMult*dR/dp), and the segment starting at t_off gets the moving-off-
-// boundary transversality mu += -amt/R*durMult*dR/dp[c]*lam_c(t_off).  durMult = 1 for
-// rate(), amt for dur().  Constant-rate infusions have no dR/dp and are transparent.
-// Validated vs dop853s (~1e-8); the self-check replay is skipped for infusion models
-// (its dydt does not carry the runtime infusion rate).
+// Modeled rate()/dur() infusion duals over [t_on, t_off): in-window steps get the
+// forcing mu += h*durMult*dR/dp[c]*w[c], and the segment at t_off gets the moving-
+// boundary transversality mu += -amt/R*durMult*dR/dp[c]*lam_c(t_off).  durMult = 1
+// for rate(), amt for dur(); constant-rate infusions have no dR/dp.
 //
-// P6 -- par_liblsodaadj runs the subjects in parallel (OpenMP, like par_liblsoda; the
-// recording buffers are thread_local and each subject uses its own ind->lhs / solve
-// storage + per-thread ctx pool, so distinct subjects never alias -- bit-identical to
-// serial), and code 202 is in the rxsolve.R auto-switch .adjCodes so an adjoint model
-// solved with the DEFAULT liblsoda method upgrades to this exact discrete adjoint
-// (rather than the generic dop853s).  liblsodaadj is now feature-complete.
+// par_liblsodaadj runs subjects in parallel (OpenMP; recording buffers are
+// thread_local); code 202 is in rxsolve.R's .adjCodes so an adjoint model solved
+// with the default liblsoda method upgrades to this exact discrete adjoint.
 #ifdef IN_PAR_SOLVE
 
 // --- recording hooks: need liblsoda's common block (ctx->common->...) ----------
@@ -216,11 +185,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
 
-  // Reconstruct the event that opened each segment from the event table by matching
-  // its start time.  seg 0 is included so a modeled-F / modeled-lag dose AT t0 gets
-  // its quadrature too.  Additive boluses (dPhi/dy=I) are the default (evType stays
-  // -1 if not classified, treated as identity), so a not-found addl bolus is still
-  // correct; reset/replace/multiply get their exact dual.
+  // Reconstruct the event opening each segment by matching its start time (seg 0
+  // included, for a modeled-F/lag dose at t0).  Additive boluses (dPhi/dy=I) are
+  // the default; reset/replace/multiply get their exact dual.
   for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
     double t0 = lsAdjSegs[sg].t0;
     for (int i = 0; i < ind->n_all_times; ++i) {
@@ -241,12 +208,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     }
   }
 
-  // Reconstruct MODELED rate()/dur() infusion windows for the dR/dp dual.  Pair each
-  // modeled ON event (t_on, cmt, amt) with its matching OFF event (t_off) and derive
-  // the rate R = amt/(t_off-t_on) from the times (InfusionRate itself is not reliably
-  // reachable here).  Segments with t0 in [t_on,t_off) get the in-window forcing
-  // (F_p[cmt] += durMult*dR/dp); the segment starting at t_off gets the moving-off-
-  // boundary transversality (-amt/R*durMult).  durMult = 1 for rate(), amt for dur().
+  // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
+  // ON event with its matching OFF and derive R = amt/(t_off-t_on).  Segments in
+  // [t_on,t_off) get the in-window forcing; the segment at t_off gets the off-
+  // boundary transversality.  durMult = 1 for rate(), amt for dur().
   bool hasInfusion = false;
   for (int i = 0; i < ind->n_all_times; ++i) {
     int ev = getEvid(ind, ind->ix[i]);
@@ -351,10 +316,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   };
 
   // Backward sweep of one costate seed at (segIdx, time, wSeed) to t0, into mu.
-  // Segments are joined by an event (interior dose/reset); its jump has an exact
-  // dual.  The segment re-init yh0=[y0, h0*f(y0)] couples row 1 and row 2 via f, so
-  // the costate handed to the previous segment is  lam0[1] + h0*J(y0)^T*lam0[2]
-  // (then the event jump's dPhi/dy^T; for a plain bolus dPhi/dy=I so nothing more).
+  // Segments join at an event with an exact dual; the re-init yh0=[y0, h0*f(y0)]
+  // couples rows 1 and 2, so the costate handed back is lam0[1] + h0*J(y0)^T*lam0[2]
+  // (then the event jump's dPhi/dy^T).
   std::vector<double> wSeed(nBase);
   auto sweepToStart = [&](int segIdx, double time) {
     for (int seg = segIdx; ; --seg) {
@@ -376,10 +340,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // at this off segment's (t0,y0); lam_cmt(t_off) = lam_y0[cmt].)
       if (op->adjDrateOff >= 0 && Sg.offCmt >= 0) { const double *dR = &lhs[op->adjDrateOff]; int oc = Sg.offCmt;
         for (int p = 0; p < np; ++p) mu[p] += Sg.offFac * dR[oc * np + p] * wSeed[oc]; }
-      // The event's dPhi/dp explicit-parameter quadrature (applies at EVERY segment
-      // start, incl. seg 0 for a modeled-F/lag dose at t0).  lhs still holds calc_lhs
-      // at (t0,y0).  F: y0[c] = y(t-)[c] + F*amt -> mu += amt*dF/dp*lam_y0[c].  alag:
-      // the dose time t_d+lag(p) shifts -> mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).
+      // event dPhi/dp explicit-parameter quadrature (every segment start): modeled
+      // F -> mu += amt*dF/dp*lam_y0[c]; alag -> mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).
       if (Sg.evType == 0 && Sg.evCmt >= 0) {
         int c = Sg.evCmt; double amt = Sg.evAmt;
         if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += amt * dF[c * np + p] * wSeed[c]; }
@@ -397,11 +359,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     }
   };
 
-  // Continuous / full-interval infusion steady state (kind 2, set by handleSS):
-  // recording is paused across the ss pre-solve, so seg-0 y0 IS the constant
-  // steady state Y_ss where f(Y_ss,p) + R.e = 0, hence dY_ss/dp = -J^{-1} df/dp.
-  // After sweepToStart, wSeed is the costate at the window start, so the missing
-  // IC contribution to each observation is -(J^{-T} wSeed)^T df/dp.
+  // Continuous-infusion steady state (kind 2): seg-0 y0 is the constant Y_ss with
+  // dY_ss/dp = -J^{-1} df/dp, so the missing IC contribution per observation is
+  // -(J^{-T} wSeed)^T df/dp.
   bool ssContLL = (_lsSsKind == 2) && nBase > 0 && !lsAdjSegs.empty();
   std::vector<double> ssFXc, ssFP; std::vector<int> ssPiv;
   if (ssContLL) {
@@ -413,12 +373,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     if (!luFactor(ssFXc.data(), nBase, ssPiv.data())) ssContLL = false;   // singular J
   }
 
-  // ss==1 BOLUS / fixed-rate finite infusion (periodic or large-duration): the
-  // recording-paused window starts at seg-0 y0 (the post-dose peak for a bolus,
-  // the period-boundary trough for an infusion), so the missing IC is the
-  // monodromy fixed point S_ss = (I-M)^{-1}B of ONE steady-state period.  M/B are
-  // a model property, so re-record that one period from y0 with a high-order
-  // explicit tableau (dop853) and reuse the shared rk4sSsIc geometric series.
+  // ss==1 bolus / fixed-rate finite infusion: the missing IC is the monodromy
+  // fixed point S_ss = (I-M)^{-1}B of one steady-state period.  Re-record that
+  // period from y0 with a dop853 tableau and reuse the shared rk4sSsIc series.
   rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec;
   if (!ssContLL && op->adjoint && fxOff >= 0 && nBase > 0 && !lsAdjSegs.empty() && _lsSsKind == 1) {
     int neqOde = op->neq - op->numLin - op->numLinSens;
@@ -467,20 +424,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     }
   }
 
-  // ---- Self-check (RX_LSADJ_SELFCHECK=1).  Two independent replays on the SAME
-  // recorded schedule, reported as one message line:
-  //   * adjoint vs FORWARD-sensitivity replay -> must match to MACHINE precision;
-  //     that is the DEFINING property of a discrete adjoint (exact transpose of the
-  //     identical numerical step map), and it holds regardless of whether the
-  //     schedule is param-dependent (both replays use the same frozen steps).
-  //   * PRIMAL replay vs liblsoda's recorded y -> must match to O(tol); that
-  //     independently confirms the step-map model (predict/correct/update + order
-  //     change + scaleh + rejection bridge) actually reproduces liblsoda.
-  // A finite difference of a re-solved liblsoda is NOT used: it moves the adaptive
-  // order/step schedule and only agrees for params that do not perturb it.
-  // (Skipped for infusion models: this replay's dydt does not carry the runtime
-  // infusion rate, so it cannot reproduce the in-window forcing -- infusion duals are
-  // validated against dop853s instead.)
+  // ---- Self-check (RX_LSADJ_SELFCHECK=1): two replays on the same recorded
+  // schedule -- adjoint vs forward-sensitivity replay (exact-transpose property)
+  // and primal replay vs liblsoda's recorded y (step-map model).  Skipped for
+  // infusion models (the replay dydt lacks the runtime infusion rate; validate
+  // those vs dop853s).
   if (getenv("RX_LSADJ_SELFCHECK") && hasInfusion) {
     REprintf("[lsadj] self-check skipped (infusion forcing not modeled in the replay); validate vs dop853s\n");
   } else if (getenv("RX_LSADJ_SELFCHECK")) {
@@ -504,8 +452,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       obsIdx.push_back(i); obsBrk.push_back(S);
     }
     // forward replay, segment by segment (re-init the Nordsieck at each; carry the
-    // state sensitivity Sin across the interior-event boundary -- plain bolus so the
-    // state passes through the jump unchanged, dPhi/dy=I).
+    // state sensitivity Sin across the interior-event boundary).
     for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
       const lsAdjSeg &Sg = lsAdjSegs[sg];
       std::fill(yhP.begin(), yhP.end(), 0.0);

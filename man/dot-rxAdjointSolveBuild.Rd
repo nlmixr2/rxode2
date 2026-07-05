@@ -24,10 +24,7 @@ an opaque list consumed by \code{\link[=.rxAdjointSolveEvalC]{.rxAdjointSolveEva
 \description{
 Performs all symbolic work (Jacobian, dose-dual expressions, model
 compilation) once and returns a reusable object for \code{\link[=.rxAdjointSolveEvalC]{.rxAdjointSolveEvalC()}},
-the C++-backed full-trajectory counterpart of \code{\link[=.rxAdjointSolve]{.rxAdjointSolve()}}.  Reuses
-the SAME event-dual detection as \code{\link[=.rxAdjointGradBuild]{.rxAdjointGradBuild()}} (F, modeled lag,
-replace/multiply, modeled rate/dur infusion) since the dual math is
-independent of which output state a costate block is tracking.
+the C++-backed counterpart of \code{\link[=.rxAdjointSolve]{.rxAdjointSolve()}}.
 }
 \author{
 Matthew L. Fidler

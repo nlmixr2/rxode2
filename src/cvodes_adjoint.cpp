@@ -1,35 +1,24 @@
-// CVODE adjoint-sensitivity driver (method="cvodesadj"; approach B: self-managed
-// dense primal + plain-CVODE backward).  Fills rx__sens_<state>_BY_<param>__ cols.
+// CVODE adjoint-sensitivity driver (method="cvodesadj"): self-managed dense
+// primal + plain-CVODE backward.  Fills rx__sens_<state>_BY_<param>__ cols.
 //
-// #included into par_solve.cpp (guarded by IN_PAR_SOLVE, like dop5.cpp/rk4s.cpp)
-// so it sees calc_lhs / iniSubject / getSolve / handle_evid / the dydt globals.
-// Compiles to an empty .o when built standalone.
+// #included into par_solve.cpp (guarded by IN_PAR_SOLVE) so it sees calc_lhs /
+// iniSubject / getSolve / handle_evid / the dydt globals.  Uses plain CVODE
+// (CV_BDF) for both sweeps and manages the adjoint ourselves (CVODES native ASA
+// assumes one continuous forward integration, which rxode2's dose/reset events
+// corrupt, so only plain CVODE is vendored).
 //
-// Uses SUNDIALS' plain CVODE (CV_BDF) for BOTH sweeps and manages the adjoint
-// ourselves.  (An earlier revision used CVODES' NATIVE adjoint (ASA:
-// CVodeF/CVodeB), but ASA checkpointing assumes ONE continuous forward
-// integration, which rxode2's dose / reset / infusion-off events -- an external
-// CVodeReInit -- corrupt during the forward checkpoint storage.  The native-ASA
-// CVODES vendoring was removed; only plain CVODE is vendored now.)
-//
-//   FORWARD  : plain CVODE, driven exactly like every other rxode2 solver's main
-//              loop (cloned from dop5.cpp: preSolve / handleEvid1 / handleEvid3 /
-//              handleSS / handleExtraDose / updateSolve), stepping in CV_ONE_STEP
-//              mode so we RECORD a dense per-segment primal history (t, y, f=dydt
-//              at each accepted step).  A new "segment" begins at every dose/reset
-//              (state jump), so interpolation never blurs a jump.
-//   BACKWARD : for each (observation t_i, base state k) integrate the augmented
-//              linear system  d(lambda)/dt = -F_X(y(t))^T lambda,
-//              d(mu)/dt = -F_p(y(t))^T lambda  from t_i down to t_0 with a plain
-//              CVODE integrator, evaluating F_X/F_p (rx__adjFX_*/rx__adjFP_* lhs
-//              from calc_lhs) on the interpolated primal y(t).  mu(t_0) =
+//   FORWARD  : plain CVODE driven like the other rxode2 solvers (cloned from
+//              dop5.cpp), stepping CV_ONE_STEP to record a dense per-segment
+//              primal history (t, y, f).  A new segment begins at every
+//              dose/reset so interpolation never blurs a jump.
+//   BACKWARD : for each (observation t_i, base state k) integrate d(lambda)/dt =
+//              -F_X^T lambda, d(mu)/dt = -F_p^T lambda from t_i down to t_0,
+//              evaluating F_X/F_p on the interpolated primal.  mu(t_0) =
 //              dy_k(t_i)/dp lands in the rx__sens_<k>_BY_<p>__ slots.
 //
-// For plain bolus / constant-rate infusion / reset the adjoint jump at a dose is
-// the identity (lambda, mu unchanged), so straight backward integration through
-// dose times is correct; only F_X/F_p change (handled by the segment-aware primal
-// interpolation).  Modeled-F/alag dose-parameter jumps are a later addition (the
-// discrete-adjoint RK methods already carry them).
+// For plain bolus / constant-rate infusion / reset the adjoint dose jump is the
+// identity, so backward integration through dose times is correct; only F_X/F_p
+// change.  Modeled-F/alag dose-parameter jumps are a later addition.
 #ifdef IN_PAR_SOLVE
 
 #include <cvode/cvode.h>
@@ -344,10 +333,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) { infusRec[w].tOff = xout; break; }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
-        // A reset wipes the state to (parameter-independent) inits, so its jump
-        // map Phi(y)=inits has dPhi/dy = 0: going backward the costate zeroes at
-        // this time.  Record it (BEFORE handleEvid3, which mutates xout); the
-        // backward sweep stops there for later observations.
+        // A reset wipes the state to (parameter-independent) inits, so dPhi/dy = 0
+        // and the backward costate zeroes here.  Record before handleEvid3 mutates
+        // xout.
         resetT.push_back(xout);
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         didEvent = 1;

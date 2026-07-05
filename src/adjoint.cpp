@@ -9,39 +9,27 @@
 #include <vector>
 #include <algorithm>
 
-// Backward adjoint sweep for the functional-gradient objective.
-//
-// Given the forward trajectory sampled on a fine increasing grid `tg` and, at
-// every grid point, the full Jacobian J (df_i/dy_j) and forcing df_i/dtheta_p,
-// integrate the costate and quadrature backward in one pass:
+// Backward adjoint sweep for the functional-gradient objective.  Integrates the
+// costate and quadrature backward in one RK4 pass over the fine grid `tg`:
 //
 //   d lambda / dt = -J(t)^T lambda            (costate)
 //   d mu_p    / dt = -lambda^T (df/dtheta_p)   (running gradient quadrature)
 //
-// lambda picks up the per-observation covector `cover` as a jump at each
-// observation grid index `obsK` (processed in decreasing time).  `out` receives
-// the trajectory part of dG/dtheta.  Integration uses RK4 on the fine grid
-// (J / df-dp linearly interpolated at step midpoints); on the dissipative PK
-// grids this matches an adaptive backward solve to ~1e-6 while avoiding
-// per-segment solver calls and any symbolic work.
+// lambda picks up the per-observation covector `cover` at each observation grid
+// index `obsK` (processed in decreasing time); `out` receives dG/dtheta.
 //
-// Data layout (column-major, as passed straight from R matrices):
-//   J[k + (i*ns + j)*nt] = df_i/dy_j        at tg[k]   (nt x ns*ns)
-//   dP[k + (i*np + p)*nt] = df_i/dtheta_p    at tg[k]   (nt x ns*np)
-//   cover[o + i*nobs]     = covector row o, state i     (nobs x ns)
-//   obsK[o]               = 0-based grid index of observation o
+// Data layout (column-major, straight from R matrices):
+//   J[k + (i*ns + j)*nt]  = df_i/dy_j        at tg[k]   (nt x ns*ns)
+//   dP[k + (i*np + p)*nt]  = df_i/dtheta_p    at tg[k]   (nt x ns*np)
+//   cover[o + i*nobs]      = covector row o, state i     (nobs x ns)
+//   obsK[o]                = 0-based grid index of observation o
 //
-// Exposed with C linkage and registered via R_RegisterCCallable so downstream
-// packages can obtain it with R_GetCCallable("rxode2", "rxode2AdjointSweep")
-// -- the CRAN-preferred cross-package interface (no ABI coupling).
-// Discrete dosing-parameter duals are applied at their grid index during the
-// same backward pass, all in the uniform form
+// Dosing-parameter duals apply at their grid index in the same pass:
 //   out[p] += (lambda . dualW[e]) * dualC[e][p]     (dose duals)
 //   lambda[cjCmt[e]] *= cjAlpha[e]                    (costate jumps)
-// (F: w = amt*e_c, c = dF/dtheta;  modeled lag: w = f(y-)-f(y+), c = d(alag)/dtheta;
+// (F: w = amt*e_c, c = dF/dtheta;  lag: w = f(y-)-f(y+), c = d(alag)/dtheta;
 //  infusion boundary: w = R*e_c, c = d(tau2)/dtheta;  replace: alpha=0; multiply:
-//  alpha=multiplier).  The infusion continuous forcing is folded into dP by the
-//  caller.  All jump/dual arrays are column-major: dualW[e + i*nDual],
+//  alpha=mult).  Jump/dual arrays are column-major: dualW[e + i*nDual],
 //  dualC[e + p*nDual].
 extern "C" void rxode2AdjointSweep(double *tg, double *J, double *dP,
                                    double *cover, int *obsK, int ns, int np,
@@ -114,34 +102,22 @@ extern "C" void rxode2AdjointSweep(double *tg, double *J, double *dP,
     for (int p = 0; p < np; ++p)
       mu[p]  += (h / 6.0) * (m1[p] + 2 * m2[p] + 2 * m3[p] + m4[p]);
   }
-  // out already holds the accumulated dose-dual contributions; add the
-  // trajectory quadrature (caller zeroes out before the call).
+  // out holds the dose-dual contributions; add the trajectory quadrature
   for (int p = 0; p < np; ++p) out[p] += mu[p];
 }
 
-// Full-trajectory adjoint sweep: dy_k(t_i)/dp for EVERY state of interest k,
-// EVERY requested output time t_i, and EVERY parameter p -- the adjoint
-// counterpart of forward sensitivity's rx__sens_<state>_BY_<param>__ columns.
+// Full-trajectory adjoint sweep: dy_k(t_i)/dp for every state of interest k,
+// output time t_i and parameter p (adjoint counterpart of forward sensitivity's
+// rx__sens_<state>_BY_<param>__ columns).
 //
-// IMPORTANT: dy_k(t_i)/dp requires the costate reset to e_k AT t_i and
-// integrated ALL THE WAY BACK to t0 -- it is NOT a snapshot of a shared
-// running accumulator taken mid-sweep (that would conflate contributions
-// belonging to a LATER output time's own reset point with an EARLIER one's,
-// since the linear costate dynamics do not compose that way for distinct
-// reset vectors).  So this performs one INDEPENDENT backward sweep per
-// output time (looping o = 0..nOut-1), each running from grid index outK[o]
-// down to 0, with one costate/quadrature block per state of interest reset
-// at the start of that sweep.  Cost is O(nOut * nStates) sweeps of the grid
-// -- the same asymptotic cost as [.rxAdjointSolve()]'s R loop of independent
-// solves, just without the per-call R/solver overhead.  (This is why the
-// adjoint method's real speed win over forward sensitivity is the SCALAR
-// objective gradient in `rxode2AdjointSweep` above, not full-trajectory
-// reconstruction -- see the plan's "honest scoping note".)
+// dy_k(t_i)/dp needs the costate reset to e_k at t_i and integrated all the way
+// back to t0, so this runs one independent backward sweep per output time (o =
+// 0..nOut-1, grid index outK[o] down to 0) with one costate/quadrature block
+// per state of interest.
 //
 // result[o + s*nOut + p*nOut*nStates] = dy_{stateIdx[s]}(t_{outK[o]}) / dp_p
 // (column-major, nOut x nStates x np).  Dose duals / costate jumps apply
-// identically to every block (the jump/forcing math does not depend on which
-// output state a block is tracking).
+// identically to every block.
 extern "C" void rxode2AdjointTrajSweep(double *tg, double *J, double *dP,
                                        int ns, int np, int nt,
                                        int *outK, int nOut,

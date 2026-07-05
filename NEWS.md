@@ -1,37 +1,21 @@
 # rxode2 5.1.3
 
-- Stiff adjoint and forward-sensitivity solvers now integrate with the ANALYTIC
-  Jacobian of the augmented (sensitivity-expanded) system:
-  - `.rxAdjointExpand(stiff=TRUE)` emits the base-block `df()/dy()` Jacobian
-    (reusing the `rx__df_*` already computed for the backward sweep), so the
-    stiff adjoint methods -- `ros4s` and the whole Rosenbrock/implicit-RK family,
-    plus the `dop853s+ros4s` AutoSwitch composite -- step the wide augmented
-    system natively at steady state.  `ros4s` stays genuinely `ros4`.
-  - `rxode2(..., calcSens=, calcJac=TRUE)` computes the Jacobian of the FULL
-    forward-sensitivity system AFTER the sensitivity expansion (the base-only
-    Jacobian was incomplete for the variational compartments).  It reuses `F_X`
-    for the base x base and sens x sens blocks and only differentiates the
-    sens x base block (identically zero for linear systems), so the common case
-    adds no extra symbolic work.
-  - Both are gated so paths that never form a Jacobian pay nothing: the adjoint
-    block only on `stiff=TRUE`; the forward one on `calcJac` (default off, so
-    `lsoda`/`liblsoda` FOCEi sensitivities are unchanged).
-  - Boost's `rosenbrock4` (`ros4`) and `implicit_euler` (`iem`) now zero their
-    Jacobian matrix before each `calc_jac`, so a SPARSE analytic Jacobian (only
-    the structurally nonzero entries emitted) is stepped correctly instead of
-    picking up stale entries across steps.
-  - The pure-stiff adjoint solvers now record AND transpose the steady-state
-    monodromy initial-condition term with the method's OWN stiff stepper
-    (Rosenbrock / implicit-RK stage recurrence), instead of a fixed dop853
-    explicit stand-in.  The ss primal and its sensitivity IC now share one
-    discretization, making the stiff adjoint stiff end-to-end and tightening
-    steady-state sensitivity accuracy (~1e-6 vs ~1e-4).
-  - `rxSolveAdjointRk4()` gained a `method=` argument and now infers whether the
-    adjoint expansion needs the stiff analytic Jacobian directly from the method
-    (`.rxAdjointMethodStiff()`), building it with `stiff=TRUE` for the Rosenbrock
-    / implicit-RK methods and the `dop853s+ros4s` composite, and without it for
-    the explicit / multistep ones -- so a stiff adjoint solve no longer requires
-    building the expansion with `stiff=TRUE` by hand.
+- Stiff adjoint and forward-sensitivity solvers now integrate the augmented
+  (sensitivity-expanded) system with its analytic Jacobian:
+  - `.rxAdjointExpand(stiff=TRUE)` emits the base-block `df()/dy()` Jacobian, so
+    the Rosenbrock/implicit-RK adjoint methods (`ros4s` etc., and the
+    `dop853s+ros4s` composite) step the augmented system natively.
+  - `rxode2(..., calcSens=, calcJac=TRUE)` computes the Jacobian of the full
+    forward-sensitivity system after the expansion, reusing `F_X` and only
+    differentiating the (linear-zero) sens x base block.
+  - Both are gated so paths that never form a Jacobian pay nothing.
+  - Boost's `rosenbrock4` and `implicit_euler` now zero their Jacobian before
+    each `calc_jac`, so a sparse analytic Jacobian is stepped correctly.
+  - Stiff adjoint steady-state solves record and transpose the monodromy
+    initial-condition term with the method's own stiff stepper.
+  - `rxSolveAdjointRk4()` gained a `method=` argument and infers whether the
+    expansion needs the stiff Jacobian from the method
+    (`.rxAdjointMethodStiff()`).
 
 - Added jump sensitivities for events (based on
   https://github.com/dkaschek/EventSensitivities).  Hybrid jump
@@ -43,203 +27,92 @@
   (with an automatic ode->syntax translation still).  These also have
   gradients calculated through symbolic differentiation.
 
-- Add `rxOmegaVarCovDeriv()`, a non-Cholesky (variance-covariance) `Omega`
-  parameterization path: it returns `Omega^{-1}`, `log|Omega|`, and their first
-  and second derivatives with respect to each free variance-covariance element
-  (closed form, `d(Omega^{-1})/d(omega_ab) = -Omega^{-1} E_ab Omega^{-1}`).  The
-  default estimation parameterization is a Cholesky decomposition, so reporting
-  random-effect standard errors on the natural variance scale (or building an
-  analytic covariance over the `Omega` elements) needs this separate path.
+- Add `rxOmegaVarCovDeriv()`, a non-Cholesky (variance-covariance) `Omega` path
+  returning `Omega^{-1}`, `log|Omega|`, and their first and second derivatives
+  with respect to each free variance-covariance element.
 
-- Add `rxExpandSens3_()`, which generates the analytic third-order forward
-  sensitivity equations (`d^3 state / d s1 d s2 d s3`) by total-differentiating
-  the second-order sensitivity right-hand side.  `.rxSens()` gained a `vars3`
-  argument that drives it and stores the result in `..sens3`, extending the
-  existing first- and second-order (`rxExpandSens_()`, `rxExpandSens2_()`)
-  machinery.  This supplies the exact, finite-difference-free sensitivities
-  needed for analytic FOCEI/FOCE covariance Hessians downstream.
+- Add `rxExpandSens3_()`, generating the analytic third-order forward
+  sensitivity equations; `.rxSens()` gained a `vars3` argument that drives it and
+  stores the result in `..sens3`.
 
-- Fixed a compartment-indexing bug in the generated C where, in a
-  `linCmt()` model that both has an error model and reads a materialized
-  linCmt compartment in an equation (e.g. `Cp <- peripheral1 / vp`), the
-  observation compartment injected for the endpoint shifted the linCmt
-  compartments' solved-state indices, so the in-equation reference read an
-  unwritten slot (`0`) instead of the solved amount.  The `__DDT` state
-  defines are now keyed by each compartment's declaration index (a no-op
-  when the orders already agree), so `central`, `peripheral1`,
-  `peripheral2` and `depot` amounts resolve correctly in model equations
-  alongside an error model.
+- Fixed a compartment-indexing bug where a `linCmt()` model with both an error
+  model and an in-equation linCmt-compartment reference (e.g.
+  `Cp <- peripheral1 / vp`) read an unwritten slot.  The `__DDT` defines are now
+  keyed by each compartment's declaration index.
 
-- Add support for delay differential equations (DDEs) via the new
-  `delay(state, T)` model function, which evaluates an ODE `state` at
-  the past time `t - T` (the same semantics as Monolix's `delay()`).
-  Delayed states are interpolated from the solver's dense output
-  (using the 8th-order Dormand-Prince interpolant), so they are
-  obtained to the full accuracy of the integration.  Models that use
-  `delay()` default to the dense AutoSwitch composite `"dop853+ros4"`,
-  which switches between dop853 and ros4 per segment in dense mode,
-  so a delay model that is non-stiff early and stiff later is solved
-  efficiently in a single pass (the dop853 and ros4 dense histories are
-  recorded together).  Stiff delay models can also be solved with
-  `method = "ros4"` directly.  The step size is automatically capped to
-  the smallest delay so short delays stay accurate.  Non-dense solvers
-  are rejected with an informative error.  Dense history is recorded
-  only for the states that `delay()` actually looks back on, so a delay
-  on one state in a large ODE system stays inexpensive.  `delay()` may
-  only be used on a `d/dt()` (ODE) right-hand side, where the dense
-  history is available.  The DDE dense-output and history machinery is
-  adapted from the 'dde' package (Rich FitzJohn, Wes Hinsley, Imperial
-  College of Science, Technology and Medicine), whose authors are added
-  as contributors.
+- Add support for delay differential equations via `delay(state, T)`, which
+  evaluates an ODE `state` at `t - T` (Monolix semantics).  Delayed states are
+  interpolated from the solver's dense output; delay models default to the
+  `"dop853+ros4"` dense AutoSwitch composite and cap the step size to the
+  smallest delay.  Dense history is recorded only for the states `delay()` uses;
+  `delay()` may only appear on a `d/dt()` right-hand side.  The dense-output and
+  history machinery is adapted from the 'dde' package (Rich FitzJohn, Wes
+  Hinsley, Imperial College of Science, Technology and Medicine), whose authors
+  are added as contributors.
 
-- Forward sensitivities are now generated for delay differential
-  equation models, so `delay()` models can be estimated with
-  gradient-based methods such as nlmixr2's FOCEi.  Each sensitivity
-  equation gains the delayed term `delay(S, T)` (the sensitivity of the
-  delayed state), which reuses the same dense history.  Delay durations
-  that themselves depend on an estimated parameter are also supported
-  (at first order), using the new `rxDelayD(state, T)` -- the analytic
-  time-derivative of a delayed state, obtained from the derivative of the
-  dense interpolant.  Second- and third-order sensitivities are
-  generated for constant delays; `rxDelayD2()` and `rxDelayD3()` provide
-  the analytic second and third time-derivatives of the dense
-  interpolant (the latter is the groundwork for breaking-point jump
-  tracking and for higher-order Hessian terms).
+- Forward sensitivities are now generated for delay models, so `delay()` models
+  estimate with gradient-based methods such as FOCEi.  Each sensitivity equation
+  gains `delay(S, T)`; parameter-dependent delays are supported at first order
+  via `rxDelayD(state, T)`.  Second- and third-order sensitivities are generated
+  for constant delays (`rxDelayD2()`, `rxDelayD3()`).  Parameter-dependent delays
+  at second and higher order are rejected for now (moving breaking points
+  introduce jumps); the first-order gradient stays exact, so estimate these with
+  a numeric or Gauss-Newton Hessian.
 
-  - TODO: support parameter-dependent delays `delay(state, T(p))` for
-    **second- and higher-order** sensitivities (needed for an exact
-    analytic FOCEi Hessian).  When the duration `T` depends on an
-    estimated parameter the DDE breaking points `t = n*T(p)` move with
-    the parameter, which introduces jump discontinuities in the second-
-    (and higher-) order sensitivities at those points; the current
-    smooth-ODE formulation is correct only between breaking points, so
-    these cases are rejected with an informative error for now.
-    Capturing the jumps needs breaking-point tracking (release a
-    computed delta into the affected sensitivity compartment at each
-    moving breaking point `t = n*T(p)`).  In the meantime these models
-    are still fully usable for estimation: the **first-order sensitivity
-    (the gradient) is exact and continuous** across breaking points, so
-    fit them with a numeric or Gauss-Newton Hessian -- the latter is the
-    default in nlmixr2 FOCEi -- which needs only the exact gradient.
+- Added AutoSwitch composite ODE methods written `"primary+secondary"` (e.g.
+  `"dop853+ros4"`): a non-stiff primary with reactive fallback to a stiff
+  secondary (with an automatic analytic Jacobian), in both the standard and
+  dense-output paths.
 
-- Added AutoSwitch composite ODE solving methods, written as
-  `"primary+secondary"` (for example `method = "dop853+ros4"`).  These
-  probe each interval/segment with a non-stiff primary (`dop853`) and
-  reactively fall back to a stiff secondary only when stiffness is
-  detected, so a problem that is non-stiff in one region and stiff in
-  another is solved efficiently in a single pass.  The stiff secondary
-  may be `ros4` or another Rosenbrock / implicit Runge-Kutta method, for
-  which an analytical Jacobian is generated automatically, and the
-  composite works in both the standard and dense-output paths.
+- Add automatic conversion of ODE models to linear models, applied transparently
+  at solve time (`rxSolve(..., useLinCmt=TRUE)`, the default), passing detected
+  PK parameters explicitly to `linCmt()`.  A converted model that will not
+  compile falls back to the ODE.
 
-- Add automatic conversion of ode models to linear models when
-  detected.  This conversion is applied transparently at solve time
-  (`rxSolve(..., useLinCmt=TRUE)`, the default) and the detected PK
-  parameters are passed explicitly to `linCmt()` so the
-  parameterization is inferred even when the parameters are defined
-  only in the `ini()` block.  If a converted model cannot be compiled
-  the original ODE model is used instead, so the conversion never
-  breaks an otherwise-valid solve.
+- The automatic `linCmt()` conversion now handles a central sub-system coupled to
+  an output-only peripheral state (e.g. `Cp <- periph / vp`) by renaming the ODE
+  compartments to the canonical linCmt names.  Systems `linCmt()` cannot
+  represent (metabolites, peripherals with their own `~` endpoint) stay explicit
+  ODEs.
 
-- The automatic `linCmt()` conversion now handles models whose central
-  sub-system is coupled to an additional `d/dt()` state referenced
-  elsewhere (for example a peripheral observable such as `Cp <- periph /
-  vp`).  Previously such a state was dropped and demoted to a required
-  input parameter, so the default solve aborted with "parameter(s) are
-  required for solving: &lt;state&gt;".  When the coupled state is an
-  *output-only* peripheral, `odeToLin()` now keeps the model analytic by
-  renaming the ODE compartments to their canonical linCmt names
-  (`peripheral1`, `peripheral2`, `depot`) -- whose solved amounts
-  `linCmt()` exposes -- and anchoring the central endpoint to the
-  `central` compartment so no observation compartment is injected.
-  Systems that `linCmt()` cannot represent are left as explicit ODEs
-  instead: a compartment with independent loss such as a metabolite (mass
-  is not conserved across the exchange), or a peripheral that carries its
-  own estimated `~` endpoint (which collides with linCmt()'s internal
-  compartment).
+- Fixed the automatic `linCmt()` conversion firing on a nonlinear model whose
+  nonlinearity is written through a state-derived observable (e.g.
+  Michaelis-Menten via `Cc <- central / vc`); such models now keep their explicit
+  ODE states.
 
-- Fixed the automatic `linCmt()` conversion incorrectly firing on a
-  genuinely nonlinear model when the nonlinearity is written through a
-  state-derived observable instead of the state itself -- e.g.
-  Michaelis-Menten elimination `Cc <- central / vc` then
-  `... - vmax * Cc * vc / (km + Cc)`.  The linearity scan only inspected
-  *direct* state references, so the MM term looked like a constant and
-  the model was linearized, silently dropping the nonlinear term and
-  demoting the inter-compartmental rate constants (`k12`, `k21`) to
-  required input parameters.  The default solve then aborted with
-  `The following parameter(s) are required for solving: k21, k12`.
-  Such models now keep their explicit ODE states.
+- Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.) now work
+  inside `linCmt()` and mixed `linCmt()`+ODE models; `odeToLin()` preserves and
+  renames them when converting.
 
-- Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.)
-  now work inside `linCmt()` models and mixed `linCmt()` + ODE models,
-  referencing the linear compartment names (`depot`, `central`)
-  directly.  `odeToLin()` preserves these calls when converting, and
-  renames non-standard ODE compartment names to the linear-compartment
-  names.
+- Fixed the string form of the compartment argument in the adaptive dosing
+  helpers (e.g. `bolus(50, cmt = "depot")`).
 
-- Fixed the string form of the compartment argument in the adaptive
-  dosing helpers (e.g. `bolus(50, cmt = "depot")`) so it produces the
-  correct compartment reference.
+- Fixed `tad(<state>)` / `tlast(<state>)` returning `NA` or the wrong value in
+  `linCmt()` models that also declare an extra `cmt()` for an algebraic
+  observable (nlmixr2est#685).
 
-- Fixed `tad(<state>)` / `tlast(<state>)` (and the rest of the per-state
-  dose-timing family) returning `NA` or the wrong value in `linCmt()`
-  models that also declare an extra `cmt()` compartment for an algebraic
-  observable (e.g. an nlmixr2 ui model with `Cc ~ prop(propSd)`).  The
-  injected observable compartment used to sort before the linear
-  compartments (which are added last) and shifted the slot indices the
-  generated code used for the per-state lookups (nlmixr2est#685).
+- Added a forward automatic-derivative linear compartment model.
 
-- Added a forward automatic derivative linear compartment model, which
-  beats the reverse mode automatic derivatives for linear compartment
-  models
+- Added `setRxThreadId()` so a package can drive rxode2's per-subject solve from
+  its own OpenMP team (Windows interaction with `nlmixr2`).
 
-- Added `setRxThreadId()` so a package that drives rxode2's per-subject
-  solve from its OWN OpenMP team for windows interaction with `nlmixr2`.
+- Added Jacobian handling of adaptive dosing events.
 
-- Added Jacobian handling of adaptive dosing events (retaining them
-  when calculating Jacobian).  Should be able to be applied in forward
-  sensitivity analysis as well.
-
-- Bug fix for `mix()` models as well as `iCov` models.
+- Bug fix for `mix()` models and `iCov` models.
 
 - Fixed an out-of-bounds heap read in `rxSolve()` parameter setup
-  (`rxSolve_normalizeParms`, `src/rxData.cpp`).  When subjects share a
-  single event table, the table is stored once but the per-replicate
-  copy for an `nsim > 1` solve that needs sorting (e.g. a model with
-  modeled `rate()` / `dur()`) read `rx->nall` (the full per-sim total)
-  doubles from the single-subject-sized source, over-reading the event
-  arrays.  The base table is now tiled across each replicate's block
-  (AddressSanitizer-confirmed; results are unchanged).
+  (`rxSolve_normalizeParms`) when subjects share a single event table in an
+  `nsim > 1` sorted solve (AddressSanitizer-confirmed; results unchanged).
 
 - Fixed an out-of-bounds heap read in `syncIdx()`
-  (`inst/include/rxode2parseHandleEvid.h`) that occurred on the main
-  ODE solve path.  `handle_evid()` advances `ind->ixds` past the last
-  dose and `syncIdx()` dereferenced `ind->idose[ind->ixds]` before
-  bounds-checking `ixds` against `ind->ndoses`, reading one element
-  past the `idose` array.  The stray value is normally discarded by
-  the subsequent re-sync (so solve results are unchanged), but the
-  out-of-bounds read corrupted the heap on some toolchains and
-  surfaced as an intermittent segfault at an unrelated allocation
-  (observed on the R 4.5.3 CI runner).  Confirmed and fixed with
-  AddressSanitizer; reproduced by a modeled-duration + lag-time model
-  dosed into multiple compartments (see
+  (`inst/include/rxode2parseHandleEvid.h`) that dereferenced
+  `ind->idose[ind->ixds]` before bounds-checking `ixds`
+  (AddressSanitizer-confirmed; results unchanged;
   `tests/testthat/test-syncidx-dose-index-oob.R`).
 
-- Fixed three further out-of-bounds memory accesses found alongside it
-  (memory-safety hardening; none changes results):
-
-    - `cvPost()` / `rcvC1`: the single-variance (1x1 `omega`) branch
-      indexed the result matrix (`ret(1,1)`) before sizing it.
-
-    - `linCmt.h` (`linCmtStan2ssInf8`): the oral two-compartment
-      steady-state-infusion branch where both infusion rates are
-      non-positive wrote `ret(3,0)` on a three-row vector (valid rows
-      0-2), a one-row out-of-bounds heap write.
-
-    - `etTran()`: `combineDvid` read element `[1]` of a length-1 logical.
-
-    - `rxDerived()` (`derived1`): a recycled length-1 parameter pointer
-      was incremented past its one-element buffer.
+- Fixed further out-of-bounds accesses (memory-safety hardening, no result
+  changes): `cvPost()`/`rcvC1` 1x1 `omega`; `linCmt.h` `linCmtStan2ssInf8`;
+  `etTran()` `combineDvid`; `rxDerived()` `derived1`.
 
 # rxode2 5.1.2
 

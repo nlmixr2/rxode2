@@ -488,7 +488,7 @@ rxTest({
   })
 
   test_that("odeToLin preserves standard depot/central compartment in bolus()", {
-    # Model uses standard names (depot, central) — odeToLin should
+    # Model uses standard names (depot, central) -- odeToLin should
     # compile and solve cleanly; adaptive dosing calls are preserved as-is.
     .m <- suppressMessages(rxode2(function() {
       ini({ tka <- log(0.5); tcl <- log(1); tv <- log(10); add.sd <- 0.1 })

@@ -19,8 +19,7 @@
 
 \item{doses}{optional list of additive-bolus dose specs, each
 \verb{list(step = <0-based grid step>, cmt = <state name>, amt = <numeric>)};
-applied (with bioavailability \code{f(cmt)} if defined) at the start of the step,
-with the corresponding forward-sensitivity jump.}
+applied (with bioavailability \code{f(cmt)} if defined) at the start of the step.}
 
 \item{S0}{optional initial sensitivity (\verb{ns x np}); default zero.}
 }
@@ -28,10 +27,8 @@ with the corresponding forward-sensitivity jump.}
 list with \code{XN}, \code{SN} (\verb{ns x np}), \code{Sall} (per-step \code{S}), \code{stages}.
 }
 \description{
-Integrates the state and its exact derivative \code{S = dX/dtheta} through the
-identical RK4 map, storing the stages for the discrete adjoint.  \code{S_n} is the
-machine-precision derivative of the numerical state \code{X_n} (not the continuous
-sensitivity to integration tolerance).
+Integrates the state and its exact derivative \code{S = dX/dtheta} through the RK4
+map, storing the stages for the discrete adjoint.
 }
 \author{
 Matthew L. Fidler
