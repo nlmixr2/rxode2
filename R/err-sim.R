@@ -69,6 +69,55 @@ rxGetDistributionSimulationLines <- function(line) {
   as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), str2lang))
 }
 
+#' Get the ar() correlation as a quoted expression for an endpoint
+#'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @return quoted correlation (name or number), or NULL when the endpoint
+#'   has no ar() term
+#' @author Matthew Fidler
+#' @noRd
+.rxGetArCorLang <- function(env, pred1) {
+  if (!is.na(pred1$ar)) return(str2lang(pred1$ar))
+  .w <- which(env$iniDf$err == "ar" & env$iniDf$condition == pred1$cond)
+  if (length(.w) == 1L) return(str2lang(env$iniDf$name[.w]))
+  NULL
+}
+
+#' Build the continuous-time AR(1) simulation lines for an endpoint
+#'
+#' Implements a stationary continuous-time AR(1) (Ornstein-Uhlenbeck)
+#' process on the residual: the innovation is the endpoint's usual unit
+#' draw, scaled so the marginal variance stays rx_r_ for any correlation.
+#' The lag-1 correlation decays as cor^(time difference).  State is carried
+#' across observation records via sticky variables -- rx.arLast.<var> and
+#' rx.arTlast.<var> are assigned only inside the conditional branches, so
+#' rxode2 keeps them sticky (initialized to NA per subject, persisting across
+#' records), and the is.na() guard fires on the first record per endpoint.
+#'
+#' @param cor quoted correlation (name or number)
+#' @param var endpoint variable suffix (e.g. "cp")
+#' @param innovation quoted unit residual draw (rxerr.<var> or an r*() call)
+#' @return list of quoted model lines; the final residual is left in
+#'   rx.arLast.<var> and the sim line back-transforms rx_pred_ + that residual
+#' @author Matthew Fidler
+#' @noRd
+.rxArSimLines <- function(cor, var, innovation) {
+  .last <- str2lang(paste0("rx.arLast.", var))
+  .tlast <- str2lang(paste0("rx.arTlast.", var))
+  .phi <- str2lang(paste0("rx.arPhi.", var))
+  list(
+    bquote(if (is.na(.(.last))) {
+      .(.last) <- sqrt(rx_r_) * .(innovation)
+      .(.tlast) <- time
+    } else {
+      .(.phi) ~ .(cor)^(time - .(.tlast))
+      .(.last) <- .(.phi) * .(.last) + sqrt(rx_r_ * (1 - .(.phi)^2)) * .(innovation)
+      .(.tlast) <- time
+    }),
+    bquote(sim <- rxTBSi(rx_pred_ + .(.last), rx_lambda_, rx_yj_, rx_low_, rx_hi_)))
+}
+
 #' @rdname rxGetDistributionSimulationLines
 #' @export
 rxGetDistributionSimulationLines.norm <- function(line) {
@@ -76,9 +125,15 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   pred1 <- line[[2]]
   .errNum <- line[[3]]
   .err <- str2lang(paste0("rxerr.", pred1$var))
-  .ret <- vector("list", 2)
-  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .arCor <- .rxGetArCorLang(env, pred1)
+  if (is.null(.arCor)) {
+    .ret <- vector("list", 2)
+    .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+    .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  } else {
+    .ret <- c(list(bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))),
+              .rxArSimLines(.arCor, pred1$var, .err))
+  }
   c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
@@ -92,9 +147,16 @@ rxGetDistributionSimulationLines.t <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .errNum <- line[[3]]
-  .ret <- vector("list", 2)
-  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .draw <- .getQuotedDistributionAndSimulationArgs(line)
+  .arCor <- .rxGetArCorLang(env, pred1)
+  if (is.null(.arCor)) {
+    .ret <- vector("list", 2)
+    .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+    .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.draw), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  } else {
+    .ret <- c(list(bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))),
+              .rxArSimLines(.arCor, pred1$var, .draw))
+  }
   c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
@@ -104,9 +166,16 @@ rxGetDistributionSimulationLines.cauchy <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .errNum <- line[[3]]
-  .ret <- vector("list", 2)
-  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .draw <- .getQuotedDistributionAndSimulationArgs(line)
+  .arCor <- .rxGetArCorLang(env, pred1)
+  if (is.null(.arCor)) {
+    .ret <- vector("list", 2)
+    .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+    .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.draw), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  } else {
+    .ret <- c(list(bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))),
+              .rxArSimLines(.arCor, pred1$var, .draw))
+  }
   c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
