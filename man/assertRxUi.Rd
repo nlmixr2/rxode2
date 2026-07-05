@@ -5,6 +5,7 @@
 \alias{assertRxUiPrediction}
 \alias{assertRxUiIovNoCor}
 \alias{assertRxUiNoMix}
+\alias{assertRxUiNoAutoregressive}
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
@@ -22,6 +23,8 @@ assertRxUiPrediction(ui, extra = "", .var.name = .vname(ui))
 assertRxUiIovNoCor(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNoMix(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoAutoregressive(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 
@@ -75,6 +78,9 @@ population effect, only)
 \item \code{assertRxUiRandomOnIdOnly} -- Make sure there are only random effects at the ID level
 \item \code{assertRxUiIovNoCor} -- Make sure that the IOV model does not have any correlations
 \item \code{assertRxUiNoMix} -- Make sure that the model does not have a mixture model inside it
+\item \code{assertRxUiNoAutoregressive} -- Make sure the model does not have an
+autoregressive residual (ie \code{ar()}); used by estimation methods that do
+not support it
 }
 }
 \examples{

@@ -46,6 +46,10 @@
 #'
 #' - `assertRxUiNoMix` -- Make sure that the model does not have a mixture model inside it
 #'
+#' - `assertRxUiNoAutoregressive` -- Make sure the model does not have an
+#'    autoregressive residual (ie `ar()`); used by estimation methods that do
+#'    not support it
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -178,6 +182,32 @@ assertRxUiNoMix <- function(ui, extra="", .var.name=.vname(ui)) {
   ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
   if (!is.null(ui$mixProbs)) {
     stop("'", .var.name, "' cannot have a mixture model (ie `mix()`)", extra, call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' Test if a model uses an autoregressive (`ar()`) residual
+#'
+#' @param ui rxode2 user interface model
+#' @return logical, `TRUE` if any endpoint carries an `ar()` correlation
+#'   (either an estimated correlation or a modeled/literal one)
+#' @author Matthew L. Fidler
+#' @export
+rxHasAr <- function(ui) {
+  ui <- assertRxUi(ui)
+  .predDf <- ui$predDf
+  .iniDf <- ui$iniDf
+  (!is.null(.predDf) && any(!is.na(.predDf$ar))) ||
+    (!is.null(.iniDf) && any(.iniDf$err == "ar", na.rm=TRUE))
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoAutoregressive <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  if (rxHasAr(ui)) {
+    stop("'", .var.name, "' cannot have an autoregressive residual (ie `ar()`)", extra, call.=FALSE)
   }
   invisible(ui)
 }
