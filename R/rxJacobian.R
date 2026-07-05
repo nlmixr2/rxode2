@@ -191,22 +191,31 @@ rxExpandGrid <- function(x, y, type = 0L) {
     .emit(.sn(i, p), .sn(k, p), .fx(i, k))
   ## sens x base: the only block that needs new derivatives; identically zero
   ## whenever F_X and F_p are state-independent (linear systems).
-  for (p in seq_len(.np)) for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
-    .acc <- NULL
+  for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
+    .dF_X_k <- list()
     for (k in seq_len(.ns)) {
       .fxik <- .fx(i, k); if (is.null(.fxik)) next
       .d <- symengine::D(.fxik, state[j])
       if (paste(.d) != "0") {
-        .term <- .d * symengine::Symbol(.sn(k, p))
-        .acc <- if (is.null(.acc)) .term else .acc + .term
+        .dF_X_k[[k]] <- .d
       }
     }
-    .fpip <- .fp(i, p)
-    if (!is.null(.fpip)) {
-      .d <- symengine::D(.fpip, state[j])
-      if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+    for (p in seq_len(.np)) {
+      .acc <- NULL
+      for (k in seq_along(.dF_X_k)) {
+        .d <- .dF_X_k[[k]]
+        if (!is.null(.d)) {
+          .term <- .d * symengine::Symbol(.sn(k, p))
+          .acc <- if (is.null(.acc)) .term else .acc + .term
+        }
+      }
+      .fpip <- .fp(i, p)
+      if (!is.null(.fpip)) {
+        .d <- symengine::D(.fpip, state[j])
+        if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+      }
+      .emit(.sn(i, p), state[j], .acc)
     }
-    .emit(.sn(i, p), state[j], .acc)
   }
   .lines
 }
