@@ -1,27 +1,20 @@
-// Exact discrete-adjoint driver for Adams-Bashforth (method="abs", code 208 =
-// base ab 8 + 200).  Fills the same rx__sens_<state>_BY_<param>__ columns as the
-// other adjoint methods, as the exact reverse-mode transpose of ab.cpp's classical
-// fixed-order fixed-step AB step map (NOT liblsoda's Nordsieck form).
+// Exact discrete-adjoint driver for Adams-Bashforth (method="abs", code 208).
+// Fills the same rx__sens_<state>_BY_<param>__ columns as the other adjoint
+// methods, as the exact reverse-mode transpose of ab.cpp's fixed-order
+// fixed-step AB step map.
 //
-// #included into par_solve.cpp AFTER ab.cpp (same TU), so it sees ab.cpp's recording
-// buffers (abAdjSteps/abAdjCalls) and ab_coef, plus calc_lhs / dydt / getSolve.
+// #included into par_solve.cpp after ab.cpp (same TU), so it sees ab.cpp's
+// recording buffers (abAdjSteps/abAdjCalls) and ab_coef, plus calc_lhs/dydt.
 //
-// ab_do_steps re-initialises (RK4 startup + fresh f-history) every call, so each call
-// is a self-contained integration and calls chain only through y.  Per call, order k,
-// step dt (last step clipped to the output time), y-points p_0..p_M:
-//   startup step m (m<k-1): p_{m+1} = RK4(p_m)   [also supplies f(p_m) to the history]
-//   AB step m (m>=k-1):     p_{m+1} = p_m + dt*sum_{i=0}^{k-1} c_i f(p_{m-i})
-// The reverse mode keeps a costate per y-point (lam[0..M]); processing steps in
-// reverse, an AB step distributes lam[j+1] to lam[j..j-k+1] via  dt*c_i*J(p_{j-i})^T
-// and accumulates mu += dt*c_i*F_p(p_{j-i})^T lam[j+1] (the i=0 term also carries the
-// identity from the +p_j).  A startup step uses the classical RK4 transpose (stages
-// recomputed from the recorded y).  lam[0] (costate of the call start) chains to the
-// previous call's end.  Interior dose jumps are the additive-bolus identity here
-// (multi-dose works); reset/replace/multiply/infusion duals are a follow-up.
+// Per call (order k, step dt, y-points p_0..p_M): a startup step is RK4, an AB
+// step is p_{m+1} = p_m + dt*sum c_i f(p_{m-i}).  The reverse mode keeps a costate
+// per y-point; an AB step distributes lam[j+1] via dt*c_i*J(p_{j-i})^T and
+// accumulates mu += dt*c_i*F_p(p_{j-i})^T lam[j+1], a startup step uses the RK4
+// transpose.  Interior dose jumps are the additive-bolus identity (multi-dose
+// works); reset/replace/multiply/infusion duals are a follow-up.
 //
-// Observations land exactly on call ends (the last step clips to the output time), so
-// no interpolation is needed.  The initial y0 is p-independent (dy0/dp = 0), so unlike
-// liblsoda's Nordsieck init there is no t0 quadrature term.
+// Observations land on call ends (no interpolation).  y0 is p-independent, so
+// there is no t0 quadrature term.
 #ifdef IN_PAR_SOLVE
 
 extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neqUnused,

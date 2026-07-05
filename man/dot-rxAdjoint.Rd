@@ -24,27 +24,15 @@ scaffolding; only the quadrature (\verb{rx__sens_*}) lines carry user-visible
 output.  Also stashes the result in \code{model$..adjoint}.
 }
 \description{
-Symbolically generates the continuous-adjoint ODE system that mirrors the
-output of the forward sensitivity analysis (\code{.rxSens}), reusing the exact
-same \verb{rx__sens_<state>_BY_<param>__} output names so the result is a
-drop-in alternative.  For each output state of interest \code{k} two blocks of
-equations are emitted (both to be integrated \emph{backward} in time):
-}
-\details{
-\itemize{
-\item costate:   \verb{d/dt(rx__adjLambda_<k>_<i>__) = -sum_j df_j/dy_i * lambda_kj}
-(the transpose-Jacobian contraction \verb{-(J^T lambda)_i})
-\item quadrature:\verb{d/dt(rx__sens_<k>_BY_<p>__)  = -sum_j lambda_kj * df_j/dp}
-(the running gradient \verb{-(lambda^T df/dp)_p})
-}
-
-The elemental derivatives \code{df_j/dy_i} and \code{df_j/dp} are taken directly from
-the \verb{rx__df_<j>_dy_<i>__} symbols that \code{.rxJacobian(model, c(state, vars))}
-already materialises, so this function performs no new symbolic
-differentiation -- it only assembles (transposes) what the Jacobian pass
-produced.  The costate symbols \verb{rx__adjLambda_<k>_<j>__} are registered as
-bare symengine \code{Symbol}s so they survive as themselves in the assembled
-right-hand sides (mirroring how \code{.rxSens} registers \code{ddtS}/\code{ddS2}).
+Symbolically generates the continuous-adjoint ODE system mirroring the
+forward sensitivity output (\code{.rxSens}), reusing the same
+\verb{rx__sens_<state>_BY_<param>__} output names.  For each output state \code{k} it
+emits two backward-in-time blocks: a costate
+\verb{d/dt(rx__adjLambda_<k>_<i>__) = -(J^T lambda)_i} and a quadrature
+\verb{d/dt(rx__sens_<k>_BY_<p>__) = -(lambda^T df/dp)_p}.  The derivatives are
+taken from the \verb{rx__df_*} symbols \code{.rxJacobian()} already materialised, so no
+new differentiation is done; the costate symbols are registered as bare
+symengine \code{Symbol}s.
 }
 \author{
 Matthew L. Fidler

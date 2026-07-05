@@ -1,7 +1,7 @@
 ## This is only for rxode2
 ## inst/include/rxode2_RcppExports.h is the header consumed by generated model
-## code — it should carry only <Rcpp.h>.  Strip RcppArmadillo and RcppEigen.
-## src/RcppExports.cpp is the package's own implementation file — it uses
+## code -- it should carry only <Rcpp.h>.  Strip RcppArmadillo and RcppEigen.
+## src/RcppExports.cpp is the package's own implementation file -- it uses
 ## arma:: types and needs RcppArmadillo.h, but it must come BEFORE RcppEigen.h /
 ## Rcpp.h to satisfy newer RcppArmadillo's include-order requirement.
 

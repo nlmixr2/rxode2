@@ -17,11 +17,10 @@ closures \code{Fe(x, params)}, \code{FXe(x, params)} (\verb{ns x ns}), \code{FPe
 (\verb{ns x np}).
 }
 \description{
-Parses the model once and returns closures that numerically evaluate the ODE
-right-hand side \code{F}, the state Jacobian \code{dF/dy}, and the parameter forcing
-\code{dF/dtheta} at an ARBITRARY state (needed at the interior RK4 stage points),
-plus the state/parameter bookkeeping.  Pair with \code{\link[=.rxDiscreteForwardSens]{.rxDiscreteForwardSens()}}
-and \code{\link[=.rxDiscreteAdjointGrad]{.rxDiscreteAdjointGrad()}}.
+Parses the model once and returns closures that evaluate the ODE RHS \code{F}, the
+state Jacobian \code{dF/dy} and the parameter forcing \code{dF/dtheta} at an arbitrary
+state (needed at interior RK4 stage points).  Pair with
+\code{\link[=.rxDiscreteForwardSens]{.rxDiscreteForwardSens()}} and \code{\link[=.rxDiscreteAdjointGrad]{.rxDiscreteAdjointGrad()}}.
 }
 \author{
 Matthew L. Fidler

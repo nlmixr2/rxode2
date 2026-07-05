@@ -294,7 +294,7 @@ SEXP rxSaveState_() {
   // gcov: ncov * nall_rep doubles (representative events only)
   sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall_rep, "gcov");
 
-  // gix: nall * nsim ints — correctly allocated for the full expanded count
+  // gix: nall * nsim ints -- correctly allocated for the full expanded count
   sWriteIntBlob(f, _globals.gix, nall * (uint64_t)rx->nsim, "gix");
 
   // gpars: npars * nsub doubles
@@ -911,7 +911,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   _globals.gall_times_n = (int64_t)nall_rep;
   uint32_t ncov_saved = sReadU32(f, "ncov");
 
-  // gall_times slab (5*nall_rep doubles — representative events only)
+  // gall_times slab (5*nall_rep doubles -- representative events only)
   {
     uint64_t expected = 5u * nall_rep;
     double *buf = sReadDoubleBlobExpected(f, expected, "gall_times_slab");

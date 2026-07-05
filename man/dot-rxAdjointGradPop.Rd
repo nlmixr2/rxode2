@@ -32,19 +32,16 @@ respect to.}
 \item{pred}{character prediction expression \code{f} (function of states and
 parameters), e.g. \code{"center/v"}.}
 
-\item{data}{data.frame of observations with columns \code{id}, \code{time}, and \code{dv}
-(observed value); one block of rows per subject.  Any additional columns
-are treated as per-subject covariates and merged into \code{params} for that
-subject's solve (their first value per subject is used), so covariate
-models like \code{cl = exp(tcl + bwt*lwt)} with subject-level \code{lwt} work.}
+\item{data}{data.frame of observations with columns \code{id}, \code{time}, and \code{dv};
+one block of rows per subject.  Any additional columns are treated as
+per-subject covariates (first value per subject) merged into \code{params}.}
 
 \item{errModel}{\code{NULL} for least squares, or a list with character entries
 \code{add} and/or \code{prop} naming the additive / proportional residual-error
 parameters, selecting the FOCEi -2LL objective \code{v = add^2 + (prop*f)^2}.}
 
 \item{denseBy}{grid spacing for the forward checkpoint trajectory; smaller
-values reduce the covariate-interpolation error (which converges at
-\code{O(denseBy^2)}).}
+values reduce the covariate-interpolation error.}
 
 \item{useC}{use the C++ sweep (\code{\link[=.rxAdjointGradEvalC]{.rxAdjointGradEvalC()}}); otherwise the R
 reference (\code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}}).}
@@ -56,19 +53,10 @@ the backward sweeps.}
 named numeric vector \code{dOFV/dtheta} over \code{calcSens}.
 }
 \description{
-Computes \verb{dOFV/dtheta = sum_subjects dG_i/dtheta} for a population objective
--- the exact quantity a gradient-based population estimator (FOCEi/nlm outer
-optimisation) minimises -- with ONE backward sweep per subject, cost
-independent of the number of population parameters.  This is where the
-adjoint method genuinely wins over forward sensitivity for estimation:
-forward sens integrates \code{nStates * nTheta} extra ODEs per subject, whereas
-this integrates the adjoint once per subject regardless of \code{nTheta}.
-}
-\details{
-The symbolic model is built ONCE (via \code{\link[=.rxAdjointGradBuild]{.rxAdjointGradBuild()}}) and re-used
-for every subject; only the per-subject observation times/values change.
-Assumes a shared dosing regimen across subjects (the \code{events} argument);
-per-subject dosing would require per-subject builds and is not handled here.
+Computes \verb{dOFV/dtheta = sum_subjects dG_i/dtheta} with one backward sweep per
+subject.  The symbolic model is built once (\code{\link[=.rxAdjointGradBuild]{.rxAdjointGradBuild()}}) and
+reused per subject.
+Assumes a shared dosing regimen across subjects.
 }
 \author{
 Matthew L. Fidler

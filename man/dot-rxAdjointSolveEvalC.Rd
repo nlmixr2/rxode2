@@ -27,14 +27,10 @@ data.frame with a \code{time} column and one
 \verb{rx__sens_<state>_BY_<param>__} column per (state, param) pair.
 }
 \description{
-The full-trajectory counterpart of \code{\link[=.rxAdjointGradEvalC]{.rxAdjointGradEvalC()}}: reconstructs
-\code{dy_k(t_i)/dp} for every output state \code{k} (\code{build$adjStates}), every
-requested time \code{t_i}, and every parameter \code{p}, via ONE backward sweep with
-one costate/quadrature block per state of interest (the reset trick --
-see \code{rxode2AdjointTrajSweep} in \code{src/adjoint.cpp}).  Covers every dosing
-dual (F, modeled lag, replace/multiply, modeled rate/dur infusion).
-Numerically equivalent to \code{\link[=.rxAdjointSolve]{.rxAdjointSolve()}} (the pure-R reference), and
-costs one sweep regardless of the number of output times.
+Full-trajectory counterpart of \code{\link[=.rxAdjointGradEvalC]{.rxAdjointGradEvalC()}}: reconstructs
+\code{dy_k(t_i)/dp} for every output state, time and parameter in one backward
+sweep (\code{rxode2AdjointTrajSweep}), covering all dosing duals.  Numerically
+equivalent to \code{\link[=.rxAdjointSolve]{.rxAdjointSolve()}}.
 }
 \author{
 Matthew L. Fidler

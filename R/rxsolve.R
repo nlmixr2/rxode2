@@ -1,4 +1,4 @@
-## Package-level cache: function object digest → rxUi (list form).
+## Package-level cache: function object digest -> rxUi (list form).
 ## Populated by rxSolve.function; entries for uiUseData models are skipped.
 .rxFunctionUiCache <- new.env(hash = TRUE, parent = emptyenv())
 
@@ -1821,7 +1821,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     rxUdfUiReset()
   })
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
-  ## Cache the rxUi (function → rxUi conversion) to avoid re-parsing on every
+  ## Cache the rxUi (function -> rxUi conversion) to avoid re-parsing on every
   ## call.  Key is digest of the whole function object (body + closure), so
   ## factory-pattern closures with different captured values get separate
   ## entries.  UDF models (uiUseData=TRUE) bypass the cache because their rxUi
@@ -1900,7 +1900,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       get(x, envir=.meta)
     }), .v)
   }
-  ## Fast path: no per-model overrides and no caller-supplied options — return
+  ## Fast path: no per-model overrides and no caller-supplied options -- return
   ## the cached default control directly without a second rxSolve(NULL) round.
   if (!is.null(.rxControlDefault) &&
         is.null(.extra) && length(.lst) == 0 &&

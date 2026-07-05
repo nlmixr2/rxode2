@@ -34,8 +34,7 @@ sensitivities are requested.}
 all ODE states (full forward-sensitivity parity).}
 
 \item{denseBy}{grid spacing for the forward checkpoint trajectory; smaller
-values reduce the covariate-interpolation error (which converges at
-\code{O(denseBy^2)}).}
+values reduce the covariate-interpolation error.}
 
 \item{atol, rtol}{solver tolerances used for both the forward checkpoint and
 the backward sweeps.}

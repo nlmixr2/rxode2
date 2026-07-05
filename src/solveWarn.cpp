@@ -25,7 +25,7 @@ extern "C" int getSilentErr(void);
    by an OpenMP critical section named `rxSolveWarn` so the hot Push path
    inside parallel solves can be called concurrently from many threads
    without corrupting the buffers. The critical-region overhead is far
-   cheaper than the formatted RSprintf calls it replaces — the warning
+   cheaper than the formatted RSprintf calls it replaces -- the warning
    rate may be high during sticky-recalc but never as high as the per-step
    solver hot path.
 
@@ -33,7 +33,7 @@ extern "C" int getSilentErr(void);
    once (overflow drops new messages but doesn't crash); MAX_IDS caps the
    distinct-subject set per message (overflow drops ids but keeps
    counting). Both bound memory; both also bound the per-flush print
-   length. The caps are deliberately generous — overflow under normal
+   length. The caps are deliberately generous -- overflow under normal
    workloads is a sign something pathological is happening, not a routine
    case to optimise. */
 static const std::size_t MAX_MESSAGES = 64;

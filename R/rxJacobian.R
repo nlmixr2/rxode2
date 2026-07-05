@@ -137,32 +137,14 @@ rxExpandGrid <- function(x, y, type = 0L) {
   return(.ret)
 }
 
-#' Full-system Jacobian for a first-order forward-sensitivity model, REUSING F_X
+#' Full-system Jacobian for a first-order forward-sensitivity model, reusing F_X
 #'
-#' A stiff (Rosenbrock / implicit) solver integrating the forward-sensitivity
-#' system needs the Jacobian of that FULL system (base states + rx__sens_*
-#' variational compartments), not the base model's.  Recomputing it from scratch
-#' (a second `.rxJacobian` over every expanded state pair) re-derives `F_X` and
-#' `F_p`, which `.rxJacobian(model)` already produced for the variational
-#' equations.  This builds the full df()/dy() block from the pieces instead, so
-#' only the genuinely new entries cost a `symengine::D`:
-#'
-#' ```
-#'   RHS:  dy_i/dt = f_i(y);   dS_ip/dt = sum_k F_X[i][k] S_kp + F_p[i][p]
-#'
-#'   base x base   df(y_i)/dy(y_j)  = F_X[i][j]                       (REUSED)
-#'   base x sens                    = 0
-#'   sens x sens   df(S_ip)/dy(S_kp)= F_X[i][k]  (block-diag over p)  (REUSED)
-#'   sens x base   df(S_ip)/dy(y_j) = sum_k D(F_X[i][k],y_j) S_kp
-#'                                    + D(F_p[i][p],y_j)              (NEW; ==0 for
-#'                                                                     linear F)
-#' ```
-#'
-#' Only the sens x base block needs differentiation, and it vanishes for models
-#' whose Jacobian/parameter-Jacobian are state-independent (linear PK), so the
-#' common case adds no symengine work at all.  `model` must have had
-#' `.rxJacobian(model)` (vars=TRUE) called already, so `rx__df_<i>_dy_<j>__`
-#' (F_X) and `rx__df_<i>_dy_<p>__` (F_p) are present as symbols.
+#' Builds the full df()/dy() block for the sensitivity-expanded system (base
+#' states + `rx__sens_*` variational compartments) from the `F_X`/`F_p` pieces
+#' `.rxJacobian(model)` already produced.  The base x base and sens x sens blocks
+#' are `F_X` (reused, no differentiation); only the sens x base block needs new
+#' `symengine::D` and it vanishes for state-independent (linear) systems.
+#' Requires `.rxJacobian(model)` (vars=TRUE) to have run.
 #'
 #' @param model symengine model environment (post `.rxJacobian`)
 #' @param state base ODE state names
@@ -185,28 +167,37 @@ rxExpandGrid <- function(x, y, type = 0L) {
       .lines[[length(.lines) + 1L]] <<- sprintf("df(%s)/dy(%s)=%s", lhsSt, rhsSt, .txt)
   }
   ## base x base and sens x sens (block-diagonal per parameter): both are F_X,
-  ## already computed -- re-emit, no differentiation.
+  ## re-emitted without differentiation.
   for (i in seq_len(.ns)) for (j in seq_len(.ns)) .emit(state[i], state[j], .fx(i, j))
   for (p in seq_len(.np)) for (i in seq_len(.ns)) for (k in seq_len(.ns))
     .emit(.sn(i, p), .sn(k, p), .fx(i, k))
   ## sens x base: the only block that needs new derivatives; identically zero
   ## whenever F_X and F_p are state-independent (linear systems).
-  for (p in seq_len(.np)) for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
-    .acc <- NULL
+  for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
+    .dF_X_k <- list()
     for (k in seq_len(.ns)) {
       .fxik <- .fx(i, k); if (is.null(.fxik)) next
       .d <- symengine::D(.fxik, state[j])
       if (paste(.d) != "0") {
-        .term <- .d * symengine::Symbol(.sn(k, p))
-        .acc <- if (is.null(.acc)) .term else .acc + .term
+        .dF_X_k[[k]] <- .d
       }
     }
-    .fpip <- .fp(i, p)
-    if (!is.null(.fpip)) {
-      .d <- symengine::D(.fpip, state[j])
-      if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+    for (p in seq_len(.np)) {
+      .acc <- NULL
+      for (k in seq_along(.dF_X_k)) {
+        .d <- .dF_X_k[[k]]
+        if (!is.null(.d)) {
+          .term <- .d * symengine::Symbol(.sn(k, p))
+          .acc <- if (is.null(.acc)) .term else .acc + .term
+        }
+      }
+      .fpip <- .fp(i, p)
+      if (!is.null(.fpip)) {
+        .d <- symengine::D(.fpip, state[j])
+        if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+      }
+      .emit(.sn(i, p), state[j], .acc)
     }
-    .emit(.sn(i, p), state[j], .acc)
   }
   .lines
 }
@@ -301,26 +292,15 @@ rxExpandGrid <- function(x, y, type = 0L) {
 ## Assumes .rxJacobian called on model with c(state, vars)
 #' Adjoint (backward) sensitivity equations for a model
 #'
-#' Symbolically generates the continuous-adjoint ODE system that mirrors the
-#' output of the forward sensitivity analysis (`.rxSens`), reusing the exact
-#' same `rx__sens_<state>_BY_<param>__` output names so the result is a
-#' drop-in alternative.  For each output state of interest `k` two blocks of
-#' equations are emitted (both to be integrated *backward* in time):
-#'
-#' \itemize{
-#'   \item costate:   `d/dt(rx__adjLambda_<k>_<i>__) = -sum_j df_j/dy_i * lambda_kj`
-#'         (the transpose-Jacobian contraction `-(J^T lambda)_i`)
-#'   \item quadrature:`d/dt(rx__sens_<k>_BY_<p>__)  = -sum_j lambda_kj * df_j/dp`
-#'         (the running gradient `-(lambda^T df/dp)_p`)
-#' }
-#'
-#' The elemental derivatives `df_j/dy_i` and `df_j/dp` are taken directly from
-#' the `rx__df_<j>_dy_<i>__` symbols that `.rxJacobian(model, c(state, vars))`
-#' already materialises, so this function performs no new symbolic
-#' differentiation -- it only assembles (transposes) what the Jacobian pass
-#' produced.  The costate symbols `rx__adjLambda_<k>_<j>__` are registered as
-#' bare symengine `Symbol`s so they survive as themselves in the assembled
-#' right-hand sides (mirroring how `.rxSens` registers `ddtS`/`ddS2`).
+#' Symbolically generates the continuous-adjoint ODE system mirroring the
+#' forward sensitivity output (`.rxSens`), reusing the same
+#' `rx__sens_<state>_BY_<param>__` output names.  For each output state `k` it
+#' emits two backward-in-time blocks: a costate
+#' `d/dt(rx__adjLambda_<k>_<i>__) = -(J^T lambda)_i` and a quadrature
+#' `d/dt(rx__sens_<k>_BY_<p>__) = -(lambda^T df/dp)_p`.  The derivatives are
+#' taken from the `rx__df_*` symbols `.rxJacobian()` already materialised, so no
+#' new differentiation is done; the costate symbols are registered as bare
+#' symengine `Symbol`s.
 #'
 #' @param model symengine model environment (as returned by `rxS`), with
 #'   `.rxJacobian(model, c(rxStateOde(model), vars))` already called.
@@ -349,8 +329,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
     stop("adjoint 'states' of interest must be a subset of the ODE states",
       call. = FALSE)
   }
-  ## Register the costate (lambda) compartments as bare symbols so they are not
-  ## inlined when the backward right-hand sides are assembled.
+  ## register the costate (lambda) compartments as bare symbols so they survive
+  ## assembly of the backward right-hand sides
   .lamName <- function(k, i) paste0("rx__adjLambda_", k, "_", i, "__")
   for (.k in states) {
     for (.i in .state) {

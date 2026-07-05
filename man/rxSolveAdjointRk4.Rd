@@ -31,20 +31,10 @@ rxSolveAdjointRk4(
 the solved data frame with \verb{rx__sens_<state>_BY_<param>__} columns.
 }
 \description{
-Convenience wrapper that applies the adjoint expansion (cached), solves with
-the requested adjoint method, and returns clean output (the internal
-\verb{rx__adjFX_*}/\verb{rx__adjFP_*}/\verb{rx__adjdF_*}/\verb{rx__adjJp_*}/\verb{rx__adjJy_*} lhs are
-dropped).  These methods return the full-trajectory
-\verb{rx__sens_<state>_BY_<param>__} sensitivity columns; a scalar objective
-gradient is a downstream REDUCTION of these columns (e.g. the nlmixr2est
--2LL), not a mode of the solver.
-}
-\details{
-The stiff analytic Jacobian the Rosenbrock / implicit-RK adjoint methods
-(\code{ros4s}, \code{radauiia5s}, ..., and the \code{dop853s+ros4s} composite) need is
-emitted into the expansion automatically, inferred from \code{method} -- explicit /
-multistep adjoint methods (\code{rk4s}, \code{dop853s}, ...) never form a Jacobian, so
-it is omitted for them.
+Applies the (cached) adjoint expansion, solves with the requested adjoint
+method, and drops the internal \verb{rx__adj*} lhs, returning the full-trajectory
+\verb{rx__sens_<state>_BY_<param>__} columns.  The stiff analytic Jacobian is
+emitted into the expansion automatically, inferred from \code{method}.
 }
 \author{
 Matthew L. Fidler

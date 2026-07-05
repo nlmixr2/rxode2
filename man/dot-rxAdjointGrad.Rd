@@ -45,8 +45,7 @@ parameters), e.g. \code{"center/v"}.}
 parameters, selecting the FOCEi -2LL objective \code{v = add^2 + (prop*f)^2}.}
 
 \item{denseBy}{grid spacing for the forward checkpoint trajectory; smaller
-values reduce the covariate-interpolation error (which converges at
-\code{O(denseBy^2)}).}
+values reduce the covariate-interpolation error.}
 
 \item{atol, rtol}{solver tolerances used for both the forward checkpoint and
 the backward sweeps.}
@@ -55,23 +54,11 @@ the backward sweeps.}
 named numeric vector \code{dG/dtheta} over \code{calcSens}.
 }
 \description{
-Computes \code{dG/dtheta} for every parameter of interest with a SINGLE backward
-sweep.  Two objectives are supported:
-}
-\details{
-\itemize{
-\item least squares (default): \verb{G = sum_i 1/2 * weight_i * (f_i - obs_i)^2}.
-\item FOCEi-style -2 log-likelihood (\code{errModel} given): \verb{G = sum_i r_i^2/v_i + log(v_i)}, \code{r_i = f_i - obs_i}, residual variance \code{v_i = add^2 + (prop*f_i)^2} -- exactly the individual objective the FOCEi outer
-optimisation minimises, so its gradient is what is propagated into the
-FOCEi objective (the "f" values).}
-
-This is the case where adjoint sensitivity genuinely outperforms forward
-sensitivity: the cost is independent of the number of parameters.  The
-costate \code{lambda} picks up \code{dG/df_i * df_i/dy} as a jump at each observation and
-the quadrature accumulates \verb{-lambda^T df/dtheta}.  The total gradient also adds
-the explicit prediction dependence \code{dG/df_i * df_i/dtheta} and, for the
-likelihood objective, the residual-error parameters' explicit gradients
-\verb{sum_i dG/dv_i * dv_i/d(add|prop)} (these do not flow through the trajectory).
+Computes \code{dG/dtheta} for every parameter with a single backward sweep.
+Supports least squares (default,
+\verb{G = sum_i 1/2 weight_i (f_i - obs_i)^2}) or, when \code{errModel} is given, the
+FOCEi -2 log-likelihood \verb{G = sum_i r_i^2/v_i + log(v_i)} with
+\code{v_i = add^2 + (prop*f_i)^2}.
 }
 \author{
 Matthew L. Fidler

@@ -104,7 +104,7 @@ if (!length(.tarball)) {
 }
 
 if (!length(.tarball) || !file.exists(.tarball)) {
-  ## Fall back to the canonical CRAN source URL — guaranteed to be the real
+  ## Fall back to the canonical CRAN source URL -- guaranteed to be the real
   ## source tarball regardless of which mirror/RSPM the session is using.
   .dest <- file.path(tempdir(), .tarball_name)
   .cran_url <- paste0("https://cran.r-project.org/src/contrib/", .tarball_name)

@@ -39,12 +39,10 @@ to add the terminal transversality \verb{lambda(t0)^T dX0/dtheta}; default none.
 named numeric vector \code{dG/dtheta} over \code{build$calcSens}.
 }
 \description{
-Given the RK4 stages from \code{\link[=.rxDiscreteForwardSens]{.rxDiscreteForwardSens()}} and, for each
-observation step, the objective covector \verb{c_n = dG/dX_\{step_n\}} (e.g. for a
--2LL, \code{dG/df * df/dX} at that observation), computes \code{dG/dtheta} by
+Given the RK4 stages from \code{\link[=.rxDiscreteForwardSens]{.rxDiscreteForwardSens()}} and, per observation
+step, the objective covector \verb{c_n = dG/dX_\{step_n\}}, computes \code{dG/dtheta} by
 reverse-mode differentiation through the RK4 steps -- equal to
-\verb{sum_n c_n^T S_\{step_n\}} (the discrete forward sensitivity) to machine
-precision.  One backward pass, cost independent of the number of parameters.
+\verb{sum_n c_n^T S_\{step_n\}} to machine precision, in one backward pass.
 }
 \author{
 Matthew L. Fidler

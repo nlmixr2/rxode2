@@ -16,21 +16,12 @@ list with \code{text} (expanded model text), \code{st}, \code{ns}, \code{np},
 \code{calcSens}, and lhs layout \code{fxOff} (=0), \code{fpOff} (=ns*ns), \code{nlhsAdj}.
 }
 \description{
-The in-engine discrete-adjoint solver (\code{method="rk4s"}) needs the exact
-state Jacobian \code{F_X = dF/dy} and parameter forcing \code{F_p = dF/dtheta} at every
-recorded RK4 stage.  Rather than a new codegen path, this exposes them as
-ordinary rxode2 \strong{lhs} assignments spliced onto the base ODE: \code{calc_lhs()}
-sets the internal state variables from whatever state vector it is handed, so
-the C++ backward sweep can evaluate \code{F_X}/\code{F_p} at an arbitrary stage state
-just by calling \code{calc_lhs} there and reading the lhs buffer by index.
-}
-\details{
-The lhs are emitted in a FIXED order the C++ sweep relies on: first all
-\code{F_X} entries row-major (\code{rx__adjFX_i_j__}, i,j 0-based over states), then all
-\code{F_p} entries (\code{rx__adjFP_i_p__}, i over states, p over \code{calcSens}).  So in
-the compiled lhs buffer \code{F_X[i][j]} is at index \code{i*ns + j} and \code{F_p[i][p]} at
-\code{ns*ns + i*np + p}.  This is the concrete "adjoint expansion in the expanded
-ODE" the HARD GUARD requires: absent these lhs, an \code{rk4s} solve must error.
+Exposes the state Jacobian \code{F_X = dF/dy} and parameter forcing
+\code{F_p = dF/dtheta} as rxode2 lhs assignments spliced onto the base ODE, so the
+C++ backward sweep can evaluate them at any stage state via \code{calc_lhs}.  The
+lhs are emitted in a fixed order: all \code{F_X} entries row-major
+(\code{rx__adjFX_i_j__} at index \code{i*ns + j}), then \code{F_p} (\code{rx__adjFP_i_p__} at
+\code{ns*ns + i*np + p}).
 }
 \author{
 Matthew L. Fidler

@@ -26,13 +26,11 @@ parameters, selecting the FOCEi -2LL objective \code{v = add^2 + (prop*f)^2}.}
 an opaque list consumed by \code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}}.
 }
 \description{
-Performs ALL symbolic work (symengine differentiation, \code{rxFromSE}, model
-compilation) up front and returns a reusable object.  Pair with
-\code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}} to evaluate the gradient at many parameter values
-without re-running any symbolic code -- required for use inside an optimiser
-(e.g. the FOCEi outer loop), and also avoids a \code{load_all}-only symengine
-dispatch fragility that surfaces when \code{rxFromSE} is interleaved with repeated
-\code{rxSolve} calls.
+Performs all symbolic work (symengine differentiation, \code{rxFromSE}, model
+compilation) up front and returns a reusable object for
+\code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}}, so an optimiser evaluates the gradient at many
+parameter values without re-running symbolic code.  Build before any
+\code{rxSolve} to avoid a \code{load_all}-only symengine dispatch fragility.
 }
 \author{
 Matthew L. Fidler
