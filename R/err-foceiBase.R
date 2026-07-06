@@ -477,13 +477,64 @@
     quote(rx_r_ ~ 0))
 }
 
+#' AR(1) whitened residual in Gaussian norm (mean/variance) form
+#'
+#' Norm sibling of [.rxArEstLlikLines()] for the FOCEi inner model: instead of an
+#' explicit `llik`, the whitened conditional likelihood is expressed as a plain
+#' `norm` endpoint whose mean is `rx_pred_ + phi*e_prev` and whose variance is
+#' `R*(1 - phi^2)`.  Keeping the endpoint on the `norm` path lets FOCEi build the
+#' exact Almquist eta-Hessian (the `llik` path only has a first-order gradient).
+#'
+#' @inheritParams .rxArEstLlikLines
+#' @return list of model lines
+#' @author Matthew Fidler
+#' @keywords internal
+#' @noRd
+.rxArEstNormLines <- function(env, pred1, errNum, type, yj, cor) {
+  .dvTrans <- .rxGetPredictionDVTransform(env, pred1, yj)
+  # dot-free names (the symengine sensitivity path mishandles dotted names)
+  .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
+  .e <- str2lang(paste0("rx_arE_", .var))
+  .t <- str2lang(paste0("rx_arT_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  .dt <- str2lang(paste0("rx_arDt_", .var))
+  .nf <- str2lang(paste0("rx_arNf_", .var))
+  .phi <- str2lang(paste0("rx_arPhi_", .var))
+  # rx_arE_ uses the structural (transformed) prediction; rx_pred_ is then
+  # reassigned to the conditional mean and rx_r_ to the conditional variance.
+  # First record: rx_arNf_=0 => phi=0 => mean=pred, var=R (marginal), NaN-safe.
+  list(
+    bquote(rx_yj_ ~ .(yj + 10 * (as.integer(pred1$distribution) - 1))),
+    bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
+    bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
+    bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
+    bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
+    bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
+    bquote(.(.t) <- time),
+    bquote(.(.e) <- .(.dvTrans) - rx_pred_),
+    bquote(.(.ep) <- lag0(.(.e), 1)),
+    bquote(.(.dt) <- time - lag0(.(.t), 1)),
+    bquote(.(.nf) <- 1 - is.na(lag(.(.t), 1))),
+    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt)),
+    bquote(rx_pred_ ~ rx_pred_ + .(.phi) * .(.ep)),
+    bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)) * (1 - .(.phi)^2)))
+}
+
 #' @author Matthew Fidler
 #' @export
-.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
+.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE, arNorm=FALSE) {
   type <- pred1$distribution
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
-    .arCor <- if (rxPredLlik) .rxGetArCorLang(env, pred1) else NULL
     .yj <- as.double(pred1$transform) - 1
+    # AR(1), norm form (focei inner model): keep the endpoint on the Gaussian
+    # norm path (mean + variance) so the exact eta-Hessian is used.
+    if (arNorm && type == "norm") {
+      .arCorN <- .rxGetArCorLang(env, pred1)
+      if (!is.null(.arCorN)) {
+        return(.rxArEstNormLines(env, pred1, errNum, type, .yj, .arCorN))
+      }
+    }
+    .arCor <- if (rxPredLlik) .rxGetArCorLang(env, pred1) else NULL
     if (!is.null(.arCor)) {
       # AR(1) endpoint: emit a per-observation conditional log-likelihood
       # whitened with lag() (a symengine-safe previous-residual accessor) and
