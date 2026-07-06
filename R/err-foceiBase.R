@@ -349,34 +349,6 @@
          )
 }
 
-#' Handle the single error for normal or t distributions
-#'
-#' @param env Environment for the parsed model
-#'
-#' @param pred1 The `data.frame` of the current error
-#'
-#' @param errNum The number of the error specification in the nlmixr2 model
-#'
-#' @param rxPredLlik A boolean indicating if the log likelihood should
-#'   be calculated for non-normal distributions.  By default `TRUE`.
-#'
-#' @return A list of the lines added.  The lines will contain
-#'
-#' - `rx_yj_` which is an integer that corresponds to the
-#'   transformation type.
-#'
-#' - `rx_lambda_` is the transformation lambda
-#'
-#' - `rx_low_` The lower boundary of the transformation
-#'
-#' - `rx_hi_` The upper boundary of the transformation
-#'
-#' - `rx_pred_f_` The prediction function
-#'
-#' - `rx_pred_` The transformed prediction function
-#'
-#' - `rx_r_` The transformed variance
-#'
 #' Build the per-observation log-likelihood call for an AR(1) endpoint
 #'
 #' @param env parsed model environment
@@ -520,6 +492,38 @@
     bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)) * (1 - .(.phi)^2)))
 }
 
+#' Handle the single error for normal or t distributions
+#'
+#' @param env Environment for the parsed model
+#'
+#' @param pred1 The `data.frame` of the current error
+#'
+#' @param errNum The number of the error specification in the nlmixr2 model
+#'
+#' @param rxPredLlik A boolean indicating if the log likelihood should
+#'   be calculated for non-normal distributions.  By default `TRUE`.
+#'
+#' @param arNorm A boolean; when `TRUE`, emit the AR(1) norm
+#'   (conditional mean/variance) form used by the focei inner model.
+#'   By default `FALSE`.
+#'
+#' @return A list of the lines added.  The lines will contain
+#'
+#' - `rx_yj_` which is an integer that corresponds to the
+#'   transformation type.
+#'
+#' - `rx_lambda_` is the transformation lambda
+#'
+#' - `rx_low_` The lower boundary of the transformation
+#'
+#' - `rx_hi_` The upper boundary of the transformation
+#'
+#' - `rx_pred_f_` The prediction function
+#'
+#' - `rx_pred_` The transformed prediction function
+#'
+#' - `rx_r_` The transformed variance
+#'
 #' @author Matthew Fidler
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE, arNorm=FALSE) {
