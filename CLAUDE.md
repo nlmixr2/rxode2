@@ -195,6 +195,30 @@ devtools::document()
 - Avoid `snake_case` for new names; underscores only appear in S3 methods for snake_case generics from other packages (e.g., `drop_units.rxSolve`)
 - Use American English spelling for consistency and do not use unicode characters
 
+### Working with symengine objects (`.rxToSE`/`rxFromSE`/`symengine::D`)
+
+The symengine env (eg `rxUiGet.foceiEtaS`/`rxUiGet.nlmEnv`, `rxS()`) and its
+`Basic` objects overload/register R functions, so once you touch symengine in
+these contexts base calls start failing with `user function 'X' requires N
+arguments`. When manipulating symengine objects programmatically:
+
+- **`get()` is masked.** Capture Basics from `assign()`'s return value instead:
+  `.b <- eval(parse(text = 'assign("x", with(.s, D(rx_pred_, y)), envir=.s)'))`
+  returns the assigned Basic (this is how the FEta apply avoids `get`).
+- **Do symbolic ops inside the env**: `with(.s, D(...))` (or the `assign(...,
+  envir=.s)` string idiom), NOT `symengine::D(...)` directly -- the qualified
+  `pkg::fun` form gets intercepted too.
+- **`rxFromSE()` of a Basic containing `lag0()`/`llik*()` poisons the *next*
+  `[[`/`get`/`$`-read** (but not `rxFromSE` itself). Convert the "clean" Basics
+  to text first and the poisoning one LAST; after it, use only vectorized base
+  ops.
+- **`[[` on a list of Basics always dispatches to symengine's `[[`** (fails).
+  Never build a list of Basics -- `rxFromSE()` each inline.
+- **`assign()` and `$<-` (writes) are safe**; `paste0`/`gsub`/`lapply` (C-level
+  element access) are safe.
+- **Temp symbol names** must avoid a trailing `_` (treated like the internal
+  `THETA_1_`) and symengine-registered substrings (eg `Dmean`).
+
 ### C/C++ Conventions
 
 - Use `(Rf_error)(...)` (wrapped in parens) rather than
