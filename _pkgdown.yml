@@ -288,6 +288,7 @@ reference:
   - rxGetControl
   - rxGetLin
   - rxGetrxode2
+  - rxHasAr
   - rxHtml
   - rxIndLinState
   - rxIndLinStrategy
@@ -306,6 +307,8 @@ reference:
   - rxSetControl
   - rxSetIni0
   - rxSetProgressBar
+  - rxSolveAdjoint
+  - rxSolveAdjointRk4
   - rxStack
   - rxSupportedFuns
   - rxSuppressMsg
