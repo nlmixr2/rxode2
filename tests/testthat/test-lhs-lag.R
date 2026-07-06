@@ -66,4 +66,22 @@ rxTest({
     expect_error(rxode2(f))
   })
 
+  test_that("lag()/diff() of a time-varying covariate return the previous value", {
+    f <- function() {
+      ini({tcl <- 1})
+      model({
+        cl <- exp(tcl)
+        pw <- lag(WT, 1)
+        dw <- diff(WT, 1)
+        y <- cl + WT
+      })
+    }
+    ui <- rxode2(f)
+    ev <- et(c(0, 2, 5, 9))
+    ev$WT <- c(70, 72, 75, 80)
+    r <- rxSolve(ui, ev, returnType = "data.frame")
+    expect_equal(r$pw, c(NA, 70, 72, 75))
+    expect_equal(r$dw, c(NA, 2, 3, 5))
+  })
+
 })

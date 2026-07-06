@@ -136,7 +136,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
     buf = tb.ss.line[i];
     switch(scenario) {
     case print_paramLags: // Case 5 is for using #define lag_var(x)
-      printParamLags(buf, &j);
+      printParamLags(buf, &j, i);
       break;
     case print_lhsLags: // Case 4 is for using #define lag_var(x)
       printLhsLag(buf, &j, i);

@@ -156,11 +156,13 @@ static inline void printPDStateVar(int show_ode, int scenario) {
 static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
   switch(scenario){
   case print_paramLags:
-    // covariate/parameter lags use _getParCov; skip variables handled by
-    // print_lhsLags (lhs variables read their own per-subject history slot),
-    // otherwise the _getParCov definition clobbers the correct lhs-lag one
-    return (tb.lag[i] == notLHS || tb.lh[i] == isState ||
-            tb.lh[i] == isLHS || tb.lh[i] == isLHSstr);
+    // covariate/parameter lags use _getParCov(parNo, ...); visit every
+    // parameter (same set/order as printPopulateParameters) so the running
+    // ordinal is the parameter's true index, and emit macros only for lagged
+    // ones (printParamLags gates on tb.lag[i]).  lhs variables are handled by
+    // print_lhsLags and are skipped here so the _getParCov definition does not
+    // clobber the correct lhs-lag one.
+    return (lhs && tb.lh[i] > 0 && tb.lh[i] != isLHSparam);
   case print_lhsLags:
     // visit every lhs-storage variable so the running ordinal matches the
     // _lhs[]/_PL[] write-back order (printLhsLag emits macros only for the
@@ -174,7 +176,13 @@ static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
   return (lhs && tb.lh[i]>0 && tb.lh[i] != isLHSparam);
 }
 
-static inline void printParamLags(char *buf, int *j) {
+static inline void printParamLags(char *buf, int *j, int i) {
+  // *j is the parameter's true index (this visits every parameter); only emit
+  // the history macros for parameters actually used in lag/lead/first/last/diff
+  if (tb.lag[i] == 0) {
+    j[0] = j[0] + 1;
+    return;
+  }
   sAppendN(&sbOut, "#undef diff_", 12);
   doDot(&sbOut, buf);
   sAppendN(&sbOut, "1\n", 2);
