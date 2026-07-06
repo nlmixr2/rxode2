@@ -1139,6 +1139,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
               envir = envir
               ), ")"
     )
+    # A variable that is referenced inside a history function (lag/lead/diff/...)
+    # must be emitted as an lhs and bound as a bare symbol, so downstream uses
+    # (including the history reference) stay symbolic and the defining line is not
+    # inlined or dead-code eliminated.
+    if (!is.null(envir$..laggedVars) && any(.var == envir$..laggedVars) &&
+          !identical(x[[1]], quote(`~`))) {
+      .val <- try(eval(parse(text = .expr)), silent = TRUE)
+      if (!inherits(.val, "try-error")) {
+        .rx <- paste0(rxFromSE(.var), "=", rxFromSE(.val))
+        assign("..lhs", c(envir$..lhs, .rx), envir = envir)
+        assign(.var, symengine::S(.var), envir = envir)
+        return(invisible(NULL))
+      }
+    }
     if (regexpr(rex::rex(or(
       .regRate,
       .regDur,
@@ -3069,9 +3083,53 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   })
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   .expr <- eval(parse(text = paste0("quote({", rxNorm(x), "})")))
+  # variables referenced inside lag()/lead()/diff()/first()/last() must be kept
+  # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
+  # the history function still references a defined variable in the output model
+  .env$..laggedVars <- .rxCollectLaggedVars(.expr)
   .ret <- .rxToSE(.expr, envir=.env)
   class(.env) <- "rxS"
   return(.env)
+}
+
+#' Collect the variables referenced inside history functions (lag/lead/diff/...)
+#'
+#' Only the RHS of assignments is scanned so the dosing `lag(cmt) <- ...` form
+#' (a compartment property, not a history reference) is not collected.
+#'
+#' @param expr a quoted model (or sub-expression)
+#' @return character vector of variable names used as the first argument of a
+#'   history function
+#' @author Matthew Fidler
+#' @noRd
+.rxCollectLaggedVars <- function(expr) {
+  .acc <- character(0)
+  .histFn <- c("lag", "lead", "diff", "first", "last")
+  .walk <- function(e) {
+    if (is.call(e)) {
+      .f <- e[[1]]
+      if (is.name(.f) &&
+            (identical(.f, quote(`<-`)) || identical(.f, quote(`=`)) ||
+               identical(.f, quote(`~`)))) {
+        # only scan the RHS (skip dosing lag(cmt) on the lhs)
+        .walkRhs(e[[3]])
+      } else {
+        for (.i in seq_along(e)) .walk(e[[.i]])
+      }
+    }
+  }
+  .walkRhs <- function(e) {
+    if (is.call(e)) {
+      .f <- e[[1]]
+      if (is.name(.f) && as.character(.f) %in% .histFn &&
+            length(e) >= 2L && is.name(e[[2]])) {
+        .acc[[length(.acc) + 1L]] <<- as.character(e[[2]])
+      }
+      for (.i in seq_along(e)[-1]) .walkRhs(e[[.i]])
+    }
+  }
+  .walk(expr)
+  unique(.acc)
 }
 
 symengineC <- new.env(parent = emptyenv())

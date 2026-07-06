@@ -443,13 +443,16 @@
   }
   .dvTrans <- .rxGetPredictionDVTransform(env, pred1, yj)
   .buildLlik <- .rxArBuildLlik(env, pred1, errNum, type, .dvTrans)
-  .var <- pred1$var
-  .e <- str2lang(paste0("rx.arE.", .var))
-  .t <- str2lang(paste0("rx.arT.", .var))
-  .ep <- str2lang(paste0("rx.arEp.", .var))
-  .dt <- str2lang(paste0("rx.arDt.", .var))
-  .phi <- str2lang(paste0("rx.arPhi.", .var))
-  .ez <- str2lang(paste0("rx.arEz.", .var))
+  # use dot-free names: the symengine sensitivity/derivative path mishandles
+  # dotted variable names inside a llik() argument, which breaks analytic
+  # gradients for the estimation model
+  .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
+  .e <- str2lang(paste0("rx_arE_", .var))
+  .t <- str2lang(paste0("rx_arT_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  .dt <- str2lang(paste0("rx_arDt_", .var))
+  .phi <- str2lang(paste0("rx_arPhi_", .var))
+  .ez <- str2lang(paste0("rx_arEz_", .var))
   list(
     bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
     bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
