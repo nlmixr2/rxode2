@@ -303,13 +303,19 @@ The nlm AR(1) estimation model BUILDS and RUNS with correct symbolic gradients
 (the sensitivity model has the AR covariance derivative via llikNormDsd and the
 cor^dt derivative).
 
-REMAINING BLOCKER (first-record NaN): the fit runs but does not move because the
-objective is non-finite. On the FIRST record `lag()` returns NA, and the ifelse
-first-record guard is pruned to arithmetic (`is.na*0 + (1-is.na)*(cor^dt)`); since
-`0 * NaN = NaN` in IEEE, the guard is defeated and rx_pred_ (the -llik) is NaN.
-FIX: add a `lag0()`/`diff0()` variant that returns 0 (not NA) on the first record
-(mirroring `_tlast00` = `ISNA(x)?0:x` in `inst/include/rxode2_model_shared.h`),
-then generate the NaN-free stationary "phantom-at-0" AR estimation form
-(previous residual 0 and previous time 0 at the first obs, so phi=cor^t is finite
-and no is.na is needed). AR(1) SIMULATION, the lag/diff fix, the opt-out asserts,
-and the symbolic-gradient estimation model are complete.
+FIXED (first-record NaN): added `lag0()`/`diff0()`/`lead0()` (return 0 not NA on
+the first record); AR(1) estimation uses lag0 + a NaN-safe `1-is.na(lag(...))`
+first-record indicator, so phi=0 (marginal) on the first obs with no `0*NaN`. The
+nlm AR(1) objective is finite and CORRECT (varies with params; truth is optimal)
+and the symbolic gradients (sensitivity model) are all finite and non-zero,
+including the AR covariance derivative (llikNormDsd) and the cor^dt derivative.
+
+REMAINING (range transform for the AR correlation): the nlm fit does not converge
+(params stay at init) because OUTSIDE [0,1) the objective is degenerate (cor>=1 ->
+sqrt(1-phi^2) NaN -> spuriously low), so the UNBOUNDED nlm line search stalls when
+it steps cor past 1. FIX (the author's earlier request): reparameterize the AR
+correlation on an unbounded scale during estimation, cor = expit(theta) (theta =
+logit(cor)), with the ini transformed and the report back-transformed -- a
+parameter-transform feature spanning the ini/theta/report handling. AR(1)
+SIMULATION, the lag/diff/lag0 fixes, opt-out asserts, and the symbolic-gradient
+AR estimation model are complete.
