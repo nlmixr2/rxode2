@@ -670,6 +670,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     } else if (length(.w) == 1L) {
       .df  <- env$df
       .df$err[.w] <- ifelse(argumentNumber == 1, funName, paste0(funName, argumentNumber))
+      if (funName == "ar" && !is.na(.df$est[.w]) &&
+            (.df$est[.w] < 0 || .df$est[.w] >= 1)) {
+        env$err <- c(env$err,
+                     paste0("the initial estimate of 'ar(", .curName,
+                            ")' must be in [0, 1)"))
+      }
       if (!is.na(.df$condition[.w])) {
         assign("dupErr", c(env$dupErr, .df$name[.w]), envir=env)
       }
