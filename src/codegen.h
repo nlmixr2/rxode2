@@ -156,9 +156,19 @@ static inline void printPDStateVar(int show_ode, int scenario) {
 static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
   switch(scenario){
   case print_paramLags:
-    return (tb.lag[i] == notLHS || tb.lh[i] == isState);
+    // covariate/parameter lags use _getParCov(parNo, ...); visit every
+    // parameter (same set/order as printPopulateParameters) so the running
+    // ordinal is the parameter's true index, and emit macros only for lagged
+    // ones (printParamLags gates on tb.lag[i]).  lhs variables are handled by
+    // print_lhsLags and are skipped here so the _getParCov definition does not
+    // clobber the correct lhs-lag one.
+    return (lhs && tb.lh[i] > 0 && tb.lh[i] != isLHSparam);
   case print_lhsLags:
-    return (tb.lag[i] == 0 || (tb.lh[i] != isLHS && tb.lh[i] != isLHSstr));
+    // visit every lhs-storage variable so the running ordinal matches the
+    // _lhs[]/_PL[] write-back order (printLhsLag emits macros only for the
+    // ones that are actually lagged)
+    return !(tb.lh[i] == isLHS || tb.lh[i] == isLHSstr ||
+             tb.lh[i] == isLhsStateExtra || tb.lh[i] == isLHSparam);
   case print_lastLhsValue:
     return !(tb.lh[i] == isLHS || tb.lh[i] == isLHSstr ||
              tb.lh[i] == isLhsStateExtra || tb.lh[i] == isLHSparam);
@@ -166,7 +176,13 @@ static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
   return (lhs && tb.lh[i]>0 && tb.lh[i] != isLHSparam);
 }
 
-static inline void printParamLags(char *buf, int *j) {
+static inline void printParamLags(char *buf, int *j, int i) {
+  // *j is the parameter's true index (this visits every parameter); only emit
+  // the history macros for parameters actually used in lag/lead/first/last/diff
+  if (tb.lag[i] == 0) {
+    j[0] = j[0] + 1;
+    return;
+  }
   sAppendN(&sbOut, "#undef diff_", 12);
   doDot(&sbOut, buf);
   sAppendN(&sbOut, "1\n", 2);
@@ -222,28 +238,105 @@ static inline void printParamLags(char *buf, int *j) {
   sAppendN(&sbOut, "#define lag_", 12);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "(x,y) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))\n", *j);
+
+  // lag0()/diff0()/lead0(): same as above but yield 0 (not NA) with no prior value
+  sAppendN(&sbOut, "#undef lag0_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
+  sAppendN(&sbOut, "#define lag0_", 13);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "1(x) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1))\n", *j, *j);
+  sAppendN(&sbOut, "#undef lag0_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
+  sAppendN(&sbOut, "#define lag0_", 13);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "(x,y) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y)))\n", *j, *j);
+
+  sAppendN(&sbOut, "#undef diff0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
+  sAppendN(&sbOut, "#define diff0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "1(x) (x - (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)))\n", *j, *j);
+  sAppendN(&sbOut, "#undef diff0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
+  sAppendN(&sbOut, "#define diff0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "(x,y) (x - (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))))\n", *j, *j);
+
+  sAppendN(&sbOut, "#undef lead0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
+  sAppendN(&sbOut, "#define lead0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "1(x) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + 1)) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + 1))\n", *j, *j);
+  sAppendN(&sbOut, "#undef lead0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
+  sAppendN(&sbOut, "#define lead0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "(x,y) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y)))\n", *j, *j);
   j[0]=j[0]+1;
 }
 
-static inline void printLhsLag(char *buf, int *j) {
-  sAppendN(&sbOut, "#define lead_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "1(x) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define lead_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "(x,y) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define diff_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "1(x) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define diff_", 13);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "(x,y) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define lag_", 12);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "1(x) _solveData->subjects[_cSub].lhs[%d]\n", *j);
-  sAppendN(&sbOut, "#define lag_", 12);
-  doDot(&sbOut, buf);
-  sAppend(&sbOut, "(x, y) _solveData->subjects[_cSub].lhs[%d]\n", *j);
+static inline void printLhsLag(char *buf, int *j, int i) {
+  // *j is the lhs ordinal (matches the _lhs[_LHS_*_] write-back and the
+  // sticky-variable _PL[_LHS_*_] load).  _PL (= _ind->lhs) holds the PREVIOUS
+  // record's lhs values during calc_lhs (write-back is at the end) and is reset
+  // to NA at the start of each individual, so lag/diff by 1 read the previous
+  // record's value and yield NA on the first record.  Deeper lags on an lhs are
+  // rejected at parse time (only lag(x,1)/diff(x,1) are supported).
+  if (tb.lag[i] != 0) {
+    sAppendN(&sbOut, "#define diff_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) ((x) - _PL[_LHS_%d_])\n", *j);
+    sAppendN(&sbOut, "#define diff_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) ((x) - _PL[_LHS_%d_])\n", *j);
+    sAppendN(&sbOut, "#define lag_", 12);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define lag_", 12);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x, y) _PL[_LHS_%d_]\n", *j);
+    // lead/first/last on an lhs have no well-defined value from the backward
+    // history; define them to the previous value so the symbol resolves (these
+    // are not meaningfully supported on lhs variables)
+    sAppendN(&sbOut, "#define lead_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define lead_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define first_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    sAppendN(&sbOut, "#define last_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    // lag0()/diff0()/lead0(): same as above but yield 0 (not NA) on the first
+    // record, so downstream arithmetic stays finite
+    sAppendN(&sbOut, "#define diff0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) ((x) - (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_]))\n", *j, *j);
+    sAppendN(&sbOut, "#define diff0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) ((x) - (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_]))\n", *j, *j);
+    sAppendN(&sbOut, "#define lag0_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+    sAppendN(&sbOut, "#define lag0_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x, y) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+    sAppendN(&sbOut, "#define lead0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+    sAppendN(&sbOut, "#define lead0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+  }
   j[0] = j[0]+1;
 }
 

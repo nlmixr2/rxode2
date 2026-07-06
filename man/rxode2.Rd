@@ -620,6 +620,9 @@ table:\tabular{lll}{
    lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
    lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
    diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
+   lag0(parameter, number=1) \tab Like lag() but returns 0 instead of NA when there is no prior value (the first record) \tab  \cr
+   lead0(parameter, number=1) \tab Like lead() but returns 0 instead of NA when there is no following value (the last record) \tab  \cr
+   diff0(par, number=1) \tab Like diff() but returns the value itself (previous value treated as 0) when there is no prior value \tab  \cr
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
    transit() \tab The transit compartment psuedo function \tab  \cr
@@ -788,6 +791,29 @@ The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 statistics will add their variances (not the standard deviations).
 However, the \strong{combined1} can describe the data possibly even better
 than \strong{combined2} so both are possible options in \code{rxode2}/\code{nlmixr2}.
+}
+
+\subsection{Autocorrelated residuals (\code{ar()})}{
+
+Adding \code{ar(cor)} to a normal residual makes successive residuals of the
+same endpoint follow a continuous-time AR(1) process:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{cp ~ add(add.sd) + ar(ar1.cor)
+}\if{html}{\out{</div>}}
+
+Here \code{ar1.cor} is the lag-one correlation and must be in \verb{[0, 1)}. The
+correlation between two residuals separated by a time gap \code{dt} is
+\code{cor^dt}, so irregular sampling is handled directly and the marginal
+(stationary) residual variance is unchanged; the first observation of
+each subject/endpoint uses the marginal distribution. \code{ar()} combines
+with \code{add()}/\code{prop()} normal residuals and uses the same \verb{| cmt}
+endpoint syntax as the other residual functions.
+
+The \code{ar()} specification is identical in \code{rxode2} and \code{nlmixr2}: the
+same model line simulates the autocorrelated residual in \code{rxode2} and
+estimates the correlation in \code{nlmixr2} (the \code{nlm}, \code{focei}/\code{foce} and
+\code{saem} families support it; \code{fo}, \code{foi}, \code{nlme} and \code{nls} do not). See
+Karlsson et al. (1995) for the continuous-time AR(1) residual model.
 }
 
 \subsection{Distributions of known likelihoods}{
@@ -1020,6 +1046,8 @@ In general all the that are supported are in the following table
    additive+proportional+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
    additive+power+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
    additive+power+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   autocorrelated (constant) \tab  \tab None \tab var ~ add(add.sd) + ar(cor) \tab  \tab response variable \cr
+   autocorrelated (additive+proportional) \tab  \tab None \tab var ~ add(add.sd) + prop(prop.sd) + ar(cor) \tab  \tab response variable \cr
    poission \tab  \tab none \tab cmt ~ dpois(lamba) \tab  \tab compartment specification \cr
    binomial \tab  \tab none \tab cmt ~ dbinom(n, p) \tab  \tab compartment specification \cr
    beta \tab  \tab none \tab cmt ~ dbeta(alpha, beta) \tab  \tab compartment specification \cr

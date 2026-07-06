@@ -306,6 +306,29 @@ statistics will add their variances (not the standard deviations).
 However, the **combined1** can describe the data possibly even better
 than **combined2** so both are possible options in `rxode2`/`nlmixr2`.
 
+### Autocorrelated residuals (`ar()`)
+
+Adding `ar(cor)` to a normal residual makes successive residuals of the
+same endpoint follow a continuous-time AR(1) process:
+
+``` r
+cp ~ add(add.sd) + ar(ar1.cor)
+```
+
+Here `ar1.cor` is the lag-one correlation and must be in `[0, 1)`. The
+correlation between two residuals separated by a time gap `dt` is
+`cor^dt`, so irregular sampling is handled directly and the marginal
+(stationary) residual variance is unchanged; the first observation of
+each subject/endpoint uses the marginal distribution. `ar()` combines
+with `add()`/`prop()` normal residuals and uses the same `| cmt`
+endpoint syntax as the other residual functions.
+
+The `ar()` specification is identical in `rxode2` and `nlmixr2`: the same
+model line simulates the autocorrelated residual in `rxode2` and
+estimates the correlation in `nlmixr2` (the `nlm`, `focei`/`foce` and
+`saem` families support it; `fo`, `foi`, `nlme` and `nls` do not). See
+Karlsson et al. (1995) for the continuous-time AR(1) residual model.
+
 ### Distributions of known likelihoods
 
 For residuals that are not related to normal, t-distribution or cauchy,

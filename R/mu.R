@@ -1040,8 +1040,10 @@
     .w <- which(.iniDf$condition == .cond)
     # endpoint has no estimated parameters, see if they are modeled
     # parameters
-    .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
+    .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda", "ar")])
     .ret <- .ret[!is.na(.ret)]
+    # ar() may hold a numeric literal (e.g. ar(0.5)); those are not parameters
+    .ret <- .ret[is.na(suppressWarnings(as.numeric(.ret)))]
     .ini <- .mv$ini
     .ini <- .ini[!is.na(.ini)]
     .names <- c(.mv$lhs, names(.ini))

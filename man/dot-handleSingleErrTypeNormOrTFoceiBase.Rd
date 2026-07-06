@@ -8,7 +8,8 @@
   env,
   pred1,
   errNum = 1L,
-  rxPredLlik = TRUE
+  rxPredLlik = TRUE,
+  arNorm = FALSE
 )
 }
 \arguments{
@@ -20,6 +21,10 @@
 
 \item{rxPredLlik}{A boolean indicating if the log likelihood should
 be calculated for non-normal distributions.  By default \code{TRUE}.}
+
+\item{arNorm}{A boolean; when \code{TRUE}, emit the AR(1) norm
+(conditional mean/variance) form used by the focei inner model.
+By default \code{FALSE}.}
 }
 \value{
 A list of the lines added.  The lines will contain

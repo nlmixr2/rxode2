@@ -148,6 +148,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "tfirst0" = NA,
   "lag" = NA,
   "lead" = NA,
+  "lag0" = NA,
+  "lead0" = NA,
   "dose" =NA,
   "podo" =NA,
   "dose0" =NA,
@@ -162,6 +164,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "first" = 1,
   "last" = 1,
   "diff" = 1,
+  "diff0" = 1,
   "is.nan" = 1,
   "is.na" = 1,
   "is.finite" = 1,
@@ -1139,6 +1142,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
               envir = envir
               ), ")"
     )
+    # A variable that is referenced inside a history function (lag/lead/diff/...)
+    # must be emitted as an lhs and bound as a bare symbol, so downstream uses
+    # (including the history reference) stay symbolic and the defining line is not
+    # inlined or dead-code eliminated.
+    if (!is.null(envir$..laggedVars) && any(.var == envir$..laggedVars) &&
+          !identical(x[[1]], quote(`~`))) {
+      .val <- try(eval(parse(text = .expr)), silent = TRUE)
+      if (!inherits(.val, "try-error")) {
+        .rx <- paste0(rxFromSE(.var), "=", rxFromSE(.val))
+        assign("..lhs", c(envir$..lhs, .rx), envir = envir)
+        assign(.var, symengine::S(.var), envir = envir)
+        return(invisible(NULL))
+      }
+    }
     if (regexpr(rex::rex(or(
       .regRate,
       .regDur,
@@ -1310,13 +1327,19 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxToSELagOrLead <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .len <- length(x)
   .fun <- as.character(x[[1]])
+  # lag()/lead() reference the previous/next record value of a *variable*, so the
+  # variable must stay a symbol.  In a symengine environment the assignment eval
+  # (`with(envir, ...)`) would otherwise inline an lhs variable's definition and
+  # break the call, so wrap the variable in symengine::S("var") to keep it a raw
+  # symbol; it round-trips back to the bare name in rxFromSE().
+  .vref <- function(v) if (isEnv) paste0("symengine::S(\"", v, "\")") else v
   if (.len == 1L) {
     stop(.fun, "() takes 1-2 arguments")
   } else if (.len == 2L) {
     if (length(x[[2]]) != 1) {
       stop(.fun, "() must be used with a variable", call. = FALSE)
     }
-    return(paste0(.fun, "(", as.character(x[[2]]), ")"))
+    return(paste0(.fun, "(", .vref(as.character(x[[2]])), ")"))
   } else if (.len == 3L) {
     if (length(x[[2]]) != 1) {
       stop(.fun, "() must be used with a variable", call. = FALSE)
@@ -1327,7 +1350,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     if (regexpr(rex::rex(maybe(one_of("-", "+")), regDecimalint), as.character(x[[3]]), perl = TRUE) == -1) {
       stop(.fun, "(", as.character(x[[2]]), ", #) must have an integer for the number of lagged doses", call. = FALSE)
     }
-    return(paste0(.fun, "(", as.character(x[[2]]), ", ", as.character(x[[3]]), ")"))
+    return(paste0(.fun, "(", .vref(as.character(x[[2]])), ", ", as.character(x[[3]]), ")"))
   } else {
     stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
   }
@@ -1833,7 +1856,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`tad0`))) {
     return(.rxToSETad0(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lag`)) ||
-               identical(x[[1]], quote(`lead`))) {
+               identical(x[[1]], quote(`lead`)) ||
+               identical(x[[1]], quote(`lag0`)) ||
+               identical(x[[1]], quote(`lead0`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`delay`)) ||
                identical(x[[1]], quote(`rxDelayD`)) ||
@@ -2570,7 +2595,9 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         call. = FALSE
       )
     } else if (identical(x[[1]], quote(`lag`)) ||
-      identical(x[[1]], quote(`lead`))) {
+      identical(x[[1]], quote(`lead`)) ||
+      identical(x[[1]], quote(`lag0`)) ||
+      identical(x[[1]], quote(`lead0`))) {
       .a <- .rxFromSE(x[[2]])
       .fun <- as.character(x[[1]])
       if (length(x) == 3) {
@@ -3008,6 +3035,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
+    "lag0", "lead0", "diff0",
     "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
@@ -3063,9 +3091,63 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   })
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   .expr <- eval(parse(text = paste0("quote({", rxNorm(x), "})")))
+  # variables referenced inside lag()/lead()/diff()/first()/last() must be kept
+  # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
+  # the history function still references a defined variable in the output model
+  .env$..laggedVars <- .rxCollectLaggedVars(.expr)
   .ret <- .rxToSE(.expr, envir=.env)
   class(.env) <- "rxS"
   return(.env)
+}
+
+#' Collect the variables referenced inside history functions (lag/lead/diff/...)
+#'
+#' Only the RHS of assignments is scanned so the dosing `lag(cmt) <- ...` form
+#' (a compartment property, not a history reference) is not collected.
+#'
+#' @param expr a quoted model (or sub-expression)
+#' @return character vector of variable names used as the first argument of a
+#'   history function
+#' @author Matthew Fidler
+#' @noRd
+.rxCollectLaggedVars <- function(expr) {
+  .acc <- character(0)
+  .histFn <- c("lag", "lead", "diff", "first", "last", "lag0", "lead0", "diff0")
+  .walk <- function(e) {
+    if (is.call(e)) {
+      .f <- e[[1]]
+      if (is.name(.f) &&
+            (identical(.f, quote(`<-`)) || identical(.f, quote(`=`)) ||
+               identical(.f, quote(`~`)))) {
+        # A variable defined directly as a history function (eg
+        # rx_arEp <- lag0(rx_arE, 1)) is itself a lagged quantity: keep it
+        # symbolic too (not inlined), so downstream differentiation w.r.t. it
+        # stays valid (eg the AR(1) exact eta/theta gradient differentiates the
+        # whitened likelihood by the previous residual).
+        .rhs <- e[[3]]
+        if (!identical(.f, quote(`~`)) && is.name(e[[2]]) && is.call(.rhs) &&
+              is.name(.rhs[[1]]) && as.character(.rhs[[1]]) %in% .histFn) {
+          .acc[[length(.acc) + 1L]] <<- as.character(e[[2]])
+        }
+        # only scan the RHS (skip dosing lag(cmt) on the lhs)
+        .walkRhs(e[[3]])
+      } else {
+        for (.i in seq_along(e)) .walk(e[[.i]])
+      }
+    }
+  }
+  .walkRhs <- function(e) {
+    if (is.call(e)) {
+      .f <- e[[1]]
+      if (is.name(.f) && as.character(.f) %in% .histFn &&
+            length(e) >= 2L && is.name(e[[2]])) {
+        .acc[[length(.acc) + 1L]] <<- as.character(e[[2]])
+      }
+      for (.i in seq_along(e)[-1]) .walkRhs(e[[.i]])
+    }
+  }
+  .walk(expr)
+  unique(.acc)
 }
 
 symengineC <- new.env(parent = emptyenv())
