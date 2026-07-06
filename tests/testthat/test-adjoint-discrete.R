@@ -20,6 +20,8 @@ rxTest({
   fwd <- rxode2::.rxDiscreteForwardSens(B, X0, p, h, nStep)
 
   test_that("discrete adjoint of a terminal-state objective matches forward sens to machine precision", {
+    skip_on_cran()
+    skip_on_ci()
     for (kOut in seq_along(B$st)) {
       cov <- list(as.numeric(seq_along(B$st) == kOut))  # covector e_k at final step
       gAdj <- rxode2::.rxDiscreteAdjointGrad(B, fwd$stages, p, h, nStep, cov)
@@ -29,6 +31,8 @@ rxTest({
   })
 
   test_that("discrete adjoint of a trajectory objective matches forward sens to machine precision", {
+    skip_on_cran()
+    skip_on_ci()
     fa <- rxode2::.rxDiscreteForwardSens(B, X0, p, h, nStep)  # provides Sall
     obsSteps <- c(50L, 100L, 200L, 300L, 450L, 600L)
     set.seed(1)
@@ -40,6 +44,8 @@ rxTest({
   })
 
   test_that("discrete adjoint with an additive-bolus (F) dose jump matches forward sens to machine precision", {
+    skip_on_cran()
+    skip_on_ci()
     dText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
     dcs <- c("ka", "cl", "v", "Fbio"); dp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)
     dX0 <- c(depot = 0, center = 0)                 # dose supplies depot at t0
@@ -60,6 +66,8 @@ rxTest({
   })
 
   test_that(".rxAdjointExpand exposes F_X/F_p as lhs matching the reference to machine precision", {
+    skip_on_cran()
+    skip_on_ci()
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     expect_equal(ex$ns, 2L); expect_equal(ex$np, 3L)
     expect_equal(ex$fxOff, 0L); expect_equal(ex$fpOff, 4L); expect_equal(ex$nlhsAdj, 10L)
@@ -83,6 +91,8 @@ rxTest({
   })
 
   test_that("in-engine rk4s solver fills rx__sens_* columns matching FD of the RK4 solve", {
+    skip_on_cran()
+    skip_on_ci()
     tms <- c(1, 2, 4, 8, 12, 24)
     ev <- et(amt = 100, cmt = "depot") %>% et(tms)
     ex <- rxode2::.rxAdjointExpand(mText, cs)
@@ -108,6 +118,8 @@ rxTest({
   })
 
   test_that("steady-state (ss) bolus: forward-only adjoint primal matches base to machine precision", {
+    skip_on_cran()
+    skip_on_ci()
     # The ss pre-solve reuses the base method's single-point stepper for the
     # adjoint method codes (rk4s -> rk4), so the forward primal solves
     # steady-state dosing exactly (previously it left yp un-advanced -> huge
@@ -123,6 +135,8 @@ rxTest({
   })
 
   test_that("steady-state (ss) bolus: expanded adjoint sensitivities match forward sensitivities", {
+    skip_on_cran()
+    skip_on_ci()
     # The backward sweep adds the steady-state initial-condition sensitivity
     # dY_ss/dp via a one-period monodromy (rk4s.cpp), so the expanded adjoint
     # rx__sens_* columns reproduce the forward-sensitivity gradients at steady
@@ -171,6 +185,8 @@ rxTest({
   })
 
   test_that("steady-state (ss): FD cross-check of the expanded rk4s adjoint sensitivities", {
+    skip_on_cran()
+    skip_on_ci()
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
@@ -190,6 +206,8 @@ rxTest({
   })
 
   test_that("steady-state ss=2 (superposition, bolus): adjoint sensitivities match forward", {
+    skip_on_cran()
+    skip_on_ci()
     ex <- rxode2::.rxAdjointExpand(mText, cs); madj <- rxode2::rxode2(ex$text)
     mfwd <- rxode2::rxode2(mText, calcSens = cs)
     scol <- as.vector(outer(ex$st, cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
@@ -234,6 +252,8 @@ rxTest({
   })
 
   test_that("steady-state on the composite (AutoSwitch) path: adjoint sensitivities match forward", {
+    skip_on_cran()
+    skip_on_ci()
     ex <- rxode2::.rxAdjointExpand(mText, cs); madj <- rxode2::rxode2(ex$text)
     mfwd <- rxode2::rxode2(mText, calcSens = cs)
     scol <- as.vector(outer(ex$st, cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
@@ -256,6 +276,8 @@ rxTest({
   })
 
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
+    skip_on_cran()
+    skip_on_ci()
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     evSS <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 2, 4, 8, 12))
@@ -276,6 +298,8 @@ rxTest({
   })
 
   test_that("steady-state on the liblsodaadj multistep driver: adjoint sensitivities match forward", {
+    skip_on_cran()
+    skip_on_ci()
     ex <- rxode2::.rxAdjointExpand(mText, cs); madj <- rxode2::rxode2(ex$text)
     mfwd <- rxode2::rxode2(mText, calcSens = cs)
     scol <- as.vector(outer(ex$st, cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
@@ -296,6 +320,8 @@ rxTest({
   })
 
   test_that("modeled rate()/dur() steady-state: adjoint sensitivities match FINITE DIFFERENCES", {
+    skip_on_cran()
+    skip_on_ci()
     # For a modeled rate/dur whose value DEPENDS on a sensitivity parameter, the ss
     # has a MOVING period boundary.  The discrete adjoint carries the dR/dp forcing
     # + transversality B terms; validate against central FD (rxode2's FORWARD
@@ -329,6 +355,8 @@ rxTest({
   })
 
   test_that("nmtest dosing scenarios: adjoint solution AND gradients match forward sensitivities (ka + elimination)", {
+    skip_on_cran()
+    skip_on_ci()
     skip_if_not_installed("nlmixr2data")
     d0 <- nlmixr2data::nmtest
     # nmtest 2-cmt model with ka + elimination (cl) as free sensitivity params,
@@ -384,7 +412,9 @@ rxTest({
   })
 
   test_that("STIFF adjoint solvers (Rosenbrock/implicit): non-ss nmtest gradients match FD", {
-    skip_if_not_installed("nlmixr2data")
+    skip_on_cran()
+    skip_on_ci()
+
     d0 <- nlmixr2data::nmtest
     mt <- paste("d/dt(depot)=-ka*depot", "d/dt(central)=ka*depot-(cl/v)*central",
                 "f(central)=bioav", "if (mode==1){", "rate(central)=rat2", "}",
@@ -421,6 +451,8 @@ rxTest({
   })
 
   test_that("STIFF adjoint solvers: steady-state sens match forward, using the ANALYTIC Jacobian", {
+    skip_on_cran()
+    skip_on_ci()
     # The stiff (Rosenbrock / implicit RK) adjoint solvers integrate the
     # adjoint-augmented system with an analytic Jacobian emitted by
     # .rxAdjointExpand(stiff=TRUE) -- df()/dy() of the base block (the sens states
@@ -454,13 +486,15 @@ rxTest({
   })
 
   test_that("rxSolveAdjointRk4 infers the stiff Jacobian from the method", {
+    skip_on_cran()
+    skip_on_ci()
     # .rxAdjointMethodStiff maps the adjoint method to whether the expansion needs
     # the analytic Jacobian (stiff Rosenbrock/implicit-RK + the composite).
-    expect_true(rxode2:::.rxAdjointMethodStiff("ros4s"))
-    expect_true(rxode2:::.rxAdjointMethodStiff("radauiia5s"))
-    expect_true(rxode2:::.rxAdjointMethodStiff("dop853s+ros4s"))
-    expect_false(rxode2:::.rxAdjointMethodStiff("rk4s"))
-    expect_false(rxode2:::.rxAdjointMethodStiff("dop853s"))
+    expect_true(.rxAdjointMethodStiff("ros4s"))
+    expect_true(.rxAdjointMethodStiff("radauiia5s"))
+    expect_true(.rxAdjointMethodStiff("dop853s+ros4s"))
+    expect_false(.rxAdjointMethodStiff("rk4s"))
+    expect_false(.rxAdjointMethodStiff("dop853s"))
     # the convenience wrapper auto-builds WITH the Jacobian for a stiff method and
     # WITHOUT for an explicit one -- both reproduce the forward sensitivities at ss.
     mtxt <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center"
@@ -477,6 +511,8 @@ rxTest({
   })
 
   test_that("in-engine rk4s F/dose-jump: Fbio + all sens columns match FD of the RK4 solve", {
+    skip_on_cran()
+    skip_on_ci()
     fText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nf(depot)=Fbio"
     fcs <- c("ka", "cl", "v", "Fbio"); fp <- c(ka = 1.2, cl = 3.5, v = 25, Fbio = 0.7)
     tms <- c(1, 2, 4, 8, 12, 24)
@@ -502,6 +538,8 @@ rxTest({
   })
 
   test_that("discrete-adjoint event jumps (reset/replace/multiply) match FD of the RK4 solve", {
+    skip_on_cran()
+    skip_on_ci()
     cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
     ex <- rxode2::.rxAdjointExpand(mText, cs2)
     madj <- rxode2::rxode2(ex$text)
@@ -547,6 +585,8 @@ rxTest({
   })
 
   test_that("adjoint expand preserves modeled alag/rate/dur (correct primal + ODE-param sens)", {
+    skip_on_cran()
+    skip_on_ci()
     # .rxAdjointExpand must keep modeled dosing modifiers so the adjoint forward
     # integrates the SAME primal as the real model; the ODE parameters (ka/cl/v)
     # then have correct sensitivities.  (The dosing PARAMETER's own sensitivity --
@@ -581,6 +621,8 @@ rxTest({
   })
 
   test_that("modeled-alag transversality: d/d(lag) sensitivity matches FD (rk4s/dop853s)", {
+    skip_on_cran()
+    skip_on_ci()
     # A bolus into a compartment with a modeled alag() lands at t_dose+lag(theta);
     # shifting lag shifts the whole post-dose trajectory, so the lag parameter's
     # own sensitivity needs the transversality jump mu += -amt*dlag/dtheta*(lam^T Fx[:,c]).
@@ -612,6 +654,8 @@ rxTest({
   })
 
   test_that("modeled-rate infusion dual: d/d(rate) sensitivity matches FD (rk4s/dop853s)", {
+    skip_on_cran()
+    skip_on_ci()
     # A modeled-rate infusion of amt into cmt c runs over [t_on, t_on+amt/R(theta)]
     # adding R to the RHS; the rate parameter needs the forcing quadrature plus the
     # off-boundary transversality.  Rin=40 => off-time 100/40=2.5 is OFF the obs grid
@@ -642,6 +686,8 @@ rxTest({
   })
 
   test_that("modeled-dur infusion dual: d/d(dur) sensitivity matches FD (all methods)", {
+    skip_on_cran()
+    skip_on_ci()
     # A modeled-dur infusion has effective rate amt/dur, so dR/dtheta = amt *
     # d(1/dur)/dtheta -- same two-term dual as rate() with a durMult=amt runtime factor.
     # Dur=2.5 => off-time t_on+2.5 is OFF the obs grid (avoids the FD kink).
@@ -671,6 +717,8 @@ rxTest({
   })
 
   test_that("in-engine rk4s population solve (parallel) matches per-subject FD", {
+    skip_on_cran()
+    skip_on_ci()
     cs2 <- c("ka", "cl", "v")
     tms <- c(1, 4, 12, 24)
     pars <- data.frame(id = 1:3, ka = c(1.0, 1.2, 1.5), cl = c(3.0, 3.5, 4.0), v = c(20, 25, 30))
@@ -700,6 +748,8 @@ rxTest({
 
 
   test_that("rxSolveAdjointRk4 wrapper: clean full-trajectory gradient + cache", {
+    skip_on_cran()
+    skip_on_ci()
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     df <- rxode2::rxSolveAdjointRk4(mText, ev, params = p, calcSens = cs)
     # internal adjoint lhs are dropped; rx__sens_* are present
@@ -719,6 +769,8 @@ rxTest({
   })
 
   test_that("stiff radauiia5s (fully-implicit Radau IIA) adjoint is exact (linear + nonlinear)", {
+    skip_on_cran()
+    skip_on_ci()
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     chk <- function(mt, ccs, pp0, hmin) {
       ex <- rxode2::.rxAdjointExpand(mt, ccs)  # standard model: implicit RK needs only F_X/F_p
@@ -741,6 +793,8 @@ rxTest({
   })
 
   test_that("fully-implicit backwardEulers + gauss6s adjoints are exact vs FD", {
+    skip_on_cran()
+    skip_on_ci()
     # More fully-implicit RK methods on the Radau framework (first derivatives
     # only, no f'').  backwardEulers = implicit Euler (order 1, L-stable);
     # gauss6s = 3-stage Gauss-Legendre (order 6, symplectic, NOT stiffly accurate
@@ -770,6 +824,8 @@ rxTest({
   })
 
   test_that("stiff ros4s (Rosenbrock) adjoint is exact for a linear model (dJ/dp term)", {
+    skip_on_cran()
+    skip_on_ci()
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs, stiff = TRUE)
     expect_true(ex$stiff); expect_gt(ex$jpOff, 0)
@@ -788,6 +844,8 @@ rxTest({
   })
 
   test_that("stiff ros4s adjoint is exact for a NONLINEAR (Michaelis-Menten) model (f'' term)", {
+    skip_on_cran()
+    skip_on_ci()
     nlText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - vmax*center/(km+center)"
     ncs <- c("ka", "vmax", "km"); np9 <- c(ka = 1.0, vmax = 8, km = 15)
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
@@ -808,6 +866,9 @@ rxTest({
   })
 
   test_that("stiff ros43s (GRK4A) + ros6s (ROW6A) adjoints are exact (linear + nonlinear)", {
+    skip_on_cran()
+    skip_on_ci()
+
     # More Rosenbrock methods on ros_backward_fill.  Each libode ROW-form set is
     # transformed to the Hairer-Wanner form this framework uses (GRK4A via a Ginv
     # transform; ROW6A via a plain 1/gamma scaling).  Primal-vs-liblsoda validates
@@ -837,6 +898,9 @@ rxTest({
   })
 
   test_that("DDE delay() adjoint converges to FD for explicit rk4s methods", {
+    skip_on_cran()
+    skip_on_ci()
+
     # The anticipating costate term (delayed Jacobian F_Xd) makes the backward
     # sweep account for the delayed-state coupling.  It is a continuous-adjoint
     # discretization -> converges to FD at the scheme rate (O(h)), not machine
@@ -858,6 +922,9 @@ rxTest({
   })
 
   test_that("param-dependent delay tau(p): adjoint d/dtau matches FD incl. dose-induced jump", {
+    skip_on_cran()
+    skip_on_ci()
+
     # F_p gets the smooth breaking-point correction -(F_Xd_ij)*rxDelayD(y_j,tau)*
     # dtau/dp, AND the backward sweep adds the dose-induced breaking-point JUMP
     # mu += -lam_i(t_dose+tau)*F_Xd_ij*[y_j]*dtau/dp.  Together the adjoint d/dtau
@@ -881,6 +948,9 @@ rxTest({
   })
 
   test_that("DDE delay() adjoint converges for stiff (ros4s) and composite methods", {
+    skip_on_cran()
+    skip_on_ci()
+
     # The anticipating term is a per-step costate injection shared by every
     # backward fill (explicit, Rosenbrock, Radau, composite), so all of them
     # converge to FD as the step shrinks.
@@ -899,6 +969,9 @@ rxTest({
   })
 
   test_that("composite AutoSwitch dop853s+ros4s adjoint is exact across stiffness regimes", {
+    skip_on_cran()
+    skip_on_ci()
+
     # The composite freezes the per-interval switch decision and transposes each
     # step with the method (explicit dop853s OR Rosenbrock ros4s) that ran it.
     mTextC <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot - ke*center"
@@ -927,11 +1000,16 @@ rxTest({
   })
 
   test_that("composite AutoSwitch requires 's' on both methods to be a sensitivity method", {
+    skip_on_cran()
+    skip_on_ci()
     # dop853+ros4 (no 's') is a plain forward composite, not an adjoint method.
     expect_false(grepl("dop853s", "dop853+ros4"))
   })
 
   test_that("adaptive methods: primal matches liblsoda and frozen-step adjoint matches FD", {
+    skip_on_cran()
+    skip_on_ci()
+
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
@@ -963,6 +1041,9 @@ rxTest({
   })
 
   test_that("table-driven fixed-step methods (eulers/midpoints/heuns/rk3s) match FD of their own map", {
+    skip_on_cran()
+    skip_on_ci()
+
     ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 4, 12, 24))
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
@@ -982,9 +1063,12 @@ rxTest({
   })
 
   test_that("discrete forward sensitivity agrees with a finite difference of the RK4 solve", {
+    skip_on_cran()
+    skip_on_ci()
+
     solveN <- function(pp) {
       X <- X0
-      for (n in seq_len(nStep)) X <- rxode2:::.rxRk4Step(B, X, pp, h)$Xnext
+      for (n in seq_len(nStep)) X <- .rxRk4Step(B, X, pp, h)$Xnext
       X
     }
     for (pn in cs) {
@@ -1000,6 +1084,9 @@ rxTest({
   # validated against a central FD of the base (liblsoda) solve across single-dose,
   # multi-dose and infusion event tables. ----
   test_that("in-engine cvodesadj fills rx__sens_* matching FD across dose types", {
+    skip_on_cran()
+    skip_on_ci()
+
     cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
     ex <- rxode2::.rxAdjointExpand(mText, cs2)
     madj <- rxode2::rxode2(ex$text)
@@ -1029,6 +1116,9 @@ rxTest({
   })
 
   test_that("cvodesadj reset (evid 3) costate jump: post-reset sens matches FD", {
+    skip_on_cran()
+    skip_on_ci()
+
     cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
     ex <- rxode2::.rxAdjointExpand(mText, cs2)
     madj <- rxode2::rxode2(ex$text)
@@ -1061,6 +1151,9 @@ rxTest({
   })
 
   test_that("cvodesadj population solve matches the dop853s discrete adjoint", {
+    skip_on_cran()
+    skip_on_ci()
+
     cs2 <- c("ka", "cl", "v")
     ex <- rxode2::.rxAdjointExpand(mText, cs2)
     madj <- rxode2::rxode2(ex$text)
@@ -1082,6 +1175,9 @@ rxTest({
   # dop853s.  Without the switch the rx__sens_* compartments (d/dt=0) integrate to
   # all-zero.
   test_that("adjoint auto-switch: base methods produce real sensitivities (cvode->cvodesadj)", {
+    skip_on_cran()
+    skip_on_ci()
+
     cs2 <- c("ka", "cl", "v"); p2 <- c(ka = 1.2, cl = 3.5, v = 25)
     ex <- rxode2::.rxAdjointExpand(mText, cs2)
     madj <- rxode2::rxode2(ex$text)
@@ -1111,6 +1207,9 @@ rxTest({
   })
 
   test_that("in-engine liblsodaadj (P1-P3) == discrete forward sensitivity of liblsoda's own step map", {
+    skip_on_cran()
+    skip_on_ci()
+
     # liblsodaadj is the EXACT reverse-mode transpose of liblsoda's Nordsieck
     # multistep step map, incl. variable ORDER (Nordsieck row add/drop) and variable
     # STEP (scaleh at the boundary + a bridge for the rejection rescaling).  Because
@@ -1178,6 +1277,9 @@ rxTest({
   })
 
   test_that("in-engine liblsodaadj (P5) interior event jumps: multi-dose / reset / replace / multiply", {
+    skip_on_cran()
+    skip_on_ci()
+
     # Interior events reset liblsoda's integrator (istateReset), so the trajectory
     # is a chain of Nordsieck segments joined by a state jump.  The segment re-init
     # yh0=[y0,h0*f(y0)] couples the Nordsieck rows through f, so the costate handed to
@@ -1224,6 +1326,9 @@ rxTest({
   })
 
   test_that("in-engine liblsodaadj (P5) modeled bioavailability F and lag-time alag jumps", {
+    skip_on_cran()
+    skip_on_ci()
+
     # A modeled f(depot)=Fbio adds mu += amt*dF/dp*lam[c] at the dose; a modeled
     # alag(depot)=tlag shifts the dose time, adding the transversality
     # mu += -amt*dlag/dp*(lam^T F_X[:,c]).  These apply at every segment start,
@@ -1264,6 +1369,9 @@ rxTest({
   })
 
   test_that("in-engine liblsodaadj (P5) infusions: constant rate + modeled rate()/dur() duals", {
+    skip_on_cran()
+    skip_on_ci()
+
     # A constant-rate infusion has no dR/dp and is transparent to the adjoint.  A
     # MODELED rate(c)=R or dur(c)=D adds the in-window forcing (F_p[c] += durMult*dR/dp
     # inside the infusion) and the moving off-boundary transversality (-amt/R*durMult),
@@ -1295,6 +1403,9 @@ rxTest({
   })
 
   test_that("in-engine liblsodaadj (P6) auto-switch from liblsoda + parallel across subjects", {
+    skip_on_cran()
+    skip_on_ci()
+
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     ev <- et(amt = 100, cmt = "depot", ii = 6, addl = 2) %>% et(c(1, 4, 7, 10, 16))
@@ -1317,6 +1428,9 @@ rxTest({
   })
 
   test_that("in-engine dop54s / dp54s / vern98s (explicit-RK tableau additions)", {
+    skip_on_cran()
+    skip_on_ci()
+
     # dop54/dp54 (OdeDoPri54) share the Dormand-Prince 5(4) tableau (= dop5s); vern98
     # is Verner's 9(8).  Both drop into the rk4s Butcher-tableau framework: the base
     # states must match the base method's own solve, and the sensitivities converge to
@@ -1343,6 +1457,9 @@ rxTest({
   })
 
   test_that("in-engine libode explicit-RK family (discrete-adjoint tableau batch)", {
+    skip_on_cran()
+    skip_on_ci()
+
     # 28 libode explicit-RK methods get a discrete adjoint by dropping their Butcher
     # tableaus into the rk4s framework.  For each: the base states must track the base
     # method's own adaptive solve, and the sensitivities converge to the continuous
@@ -1373,6 +1490,9 @@ rxTest({
   })
 
   test_that("in-engine abs (Adams-Bashforth) discrete adjoint == FD of the AB solve", {
+    skip_on_cran()
+    skip_on_ci()
+
     # abs is the exact reverse-mode transpose of ab.cpp's classical fixed-order/
     # fixed-step Adams-Bashforth (an f-history multistep, not liblsoda's Nordsieck).
     # Because the AB schedule (dt, order) is param-INDEPENDENT, the discrete adjoint
@@ -1403,6 +1523,9 @@ rxTest({
   })
 
   test_that("in-engine abs interior event jumps (reset/replace/multiply) + parallel", {
+    skip_on_cran()
+    skip_on_ci()
+
     ex <- rxode2::.rxAdjointExpand(mText, cs)
     madj <- rxode2::rxode2(ex$text)
     ctl <- list(hmin = 0.02, maxordn = 4L, cores = 1); obs <- c(1, 2, 6, 8, 12)
