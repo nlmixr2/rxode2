@@ -3119,6 +3119,16 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
       if (is.name(.f) &&
             (identical(.f, quote(`<-`)) || identical(.f, quote(`=`)) ||
                identical(.f, quote(`~`)))) {
+        # A variable defined directly as a history function (eg
+        # rx_arEp <- lag0(rx_arE, 1)) is itself a lagged quantity: keep it
+        # symbolic too (not inlined), so downstream differentiation w.r.t. it
+        # stays valid (eg the AR(1) exact eta/theta gradient differentiates the
+        # whitened likelihood by the previous residual).
+        .rhs <- e[[3]]
+        if (!identical(.f, quote(`~`)) && is.name(e[[2]]) && is.call(.rhs) &&
+              is.name(.rhs[[1]]) && as.character(.rhs[[1]]) %in% .histFn) {
+          .acc[[length(.acc) + 1L]] <<- as.character(e[[2]])
+        }
         # only scan the RHS (skip dosing lag(cmt) on the lhs)
         .walkRhs(e[[3]])
       } else {
