@@ -285,14 +285,23 @@ FIXED (committed):
 The base AR(1) estimation model (`.rxArEstLlikLines` in `R/err-foceiBase.R`) now
 builds through `rxNorm`/`rxS`.
 
-REMAINING BLOCKER (nlm/focei recovery fit): the SENSITIVITY/derivative model
-(`rxUiGet.nlmSensModel`/`nlmThetaS` -> `.loadSymengine(promoteLinSens=TRUE)` ->
-`.rxToSEAssignOperators`) fails with "non-numeric argument to binary operator" on
-the AR-whitened line `rx_pred_ ~ llikNorm(DV, rx_pred_ + rx.arPhi.cp*rx.arEz.cp,
-rx_rll_*sqrt(1-rx.arPhi.cp^2))` -- i.e. DIFFERENTIATING the lag-dependent llik in
-the full model. Every isolated sub-piece differentiates fine; only the assembled
-full-model sensitivity build fails. Likely paths: teach the symengine
-sensitivity/derivative handling to differentiate the lag-based llik, OR make
-nlm/focei use finite-difference gradients for `ar()` endpoints (skip the analytic
-sensitivity model -- nlm already uses shi21 FD gradients). AR(1) SIMULATION, the
-lag/diff fix, and the opt-out asserts are complete and safe.
+FIXED since: (1) dotted names inside a llik() argument broke the symengine
+derivative -> AR(1) intermediates now use dot-free names (rx_arE_<var> etc.);
+(2) lag()-referenced variables were inlined/dead-code-eliminated by symengine ->
+`.rxCollectLaggedVars` + `.rxToSEAssignOperators` now emit them as lhs and bind
+them as symbols; (3) nlmixr2est model assemblies (`rxUiGet.nlmRxModel`,
+`.rxFinalizePred`) now emit the lag()-referenced definitions ahead of rx_pred_.
+The nlm AR(1) estimation model BUILDS and RUNS with correct symbolic gradients
+(the sensitivity model has the AR covariance derivative via llikNormDsd and the
+cor^dt derivative).
+
+REMAINING BLOCKER (first-record NaN): the fit runs but does not move because the
+objective is non-finite. On the FIRST record `lag()` returns NA, and the ifelse
+first-record guard is pruned to arithmetic (`is.na*0 + (1-is.na)*(cor^dt)`); since
+`0 * NaN = NaN` in IEEE, the guard is defeated and rx_pred_ (the -llik) is NaN.
+FIX: add a `lag0()`/`diff0()` variant that returns 0 (not NA) on the first record
+(mirroring `_tlast00` = `ISNA(x)?0:x` in `inst/include/rxode2_model_shared.h`),
+then generate the NaN-free stationary "phantom-at-0" AR estimation form
+(previous residual 0 and previous time 0 at the first obs, so phi=cor^t is finite
+and no is.na is needed). AR(1) SIMULATION, the lag/diff fix, the opt-out asserts,
+and the symbolic-gradient estimation model are complete.
