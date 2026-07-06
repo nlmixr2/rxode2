@@ -66,6 +66,46 @@ rxTest({
     expect_error(rxode2(f))
   })
 
+  test_that("a variable may lag itself (first-order recurrence)", {
+    # b = phi*lag0(b, 1) + 1 is a legal recurrence: lag0() reads the PREVIOUS
+    # record's stored value, not the current uninitialized one.
+    f <- function() {
+      ini({phi <- 0.5})
+      model({
+        b <- phi * lag0(b, 1) + 1
+        y <- b
+      })
+    }
+    ui <- rxode2(f)
+    r <- rxSolve(ui, et(1:6), returnType = "data.frame")
+    # b_1 = 1 (lag0 = 0 on first record); b_i = 0.5*b_{i-1} + 1
+    .expect <- Reduce(function(prev, .) 0.5 * prev + 1, seq_len(5), accumulate = TRUE, 1)
+    expect_equal(r$y, .expect)
+  })
+
+  test_that("self-lag resets per individual", {
+    f <- function() {
+      ini({phi <- 0.5})
+      model({b <- phi * lag0(b, 1) + 1; y <- b})
+    }
+    ui <- rxode2(f)
+    r <- rxSolve(ui, et(1:3) %>% et(id = 1:2), returnType = "data.frame")
+    for (.id in unique(r$id)) {
+      expect_equal(r$y[r$id == .id], c(1, 1.5, 1.75))
+    }
+  })
+
+  test_that("a non-lag self-reference is still treated as a parameter", {
+    # b = b*2 (no lag) reads the current value -> b is a required input param,
+    # NOT a recurrence; must not be silently turned into a self-lag.
+    f <- function() {
+      ini({tcl <- 1})
+      model({cl <- exp(tcl); b <- b * 2; y <- b})
+    }
+    ui <- rxode2(f)
+    expect_true("b" %in% ui$mv0$params)
+  })
+
   test_that("lag()/diff() of a time-varying covariate return the previous value", {
     f <- function() {
       ini({tcl <- 1})

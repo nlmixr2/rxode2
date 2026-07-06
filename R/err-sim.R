@@ -90,32 +90,33 @@ rxGetDistributionSimulationLines <- function(line) {
 #' process on the residual: the innovation is the endpoint's usual unit
 #' draw, scaled so the marginal variance stays rx_r_ for any correlation.
 #' The lag-1 correlation decays as cor^(time difference).  State is carried
-#' across observation records via sticky variables -- rx.arLast.<var> and
-#' rx.arTlast.<var> are assigned only inside the conditional branches, so
-#' rxode2 keeps them sticky (initialized to NA per subject, persisting across
-#' records), and the is.na() guard fires on the first record per endpoint.
+#' across observation records with the same lag()/lag0() form the estimation
+#' likelihood uses: rx.arT.<var> carries the previous time, lag0() reads the
+#' previous residual for the self-referential recurrence, and
+#' `1 - is.na(lag(...))` is the NaN-safe first-record indicator (0 on the first
+#' record so phi=0 -> the marginal draw, 1 after).
 #'
 #' @param cor quoted correlation (name or number)
 #' @param var endpoint variable suffix (e.g. "cp")
 #' @param innovation quoted unit residual draw (rxerr.<var> or an r*() call)
 #' @return list of quoted model lines; the final residual is left in
-#'   rx.arLast.<var> and the sim line back-transforms rx_pred_ + that residual
+#'   rx.arRes.<var> and the sim line back-transforms rx_pred_ + that residual
 #' @author Matthew Fidler
 #' @noRd
 .rxArSimLines <- function(cor, var, innovation) {
-  .last <- str2lang(paste0("rx.arLast.", var))
-  .tlast <- str2lang(paste0("rx.arTlast.", var))
+  .res <- str2lang(paste0("rx.arRes.", var))
+  .t <- str2lang(paste0("rx.arT.", var))
+  .dt <- str2lang(paste0("rx.arDt.", var))
+  .nf <- str2lang(paste0("rx.arNf.", var))
   .phi <- str2lang(paste0("rx.arPhi.", var))
   list(
-    bquote(if (is.na(.(.last))) {
-      .(.last) <- sqrt(rx_r_) * .(innovation)
-      .(.tlast) <- time
-    } else {
-      .(.phi) ~ .(cor)^(time - .(.tlast))
-      .(.last) <- .(.phi) * .(.last) + sqrt(rx_r_ * (1 - .(.phi)^2)) * .(innovation)
-      .(.tlast) <- time
-    }),
-    bquote(sim <- rxTBSi(rx_pred_ + .(.last), rx_lambda_, rx_yj_, rx_low_, rx_hi_)))
+    bquote(.(.t) <- time),
+    bquote(.(.dt) <- time - lag0(.(.t), 1)),
+    bquote(.(.nf) <- 1 - is.na(lag(.(.t), 1))),
+    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt)),
+    bquote(.(.res) <- .(.phi) * lag0(.(.res), 1) +
+             sqrt(rx_r_ * (1 - .(.phi)^2)) * .(innovation)),
+    bquote(sim <- rxTBSi(rx_pred_ + .(.res), rx_lambda_, rx_yj_, rx_low_, rx_hi_)))
 }
 
 #' @rdname rxGetDistributionSimulationLines

@@ -7,13 +7,22 @@
   through the estimation/symengine path. Only `lag(x, 1)`/`diff(x, 1)` are
   supported for calculated variables.
 
+- Add `lag0()`/`lead0()`/`diff0()`, which behave like `lag()`/`lead()`/`diff()`
+  but return `0` instead of `NA` when there is no prior/following record.
+
+- A calculated variable may now reference itself through `lag()`/`lag0()`/
+  `diff()` (a first-order recurrence, e.g. `b <- phi*lag0(b, 1) + innov`); the
+  reference reads the previous record's value.  A non-lag self-reference
+  (`b <- b*2`) is still treated as a required input parameter.
+
 - Add `ar(cor)` residual term to simulate continuous-time AR(1)
   (autocorrelated) residuals for normal, t, and cauchy based error models,
   addable per endpoint alongside any transform (e.g.
   `cp ~ add(add.sd) + prop(prop.sd) + ar(ar1.cor)`).  `cor` is in `[0, 1)`;
   the lag correlation decays as `cor^(time gap)` and the residual variance
-  stays stationary.  Simulation only.  Follows the autocorrelated residual
-  error model of Karlsson, Beal and Sheiner (1995).
+  stays stationary.  Follows the autocorrelated residual error model of
+  Karlsson, Beal and Sheiner (1995).  Estimation is supported in nlmixr2est
+  (nlm and focei families).
 
 - Stiff adjoint and forward-sensitivity solvers now integrate the augmented
   (sensitivity-expanded) system with its analytic Jacobian:

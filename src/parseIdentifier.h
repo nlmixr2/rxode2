@@ -15,7 +15,12 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
     } else if (isDefiningParameterRecursively(value)){
       // This is x = x*exp(matt)
       // lhs defined in terms of a parameter
-      if (tb.lh[tb.ix] == isSuppressedLHS){
+      if (tb.lag[tb.ix] != 0) {
+        // Self-reference only through lag()/lead()/diff() (eg an AR(1) recurrence
+        // b = phi*lag(b,1) + innov): the reference reads the PREVIOUS record's
+        // stored lhs value, not the current uninitialized one, so this is a legal
+        // first-order recurrence -- keep it a normal lhs (printLhsLag reads _PL).
+      } else if (tb.lh[tb.ix] == isSuppressedLHS){
         tb.lh[tb.ix] = notLHS;
       } else {
         tb.lh[tb.ix] = isLHSparam;

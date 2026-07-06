@@ -105,7 +105,7 @@ rxTest({
     expect_error(rxode2(.arBadLit))
   })
 
-  test_that("ar() generates sticky-variable simulation lines", {
+  test_that("ar() generates lag0()-based simulation lines", {
     .f <- function() {
       ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; ar1.cor <- 0.8})
       model({
@@ -117,9 +117,12 @@ rxTest({
     }
     .txt <- vapply(rxCombineErrorLines(rxode2(.f)), deparse1, character(1))
     .all <- paste(.txt, collapse="\n")
-    expect_true(grepl("rx.arLast.cp", .all, fixed=TRUE))
-    expect_true(grepl("rx.arTlast.cp", .all, fixed=TRUE))
-    expect_true(grepl("is.na(rx.arLast.cp)", .all, fixed=TRUE))
+    # the self-referential AR(1) residual recurrence via lag0(), mirroring the
+    # estimation likelihood (previous residual/time via lag0(), NaN-safe
+    # first-record indicator via 1 - is.na(lag(...)))
+    expect_true(grepl("rx.arRes.cp", .all, fixed=TRUE))
+    expect_true(grepl("lag0(rx.arRes.cp, 1)", .all, fixed=TRUE))
+    expect_true(grepl("is.na(lag(rx.arT.cp, 1))", .all, fixed=TRUE))
   })
 
   test_that("ar() simulation reproduces the target autocorrelation and stationary variance", {
