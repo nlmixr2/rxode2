@@ -377,19 +377,112 @@
 #'
 #' - `rx_r_` The transformed variance
 #'
-#' - `rx_cor_` The AR(1) correlation (only when the endpoint has `ar()`)
+#' Build the per-observation log-likelihood call for an AR(1) endpoint
 #'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @param errNum endpoint number
+#' @param type distribution type (norm/dnorm/t/cauchy)
+#' @param dvTrans quoted transformed observed value
+#' @return function(meanLang, sdLang) returning the quoted llik call
+#' @author Matthew Fidler
+#' @noRd
+.rxArBuildLlik <- function(env, pred1, errNum, type, dvTrans) {
+  if (type == "t") {
+    .iniDf <- env$iniDf
+    .cnd <- pred1$cond
+    .w <- which(.iniDf$err == "t" & .iniDf$condition == .cnd)
+    if (length(.w) == 1) {
+      .nu <- str2lang(paste(.iniDf$name[.w]))
+    } else {
+      if (is.na(pred1$d)) {
+        stop("t distribution needs a proper degrees of freedom specified", call. = FALSE)
+      }
+      .nu <- str2lang(pred1$d)
+    }
+    function(.mean, .sd) {
+      if (errNum == 1) bquote(llikT(.(dvTrans), .(.nu), .(.mean), .(.sd)))
+      else bquote(llikXT(.(errNum - 1), .(dvTrans), .(.nu), .(.mean), .(.sd)))
+    }
+  } else if (type == "cauchy") {
+    function(.mean, .sd) {
+      if (errNum == 1) bquote(llikCauchy(.(dvTrans), .(.mean), .(.sd)))
+      else bquote(llikXCauchy(.(errNum - 1), .(dvTrans), .(.mean), .(.sd)))
+    }
+  } else {
+    function(.mean, .sd) {
+      if (errNum == 1) bquote(llikNorm(.(dvTrans), .(.mean), .(.sd)))
+      else bquote(llikXNorm(.(errNum - 1), .(dvTrans), .(.mean), .(.sd)))
+    }
+  }
+}
+
+#' Generate the estimation lines for an AR(1) (`ar()`) endpoint
+#'
+#' Emits a continuous-time AR(1) conditional log-likelihood.  The marginal
+#' residual `rx.arE.<var> = DVtrans - pred` and last time `rx.arT.<var>` are
+#' plain lhs variables; their previous-record values come from `lag()` (which
+#' survives the symengine estimation prune), and `ifelse(is.na(...))` handles the
+#' first record per individual (marginal likelihood).  A normal endpoint is
+#' packed as `dnorm` so the engine takes the explicit-likelihood path.
+#'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @param errNum endpoint number
+#' @param type distribution type (norm/dnorm/t/cauchy)
+#' @param yj transform code for this endpoint
+#' @param cor quoted AR(1) correlation
+#' @return list of quoted model lines
+#' @author Matthew Fidler
+#' @noRd
+.rxArEstLlikLines <- function(env, pred1, errNum, type, yj, cor) {
+  .distInt <- if (type == "norm") {
+    as.integer(factor("dnorm", levels = levels(pred1$distribution)))
+  } else {
+    as.integer(pred1$distribution)
+  }
+  .dvTrans <- .rxGetPredictionDVTransform(env, pred1, yj)
+  .buildLlik <- .rxArBuildLlik(env, pred1, errNum, type, .dvTrans)
+  .var <- pred1$var
+  .e <- str2lang(paste0("rx.arE.", .var))
+  .t <- str2lang(paste0("rx.arT.", .var))
+  .ep <- str2lang(paste0("rx.arEp.", .var))
+  .dt <- str2lang(paste0("rx.arDt.", .var))
+  .phi <- str2lang(paste0("rx.arPhi.", .var))
+  .ez <- str2lang(paste0("rx.arEz.", .var))
+  list(
+    bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
+    bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
+    bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
+    bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
+    bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
+    bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
+    bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1)))),
+    bquote(.(.t) <- time),
+    bquote(.(.e) <- .(.dvTrans) - rx_pred_),
+    bquote(.(.ep) <- lag(.(.e), 1)),
+    bquote(.(.dt) <- time - lag(.(.t), 1)),
+    bquote(.(.phi) <- ifelse(is.na(.(.ep)), 0, .(cor)^.(.dt))),
+    bquote(.(.ez) <- ifelse(is.na(.(.ep)), 0, .(.ep))),
+    bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ez)),
+                                   bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))),
+    quote(rx_r_ ~ 0))
+}
+
 #' @author Matthew Fidler
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
   type <- pred1$distribution
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
-    # a normal endpoint with ar() emits an extra rx_cor_ line (the AR(1)
-    # correlation) so the estimation engine can form the whitened likelihood
-    .arCor <- if (rxPredLlik && type == "norm") .rxGetArCorLang(env, pred1) else NULL
-    .ret <- vector("list", ifelse(type == "norm", ifelse(is.null(.arCor), 7, 8),
-                                  ifelse(rxPredLlik, 9, 7)))
+    .arCor <- if (rxPredLlik) .rxGetArCorLang(env, pred1) else NULL
     .yj <- as.double(pred1$transform) - 1
+    if (!is.null(.arCor)) {
+      # AR(1) endpoint: emit a per-observation conditional log-likelihood
+      # whitened with lag() (a symengine-safe previous-residual accessor) and
+      # routed through the explicit-likelihood path
+      return(.rxArEstLlikLines(env, pred1, errNum, type, .yj, .arCor))
+    }
+    .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
     .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10*(as.integer(pred1$distribution)-1)))
     .ret[[2]] <- bquote(rx_lambda_~.(.rxGetLambdaFromPred1AndIni(env, pred1)))
     .ret[[3]] <- bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1)))
@@ -398,13 +491,6 @@
     .ret[[6]] <- bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, .yj)))
     if (type == "norm") {
       .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
-      if (!is.null(.arCor)) {
-        .ret[[8]] <- if (errNum == 1) {
-          bquote(rx_cor_ ~ .(.arCor))
-        } else {
-          str2lang(paste0("rx_cor_", errNum - 1, " ~ ", deparse1(.arCor)))
-        }
-      }
     } else {
       if (rxPredLlik) {
         .ret[[7]] <- bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
