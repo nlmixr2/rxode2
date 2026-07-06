@@ -24,6 +24,10 @@
   Karlsson, Beal and Sheiner (1995).  Estimation is supported in nlmixr2est
   (nlm and focei families).
 
+- Added `rxSetSolveAtolRtol()`/`rxGetSolveAtolRtol()` to the C function-pointer API
+  for downstream packages to set/restore the current solve's exact ODE atol/rtol.
+
+
 - Stiff adjoint and forward-sensitivity solvers now integrate the augmented
   (sensitivity-expanded) system with its analytic Jacobian:
   - `.rxAdjointExpand(stiff=TRUE)` emits the base-block `df()/dy()` Jacobian, so

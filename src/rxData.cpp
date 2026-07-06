@@ -1705,6 +1705,44 @@ extern "C" double * getAol(int n, double atol){
 extern "C" double * getRol(int n, double rtol) {
   return _globals.grtol2;
 }
+
+// Set the current solve's ODE absolute/relative tolerances to exact values (all
+// compartments and threads), clearing any sticky per-subject loosening.  Used by
+// downstream packages to tighten the covariance-step solves; pair with
+// rxGetSolveAtolRtol to save and restore.
+extern "C" void rxSetSolveAtolRtol(double atol, double rtol) {
+  rx_solve* rx = getRxSolve_();
+  if (rx == NULL) return;
+  rx_solving_options* op = rx->op;
+  if (op == NULL) return;
+  int neq = op->neq;
+  op->ATOL = atol;
+  op->RTOL = rtol;
+  for (int i = neq; i--;) {
+    _globals.gatol2[i]  = atol;
+    _globals.grtol2[i]  = rtol;
+    _globals.gssAtol[i] = atol;
+    _globals.gssRtol[i] = rtol;
+  }
+  int cores = op->cores;
+  for (int t = 0; t < cores; t++) {
+    double *a  = _globals.gatol2Thread  + neq*t;
+    double *r  = _globals.grtol2Thread  + neq*t;
+    double *sa = _globals.gssAtolThread + neq*t;
+    double *sr = _globals.gssRtolThread + neq*t;
+    for (int i = neq; i--;) { a[i]=atol; r[i]=rtol; sa[i]=atol; sr[i]=rtol; }
+  }
+  uint32_t nall = rx->nsub*rx->nsim;
+  for (uint32_t s = 0; s < nall; s++) rx->subjects[s].tolFactor = 1.0;
+}
+
+// Report the current solve's base ODE absolute/relative tolerances (op->ATOL/RTOL).
+extern "C" void rxGetSolveAtolRtol(double *atol, double *rtol) {
+  rx_solve* rx = getRxSolve_();
+  if (rx == NULL || rx->op == NULL) { *atol = NA_REAL; *rtol = NA_REAL; return; }
+  *atol = rx->op->ATOL;
+  *rtol = rx->op->RTOL;
+}
 // This sets up the constant covariates if ev1 is rxEtTran
 static inline void gparsCovSetupConstant(RObject &ev1, int npars){
   if (rxIs(ev1, "rxEtTran")) {
