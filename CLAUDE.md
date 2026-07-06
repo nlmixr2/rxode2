@@ -267,35 +267,32 @@ a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
 
 ## Known Issues / Investigation Notes
 
-### `lag()`/`diff()` of a calculated variable does not survive `rxNorm`/symengine (blocks AR(1) estimation)
+### `lag()`/`diff()` and lag()-based AR(1) estimation -- status
 
-The solve/codegen path for `lag(x, 1)`/`diff(x, 1)` on an lhs variable is fixed
-(`src/codegen.h` `printLhsLag` -> `_PL[_LHS_<ordinal>_]`; `printParamLags` uses the
-true parameter index for covariates). It returns the previous record's value
-correctly in `rxSolve` (see `tests/testthat/test-lhs-lag.R`).
+FIXED (committed):
+- Solve/codegen path for `lag(x,1)`/`diff(x,1)` (lhs via `_PL[_LHS_<ordinal>_]`,
+  covariates via the true parameter index) -- `src/codegen.h`. Tests in
+  `tests/testthat/test-lhs-lag.R`.
+- `rxNorm` normalization: `assertCorrectDiffArgs` (`src/parseFunsDiff.h`) gated the
+  lag-number extraction on `strlen(v2) > 2`, which dropped the no-space form `,1`
+  (length 2) -> `lagNo=0` -> the sbt (normalized-text) emission was skipped and
+  `rxNorm("b=lag(a,1)")` gave `b=;`. Gate is now `> 1`. `rxNorm`/`rxS` round-trip
+  `lag()`/`diff()`.
+- symengine load: `.rxToSELagOrLead` (`R/symengine.R`) wraps the lagged var in
+  `symengine::S("var")` so the assignment `eval(with(envir,...))` does not inline
+  an lhs definition into the `lag()` call.
 
-BUT `lag()` in an assignment does NOT survive the model NORMALIZATION used by every
-estimation method (focei/nlm/saem load `rxNorm(model)` into symengine). Concretely:
+The base AR(1) estimation model (`.rxArEstLlikLines` in `R/err-foceiBase.R`) now
+builds through `rxNorm`/`rxS`.
 
-```r
-rxNorm(rxModelVars("a=DV-cp\nb=lag(a,1)\nout=cp+b\n"))
-#> a=DV-cp;
-#> b=;          # <- lag RHS dropped by the C parser's normalized-text (sbt) output
-#> out=cp+b;
-```
-
-The C parser's `sbt` buffer (the `rxNorm` text) emits `lag(` for the function name
-(`src/parseFunsDiff.h` `handleFunctionDiff`, case 2, ~line 119) and sets
-`tf->i[0]=1` to keep parsing args, but the statement's normalized RHS still comes
-out empty -- so `rxNorm` yields `b=;`. This is one layer BELOW symengine: `rxToSE`/
-`rxFromSE` round-trip `lag(a,1)` fine in isolation, and `.rxToSELagOrLead`
-(`R/symengine.R`) is reachable, but `rxS()` feeds it `rxNorm(x)` which already lost
-the lag. A symengine-only fix (wrapping the lagged var in `symengine::S("var")` so
-the assignment `eval` in `.rxToSEAssignOperators` does not inline it) is NECESSARY
-but NOT SUFFICIENT; the C parser `rxNorm`/`sbt` emission for `var = lag(...)` must
-first emit the full `lag(var, k)` call.
-
-Consequence: the lag()-based AR(1) estimation codegen (`.rxArEstLlikLines` in
-`R/err-foceiBase.R`) generates correct lines, but nlm errors (`rx.arEp.cp=;`) and
-focei silently mis-fits (residual params wrong) until `rxNorm` preserves `lag()`.
-AR(1) simulation and the solve-path lag/diff fix are complete and safe.
+REMAINING BLOCKER (nlm/focei recovery fit): the SENSITIVITY/derivative model
+(`rxUiGet.nlmSensModel`/`nlmThetaS` -> `.loadSymengine(promoteLinSens=TRUE)` ->
+`.rxToSEAssignOperators`) fails with "non-numeric argument to binary operator" on
+the AR-whitened line `rx_pred_ ~ llikNorm(DV, rx_pred_ + rx.arPhi.cp*rx.arEz.cp,
+rx_rll_*sqrt(1-rx.arPhi.cp^2))` -- i.e. DIFFERENTIATING the lag-dependent llik in
+the full model. Every isolated sub-piece differentiates fine; only the assembled
+full-model sensitivity build fails. Likely paths: teach the symengine
+sensitivity/derivative handling to differentiate the lag-based llik, OR make
+nlm/focei use finite-difference gradients for `ar()` endpoints (skip the analytic
+sensitivity model -- nlm already uses shi21 FD gradients). AR(1) SIMULATION, the
+lag/diff fix, and the opt-out asserts are complete and safe.
