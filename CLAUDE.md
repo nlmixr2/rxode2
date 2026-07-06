@@ -264,3 +264,38 @@ a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
   does, not how it compares.
 - ASCII only. No Unicode anywhere in the repo (CRAN requirement): use `--` for
   em-dashes, `->` for arrows, straight quotes, `...` for ellipses, etc.
+
+## Known Issues / Investigation Notes
+
+### `lag()`/`diff()` of a calculated variable does not survive `rxNorm`/symengine (blocks AR(1) estimation)
+
+The solve/codegen path for `lag(x, 1)`/`diff(x, 1)` on an lhs variable is fixed
+(`src/codegen.h` `printLhsLag` -> `_PL[_LHS_<ordinal>_]`; `printParamLags` uses the
+true parameter index for covariates). It returns the previous record's value
+correctly in `rxSolve` (see `tests/testthat/test-lhs-lag.R`).
+
+BUT `lag()` in an assignment does NOT survive the model NORMALIZATION used by every
+estimation method (focei/nlm/saem load `rxNorm(model)` into symengine). Concretely:
+
+```r
+rxNorm(rxModelVars("a=DV-cp\nb=lag(a,1)\nout=cp+b\n"))
+#> a=DV-cp;
+#> b=;          # <- lag RHS dropped by the C parser's normalized-text (sbt) output
+#> out=cp+b;
+```
+
+The C parser's `sbt` buffer (the `rxNorm` text) emits `lag(` for the function name
+(`src/parseFunsDiff.h` `handleFunctionDiff`, case 2, ~line 119) and sets
+`tf->i[0]=1` to keep parsing args, but the statement's normalized RHS still comes
+out empty -- so `rxNorm` yields `b=;`. This is one layer BELOW symengine: `rxToSE`/
+`rxFromSE` round-trip `lag(a,1)` fine in isolation, and `.rxToSELagOrLead`
+(`R/symengine.R`) is reachable, but `rxS()` feeds it `rxNorm(x)` which already lost
+the lag. A symengine-only fix (wrapping the lagged var in `symengine::S("var")` so
+the assignment `eval` in `.rxToSEAssignOperators` does not inline it) is NECESSARY
+but NOT SUFFICIENT; the C parser `rxNorm`/`sbt` emission for `var = lag(...)` must
+first emit the full `lag(var, k)` call.
+
+Consequence: the lag()-based AR(1) estimation codegen (`.rxArEstLlikLines` in
+`R/err-foceiBase.R`) generates correct lines, but nlm errors (`rx.arEp.cp=;`) and
+focei silently mis-fits (residual params wrong) until `rxNorm` preserves `lag()`.
+AR(1) simulation and the solve-path lag/diff fix are complete and safe.
