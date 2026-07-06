@@ -21,6 +21,12 @@ extern "C" {
   typedef void (*rxode2AdjointTrajSweep_t)(double *tg, double *J, double *dP, int ns, int np, int nt, int *outK, int nOut, int *stateIdx, int nStates, double *result, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
   extern rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep;
 
+  // Set / get the current solve's exact ODE atol/rtol (for tightening the cov step).
+  typedef void (*rxSetSolveAtolRtol_t)(double atol, double rtol);
+  extern rxSetSolveAtolRtol_t rxSetSolveAtolRtol;
+  typedef void (*rxGetSolveAtolRtol_t)(double *atol, double *rtol);
+  extern rxGetSolveAtolRtol_t rxGetSolveAtolRtol;
+
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
@@ -303,6 +309,8 @@ extern "C" {
       setRxThreadId = (setRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 65));
       rxode2AdjointSweep = (rxode2AdjointSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 66));
       rxode2AdjointTrajSweep = (rxode2AdjointTrajSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 67));
+      rxSetSolveAtolRtol = (rxSetSolveAtolRtol_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 68));
+      rxGetSolveAtolRtol = (rxGetSolveAtolRtol_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 69));
     }
     return R_NilValue;
   }
@@ -376,6 +384,8 @@ extern "C" {
   setRxThreadId_t setRxThreadId = NULL;                 \
   rxode2AdjointSweep_t rxode2AdjointSweep = NULL;        \
   rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep = NULL; \
+  rxSetSolveAtolRtol_t rxSetSolveAtolRtol = NULL;        \
+  rxGetSolveAtolRtol_t rxGetSolveAtolRtol = NULL;        \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

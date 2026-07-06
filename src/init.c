@@ -399,6 +399,8 @@ SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_atolRtolFactor_(SEXP);
 void allocExtraDosingC(void);
 void atolRtolFactorC_(double factor);
+void rxSetSolveAtolRtol(double atol, double rtol);
+void rxGetSolveAtolRtol(double *atol, double *rtol);
 
 // Cross-DLL OpenMP thread-id override (defined in rxData.cpp); see comment there.
 void setRxThreadId(int id);
@@ -485,8 +487,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setRxThreadId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setRxThreadId, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2AdjointSweepPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2AdjointSweep, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2AdjointTrajSweepPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2AdjointTrajSweep, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxSetSolveAtolRtol = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxSetSolveAtolRtol, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxGetSolveAtolRtol = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxGetSolveAtolRtol, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 68
+#define nVec 70
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -556,6 +560,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 65, rxode2setRxThreadId);
   SET_VECTOR_ELT(ret, 66, rxode2AdjointSweepPtr);
   SET_VECTOR_ELT(ret, 67, rxode2AdjointTrajSweepPtr);
+  SET_VECTOR_ELT(ret, 68, rxode2rxSetSolveAtolRtol);
+  SET_VECTOR_ELT(ret, 69, rxode2rxGetSolveAtolRtol);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -627,6 +633,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 65, Rf_mkChar("rxode2setRxThreadId"));
   SET_STRING_ELT(retN, 66, Rf_mkChar("rxode2AdjointSweep"));
   SET_STRING_ELT(retN, 67, Rf_mkChar("rxode2AdjointTrajSweep"));
+  SET_STRING_ELT(retN, 68, Rf_mkChar("rxode2rxSetSolveAtolRtol"));
+  SET_STRING_ELT(retN, 69, Rf_mkChar("rxode2rxGetSolveAtolRtol"));
 
 #undef nVec
 
