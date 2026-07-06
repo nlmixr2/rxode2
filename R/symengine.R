@@ -1310,13 +1310,19 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxToSELagOrLead <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .len <- length(x)
   .fun <- as.character(x[[1]])
+  # lag()/lead() reference the previous/next record value of a *variable*, so the
+  # variable must stay a symbol.  In a symengine environment the assignment eval
+  # (`with(envir, ...)`) would otherwise inline an lhs variable's definition and
+  # break the call, so wrap the variable in symengine::S("var") to keep it a raw
+  # symbol; it round-trips back to the bare name in rxFromSE().
+  .vref <- function(v) if (isEnv) paste0("symengine::S(\"", v, "\")") else v
   if (.len == 1L) {
     stop(.fun, "() takes 1-2 arguments")
   } else if (.len == 2L) {
     if (length(x[[2]]) != 1) {
       stop(.fun, "() must be used with a variable", call. = FALSE)
     }
-    return(paste0(.fun, "(", as.character(x[[2]]), ")"))
+    return(paste0(.fun, "(", .vref(as.character(x[[2]])), ")"))
   } else if (.len == 3L) {
     if (length(x[[2]]) != 1) {
       stop(.fun, "() must be used with a variable", call. = FALSE)
@@ -1327,7 +1333,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     if (regexpr(rex::rex(maybe(one_of("-", "+")), regDecimalint), as.character(x[[3]]), perl = TRUE) == -1) {
       stop(.fun, "(", as.character(x[[2]]), ", #) must have an integer for the number of lagged doses", call. = FALSE)
     }
-    return(paste0(.fun, "(", as.character(x[[2]]), ", ", as.character(x[[3]]), ")"))
+    return(paste0(.fun, "(", .vref(as.character(x[[2]])), ", ", as.character(x[[3]]), ")"))
   } else {
     stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
   }

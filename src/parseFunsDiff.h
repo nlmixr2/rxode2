@@ -37,7 +37,11 @@ static inline int assertCorrectDiffArgs(transFunctions *tf, int nargs, int *lagN
     if (nargs == 2) {
       D_ParseNode *xpn = d_get_child(tf->pn, 3);
       char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      if (strlen(v2) > 2){
+      // v2 is the second-argument region including its leading separator (eg
+      // ",1" or ", 1"); toInt(v2+1) skips that separator.  The gate must allow
+      // the no-space form ",1" (length 2), otherwise lagNo stays 0 and the
+      // normalized-text (sbt) emission for lag()/diff() is dropped.
+      if (strlen(v2) > 1){
 	*lagNo = toInt(v2+1);
 	if (tf->isLead && *lagNo != NA_INTEGER) *lagNo = -*lagNo;
       }
