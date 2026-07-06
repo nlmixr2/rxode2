@@ -1,5 +1,10 @@
 
 static inline int isDiffFunction(transFunctions *tf) {
+  // lag0()/lead0()/diff0() behave like lag()/lead()/diff() but return 0 instead
+  // of NA on the first record (no prior value); tf->is0 flags this.
+  if (!strcmp("lag0", tf->v)) { tf->is0 = 1; return 1; }
+  if (!strcmp("lead0", tf->v)) { tf->is0 = 1; tf->isLead = 1; return 1; }
+  if (!strcmp("diff0", tf->v)) { tf->is0 = 1; tf->isDiff = 1; return 1; }
   return !strcmp("lag", tf->v) || (tf->isLead = !strcmp("lead", tf->v)) ||
     (tf->isDiff = !strcmp("diff", tf->v)) ||
     (tf->isFirst = !strcmp("first", tf->v)) ||

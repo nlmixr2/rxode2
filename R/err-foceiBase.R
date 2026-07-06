@@ -451,8 +451,13 @@
   .t <- str2lang(paste0("rx_arT_", .var))
   .ep <- str2lang(paste0("rx_arEp_", .var))
   .dt <- str2lang(paste0("rx_arDt_", .var))
+  .nf <- str2lang(paste0("rx_arNf_", .var))
   .phi <- str2lang(paste0("rx_arPhi_", .var))
-  .ez <- str2lang(paste0("rx_arEz_", .var))
+  # First observation per subject/endpoint uses the marginal likelihood.  lag0()
+  # keeps the previous residual and time gap FINITE on the first record (0 and
+  # time), and `1 - is.na(lag(...))` is a NaN-safe first-record indicator (0 on
+  # the first record, 1 after) -- so rx_arNf * cor^dt = 0*finite = 0 on the first
+  # record (marginal), with no NaN (which the pruned-ifelse 0*NaN would produce).
   list(
     bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
     bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
@@ -463,11 +468,11 @@
     bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1)))),
     bquote(.(.t) <- time),
     bquote(.(.e) <- .(.dvTrans) - rx_pred_),
-    bquote(.(.ep) <- lag(.(.e), 1)),
-    bquote(.(.dt) <- time - lag(.(.t), 1)),
-    bquote(.(.phi) <- ifelse(is.na(.(.ep)), 0, .(cor)^.(.dt))),
-    bquote(.(.ez) <- ifelse(is.na(.(.ep)), 0, .(.ep))),
-    bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ez)),
+    bquote(.(.ep) <- lag0(.(.e), 1)),
+    bquote(.(.dt) <- time - lag0(.(.t), 1)),
+    bquote(.(.nf) <- 1 - is.na(lag(.(.t), 1))),
+    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt)),
+    bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ep)),
                                    bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))),
     quote(rx_r_ ~ 0))
 }

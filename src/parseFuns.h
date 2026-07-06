@@ -175,6 +175,7 @@ typedef struct transFunctions {
   int isFirst;
   int isLast;
   int isDiff;
+  int is0; // lag0()/diff0()/lead0(): return 0 instead of NA on the first record
   int isLinB;
   int isPnorm;
 
@@ -225,6 +226,7 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isFirst=0;
   tf->isLast=0;
   tf->isDiff=0;
+  tf->is0=0;
   tf->isLinB=0;
   tf->isPnorm=0;
 

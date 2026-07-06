@@ -148,6 +148,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "tfirst0" = NA,
   "lag" = NA,
   "lead" = NA,
+  "lag0" = NA,
+  "lead0" = NA,
   "dose" =NA,
   "podo" =NA,
   "dose0" =NA,
@@ -162,6 +164,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "first" = 1,
   "last" = 1,
   "diff" = 1,
+  "diff0" = 1,
   "is.nan" = 1,
   "is.na" = 1,
   "is.finite" = 1,
@@ -1853,7 +1856,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`tad0`))) {
     return(.rxToSETad0(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lag`)) ||
-               identical(x[[1]], quote(`lead`))) {
+               identical(x[[1]], quote(`lead`)) ||
+               identical(x[[1]], quote(`lag0`)) ||
+               identical(x[[1]], quote(`lead0`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`delay`)) ||
                identical(x[[1]], quote(`rxDelayD`)) ||
@@ -2590,7 +2595,9 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         call. = FALSE
       )
     } else if (identical(x[[1]], quote(`lag`)) ||
-      identical(x[[1]], quote(`lead`))) {
+      identical(x[[1]], quote(`lead`)) ||
+      identical(x[[1]], quote(`lag0`)) ||
+      identical(x[[1]], quote(`lead0`))) {
       .a <- .rxFromSE(x[[2]])
       .fun <- as.character(x[[1]])
       if (length(x) == 3) {
@@ -3028,6 +3035,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
+    "lag0", "lead0", "diff0",
     "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
@@ -3104,7 +3112,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
 #' @noRd
 .rxCollectLaggedVars <- function(expr) {
   .acc <- character(0)
-  .histFn <- c("lag", "lead", "diff", "first", "last")
+  .histFn <- c("lag", "lead", "diff", "first", "last", "lag0", "lead0", "diff0")
   .walk <- function(e) {
     if (is.call(e)) {
       .f <- e[[1]]

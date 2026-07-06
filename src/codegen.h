@@ -238,6 +238,46 @@ static inline void printParamLags(char *buf, int *j, int i) {
   sAppendN(&sbOut, "#define lag_", 12);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "(x,y) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))\n", *j);
+
+  // lag0()/diff0()/lead0(): same as above but yield 0 (not NA) with no prior value
+  sAppendN(&sbOut, "#undef lag0_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
+  sAppendN(&sbOut, "#define lag0_", 13);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "1(x) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1))\n", *j, *j);
+  sAppendN(&sbOut, "#undef lag0_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
+  sAppendN(&sbOut, "#define lag0_", 13);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "(x,y) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y)))\n", *j, *j);
+
+  sAppendN(&sbOut, "#undef diff0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
+  sAppendN(&sbOut, "#define diff0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "1(x) (x - (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)))\n", *j, *j);
+  sAppendN(&sbOut, "#undef diff0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
+  sAppendN(&sbOut, "#define diff0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "(x,y) (x - (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))))\n", *j, *j);
+
+  sAppendN(&sbOut, "#undef lead0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
+  sAppendN(&sbOut, "#define lead0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "1(x) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + 1)) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + 1))\n", *j, *j);
+  sAppendN(&sbOut, "#undef lead0_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
+  sAppendN(&sbOut, "#define lead0_", 14);
+  doDot(&sbOut, buf);
+  sAppend(&sbOut, "(x,y) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y)))\n", *j, *j);
   j[0]=j[0]+1;
 }
 
@@ -276,6 +316,26 @@ static inline void printLhsLag(char *buf, int *j, int i) {
     sAppendN(&sbOut, "#define last_", 13);
     doDot(&sbOut, buf);
     sAppend(&sbOut, "1(x) _PL[_LHS_%d_]\n", *j);
+    // lag0()/diff0()/lead0(): same as above but yield 0 (not NA) on the first
+    // record, so downstream arithmetic stays finite
+    sAppendN(&sbOut, "#define diff0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) ((x) - (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_]))\n", *j, *j);
+    sAppendN(&sbOut, "#define diff0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) ((x) - (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_]))\n", *j, *j);
+    sAppendN(&sbOut, "#define lag0_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+    sAppendN(&sbOut, "#define lag0_", 13);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x, y) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+    sAppendN(&sbOut, "#define lead0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "1(x) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
+    sAppendN(&sbOut, "#define lead0_", 14);
+    doDot(&sbOut, buf);
+    sAppend(&sbOut, "(x,y) (ISNA(_PL[_LHS_%d_]) ? 0.0 : _PL[_LHS_%d_])\n", *j, *j);
   }
   j[0] = j[0]+1;
 }
