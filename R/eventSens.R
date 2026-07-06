@@ -824,13 +824,29 @@
 #' inside `THETA[`); after the `THETA[n]` -> `_THETA_n_` step no bracket remains
 #' for the `ETA` pass to catch.  Plain parameter names are left untouched.
 #' @noRd
-.rxEventSensCExpr <- function(expr) {
-  expr <- gsub("THETA\\[([0-9]+)\\]", "_THETA_\\1_", expr)
-  gsub("ETA\\[([0-9]+)\\]", "_ETA_\\1_", expr)
+.rxEventSensCExpr <- function(expr, plainParams = character(0)) {
+  # A `THETA[n]`/`ETA[n]` in the derivative expression maps to the codegen local
+  # `_THETA_n_`/`_ETA_n_` (populated from `_PP[]`) for nlmixr2's indexed
+  # parameters.  But a model may instead declare the parameter under its own
+  # plain name `THETA_n_`/`ETA_n_` (e.g. nlmixr2est's augmented outer-gradient
+  # model), which the preamble declares verbatim -- then the rewrite must use the
+  # plain name (no leading `_`), or the emitted `_THETA_n_` is undeclared.
+  .rw <- function(expr, kind) {
+    .toks <- unique(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))[[1]])
+    for (.tok in .toks) {
+      .n <- sub(paste0(kind, "\\[([0-9]+)\\]"), "\\1", .tok)
+      .plain <- paste0(kind, "_", .n, "_")
+      .repl <- if (.plain %in% plainParams) .plain else paste0("_", .plain)
+      expr <- gsub(.tok, .repl, expr, fixed = TRUE)
+    }
+    expr
+  }
+  .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
 }
 
 .rxEventSensCLines <- function(info) {
   if (is.null(info)) return(NULL)
+  .pp <- info$params                     # declared param names (plain THETA_n_ vs indexed)
   .params <- info$map$sensParams
   .np <- length(.params)
   .pIdx <- stats::setNames(seq_along(.params) - 1L, .params)
@@ -838,7 +854,7 @@
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L                      # 0-based, matches _alag[_cmt]
     .idx <- .cmt0 * .np + .pIdx[tab$param]
-    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
   ## Second-order (Hessian) buffer: indexed (cmt0*(np*np2) + pIdx*np2 + qIdx),
   ## p over the first-order params, q over the calcSens2 params.
@@ -849,7 +865,7 @@
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * (.np * .np2) + .pIdx[tab$p] * .np2 + .qIdx[tab$q]
-    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
   ## Third-order (Phase H1) buffer: indexed
   ## (cmt0*(np*np2*np3) + pIdx*(np2*np3) + qIdx*np3 + rIdx), r over the
@@ -862,7 +878,7 @@
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * (.np * .np2 * .np3) + .pIdx[tab$p] * (.np2 * .np3) +
       .qIdx[tab$q] * .np3 + .rIdx[tab$r]
-    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
   ## d(F)/dq buffer (H1-dtau scope): indexed (cmt0*np2 + qIdx), q already in
   ## calcSens2's own index space (no cross-index remapping needed at runtime).
@@ -870,7 +886,7 @@
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * .np2 + .qIdx[tab$param]
-    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
   ## d(J[k][c])/dq buffer (H1-dtau scope): indexed
   ## (cmt0*(nState*np2) + k*np2 + qIdx) -- cmt0 is the lag-carrying (event)
@@ -882,7 +898,7 @@
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * (.ns * .np2) + tab$k * .np2 + .qIdx[tab$q]
-    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr))
+    sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
   list(
     nSensParam = .np,
@@ -1037,5 +1053,6 @@ rxEventSensDeactivate <- function() {
   if (is.null(.map)) return(NULL)
   .map <- .rxEventSensFilterMap(obj, .map)
   if (is.null(.map)) return(NULL)
-  list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map))
+  list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map),
+       params = rxModelVars(obj)$params)   # declared param names (plain vs indexed)
 }

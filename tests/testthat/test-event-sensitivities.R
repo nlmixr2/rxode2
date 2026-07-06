@@ -304,6 +304,26 @@ rxTest({
     expect_null(.rxEventSensCLines(NULL))
   })
 
+  test_that(".rxEventSensCExpr maps indexed vs plainly-declared params (1st + 2nd order)", {
+    # nlmixr2's indexed THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_
+    # (populated from _PP[]); this is what the dF/d2F assignment lines reference.
+    expect_equal(.rxEventSensCExpr("exp(THETA[2])"), "exp(_THETA_2_)")
+    expect_equal(.rxEventSensCExpr("THETA[1]*ETA[3]"), "_THETA_1_*_ETA_3_")
+    # But a model may declare the parameter under its own plain name THETA_n_/ETA_n_
+    # (e.g. nlmixr2est's augmented outer-gradient model, whose direction params are
+    # named THETA_n_/ETA_n_); the preamble then declares them verbatim, so the dose
+    # (and 2nd-order dose) derivatives must reference the plain name -- otherwise the
+    # emitted _THETA_n_ is undeclared and the model fails to compile.
+    expect_equal(.rxEventSensCExpr("exp(THETA[2])", plainParams = "THETA_2_"), "exp(THETA_2_)")
+    expect_equal(.rxEventSensCExpr("THETA[1]*ETA[3]", plainParams = c("THETA_1_", "ETA_3_")),
+                 "THETA_1_*ETA_3_")
+    # mixed: only the plainly-declared params drop the leading underscore
+    expect_equal(.rxEventSensCExpr("THETA[1]*ETA[3]", plainParams = "THETA_1_"), "THETA_1_*_ETA_3_")
+    # info$params carries the declared names so .rxEventSensCLines picks the right form
+    m <- rxode2(.modStateF, calcSens = c("eta_ka", "eta_lag"), eventSens = "jump")
+    expect_true("params" %in% names(m$eventSensInfo))
+  })
+
   test_that("eventSens='jump' model with state-dependent F compiles and solves", {
     # Exercises the full lines channel: R-generated dLag/dF assignment lines are
     # pushed to codegen, spliced into the function bodies (with the state-coupling
